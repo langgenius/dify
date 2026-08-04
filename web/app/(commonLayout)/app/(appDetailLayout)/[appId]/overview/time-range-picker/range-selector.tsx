@@ -86,7 +86,7 @@ const RangeSelector: FC<Props> = ({ isCustomRange, ranges, onSelect }) => {
           <RiArrowDownSLine className="size-4 text-text-quaternary group-data-popup-open:text-text-secondary" />
         </div>
       </SelectTrigger>
-      <SelectContent className="translate-x-[-24px]" popupClassName="w-[200px]" listClassName="p-1">
+      <SelectContent className="-translate-x-6" popupClassName="w-[200px]" listClassName="p-1">
         {items.map((item) => (
           <SelectItem
             key={item.value}
@@ -94,7 +94,7 @@ const RangeSelector: FC<Props> = ({ isCustomRange, ranges, onSelect }) => {
             className="relative h-8 py-0 pr-2 pl-7 system-md-regular"
           >
             <SelectItemText className="px-0">{item.name}</SelectItemText>
-            <SelectItemIndicator className="absolute top-[8px] left-2 ml-0" />
+            <SelectItemIndicator className="absolute top-2 left-2 ml-0" />
           </SelectItem>
         ))}
       </SelectContent>

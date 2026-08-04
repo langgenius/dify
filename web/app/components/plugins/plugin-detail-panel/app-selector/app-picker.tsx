@@ -130,7 +130,7 @@ export function AppPicker({
       <ComboboxTrigger
         aria-label={t(($) => $['appSelector.label'], { ns: 'app' })}
         icon={false}
-        className="block h-auto w-full border-0 bg-transparent p-0 text-left hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 data-popup-open:bg-transparent"
+        className="block h-auto w-full border-0 bg-transparent p-0 text-left hover:bg-transparent focus-visible:bg-transparent data-popup-open:bg-transparent"
       >
         {trigger}
       </ComboboxTrigger>
@@ -168,8 +168,8 @@ export function AppPicker({
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto p-1">
             {isLoading && <ComboboxStatus>{t(($) => $.loading, { ns: 'common' })}</ComboboxStatus>}
-            <ComboboxList className="max-h-none p-0">
-              {(app: App) => <AppPickerOption key={app.id} app={app} />}
+            <ComboboxList<App> className="max-h-none p-0">
+              {(app) => <AppPickerOption key={app.id} app={app} />}
             </ComboboxList>
             <ComboboxEmpty>{t(($) => $.noData, { ns: 'common' })}</ComboboxEmpty>
             {hasMore && (

@@ -65,16 +65,16 @@ const PublishWithMultipleModel: FC<PublishWithMultipleModelProps> = ({
       >
         <>
           {t(($) => $['operation.applyConfig'], { ns: 'appDebug' })}
-          <RiArrowDownSLine className="ml-0.5 size-3" />
+          <RiArrowDownSLine className="size-3" />
         </>
       </DropdownMenuTrigger>
       <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-[288px] p-1">
-        <div className="flex h-[22px] items-center px-3 text-xs font-medium text-text-tertiary">
+        <div className="flex h-5.5 items-center px-3 text-xs font-medium text-text-tertiary">
           {t(($) => $.publishAs, { ns: 'appDebug' })}
         </div>
         {validModelConfigs.map((item, index) => (
           <DropdownMenuItem key={item.id} className="gap-0 px-3" onClick={() => onSelect(item)}>
-            <span className="min-w-[18px] italic">#{index + 1}</span>
+            <span className="min-w-4.5 italic">#{index + 1}</span>
             <ModelIcon modelName={item.model} provider={item.providerItem} className="ml-2" />
             <div
               className="ml-1 truncate text-text-secondary"

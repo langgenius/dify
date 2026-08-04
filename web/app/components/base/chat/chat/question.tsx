@@ -1,5 +1,5 @@
 import type { FC, ReactNode } from 'react'
-import type { Theme } from '../embedded-chatbot/theme/theme-context'
+import type { Theme } from '../embedded-chatbot/theme/theme'
 import type { ChatItem } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -182,7 +182,7 @@ const Question: FC<QuestionProps> = ({
             !isEditing &&
               'rounded-2xl bg-background-gradient-bg-fill-chat-bubble-bg-3 text-text-primary',
             isEditing &&
-              'rounded-[24px] border-[3px] border-components-option-card-option-selected-border bg-components-panel-bg-blur shadow-lg',
+              'rounded-3xl border-[3px] border-components-option-card-option-selected-border bg-components-panel-bg-blur shadow-lg',
           )}
           style={
             !isEditing && theme?.chatBubbleColorStyle
@@ -202,7 +202,7 @@ const Question: FC<QuestionProps> = ({
             <Markdown content={content} />
           ) : (
             <div className="flex flex-col gap-4">
-              <div className="max-h-[158px] overflow-x-hidden overflow-y-auto pr-1">
+              <div className="max-h-39.5 overflow-x-hidden overflow-y-auto pr-1">
                 <Textarea
                   className={cn(
                     'w-full resize-none bg-transparent p-0 body-lg-regular leading-7 text-text-primary outline-hidden',
@@ -236,7 +236,7 @@ const Question: FC<QuestionProps> = ({
             />
           )}
         </div>
-        <div className="mt-1 h-[18px]" />
+        <div className="mt-1 h-4.5" />
       </div>
       {!hideAvatar && (
         <div className="size-10 shrink-0">

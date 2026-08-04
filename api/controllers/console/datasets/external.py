@@ -106,7 +106,7 @@ class ExternalKnowledgeApiResponseSource:
         return self.external_knowledge_api.get_dataset_bindings(session=self.session)
 
     def __getattr__(self, name: str) -> Any:
-        return getattr(self.external_knowledge_api, name)  # noqa: no-new-getattr response adapter delegates model fields
+        return getattr(self.external_knowledge_api, name)  # guard-ignore: no-new-getattr -- delegates model fields
 
 
 def external_knowledge_api_response(
@@ -353,7 +353,9 @@ class ExternalDatasetCreateApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EXTERNAL_CONNECT)
+    @rbac_permission_required(
+        RBACResourceScope.DATASET, RBACPermission.DATASET_EXTERNAL_CONNECT, resource_required=False
+    )
     @with_current_user
     @with_current_tenant_id
     @with_session

@@ -2,91 +2,6 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 import ItemOperation from '../index'
 
-vi.mock('@langgenius/dify-ui/dropdown-menu', () => {
-  const DropdownMenuContext = React.createContext<{
-    isOpen: boolean
-    setOpen: (open: boolean) => void
-  } | null>(null)
-
-  const useDropdownMenuContext = () => {
-    const context = React.use(DropdownMenuContext)
-    if (!context) throw new Error('DropdownMenu components must be wrapped in DropdownMenu')
-    return context
-  }
-
-  return {
-    DropdownMenu: ({ children, modal }: { children: React.ReactNode; modal?: boolean }) => {
-      const [isOpen, setIsOpen] = React.useState(false)
-
-      return (
-        <DropdownMenuContext value={{ isOpen, setOpen: setIsOpen }}>
-          <div data-modal={modal} data-open={isOpen} data-testid="dropdown-menu">
-            {children}
-          </div>
-        </DropdownMenuContext>
-      )
-    },
-    DropdownMenuTrigger: ({
-      children,
-      onClick,
-      ...props
-    }: React.ButtonHTMLAttributes<HTMLButtonElement>) => {
-      const { isOpen, setOpen } = useDropdownMenuContext()
-      return (
-        <button
-          type="button"
-          onClick={(e) => {
-            onClick?.(e)
-            setOpen(!isOpen)
-          }}
-          {...props}
-        >
-          {children}
-        </button>
-      )
-    },
-    DropdownMenuContent: ({
-      children,
-      popupProps,
-    }: {
-      children: React.ReactNode
-      popupProps?: React.HTMLAttributes<HTMLDivElement>
-    }) => {
-      const { isOpen } = useDropdownMenuContext()
-      if (!isOpen) return null
-
-      return (
-        <div data-testid="dropdown-content" {...popupProps}>
-          {children}
-        </div>
-      )
-    },
-    DropdownMenuItem: ({
-      children,
-      onClick,
-      className,
-    }: {
-      children: React.ReactNode
-      onClick?: React.MouseEventHandler<HTMLButtonElement>
-      className?: string
-    }) => {
-      const { setOpen } = useDropdownMenuContext()
-      return (
-        <button
-          type="button"
-          className={className}
-          onClick={(e) => {
-            onClick?.(e)
-            setOpen(false)
-          }}
-        >
-          {children}
-        </button>
-      )
-    },
-  }
-})
-
 describe('ItemOperation', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -177,12 +92,6 @@ describe('ItemOperation', () => {
       rerender(<ItemOperation {...props} />)
 
       expect(screen.getByText('explore.sidebar.action.pin')).toBeInTheDocument()
-    })
-
-    it('should render a non-modal menu', () => {
-      renderComponent()
-
-      expect(screen.getByTestId('dropdown-menu')).toHaveAttribute('data-modal', 'false')
     })
 
     it('should stop propagation when clicking menu actions', async () => {

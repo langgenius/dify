@@ -12,6 +12,7 @@ from dify_agent.agent_stub.protocol.agent_stub import (
     AgentStubDriveCommitRequest,
     AgentStubDriveFileRef,
     AgentStubDriveManifestResponse,
+    AgentStubFileDownloadRequest,
     AgentStubFileMapping,
     agent_stub_connections_url,
     agent_stub_drive_base_for_ref,
@@ -148,6 +149,21 @@ def test_agent_stub_file_mapping_rejects_remote_url_with_reference() -> None:
             url="https://example.com/file",
             reference=reference,
         )
+
+
+def test_agent_stub_file_download_request_accepts_legacy_http_audience_alias() -> None:
+    mapping = {"transfer_method": "tool_file", "reference": _reference("tool-file-1")}
+
+    request = AgentStubFileDownloadRequest.model_validate({"file": mapping, "for_external": False})
+
+    assert request.for_frontend is False
+    assert request.model_dump() == {
+        "file": {"transfer_method": "tool_file", "reference": _reference("tool-file-1"), "url": None},
+        "for_frontend": False,
+    }
+
+    with pytest.raises(ValidationError):
+        _ = AgentStubFileDownloadRequest.model_validate({"file": mapping, "for_frontend": True, "for_external": False})
 
 
 def test_agent_stub_drive_commit_request_validates_file_refs() -> None:

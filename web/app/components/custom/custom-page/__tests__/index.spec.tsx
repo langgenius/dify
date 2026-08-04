@@ -14,13 +14,13 @@ vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
   return {
     ...actual,
-    IS_CLOUD_EDITION: true,
   }
 })
 
 const render = (ui: ReactElement) =>
   renderWithConsoleQuery(ui, {
     systemFeatures: {
+      deployment_edition: 'CLOUD',
       branding: {
         enabled: true,
         workspace_logo: 'https://example.com/workspace-logo.png',

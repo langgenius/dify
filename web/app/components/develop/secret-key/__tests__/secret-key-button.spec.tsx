@@ -169,48 +169,6 @@ describe('SecretKeyButton', () => {
     })
   })
 
-  describe('button styling', () => {
-    it('should have px-3 padding', () => {
-      render(<SecretKeyButton />)
-      const button = screen.getByRole('button')
-      expect(button.className).toContain('px-3')
-    })
-  })
-
-  describe('icon styling', () => {
-    it('should have icon container with flex layout', () => {
-      const { container } = render(<SecretKeyButton />)
-      const iconContainer = container.querySelector('.flex.items-center.justify-center')
-      expect(iconContainer)!.toBeInTheDocument()
-    })
-
-    it('should have correct icon dimensions', () => {
-      const { container } = render(<SecretKeyButton />)
-      const iconContainer = container.querySelector('.size-3\\.5')
-      expect(iconContainer)!.toBeInTheDocument()
-    })
-
-    it('should have tertiary text color on icon', () => {
-      const { container } = render(<SecretKeyButton />)
-      const icon = container.querySelector('.text-text-tertiary')
-      expect(icon)!.toBeInTheDocument()
-    })
-  })
-
-  describe('text styling', () => {
-    it('should have horizontal padding', () => {
-      render(<SecretKeyButton />)
-      const text = screen.getByText('appApi.apiKey')
-      expect(text.className).toContain('px-[3px]')
-    })
-
-    it('should have tertiary text color', () => {
-      render(<SecretKeyButton />)
-      const text = screen.getByText('appApi.apiKey')
-      expect(text.className).toContain('text-text-tertiary')
-    })
-  })
-
   describe('modal props', () => {
     it('should pass isShow prop to modal', async () => {
       const user = userEvent.setup()

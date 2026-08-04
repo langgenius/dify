@@ -9,10 +9,10 @@ import {
 } from '@remixicon/react'
 import { memo, useMemo } from 'react'
 import BlockIcon from '@/app/components/workflow/block-icon'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import NodeControl from '@/app/components/workflow/nodes/_base/components/node-control'
 import { NodeTargetHandle } from '@/app/components/workflow/nodes/_base/components/node-handle'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
+import { useNodesReadOnly } from '../hooks/use-workflow'
 
 type SimpleNodeProps = NodeProps
 
@@ -50,7 +50,7 @@ const SimpleNode: FC<SimpleNodeProps> = ({ id, data }) => {
         className={cn(
           'group relative pb-1 shadow-xs',
           'rounded-[15px] border border-transparent',
-          'w-[240px] bg-workflow-block-bg',
+          'w-60 bg-workflow-block-bg',
           !data._runningStatus && 'hover:shadow-lg',
           showRunningBorder && 'border-state-accent-solid!',
           showSuccessBorder && 'border-state-success-solid!',

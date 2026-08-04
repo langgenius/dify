@@ -4,6 +4,7 @@ from dify_agent.protocol import CancelRunResponse, DIFY_AGENT_MODEL_LAYER_ID
 from dify_agent.runtime.run_scheduler import RunCancellationConflictError, SchedulerStoppingError
 from dify_agent.server.routes.runs import create_runs_router
 from dify_agent.server.schemas import RunRecord
+from dify_agent.storage.redis_run_store import RunNotFoundError
 
 
 class FakeScheduler:
@@ -104,6 +105,26 @@ def test_cancel_run_endpoint_maps_conflict() -> None:
 
     assert response.status_code == 409
     assert "already finished" in response.json()["detail"]
+
+
+def test_cancel_run_endpoint_maps_missing_run() -> None:
+    from fastapi import FastAPI
+
+    class MissingRunScheduler(FakeScheduler):
+        async def cancel_run(self, run_id: str, request: object) -> CancelRunResponse:
+            del request
+            raise RunNotFoundError(run_id)
+
+    app = FastAPI()
+    app.include_router(
+        create_runs_router(lambda: FakeStore(), lambda: MissingRunScheduler())  # pyright: ignore[reportArgumentType]
+    )
+    client = TestClient(app)
+
+    response = client.post("/runs/missing/cancel", json={})
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "run not found"}
 
 
 def test_create_run_accepts_valid_full_plugin_graph() -> None:

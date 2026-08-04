@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import type { PluginDeclaration, PluginDetail } from '@/app/components/plugins/types'
 import { act, fireEvent, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
@@ -26,8 +25,8 @@ type MockReferenceSetting = {
   }
 }
 
-const { mockSetAccountSettingModal, mockSaveAutoUpgrade } = vi.hoisted(() => ({
-  mockSetAccountSettingModal: vi.fn(),
+const { mockSetSettingsDestination, mockSaveAutoUpgrade } = vi.hoisted(() => ({
+  mockSetSettingsDestination: vi.fn(),
   mockSaveAutoUpgrade: vi.fn(),
 }))
 
@@ -88,6 +87,10 @@ const renderModelProviderPage = (
 
 const saveUpdateSettings = () => {
   fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
+}
+
+const openUpdateSettings = () => {
+  fireEvent.click(screen.getByRole('button', { name: /plugin\.autoUpdate\.autoUpdate/ }))
 }
 
 const createPluginDeclaration = (
@@ -279,60 +282,10 @@ vi.mock('@/service/use-plugins', () => ({
   }),
 }))
 
-vi.mock('@langgenius/dify-ui/dialog', () => ({
-  Dialog: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  DialogTrigger: ({ render }: { render: ReactNode }) => render,
-  DialogContent: ({ children }: { children: ReactNode }) => (
-    <div data-testid="update-setting-dialog">{children}</div>
-  ),
-  DialogTitle: () => null,
-  DialogCloseButton: () => <button type="button" aria-label="close" />,
-}))
-
-vi.mock('@/context/modal-context', () => ({
-  useModalContextSelector: (
-    selector: (state: { setShowAccountSettingModal: typeof mockSetAccountSettingModal }) => unknown,
-  ) => selector({ setShowAccountSettingModal: mockSetAccountSettingModal }),
-}))
-
-vi.mock('@/app/components/base/date-and-time-picker/time-picker', () => ({
-  default: ({
-    value,
-    onChange,
-    renderTrigger,
-  }: {
-    value?: string | { format: (format: string) => string }
-    onChange: (value: { hour: () => number; minute: () => number }) => void
-    renderTrigger: (params: {
-      inputElem: ReactNode
-      onClick: () => void
-      isOpen: boolean
-    }) => ReactNode
-  }) => {
-    const displayValue = typeof value === 'string' ? value : value?.format('HH:mm')
-
-    return (
-      <div data-testid="update-time-picker">
-        {renderTrigger({
-          inputElem: <span data-testid="update-time-value">{displayValue}</span>,
-          onClick: vi.fn(),
-          isOpen: false,
-        })}
-        <button
-          type="button"
-          onClick={() =>
-            onChange({
-              hour: () => 1,
-              minute: () => 15,
-            })
-          }
-        >
-          set update time
-        </button>
-      </div>
-    )
-  },
-}))
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+})
 
 vi.mock('@/service/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/client')>()
@@ -480,13 +433,12 @@ describe('ModelProviderPage', () => {
     renderModelProviderPage()
 
     expect(screen.getAllByText('plugin.autoUpdate.strategy.latest.name')[0]).toBeInTheDocument()
-    expect(screen.getAllByTestId('update-setting-dialog')[0]).toBeInTheDocument()
+    openUpdateSettings()
     expect(
       screen.getByRole('radiogroup', { name: 'plugin.autoUpdate.autoUpdate' }),
     ).toBeInTheDocument()
     expect(screen.getByText('plugin.autoUpdate.scope')).toBeInTheDocument()
     expect(screen.getByText('plugin.autoUpdate.updateTime')).toBeInTheDocument()
-    expect(screen.getByTestId('update-time-picker')).toBeInTheDocument()
     expect(screen.getByText('plugin.autoUpdate.changeTimezone')).toBeInTheDocument()
     expect(
       screen.getByRole('radio', { name: 'plugin.autoUpdate.strategy.fixOnly.name' }),
@@ -501,10 +453,10 @@ describe('ModelProviderPage', () => {
     const updateSettingButton = screen.getByText('plugin.autoUpdate.autoUpdate').closest('button')
     expect(updateSettingButton).not.toBeDisabled()
     expect(screen.queryByText('plugin.autoUpdate.strategy.latest.name')).not.toBeInTheDocument()
+    openUpdateSettings()
     expect(screen.getByRole('status')).toHaveTextContent('common.loading')
     expect(screen.queryByRole('button', { name: 'common.operation.save' })).not.toBeInTheDocument()
     expect(mockSaveAutoUpgrade).not.toHaveBeenCalled()
-    expect(screen.getByTestId('update-setting-dialog')).toBeInTheDocument()
   })
 
   it('should render a failure state when backend auto-upgrade data fails', () => {
@@ -513,6 +465,7 @@ describe('ModelProviderPage', () => {
 
     renderModelProviderPage()
 
+    openUpdateSettings()
     expect(screen.getByText('common.api.actionFailed')).toBeInTheDocument()
     expect(
       screen.queryByRole('radiogroup', { name: 'plugin.autoUpdate.autoUpdate' }),
@@ -524,6 +477,7 @@ describe('ModelProviderPage', () => {
   it('should update scope from the dialog while keeping the backend returned strategy', () => {
     renderModelProviderPage()
 
+    openUpdateSettings()
     fireEvent.click(screen.getByRole('radio', { name: 'plugin.autoUpdate.upgradeMode.partial' }))
     saveUpdateSettings()
 
@@ -539,11 +493,13 @@ describe('ModelProviderPage', () => {
   it('should update time from the popover while keeping the model provider default strategy as latest', () => {
     renderModelProviderPage()
 
-    expect(screen.getByTestId('update-time-value')).toHaveTextContent('00:00')
+    openUpdateSettings()
+    fireEvent.click(screen.getByDisplayValue('12:00 AM'))
+    fireEvent.click(screen.getByRole('button', { name: '01' }))
+    fireEvent.click(screen.getByRole('button', { name: '15' }))
+    fireEvent.click(screen.getByRole('button', { name: 'time.operation.ok' }))
 
-    fireEvent.click(screen.getByRole('button', { name: 'set update time' }))
-
-    expect(screen.getByTestId('update-time-value')).toHaveTextContent('01:15')
+    expect(screen.getByDisplayValue('01:15 AM')).toBeInTheDocument()
 
     saveUpdateSettings()
 

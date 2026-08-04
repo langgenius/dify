@@ -626,7 +626,7 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
                     aria-hidden
                     className={cn(
                       app.is_starred ? 'text-text-warning-secondary' : 'text-text-tertiary',
-                      'size-[18px]',
+                      'size-4.5',
                     )}
                   />
                 </button>
@@ -651,8 +651,7 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
                 }
                 disabled={isExporting}
                 className={cn(
-                  'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed',
-                  isOperationsMenuOpen ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
+                  'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed data-popup-open:bg-state-base-hover',
                 )}
                 onClick={(e) => {
                   e.stopPropagation()
@@ -662,7 +661,7 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
                 <span
                   aria-hidden
                   className={cn(
-                    'h-[18px] w-[18px] text-text-tertiary',
+                    'h-4.5 w-4.5 text-text-tertiary',
                     isExporting
                       ? 'i-ri-loader-2-line animate-spin motion-reduce:animate-none'
                       : 'i-ri-more-fill',
@@ -1178,7 +1177,7 @@ export function AppCard({
           {app.description}
         </div>
       </div>
-      <div className="flex h-[26px] shrink-0 items-start px-3" />
+      <div className="flex h-6.5 shrink-0 items-start px-3" />
       <div
         className={cn(
           'flex min-w-0 shrink-0 items-center overflow-hidden pt-2 pb-3 pl-4 system-xs-regular text-text-tertiary',
@@ -1229,7 +1228,7 @@ export function AppCard({
           </Link>
         )}
         <div
-          className="absolute top-[104px] right-3 left-3 flex h-[26px] min-w-0 items-start"
+          className="absolute top-26 right-3 left-3 flex h-6.5 min-w-0 items-start"
           onClick={(e) => {
             e.stopPropagation()
             e.preventDefault()
@@ -1267,7 +1266,7 @@ export function AppCard({
                       aria-hidden
                       className={cn(
                         app.is_starred ? 'text-text-warning-secondary' : 'text-text-tertiary',
-                        'size-[18px]',
+                        'size-4.5',
                       )}
                     />
                   </button>
@@ -1291,10 +1290,7 @@ export function AppCard({
                         })
                   }
                   disabled={isExporting}
-                  className={cn(
-                    'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed',
-                    isOperationsMenuOpen ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
-                  )}
+                  className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed data-popup-open:bg-state-base-hover"
                   onClick={(e) => {
                     e.stopPropagation()
                     e.preventDefault()
@@ -1303,7 +1299,7 @@ export function AppCard({
                   <span
                     aria-hidden
                     className={cn(
-                      'h-[18px] w-[18px] text-text-tertiary',
+                      'h-4.5 w-4.5 text-text-tertiary',
                       isExporting
                         ? 'i-ri-loader-2-line animate-spin motion-reduce:animate-none'
                         : 'i-ri-more-fill',
@@ -1438,7 +1434,7 @@ export function AppCard({
                   <button
                     type="button"
                     onClick={() => setConfirmDeleteInput(app.name)}
-                    className="absolute top-1/2 right-2 -translate-y-1/2 rounded-full bg-black/[0.06] px-2.5 py-1 system-xs-medium text-text-secondary hover:bg-black/[0.1]"
+                    className="absolute top-1/2 right-2 -translate-y-1/2 rounded-full bg-black/6 px-2.5 py-1 system-xs-medium text-text-secondary hover:bg-black/10"
                   >
                     {t(($) => $['operation.fill'], { ns: 'common' })}
                   </button>

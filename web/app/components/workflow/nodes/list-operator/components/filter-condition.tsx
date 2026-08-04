@@ -170,7 +170,7 @@ const ValueInput = ({
           isFocus
             ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs'
             : 'border-components-input-border-hover bg-components-input-bg-normal',
-          'w-0 grow rounded-lg border px-3 py-[6px]',
+          'w-0 grow rounded-lg border px-3 py-1.5',
         )}
         value={getConditionValueAsString(condition)}
         onChange={onChange}
@@ -189,7 +189,7 @@ const ValueInput = ({
   return (
     <input
       type={getFallbackInputType({ hasSubVariable, condition, varType })}
-      className="grow rounded-lg border border-components-input-border-hover bg-components-input-bg-normal px-3 py-[6px]"
+      className="grow rounded-lg border border-components-input-border-hover bg-components-input-bg-normal px-3 py-1.5"
       value={getConditionValueAsString(condition)}
       onChange={(e) => onChange(e.target.value)}
       readOnly={readOnly}

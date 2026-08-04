@@ -38,7 +38,7 @@ const FileListItem = ({ fileItem, onPreview, onRemove }: FileListItemProps) => {
   return (
     <div
       onClick={handleClick}
-      className="flex h-12 max-w-[640px] items-center rounded-lg border border-components-panel-border bg-components-panel-on-panel-item-bg text-xs leading-3 text-text-tertiary shadow-xs"
+      className="flex h-12 max-w-160 items-center rounded-lg border border-components-panel-border bg-components-panel-on-panel-item-bg text-xs leading-3 text-text-tertiary shadow-xs"
     >
       <div className="flex w-12 shrink-0 items-center justify-center">
         <DocumentFileIcon

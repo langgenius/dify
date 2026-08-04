@@ -42,11 +42,11 @@ type VarItemProps = {
 
 export const VarItem: FC<VarItemProps> = ({ name, type, description, subItems, isIndent }) => {
   return (
-    <div className={cn('flex', isIndent && 'relative left-[-7px]')}>
+    <div className={cn('flex', isIndent && 'relative -left-1.75')}>
       {isIndent && <TreeIndentLine depth={1} />}
       <div className="py-1">
         <div className="flex">
-          <div className="flex items-center leading-[18px]">
+          <div className="flex items-center leading-4.5">
             <div className="code-sm-semibold text-text-secondary">{name}</div>
             <div className="ml-2 system-xs-regular text-text-tertiary">{type}</div>
           </div>

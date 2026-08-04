@@ -31,3 +31,15 @@ def test_build_redis_options_includes_tls_options_for_rediss(monkeypatch) -> Non
     assert options["ssl_ca_certs"] == "/ca.pem"
     assert options["ssl_certfile"] == "/cert.pem"
     assert options["ssl_keyfile"] == "/key.pem"
+
+
+def test_build_redis_options_omits_socket_timeout(monkeypatch) -> None:
+    # socket_timeout must not be passed to RedisManager because the pub/sub
+    # listen loop blocks indefinitely between messages; a read timeout there
+    # triggers an infinite reconnect storm (issue #39423).
+    monkeypatch.setattr(ext_socketio.dify_config, "REDIS_SOCKET_TIMEOUT", 5.0)
+
+    options = ext_socketio._build_redis_options("redis://redis.example.com:6380/3")
+
+    assert "socket_timeout" not in options
+    assert "socket_connect_timeout" in options

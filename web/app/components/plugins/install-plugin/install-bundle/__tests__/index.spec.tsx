@@ -188,11 +188,6 @@ vi.mock('@/config', async () => {
   }
 })
 
-// Mock mitt context
-vi.mock('@/context/mitt-context', () => ({
-  useMittContextSelector: () => vi.fn(),
-}))
-
 // Mock useCanInstallPluginFromMarketplace
 vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
   useCanInstallPluginFromMarketplace: () => ({ canInstallPluginFromMarketplace: true }),

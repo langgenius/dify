@@ -1,4 +1,5 @@
-from unittest.mock import Mock
+import pytest
+from sqlalchemy.orm import Session
 
 from services.rag_pipeline.pipeline_template.pipeline_template_base import PipelineTemplateRetrievalBase
 
@@ -16,10 +17,11 @@ class DummyRetrieval(PipelineTemplateRetrievalBase):
         return "dummy"
 
 
-def test_pipeline_template_retrieval_base_concrete_implementation() -> None:
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+def test_pipeline_template_retrieval_base_concrete_implementation(sqlite_session: Session) -> None:
     retrieval = DummyRetrieval()
-    session = Mock()
 
-    assert retrieval.get_pipeline_templates("en-US", session=session) == {"language": "en-US"}
-    assert retrieval.get_pipeline_template_detail("tpl-1", session=session) == {"id": "tpl-1"}
+    assert retrieval.get_pipeline_templates("en-US", session=sqlite_session) == {"language": "en-US"}
+    assert retrieval.get_pipeline_template_detail("tpl-1", session=sqlite_session) == {"id": "tpl-1"}
     assert retrieval.get_type() == "dummy"
+    assert not sqlite_session.in_transaction()

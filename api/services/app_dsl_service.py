@@ -19,10 +19,17 @@ from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.file import remote_fetcher
 from core.plugin.entities.plugin import PluginDependency
+from core.rbac import RBACPermission
 from core.trigger.constants import (
     TRIGGER_PLUGIN_NODE_TYPE,
     TRIGGER_SCHEDULE_NODE_TYPE,
     TRIGGER_WEBHOOK_NODE_TYPE,
+)
+from core.workflow.llm_environment_variable import (
+    LLMEnvironmentVariable,
+    parse_llm_model_selector,
+    resolve_llm_model_config,
+    should_resolve_llm_model_selector,
 )
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from core.workflow.nodes.trigger_schedule.trigger_schedule_node import TriggerScheduleNode
@@ -31,7 +38,7 @@ from extensions.ext_redis import redis_client
 from factories import variable_factory
 from graphon.enums import BuiltinNodeTypes
 from graphon.model_runtime.utils.encoders import jsonable_encoder
-from graphon.nodes.llm.entities import LLMNodeData
+from graphon.nodes.llm.entities import LLMNodeData, ModelConfig
 from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
 from graphon.nodes.tool.entities import ToolNodeData
@@ -40,14 +47,18 @@ from models import Account, App, AppMode
 from models.model import AppModelConfig, AppModelConfigDict, IconType, load_annotation_reply_config
 from models.workflow import Workflow
 from services.agent.dsl_service import AgentDslService, AgentPackage
+from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
 from services.dsl_version import check_version_compatibility
+from services.enterprise.rbac_service import RBACService
 from services.entities.dsl_entities import CheckDependenciesResult, DslImportWarning, ImportMode, ImportStatus
+from services.errors.account import NoPermissionError
 from services.errors.app import WorkflowNotFoundError
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.workflow_draft_variable_service import WorkflowDraftVariableService
 from services.workflow_service import WorkflowService
+from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
 logger = logging.getLogger(__name__)
 
@@ -301,6 +312,9 @@ class AppDslService:
                 error=f"Invalid YAML format: {str(e)}",
             )
 
+        except NoPermissionError:
+            raise
+
         except Exception as e:
             logger.exception("Failed to import app")
             return Import(
@@ -364,6 +378,9 @@ class AppDslService:
                 warnings=self._warnings,
             )
 
+        except NoPermissionError:
+            raise
+
         except Exception as e:
             logger.exception("Error confirming import")
             return Import(
@@ -395,6 +412,21 @@ class AppDslService:
             leaked_dependencies=leaked_dependencies,
         )
 
+    @staticmethod
+    def _ensure_agent_manage_permission(account: Account) -> None:
+        """Importing an Agent DSL creates a roster Agent, which requires ``agent.manage``."""
+        if not dify_config.RBAC_ENABLED:
+            return
+        if account.current_tenant_id is None:
+            raise ValueError("Current tenant is not set")
+        allowed = RBACService.CheckAccess.check(
+            account.current_tenant_id,
+            account.id,
+            scene=RBACPermission.AGENT_MANAGE,
+        )
+        if not allowed:
+            raise NoPermissionError("Agent management permission is required to import an Agent App")
+
     def _create_or_update_app(
         self,
         *,
@@ -415,6 +447,8 @@ class AppDslService:
         if not app_mode:
             raise ValueError("loss app mode")
         app_mode = AppMode(app_mode)
+        if app_mode == AppMode.AGENT:
+            self._ensure_agent_manage_permission(account)
 
         # Set icon type
         icon_type_value = icon_type or app_data.get("icon_type")
@@ -520,7 +554,7 @@ class AppDslService:
                     sync_agent_bindings=not raw_agent_packages,
                 )
                 if raw_agent_packages:
-                    _, warnings = AgentDslService(self._session).import_workflow_packages(
+                    _, warnings, retirement_candidates = AgentDslService(self._session).import_workflow_packages(
                         workflow=draft_workflow,
                         portable_graph=graph,
                         raw_packages=raw_agent_packages,
@@ -530,6 +564,17 @@ class AppDslService:
                     WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync(
                         session=self._session,
                         draft_workflow=draft_workflow,
+                    )
+                    self._session.commit()
+                    binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
+                        tenant_id=app.tenant_id,
+                        agent_ids=retirement_candidates,
+                        account_id=account.id,
+                    )
+                    enqueue_agent_resource_collection(
+                        tenant_id=app.tenant_id,
+                        binding_ids=binding_ids,
+                        home_snapshot_ids=home_snapshot_ids,
                     )
             case AppMode.CHAT | AppMode.AGENT_CHAT | AppMode.COMPLETION:
                 # Initialize model config
@@ -750,6 +795,34 @@ class AppDslService:
         :return: dependencies list format like ["langgenius/google"]
         """
         graph = workflow.graph_dict
+        referenced_llm_nodes = [
+            node.get("data", {})
+            for node in graph.get("nodes", [])
+            if node.get("data", {}).get("type") == BuiltinNodeTypes.LLM
+            and should_resolve_llm_model_selector(node.get("data", {}).get("model_selector"))
+        ]
+        environment_variables = (
+            {variable.name: variable for variable in workflow.environment_variables} if referenced_llm_nodes else {}
+        )
+        for node_data in referenced_llm_nodes:
+            try:
+                selector = parse_llm_model_selector(node_data["model_selector"])
+                variable = environment_variables.get(selector[1])
+                if not isinstance(variable, LLMEnvironmentVariable):
+                    raise ValueError(
+                        f"LLM environment variable '{selector[1]}' was not found or is not an LLM variable"
+                    )
+                node_data["model"] = resolve_llm_model_config(
+                    node_model=ModelConfig.model_validate(node_data.get("model", {})),
+                    variable_name=selector[1],
+                    variable_value=variable.value,
+                ).model_dump(mode="json")
+            except ValueError as exc:
+                logger.warning(
+                    "Skipping unresolved LLM environment model while extracting dependencies for selector %r: %s",
+                    node_data.get("model_selector"),
+                    exc,
+                )
         dependencies = cls._extract_dependencies_from_workflow_graph(graph)
         return dependencies
 

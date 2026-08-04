@@ -25,9 +25,10 @@ import { AppModeEnum } from '@/types/app'
 import { VarInInspectType } from '@/types/workflow'
 import GetCodeGeneratorResModal from '../../app/configuration/config/code-generator/get-code-generator-res'
 import { PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER } from '../../base/prompt-editor/plugins/update-block'
-import { useNodesInteractions, useToolIcon } from '../hooks'
 import { useHooksStore } from '../hooks-store'
 import useCurrentVars from '../hooks/use-inspect-vars-crud'
+import { useNodesInteractions } from '../hooks/use-nodes-interactions'
+import { useToolIcon } from '../hooks/use-tool-icon'
 import useNodeCrud from '../nodes/_base/hooks/use-node-crud'
 import useNodeInfo from '../nodes/_base/hooks/use-node-info'
 import { CodeLanguage } from '../nodes/code/types'
@@ -242,7 +243,7 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
               )}
               {!isTruncated && currentNodeVar.var.edited && (
                 <Badge>
-                  <span className="mr-[4.5px] ml-[2.5px] h-[3px] w-[3px] rounded-sm bg-text-accent-secondary"></span>
+                  <span className="mr-[4.5px] ml-[2.5px] h-0.75 w-0.75 rounded-sm bg-text-accent-secondary"></span>
                   <span className="system-2xs-semibold-uupercase">
                     {t(($) => $['debug.variableInspect.edited'], { ns: 'workflow' })}
                   </span>

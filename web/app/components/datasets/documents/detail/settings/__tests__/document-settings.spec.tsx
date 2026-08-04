@@ -4,7 +4,7 @@ import DocumentSettings from '../document-settings'
 
 const mockPush = vi.fn()
 const mockBack = vi.fn()
-const mockOpenIntegrationsSetting = vi.fn()
+const mockSetSettingsDestination = vi.fn()
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
@@ -107,9 +107,10 @@ vi.mock('@/app/components/datasets/create/step-two', () => ({
   ),
 }))
 
-vi.mock('@/app/components/header/account-setting/use-integrations-setting', () => ({
-  useIntegrationsSetting: () => mockOpenIntegrationsSetting,
-}))
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+})
 
 describe('DocumentSettings', () => {
   beforeEach(() => {
@@ -205,7 +206,7 @@ describe('DocumentSettings', () => {
 
       fireEvent.click(screen.getByTestId('setting-btn'))
 
-      expect(mockOpenIntegrationsSetting).toHaveBeenCalledWith({ payload: 'provider' })
+      expect(mockSetSettingsDestination).toHaveBeenCalledWith('provider')
     })
   })
 

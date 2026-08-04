@@ -25,7 +25,7 @@ const ScoreSlider: FC<Props> = ({ className, value, onChange }) => {
 
   return (
     <div className={className}>
-      <div className="relative mt-[14px]">
+      <div className="relative mt-3.5">
         <Slider
           className="w-full"
           value={safeValue}
@@ -36,7 +36,7 @@ const ScoreSlider: FC<Props> = ({ className, value, onChange }) => {
           aria-label={t(($) => $['feature.annotation.scoreThreshold.title'], { ns: 'appDebug' })}
         />
         <div
-          className="pointer-events-none absolute top-[-16px] system-sm-semibold text-text-primary"
+          className="pointer-events-none absolute -top-4 system-sm-semibold text-text-primary"
           style={{
             left: `calc(4px + ${safeValue / SCORE_MAX} * (100% - 8px))`,
             transform: 'translateX(-50%)',
@@ -45,7 +45,7 @@ const ScoreSlider: FC<Props> = ({ className, value, onChange }) => {
           {(safeValue / 100).toFixed(2)}
         </div>
       </div>
-      <div className="mt-[10px] flex items-center justify-between system-xs-semibold-uppercase">
+      <div className="mt-2.5 flex items-center justify-between system-xs-semibold-uppercase">
         <div className="flex space-x-1 text-util-colors-cyan-cyan-500">
           <div>0.0</div>
           <div>·</div>

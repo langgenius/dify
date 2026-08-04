@@ -64,6 +64,7 @@ export default function OAuthAuthorize() {
   const searchParams = useSearchParams()
   const client_id = decodeURIComponent(searchParams.get('client_id') || '')
   const redirect_uri = decodeURIComponent(searchParams.get('redirect_uri') || '')
+  const state = searchParams.get('state')
   const hasOAuthParams = Boolean(client_id && redirect_uri)
   // Probe user profile. 401 stays as `error` (legitimate "not logged in" state),
   // other errors throw to the nearest error.tsx; jumpTo same-pathname guard in
@@ -117,6 +118,7 @@ export default function OAuthAuthorize() {
       const { code } = await authorize({ body: { client_id } })
       const url = new URL(redirect_uri)
       url.searchParams.set('code', code)
+      if (state) url.searchParams.set('state', state)
       globalThis.location.href = url.toString()
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error)
@@ -188,7 +190,7 @@ export default function OAuthAuthorize() {
       )}
 
       {isLoggedIn && Boolean(authAppInfo?.scope) && (
-        <div className="mt-2 flex flex-col gap-2.5 rounded-xl bg-background-section-burn-inverted px-[22px] py-5 text-text-secondary">
+        <div className="mt-2 flex flex-col gap-2.5 rounded-xl bg-background-section-burn-inverted px-5.5 py-5 text-text-secondary">
           {authAppInfo!.scope
             .split(/\s+/)
             .filter(Boolean)

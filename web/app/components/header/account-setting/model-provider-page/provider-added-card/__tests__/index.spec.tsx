@@ -1,10 +1,10 @@
-import type { ReactNode } from 'react'
+import type { ReactElement } from 'react'
 import type { ModelProvider } from '../../declarations'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
-import { createStore, Provider as JotaiProvider } from 'jotai'
+import { createQueryClientWrapper } from '@/test/console/query-client'
+import { seedSystemFeatures } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
-import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { useExpandModelProviderList } from '../../atoms'
 import { ConfigurationMethodEnum } from '../../declarations'
 import ProviderAddedCard from '../index'
@@ -27,6 +27,15 @@ const mockQueryOptions = vi.fn(
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
+    systemFeatures: {
+      get: {
+        queryKey: () => ['system-features'],
+        queryOptions: (options: Record<string, unknown> = {}) => ({
+          queryKey: ['system-features'],
+          ...options,
+        }),
+      },
+    },
     workspaces: {
       current: {
         modelProviders: {
@@ -105,15 +114,10 @@ const createConsoleQueryClient = () =>
     },
   })
 
-const renderWithQueryClient = (node: ReactNode) => {
+const renderWithQueryClient = (node: ReactElement) => {
   const queryClient = createConsoleQueryClient()
-  const store = createStore()
-  seedRegisteredConsoleStateFixture(store)
-  return render(
-    <JotaiProvider store={store}>
-      <QueryClientProvider client={queryClient}>{node}</QueryClientProvider>
-    </JotaiProvider>,
-  )
+  seedSystemFeatures(queryClient)
+  return render(node, { wrapper: createQueryClientWrapper(queryClient) })
 }
 
 const ExternalExpandControls = () => {

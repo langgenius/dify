@@ -362,17 +362,29 @@ class TestParentChildIndexProcessor:
             patch(
                 "core.rag.index_processor.processor.parent_child_index_processor.DatasetDocumentStore"
             ) as mock_store_cls,
+            patch(
+                "core.rag.index_processor.processor.parent_child_index_processor.calculate_segment_token_counts"
+            ) as mock_token_counter,
             patch("core.rag.index_processor.processor.parent_child_index_processor.Vector") as mock_vector_cls,
         ):
+            mock_token_counter.side_effect = lambda **_kwargs: phase_events.append("count") or [11]
             mock_store_cls.return_value.add_documents.side_effect = lambda **_kwargs: phase_events.append("store")
             mock_vector_cls.return_value.create.side_effect = lambda _documents: phase_events.append("vector")
             processor.index(dataset, dataset_document, {"parent_child_chunks": []}, session)
 
-        assert phase_events == ["store", "commit", "vector"]
+        assert phase_events == ["count", "store", "commit", "vector"]
         assert dataset_document.dataset_process_rule_id == "rule-1"
         session.add.assert_called_once_with(dataset_rule)
         session.flush.assert_called_once()
-        mock_store_cls.return_value.add_documents.assert_called_once()
+        documents = mock_token_counter.call_args.kwargs["documents"]
+        assert [document.page_content for document in documents] == ["parent text"]
+        mock_token_counter.assert_called_once_with(dataset=dataset, documents=documents)
+        mock_store_cls.return_value.add_documents.assert_called_once_with(
+            session=session,
+            docs=documents,
+            token_counts=[11],
+            save_child=True,
+        )
         mock_vector_cls.assert_called_once_with(dataset, session=session)
         assert mock_vector_cls.return_value.create.call_count == 1
         mock_vector_cls.return_value.create_multimodal.assert_called_once()
@@ -413,6 +425,10 @@ class TestParentChildIndexProcessor:
                 processor, "_get_content_files", return_value=[AttachmentDocument(page_content="image", metadata={})]
             ) as mock_files,
             patch("core.rag.index_processor.processor.parent_child_index_processor.DatasetDocumentStore"),
+            patch(
+                "core.rag.index_processor.processor.parent_child_index_processor.calculate_segment_token_counts",
+                return_value=[11],
+            ),
             patch("core.rag.index_processor.processor.parent_child_index_processor.Vector"),
         ):
             processor.index(dataset, dataset_document, {"parent_child_chunks": []}, session)

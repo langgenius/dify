@@ -317,7 +317,7 @@ const EmailSenderModal = ({
             </div>
           )}
           <div className="mt-6 flex flex-row-reverse gap-2">
-            <Button variant="primary" className="w-[72px]" onClick={() => onOpenChange(false)}>
+            <Button variant="primary" className="w-18" onClick={() => onOpenChange(false)}>
               {t(($) => $['operation.ok'], { ns: 'common' })}
             </Button>
           </div>
@@ -470,7 +470,7 @@ const EmailSenderModal = ({
           >
             {t(($) => $[`${i18nPrefix}.deliveryMethod.emailSender.send`], { ns: 'workflow' })}
           </Button>
-          <Button className="w-[72px]" onClick={() => onOpenChange(false)}>
+          <Button className="w-18" onClick={() => onOpenChange(false)}>
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </Button>
         </div>

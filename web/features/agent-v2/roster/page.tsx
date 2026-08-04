@@ -3,8 +3,8 @@
 import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
 import type { RosterFilterValue } from './components/roster-filter'
 import {
+  ScrollArea,
   ScrollAreaContent,
-  ScrollAreaRoot,
   ScrollAreaScrollbar,
   ScrollAreaThumb,
   ScrollAreaViewport,
@@ -108,7 +108,7 @@ export default function RosterPage() {
       </div>
 
       <div className="min-h-0 flex-1">
-        <ScrollAreaRoot className="relative h-full min-h-0 min-w-0 overflow-hidden">
+        <ScrollArea className="relative h-full min-h-0 min-w-0 overflow-hidden">
           <ScrollAreaViewport tabIndex={-1} className="overscroll-contain">
             <ScrollAreaContent className="min-h-full px-8 pt-2 pb-8">
               <AgentRosterList
@@ -127,7 +127,7 @@ export default function RosterPage() {
           <ScrollAreaScrollbar>
             <ScrollAreaThumb />
           </ScrollAreaScrollbar>
-        </ScrollAreaRoot>
+        </ScrollArea>
       </div>
     </div>
   )

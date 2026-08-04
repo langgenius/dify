@@ -442,6 +442,13 @@ class TestAdvancedChatAppGeneratorInternals:
             def start(self):
                 thread_data["started"] = True
 
+            def join(self, timeout):
+                thread_data["joined"] = True
+                thread_data["join_timeout"] = timeout
+
+            def is_alive(self):
+                return False
+
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.threading.Thread", _Thread)
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.db", SimpleNamespace(engine=object(), session=db_session)
@@ -475,6 +482,8 @@ class TestAdvancedChatAppGeneratorInternals:
 
         assert response["response"] == {"raw": True}
         assert thread_data["started"] is True
+        assert thread_data["joined"] is True
+        assert thread_data["join_timeout"] == 300
         assert "pause-layer" in thread_data["kwargs"]["graph_engine_layers"]
         assert generator._dialogue_count == 3
         assert init_records.call_args.kwargs["session"] is db_session
@@ -542,6 +551,13 @@ class TestAdvancedChatAppGeneratorInternals:
             def start(self):
                 thread_data["started"] = True
 
+            def join(self, timeout):
+                thread_data["joined"] = True
+                thread_data["join_timeout"] = timeout
+
+            def is_alive(self):
+                return False
+
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.threading.Thread", _Thread)
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.db", SimpleNamespace(engine=object(), session=db_session)
@@ -574,6 +590,8 @@ class TestAdvancedChatAppGeneratorInternals:
         init_records.assert_not_called()
         get_thread_messages_length.assert_called_once_with(conversation.id, session=db_session)
         assert thread_data["started"] is True
+        assert thread_data["joined"] is True
+        assert thread_data["join_timeout"] == 300
         db_session.commit.assert_not_called()
         db_session.refresh.assert_not_called()
         db_session.close.assert_called_once()
@@ -730,11 +748,13 @@ class TestAdvancedChatAppGeneratorInternals:
 
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.preserve_flask_contexts", _fake_context)
 
+        workflow = SimpleNamespace(id="workflow-id", tenant_id="tenant", app_id="app")
+
         class _Session:
             def __init__(self, *args, **kwargs):
                 self.scalar = MagicMock(
                     side_effect=[
-                        SimpleNamespace(id="workflow-id", tenant_id="tenant", app_id="app"),
+                        workflow,
                         SimpleNamespace(id="app"),
                     ]
                 )
@@ -754,6 +774,8 @@ class TestAdvancedChatAppGeneratorInternals:
 
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.Session", _Session)
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.AdvancedChatAppRunner", _Runner)
+        restore_workflow_run_graph = MagicMock()
+        monkeypatch.setattr(generator, "_restore_workflow_run_graph", restore_workflow_run_graph)
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.db",
             SimpleNamespace(engine=object(), session=SimpleNamespace(close=lambda: None)),
@@ -770,10 +792,12 @@ class TestAdvancedChatAppGeneratorInternals:
             workflow_execution_repository=SimpleNamespace(),
             workflow_node_execution_repository=SimpleNamespace(),
             graph_engine_layers=(),
-            graph_runtime_state=None,
+            graph_runtime_state=SimpleNamespace(),
         )
 
         queue_manager.publish_error.assert_not_called()
+        assert restore_workflow_run_graph.call_args.kwargs["workflow"] is workflow
+        assert restore_workflow_run_graph.call_args.kwargs["workflow_run_id"] == "run-id"
 
     def test_generate_worker_handles_validation_error(self, monkeypatch: pytest.MonkeyPatch):
         generator = AdvancedChatAppGenerator()

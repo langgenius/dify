@@ -1,21 +1,30 @@
 import logging
 from io import BytesIO
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 
 from services.errors.app import QuotaExceededError
+from services.trigger import webhook_service as webhook_service_module
 from services.trigger.webhook_service import WebhookService
 
 
 class TestWebhookServiceUnit:
-    """Unit tests for WebhookService focusing on business logic without database dependencies."""
+    """Webhook business-logic tests with real sessions where the service owns their lifecycle."""
 
     def test_trigger_workflow_execution_propagates_quota_error_without_error_log(
-        self, caplog: pytest.LogCaptureFixture
-    ):
+        self,
+        caplog: pytest.LogCaptureFixture,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_engine: Engine,
+    ) -> None:
+        """Quota failures refund the charge and close the real service-owned session."""
+        monkeypatch.setattr(webhook_service_module, "db", SimpleNamespace(engine=sqlite_engine))
         webhook_trigger = MagicMock(
             webhook_id="webhook-123",
             tenant_id="tenant-123",
@@ -33,12 +42,10 @@ class TestWebhookServiceUnit:
                 return_value=MagicMock(id="end-user-123"),
             ),
             patch("services.trigger.webhook_service.QuotaService.reserve", return_value=quota_charge),
-            patch("services.trigger.webhook_service.db"),
-            patch("services.trigger.webhook_service.Session"),
             patch(
                 "services.trigger.webhook_service.AsyncWorkflowService.trigger_workflow_async",
                 side_effect=quota_error,
-            ),
+            ) as mock_trigger_workflow_async,
         ):
             with pytest.raises(QuotaExceededError) as exc_info:
                 WebhookService.trigger_workflow_execution(
@@ -49,8 +56,9 @@ class TestWebhookServiceUnit:
 
         assert exc_info.value is quota_error
         quota_charge.refund.assert_called_once_with()
-
-        # Verify logs using caplog instead of mock_log
+        session = mock_trigger_workflow_async.call_args.kwargs["session"]
+        assert isinstance(session, Session)
+        assert session.in_transaction() is False
         assert len(caplog.records) == 1
         assert caplog.records[0].levelno == logging.INFO
         assert caplog.records[0].message == (

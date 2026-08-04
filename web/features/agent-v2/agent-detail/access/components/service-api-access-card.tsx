@@ -77,7 +77,7 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
         <Button
           variant="secondary"
           size="medium"
-          className="gap-1.5 px-3"
+          className="px-3"
           disabled={isBusy || apiAccessQuery.isError}
           onClick={() => setApiKeyModalOpen(true)}
         >
@@ -88,7 +88,7 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
           </span>
         </Button>
         <a
-          href={docLink('/api-reference/guides/get-started')}
+          href={docLink('/api-reference/guides/agent')}
           target="_blank"
           rel="noreferrer"
           aria-label={t(($) => $['agentDetail.access.serviceApi.actions.apiReference'])}
@@ -101,7 +101,7 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
           <Button
             variant="secondary"
             size="medium"
-            className="gap-1.5 px-3"
+            className="px-3"
             onClick={() => {
               void apiAccessQuery.refetch()
             }}
