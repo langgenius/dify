@@ -1,5 +1,5 @@
+import type { BannerResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { ComponentProps, FocusEvent } from 'react'
-import type { Banner as BannerType } from '@/models/app'
 import { useAtomValue } from 'jotai'
 import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -18,13 +18,13 @@ const CAROUSEL_OPTIONS = {
 } satisfies NonNullable<ComponentProps<typeof Carousel>['opts']>
 
 type BannerCarouselContentProps = {
-  banners: BannerType[]
+  banners: BannerResponse[]
   accountId?: string
   language: string
 }
 
 type BannerSlideProps = {
-  banner: BannerType
+  banner: BannerResponse
   index: number
   isActive: boolean
   accountId?: string
@@ -184,15 +184,13 @@ function BannerCarouselContent({ banners, accountId, language }: BannerCarouselC
 }
 
 type BannerProps = {
-  banners: BannerType[]
+  banners: BannerResponse[]
 }
 
 export function Banner({ banners }: BannerProps) {
   const { t } = useTranslation()
   const locale = useLocale()
   const userProfile = useAtomValue(userProfileAtom)
-  const enabledBanners = banners.filter((banner) => banner.status === 'enabled')
-  const carouselLabel = enabledBanners[0]?.content.category || enabledBanners[0]?.content.title
   const [carouselPlugins] = useState(() => [
     Carousel.Plugin.Fade(),
     Carousel.Plugin.Autoplay({
@@ -205,6 +203,11 @@ export function Banner({ banners }: BannerProps) {
       },
     }),
   ])
+  const firstBanner = banners[0]
+
+  if (!firstBanner) return null
+
+  const carouselLabel = firstBanner.content.category || firstBanner.content.title
 
   return (
     <div className="relative flex w-full flex-col items-start gap-4 px-8 pt-6 pb-4">
@@ -217,20 +220,14 @@ export function Banner({ banners }: BannerProps) {
         </p>
       </div>
 
-      {enabledBanners.length > 0 ? (
-        <Carousel
-          opts={CAROUSEL_OPTIONS}
-          plugins={carouselPlugins}
-          aria-label={carouselLabel}
-          className="@container/banner w-full rounded-2xl"
-        >
-          <BannerCarouselContent
-            banners={enabledBanners}
-            accountId={userProfile.id}
-            language={locale}
-          />
-        </Carousel>
-      ) : null}
+      <Carousel
+        opts={CAROUSEL_OPTIONS}
+        plugins={carouselPlugins}
+        aria-label={carouselLabel}
+        className="@container/banner w-full rounded-2xl"
+      >
+        <BannerCarouselContent banners={banners} accountId={userProfile.id} language={locale} />
+      </Carousel>
     </div>
   )
 }

@@ -29,7 +29,7 @@ type ContinueWorkItemProps = {
   app: RecentAppResponse
 }
 
-const ContinueWorkItem = ({ app }: ContinueWorkItemProps) => {
+export function ContinueWorkItem({ app }: ContinueWorkItemProps) {
   const { t } = useTranslation()
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const currentUserId = useAtomValue(userProfileIdAtom)
@@ -133,5 +133,3 @@ const ContinueWorkItem = ({ app }: ContinueWorkItemProps) => {
     </Link>
   )
 }
-
-export default React.memo(ContinueWorkItem)
