@@ -195,6 +195,18 @@ describe('AgentLogDetailPanel', () => {
     expect(mocks.toastSuccess).toHaveBeenCalled()
   })
 
+  it('reports operator feedback failures without refreshing log queries', async () => {
+    const user = userEvent.setup()
+    mocks.feedbackMutationFn.mockRejectedValue(new Error('feedback request failed'))
+    const { invalidateQueries } = renderPanel(webappLog, webappMessages)
+
+    await user.click(await screen.findByRole('button', { name: 'submit-feedback' }))
+
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalled())
+    expect(invalidateQueries).not.toHaveBeenCalled()
+    expect(mocks.toastSuccess).not.toHaveBeenCalled()
+  })
+
   it('keeps feedback disabled for workflow execution messages', async () => {
     renderPanel(workflowLog, {
       ...webappMessages,
