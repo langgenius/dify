@@ -1,6 +1,6 @@
 ## Context
 
-Dify 需要通过 Slack、Feishu/Lark、DingTalk、WeCom 与 Microsoft Teams 提供 credential testing、目录读取、消息发送和入站事件接入。各 Provider 的 credentials、SDK、token cache、HTTP client、WebSocket client、directory topology、message locator 与 ACK wire protocol 都不同，但这些差异不应迫使每个 capability consumer 重复构造 Provider SDK 或理解 Provider-specific lifecycle。
+Dify 需要通过 Slack、Feishu/Lark、DingTalk、WeCom 与 Microsoft Teams 提供 credential testing、目录读取和消息发送，并在支持的 Provider 上提供入站事件接入。各 Provider 的 credentials、SDK、token cache、HTTP client、WebSocket client、directory topology、message locator 与 ACK wire protocol 都不同，但这些差异不应迫使每个 capability consumer 重复构造 Provider SDK 或理解 Provider-specific lifecycle。
 
 本设计中的根对象不是 DDD aggregate root：它不拥有业务实体或持久化一致性边界。它是 infrastructure-level facade/composite，负责把一份 immutable Provider-specific configuration 适配成一组稳定 capability views，因此命名为 `IMProviderAdapter`。
 
@@ -13,13 +13,14 @@ Webhook 与 STREAM 具有不同的控制流。Webhook request 先进入 Dify HTT
 - 一份 Provider configuration 只构造一个 `IMProviderAdapter`，由 adapter 统一拥有 SDK client bundle、token cache、connection resources 与关闭生命周期。
 - Capability consumer 从 adapter 获取 Directory、Messaging、Webhook Events、STREAM Events 等窄接口，不再次传 credentials，也不重新构造 SDK。
 - Capability presence 直接表达 Provider 支持情况，不维护可能漂移的 support flag，也不提供 dummy unsupported methods。
-- Webhook 与 STREAM 保留各自的认证、challenge/control-frame、connection 和 ACK 语义，同时通过 `IMEventSink` 完成控制反转。
+- Webhook 与 STREAM 保留各自的 transport authentication、decryption、challenge/control-frame 和 ACK 语义；通过认证的 Provider business events 统一经 `AuthenticatedIMEvent` 与 `IMEventSink` 进入下游，具体事件类型由独立 decoder/router 解释。
+- 本期 runtime MAY 只配置 Dynamic Card Messaging 所需的 Provider event subscriptions，但共享 Provider event contract MUST NOT 将事件范围限制为 Dynamic Card interactions。
 - Provider adapter 只产生通用 Provider facts，不依赖任何业务 consumer、persistence schema、queue 或 workflow model。
 - 为每个 concrete Provider 的每个外部 API operation 和 event entry 建立独立、可审计的验证证据。
 
 **Non-Goals:**
 
-- 不定义业务 recipient、delivery、form、task、approval、workflow 或业务 card-submission model。
+- 不定义或调整业务 recipient、DeliveryEndpoint、delivery、form lifecycle、task、approval、workflow 或业务 card-submission model；Card Assessment 只接收从 HITL form 投影出的 immutable presentation facts。
 - 不规定 `IMEventSink` 使用数据库 inbox、message broker、内存 handler 或其他具体实现。
 - 不实现动态插件发现、generic operation dispatcher 或运行时 capability registry。
 - 不要求所有 Provider 使用完全相同的 SDK client 数量；adapter 可以隐藏 Provider-specific client bundle。
@@ -64,10 +65,10 @@ Alternatives considered:
 | Directory | All five Providers | Complete Provider identity snapshot |
 | Basic Messaging | All five Providers | Destination reachability and `send_text` |
 | Dynamic Card Messaging | Slack, Feishu/Lark, Microsoft Teams | Assessment, `send_card`, exact-reference update |
-| Webhook Events | All five Providers | Caller-driven Webhook request handling |
-| STREAM Events | Slack, Feishu/Lark, DingTalk | SDK-driven long-running event handling |
+| Webhook Events | Slack, Feishu/Lark, Microsoft Teams | Caller-driven Webhook request handling |
+| STREAM Events | Slack, Feishu/Lark | SDK-driven long-running event handling |
 
-Required views are always present. Optional views are absent when unsupported; there is no separate `supports_stream` or `supported_event_transports` result to check before obtaining the view, and unsupported Providers do not implement methods that only return an unsupported error.
+Required Directory and Basic Messaging views are always present. Dynamic Card Messaging, Webhook Events and STREAM Events views are absent when unsupported; there is no separate `supports_webhook`, `supports_stream` or `supported_event_transports` result to check before obtaining a view, and unsupported Providers do not implement methods that only return an unsupported error.
 
 ```python
 class IMProviderAdapter(Protocol):
@@ -83,7 +84,7 @@ class IMProviderAdapter(Protocol):
     def dynamic_card_messaging(self) -> IMDynamicCardMessaging | None: ...
 
     @property
-    def webhook_events(self) -> IMWebhookEvents: ...
+    def webhook_events(self) -> IMWebhookEvents | None: ...
 
     @property
     def stream_events(self) -> IMStreamEvents | None: ...
@@ -111,7 +112,11 @@ Directory capability 只读取 Provider directory。如何匹配、reconcile、p
 
 ### 5. Messaging capabilities share the root context but keep operation semantics narrow
 
-Basic Messaging 接收 Provider-specific message destination，测试 destination reachability 或发送已经准备好的文本内容。Dynamic Card Messaging 对 normalized card intent 做无副作用 assessment、发送卡片并基于 exact Provider message reference 更新同一实例。
+Basic Messaging 接收 Provider-specific message destination，测试 destination reachability 或发送已经准备好的文本内容。Dynamic Card Messaging 对 structurally aligned with HITL form 的 normalized card intent 做无副作用 Card Assessment、发送卡片并基于 exact Provider message reference 更新同一实例。
+
+Card intent 保留渲染后的 form content、完整且有序的 form inputs、actions 和 card presentation 所需的 immutable facts。Card Assessment 是 concrete Provider 对单个完整 intent 的 representability judgment：只有 Provider 能把全部 controls 和 semantics 映射为 Card Input Controls 时才返回 representable；任一 input 无法映射时，对整个 intent 返回 not representable，并可附带仅用于诊断的 human-readable reason。Assessment 不发送消息、不创建 Provider state，也不忽略不支持的 input 来产生 partial-card 结论。
+
+本期 Slack、Feishu/Lark 与 Microsoft Teams 的 Card Assessment 对包含 `FILE` 或 `FILE_LIST` 的 intent 一律返回 not representable，因为这些 Provider 的 Dynamic Card 都不能表达对应的 file input control。Assessment result 只作为 Provider capability fact 返回；Provider adapter 不创建、修改或选择业务 `DeliveryEndpoint`，也不执行 fallback orchestration。
 
 Messaging methods 不接收 credentials、SDK client、Directory reader 或 consumer business objects。每次 side-effecting method invocation 至多调用一次 Provider operation；adapter 不做隐式 replay。Provider acceptance 与 exact message reference 作为 typed result 返回，不被解释为 end-user delivery。
 
@@ -181,7 +186,7 @@ Provider-native payload 的进一步解释由独立 consumer/decoder 完成。�
 
 Alternative design 是让 Webhook/STREAM 返回带 `ack()` / `nack()` 的 delivery handle，或将 stream 表达为 async iterator。它能显式展示 ACK 时序，但会把 Provider connection ownership、ACK deadline 和 exactly-once handle lifecycle 泄漏给所有 consumers，并且与 callback-driven Provider SDK 不自然匹配。
 
-本设计选择 callback sink：adapter 保留 ACK control，sink 只回答是否已经接管 event。这样 Provider-specific protocol complexity 被下拉到 concrete adapter，common consumer 不需要理解 Slack envelope、Feishu handler return value 或 DingTalk message response。
+本设计选择 callback sink：adapter 保留 ACK control，sink 只回答是否已经接管 event。这样 Provider-specific protocol complexity 被下拉到 concrete adapter，common consumer 不需要理解 Slack envelope、Feishu/Lark handler return value 或 Microsoft Teams HTTP acknowledgement。
 
 ### 9. Provider verification is exhaustive and evidence-backed
 
@@ -194,6 +199,12 @@ Alternative design 是让 Webhook/STREAM 返回带 `ack()` / `nack()` 的 delive
 - applicable signature-verification and decryption tests.
 
 Shared contract tests不能替代具体 Provider evidence。Fixture 必须先脱敏 plaintext 和 metadata，再使用 test-only material 重新生成 cryptographically valid signature 或 ciphertext；不得提交真实 credential、secret、token 或 key。
+
+### 10. Failure contracts grow incrementally and remain capability-scoped
+
+公共 Provider API 不预先定义覆盖所有未来场景的大型 failure-code enum。每个 capability 先暴露当前 contract 确实需要区分的最小 typed success、known failure 与 ambiguous outcome；只有当 application caller 需要稳定分支判断，且 concrete Provider evidence 已确认语义时，才在对应 capability 内新增窄 enum member 或 result variant。
+
+Failure values 只携带 operator-safe facts，不包含 raw Provider response、SDK exception 或 credential material。所有公共 enum member 和 immutable model field 都必须使用简洁 English comment 或 docstring 说明其业务语义、来源以及易混淆边界；注释不得只是复述字段名称。
 
 ## Risks / Trade-offs
 

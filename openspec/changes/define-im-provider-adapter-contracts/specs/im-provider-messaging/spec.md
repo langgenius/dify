@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Messaging MUST be exposed as adapter-bound capabilities
-Every initial `IMProviderAdapter` MUST expose Basic Messaging backed by the adapter-owned client context. Slack, Feishu/Lark and Microsoft Teams MUST additionally expose Dynamic Card Messaging. Messaging operations MUST NOT accept credentials, SDK clients or a generic integration context, and obtaining either capability MUST NOT construct an independent Provider client.
+Every initial `IMProviderAdapter` MUST expose Basic Messaging backed by the adapter-owned client context. Only Slack, Feishu/Lark and Microsoft Teams MUST additionally expose Dynamic Card Messaging in this release; DingTalk and WeCom MUST not expose it. Messaging operations MUST NOT accept credentials, SDK clients or a generic integration context, and obtaining either capability MUST NOT construct an independent Provider client.
 
 #### Scenario: Multiple Messaging operations use one adapter
 - **WHEN** a caller tests a destination and then sends a message through the same adapter
@@ -26,15 +26,30 @@ Slack, Feishu/Lark, DingTalk, WeCom and Microsoft Teams MUST implement Basic Mes
 - **THEN** `test_destination` MUST return a destination-specific failure without changing credential-test facts
 
 ### Requirement: Dynamic Card Messaging MUST group assessment, send and update
-Dynamic Card Messaging MUST contain side-effect-free card representability assessment, `send_card` and exact-reference card update. Assessment MUST receive only a normalized generic card intent and MUST return a boolean representability decision plus an optional human-readable reason. The reason MUST be used only for diagnostics and MUST NOT be parsed as a stable decision code.
+Dynamic Card Messaging MUST contain side-effect-free card representability assessment, `send_card` and exact-reference card update. Assessment MUST receive one complete normalized card intent whose form structure remains aligned with the HITL form presentation model, including rendered form content, complete ordered form inputs and actions. It MUST return a boolean representability decision plus an optional human-readable reason. The reason MUST be used only for diagnostics and MUST NOT be parsed as a stable decision code.
 
 #### Scenario: Provider can represent a card intent
-- **WHEN** assessment receives a normalized card intent that preserves its controls and semantics on the Provider
+- **WHEN** assessment receives a complete normalized card intent whose controls and semantics can all be preserved on the Provider
 - **THEN** it MUST return true without sending a message or creating Provider state
 
 #### Scenario: Provider cannot represent a card intent
-- **WHEN** assessment receives a normalized card intent containing an unsupported control
-- **THEN** it MUST return false with an optional reason and MUST NOT issue a Provider operation
+- **WHEN** assessment receives a complete normalized card intent containing any control or semantic that the Provider cannot map to its Card Input Controls
+- **THEN** it MUST return false for the entire intent with an optional reason and MUST NOT issue a Provider operation
+
+### Requirement: Card assessment MUST evaluate every form input
+The normalized card intent accepted by assessment MUST preserve every HITL form input, including `FILE` and `FILE_LIST`. Assessment MUST evaluate the complete intent, MUST NOT ignore an unsupported input to report partial representability and MUST NOT substitute a Provider attachment or upload control for a form input. The assessment operation MUST return only its representability result and MUST NOT create, modify or select a business `DeliveryEndpoint`.
+
+#### Scenario: A form contains one file input
+- **WHEN** Slack, Feishu/Lark or Microsoft Teams assessment receives a complete intent containing `FILE`
+- **THEN** it MUST return false without issuing a Provider operation because no initial Dynamic Card implementation can express that input control
+
+#### Scenario: A form contains a file-list input
+- **WHEN** Slack, Feishu/Lark or Microsoft Teams assessment receives a complete intent containing `FILE_LIST`
+- **THEN** it MUST return false without issuing a Provider operation because no initial Dynamic Card implementation can express that input control
+
+#### Scenario: Only one input is unsupported
+- **WHEN** every other form element is representable but one input cannot be mapped by the concrete Provider
+- **THEN** assessment MUST return false for the complete intent instead of reporting a partial-card result
 
 ### Requirement: Basic and Dynamic Card Messaging MUST expose distinct send operations
 Basic Messaging MUST expose `send_text`; Dynamic Card Messaging MUST expose `send_card`. `send_text` MUST receive one Provider message destination and one fully rendered CommonMark body without custom tags. The concrete adapter MUST render supported formatting for its Provider and MUST fall back to the same content as plain text when formatting is not expressible. `send_card` MUST receive one Provider message destination, one normalized card intent and opaque caller metadata.

@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Event transport support MUST be expressed by adapter capabilities
-Every initial `IMProviderAdapter` MUST expose Webhook Events. Slack, Feishu/Lark and DingTalk MUST additionally expose STREAM Events. WeCom and Microsoft Teams MUST not expose STREAM Events. Capability presence MUST be authoritative; no separate transport-support flag or dummy unsupported event capability may exist.
+Slack and Feishu/Lark adapters MUST expose both Webhook Events and STREAM Events. Microsoft Teams MUST expose Webhook Events only. DingTalk and WeCom MUST expose neither event capability in this release. Capability presence MUST be authoritative; no separate transport-support flag or dummy unsupported event capability may exist.
 
 #### Scenario: Microsoft Teams event capabilities are inspected
 - **WHEN** a caller inspects a Microsoft Teams adapter
@@ -9,7 +9,11 @@ Every initial `IMProviderAdapter` MUST expose Webhook Events. Slack, Feishu/Lark
 
 #### Scenario: DingTalk event capabilities are inspected
 - **WHEN** a caller inspects a DingTalk adapter
-- **THEN** both Webhook Events and STREAM Events MUST be present
+- **THEN** both Webhook Events and STREAM Events MUST be absent
+
+#### Scenario: WeCom event capabilities are inspected
+- **WHEN** a caller inspects a WeCom adapter
+- **THEN** both Webhook Events and STREAM Events MUST be absent
 
 ### Requirement: Webhook and STREAM authentication MUST converge at AuthenticatedIMEvent
 Webhook and STREAM capabilities MUST keep their wire authentication and lifecycle differences before a shared immutable `AuthenticatedIMEvent`. A successful event MUST contain provider, stable Provider tenant ID, optional real Provider event ID, optional Provider event time, local receive time and decrypted Provider-native payload.

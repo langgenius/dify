@@ -12,14 +12,14 @@ An `IMProviderAdapter` MUST be constructed from one concrete Provider's typed co
 - **THEN** the adapter MAY own a Provider-specific client bundle, but each client role MUST be created or lazily memoized by the adapter rather than reconstructed by each capability call
 
 ### Requirement: IMProviderAdapter MUST expose narrow capability views
-The adapter MUST expose required `directory`, `messaging` and `webhook_events` capability views. It MUST expose `dynamic_card_messaging` and `stream_events` only when the concrete Provider supports them. Capability presence MUST be the authoritative support signal; the adapter MUST NOT expose a separate support flag that can disagree with the capability view and MUST NOT provide dummy unsupported methods.
+The adapter MUST expose required `directory` and `messaging` capability views. It MUST expose `dynamic_card_messaging`, `webhook_events` and `stream_events` only when the concrete Provider supports them in this release. Capability presence MUST be the authoritative support signal; the adapter MUST NOT expose a separate support flag that can disagree with the capability view and MUST NOT provide dummy unsupported methods.
 
 #### Scenario: Initial Provider capabilities are inspected
 - **WHEN** callers inspect the five initial adapters
-- **THEN** all five MUST expose Directory, Basic Messaging and Webhook Events; Slack, Feishu/Lark and Microsoft Teams MUST expose Dynamic Card Messaging; and only Slack, Feishu/Lark and DingTalk MUST expose STREAM Events
+- **THEN** all five MUST expose Directory and Basic Messaging; Slack, Feishu/Lark and Microsoft Teams MUST expose Dynamic Card Messaging and Webhook Events; and only Slack and Feishu/Lark MUST expose STREAM Events
 
 #### Scenario: Unsupported capability is requested
-- **WHEN** a caller inspects Dynamic Card Messaging on DingTalk or WeCom, or STREAM Events on WeCom or Microsoft Teams
+- **WHEN** a caller inspects Dynamic Card Messaging on DingTalk or WeCom, Webhook Events on DingTalk or WeCom, or STREAM Events on DingTalk, WeCom or Microsoft Teams
 - **THEN** the capability MUST be absent rather than represented by a method that fails with an unsupported result
 
 ### Requirement: IMProviderAdapter MUST expose credential testing over its bound configuration
