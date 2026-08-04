@@ -161,6 +161,9 @@ class _StreamsSubscription(CursorSubscription):
                         # Advance over malformed/legacy control entries as well;
                         # otherwise the next XREAD would return them forever.
                         last_id = cursor
+                        with self._lock:
+                            if self._closed:
+                                break
                         data = None
                         if isinstance(fields, dict):
                             data = fields.get(b"data")
@@ -170,10 +173,13 @@ class _StreamsSubscription(CursorSubscription):
                                 data_bytes = data.encode()
                             case bytes() | bytearray():
                                 data_bytes = bytes(data)
-                        if data_bytes is not None:
-                            if data_bytes == SIG_CLOSE:
-                                continue
-                            self._queue.put_nowait(CursorMessage(payload=data_bytes, cursor=cursor))
+                        if data_bytes is None:
+                            continue
+                        if data_bytes == SIG_CLOSE:
+                            # Legacy close signals share the stream with normal events.
+                            # They belong to another subscription while this one is open.
+                            continue
+                        self._queue.put_nowait(CursorMessage(payload=data_bytes, cursor=cursor))
         finally:
             self._queue.put_nowait(self._SENTINEL)
             with self._lock:

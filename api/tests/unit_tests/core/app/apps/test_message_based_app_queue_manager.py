@@ -70,11 +70,26 @@ class TestMessageBasedAppQueueManager:
 
         assert manager._q.qsize() == 1
 
-    @pytest.mark.parametrize(
-        "pause_event",
-        [QueueWorkflowPausedEvent(), QueueWorkflowMaintenancePausedEvent()],
-    )
-    def test_pause_events_finish_the_local_execution_segment(self, pause_event):
+    def test_publish_pause_event_stops_listener_without_aborting_execution(self):
+        with patch("core.app.apps.base_app_queue_manager.redis_client") as mock_redis:
+            mock_redis.setex.return_value = True
+            manager = MessageBasedAppQueueManager(
+                task_id="t1",
+                user_id="u1",
+                invoke_from=InvokeFrom.DEBUGGER,
+                conversation_id="c1",
+                app_mode="advanced-chat",
+                message_id="m1",
+            )
+
+        manager.stop_listen = Mock()
+        manager._is_stopped = Mock(return_value=False)
+
+        manager._publish(QueueWorkflowPausedEvent(), PublishFrom.APPLICATION_MANAGER)
+
+        manager.stop_listen.assert_called_once_with(execution_terminal=True)
+
+    def test_maintenance_pause_finishes_only_the_local_execution_segment(self):
         with patch("core.app.apps.base_app_queue_manager.redis_client") as mock_redis:
             mock_redis.setex.return_value = True
             manager = MessageBasedAppQueueManager(
@@ -89,11 +104,9 @@ class TestMessageBasedAppQueueManager:
         manager.stop_listen = Mock()
         manager._is_stopped = Mock(return_value=False)
 
-        manager._publish(pause_event, PublishFrom.APPLICATION_MANAGER)
+        manager._publish(QueueWorkflowMaintenancePausedEvent(), PublishFrom.APPLICATION_MANAGER)
 
-        manager.stop_listen.assert_called_once_with(
-            execution_terminal=not isinstance(pause_event, QueueWorkflowMaintenancePausedEvent)
-        )
+        manager.stop_listen.assert_called_once_with(execution_terminal=False)
 
     def test_maintenance_pause_does_not_leave_a_stale_abort_command(self):
         with (

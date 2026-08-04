@@ -452,8 +452,10 @@ describe('ssePost and sseGet', () => {
   it('should share the cursor with a human-input continuation without opening a second reconnect', async () => {
     const onCompleted = vi.fn()
     const onWorkflowPaused = vi.fn()
+    const onWorkflowContinuationReady = vi.fn()
     const onHumanInputFormFilled = vi.fn()
     const onWorkflowFinished = vi.fn()
+    const continuationLifecycle: string[] = []
     const pausedReader = {
       read: vi
         .fn()
@@ -481,12 +483,9 @@ describe('ssePost and sseGet', () => {
           value: new TextEncoder().encode(
             [
               'id: 32-0',
-              'data: {"event":"workflow_paused","workflow_run_id":"run-paused","data":{"workflow_run_id":"run-paused","paused_nodes":["human-2"]}}',
-              '',
-              'id: 33-0',
               'data: {"event":"human_input_form_filled","workflow_run_id":"run-paused","data":{"form_id":"form-2","node_id":"human-2"}}',
               '',
-              'id: 34-0',
+              'id: 33-0',
               'data: {"event":"workflow_finished","workflow_run_id":"run-paused","data":{"id":"run-paused"}}',
               '',
             ].join('\n'),
@@ -511,8 +510,18 @@ describe('ssePost and sseGet', () => {
     const continuations: Promise<void>[] = []
     const callbacks: Parameters<typeof ssePost>[2] = {
       onCompleted,
-      onHumanInputFormFilled,
-      onWorkflowFinished,
+      onWorkflowContinuationReady: () => {
+        onWorkflowContinuationReady()
+        continuationLifecycle.push('ready')
+      },
+      onHumanInputFormFilled: (event) => {
+        onHumanInputFormFilled(event)
+        continuationLifecycle.push('filled')
+      },
+      onWorkflowFinished: (event) => {
+        onWorkflowFinished(event)
+        continuationLifecycle.push('finished')
+      },
       onWorkflowPaused: (event) => {
         onWorkflowPaused(event)
         continuations.push(sseGet('/workflow/run-paused/events', {}, callbacks))
@@ -527,10 +536,12 @@ describe('ssePost and sseGet', () => {
     expect(String(resumeUrl)).toContain('cursor=31-0')
     expect(String(resumeUrl)).toContain('continue_on_pause=true')
     expect(new Headers(resumeOptions?.headers).get('Last-Event-ID')).toBe('31-0')
-    expect(onWorkflowPaused).toHaveBeenCalledTimes(2)
+    expect(onWorkflowPaused).toHaveBeenCalledTimes(1)
+    expect(onWorkflowContinuationReady).toHaveBeenCalledTimes(1)
     expect(onHumanInputFormFilled).toHaveBeenCalledTimes(1)
     expect(onWorkflowFinished).toHaveBeenCalledTimes(1)
     expect(onCompleted).toHaveBeenCalledTimes(1)
+    expect(continuationLifecycle).toEqual(['ready', 'filled', 'finished'])
   })
 
   it('should discard a paused session when no synchronous continuation is created', async () => {
@@ -707,6 +718,50 @@ describe('ssePost and sseGet', () => {
     expect(String(fetchMock.mock.calls[1]![0])).toContain('include_state_snapshot=false')
     expect(onWorkflowPaused).toHaveBeenCalledTimes(1)
     expect(onCompleted).toHaveBeenCalledTimes(1)
+  })
+
+  it('should preserve an explicit fresh continuation request and notify readiness before events', async () => {
+    const lifecycle: string[] = []
+    const reader = {
+      read: vi
+        .fn()
+        .mockResolvedValueOnce({
+          done: false,
+          value: new TextEncoder().encode(
+            [
+              'id: 52-0',
+              'data: {"event":"workflow_paused","workflow_run_id":"run-explicit-continuation","data":{"workflow_run_id":"run-explicit-continuation","paused_nodes":["human-1"]}}',
+              '',
+              'id: 53-0',
+              'data: {"event":"workflow_finished","workflow_run_id":"run-explicit-continuation","data":{"id":"run-explicit-continuation"}}',
+              '',
+            ].join('\n'),
+          ),
+        })
+        .mockResolvedValueOnce({ done: true, value: undefined }),
+    }
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      status: 200,
+      ok: true,
+      headers: new Headers(),
+      body: { getReader: () => reader },
+    } as unknown as Response)
+
+    await sseGet(
+      '/workflow/run-explicit-continuation/events?include_state_snapshot=true&continue_on_pause=true',
+      {},
+      {
+        onWorkflowContinuationReady: () => lifecycle.push('ready'),
+        onWorkflowPaused: () => lifecycle.push('paused'),
+        onWorkflowFinished: () => lifecycle.push('finished'),
+      },
+    )
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const requestUrl = String(fetchMock.mock.calls[0]![0])
+    expect(requestUrl).toContain('include_state_snapshot=true')
+    expect(requestUrl).toContain('continue_on_pause=true')
+    expect(lifecycle).toEqual(['ready', 'paused', 'finished'])
   })
 
   it('should wait for message_end after a restored advanced-chat answer', async () => {

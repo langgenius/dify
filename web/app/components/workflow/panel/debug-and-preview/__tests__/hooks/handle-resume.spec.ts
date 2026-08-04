@@ -125,7 +125,7 @@ describe('useChat – handleResume', () => {
     })
 
     expect(mockSseGet).toHaveBeenCalledWith(
-      '/workflow/wfr-1/events?include_state_snapshot=true',
+      '/workflow/wfr-1/events?include_state_snapshot=true&continue_on_pause=true',
       {},
       expect.any(Object),
     )
@@ -153,6 +153,24 @@ describe('useChat – handleResume', () => {
     })
 
     expect(mockAbortCtrl.signal.aborted).toBe(true)
+  })
+
+  it('should abort the resumable SSE connection on unmount', () => {
+    const abortController = new AbortController()
+    mockSseGet.mockImplementation((_url: any, _opts: any, options: any) => {
+      options.getAbortController(abortController)
+    })
+
+    const { result, unmount } = renderHook(() => useChat({}))
+
+    act(() => {
+      result.current.handleResume('msg-1', 'wfr-1', {})
+    })
+    expect(abortController.signal.aborted).toBe(false)
+
+    unmount()
+
+    expect(abortController.signal.aborted).toBe(true)
   })
 
   it('should abort previous workflowEventsAbortController before sseGet', () => {
@@ -889,9 +907,17 @@ describe('useChat – handleResume', () => {
   })
 
   describe('onWorkflowPaused', () => {
-    it('should re-subscribe via sseGet and set status to Paused', async () => {
+    it('should keep the resumable stream and set status to Paused', async () => {
       const { result } = await setupResumeWithTree()
       const sseGetCallsBefore = mockSseGet.mock.calls.length
+
+      act(() => {
+        capturedResumeOptions.onWorkflowStarted({
+          workflow_run_id: 'wfr-paused',
+          task_id: 'task-paused',
+        })
+      })
+      expect(result.current.isResponding).toBe(true)
 
       act(() => {
         capturedResumeOptions.onWorkflowPaused({
@@ -899,7 +925,7 @@ describe('useChat – handleResume', () => {
         })
       })
 
-      expect(mockSseGet.mock.calls.length).toBeGreaterThan(sseGetCallsBefore)
+      expect(mockSseGet.mock.calls.length).toBe(sseGetCallsBefore)
       const answer = result.current.chatList.find((item) => item.id === 'msg-resume')
       expect(answer!.workflowProcess!.status).toBe('paused')
       expect(result.current.isResponding).toBe(false)

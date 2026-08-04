@@ -45,10 +45,6 @@ class WorkflowNodeExecutionRepository(Protocol):
         order_config: OrderConfig | None = None,
     ) -> Sequence[WorkflowNodeExecution]: ...
 
-    def get_max_index(self, workflow_execution_id: str) -> int:
-        """Return the greatest persisted node sequence for a logical run."""
-        ...
-
 
 class RepositoryImportError(Exception):
     """Raised when a repository implementation cannot be imported or instantiated."""

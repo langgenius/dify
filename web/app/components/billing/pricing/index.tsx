@@ -3,9 +3,9 @@ import type { FC } from 'react'
 import type { Category } from './types'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import {
+  ScrollArea,
   ScrollAreaContent,
   ScrollAreaCorner,
-  ScrollAreaRoot,
   ScrollAreaScrollbar,
   ScrollAreaThumb,
   ScrollAreaViewport,
@@ -51,7 +51,7 @@ const Pricing: FC<PricingProps> = ({ onCancel }) => {
       }}
     >
       <DialogContent className="inset-0 size-full max-h-none max-w-none translate-0 overflow-hidden rounded-none border-none bg-saas-background p-0 shadow-none">
-        <ScrollAreaRoot className="relative h-full w-full overflow-hidden">
+        <ScrollArea className="relative h-full w-full overflow-hidden">
           <ScrollAreaViewport className="overscroll-contain">
             <ScrollAreaContent className="min-h-full min-w-300">
               <div className="relative grid min-h-full grid-rows-[1fr_auto_auto_1fr] overflow-hidden">
@@ -85,7 +85,7 @@ const Pricing: FC<PricingProps> = ({ onCancel }) => {
             <ScrollAreaThumb className="rounded-full" />
           </ScrollAreaScrollbar>
           <ScrollAreaCorner className="bg-saas-background" />
-        </ScrollAreaRoot>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   )

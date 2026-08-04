@@ -158,6 +158,7 @@ export type IOtherOptions = {
   onHumanInputFormFilled?: IOnHumanInputFormFilled
   onHumanInputFormTimeout?: IOnHumanInputFormTimeout
   onWorkflowPaused?: IOWorkflowPaused
+  onWorkflowContinuationReady?: () => void
 
   // Pipeline data source node run
   onDataSourceNodeProcessing?: IOnDataSourceNodeProcessing
@@ -732,6 +733,11 @@ const addReconnectSearchParams = (
   return `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`
 }
 
+const requestsWorkflowContinuation = (url: string) => {
+  const parsedUrl = new URL(url, 'http://dify.local')
+  return parsedUrl.searchParams.get('continue_on_pause') === 'true'
+}
+
 const parseRetryAfter = (response: Response) => {
   const retryAfter = response.headers.get('Retry-After')
   if (!retryAfter) return undefined
@@ -826,7 +832,8 @@ const runSseRequest = async (
     createWorkflowStreamSession()
   bindWorkflowRunId(session, initialWorkflowRunId, Boolean(responseWorkflowRunId))
 
-  const isContinueOnPauseRequest = method === 'GET' && session.waitingAfterWorkflowPause
+  const isContinueOnPauseRequest =
+    method === 'GET' && (session.waitingAfterWorkflowPause || requestsWorkflowContinuation(url))
   if (isContinueOnPauseRequest && session.activeContinueOnPauseRequest) return
 
   const abortController = initialResponse?.abortController ?? new AbortController()
@@ -842,6 +849,7 @@ const runSseRequest = async (
   let retryDelayOverride: number | undefined
   let canRefreshAccessToken = true
   let pendingResponse = initialResponse?.response
+  let continuationReadyNotified = false
 
   const cleanupSession = () => {
     if (isContinueOnPauseRequest) session.activeContinueOnPauseRequest = false
@@ -985,6 +993,10 @@ const runSseRequest = async (
     }
 
     canRefreshAccessToken = true
+    if (isContinueOnPauseRequest && !continuationReadyNotified) {
+      continuationReadyNotified = true
+      otherOptions.onWorkflowContinuationReady?.()
+    }
     const eventCountBeforeRequest = session.dispatchedEventCount
     const outcome = await consumeEventStream(response, callbacks, session)
     if (session.dispatchedEventCount > eventCountBeforeRequest) reconnectAttempts = 0

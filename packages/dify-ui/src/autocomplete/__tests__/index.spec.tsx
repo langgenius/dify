@@ -245,8 +245,8 @@ describe('Autocomplete wrappers', () => {
             <AutocompleteInput aria-label="Search resources" />
           </AutocompleteInputGroup>
           <AutocompleteContent>
-            <AutocompleteList>
-              {(item: string) => (
+            <AutocompleteList<string>>
+              {(item) => (
                 <AutocompleteItem key={item} value={item}>
                   <AutocompleteItemText>{item}</AutocompleteItemText>
                 </AutocompleteItem>

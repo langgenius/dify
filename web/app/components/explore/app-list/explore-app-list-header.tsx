@@ -31,7 +31,7 @@ export function ExploreAppListHeader({
           href="https://marketplace.dify.ai/templates"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex shrink-0 items-center gap-1 system-xs-medium text-text-tertiary hover:text-text-secondary"
+          className="-m-1 flex min-h-6 shrink-0 touch-manipulation items-center gap-1 rounded-md p-1 system-xs-medium text-text-tertiary outline-hidden transition-colors hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid motion-reduce:transition-none"
         >
           {t(($) => $['apps.viewMore'], { ns: 'explore' })}
           <span className="i-ri-arrow-right-line size-3 shrink-0" aria-hidden="true" />

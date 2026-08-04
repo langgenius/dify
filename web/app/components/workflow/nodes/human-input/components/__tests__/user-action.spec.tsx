@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { withSelectorKey } from '@/test/i18n-mock'
 import { UserActionButtonType } from '../../types'
@@ -25,14 +24,6 @@ vi.mock('@/app/components/base/input', () => ({
       disabled={props.disabled}
       onChange={(e) => props.onChange({ target: { value: e.target.value } })}
     />
-  ),
-}))
-
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: (props: { children?: ReactNode; onClick?: () => void }) => (
-    <button type="button" onClick={props.onClick}>
-      {props.children}
-    </button>
   ),
 }))
 

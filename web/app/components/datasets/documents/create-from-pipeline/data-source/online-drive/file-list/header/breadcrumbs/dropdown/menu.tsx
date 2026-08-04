@@ -13,7 +13,7 @@ const Menu = ({ breadcrumbs, startIndex, onBreadcrumbClick }: MenuProps) => {
       {breadcrumbs.map((breadcrumb, index) => {
         return (
           <Item
-            key={`${breadcrumb}-${index}`}
+            key={breadcrumb}
             name={breadcrumb}
             index={startIndex + index}
             onBreadcrumbClick={onBreadcrumbClick}

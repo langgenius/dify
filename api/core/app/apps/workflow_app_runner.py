@@ -67,7 +67,7 @@ from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow
 from extensions.workflow_warm_shutdown import mark_workflow_runs_stopped_if_running_without_active_handoff
 from graphon.entities import WorkflowStartReason
 from graphon.entities.graph_config import NodeConfigDictAdapter
-from graphon.entities.pause_reason import SchedulingPause
+from graphon.entities.pause_reason import HitlRequired, SchedulingPause
 from graphon.graph import Graph
 from graphon.graph_engine.layers import GraphEngineLayer
 from graphon.graph_events import (
@@ -524,7 +524,9 @@ class WorkflowBasedAppRunner:
                 )
             case GraphRunPausedEvent():
                 runtime_state = workflow_entry.graph_engine.graph_runtime_state
-                paused_nodes = runtime_state.get_paused_nodes()
+                paused_nodes = list(
+                    dict.fromkeys(reason.node_id for reason in event.reasons if isinstance(reason, HitlRequired))
+                )
                 if is_workflow_warm_shutdown_pause(event.reasons):
                     self._publish_event(
                         QueueWorkflowMaintenancePausedEvent(

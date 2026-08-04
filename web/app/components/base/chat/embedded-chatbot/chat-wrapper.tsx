@@ -49,7 +49,7 @@ const ChatWrapper = () => {
     disableFeedback,
     handleFeedback,
     currentChatInstanceRef,
-    themeBuilder,
+    theme,
     clearChatList,
     setClearChatList,
     setIsResponding,
@@ -88,6 +88,7 @@ const ChatWrapper = () => {
     handleSend,
     handleStop,
     handleSwitchSibling,
+    prepareHumanInputSubmission,
     isResponding: respondingState,
     suggestedQuestions,
   } = useChat(
@@ -344,10 +345,12 @@ const ChatWrapper = () => {
 
   const handleSubmitHumanInputForm = useCallback(
     async (formToken: string, formData: HumanInputFormSubmitData) => {
+      if (!(await prepareHumanInputSubmission())) return
+
       if (isInstalledApp) await submitHumanInputFormService(formToken, formData)
       else await submitHumanInputForm(formToken, formData)
     },
-    [isInstalledApp],
+    [isInstalledApp, prepareHumanInputSubmission],
   )
 
   const welcome = useMemo(() => {
@@ -464,7 +467,7 @@ const ChatWrapper = () => {
       suggestedQuestions={suggestedQuestions}
       answerIcon={answerIcon}
       hideProcessDetail
-      themeBuilder={themeBuilder}
+      theme={theme}
       switchSibling={doSwitchSibling}
       inputDisabled={inputDisabled}
       sendOnEnter={sendOnEnter}

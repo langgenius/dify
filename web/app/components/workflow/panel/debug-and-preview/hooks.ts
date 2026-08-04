@@ -139,6 +139,13 @@ export const useChat = (
     }
   }, [])
 
+  useEffect(
+    () => () => {
+      workflowEventsAbortControllerRef.current?.abort()
+    },
+    [],
+  )
+
   /** Find the target node by bfs and then operate on it */
   const produceChatTreeNode = useCallback(
     (targetId: string, operation: (node: ChatItemInTree) => void) => {
@@ -734,7 +741,7 @@ export const useChat = (
   const handleResume = useCallback(
     (messageId: string, workflowRunId: string, { onGetSuggestedQuestions }: SendCallback) => {
       // Re-subscribe to workflow events for the specific message
-      const url = `/workflow/${workflowRunId}/events?include_state_snapshot=true`
+      const url = `/workflow/${workflowRunId}/events?include_state_snapshot=true&continue_on_pause=true`
 
       const otherOptions: IOtherOptions = {
         getAbortController: (abortController) => {
@@ -1004,10 +1011,8 @@ export const useChat = (
             }
           })
         },
-        onWorkflowPaused: ({ data: workflowPausedData }) => {
+        onWorkflowPaused: () => {
           handleResponding(false)
-          const resumeUrl = `/workflow/${workflowPausedData.workflow_run_id}/events`
-          sseGet(resumeUrl, {}, otherOptions)
           updateChatTreeNode(messageId, (responseItem) => {
             responseItem.workflowProcess!.status = WorkflowRunningStatus.Paused
           })

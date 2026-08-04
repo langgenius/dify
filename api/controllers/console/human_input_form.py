@@ -139,7 +139,7 @@ class ConsoleHumanInputFormApi(Resource):
         self._ensure_console_access(form, current_tenant_id)
         self._ensure_console_recipient_type(form)
         recipient_type = form.recipient_type
-        # The type checker is not smart enought to validate the following invariant.
+        # The type checker is not smart enough to validate the following invariant.
         # So we need to assert it manually.
         assert recipient_type is not None, "recipient_type cannot be None here."
 
@@ -236,6 +236,7 @@ class ConsoleWorkflowEventsApi(Resource):
                             tenant_id=workflow_run.tenant_id,
                             app_id=workflow_run.app_id,
                             session_maker=session_maker,
+                            human_input_surface=HumanInputSurface.CONSOLE,
                             close_on_pause=not continue_on_pause,
                             cursor=cursor,
                         )

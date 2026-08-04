@@ -7,10 +7,10 @@ import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
 import { textControlCompoundFocusClassName } from '../form-control-shared'
 
-export const NumberField = BaseNumberField.Root
-export type NumberFieldProps = BaseNumberField.Root.Props
+const NumberField = BaseNumberField.Root
+type NumberFieldProps = BaseNumberField.Root.Props
 
-export const numberFieldGroupVariants = cva(
+const numberFieldGroupVariants = cva(
   [
     'group/number-field flex w-full min-w-0 items-stretch overflow-hidden border border-transparent bg-components-input-bg-normal text-components-input-text-filled shadow-none outline-hidden transition-[background-color,border-color,box-shadow]',
     'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
@@ -33,14 +33,14 @@ export const numberFieldGroupVariants = cva(
     },
   },
 )
-export type NumberFieldSize = NonNullable<VariantProps<typeof numberFieldGroupVariants>['size']>
+type NumberFieldSize = NonNullable<VariantProps<typeof numberFieldGroupVariants>['size']>
 
-export type NumberFieldGroupProps = Omit<BaseNumberField.Group.Props, 'className'> &
+type NumberFieldGroupProps = Omit<BaseNumberField.Group.Props, 'className'> &
   VariantProps<typeof numberFieldGroupVariants> & {
     className?: string
   }
 
-export function NumberFieldGroup({ className, size = 'medium', ...props }: NumberFieldGroupProps) {
+function NumberFieldGroup({ className, size = 'medium', ...props }: NumberFieldGroupProps) {
   return (
     <BaseNumberField.Group
       className={cn(numberFieldGroupVariants({ size }), className)}
@@ -49,7 +49,7 @@ export function NumberFieldGroup({ className, size = 'medium', ...props }: Numbe
   )
 }
 
-export const numberFieldInputVariants = cva(
+const numberFieldInputVariants = cva(
   [
     'w-0 min-w-0 flex-1 appearance-none border-0 bg-transparent text-components-input-text-filled caret-primary-600 outline-hidden',
     'placeholder:text-components-input-text-placeholder',
@@ -69,12 +69,12 @@ export const numberFieldInputVariants = cva(
   },
 )
 
-export type NumberFieldInputProps = Omit<BaseNumberField.Input.Props, 'className' | 'size'> &
+type NumberFieldInputProps = Omit<BaseNumberField.Input.Props, 'className' | 'size'> &
   VariantProps<typeof numberFieldInputVariants> & {
     className?: string
   }
 
-export function NumberFieldInput({ className, size = 'medium', ...props }: NumberFieldInputProps) {
+function NumberFieldInput({ className, size = 'medium', ...props }: NumberFieldInputProps) {
   return (
     <BaseNumberField.Input
       className={cn(numberFieldInputVariants({ size }), className)}
@@ -83,7 +83,7 @@ export function NumberFieldInput({ className, size = 'medium', ...props }: Numbe
   )
 }
 
-export const numberFieldUnitVariants = cva(
+const numberFieldUnitVariants = cva(
   'flex shrink-0 items-center self-stretch system-sm-regular text-text-tertiary',
   {
     variants: {
@@ -98,10 +98,10 @@ export const numberFieldUnitVariants = cva(
   },
 )
 
-export type NumberFieldUnitProps = React.ComponentProps<'span'> &
+type NumberFieldUnitProps = React.ComponentProps<'span'> &
   VariantProps<typeof numberFieldUnitVariants>
 
-export function NumberFieldUnit({ className, size = 'medium', ...props }: NumberFieldUnitProps) {
+function NumberFieldUnit({ className, size = 'medium', ...props }: NumberFieldUnitProps) {
   return <span className={cn(numberFieldUnitVariants({ size }), className)} {...props} />
 }
 
@@ -109,9 +109,9 @@ const numberFieldControlsVariants = cva(
   'flex shrink-0 flex-col items-stretch border-l border-divider-subtle bg-transparent text-text-tertiary',
 )
 
-export type NumberFieldControlsProps = React.ComponentProps<'div'>
+type NumberFieldControlsProps = React.ComponentProps<'div'>
 
-export function NumberFieldControls({ className, ...props }: NumberFieldControlsProps) {
+function NumberFieldControls({ className, ...props }: NumberFieldControlsProps) {
   return <div className={cn(numberFieldControlsVariants(), className)} {...props} />
 }
 
@@ -170,7 +170,11 @@ type NumberFieldButtonVariantProps = Omit<
   'direction'
 >
 
-export type NumberFieldButtonProps = Omit<BaseNumberField.Increment.Props, 'className'> &
+type NumberFieldIncrementProps = Omit<BaseNumberField.Increment.Props, 'className'> &
+  NumberFieldButtonVariantProps & {
+    className?: string
+  }
+type NumberFieldDecrementProps = Omit<BaseNumberField.Decrement.Props, 'className'> &
   NumberFieldButtonVariantProps & {
     className?: string
   }
@@ -178,12 +182,12 @@ export type NumberFieldButtonProps = Omit<BaseNumberField.Increment.Props, 'clas
 const incrementAriaLabel = 'Increment value'
 const decrementAriaLabel = 'Decrement value'
 
-export function NumberFieldIncrement({
+function NumberFieldIncrement({
   className,
   children,
   size = 'medium',
   ...props
-}: NumberFieldButtonProps) {
+}: NumberFieldIncrementProps) {
   return (
     <BaseNumberField.Increment
       {...props}
@@ -197,12 +201,12 @@ export function NumberFieldIncrement({
   )
 }
 
-export function NumberFieldDecrement({
+function NumberFieldDecrement({
   className,
   children,
   size = 'medium',
   ...props
-}: NumberFieldButtonProps) {
+}: NumberFieldDecrementProps) {
   return (
     <BaseNumberField.Decrement
       {...props}
@@ -214,4 +218,24 @@ export function NumberFieldDecrement({
       {children ?? <span aria-hidden="true" className="i-ri-arrow-down-s-line size-3" />}
     </BaseNumberField.Decrement>
   )
+}
+
+export {
+  NumberField,
+  NumberFieldControls,
+  NumberFieldDecrement,
+  NumberFieldGroup,
+  NumberFieldIncrement,
+  NumberFieldInput,
+  NumberFieldUnit,
+}
+export type {
+  NumberFieldControlsProps,
+  NumberFieldDecrementProps,
+  NumberFieldGroupProps,
+  NumberFieldIncrementProps,
+  NumberFieldInputProps,
+  NumberFieldProps,
+  NumberFieldSize,
+  NumberFieldUnitProps,
 }

@@ -1,7 +1,10 @@
 'use client'
 import type { FC } from 'react'
 import type { AutoUpdateConfig } from './types'
-import type { TriggerParams } from '@/app/components/base/date-and-time-picker/types'
+import type {
+  TimePickerProps,
+  TriggerParams,
+} from '@/app/components/base/date-and-time-picker/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { RiTimeLine } from '@remixicon/react'
@@ -138,19 +141,26 @@ const AutoUpdateSetting: FC<Props> = ({ payload, onChange }) => {
     [payload, onChange],
   )
 
-  const renderTimePickerTrigger = useCallback(
-    ({ inputElem, onClick, isOpen }: TriggerParams) => {
+  const renderTimePickerTrigger = useCallback<NonNullable<TimePickerProps['renderTrigger']>>(
+    (props, state, { inputElem, onClick }: TriggerParams) => {
       return (
         <button
+          {...props}
           type="button"
-          className="group flex h-8 w-40 cursor-pointer items-center justify-between rounded-lg border-none bg-components-input-bg-normal px-2 text-left hover:bg-state-base-hover-alt focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-          onClick={onClick}
+          className={cn(
+            'group flex h-8 w-40 cursor-pointer items-center justify-between rounded-lg border-none bg-components-input-bg-normal px-2 text-left hover:bg-state-base-hover-alt focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
+            props.className,
+          )}
+          onClick={(event) => {
+            onClick(event)
+            props.onClick?.(event)
+          }}
         >
           <div className="flex w-0 grow items-center gap-x-1">
             <RiTimeLine
               className={cn(
                 'size-4 shrink-0 text-text-tertiary',
-                isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary',
+                state.open ? 'text-text-secondary' : 'group-hover:text-text-secondary',
               )}
             />
             {inputElem}

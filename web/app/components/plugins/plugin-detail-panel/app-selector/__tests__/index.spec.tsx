@@ -120,7 +120,12 @@ describe('AppSelector', () => {
 
     renderWithQueryClient(<AppSelector onSelect={onSelect} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'app.appSelector.label' }))
+    const trigger = screen.getByRole('button', { name: 'app.appSelector.label' })
+    expect(trigger).not.toHaveAttribute('data-popup-open')
+
+    fireEvent.click(trigger)
+
+    expect(trigger).toHaveAttribute('data-popup-open', '')
     expect(screen.getByText('app.appSelector.label')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('combobox', { name: 'app.appSelector.label' }))

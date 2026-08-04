@@ -37,9 +37,6 @@ class _DummyQueueManager:
 class _DummyRuntimeState:
     variable_pool = object()
 
-    def get_paused_nodes(self):
-        return ["node-1"]
-
 
 class _DummyGraphEngine:
     def __init__(self):
@@ -104,7 +101,7 @@ def test_handle_maintenance_pause_uses_internal_event_without_notifications(monk
     maintenance_event = queue_manager.published[0]
     assert isinstance(maintenance_event, QueueWorkflowMaintenancePausedEvent)
     assert maintenance_event.outputs == {"checkpoint": True}
-    assert maintenance_event.paused_nodes == ["node-1"]
+    assert maintenance_event.paused_nodes == []
     email_task.apply_async.assert_not_called()
     enrich_reasons.assert_not_called()
 

@@ -3,8 +3,8 @@ import type { ReactNode, TdHTMLAttributes, ThHTMLAttributes } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
+  ScrollArea,
   ScrollAreaContent,
-  ScrollAreaRoot,
   ScrollAreaScrollbar,
   ScrollAreaThumb,
   ScrollAreaViewport,
@@ -52,7 +52,7 @@ export function AgentLogsTable({
         </table>
       </div>
 
-      <ScrollAreaRoot className="relative min-h-0 flex-1 overflow-hidden">
+      <ScrollArea className="relative min-h-0 flex-1 overflow-hidden">
         <ScrollAreaViewport
           aria-label={t(($) => $['agentDetail.logs.title'])}
           role="region"
@@ -78,7 +78,7 @@ export function AgentLogsTable({
         <ScrollAreaScrollbar>
           <ScrollAreaThumb />
         </ScrollAreaScrollbar>
-      </ScrollAreaRoot>
+      </ScrollArea>
     </div>
   )
 }

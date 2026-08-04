@@ -4,7 +4,7 @@ import json
 from datetime import UTC, datetime
 from inspect import unwrap
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import ANY, Mock
 
 import pytest
 from flask import Flask, Response
@@ -18,6 +18,7 @@ from controllers.console.human_input_form import (
     WorkflowResponseConverter,
     _jsonify_form_definition,
 )
+from core.workflow.human_input_policy import HumanInputSurface
 from models.account import AccountStatus
 from models.enums import CreatorUserRole
 from models.human_input import RecipientType
@@ -346,9 +347,7 @@ def test_workflow_events_finished(app: Flask, monkeypatch: pytest.MonkeyPatch) -
     assert "data" in response.get_data(as_text=True)
 
 
-def test_workflow_events_continue_on_pause_keeps_cursor_stream_open(
-    app: Flask, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_workflow_events_snapshot_can_continue_across_pauses(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     workflow_run = SimpleNamespace(
         id="run-1",
         created_by_role=CreatorUserRole.ACCOUNT,
@@ -363,9 +362,9 @@ def test_workflow_events_continue_on_pause_keeps_cursor_stream_open(
         def get_workflow_run_by_id_and_tenant_id(self, **_kwargs):
             return workflow_run
 
-    snapshot_builder = Mock(return_value=[])
     workflow_generator = Mock()
-    workflow_generator.convert_to_event_stream.return_value = iter(["data: continued\n\n"])
+    workflow_generator.convert_to_event_stream.return_value = iter(["data: snapshot\n\n"])
+    snapshot_builder = Mock(return_value=["snapshot-events"])
 
     monkeypatch.setattr(
         DifyAPIRepositoryFactory,
@@ -377,12 +376,12 @@ def test_workflow_events_continue_on_pause_keeps_cursor_stream_open(
         lambda *_args, **_kwargs: app_model,
     )
     monkeypatch.setattr(
-        "controllers.console.human_input_form.build_workflow_event_stream",
-        snapshot_builder,
-    )
-    monkeypatch.setattr(
         "controllers.console.human_input_form.WorkflowAppGenerator",
         lambda: workflow_generator,
+    )
+    monkeypatch.setattr(
+        "controllers.console.human_input_form.build_workflow_event_stream",
+        snapshot_builder,
     )
     monkeypatch.setattr("controllers.console.human_input_form.db", SimpleNamespace(engine=object()))
 
@@ -393,7 +392,15 @@ def test_workflow_events_continue_on_pause_keeps_cursor_stream_open(
         method="GET",
     ):
         response = handler(api, "t1", SimpleNamespace(id="user-1"), workflow_run_id="run-1")
-        assert response.get_data(as_text=True) == "data: continued\n\n"
 
-    assert snapshot_builder.call_args.kwargs["cursor"] == "31-0"
-    assert snapshot_builder.call_args.kwargs["close_on_pause"] is False
+    assert response.get_data(as_text=True) == "data: snapshot\n\n"
+    snapshot_builder.assert_called_once_with(
+        app_mode=AppMode.WORKFLOW,
+        workflow_run=workflow_run,
+        tenant_id="t1",
+        app_id="app-1",
+        session_maker=ANY,
+        human_input_surface=HumanInputSurface.CONSOLE,
+        close_on_pause=False,
+        cursor="31-0",
+    )

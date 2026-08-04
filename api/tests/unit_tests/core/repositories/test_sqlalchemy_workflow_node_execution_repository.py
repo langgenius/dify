@@ -806,6 +806,72 @@ def test_get_db_models_by_workflow_run_uses_asc_order(monkeypatch: pytest.Monkey
     repo.get_db_models_by_workflow_run("run", OrderConfig(order_by=["index"], order_direction="asc"))
 
 
+@pytest.mark.parametrize(
+    ("repository_triggered_from", "override", "expected"),
+    [
+        (
+            WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN,
+            None,
+            WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN,
+        ),
+        (
+            WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+            None,
+            WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+        ),
+        (
+            WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN,
+            WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        ),
+    ],
+)
+def test_get_by_workflow_execution_uses_repository_trigger_source_by_default(
+    monkeypatch: pytest.MonkeyPatch,
+    repository_triggered_from: WorkflowNodeExecutionTriggeredFrom,
+    override: WorkflowNodeExecutionTriggeredFrom | None,
+    expected: WorkflowNodeExecutionTriggeredFrom,
+) -> None:
+    monkeypatch.setattr(
+        "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",
+        lambda *_: SimpleNamespace(upload_file=Mock()),
+    )
+
+    class FakeStmt:
+        def __init__(self) -> None:
+            self.where_args: tuple[Any, ...] = ()
+
+        def where(self, *args: Any) -> FakeStmt:
+            self.where_args = args
+            return self
+
+    stmt = FakeStmt()
+    monkeypatch.setattr(
+        "core.repositories.sqlalchemy_workflow_node_execution_repository.WorkflowNodeExecutionModel.preload_offload_data_and_files",
+        lambda _q: stmt,
+    )
+    monkeypatch.setattr("core.repositories.sqlalchemy_workflow_node_execution_repository.select", lambda *_: "select")
+
+    session = MagicMock()
+    session.scalars.return_value.all.return_value = []
+    repo = SQLAlchemyWorkflowNodeExecutionRepository(
+        session_factory=_session_factory(session),
+        tenant_id=RESOURCE_TENANT_ID,
+        user=_mock_account(),
+        app_id=None,
+        triggered_from=repository_triggered_from,
+    )
+
+    repo.get_by_workflow_execution("run", triggered_from=override)
+
+    trigger_filter = next(
+        expression
+        for expression in stmt.where_args
+        if getattr(getattr(expression, "left", None), "name", None) == "triggered_from"
+    )
+    assert trigger_filter.right.value == expected
+
+
 def test_get_by_workflow_run_maps_to_domain(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",

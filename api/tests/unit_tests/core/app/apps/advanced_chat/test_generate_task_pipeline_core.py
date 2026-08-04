@@ -407,7 +407,7 @@ class TestAdvancedChatGenerateTaskPipeline:
                 variables=build_system_variables(workflow_execution_id="run-id"),
             ),
             start_at=0.0,
-            total_tokens=7,
+            llm_usage=LLMUsage.empty_usage().model_copy(update={"total_tokens": 7}),
             node_run_steps=3,
         )
 

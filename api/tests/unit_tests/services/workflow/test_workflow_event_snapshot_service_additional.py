@@ -3,7 +3,6 @@ import queue
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from itertools import cycle
 from threading import Event
 from types import SimpleNamespace
 from typing import Any, cast
@@ -74,7 +73,7 @@ def _build_resumption_context(task_id: str) -> WorkflowResumptionContext:
         workflow_execution_id="run-1",
     )
     runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
-    runtime_state.outputs = {"answer": "ok"}
+    runtime_state.set_output("answer", "ok")
     wrapper = _WorkflowGenerateEntityWrapper(entity=generate_entity)
     return WorkflowResumptionContext(
         generate_entity=wrapper,
@@ -457,8 +456,8 @@ class TestBuildWorkflowEventStream:
             task_id_hint="task-1",
         )
         monkeypatch.setattr(service_module, "_start_buffering", MagicMock(return_value=buffer_state))
-        time_values = cycle([0.0, 6.0, 21.0, 26.0])
-        monkeypatch.setattr(service_module.time, "time", lambda: next(time_values))
+        time_values = iter([0.0, 6.0, 21.0])
+        monkeypatch.setattr(service_module, "time", SimpleNamespace(time=lambda: next(time_values)))
 
         events = list(
             build_workflow_event_stream(

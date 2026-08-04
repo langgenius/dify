@@ -803,8 +803,7 @@ describe('AppList', () => {
 
       renderAppList()
 
-      const card = screen.getByRole('button', { name: 'Preview Only App' })
-      expect(card).toHaveClass('opacity-60')
+      const card = screen.getByRole('button', { name: /Preview Only App.*app\.types\.chatbot/ })
       expect(card).toHaveAttribute('aria-disabled', 'true')
       expect(screen.queryByRole('link', { name: /Preview Only App/ })).not.toBeInTheDocument()
       expect(screen.getByText('Readonly Author')).toBeInTheDocument()

@@ -1,19 +1,13 @@
-import type { SetTryAppPanel, TryAppSelection } from '@/types/try-app'
+import type { TryAppSelection } from '@/types/try-app'
 import { noop } from 'es-toolkit/function'
 import { createContext } from 'use-context-selector'
 
 type Props = Readonly<{
-  currentApp?: TryAppSelection
-  isShowTryAppPanel: boolean
-  setShowTryAppPanel: SetTryAppPanel
-  controlHideCreateFromTemplatePanel: number
+  openTryAppPanel: (selection: TryAppSelection) => void
 }>
 
 const AppListContext = createContext<Props>({
-  isShowTryAppPanel: false,
-  setShowTryAppPanel: noop,
-  currentApp: undefined,
-  controlHideCreateFromTemplatePanel: 0,
+  openTryAppPanel: noop,
 })
 
 export default AppListContext

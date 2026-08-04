@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { Theme } from '../../embedded-chatbot/theme/theme-context'
+import type { Theme } from '../../embedded-chatbot/theme/theme'
 import type { EnableType, OnSend } from '../../types'
 import type { InputForm } from '../type'
 import type { FileUpload } from '@/app/components/base/features/types'

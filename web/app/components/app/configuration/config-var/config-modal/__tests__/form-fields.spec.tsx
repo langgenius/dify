@@ -1,6 +1,7 @@
 /* oxlint-disable typescript/no-explicit-any */
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { InputVarType } from '@/app/components/workflow/types'
 import { withSelectorKey } from '@/test/i18n-mock'
 import ConfigModalFormFields from '../form-fields'
@@ -84,46 +85,6 @@ vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', (
   ),
 }))
 
-vi.mock('@langgenius/dify-ui/select', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@langgenius/dify-ui/select')>()
-
-  return {
-    ...actual,
-    Select: ({
-      value,
-      onValueChange,
-      children,
-    }: {
-      value: string
-      onValueChange: (value: string) => void
-      children: ReactNode
-    }) => (
-      <div>
-        <button
-          type="button"
-          onClick={() => onValueChange(value === 'true' ? 'false' : 'beta')}
-        >{`ui-select:${value}`}</button>
-        <button type="button" onClick={() => onValueChange('__empty__')}>
-          ui-select-empty
-        </button>
-        {children}
-      </div>
-    ),
-    SelectTrigger: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-    SelectValue: () => <span>select-value</span>,
-    SelectContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-    SelectItem: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-    SelectItemText: ({ children }: { children: ReactNode }) => <span>{children}</span>,
-    SelectItemIndicator: () => <span data-testid="select-item-indicator" />,
-  }
-})
-
-vi.mock('@langgenius/dify-ui/tooltip', () => ({
-  Tooltip: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  TooltipTrigger: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  TooltipContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-}))
-
 vi.mock('../field', () => ({
   default: ({ children, title }: { children: ReactNode; title: string }) => (
     <div>
@@ -201,7 +162,8 @@ const createBaseProps = () => {
 }
 
 describe('ConfigModalFormFields', () => {
-  it('should update paragraph, number, checkbox, and select defaults', () => {
+  it('should update paragraph, number, checkbox, and select defaults', async () => {
+    const user = userEvent.setup()
     const paragraphProps = createBaseProps()
     paragraphProps.tempPayload = {
       ...paragraphProps.tempPayload,
@@ -229,9 +191,12 @@ describe('ConfigModalFormFields', () => {
       default: false,
     }
     checkboxProps.checkboxDefaultSelectValue = 'true'
-    render(<ConfigModalFormFields {...checkboxProps} />)
-    fireEvent.click(screen.getByText('ui-select:true'))
+    const checkboxView = render(<ConfigModalFormFields {...checkboxProps} />)
+    await user.click(screen.getByRole('combobox'))
+    const checkboxOptions = await screen.findAllByRole('option')
+    await user.click(checkboxOptions[1]!)
     expect(checkboxProps.payloadChangeHandlers.default).toHaveBeenCalledWith(false)
+    checkboxView.unmount()
 
     const selectProps = createBaseProps()
     selectProps.tempPayload = {
@@ -242,7 +207,9 @@ describe('ConfigModalFormFields', () => {
     selectProps.options = ['alpha', 'beta']
     render(<ConfigModalFormFields {...selectProps} />)
     fireEvent.click(screen.getByText('config-select'))
-    fireEvent.click(screen.getByText('ui-select:alpha'))
+    await user.click(screen.getByRole('combobox'))
+    const selectOptions = await screen.findAllByRole('option')
+    await user.click(selectOptions[2]!)
     expect(selectProps.payloadChangeHandlers.options).toHaveBeenCalledWith(['alpha', 'beta'])
     expect(selectProps.payloadChangeHandlers.default).toHaveBeenCalledWith('beta')
   })
@@ -348,7 +315,8 @@ describe('ConfigModalFormFields', () => {
     expect(textProps.payloadChangeHandlers.default).toHaveBeenCalledWith(undefined)
   })
 
-  it('should clear select defaults and apply uploader fallback values', () => {
+  it('should clear select defaults and apply uploader fallback values', async () => {
+    const user = userEvent.setup()
     const selectProps = createBaseProps()
     selectProps.tempPayload = {
       ...selectProps.tempPayload,
@@ -356,10 +324,13 @@ describe('ConfigModalFormFields', () => {
       default: 'alpha',
     }
     selectProps.options = ['alpha', ' ', 'beta']
-    render(<ConfigModalFormFields {...selectProps} />)
+    const selectView = render(<ConfigModalFormFields {...selectProps} />)
 
-    fireEvent.click(screen.getByText('ui-select-empty'))
+    await user.click(screen.getByRole('combobox'))
+    const selectOptions = await screen.findAllByRole('option')
+    await user.click(selectOptions[0]!)
     expect(selectProps.payloadChangeHandlers.default).toHaveBeenCalledWith(undefined)
+    selectView.unmount()
 
     const singleFallbackProps = createBaseProps()
     singleFallbackProps.tempPayload = {
@@ -416,21 +387,10 @@ describe('ConfigModalFormFields', () => {
     render(<ConfigModalFormFields {...selectWithoutOptionsProps} />)
 
     expect(screen.getAllByText('config-select')).toHaveLength(1)
-    expect(screen.queryByText('ui-select:__empty__')).not.toBeInTheDocument()
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
   })
 
-  it('should preserve existing select and file defaults when present', () => {
-    const selectProps = createBaseProps()
-    selectProps.tempPayload = {
-      ...selectProps.tempPayload,
-      type: InputVarType.select,
-      default: undefined,
-    }
-    selectProps.options = ['alpha', 'beta']
-    render(<ConfigModalFormFields {...selectProps} />)
-
-    expect(screen.getByText('ui-select:__empty__')).toBeInTheDocument()
-
+  it('should preserve existing file defaults when present', () => {
     const existingFile = {
       fileId: 'existing-file',
       type: 'local_file',

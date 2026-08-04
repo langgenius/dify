@@ -6,7 +6,6 @@ import type {
   DatasetListRequest,
   DataSetListResponse,
   ErrorDocsResponse,
-  ExternalAPIListResponse,
   FetchDatasetsParams,
   HitTestingRecordsResponse,
   IndexingStatusBatchRequest,
@@ -187,14 +186,6 @@ export const useInvalidateDatasetApiKeys = () => {
       queryKey: [NAME_SPACE, 'api-keys'],
     })
   }
-}
-
-export const useExternalKnowledgeApiList = (options?: { enabled?: boolean }) => {
-  return useQuery<ExternalAPIListResponse>({
-    queryKey: [NAME_SPACE, 'external-knowledge-api'],
-    queryFn: () => get<ExternalAPIListResponse>('/datasets/external-knowledge-api'),
-    enabled: options?.enabled ?? true,
-  })
 }
 
 export const useDatasetTestingRecords = (

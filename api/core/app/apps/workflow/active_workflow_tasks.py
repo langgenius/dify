@@ -2,7 +2,7 @@
 
 import threading
 import time
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from uuid import uuid4
@@ -27,7 +27,7 @@ _active_task_ids_changed = threading.Condition(_active_task_ids_lock)
 
 
 @contextmanager
-def active_workflow_task(task_id: str, *, workflow_run_id: str | None = None) -> Iterator[None]:
+def active_workflow_task(task_id: str, *, workflow_run_id: str | None = None) -> Generator[None]:
     """Register an execution segment for the duration of a workflow run."""
     if not task_id:
         raise ValueError("task_id must not be empty")

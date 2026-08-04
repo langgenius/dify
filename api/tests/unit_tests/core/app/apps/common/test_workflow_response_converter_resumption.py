@@ -8,6 +8,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.system_variables import build_system_variables
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus
+from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.runtime import GraphRuntimeState, VariablePool
 
 
@@ -66,7 +67,12 @@ def test_resumed_finish_reports_logical_wall_clock_and_handoff_duration(
     converter = _build_converter()
     logical_started_at = datetime(2026, 7, 28, 12, 0, 0)
     finished_at = datetime(2026, 7, 28, 12, 10, 0)
-    runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=73.0, total_tokens=12, node_run_steps=3)
+    runtime_state = GraphRuntimeState(
+        variable_pool=VariablePool(),
+        start_at=73.0,
+        llm_usage=LLMUsage.empty_usage().model_copy(update={"total_tokens": 12}),
+        node_run_steps=3,
+    )
 
     monkeypatch.setattr(
         "core.app.apps.common.workflow_response_converter.naive_utc_now",

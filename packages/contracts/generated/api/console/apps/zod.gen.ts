@@ -5532,6 +5532,15 @@ export const zPutAppsByAppIdServerPath = z.object({
  */
 export const zPutAppsByAppIdServerResponse = zAppMcpServerResponse
 
+export const zPostAppsByAppIdServerRefreshPath = z.object({
+  app_id: z.uuid(),
+})
+
+/**
+ * MCP server refreshed successfully
+ */
+export const zPostAppsByAppIdServerRefreshResponse = zAppMcpServerResponse
+
 export const zPostAppsByAppIdSiteBody = zAppSiteUpdatePayload
 
 export const zPostAppsByAppIdSitePath = z.object({
@@ -6777,12 +6786,3 @@ export const zDeleteAppsByResourceIdApiKeysByApiKeyIdPath = z.object({
  * API key deleted successfully
  */
 export const zDeleteAppsByResourceIdApiKeysByApiKeyIdResponse = z.void()
-
-export const zGetAppsByServerIdServerRefreshPath = z.object({
-  server_id: z.uuid(),
-})
-
-/**
- * MCP server refreshed successfully
- */
-export const zGetAppsByServerIdServerRefreshResponse = zAppMcpServerResponse

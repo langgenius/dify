@@ -93,7 +93,7 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
             onSelect={handleVersionSelect}
             sideOffset={4}
             alignOffset={0}
-            trigger={
+            trigger={() => (
               <Badge
                 className={cn(
                   canUpdatePlugin &&
@@ -111,7 +111,7 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
                 }
                 hasRedCornerMark={hasNewVersion}
               />
-            }
+            )}
           />
           {isDebuggingPlugin && (
             <Badge

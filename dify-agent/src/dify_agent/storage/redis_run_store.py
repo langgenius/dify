@@ -9,13 +9,19 @@ create-run payloads are never persisted because layer config may include model
 credentials.
 """
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable
 from typing import cast
 
 from redis.asyncio import Redis
 
-from dify_agent.protocol.schemas import RUN_EVENT_ADAPTER, RunEvent, RunEventsResponse, RunStatus, utc_now
-from dify_agent.runtime.event_sink import RunEventSink
+from dify_agent.protocol.schemas import RUN_EVENT_ADAPTER, RunEvent, RunEventsResponse, RunStatus
+from dify_agent.runtime.event_sink import (
+    NonTerminalRunEvent,
+    RunEventSink,
+    RunFinalizationResult,
+    TerminalRunEvent,
+    terminal_event_status_and_error,
+)
 from dify_agent.server.schemas import RunRecord, new_run_id
 from dify_agent.server.settings import DEFAULT_RUN_RETENTION_SECONDS
 from dify_agent.storage.redis_keys import run_events_key, run_record_key
@@ -23,6 +29,34 @@ from dify_agent.storage.redis_keys import run_events_key, run_record_key
 
 class RunNotFoundError(LookupError):
     """Raised when a requested run record does not exist."""
+
+
+_FINALIZE_RUN_SCRIPT = """
+local record_json = redis.call("GET", KEYS[1])
+if not record_json then
+    return {-1, "", ""}
+end
+
+local record = cjson.decode(record_json)
+if record.status ~= "running" then
+    return {0, tostring(record.status), ""}
+end
+
+record.status = ARGV[1]
+record.updated_at = ARGV[2]
+if ARGV[3] == "1" then
+    record.error = ARGV[4]
+else
+    record.error = cjson.null
+end
+
+local ttl = tonumber(ARGV[6])
+local updated_record_json = cjson.encode(record)
+local event_id = redis.call("XADD", KEYS[2], "*", "payload", ARGV[5])
+redis.call("EXPIRE", KEYS[2], ttl)
+redis.call("SET", KEYS[1], updated_record_json, "EX", ttl)
+return {1, ARGV[1], event_id}
+"""
 
 
 class RedisRunStore(RunEventSink):
@@ -73,18 +107,8 @@ class RedisRunStore(RunEventSink):
             value = value.decode()
         return RunRecord.model_validate_json(value)
 
-    async def update_status(self, run_id: str, status: RunStatus, error: str | None = None) -> None:
-        """Update the status fields of an existing run record."""
-        record = await self.get_run(run_id)
-        updated = record.model_copy(update={"status": status, "updated_at": utc_now(), "error": error})
-        await self.redis.set(
-            run_record_key(self.prefix, run_id),
-            updated.model_dump_json(),
-            ex=self.run_retention_seconds,
-        )
-
-    async def append_event(self, event: RunEvent) -> str:
-        """Append an event JSON payload to the run's Redis stream with TTLs."""
+    async def append_event(self, event: NonTerminalRunEvent) -> str:
+        """Append a non-terminal event JSON payload with refreshed TTLs."""
         events_key = run_events_key(self.prefix, event.run_id)
         payload = RUN_EVENT_ADAPTER.dump_json(event, exclude={"id"}).decode()
         async with self.redis.pipeline(transaction=True) as pipeline:
@@ -97,6 +121,39 @@ class RedisRunStore(RunEventSink):
             results = cast(list[object], await pipeline.execute())
         event_id = results[0]
         return event_id.decode() if isinstance(event_id, bytes) else str(event_id)
+
+    async def finalize_run(self, event: TerminalRunEvent) -> RunFinalizationResult:
+        """Atomically append the first terminal event and update its run record."""
+        status, error = terminal_event_status_and_error(event)
+        payload = RUN_EVENT_ADAPTER.dump_json(event, exclude={"id"}).decode()
+        evaluation = cast(
+            Awaitable[object],
+            self.redis.eval(
+                _FINALIZE_RUN_SCRIPT,
+                2,
+                run_record_key(self.prefix, event.run_id),
+                run_events_key(self.prefix, event.run_id),
+                status,
+                event.created_at.isoformat(),
+                "1" if error is not None else "0",
+                error or "",
+                payload,
+                str(self.run_retention_seconds),
+            ),
+        )
+        raw_result = await evaluation
+        result = cast(list[object], raw_result)
+        applied = int(cast(int | bytes | str, result[0]))
+        if applied == -1:
+            raise RunNotFoundError(event.run_id)
+
+        persisted_status = cast(RunStatus, _decode_redis_text(result[1]))
+        event_id = _decode_redis_text(result[2]) or None
+        return RunFinalizationResult(
+            applied=applied == 1,
+            status=persisted_status,
+            event_id=event_id,
+        )
 
     async def get_events(self, run_id: str, *, after: str = "0-0", limit: int = 100) -> RunEventsResponse:
         """Read a bounded page of events after ``after`` cursor."""
@@ -138,6 +195,10 @@ class RedisRunStore(RunEventSink):
         event_id = raw_id.decode() if isinstance(raw_id, bytes) else str(raw_id)
         event = RUN_EVENT_ADAPTER.validate_json(cast(str, payload))
         return event.model_copy(update={"id": event_id, "run_id": run_id})
+
+
+def _decode_redis_text(value: object) -> str:
+    return value.decode() if isinstance(value, bytes) else str(value)
 
 
 __all__ = ["DEFAULT_RUN_RETENTION_SECONDS", "RedisRunStore", "RunNotFoundError"]

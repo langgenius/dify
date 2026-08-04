@@ -470,6 +470,11 @@ class FileUploadConfig(BaseSettings):
         default=50,
     )
 
+    UPLOAD_SKILL_FILE_SIZE_LIMIT: NonNegativeInt = Field(
+        description="Maximum allowed Skill package size for uploads in megabytes",
+        default=50,
+    )
+
     BATCH_UPLOAD_LIMIT: NonNegativeInt = Field(
         description="Maximum number of files allowed in a batch upload operation",
         default=20,
@@ -865,7 +870,7 @@ class WorkflowVariableTruncationConfig(BaseSettings):
     )
     WORKFLOW_VARIABLE_TRUNCATION_STRING_LENGTH: PositiveInt = Field(
         100000,
-        description="maximum length for string to trigger tuncation, measure in number of characters",
+        description="maximum length for string to trigger truncation, measure in number of characters",
     )
     WORKFLOW_VARIABLE_TRUNCATION_ARRAY_LENGTH: PositiveInt = Field(
         1000,
@@ -966,9 +971,9 @@ class WorkflowConfig(BaseSettings):
         default=10,
     )
 
-    GRAPH_ENGINE_SCALE_UP_THRESHOLD: PositiveInt = Field(
-        description="Queue depth threshold that triggers worker scale up",
-        default=3,
+    GRAPH_ENGINE_SCALE_UP_THRESHOLD: NonNegativeInt = Field(
+        description="Pending task threshold that triggers worker scale up",
+        default=0,
     )
 
     GRAPH_ENGINE_SCALE_DOWN_IDLE_TIME: float = Field(

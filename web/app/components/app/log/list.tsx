@@ -39,7 +39,6 @@ import { parseAsString, useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { createContext, useContext } from 'use-context-selector'
 import { useShallow } from 'zustand/react/shallow'
 import ModelInfo from '@/app/components/app/log/model-info'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -94,19 +93,12 @@ type IConversationList = {
 
 const defaultValue = 'N/A'
 
-type IDrawerContext = {
-  onClose: () => void
-  appDetail?: App
-}
-
 type StatusCount = {
   paused: number
   success: number
   failed: number
   partial_success: number
 }
-
-const DrawerContext = createContext<IDrawerContext>({} as IDrawerContext)
 
 /**
  * Icon component with numbers
@@ -164,12 +156,14 @@ const statusTdRender = (statusCount: StatusCount) => {
 }
 
 type IDetailPanel = {
+  appDetail: App
   detail: any
+  onClose: () => void
   onFeedback: FeedbackFunc
   onSubmitAnnotation: SubmitAnnotationFunc
 }
 
-function DetailPanel({ detail, onFeedback }: IDetailPanel) {
+function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
   const MIN_ITEMS_FOR_SCROLL_LOADING = 8
   const SCROLL_DEBOUNCE_MS = 200
   const { data: timezone } = useQuery({
@@ -177,7 +171,6 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
     select: (data) => data.profile.timezone ?? undefined,
   })
   const { formatTime } = useTimestamp()
-  const { onClose, appDetail } = useContext(DrawerContext)
   const {
     currentLogItem,
     setCurrentLogItem,
@@ -239,7 +232,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       if (oldestAnswerIdRef.current) params.first_id = oldestAnswerIdRef.current
 
       const messageRes = await fetchChatMessages({
-        url: `/apps/${appDetail?.id}/chat-messages`,
+        url: `/apps/${appDetail.id}/chat-messages`,
         params,
       })
 
@@ -311,7 +304,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       try {
         if (annotation?.id) {
           const { delAnnotation } = await import('@/service/annotation')
-          await delAnnotation(appDetail?.id || '', annotation.id)
+          await delAnnotation(appDetail.id, annotation.id)
         }
 
         setAllChatItems(applyAnnotationRemoved(allChatItems, index))
@@ -323,7 +316,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
         return false
       }
     },
-    [allChatItems, appDetail?.id, t],
+    [allChatItems, appDetail.id, t],
   )
 
   const fetchInitiated = useRef(false)
@@ -331,9 +324,9 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   // Only load initial messages, don't auto-load more
   useEffect(() => {
     if (
-      appDetail?.id &&
+      appDetail.id &&
       detail.id &&
-      appDetail?.mode !== AppModeEnum.COMPLETION &&
+      appDetail.mode !== AppModeEnum.COMPLETION &&
       !fetchInitiated.current
     ) {
       // Mark as initialized, but don't auto-load more messages
@@ -341,12 +334,12 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       // Still call fetchData to get initial messages
       fetchData()
     }
-  }, [appDetail?.id, detail.id, appDetail?.mode, fetchData])
+  }, [appDetail.id, detail.id, appDetail.mode, fetchData])
 
   const [isLoading, setIsLoading] = useState(false)
 
   const loadMoreMessages = useCallback(async () => {
-    if (isLoading || !hasMore || !appDetail?.id || !detail.id) return
+    if (isLoading || !hasMore || !appDetail.id || !detail.id) return
 
     // Throttle using ref to persist across re-renders
     const now = Date.now()
@@ -429,8 +422,8 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
     }
   }, [hasMore, isLoading, loadMoreMessages])
 
-  const isChatMode = appDetail?.mode !== AppModeEnum.COMPLETION
-  const isAdvanced = appDetail?.mode === AppModeEnum.ADVANCED_CHAT
+  const isChatMode = appDetail.mode !== AppModeEnum.COMPLETION
+  const isAdvanced = appDetail.mode === AppModeEnum.ADVANCED_CHAT
   const shouldShowPromptLogModal = showPromptLogModal && !!currentLogItem?.log
 
   const varList = getDetailVarList(detail, varValues)
@@ -532,7 +525,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
             <Chat
               config={
                 {
-                  appId: appDetail?.id,
+                  appId: appDetail.id,
                   text_to_speech: {
                     enabled: true,
                   },
@@ -574,7 +567,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
               <Chat
                 config={
                   {
-                    appId: appDetail?.id,
+                    appId: appDetail.id,
                     text_to_speech: {
                       enabled: true,
                     },
@@ -648,16 +641,23 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   )
 }
 
+type ConversationDetailProps = {
+  appDetail: App
+  conversationId?: string
+  onClose: () => void
+}
+
 /**
  * Text App Conversation Detail Component
  */
-const CompletionConversationDetailComp: FC<{ appId?: string; conversationId?: string }> = ({
-  appId,
+const CompletionConversationDetailComp: FC<ConversationDetailProps> = ({
+  appDetail,
   conversationId,
+  onClose,
 }) => {
   // Text Generator App Session Details Including Message List
   const { data: conversationDetail, refetch: conversationDetailMutate } =
-    useCompletionConversationDetail(appId, conversationId)
+    useCompletionConversationDetail(appDetail.id, conversationId)
   const { t } = useTranslation()
 
   const handleFeedback = async (
@@ -666,7 +666,7 @@ const CompletionConversationDetailComp: FC<{ appId?: string; conversationId?: st
   ): Promise<boolean> => {
     try {
       await updateLogMessageFeedbacks({
-        url: `/apps/${appId}/feedbacks`,
+        url: `/apps/${appDetail.id}/feedbacks`,
         body: { message_id: mid, rating, content: content ?? undefined },
       })
       conversationDetailMutate()
@@ -681,7 +681,7 @@ const CompletionConversationDetailComp: FC<{ appId?: string; conversationId?: st
   const handleAnnotation = async (mid: string, value: string): Promise<boolean> => {
     try {
       await updateLogMessageAnnotations({
-        url: `/apps/${appId}/annotations`,
+        url: `/apps/${appDetail.id}/annotations`,
         body: { message_id: mid, content: value },
       })
       conversationDetailMutate()
@@ -697,7 +697,9 @@ const CompletionConversationDetailComp: FC<{ appId?: string; conversationId?: st
 
   return (
     <DetailPanel
+      appDetail={appDetail}
       detail={conversationDetail}
+      onClose={onClose}
       onFeedback={handleFeedback}
       onSubmitAnnotation={handleAnnotation}
     />
@@ -707,11 +709,12 @@ const CompletionConversationDetailComp: FC<{ appId?: string; conversationId?: st
 /**
  * Chat App Conversation Detail Component
  */
-const ChatConversationDetailComp: FC<{ appId?: string; conversationId?: string }> = ({
-  appId,
+const ChatConversationDetailComp: FC<ConversationDetailProps> = ({
+  appDetail,
   conversationId,
+  onClose,
 }) => {
-  const { data: conversationDetail } = useChatConversationDetail(appId, conversationId)
+  const { data: conversationDetail } = useChatConversationDetail(appDetail.id, conversationId)
   const { t } = useTranslation()
 
   const handleFeedback = async (
@@ -720,7 +723,7 @@ const ChatConversationDetailComp: FC<{ appId?: string; conversationId?: string }
   ): Promise<boolean> => {
     try {
       await updateLogMessageFeedbacks({
-        url: `/apps/${appId}/feedbacks`,
+        url: `/apps/${appDetail.id}/feedbacks`,
         body: { message_id: mid, rating, content: content ?? undefined },
       })
       toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
@@ -734,7 +737,7 @@ const ChatConversationDetailComp: FC<{ appId?: string; conversationId?: string }
   const handleAnnotation = async (mid: string, value: string): Promise<boolean> => {
     try {
       await updateLogMessageAnnotations({
-        url: `/apps/${appId}/annotations`,
+        url: `/apps/${appDetail.id}/annotations`,
         body: { message_id: mid, content: value },
       })
       toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
@@ -749,7 +752,9 @@ const ChatConversationDetailComp: FC<{ appId?: string; conversationId?: string }
 
   return (
     <DetailPanel
+      appDetail={appDetail}
       detail={conversationDetail}
+      onClose={onClose}
       onFeedback={handleFeedback}
       onSubmitAnnotation={handleAnnotation}
     />
@@ -1054,24 +1059,19 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
           <DrawerViewport>
             <DrawerPopup className="bg-components-panel-bg p-0! data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-4 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-160 data-[swipe-direction=right]:rounded-xl">
               <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
-                <DrawerContext.Provider
-                  value={{
-                    onClose: onCloseDrawer,
-                    appDetail,
-                  }}
-                >
-                  {isChatMode ? (
-                    <ChatConversationDetailComp
-                      appId={appDetail.id}
-                      conversationId={currentConversation?.id}
-                    />
-                  ) : (
-                    <CompletionConversationDetailComp
-                      appId={appDetail.id}
-                      conversationId={currentConversation?.id}
-                    />
-                  )}
-                </DrawerContext.Provider>
+                {isChatMode ? (
+                  <ChatConversationDetailComp
+                    appDetail={appDetail}
+                    conversationId={currentConversation?.id}
+                    onClose={onCloseDrawer}
+                  />
+                ) : (
+                  <CompletionConversationDetailComp
+                    appDetail={appDetail}
+                    conversationId={currentConversation?.id}
+                    onClose={onCloseDrawer}
+                  />
+                )}
               </DrawerContent>
             </DrawerPopup>
           </DrawerViewport>

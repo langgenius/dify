@@ -152,10 +152,6 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
     # ------------------------------------------------------------------
     def _handle_graph_run_started(self, event: GraphRunStartedEvent | None = None) -> None:
         execution_id = self._get_execution_id()
-        # Every handoff creates a fresh layer instance. Continue the logical
-        # run's persisted node sequence instead of reusing indices from zero.
-        if event is not None and event.reason == WorkflowStartReason.RESUMPTION:
-            self._node_sequence = self._workflow_node_execution_repository.get_max_index(execution_id)
         workflow_execution = WorkflowExecution.new(
             id_=execution_id,
             workflow_id=self._workflow_info.workflow_id,
@@ -168,6 +164,10 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
 
         self._workflow_execution_repository.save(workflow_execution)
         self._workflow_execution = workflow_execution
+        if event is not None and event.reason == WorkflowStartReason.RESUMPTION:
+            node_executions = self._workflow_node_execution_repository.get_by_workflow_execution(execution_id)
+            self._node_execution_cache = {execution.id: execution for execution in node_executions}
+            self._node_sequence = max((execution.index for execution in node_executions), default=0)
 
     def _handle_graph_run_succeeded(self, event: GraphRunSucceededEvent) -> None:
         execution = self._get_workflow_execution()
