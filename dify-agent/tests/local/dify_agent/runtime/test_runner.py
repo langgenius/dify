@@ -63,7 +63,7 @@ from dify_agent.protocol.schemas import (
     RunLayerSpec,
     RunSucceededEvent,
 )
-from dify_agent.runtime.event_sink import InMemoryRunEventSink
+from dify_agent.runtime.event_sink import InMemoryRunEventSink, emit_run_cancelled
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
 from dify_agent.runtime.runner import (
     AgentRunRunner,
@@ -226,7 +226,12 @@ def test_cancelled_runner_does_not_overwrite_cancelled_status_with_late_failure(
             async def fail_after_cancel() -> RunSuccessOutcome:
                 nonlocal cancelled
                 cancelled = True
-                await sink.update_status("run-cancelled", "cancelled", "workflow stopped")
+                _ = await emit_run_cancelled(
+                    sink,
+                    run_id="run-cancelled",
+                    reason="workflow_aborted",
+                    message="workflow stopped",
+                )
                 raise RuntimeError("late model failure")
 
             monkeypatch.setattr(runner, "_run_agent", fail_after_cancel)
@@ -234,7 +239,7 @@ def test_cancelled_runner_does_not_overwrite_cancelled_status_with_late_failure(
 
         assert sink.statuses["run-cancelled"] == "cancelled"
         assert sink.errors["run-cancelled"] == "workflow stopped"
-        assert [event.type for event in sink.events["run-cancelled"]] == ["run_started"]
+        assert [event.type for event in sink.events["run-cancelled"]] == ["run_started", "run_cancelled"]
 
     asyncio.run(scenario())
 

@@ -42,8 +42,8 @@ export function VersionHistoryButton({ onClick }: VersionHistoryButtonProps) {
         render={
           <Button
             className={cn(
-              'rounded-lg border border-transparent p-2',
-              theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-xs',
+              'rounded-lg p-2 inset-ring-1 inset-ring-transparent',
+              theme === 'dark' && 'bg-white/10 inset-ring-black/5 backdrop-blur-xs',
             )}
             onClick={onClick}
           >

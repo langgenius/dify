@@ -122,7 +122,8 @@ class BaseAgentRunner(AppRunner):
         model_schema = llm_model.get_model_schema(model_instance.model_name, model_instance.credentials)
         features = model_schema.features if model_schema and model_schema.features else []
         self.stream_tool_call = ModelFeature.STREAM_TOOL_CALL in features
-        self.files = application_generate_entity.files if ModelFeature.VISION in features else []
+        self.vision_enabled = ModelFeature.VISION in features
+        self.files = application_generate_entity.files if self.vision_enabled else []
         self.query: str = ""
         self._current_thoughts: list[PromptMessage] = []
 

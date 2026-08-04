@@ -123,7 +123,7 @@ const Sidebar = ({ isPanel }: Props) => {
           className="w-full justify-center"
           onClick={handleNewConversation}
         >
-          <span aria-hidden className="mr-1 i-ri-edit-box-line size-4" />
+          <span aria-hidden className="i-ri-edit-box-line size-4" />
           {t(($) => $['chat.newChat'], { ns: 'share' })}
         </Button>
       </div>
