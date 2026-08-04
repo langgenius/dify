@@ -6,6 +6,7 @@
 - Added a workspace override for `ip-address` at `10.3.1`.
 - Regenerated `pnpm-lock.yaml` so the `@modelcontextprotocol/sdk` dependency paths resolve the patched releases.
 - Extended the CI workflow regression test to keep both security overrides and lockfile resolutions pinned.
+- Refreshed Dify's KnowledgeFS subtree contract pin after reviewing the dependency-only subtree change; exported OpenAPI and capability digests remained unchanged.
 
 ## Why
 
@@ -26,6 +27,7 @@ Both patched versions remain within the dependency ranges declared by `ajv` and 
 - `CI=1 pnpm build`: passed.
 - `CI=1 pnpm lint:backend`: passed.
 - `pnpm exec biome check package.json scripts/github-actions-workflow.test.mjs`: passed.
+- `uv run --project api python api/dev/generate_knowledge_fs_contract.py --check`: passed after the intentional subtree lock refresh.
 - `CI=1 pnpm lint`: remains blocked by 10 pre-existing repository-wide Admin formatting and oversized generated OpenAPI findings outside this dependency-only change.
 
 ## Risks and follow-up
