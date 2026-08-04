@@ -13,7 +13,13 @@ import {
   FileTreeLabel,
   FileTreeList,
 } from '@langgenius/dify-ui/file-tree'
-import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
+import {
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import { Fragment } from 'react'
 
 type AgentFileTreeFolderOpenStrategy = (context: { file: AgentFileNode; depth: number }) => boolean
@@ -133,8 +139,7 @@ export function AgentFileTree({
   selectedFileId,
   id,
   treeLabel,
-  label,
-  labelledBy,
+  treeLabelledBy,
   header,
   className,
   scrollAreaClassName,
@@ -153,8 +158,7 @@ export function AgentFileTree({
   selectedFileId?: string
   id?: string
   treeLabel?: string
-  label?: string
-  labelledBy?: string
+  treeLabelledBy?: string
   header?: ReactNode
   className?: string
   scrollAreaClassName?: string
@@ -174,35 +178,36 @@ export function AgentFileTree({
       {header}
       <ScrollArea
         className={cn('min-h-0 w-full max-w-full flex-1 overflow-hidden', scrollAreaClassName)}
-        label={label}
-        labelledBy={labelledBy}
-        slotClassNames={{
-          viewport: 'max-h-[inherit]',
-          content: 'w-full max-w-full min-w-0!',
-          scrollbar: 'hidden',
-        }}
       >
-        <FileTree
-          id={id}
+        <ScrollAreaViewport
           aria-label={treeLabel}
-          className={cn('w-full max-w-full min-w-0 p-0', rootClassName)}
+          aria-labelledby={treeLabelledBy}
+          className="max-h-[inherit]"
+          role={treeLabel || treeLabelledBy ? 'region' : undefined}
         >
-          <FileTreeList className={cn('w-full max-w-full min-w-0', listClassName)}>
-            <AgentFileTreeRows
-              files={files}
-              selectedFileId={selectedFileId}
-              depth={1}
-              folderOpenStrategy={folderOpenStrategy}
-              folderOpenState={folderOpenState}
-              onFolderOpenChange={onFolderOpenChange}
-              onFolderDoubleClick={onFolderDoubleClick}
-              onFolderOpen={onFolderOpen}
-              renderFile={renderFile}
-              renderFolderSuffix={renderFolderSuffix}
-              renderFolderPanel={renderFolderPanel}
-            />
-          </FileTreeList>
-        </FileTree>
+          <ScrollAreaContent style={{ minWidth: 0 }} className="w-full max-w-full">
+            <FileTree id={id} className={cn('w-full max-w-full min-w-0 p-0', rootClassName)}>
+              <FileTreeList className={cn('w-full max-w-full min-w-0', listClassName)}>
+                <AgentFileTreeRows
+                  files={files}
+                  selectedFileId={selectedFileId}
+                  depth={1}
+                  folderOpenStrategy={folderOpenStrategy}
+                  folderOpenState={folderOpenState}
+                  onFolderOpenChange={onFolderOpenChange}
+                  onFolderDoubleClick={onFolderDoubleClick}
+                  onFolderOpen={onFolderOpen}
+                  renderFile={renderFile}
+                  renderFolderSuffix={renderFolderSuffix}
+                  renderFolderPanel={renderFolderPanel}
+                />
+              </FileTreeList>
+            </FileTree>
+          </ScrollAreaContent>
+        </ScrollAreaViewport>
+        <ScrollAreaScrollbar className="hidden">
+          <ScrollAreaThumb />
+        </ScrollAreaScrollbar>
       </ScrollArea>
     </div>
   )

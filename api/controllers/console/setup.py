@@ -6,6 +6,7 @@ from sqlalchemy import select
 
 from configs import dify_config
 from controllers.fastopenapi import console_router
+from enums.deployment_edition import DeploymentEdition
 from libs.helper import EmailStr, extract_remote_ip
 from libs.password import valid_password
 from models.model import DifySetup, db
@@ -52,7 +53,7 @@ def get_setup_status_api() -> SetupStatusResponse:
 
     Only bootstrap-safe status information should be returned by this endpoint.
     """
-    if dify_config.EDITION == "SELF_HOSTED":
+    if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
         setup_status = get_setup_status()
         if setup_status and not isinstance(setup_status, bool):
             return SetupStatusResponse(step="finished", setup_at=setup_status.setup_at.isoformat())
@@ -102,7 +103,7 @@ def setup_system(payload: SetupRequestPayload) -> SetupResponse:
 
 
 def get_setup_status() -> DifySetup | bool | None:
-    if dify_config.EDITION == "SELF_HOSTED":
+    if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
         return db.session.scalar(select(DifySetup).limit(1))
 
     return True

@@ -29,7 +29,13 @@ const secondarySidebarHelpTriggerIcon = (
 
 function SecondarySidebarHelpMenu({ triggerClassName }: { triggerClassName?: string }) {
   return (
-    <HelpMenu triggerIcon={secondarySidebarHelpTriggerIcon} triggerClassName={triggerClassName} />
+    <HelpMenu
+      triggerIcon={secondarySidebarHelpTriggerIcon}
+      triggerClassName={cn(
+        'size-8 border-0 bg-transparent shadow-none hover:bg-state-base-hover hover:text-text-secondary',
+        triggerClassName,
+      )}
+    />
   )
 }
 
@@ -150,7 +156,7 @@ export function DetailSidebarFrame({
           className={cn(
             !bottomNavigationExpanded
               ? 'flex w-full shrink-0 flex-col items-center gap-0.5 rounded-lg px-2 pt-1 pb-3'
-              : 'flex w-60 items-center justify-between bg-components-panel-bg py-3 pr-1 pl-3',
+              : 'flex w-60 items-center justify-between bg-components-panel-bg p-3',
           )}
         >
           {!bottomNavigationExpanded ? (
@@ -163,9 +169,7 @@ export function DetailSidebarFrame({
               <div className="flex min-w-0 items-center gap-1 overflow-hidden">
                 <AccountSection />
               </div>
-              <div className="flex shrink-0 items-center justify-center rounded-full p-1">
-                <SecondarySidebarHelpMenu />
-              </div>
+              <SecondarySidebarHelpMenu />
             </>
           )}
         </div>

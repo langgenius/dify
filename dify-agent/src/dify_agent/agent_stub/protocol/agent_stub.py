@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from typing import ClassVar, Final, Literal
 from urllib.parse import urlsplit, urlunsplit
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, JsonValue, model_validator
 
 from dify_agent.agent_stub._constants import AGENT_STUB_DRIVE_BASE_ENV_VAR, DEFAULT_AGENT_STUB_DRIVE_BASE
 
@@ -246,10 +246,19 @@ class AgentStubFileMapping(BaseModel):
 
 
 class AgentStubFileDownloadRequest(BaseModel):
-    """Request body for one signed download URL allocation."""
+    """Request one file URL for a specific consumer audience.
+
+    ``for_frontend=True`` allocates a frontend-display URL that the CLI only
+    returns to its caller. ``False`` allocates a Sandbox byte-transfer URL that
+    the CLI immediately fetches. The deprecated HTTP input name
+    ``for_external`` remains accepted for one compatibility cycle.
+    """
 
     file: AgentStubFileMapping
-    for_external: bool = True
+    for_frontend: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("for_frontend", "for_external"),
+    )
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 

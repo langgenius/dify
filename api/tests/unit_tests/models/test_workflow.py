@@ -6,6 +6,7 @@ from uuid import uuid4
 from constants import HIDDEN_VALUE
 from core.helper import encrypter
 from core.workflow.file_reference import build_file_reference
+from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from factories.variable_factory import build_segment
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables import FloatVariable, IntegerVariable, SecretVariable, StringVariable
@@ -51,6 +52,32 @@ def test_environment_variables():
 
         # Get the environment_variables property and assert its value
         assert workflow.environment_variables == variables
+
+
+def test_llm_environment_variable_round_trip():
+    workflow = Workflow(
+        tenant_id="tenant_id",
+        app_id="app_id",
+        type="workflow",
+        version="draft",
+        graph="{}",
+        features="{}",
+        created_by="account_id",
+        environment_variables=[],
+        conversation_variables=[],
+    )
+    variable = LLMEnvironmentVariable(
+        name="for_research",
+        value={"provider": "langgenius/anthropic/anthropic", "name": "claude-sonnet", "mode": "chat"},
+        id=str(uuid4()),
+        selector=["env", "for_research"],
+    )
+
+    workflow.environment_variables = [variable]
+
+    assert workflow.environment_variables == [variable]
+    assert json.loads(workflow._environment_variables)["for_research"]["value_type"] == "llm"
+    assert workflow.to_dict()["environment_variables"][0]["value_type"] == "llm"
 
 
 def test_update_environment_variables():

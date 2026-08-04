@@ -39,7 +39,7 @@ export function AgentSetting({ isChatModel, payload, isFunctionCall, onCancel, o
         if (!open) onCancel()
       }}
     >
-      <DialogContent className="top-2 right-2 bottom-2 left-auto flex h-auto max-h-none w-[640px] max-w-[calc(100vw-1rem)] translate-x-0 translate-y-0 flex-col overflow-hidden rounded-xl p-0">
+      <DialogContent className="top-2 right-2 bottom-2 left-auto flex h-auto max-h-none w-160 max-w-[calc(100vw-1rem)] translate-x-0 translate-y-0 flex-col overflow-hidden rounded-xl p-0">
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-divider-regular pr-5 pl-6">
           <DialogTitle className="text-base leading-6 font-semibold text-text-primary">
             {t(($) => $['agent.setting.name'], { ns: 'appDebug' })}
@@ -51,7 +51,7 @@ export function AgentSetting({ isChatModel, payload, isFunctionCall, onCancel, o
         </div>
         {/* Body */}
         <div
-          className="grow overflow-y-auto border-b border-divider-regular p-6 pt-5 pb-[68px]"
+          className="grow overflow-y-auto border-b border-divider-regular p-6 pt-5 pb-17"
           style={{
             borderBottom: 'rgba(0, 0, 0, 0.05)',
           }}
@@ -63,7 +63,7 @@ export function AgentSetting({ isChatModel, payload, isFunctionCall, onCancel, o
             name={t(($) => $['agent.agentMode'], { ns: 'appDebug' })}
             description={t(($) => $['agent.agentModeDes'], { ns: 'appDebug' })}
           >
-            <div className="text-[13px] leading-[18px] font-medium text-text-primary">
+            <div className="text-[13px] leading-4.5 font-medium text-text-primary">
               {isFunctionCall
                 ? t(($) => $['agent.agentModeType.functionCall'], { ns: 'appDebug' })
                 : t(($) => $['agent.agentModeType.ReACT'], { ns: 'appDebug' })}
@@ -81,7 +81,7 @@ export function AgentSetting({ isChatModel, payload, isFunctionCall, onCancel, o
             <Fieldset className="flex items-center">
               <FieldsetLegend className="sr-only">{maximumIterationsLabel}</FieldsetLegend>
               <Slider
-                className="mr-3 w-[156px]"
+                className="mr-3 w-39"
                 min={maxIterationsMin}
                 max={MAX_ITERATIONS_NUM}
                 value={tempPayload.max_iteration}
@@ -121,11 +121,11 @@ export function AgentSetting({ isChatModel, payload, isFunctionCall, onCancel, o
               <div className="flex h-8 items-center px-4 text-sm/6 font-semibold text-text-secondary">
                 {t(($) => $.builtInPromptTitle, { ns: 'tools' })}
               </div>
-              <div className="h-[396px] overflow-y-auto px-4 text-sm leading-5 font-normal whitespace-pre-line text-text-secondary">
+              <div className="h-99 overflow-y-auto px-4 text-sm leading-5 font-normal whitespace-pre-line text-text-secondary">
                 {isChatModel ? DEFAULT_AGENT_PROMPT.chat : DEFAULT_AGENT_PROMPT.completion}
               </div>
               <div className="px-4">
-                <div className="inline-flex h-5 items-center rounded-md bg-components-input-bg-normal px-1 text-xs leading-[18px] font-medium text-text-tertiary">
+                <div className="inline-flex h-5 items-center rounded-md bg-components-input-bg-normal px-1 text-xs leading-4.5 font-medium text-text-tertiary">
                   {
                     (isChatModel ? DEFAULT_AGENT_PROMPT.chat : DEFAULT_AGENT_PROMPT.completion)
                       .length

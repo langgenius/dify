@@ -31,7 +31,7 @@ const PriorityLabel = ({ className }: PriorityLabelProps) => {
         render={
           <div
             className={cn(
-              'ml-1 inline-flex h-[18px] shrink-0 items-center rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-[5px] system-2xs-medium text-text-accent-secondary',
+              'ml-1 inline-flex h-4.5 shrink-0 items-center rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-1.25 system-2xs-medium text-text-accent-secondary',
               className,
             )}
           />

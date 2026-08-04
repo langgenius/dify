@@ -159,7 +159,7 @@ const AdvancedPromptInput: FC<Props> = ({
     >
       <div className="flex items-center pr-2">
         <RiErrorWarningFill className="mr-1 h-4 w-4 text-[#F79009]" />
-        <div className="text-[13px] leading-[18px] font-medium text-[#DC6803]">
+        <div className="text-[13px] leading-4.5 font-medium text-[#DC6803]">
           {t(($) => $['promptMode.contextMissing'], { ns: 'appDebug' })}
         </div>
       </div>
@@ -221,13 +221,13 @@ const AdvancedPromptInput: FC<Props> = ({
         )}
 
         <PromptEditorHeightResizeWrap
-          className="min-h-[102px] overflow-y-auto px-4 text-sm text-text-secondary"
+          className="min-h-25.5 overflow-y-auto px-4 text-sm text-text-secondary"
           height={editorHeight}
           minHeight={minHeight}
           onHeightChange={setEditorHeight}
           footer={
             <div className="flex pb-2 pl-4">
-              <div className="h-[18px] rounded-md bg-divider-regular px-1 text-xs leading-[18px] text-text-tertiary">
+              <div className="h-4.5 rounded-md bg-divider-regular px-1 text-xs leading-4.5 text-text-tertiary">
                 {value.length}
               </div>
             </div>
@@ -235,7 +235,7 @@ const AdvancedPromptInput: FC<Props> = ({
           hideResize={noResize}
         >
           <PromptEditor
-            className="min-h-[84px]"
+            className="min-h-21"
             value={value}
             contextBlock={{
               show: true,

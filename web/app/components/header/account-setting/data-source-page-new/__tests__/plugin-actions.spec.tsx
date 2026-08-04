@@ -26,6 +26,10 @@ vi.mock('@/app/components/plugins/readme-panel/store', () => ({
     }),
 }))
 
+vi.mock('@/service/use-plugins', () => ({
+  useVersionListOfPlugin: () => ({ data: { data: { versions: [] } } }),
+}))
+
 vi.mock('@/app/components/plugins/plugin-detail-panel/detail-header/hooks', () => ({
   useDetailHeaderState: () => ({
     modalStates: {
@@ -60,24 +64,6 @@ vi.mock('@/app/components/base/badge', () => ({
   default: ({ text }: { text: ReactNode }) => <div data-testid="badge">{text}</div>,
 }))
 
-vi.mock('@/app/components/plugins/update-plugin/plugin-version-picker', () => ({
-  __esModule: true,
-  default: ({ trigger }: { trigger: ReactNode }) => <div>{trigger}</div>,
-}))
-
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children, onClick }: { children: ReactNode; onClick?: () => void }) => (
-    <button type="button" onClick={onClick}>
-      {children}
-    </button>
-  ),
-}))
-
-vi.mock('@langgenius/dify-ui/tooltip', () => ({
-  Tooltip: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  TooltipTrigger: ({ render }: { render: ReactNode }) => <>{render}</>,
-  TooltipContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-}))
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: 'light' }),
 }))

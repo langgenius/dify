@@ -1,4 +1,5 @@
 import { DropdownMenuItem, DropdownMenuLinkItem } from '@langgenius/dify-ui/dropdown-menu'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { openZendeskWindow } from '@/app/components/base/zendesk/utils'
@@ -8,26 +9,30 @@ import {
   MenuItemContent,
 } from '@/app/components/header/account-dropdown/menu-item-content'
 import { mailToSupport } from '@/app/components/header/utils/util'
-import { IS_CLOUD_EDITION, SUPPORT_EMAIL_ADDRESS, ZENDESK_WIDGET_KEY } from '@/config'
+import { SUPPORT_EMAIL_ADDRESS, ZENDESK_WIDGET_KEY } from '@/config'
 import { userProfileAtom } from '@/context/account-state'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { langGeniusVersionInfoAtom } from '@/context/version-state'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 
-type SupportMenuProps = {
-  onContactUsClick?: () => void
-}
-
-export default function SupportMenu({ onContactUsClick }: SupportMenuProps) {
+export default function SupportMenu() {
   const { t } = useTranslation()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
   const { enableBilling, plan } = useProviderContext()
   const userProfile = useAtomValue(userProfileAtom)
   const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
   const { setShowPricingModal } = useModalContext()
   const hasDedicatedChannel = plan.type !== Plan.sandbox || Boolean(SUPPORT_EMAIL_ADDRESS.trim())
   const shouldShowUpgradeContact =
-    IS_CLOUD_EDITION && enableBilling && plan.type === Plan.sandbox && !hasDedicatedChannel
-  const hasZendeskWidget = Boolean(ZENDESK_WIDGET_KEY.trim())
+    deploymentEdition === 'CLOUD' &&
+    enableBilling &&
+    plan.type === Plan.sandbox &&
+    !hasDedicatedChannel
+  const hasZendeskWidget = deploymentEdition === 'CLOUD' && Boolean(ZENDESK_WIDGET_KEY.trim())
 
   return (
     <>
@@ -37,7 +42,6 @@ export default function SupportMenu({ onContactUsClick }: SupportMenuProps) {
           className="mx-0 h-8 gap-1 px-3 py-1"
           onClick={() => {
             setShowPricingModal()
-            onContactUsClick?.()
           }}
         >
           <MenuItemContent
@@ -62,8 +66,7 @@ export default function SupportMenu({ onContactUsClick }: SupportMenuProps) {
         <DropdownMenuItem
           className="mx-0 h-8 gap-1 px-3 py-1"
           onClick={() => {
-            openZendeskWindow()
-            onContactUsClick?.()
+            openZendeskWindow(deploymentEdition)
           }}
         >
           <MenuItemContent

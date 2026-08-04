@@ -46,7 +46,7 @@ from controllers.console.explore.error import (
     NotCompletionAppError,
     NotWorkflowAppError,
 )
-from controllers.console.explore.wraps import TrialAppResource, trial_feature_enable
+from controllers.console.explore.wraps import TrialAppResource
 from controllers.console.files import FILE_UPLOAD_PARAMS, upload_file_from_request
 from controllers.console.remote_files import RemoteFileUploadPayload, upload_remote_file_from_request
 from controllers.console.wraps import cloud_edition_billing_resource_check, with_current_user
@@ -59,6 +59,8 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
+from core.helper import encrypter
+from core.workflow.llm_environment_variable import LLMEnvironmentVariable, dump_environment_variable
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.base import ResponseModel
@@ -67,6 +69,7 @@ from fields.file_fields import FileResponse, FileWithSignedUrl
 from fields.message_fields import SuggestedQuestionsResponse
 from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
+from graphon.variables import SecretVariable, VariableBase
 from libs import helper
 from libs.helper import dump_response, to_timestamp, uuid_value
 from models import Account, App
@@ -385,6 +388,26 @@ class TrialWorkflowResponse(ResponseModel):
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
         return to_timestamp(value)
 
+    @field_validator("environment_variables", mode="before")
+    @classmethod
+    def _serialize_environment_variables(cls, value: Any) -> list[Any]:
+        if value is None:
+            return []
+
+        result: list[Any] = []
+        for item in value:
+            if isinstance(item, SecretVariable):
+                serialized = item.model_dump(mode="json")
+                serialized["value"] = encrypter.full_mask_token()
+                result.append(serialized)
+            elif isinstance(item, LLMEnvironmentVariable):
+                result.append(dump_environment_variable(item, mode="json"))
+            elif isinstance(item, VariableBase):
+                result.append(item.model_dump(mode="json"))
+            else:
+                result.append(item)
+        return result
+
 
 @dataclass(frozen=True)
 class TrialWorkflowResponseSource:
@@ -404,7 +427,7 @@ class TrialWorkflowResponseSource:
         return self.workflow.get_tool_published(session=self.session)
 
     def __getattr__(self, name: str) -> Any:
-        return getattr(self.workflow, name)  # noqa: no-new-getattr response adapter delegates model fields
+        return getattr(self.workflow, name)  # guard-ignore: no-new-getattr -- delegates model fields
 
 
 register_schema_models(
@@ -432,7 +455,6 @@ simple_account_model = console_ns.models[TrialSimpleAccount.__name__]
 
 
 class TrialAppFileUploadApi(TrialAppResource):
-    @trial_feature_enable
     @cloud_edition_billing_resource_check("documents")
     @console_ns.doc(consumes=["multipart/form-data"], params=FILE_UPLOAD_PARAMS)
     @console_ns.response(201, "File uploaded successfully", console_ns.models[FileResponse.__name__])
@@ -447,7 +469,6 @@ class TrialAppFileUploadApi(TrialAppResource):
 
 
 class TrialAppRemoteFileUploadApi(TrialAppResource):
-    @trial_feature_enable
     @cloud_edition_billing_resource_check("documents")
     @console_ns.expect(console_ns.models[RemoteFileUploadPayload.__name__])
     @console_ns.response(201, "File uploaded successfully", console_ns.models[FileWithSignedUrl.__name__])
@@ -462,7 +483,6 @@ class TrialAppRemoteFileUploadApi(TrialAppResource):
 
 
 class TrialAppWorkflowRunApi(TrialAppResource):
-    @trial_feature_enable
     @console_ns.expect(console_ns.models[WorkflowRunRequest.__name__])
     @console_ns.response(200, "Success")
     @with_current_user
@@ -513,7 +533,6 @@ class TrialAppWorkflowRunApi(TrialAppResource):
 
 class TrialAppWorkflowTaskStopApi(TrialAppResource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    @trial_feature_enable
     def post(self, trial_app, task_id: str):
         """
         Stop workflow task
@@ -538,7 +557,6 @@ class TrialAppWorkflowTaskStopApi(TrialAppResource):
 class TrialChatApi(TrialAppResource):
     @console_ns.expect(console_ns.models[ChatRequest.__name__])
     @console_ns.response(200, "Success")
-    @trial_feature_enable
     @with_current_user
     @with_session
     def post(self, session: Session, current_user: Account, trial_app):
@@ -640,7 +658,6 @@ class TrialMessageSuggestedQuestionApi(TrialAppResource):
 
 class TrialChatAudioApi(TrialAppResource):
     @console_ns.response(200, "Success", console_ns.models[AudioTranscriptResponse.__name__])
-    @trial_feature_enable
     @with_current_user
     def post(self, current_user: Account, trial_app):
         app_model = trial_app
@@ -691,7 +708,6 @@ class TrialChatAudioApi(TrialAppResource):
 class TrialChatTextApi(TrialAppResource):
     @console_ns.expect(console_ns.models[TextToSpeechRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[AudioBinaryResponse.__name__])
-    @trial_feature_enable
     @with_current_user
     def post(self, current_user: Account, trial_app):
         app_model = trial_app
@@ -752,7 +768,6 @@ class TrialChatTextApi(TrialAppResource):
 class TrialCompletionApi(TrialAppResource):
     @console_ns.expect(console_ns.models[CompletionRequest.__name__])
     @console_ns.response(200, "Success")
-    @trial_feature_enable
     @with_current_user
     @with_session
     def post(self, session: Session, current_user: Account, trial_app):

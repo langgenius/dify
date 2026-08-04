@@ -19,6 +19,7 @@ from models.dataset import (
     ExternalKnowledgeApis,
     ExternalKnowledgeBindings,
 )
+from services.enterprise import rbac_service as enterprise_rbac_service
 from services.entities.external_knowledge_entities.external_knowledge_entities import (
     Authorization,
     ExternalKnowledgeApiSetting,
@@ -93,8 +94,20 @@ class ExternalDatasetService:
                 raise ValueError(f"invalid endpoint: {endpoint} must start with http:// or https://")
             else:
                 raise ValueError(f"invalid endpoint: {endpoint}")
+        # Send a minimal body shaped like the External Knowledge API retrieval contract so providers
+        # that require a JSON payload (e.g. RAGFlow) accept the validation probe instead of rejecting
+        # a body-less POST. Mirrors the request built in fetch_external_knowledge_retrieval.
+        validation_payload = {
+            "knowledge_id": "",
+            "query": "",
+            "retrieval_setting": {"top_k": 1, "score_threshold": 0.0},
+        }
         try:
-            response = ssrf_proxy.post(endpoint, headers={"Authorization": f"Bearer {api_key}"})
+            response = ssrf_proxy.post(
+                endpoint,
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                data=json.dumps(validation_payload),
+            )
         except Exception as e:
             raise ValueError(f"failed to connect to the endpoint: {endpoint}") from e
         if response.status_code == 502:
@@ -102,7 +115,7 @@ class ExternalDatasetService:
         if response.status_code == 404:
             raise ValueError(f"Not Found: failed to connect to the endpoint: {endpoint}")
         if response.status_code == 403:
-            raise ValueError(f"Forbidden: Authorization failed with api_key: {api_key}")
+            raise ValueError("Forbidden: Authorization failed with the provided api_key")
 
     @staticmethod
     def get_external_knowledge_api(
@@ -319,6 +332,12 @@ class ExternalDatasetService:
         session.add(external_knowledge_binding)
 
         session.commit()
+        enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
+            tenant_id,
+            user_id,
+            enterprise_rbac_service.RBACResourceType.DATASET,
+            dataset.id,
+        )
 
         return dataset
 

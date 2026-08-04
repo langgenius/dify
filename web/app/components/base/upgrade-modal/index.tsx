@@ -42,7 +42,7 @@ export function UpgradeModal({
       <DialogContent
         className={cn(
           styles.surface,
-          'w-[580px] max-w-[480px] overflow-hidden rounded-2xl p-0',
+          'w-145 max-w-120 overflow-hidden rounded-2xl p-0',
           classNames?.content,
         )}
       >

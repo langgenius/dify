@@ -1,8 +1,13 @@
+'use client'
+
 import type { ReactNode } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import FirstEmptyActionCard from '@/app/components/apps/first-empty-state/action-card'
-import { Infotip } from '@/app/components/base/infotip'
+import CornerLabel from '@/app/components/base/corner-label'
 import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skeleton'
+import Link from '@/next/link'
+import { newKnowledgeCreatePathWithStartMode } from '../routes'
 
 const LOADING_CARD_IDS = [
   'loading-card-1',
@@ -20,22 +25,6 @@ const EMPTY_GHOST_CARD_IDS = Array.from({ length: 16 }, (_, index) => `empty-gho
 export const KNOWLEDGE_SPACE_GRID_CLASS_NAME =
   'grid grid-cols-[repeat(auto-fill,minmax(min(100%,280px),1fr))] gap-2.5'
 
-export function UnavailableReason({ label, reason }: { label: string; reason: string }) {
-  return (
-    <Infotip
-      aria-label={label}
-      iconVariant="information"
-      iconSize="large"
-      placement="bottom"
-      sideOffset={6}
-      className="size-6 rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
-      popupClassName="max-w-[260px] bg-components-tooltip-bg shadow-lg"
-    >
-      {reason}
-    </Infotip>
-  )
-}
-
 export function NewKnowledgeLoadingState() {
   const { t } = useTranslation('common')
 
@@ -44,7 +33,7 @@ export function NewKnowledgeLoadingState() {
       {LOADING_CARD_IDS.map((id) => (
         <div
           key={id}
-          className="h-[166px] rounded-xl border border-components-card-border bg-components-card-bg p-4 shadow-xs"
+          className="h-41.5 rounded-xl border border-components-card-border bg-components-card-bg p-4 shadow-xs"
         >
           <SkeletonContainer className="h-full">
             <div className="flex gap-3">
@@ -73,12 +62,12 @@ export function NewKnowledgePageState({
   title: ReactNode
 }) {
   return (
-    <div className="flex min-h-[420px] flex-col items-center justify-center px-6 text-center">
+    <div className="flex min-h-105 flex-col items-center justify-center px-6 text-center">
       <div className="mb-5 flex size-12 items-center justify-center rounded-xl border border-components-card-border bg-components-card-bg shadow-xs">
         <span aria-hidden className="i-ri-book-open-line size-6 text-text-tertiary" />
       </div>
       <h2 className="title-2xl-semi-bold text-text-primary">{title}</h2>
-      <p className="mt-2 max-w-[520px] body-md-regular text-text-tertiary">{description}</p>
+      <p className="mt-2 max-w-130 body-md-regular text-text-tertiary">{description}</p>
       {action ? <div className="mt-6">{action}</div> : null}
     </div>
   )
@@ -86,11 +75,13 @@ export function NewKnowledgePageState({
 
 function EmptyAction({
   description,
+  href,
   iconClassName,
   recommended = false,
   title,
 }: {
   description: string
+  href?: string
   iconClassName: string
   recommended?: boolean
   title: string
@@ -98,18 +89,88 @@ function EmptyAction({
   const { t } = useTranslation('dataset')
   const unavailable = t(($) => $['cornerLabel.unavailable'])
   const recommendedLabel = t(($) => $['firstEmpty.recommended'])
+  const descriptionId = useId()
+  const unavailableId = useId()
+  const recommendedId = useId()
 
   return (
-    <FirstEmptyActionCard
-      disabled
-      disabledReason={unavailable}
-      badge={recommended ? recommendedLabel : undefined}
-      className="min-h-[58px] py-2 backdrop-blur-[6px]"
-      description={description}
-      icon={<span aria-hidden className={`${iconClassName} size-4 text-text-disabled`} />}
-      title={title}
-      visualStyle="list"
-    />
+    <ButtonOrLink
+      href={href}
+      aria-label={title}
+      aria-describedby={`${descriptionId}${href ? '' : ` ${unavailableId}`}${recommended ? ` ${recommendedId}` : ''}`}
+      className="relative flex min-h-14.5 w-full items-center overflow-hidden rounded-xl bg-components-button-secondary-bg px-3 py-2 text-left text-text-secondary outline-hidden backdrop-blur-[6px] hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-components-button-secondary-bg"
+    >
+      <span className="mr-3 flex size-9 shrink-0 items-center justify-center rounded-lg bg-background-default-subtle">
+        <span
+          aria-hidden
+          className={cn(
+            iconClassName,
+            'size-4',
+            href ? 'text-text-tertiary' : 'text-text-disabled',
+          )}
+        />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span
+          className={cn(
+            'block system-md-medium',
+            href ? 'text-text-secondary' : 'text-text-disabled',
+          )}
+        >
+          {title}
+        </span>
+        <span
+          id={descriptionId}
+          className={cn(
+            'mt-0.5 block system-xs-regular',
+            href ? 'text-text-tertiary' : 'text-text-disabled',
+          )}
+        >
+          {description}
+        </span>
+      </span>
+      {!href && (
+        <span id={unavailableId} className="ml-3 shrink-0 system-xs-medium text-text-disabled">
+          {unavailable}
+        </span>
+      )}
+      {recommended && (
+        <div id={recommendedId}>
+          <CornerLabel
+            label={recommendedLabel}
+            className="absolute top-0 right-0 z-5"
+            cornerClassName="text-util-colors-indigo-indigo-100"
+            labelClassName="-ml-px rounded-tr-xl bg-util-colors-indigo-indigo-100 pr-2"
+            textClassName="text-util-colors-indigo-indigo-700"
+          />
+        </div>
+      )}
+    </ButtonOrLink>
+  )
+}
+
+function ButtonOrLink({
+  children,
+  href,
+  ...props
+}: {
+  'aria-describedby': string
+  'aria-label': string
+  children: ReactNode
+  className: string
+  href?: string
+}) {
+  if (href)
+    return (
+      <Link href={href} {...props}>
+        {children}
+      </Link>
+    )
+
+  return (
+    <button type="button" disabled {...props}>
+      {children}
+    </button>
   )
 }
 
@@ -117,13 +178,13 @@ function EmptyGhostGrid() {
   return (
     <div
       aria-hidden
-      className="pointer-events-none absolute inset-0 z-0 overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,black_22%,black_68%,transparent)] [-webkit-mask-image:linear-gradient(to_bottom,transparent,black_22%,black_68%,transparent)]"
+      className="pointer-events-none absolute inset-0 z-0 overflow-hidden mask-[linear-gradient(to_bottom,transparent,black_22%,black_68%,transparent)] [-webkit-mask-image:linear-gradient(to_bottom,transparent,black_22%,black_68%,transparent)]"
     >
-      <div className="absolute top-0 left-1/2 grid w-[1200px] -translate-x-1/2 grid-cols-4 gap-2.5 opacity-35">
+      <div className="absolute top-0 left-1/2 grid w-300 -translate-x-1/2 grid-cols-4 gap-2.5 opacity-35">
         {EMPTY_GHOST_CARD_IDS.map((id) => (
           <div
             key={id}
-            className="h-[209px] rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg p-4 shadow-xs"
+            className="h-52.25 rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg p-4 shadow-xs"
           >
             <div className="flex items-center gap-3">
               <div className="size-10 shrink-0 rounded-[10px] bg-background-section" />
@@ -150,12 +211,12 @@ export function NewKnowledgeEmptyState({
   canCreate: boolean
 }) {
   const { t } = useTranslation('dataset')
-  const canStart = canConnect || canCreate
+  const canStart = canCreate
 
   return (
     <div className="relative isolate flex min-h-[calc(100vh-134px)] items-center justify-center overflow-hidden px-4 py-16 text-center sm:px-6">
       <EmptyGhostGrid />
-      <div className="relative z-10 flex w-full max-w-[520px] flex-col items-center gap-6">
+      <div className="relative z-10 flex w-full max-w-130 flex-col items-center gap-6">
         <div className="flex flex-col items-center gap-3">
           <div className="flex size-14 items-center justify-center rounded-xl border border-dashed border-divider-regular bg-components-card-bg p-1 backdrop-blur-[6px]">
             <span aria-hidden className="i-ri-book-open-line size-6 text-text-accent" />
@@ -197,6 +258,7 @@ export function NewKnowledgeEmptyState({
                   iconClassName="i-ri-folder-6-line"
                   title={t(($) => $['newKnowledge.startEmpty'])}
                   description={t(($) => $['newKnowledge.startEmptyDescription'])}
+                  href={newKnowledgeCreatePathWithStartMode('empty')}
                 />
               </>
             )}

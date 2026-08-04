@@ -12,20 +12,10 @@ from dify_agent.adapters.shell.protocols import (
     ShellFileTransferProtocol,
     ShellPromptObservation,
     ShellProviderError,
-    ShellProviderProtocol,
-    ShellResourceProtocol,
 )
 
 
 def __getattr__(name: str) -> object:
-    if name == "ShellAdapterSettings":
-        from dify_agent.adapters.shell.config import ShellAdapterSettings
-
-        return ShellAdapterSettings
-    if name == "create_shell_provider":
-        from dify_agent.adapters.shell.factory import create_shell_provider
-
-        return create_shell_provider
     if name == "shellctl":
         from importlib import import_module
 
@@ -35,14 +25,10 @@ def __getattr__(name: str) -> object:
 
 __all__ = [
     "CompleteShellCommandResult",
-    "ShellAdapterSettings",
     "ShellCommandProtocol",
     "ShellCommandResult",
     "ShellCommandStatus",
     "ShellFileTransferProtocol",
     "ShellPromptObservation",
     "ShellProviderError",
-    "ShellProviderProtocol",
-    "ShellResourceProtocol",
-    "create_shell_provider",
 ]

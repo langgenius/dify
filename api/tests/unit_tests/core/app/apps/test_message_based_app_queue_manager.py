@@ -6,7 +6,12 @@ from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.entities.queue_entities import QueueErrorEvent, QueueMessageEndEvent, QueueStopEvent
+from core.app.entities.queue_entities import (
+    QueueErrorEvent,
+    QueueMessageEndEvent,
+    QueueStopEvent,
+    QueueWorkflowPausedEvent,
+)
 
 
 class TestMessageBasedAppQueueManager:
@@ -63,3 +68,21 @@ class TestMessageBasedAppQueueManager:
         manager._publish(QueueMessageEndEvent(), PublishFrom.TASK_PIPELINE)
 
         assert manager._q.qsize() == 1
+
+    def test_publish_pause_event_stops_listener_without_aborting_execution(self):
+        with patch("core.app.apps.base_app_queue_manager.redis_client") as mock_redis:
+            mock_redis.setex.return_value = True
+            manager = MessageBasedAppQueueManager(
+                task_id="t1",
+                user_id="u1",
+                invoke_from=InvokeFrom.DEBUGGER,
+                conversation_id="c1",
+                app_mode="advanced-chat",
+                message_id="m1",
+            )
+        manager.stop_listen = Mock()
+        manager._is_stopped = Mock(return_value=False)
+
+        manager._publish(QueueWorkflowPausedEvent(), PublishFrom.APPLICATION_MANAGER)
+
+        manager.stop_listen.assert_called_once_with(execution_terminal=True)

@@ -67,34 +67,29 @@ const WorkflowToolConfigureButton = ({
             )}
           </div>
           {disabledReason && (
-            <div className="mt-1 px-2.5 pb-2 text-xs leading-[18px] text-text-tertiary">
+            <div className="mt-1 px-2.5 pb-2 text-xs leading-4.5 text-text-tertiary">
               {disabledReason}
             </div>
           )}
           {published && (
             <div className="border-t-[0.5px] border-divider-regular px-2.5 py-2">
               <div className="flex justify-between gap-x-2">
-                <Button
-                  size="small"
-                  className="w-[140px]"
-                  onClick={onConfigure}
-                  disabled={disabled}
-                >
+                <Button size="small" className="w-35" onClick={onConfigure} disabled={disabled}>
                   {t(($) => $['common.configure'], { ns: 'workflow' })}
-                  {outdated && <StatusDot className="ml-1" status="warning" />}
+                  {outdated && <StatusDot status="warning" />}
                 </Button>
                 <Button
                   size="small"
-                  className="w-[140px]"
+                  className="w-35"
                   onClick={() => router.push(buildIntegrationPath('workflow-tool'))}
                   disabled={disabled}
                 >
                   {t(($) => $['common.manageInTools'], { ns: 'workflow' })}
-                  <span className="ml-1 i-ri-arrow-right-up-line size-4" />
+                  <span className="i-ri-arrow-right-up-line size-4" />
                 </Button>
               </div>
               {outdated && (
-                <div className="mt-1 text-xs leading-[18px] text-text-warning">
+                <div className="mt-1 text-xs leading-4.5 text-text-warning">
                   {t(($) => $['common.workflowAsToolTip'], { ns: 'workflow' })}
                 </div>
               )}

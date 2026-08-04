@@ -6,15 +6,14 @@ import { Input as BaseInput } from '@base-ui/react/input'
 import { cn } from '../cn'
 import { textControlVariants } from '../form-control-shared'
 
-export type InputSize = NonNullable<VariantProps<typeof textControlVariants>['size']>
-
-export type InputProps = Omit<BaseInputNS.Props, 'className' | 'size'> &
+type InputProps = Omit<BaseInputNS.Props, 'className' | 'size'> &
   VariantProps<typeof textControlVariants> & {
     className?: string
   }
 
-export type InputChangeEventDetails = BaseInputNS.ChangeEventDetails
-
-export function Input({ className, size = 'medium', ...props }: InputProps) {
+function Input({ className, size = 'medium', ...props }: InputProps) {
   return <BaseInput className={cn(textControlVariants({ size }), className)} {...props} />
 }
+
+export { Input }
+export type { InputProps }

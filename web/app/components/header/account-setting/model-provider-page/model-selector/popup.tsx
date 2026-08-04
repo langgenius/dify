@@ -10,20 +10,18 @@ import {
 } from '@langgenius/dify-ui/preview-card'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
+import { useQueryState } from 'nuqs'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  ACCOUNT_SETTING_MODAL_ACTION,
-  ACCOUNT_SETTING_TAB,
-} from '@/app/components/header/account-setting/constants'
-import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
-import { IS_CLOUD_EDITION } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { useInstallPackageFromMarketPlace } from '@/service/use-plugins'
 import {
@@ -64,7 +62,6 @@ export type PopupProps = {
   modelList: Model[]
   scopeFeatures?: ModelFeatureEnum[]
   hideProviderSettingsFooter?: boolean
-  providerSettingsSource?: 'agent'
   modelPredicate?: ModelSelectorModelPredicate
   modelSuggestionPredicate?: ModelSelectorModelPredicate
   onConfigureEmptyState?: () => void
@@ -78,7 +75,6 @@ function Popup({
   modelList,
   scopeFeatures = [],
   hideProviderSettingsFooter,
-  providerSettingsSource,
   modelPredicate,
   modelSuggestionPredicate,
   onConfigureEmptyState,
@@ -87,20 +83,23 @@ function Popup({
   onHide,
 }: PopupProps) {
   const { t } = useTranslation()
-  const searchParams = useSearchParams()
+  const [settingsDestination, setSettingsDestination] = useQueryState(
+    settingsQueryParamName,
+    settingsQueryParser,
+  )
   const { theme } = useTheme()
   const language = useLanguage()
-  const previewCardHandle = useMemo(
-    () => createPreviewCardHandle<ModelSelectorPreviewPayload>(),
-    [],
-  )
+  const [previewCardHandle] = useState(() => createPreviewCardHandle<ModelSelectorPreviewPayload>())
   const [marketplaceCollapsed, setMarketplaceCollapsed] = useState(false)
   const [showIncompatibleModels, setShowIncompatibleModels] = useState(false)
-  const openIntegrationsSetting = useIntegrationsSetting()
   const { modelProviders } = useProviderContext()
   const { data: enableMarketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: (systemFeatures) => systemFeatures.enable_marketplace,
+  })
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
   })
   const { plugins: allPlugins, isLoading: isMarketplacePluginsLoading } = useMarketplaceAllPlugins(
     modelProviders,
@@ -116,7 +115,7 @@ function Popup({
   const { isExhausted: isCreditsExhausted } = useTrialCredits()
   const { data: trialModels = [] } = useQuery(
     consoleQuery.trialModels.get.queryOptions({
-      enabled: IS_CLOUD_EDITION,
+      enabled: deploymentEdition === 'CLOUD',
       select: (data) => data.trial_models,
     }),
   )
@@ -129,18 +128,20 @@ function Popup({
 
     return new Set(
       modelProviders
-        .filter((provider) => providerSupportsCredits(provider, trialModels))
+        .filter((provider) => providerSupportsCredits(provider, trialModels, deploymentEdition))
         .map((provider) => provider.provider),
     )
-  }, [enableMarketplace, isCreditsExhausted, modelProviders, trialModels])
+  }, [deploymentEdition, enableMarketplace, isCreditsExhausted, modelProviders, trialModels])
   const showCreditsExhaustedAlert =
     enableMarketplace &&
     isCreditsExhausted &&
-    modelProviders.some((provider) => providerSupportsCredits(provider, trialModels))
+    modelProviders.some((provider) =>
+      providerSupportsCredits(provider, trialModels, deploymentEdition),
+    )
   const hasApiKeyFallback = modelProviders.some((provider) => {
     const isApiKeyActive =
       provider.custom_configuration?.status === CustomConfigurationStatusEnum.active
-    return isApiKeyActive && providerSupportsCredits(provider, trialModels)
+    return isApiKeyActive && providerSupportsCredits(provider, trialModels, deploymentEdition)
   })
 
   const handleInstallPlugin = useCallback(
@@ -250,25 +251,22 @@ function Popup({
 
   const handleOpenSettings = useCallback(() => {
     onHide()
-    openIntegrationsSetting({
-      payload: ACCOUNT_SETTING_TAB.PROVIDER,
-      source: providerSettingsSource,
-    })
-  }, [onHide, openIntegrationsSetting, providerSettingsSource])
+    setSettingsDestination('provider')
+  }, [onHide, setSettingsDestination])
   const handleClosePreviewCard = useCallback(() => {
     previewCardHandle.close()
   }, [previewCardHandle])
-  const isProviderSettingsCurrentPage =
-    searchParams?.get('action') === ACCOUNT_SETTING_MODAL_ACTION &&
-    searchParams?.get('tab') === ACCOUNT_SETTING_TAB.PROVIDER
+  const isProviderSettingsCurrentPage = settingsDestination === 'provider'
   const handleConfigureEmptyState =
     onConfigureEmptyState ?? (isProviderSettingsCurrentPage ? onHide : handleOpenSettings)
 
   return (
     <ModelSelectorPopupFrame>
       <ModelSelectorSearchHeader inputValue={inputValue} onInputValueChange={onInputValueChange} />
-      {showCreditsExhaustedAlert && <CreditsExhaustedAlert hasApiKeyFallback={hasApiKeyFallback} />}
       <ModelSelectorScrollBody label={t(($) => $['modelProvider.models'], { ns: 'common' })}>
+        {showCreditsExhaustedAlert && (
+          <CreditsExhaustedAlert hasApiKeyFallback={hasApiKeyFallback} />
+        )}
         <ComboboxList className="max-h-none overflow-visible p-0">
           <div className="pb-1">
             {filteredModelList.map((model) => (
@@ -324,7 +322,7 @@ function Popup({
           <ModelSelectorPreviewCard
             capabilitiesLabel={t(($) => $['model.capabilities'], { ns: 'common' })}
             language={language}
-            payload={payload as ModelSelectorPreviewPayload | undefined}
+            payload={payload}
           />
         )}
       </PreviewCard>

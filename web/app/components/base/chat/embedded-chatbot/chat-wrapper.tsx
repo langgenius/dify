@@ -6,6 +6,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { trackEvent } from '@/app/components/base/amplitude'
 import AnswerIcon from '@/app/components/base/answer-icon'
 import AppIcon from '@/app/components/base/app-icon'
 import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested-questions'
@@ -48,7 +49,7 @@ const ChatWrapper = () => {
     disableFeedback,
     handleFeedback,
     currentChatInstanceRef,
-    themeBuilder,
+    theme,
     clearChatList,
     setClearChatList,
     setIsResponding,
@@ -87,6 +88,7 @@ const ChatWrapper = () => {
     handleSend,
     handleStop,
     handleSwitchSibling,
+    prepareHumanInputSubmission,
     isResponding: respondingState,
     suggestedQuestions,
   } = useChat(
@@ -207,6 +209,8 @@ const ChatWrapper = () => {
         onConversationComplete: currentConversationId ? undefined : handleNewConversationCompleted,
         isPublicAPI: appSourceType === AppSourceType.webApp,
       })
+      if (appSourceType === AppSourceType.webApp && appData?.mode)
+        trackEvent('webapp_run', { app_mode: appData.mode })
     },
     [
       currentConversationId,
@@ -217,6 +221,7 @@ const ChatWrapper = () => {
       appSourceType,
       appId,
       handleNewConversationCompleted,
+      appData?.mode,
     ],
   )
 
@@ -287,12 +292,12 @@ const ChatWrapper = () => {
     if (!description || currentConversationId || hasSent) return null
     return (
       <div className={cn('flex flex-col items-center px-4 pt-6', isMobile && 'pt-4')}>
-        <div className="w-full max-w-[672px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-md">
+        <div className="w-full max-w-2xl rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-md">
           <div className={cn('p-6', isMobile && 'p-4')}>
             <div
               ref={descRef}
               className={cn(
-                'relative system-xs-regular break-words whitespace-pre-wrap text-text-tertiary',
+                'relative system-xs-regular wrap-break-word whitespace-pre-wrap text-text-tertiary',
                 !descExpanded && 'line-clamp-3',
                 descExpanded && 'max-h-32 overflow-y-auto',
               )}
@@ -340,10 +345,12 @@ const ChatWrapper = () => {
 
   const handleSubmitHumanInputForm = useCallback(
     async (formToken: string, formData: HumanInputFormSubmitData) => {
+      if (!(await prepareHumanInputSubmission())) return
+
       if (isInstalledApp) await submitHumanInputFormService(formToken, formData)
       else await submitHumanInputForm(formToken, formData)
     },
-    [isInstalledApp],
+    [isInstalledApp, prepareHumanInputSubmission],
   )
 
   const welcome = useMemo(() => {
@@ -361,7 +368,7 @@ const ChatWrapper = () => {
             isMobile ? 'min-h-[30vh] py-0' : 'h-[50vh]',
           )}
         >
-          <div className="flex max-w-[720px] grow gap-4">
+          <div className="flex max-w-180 grow gap-4">
             <AppIcon
               size="xl"
               iconType={appData?.site.icon_type}
@@ -391,7 +398,7 @@ const ChatWrapper = () => {
           background={appData?.site.icon_background}
           imageUrl={appData?.site.icon_url}
         />
-        <div className="max-w-[768px] px-4">
+        <div className="max-w-3xl px-4">
           <Markdown
             className="body-2xl-regular! text-text-tertiary!"
             content={welcomeMessage.content}
@@ -460,7 +467,7 @@ const ChatWrapper = () => {
       suggestedQuestions={suggestedQuestions}
       answerIcon={answerIcon}
       hideProcessDetail
-      themeBuilder={themeBuilder}
+      theme={theme}
       switchSibling={doSwitchSibling}
       inputDisabled={inputDisabled}
       sendOnEnter={sendOnEnter}

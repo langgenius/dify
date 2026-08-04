@@ -3,13 +3,19 @@ import type { HumanInputFieldValue } from '../../chat/answer/human-input-content
 import type { ChatConfig, ChatItem, ChatItemInTree } from '../../types'
 import type { EmbeddedChatbotContextValue } from '../context'
 import type { ConversationItem } from '@/models/share'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { InputVarType } from '@/app/components/workflow/types'
 import { AppSourceType, fetchSuggestedQuestions, submitHumanInputForm } from '@/service/share'
 import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
 import { useChat } from '../../chat/hooks'
 import ChatWrapper from '../chat-wrapper'
 import { useEmbeddedChatbotContext } from '../context'
+
+const mockTrackEvent = vi.hoisted(() => vi.fn())
+
+vi.mock('@/app/components/base/amplitude', () => ({
+  trackEvent: mockTrackEvent,
+}))
 
 vi.mock('../context', () => ({
   useEmbeddedChatbotContext: vi.fn(),
@@ -132,6 +138,7 @@ const createContextValue = (
   appMeta: { tool_icons: {} },
   appData: {
     app_id: 'app-1',
+    mode: 'chat',
     can_replace_logo: true,
     custom_config: {
       remove_webapp_brand: false,
@@ -183,7 +190,7 @@ const createContextValue = (
   disableFeedback: false,
   handleFeedback: vi.fn(),
   currentChatInstanceRef: { current: { handleStop: vi.fn() } },
-  themeBuilder: undefined,
+  theme: undefined,
   clearChatList: false,
   setClearChatList: vi.fn(),
   isResponding: false,
@@ -203,6 +210,7 @@ const createUseChatReturn = (overrides: Partial<UseChatReturn> = {}): UseChatRet
   setIsResponding: vi.fn() as UseChatReturn['setIsResponding'],
   handleStop: vi.fn(),
   handleSwitchSibling: vi.fn(),
+  prepareHumanInputSubmission: vi.fn().mockResolvedValue(true),
   isResponding: false,
   suggestedQuestions: [],
   handleRestart: vi.fn(),
@@ -450,6 +458,18 @@ describe('EmbeddedChatbot chat-wrapper', () => {
 
   describe('Human input submit behavior', () => {
     it('should submit via installed app service when the app is installed', async () => {
+      let resolveWorkflowEventsReady: (isReady: boolean) => void = () => {}
+      const prepareHumanInputSubmission = vi.fn(
+        () =>
+          new Promise<boolean>((resolve) => {
+            resolveWorkflowEventsReady = resolve
+          }),
+      )
+      vi.mocked(useChat).mockReturnValue(
+        createUseChatReturn({
+          prepareHumanInputSubmission,
+        }),
+      )
       vi.mocked(useEmbeddedChatbotContext).mockReturnValue(
         createContextValue({
           isInstalledApp: true,
@@ -459,6 +479,12 @@ describe('EmbeddedChatbot chat-wrapper', () => {
       render(<ChatWrapper />)
       fireEvent.click(screen.getByRole('button', { name: 'submit human input' }))
 
+      expect(prepareHumanInputSubmission).toHaveBeenCalledOnce()
+      expect(submitHumanInputFormService).not.toHaveBeenCalled()
+
+      await act(async () => {
+        resolveWorkflowEventsReady(true)
+      })
       await waitFor(() => {
         expect(submitHumanInputFormService).toHaveBeenCalledWith('form-token', {
           inputs: { answer: 'ok' },
@@ -533,6 +559,7 @@ describe('EmbeddedChatbot chat-wrapper', () => {
       expect(fetchSuggestedQuestions).toHaveBeenCalledWith('resp-2', AppSourceType.tryApp, 'app-1')
       expect(handleStop).toHaveBeenCalled()
       expect(screen.queryByRole('img', { name: 'Alice' })).not.toBeInTheDocument()
+      expect(mockTrackEvent).not.toHaveBeenCalled()
 
       cleanup()
       vi.mocked(useEmbeddedChatbotContext).mockReturnValue(
@@ -739,6 +766,9 @@ describe('EmbeddedChatbot chat-wrapper', () => {
       fireEvent.click(screen.getByRole('button', { name: 'send through chat' }))
 
       expect(handleSend).toHaveBeenCalled()
+      expect(mockTrackEvent).toHaveBeenCalledWith('webapp_run', {
+        app_mode: 'chat',
+      })
       const options = handleSend.mock.calls[0]?.[2] as {
         onConversationComplete?: (id: string) => void
       }

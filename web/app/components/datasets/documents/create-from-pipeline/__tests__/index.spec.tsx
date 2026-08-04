@@ -1,14 +1,25 @@
 import { waitFor } from '@testing-library/react'
-import { render } from '@/test/console/render'
+import { consoleQuery } from '@/service/client'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import CreateFromPipeline from '../index'
 
-let mockDatasetPermissionKeys = ['dataset.acl.use']
-const mockRouterReplace = vi.fn()
 const mockPlan = {
   usage: { vectorSpace: 50 },
   total: { vectorSpace: 100 },
   type: 'professional',
 }
+
+const render = (ui: React.ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(consoleQuery.features.vectorSpace.get.queryOptions().queryKey, {
+    size: mockPlan.usage.vectorSpace,
+    limit: mockPlan.total.vectorSpace,
+  })
+  return renderWithConsoleQuery(ui, { queryClient })
+}
+
+let mockDatasetPermissionKeys = ['dataset.acl.use']
+const mockRouterReplace = vi.fn()
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContextSelector: (
@@ -80,13 +91,6 @@ vi.mock('@/next/navigation', () => ({
     push: vi.fn(),
     replace: mockRouterReplace,
     back: vi.fn(),
-  }),
-}))
-
-vi.mock('@/service/use-billing', () => ({
-  useCurrentPlanVectorSpace: () => ({
-    data: { size: 50, limit: 100 },
-    isFetching: false,
   }),
 }))
 

@@ -90,7 +90,7 @@ class DocumentWithSession:
         return self.document.get_doc_metadata_details(session=self.session)
 
     def __getattr__(self, name: str) -> Any:
-        return getattr(self.document, name)  # noqa: no-new-getattr response adapter delegates model fields
+        return getattr(self.document, name)  # guard-ignore: no-new-getattr -- delegates model fields
 
 
 def document_response(document: Document, *, session: Session) -> DocumentResponse:

@@ -1,7 +1,8 @@
+import type { ReactElement } from 'react'
 import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -11,6 +12,8 @@ import {
   DataSourceType,
   RerankingModeEnum,
 } from '@/models/datasets'
+import { consoleQuery } from '@/service/client'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { withSelectorKey } from '@/test/i18n-mock'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { RetrievalChangeTip, RetrievalSection } from '../retrieval-section'
@@ -31,12 +34,6 @@ vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
     modelProviders: [],
     textGenerationModelList: [],
-    supportRetrievalMethods: [
-      RETRIEVE_METHOD.semantic,
-      RETRIEVE_METHOD.fullText,
-      RETRIEVE_METHOD.hybrid,
-      RETRIEVE_METHOD.keywordSearch,
-    ],
   }),
 }))
 
@@ -62,6 +59,14 @@ vi.mock('@/app/components/datasets/create/step-two', () => ({
     ECONOMICAL: 'economy',
   },
 }))
+
+const render = (ui: ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(consoleQuery.datasets.retrievalSetting.get.queryOptions().queryKey, {
+    retrieval_method: [RETRIEVE_METHOD.semantic, RETRIEVE_METHOD.fullText, RETRIEVE_METHOD.hybrid],
+  })
+  return renderWithConsoleQuery(ui, { queryClient })
+}
 
 const createRetrievalConfig = (overrides: Partial<RetrievalConfig> = {}): RetrievalConfig => ({
   search_method: RETRIEVE_METHOD.semantic,

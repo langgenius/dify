@@ -44,15 +44,6 @@ vi.mock('@/hooks/use-timestamp', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/chat/embedded-chatbot/theme/theme-context', () => ({
-  useThemeContext: () => ({
-    buildTheme: vi.fn(),
-    theme: {
-      primaryColor: '#1C64F2',
-    },
-  }),
-}))
-
 vi.mock('@/context/account-state', async () => {
   const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
   return createAccountStateModuleMock(() => ({
@@ -127,6 +118,10 @@ vi.mock('@/service/client', () => ({
     systemFeatures: {
       get: {
         queryKey: () => ['system-features'],
+        queryOptions: (options: Record<string, unknown> = {}) => ({
+          queryKey: ['system-features'],
+          ...options,
+        }),
       },
     },
     apps: {

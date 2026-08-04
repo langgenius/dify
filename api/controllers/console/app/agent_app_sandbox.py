@@ -1,7 +1,7 @@
 """Console routes for Agent App and workflow Agent sandbox file access.
 
-The API keeps product-facing locators (conversation or workflow node identity)
-on this public boundary and proxies list/read/upload to the agent backend's new
+The API accepts product-facing Conversation, Build Draft, or Workflow Node
+Execution locators and proxies list/read/upload to the agent backend's
 ``/sandbox`` contract.
 """
 
@@ -26,10 +26,16 @@ from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.agent.app_helpers import resolve_agent_runtime_app_model
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required, with_current_tenant_id
+from controllers.console.wraps import (
+    account_initialization_required,
+    setup_required,
+    with_current_tenant_id,
+    with_current_user,
+)
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.login import login_required
+from models import Account
 from models.model import App, AppMode
 from services.agent_app_sandbox_service import (
     AgentAppSandboxService,
@@ -37,52 +43,43 @@ from services.agent_app_sandbox_service import (
     WorkflowAgentSandboxService,
 )
 
-_NODE_EXECUTION_ID_DESCRIPTION = (
-    "Optional workflow node execution ID. When omitted, the latest active session for the node is used."
-)
-
 
 class AgentSandboxListQuery(BaseModel):
-    conversation_id: str = Field(min_length=1, description="Agent App conversation ID")
+    caller_type: Literal["conversation", "build_draft"]
+    caller_id: str = Field(min_length=1, description="Agent App caller ID")
     path: str = Field(default=".", description="Directory path relative to the sandbox workspace")
 
 
 class AgentSandboxInfoQuery(BaseModel):
-    conversation_id: str = Field(min_length=1, description="Agent App conversation ID")
+    caller_type: Literal["conversation", "build_draft"]
+    caller_id: str = Field(min_length=1, description="Agent App caller ID")
 
 
 class AgentSandboxFileQuery(BaseModel):
-    conversation_id: str = Field(min_length=1, description="Agent App conversation ID")
+    caller_type: Literal["conversation", "build_draft"]
+    caller_id: str = Field(min_length=1, description="Agent App caller ID")
     path: str = Field(min_length=1, description="File path relative to the sandbox workspace")
 
 
 class AgentSandboxUploadPayload(BaseModel):
-    conversation_id: str = Field(min_length=1, description="Agent App conversation ID")
+    caller_type: Literal["conversation", "build_draft"]
+    caller_id: str = Field(min_length=1, description="Agent App caller ID")
     path: str = Field(min_length=1, description="File path relative to the sandbox workspace")
 
 
 class WorkflowAgentSandboxListQuery(BaseModel):
+    node_execution_id: str = Field(min_length=1, description="Workflow node execution ID")
     path: str = Field(default=".", description="Directory path relative to the sandbox workspace")
-    node_execution_id: str | None = Field(
-        default=None,
-        description=_NODE_EXECUTION_ID_DESCRIPTION,
-    )
 
 
 class WorkflowAgentSandboxFileQuery(BaseModel):
+    node_execution_id: str = Field(min_length=1, description="Workflow node execution ID")
     path: str = Field(min_length=1, description="File path relative to the sandbox workspace")
-    node_execution_id: str | None = Field(
-        default=None,
-        description=_NODE_EXECUTION_ID_DESCRIPTION,
-    )
 
 
 class WorkflowAgentSandboxUploadPayload(BaseModel):
+    node_execution_id: str = Field(min_length=1, description="Workflow node execution ID")
     path: str = Field(min_length=1, description="File path relative to the sandbox workspace")
-    node_execution_id: str | None = Field(
-        default=None,
-        description=_NODE_EXECUTION_ID_DESCRIPTION,
-    )
 
 
 class SandboxFileEntryResponse(ResponseModel):
@@ -99,7 +96,6 @@ class SandboxListResponse(ResponseModel):
 
 
 class SandboxInfoResponse(ResponseModel):
-    session_id: str
     workspace_cwd: str
 
 
@@ -155,15 +151,19 @@ class AgentAppSandboxInfoResource(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
+    @with_current_user
     @with_session(write=False)
-    def get(self, session: Session, tenant_id: str, agent_id: UUID):
+    def get(self, session: Session, current_user: Account, tenant_id: str, agent_id: UUID):
         app_model = resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
         query = query_params_from_request(AgentSandboxInfoQuery)
         try:
             result = AgentAppSandboxService().get_info(
                 tenant_id=tenant_id,
                 app_id=app_model.id,
-                conversation_id=query.conversation_id,
+                agent_id=str(agent_id),
+                caller_type=query.caller_type,
+                caller_id=query.caller_id,
+                account_id=current_user.id,
             )
         except Exception as exc:
             return _handle(exc)
@@ -180,15 +180,19 @@ class AgentAppSandboxListResource(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
+    @with_current_user
     @with_session(write=False)
-    def get(self, session: Session, tenant_id: str, agent_id: UUID):
+    def get(self, session: Session, current_user: Account, tenant_id: str, agent_id: UUID):
         app_model = resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
         query = query_params_from_request(AgentSandboxListQuery)
         try:
             result = AgentAppSandboxService().list_files(
                 tenant_id=tenant_id,
                 app_id=app_model.id,
-                conversation_id=query.conversation_id,
+                agent_id=str(agent_id),
+                caller_type=query.caller_type,
+                caller_id=query.caller_id,
+                account_id=current_user.id,
                 path=query.path,
             )
         except Exception as exc:
@@ -206,15 +210,19 @@ class AgentAppSandboxReadResource(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
+    @with_current_user
     @with_session(write=False)
-    def get(self, session: Session, tenant_id: str, agent_id: UUID):
+    def get(self, session: Session, current_user: Account, tenant_id: str, agent_id: UUID):
         app_model = resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
         query = query_params_from_request(AgentSandboxFileQuery)
         try:
             result = AgentAppSandboxService().read_file(
                 tenant_id=tenant_id,
                 app_id=app_model.id,
-                conversation_id=query.conversation_id,
+                agent_id=str(agent_id),
+                caller_type=query.caller_type,
+                caller_id=query.caller_id,
+                account_id=current_user.id,
                 path=query.path,
             )
         except Exception as exc:
@@ -232,15 +240,19 @@ class AgentAppSandboxUploadResource(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
+    @with_current_user
     @with_session(write=False)
-    def post(self, session: Session, tenant_id: str, agent_id: UUID):
+    def post(self, session: Session, current_user: Account, tenant_id: str, agent_id: UUID):
         app_model = resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
         payload = AgentSandboxUploadPayload.model_validate(request.get_json(silent=True) or {})
         try:
             result = AgentAppSandboxService().upload_file(
                 tenant_id=tenant_id,
                 app_id=app_model.id,
-                conversation_id=payload.conversation_id,
+                agent_id=str(agent_id),
+                caller_type=payload.caller_type,
+                caller_id=payload.caller_id,
+                account_id=current_user.id,
                 path=payload.path,
             )
         except Exception as exc:

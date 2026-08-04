@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import type { Placement } from '.'
 import * as React from 'react'
 import {
+  createPopoverHandle,
   Popover,
   PopoverClose,
   PopoverContent,
@@ -89,6 +90,60 @@ export const WithActions: Story = {
       </PopoverContent>
     </Popover>
   ),
+}
+
+type ResourcePopoverPayload = {
+  label: string
+  description: string
+}
+
+const resourcePopoverPayloads = [
+  {
+    label: 'Knowledge base',
+    description: 'Searches indexed documents before the model generates an answer.',
+  },
+  {
+    label: 'HTTP request',
+    description: 'Calls an external endpoint with values from the current workflow.',
+  },
+] as const satisfies readonly ResourcePopoverPayload[]
+
+function DetachedTriggersDemo() {
+  const [popoverHandle] = React.useState(() => createPopoverHandle<ResourcePopoverPayload>())
+
+  return (
+    <div className="flex gap-2">
+      {resourcePopoverPayloads.map((payload) => (
+        <PopoverTrigger
+          key={payload.label}
+          handle={popoverHandle}
+          payload={payload}
+          render={<button type="button" className={triggerButtonClassName} />}
+        >
+          {payload.label}
+        </PopoverTrigger>
+      ))}
+
+      <Popover handle={popoverHandle}>
+        {({ payload }) => (
+          <PopoverContent>
+            <div className="flex w-72 flex-col gap-1 p-4">
+              <PopoverTitle className="text-sm font-semibold text-text-primary">
+                {payload?.label ?? 'Resource'}
+              </PopoverTitle>
+              <PopoverDescription className="text-xs text-text-secondary">
+                {payload?.description ?? 'Choose a resource to learn more.'}
+              </PopoverDescription>
+            </div>
+          </PopoverContent>
+        )}
+      </Popover>
+    </div>
+  )
+}
+
+export const DetachedTriggers: Story = {
+  render: () => <DetachedTriggersDemo />,
 }
 
 export const Infotip: Story = {
