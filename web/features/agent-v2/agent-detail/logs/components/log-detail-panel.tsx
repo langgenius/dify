@@ -81,8 +81,7 @@ export function AgentLogDetailPanel({
       ])
       toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       return true
-    }
-    catch {
+    } catch {
       toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
       return false
     }
@@ -176,8 +175,8 @@ function formatAgentLogMessages({
   const chatList: IChatItem[] = []
 
   messages.forEach((message) => {
-    const userFeedback = message.feedbacks?.find(feedback => feedback.from_source === 'user')
-    const adminFeedback = message.feedbacks?.find(feedback => feedback.from_source === 'admin')
+    const userFeedback = message.feedbacks?.find((feedback) => feedback.from_source === 'user')
+    const adminFeedback = message.feedbacks?.find((feedback) => feedback.from_source === 'admin')
     chatList.push({
       id: `question-${message.id}`,
       content: message.query,

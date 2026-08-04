@@ -29,9 +29,7 @@ vi.mock('@/app/components/base/chat/chat', () => ({
   }) => {
     mocks.chatProps({ chatList, config, onFeedback })
     return (
-      <button
-        onClick={() => void onFeedback?.('message-1', { rating: 'like' })}
-      >
+      <button onClick={() => void onFeedback?.('message-1', { rating: 'like' })}>
         submit-feedback
       </button>
     )
