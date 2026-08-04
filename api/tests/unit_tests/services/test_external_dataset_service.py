@@ -17,7 +17,6 @@ from sqlalchemy.orm import Session
 
 from constants import HIDDEN_VALUE
 from models.dataset import Dataset, ExternalKnowledgeApis, ExternalKnowledgeBindings
-from services.enterprise.rbac_service import RBACResourceType
 from services.entities.external_knowledge_entities.external_knowledge_entities import (
     Authorization,
     AuthorizationConfig,
