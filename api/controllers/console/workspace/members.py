@@ -402,6 +402,15 @@ class MemberUpdateRoleApi(Resource):
 
         if not TenantAccountRole.is_valid_role(new_role):
             return {"code": "invalid-role", "message": "Invalid role"}, HTTPStatus.BAD_REQUEST
+        # Ownership transfer must go through the dedicated email-verified workflow
+        # (send-email → verify-code → /owner-transfer). Allowing direct assignment
+        # here bypasses CSRF protection and, in RBAC mode, lets any user with
+        # workspace.role.manage escalate themselves or a peer to owner.
+        if new_role == TenantAccountRole.OWNER:
+            return {
+                "code": "invalid-role",
+                "message": "Cannot directly assign owner role. Use the owner transfer workflow.",
+            }, HTTPStatus.BAD_REQUEST
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
         if not _is_role_enabled(new_role, current_user.current_tenant.id):

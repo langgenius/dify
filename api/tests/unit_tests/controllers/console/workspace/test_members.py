@@ -1,7 +1,7 @@
 from contextlib import nullcontext
 from inspect import unwrap
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from flask import Flask
@@ -542,6 +542,34 @@ class TestMemberUpdateRoleApi:
             result, status = method(api, MagicMock(), "id")
 
         assert status == 400
+
+    def test_update_owner_role_returns_bad_request(self, app: Flask):
+        """Security regression: PUT update-role with role='owner' must be rejected.
+
+        Direct owner assignment via this endpoint bypasses the mandatory
+        email-verification ownership-transfer workflow and, in RBAC mode,
+        allows any user with workspace.role.manage to escalate themselves
+        or a peer to owner without being the current workspace owner.
+        TenantService.update_member_role must never be called.
+        """
+        api = MemberUpdateRoleApi()
+        method = unwrap(api.put)
+
+        update_mock = Mock()
+        payload = {"role": "owner"}
+
+        with (
+            app.test_request_context("/", json=payload),
+            patch(
+                "controllers.console.workspace.members.TenantService.update_member_role",
+                update_mock,
+            ),
+        ):
+            result, status = method(api, MagicMock(), "member-id")
+
+        assert status == 400
+        assert result["code"] == "invalid-role"
+        update_mock.assert_not_called()
 
 
 class TestDatasetOperatorMemberListApi:
