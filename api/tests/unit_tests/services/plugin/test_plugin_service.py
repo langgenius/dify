@@ -12,6 +12,7 @@ from core.plugin.entities.plugin import PluginCategory, PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginInstallTask, PluginInstallTaskStatus, PluginModelProviderEntity
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
+from services.feature_service import PluginInstallationPermissionModel, PluginInstallationScope
 
 MODULE = "core.plugin.plugin_service"
 
@@ -1027,10 +1028,16 @@ class TestPluginModelProviderCacheInvalidation:
         ):
             mock_config.MARKETPLACE_ENABLED = True
             feature_service.get_system_features.return_value = SimpleNamespace(
-                plugin_installation_permission=SimpleNamespace(restrict_to_marketplace_only=False)
+                plugin_installation_permission=PluginInstallationPermissionModel(
+                    restrict_to_marketplace_only=False,
+                    plugin_installation_scope=PluginInstallationScope.ALL,
+                )
             )
             installer = installer_cls.return_value
             installer.fetch_plugin_manifest.return_value = MagicMock()
+            decode_response = MagicMock()
+            decode_response.verification = None
+            installer.decode_plugin_from_identifier.return_value = decode_response
             installer.upgrade_plugin.return_value = "task-id"
 
             from core.plugin.plugin_service import PluginService
