@@ -72,9 +72,9 @@ export function DetailSkeleton() {
 
       <aside
         aria-hidden
-        className="relative my-1 mr-1 flex w-[396px] shrink-0 flex-col overflow-hidden rounded-lg bg-[#e9ebf0] inset-ring-[0.5px] inset-ring-divider-subtle"
+        className="relative my-1 mr-1 flex w-[396px] shrink-0 flex-col overflow-hidden rounded-lg inset-ring-[0.5px] inset-ring-divider-subtle"
       >
-        <div className="pointer-events-none absolute inset-0 z-0 bg-linear-to-b from-background-gradient-bg-fill-chat-bg-1 to-background-gradient-bg-fill-chat-bg-2 opacity-90" />
+        <div className="pointer-events-none absolute inset-0 z-0 bg-linear-to-b from-background-gradient-bg-fill-chat-bg-1 to-background-gradient-bg-fill-chat-bg-2" />
         <SkillBuilderGridTexture className="pointer-events-none absolute top-0 left-0 z-[2]" />
         <SkillBuilderGridTexture className="pointer-events-none absolute bottom-0 left-0 z-[1] origin-center scale-y-[-1]" />
         <div className="relative z-10 flex h-12 shrink-0 items-center justify-between px-4">

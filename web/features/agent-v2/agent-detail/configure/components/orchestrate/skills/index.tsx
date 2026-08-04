@@ -95,7 +95,7 @@ function AgentSkillAddMenuItem({
 
 function WorkspaceSkillIcon() {
   return (
-    <span className="flex size-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-text-primary-on-surface p-1 backdrop-blur-xs">
+    <span className="flex size-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-effects-icon-border bg-background-default-dodge p-1 backdrop-blur-xs">
       <span
         aria-hidden
         className="i-custom-vender-agent-v2-building-blocks size-4 text-text-secondary"

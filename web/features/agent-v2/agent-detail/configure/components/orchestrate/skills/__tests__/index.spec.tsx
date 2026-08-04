@@ -721,6 +721,10 @@ describe('AgentSkills', () => {
     expect(
       workspaceSkillButton.querySelector('.i-custom-vender-agent-v2-building-blocks'),
     ).toHaveClass('text-text-secondary')
+    expect(
+      workspaceSkillButton.querySelector('.i-custom-vender-agent-v2-building-blocks')
+        ?.parentElement,
+    ).toHaveClass('border-effects-icon-border', 'bg-background-default-dodge')
     expect(screen.queryByText('💳')).not.toBeInTheDocument()
     await user.click(workspaceSkillButton)
 
