@@ -86,7 +86,9 @@ class _PhaseState:
         self.request.observations_path.parent.mkdir(parents=True, exist_ok=True)
         self._observations_output: TextIO = self.request.observations_path.open("w", encoding="utf-8", buffering=1)
         self.tracker = _ActiveTracker(request.active_runs_path)
-        self.deadline: float | None = None
+        self.minimum_deadline: float | None = None
+        self.maximum_deadline: float | None = None
+        self.observation_target_reached_perf: float | None = None
         self.start_gate = Event()
         self.finished_users = 0
         self.finished_gate = Event()
@@ -105,8 +107,14 @@ class _PhaseState:
     def should_stop(self, iterations: int) -> bool:
         if self.request.iterations_per_user is not None:
             return iterations >= self.request.iterations_per_user
-        assert self.deadline is not None
-        return time.perf_counter() >= self.deadline
+        assert self.minimum_deadline is not None
+        assert self.maximum_deadline is not None
+        now = time.perf_counter()
+        if now >= self.maximum_deadline:
+            return True
+        if self.request.minimum_observations is None:
+            return now >= self.minimum_deadline
+        return now >= self.minimum_deadline and len(self.observations) >= self.request.minimum_observations
 
     def mark_user_finished(self) -> None:
         self.finished_users += 1
@@ -130,6 +138,12 @@ class _PhaseState:
 
     def record_observation(self, observation: CapacityObservation) -> None:
         self.observations.append(observation)
+        if (
+            self.request.minimum_observations is not None
+            and len(self.observations) >= self.request.minimum_observations
+            and self.observation_target_reached_perf is None
+        ):
+            self.observation_target_reached_perf = time.perf_counter()
         self._observations_output.write(encode_observation_record(observation) + "\n")
 
     def close_persistence(self) -> None:
@@ -267,10 +281,12 @@ def run_load_phase(request: LoadPhaseRequest) -> LoadPhaseResult:
     started_at_ns = time.time_ns()
     started_perf = time.perf_counter()
     if request.duration_seconds is not None:
-        state.deadline = started_perf + request.duration_seconds
+        state.minimum_deadline = started_perf + request.duration_seconds
+        state.maximum_deadline = started_perf + (request.maximum_duration_seconds or request.duration_seconds)
     state.start_gate.set()
     max_spawned = 0
-    watchdog_deadline = started_perf + (request.duration_seconds or 0) + request.drain_timeout_seconds
+    admission_limit_seconds = request.maximum_duration_seconds or request.duration_seconds or 0
+    watchdog_deadline = started_perf + admission_limit_seconds + request.drain_timeout_seconds
     timed_out = False
     while True:
         max_spawned = max(max_spawned, runner.user_count, len(state.claimed_worker_indices))
@@ -294,7 +310,26 @@ def run_load_phase(request: LoadPhaseRequest) -> LoadPhaseResult:
     runner.greenlet.join(timeout=5)
     state.close_persistence()
     elapsed_seconds = max(0.000001, ended_perf - started_perf)
-    drain_seconds = max(0, elapsed_seconds - (request.duration_seconds or elapsed_seconds))
+    if request.duration_seconds is None:
+        admission_stopped_perf = ended_perf
+    elif request.minimum_observations is None:
+        admission_stopped_perf = started_perf + request.duration_seconds
+    elif state.observation_target_reached_perf is None:
+        admission_stopped_perf = started_perf + admission_limit_seconds
+    else:
+        admission_stopped_perf = min(
+            started_perf + admission_limit_seconds,
+            max(started_perf + request.duration_seconds, state.observation_target_reached_perf),
+        )
+    drain_seconds = max(0, ended_perf - admission_stopped_perf)
+    minimum_observations_met = (
+        request.minimum_observations is None or len(state.observations) >= request.minimum_observations
+    )
+    if not minimum_observations_met:
+        state.fatal_errors.append(
+            f"Locust phase produced {len(state.observations)} observations; "
+            f"minimum is {request.minimum_observations}"
+        )
     if timed_out:
         state.fatal_errors.append("Locust phase exceeded its drain timeout")
     if active_at_end != 0:
@@ -321,6 +356,9 @@ def run_load_phase(request: LoadPhaseRequest) -> LoadPhaseResult:
         spawned_users=max_spawned,
         observed_max_active=state.tracker.peak,
         observation_count=len(state.observations),
+        minimum_observations=request.minimum_observations,
+        minimum_observations_met=minimum_observations_met,
+        maximum_duration_seconds=request.maximum_duration_seconds,
         timed_out=timed_out,
         fatal_errors=list(dict.fromkeys(state.fatal_errors)),
         locust_version=version("locust"),

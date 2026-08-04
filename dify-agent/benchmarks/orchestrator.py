@@ -214,6 +214,8 @@ def _run_compose_block(
         "BENCH_CONCURRENCY": str(point.requested_concurrency),
         "BENCH_WARMUP_SECONDS": str(point.warmup_seconds),
         "BENCH_MEASUREMENT_SECONDS": str(point.measurement_seconds),
+        "BENCH_MINIMUM_MEASUREMENT_RUNS": str(point.minimum_measurement_runs),
+        "BENCH_MAXIMUM_MEASUREMENT_SECONDS": str(point.maximum_measurement_seconds),
         "BENCH_RUNTIME_BACKEND": "e2b" if point.mode == "local-e2b" else "local",
         "BENCH_E2B_API_KEY": e2b_api_key or "",
         "BENCH_E2B_TEMPLATE": e2b_template or "",
@@ -385,7 +387,7 @@ def _driver_timeout_seconds(point: CapacityMatrixPoint) -> float:
     per_phase_overhead = _LOCUST_DRAIN_TIMEOUT_SECONDS + _LOCUST_PROCESS_BUFFER_SECONDS
     return math.ceil(
         point.warmup_seconds
-        + point.measurement_seconds
+        + point.maximum_measurement_seconds
         + load_phase_count * per_phase_overhead
         + _DRIVER_LIFECYCLE_BUFFER_SECONDS
     )
