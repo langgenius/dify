@@ -1,4 +1,4 @@
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.app_invoke_entities import CompletionAppGenerateEntity
@@ -28,13 +28,6 @@ _LLM_TEXT_SELECTOR_PREFIX = ("llm", "text")
 class CompletionGraphEventAdapter:
     """Translate one runtime graph run into legacy Completion queue events."""
 
-    _application_generate_entity: CompletionAppGenerateEntity
-    _queue_manager: AppQueueManager
-    _answer: str
-    _usage: LLMUsage
-    _prompt_messages: list[PromptMessage]
-    _chunk_index: int
-
     def __init__(
         self,
         *,
@@ -43,9 +36,8 @@ class CompletionGraphEventAdapter:
     ) -> None:
         self._application_generate_entity = application_generate_entity
         self._queue_manager = queue_manager
-        self._answer = ""
         self._usage = LLMUsage.empty_usage()
-        self._prompt_messages = []
+        self._prompt_messages: list[PromptMessage] = []
         self._chunk_index = 0
 
     def set_prompt_messages(self, prompt_messages: Sequence[PromptMessage]) -> None:
@@ -58,10 +50,10 @@ class CompletionGraphEventAdapter:
                 self._handle_stream_chunk(event)
             case NodeRunRetrieverResourceEvent():
                 self._handle_retriever_resource(event)
-            case NodeRunSucceededEvent():
-                self._handle_node_succeeded(event)
+            case NodeRunSucceededEvent() if event.node_id == "llm":
+                self._usage = event.node_run_result.llm_usage
             case GraphRunSucceededEvent():
-                self._publish_message_end(event.outputs)
+                self._publish_message_end(event.outputs.get("result"))
             case GraphRunFailedEvent():
                 self._publish_error(event.error)
             case GraphRunAbortedEvent():
@@ -78,7 +70,6 @@ class CompletionGraphEventAdapter:
         if event.is_final and not event.chunk:
             return
 
-        self._answer += event.chunk
         self._queue_manager.publish(
             QueueLLMChunkEvent(
                 chunk=LLMResultChunk(
@@ -110,27 +101,13 @@ class CompletionGraphEventAdapter:
             PublishFrom.APPLICATION_MANAGER,
         )
 
-    def _handle_node_succeeded(self, event: NodeRunSucceededEvent) -> None:
-        if event.node_id != "llm":
-            return
-
-        result = event.node_run_result
-        text = result.outputs.get("text")
-        if isinstance(text, str):
-            self._answer = text
-        self._usage = result.llm_usage
-
-    def _publish_message_end(self, outputs: Mapping[str, object]) -> None:
-        result = outputs.get("result")
-        if isinstance(result, str) and not self._answer:
-            self._answer = result
-
+    def _publish_message_end(self, result: object) -> None:
         self._queue_manager.publish(
             QueueMessageEndEvent(
                 llm_result=LLMResult(
                     model=self._application_generate_entity.model_conf.model,
                     prompt_messages=self._prompt_messages,
-                    message=AssistantPromptMessage(content=self._answer),
+                    message=AssistantPromptMessage(content=result if isinstance(result, str) else ""),
                     usage=self._usage,
                 )
             ),

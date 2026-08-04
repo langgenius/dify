@@ -1,6 +1,5 @@
 import time
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
 from typing import Any, cast
 
 from sqlalchemy import select
@@ -26,13 +25,6 @@ from graphon.runtime import GraphRuntimeState, VariablePool
 from models.model import App, Message
 
 
-@dataclass(frozen=True, slots=True)
-class ModeratedCompletionInputs:
-    stopped: bool
-    inputs: Mapping[str, Any]
-    query: str
-
-
 class CompletionWorkflowRunner(AppRunner):
     """Run a transient WorkflowEntry graph while the legacy task pipeline owns persistence."""
 
@@ -46,30 +38,31 @@ class CompletionWorkflowRunner(AppRunner):
         app_config = cast(CompletionAppConfig, application_generate_entity.app_config)
         app_record = self._get_app(app_id=app_config.app_id, tenant_id=app_config.tenant_id, session=session)
 
-        moderation_result = self._run_input_moderation(
+        moderated_inputs = self._run_input_moderation(
             app_record=app_record,
             application_generate_entity=application_generate_entity,
             queue_manager=queue_manager,
             message=message,
         )
-        if moderation_result.stopped:
+        if moderated_inputs is None:
             return
+        inputs, query = moderated_inputs
 
-        runtime_workflow = build_runtime_completion_workflow(
+        graph_config = build_runtime_completion_workflow(
             app_model=app_record,
             app_config=app_config,
             session=session,
         )
+        workflow_id = application_generate_entity.task_id
         variable_pool = self._build_variable_pool(
             application_generate_entity=application_generate_entity,
             message=message,
-            workflow_id=runtime_workflow.workflow_id,
-            root_node_id=runtime_workflow.root_node_id,
-            inputs=moderation_result.inputs,
-            query=moderation_result.query,
+            workflow_id=workflow_id,
+            inputs=inputs,
+            query=query,
         )
         graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
-        user_from = self._resolve_user_from(application_generate_entity)
+        user_from = UserFrom.ACCOUNT if application_generate_entity.invoke_from.runs_as_account() else UserFrom.END_USER
         adapter = CompletionGraphEventAdapter(
             application_generate_entity=application_generate_entity,
             queue_manager=queue_manager,
@@ -84,14 +77,14 @@ class CompletionWorkflowRunner(AppRunner):
 
         graph = init_graph(
             app_id=app_config.app_id,
-            graph_config=runtime_workflow.graph_dict,
+            graph_config=graph_config,
             graph_runtime_state=graph_runtime_state,
             user_from=user_from,
             invoke_from=application_generate_entity.invoke_from,
-            workflow_id=runtime_workflow.workflow_id,
+            workflow_id=workflow_id,
             tenant_id=app_config.tenant_id,
             user_id=application_generate_entity.user_id,
-            root_node_id=runtime_workflow.root_node_id,
+            root_node_id="start",
             trace_session_id=application_generate_entity.extras.get("trace_session_id"),
             call_depth=application_generate_entity.call_depth,
             extra_context=extra_context,
@@ -102,8 +95,8 @@ class CompletionWorkflowRunner(AppRunner):
         workflow_entry = WorkflowEntry(
             tenant_id=app_config.tenant_id,
             app_id=app_config.app_id,
-            workflow_id=runtime_workflow.workflow_id,
-            graph_config=runtime_workflow.graph_dict,
+            workflow_id=workflow_id,
+            graph_config=graph_config,
             graph=graph,
             user_id=application_generate_entity.user_id,
             user_from=user_from,
@@ -132,8 +125,12 @@ class CompletionWorkflowRunner(AppRunner):
         application_generate_entity: CompletionAppGenerateEntity,
         queue_manager: AppQueueManager,
         message: Message,
-    ) -> ModeratedCompletionInputs:
+    ) -> tuple[Mapping[str, Any], str] | None:
         app_config = cast(CompletionAppConfig, application_generate_entity.app_config)
+        file_upload_config = application_generate_entity.file_upload_config
+        image_detail_config = (
+            file_upload_config.image_config.detail if file_upload_config and file_upload_config.image_config else None
+        ) or ImagePromptMessageContent.DETAIL.LOW
         prompt_messages, _ = self.organize_prompt_messages(
             app_record=app_record,
             model_config=application_generate_entity.model_conf,
@@ -141,7 +138,7 @@ class CompletionWorkflowRunner(AppRunner):
             inputs=application_generate_entity.inputs,
             files=application_generate_entity.files,
             query=application_generate_entity.query,
-            image_detail_config=self._resolve_image_detail_config(application_generate_entity),
+            image_detail_config=image_detail_config,
         )
 
         try:
@@ -161,13 +158,9 @@ class CompletionWorkflowRunner(AppRunner):
                 text=str(exc),
                 stream=application_generate_entity.stream,
             )
-            return ModeratedCompletionInputs(
-                stopped=True,
-                inputs=application_generate_entity.inputs,
-                query=application_generate_entity.query or "",
-            )
+            return None
 
-        return ModeratedCompletionInputs(stopped=False, inputs=inputs, query=query)
+        return inputs, query
 
     def _build_before_llm_invoke_hook(
         self,
@@ -204,7 +197,6 @@ class CompletionWorkflowRunner(AppRunner):
         application_generate_entity: CompletionAppGenerateEntity,
         message: Message,
         workflow_id: str,
-        root_node_id: str,
         inputs: Mapping[str, Any],
         query: str,
     ) -> VariablePool:
@@ -223,20 +215,5 @@ class CompletionWorkflowRunner(AppRunner):
             variable_pool,
             build_bootstrap_variables(system_variables=system_inputs, environment_variables=[]),
         )
-        add_node_inputs_to_pool(variable_pool, node_id=root_node_id, inputs=inputs)
+        add_node_inputs_to_pool(variable_pool, node_id="start", inputs=inputs)
         return variable_pool
-
-    @staticmethod
-    def _resolve_user_from(application_generate_entity: CompletionAppGenerateEntity) -> UserFrom:
-        if application_generate_entity.invoke_from.runs_as_account():
-            return UserFrom.ACCOUNT
-        return UserFrom.END_USER
-
-    @staticmethod
-    def _resolve_image_detail_config(
-        application_generate_entity: CompletionAppGenerateEntity,
-    ) -> ImagePromptMessageContent.DETAIL:
-        file_upload_config = application_generate_entity.file_upload_config
-        if file_upload_config and file_upload_config.image_config:
-            return file_upload_config.image_config.detail or ImagePromptMessageContent.DETAIL.LOW
-        return ImagePromptMessageContent.DETAIL.LOW
