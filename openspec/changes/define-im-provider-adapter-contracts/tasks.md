@@ -53,8 +53,8 @@
 
 ## 7. Complete exhaustive Provider verification
 
-- [ ] 7.1 Maintain a `Provider × capability operation / event entry` coverage matrix with separate unit-test, integration-test, real-execution and sanitized-fixture evidence columns.
-- [ ] 7.2 Perform each applicable API operation or event path against an authorized non-production Provider environment and retain sanitized real request, response or event payload fixtures.
+- [ ] 7.1 Maintain a `Provider verification unit × capability operation / event entry` coverage matrix with separate unit-test, integration-test, real-execution and sanitized-fixture evidence columns. Use the five initial units Slack, Feishu/Lark, DingTalk, WeCom and Microsoft Teams while retaining separate Feishu and Lark adapter-configuration tests.
+- [ ] 7.2 Perform each applicable API operation or event path against an authorized non-production environment for its Provider verification unit and retain sanitized real request, response or event payload fixtures. The shared Feishu/Lark protocol evidence cells MUST use the authorized Feishu environment for real execution and fixture capture; independent Lark real execution is not required.
 - [ ] 7.3 For every applicable signed or encrypted Webhook or STREAM path, regenerate cryptographically valid fixtures from sanitized plaintext using test-only material and an independent generator.
-- [ ] 7.4 Cover valid verification or decryption, payload and header tampering, wrong secret or key, and applicable timestamp, replay, nonce or IV behavior for every concrete path.
-- [ ] 7.5 Keep any Provider capability incomplete while one applicable evidence cell is missing; representative Providers or shared-contract tests MUST NOT close another Provider's evidence requirement.
+- [ ] 7.4 Cover valid verification or decryption, payload and header tampering, wrong secret or key, and applicable timestamp, replay, nonce or IV behavior for every verification-unit path; return to spec review if Feishu and Lark production paths diverge.
+- [ ] 7.5 Keep any Provider verification-unit capability incomplete while one applicable evidence cell is missing. Representative Providers or shared-contract tests MUST NOT close another unit's evidence requirement; Feishu/Lark shared production paths verified through the Feishu environment are the explicit single-unit exception.

@@ -54,3 +54,15 @@ The adapter MUST expose one idempotent close operation that releases all adapter
 #### Scenario: Provider configuration changes
 - **WHEN** a caller needs to use changed credentials or transport material
 - **THEN** it MUST construct a new adapter and close the old adapter rather than replacing configuration inside the existing adapter
+
+### Requirement: Feishu and Lark MUST share one verification evidence unit
+Feishu and Lark MUST remain distinct concrete adapters with separate typed credentials, Provider discriminators and API host configuration. Their shared SDK and protocol implementation MUST be verified as one Provider-family evidence unit rather than requiring duplicate real-execution and sanitized-fixture evidence for equivalent production paths. Real-execution and sanitized-fixture evidence for this shared unit MUST come from an authorized Feishu non-production environment. Configuration and composition tests MUST still cover both concrete adapters independently.
+
+#### Scenario: A shared Feishu or Lark path is verified
+- **WHEN** an operation or event path uses the same production implementation and protocol semantics for Feishu and Lark
+- **THEN** real execution against the authorized Feishu non-production environment and its sanitized fixture MUST close the shared Feishu/Lark evidence cell
+- **AND** tests MUST independently verify each adapter's credential type, Provider discriminator and API host selection
+
+#### Scenario: Feishu and Lark paths diverge
+- **WHEN** Feishu and Lark use different production code paths or Provider protocol semantics for an operation or event entry
+- **THEN** the shared evidence-unit assumption MUST be treated as invalid and the capability MUST remain incomplete pending spec review

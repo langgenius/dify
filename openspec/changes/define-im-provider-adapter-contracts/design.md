@@ -16,7 +16,7 @@ Webhook 与 STREAM 具有不同的控制流。Webhook request 先进入 Dify HTT
 - Webhook 与 STREAM 保留各自的 transport authentication、decryption、challenge/control-frame 和 ACK 语义；通过认证的 Provider business events 统一经 `AuthenticatedIMEvent` 与 `IMEventSink` 进入下游，具体事件类型由独立 decoder/router 解释。
 - 本期 runtime MAY 只配置 Dynamic Card Messaging 所需的 Provider event subscriptions，但共享 Provider event contract MUST NOT 将事件范围限制为 Dynamic Card interactions。
 - Provider adapter 只产生通用 Provider facts，不依赖任何业务 consumer、persistence schema、queue 或 workflow model。
-- 为每个 concrete Provider 的每个外部 API operation 和 event entry 建立独立、可审计的验证证据。
+- 为每个 Provider verification unit 的每个外部 API operation 和 event entry 建立独立、可审计的验证证据；Feishu 与 Lark 的共享协议实现属于同一个 verification unit。
 
 **Non-Goals:**
 
@@ -197,7 +197,11 @@ Alternative design 是让 Webhook/STREAM 返回带 `ack()` / `nack()` 的 delive
 
 ### 9. Provider verification is exhaustive and evidence-backed
 
-实现阶段维护 `Provider × capability operation / event entry` coverage matrix。每个适用项都必须具有：
+实现阶段维护 `Provider verification unit × capability operation / event entry` coverage matrix。初始 verification units 为 Slack、Feishu/Lark、DingTalk、WeCom 与 Microsoft Teams。Feishu 和 Lark 继续使用独立的 credentials、Provider discriminator、API host configuration 与 concrete adapter composition，但共享 SDK 和协议实现只占一个证据单元。
+
+Feishu/Lark 的 unit 与 integration tests 可以共享或参数化；两个 concrete adapter 的 configuration mapping、Provider discriminator 和 API host selection 仍必须分别受测试保护。共享 operation 或 event path 必须在授权飞书非生产环境中完成真实执行，并以该执行产生的 sanitized fixture 关闭 Feishu/Lark verification unit 的对应 evidence cell；本 change 不要求 Lark 环境的独立真实执行。若两者出现不同的 production code path 或 Provider protocol semantics，则当前共享证据单元的前提不再成立，必须回到 spec review，而不能使用飞书证据宣称 Lark 分叉路径已完成。
+
+每个适用项都必须具有：
 
 - concrete Provider unit test;
 - concrete Provider integration test;
@@ -205,7 +209,7 @@ Alternative design 是让 Webhook/STREAM 返回带 `ack()` / `nack()` 的 delive
 - sanitized real request/response or event payload fixture;
 - applicable signature-verification and decryption tests.
 
-Shared contract tests不能替代具体 Provider evidence。Fixture 必须先脱敏 plaintext 和 metadata，再使用 test-only material 重新生成 cryptographically valid signature 或 ciphertext；不得提交真实 credential、secret、token 或 key。
+Shared contract tests不能替代另一个 Provider verification unit 的 evidence；Feishu/Lark 的显式共享规则是唯一例外。Fixture 必须先脱敏 plaintext 和 metadata，再使用 test-only material 重新生成 cryptographically valid signature 或 ciphertext；不得提交真实 credential、secret、token 或 key。
 
 ### 10. Failure contracts grow incrementally and remain capability-scoped
 
