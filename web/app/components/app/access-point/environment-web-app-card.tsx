@@ -1,9 +1,7 @@
 'use client'
 
-import type { EnvironmentWebAppSubject } from '@dify/contracts/enterprise-app-deploy/types.gen'
+import type { EnvironmentAccessMode } from './environment-web-app-utils'
 import type { AccessPointAppInfo } from './utils'
-import type { AccessControlAdapter } from '@/app/components/app/app-access-control'
-import type { AccessControlAccount, AccessControlGroup } from '@/models/access-control'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -16,9 +14,8 @@ import {
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import AccessControl from '@/app/components/app/app-access-control'
 import CustomizeModal from '@/app/components/app/overview/customize'
 import SettingsModal from '@/app/components/app/overview/settings'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -28,16 +25,12 @@ import { AccessMode } from '@/models/access-control'
 import { consoleQuery } from '@/service/client'
 import { AccessPointCard } from './access-point-card'
 import { AccessPointUrl } from './access-point-url'
-import { getEnvironmentWebAppUrl } from './environment-web-app-utils'
+import { EnvironmentAccessControl } from './environment-access-control'
+import {
+  getEnvironmentWebAppUrl,
+  normalizeEnvironmentAccessMode,
+} from './environment-web-app-utils'
 import { useBuiltInAccessPointActions } from './use-built-in-actions'
-
-const ENVIRONMENT_ACCESS_MODES = [
-  AccessMode.ORGANIZATION,
-  AccessMode.SPECIFIC_GROUPS_MEMBERS,
-  AccessMode.PUBLIC,
-] as const satisfies readonly AccessMode[]
-
-type EnvironmentAccessMode = (typeof ENVIRONMENT_ACCESS_MODES)[number]
 
 const ACCESS_MODE_ICON_MAP: Record<EnvironmentAccessMode, string> = {
   [AccessMode.ORGANIZATION]: 'i-ri-building-line',
@@ -96,15 +89,10 @@ export function EnvironmentWebAppCard({
       canManage &&
       (showAccess || accessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS),
   })
-  const accessSubjects = useMemo(
-    () =>
-      subjectsQuery.data ? normalizeEnvironmentSubjects(subjectsQuery.data.subjects) : undefined,
-    [subjectsQuery.data],
-  )
   const accessConfigured =
-    !accessSubjects ||
+    !subjectsQuery.data ||
     accessMode !== AccessMode.SPECIFIC_GROUPS_MEMBERS ||
-    Boolean(accessSubjects.groups.length || accessSubjects.members.length)
+    subjectsQuery.data.subjects.length > 0
   const siteMutation = useMutation(
     consoleQuery.enterprise.appDeploy.accessService.updateEnvironmentSite.mutationOptions({
       onSuccess: (updatedSite) => {
@@ -130,19 +118,6 @@ export function EnvironmentWebAppCard({
       },
     ),
   )
-  const updateAccessModeMutation = useMutation(
-    consoleQuery.enterprise.appDeploy.accessService.updateEnvironmentWebAppAccessMode.mutationOptions(
-      {
-        onSuccess: (updatedSite) => {
-          queryClient.setQueryData(siteQueryOptions.queryKey, updatedSite)
-          void queryClient.invalidateQueries({ queryKey: subjectsQueryOptions.queryKey })
-        },
-        onError: () => {
-          toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
-        },
-      },
-    ),
-  )
   const webAppUrl = getEnvironmentWebAppUrl(environmentId, site)
   const running = Boolean(siteQuery.isSuccess && site?.enabled)
   const status = siteQuery.isSuccess ? (running ? 'inService' : 'disabled') : 'unavailable'
@@ -157,34 +132,6 @@ export function EnvironmentWebAppCard({
       : accessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS
         ? t(($) => $['accessControlDialog.accessItems.specific'], { ns: 'app' })
         : t(($) => $['accessControlDialog.accessItems.anyone'], { ns: 'app' })
-  const accessControlAdapter: AccessControlAdapter = {
-    subjectsQuery: {
-      data: accessSubjects,
-      isPending: subjectsQuery.isPending,
-    },
-    supportedModes: ENVIRONMENT_ACCESS_MODES,
-    updatePending: updateAccessModeMutation.isPending,
-    updateAccessMode: async ({ accessMode: nextAccessMode, subjects }) => {
-      if (!canManage || !isEnvironmentAccessMode(nextAccessMode))
-        throw new Error('Unsupported environment Web app access mode')
-
-      await updateAccessModeMutation.mutateAsync({
-        params,
-        body: {
-          access_mode: nextAccessMode,
-          ...(nextAccessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS
-            ? {
-                subjects: (subjects ?? []).map((subject) => ({
-                  subject_id: subject.subjectId,
-                  subject_type: subject.subjectType,
-                })),
-              }
-            : {}),
-        },
-      })
-    },
-  }
-
   const handleEnabledChange = (enabled: boolean) => {
     if (!canManage) return
 
@@ -333,9 +280,11 @@ export function EnvironmentWebAppCard({
         mode={appInfo?.mode}
       />
       {showAccess && (
-        <AccessControl
-          app={{ id: appId, access_mode: accessMode }}
-          adapter={accessControlAdapter}
+        <EnvironmentAccessControl
+          appId={appId}
+          environmentId={environmentId}
+          accessMode={accessMode}
+          canManage={canManage}
           onClose={() => setShowAccess(false)}
           onConfirm={() => setShowAccess(false)}
         />
@@ -367,42 +316,4 @@ export function EnvironmentWebAppCard({
       </AlertDialog>
     </>
   )
-}
-
-function isEnvironmentAccessMode(accessMode: AccessMode): accessMode is EnvironmentAccessMode {
-  return ENVIRONMENT_ACCESS_MODES.some((mode) => mode === accessMode)
-}
-
-function normalizeEnvironmentAccessMode(accessMode?: string): EnvironmentAccessMode {
-  if (accessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS) return AccessMode.SPECIFIC_GROUPS_MEMBERS
-  if (accessMode === AccessMode.PUBLIC) return AccessMode.PUBLIC
-  return AccessMode.ORGANIZATION
-}
-
-function normalizeEnvironmentSubjects(subjects: EnvironmentWebAppSubject[]) {
-  const groups: AccessControlGroup[] = []
-  const members: AccessControlAccount[] = []
-
-  subjects.forEach((subject) => {
-    if (subject.subject_type === 'group') {
-      const id = subject.subject_id || subject.group_data?.id
-      const name = subject.group_data?.name
-      const groupSize = subject.group_data?.group_size
-      if (id && name && groupSize !== undefined) groups.push({ id, name, groupSize })
-      return
-    }
-
-    if (subject.subject_type === 'account') {
-      const id = subject.subject_id || subject.account_data?.id
-      const name = subject.account_data?.name
-      const email = subject.account_data?.email
-      const avatar = subject.account_data?.avatar ?? ''
-      if (id && name && email) members.push({ id, name, email, avatar, avatarUrl: avatar })
-    }
-  })
-
-  return {
-    groups,
-    members,
-  }
 }

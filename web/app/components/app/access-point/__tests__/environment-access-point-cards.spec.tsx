@@ -12,10 +12,9 @@ const mocks = vi.hoisted(() => ({
   getSite: vi.fn(),
   getSubjects: vi.fn(),
   resetSite: vi.fn(),
-  updateAccessMode: vi.fn(),
   updateApi: vi.fn(),
   updateSite: vi.fn(),
-  accessControlProps: vi.fn(),
+  environmentAccessControlProps: vi.fn(),
   apiKeyButtonProps: vi.fn(),
 }))
 
@@ -69,12 +68,6 @@ vi.mock('@/service/client', () => ({
           updateEnvironmentSite: {
             mutationOptions: (options = {}) => ({
               mutationFn: mocks.updateSite,
-              ...options,
-            }),
-          },
-          updateEnvironmentWebAppAccessMode: {
-            mutationOptions: (options = {}) => ({
-              mutationFn: mocks.updateAccessMode,
               ...options,
             }),
           },
@@ -137,44 +130,19 @@ vi.mock('@/app/components/app/overview/settings', () => ({
     isShow ? <div role="dialog" aria-label="environment settings" /> : null,
 }))
 
-vi.mock('@/app/components/app/app-access-control', () => ({
-  default: (props: {
-    adapter: {
-      supportedModes: string[]
-      subjectsQuery: {
-        data?: {
-          groups: Array<{ id: string }>
-          members: Array<{ email: string; id: string; name: string }>
-        }
-      }
-      updateAccessMode: (input: {
-        accessMode: string
-        subjects: Array<{ subjectId: string; subjectType: string }>
-      }) => Promise<void>
-    }
-    app: { access_mode: string; id: string }
+vi.mock('../environment-access-control', () => ({
+  normalizeEnvironmentAccessMode: (accessMode?: string) => {
+    if (accessMode === 'private' || accessMode === 'public') return accessMode
+    return 'private_all'
+  },
+  EnvironmentAccessControl: (props: {
+    appId: string
+    environmentId: string
+    accessMode: string
+    canManage: boolean
   }) => {
-    mocks.accessControlProps(props)
-    return (
-      <div role="dialog" aria-label="environment access mode">
-        <button
-          type="button"
-          onClick={() =>
-            void props.adapter.updateAccessMode({
-              accessMode: 'private',
-              subjects: [
-                {
-                  subjectId: 'account-2',
-                  subjectType: 'account',
-                },
-              ],
-            })
-          }
-        >
-          save-specific-access
-        </button>
-      </div>
-    )
+    mocks.environmentAccessControlProps(props)
+    return <div role="dialog" aria-label="environment access mode" />
   },
 }))
 
@@ -249,7 +217,6 @@ describe('environment access point cards', () => {
       ...site,
       code: 'regenerated-code',
     })
-    mocks.updateAccessMode.mockResolvedValue(site)
     mocks.updateApi.mockResolvedValue({
       ...api,
       enabled: false,
@@ -276,7 +243,7 @@ describe('environment access point cards', () => {
     expect(screen.getByRole('button', { name: /settings\.settings/ })).toBeEnabled()
   })
 
-  it('uses environment Site mutations for status, URL reset, and access mode', async () => {
+  it('uses environment Site mutations for status and URL reset, and opens its access container', async () => {
     const user = userEvent.setup()
     renderCard(<EnvironmentWebAppCard appId="app-1" environmentId="staging" canEdit canManage />)
 
@@ -285,48 +252,14 @@ describe('environment access point cards', () => {
     })
     await user.click(accessModeButton)
     await waitFor(() => {
-      expect(mocks.accessControlProps).toHaveBeenLastCalledWith(
+      expect(mocks.environmentAccessControlProps).toHaveBeenLastCalledWith(
         expect.objectContaining({
-          app: {
-            access_mode: 'private',
-            id: 'app-1',
-          },
-          adapter: expect.objectContaining({
-            subjectsQuery: {
-              data: {
-                groups: [],
-                members: [
-                  {
-                    avatar: '',
-                    avatarUrl: '',
-                    email: 'ada@example.com',
-                    id: 'account-1',
-                    name: 'Ada',
-                  },
-                ],
-              },
-              isPending: false,
-            },
-            supportedModes: ['private_all', 'private', 'public'],
-          }),
+          appId: 'app-1',
+          environmentId: 'staging',
+          accessMode: 'private',
+          canManage: true,
         }),
       )
-    })
-    await user.click(screen.getByRole('button', { name: 'save-specific-access' }))
-
-    await waitFor(() => {
-      expect(mocks.updateAccessMode.mock.calls[0]?.[0]).toEqual({
-        body: {
-          access_mode: 'private',
-          subjects: [
-            {
-              subject_id: 'account-2',
-              subject_type: 'account',
-            },
-          ],
-        },
-        params: environmentParams,
-      })
     })
 
     await user.click(screen.getByRole('button', { name: /regenerate/ }))

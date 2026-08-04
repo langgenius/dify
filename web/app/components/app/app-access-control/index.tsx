@@ -1,195 +1,118 @@
 'use client'
-import type { AccessControlSubjectsQuery } from './specific-groups-or-members'
+
+import type {
+  AccessControlSubjects,
+  AccessControlSubjectsStatus,
+} from './specific-groups-or-members'
 import type { Subject } from '@/models/access-control'
 import type { App } from '@/types/app'
-import { Button } from '@langgenius/dify-ui/button'
-import { DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { RadioGroup } from '@langgenius/dify-ui/radio'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiBuildingLine, RiGlobalLine, RiVerifiedBadgeLine } from '@remixicon/react'
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
-import { useCallback, useEffect, useId } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode, SubjectType } from '@/models/access-control'
+import { useAppWhiteListSubjects } from '@/service/access-control'
 import { consoleQuery } from '@/service/client'
-import useAccessControlStore from '../../../../context/access-control-store'
-import { Infotip } from '../../base/infotip'
-import AccessControlDialog from './access-control-dialog'
-import AccessControlItem from './access-control-item'
-import SpecificGroupsOrMembers, { WebAppSSONotEnabledTip } from './specific-groups-or-members'
+import { AccessControlForm } from './access-control-form'
+
+const APP_ACCESS_MODES = [
+  AccessMode.ORGANIZATION,
+  AccessMode.SPECIFIC_GROUPS_MEMBERS,
+  AccessMode.EXTERNAL_MEMBERS,
+  AccessMode.PUBLIC,
+] as const satisfies readonly AccessMode[]
+
+const EMPTY_SUBJECTS: AccessControlSubjects = {
+  groups: [],
+  members: [],
+}
 
 type AccessControlProps = {
   app: Pick<App, 'id' | 'access_mode'>
-  adapter?: AccessControlAdapter
   onClose: () => void
   onConfirm?: () => void
 }
 
-export type AccessControlAdapter = {
-  subjectsQuery: AccessControlSubjectsQuery
-  supportedModes?: readonly AccessMode[]
-  updatePending: boolean
-  updateAccessMode: (input: {
-    accessMode: AccessMode
-    subjects?: Pick<Subject, 'subjectId' | 'subjectType'>[]
-  }) => Promise<void>
+export default function AccessControl(props: AccessControlProps) {
+  return <AppAccessControlContainer key={props.app.id} {...props} />
 }
 
-export default function AccessControl(props: AccessControlProps) {
-  const { adapter, app, onClose, onConfirm } = props
-  const { id: appId, access_mode: appAccessMode } = app
-  const accessControlOptionsLabelId = useId()
+function AppAccessControlContainer({ app, onClose, onConfirm }: AccessControlProps) {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const setAppId = useAccessControlStore((s) => s.setAppId)
-  const specificGroups = useAccessControlStore((s) => s.specificGroups)
-  const specificMembers = useAccessControlStore((s) => s.specificMembers)
-  const currentMenu = useAccessControlStore((s) => s.currentMenu)
-  const setCurrentMenu = useAccessControlStore((s) => s.setCurrentMenu)
-  const hideTip =
+  const [accessMode, setAccessMode] = useState(
+    () => app.access_mode ?? AccessMode.SPECIFIC_GROUPS_MEMBERS,
+  )
+  const [subjectsDraft, setSubjectsDraft] = useState<AccessControlSubjects>()
+  const subjectsQuery = useAppWhiteListSubjects(
+    app.id,
+    accessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS,
+  )
+  const subjects = subjectsDraft ?? subjectsQuery.data ?? EMPTY_SUBJECTS
+  const subjectsStatus: AccessControlSubjectsStatus =
+    subjectsDraft || subjectsQuery.data
+      ? 'success'
+      : subjectsQuery.isFetching || subjectsQuery.isPending
+        ? 'loading'
+        : subjectsQuery.isError
+          ? 'error'
+          : 'loading'
+  const updateAccessModeMutation = useMutation(
+    consoleQuery.enterprise.webAppAuth.updateWebAppWhitelistSubjects.mutationOptions(),
+  )
+  const externalMembersTipHidden =
     systemFeatures.webapp_auth.enabled &&
     (systemFeatures.webapp_auth.allow_sso ||
       systemFeatures.webapp_auth.allow_email_password_login ||
       systemFeatures.webapp_auth.allow_email_code_login)
   const publicAccessDisabled = !systemFeatures.webapp_auth.allow_public_access
 
-  useEffect(() => {
-    setAppId(appId)
-    setCurrentMenu(appAccessMode ?? AccessMode.SPECIFIC_GROUPS_MEMBERS)
-  }, [appAccessMode, appId, setAppId, setCurrentMenu])
+  const handleConfirm = async () => {
+    if (
+      updateAccessModeMutation.isPending ||
+      (accessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS && subjectsStatus !== 'success') ||
+      (accessMode === AccessMode.PUBLIC && publicAccessDisabled)
+    )
+      return
 
-  const { isPending, mutateAsync: updateAccessMode } = useMutation(
-    consoleQuery.enterprise.webAppAuth.updateWebAppWhitelistSubjects.mutationOptions(),
-  )
-  const supportedModes = adapter?.supportedModes
-  const updatePending = adapter?.updatePending ?? isPending
-  const currentMenuSupported = !supportedModes || supportedModes.includes(currentMenu)
-  const confirmDisabled =
-    updatePending ||
-    !currentMenuSupported ||
-    (currentMenu === AccessMode.PUBLIC && publicAccessDisabled)
-  const handleConfirm = useCallback(async () => {
-    if (confirmDisabled) return
     const submitData: {
       accessMode: AccessMode
       subjects?: Pick<Subject, 'subjectId' | 'subjectType'>[]
-    } = { accessMode: currentMenu }
-    if (currentMenu === AccessMode.SPECIFIC_GROUPS_MEMBERS) {
-      const subjects: Pick<Subject, 'subjectId' | 'subjectType'>[] = []
-      specificGroups.forEach((group) => {
-        subjects.push({ subjectId: group.id, subjectType: SubjectType.GROUP })
-      })
-      specificMembers.forEach((member) => {
-        subjects.push({
+    } = { accessMode }
+
+    if (accessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS) {
+      submitData.subjects = [
+        ...subjects.groups.map((group) => ({
+          subjectId: group.id,
+          subjectType: SubjectType.GROUP,
+        })),
+        ...subjects.members.map((member) => ({
           subjectId: member.id,
           subjectType: SubjectType.ACCOUNT,
-        })
-      })
-      submitData.subjects = subjects
+        })),
+      ]
     }
-    if (adapter) await adapter.updateAccessMode(submitData)
-    else await updateAccessMode({ body: { appId, ...submitData } })
+
+    await updateAccessModeMutation.mutateAsync({ body: { appId: app.id, ...submitData } })
     toast.success(t(($) => $['accessControlDialog.updateSuccess'], { ns: 'app' }))
     onConfirm?.()
-  }, [
-    adapter,
-    updateAccessMode,
-    appId,
-    specificGroups,
-    specificMembers,
-    t,
-    onConfirm,
-    currentMenu,
-    confirmDisabled,
-  ])
+  }
+
   return (
-    <AccessControlDialog show onClose={onClose}>
-      <div className="flex flex-col gap-y-3">
-        <div className="pt-6 pr-14 pb-3 pl-6">
-          <DialogTitle className="title-2xl-semi-bold text-text-primary">
-            {t(($) => $['accessControlDialog.title'], { ns: 'app' })}
-          </DialogTitle>
-          <DialogDescription className="mt-1 system-xs-regular text-text-tertiary">
-            {t(($) => $['accessControlDialog.description'], { ns: 'app' })}
-          </DialogDescription>
-        </div>
-        <RadioGroup<AccessMode>
-          value={currentMenu}
-          onValueChange={setCurrentMenu}
-          className="flex flex-col items-stretch gap-y-1 px-6 pb-3"
-          aria-labelledby={accessControlOptionsLabelId}
-        >
-          <div className="leading-6">
-            <p id={accessControlOptionsLabelId} className="system-sm-medium text-text-tertiary">
-              {t(($) => $['accessControlDialog.accessLabel'], { ns: 'app' })}
-            </p>
-          </div>
-          {(!supportedModes || supportedModes.includes(AccessMode.ORGANIZATION)) && (
-            <AccessControlItem type={AccessMode.ORGANIZATION}>
-              <div className="flex items-center p-3">
-                <div className="flex grow items-center gap-x-2">
-                  <RiBuildingLine className="size-4 text-text-primary" />
-                  <p className="system-sm-medium text-text-primary">
-                    {t(($) => $['accessControlDialog.accessItems.organization'], { ns: 'app' })}
-                  </p>
-                </div>
-              </div>
-            </AccessControlItem>
-          )}
-          {(!supportedModes || supportedModes.includes(AccessMode.SPECIFIC_GROUPS_MEMBERS)) && (
-            <AccessControlItem type={AccessMode.SPECIFIC_GROUPS_MEMBERS}>
-              <SpecificGroupsOrMembers subjectsQuery={adapter?.subjectsQuery} />
-            </AccessControlItem>
-          )}
-          {(!supportedModes || supportedModes.includes(AccessMode.EXTERNAL_MEMBERS)) && (
-            <AccessControlItem type={AccessMode.EXTERNAL_MEMBERS}>
-              <div className="flex items-center p-3">
-                <div className="flex grow items-center gap-x-2">
-                  <RiVerifiedBadgeLine className="size-4 text-text-primary" />
-                  <p className="system-sm-medium text-text-primary">
-                    {t(($) => $['accessControlDialog.accessItems.external'], { ns: 'app' })}
-                  </p>
-                </div>
-                {!hideTip && <WebAppSSONotEnabledTip />}
-              </div>
-            </AccessControlItem>
-          )}
-          {(!supportedModes || supportedModes.includes(AccessMode.PUBLIC)) && (
-            <AccessControlItem type={AccessMode.PUBLIC} disabled={publicAccessDisabled}>
-              <div className="flex items-center gap-x-2 p-3">
-                <RiGlobalLine className="size-4 text-text-primary" />
-                <p className="system-sm-medium text-text-primary">
-                  {t(($) => $['accessControlDialog.accessItems.anyone'], { ns: 'app' })}
-                </p>
-                {publicAccessDisabled && (
-                  <Infotip
-                    aria-label={t(($) => $['accessControlDialog.webAppPublicAccessDisabledTip'], {
-                      ns: 'app',
-                    })}
-                    className="h-4 w-4 shrink-0 text-text-warning-secondary hover:text-text-warning-secondary"
-                  >
-                    {t(($) => $['accessControlDialog.webAppPublicAccessDisabledTip'], {
-                      ns: 'app',
-                    })}
-                  </Infotip>
-                )}
-              </div>
-            </AccessControlItem>
-          )}
-        </RadioGroup>
-        <div className="flex items-center justify-end gap-x-2 p-6 pt-5">
-          <Button onClick={onClose}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
-          <Button
-            disabled={confirmDisabled}
-            loading={updatePending}
-            variant="primary"
-            onClick={handleConfirm}
-          >
-            {t(($) => $['operation.confirm'], { ns: 'common' })}
-          </Button>
-        </div>
-      </div>
-    </AccessControlDialog>
+    <AccessControlForm
+      accessMode={accessMode}
+      subjects={subjects}
+      subjectsStatus={subjectsStatus}
+      supportedModes={APP_ACCESS_MODES}
+      updatePending={updateAccessModeMutation.isPending}
+      publicAccessDisabled={publicAccessDisabled}
+      externalMembersTipHidden={externalMembersTipHidden}
+      onAccessModeChange={setAccessMode}
+      onSubjectsChange={setSubjectsDraft}
+      onRetrySubjects={() => void subjectsQuery.refetch()}
+      onClose={onClose}
+      onConfirm={() => void handleConfirm()}
+    />
   )
 }

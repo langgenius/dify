@@ -1,5 +1,6 @@
 'use client'
 import type { ComboboxChangeEventDetails } from '@langgenius/dify-ui/combobox'
+import type { AccessControlSubjects } from './specific-groups-or-members'
 import type {
   AccessControlAccount,
   AccessControlGroup,
@@ -22,7 +23,6 @@ import {
   ComboboxStatus,
   ComboboxTrigger,
 } from '@langgenius/dify-ui/combobox'
-import { RiArrowRightSLine, RiOrganizationChart } from '@remixicon/react'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { useEffect, useRef, useState } from 'react'
@@ -30,20 +30,26 @@ import { useTranslation } from 'react-i18next'
 import { userProfileAtom } from '@/context/account-state'
 import { SubjectType } from '@/models/access-control'
 import { useSearchForWhiteListCandidates } from '@/service/access-control'
-import useAccessControlStore from '../../../../context/access-control-store'
 import Loading from '../../base/loading'
 
-export default function AddMemberOrGroupDialog() {
+type AddMemberOrGroupDialogProps = {
+  subjects: AccessControlSubjects
+  onChange: (subjects: AccessControlSubjects) => void
+}
+
+export default function AddMemberOrGroupDialog({
+  subjects: selectedAccessSubjects,
+  onChange,
+}: AddMemberOrGroupDialogProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [keyword, setKeyword] = useState('')
+  const [selectedGroupsForBreadcrumb, setSelectedGroupsForBreadcrumb] = useState<
+    AccessControlGroup[]
+  >([])
   const scrollRootRef = useRef<HTMLDivElement>(null)
   const anchorRef = useRef<HTMLDivElement>(null)
-  const specificGroups = useAccessControlStore((s) => s.specificGroups)
-  const setSpecificGroups = useAccessControlStore((s) => s.setSpecificGroups)
-  const specificMembers = useAccessControlStore((s) => s.specificMembers)
-  const setSpecificMembers = useAccessControlStore((s) => s.setSpecificMembers)
-  const selectedGroupsForBreadcrumb = useAccessControlStore((s) => s.selectedGroupsForBreadcrumb)
+  const { groups: specificGroups, members: specificMembers } = selectedAccessSubjects
   const debouncedKeyword = useDebounce(keyword, { wait: 500 })
 
   const lastAvailableGroup = selectedGroupsForBreadcrumb[selectedGroupsForBreadcrumb.length - 1]
@@ -95,8 +101,7 @@ export default function AddMemberOrGroupDialog() {
       else nextMembers.push((subject as SubjectAccount).accountData)
     }
 
-    setSpecificGroups(nextGroups)
-    setSpecificMembers(nextMembers)
+    onChange({ groups: nextGroups, members: nextMembers })
   }
 
   return (
@@ -158,13 +163,25 @@ export default function AddMemberOrGroupDialog() {
             <>
               {shouldShowBreadcrumb && (
                 <div className="flex h-7 items-center px-2 py-0.5">
-                  <SelectedGroupsBreadCrumb />
+                  <SelectedGroupsBreadCrumb
+                    groups={selectedGroupsForBreadcrumb}
+                    onChange={setSelectedGroupsForBreadcrumb}
+                  />
                 </div>
               )}
               {hasResults ? (
                 <>
                   <ComboboxList<Subject> className="max-h-none p-1">
-                    {(subject) => <SubjectItem key={getSubjectValue(subject)} subject={subject} />}
+                    {(subject) => (
+                      <SubjectItem
+                        key={getSubjectValue(subject)}
+                        subject={subject}
+                        selectedGroups={specificGroups}
+                        onExpandGroup={(group) =>
+                          setSelectedGroupsForBreadcrumb((groups) => [...groups, group])
+                        }
+                      />
+                    )}
                   </ComboboxList>
                   {isFetchingNextPage && <Loading />}
                   <div ref={anchorRef} className="h-0" />
@@ -212,28 +229,41 @@ function isSameSubject(item: Subject, value: Subject) {
   return item.subjectId === value.subjectId && item.subjectType === value.subjectType
 }
 
-function SubjectItem({ subject }: { subject: Subject }) {
+type SubjectItemProps = {
+  subject: Subject
+  selectedGroups: AccessControlGroup[]
+  onExpandGroup: (group: AccessControlGroup) => void
+}
+
+function SubjectItem({ subject, selectedGroups, onExpandGroup }: SubjectItemProps) {
   if (subject.subjectType === SubjectType.GROUP)
-    return <GroupItem group={(subject as SubjectGroup).groupData} subject={subject} />
+    return (
+      <GroupItem
+        group={(subject as SubjectGroup).groupData}
+        subject={subject}
+        selectedGroups={selectedGroups}
+        onExpand={onExpandGroup}
+      />
+    )
 
   return <MemberItem member={(subject as SubjectAccount).accountData} subject={subject} />
 }
 
-function SelectedGroupsBreadCrumb() {
-  const selectedGroupsForBreadcrumb = useAccessControlStore((s) => s.selectedGroupsForBreadcrumb)
-  const setSelectedGroupsForBreadcrumb = useAccessControlStore(
-    (s) => s.setSelectedGroupsForBreadcrumb,
-  )
+type SelectedGroupsBreadCrumbProps = {
+  groups: AccessControlGroup[]
+  onChange: (groups: AccessControlGroup[]) => void
+}
+
+function SelectedGroupsBreadCrumb({ groups, onChange }: SelectedGroupsBreadCrumbProps) {
   const { t } = useTranslation()
 
   const handleBreadCrumbClick = (index: number) => {
-    const newGroups = selectedGroupsForBreadcrumb.slice(0, index + 1)
-    setSelectedGroupsForBreadcrumb(newGroups)
+    onChange(groups.slice(0, index + 1))
   }
   const handleReset = () => {
-    setSelectedGroupsForBreadcrumb([])
+    onChange([])
   }
-  const hasBreadcrumb = selectedGroupsForBreadcrumb.length > 0
+  const hasBreadcrumb = groups.length > 0
 
   return (
     <div className="flex h-7 items-center gap-x-0.5 px-2 py-0.5">
@@ -250,12 +280,12 @@ function SelectedGroupsBreadCrumb() {
           {t(($) => $['accessControlDialog.operateGroupAndMember.allMembers'], { ns: 'app' })}
         </span>
       )}
-      {selectedGroupsForBreadcrumb.map((group, index) => {
-        const isLastGroup = index === selectedGroupsForBreadcrumb.length - 1
+      {groups.map((group, index) => {
+        const isLastGroup = index === groups.length - 1
 
         return (
           <div
-            key={index}
+            key={group.id}
             className="flex items-center gap-x-0.5 system-xs-regular text-text-tertiary"
           >
             <span>/</span>
@@ -280,18 +310,15 @@ function SelectedGroupsBreadCrumb() {
 type GroupItemProps = {
   group: AccessControlGroup
   subject: Subject
+  selectedGroups: AccessControlGroup[]
+  onExpand: (group: AccessControlGroup) => void
 }
-function GroupItem({ group, subject }: GroupItemProps) {
+function GroupItem({ group, subject, selectedGroups, onExpand }: GroupItemProps) {
   const { t } = useTranslation()
-  const specificGroups = useAccessControlStore((s) => s.specificGroups)
-  const selectedGroupsForBreadcrumb = useAccessControlStore((s) => s.selectedGroupsForBreadcrumb)
-  const setSelectedGroupsForBreadcrumb = useAccessControlStore(
-    (s) => s.setSelectedGroupsForBreadcrumb,
-  )
-  const isChecked = specificGroups.some((g) => g.id === group.id)
+  const isChecked = selectedGroups.some((selectedGroup) => selectedGroup.id === group.id)
 
   const handleExpandClick = () => {
-    setSelectedGroupsForBreadcrumb([...selectedGroupsForBreadcrumb, group])
+    onExpand(group)
   }
 
   return (
@@ -303,9 +330,9 @@ function GroupItem({ group, subject }: GroupItemProps) {
             <ComboboxItemText className="flex grow items-center px-0">
               <div className="mr-2 size-5 overflow-hidden rounded-full bg-components-icon-bg-blue-solid">
                 <div className="bg-access-app-icon-mask-bg flex size-full items-center justify-center">
-                  <RiOrganizationChart
-                    className="h-3.5 w-3.5 text-components-avatar-shape-fill-stop-0"
+                  <span
                     aria-hidden="true"
+                    className="i-ri-organization-chart h-3.5 w-3.5 text-components-avatar-shape-fill-stop-0"
                   />
                 </div>
               </div>
@@ -326,7 +353,7 @@ function GroupItem({ group, subject }: GroupItemProps) {
         <span className="px-0.75">
           {t(($) => $['accessControlDialog.operateGroupAndMember.expand'], { ns: 'app' })}
         </span>
-        <RiArrowRightSLine className="size-4" aria-hidden="true" />
+        <span aria-hidden="true" className="i-ri-arrow-right-s-line size-4" />
       </Button>
     </div>
   )
