@@ -90,8 +90,7 @@ def aggregate_capacity_point(block: BlockResult) -> CapacityPoint:
     success_target_met = block.outcomes.success_rate >= CAPACITY_SUCCESS_RATE_TARGET
     if not success_target_met:
         reasons.append(
-            f"capacity success rate {block.outcomes.success_rate:.2%} was below "
-            f"{CAPACITY_SUCCESS_RATE_TARGET:.0%}"
+            f"capacity success rate {block.outcomes.success_rate:.2%} was below {CAPACITY_SUCCESS_RATE_TARGET:.0%}"
         )
     saturated = not enough_concurrency or not success_target_met
     if correctness_invalid or (block.requested_concurrency == 1 and saturated):

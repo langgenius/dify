@@ -999,9 +999,7 @@ async def _execute_load_phase(
             observed_max_active=0,
             observation_count=len(observations),
             minimum_observations=minimum_observations,
-            minimum_observations_met=(
-                minimum_observations is None or len(observations) >= minimum_observations
-            ),
+            minimum_observations_met=(minimum_observations is None or len(observations) >= minimum_observations),
             maximum_duration_seconds=maximum_duration_seconds,
             timed_out=timed_out,
             fatal_errors=[],
