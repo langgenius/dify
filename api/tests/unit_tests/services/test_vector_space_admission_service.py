@@ -1,10 +1,12 @@
 import json
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from types import SimpleNamespace
+from types import SimpleNamespace, TracebackType
+from typing import cast
 from unittest.mock import PropertyMock, call, patch
 
 import pytest
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.rag.datasource.vdb.vector_type import VectorType
@@ -12,6 +14,7 @@ from core.rag.index_processor.constant.index_type import IndexStructureType, Ind
 from core.rag.models.document import AttachmentDocument, ChildDocument, Document
 from enums.cloud_plan import CloudPlan
 from enums.deployment_edition import DeploymentEdition
+from models.dataset import Dataset
 from services.vector_space_admission_service import (
     VECTOR_SPACE_ADMISSION_ERROR_CODE,
     VectorSpaceAdmissionError,
@@ -33,11 +36,16 @@ class _FakeRedisLock:
     def __init__(self, lock: threading.Lock) -> None:
         self._lock = lock
 
-    def __enter__(self):
+    def __enter__(self) -> "_FakeRedisLock":
         self._lock.acquire()
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
         self._lock.release()
 
 
@@ -47,7 +55,7 @@ class _FakeRedis:
         self.ttls: dict[str, int] = {}
         self._locks: dict[str, threading.Lock] = {}
 
-    def lock(self, key: str, **_kwargs) -> _FakeRedisLock:
+    def lock(self, key: str, **_kwargs: object) -> _FakeRedisLock:
         return _FakeRedisLock(self._locks.setdefault(key, threading.Lock()))
 
     def get(self, key: str) -> str | None:
@@ -58,14 +66,17 @@ class _FakeRedis:
         self.ttls[key] = ttl
 
 
-def _dataset() -> SimpleNamespace:
-    return SimpleNamespace(
-        id="dataset-1",
-        tenant_id="tenant-1",
-        indexing_technique=IndexTechniqueType.HIGH_QUALITY,
-        embedding_model_provider="provider",
-        embedding_model="model",
-        index_struct_dict={"type": VectorType.TIDB_ON_QDRANT},
+def _dataset() -> Dataset:
+    return cast(
+        Dataset,
+        SimpleNamespace(
+            id="dataset-1",
+            tenant_id="tenant-1",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+            embedding_model_provider="provider",
+            embedding_model="model",
+            index_struct_dict={"type": VectorType.TIDB_ON_QDRANT},
+        ),
     )
 
 
@@ -117,7 +128,7 @@ def _check_estimate(
             dataset=_dataset(),
             document_id=document_id,
             workload=_workload(),
-            session=SimpleNamespace(),
+            session=cast(Session, SimpleNamespace()),
         )
     return service
 
@@ -247,7 +258,7 @@ def test_admission_is_cloud_only() -> None:
             dataset=_dataset(),
             document_id="document-1",
             workload=_workload(),
-            session=SimpleNamespace(),
+            session=cast(Session, SimpleNamespace()),
         )
 
     resolve_vector_type.assert_not_called()
@@ -271,7 +282,7 @@ def test_admission_skips_non_tidb_vector_backends() -> None:
             dataset=_dataset(),
             document_id="document-1",
             workload=_workload(),
-            session=SimpleNamespace(),
+            session=cast(Session, SimpleNamespace()),
         )
 
     get_info.assert_not_called()
@@ -393,14 +404,14 @@ def test_usage_lookup_is_refreshed_for_each_document() -> None:
             dataset=_dataset(),
             document_id="document-1",
             workload=_workload(),
-            session=SimpleNamespace(),
+            session=cast(Session, SimpleNamespace()),
         )
         with pytest.raises(VectorSpaceAdmissionError):
             service._ensure_can_write(
                 dataset=_dataset(),
                 document_id="document-2",
                 workload=_workload(),
-                session=SimpleNamespace(),
+                session=cast(Session, SimpleNamespace()),
             )
 
     assert get_vector_space.call_args_list == [call("tenant-1"), call("tenant-1")]

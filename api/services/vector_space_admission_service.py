@@ -181,7 +181,7 @@ def build_pipeline_workload(
 def _field(value: Any, name: str) -> Any:
     if isinstance(value, Mapping):
         return value.get(name)
-    return getattr(value, name, None)
+    return getattr(value, name, None)  # guard-ignore: no-new-getattr -- supports validated chunk models
 
 
 def _items(value: Any, name: str) -> list[Any]:
@@ -249,7 +249,7 @@ class VectorSpaceAdmissionService:
         if (
             dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD
             or not dify_config.BILLING_ENABLED
-            or getattr(dataset, "indexing_technique", None) != IndexTechniqueType.HIGH_QUALITY
+            or dataset.indexing_technique != IndexTechniqueType.HIGH_QUALITY
             or workload.total_points == 0
             or workload.probe_text is None
         ):

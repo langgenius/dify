@@ -25,7 +25,7 @@ def test_get_knowledge_file_size_limit(
     billing_feature_enabled: bool,
     plan: CloudPlan,
     expected: int,
-):
+) -> None:
     monkeypatch.setattr(feature_service_module.dify_config, "BILLING_ENABLED", billing_enabled)
     monkeypatch.setattr(feature_service_module.dify_config, "UPLOAD_FILE_SIZE_LIMIT", 15)
     monkeypatch.setattr(
@@ -49,7 +49,7 @@ def test_get_knowledge_file_size_limit(
         get_info.assert_not_called()
 
 
-def test_paid_knowledge_file_size_limit_never_reduces_default(monkeypatch: pytest.MonkeyPatch):
+def test_paid_knowledge_file_size_limit_never_reduces_default(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(feature_service_module.dify_config, "BILLING_ENABLED", True)
     monkeypatch.setattr(feature_service_module.dify_config, "UPLOAD_FILE_SIZE_LIMIT", 100)
     monkeypatch.setattr(

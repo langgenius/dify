@@ -3,14 +3,15 @@ from unittest.mock import MagicMock, patch
 from tasks.retry_document_indexing_task import retry_document_indexing_task
 
 
-def test_retry_enforces_vector_space_admission():
+def test_retry_enforces_vector_space_admission() -> None:
     session = MagicMock()
     dataset = MagicMock(id="dataset-1", tenant_id="tenant-1", runtime_mode="general")
     user = MagicMock(id="user-1")
     tenant = MagicMock(id="tenant-1")
     document = MagicMock(id="document-1", dataset_id="dataset-1", doc_form="paragraph")
     session.scalar.side_effect = [dataset, user, tenant, document]
-    session.scalars.return_value.all.return_value = []
+    empty_segments: list[MagicMock] = []
+    session.scalars.return_value.all.return_value = empty_segments
 
     session_context = MagicMock()
     session_context.__enter__.return_value = session

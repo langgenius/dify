@@ -113,8 +113,8 @@ const EmbeddingProcess: FC<EmbeddingProcessProps> = ({
       <div className="flex flex-col gap-y-3">
         <StatusHeader isEmbedding={isEmbedding} isCompleted={isEmbeddingCompleted} />
 
-        {vectorSpaceAdmissionError?.estimated_vector_space_mb &&
-          vectorSpaceAdmissionError.vector_space_limit_mb && (
+        {vectorSpaceAdmissionError?.estimated_vector_space_mb != null &&
+          vectorSpaceAdmissionError.vector_space_limit_mb != null && (
             <VectorSpaceAdmissionAlert
               showUpgrade={showVectorSpaceUpgrade}
               estimatedMb={vectorSpaceAdmissionError.estimated_vector_space_mb}

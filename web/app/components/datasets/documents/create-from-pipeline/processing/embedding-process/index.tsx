@@ -165,8 +165,8 @@ const EmbeddingProcess = ({
           )}
           {isEmbeddingCompleted && t(($) => $['embedding.completed'], { ns: 'datasetDocuments' })}
         </div>
-        {vectorSpaceAdmissionError?.estimated_vector_space_mb &&
-          vectorSpaceAdmissionError.vector_space_limit_mb && (
+        {vectorSpaceAdmissionError?.estimated_vector_space_mb != null &&
+          vectorSpaceAdmissionError.vector_space_limit_mb != null && (
             <VectorSpaceAdmissionAlert
               showUpgrade={showUpgrade}
               estimatedMb={vectorSpaceAdmissionError.estimated_vector_space_mb}
