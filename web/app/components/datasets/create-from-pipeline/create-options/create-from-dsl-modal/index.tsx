@@ -72,12 +72,7 @@ const CreateFromDSLModal = ({
           </div>
           <div className="flex justify-end gap-x-2 p-6 pt-5">
             <Button onClick={onClose}>{t(($) => $['newApp.Cancel'], { ns: 'app' })}</Button>
-            <Button
-              disabled={buttonDisabled}
-              variant="primary"
-              onClick={handleCreateApp}
-              className="gap-1"
-            >
+            <Button disabled={buttonDisabled} variant="primary" onClick={handleCreateApp}>
               <span>{t(($) => $['newApp.import'], { ns: 'app' })}</span>
             </Button>
           </div>

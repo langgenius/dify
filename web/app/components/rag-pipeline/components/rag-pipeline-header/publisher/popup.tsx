@@ -270,7 +270,7 @@ export function Popup({
             <RiPlayCircleLine className="mr-2 size-4" />
             {t(($) => $['common.goToAddDocuments'], { ns: 'pipeline' })}
           </div>
-          <RiArrowRightUpLine className="ml-2 size-4 shrink-0" />
+          <RiArrowRightUpLine className="size-4 shrink-0" />
         </Button>
         <Link href={apiReferenceUrl} target="_blank" rel="noopener noreferrer">
           <Button
@@ -282,7 +282,7 @@ export function Popup({
               <RiTerminalBoxLine className="mr-2 size-4" />
               {t(($) => $['common.accessAPIReference'], { ns: 'workflow' })}
             </div>
-            <RiArrowRightUpLine className="ml-2 size-4 shrink-0" />
+            <RiArrowRightUpLine className="size-4 shrink-0" />
           </Button>
         </Link>
         <Divider className="my-2" />

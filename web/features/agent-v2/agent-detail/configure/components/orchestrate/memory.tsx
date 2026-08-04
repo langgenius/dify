@@ -105,7 +105,7 @@ export function MemorySettings({ isPending, memory }: MemorySettingsProps) {
             {t(($) => $['agentDetail.memorySettings.export.description'])}
           </p>
         </div>
-        <Button variant="secondary" size="small" disabled className="gap-1.5">
+        <Button variant="secondary" size="small" disabled>
           <span aria-hidden className="i-ri-download-line size-3.5" />
           {t(($) => $['agentDetail.memorySettings.export.download'])}
         </Button>

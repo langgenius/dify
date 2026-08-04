@@ -245,7 +245,7 @@ const FeaturesTrigger = () => {
           )}
           onClick={handleShowFeatures}
         >
-          <span className="mr-1 i-ri-apps-2-add-line size-4 text-components-button-secondary-text" />
+          <span className="i-ri-apps-2-add-line size-4 text-components-button-secondary-text" />
           {t(($) => $['common.features'], { ns: 'workflow' })}
         </Button>
       )}

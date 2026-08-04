@@ -89,7 +89,7 @@ function TaskStatusIndicator({
             disabled={disabled}
             aria-label={tip}
             className={cn(
-              'relative size-8 rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-bg p-2 shadow-none',
+              'relative size-8 overflow-visible rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-bg p-2 shadow-none',
               'focus-visible:ring-2 focus-visible:ring-state-accent-solid',
               isClickable ? 'cursor-pointer' : 'cursor-default',
               showErrorStyle &&
