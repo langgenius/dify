@@ -92,6 +92,7 @@ import {
   skillFileMenuPopupClassName,
   toFileTree,
 } from './shared'
+import { SkillDetailSidebarActions } from './sidebar-actions'
 import { SkillDisplayNameEditor } from './skill-display-name-editor'
 import { SkillReferencesPanel, SkillTagsEditor } from './skill-metadata'
 import { SkillUploadFailuresDialog, SkillUploadReviewDialog } from './upload-dialogs'
@@ -269,6 +270,7 @@ export function FileTree({
   const [collapsedFolderPaths, setCollapsedFolderPaths] = useState<string[]>([])
   const [referencesOpen, setReferencesOpen] = useState(false)
   const [searchDialogOpen, setSearchDialogOpen] = useState(false)
+  const [skillRenameEditing, setSkillRenameEditing] = useState(false)
   const [selectedPaths, setSelectedPaths] = useState<string[]>([])
   const [selectionAnchorPath, setSelectionAnchorPath] = useState<string>()
   const [clipboard, setClipboard] = useState<SkillFileClipboard>()
@@ -1334,7 +1336,9 @@ export function FileTree({
                 {detail ? (
                   <SkillDisplayNameEditor
                     detail={detail}
+                    editing={skillRenameEditing}
                     fileMutationCoordinator={fileMutationCoordinator}
+                    onEditingChange={setSkillRenameEditing}
                     readonly={readonly}
                     skillId={skillId}
                   />
@@ -1347,6 +1351,12 @@ export function FileTree({
                   {detail?.name ?? skillId}
                 </p>
               </div>
+              {!readonly && detail && (
+                <SkillDetailSidebarActions
+                  detail={detail}
+                  onRename={() => setSkillRenameEditing(true)}
+                />
+              )}
             </div>
             <SkillTagsEditor
               detail={detail}

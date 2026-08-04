@@ -16,9 +16,14 @@ import SkillDetailPage from '../detail-page'
 const primaryModifier = detectPlatform() === 'mac' ? { metaKey: true } : { ctrlKey: true }
 
 const mocks = vi.hoisted(() => ({
+  deleteSkillMutationFn: vi.fn(),
+  downloadBlob: vi.fn(),
+  duplicateSkillMutationFn: vi.fn(),
+  fetchSkillArchiveBlob: vi.fn(),
   fetchSkillFileBlob: vi.fn(),
   checkDraftFilesMutationFn: vi.fn(),
   publishSkillMutationFn: vi.fn(),
+  routerPush: vi.fn(),
   restoreSkillMutationFn: vi.fn(),
   saveDraftFileMutationFn: vi.fn(),
   sendSkillAssistMessage: vi.fn(),
@@ -141,6 +146,13 @@ vi.mock('@/next/navigation', () => ({
   useParams: () => ({
     skillId: 'skill-1',
   }),
+  useRouter: () => ({
+    push: mocks.routerPush,
+  }),
+}))
+
+vi.mock('@/utils/download', () => ({
+  downloadBlob: mocks.downloadBlob,
 }))
 
 vi.mock('@/service/client', () => ({
@@ -169,6 +181,14 @@ vi.mock('@/service/client', () => ({
             },
           },
           bySkillId: {
+            delete: {
+              mutationOptions: () => ({ mutationFn: mocks.deleteSkillMutationFn }),
+            },
+            duplicate: {
+              post: {
+                mutationOptions: () => ({ mutationFn: mocks.duplicateSkillMutationFn }),
+              },
+            },
             get: {
               key: mocks.skillDetailKey,
               queryOptions: mocks.skillDetailQueryOptions,
@@ -226,6 +246,7 @@ vi.mock('@/service/client', () => ({
 }))
 
 vi.mock('../client', () => ({
+  fetchSkillArchiveBlob: mocks.fetchSkillArchiveBlob,
   fetchSkillFileBlob: mocks.fetchSkillFileBlob,
   sendSkillAssistMessage: mocks.sendSkillAssistMessage,
   uploadSkillFile: mocks.uploadSkillFile,
@@ -1678,6 +1699,120 @@ describe('SkillDetailPage', () => {
         'Renamed skill',
       )
     })
+  })
+
+  it('opens the sidebar More menu in the designed action order and reuses inline rename', async () => {
+    const user = userEvent.setup()
+    renderSkillDetailPage()
+
+    const moreButton = await screen.findByRole('button', {
+      name: 'skill.skillManagement.moreActions:{"name":"Untitled skill"}',
+    })
+    expect(moreButton).toHaveClass('mt-px', 'size-6', 'rounded-md')
+    expect(moreButton.querySelector('[aria-hidden]')).toHaveClass('i-ri-more-fill', 'size-4')
+
+    await user.click(moreButton)
+    const menuItems = screen.getAllByRole('menuitem')
+    expect(menuItems.map((item) => item.textContent)).toEqual([
+      'common.operation.rename',
+      'common.operation.duplicate',
+      'common.operation.export',
+      'common.operation.delete',
+    ])
+    expect(menuItems.map((item) => item.querySelector('[aria-hidden]')?.className)).toEqual([
+      expect.stringContaining('i-ri-edit-line'),
+      expect.stringContaining('i-ri-file-copy-2-line'),
+      expect.stringContaining('i-ri-file-download-line'),
+      expect.stringContaining('i-ri-delete-bin-line'),
+    ])
+
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.rename' }))
+    const renameInput = screen.getByRole('textbox', { name: 'common.operation.rename' })
+    expect(renameInput).toHaveFocus()
+    expect(renameInput).toHaveValue('Untitled skill')
+  })
+
+  it('duplicates and exports the current skill from the sidebar More menu', async () => {
+    const user = userEvent.setup()
+    const archive = new Blob(['archive'], { type: 'application/zip' })
+    mocks.duplicateSkillMutationFn.mockResolvedValue({})
+    mocks.fetchSkillArchiveBlob.mockResolvedValue(archive)
+    renderSkillDetailPage()
+
+    const moreButton = await screen.findByRole('button', {
+      name: 'skill.skillManagement.moreActions:{"name":"Untitled skill"}',
+    })
+    await user.click(moreButton)
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.duplicate' }))
+
+    await waitFor(() => {
+      expect(mocks.duplicateSkillMutationFn).toHaveBeenCalledWith(
+        { params: { skill_id: 'skill-1' } },
+        expect.anything(),
+      )
+    })
+    expect(toast.success).toHaveBeenCalledWith('skill.skillManagement.duplicateSuccess')
+
+    await user.click(moreButton)
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.export' }))
+
+    await waitFor(() => {
+      expect(mocks.fetchSkillArchiveBlob).toHaveBeenCalledWith('skill-1')
+      expect(mocks.downloadBlob).toHaveBeenCalledWith({
+        data: archive,
+        fileName: 'github-actions-failure-debugging.zip',
+      })
+    })
+  })
+
+  it('confirms deletion from the sidebar More menu and returns to Skills', async () => {
+    const user = userEvent.setup()
+    mocks.deleteSkillMutationFn.mockResolvedValue({})
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.moreActions:{"name":"Untitled skill"}',
+      }),
+    )
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.delete' }))
+
+    expect(
+      screen.getByText('skill.skillManagement.deleteDialog.title:{"name":"Untitled skill"}'),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+
+    await waitFor(() => {
+      expect(mocks.deleteSkillMutationFn).toHaveBeenCalledWith(
+        {
+          body: { confirmation_name: 'github-actions-failure-debugging' },
+          params: { skill_id: 'skill-1' },
+        },
+        expect.anything(),
+      )
+      expect(mocks.routerPush).toHaveBeenCalledWith('/skills')
+    })
+  })
+
+  it('does not expose mutable More actions while viewing a published version', async () => {
+    mocks.skillVersionsQueryOptions.mockImplementation((options) => ({
+      queryKey: ['skill-versions', options],
+      queryFn: async () => ({ data: [createSkillVersion()] }),
+    }))
+    renderSkillDetailPage()
+
+    await userEvent
+      .setup()
+      .click(
+        await screen.findByRole('button', { name: 'skill.skillManagement.detail.versionHistory' }),
+      )
+    await userEvent.setup().click(await screen.findByText('Initial version'))
+
+    expect(
+      screen.queryByRole('button', {
+        name: 'skill.skillManagement.moreActions:{"name":"Untitled skill"}',
+      }),
+    ).not.toBeInTheDocument()
   })
 
   it('keeps display-name hidden in the SKILL.md metadata editor', async () => {

@@ -11,12 +11,16 @@ import { invalidateSkillDetail, runSkillFileMutation, setSkillDetailCache } from
 
 export function SkillDisplayNameEditor({
   detail,
+  editing,
   fileMutationCoordinator,
+  onEditingChange,
   readonly,
   skillId,
 }: {
   detail: SkillDetailResponse
+  editing: boolean
   fileMutationCoordinator: SkillFileMutationCoordinator
+  onEditingChange: (editing: boolean) => void
   readonly: boolean
   skillId: string
 }) {
@@ -25,7 +29,6 @@ export function SkillDisplayNameEditor({
   const queryClient = useQueryClient()
   const inputRef = useRef<HTMLInputElement>(null)
   const submittingRef = useRef(false)
-  const [editing, setEditing] = useState(false)
   const [displayNameOverride, setDisplayNameOverride] = useState<{
     base: string
     next: string
@@ -52,7 +55,7 @@ export function SkillDisplayNameEditor({
   const cancelEditing = () => {
     if (saving) return
     setDraftName(displayName)
-    setEditing(false)
+    onEditingChange(false)
   }
 
   const saveDisplayName = async () => {
@@ -90,7 +93,7 @@ export function SkillDisplayNameEditor({
         next: nextDisplayName,
       })
       setDraftName(nextDisplayName)
-      setEditing(false)
+      onEditingChange(false)
       toast.success(t(($) => $['skillManagement.detail.renameSkillSuccess']))
     } catch {
       setDraftName(displayName)
@@ -142,7 +145,7 @@ export function SkillDisplayNameEditor({
       className="w-full cursor-text truncate rounded-md px-1 py-0.5 text-left system-md-semibold text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
       onClick={() => {
         setDraftName(displayName)
-        setEditing(true)
+        onEditingChange(true)
       }}
     >
       {displayName}
