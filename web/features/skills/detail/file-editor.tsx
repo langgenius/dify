@@ -898,6 +898,11 @@ export function FileEditor({
     )
     const fetchedReferenceCount = references.data?.length ?? 0
     if (fetchedReferenceCount > 0) {
+      if (detail && detail.reference_count !== fetchedReferenceCount)
+        setSkillDetailCache(queryClient, skillId, {
+          ...detail,
+          reference_count: fetchedReferenceCount,
+        })
       setPublishReferenceCountOverride(fetchedReferenceCount)
       setPublishConfirmOpen(true)
       return
@@ -906,7 +911,7 @@ export function FileEditor({
     onPublish()
   }, [
     canEdit,
-    detail?.reference_count,
+    detail,
     onPublish,
     publishDisabled,
     queryClient,

@@ -37,6 +37,34 @@ import {
   skillBuilderAttachmentAccept,
 } from './shared'
 
+const skillBuilderProgressStages = [
+  'reading_draft',
+  'generating_plan',
+  'applying_changes',
+  'updating_editor',
+] as const
+
+type SkillBuilderProgressStage = (typeof skillBuilderProgressStages)[number]
+
+function isSkillBuilderProgressStage(stage: unknown): stage is SkillBuilderProgressStage {
+  return (
+    typeof stage === 'string' &&
+    skillBuilderProgressStages.includes(stage as SkillBuilderProgressStage)
+  )
+}
+
+function SkillBuilderProgressStageLabel({ stage }: { stage: SkillBuilderProgressStage }) {
+  const { t } = useTranslation('skill')
+
+  if (stage === 'reading_draft')
+    return <>{t(($) => $['skillManagement.detail.builder.progress.readingDraft'])}</>
+  if (stage === 'generating_plan')
+    return <>{t(($) => $['skillManagement.detail.builder.progress.generatingPlan'])}</>
+  if (stage === 'applying_changes')
+    return <>{t(($) => $['skillManagement.detail.builder.progress.applyingChanges'])}</>
+  return <>{t(($) => $['skillManagement.detail.builder.progress.updatingEditor'])}</>
+}
+
 function BuilderModelSelector({
   isLoading,
   modelList,
@@ -76,23 +104,74 @@ function BuilderModelSelector({
   )
 }
 
-function SkillBuilderThinkingMessage({ seconds }: { seconds: number }) {
+function SkillBuilderThinkingMessage({
+  progressStages,
+  reasoningContent,
+  seconds,
+}: {
+  progressStages?: string[]
+  reasoningContent?: string
+  seconds: number
+}) {
   const { t } = useTranslation('skill')
   const minutes = Math.floor(seconds / 60)
   const remainingSeconds = seconds % 60
   const duration = minutes > 0 ? `${minutes}m${remainingSeconds}s` : `${remainingSeconds}s`
-
-  return (
-    <div
-      aria-live="polite"
-      className="flex h-6 items-center gap-1 px-1 system-xs-medium text-text-tertiary"
-    >
+  const reasoning = reasoningContent?.trim()
+  const visibleProgressStages = Array.from(new Set(progressStages ?? [])).filter(
+    isSkillBuilderProgressStage,
+  )
+  const [open, setOpen] = useState(false)
+  const content = (
+    <>
       <span>{t(($) => $['skillManagement.detail.builder.thinking'])}</span>
       <span aria-hidden className="font-normal text-text-quaternary">
         ·
       </span>
       <span>{duration}</span>
-      <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
+    </>
+  )
+
+  return (
+    <div className="px-1 text-text-tertiary">
+      <button
+        type="button"
+        aria-expanded={open}
+        className="flex h-6 cursor-pointer items-center gap-1 system-xs-medium outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+        onClick={() => setOpen((current) => !current)}
+      >
+        {content}
+        <span
+          aria-hidden
+          className={cn('i-ri-arrow-down-s-line size-4 transition-transform', open && 'rotate-180')}
+        />
+      </button>
+      {open && (
+        <div className="mt-1 max-h-40 overflow-y-auto rounded-lg bg-background-section p-2 system-xs-regular text-text-secondary">
+          {reasoning ? (
+            <Markdown
+              content={reasoning}
+              className="text-[12px]! leading-[18px]! [&_p]:my-0 [&_p]:text-[12px]! [&_p]:leading-[18px]!"
+            />
+          ) : visibleProgressStages.length ? (
+            <ol className="flex flex-col gap-1">
+              {visibleProgressStages.map((stage) => (
+                <li key={stage} className="flex items-center gap-2">
+                  <span aria-hidden className="size-1.5 rounded-full bg-text-tertiary" />
+                  <span>
+                    <SkillBuilderProgressStageLabel stage={stage} />
+                  </span>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <Markdown
+              content={t(($) => $['skillManagement.detail.builder.thinkingUnavailable'])}
+              className="text-[12px]! leading-[18px]! [&_p]:my-0 [&_p]:text-[12px]! [&_p]:leading-[18px]!"
+            />
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -115,7 +194,7 @@ const skillBuilderEmptyIconCells = skillBuilderEmptyIconCellOpacities.map((opaci
 
 function SkillBuilderEmptyIcon() {
   return (
-    <div className="dify-blue-glass-surface relative flex size-12 items-center justify-center rounded-xl p-2">
+    <div className="dify-blue-glass-surface relative flex h-[50px] w-12 items-center justify-center rounded-xl p-2 shadow-lg backdrop-blur-[5px]">
       <div
         aria-hidden
         className="absolute inset-x-px inset-y-0.5 grid grid-cols-[repeat(8,4px)] grid-rows-[repeat(8,4px)] gap-0.5 opacity-25"
@@ -130,7 +209,7 @@ function SkillBuilderEmptyIcon() {
       </div>
       <span
         aria-hidden
-        className="relative i-custom-public-agent-building-blocks size-4 text-[#0033FF] drop-shadow-[0_0_4px_rgba(49,70,255,0.18)]"
+        className="relative i-custom-vender-agent-v2-building-blocks size-5 text-[#0033FF] drop-shadow-[0_0_4px_rgba(49,70,255,0.18)]"
       />
     </div>
   )
@@ -454,6 +533,38 @@ export function SkillBuilderPanel({
         )
       },
       onUnhandledEvent: (event) => {
+        if (event.event === 'skill_assistant_progress') {
+          const stage = event.stage
+          if (!isSkillBuilderProgressStage(stage)) return
+
+          updateMessages((currentMessages) =>
+            currentMessages.map((message) =>
+              message.id === assistantMessageId
+                ? {
+                    ...message,
+                    progressStages: [...(message.progressStages ?? []), stage],
+                  }
+                : message,
+            ),
+          )
+          return
+        }
+        if (event.event === 'skill_assistant_reasoning_chunk') {
+          const reasoning = typeof event.reasoning === 'string' ? event.reasoning : ''
+          if (!reasoning) return
+
+          updateMessages((currentMessages) =>
+            currentMessages.map((message) =>
+              message.id === assistantMessageId
+                ? {
+                    ...message,
+                    reasoningContent: `${message.reasoningContent ?? ''}${reasoning}`,
+                  }
+                : message,
+            ),
+          )
+          return
+        }
         if (event.event === 'skill_assistant_suggestions') {
           const nextSuggestions = Array.isArray(event.suggestions)
             ? event.suggestions.filter(
@@ -552,10 +663,10 @@ export function SkillBuilderPanel({
   }
 
   return (
-    <aside className="relative my-1 mr-1 flex w-[396px] shrink-0 flex-col overflow-hidden rounded-lg bg-[#e9ebf0] inset-ring-[0.5px] inset-ring-divider-subtle">
+    <aside className="relative my-1 mr-1 flex w-[396px] shrink-0 flex-col overflow-hidden rounded-lg inset-ring-[0.5px] inset-ring-divider-subtle">
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 z-0 bg-linear-to-b from-background-gradient-bg-fill-chat-bg-1 to-background-gradient-bg-fill-chat-bg-2 opacity-90"
+        className="pointer-events-none absolute inset-0 z-0 bg-linear-to-b from-background-gradient-bg-fill-chat-bg-1 to-background-gradient-bg-fill-chat-bg-2"
       />
       <SkillBuilderGridTexture
         aria-hidden
@@ -630,6 +741,8 @@ export function SkillBuilderPanel({
                   >
                     {message.thinkingDurationSeconds !== undefined && (
                       <SkillBuilderThinkingMessage
+                        progressStages={message.progressStages}
+                        reasoningContent={message.reasoningContent}
                         seconds={
                           isSending && messageIndex === messages.length - 1
                             ? thinkingElapsedSeconds
@@ -694,42 +807,48 @@ export function SkillBuilderPanel({
                         )}
                       </>
                     ) : message.thinkingDurationSeconds === undefined ? (
-                      <SkillBuilderThinkingMessage seconds={thinkingElapsedSeconds} />
+                      <SkillBuilderThinkingMessage
+                        progressStages={message.progressStages}
+                        reasoningContent={message.reasoningContent}
+                        seconds={thinkingElapsedSeconds}
+                      />
                     ) : null}
                   </div>
                 ),
               )}
             </div>
           ) : (
-            <div className="flex flex-col px-3 text-left">
-              <div className="mb-7 flex flex-col items-start">
-                <div className="mb-4">
-                  <SkillBuilderEmptyIcon />
+            <div className="flex flex-col gap-3 px-3 text-left">
+              <div className="flex flex-col items-start gap-3">
+                <SkillBuilderEmptyIcon />
+                <div className="flex w-full flex-col gap-1">
+                  <h3 className="system-md-medium text-text-secondary">
+                    {t(($) => $['skillManagement.detail.builder.promptTitle'])}
+                  </h3>
+                  <p className="body-sm-regular text-text-tertiary">
+                    {t(($) => $['skillManagement.detail.builder.promptDescription'])}
+                  </p>
                 </div>
-                <h3 className="system-md-semibold text-text-secondary">
-                  {t(($) => $['skillManagement.detail.builder.promptTitle'])}
-                </h3>
-                <p className="mt-1 max-w-[280px] system-xs-regular text-text-tertiary">
-                  {t(($) => $['skillManagement.detail.builder.promptDescription'])}
-                </p>
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-2 pt-3">
                 <div className="flex items-center gap-2">
-                  <p className="shrink-0 system-2xs-semibold-uppercase text-text-quaternary">
+                  <p className="shrink-0 system-2xs-medium-uppercase text-text-tertiary">
                     {t(($) => $['skillManagement.detail.builder.tryExample'])}
                   </p>
                   <span aria-hidden className="h-px flex-1 bg-divider-subtle" />
                 </div>
-                <div className="flex flex-col items-start gap-1">
+                <div className="flex flex-wrap items-start gap-1">
                   {suggestions.map((suggestion) => (
                     <button
                       key={suggestion}
                       type="button"
-                      className="max-w-full cursor-pointer rounded-md border-[0.5px] border-divider-subtle bg-background-default px-2 py-1 text-left system-xs-medium text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
+                      className="inline-flex min-h-6 max-w-full cursor-pointer items-center rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-1.5 py-1 text-left shadow-xs outline-hidden hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
                       disabled={isSending || isUploadingAttachment || !canSendBuilderMessage}
                       onClick={() => handleSend(suggestion)}
                     >
-                      {suggestion}
+                      <span className="truncate px-1.5 system-xs-medium text-components-button-secondary-text">
+                        {suggestion}
+                      </span>
                     </button>
                   ))}
                 </div>

@@ -17,23 +17,23 @@ import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import { downloadUrl } from '@/utils/download'
 import { MissingReferenceWarning } from '../common/missing-reference-warning'
-import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { AgentSkillDetailDialog } from './detail-dialog'
 import { useAgentSkillDetail } from './use-skill-detail'
 
 export function AgentSkillItem({
   apiContext,
+  canRemove,
   skill,
   onRemove,
 }: {
   apiContext: AgentConfigApiContext
+  canRemove: boolean
   skill: AgentSkill
   onRemove: (skillId: string) => void
 }) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
   const queryClient = useQueryClient()
-  const readOnly = useAgentOrchestrateReadOnly()
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [isActionsOpen, setIsActionsOpen] = useState(false)
   const [isRemoveHighlighted, setIsRemoveHighlighted] = useState(false)
@@ -134,7 +134,7 @@ export function AgentSkillItem({
             label={t(($) => $['agentDetail.configure.skills.missing'])}
           />
         )}
-        {(!skill.isMissing || !readOnly) && (
+        {(!skill.isMissing || canRemove) && (
           <DropdownMenu
             modal={false}
             onOpenChange={(open) => {
@@ -165,8 +165,8 @@ export function AgentSkillItem({
                   <span>{tCommon(($) => $['operation.download'])}</span>
                 </DropdownMenuItem>
               )}
-              {!skill.isMissing && !readOnly && <DropdownMenuSeparator />}
-              {!readOnly && (
+              {!skill.isMissing && canRemove && <DropdownMenuSeparator />}
+              {canRemove && (
                 <DropdownMenuItem
                   data-agent-skill-remove-button
                   className="group gap-2 data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive"

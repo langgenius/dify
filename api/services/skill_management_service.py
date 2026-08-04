@@ -41,6 +41,7 @@ from core.tools.tool_file_manager import ToolFileManager
 from extensions.ext_storage import storage
 from graphon.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
 from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.nodes.llm.reasoning import split_reasoning
 from libs.datetime_utils import naive_utc_now
 from models.account import Account
 from models.agent import (
@@ -415,6 +416,11 @@ class SkillAssistActionPlan(BaseModel):
 
 
 @dataclass(frozen=True, slots=True)
+class SkillAssistActionResult:
+    plan: SkillAssistActionPlan
+
+
+@dataclass(frozen=True, slots=True)
 class PublishedSkillArchive:
     filename: str
     mime_type: str
@@ -785,14 +791,18 @@ class SkillManagementService:
 
         def generate() -> Generator[str, None, None]:
             try:
-                plan = self._generate_assistant_action_plan(
+                yield self._assistant_progress_sse(message_id=message_id, stage="reading_draft")
+                yield self._assistant_progress_sse(message_id=message_id, stage="generating_plan")
+                result = yield from self._generate_assistant_action_plan(
                     tenant_id=tenant_id,
                     skill_id=skill_id,
+                    message_id=message_id,
                     message=message,
                     attachments=attachments or [],
                     model_payload=model_payload,
                     target_path=target_path,
                 )
+                plan = result.plan
                 reply = plan.reply.strip() or "Done."
                 yield self._assistant_sse(
                     {
@@ -813,6 +823,8 @@ class SkillManagementService:
 
                 detail: dict[str, Any] | None = None
                 applied_operations: list[dict[str, str]] = []
+                if plan.operations:
+                    yield self._assistant_progress_sse(message_id=message_id, stage="applying_changes")
                 for operation in plan.operations:
                     content = self._sanitize_assistant_operation_content(operation)
                     detail = self.apply_draft_file_operation(
@@ -829,6 +841,7 @@ class SkillManagementService:
                     applied_operations.append({"operation": operation.operation, "path": operation.path})
 
                 if detail is not None:
+                    yield self._assistant_progress_sse(message_id=message_id, stage="updating_editor")
                     yield self._assistant_sse(
                         {
                             "event": "skill_detail_updated",
@@ -880,11 +893,12 @@ class SkillManagementService:
         *,
         tenant_id: str,
         skill_id: str,
+        message_id: str,
         message: str,
         attachments: list[SkillAssistAttachmentPayload],
         model_payload: SkillAssistModelPayload | None,
         target_path: str | None,
-    ) -> SkillAssistActionPlan:
+    ) -> Generator[str, None, SkillAssistActionResult]:
         with session_factory.create_session() as session:
             skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
             files = list(
@@ -914,23 +928,109 @@ class SkillManagementService:
         if attachment_context:
             prompt_parts.append(f"<uploaded_context>\n{attachment_context}\n</uploaded_context>")
         prompt_parts.append(f"User request:\n{message}")
+        prompt_messages = [
+            SystemPromptMessage(content=_SKILL_ASSISTANT_SYSTEM_PROMPT),
+            UserPromptMessage(content="\n\n".join(prompt_parts)),
+        ]
         try:
             response = model_instance.invoke_llm(
-                prompt_messages=[
-                    SystemPromptMessage(content=_SKILL_ASSISTANT_SYSTEM_PROMPT),
-                    UserPromptMessage(content="\n\n".join(prompt_parts)),
-                ],
+                prompt_messages=prompt_messages,
                 model_parameters=model_parameters,
-                stream=False,
+                stream=True,
             )
-        except Exception as exc:
-            raise SkillManagementServiceError(
-                "skill_assistant_failed",
-                "the Skill Authoring assistant could not generate a response",
-                status_code=422,
-            ) from exc
+        except Exception:
+            response = None
 
-        raw_text = response.message.get_text_content()
+        raw_text = ""
+        reasoning_chunks: list[str] = []
+        if isinstance(response, Generator):
+            raw_text = yield from self._collect_assistant_stream_response(
+                message_id=message_id,
+                response=response,
+                reasoning_chunks=reasoning_chunks,
+            )
+        else:
+            if response is None:
+                try:
+                    response = model_instance.invoke_llm(
+                        prompt_messages=prompt_messages,
+                        model_parameters=model_parameters,
+                        stream=False,
+                    )
+                except Exception as exc:
+                    raise SkillManagementServiceError(
+                        "skill_assistant_failed",
+                        "the Skill Authoring assistant could not generate a response",
+                        status_code=422,
+                    ) from exc
+            reasoning = self._extract_reasoning_content(response)
+            if reasoning:
+                reasoning_chunks.append(reasoning)
+                yield self._assistant_sse(
+                    {
+                        "event": "skill_assistant_reasoning_chunk",
+                        "id": message_id,
+                        "reasoning": reasoning,
+                    }
+                )
+            raw_text = response.message.get_text_content()
+
+        if not raw_text.strip():
+            try:
+                response = model_instance.invoke_llm(
+                    prompt_messages=prompt_messages,
+                    model_parameters=model_parameters,
+                    stream=False,
+                )
+            except Exception as exc:
+                raise SkillManagementServiceError(
+                    "skill_assistant_failed",
+                    "the Skill Authoring assistant could not generate a response",
+                    status_code=422,
+                ) from exc
+            reasoning = self._extract_reasoning_content(response)
+            if reasoning:
+                reasoning_chunks.append(reasoning)
+                yield self._assistant_sse(
+                    {
+                        "event": "skill_assistant_reasoning_chunk",
+                        "id": message_id,
+                        "reasoning": reasoning,
+                    }
+                )
+            raw_text = response.message.get_text_content()
+
+        raw_text, tagged_reasoning = split_reasoning(raw_text, "separated")
+        if tagged_reasoning:
+            reasoning_chunks.append(tagged_reasoning)
+            yield self._assistant_sse(
+                {
+                    "event": "skill_assistant_reasoning_chunk",
+                    "id": message_id,
+                    "reasoning": tagged_reasoning,
+                }
+            )
+        if not reasoning_chunks and raw_text.strip():
+            try:
+                reasoning_response = model_instance.invoke_llm(
+                    prompt_messages=prompt_messages,
+                    model_parameters=model_parameters,
+                    stream=False,
+                )
+            except Exception:
+                reasoning_response = None
+            if reasoning_response is not None:
+                reasoning = self._extract_reasoning_content(reasoning_response)
+                if reasoning:
+                    reasoning_chunks.append(reasoning)
+                    yield self._assistant_sse(
+                        {
+                            "event": "skill_assistant_reasoning_chunk",
+                            "id": message_id,
+                            "reasoning": reasoning,
+                        }
+                    )
+
         try:
             parsed = json.loads(raw_text)
         except json.JSONDecodeError:
@@ -955,7 +1055,106 @@ class SkillManagementService:
                     )
                 }
             )
-        return plan
+        return SkillAssistActionResult(plan=plan)
+
+    @classmethod
+    def _collect_assistant_stream_response(
+        cls,
+        *,
+        message_id: str,
+        response: Generator[Any, None, None],
+        reasoning_chunks: list[str],
+    ) -> Generator[str, None, str]:
+        raw_parts: list[str] = []
+        for chunk in response:
+            reasoning = cls._extract_reasoning_content(chunk)
+            if reasoning:
+                reasoning_chunks.append(reasoning)
+                yield cls._assistant_sse(
+                    {
+                        "event": "skill_assistant_reasoning_chunk",
+                        "id": message_id,
+                        "reasoning": reasoning,
+                    }
+                )
+            delta = chunk.delta
+            delta_reasoning = cls._extract_reasoning_content(delta)
+            if delta_reasoning:
+                reasoning_chunks.append(delta_reasoning)
+                yield cls._assistant_sse(
+                    {
+                        "event": "skill_assistant_reasoning_chunk",
+                        "id": message_id,
+                        "reasoning": delta_reasoning,
+                    }
+                )
+            message = delta.message
+            if message is None:
+                continue
+            message_reasoning = cls._extract_reasoning_content(message)
+            if message_reasoning:
+                reasoning_chunks.append(message_reasoning)
+                yield cls._assistant_sse(
+                    {
+                        "event": "skill_assistant_reasoning_chunk",
+                        "id": message_id,
+                        "reasoning": message_reasoning,
+                    }
+                )
+            text = message.get_text_content()
+            if text:
+                raw_parts.append(text)
+        return "".join(raw_parts)
+
+    @staticmethod
+    def _extract_reasoning_content(value: Any) -> str:
+        if not isinstance(value, BaseModel):
+            return ""
+        data = value.model_dump()
+        raw_reasoning = SkillManagementService._extract_direct_reasoning_from_mapping(data)
+        if not isinstance(raw_reasoning, str) and isinstance(value.model_extra, dict):
+            raw_reasoning = SkillManagementService._extract_direct_reasoning_from_mapping(value.model_extra)
+        if not isinstance(raw_reasoning, str) and "delta" in data:
+            return ""
+        if not isinstance(raw_reasoning, str):
+            raw_reasoning = SkillManagementService._extract_reasoning_from_dump(data)
+        if not isinstance(raw_reasoning, str) and isinstance(value.model_extra, dict):
+            raw_reasoning = SkillManagementService._extract_reasoning_from_dump(value.model_extra)
+        return raw_reasoning if isinstance(raw_reasoning, str) else ""
+
+    @staticmethod
+    def _extract_direct_reasoning_from_mapping(value: dict[str, object]) -> str | None:
+        raw_reasoning = (
+            value.get("reasoning_content")
+            or value.get("reasoning")
+            or value.get("reasoningContent")
+        )
+        return raw_reasoning if isinstance(raw_reasoning, str) else None
+
+    @staticmethod
+    def _extract_reasoning_from_dump(value: object) -> str:
+        match value:
+            case {"reasoning_content": str(reasoning)} | {"reasoning": str(reasoning)} | {
+                "reasoningContent": str(reasoning)
+            }:
+                return reasoning
+            case {"data": str(text)} | {"content": str(text)}:
+                _clean_text, reasoning = split_reasoning(text, "separated")
+                return reasoning
+            case dict():
+                for nested_value in value.values():
+                    reasoning = SkillManagementService._extract_reasoning_from_dump(nested_value)
+                    if reasoning:
+                        return reasoning
+            case list() | tuple():
+                for nested_value in value:
+                    reasoning = SkillManagementService._extract_reasoning_from_dump(nested_value)
+                    if reasoning:
+                        return reasoning
+            case str():
+                _clean_text, reasoning = split_reasoning(value, "separated")
+                return reasoning
+        return ""
 
     def _generate_assistant_suggestions(
         self,
@@ -1049,6 +1248,16 @@ class SkillManagementService:
     @staticmethod
     def _assistant_sse(payload: dict[str, Any]) -> str:
         return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+
+    @classmethod
+    def _assistant_progress_sse(cls, *, message_id: str, stage: str) -> str:
+        return cls._assistant_sse(
+            {
+                "event": "skill_assistant_progress",
+                "id": message_id,
+                "stage": stage,
+            }
+        )
 
     @staticmethod
     def _skill_name_conflict_from_integrity_error(exc: IntegrityError) -> tuple[str, dict[str, str]]:
@@ -2215,7 +2424,7 @@ class SkillManagementService:
         skill: Skill,
         *,
         tags: list[str],
-        reference_count: int = 0,
+        reference_count: int | None = None,
         accounts: dict[str, Account] | None = None,
     ) -> dict[str, Any]:
         accounts = accounts or {}
@@ -2224,6 +2433,14 @@ class SkillManagementService:
         latest_published_version_number: int | None = None
         latest_published_at: int | None = None
         session = object_session(skill)
+        if reference_count is None:
+            reference_count = (
+                SkillManagementService._reference_counts(session, tenant_id=skill.tenant_id, skill_ids=[skill.id]).get(
+                    skill.id, 0
+                )
+                if session is not None
+                else 0
+            )
         if session is not None and skill.latest_published_version_id is not None:
             latest_version = session.get(SkillVersion, skill.latest_published_version_id)
             if latest_version is not None:

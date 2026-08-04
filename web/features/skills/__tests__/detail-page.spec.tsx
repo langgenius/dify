@@ -2486,6 +2486,24 @@ describe('SkillDetailPage', () => {
     )
   })
 
+  it('uses the references query count when the cached sidebar reference count is stale', async () => {
+    mocks.skillDetail = createSkillDetail({ reference_count: 0 })
+    mocks.skillReferencesQueryOptions.mockImplementation((options) => ({
+      queryKey: ['skill-references', options],
+      queryFn: async () => ({
+        data: [createAgentReference({ display_name: 'Sidebar Agent', name: 'sidebar-agent' })],
+      }),
+    }))
+
+    renderSkillDetailPage()
+
+    expect(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.detail.referencedBy:{"count":1}',
+      }),
+    ).toBeInTheDocument()
+  })
+
   it('closes the sidebar references panel when clicking outside it', async () => {
     const user = userEvent.setup()
     mocks.skillDetail = createSkillDetail({ reference_count: 1 })
@@ -3379,7 +3397,14 @@ describe('SkillDetailPage', () => {
     )
 
     expect(await screen.findByText('I can create that reference file.')).toBeInTheDocument()
-    expect(screen.getByText('skill.skillManagement.detail.builder.thinking')).toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', {
+        name: /skill\.skillManagement\.detail\.builder\.thinking/,
+      }),
+    )
+    expect(
+      screen.getByText('skill.skillManagement.detail.builder.thinkingUnavailable'),
+    ).toBeInTheDocument()
     expect(screen.getByText('0s')).toBeInTheDocument()
     expect(mocks.saveDraftFileMutationFn).not.toHaveBeenCalled()
   })
@@ -3388,6 +3413,14 @@ describe('SkillDetailPage', () => {
     const user = userEvent.setup()
     mocks.skillDetail = createDefaultSkillDraftDetail()
     mocks.sendSkillAssistMessage.mockImplementation(({ onCompleted, onData, onUnhandledEvent }) => {
+      onUnhandledEvent?.({
+        event: 'skill_assistant_progress',
+        stage: 'reading_draft',
+      })
+      onUnhandledEvent?.({
+        event: 'skill_assistant_reasoning_chunk',
+        reasoning: 'Inspecting the current skill draft.',
+      })
       onData?.('Drafted the skill.', true, {})
       onUnhandledEvent?.({
         event: 'skill_assistant_suggestions',
@@ -3405,6 +3438,16 @@ describe('SkillDetailPage', () => {
       }),
     )
     await screen.findByText('Drafted the skill.')
+    expect(screen.queryByText('Inspecting the current skill draft.')).not.toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', {
+        name: /skill\.skillManagement\.detail\.builder\.thinking/,
+      }),
+    )
+    expect(screen.getByText('Inspecting the current skill draft.')).toBeInTheDocument()
+    expect(
+      screen.queryByText('skill.skillManagement.detail.builder.progress.readingDraft'),
+    ).not.toBeInTheDocument()
 
     await user.click(
       screen.getByRole('button', {
@@ -3419,6 +3462,45 @@ describe('SkillDetailPage', () => {
         }),
       )
     })
+  })
+
+  it('shows Skill Builder progress steps when thinking content is unavailable', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createDefaultSkillDraftDetail()
+    mocks.sendSkillAssistMessage.mockImplementation(({ onCompleted, onData, onUnhandledEvent }) => {
+      onUnhandledEvent?.({
+        event: 'skill_assistant_progress',
+        stage: 'reading_draft',
+      })
+      onUnhandledEvent?.({
+        event: 'skill_assistant_progress',
+        stage: 'generating_plan',
+      })
+      onData?.('Drafted the skill.', true, {})
+      onCompleted?.()
+      return Promise.resolve()
+    })
+
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.detail.builder.exampleIssueTriage',
+      }),
+    )
+    await screen.findByText('Drafted the skill.')
+    await user.click(
+      screen.getByRole('button', {
+        name: /skill\.skillManagement\.detail\.builder\.thinking/,
+      }),
+    )
+
+    expect(
+      screen.getByText('skill.skillManagement.detail.builder.progress.readingDraft'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('skill.skillManagement.detail.builder.progress.generatingPlan'),
+    ).toBeInTheDocument()
   })
 
   it('serializes editor autosave and file creation with the latest timestamp', async () => {
