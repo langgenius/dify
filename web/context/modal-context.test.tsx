@@ -76,7 +76,13 @@ const ModalBlockingState = () => {
   return <output>{hasBlockingModalOpen ? 'blocked' : 'clear'}</output>
 }
 
-const UpdatePluginTrigger = ({ onSave }: { onSave: () => void | Promise<void> }) => {
+const UpdatePluginTrigger = ({
+  onSave,
+  category = PluginCategoryEnum.model,
+}: {
+  onSave: () => void | Promise<void>
+  category?: PluginCategoryEnum
+}) => {
   const setShowUpdatePluginModal = useModalContextSelector(
     (state) => state.setShowUpdatePluginModal,
   )
@@ -88,7 +94,7 @@ const UpdatePluginTrigger = ({ onSave }: { onSave: () => void | Promise<void> })
           onSaveCallback: onSave,
           payload: {
             type: PluginSource.github,
-            category: PluginCategoryEnum.model,
+            category,
             github: {
               originalPackageInfo: {
                 id: 'plugin@1.0.0',
@@ -302,5 +308,18 @@ describe('ModalContextProvider plugin update modal', () => {
     await waitFor(() => {
       expect(screen.queryByTestId('save-plugin-update')).not.toBeInTheDocument()
     })
+  })
+
+  it('closes a non-model plugin update immediately after saving', async () => {
+    const onSave = vi.fn()
+    const user = userEvent.setup()
+
+    renderProvider(<UpdatePluginTrigger onSave={onSave} category={PluginCategoryEnum.tool} />)
+
+    await user.click(screen.getByRole('button', { name: 'Open plugin update' }))
+    await user.click(screen.getByTestId('save-plugin-update'))
+
+    expect(onSave).toHaveBeenCalledTimes(1)
+    expect(screen.queryByTestId('save-plugin-update')).not.toBeInTheDocument()
   })
 })
