@@ -5,20 +5,21 @@ from __future__ import annotations
 from typing import Literal
 
 from flask_restx import Resource
-from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
+from pydantic import BaseModel, ConfigDict, ValidationError
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.session import with_session
 from controllers.console.wraps import setup_required
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.plugin.wraps import get_user
 from controllers.inner_api.wraps import plugin_inner_api_only
+from core.plugin.entities.request import RequestDownloadFileMapping, RequestRequestUploadFile
 from core.tools.signature import bind_file_uri, get_signed_file_uri_for_plugin
-from core.workflow.file_reference import is_canonical_file_reference
-from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.exception import BaseHTTPException
-from models import Tenant
+from services.account_service import TenantService
 from services.file_request_service import FileRequestService
 
 
@@ -34,38 +35,11 @@ class AgentFileRequestHttpError(BaseHTTPException):
         super().__init__(description)
 
 
-class AgentFileUploadRequestPayload(BaseModel):
+class AgentFileUploadRequestPayload(RequestRequestUploadFile):
     tenant_id: str
     user_id: str
-    filename: str
-    mimetype: str
-    conversation_id: str | None = None
 
     model_config = ConfigDict(extra="forbid")
-
-
-class AgentFileMappingPayload(BaseModel):
-    transfer_method: Literal["local_file", "tool_file", "datasource_file", "remote_url"]
-    reference: str | None = None
-    url: str | None = None
-
-    model_config = ConfigDict(extra="forbid")
-
-    @model_validator(mode="after")
-    def validate_locator(self) -> AgentFileMappingPayload:
-        if self.transfer_method == "remote_url":
-            if not self.url:
-                raise ValueError("url is required when transfer_method is remote_url")
-            if self.reference is not None:
-                raise ValueError("reference is not allowed when transfer_method is remote_url")
-            return self
-        if not self.reference:
-            raise ValueError("reference is required for non-remote file mappings")
-        if not is_canonical_file_reference(self.reference):
-            raise ValueError("reference must be a canonical Dify file reference")
-        if self.url is not None:
-            raise ValueError("url is not allowed for non-remote file mappings")
-        return self
 
 
 class AgentFileDownloadRequestPayload(BaseModel):
@@ -82,7 +56,7 @@ class AgentFileDownloadRequestPayload(BaseModel):
         "published",
         "validation",
     ]
-    file: AgentFileMappingPayload
+    file: RequestDownloadFileMapping
     for_frontend: bool = True
 
     model_config = ConfigDict(extra="forbid")
@@ -120,7 +94,8 @@ class AgentFileUploadRequestApi(Resource):
         "Upload URI allocated",
         inner_api_ns.models[AgentFileUploadRequestResponse.__name__],
     )
-    def post(self) -> dict[str, object]:
+    @with_session(write=False)
+    def post(self, session: Session) -> dict[str, object]:
         try:
             payload = AgentFileUploadRequestPayload.model_validate(inner_api_ns.payload or {})
         except ValidationError as exc:
@@ -130,7 +105,7 @@ class AgentFileUploadRequestApi(Resource):
                 status_code=400,
             ) from exc
 
-        tenant = db.session.get(Tenant, payload.tenant_id)
+        tenant = TenantService.get_tenant_by_id(payload.tenant_id, session=session)
         if tenant is None:
             raise AgentFileRequestHttpError(
                 error_code="tenant_not_found",
@@ -169,7 +144,8 @@ class AgentFileDownloadRequestApi(Resource):
         "Download URI allocated",
         inner_api_ns.models[AgentFileDownloadRequestResponse.__name__],
     )
-    def post(self) -> dict[str, object]:
+    @with_session(write=False)
+    def post(self, session: Session) -> dict[str, object]:
         try:
             payload = AgentFileDownloadRequestPayload.model_validate(inner_api_ns.payload or {})
         except ValidationError as exc:
@@ -179,7 +155,7 @@ class AgentFileDownloadRequestApi(Resource):
                 status_code=400,
             ) from exc
 
-        if db.session.get(Tenant, payload.tenant_id) is None:
+        if TenantService.get_tenant_by_id(payload.tenant_id, session=session) is None:
             raise AgentFileRequestHttpError(
                 error_code="tenant_not_found",
                 description="tenant not found",
