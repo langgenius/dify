@@ -1,14 +1,34 @@
 import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
 import type { NotionPage } from '@/models/common'
 import type { CrawlOptions, CrawlResultItem, DataSet, FileItem } from '@/models/datasets'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { Plan } from '@/app/components/billing/type'
 import { DataSourceType } from '@/models/datasets'
+import { consoleQuery } from '@/service/client'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import StepOne from '../index'
 
+let mockPlan = {
+  type: Plan.professional,
+  usage: { vectorSpace: 50, buildApps: 0, documentsUploadQuota: 0, vectorStorageQuota: 0 },
+  total: { vectorSpace: 100, buildApps: 0, documentsUploadQuota: 0, vectorStorageQuota: 0 },
+}
+
+const render = (ui: React.ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(consoleQuery.features.vectorSpace.get.queryOptions().queryKey, {
+    size: mockPlan.usage.vectorSpace,
+    limit: mockPlan.total.vectorSpace,
+  })
+  return renderWithConsoleQuery(ui, {
+    systemFeatures: { deployment_edition: 'CLOUD' },
+    queryClient,
+  })
+}
+
 // Mock config for website crawl features
-vi.mock('@/config', () => ({
-  IS_CLOUD_EDITION: false,
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
   ENABLE_WEBSITE_FIRECRAWL: true,
   ENABLE_WEBSITE_JINAREADER: false,
   ENABLE_WEBSITE_WATERCRAWL: false,
@@ -25,27 +45,12 @@ vi.mock('@/context/dataset-detail', () => ({
 }))
 
 // Mock provider context
-let mockPlan = {
-  type: Plan.professional,
-  usage: { vectorSpace: 50, buildApps: 0, documentsUploadQuota: 0, vectorStorageQuota: 0 },
-  total: { vectorSpace: 100, buildApps: 0, documentsUploadQuota: 0, vectorStorageQuota: 0 },
-}
 let mockEnableBilling = false
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
     plan: mockPlan,
     enableBilling: mockEnableBilling,
-  }),
-}))
-
-vi.mock('@/service/use-billing', () => ({
-  useCurrentPlanVectorSpace: () => ({
-    data: {
-      size: mockPlan.usage.vectorSpace,
-      limit: mockPlan.total.vectorSpace,
-    },
-    isFetching: false,
   }),
 }))
 

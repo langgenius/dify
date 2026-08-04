@@ -1,5 +1,5 @@
 import type { AccessControlGroup, Subject } from '@/models/access-control'
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { get } from '../base'
 import { consoleQuery } from '../client'
@@ -87,11 +87,8 @@ export const useGetUserCanAccessApp = ({
   isInstalledApp?: boolean
   enabled?: boolean
 }) => {
-  // useQuery (not useSuspenseQuery) to keep this service hook's call contract
-  // unchanged from the zustand era: callers should not need a Suspense boundary.
-  // First-fetch undefined is bridged via `?? false` so the inner queryKey is stable.
-  const { data: systemFeatures } = useQuery(systemFeaturesQueryOptions())
-  const webappAuthEnabled = systemFeatures?.webapp_auth.enabled ?? false
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const webappAuthEnabled = systemFeatures.webapp_auth.enabled
   return useQuery({
     queryKey: [NAME_SPACE, 'user-can-access-app', appId, webappAuthEnabled, isInstalledApp],
     queryFn: () => {

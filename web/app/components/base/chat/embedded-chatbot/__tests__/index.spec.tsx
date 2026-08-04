@@ -1,5 +1,6 @@
 import type { ReactElement, RefObject } from 'react'
 import type { ChatConfig } from '../../types'
+import type { Theme } from '../theme/theme'
 import type { AppData, AppMeta, ConversationItem } from '@/models/share'
 import { screen } from '@testing-library/react'
 import { vi } from 'vitest'
@@ -40,16 +41,14 @@ vi.mock('../chat-wrapper', () => ({
 
 vi.mock('../header', () => ({
   __esModule: true,
-  default: () => <div>chat header</div>,
-}))
-
-vi.mock('../theme/theme-context', () => ({
-  useThemeContext: vi.fn(() => ({
-    buildTheme: vi.fn(),
-    theme: {
-      backgroundHeaderColorStyle: '',
-    },
-  })),
+  default: ({ theme }: { theme?: Theme }) => (
+    <div role="banner">
+      <span>chat header</span>
+      <span aria-label="chat theme">
+        {theme?.primaryColor}:{String(theme?.chatColorThemeInverted)}
+      </span>
+    </div>
+  ),
 }))
 
 const mockIsDify = vi.fn(() => false)
@@ -59,25 +58,25 @@ vi.mock('../utils', () => ({
 
 type EmbeddedChatbotHookReturn = ReturnType<typeof useEmbeddedChatbot>
 
+const createAppData = (chatColorTheme = 'blue', chatColorThemeInverted = false): AppData => ({
+  app_id: 'app-1',
+  can_replace_logo: true,
+  custom_config: {
+    remove_webapp_brand: false,
+    replace_webapp_logo: '',
+  },
+  enable_site: true,
+  end_user_id: 'user-1',
+  site: {
+    title: 'Embedded App',
+    chat_color_theme: chatColorTheme,
+    chat_color_theme_inverted: chatColorThemeInverted,
+  },
+})
+
 const createHookReturn = (
   overrides: Partial<EmbeddedChatbotHookReturn> = {},
 ): EmbeddedChatbotHookReturn => {
-  const appData: AppData = {
-    app_id: 'app-1',
-    can_replace_logo: true,
-    custom_config: {
-      remove_webapp_brand: false,
-      replace_webapp_logo: '',
-    },
-    enable_site: true,
-    end_user_id: 'user-1',
-    site: {
-      title: 'Embedded App',
-      chat_color_theme: 'blue',
-      chat_color_theme_inverted: false,
-    },
-  }
-
   const base: EmbeddedChatbotHookReturn = {
     appSourceType: 'webApp' as EmbeddedChatbotHookReturn['appSourceType'],
     isInstalledApp: false,
@@ -86,7 +85,7 @@ const createHookReturn = (
     currentConversationItem: undefined,
     removeConversationIdInfo: vi.fn(),
     handleConversationIdInfoChange: vi.fn(),
-    appData,
+    appData: createAppData(),
     appParams: {} as ChatConfig,
     appMeta: { tool_icons: {} } as AppMeta,
     appPinnedConversationData: { data: [], has_more: false, limit: 20 },
@@ -151,6 +150,53 @@ describe('EmbeddedChatbot index', () => {
       render(<EmbeddedChatbot />)
 
       expect(screen.getByText('chat area')).toBeInTheDocument()
+    })
+  })
+
+  describe('Theme ownership', () => {
+    it('keeps themes isolated between chat roots', () => {
+      vi.mocked(useEmbeddedChatbot)
+        .mockReturnValueOnce(
+          createHookReturn({
+            appData: createAppData('#FF0000'),
+          }),
+        )
+        .mockReturnValueOnce(
+          createHookReturn({
+            appData: createAppData('#00FF00', true),
+          }),
+        )
+
+      render(
+        <>
+          <EmbeddedChatbot />
+          <EmbeddedChatbot />
+        </>,
+      )
+
+      expect(screen.getAllByLabelText('chat theme')).toHaveLength(2)
+      expect(screen.getAllByLabelText('chat theme')[0]).toHaveTextContent('#FF0000:false')
+      expect(screen.getAllByLabelText('chat theme')[1]).toHaveTextContent('#00FF00:true')
+    })
+
+    it('renders a new theme when site configuration changes', () => {
+      vi.mocked(useEmbeddedChatbot).mockReturnValue(
+        createHookReturn({
+          appData: createAppData('#123456'),
+        }),
+      )
+      const { rerender } = render(<EmbeddedChatbot />)
+
+      expect(screen.getByLabelText('chat theme')).toHaveTextContent('#123456:false')
+
+      vi.mocked(useEmbeddedChatbot).mockReturnValue(
+        createHookReturn({
+          appData: createAppData('#654321', true),
+        }),
+      )
+      rerender(<EmbeddedChatbot />)
+
+      expect(screen.getByLabelText('chat theme')).toHaveTextContent('#654321:true')
     })
   })
 

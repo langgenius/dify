@@ -6,13 +6,16 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useQueryState } from 'nuqs'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { ApiBasedExtensionSelector } from '@/app/components/header/account-setting/api-based-extension-page/selector'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { CustomConfigurationStatusEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
 import { useDocLink, useLocale } from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
 import { useCodeBasedExtensions, useModelProviders } from '@/service/use-common'
@@ -56,14 +59,10 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onCance
   const { t } = useTranslation()
   const docLink = useDocLink()
   const locale = useLocale()
-  const {
-    data: modelProviders,
-    isPending: isLoading,
-    refetch: refetchModelProviders,
-  } = useModelProviders()
+  const { data: modelProviders, isPending: isLoading } = useModelProviders()
   const localeDataRef = useRef<ModerationConfig>(data)
   const [localeData, setLocaleData] = useState<ModerationConfig>(data)
-  const openIntegrationsSetting = useIntegrationsSetting()
+  const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const updateLocaleData = useCallback(
     (
       update: ModerationConfig | ((current: ModerationConfig) => ModerationConfig),
@@ -78,10 +77,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onCance
     [],
   )
   const handleOpenSettingsModal = () => {
-    openIntegrationsSetting({
-      payload: ACCOUNT_SETTING_TAB.PROVIDER,
-      onCancelCallback: refetchModelProviders,
-    })
+    setSettingsDestination('provider')
   }
   const { data: codeBasedExtensionList } = useCodeBasedExtensions('moderation')
   const openaiProvider = modelProviders?.data.find(
@@ -305,7 +301,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onCance
 
   return (
     <Dialog open>
-      <DialogContent className="mt-14! w-[600px]! max-w-none! overflow-hidden border-[0.5px]! border-components-panel-border! p-0! text-left align-middle">
+      <DialogContent className="mt-14! w-150! max-w-none! overflow-hidden border-[0.5px]! border-components-panel-border! p-0! text-left align-middle">
         <div className="flex items-start gap-2 px-6 pt-6 pr-14 pb-3">
           <div className="title-2xl-semi-bold text-text-primary">
             {t(($) => $['feature.moderation.modal.title'], { ns: 'appDebug' })}
@@ -316,7 +312,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onCance
             className="absolute top-5 right-5 flex size-8 cursor-pointer items-center justify-center rounded-lg border-none bg-transparent text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
             onClick={onCancel}
           >
-            <span className="i-ri-close-line size-[18px]" aria-hidden="true" />
+            <span className="i-ri-close-line size-4.5" aria-hidden="true" />
           </button>
         </div>
         <div className="flex flex-col gap-4 px-6 py-3">
@@ -330,7 +326,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onCance
                   type="button"
                   key={provider.key}
                   className={cn(
-                    'flex min-h-[68px] flex-col items-start justify-center gap-1.5 rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg px-3 py-2 text-left text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+                    'flex min-h-17 flex-col items-start justify-center gap-1.5 rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg px-3 py-2 text-left text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
                     localeData.type !== provider.key &&
                       'hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
                     localeData.type === provider.key &&
@@ -383,7 +379,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onCance
                 {t(($) => $['feature.moderation.modal.keywords.tip'], { ns: 'appDebug' })}
               </div>
               {/* Keep this counter composed locally; extract only if more textarea counter cases repeat. */}
-              <div className="relative h-[88px]">
+              <div className="relative h-22">
                 <Textarea
                   aria-label={
                     t(($) => $['feature.moderation.modal.provider.keywords'], {
@@ -479,8 +475,8 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onCance
             </div>
           </div>
         </div>
-        <div className="flex h-[76px] items-center justify-end gap-2 px-6 pt-5 pb-6">
-          <Button onClick={onCancel} size="medium" className="min-w-[72px]">
+        <div className="flex h-19 items-center justify-end gap-2 px-6 pt-5 pb-6">
+          <Button onClick={onCancel} size="medium" className="min-w-18">
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </Button>
           <Button
@@ -488,7 +484,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onCance
             size="medium"
             onClick={handleSave}
             disabled={localeData.type === 'openai_moderation' && !isOpenAIProviderConfigured}
-            className="min-w-[72px]"
+            className="min-w-18"
           >
             {t(($) => $['operation.save'], { ns: 'common' })}
           </Button>

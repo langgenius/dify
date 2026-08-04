@@ -183,7 +183,7 @@ export function Uploader({
               </span>
               <div
                 id={fileMetadataId}
-                className="font-inter flex h-3 items-center gap-1 self-stretch text-[10px] leading-3 font-medium text-text-tertiary uppercase"
+                className="font-inter flex h-3 items-center gap-1 self-stretch text-2xs leading-3 font-medium text-text-tertiary uppercase"
               >
                 <span>{displayName}</span>
                 <span className="text-text-quaternary">·</span>

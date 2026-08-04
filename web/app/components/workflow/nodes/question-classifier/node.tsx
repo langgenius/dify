@@ -36,7 +36,7 @@ const TruncatedClassItem: FC<TruncatedClassItemProps> = ({ topic, index, nodeId,
   )
 
   return (
-    <div className="flex flex-col gap-y-0.5 rounded-md bg-workflow-block-parma-bg px-[5px] py-[3px]">
+    <div className="flex flex-col gap-y-0.5 rounded-md bg-workflow-block-parma-bg px-1.25 py-0.75">
       <div className="text-xs/4 font-semibold text-text-secondary">{displayLabel}</div>
       {shouldShowTooltip ? (
         <Popover>

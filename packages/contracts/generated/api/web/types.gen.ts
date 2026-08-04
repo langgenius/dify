@@ -43,6 +43,16 @@ export type AppMetaResponse = {
   }
 }
 
+export type AppMode =
+  | 'advanced-chat'
+  | 'agent'
+  | 'agent-chat'
+  | 'channel'
+  | 'chat'
+  | 'completion'
+  | 'rag-pipeline'
+  | 'workflow'
+
 export type AppPermissionQuery = {
   appId: string
 }
@@ -117,6 +127,8 @@ export type ConversationRenamePayload = (
   auto_generate?: boolean
   name?: string | null
 }
+
+export type DeploymentEdition = 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE'
 
 export type EmailCodeLoginSendPayload = {
   email: string
@@ -300,20 +312,11 @@ export type JsonValueType = unknown
 
 export type JsonValue2 = unknown
 
-export type LicenseLimitationModel = {
-  enabled: boolean
-  limit: number
-  size: number
-}
-
-export type LicenseModel = {
-  expired_at: string
-  seats: LicenseLimitationModel
-  status: LicenseStatus
-  workspaces: LicenseLimitationModel
-}
-
 export type LicenseStatus = 'active' | 'expired' | 'expiring' | 'inactive' | 'lost' | 'none'
+
+export type LicenseStatusModel = {
+  status: LicenseStatus
+}
 
 export type LoginPayload = {
   email: string
@@ -396,10 +399,6 @@ export type PluginInstallationScope =
   | 'none'
   | 'official_and_specific_partners'
   | 'official_only'
-
-export type PluginManagerModel = {
-  enabled: boolean
-}
 
 export type RemoteFileInfo = {
   file_length: number
@@ -510,6 +509,7 @@ export type SuggestedQuestionsResponse = {
 
 export type SystemFeatureModel = {
   branding: BrandingModel
+  deployment_edition: DeploymentEdition
   enable_app_deploy: boolean
   enable_change_email: boolean
   enable_collaboration_mode: boolean
@@ -521,15 +521,11 @@ export type SystemFeatureModel = {
   enable_marketplace: boolean
   enable_social_oauth_login: boolean
   enable_step_by_step_tour: boolean
-  enable_trial_app: boolean
-  is_allow_create_workspace: boolean
   is_allow_register: boolean
   is_email_setup: boolean
   knowledge_fs_enabled: boolean
-  license: LicenseModel
-  max_plugin_package_size: number
+  license: LicenseStatusModel
   plugin_installation_permission: PluginInstallationPermissionModel
-  plugin_manager: PluginManagerModel
   rbac_enabled: boolean
   sso_enforced_for_signin: boolean
   sso_enforced_for_signin_protocol: string
@@ -589,6 +585,7 @@ export type WebAppSiteResponse = {
   custom_config?: WebAppCustomConfigResponse | null
   enable_site: boolean
   end_user_id?: string | null
+  mode: AppMode
   model_config?: WebModelConfigResponse | null
   plan: string
   site: WebSiteResponse

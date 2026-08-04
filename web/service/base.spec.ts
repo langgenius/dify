@@ -458,6 +458,47 @@ describe('ssePost and sseGet', () => {
     expect(onCompleted).toHaveBeenCalledWith(true, 'Error: stream lost')
     expect(toast.error).toHaveBeenCalledWith('Error: stream lost')
   })
+
+  it('should not notify when the stream reader is aborted', async () => {
+    const onError = vi.fn()
+    const onCompleted = vi.fn()
+    const mockReader = {
+      read: vi
+        .fn()
+        .mockRejectedValueOnce(new DOMException('BodyStreamBuffer was aborted', 'AbortError')),
+    }
+    const response = {
+      status: 200,
+      ok: true,
+      body: {
+        getReader: () => mockReader,
+      },
+    } as unknown as Response
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(response)
+
+    await ssePost(
+      '/chat-messages',
+      {
+        body: {
+          query: 'hello',
+        },
+      },
+      {
+        onError,
+        onCompleted,
+      },
+    )
+
+    await waitFor(() => {
+      expect(onError).toHaveBeenCalledWith(
+        'AbortError: BodyStreamBuffer was aborted',
+        'stream_read_error',
+      )
+    })
+    expect(onCompleted).toHaveBeenCalledWith(true, 'AbortError: BodyStreamBuffer was aborted')
+    expect(toast.error).not.toHaveBeenCalled()
+  })
 })
 
 describe('HTTP methods', () => {

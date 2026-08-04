@@ -34,7 +34,7 @@ const LeftHeader = ({ title }: LeftHeaderProps) => {
       >
         <RiArrowLeftLine className="size-5" />
       </Button>
-      <Effect className="top-[-34px] left-8 opacity-20" />
+      <Effect className="-top-8.5 left-8 opacity-20" />
     </div>
   )
 }

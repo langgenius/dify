@@ -130,6 +130,7 @@ def test_single_node_run_validates_target_node_config(monkeypatch: pytest.Monkey
                     "type": "loop",
                     "title": "Loop",
                     "loop_count": 1,
+                    "start_node_id": "loop-start",
                     "break_conditions": [],
                     "logical_operator": "and",
                 },

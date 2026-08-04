@@ -560,7 +560,7 @@ export const zSandboxReadResponse = z.object({
  * WorkflowAgentSandboxUploadPayload
  */
 export const zWorkflowAgentSandboxUploadPayload = z.object({
-  node_execution_id: z.string().nullish(),
+  node_execution_id: z.string().min(1),
   path: z.string().min(1),
 })
 
@@ -650,18 +650,6 @@ export const zDefaultBlockConfigsResponse = z.array(z.record(z.string(), z.unkno
  * DefaultBlockConfigResponse
  */
 export const zDefaultBlockConfigResponse = z.record(z.string(), z.unknown())
-
-/**
- * SyncDraftWorkflowPayload
- */
-export const zSyncDraftWorkflowPayload = z.object({
-  _is_collaborative: z.boolean().optional().default(false),
-  conversation_variables: z.array(z.record(z.string(), z.unknown())).optional(),
-  environment_variables: z.array(z.record(z.string(), z.unknown())).optional(),
-  features: z.record(z.string(), z.unknown()),
-  graph: z.record(z.string(), z.unknown()),
-  hash: z.string().nullish(),
-})
 
 /**
  * SyncDraftWorkflowResponse
@@ -1074,6 +1062,30 @@ export const zAppImportResponse = z.object({
   imported_dsl_version: z.string().optional().default(''),
   status: zImportStatus,
   warnings: z.array(zDslImportWarning).optional(),
+})
+
+/**
+ * RecentAppResponse
+ */
+export const zRecentAppResponse = z.object({
+  author_name: z.string().nullish(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: zIconType.nullish(),
+  icon_url: z.string().nullable(),
+  id: z.string(),
+  maintainer: z.string().nullish(),
+  mode: z.enum(['advanced-chat', 'agent-chat', 'chat', 'completion', 'workflow']),
+  name: z.string(),
+  permission_keys: z.array(z.string()).optional(),
+  updated_at: z.int(),
+})
+
+/**
+ * RecentAppListResponse
+ */
+export const zRecentAppListResponse = z.object({
+  data: z.array(zRecentAppResponse),
 })
 
 export const zJsonValue = z
@@ -2030,6 +2042,26 @@ export const zWorkflowPaginationResponse = z.object({
 })
 
 /**
+ * SyncEnvironmentVariablePatchPayload
+ */
+export const zSyncEnvironmentVariablePatchPayload = z.object({
+  deleted_environment_variable_ids: z.array(z.string()).optional(),
+  environment_variables: z.array(z.record(z.string(), z.unknown())).optional(),
+})
+
+/**
+ * SyncDraftWorkflowPayload
+ */
+export const zSyncDraftWorkflowPayload = z.object({
+  _is_collaborative: z.boolean().optional().default(false),
+  conversation_variables: z.array(z.record(z.string(), z.unknown())).optional(),
+  environment_variable_patch: zSyncEnvironmentVariablePatchPayload.nullish(),
+  features: z.record(z.string(), z.unknown()),
+  graph: z.record(z.string(), z.unknown()),
+  hash: z.string().nullish(),
+})
+
+/**
  * ConversationVariableItemPayload
  */
 export const zConversationVariableItemPayload = z.object({
@@ -2085,7 +2117,9 @@ export const zEnvironmentVariableItemPayload = z.object({
  * EnvironmentVariableUpdatePayload
  */
 export const zEnvironmentVariableUpdatePayload = z.object({
+  deleted_environment_variable_ids: z.array(z.string()).optional(),
   environment_variables: z.array(zEnvironmentVariableItemPayload),
+  patch: z.boolean().optional().default(false),
 })
 
 /**
@@ -3895,7 +3929,7 @@ export const zAgentKnowledgeRetrievalConfig = z.object({
  * ValueSourceType
  *
  * ValueSourceType records whether the value comes from a static setting
- * in form definiton, or a variable while the workflow is running.
+ * in form definition, or a variable while the workflow is running.
  */
 export const zValueSourceType = z.enum(['constant', 'variable'])
 
@@ -4280,6 +4314,29 @@ export const zAppDetailWithSiteWritable = z.object({
 })
 
 /**
+ * RecentAppResponse
+ */
+export const zRecentAppResponseWritable = z.object({
+  author_name: z.string().nullish(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: zIconType.nullish(),
+  id: z.string(),
+  maintainer: z.string().nullish(),
+  mode: z.enum(['advanced-chat', 'agent-chat', 'chat', 'completion', 'workflow']),
+  name: z.string(),
+  permission_keys: z.array(z.string()).optional(),
+  updated_at: z.int(),
+})
+
+/**
+ * RecentAppListResponse
+ */
+export const zRecentAppListResponseWritable = z.object({
+  data: z.array(zRecentAppResponseWritable),
+})
+
+/**
  * AccountWithRoleResponse
  */
 export const zAccountWithRoleResponseWritable = z.object({
@@ -4441,6 +4498,15 @@ export const zPostAppsImportsByImportIdConfirmPath = z.object({
  * Import confirmed
  */
 export const zPostAppsImportsByImportIdConfirmResponse = zImport
+
+export const zGetAppsRecentQuery = z.object({
+  limit: z.int().gte(1).lte(8).optional().default(8),
+})
+
+/**
+ * Success
+ */
+export const zGetAppsRecentResponse = zRecentAppListResponse
 
 export const zGetAppsStarredQuery = z.object({
   creator_ids: z.array(z.string()).optional(),
@@ -5471,6 +5537,15 @@ export const zPutAppsByAppIdServerPath = z.object({
  */
 export const zPutAppsByAppIdServerResponse = zAppMcpServerResponse
 
+export const zPostAppsByAppIdServerRefreshPath = z.object({
+  app_id: z.uuid(),
+})
+
+/**
+ * MCP server refreshed successfully
+ */
+export const zPostAppsByAppIdServerRefreshResponse = zAppMcpServerResponse
+
 export const zPostAppsByAppIdSiteBody = zAppSiteUpdatePayload
 
 export const zPostAppsByAppIdSitePath = z.object({
@@ -5875,7 +5950,7 @@ export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandbox
 
 export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesQuery =
   z.object({
-    node_execution_id: z.string().optional(),
+    node_execution_id: z.string().min(1),
     path: z.string().optional().default('.'),
   })
 
@@ -5894,7 +5969,7 @@ export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandbox
 
 export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadQuery =
   z.object({
-    node_execution_id: z.string().optional(),
+    node_execution_id: z.string().min(1),
     path: z.string().min(1),
   })
 
@@ -6716,12 +6791,3 @@ export const zDeleteAppsByResourceIdApiKeysByApiKeyIdPath = z.object({
  * API key deleted successfully
  */
 export const zDeleteAppsByResourceIdApiKeysByApiKeyIdResponse = z.void()
-
-export const zGetAppsByServerIdServerRefreshPath = z.object({
-  server_id: z.uuid(),
-})
-
-/**
- * MCP server refreshed successfully
- */
-export const zGetAppsByServerIdServerRefreshResponse = zAppMcpServerResponse

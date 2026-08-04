@@ -256,7 +256,7 @@ const Empty = ({
                 {emptyText}
               </div>
             </div>
-            <div className="flex w-[236px] flex-col">
+            <div className="flex w-59 flex-col">
               <input
                 type="file"
                 ref={fileInputRef}

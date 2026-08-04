@@ -15,6 +15,7 @@ import pytest
 
 from constants import HIDDEN_VALUE
 from models.dataset import Dataset, ExternalKnowledgeApis, ExternalKnowledgeBindings
+from services.enterprise.rbac_service import RBACResourceType
 from services.entities.external_knowledge_entities.external_knowledge_entities import (
     Authorization,
     AuthorizationConfig,
@@ -782,6 +783,43 @@ class TestExternalDatasetServiceCheckEndpoint:
         # Act & Assert
         with pytest.raises(ValueError, match="Forbidden.*Authorization failed"):
             ExternalDatasetService.check_endpoint_and_api_key(settings)
+
+    @patch("services.external_knowledge_service.ssrf_proxy")
+    def test_check_endpoint_403_message_does_not_echo_api_key(
+        self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory
+    ):
+        """Regression for #39888: the 403 error message must not contain the raw api_key.
+
+        Before the fix, `external_knowledge_service.py:117` interpolated
+        `api_key` into the `ValueError` message, so the credential round-tripped
+        in the application log (via `current_app.logger.exception` in
+        `api/libs/external_api.py:94`) and in the 400 response body
+        (`{"code": "invalid_param", "message": str(e), ...}`). The 403 status
+        from the upstream provider was the only signal that the key was bad;
+        echoing it back is just a plaintext credential leak.
+        """
+        # Arrange -- a real-looking key with a prefix that would be a high-signal
+        # substring to grep for in logs.
+        api_key = "sk-abcdefghijklmnop1234567890ABCDEF"
+        settings = {"endpoint": "https://api.example.com", "api_key": api_key}
+
+        mock_response = MagicMock()
+        mock_response.status_code = 403
+        mock_proxy.post.return_value = mock_response
+
+        # Act
+        with pytest.raises(ValueError) as exc_info:
+            ExternalDatasetService.check_endpoint_and_api_key(settings)
+
+        # Assert -- the message names the failure but does not include the key.
+        message = str(exc_info.value)
+        assert "Forbidden" in message
+        assert "Authorization failed" in message
+        assert api_key not in message
+        # Belt-and-braces: also check the prefix and a 6-char tail to catch
+        # regressions that only echo part of the key.
+        assert "sk-abcdef" not in message
+        assert "CDEF" not in message
 
     @patch("services.external_knowledge_service.ssrf_proxy")
     def test_check_endpoint_other_4xx_codes_pass(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
@@ -1576,6 +1614,41 @@ class TestExternalDatasetServiceCreateDataset:
         mock_db.session.add.assert_called()
         mock_db.session.flush.assert_called_once()
         mock_db.session.commit.assert_called_once()
+
+    @patch("services.external_knowledge_service.enterprise_rbac_service.try_sync_creator_access_policy_member_bindings")
+    @patch("services.external_knowledge_service.db")
+    def test_create_external_dataset_syncs_creator_access_policy_binding(
+        self, mock_db, mock_sync, factory: ExternalDatasetServiceTestDataFactory
+    ):
+        """The creator must be bound to the new dataset's access policy, as in create_empty_dataset."""
+
+        # Arrange
+        def assign_dataset_id(instance):
+            # The real INSERT populates the primary key; a mocked session never flushes.
+            if isinstance(instance, Dataset):
+                instance.id = "dataset-705"
+
+        args = {
+            "name": "Bound External Dataset",
+            "external_knowledge_api_id": "api-703",
+            "external_knowledge_id": "knowledge-704",
+        }
+        mock_db.session.scalar.side_effect = [None, factory.create_external_knowledge_api_mock(api_id="api-703")]
+        mock_db.session.add.side_effect = assign_dataset_id
+
+        # Act
+        dataset = ExternalDatasetService.create_external_dataset(
+            "tenant-701", "user-702", args, session=mock_db.session
+        )
+
+        # Assert
+        assert dataset.id == "dataset-705"
+        mock_sync.assert_called_once_with(
+            "tenant-701",
+            "user-702",
+            RBACResourceType.DATASET,
+            "dataset-705",
+        )
 
     @patch("services.external_knowledge_service.db")
     def test_create_external_dataset_duplicate_name_error(

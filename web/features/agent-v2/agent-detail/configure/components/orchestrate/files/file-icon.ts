@@ -31,7 +31,7 @@ const imageFileExtensions = new Set([
   'svg',
   'webp',
 ])
-const driveFileIconTypes = new Set<FileTreeIconType>([
+const driveFileIconTypes: ReadonlySet<string> = new Set([
   'archive',
   'code',
   'database',
@@ -43,7 +43,11 @@ const driveFileIconTypes = new Set<FileTreeIconType>([
   'pdf',
   'table',
   'text',
-])
+] satisfies FileTreeIconType[])
+
+function isFileTreeIconType(value: string): value is FileTreeIconType {
+  return driveFileIconTypes.has(value)
+}
 
 function getFileExtension(fileName: string) {
   return fileName.split('.').pop()?.toLowerCase() ?? ''
@@ -77,8 +81,7 @@ export function getDriveFileIconType({
 
   if (normalizedFileKind === 'directory') return 'folder'
 
-  if (normalizedFileKind && driveFileIconTypes.has(normalizedFileKind as FileTreeIconType))
-    return normalizedFileKind as FileTreeIconType
+  if (normalizedFileKind && isFileTreeIconType(normalizedFileKind)) return normalizedFileKind
 
   return getFileIconType(fileName, mimeType)
 }

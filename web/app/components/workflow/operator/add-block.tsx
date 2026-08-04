@@ -9,14 +9,11 @@ import { useStoreApi } from 'reactflow'
 import BlockSelector from '@/app/components/workflow/block-selector'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { FlowType } from '@/types/common'
-import {
-  useAvailableBlocks,
-  useIsChatMode,
-  useNodesMetaData,
-  useNodesReadOnly,
-  usePanelInteractions,
-} from '../hooks'
 import { useHooksStore } from '../hooks-store'
+import { useAvailableBlocks } from '../hooks/use-available-blocks'
+import { useNodesMetaData } from '../hooks/use-nodes-meta-data'
+import { usePanelInteractions } from '../hooks/use-panel-interactions'
+import { useIsChatMode, useNodesReadOnly } from '../hooks/use-workflow'
 import { useWorkflowStore } from '../store'
 import {
   generateNewNode,
@@ -25,12 +22,13 @@ import {
 } from '../utils'
 
 type AddBlockProps = {
-  renderTrigger?: (open: boolean) => ReactElement
+  renderTrigger?: BlockSelectorProps['trigger']
   sideOffset?: BlockSelectorProps['sideOffset']
   alignOffset?: BlockSelectorProps['alignOffset']
   onClose?: () => void
   isolateKeyboardEvents?: boolean
 }
+type BlockSelectorTriggerRender = Exclude<NonNullable<BlockSelectorProps['trigger']>, ReactElement>
 const AddBlock = ({
   renderTrigger,
   sideOffset,
@@ -87,18 +85,20 @@ const AddBlock = ({
     [store, workflowStore, nodesMetaDataMap],
   )
 
-  const renderTriggerElement = useCallback(
-    (open: boolean) => {
+  const renderTriggerElement = useCallback<BlockSelectorTriggerRender>(
+    (props, state) => {
       return (
         <Button
+          {...props}
           variant="ghost"
           size="small"
           disabled={nodesReadOnly}
           focusableWhenDisabled
           className={cn(
             'size-8 p-0 text-text-tertiary hover:text-text-secondary',
-            nodesReadOnly && 'text-text-disabled hover:bg-transparent hover:text-text-disabled',
-            open && 'bg-state-accent-active text-text-accent',
+            'data-disabled:text-text-disabled data-disabled:hover:bg-transparent data-disabled:hover:text-text-disabled',
+            state.open && 'bg-state-accent-active text-text-accent',
+            props.className,
           )}
         >
           <span aria-hidden className="i-ri-add-circle-fill size-4" />

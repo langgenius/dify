@@ -1,9 +1,11 @@
 'use client'
 
-import type { AgentChatRuntimeProps } from './chat-runtime'
+import type { AgentChatRuntimeEmptyStateProps, AgentChatRuntimeProps } from './chat-runtime'
 import { useTranslation } from 'react-i18next'
 import { CommunityEditionTip } from '../community-edition-tip'
+import { sendBuildChatMessage } from './build-chat-request'
 import { AgentChatRuntime } from './chat-runtime'
+import { AgentUnconfiguredNotice } from './unconfigured-notice'
 
 const buildIconGridCellOpacities = [
   '0 0 0.093 0.166 0 0 0.155 0',
@@ -23,10 +25,12 @@ const buildIconGridCells = buildIconGridCellOpacities.map((opacity, index) => ({
 
 type AgentBuildChatProps = Omit<
   AgentChatRuntimeProps,
-  'inputPlaceholder' | 'renderEmptyState' | 'sendButtonLabel'
+  'draftType' | 'inputPlaceholder' | 'renderEmptyState' | 'sendButtonLabel' | 'sendMessage'
 >
 
-function AgentBuildChatEmptyState() {
+function AgentBuildChatEmptyState({
+  showUnconfiguredNotice,
+}: Pick<AgentChatRuntimeEmptyStateProps, 'showUnconfiguredNotice'>) {
   const { t } = useTranslation('agentV2')
   const communityEditionBuildModeTip = t(
     ($) => $['agentDetail.configure.build.empty.communityEditionTip'],
@@ -34,7 +38,7 @@ function AgentBuildChatEmptyState() {
 
   return (
     <>
-      <div className="dify-blue-glass-surface relative flex h-[50px] w-12 items-center justify-center rounded-xl p-2">
+      <div className="dify-blue-glass-surface relative flex h-14 w-14.5 items-center justify-center rounded-xl p-2">
         <div className="absolute inset-x-px inset-y-0.5 grid grid-cols-[repeat(8,4px)] grid-rows-[repeat(8,4px)] gap-0.5 opacity-25">
           {buildIconGridCells.map((cell) => (
             <span
@@ -62,6 +66,7 @@ function AgentBuildChatEmptyState() {
       <p className="mt-1 max-w-full body-md-regular text-text-tertiary">
         {t(($) => $['agentDetail.configure.build.empty.description'])}
       </p>
+      <AgentUnconfiguredNotice visible={showUnconfiguredNotice} />
     </>
   )
 }
@@ -72,10 +77,12 @@ export function AgentBuildChat(props: AgentBuildChatProps) {
   return (
     <AgentChatRuntime
       {...props}
+      draftType="debug_build"
       inputPlaceholder={t(($) => $['agentDetail.configure.build.inputPlaceholder'])}
       inputAutoFocus={false}
       sendButtonLabel={t(($) => $['agentDetail.configure.build.startBuild'])}
-      renderEmptyState={() => <AgentBuildChatEmptyState />}
+      sendMessage={sendBuildChatMessage}
+      renderEmptyState={(emptyStateProps) => <AgentBuildChatEmptyState {...emptyStateProps} />}
     />
   )
 }

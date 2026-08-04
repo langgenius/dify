@@ -1,3 +1,4 @@
+import hmac
 import logging
 import re
 from datetime import UTC, datetime, timedelta
@@ -82,6 +83,19 @@ def extract_console_cookie_token(request: Request) -> str | None:
 
 def extract_access_token(request: Request) -> str | None:
     return extract_console_cookie_token(request) or _try_extract_from_header(request)
+
+
+def is_admin_api_key_request(request: Request) -> bool:
+    """Return whether the request carries the configured admin API key as a bearer token.
+
+    Admin API key authentication is header-only so an unrelated console session cookie
+    cannot shadow the bearer token used by server-to-server clients.
+    """
+    admin_api_key = dify_config.ADMIN_API_KEY
+    bearer_token = _try_extract_from_header(request)
+    if not dify_config.ADMIN_API_KEY_ENABLE or not admin_api_key or not bearer_token:
+        return False
+    return hmac.compare_digest(bearer_token, admin_api_key)
 
 
 def extract_webapp_access_token(request: Request) -> str | None:
@@ -183,10 +197,8 @@ def build_force_logout_cookie_headers() -> list[str]:
 def check_csrf_token(request: Request, user_id: str):
     # some apis are sent by beacon, so we need to bypass csrf token check
     # since these APIs are post, they are already protected by SameSite: Lax, so csrf is not required.
-    if dify_config.ADMIN_API_KEY_ENABLE:
-        auth_token = extract_access_token(request)
-        if auth_token and auth_token == dify_config.ADMIN_API_KEY:
-            return
+    if is_admin_api_key_request(request):
+        return
 
     def _unauthorized():
         raise Unauthorized("CSRF token is missing or invalid.")

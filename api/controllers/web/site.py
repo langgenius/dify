@@ -8,12 +8,13 @@ from configs import dify_config
 from controllers.common.schema import register_response_schema_models
 from controllers.web import web_ns
 from controllers.web.wraps import WebApiResource
+from enums.deployment_edition import DeploymentEdition
 from extensions.ext_database import db
 from extensions.storage.storage_type import StorageType
 from fields.base import ResponseModel
 from libs.helper import build_icon_url
 from models.account import Tenant, TenantStatus
-from models.model import App, EndUser, IconType, Site
+from models.model import App, AppMode, EndUser, IconType, Site
 from services.feature_service import FeatureModel, FeatureService
 from services.file_service import FileService
 
@@ -66,6 +67,7 @@ class WebAppCustomConfigResponse(ResponseModel):
 
 class WebAppSiteResponse(ResponseModel):
     app_id: str
+    mode: AppMode
     end_user_id: str | None = None
     enable_site: bool
     site: WebSiteResponse
@@ -82,6 +84,7 @@ class WebAppSiteResponse(ResponseModel):
         *,
         tenant: Tenant,
         app_model: App,
+        mode: AppMode,
         site: Site,
         end_user_id: str | None,
         features: FeatureModel,
@@ -108,6 +111,7 @@ class WebAppSiteResponse(ResponseModel):
 
         return cls(
             app_id=app_model.id,
+            mode=mode,
             end_user_id=end_user_id,
             enable_site=app_model.enable_site,
             site=site_response,
@@ -127,7 +131,9 @@ def _build_site_icon_url(*, site: Site, tenant_id: str) -> str | None:
     """Use direct S3 URLs only in Cloud Mode and preserve preview URLs elsewhere."""
     if site.icon_type != IconType.IMAGE or not site.icon:
         return None
-    if dify_config.EDITION == "CLOUD" and StorageType(dify_config.STORAGE_TYPE) == StorageType.S3:
+    if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and (
+        StorageType(dify_config.STORAGE_TYPE) == StorageType.S3
+    ):
         return FileService(db.engine).get_file_presigned_url(file_id=site.icon, tenant_id=tenant_id)
     return build_icon_url(site.icon_type, site.icon)
 
@@ -164,6 +170,7 @@ class AppSiteApi(WebApiResource):
         return WebAppSiteResponse.from_app_site(
             tenant=tenant,
             app_model=app_model,
+            mode=AppMode.value_of(app_model.mode_compatible_with_agent_with_session(session=db.session())),
             site=site,
             end_user_id=end_user.id,
             features=features,

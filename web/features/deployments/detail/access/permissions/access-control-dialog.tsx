@@ -52,7 +52,7 @@ export function DeploymentAccessControlDialog({
     <Dialog open={open} disablePointerDismissal onOpenChange={(open) => !open && onClose()}>
       <DialogContent
         className={cn(
-          'h-auto max-h-[calc(100dvh-2rem)] min-h-[323px] w-[600px] max-w-none overflow-y-auto rounded-2xl border-none bg-components-panel-bg p-0 shadow-xl transition-shadow',
+          'h-auto max-h-[calc(100dvh-2rem)] min-h-80.75 w-150 max-w-none overflow-y-auto rounded-2xl border-none bg-components-panel-bg p-0 shadow-xl transition-shadow',
         )}
       >
         <DialogCloseButton className="top-5 right-5 size-8" />

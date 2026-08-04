@@ -61,6 +61,7 @@ def _persist_snapshot(
         tenant_id=tenant_id,
         agent_id=agent_id,
         version=1,
+        home_snapshot_id=_stable_uuid(f"home-snapshot:{snapshot_id}"),
         config_snapshot=config_snapshot,
     )
     session.add(snapshot)

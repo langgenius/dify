@@ -24,9 +24,9 @@ export const textControlVariants = cva(
   {
     variants: {
       size: {
-        small: 'rounded-md px-2 py-[3px] system-xs-regular',
-        medium: 'rounded-lg px-3 py-[7px] system-sm-regular',
-        large: 'rounded-[10px] px-4 py-[7px] system-md-regular',
+        small: 'rounded-md px-2 py-0.75 system-xs-regular',
+        medium: 'rounded-lg px-3 py-1.75 system-sm-regular',
+        large: 'rounded-[10px] px-4 py-1.75 system-md-regular',
       },
     },
     defaultVariants: {

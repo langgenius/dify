@@ -1,18 +1,16 @@
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { RenderOptions } from '@testing-library/react'
-import type { Mock, MockedFunction } from 'vitest'
-import type { ModalContextState } from '@/context/modal-context'
-import { fireEvent, render, screen } from '@testing-library/react'
+import type { MockedFunction } from 'vitest'
+import { fireEvent, screen } from '@testing-library/react'
 import { noop } from 'es-toolkit/function'
 import { defaultPlan } from '@/app/components/billing/config'
-import {
-  useModalContext as actualUseModalContext,
-  useModalContextSelector as actualUseModalContextSelector,
-} from '@/context/modal-context'
 import { useProviderContext as actualUseProviderContext } from '@/context/provider-context'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import APIKeyInfoPanel from '../index'
 
-const { mockRouterPush } = vi.hoisted(() => ({
+const { mockRouterPush, mockSetSettingsDestination } = vi.hoisted(() => ({
   mockRouterPush: vi.fn(),
+  mockSetSettingsDestination: vi.fn(),
 }))
 
 // Mock the modules before importing the functions
@@ -20,10 +18,13 @@ vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
 }))
 
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: vi.fn(),
-  useModalContextSelector: vi.fn(),
-}))
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return {
+    ...actual,
+    useQueryState: () => [null, mockSetSettingsDestination],
+  }
+})
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
@@ -35,18 +36,12 @@ vi.mock('@/next/navigation', () => ({
 const mockUseProviderContext = actualUseProviderContext as MockedFunction<
   typeof actualUseProviderContext
 >
-const mockUseModalContext = actualUseModalContext as MockedFunction<typeof actualUseModalContext>
-const mockUseModalContextSelector = actualUseModalContextSelector as MockedFunction<
-  typeof actualUseModalContextSelector
->
-
 // Default mock data
 const defaultProviderContext = {
   modelProviders: [],
   refreshModelProviders: noop,
   isLoadingModelProviders: false,
   textGenerationModelList: [],
-  supportRetrievalMethods: [],
   isAPIKeySet: false,
   plan: defaultPlan,
   isFetchedPlan: false,
@@ -55,7 +50,6 @@ const defaultProviderContext = {
   onPlanInfoChanged: noop,
   enableReplaceWebAppLogo: false,
   modelLoadBalancingEnabled: false,
-  datasetOperatorEnabled: false,
   enableEducationPlan: false,
   isEducationWorkspace: false,
   isEducationAccount: false,
@@ -76,25 +70,8 @@ const defaultProviderContext = {
   humanInputEmailDeliveryEnabled: false,
 }
 
-const defaultModalContext: ModalContextState = {
-  hasBlockingModalOpen: false,
-  setShowAccountSettingModal: noop,
-  setShowModerationSettingModal: noop,
-  setShowExternalDataToolModal: noop,
-  setShowPricingModal: noop,
-  setShowAnnotationFullModal: noop,
-  setShowModelModal: noop,
-  setShowExternalKnowledgeAPIModal: noop,
-  setShowModelLoadBalancingModal: noop,
-  setShowOpeningModal: noop,
-  setShowUpdatePluginModal: noop,
-  setShowEducationExpireNoticeModal: noop,
-  setShowTriggerEventsLimitModal: noop,
-}
-
 type MockOverrides = {
   providerContext?: Partial<typeof defaultProviderContext>
-  modalContext?: Partial<typeof defaultModalContext>
 }
 
 type APIKeyInfoPanelRenderOptions = {
@@ -102,6 +79,7 @@ type APIKeyInfoPanelRenderOptions = {
 } & Omit<RenderOptions, 'wrapper'>
 
 const mainButtonName = /appOverview\.apiKeyInfo\.setAPIBtn/
+let deploymentEdition: DeploymentEdition = 'COMMUNITY'
 
 // Setup function to configure mocks
 function setupMocks(overrides: MockOverrides = {}) {
@@ -109,18 +87,6 @@ function setupMocks(overrides: MockOverrides = {}) {
     ...defaultProviderContext,
     ...overrides.providerContext,
   })
-
-  mockUseModalContext.mockReturnValue({
-    ...defaultModalContext,
-    ...overrides.modalContext,
-  })
-
-  mockUseModalContextSelector.mockImplementation((selector) =>
-    selector({
-      ...defaultModalContext,
-      ...overrides.modalContext,
-    }),
-  )
 }
 
 // Custom render function
@@ -129,7 +95,10 @@ function renderAPIKeyInfoPanel(options: APIKeyInfoPanelRenderOptions = {}) {
 
   setupMocks(mockOverrides)
 
-  return render(<APIKeyInfoPanel />, renderOptions)
+  return renderWithConsoleQuery(<APIKeyInfoPanel />, {
+    ...renderOptions,
+    systemFeatures: { deployment_edition: deploymentEdition },
+  })
 }
 
 // Helper functions for common test scenarios
@@ -148,15 +117,6 @@ export const scenarios = {
     renderAPIKeyInfoPanel({
       mockOverrides: {
         providerContext: { isAPIKeySet: true },
-        ...overrides,
-      },
-    }),
-
-  // Render with mock modal function
-  withMockModal: (mockSetShowAccountSettingModal: Mock, overrides: MockOverrides = {}) =>
-    renderAPIKeyInfoPanel({
-      mockOverrides: {
-        modalContext: { setShowAccountSettingModal: mockSetShowAccountSettingModal },
         ...overrides,
       },
     }),
@@ -200,5 +160,9 @@ export function clearAllMocks() {
   vi.clearAllMocks()
 }
 
+export function setDeploymentEdition(value: DeploymentEdition) {
+  deploymentEdition = value
+}
+
 // Export mock functions for external access
-export { defaultModalContext, mockUseModalContext }
+export { mockSetSettingsDestination }

@@ -70,7 +70,7 @@ const ModelInfo: FC<Props> = ({ model }) => {
             sideOffset={4}
             popupClassName="border-none bg-transparent shadow-none"
           >
-            <div className="relative w-[280px] overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg px-4 pt-3 pb-2 shadow-xl">
+            <div className="relative w-70 overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg px-4 pt-3 pb-2 shadow-xl">
               <div className="mb-1 h-6 system-sm-semibold-uppercase text-text-secondary">
                 {t(($) => $['detail.modelParams'], { ns: 'appLog' })}
               </div>

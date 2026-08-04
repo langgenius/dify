@@ -280,6 +280,7 @@
   "common.workflowProcessPaused": "Proses Alur Kerja dijeda",
   "common.workflowProcessRunning": "Proses Alur Kerja sedang berjalan",
   "common.workflowProcessSucceeded": "Proses Alur Kerja berhasil",
+  "common.workflowSaveStatus": "Status penyimpanan alur kerja",
   "customWebhook": "Webhook Kustom",
   "debug.copyLastRun": "Salin Eksekusi Terakhir",
   "debug.copyLastRunError": "Gagal menyalin input eksekusi terakhir",
