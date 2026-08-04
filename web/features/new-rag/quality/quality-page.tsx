@@ -479,12 +479,13 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
         </div>
         {activeTab === 'golden' && goldenQuestions.length > 0 && (
           <div className="flex gap-2">
-            <Button onClick={() => setImportOpen(true)}>
+            <Button className="gap-1" onClick={() => setImportOpen(true)}>
               <span aria-hidden className="i-ri-upload-2-line size-4" />
               {t(($) => $['newKnowledge.qualityPage.importCsv'])}
             </Button>
             <Button
               variant="primary"
+              className="gap-1"
               onClick={() =>
                 setDialog({ key: `create-${Date.now()}`, mode: 'create', value: emptyDraft })
               }
@@ -634,12 +635,13 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
               {t(($) => $['newKnowledge.qualityPage.goldenEmptyDescription'])}
             </p>
             <div className="mt-4 flex gap-2">
-              <Button onClick={() => setImportOpen(true)}>
+              <Button className="gap-1" onClick={() => setImportOpen(true)}>
                 <span aria-hidden className="i-ri-upload-2-line size-4" />
                 {t(($) => $['newKnowledge.qualityPage.importCsv'])}
               </Button>
               <Button
                 variant="primary"
+                className="gap-1"
                 onClick={() =>
                   setDialog({ key: `create-${Date.now()}`, mode: 'create', value: emptyDraft })
                 }
