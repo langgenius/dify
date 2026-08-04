@@ -17,16 +17,14 @@ const buttonVariants = cva(
           'data-disabled:bg-components-button-primary-bg-disabled data-disabled:text-components-button-primary-text-disabled data-disabled:shadow-none data-disabled:inset-ring-components-button-primary-border-disabled',
         ],
         secondary: [
-          'border-[0.5px] shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]',
-          'border-components-button-secondary-border bg-components-button-secondary-bg text-components-button-secondary-text',
-          'hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover',
-          'data-disabled:border-components-button-secondary-border-disabled data-disabled:bg-components-button-secondary-bg-disabled data-disabled:text-components-button-secondary-text-disabled data-disabled:shadow-none data-disabled:backdrop-blur-xs',
+          'bg-components-button-secondary-bg text-components-button-secondary-text shadow-xs inset-ring-[0.5px] shadow-shadow-shadow-3 inset-ring-components-button-secondary-border backdrop-blur-[5px]',
+          'hover:bg-components-button-secondary-bg-hover hover:inset-ring-components-button-secondary-border-hover',
+          'data-disabled:bg-components-button-secondary-bg-disabled data-disabled:text-components-button-secondary-text-disabled data-disabled:shadow-none data-disabled:inset-ring-components-button-secondary-border-disabled data-disabled:backdrop-blur-xs',
         ],
         'secondary-accent': [
-          'border-[0.5px] shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]',
-          'border-components-button-secondary-border bg-components-button-secondary-bg text-components-button-secondary-accent-text',
-          'hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover',
-          'data-disabled:border-components-button-secondary-border-disabled data-disabled:bg-components-button-secondary-bg-disabled data-disabled:text-components-button-secondary-accent-text-disabled data-disabled:shadow-none data-disabled:backdrop-blur-xs',
+          'bg-components-button-secondary-bg text-components-button-secondary-accent-text shadow-xs inset-ring-[0.5px] shadow-shadow-shadow-3 inset-ring-components-button-secondary-border backdrop-blur-[5px]',
+          'hover:bg-components-button-secondary-bg-hover hover:inset-ring-components-button-secondary-border-hover',
+          'data-disabled:bg-components-button-secondary-bg-disabled data-disabled:text-components-button-secondary-accent-text-disabled data-disabled:shadow-none data-disabled:inset-ring-components-button-secondary-border-disabled data-disabled:backdrop-blur-xs',
         ],
         tertiary: [
           'bg-components-button-tertiary-bg text-components-button-tertiary-text',
@@ -73,9 +71,9 @@ const buttonVariants = cva(
         variant: 'secondary',
         tone: 'destructive',
         class: [
-          'border-components-button-destructive-secondary-border bg-components-button-destructive-secondary-bg text-components-button-destructive-secondary-text',
-          'hover:border-components-button-destructive-secondary-border-hover hover:bg-components-button-destructive-secondary-bg-hover',
-          'data-disabled:border-components-button-destructive-secondary-border-disabled data-disabled:bg-components-button-destructive-secondary-bg-disabled data-disabled:text-components-button-destructive-secondary-text-disabled',
+          'bg-components-button-destructive-secondary-bg text-components-button-destructive-secondary-text inset-ring-components-button-destructive-secondary-border',
+          'hover:bg-components-button-destructive-secondary-bg-hover hover:inset-ring-components-button-destructive-secondary-border-hover',
+          'data-disabled:bg-components-button-destructive-secondary-bg-disabled data-disabled:text-components-button-destructive-secondary-text-disabled data-disabled:inset-ring-components-button-destructive-secondary-border-disabled',
         ],
       },
       {
