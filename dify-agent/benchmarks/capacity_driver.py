@@ -12,17 +12,31 @@ from importlib.metadata import PackageNotFoundError, version
 import json
 import os
 from pathlib import Path
+import shlex
 import sys
 import tempfile
 import time
-from typing import cast
+from typing import Protocol, cast
 
 import httpx
 from redis.asyncio import Redis
 
-from benchmarks.capacity_protocol import CapacityObservation, build_capacity_run_request
+from benchmarks.capacity_protocol import CapacityObservation, build_capacity_run_request, decode_observation_record
+from benchmarks.e2b_config_stub import (
+    E2B_CONFIG_STUB_DEFAULT_HOST,
+    E2B_CONFIG_STUB_DEFAULT_PORT,
+    E2B_CONFIG_STUB_ITEM_BYTES_ENV,
+    E2B_CONFIG_STUB_PORT_ENV,
+    E2B_CONFIG_STUB_REMOTE_PATH,
+    E2B_CONFIG_STUB_SOURCE_PATH,
+)
 from benchmarks.load_phase import LoadPhaseRequest, LoadPhaseResult, PhaseKind, WorkerContext
-from benchmarks.scenario import BenchmarkMode, CapacityScenario, load_scenario_manifest
+from benchmarks.scenario import (
+    BenchmarkMode,
+    CapacityScenario,
+    deterministic_file_payload_sha256,
+    load_scenario_manifest,
+)
 from benchmarks.schemas import (
     BlockResult,
     FakeDependencyLedger,
@@ -34,6 +48,33 @@ from benchmarks.schemas import (
 
 class BindingCleanupError(RuntimeError):
     """One or more benchmark bindings could not be destroyed."""
+
+
+class _E2BConfigCommandResult(Protocol):
+    exit_code: int
+    stdout: str
+    stderr: str
+
+
+class _E2BConfigFilesystem(Protocol):
+    async def write(self, path: str, data: str) -> object: ...
+
+
+class _E2BConfigCommands(Protocol):
+    async def run(
+        self,
+        command: str,
+        *,
+        background: bool | None = None,
+        timeout: float,
+    ) -> object: ...
+
+
+class _E2BConfigSandbox(Protocol):
+    files: _E2BConfigFilesystem
+    commands: _E2BConfigCommands
+
+    async def pause(self, *, keep_memory: bool = True) -> bool: ...
 
 
 @dataclass(slots=True, frozen=True)
@@ -126,6 +167,13 @@ async def run_block(settings: CapacityDriverSettings) -> BlockResult:
             ) as allocations,
         ):
             binding_refs = [allocation[0] for allocation in allocations] or [None] * settings.concurrency
+            if external_runtime and scenario.workload == "config":
+                assert settings.e2b_api_key is not None
+                await _prepare_e2b_config_stubs(
+                    binding_refs=[binding_ref for binding_ref in binding_refs if binding_ref is not None],
+                    api_key=settings.e2b_api_key,
+                    item_bytes=scenario.item_bytes,
+                )
             contexts = [
                 WorkerContext(worker_index=index, binding_ref=binding_ref)
                 for index, binding_ref in enumerate(binding_refs)
@@ -165,7 +213,9 @@ async def run_block(settings: CapacityDriverSettings) -> BlockResult:
                 load_engine_phases["warmup"] = warmup_phase.model_dump(mode="json")
                 if warmup_phase.fatal_errors:
                     phase_errors.extend(f"warmup: {error}" for error in warmup_phase.fatal_errors)
-                if not resume_errors and not any(item.sample.terminal_status == "succeeded" for item in warmup):
+                if not resume_errors and not any(
+                    item.sample.terminal_status == "succeeded" and item.sample.failure_kind is None for item in warmup
+                ):
                     phase_errors.append("warmup produced no successful Runs")
                 if not external_runtime and not await _delete_all_runtime_jobs(runtime_client):
                     phase_errors.append("failed to clean warmup Runtime jobs")
@@ -324,6 +374,60 @@ async def _delete_all_runtime_jobs(runtime_client: httpx.AsyncClient) -> bool:
         return remaining is None or remaining == []
     except Exception:
         return False
+
+
+async def _connect_e2b_config_sandbox(binding_ref: str, *, api_key: str) -> _E2BConfigSandbox:
+    from e2b import AsyncSandbox
+
+    return cast(
+        _E2BConfigSandbox,
+        cast(object, await AsyncSandbox.connect(binding_ref, timeout=120, api_key=api_key)),
+    )
+
+
+async def _prepare_e2b_config_stubs(
+    *,
+    binding_refs: Sequence[str],
+    api_key: str,
+    item_bytes: int,
+) -> None:
+    """Install one deterministic localhost Config data plane per E2B worker."""
+    source = E2B_CONFIG_STUB_SOURCE_PATH.read_text()
+
+    async def prepare(binding_ref: str) -> None:
+        sandbox = await _connect_e2b_config_sandbox(binding_ref, api_key=api_key)
+        try:
+            await sandbox.files.write(E2B_CONFIG_STUB_REMOTE_PATH, source)
+            start_command = (
+                "env "
+                f"{E2B_CONFIG_STUB_ITEM_BYTES_ENV}={item_bytes} "
+                f"{E2B_CONFIG_STUB_PORT_ENV}={E2B_CONFIG_STUB_DEFAULT_PORT} "
+                f"python {shlex.quote(E2B_CONFIG_STUB_REMOTE_PATH)} "
+                ">/tmp/dify-agent-benchmark-config-stub.log 2>&1"
+            )
+            _ = await sandbox.commands.run(start_command, background=True, timeout=30)
+            health_command = "\n".join(
+                [
+                    "sleep 1",
+                    "for attempt in $(seq 1 100); do",
+                    f"  if curl -fsS http://{E2B_CONFIG_STUB_DEFAULT_HOST}:"
+                    f"{E2B_CONFIG_STUB_DEFAULT_PORT}/health >/dev/null 2>&1; then exit 0; fi",
+                    "  sleep 0.1",
+                    "done",
+                    "cat /tmp/dify-agent-benchmark-config-stub.log >&2 || true",
+                    "exit 1",
+                ]
+            )
+            result = cast(_E2BConfigCommandResult, await sandbox.commands.run(health_command, timeout=30))
+            if result.exit_code != 0:
+                detail = (result.stderr or result.stdout).strip()[-512:]
+                raise RuntimeError(
+                    f"E2B Config stub failed to start in {binding_ref}: exit={result.exit_code} {detail}"
+                )
+        finally:
+            _ = await sandbox.pause(keep_memory=True)
+
+    await asyncio.gather(*(prepare(binding_ref) for binding_ref in binding_refs))
 
 
 async def _create_binding(
@@ -527,21 +631,46 @@ async def _attach_e2b_active_windows(
                         binding_ref,
                         timeout_seconds=max(0, deadline - time.monotonic()),
                     )
-                    execution_windows = _execution_windows_from_events(
-                        events,
-                        windows=[(observation.started_at_ns, observation.ended_at_ns) for observation in items],
-                    )
-                    for observation, execution_window in zip(items, execution_windows, strict=True):
-                        if execution_window is None:
-                            continue
-                        observation.sample.e2b_active_seconds = execution_window.active_seconds
-                        observation.sample.e2b_vcpu_count = execution_window.vcpu_count
-                        observation.sample.e2b_memory_mib = execution_window.memory_mib
+                    _apply_e2b_execution_events(items, events)
                     if all(item.sample.e2b_active_seconds is not None for item in items):
                         return
                     await asyncio.sleep(0.5)
 
         await asyncio.gather(*(attach(binding_ref, items) for binding_ref, items in by_binding.items()))
+
+
+def _shared_resource_value(values: Sequence[float | None]) -> float | None:
+    observed = {value for value in values if value is not None}
+    return observed.pop() if len(observed) == 1 else None
+
+
+def _apply_e2b_execution_events(
+    observations: Sequence[CapacityObservation],
+    events: Sequence[object],
+) -> None:
+    owners: list[int] = []
+    windows: list[tuple[int, int]] = []
+    for item_index, observation in enumerate(observations):
+        observation_windows = observation.e2b_active_windows or [
+            (observation.started_at_ns, observation.ended_at_ns)
+        ]
+        owners.extend([item_index] * len(observation_windows))
+        windows.extend(observation_windows)
+    execution_windows = _execution_windows_from_events(events, windows=windows)
+    matched_by_item: list[list[_E2BExecutionWindow | None]] = [[] for _ in observations]
+    for item_index, execution_window in zip(owners, execution_windows, strict=True):
+        matched_by_item[item_index].append(execution_window)
+    for observation, matches in zip(observations, matched_by_item, strict=True):
+        if not matches or any(match is None for match in matches):
+            continue
+        complete_matches = cast(list[_E2BExecutionWindow], matches)
+        observation.sample.e2b_active_seconds = sum(match.active_seconds for match in complete_matches)
+        observation.sample.e2b_vcpu_count = _shared_resource_value(
+            [match.vcpu_count for match in complete_matches]
+        )
+        observation.sample.e2b_memory_mib = _shared_resource_value(
+            [match.memory_mib for match in complete_matches]
+        )
 
 
 async def _fetch_e2b_pause_events(
@@ -901,7 +1030,10 @@ def _load_phase_integrity_errors(
     if result.observation_count != len(observations):
         errors.append(f"phase reported {result.observation_count} observations but wrote {len(observations)}")
     composite = result.composite_request
-    unsuccessful_count = sum(observation.sample.terminal_status != "succeeded" for observation in observations)
+    unsuccessful_count = sum(
+        observation.sample.terminal_status != "succeeded" or observation.sample.failure_kind is not None
+        for observation in observations
+    )
     if composite is None:
         errors.append(f"Locust {label} phase did not report AGENT_RUN/{scenario_id} stats")
         return errors
@@ -1007,7 +1139,7 @@ def _read_partial_observations(path: Path) -> tuple[list[CapacityObservation], l
         if not line:
             continue
         try:
-            observations.append(CapacityObservation.model_validate_json(line))
+            observations.append(decode_observation_record(line))
         except Exception as exc:
             errors.append(f"failed to parse observation line {line_number}: {type(exc).__name__}: {exc}")
     return observations, errors
@@ -1129,7 +1261,7 @@ async def _validate_observations(
                 response = await fake_client.get(f"/__bench/ledgers/{sample.benchmark_run_id}")
                 response.raise_for_status()
                 ledger = FakeDependencyLedger.model_validate(response.json())
-                sample.ledger_valid = validate_ledger(ledger=ledger, scenario=scenario)
+                sample.ledger_valid = validate_ledger(ledger=ledger, scenario=scenario, mode=sample.mode)
                 if not sample.event_replay_valid or not sample.ledger_valid:
                     sample.failure_kind = "validation_error"
             except Exception as exc:
@@ -1161,23 +1293,39 @@ async def _read_event_ids(agent_client: httpx.AsyncClient, run_id: str) -> list[
         cursor = next_cursor
 
 
-def validate_ledger(*, ledger: FakeDependencyLedger, scenario: CapacityScenario) -> bool:
+def validate_ledger(
+    *,
+    ledger: FakeDependencyLedger,
+    scenario: CapacityScenario,
+    mode: BenchmarkMode = "local-runtime",
+) -> bool:
     expected_calls: dict[str, int] = {}
     expected_payload_bytes = 0
+    config_materialization_valid = True
+    payload_hashes_valid = True
     if scenario.workload == "config":
-        expected_calls = {
-            "config_skill_pull": scenario.config_skill_count,
-            "config_file_pull": scenario.config_file_count,
-        }
-        expected_payload_bytes = (scenario.config_skill_count + scenario.config_file_count) * scenario.item_bytes
+        if mode == "local-runtime":
+            expected_calls = {
+                "config_skill_pull": scenario.config_skill_count,
+                "config_file_pull": scenario.config_file_count,
+            }
+            expected_payload_bytes = (scenario.config_skill_count + scenario.config_file_count) * scenario.item_bytes
+        # In local-e2b the per-worker localhost Stub rejects duplicate and
+        # out-of-range pulls. The run-unique materialization digest below then
+        # proves that every expected item was pulled with the exact bytes.
+        config_materialization_valid = (
+            ledger.config_materialization_valid and ledger.config_materialization_sha256 is not None
+        )
     elif scenario.workload == "file":
         expected_calls = {
             "file_upload_request": 1,
             "signed_upload": 1,
-            "file_download_request": 2,
+            "file_download_request": 1,
             "signed_download": 1,
         }
         expected_payload_bytes = scenario.payload_bytes * 2
+        expected_sha256 = deterministic_file_payload_sha256(scenario.payload_bytes)
+        payload_hashes_valid = ledger.payload_sha256 == [expected_sha256, expected_sha256]
     expected_hashes = sum(
         count
         for name, count in expected_calls.items()
@@ -1195,6 +1343,8 @@ def validate_ledger(*, ledger: FakeDependencyLedger, scenario: CapacityScenario)
         and len(ledger.stub_elapsed_ms) == sum(expected_calls.values())
         and ledger.payload_bytes == expected_payload_bytes
         and len(ledger.payload_sha256) == expected_hashes
+        and config_materialization_valid
+        and payload_hashes_valid
     )
 
 
@@ -1207,7 +1357,9 @@ def summarize_outcomes(
     attempted = len(samples)
     admitted = sum(sample.admitted for sample in samples)
     terminal = sum(sample.terminal_status in {"succeeded", "failed", "cancelled"} for sample in samples)
-    successful = sum(sample.terminal_status == "succeeded" for sample in samples)
+    successful = sum(
+        sample.terminal_status == "succeeded" and sample.failure_kind is None for sample in samples
+    )
     timeout_runs = sum(sample.error is not None and "timeout" in sample.error.lower() for sample in samples)
     throttle_runs = sum(
         sample.error is not None and any(token in sample.error.lower() for token in ("429", "throttle", "quota"))
@@ -1239,6 +1391,9 @@ def _invalid_reasons(
         reasons.append("measurement produced no Runs")
     for sample in samples:
         if sample.terminal_status == "succeeded":
+            if sample.failure_kind is not None:
+                reasons.append("one or more succeeded Runs failed post-terminal validation")
+                break
             if not sample.ledger_valid:
                 reasons.append("one or more dependency ledgers were invalid")
                 break

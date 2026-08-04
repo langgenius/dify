@@ -21,7 +21,12 @@ from gevent import monkey
 from gevent.event import Event
 import httpx
 
-from benchmarks.capacity_protocol import AgentRunClient, CapacityObservation, RequestMetric
+from benchmarks.capacity_protocol import (
+    AgentRunClient,
+    CapacityObservation,
+    RequestMetric,
+    encode_observation_record,
+)
 from benchmarks.load_phase import CompositeRequestStats, LoadPhaseRequest, LoadPhaseResult, WorkerContext
 from benchmarks.scenario import load_scenario_manifest
 
@@ -125,7 +130,7 @@ class _PhaseState:
 
     def record_observation(self, observation: CapacityObservation) -> None:
         self.observations.append(observation)
-        self._observations_output.write(observation.model_dump_json() + "\n")
+        self._observations_output.write(encode_observation_record(observation) + "\n")
 
     def close_persistence(self) -> None:
         self._observations_output.close()
