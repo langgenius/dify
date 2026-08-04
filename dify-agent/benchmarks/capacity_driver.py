@@ -651,9 +651,7 @@ def _apply_e2b_execution_events(
     owners: list[int] = []
     windows: list[tuple[int, int]] = []
     for item_index, observation in enumerate(observations):
-        observation_windows = observation.e2b_active_windows or [
-            (observation.started_at_ns, observation.ended_at_ns)
-        ]
+        observation_windows = observation.e2b_active_windows or [(observation.started_at_ns, observation.ended_at_ns)]
         owners.extend([item_index] * len(observation_windows))
         windows.extend(observation_windows)
     execution_windows = _execution_windows_from_events(events, windows=windows)
@@ -665,12 +663,8 @@ def _apply_e2b_execution_events(
             continue
         complete_matches = cast(list[_E2BExecutionWindow], matches)
         observation.sample.e2b_active_seconds = sum(match.active_seconds for match in complete_matches)
-        observation.sample.e2b_vcpu_count = _shared_resource_value(
-            [match.vcpu_count for match in complete_matches]
-        )
-        observation.sample.e2b_memory_mib = _shared_resource_value(
-            [match.memory_mib for match in complete_matches]
-        )
+        observation.sample.e2b_vcpu_count = _shared_resource_value([match.vcpu_count for match in complete_matches])
+        observation.sample.e2b_memory_mib = _shared_resource_value([match.memory_mib for match in complete_matches])
 
 
 async def _fetch_e2b_pause_events(
@@ -1357,9 +1351,7 @@ def summarize_outcomes(
     attempted = len(samples)
     admitted = sum(sample.admitted for sample in samples)
     terminal = sum(sample.terminal_status in {"succeeded", "failed", "cancelled"} for sample in samples)
-    successful = sum(
-        sample.terminal_status == "succeeded" and sample.failure_kind is None for sample in samples
-    )
+    successful = sum(sample.terminal_status == "succeeded" and sample.failure_kind is None for sample in samples)
     timeout_runs = sum(sample.error is not None and "timeout" in sample.error.lower() for sample in samples)
     throttle_runs = sum(
         sample.error is not None and any(token in sample.error.lower() for token in ("429", "throttle", "quota"))
