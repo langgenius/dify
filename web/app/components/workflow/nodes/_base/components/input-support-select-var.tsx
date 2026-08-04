@@ -74,7 +74,11 @@ const Editor: FC<Props> = ({
   )
 
   return (
-    <div className={cn(className, 'relative min-h-8')} onKeyDown={handleKeyDown}>
+    <div
+      className={cn(className, 'relative min-h-8')}
+      role="presentation"
+      onKeyDown={handleKeyDown}
+    >
       <>
         <PromptEditor
           instanceId={instanceId}
