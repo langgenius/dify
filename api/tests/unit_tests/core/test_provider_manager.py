@@ -7,10 +7,19 @@ from sqlalchemy import Engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core import provider_manager as provider_manager_module
-from core.entities.provider_entities import ModelSettings
+from core.entities.provider_entities import (
+    CustomConfiguration,
+    CustomProviderConfiguration,
+    ModelSettings,
+    ProviderQuotaType,
+)
+from core.hosting_configuration import HostingProvider, TrialHostingQuota
+from core.plugin.entities.plugin import PluginInstallationSource
+from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
 from core.provider_manager import ProviderConfigurationCacheSource, ProviderManager
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.provider_entities import ConfigurateMethod
 from models.base import TypeBase
 from models.provider import (
     LoadBalancingModelConfig,
@@ -69,6 +78,39 @@ def provider_db(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Itera
         monkeypatch.setattr(provider_manager_module.db, "session", request_session)
         monkeypatch.setattr(provider_manager_module.session_factory, "create_session", owned_session_factory)
         yield request_session
+
+
+def _build_plugin_provider_declaration(
+    installation_source: PluginInstallationSource | None,
+) -> PluginModelProviderDeclaration:
+    return PluginModelProviderDeclaration(
+        provider="langgenius/openai/openai",
+        plugin_unique_identifier="langgenius/openai:1.0.0@checksum",
+        installation_source=installation_source,
+        label=I18nObject(en_US="OpenAI"),
+        supported_model_types=[ModelType.LLM],
+        configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
+    )
+
+
+def _build_hosting_provider() -> HostingProvider:
+    return HostingProvider(
+        enabled=True,
+        credentials={"api_key": "system-secret"},
+        quotas=[TrialHostingQuota(quota_limit=100)],
+    )
+
+
+def _build_trial_provider_record() -> Provider:
+    return Provider(
+        tenant_id="tenant-id",
+        provider_name="openai",
+        provider_type=ProviderType.SYSTEM,
+        quota_type=ProviderQuotaType.TRIAL,
+        quota_limit=100,
+        quota_used=0,
+        is_valid=True,
+    )
 
 
 class _FakeRedis:
@@ -178,6 +220,140 @@ def test__to_model_settings(mock_provider_entity, provider_db: Session):
     assert len(result[0].load_balancing_configs) == 2
     assert result[0].load_balancing_configs[0].name == "__inherit__"
     assert result[0].load_balancing_configs[1].name == "first"
+
+
+@pytest.mark.parametrize(
+    "installation_source",
+    [
+        None,
+        PluginInstallationSource.Github,
+        PluginInstallationSource.Package,
+        PluginInstallationSource.Remote,
+    ],
+)
+def test_to_system_configuration_rejects_non_marketplace_provider(
+    installation_source: PluginInstallationSource | None,
+) -> None:
+    provider_entity = _build_plugin_provider_declaration(installation_source)
+    manager = _build_provider_manager()
+
+    with (
+        patch.object(manager, "_choice_current_using_quota_type") as choose_quota,
+        patch(
+            "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
+            {provider_entity.provider: _build_hosting_provider()},
+        ),
+    ):
+        configuration = manager._to_system_configuration("tenant-id", provider_entity, [])
+
+    assert configuration.enabled is False
+    assert configuration.credentials is None
+    choose_quota.assert_not_called()
+
+
+def test_to_system_configuration_rejects_unverified_marketplace_provider() -> None:
+    provider_entity = _build_plugin_provider_declaration(PluginInstallationSource.Marketplace)
+    manager = _build_provider_manager()
+
+    with (
+        patch.object(manager, "_choice_current_using_quota_type") as choose_quota,
+        patch(
+            "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
+            {provider_entity.provider: _build_hosting_provider()},
+        ),
+        patch(
+            "core.plugin.plugin_service.PluginService.is_plugin_verified",
+            return_value=False,
+        ) as is_plugin_verified,
+    ):
+        configuration = manager._to_system_configuration("tenant-id", provider_entity, [])
+
+    assert configuration.enabled is False
+    assert configuration.credentials is None
+    is_plugin_verified.assert_called_once_with("tenant-id", provider_entity.plugin_unique_identifier)
+    choose_quota.assert_not_called()
+
+
+def test_to_system_configuration_never_returns_hosting_credentials_for_package_with_valid_quota() -> None:
+    provider_entity = _build_plugin_provider_declaration(PluginInstallationSource.Package)
+    manager = _build_provider_manager()
+
+    with patch(
+        "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
+        {provider_entity.provider: _build_hosting_provider()},
+    ):
+        configuration = manager._to_system_configuration(
+            "tenant-id",
+            provider_entity,
+            [_build_trial_provider_record()],
+        )
+
+    assert configuration.enabled is False
+    assert configuration.credentials is None
+
+
+def test_to_system_configuration_preserves_marketplace_behavior() -> None:
+    provider_entity = _build_plugin_provider_declaration(PluginInstallationSource.Marketplace)
+    manager = _build_provider_manager()
+
+    with (
+        patch(
+            "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
+            {provider_entity.provider: _build_hosting_provider()},
+        ),
+        patch(
+            "core.plugin.plugin_service.PluginService.is_plugin_verified",
+            return_value=True,
+        ) as is_plugin_verified,
+    ):
+        configuration = manager._to_system_configuration(
+            "tenant-id",
+            provider_entity,
+            [_build_trial_provider_record()],
+        )
+
+    assert configuration.enabled is True
+    assert configuration.credentials == {"api_key": "system-secret"}
+    assert configuration.current_quota_type == ProviderQuotaType.TRIAL
+    is_plugin_verified.assert_called_once_with("tenant-id", provider_entity.plugin_unique_identifier)
+
+
+def test_package_provider_keeps_custom_configuration() -> None:
+    provider_entity = _build_plugin_provider_declaration(PluginInstallationSource.Package)
+    manager = _build_provider_manager()
+    provider_factory = Mock()
+    provider_factory.get_providers.return_value = [provider_entity]
+    custom_configuration = CustomConfiguration(
+        provider=CustomProviderConfiguration(credentials={"api_key": "user-secret"})
+    )
+
+    with (
+        patch.object(manager, "_get_all_providers", return_value={provider_entity.provider: []}),
+        patch.object(
+            manager,
+            "_init_trial_provider_records",
+            return_value={provider_entity.provider: []},
+        ),
+        patch.object(manager, "_get_all_provider_models", return_value={}),
+        patch.object(manager, "_get_all_preferred_model_providers", return_value={}),
+        patch.object(manager, "_get_all_provider_model_settings", return_value={}),
+        patch.object(manager, "_get_all_provider_load_balancing_configs", return_value={}),
+        patch.object(manager, "_get_all_provider_model_credentials", return_value={}),
+        patch.object(manager, "_get_all_provider_credentials", return_value={}),
+        patch.object(manager, "_to_custom_configuration", return_value=custom_configuration),
+        patch.object(manager, "_to_model_settings", return_value=[]),
+        patch("core.provider_manager.ModelProviderFactory", return_value=provider_factory),
+        patch(
+            "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
+            {provider_entity.provider: _build_hosting_provider()},
+        ),
+    ):
+        configuration = manager.get_configurations("tenant-id").get(provider_entity.provider)
+
+    assert configuration is not None
+    assert configuration.system_configuration.enabled is False
+    assert configuration.custom_configuration.provider is not None
+    assert configuration.custom_configuration.provider.credentials == {"api_key": "user-secret"}
 
 
 def test__to_model_settings_only_one_lb(mock_provider_entity, provider_db: Session):

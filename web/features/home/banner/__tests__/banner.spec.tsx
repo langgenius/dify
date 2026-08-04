@@ -1,4 +1,4 @@
-import type { Banner as BannerType } from '@/models/app'
+import type { BannerResponse } from '@dify/contracts/api/console/explore/types.gen'
 import { cleanup, fireEvent, screen } from '@testing-library/react'
 import * as React from 'react'
 import { act } from 'react'
@@ -132,7 +132,7 @@ vi.mock('../banner-item', () => ({
     accountId,
     titleId,
   }: {
-    banner: BannerType
+    banner: BannerResponse
     sort: number
     language: string
     accountId?: string
@@ -152,20 +152,21 @@ vi.mock('../banner-item', () => ({
 
 const createMockBanner = (
   id: string,
-  status: string = 'enabled',
+  status: BannerResponse['status'] = 'enabled',
   title: string = 'Test Banner',
-): BannerType =>
-  ({
-    id,
-    status,
-    link: 'https://example.com',
-    content: {
-      category: 'Featured',
-      title,
-      description: 'Test description',
-      'img-src': `https://example.com/image-${id}.png`,
-    },
-  }) as BannerType
+): BannerResponse => ({
+  id,
+  status,
+  link: 'https://example.com',
+  created_at: '2024-01-01T00:00:00Z',
+  content: {
+    category: 'Featured',
+    title,
+    description: 'Test description',
+    'img-src': `https://example.com/image-${id}.png`,
+  },
+  sort: 1,
+})
 
 describe('Banner', () => {
   beforeEach(() => {
@@ -180,21 +181,22 @@ describe('Banner', () => {
 
   afterEach(cleanup)
 
-  it('renders the greeting shell without a carousel when no enabled banner exists', () => {
-    render(<Banner banners={[createMockBanner('1', 'disabled')]} />)
+  it('renders nothing when there are no banners', () => {
+    render(<Banner banners={[]} />)
 
-    expect(screen.getByText('Welcome back, Evan👋')).toBeInTheDocument()
-    expect(screen.getByText('What if… this is where your next idea begins.')).toBeInTheDocument()
+    expect(screen.queryByText('Welcome back, Evan👋')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('What if… this is where your next idea begins.'),
+    ).not.toBeInTheDocument()
     expect(screen.queryByRole('region')).not.toBeInTheDocument()
   })
 
-  it('labels the carousel and renders only enabled banners', () => {
+  it('labels the carousel and renders its banners', () => {
     render(
       <Banner
         banners={[
           createMockBanner('1', 'enabled', 'First banner'),
-          createMockBanner('2', 'disabled', 'Hidden banner'),
-          createMockBanner('3', 'enabled', 'Second banner'),
+          createMockBanner('2', 'enabled', 'Second banner'),
         ]}
       />,
     )
@@ -202,7 +204,6 @@ describe('Banner', () => {
     expect(screen.getByRole('region', { name: 'Featured' })).toBeInTheDocument()
     expect(screen.getByRole('group', { name: 'pagination.pageNumber' })).toBeInTheDocument()
     expect(screen.getAllByTestId('banner-item')).toHaveLength(2)
-    expect(screen.queryByText('Hidden banner')).not.toBeInTheDocument()
   })
 
   it('keeps only the active slide exposed to assistive technology and keyboard focus', () => {
