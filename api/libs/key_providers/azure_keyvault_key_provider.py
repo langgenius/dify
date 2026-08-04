@@ -1,5 +1,6 @@
 import json
 import threading
+from datetime import UTC, datetime
 from typing import Any, override
 
 from azure.core.exceptions import AzureError
@@ -92,7 +93,10 @@ class AzureKeyVaultKeyProvider(BaseKeyProvider):
             versions = list(self._key_client.list_properties_of_key_versions(key_name))
             if not versions:
                 raise ValueError(f"No key versions found for key {key_name}")
-            current = max(versions, key=lambda properties: properties.created_on)
+            current = max(
+                versions,
+                key=lambda properties: properties.created_on or datetime.min.replace(tzinfo=UTC),
+            )
             resolved_version = current.version or ""
             key_id = current.id
 
