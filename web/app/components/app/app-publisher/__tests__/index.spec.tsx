@@ -647,18 +647,30 @@ describe('AppPublisher', () => {
       systemFeatures: { webapp_auth: { enabled: true }, enable_app_deploy: true },
     })
 
-    await user.click(screen.getByTestId('popover-trigger'))
-    await user.click(screen.getByRole('tab', { name: 'Staging' }))
+    const publishButton = screen.getByRole('button', {
+      name: /(?:^|\.)common\.publish(?=$|:)/,
+    })
+    expect(publishButton).toHaveAttribute('aria-expanded', 'false')
+
+    await user.click(publishButton)
+    expect(publishButton).toHaveAttribute('aria-expanded', 'true')
+    const stagingTab = screen.getByRole('tab', { name: 'Staging' })
+    expect(stagingTab).toBeInTheDocument()
+
+    await user.click(stagingTab)
     await waitFor(() => {
       expect(detailRequests.length).toBeGreaterThan(0)
     })
 
-    await user.click(screen.getByTestId('popover-trigger'))
+    await user.click(publishButton)
 
-    expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
+    expect(publishButton).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('tab', { name: 'Staging' })).not.toBeInTheDocument()
     const requestsBeforeReopen = detailRequests.length
 
-    await user.click(screen.getByTestId('popover-trigger'))
+    await user.click(publishButton)
+    expect(publishButton).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('tab', { name: 'Staging' })).toBeInTheDocument()
     await waitFor(() => {
       expect(detailRequests.length).toBeGreaterThan(requestsBeforeReopen)
     })
