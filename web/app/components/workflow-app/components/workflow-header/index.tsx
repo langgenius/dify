@@ -10,6 +10,7 @@ import Header from '@/app/components/workflow/header'
 import { useResetWorkflowVersionHistory } from '@/service/use-workflow'
 import { useIsChatMode } from '../../hooks'
 import ChatVariableTrigger from './chat-variable-trigger'
+import CopilotTrigger from './copilot-trigger'
 import FeaturesTrigger from './features-trigger'
 
 const WorkflowHeader = () => {
@@ -37,6 +38,7 @@ const WorkflowHeader = () => {
     return {
       normal: {
         components: {
+          left: <CopilotTrigger />,
           middle: <FeaturesTrigger />,
           chatVariableTrigger: <ChatVariableTrigger />,
         },

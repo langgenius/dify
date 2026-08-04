@@ -147,6 +147,7 @@ from .workflow import (
     WorkflowType,
     resolve_workflow_kind,
 )
+from .workflow_copilot import WorkflowCopilotConversation, WorkflowCopilotMessage
 
 __all__ = [
     "APIBasedExtension",
@@ -276,6 +277,8 @@ __all__ = [
     "WorkflowComment",
     "WorkflowCommentMention",
     "WorkflowCommentReply",
+    "WorkflowCopilotConversation",
+    "WorkflowCopilotMessage",
     "WorkflowKind",
     "WorkflowNodeExecutionModel",
     "WorkflowNodeExecutionOffload",

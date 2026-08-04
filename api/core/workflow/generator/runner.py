@@ -27,6 +27,7 @@ import json
 import logging
 import re
 import time
+from dataclasses import dataclass
 from typing import Any, ClassVar, cast
 
 import json_repair
@@ -158,6 +159,31 @@ def _err(code: str, detail: str, node_id: str = "") -> WorkflowGenerateErrorDict
     return out
 
 
+# Error codes that mean "a variable reference points somewhere it shouldn't".
+# These are the ones the builder-retry loop tries to self-heal; other codes
+# (missing terminal, cycle, ...) aren't fixable by re-prompting the builder.
+_REFERENCE_ERROR_CODES = frozenset(
+    {
+        WorkflowGenerateErrorCode.UNKNOWN_NODE_REFERENCE,
+        WorkflowGenerateErrorCode.UNRESOLVED_REFERENCE,
+    }
+)
+
+
+@dataclass
+class _BuildAttempt:
+    """Outcome of one builder→postprocess→validate attempt.
+
+    ``build_err`` is set only on a hard builder failure (JSON/schema/invoke);
+    otherwise ``result`` holds the postprocessed graph and ``errors`` the
+    structural validation findings (empty means fully valid).
+    """
+
+    build_err: WorkflowGenerateErrorDict | None
+    result: WorkflowGenerateResultDict
+    errors: list[WorkflowGenerateErrorDict]
+
+
 def _errors_to_str(errors: list[WorkflowGenerateErrorDict]) -> str:
     """Concatenate structured errors into the legacy single-string envelope."""
     return "; ".join(e["detail"] for e in errors)
@@ -286,7 +312,94 @@ class WorkflowGenerator:
             if isinstance(item, dict) and (item.get("variable") or "").strip()
         ]
 
-        # ── 2. BUILDER ────────────────────────────────────────────────────
+        # ── 2. BUILDER (+ one reference-repair retry) ─────────────────────
+        # First build. If postprocess auto-repair can't clear every bad
+        # variable reference, we re-run the builder ONCE with a correction
+        # hint naming the offending references, then keep whichever result is
+        # cleaner. This turns "one hallucinated ref blocks the whole graph"
+        # into a self-healing loop for the common case.
+        build_result = cls._build_and_validate(
+            model_instance=model_instance,
+            model_parameters=model_parameters,
+            provider=provider,
+            model_name=model_name,
+            model_mode=model_mode,
+            mode=mode,
+            instruction=instruction,
+            ideal_output=ideal_output,
+            plan=plan,
+            plan_nodes=plan_nodes,
+            start_inputs=start_inputs,
+            tool_catalogue_text=tool_catalogue_text,
+            installed_tools=installed_tools,
+            current_graph=current_graph,
+            correction_hint="",
+        )
+        if build_result.build_err is not None:
+            return _result_with_errors(_empty_result(), [build_result.build_err])
+
+        reference_errors = [e for e in build_result.errors if e["code"] in _REFERENCE_ERROR_CODES]
+        if reference_errors:
+            logger.info(
+                "Workflow generator: %d reference error(s) survived repair; retrying builder once",
+                len(reference_errors),
+            )
+            retry = cls._build_and_validate(
+                model_instance=model_instance,
+                model_parameters=model_parameters,
+                provider=provider,
+                model_name=model_name,
+                model_mode=model_mode,
+                mode=mode,
+                instruction=instruction,
+                ideal_output=ideal_output,
+                plan=plan,
+                plan_nodes=plan_nodes,
+                start_inputs=start_inputs,
+                tool_catalogue_text=tool_catalogue_text,
+                installed_tools=installed_tools,
+                current_graph=current_graph,
+                correction_hint=cls._format_correction_hint(reference_errors),
+            )
+            # Keep the retry only if the builder didn't hard-fail AND it left
+            # fewer errors; otherwise fall back to the first attempt.
+            if retry.build_err is None and len(retry.errors) < len(build_result.errors):
+                build_result = retry
+
+        if build_result.errors:
+            logger.warning("Workflow generator: structural validation failed: %s", build_result.errors)
+            return _result_with_errors(build_result.result, build_result.errors)
+        return build_result.result
+
+    @classmethod
+    def _build_and_validate(
+        cls,
+        *,
+        model_instance,
+        model_parameters: dict[str, Any],
+        provider: str,
+        model_name: str,
+        model_mode: str,
+        mode: WorkflowGenerationMode,
+        instruction: str,
+        ideal_output: str,
+        plan: PlannerResultDict,
+        plan_nodes: list[dict[str, Any]],
+        start_inputs: list[dict[str, Any]],
+        tool_catalogue_text: str,
+        installed_tools: set[tuple[str, str]] | None,
+        current_graph: dict[str, Any] | None,
+        correction_hint: str,
+    ) -> "_BuildAttempt":
+        """
+        Run one builder attempt: build → postprocess (auto-repair) → validate.
+
+        ``correction_hint`` is appended to the builder instruction on a retry so
+        the LLM can fix the references the first attempt got wrong. Returns a
+        ``_BuildAttempt`` carrying either a hard build error or the
+        postprocessed result plus its (possibly empty) structural errors.
+        """
+        effective_instruction = instruction if not correction_hint else f"{instruction}\n\n{correction_hint}"
         graph, build_err = cls._run_stage(
             stage="Builder",
             failure_fallback_message="Failed to build workflow graph",
@@ -297,7 +410,7 @@ class WorkflowGenerator:
                 model_name=model_name,
                 model_mode=model_mode,
                 mode=mode,
-                instruction=instruction,
+                instruction=effective_instruction,
                 ideal_output=ideal_output,
                 plan_nodes=plan_nodes,
                 tool_catalogue_text=tool_catalogue_text,
@@ -306,10 +419,9 @@ class WorkflowGenerator:
             ),
         )
         if build_err is not None:
-            return _result_with_errors(_empty_result(), [build_err])
-        graph = cast(GraphDict, graph)
+            return _BuildAttempt(build_err=build_err, result=_empty_result(), errors=[])
 
-        # ── 3. POSTPROC + VALIDATE ────────────────────────────────────────
+        graph = cast(GraphDict, graph)
         graph = cls._postprocess_graph(graph=graph, mode=mode)
 
         # ``app_name`` / ``icon`` are planner display metadata; both default
@@ -322,16 +434,21 @@ class WorkflowGenerator:
             "error": "",
             "errors": [],
         }
+        errors = cls._validate_structure(graph=graph, mode=mode, installed_tools=installed_tools)
+        return _BuildAttempt(build_err=None, result=result, errors=errors)
 
-        # Final structural sanity check — fail closed if start/end shape is
-        # wrong, container topology is broken, a tool was hallucinated, or a
-        # variable reference points at a node that won't expose it. We still
-        # return the partial graph so the caller can debug or salvage it.
-        structural_errors = cls._validate_structure(graph=graph, mode=mode, installed_tools=installed_tools)
-        if structural_errors:
-            logger.warning("Workflow generator: structural validation failed: %s", structural_errors)
-            return _result_with_errors(result, structural_errors)
-        return result
+    @classmethod
+    def _format_correction_hint(cls, reference_errors: list[WorkflowGenerateErrorDict]) -> str:
+        """Turn surviving reference errors into a concise builder correction block."""
+        lines = "\n".join(f"- {e['detail']}" for e in reference_errors)
+        return (
+            "IMPORTANT — the previous attempt produced INVALID variable references:\n"
+            f"{lines}\n"
+            "Fix them: every value_selector and every {{#node_id.var#}} placeholder MUST point at "
+            "a real upstream node id and an output variable that node actually declares. "
+            "Never use an if-else branch name ('true'/'false') as a node id. "
+            "For an LLM node use its 'text' output; for a code node use one of its declared 'outputs' keys."
+        )
 
     @classmethod
     def _run_stage(
@@ -688,6 +805,14 @@ class WorkflowGenerator:
         # variables before we surface them as errors.
         cls._reconcile_variable_references(nodes=nodes, mode=mode)
 
+        # Deterministic auto-repair for the NON-start reference bugs the builder
+        # LLM produces (an if-else condition selecting a branch case-id like
+        # ``["true","false"]``, or a selector naming an output the source node
+        # never declares). Redirect these onto a real upstream output so one
+        # hallucinated reference can't block the whole graph. Anything still
+        # unresolvable falls through to the validator and is surfaced.
+        cls._repair_variable_references(nodes=nodes, edges=deduped_edges)
+
         # Schema backstop: a "file" / "file-list" start variable MUST carry a
         # non-empty ``allowed_file_types`` or Studio refuses to load the draft
         # ("supported file types is required"). The builder is now told to set
@@ -871,6 +996,205 @@ class WorkflowGenerator:
         # Other node types (if-else, iteration-start, loop-start, ...) don't
         # produce outputs of their own.
         return False
+
+    # Node types whose single canonical output has a fixed, well-known name.
+    # Used by the reference-repair pass to remap a hallucinated output var
+    # (``{#node9.item#}``) onto the output the node actually exposes.
+    _CANONICAL_OUTPUT_VAR: ClassVar = {
+        BuiltinNodeTypes.LLM: "text",
+        BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL: "result",
+        BuiltinNodeTypes.HTTP_REQUEST: "body",
+        BuiltinNodeTypes.TEMPLATE_TRANSFORM: "output",
+        BuiltinNodeTypes.DOCUMENT_EXTRACTOR: "text",
+        BuiltinNodeTypes.VARIABLE_AGGREGATOR: "output",
+        BuiltinNodeTypes.LEGACY_VARIABLE_AGGREGATOR: "output",
+        BuiltinNodeTypes.ITERATION: "output",
+        BuiltinNodeTypes.LOOP: "output",
+        BuiltinNodeTypes.LIST_OPERATOR: "result",
+    }
+
+    @classmethod
+    def _canonical_output_var(cls, node: dict[str, Any]) -> str | None:
+        """
+        Best-effort "primary output variable" a downstream node can read from
+        ``node``. Returns ``None`` for node types that expose nothing (if-else,
+        start-of-container, ...) or whose outputs are fully dynamic in a way we
+        can't pick a default for.
+
+        Used only by the auto-repair pass, never by validation.
+        """
+        data = node.get("data") or {}
+        node_type = data.get("type")
+        fixed = cls._CANONICAL_OUTPUT_VAR.get(node_type)
+        if fixed is not None:
+            return fixed
+        if node_type == BuiltinNodeTypes.CODE:
+            outputs = data.get("outputs") or {}
+            return next(iter(outputs), None)
+        if node_type == BuiltinNodeTypes.PARAMETER_EXTRACTOR:
+            params = data.get("parameters") or []
+            first = next((p for p in params if isinstance(p, dict) and p.get("name")), None)
+            return first.get("name") if first else None
+        if node_type == BuiltinNodeTypes.START:
+            variables = data.get("variables") or []
+            first = next((v for v in variables if isinstance(v, dict) and v.get("variable")), None)
+            return first.get("variable") if first else None
+        return None
+
+    @classmethod
+    def _repair_variable_references(cls, *, nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> None:
+        """
+        Deterministically fix the two dominant NON-start reference bugs the
+        builder LLM produces, so a single hallucination doesn't block the whole
+        graph from being applied:
+
+          1. A selector / placeholder pointing at a node that doesn't exist
+             (the classic ``{#true.false#}`` — an if-else condition whose
+             ``variable_selector`` names a branch case-id instead of a real
+             upstream variable). We redirect it to the nearest upstream node
+             that exposes a canonical output.
+          2. A reference to a real node that doesn't DECLARE that variable
+             (``{#node9.item#}`` when node9 only exposes ``text``). We remap the
+             variable name to that node's canonical output.
+
+        Start-node references are handled earlier by
+        ``_reconcile_variable_references`` (it auto-injects the missing input),
+        so this pass leaves them alone. Anything it still can't resolve falls
+        through to the validator and is surfaced (and highlighted) to the user.
+        """
+        nodes_by_id: dict[str, dict[str, Any]] = {n.get("id", ""): n for n in nodes if n.get("id")}
+        preds = cls._predecessor_map(nodes=nodes, edges=edges)
+
+        for node in nodes:
+            node_id = node.get("id") or ""
+            # Ordered list of upstream nodes that expose *some* output — the
+            # fallback target when a reference points nowhere usable.
+            upstream_sources = cls._upstream_output_sources(
+                node_id=node_id, nodes_by_id=nodes_by_id, preds=preds
+            )
+            cls._repair_refs_in_data(
+                node.get("data") or {},
+                nodes_by_id=nodes_by_id,
+                upstream_sources=upstream_sources,
+            )
+
+    @classmethod
+    def _predecessor_map(
+        cls, *, nodes: list[dict[str, Any]], edges: list[dict[str, Any]]
+    ) -> dict[str, list[str]]:
+        """node_id → list of direct predecessor node ids (edge source→target)."""
+        preds: dict[str, list[str]] = {n.get("id", ""): [] for n in nodes if n.get("id")}
+        for edge in edges:
+            src, tgt = edge.get("source"), edge.get("target")
+            if isinstance(src, str) and isinstance(tgt, str) and tgt in preds and src in preds:
+                preds[tgt].append(src)
+        return preds
+
+    @classmethod
+    def _upstream_output_sources(
+        cls,
+        *,
+        node_id: str,
+        nodes_by_id: dict[str, dict[str, Any]],
+        preds: dict[str, list[str]],
+    ) -> list[tuple[str, str]]:
+        """
+        Breadth-first walk backwards from ``node_id`` collecting every upstream
+        ``(source_node_id, canonical_var)`` a reference could be redirected to,
+        nearest first. Cycle-safe via a visited set.
+        """
+        out: list[tuple[str, str]] = []
+        seen: set[str] = {node_id}
+        queue: list[str] = list(preds.get(node_id, []))
+        while queue:
+            cur = queue.pop(0)
+            if cur in seen:
+                continue
+            seen.add(cur)
+            source = nodes_by_id.get(cur)
+            if source is not None:
+                var = cls._canonical_output_var(source)
+                if var:
+                    out.append((cur, var))
+            queue.extend(preds.get(cur, []))
+        return out
+
+    @classmethod
+    def _repair_refs_in_data(
+        cls,
+        value: Any,
+        *,
+        nodes_by_id: dict[str, dict[str, Any]],
+        upstream_sources: list[tuple[str, str]],
+    ) -> None:
+        """
+        Rewrite bad ``[node_id, var]`` value-selectors in place. Placeholder
+        strings (``{{#node.var#}}``) are intentionally left to the validator —
+        rewriting free text risks corrupting a prompt, whereas a structured
+        2-element selector has exactly one safe interpretation.
+        """
+        if isinstance(value, dict):
+            for k, v in list(value.items()):
+                if (
+                    isinstance(v, list)
+                    and len(v) == 2
+                    and all(isinstance(x, str) for x in v)
+                    and k not in cls._NON_SELECTOR_LIST_KEYS
+                ):
+                    repaired = cls._repair_selector(
+                        selector=(v[0].strip(), v[1].strip()),
+                        nodes_by_id=nodes_by_id,
+                        upstream_sources=upstream_sources,
+                    )
+                    if repaired is not None and list(repaired) != v:
+                        value[k] = list(repaired)
+                        logger.info(
+                            "Workflow generator: repaired reference %s -> %s", v, list(repaired)
+                        )
+                        continue
+                cls._repair_refs_in_data(
+                    v, nodes_by_id=nodes_by_id, upstream_sources=upstream_sources
+                )
+        elif isinstance(value, list):
+            for item in value:
+                cls._repair_refs_in_data(
+                    item, nodes_by_id=nodes_by_id, upstream_sources=upstream_sources
+                )
+
+    @classmethod
+    def _repair_selector(
+        cls,
+        *,
+        selector: tuple[str, str],
+        nodes_by_id: dict[str, dict[str, Any]],
+        upstream_sources: list[tuple[str, str]],
+    ) -> tuple[str, str] | None:
+        """
+        Return a corrected ``(node_id, var)`` for a broken selector, or ``None``
+        when it's already valid or unfixable.
+
+        Strategy:
+          * points at a REAL node but wrong var → remap to that node's canonical
+            output (keeps the user's intended data source);
+          * points at a NON-existent node → redirect to the nearest upstream
+            output (the dominant ``{#true.false#}`` branch-name case).
+        """
+        node_id, var = selector
+        # sys.* is a runtime system namespace, never a graph node.
+        if node_id == "sys":
+            return None
+        target = nodes_by_id.get(node_id)
+        if target is not None:
+            if cls._declares_variable(target, var):
+                return None
+            canonical = cls._canonical_output_var(target)
+            if canonical:
+                return (node_id, canonical)
+            # Real node with no usable output (e.g. if-else) → fall back to an
+            # upstream source instead.
+        if upstream_sources:
+            return upstream_sources[0]
+        return None
 
     @classmethod
     def _sanitize_node_ids(cls, *, nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> None:

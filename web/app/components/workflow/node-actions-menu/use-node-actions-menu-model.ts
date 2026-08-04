@@ -86,6 +86,19 @@ export function useNodeActionsMenuModel({
     handleNodeDelete(id)
   }, [handleNodeDelete, id, onClose])
 
+  const handleAddToCopilot = useCallback(() => {
+    onClose()
+    const store = workflowStore.getState()
+    store.addCopilotContextNode({ id, title: data.title || data.type })
+    // Reveal the panel so the freshly-pinned context chip is visible, and
+    // close the other right-side panels so only Copilot shows.
+    store.setShowCopilotPanel(true)
+    store.setShowDebugAndPreviewPanel(false)
+    store.setShowEnvPanel(false)
+    store.setShowChatVariablePanel(false)
+    store.setShowGlobalVariablePanel(false)
+  }, [data.title, data.type, id, onClose, workflowStore])
+
   return {
     about: {
       author: nodeMetaData.author,
@@ -94,6 +107,7 @@ export function useNodeActionsMenuModel({
     canChangeBlock,
     canRun,
     data,
+    handleAddToCopilot,
     handleCopy,
     handleDelete,
     handleDuplicate,

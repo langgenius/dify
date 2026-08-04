@@ -34,6 +34,9 @@ const ChatVariablePanel = dynamic(() => import('@/app/components/workflow/panel/
 const GlobalVariablePanel = dynamic(() => import('@/app/components/workflow/panel/global-variable-panel'), {
   ssr: false,
 })
+const WorkflowCopilotPanel = dynamic(() => import('@/app/components/workflow/panel/workflow-copilot'), {
+  ssr: false,
+})
 
 const WorkflowPanelOnLeft = () => {
   const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal, currentLogModalActiveTab } = useAppStore(useShallow(state => ({
@@ -68,6 +71,7 @@ const WorkflowPanelOnRight = () => {
   const showDebugAndPreviewPanel = useStore(s => s.showDebugAndPreviewPanel)
   const showChatVariablePanel = useStore(s => s.showChatVariablePanel)
   const showGlobalVariablePanel = useStore(s => s.showGlobalVariablePanel)
+  const showCopilotPanel = useStore(s => s.showCopilotPanel)
   const controlMode = useStore(s => s.controlMode)
 
   return (
@@ -100,6 +104,11 @@ const WorkflowPanelOnRight = () => {
       {
         showGlobalVariablePanel && (
           <GlobalVariablePanel />
+        )
+      }
+      {
+        showCopilotPanel && (
+          <WorkflowCopilotPanel />
         )
       }
       {controlMode === 'comment' && <CommentsPanel />}

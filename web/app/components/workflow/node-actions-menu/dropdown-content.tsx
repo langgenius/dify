@@ -62,6 +62,9 @@ export function NodeActionsDropdownContent(props: NodeActionsMenuProps) {
               {t('common.duplicate', { ns: 'workflow' })}
             </NodeActionsMenuItemContent>
           </DropdownMenuItem>
+          <DropdownMenuItem onClick={model.handleAddToCopilot}>
+            {t('workflow.workflowGenerator.addToCopilot', { defaultValue: 'Add to Copilot' })}
+          </DropdownMenuItem>
         </DropdownMenuGroup>
       )}
       {hasEditGroup && (hasDeleteGroup || model.workflowAppHref || model.helpLinkUri) && <DropdownMenuSeparator />}
