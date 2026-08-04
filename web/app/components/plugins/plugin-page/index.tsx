@@ -207,7 +207,7 @@ const PluginPage = ({ plugins, marketplace }: PluginPageProps) => {
                   target="_blank"
                 >
                   <Button className="px-3" variant="secondary-accent">
-                    <RiBookOpenLine className="mr-1 size-4" />
+                    <RiBookOpenLine className="size-4" />
                     {t(($) => $.publishPlugins, { ns: 'plugin' })}
                   </Button>
                 </Link>
