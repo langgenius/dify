@@ -4,7 +4,7 @@ import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppACLPermission } from '@/utils/permission'
-import ContinueWorkItem from '../item'
+import { ContinueWorkItem } from '../item'
 
 const mockConsoleState = vi.hoisted(() => ({
   userProfile: { id: 'user-1' },

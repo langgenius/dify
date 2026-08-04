@@ -15800,6 +15800,15 @@ AppMCPServer Status Enum
 | ---- | ---- | ----------- | -------- |
 | data | [ [AverageSessionInteractionStatisticItem](#averagesessioninteractionstatisticitem) ] |  | Yes |
 
+#### BannerContentResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| category | string |  | Yes |
+| description | string |  | Yes |
+| img-src | string |  | Yes |
+| title | string |  | Yes |
+
 #### BannerListResponse
 
 | Name | Type | Description | Required |
@@ -15810,12 +15819,20 @@ AppMCPServer Status Enum
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| content |  |  | Yes |
-| created_at | string |  | No |
+| content | [BannerContentResponse](#bannercontentresponse) |  | Yes |
+| created_at | string |  | Yes |
 | id | string |  | Yes |
-| link | string |  | No |
+| link | string |  | Yes |
 | sort | integer |  | Yes |
-| status | string |  | Yes |
+| status | [BannerStatus](#bannerstatus) |  | Yes |
+
+#### BannerStatus
+
+ExporleBanner status
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| BannerStatus | string | ExporleBanner status |  |
 
 #### BatchImportPayload
 

@@ -16,6 +16,7 @@ from core.provider_manager import ProviderConfigurationCacheSource
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
 from models.provider import Provider, ProviderCredential, ProviderType, TenantPreferredModelProvider
+from services.feature_service import PluginInstallationPermissionModel, PluginInstallationScope
 
 MODULE = "core.plugin.plugin_service"
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
@@ -1018,11 +1019,15 @@ class TestPluginModelProviderCacheInvalidation:
             patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
         ):
             mock_config.MARKETPLACE_ENABLED = True
-            feature_service.get_system_features.return_value = SimpleNamespace(
-                plugin_installation_permission=SimpleNamespace(restrict_to_marketplace_only=False)
+            feature_service.get_plugin_installation_permission.return_value = PluginInstallationPermissionModel(
+                restrict_to_marketplace_only=False,
+                plugin_installation_scope=PluginInstallationScope.ALL,
             )
             installer = installer_cls.return_value
             installer.fetch_plugin_manifest.return_value = MagicMock()
+            decode_response = MagicMock()
+            decode_response.verification = None
+            installer.decode_plugin_from_identifier.return_value = decode_response
             installer.upgrade_plugin.return_value = "task-id"
 
             from core.plugin.plugin_service import PluginService
