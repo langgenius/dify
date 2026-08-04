@@ -213,7 +213,7 @@ def test_decrypt_rejects_truncated_envelope_raises_value_error(truncate_at: int)
         provider.decrypt_with_decoding(truncated, "tenant-1")
 
 
-def test_decrypt_translates_disabled_key_version_into_value_error(fake_key_client: FakeKeyClient) -> None:
+def test_decrypt_translates_disabled_key_version_into_value_error() -> None:
     """
     A specific key_version can become unusable after a credential was encrypted (disabled,
     deleted, or expired in Key Vault). Callers of decrypt_token_with_decoding
