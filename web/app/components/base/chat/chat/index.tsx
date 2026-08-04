@@ -270,7 +270,7 @@ const Chat: FC<ChatProps> = ({
             {!noStopResponding && isResponding && (
               <div data-testid="stop-responding-container" className="mb-2 flex justify-center">
                 <Button
-                  className="pointer-events-auto border-components-panel-border bg-components-panel-bg text-components-button-secondary-text"
+                  className="pointer-events-auto bg-components-panel-bg text-components-button-secondary-text inset-ring-components-panel-border"
                   onClick={onStopResponding}
                 >
                   <div className="i-custom-vender-solid-mediaAndDevices-stop-circle h-3.5 w-3.5" />
