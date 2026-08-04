@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react'
 import type { DeploymentVersion } from '../version'
 import type { DeploymentDialogRequest } from './types'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DialogCloseButton, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { useAtomValue } from 'jotai'
@@ -90,15 +91,19 @@ export function VersionChoice({
   )
 }
 
-export function VersionSelection({
-  request,
+function VersionList({
+  className,
+  currentVersionId,
+  disabled = false,
   onSelect,
 }: {
-  request: DeploymentDialogRequest
+  className?: string
+  currentVersionId?: string
+  disabled?: boolean
   onSelect: (version: DeploymentVersion) => void
 }) {
-  const { t } = useTranslation('deployments')
   const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation('deployments')
   const versions = useAtomValue(appWorkflowVersionsAtom)
   const versionsError = useAtomValue(appWorkflowVersionsErrorAtom)
   const fetchNextPage = useAtomValue(appWorkflowVersionsFetchNextPageAtom)
@@ -114,10 +119,77 @@ export function VersionSelection({
     isFetchingNextPage,
     isLoading,
   })
-  const title =
-    request.kind === 'deploy'
-      ? t(($) => $['versions.deployTo'], { name: request.environment })
-      : `${t(($) => $['studio.changeVersion'])} · ${request.environment}`
+
+  return (
+    <div ref={rootRef} className={cn('min-h-0 flex-1 overflow-y-auto', className)}>
+      <div className="flex flex-col gap-px">
+        {versions.map((version) => (
+          <VersionChoice
+            key={version.id}
+            version={version}
+            current={version.id === currentVersionId}
+            disabled={disabled}
+            onSelect={onSelect}
+          />
+        ))}
+      </div>
+      {isLoading && (
+        <div
+          role="status"
+          aria-label={tCommon(($) => $.loading)}
+          className="flex h-20 items-center justify-center"
+        >
+          <span
+            aria-hidden
+            className="i-ri-loader-2-line size-4 animate-spin text-text-tertiary motion-reduce:animate-none"
+          />
+        </div>
+      )}
+      {!isLoading && versionsError && versions.length === 0 && (
+        <p role="alert" className="px-2 py-6 text-center system-xs-regular text-text-tertiary">
+          {tCommon(($) => $.error)}
+        </p>
+      )}
+      {!isLoading && !versionsError && versions.length === 0 && (
+        <p className="px-2 py-6 text-center system-xs-regular text-text-tertiary">
+          {t(($) => $['studio.accessPoint.noPublishedTitle'])}
+        </p>
+      )}
+      {isFetchingNextPage && versions.length > 0 && (
+        <div
+          role="status"
+          aria-label={tCommon(($) => $.loading)}
+          className="flex h-8 items-center justify-center"
+        >
+          <span
+            aria-hidden
+            className="i-ri-loader-2-line size-4 animate-spin text-text-tertiary motion-reduce:animate-none"
+          />
+        </div>
+      )}
+      <div ref={sentinelRef} aria-hidden className="h-px" />
+    </div>
+  )
+}
+
+function versionSelectionTitle(request: DeploymentDialogRequest, deployTo: string, change: string) {
+  return request.kind === 'deploy' ? deployTo : `${change} · ${request.environment}`
+}
+
+export function VersionSelection({
+  request,
+  onSelect,
+}: {
+  request: DeploymentDialogRequest
+  onSelect: (version: DeploymentVersion) => void
+}) {
+  const { t } = useTranslation('deployments')
+  const { t: tCommon } = useTranslation('common')
+  const title = versionSelectionTitle(
+    request,
+    t(($) => $['versions.deployTo'], { name: request.environment }),
+    t(($) => $['studio.changeVersion']),
+  )
 
   return (
     <>
@@ -132,53 +204,58 @@ export function VersionSelection({
           {t(($) => $['studio.chooseVersionToDeploy'])}
         </DialogDescription>
       </header>
-      <div ref={rootRef} className="min-h-0 flex-1 overflow-y-auto px-4 pt-2 pb-4">
-        <div className="flex flex-col gap-px">
-          {versions.map((version) => (
-            <VersionChoice
-              key={version.id}
-              version={version}
-              current={version.id === request.currentVersionId}
-              onSelect={onSelect}
-            />
-          ))}
-        </div>
-        {isLoading && (
-          <div
-            role="status"
-            aria-label={tCommon(($) => $.loading)}
-            className="flex h-20 items-center justify-center"
-          >
-            <span
-              aria-hidden
-              className="i-ri-loader-2-line size-4 animate-spin text-text-tertiary motion-reduce:animate-none"
-            />
-          </div>
-        )}
-        {!isLoading && versionsError && versions.length === 0 && (
-          <p role="alert" className="px-2 py-6 text-center system-xs-regular text-text-tertiary">
-            {tCommon(($) => $.error)}
-          </p>
-        )}
-        {!isLoading && !versionsError && versions.length === 0 && (
-          <p className="px-2 py-6 text-center system-xs-regular text-text-tertiary">
-            {t(($) => $['studio.accessPoint.noPublishedTitle'])}
-          </p>
-        )}
-        {isFetchingNextPage && versions.length > 0 && (
-          <div
-            role="status"
-            aria-label={tCommon(($) => $.loading)}
-            className="flex h-8 items-center justify-center"
-          >
-            <span
-              aria-hidden
-              className="i-ri-loader-2-line size-4 animate-spin text-text-tertiary motion-reduce:animate-none"
-            />
-          </div>
-        )}
-        <div ref={sentinelRef} aria-hidden className="h-px" />
-      </div>
+      <VersionList
+        className="px-4 pt-2 pb-4"
+        currentVersionId={request.currentVersionId}
+        onSelect={onSelect}
+      />
     </>
+  )
+}
+
+export function EmbeddedVersionSelection({
+  disabled,
+  request,
+  onBack,
+  onSelect,
+}: {
+  disabled: boolean
+  request: DeploymentDialogRequest
+  onBack: () => void
+  onSelect: (version: DeploymentVersion) => void
+}) {
+  const { t } = useTranslation('deployments')
+  const { t: tCommon } = useTranslation('common')
+  const title = versionSelectionTitle(
+    request,
+    t(($) => $['versions.deployTo'], { name: request.environment }),
+    t(($) => $['studio.changeVersion']),
+  )
+
+  return (
+    <div className="flex h-133 max-h-[calc(100dvh-32px)] min-h-0 flex-none flex-col">
+      <header className="shrink-0 px-3 pt-3.5 pb-1">
+        <Button
+          type="button"
+          size="small"
+          variant="ghost-accent"
+          className="-ml-1 h-6 gap-1 px-1 system-xs-semibold-uppercase"
+          onClick={onBack}
+        >
+          <span aria-hidden className="i-ri-arrow-left-line size-4" />
+          {tCommon(($) => $['operation.back'])}
+        </Button>
+        <h2 className="mt-0.5 px-1 system-xl-semibold text-text-primary">{title}</h2>
+        <p className="mt-0.5 px-1 system-xs-regular text-text-tertiary">
+          {t(($) => $['studio.chooseVersionToDeploy'])}
+        </p>
+      </header>
+      <VersionList
+        className="p-2"
+        currentVersionId={request.currentVersionId}
+        disabled={disabled}
+        onSelect={onSelect}
+      />
+    </div>
   )
 }

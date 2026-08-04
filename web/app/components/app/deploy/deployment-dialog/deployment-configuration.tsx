@@ -285,16 +285,24 @@ export function DeploymentConfigurationContent({
 
 export function DeploymentConfiguration({
   appId,
+  disabled = false,
+  embedded = false,
+  invalidateAppEnvironmentsOnSuccess = true,
   request,
   version,
   onBack,
   onClose,
+  onDeploymentStarted,
 }: {
-  appId: string
+  appId?: string
+  disabled?: boolean
+  embedded?: boolean
+  invalidateAppEnvironmentsOnSuccess?: boolean
   request: DeploymentDialogRequest
   version: DeploymentVersion
   onBack?: () => void
   onClose: () => void
+  onDeploymentStarted?: (operationId: string) => void
 }) {
   const { t } = useTranslation('deployments')
   const { t: tCommon } = useTranslation('common')
@@ -310,16 +318,25 @@ export function DeploymentConfiguration({
   const deployMutation = useDeployWorkflow({
     appId,
     environmentId: request.environmentId,
-    onSuccess: onClose,
+    invalidateAppEnvironmentsOnSuccess,
+    onSuccess: (response) => {
+      onDeploymentStarted?.(response.operation.id)
+      onClose()
+    },
   })
-  const canDeploy = queryState.canDeploy && Boolean(deploymentInput) && !deployMutation.isPending
+  const canDeploy =
+    Boolean(appId) &&
+    !disabled &&
+    queryState.canDeploy &&
+    Boolean(deploymentInput) &&
+    !deployMutation.isPending
 
   return (
     <form
       className="flex min-h-0 flex-1 flex-col"
       onSubmit={(event) => {
         event.preventDefault()
-        if (!canDeploy || !deploymentInput) return
+        if (!appId || !canDeploy || !deploymentInput) return
 
         deployMutation.mutate({
           body: deploymentInput,
@@ -331,12 +348,14 @@ export function DeploymentConfiguration({
         })
       }}
     >
-      <DialogCloseButton
-        type="button"
-        aria-label={tCommon(($) => $['operation.close'])}
-        className="top-5 right-5 size-8 rounded-lg"
-      />
-      <header className="shrink-0 px-5 pt-5 pr-14 pb-1">
+      {!embedded && (
+        <DialogCloseButton
+          type="button"
+          aria-label={tCommon(($) => $['operation.close'])}
+          className="top-5 right-5 size-8 rounded-lg"
+        />
+      )}
+      <header className={cn('shrink-0', embedded ? 'px-3 pt-3.5 pb-1' : 'px-5 pt-5 pr-14 pb-1')}>
         {onBack && (
           <Button
             type="button"
@@ -349,15 +368,29 @@ export function DeploymentConfiguration({
             {tCommon(($) => $['operation.back'])}
           </Button>
         )}
-        <DialogTitle className="mt-0.5 px-1 title-2xl-semi-bold text-text-primary">
-          {t(($) => $['studio.deployConfiguration'])}
-        </DialogTitle>
-        <DialogDescription className="mt-1 px-1 system-xs-regular text-text-tertiary">
-          {t(($) => $['studio.deployConfigurationDescription'])}
-        </DialogDescription>
+        {embedded ? (
+          <>
+            <h2 className="mt-0.5 px-1 system-xl-semibold text-text-primary">
+              {t(($) => $['studio.deployConfiguration'])}
+            </h2>
+            <p className="mt-0.5 px-1 system-xs-regular text-text-tertiary">
+              {t(($) => $['studio.deployConfigurationDescription'])}
+            </p>
+          </>
+        ) : (
+          <>
+            <DialogTitle className="mt-0.5 px-1 title-2xl-semi-bold text-text-primary">
+              {t(($) => $['studio.deployConfiguration'])}
+            </DialogTitle>
+            <DialogDescription className="mt-1 px-1 system-xs-regular text-text-tertiary">
+              {t(($) => $['studio.deployConfigurationDescription'])}
+            </DialogDescription>
+          </>
+        )}
       </header>
 
       <DeploymentConfigurationContent
+        compact={embedded}
         deploymentError={deployMutation.error}
         onValuesChange={setConfigurationValues}
         queryState={queryState}
@@ -366,7 +399,12 @@ export function DeploymentConfiguration({
         version={version}
       />
 
-      <footer className="flex shrink-0 justify-end gap-2 px-6 pt-5 pb-6">
+      <footer
+        className={cn(
+          'flex shrink-0 justify-end gap-2',
+          embedded ? 'px-4 pt-2 pb-4' : 'px-6 pt-5 pb-6',
+        )}
+      >
         <Button type="button" variant="secondary" onClick={onClose}>
           {tCommon(($) => $['operation.cancel'])}
         </Button>
