@@ -1,8 +1,8 @@
 ## 1. Close concrete Provider evidence gaps
 
 - [ ] 1.1 Confirm the authoritative API credential, tenant-identification and baseline-permission operations for Slack, Feishu/Lark, DingTalk, WeCom and Microsoft Teams.
-- [ ] 1.2 Confirm each Provider's directory endpoints, configured visibility scope, pagination or organization traversal, rate-limit behavior and complete-snapshot boundary.
-- [ ] 1.3 Confirm each Provider's proactive message-destination shape and lifecycle, especially Microsoft Teams installation and conversation context requirements.
+- [ ] 1.2 Confirm each Provider's directory endpoints, configured visibility scope, pagination or organization traversal, rate-limit behavior, complete-snapshot boundary and record-inclusion rules; identify documented deletion tombstones separately from disabled, suspended, frozen or other still-present identities without introducing shared availability.
+- [ ] 1.3 Confirm that each Provider can attempt personal messaging from `ProviderUserId`, including Microsoft Teams installation and private conversation-context acquisition requirements.
 - [ ] 1.4 Derive a field-complete HITL-aligned normalized card intent and verify equivalent assessment, send and update semantics for Slack, Feishu/Lark and Microsoft Teams without removing unsupported form inputs before assessment.
 - [ ] 1.5 Confirm Webhook authentication, challenge and response semantics for Slack, Feishu/Lark and Microsoft Teams, plus STREAM connection, callback, reconnect, stop and ACK semantics for Slack and Feishu/Lark.
 - [ ] 1.6 Record each Provider SDK client's concurrency guarantees and determine whether the concrete adapter needs serialization, pooling or distinct client roles.
@@ -20,25 +20,25 @@
 
 - [ ] 3.1 Implement `adapter.test_credentials()` for all five Providers using only adapter-bound API credentials.
 - [ ] 3.2 Return normalized Provider, stable Provider tenant ID and baseline permission facts, with the minimum capability-scoped typed authentication, tenant-identification and permission failures required by callers; do not introduce a broad shared failure-code taxonomy in advance.
-- [ ] 3.3 Ensure credential testing does not inspect event transport capabilities, test message destinations, mutate remote configuration or expose raw Provider responses and SDK exceptions.
+- [ ] 3.3 Ensure credential testing does not inspect event transport capabilities, test message-recipient reachability, mutate remote configuration or expose raw Provider responses and SDK exceptions.
 - [ ] 3.4 Add concrete Provider tests for credential-test success, invalid credentials, unidentifiable tenant and missing permissions.
 
 ## 4. Implement adapter-bound Directory
 
 - [ ] 4.1 Implement Directory for all five Providers using the root-owned client context and no credential or generic integration-context arguments.
 - [ ] 4.2 Keep pagination, organization traversal, rate-limit handling, cursors and raw responses inside each concrete adapter.
-- [ ] 4.3 Return one immutable complete snapshot containing provider user ID, display name, optional Email and availability only after the entire read succeeds.
+- [ ] 4.3 Return one immutable complete snapshot containing nominal `ProviderUserId`, optional display name and optional Email only after the entire read succeeds; make membership express current exposure in the configured scope rather than message reachability.
 - [ ] 4.4 Return a typed failure and no partial snapshot when any required page, node or rate-limit wait fails.
-- [ ] 4.5 Add tests for cross-capability client reuse, complete multi-page or hierarchy reads, missing Email, late failure and no Messaging dependency.
+- [ ] 4.5 Add tests for cross-capability client reuse, complete multi-page or hierarchy reads, missing display name or Email, confirmed deletion-tombstone omission, non-normalization of other Provider lifecycle status, late failure and no Messaging dependency.
 
 ## 5. Implement adapter-bound Messaging
 
-- [ ] 5.1 Implement Basic Messaging `test_destination` and `send_text` for all five Providers using root-owned clients and explicit Provider message destinations.
+- [ ] 5.1 Implement Basic Messaging `send_text` for all five Providers using root-owned clients and `ProviderUserId` from the bound Provider namespace.
 - [ ] 5.2 Implement optional Dynamic Card Messaging assessment, `send_card` and exact-reference update for Slack, Feishu/Lark and Microsoft Teams only; make assessment the authoritative side-effect-free representability judgment for one complete intent.
-- [ ] 5.3 Keep Provider-specific destination, CommonMark rendering, card rendering, message locator and error translation inside each concrete adapter.
-- [ ] 5.4 Ensure one side-effecting method invocation makes at most one Provider call and returns a typed known or ambiguous outcome without automatic replay.
+- [ ] 5.3 Keep Provider-specific transport addressing, conversation lifecycle, CommonMark rendering, card rendering, message locator and error translation inside each concrete adapter.
+- [ ] 5.4 Ensure each send attempts the requested message creation at most once and each update attempts the requested mutation at most once, returning a typed known or ambiguous outcome without automatic replay.
 - [ ] 5.5 Ensure successful sends distinguish Provider acceptance from delivery and return the exact Provider-discriminated message reference.
-- [ ] 5.6 Add tests for client reuse, destination reachability, text fallback, complete-intent assessment decisions, `FILE` and `FILE_LIST` returning not representable on every initial Dynamic Card Provider, no partial-card result, no dummy card capability, one-call-per-invocation and exact-reference updates.
+- [ ] 5.6 Add tests for client reuse, unreachable-user rejection from real sends, private addressing, text fallback, complete-intent assessment decisions, `FILE` and `FILE_LIST` returning not representable on every initial Dynamic Card Provider, no partial-card result, no dummy card capability, one-message-attempt-per-send and exact-reference updates.
 
 ## 6. Implement IM event capabilities and control inversion
 

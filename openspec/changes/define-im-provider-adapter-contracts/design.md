@@ -42,7 +42,8 @@ adapter = adapter_factory.create(provider_config)
 
 credential_result = adapter.test_credentials()
 directory_snapshot = adapter.directory.read_snapshot()
-message_result = adapter.messaging.send_text(destination, message)
+provider_user_id = directory_snapshot.entries[0].provider_user_id
+message_result = adapter.messaging.send_text(provider_user_id, message)
 
 adapter.close()
 ```
@@ -63,7 +64,7 @@ Alternatives considered:
 | --- | --- | --- |
 | Credential testing | All five Providers | `test_credentials()` on the root |
 | Directory | All five Providers | Complete Provider identity snapshot |
-| Basic Messaging | All five Providers | Destination reachability and `send_text` |
+| Basic Messaging | All five Providers | `send_text` |
 | Dynamic Card Messaging | Slack, Feishu/Lark, Microsoft Teams | Assessment, `send_card`, exact-reference update |
 | Webhook Events | Slack, Feishu/Lark, Microsoft Teams | Caller-driven Webhook request handling |
 | STREAM Events | Slack, Feishu/Lark | SDK-driven long-running event handling |
@@ -98,7 +99,7 @@ Capability accessors themselves are side-effect free and return views backed by 
 
 `test_credentials()` takes no arguments. It uses only API credential material already bound into the adapter, authenticates against the Provider, identifies a stable Provider tenant and checks baseline API permissions.
 
-It does not test message-destination reachability, Webhook verification material, STREAM connection support or any business operation. Success returns normalized safe facts; authentication, tenant-identification and permission failures are typed. Raw credentials、SDK client objects、raw Provider responses 和 Provider-specific exceptions 不跨越接口。
+It does not test message-recipient reachability, Webhook verification material, STREAM connection support or any business operation. Success returns normalized safe facts; authentication, tenant-identification and permission failures are typed. Raw credentials、SDK client objects、raw Provider responses 和 Provider-specific exceptions 不跨越接口。
 
 Transport configuration material remains Provider-specific but belongs to Webhook or STREAM capability construction inside the root adapter. Capability presence, not credential-test output, states whether the adapter implements that transport.
 
@@ -106,21 +107,27 @@ Transport configuration material remains Provider-specific but belongs to Webhoo
 
 Directory capability receives no credentials、SDK client 或 generic integration context。它通过 root-owned client context 完成 Provider-specific pagination、department traversal、rate-limit handling 和 error translation。
 
-一次成功调用返回完整 immutable snapshot；任何 page/node failure 都返回 typed failure 且不暴露 partial snapshot。共享 identity facts 只包含 provider user ID、display name、optional Email 和 availability；pagination cursors、raw responses 和 topology details 留在 concrete adapter。
+一次成功调用返回完整 immutable snapshot；任何 page/node failure 都返回 typed failure 且不暴露 partial snapshot。共享 identity facts 只包含 nominal `ProviderUserId`、optional display name 和 optional Email；pagination cursors、raw responses、Provider lifecycle status 和 topology details 留在 concrete adapter。`ProviderUserId` 只在 bound adapter 的 Provider tenant/application namespace 内有意义，并且足以让同一 adapter 尝试个人消息发送，但不要求它等于 Provider transport address。
+
+Snapshot membership 只表示 Provider 在经过验证的 configured directory scope 内仍暴露该 identity，不保证消息可达。若 Provider API 返回 documented deletion tombstone，且权威证据确认其语义是 identity 已不再存在，concrete adapter 将其归一化为 snapshot absence。Disabled、suspended、frozen 或其他仍随 identity 返回的 Provider-specific administrative status 不投影为共享 availability，也不改变 shared snapshot membership；若未来业务需要据此 invalidating binding，必须先定义明确 consumer、状态迁移和逐 Provider 证据。当前消息可达性只通过真实 Messaging send result 表达。
 
 Directory capability 只读取 Provider directory。如何匹配、reconcile、persist 或消费这些 identity facts 属于调用方。
 
 ### 5. Messaging capabilities share the root context but keep operation semantics narrow
 
-Basic Messaging 接收 Provider-specific message destination，测试 destination reachability 或发送已经准备好的文本内容。Dynamic Card Messaging 对 structurally aligned with HITL form 的 normalized card intent 做无副作用 Card Assessment、发送卡片并基于 exact Provider message reference 更新同一实例。
+Basic Messaging 接收 Directory 共享的 `ProviderUserId` 并发送已经准备好的文本内容，不暴露独立的 recipient-reachability preflight。Dynamic Card Messaging 使用同一个 `ProviderUserId` 发送卡片，并基于 exact Provider message reference 更新同一实例。Messaging 不调用 Directory；concrete adapter 使用 bound configuration 和 private client context 完成 Provider-specific addressing。每个 Provider 如何解释 `ProviderUserId` 是 concrete adapter contract 的一部分，不进入通用 `IMMessaging`；Microsoft Teams 还需要在内部取得或恢复 personal conversation。
+
+Channel 的 Test connection 由 channel-management/application orchestration 负责，不是 Basic 或 Dynamic Card Messaging operation。它可以组合 root credential testing、channel-level checks，以及 test policy 要求的真实 send operation。Message-template test、Debug Mode 与 runtime delivery 都调用真实 `send_text` 或 `send_card` operation，并通过正常 send result 得知目标用户不可达；adapter 不提供可能与真实发送结果漂移的独立 reachability probe。
 
 Card intent 保留渲染后的 form content、完整且有序的 form inputs、actions 和 card presentation 所需的 immutable facts。Card Assessment 是 concrete Provider 对单个完整 intent 的 representability judgment：只有 Provider 能把全部 controls 和 semantics 映射为 Card Input Controls 时才返回 representable；任一 input 无法映射时，对整个 intent 返回 not representable，并可附带仅用于诊断的 human-readable reason。Assessment 不发送消息、不创建 Provider state，也不忽略不支持的 input 来产生 partial-card 结论。
 
 本期 Slack、Feishu/Lark 与 Microsoft Teams 的 Card Assessment 对包含 `FILE` 或 `FILE_LIST` 的 intent 一律返回 not representable，因为这些 Provider 的 Dynamic Card 都不能表达对应的 file input control。Assessment result 只作为 Provider capability fact 返回；Provider adapter 不创建、修改或选择业务 `DeliveryEndpoint`，也不执行 fallback orchestration。
 
-Messaging methods 不接收 credentials、SDK client、Directory reader 或 consumer business objects。每次 side-effecting method invocation 至多调用一次 Provider operation；adapter 不做隐式 replay。Provider acceptance 与 exact message reference 作为 typed result 返回，不被解释为 end-user delivery。
+Messaging methods 不接收 credentials、SDK client、Directory reader 或 consumer business objects。一次 `send_text` 或 `send_card` 可以先执行 Provider-specific prerequisite operations，但至多尝试一次目标 message creation；一次 card update 同样至多尝试一次目标 mutation。Adapter 不自动重放 ambiguous message operation。Provider acceptance 与 exact message reference 作为 typed result 返回，不被解释为 end-user delivery。
 
-Provider-specific destination shape、markdown/card rendering、message locator 和 error translation 留在 concrete adapter。Directory user ID 不被假定为可直接发送的 destination。
+Provider-specific transport address、conversation lifecycle、markdown/card rendering、message locator 和 error translation 留在 concrete adapter。公共 API 不暴露 `destination_id`、conversation ID 或 Provider-specific destination DTO。
+
+Alternative considered: 让 caller 先把 directory user ID 转换成 destination，再把 destination 传回 Messaging。Rejected because该 temporal decomposition 只把 Teams conversation lifecycle、持久化和失效处理推给所有 callers，而没有形成独立、可复用的抽象。
 
 ### 6. Webhook and STREAM invert control through IMEventSink
 
@@ -214,6 +221,7 @@ Failure values 只携带 operator-safe facts，不包含 raw Provider response�
 - [Sink callback can block Provider ACK deadlines] → Sink contract is intentionally limited to safe acceptance; slow business work remains outside the sink implementation.
 - [STREAM shutdown differs across SDKs] → Shared contract specifies stop semantics while concrete adapters own SDK-specific cancellation and reconnect suppression.
 - [Provider-native payload delays normalization] → This is intentional; generic Provider infrastructure must not guess consumer business schemas.
+- [Provider user lifecycle states differ across directories] → Shared Directory exposes snapshot membership only; concrete adapters omit confirmed deletion tombstones, retain other exposed identities and leave actual reachability to Messaging until a product consumer defines narrower state semantics.
 
 ## Migration Plan
 
@@ -232,4 +240,4 @@ Failure values 只携带 operator-safe facts，不包含 raw Provider response�
 - What exact stop/cancellation primitive best fits the implementation runtime while preserving the shared STREAM `run(sink, stop)` semantics?
 - Which Provider event identifiers are documented as stable across redelivery rather than only across one transport envelope?
 - What normalized generic card intent is shared by the three Dynamic Card Messaging implementations?
-- How is a Microsoft Teams message destination acquired and refreshed when a directory user ID is insufficient for proactive messaging?
+- Which Microsoft Teams operations acquire and refresh the private personal-conversation context used internally for a `ProviderUserId`?

@@ -4,26 +4,43 @@
 Every initial `IMProviderAdapter` MUST expose Basic Messaging backed by the adapter-owned client context. Only Slack, Feishu/Lark and Microsoft Teams MUST additionally expose Dynamic Card Messaging in this release; DingTalk and WeCom MUST not expose it. Messaging operations MUST NOT accept credentials, SDK clients or a generic integration context, and obtaining either capability MUST NOT construct an independent Provider client.
 
 #### Scenario: Multiple Messaging operations use one adapter
-- **WHEN** a caller tests a destination and then sends a message through the same adapter
+- **WHEN** a caller sends multiple messages through the same adapter
 - **THEN** both operations MUST reuse the adapter-owned client context without receiving credentials again
 
 #### Scenario: Provider has no dynamic-card support
 - **WHEN** a caller inspects Dynamic Card Messaging on DingTalk or WeCom
 - **THEN** the capability MUST be absent and MUST NOT be represented by dummy unsupported methods
 
-### Requirement: New-message operations MUST receive an explicit Provider message destination
-A Provider message destination MUST contain only the Provider-specific addressing facts required to attempt a new message. It MUST remain distinct from a directory identity, Webhook endpoint and prior message reference, and the shared contract MUST NOT assume it is identical to provider user ID. Messaging MUST use the supplied destination without invoking Directory.
+### Requirement: New-message operations MUST receive ProviderUserId
+Every personal new-message operation MUST accept the same nominal `ProviderUserId` string type returned by Directory. The value MUST identify a user and be comparable only within the `(provider, provider_tenant_id)` namespace; it MUST NOT be globally comparable. For Feishu/Lark, Messaging MUST interpret the value as `union_id`, using the fixed `union_id` receive-ID type, and MUST NOT interpret it as application-scoped `open_id`. Messaging MUST NOT invoke Directory during send. The concrete adapter MUST own any conversion from `ProviderUserId` to private transport addressing or conversation state.
 
-#### Scenario: Directory identity is not directly sendable
-- **WHEN** a Provider requires addressing facts beyond provider user ID
-- **THEN** Messaging MUST require those facts in the concrete Provider message destination and MUST NOT search Directory during send
+#### Scenario: Feishu or Lark user is messaged
+- **WHEN** Messaging sends to a Feishu or Lark `ProviderUserId` returned by Directory
+- **THEN** the concrete adapter MUST use it as `union_id` without requiring the caller to select or supply a receive-ID type
+
+#### Scenario: Provider user identity is not a direct transport address
+- **WHEN** Microsoft Teams requires a personal conversation ID to send to one directory user
+- **THEN** Messaging MUST acquire or recover that conversation internally from `ProviderUserId` and adapter-bound context without requiring the caller to supply conversation facts
 
 ### Requirement: Basic Messaging MUST be implemented by every initial Provider
-Slack, Feishu/Lark, DingTalk, WeCom and Microsoft Teams MUST implement Basic Messaging containing `test_destination` and `send_text`. Destination reachability MUST remain independent from adapter credential testing.
+Slack, Feishu/Lark, DingTalk, WeCom and Microsoft Teams MUST implement Basic Messaging containing `send_text`. It MUST accept `ProviderUserId`. Basic Messaging MUST NOT expose a separate recipient-reachability preflight operation.
 
-#### Scenario: Credentials are valid but one destination is unreachable
-- **WHEN** adapter credential testing succeeds but one Provider message destination cannot receive a message
-- **THEN** `test_destination` MUST return a destination-specific failure without changing credential-test facts
+#### Scenario: Provider user cannot receive a message
+- **WHEN** `send_text` attempts to send to a Provider user that cannot receive the message
+- **THEN** it MUST return a known rejection confirming that no message was accepted
+- **AND** it MUST NOT invoke Directory or automatically retry message creation
+
+### Requirement: Channel connection testing MUST remain outside Messaging
+Channel Test connection MUST be owned by channel-management and application orchestration. The orchestration MAY compose root adapter credential testing, channel-level checks and, when test delivery is required, a real send operation. It MUST NOT be represented by a dedicated Basic or Dynamic Card Messaging operation. Message-template tests and Debug Mode deliveries MUST exercise a real send operation rather than a recipient-reachability preflight.
+
+#### Scenario: Application tests an IM channel connection
+- **WHEN** channel-management tests one candidate IM channel configuration
+- **THEN** application orchestration MUST use the existing root and send operations required by its test policy
+- **AND** Messaging MUST expose neither a connection-test operation nor a recipient-reachability preflight
+
+#### Scenario: Application tests a configured message template
+- **WHEN** application orchestration delivers a template test to a selected Provider user
+- **THEN** the application MUST invoke the applicable real `send_text` or `send_card` operation and interpret its normal send result
 
 ### Requirement: Dynamic Card Messaging MUST group assessment, send and update
 Dynamic Card Messaging MUST contain side-effect-free card representability assessment, `send_card` and exact-reference card update. Assessment MUST receive one complete normalized card intent whose form structure remains aligned with the HITL form presentation model, including rendered form content, complete ordered form inputs and actions. It MUST return a boolean representability decision plus an optional human-readable reason. The reason MUST be used only for diagnostics and MUST NOT be parsed as a stable decision code.
@@ -52,7 +69,7 @@ The normalized card intent accepted by assessment MUST preserve every HITL form 
 - **THEN** assessment MUST return false for the complete intent instead of reporting a partial-card result
 
 ### Requirement: Basic and Dynamic Card Messaging MUST expose distinct send operations
-Basic Messaging MUST expose `send_text`; Dynamic Card Messaging MUST expose `send_card`. `send_text` MUST receive one Provider message destination and one fully rendered CommonMark body without custom tags. The concrete adapter MUST render supported formatting for its Provider and MUST fall back to the same content as plain text when formatting is not expressible. `send_card` MUST receive one Provider message destination, one normalized card intent and opaque caller metadata.
+Basic Messaging MUST expose `send_text`; Dynamic Card Messaging MUST expose `send_card`. `send_text` MUST receive one `ProviderUserId` and one fully rendered CommonMark body without custom tags. The concrete adapter MUST render supported formatting for its Provider and MUST fall back to the same content as plain text when formatting is not expressible. `send_card` MUST receive one `ProviderUserId`, one normalized card intent and opaque caller metadata.
 
 #### Scenario: Provider cannot express CommonMark formatting
 - **WHEN** `send_text` receives valid CommonMark whose formatting cannot be represented on the target Provider
@@ -69,8 +86,8 @@ A successful `send_text` or `send_card` MUST return available Provider acceptanc
 - **WHEN** Slack identifies a message by channel and timestamp while Feishu/Lark identifies it by message ID
 - **THEN** Messaging MUST preserve each Provider's exact reference without coercing both into one global identifier
 
-### Requirement: One side-effecting Messaging invocation MUST call the Provider at most once
-`test_destination`, `send_text` and `send_card` MUST NOT automatically replay a side-effecting Provider call after timeout, connection reset, rate limit or ambiguous failure. One method invocation MUST issue at most one such call and MUST return a typed known or ambiguous outcome.
+### Requirement: One Messaging invocation MUST attempt each requested message mutation at most once
+`send_text` and `send_card` MAY perform Provider-specific prerequisite operations such as Microsoft Teams conversation acquisition, but one invocation MUST attempt to create the requested message at most once. It MUST NOT automatically replay an ambiguous message-creation operation after timeout, connection reset, rate limit or ambiguous failure. Card update MUST likewise attempt the requested update at most once.
 
 #### Scenario: Send result is ambiguous
 - **WHEN** the adapter cannot determine whether a timed-out Provider request created a message

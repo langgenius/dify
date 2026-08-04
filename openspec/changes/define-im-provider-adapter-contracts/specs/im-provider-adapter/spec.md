@@ -23,7 +23,7 @@ The adapter MUST expose required `directory` and `messaging` capability views. I
 - **THEN** the capability MUST be absent rather than represented by a method that fails with an unsupported result
 
 ### Requirement: IMProviderAdapter MUST expose credential testing over its bound configuration
-The adapter MUST expose `test_credentials()` without credential or event transport arguments. The operation MUST use the adapter-bound API credentials to authenticate, identify the stable Provider tenant and validate baseline permissions. It MUST remain independent from message-destination reachability and event transport capability presence.
+The adapter MUST expose `test_credentials()` without credential or event transport arguments. The operation MUST use the adapter-bound API credentials to authenticate, identify the stable Provider tenant and validate baseline permissions. It MUST remain independent from message-recipient reachability and event transport capability presence.
 
 #### Scenario: Bound credentials are valid
 - **WHEN** `test_credentials()` authenticates and confirms the required permissions
