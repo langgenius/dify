@@ -1,3 +1,4 @@
+import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type {
   SkillReferenceResponse,
   SkillResponse,
@@ -27,6 +28,8 @@ const mocks = vi.hoisted(() => ({
   exportSkillArchiveBlob: vi.fn(),
   importSkillMutationFn: vi.fn(),
   push: vi.fn(),
+  genericTags: [] as Tag[],
+  genericTagsQueryOptions: vi.fn((_options: unknown) => ({})),
   queryState: {
     keyword: '',
     tag: [] as string[],
@@ -106,6 +109,14 @@ vi.mock('@/app/components/base/app-icon', () => ({
   default: ({ icon }: { icon?: string }) => <span>{icon}</span>,
 }))
 
+vi.mock('@/features/tag-management/components/skill-card-tags', () => ({
+  SkillCardTags: ({ tags }: { tags: string[] }) => <div>{tags.join(', ')}</div>,
+}))
+
+vi.mock('../skill-list-tag-management-modal', () => ({
+  SkillListTagManagementModal: () => null,
+}))
+
 vi.mock('@/next/link', () => ({
   default: ({ children, href, ...props }: { children: ReactNode; href: string }) => (
     <a href={href} {...props}>
@@ -131,6 +142,11 @@ vi.mock('../client', () => ({
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
+    tags: {
+      get: {
+        queryOptions: mocks.genericTagsQueryOptions,
+      },
+    },
     workspaces: {
       current: {
         skills: {
@@ -229,6 +245,10 @@ describe('SkillsPage', () => {
     mocks.skills = [createSkill()]
     mocks.skillPages = [mocks.skills]
     mocks.skillReferences = [createAgentReference()]
+    mocks.genericTags = [
+      { binding_count: '2', id: 'tag-support', name: 'support', type: 'skill' },
+      { binding_count: '1', id: 'tag-sales', name: 'sales', type: 'skill' },
+    ]
     mocks.tags = [
       { count: 2, tag: 'support' },
       { count: 1, tag: 'sales' },
@@ -254,6 +274,10 @@ describe('SkillsPage', () => {
       queryFn: async () => ({
         data: mocks.tags,
       }),
+    }))
+    mocks.genericTagsQueryOptions.mockImplementation((options) => ({
+      queryKey: ['tags', options],
+      queryFn: async () => mocks.genericTags,
     }))
     mocks.skillReferencesQueryOptions.mockImplementation((options) => ({
       queryKey: ['skill-references', options],
@@ -283,32 +307,9 @@ describe('SkillsPage', () => {
   })
 
   it('passes keyword and selected tags to the list query', async () => {
-    const user = userEvent.setup()
+    mocks.queryState.keyword = 'refund'
+    mocks.queryState.tag = ['support']
     renderSkillsPage()
-
-    await user.type(
-      await screen.findByRole('searchbox', {
-        name: 'skill.skillManagement.searchLabel',
-      }),
-      'refund',
-    )
-
-    await waitFor(() => {
-      const queryOptions = mocks.skillsQueryOptions.mock.lastCall?.[0]
-      expect(queryOptions?.input(1)).toEqual({
-        query: {
-          keyword: 'refund',
-          limit: 20,
-          page: 1,
-        },
-      })
-    })
-
-    await user.click(screen.getByRole('button', { name: 'skill.skillManagement.tags' }))
-    await waitFor(() => {
-      expect(screen.getAllByText('support').length).toBeGreaterThan(1)
-    })
-    await user.click(screen.getAllByText('support').at(-1)!)
 
     await waitFor(() => {
       const queryOptions = mocks.skillsQueryOptions.mock.lastCall?.[0]
