@@ -8,9 +8,9 @@ import {
   getConfiguredValue,
   toolParametersToFormSchemas,
 } from '@/app/components/tools/utils/to-form-schema'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { useAllTriggerPlugins, useTriggerSubscriptions } from '@/service/use-triggers'
+import { useNodesReadOnly } from '../../hooks/use-workflow'
 import { VarKindType } from '../_base/types'
 
 const normalizeEventParameters = (

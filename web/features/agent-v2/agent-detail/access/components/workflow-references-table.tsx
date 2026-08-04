@@ -40,12 +40,12 @@ export function WorkflowReferencesTable({ agentId, enabled = true }: WorkflowRef
 
   return (
     <div className="min-w-0 overflow-x-auto">
-      <table className="w-full min-w-[1212px] table-fixed border-collapse">
+      <table className="w-full min-w-303 table-fixed border-collapse">
         <colgroup>
-          <col className="w-[572px]" />
+          <col className="w-143" />
           <col className="w-40" />
           <col className="w-32" />
-          <col className="w-[204px]" />
+          <col className="w-51" />
           <col className="w-36" />
         </colgroup>
         <thead>

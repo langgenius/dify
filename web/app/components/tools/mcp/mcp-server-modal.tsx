@@ -119,7 +119,7 @@ const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo 
         if (!open) onHide()
       }}
     >
-      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[520px]! flex-col overflow-hidden! border-none p-0! text-left align-middle transition-all duration-100 ease-in">
+      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-130! flex-col overflow-hidden! border-none p-0! text-left align-middle transition-all duration-100 ease-in">
         <button
           type="button"
           aria-label={t(($) => $['operation.close'], { ns: 'common' })}
@@ -144,7 +144,7 @@ const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo 
               </div>
               <Textarea
                 aria-label={t(($) => $['mcp.server.modal.description'], { ns: 'tools' })}
-                className="h-[96px] resize-none"
+                className="h-24 resize-none"
                 value={description}
                 placeholder={t(($) => $['mcp.server.modal.descriptionPlaceholder'], {
                   ns: 'tools',

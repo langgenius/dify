@@ -8,6 +8,7 @@ from faker import Faker
 from flask import Flask
 from sqlalchemy.orm import Session
 
+from enums.deployment_edition import DeploymentEdition
 from models.account import Account, Tenant
 from models.enums import AppTriggerStatus, AppTriggerType
 from models.model import App
@@ -37,7 +38,11 @@ def test_data(
     """Persist the webhook graph with permissive, production-shaped account features."""
 
     fake = Faker()
-    system_features = SystemFeatureModel(is_allow_register=True, is_allow_create_workspace=True)
+    system_features = SystemFeatureModel(
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        is_allow_register=True,
+        is_allow_create_workspace=True,
+    )
     monkeypatch.setattr(
         "services.account_service.FeatureService.get_system_features",
         lambda **_: system_features,

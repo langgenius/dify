@@ -65,9 +65,9 @@ export const mentionOptions: InsertOption[] = [
 ]
 
 const appendToken = (value: string, token: string) => {
-  if (!value) return token
+  if (!value) return `${token} `
 
-  return `${value}${value.endsWith(' ') || value.endsWith('\n') ? '' : ' '}${token}`
+  return `${value}${value.endsWith(' ') || value.endsWith('\n') ? '' : ' '}${token} `
 }
 
 export type TextRange = {
@@ -88,9 +88,9 @@ export const replaceTrailingSlashWithToken = (value: string, token: string) => {
   if (!value.endsWith('/')) return appendToken(value, token)
 
   const valueWithoutSlash = value.slice(0, -1)
-  if (!valueWithoutSlash) return token
+  if (!valueWithoutSlash) return `${token} `
 
-  return `${valueWithoutSlash}${hasTrailingSpace(valueWithoutSlash) ? '' : ' '}${token}`
+  return `${valueWithoutSlash}${hasTrailingSpace(valueWithoutSlash) ? '' : ' '}${token} `
 }
 
 export const insertTokenAtTextRange = (
@@ -103,10 +103,10 @@ export const insertTokenAtTextRange = (
   const prefix = value.slice(0, start)
   const suffix = value.slice(end)
   const beforeToken = prefix && !hasTrailingSpace(prefix) ? ' ' : ''
-  const afterToken = suffix && !hasLeadingSpace(suffix) ? ' ' : ''
+  const afterToken = hasLeadingSpace(suffix) ? '' : ' '
 
   return {
     value: `${prefix}${beforeToken}${token}${afterToken}${suffix}`,
-    cursorOffset: prefix.length + beforeToken.length + token.length + afterToken.length,
+    cursorOffset: prefix.length + beforeToken.length + token.length + 1,
   }
 }

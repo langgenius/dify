@@ -13,7 +13,6 @@ import {
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppModeEnum } from '@/types/app'
-import { isAppListCategory } from './app-type-filter-shared'
 
 const chipClassName =
   'flex h-8 items-center whitespace-nowrap rounded-lg border-[0.5px] px-2 text-[13px] leading-4 outline-hidden transition-colors focus-visible:ring-2 focus-visible:ring-state-accent-solid'
@@ -27,38 +26,39 @@ export function AppTypeFilter({ value, onChange }: AppTypeFilterProps) {
   const { t } = useTranslation()
 
   const options = useMemo(
-    () => [
-      {
-        value: 'all',
-        text: t(($) => $['types.all'], { ns: 'app' }),
-        iconClassName: 'i-ri-apps-2-line',
-      },
-      {
-        value: AppModeEnum.WORKFLOW,
-        text: t(($) => $['types.workflow'], { ns: 'app' }),
-        iconClassName: 'i-ri-exchange-2-line',
-      },
-      {
-        value: AppModeEnum.ADVANCED_CHAT,
-        text: t(($) => $['types.advanced'], { ns: 'app' }),
-        iconClassName: 'i-ri-message-3-line',
-      },
-      {
-        value: AppModeEnum.CHAT,
-        text: t(($) => $['types.chatbot'], { ns: 'app' }),
-        iconClassName: 'i-ri-message-3-line',
-      },
-      {
-        value: AppModeEnum.AGENT_CHAT,
-        text: t(($) => $['types.agent'], { ns: 'app' }),
-        iconClassName: 'i-ri-robot-3-line',
-      },
-      {
-        value: AppModeEnum.COMPLETION,
-        text: t(($) => $['newApp.completeApp'], { ns: 'app' }),
-        iconClassName: 'i-ri-file-4-line',
-      },
-    ],
+    () =>
+      [
+        {
+          value: 'all',
+          text: t(($) => $['types.all'], { ns: 'app' }),
+          iconClassName: 'i-ri-apps-2-line',
+        },
+        {
+          value: AppModeEnum.WORKFLOW,
+          text: t(($) => $['types.workflow'], { ns: 'app' }),
+          iconClassName: 'i-ri-exchange-2-line',
+        },
+        {
+          value: AppModeEnum.ADVANCED_CHAT,
+          text: t(($) => $['types.advanced'], { ns: 'app' }),
+          iconClassName: 'i-ri-message-3-line',
+        },
+        {
+          value: AppModeEnum.CHAT,
+          text: t(($) => $['types.chatbot'], { ns: 'app' }),
+          iconClassName: 'i-ri-message-3-line',
+        },
+        {
+          value: AppModeEnum.AGENT_CHAT,
+          text: t(($) => $['types.agent'], { ns: 'app' }),
+          iconClassName: 'i-ri-robot-3-line',
+        },
+        {
+          value: AppModeEnum.COMPLETION,
+          text: t(($) => $['newApp.completeApp'], { ns: 'app' }),
+          iconClassName: 'i-ri-file-4-line',
+        },
+      ] satisfies Array<{ value: AppListCategory; text: string; iconClassName: string }>,
     [t],
   )
 
@@ -87,12 +87,12 @@ export function AppTypeFilter({ value, onChange }: AppTypeFilterProps) {
         <span aria-hidden className="i-ri-arrow-down-s-line h-4 w-4 shrink-0 text-text-tertiary" />
       </DropdownMenuTrigger>
       <DropdownMenuContent placement="bottom-start" popupClassName="w-[220px]">
-        <DropdownMenuRadioGroup
+        <DropdownMenuRadioGroup<AppListCategory>
           value={value}
-          onValueChange={(nextValue) => isAppListCategory(nextValue) && onChange(nextValue)}
+          onValueChange={(nextValue) => onChange(nextValue)}
         >
           {options.map((option) => (
-            <DropdownMenuRadioItem key={option.value} value={option.value}>
+            <DropdownMenuRadioItem<AppListCategory> key={option.value} value={option.value}>
               <span
                 aria-hidden
                 className={cn('h-4 w-4 shrink-0 text-text-tertiary', option.iconClassName)}

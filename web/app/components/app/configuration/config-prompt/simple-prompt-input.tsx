@@ -219,21 +219,21 @@ const Prompt: FC<ISimplePromptInput> = ({
         )}
 
         <PromptEditorHeightResizeWrap
-          className="min-h-[228px] rounded-t-xl bg-background-default px-4 pt-2 text-sm text-text-secondary"
+          className="min-h-57 rounded-t-xl bg-background-default px-4 pt-2 text-sm text-text-secondary"
           height={editorHeight}
           minHeight={minHeight}
           onHeightChange={setEditorHeight}
           hideResize={noResize}
           footer={
             <div className="flex rounded-b-xl bg-background-default pb-2 pl-4">
-              <div className="h-[18px] rounded-md bg-components-badge-bg-gray-soft px-1 text-xs leading-[18px] text-text-tertiary">
+              <div className="h-4.5 rounded-md bg-components-badge-bg-gray-soft px-1 text-xs leading-4.5 text-text-tertiary">
                 {promptTemplate.length}
               </div>
             </div>
           }
         >
           <PromptEditor
-            className="min-h-[210px]"
+            className="min-h-52.5"
             compact
             value={promptTemplate}
             contextBlock={{

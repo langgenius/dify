@@ -13,6 +13,7 @@ import {
   SelectItemIndicator,
   SelectItemText,
   SelectTrigger,
+  SelectValue,
 } from '@langgenius/dify-ui/select'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { RiLoader2Line, RiPlayLargeLine } from '@remixicon/react'
@@ -143,16 +144,16 @@ const RunOnce: FC<IRunOnceProps> = ({
                       <div className="mt-1">
                         {item.type === 'select' && (
                           <Select<string>
-                            value={selectValue}
+                            value={selectValue ?? defaultSelectValue}
                             onValueChange={(nextValue) => {
                               if (nextValue == null || nextValue === '') return
                               handleInputsChange({ ...inputsRef.current, [item.key]: nextValue })
                             }}
                           >
                             <SelectTrigger className="w-full">
-                              {selectValue ??
-                                defaultSelectValue ??
-                                t(($) => $['placeholder.select'], { ns: 'common' })}
+                              <SelectValue
+                                placeholder={t(($) => $['placeholder.select'], { ns: 'common' })}
+                              />
                             </SelectTrigger>
                             <SelectContent>
                               {(item.options || []).map((option) => (
@@ -181,7 +182,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                         {item.type === 'paragraph' && (
                           <Textarea
                             aria-label={item.name}
-                            className="h-[104px] sm:text-xs"
+                            className="h-26 sm:text-xs"
                             placeholder={item.name}
                             value={inputs[item.key] as string}
                             onValueChange={(value) => {
@@ -255,7 +256,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                               handleInputsChange({ ...inputsRef.current, [item.key]: value })
                             }}
                             noWrapper
-                            className="bg h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
+                            className="bg h-20 overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
                             placeholder={
                               <div className="whitespace-pre">
                                 {typeof item.json_schema === 'string'

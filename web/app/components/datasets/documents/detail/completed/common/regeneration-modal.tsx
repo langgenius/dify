@@ -138,7 +138,7 @@ const RegenerationModal: FC<IRegenerationModalProps> = ({
 
   return (
     <AlertDialog open={isShow}>
-      <AlertDialogContent className="w-[calc(100vw-2rem)] max-w-[480px]! overflow-hidden! rounded-2xl! border-none p-6 text-left align-middle shadow-xl">
+      <AlertDialogContent className="w-[calc(100vw-2rem)] max-w-120! overflow-hidden! rounded-2xl! border-none p-6 text-left align-middle shadow-xl">
         {!loading && !updateSucceeded && (
           <DefaultContent onCancel={onCancel} onConfirm={onConfirm} />
         )}

@@ -1,9 +1,37 @@
 import type { QueryParam } from '../index'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import Filter, { TIME_PERIOD_MAPPING } from '../filter'
 
 let mockAnnotationsCountLoading = false
 let mockAnnotationsCountData: { count: number } | null = { count: 10 }
+const mockRuntime = vi.hoisted(() => ({
+  deploymentEdition: 'CLOUD',
+  enableBilling: true,
+  isFetchedPlan: true,
+  isFetchedPlanInfo: true,
+  planType: 'professional',
+}))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useSuspenseQuery: () => ({ data: mockRuntime.deploymentEdition }),
+  }
+})
+
+vi.mock('@/context/provider-context', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/context/provider-context')>()
+  return {
+    ...actual,
+    useProviderContext: () => ({
+      enableBilling: mockRuntime.enableBilling,
+      isFetchedPlan: mockRuntime.isFetchedPlan,
+      isFetchedPlanInfo: mockRuntime.isFetchedPlanInfo,
+      plan: { type: mockRuntime.planType },
+    }),
+  }
+})
 
 vi.mock('@/service/use-log', () => ({
   useAnnotationsCount: () => ({
@@ -12,28 +40,43 @@ vi.mock('@/service/use-log', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/chip', () => ({
-  default: ({
-    items,
-    value,
-    onSelect,
-    onClear,
-  }: {
-    items: Array<{ value: string; name: string }>
-    value?: string
-    onSelect: (item: { value: string; name: string }) => void
-    onClear: () => void
-  }) => {
-    const currentItem = items.find((item) => item.value === value) ?? items[0]
-    return (
-      <div>
-        <div>{currentItem?.name}</div>
-        <button onClick={() => onSelect(items.at(-1)!)}>{`select-${items.at(-1)?.value}`}</button>
-        <button onClick={onClear}>clear-chip</button>
-      </div>
-    )
-  },
-}))
+vi.mock('@/app/components/base/chip', async () => {
+  const { useState } = await import('react')
+
+  return {
+    default: function MockChip({
+      items,
+      value,
+      onSelect,
+      onClear,
+    }: {
+      items: Array<{ value: string; name: string }>
+      value?: string
+      onSelect: (item: { value: string; name: string }) => void
+      onClear: () => void
+    }) {
+      const [isOpen, setIsOpen] = useState(false)
+      const currentItem = items.find((item) => item.value === value) ?? items[0]
+      return (
+        <div>
+          <div>{currentItem?.name}</div>
+          <button aria-label={`open-options-${items[0]?.value}`} onClick={() => setIsOpen(true)}>
+            open-chip
+          </button>
+          {isOpen && (
+            <ul aria-label={`options-${items[0]?.value}`}>
+              {items.map((item) => (
+                <li key={item.value}>{item.name}</li>
+              ))}
+            </ul>
+          )}
+          <button onClick={() => onSelect(items.at(-1)!)}>{`select-${items.at(-1)?.value}`}</button>
+          <button onClick={onClear}>clear-chip</button>
+        </div>
+      )
+    },
+  }
+})
 
 vi.mock('@/app/components/base/sort', () => ({
   default: ({ onSelect }: { onSelect: (value: string) => void }) => (
@@ -59,6 +102,11 @@ describe('Filter', () => {
     vi.clearAllMocks()
     mockAnnotationsCountLoading = false
     mockAnnotationsCountData = { count: 10 }
+    mockRuntime.deploymentEdition = 'CLOUD'
+    mockRuntime.enableBilling = true
+    mockRuntime.isFetchedPlan = true
+    mockRuntime.isFetchedPlanInfo = true
+    mockRuntime.planType = 'professional'
   })
 
   describe('Rendering', () => {
@@ -124,6 +172,77 @@ describe('Filter', () => {
   })
 
   describe('User Interactions', () => {
+    it('should only show supported periods for Cloud sandbox workspaces', () => {
+      mockRuntime.deploymentEdition = 'CLOUD'
+      mockRuntime.planType = 'sandbox'
+
+      render(<Filter {...defaultProps} queryParams={{ ...defaultQueryParams, period: '2' }} />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'open-options-1' }))
+
+      const periodOptions = within(screen.getByRole('list', { name: 'options-1' }))
+      expect(periodOptions.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+        expect.stringMatching(/(?:^|\.)filter\.period\.today(?=$|:)/),
+        expect.stringMatching(/(?:^|\.)filter\.period\.last7days(?=$|:)/),
+        expect.stringMatching(/(?:^|\.)filter\.period\.last30days(?=$|:)/),
+      ])
+    })
+
+    it('should only show supported periods while the Cloud plan is pending', () => {
+      mockRuntime.isFetchedPlan = false
+      mockRuntime.isFetchedPlanInfo = false
+
+      render(<Filter {...defaultProps} queryParams={{ ...defaultQueryParams, period: '2' }} />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'open-options-1' }))
+
+      const periodOptions = within(screen.getByRole('list', { name: 'options-1' }))
+      expect(periodOptions.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+        expect.stringMatching(/(?:^|\.)filter\.period\.today(?=$|:)/),
+        expect.stringMatching(/(?:^|\.)filter\.period\.last7days(?=$|:)/),
+        expect.stringMatching(/(?:^|\.)filter\.period\.last30days(?=$|:)/),
+      ])
+    })
+
+    it('should keep all periods when Cloud billing is known to be disabled', () => {
+      mockRuntime.enableBilling = false
+      mockRuntime.isFetchedPlan = false
+      mockRuntime.isFetchedPlanInfo = true
+
+      render(<Filter {...defaultProps} queryParams={{ ...defaultQueryParams, period: '2' }} />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'open-options-1' }))
+
+      const periodOptions = within(screen.getByRole('list', { name: 'options-1' }))
+      expect(periodOptions.getAllByRole('listitem')).toHaveLength(9)
+    })
+
+    it('should keep all periods for sandbox workspaces outside Cloud', () => {
+      mockRuntime.deploymentEdition = 'COMMUNITY'
+      mockRuntime.planType = 'sandbox'
+
+      render(<Filter {...defaultProps} queryParams={{ ...defaultQueryParams, period: '2' }} />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'open-options-1' }))
+
+      const periodOptions = within(screen.getByRole('list', { name: 'options-1' }))
+      expect(periodOptions.getAllByRole('listitem')).toHaveLength(9)
+    })
+
+    it('should reset the Cloud sandbox period to today when cleared', () => {
+      mockRuntime.deploymentEdition = 'CLOUD'
+      mockRuntime.planType = 'sandbox'
+
+      render(<Filter {...defaultProps} queryParams={{ ...defaultQueryParams, period: '2' }} />)
+
+      fireEvent.click(screen.getAllByText('clear-chip')[0]!)
+
+      expect(mockSetQueryParams).toHaveBeenCalledWith({
+        ...defaultQueryParams,
+        period: '1',
+      })
+    })
+
     it('should update keyword when typing in search input', () => {
       render(<Filter {...defaultProps} />)
 

@@ -83,6 +83,7 @@ def test_dify_config(monkeypatch: pytest.MonkeyPatch):
     assert config.AGENT_SHELL_ENABLED is True
     assert config.SENTRY_TRACES_SAMPLE_RATE == 1.0
     assert config.TEMPLATE_TRANSFORM_MAX_LENGTH == 400_000
+    assert config.GRAPH_ENGINE_SCALE_UP_THRESHOLD == 0
 
     # annotated field with custom configured value
     assert config.HTTP_REQUEST_MAX_READ_TIMEOUT == 300

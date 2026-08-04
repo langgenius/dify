@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
 import { expect, waitFor, within } from 'storybook/test'
 import {
+  createDialogHandle,
   Dialog,
   DialogBackdrop,
   DialogCloseButton,
@@ -18,8 +19,8 @@ import { Field, FieldControl, FieldDescription, FieldError, FieldLabel } from '.
 import { Form } from '../form'
 import { Input } from '../input'
 import {
+  ScrollArea,
   ScrollAreaContent,
-  ScrollAreaRoot,
   ScrollAreaScrollbar,
   ScrollAreaThumb,
   ScrollAreaViewport,
@@ -191,6 +192,59 @@ export const Controlled: Story = {
   render: () => <ControlledDemo />,
 }
 
+type WorkspaceDialogPayload = {
+  name: string
+  memberCount: number
+}
+
+const workspaceDialogPayloads = [
+  { name: 'Design', memberCount: 8 },
+  { name: 'Engineering', memberCount: 24 },
+] as const satisfies readonly WorkspaceDialogPayload[]
+
+function DetachedTriggersDemo() {
+  const [dialogHandle] = React.useState(() => createDialogHandle<WorkspaceDialogPayload>())
+
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <div className="flex gap-2">
+        {workspaceDialogPayloads.map((payload) => (
+          <DialogTrigger
+            key={payload.name}
+            handle={dialogHandle}
+            payload={payload}
+            render={<Button variant="secondary" />}
+          >
+            Edit {payload.name}
+          </DialogTrigger>
+        ))}
+      </div>
+
+      <Dialog handle={dialogHandle}>
+        {({ payload }) => (
+          <DialogContent>
+            <DialogCloseButton />
+            <div className="grid gap-2 pr-8">
+              <DialogTitle className="text-lg leading-7 font-semibold text-text-primary">
+                {payload ? `Edit ${payload.name}` : 'Edit workspace'}
+              </DialogTitle>
+              <DialogDescription className="text-sm leading-5 text-text-secondary">
+                {payload
+                  ? `${payload.memberCount} members currently have access to this workspace.`
+                  : 'Choose a workspace to edit.'}
+              </DialogDescription>
+            </div>
+          </DialogContent>
+        )}
+      </Dialog>
+    </div>
+  )
+}
+
+export const DetachedTriggers: Story = {
+  render: () => <DetachedTriggersDemo />,
+}
+
 type ApiExtensionFormValues = {
   name: string
   endpoint: string
@@ -278,9 +332,9 @@ const OutsideScrollingContentDemo = () => {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={<Button />}>Review long release notes</DialogTrigger>
       <DialogPortal>
-        <DialogBackdrop className="duration-[600ms] ease-[cubic-bezier(0.22,1,0.36,1)] data-ending-style:duration-[350ms] data-ending-style:ease-[cubic-bezier(0.375,0.015,0.545,0.455)]" />
+        <DialogBackdrop className="duration-600 ease-[cubic-bezier(0.22,1,0.36,1)] data-ending-style:duration-350 data-ending-style:ease-[cubic-bezier(0.375,0.015,0.545,0.455)]" />
         <DialogViewport className="group/dialog">
-          <ScrollAreaRoot className="h-full overscroll-contain group-data-ending-style/dialog:pointer-events-none">
+          <ScrollArea className="h-full group-data-ending-style/dialog:pointer-events-none">
             <ScrollAreaViewport
               aria-label="Scrollable dialog viewport"
               role="region"
@@ -290,7 +344,7 @@ const OutsideScrollingContentDemo = () => {
                 <DialogPopup
                   ref={popupRef}
                   initialFocus={popupRef}
-                  className="relative mx-auto flex w-120 max-w-[calc(100vw-2rem)] flex-col overflow-hidden outline-hidden transition-[translate] duration-[700ms] ease-[cubic-bezier(0.45,1.005,0,1.005)] data-ending-style:translate-y-[max(100dvh,100%)] data-ending-style:scale-100 data-ending-style:opacity-100 data-ending-style:duration-[350ms] data-ending-style:ease-[cubic-bezier(0.375,0.015,0.545,0.455)] data-starting-style:translate-y-[100dvh] data-starting-style:scale-100 data-starting-style:opacity-100"
+                  className="relative mx-auto flex w-120 max-w-[calc(100vw-2rem)] flex-col overflow-hidden outline-hidden transition-[translate] duration-700 ease-[cubic-bezier(0.45,1.005,0,1.005)] data-ending-style:translate-y-[max(100dvh,100%)] data-ending-style:scale-100 data-ending-style:opacity-100 data-ending-style:duration-350 data-ending-style:ease-[cubic-bezier(0.375,0.015,0.545,0.455)] data-starting-style:translate-y-[100dvh] data-starting-style:scale-100 data-starting-style:opacity-100"
                 >
                   <DialogCloseButton />
                   <ReleaseNoteHeader
@@ -305,7 +359,7 @@ const OutsideScrollingContentDemo = () => {
             <ScrollAreaScrollbar>
               <ScrollAreaThumb />
             </ScrollAreaScrollbar>
-          </ScrollAreaRoot>
+          </ScrollArea>
         </DialogViewport>
       </DialogPortal>
     </Dialog>
@@ -323,12 +377,12 @@ export const OutsidePopupElements: Story = {
       <DialogPortal>
         <DialogBackdrop className="min-h-dvh" />
         <DialogViewport className="grid place-items-center px-4 py-12 xl:py-6">
-          <DialogPopup className="group/popup pointer-events-none relative flex h-full w-full max-w-[70rem] justify-center border-0 bg-transparent shadow-none transition-opacity data-ending-style:scale-100 data-ending-style:opacity-0 data-starting-style:scale-100 data-starting-style:opacity-0">
+          <DialogPopup className="group/popup pointer-events-none relative flex h-full w-full max-w-280 justify-center border-0 bg-transparent shadow-none transition-opacity data-ending-style:scale-100 data-ending-style:opacity-0 data-starting-style:scale-100 data-starting-style:opacity-0">
             <DialogCloseButton
               aria-label="Close"
               className="pointer-events-auto absolute -top-10 right-0 z-10 flex size-8 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg text-text-tertiary shadow-xs outline-hidden hover:bg-components-button-secondary-bg-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid xl:top-0"
             ></DialogCloseButton>
-            <div className="pointer-events-auto flex h-full w-full max-w-[70rem] flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-6 shadow-xl transition-[scale] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-data-starting-style/popup:scale-105">
+            <div className="pointer-events-auto flex h-full w-full max-w-280 flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-6 shadow-xl transition-[scale] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-data-starting-style/popup:scale-105">
               <div className="grid gap-2">
                 <DialogTitle className="text-lg leading-7 font-semibold text-text-primary">
                   Knowledge review
@@ -364,11 +418,11 @@ const InsideScrollingContentDemo = () => {
               title="Release notes"
               description="Highlights from the latest workspace update."
             />
-            <ScrollAreaRoot className="relative flex min-h-0 flex-auto overflow-hidden">
+            <ScrollArea className="relative flex min-h-0 flex-auto overflow-hidden">
               <ScrollAreaViewport
                 aria-label="Release note improvements"
                 role="region"
-                className="h-full max-h-full max-w-full overflow-y-auto overscroll-contain"
+                className="h-full max-h-full max-w-full overscroll-contain"
               >
                 <ScrollAreaContent>
                   <ReleaseNoteSections />
@@ -377,7 +431,7 @@ const InsideScrollingContentDemo = () => {
               <ScrollAreaScrollbar>
                 <ScrollAreaThumb />
               </ScrollAreaScrollbar>
-            </ScrollAreaRoot>
+            </ScrollArea>
             <ReleaseNoteFooter onClose={() => setOpen(false)} />
           </DialogPopup>
         </DialogViewport>

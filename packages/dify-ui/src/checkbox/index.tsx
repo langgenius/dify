@@ -25,22 +25,17 @@ const checkboxIndicatorClassName =
 
 const checkboxSkeletonClassName = 'size-4 shrink-0 rounded-sm bg-text-quaternary opacity-20'
 
-export type CheckboxRootProps = Omit<BaseCheckboxNS.Root.Props, 'className'> & {
+type CheckboxRootProps = Omit<BaseCheckboxNS.Root.Props, 'className'> & {
   className?: string
 }
-
-export function CheckboxRoot({ className, ...props }: CheckboxRootProps) {
+function CheckboxRoot({ className, ...props }: CheckboxRootProps) {
   return <BaseCheckbox.Root className={cn(checkboxRootClassName, className)} {...props} />
 }
 
-export type CheckboxIndicatorProps = Omit<
-  BaseCheckboxNS.Indicator.Props,
-  'className' | 'children'
-> & {
+type CheckboxIndicatorProps = Omit<BaseCheckboxNS.Indicator.Props, 'className' | 'children'> & {
   className?: string
 }
-
-export function CheckboxIndicator({ className, render, ...props }: CheckboxIndicatorProps) {
+function CheckboxIndicator({ className, render, ...props }: CheckboxIndicatorProps) {
   return (
     <BaseCheckbox.Indicator
       className={cn(checkboxIndicatorClassName, className)}
@@ -61,9 +56,9 @@ export function CheckboxIndicator({ className, render, ...props }: CheckboxIndic
   )
 }
 
-export type CheckboxProps = Omit<CheckboxRootProps, 'children'>
+type CheckboxProps = Omit<CheckboxRootProps, 'children'>
 
-export function Checkbox({ ...props }: CheckboxProps) {
+function Checkbox({ ...props }: CheckboxProps) {
   return (
     <CheckboxRoot {...props}>
       <CheckboxIndicator />
@@ -71,10 +66,14 @@ export function Checkbox({ ...props }: CheckboxProps) {
   )
 }
 
-export type CheckboxSkeletonProps = Omit<React.ComponentProps<'div'>, 'className'> & {
+type CheckboxSkeletonProps = Omit<React.ComponentProps<'div'>, 'className'> & {
   className?: string
 }
 
-export function CheckboxSkeleton({ className, ...props }: CheckboxSkeletonProps) {
+function CheckboxSkeleton({ className, ...props }: CheckboxSkeletonProps) {
   return <div className={cn(checkboxSkeletonClassName, className)} {...props} />
 }
+
+export { Checkbox, CheckboxIndicator, CheckboxRoot, CheckboxSkeleton }
+
+export type { CheckboxIndicatorProps, CheckboxProps, CheckboxRootProps, CheckboxSkeletonProps }

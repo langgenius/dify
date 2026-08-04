@@ -1,35 +1,30 @@
 import logging
-from collections.abc import Iterator
 from io import BytesIO
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
 from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 
-import services.trigger.webhook_service as webhook_service_module
-from models.engine import db
 from services.errors.app import QuotaExceededError
+from services.trigger import webhook_service as webhook_service_module
 from services.trigger.webhook_service import WebhookService
 
 
-@pytest.fixture
-def flask_sqlite_engine() -> Iterator[Engine]:
-    app = Flask(__name__)
-    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
-    db.init_app(app)
-
-    with app.app_context():
-        yield db.engine
-
-
 class TestWebhookServiceUnit:
-    """Unit tests for WebhookService using isolated SQLite sessions for database boundaries."""
+    """Webhook business-logic tests with isolated sessions where the service owns their lifecycle."""
 
     def test_trigger_workflow_execution_propagates_quota_error_without_error_log(
-        self, flask_sqlite_engine: Engine, caplog: pytest.LogCaptureFixture
+        self,
+        caplog: pytest.LogCaptureFixture,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_engine: Engine,
     ) -> None:
+        """Quota failures refund the charge and close the real service-owned session."""
+        monkeypatch.setattr(webhook_service_module, "db", SimpleNamespace(engine=sqlite_engine))
         webhook_trigger = MagicMock(
             webhook_id="webhook-123",
             tenant_id="tenant-123",
@@ -50,7 +45,7 @@ class TestWebhookServiceUnit:
             patch(
                 "services.trigger.webhook_service.AsyncWorkflowService.trigger_workflow_async",
                 side_effect=quota_error,
-            ),
+            ) as mock_trigger_workflow_async,
         ):
             with pytest.raises(QuotaExceededError) as exc_info:
                 WebhookService.trigger_workflow_execution(
@@ -61,15 +56,21 @@ class TestWebhookServiceUnit:
 
         assert exc_info.value is quota_error
         quota_charge.refund.assert_called_once_with()
-
-        # Verify logs using caplog instead of mock_log
+        session = mock_trigger_workflow_async.call_args.kwargs["session"]
+        assert isinstance(session, Session)
+        assert session.in_transaction() is False
         assert len(caplog.records) == 1
         assert caplog.records[0].levelno == logging.INFO
         assert caplog.records[0].message == (
             "Tenant tenant-123 quota exceeded for feature workflow, skipping webhook trigger webhook-123"
         )
 
-    def test_trigger_workflow_execution_success(self, flask_sqlite_engine: Engine) -> None:
+    def test_trigger_workflow_execution_success(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_engine: Engine,
+    ) -> None:
+        monkeypatch.setattr(webhook_service_module, "db", SimpleNamespace(engine=sqlite_engine))
         webhook_trigger = MagicMock(
             webhook_id="webhook-123",
             tenant_id="tenant-123",
@@ -102,7 +103,7 @@ class TestWebhookServiceUnit:
             WebhookService.trigger_workflow_execution(webhook_trigger, webhook_data, workflow)
 
         call_session = mock_trigger.call_args.kwargs["session"]
-        assert call_session.get_bind() is flask_sqlite_engine
+        assert call_session.get_bind() is sqlite_engine
         quota_charge.commit.assert_called_once_with()
         quota_charge.refund.assert_not_called()
 

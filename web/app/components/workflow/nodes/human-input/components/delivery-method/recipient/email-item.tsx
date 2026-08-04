@@ -27,10 +27,7 @@ const EmailItem = ({ email, data, onDelete, disabled = false, isError }: Props) 
     >
       {isError && <RiErrorWarningFill className="size-4 text-text-destructive" />}
       {!isError && <Avatar avatar={data.avatar_url} size="xxs" name={data.name || data.email} />}
-      <div
-        title={data.email}
-        className="max-w-[500px] truncate system-xs-regular text-text-primary"
-      >
+      <div title={data.email} className="max-w-125 truncate system-xs-regular text-text-primary">
         {email === data.email ? data.name : data.email}
         {email === data.email && (
           <span className="system-xs-regular text-text-tertiary">

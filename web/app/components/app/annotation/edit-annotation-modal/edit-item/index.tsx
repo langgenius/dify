@@ -21,7 +21,7 @@ type Props = Readonly<{
 }>
 
 export const EditTitle: FC<{ className?: string; title: string }> = ({ className, title }) => (
-  <div className={cn(className, 'flex h-[18px] items-center system-xs-medium text-text-tertiary')}>
+  <div className={cn(className, 'flex h-4.5 items-center system-xs-medium text-text-tertiary')}>
     <RiEditFill className="mr-1 size-3.5" />
     <div>{title}</div>
     <div

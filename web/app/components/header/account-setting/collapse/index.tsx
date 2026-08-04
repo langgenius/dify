@@ -22,7 +22,7 @@ const Collapse = ({ title, items, renderItem, onSelect, wrapperClassName }: ICol
     <div className={cn('overflow-hidden rounded-xl bg-background-section-burn', wrapperClassName)}>
       <button
         type="button"
-        className="flex w-full cursor-pointer items-center justify-between border-none bg-transparent px-3 py-2 text-left text-xs leading-[18px] font-medium text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+        className="flex w-full cursor-pointer items-center justify-between border-none bg-transparent px-3 py-2 text-left text-xs leading-4.5 font-medium text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
         onClick={toggle}
       >
         {title}

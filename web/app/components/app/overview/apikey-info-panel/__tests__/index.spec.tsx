@@ -1,26 +1,19 @@
 import { cleanup, screen } from '@testing-library/react'
 import {
   clearAllMocks,
-  defaultModalContext,
   interactions,
-  mockUseModalContext,
+  mockSetSettingsDestination,
   scenarios,
+  setDeploymentEdition,
   textKeys,
 } from './test-utils'
-
-vi.mock('@/config', () => ({ IS_CE_EDITION: true }))
 
 afterEach(cleanup)
 
 describe('APIKeyInfoPanel - Community Edition', () => {
-  const setShowAccountSettingModal = vi.fn()
-
   beforeEach(() => {
     clearAllMocks()
-    mockUseModalContext.mockReturnValue({
-      ...defaultModalContext,
-      setShowAccountSettingModal,
-    })
+    setDeploymentEdition('COMMUNITY')
   })
 
   it('hides the panel when an API key already exists', () => {
@@ -29,9 +22,9 @@ describe('APIKeyInfoPanel - Community Edition', () => {
   })
 
   it('opens provider settings from the primary action', () => {
-    scenarios.withMockModal(setShowAccountSettingModal)
+    scenarios.withAPIKeyNotSet()
     interactions.clickMainButton()
-    expect(setShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'provider' })
+    expect(mockSetSettingsDestination).toHaveBeenCalledWith('provider')
   })
 
   it('links self-hosted users to Dify Cloud safely', () => {

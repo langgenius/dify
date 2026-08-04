@@ -9,13 +9,15 @@ from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
-from sqlalchemy import event
+from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session
 
 from controllers.console.app import app_import as app_import_module
+from enums.deployment_edition import DeploymentEdition
 from models.account import Account
+from models.base import TypeBase
 from models.engine import db
-from models.model import App
+from models.model import App, AppMode
 from services.app_dsl_service import ImportStatus
 from services.entities.dsl_entities import CheckDependenciesResult
 from services.feature_service import SystemFeatureModel, WebAppAuthModel
@@ -46,7 +48,10 @@ class _Result:
 
 
 def _install_features(monkeypatch: pytest.MonkeyPatch, enabled: bool) -> None:
-    features = SystemFeatureModel(webapp_auth=WebAppAuthModel(enabled=enabled))
+    features = SystemFeatureModel(
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        webapp_auth=WebAppAuthModel(enabled=enabled),
+    )
     monkeypatch.setattr(app_import_module.FeatureService, "get_system_features", lambda: features)
 
 
@@ -64,6 +69,13 @@ def app() -> Iterator[Flask]:
 
     with app.app_context():
         yield app
+
+
+@pytest.fixture
+def sqlite_app_engine(app: Flask) -> Engine:
+    engine = db.engine
+    TypeBase.metadata.create_all(engine, tables=[TypeBase.metadata.tables[App.__tablename__]])
+    return engine
 
 
 @dataclass
@@ -93,11 +105,34 @@ def transaction_events() -> TransactionEvents:
         event.remove(Session, "after_rollback", record_rollback)
 
 
-def _failed_result_after_starting_transaction(
-    service: app_import_module.AppDslService, *, app_id: str | None = None
-) -> _Result:
-    service._session.begin()
-    return _Result(ImportStatus.FAILED, app_id=app_id)
+def _install_persisting_service_result(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    method_name: str,
+    result: _Result,
+) -> str:
+    app_id = result.app_id or "rolled-back-app"
+
+    def _return_result(import_service: app_import_module.AppDslService, *_args, **_kwargs):
+        import_service._session.add(
+            App(
+                id=app_id,
+                tenant_id="tenant-1",
+                name="Imported App",
+                mode=AppMode.WORKFLOW,
+                enable_site=True,
+                enable_api=True,
+            )
+        )
+        return result
+
+    monkeypatch.setattr(app_import_module.AppDslService, method_name, _return_result)
+    return app_id
+
+
+def _assert_app_persistence(sqlite_app_engine: Engine, app_id: str, *, persisted: bool) -> None:
+    with Session(sqlite_app_engine) as session:
+        assert (session.get(App, app_id) is not None) is persisted
 
 
 class TestAppImportApi:
@@ -110,15 +145,16 @@ class TestAppImportApi:
         api,
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
+        sqlite_app_engine: Engine,
         transaction_events: TransactionEvents,
     ) -> None:
         method = unwrap(api.post)
 
         _install_features(monkeypatch, enabled=False)
-        monkeypatch.setattr(
-            app_import_module.AppDslService,
-            "import_app",
-            lambda service, *_args, **_kwargs: _failed_result_after_starting_transaction(service, app_id=None),
+        app_id = _install_persisting_service_result(
+            monkeypatch,
+            method_name="import_app",
+            result=_Result(ImportStatus.FAILED, app_id=None),
         )
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
@@ -126,6 +162,7 @@ class TestAppImportApi:
 
         assert transaction_events.rollbacks == 1
         assert transaction_events.commits == 0
+        _assert_app_persistence(sqlite_app_engine, app_id, persisted=False)
         assert status == 400
         assert response["status"] == ImportStatus.FAILED
 
@@ -134,15 +171,16 @@ class TestAppImportApi:
         api,
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
+        sqlite_app_engine: Engine,
         transaction_events: TransactionEvents,
     ) -> None:
         method = unwrap(api.post)
 
         _install_features(monkeypatch, enabled=False)
-        monkeypatch.setattr(
-            app_import_module.AppDslService,
-            "import_app",
-            lambda *_args, **_kwargs: _Result(ImportStatus.PENDING),
+        app_id = _install_persisting_service_result(
+            monkeypatch,
+            method_name="import_app",
+            result=_Result(ImportStatus.PENDING),
         )
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
@@ -150,6 +188,7 @@ class TestAppImportApi:
 
         assert transaction_events.commits == 1
         assert transaction_events.rollbacks == 0
+        _assert_app_persistence(sqlite_app_engine, app_id, persisted=True)
         assert status == 202
         assert response["status"] == ImportStatus.PENDING
 
@@ -158,15 +197,16 @@ class TestAppImportApi:
         api,
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
+        sqlite_app_engine: Engine,
         transaction_events: TransactionEvents,
     ) -> None:
         method = unwrap(api.post)
 
         _install_features(monkeypatch, enabled=True)
-        monkeypatch.setattr(
-            app_import_module.AppDslService,
-            "import_app",
-            lambda *_args, **_kwargs: _Result(ImportStatus.COMPLETED, app_id="app-123"),
+        app_id = _install_persisting_service_result(
+            monkeypatch,
+            method_name="import_app",
+            result=_Result(ImportStatus.COMPLETED, app_id="app-123"),
         )
         update_access = MagicMock()
         monkeypatch.setattr(app_import_module.EnterpriseService.WebAppAuth, "update_app_access_mode", update_access)
@@ -176,6 +216,7 @@ class TestAppImportApi:
 
         assert transaction_events.commits == 1
         assert transaction_events.rollbacks == 0
+        _assert_app_persistence(sqlite_app_engine, app_id, persisted=True)
         update_access.assert_called_once_with("app-123", "private")
         assert status == 200
         assert response["status"] == ImportStatus.COMPLETED
@@ -185,6 +226,7 @@ class TestAppImportApi:
         api,
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
+        sqlite_app_engine: Engine,
         transaction_events: TransactionEvents,
     ) -> None:
         method = _unwrap(api.post)
@@ -196,10 +238,10 @@ class TestAppImportApi:
             lambda: (_make_account(), "tenant-1"),
         )
         monkeypatch.setattr(app_import_module.dify_config, "RBAC_ENABLED", True)
-        monkeypatch.setattr(
-            app_import_module.AppDslService,
-            "import_app",
-            lambda *_args, **_kwargs: _Result(ImportStatus.COMPLETED, app_id="app-123"),
+        app_id = _install_persisting_service_result(
+            monkeypatch,
+            method_name="import_app",
+            result=_Result(ImportStatus.COMPLETED, app_id="app-123"),
         )
         monkeypatch.setattr(
             app_import_module,
@@ -211,6 +253,7 @@ class TestAppImportApi:
             response, status = method()
 
         assert transaction_events.commits == 1
+        _assert_app_persistence(sqlite_app_engine, app_id, persisted=True)
         assert status == 200
         assert response["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
 
@@ -219,6 +262,7 @@ class TestAppImportApi:
         api,
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
+        sqlite_app_engine: Engine,
         transaction_events: TransactionEvents,
     ) -> None:
         method = _unwrap(api.post)
@@ -230,10 +274,10 @@ class TestAppImportApi:
             lambda: (_make_account(), "tenant-1"),
         )
         monkeypatch.setattr(app_import_module.dify_config, "RBAC_ENABLED", True)
-        monkeypatch.setattr(
-            app_import_module.AppDslService,
-            "import_app",
-            lambda *_args, **_kwargs: _Result(ImportStatus.COMPLETED, app_id="app-123"),
+        app_id = _install_persisting_service_result(
+            monkeypatch,
+            method_name="import_app",
+            result=_Result(ImportStatus.COMPLETED, app_id="app-123"),
         )
         monkeypatch.setattr(
             app_import_module,
@@ -249,6 +293,7 @@ class TestAppImportApi:
             response, status = method()
 
         assert transaction_events.commits == 1
+        _assert_app_persistence(sqlite_app_engine, app_id, persisted=True)
         assert status == 200
         assert response["permission_keys"] == []
 
@@ -263,14 +308,15 @@ class TestAppImportConfirmApi:
         api,
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
+        sqlite_app_engine: Engine,
         transaction_events: TransactionEvents,
     ) -> None:
         method = unwrap(api.post)
 
-        monkeypatch.setattr(
-            app_import_module.AppDslService,
-            "confirm_import",
-            lambda service, *_args, **_kwargs: _failed_result_after_starting_transaction(service),
+        app_id = _install_persisting_service_result(
+            monkeypatch,
+            method_name="confirm_import",
+            result=_Result(ImportStatus.FAILED),
         )
 
         with app.test_request_context("/console/api/apps/imports/import-1/confirm", method="POST"):
@@ -278,6 +324,7 @@ class TestAppImportConfirmApi:
 
         assert transaction_events.rollbacks == 1
         assert transaction_events.commits == 0
+        _assert_app_persistence(sqlite_app_engine, app_id, persisted=False)
         assert status == 400
         assert response["status"] == ImportStatus.FAILED
 
@@ -286,6 +333,7 @@ class TestAppImportConfirmApi:
         api,
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
+        sqlite_app_engine: Engine,
         transaction_events: TransactionEvents,
     ) -> None:
         method = _unwrap(api.post)
@@ -304,10 +352,10 @@ class TestAppImportConfirmApi:
             ),
         )
         monkeypatch.setattr(app_import_module.dify_config, "RBAC_ENABLED", True)
-        monkeypatch.setattr(
-            app_import_module.AppDslService,
-            "confirm_import",
-            lambda *_args, **_kwargs: _Result(ImportStatus.COMPLETED, app_id="app-456"),
+        app_id = _install_persisting_service_result(
+            monkeypatch,
+            method_name="confirm_import",
+            result=_Result(ImportStatus.COMPLETED, app_id="app-456"),
         )
         monkeypatch.setattr(
             app_import_module,
@@ -319,6 +367,7 @@ class TestAppImportConfirmApi:
             response, status = method(import_id="import-1")
 
         assert transaction_events.commits == 1
+        _assert_app_persistence(sqlite_app_engine, app_id, persisted=True)
         assert status == 200
         assert response["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
 
@@ -327,6 +376,7 @@ class TestAppImportConfirmApi:
         api,
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
+        sqlite_app_engine: Engine,
         transaction_events: TransactionEvents,
     ) -> None:
         method = _unwrap(api.post)
@@ -345,10 +395,10 @@ class TestAppImportConfirmApi:
             ),
         )
         monkeypatch.setattr(app_import_module.dify_config, "RBAC_ENABLED", True)
-        monkeypatch.setattr(
-            app_import_module.AppDslService,
-            "confirm_import",
-            lambda *_args, **_kwargs: _Result(ImportStatus.COMPLETED, app_id="app-456"),
+        app_id = _install_persisting_service_result(
+            monkeypatch,
+            method_name="confirm_import",
+            result=_Result(ImportStatus.COMPLETED, app_id="app-456"),
         )
         monkeypatch.setattr(
             app_import_module,
@@ -360,6 +410,7 @@ class TestAppImportConfirmApi:
             response, status = method(import_id="import-1")
 
         assert transaction_events.commits == 1
+        _assert_app_persistence(sqlite_app_engine, app_id, persisted=True)
         assert status == 200
         assert response["permission_keys"] == []
 

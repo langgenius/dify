@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import type { Placement } from '.'
+import type { TooltipContentProps } from '.'
 import * as React from 'react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '.'
 
@@ -91,7 +91,9 @@ export const KeyboardShortcut: Story = {
   ),
 }
 
-const PLACEMENTS: Placement[] = [
+type TooltipPlacement = NonNullable<TooltipContentProps['placement']>
+
+const PLACEMENTS: TooltipPlacement[] = [
   'top-start',
   'top',
   'top-end',
@@ -107,7 +109,7 @@ const PLACEMENTS: Placement[] = [
 ]
 
 const PlacementsDemo = () => {
-  const [placement, setPlacement] = React.useState<Placement>('top')
+  const [placement, setPlacement] = React.useState<TooltipPlacement>('top')
 
   return (
     <div className="flex flex-col items-center gap-4 p-24">

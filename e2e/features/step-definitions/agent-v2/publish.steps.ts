@@ -32,10 +32,10 @@ Then('the Agent v2 draft should remain unpublished', async function (this: DifyW
     .poll(
       async () => {
         const agentId = getCurrentAgentId(this)
-        const agent = await this.getConsoleClient().agent.byAgentId.get({
+        const composer = await this.getConsoleClient().agent.byAgentId.composer.get({
           params: { agent_id: agentId },
         })
-        return agent.active_config_is_published
+        return composer.active_config_is_published
       },
       { timeout: 30_000 },
     )
@@ -55,10 +55,10 @@ Then('the Agent v2 draft should be published and up to date', async function (th
   await expect(page.getByText('Up to date')).toBeVisible()
   await expect
     .poll(async () => {
-      const agent = await this.getConsoleClient().agent.byAgentId.get({
+      const composer = await this.getConsoleClient().agent.byAgentId.composer.get({
         params: { agent_id: agentId },
       })
-      return agent.active_config_is_published
+      return composer.active_config_is_published
     })
     .toBe(true)
 })

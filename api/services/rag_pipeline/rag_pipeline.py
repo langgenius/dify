@@ -49,6 +49,7 @@ from graphon.errors import WorkflowNodeRunFailedError
 from graphon.graph_events import GraphNodeEventBase, NodeRunFailedEvent, NodeRunSucceededEvent
 from graphon.node_events import NodeRunResult
 from graphon.nodes.base.node import Node
+from graphon.nodes.container_effects import ContainerAwaitRequest
 from graphon.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, build_http_request_config
 from graphon.runtime import VariablePool
 from graphon.variables.variables import Variable, VariableBase
@@ -910,7 +911,10 @@ class RagPipelineService:
 
     def _handle_node_run_result(
         self,
-        getter: Callable[[], tuple[Node, Generator[GraphNodeEventBase, None, None]]],
+        getter: Callable[
+            [],
+            tuple[Node, Generator[GraphNodeEventBase | ContainerAwaitRequest, None, None]],
+        ],
         start_at: float,
         tenant_id: str,
         node_id: str,
