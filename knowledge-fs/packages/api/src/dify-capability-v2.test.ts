@@ -93,6 +93,34 @@ describe("Dify Capability v2 verifier", () => {
     });
   });
 
+  it("maps every registered GET operation to the read scope", async () => {
+    const key = await signingMaterial("current-1");
+    const verifier = createDifyCapabilityV2Verifier({
+      audience: "knowledge-fs",
+      issuer: "dify-control-plane",
+      jwks: createStaticDifyCapabilityV2JwksProvider({ keys: [key.publicJwk] }),
+      now: () => NOW_SECONDS,
+    });
+    const actions = [
+      ...new Set(
+        DIFY_CAPABILITY_V2_OPERATIONS.filter((operation) => operation.method === "GET").map(
+          (operation) => operation.action,
+        ),
+      ),
+    ];
+    const verified = await Promise.all(
+      actions.map(async (action, index) =>
+        verifier.verify(
+          await sign(claims({ action, jti: `jti-read-${index}` }), key.kid, key.privateKey),
+        ),
+      ),
+    );
+
+    expect(verified.map((result) => result?.subject.scopes)).toEqual(
+      actions.map(() => ["knowledge-spaces:read"]),
+    );
+  });
+
   it("refreshes JWKS once for an unknown kid and still rejects an unknown key", async () => {
     const initial = await signingMaterial("current-1");
     const rotated = await signingMaterial("current-2");

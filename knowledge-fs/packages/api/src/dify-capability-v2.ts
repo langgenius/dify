@@ -308,7 +308,12 @@ function hasValidProfileClaims(claims: DifyCapabilityV2Claims): boolean {
 }
 
 function scopeForAction(action: string): "knowledge-spaces:read" | "knowledge-spaces:write" {
-  return READ_ACTIONS.has(action) ? "knowledge-spaces:read" : "knowledge-spaces:write";
+  const registeredGetOperation = DIFY_CAPABILITY_V2_OPERATIONS.some(
+    (operation) => operation.action === action && operation.method === "GET",
+  );
+  return READ_ACTIONS.has(action) || registeredGetOperation
+    ? "knowledge-spaces:read"
+    : "knowledge-spaces:write";
 }
 
 const READ_ACTIONS: ReadonlySet<string> = new Set([
