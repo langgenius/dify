@@ -9,6 +9,7 @@ decryption of tokens encrypted before the rotation.
 import datetime
 import json
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -38,6 +39,10 @@ class FakeCryptographyClient:
     def __init__(self, key: str, credential: object = None) -> None:
         self.version = key.rsplit("/", 1)[-1]
         self.credential = credential
+        self.closed = False
+
+    def close(self) -> None:
+        self.closed = True
 
     def wrap_key(self, algorithm: object, key_bytes: bytes) -> SimpleNamespace:
         self.last_wrap_algorithm = algorithm
@@ -254,3 +259,21 @@ def test_decrypt_translates_disabled_key_version_into_value_error() -> None:
 
     with pytest.raises(ValueError, match="Failed to unwrap credential"):
         provider.decrypt_with_decoding(encrypted, "tenant-1")
+
+
+def test_evicted_crypto_client_is_closed(monkeypatch: pytest.MonkeyPatch, fake_key_client: FakeKeyClient) -> None:
+    monkeypatch.setattr("libs.key_providers.azure_keyvault_key_provider._CRYPTO_CLIENT_CACHE_MAXSIZE", 1)
+
+    provider = AzureKeyVaultKeyProvider()
+    provider.generate_key_pair("tenant-1")
+
+    fake_key_client.current_version = "v1"
+    provider.encrypt("tenant-1", "secret-v1")
+    v1_client = cast(FakeCryptographyClient, provider._get_crypto_client("tenant-1", version="v1")[0])
+    assert not v1_client.closed
+
+    # Force a new entry into the (maxsize=1) cache, evicting the "v1" client.
+    fake_key_client.current_version = "v2"
+    provider.encrypt("tenant-1", "secret-v2")
+
+    assert v1_client.closed

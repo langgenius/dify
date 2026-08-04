@@ -29,7 +29,15 @@ _ENVELOPE_VERSION = 1
 
 _DEFAULT_WRAP_ALGORITHM = KeyWrapAlgorithm.rsa_oaep_256
 
-_CRYPTO_CLIENT_CACHE_MAXSIZE = 4096
+_CRYPTO_CLIENT_CACHE_MAXSIZE = 1
+
+
+class _CryptoClientCache(LRUCache[tuple[str, str], CryptographyClient]):
+    @override
+    def popitem(self) -> tuple[tuple[str, str], CryptographyClient]:
+        key, client = super().popitem()
+        client.close()
+        return key, client
 
 
 class AzureKeyVaultKeyProvider(BaseKeyProvider):
@@ -64,9 +72,7 @@ class AzureKeyVaultKeyProvider(BaseKeyProvider):
         self._credential = DefaultAzureCredential()
         self._key_client = KeyClient(vault_url=vault_url, credential=self._credential)
         # Cached per (tenant_id, *concrete* version).
-        self._crypto_clients: LRUCache[tuple[str, str], CryptographyClient] = LRUCache(
-            maxsize=_CRYPTO_CLIENT_CACHE_MAXSIZE
-        )
+        self._crypto_clients: _CryptoClientCache = _CryptoClientCache(maxsize=_CRYPTO_CLIENT_CACHE_MAXSIZE)
         self._lock = threading.Lock()
 
     @staticmethod
