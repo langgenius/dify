@@ -425,12 +425,11 @@ describe('StepOne', () => {
       expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
 
-    it('should show upgrade card when in sandbox plan with files', () => {
+    it('should show upgrade card immediately when in sandbox plan', () => {
       mockEnableBilling = true
       mockPlan.type = Plan.sandbox
-      const files = [createMockFileItem()]
 
-      render(<StepOne {...defaultProps} files={files} />)
+      render(<StepOne {...defaultProps} files={[]} />)
 
       expect(screen.getByTestId('upgrade-card')).toBeInTheDocument()
     })

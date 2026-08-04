@@ -231,7 +231,7 @@ const StepOne = ({
                     </div>
                   )}
                   <NextStepButton disabled={fileNextDisabled} onClick={onStepChange} />
-                  {enableBilling && plan.type === Plan.sandbox && files.length > 0 && (
+                  {enableBilling && plan.type === Plan.sandbox && (
                     <div className="mt-5">
                       <div className="mb-4 h-px bg-divider-subtle" />
                       <UpgradeCard />
