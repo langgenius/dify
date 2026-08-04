@@ -1,14 +1,15 @@
 import json
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import MagicMock
 
 from core.app.apps.completion.runtime_workflow_builder import build_runtime_completion_workflow
 from graphon.nodes import BuiltinNodeTypes
-from models.model import AppMode
+from models.model import App, AppMode
 
 
 def test_builder_returns_runtime_graph_without_workflow_record() -> None:
-    app_model = SimpleNamespace(mode=AppMode.COMPLETION)
+    app_model = cast(App, SimpleNamespace(mode=AppMode.COMPLETION))
     app_config = MagicMock()
     workflow_converter = MagicMock(
         build_graph_from_app_config=MagicMock(return_value=({"nodes": [{"id": "start"}], "edges": []}, {}))
@@ -34,7 +35,7 @@ def test_builder_returns_runtime_graph_without_workflow_record() -> None:
 
 
 def test_builder_routes_api_based_variable_query_to_runtime_sys_query() -> None:
-    app_model = SimpleNamespace(mode=AppMode.COMPLETION)
+    app_model = cast(App, SimpleNamespace(mode=AppMode.COMPLETION))
     app_config = MagicMock()
     request_body = {"params": {"query": ""}}
     workflow_converter = MagicMock(

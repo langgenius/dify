@@ -1,9 +1,11 @@
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import MagicMock
 
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.apps.completion.graph_event_adapter import CompletionGraphEventAdapter
+from core.app.entities.app_invoke_entities import CompletionAppGenerateEntity
 from core.app.entities.queue_entities import (
     QueueErrorEvent,
     QueueLLMChunkEvent,
@@ -27,10 +29,13 @@ from graphon.node_events import NodeRunResult
 
 def _adapter(*, show_retrieve_source: bool = True) -> tuple[CompletionGraphEventAdapter, MagicMock]:
     queue_manager = MagicMock()
-    entity = SimpleNamespace(
-        model_conf=SimpleNamespace(model="model"),
-        app_config=SimpleNamespace(
-            additional_features=SimpleNamespace(show_retrieve_source=show_retrieve_source),
+    entity = cast(
+        CompletionAppGenerateEntity,
+        SimpleNamespace(
+            model_conf=SimpleNamespace(model="model"),
+            app_config=SimpleNamespace(
+                additional_features=SimpleNamespace(show_retrieve_source=show_retrieve_source),
+            ),
         ),
     )
     return (
