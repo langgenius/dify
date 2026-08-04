@@ -1,25 +1,23 @@
 'use client'
-import type { App } from '@/models/explore'
-import type { TryAppSelection } from '@/types/try-app'
+import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
+import { AppTypeIcon } from '@/app/components/app/type-selector'
 import { trackEvent } from '@/app/components/base/amplitude'
 import AppIcon from '@/app/components/base/app-icon'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AppModeEnum } from '@/types/app'
-import { AppTypeIcon } from '../../app/type-selector'
 
-export type AppCardProps = {
-  app: App
+type TemplateCardProps = {
+  app: RecommendedAppResponse
   canCreate: boolean
   onCreate: () => void
-  onTry: (params: TryAppSelection) => void
-  isExplore?: boolean
+  onTry: (app: RecommendedAppResponse) => void
 }
 
-const AppCard = ({ app, canCreate, onCreate, onTry, isExplore = true }: AppCardProps) => {
+export function TemplateCard({ app, canCreate, onCreate, onTry }: TemplateCardProps) {
   const { t } = useTranslation()
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
@@ -27,18 +25,26 @@ const AppCard = ({ app, canCreate, onCreate, onTry, isExplore = true }: AppCardP
   })
   const nameId = useId()
   const descriptionId = useId()
-  const { app: appBasicInfo } = app
+  const appBasicInfo = app.app
+  const appName = appBasicInfo?.name ?? ''
+  const appMode = appBasicInfo?.mode ?? ''
+  const appIconType =
+    appBasicInfo?.icon_type === 'image' ||
+    appBasicInfo?.icon_type === 'emoji' ||
+    appBasicInfo?.icon_type === 'link'
+      ? appBasicInfo.icon_type
+      : null
   const canViewApp = deploymentEdition === 'CLOUD'
-  const isClickable = isExplore && (canViewApp || canCreate)
+  const isClickable = canViewApp || canCreate
   const handleTryApp = () => {
     trackEvent('preview_template', {
       template_id: app.app_id,
-      template_name: appBasicInfo.name,
-      template_mode: appBasicInfo.mode,
-      template_categories: app.categories,
+      template_name: appName,
+      template_mode: appMode,
+      template_categories: app.categories ?? [],
       page: 'explore',
     })
-    onTry({ appId: app.app_id, app })
+    onTry(app)
   }
   const handleCardClick = () => {
     if (canViewApp) {
@@ -69,45 +75,45 @@ const AppCard = ({ app, canCreate, onCreate, onTry, isExplore = true }: AppCardP
         <div className="relative shrink-0">
           <AppIcon
             size="large"
-            iconType={appBasicInfo.icon_type}
-            icon={appBasicInfo.icon}
-            background={appBasicInfo.icon_background}
-            imageUrl={appBasicInfo.icon_url}
+            iconType={appIconType}
+            icon={appBasicInfo?.icon ?? undefined}
+            background={appBasicInfo?.icon_background ?? undefined}
+            imageUrl={appBasicInfo?.icon_url ?? undefined}
           />
           <AppTypeIcon
             wrapperClassName="absolute -right-0.5 -bottom-0.5 size-4 rounded-sm border-components-panel-on-panel-item-bg shadow-sm"
             className="size-3"
-            type={appBasicInfo.mode}
+            type={appMode}
           />
         </div>
         <div className="flex w-0 grow flex-col gap-1 py-px">
           <div className="flex items-center system-md-semibold text-text-secondary">
-            <div id={nameId} className="truncate" title={appBasicInfo.name}>
-              {appBasicInfo.name}
+            <div id={nameId} className="truncate" title={appName}>
+              {appName}
             </div>
           </div>
           <div className="flex items-center system-2xs-medium-uppercase text-text-tertiary">
-            {appBasicInfo.mode === AppModeEnum.ADVANCED_CHAT && (
+            {appMode === AppModeEnum.ADVANCED_CHAT && (
               <div className="truncate">
                 {t(($) => $['types.advanced'], { ns: 'app' }).toUpperCase()}
               </div>
             )}
-            {appBasicInfo.mode === AppModeEnum.CHAT && (
+            {appMode === AppModeEnum.CHAT && (
               <div className="truncate">
                 {t(($) => $['types.chatbot'], { ns: 'app' }).toUpperCase()}
               </div>
             )}
-            {appBasicInfo.mode === AppModeEnum.AGENT_CHAT && (
+            {appMode === AppModeEnum.AGENT_CHAT && (
               <div className="truncate">
                 {t(($) => $['types.agent'], { ns: 'app' }).toUpperCase()}
               </div>
             )}
-            {appBasicInfo.mode === AppModeEnum.WORKFLOW && (
+            {appMode === AppModeEnum.WORKFLOW && (
               <div className="truncate">
                 {t(($) => $['types.workflow'], { ns: 'app' }).toUpperCase()}
               </div>
             )}
-            {appBasicInfo.mode === AppModeEnum.COMPLETION && (
+            {appMode === AppModeEnum.COMPLETION && (
               <div className="truncate">
                 {t(($) => $['types.completion'], { ns: 'app' }).toUpperCase()}
               </div>
@@ -126,5 +132,3 @@ const AppCard = ({ app, canCreate, onCreate, onTry, isExplore = true }: AppCardP
     </div>
   )
 }
-
-export default AppCard

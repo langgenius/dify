@@ -2,17 +2,16 @@
 
 import type { RecentAppResponse } from '@dify/contracts/api/console/apps/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
-import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
-import ContinueWorkItem from './item'
+import { ContinueWorkItem } from './item'
 
 type ContinueWorkProps = {
   apps: RecentAppResponse[]
   className?: string
 }
 
-const ContinueWork = ({ apps, className }: ContinueWorkProps) => {
+export function ContinueWork({ apps, className }: ContinueWorkProps) {
   const { t } = useTranslation()
 
   if (apps.length === 0) return null
@@ -42,5 +41,3 @@ const ContinueWork = ({ apps, className }: ContinueWorkProps) => {
     </section>
   )
 }
-
-export default React.memo(ContinueWork)
