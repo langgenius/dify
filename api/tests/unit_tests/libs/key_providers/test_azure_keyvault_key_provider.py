@@ -9,7 +9,6 @@ decryption of tokens encrypted before the rotation.
 import datetime
 import json
 from types import SimpleNamespace
-from typing import cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -94,6 +93,11 @@ class FakeKeyClient:
     def update_key_rotation_policy(self, name: str, policy: KeyRotationPolicy) -> KeyRotationPolicy:
         self.rotation_policies[name] = policy
         return policy
+
+    def get_cryptography_client(self, name: str, *, key_version: str | None = None) -> "FakeCryptographyClient":
+        assert name in self.created_keys, f"key {name} was never created"
+        key_id = f"{self.vault_url}/keys/{name}/{key_version}"
+        return FakeCryptographyClient(key_id, credential=self.credential)
 
 
 @pytest.fixture
@@ -261,19 +265,4 @@ def test_decrypt_translates_disabled_key_version_into_value_error() -> None:
         provider.decrypt_with_decoding(encrypted, "tenant-1")
 
 
-def test_evicted_crypto_client_is_closed(monkeypatch: pytest.MonkeyPatch, fake_key_client: FakeKeyClient) -> None:
-    monkeypatch.setattr("libs.key_providers.azure_keyvault_key_provider._CRYPTO_CLIENT_CACHE_MAXSIZE", 1)
 
-    provider = AzureKeyVaultKeyProvider()
-    provider.generate_key_pair("tenant-1")
-
-    fake_key_client.current_version = "v1"
-    provider.encrypt("tenant-1", "secret-v1")
-    v1_client = cast(FakeCryptographyClient, provider._get_crypto_client("tenant-1", version="v1")[0])
-    assert not v1_client.closed
-
-    # Force a new entry into the (maxsize=1) cache, evicting the "v1" client.
-    fake_key_client.current_version = "v2"
-    provider.encrypt("tenant-1", "secret-v2")
-
-    assert v1_client.closed

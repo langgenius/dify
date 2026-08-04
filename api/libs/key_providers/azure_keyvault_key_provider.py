@@ -1,5 +1,4 @@
 import json
-import threading
 from datetime import UTC, datetime
 from typing import Any, override
 
@@ -12,7 +11,6 @@ from azure.keyvault.keys import (
     KeyRotationPolicyAction,
 )
 from azure.keyvault.keys.crypto import CryptographyClient, KeyWrapAlgorithm
-from cachetools import LRUCache
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
 
@@ -28,16 +26,6 @@ _PREFIX = b"HYBRID:"
 _ENVELOPE_VERSION = 1
 
 _DEFAULT_WRAP_ALGORITHM = KeyWrapAlgorithm.rsa_oaep_256
-
-_CRYPTO_CLIENT_CACHE_MAXSIZE = 4096
-
-
-class _CryptoClientCache(LRUCache[tuple[str, str], CryptographyClient]):
-    @override
-    def popitem(self) -> tuple[tuple[str, str], CryptographyClient]:
-        key, client = super().popitem()
-        client.close()
-        return key, client
 
 
 class AzureKeyVaultKeyProvider(BaseKeyProvider):
@@ -71,9 +59,6 @@ class AzureKeyVaultKeyProvider(BaseKeyProvider):
         self._vault_url = vault_url
         self._credential = DefaultAzureCredential()
         self._key_client = KeyClient(vault_url=vault_url, credential=self._credential)
-        # Cached per (tenant_id, *concrete* version).
-        self._crypto_clients: _CryptoClientCache = _CryptoClientCache(maxsize=_CRYPTO_CLIENT_CACHE_MAXSIZE)
-        self._lock = threading.Lock()
 
     @staticmethod
     def _key_name(tenant_id: str) -> str:
@@ -83,18 +68,10 @@ class AzureKeyVaultKeyProvider(BaseKeyProvider):
         """
         Return a CryptographyClient bound to `version`, along with the resolved version string
         that was actually used.
-
-        None version indicates latest version, and is never cached.
         """
         key_name = self._key_name(tenant_id)
-
         if version is not None:
-            with self._lock:
-                cached = self._crypto_clients.get((key_name, version))
-            if cached is not None:
-                return cached, version
             resolved_version = version
-            key_id = f"{self._vault_url}/keys/{key_name}/{version}"
         else:
             versions = list(self._key_client.list_properties_of_key_versions(key_name))
             if not versions:
@@ -104,16 +81,9 @@ class AzureKeyVaultKeyProvider(BaseKeyProvider):
                 key=lambda properties: properties.created_on or datetime.min.replace(tzinfo=UTC),
             )
             resolved_version = current.version or ""
-            key_id = current.id
-
-        cache_key = (key_name, resolved_version)
-        with self._lock:
-            cached = self._crypto_clients.get(cache_key)
-            if cached is not None:
-                return cached, resolved_version
-            client = CryptographyClient(key_id, credential=self._credential)
-            self._crypto_clients[cache_key] = client
-        return client, resolved_version
+        return self._key_client.get_cryptography_client(
+            key_name, key_version=resolved_version
+        ), resolved_version
 
     @override
     def generate_key_pair(self, tenant_id: str) -> str:
