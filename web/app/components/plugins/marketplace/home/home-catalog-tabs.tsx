@@ -23,15 +23,15 @@ const HomeCatalogTabs = ({
 }: HomeCatalogTabsProps) => {
   const { t } = useTranslation()
   const catalogParams = language ? { language } : undefined
-  const getCatalogHref = (path: string) => {
-    if (!isMarketplacePlatform) return getMarketplaceUrl(path, catalogParams)
-
+  const getRelativeCatalogHref = (path: string) => {
     const searchParams = new URLSearchParams(catalogParams)
     const queryString = searchParams.toString()
     return queryString ? `${path}?${queryString}` : path
   }
-  const pluginsHref = getCatalogHref('/plugins')
-  const templatesHref = getCatalogHref('/templates')
+  const pluginsHref = isMarketplacePlatform
+    ? getRelativeCatalogHref('/plugins')
+    : getMarketplaceUrl('/plugins', catalogParams)
+  const templatesHref = getRelativeCatalogHref('/templates')
   const isPluginsActive = activeTab === 'plugins'
   const isTemplatesActive = activeTab === 'templates'
   const pluginsLabel = labels?.plugins ?? t(($) => $['marketplace.home.plugins'], { ns: 'plugin' })

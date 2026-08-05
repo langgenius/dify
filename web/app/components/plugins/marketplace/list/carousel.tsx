@@ -226,7 +226,10 @@ const Carousel = ({
     let isReducedMotion = reducedMotionQuery?.matches ?? false
 
     const syncAutoplay = () => {
-      if (isInViewport && isDocumentVisible && !isReducedMotion && !isHovered) autoplay.play()
+      const hasMultiplePages = api.scrollSnapList().length > 1
+
+      if (hasMultiplePages && isInViewport && isDocumentVisible && !isReducedMotion && !isHovered)
+        autoplay.play()
       else autoplay.stop()
     }
     const handleVisibilityChange = () => {
