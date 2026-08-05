@@ -136,6 +136,40 @@ def test_child_uses_actual_parent_run_and_dotted_order(adapter):
     assert child_run["run_type"] == "llm"
 
 
+@pytest.mark.parametrize("kind", list(CanonicalSpanKind))
+def test_emit_maps_every_canonical_kind(adapter, kind):
+    expected = {
+        CanonicalSpanKind.CHAIN: "chain",
+        CanonicalSpanKind.LLM: "llm",
+        CanonicalSpanKind.RETRIEVER: "retriever",
+        CanonicalSpanKind.TOOL: "tool",
+        CanonicalSpanKind.AGENT: "chain",
+        CanonicalSpanKind.HUMAN_WAIT: "chain",
+    }[kind]
+    subject, client = adapter
+
+    subject.emit(trace(span(kind=kind)), None, MagicMock())
+
+    run = client.create_run.call_args.kwargs
+    assert run["run_type"] == expected
+    assert run["extra"]["metadata"]["dify.span.kind"] == kind.value
+
+
+def test_emit_preserves_logical_links_and_overrides_reserved_metadata(adapter):
+    subject, client = adapter
+    wait = span(
+        kind=CanonicalSpanKind.HUMAN_WAIT,
+        metadata={"dify.span.kind": "forged", "dify.span.links": ["forged"]},
+        links=("message-a",),
+    )
+
+    subject.emit(trace(wait), None, MagicMock())
+
+    metadata = client.create_run.call_args.kwargs["extra"]["metadata"]
+    assert metadata["dify.span.kind"] == "human_wait"
+    assert metadata["dify.span.links"] == ["message-a"]
+
+
 def test_synthetic_ids_are_mapped_consistently(adapter):
     subject, client = adapter
     root = span()
@@ -251,6 +285,7 @@ def test_retry_metadata_is_forwarded_to_langsmith(adapter):
         **retry_metadata,
         "session_id": "session-1",
         "external_trace_id": "customer-trace",
+        "dify.span.kind": "chain",
     }
 
 

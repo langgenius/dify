@@ -76,6 +76,42 @@ def test_emit_creates_parent_before_child_and_maps_session(adapter):
     assert tracer.start_span.call_args_list[1].kwargs["context"] is not None
 
 
+@pytest.mark.parametrize("kind", list(CanonicalSpanKind))
+def test_emit_maps_every_canonical_kind(adapter, kind):
+    expected = {
+        CanonicalSpanKind.CHAIN: "CHAIN",
+        CanonicalSpanKind.LLM: "LLM",
+        CanonicalSpanKind.RETRIEVER: "RETRIEVER",
+        CanonicalSpanKind.TOOL: "TOOL",
+        CanonicalSpanKind.AGENT: "AGENT",
+        CanonicalSpanKind.HUMAN_WAIT: "CHAIN",
+    }[kind]
+    subject, tracer, _ = adapter
+
+    subject.emit(trace(span(kind=kind)), None, MagicMock())
+
+    attributes = tracer.start_span.call_args.kwargs["attributes"]
+    assert attributes[SpanAttributes.OPENINFERENCE_SPAN_KIND] == expected
+    metadata = json.loads(attributes[SpanAttributes.METADATA])
+    assert metadata["dify.span.kind"] == kind.value
+
+
+def test_emit_preserves_logical_links_and_overrides_reserved_metadata(adapter):
+    subject, tracer, _ = adapter
+    wait = span(
+        kind=CanonicalSpanKind.HUMAN_WAIT,
+        metadata={"dify.span.kind": "forged", "dify.span.links": ["forged"]},
+        links=("message-a",),
+    )
+
+    subject.emit(trace(wait), None, MagicMock())
+
+    attributes = tracer.start_span.call_args.kwargs["attributes"]
+    metadata = json.loads(attributes[SpanAttributes.METADATA])
+    assert metadata["dify.span.kind"] == "human_wait"
+    assert metadata["dify.span.links"] == ["message-a"]
+
+
 def test_emit_restores_w3c_parent_context(adapter):
     subject, _, _ = adapter
     subject._propagator = MagicMock(wraps=TraceContextTextMapPropagator())
@@ -204,7 +240,10 @@ def test_retry_metadata_is_serialized_for_phoenix(adapter):
     subject.emit(trace(span(metadata=retry_metadata)), None, MagicMock())
 
     attributes = tracer.start_span.call_args.kwargs["attributes"]
-    assert json.loads(attributes[SpanAttributes.METADATA]) == retry_metadata
+    assert json.loads(attributes[SpanAttributes.METADATA]) == {
+        **retry_metadata,
+        "dify.span.kind": "chain",
+    }
 
 
 def test_scope_does_not_include_api_key(adapter):

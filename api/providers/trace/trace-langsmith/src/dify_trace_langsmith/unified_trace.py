@@ -36,6 +36,7 @@ _RUN_TYPE: dict[CanonicalSpanKind, LangSmithRunType] = {
     CanonicalSpanKind.RETRIEVER: "retriever",
     CanonicalSpanKind.TOOL: "tool",
     CanonicalSpanKind.AGENT: "chain",
+    CanonicalSpanKind.HUMAN_WAIT: "chain",
 }
 
 
@@ -120,6 +121,10 @@ class UnifiedLangSmithAdapter:
                 if parent and parent.kind is ParentResolutionKind.LINKED_ROOT and parent.linked_parent:
                     metadata["linked_parent_workflow_run_id"] = parent.linked_parent.parent_workflow_run_id
                     metadata["linked_parent_node_execution_id"] = parent.linked_parent.parent_node_execution_id
+            metadata["dify.span.kind"] = canonical_span.kind.value
+            metadata.pop("dify.span.links", None)
+            if canonical_span.links:
+                metadata["dify.span.links"] = list(canonical_span.links)
 
             try:
                 self._client.create_run(

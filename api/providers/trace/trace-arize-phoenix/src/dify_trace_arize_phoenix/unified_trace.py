@@ -36,6 +36,7 @@ _KIND_MAP: dict[CanonicalSpanKind, OpenInferenceSpanKindValues] = {
     CanonicalSpanKind.RETRIEVER: OpenInferenceSpanKindValues.RETRIEVER,
     CanonicalSpanKind.TOOL: OpenInferenceSpanKindValues.TOOL,
     CanonicalSpanKind.AGENT: OpenInferenceSpanKindValues.AGENT,
+    CanonicalSpanKind.HUMAN_WAIT: OpenInferenceSpanKindValues.CHAIN,
 }
 
 
@@ -114,6 +115,10 @@ class UnifiedPhoenixAdapter:
         ):
             metadata["linked_parent_workflow_run_id"] = parent.linked_parent.parent_workflow_run_id
             metadata["linked_parent_node_execution_id"] = parent.linked_parent.parent_node_execution_id
+        metadata["dify.span.kind"] = canonical_span.kind.value
+        metadata.pop("dify.span.links", None)
+        if canonical_span.links:
+            metadata["dify.span.links"] = list(canonical_span.links)
         return {
             SpanAttributes.OPENINFERENCE_SPAN_KIND: _KIND_MAP[canonical_span.kind].value,
             SpanAttributes.INPUT_VALUE: _json(canonical_span.inputs),
