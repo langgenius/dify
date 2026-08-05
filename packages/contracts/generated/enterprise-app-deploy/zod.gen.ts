@@ -144,8 +144,16 @@ export const zBatchGetSourceVersionDeploymentsRequest = z.object({
   sourceVersionIds: z.array(z.string()).optional(),
 })
 
+export const zCheckAppDeletableRequest = z.object({
+  appId: z.string().optional(),
+})
+
+export const zCheckAppDeletableResponse = z.object({
+  deletable: z.boolean().optional(),
+  reason: z.string().optional(),
+})
+
 export const zCheckSourceVersionDeletableRequest = z.object({
-  tenantId: z.string().optional(),
   appId: z.string().optional(),
   sourceVersionId: z.string().optional(),
 })
@@ -439,6 +447,8 @@ export const zError = z.object({
       'APPDEPLOY_RUNTIME_UNAVAILABLE',
       'APPDEPLOY_DEPLOYMENT_TIMEOUT',
       'APPDEPLOY_DEPLOYMENT_INTERRUPTED',
+      'APPDEPLOY_ENVIRONMENT_CPU_POOL_EXHAUSTED',
+      'APPDEPLOY_DEPLOYMENT_CPU_NOT_APPLICABLE',
       'APPDEPLOY_APP_RUNNER_CONTROL_NOT_CONFIGURED',
       'APPDEPLOY_RUNTIME_ASSIGNMENT_FAILED',
       'APPDEPLOY_REVISION_TIMEOUT',
@@ -664,6 +674,19 @@ export const zPrecheckWorkflowDeploymentResponse = z.object({
   unsupported_tool_providers: z.array(zUnsupportedToolProvider),
 })
 
+export const zUpdateEnvironmentDeployedAppCpuRequest = z.object({
+  environmentId: z.string(),
+  deploymentId: z.string(),
+  cpuCount: z.number(),
+})
+
+export const zUpdateEnvironmentDeployedAppCpuResponse = z.object({
+  deploymentId: z.string(),
+  cpuCount: z.number(),
+  allocatedCpuCount: z.number(),
+  poolCpuCount: z.number(),
+})
+
 export const zUpdateEnvironmentRequest = z.object({
   environmentId: z.string().optional(),
   displayName: z.string().optional(),
@@ -725,6 +748,7 @@ export const zEnvironmentDeployedApp = z.object({
   lastDeployedAt: z.iso.datetime().optional(),
   deployedBy: zOperator.optional(),
   latestAttempt: zEnvironmentDeployedAppAttempt.optional(),
+  cpuCount: z.number().optional(),
 })
 
 export const zEnvironmentDeploymentOperation = z.object({

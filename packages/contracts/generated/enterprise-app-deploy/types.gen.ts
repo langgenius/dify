@@ -227,8 +227,16 @@ export type BatchGetSourceVersionDeploymentsResponse = {
   items?: Array<SourceVersionDeployment>
 }
 
+export type CheckAppDeletableRequest = {
+  appId?: string
+}
+
+export type CheckAppDeletableResponse = {
+  deletable?: boolean
+  reason?: string
+}
+
 export type CheckSourceVersionDeletableRequest = {
-  tenantId?: string
   appId?: string
   sourceVersionId?: string
 }
@@ -383,6 +391,7 @@ export type EnvironmentDeployedApp = {
   lastDeployedAt?: string
   deployedBy?: Operator
   latestAttempt?: EnvironmentDeployedAppAttempt
+  cpuCount?: number
 }
 
 export type EnvironmentDeployedAppAttempt = {
@@ -580,6 +589,8 @@ export type Error = {
     | 'APPDEPLOY_RUNTIME_UNAVAILABLE'
     | 'APPDEPLOY_DEPLOYMENT_TIMEOUT'
     | 'APPDEPLOY_DEPLOYMENT_INTERRUPTED'
+    | 'APPDEPLOY_ENVIRONMENT_CPU_POOL_EXHAUSTED'
+    | 'APPDEPLOY_DEPLOYMENT_CPU_NOT_APPLICABLE'
     | 'APPDEPLOY_APP_RUNNER_CONTROL_NOT_CONFIGURED'
     | 'APPDEPLOY_RUNTIME_ASSIGNMENT_FAILED'
     | 'APPDEPLOY_REVISION_TIMEOUT'
@@ -792,6 +803,19 @@ export type UnsupportedToolProvider = {
   provider_id: string
   provider_name: string
   tool_name: string
+}
+
+export type UpdateEnvironmentDeployedAppCpuRequest = {
+  environmentId: string
+  deploymentId: string
+  cpuCount: number
+}
+
+export type UpdateEnvironmentDeployedAppCpuResponse = {
+  deploymentId: string
+  cpuCount: number
+  allocatedCpuCount: number
+  poolCpuCount: number
 }
 
 export type UpdateEnvironmentRequest = {
