@@ -2,10 +2,10 @@
 
 import type { Dayjs } from 'dayjs'
 import type { FC } from 'react'
-import dayjs from 'dayjs'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
+import { toDayjs as parseDayjs } from '@/app/components/base/date-and-time-picker/utils/dayjs'
 import {
   parseToolDateRangeValue,
   stringifyToolDateRangeValue,
@@ -13,11 +13,10 @@ import {
 
 const DATE_FMT = 'YYYY-MM-DD'
 
-const toDayjs = (raw?: string): Dayjs | undefined => {
+const toDayjs = (raw?: string, timezone?: string): Dayjs | undefined => {
   if (!raw)
     return undefined
-  const d = dayjs(raw)
-  return d.isValid() ? d : undefined
+  return parseDayjs(raw, { timezone, format: DATE_FMT })
 }
 
 type Props = {
@@ -65,7 +64,7 @@ const ToolDateRangePicker: FC<Props> = ({
           timezone={timezone}
           needTimePicker={false}
           noConfirm
-          value={toDayjs(parsed.start)}
+          value={toDayjs(parsed.start, timezone)}
           onChange={(d) => {
             patch({ start: d ? d.format(DATE_FMT) : undefined })
           }}
@@ -86,7 +85,7 @@ const ToolDateRangePicker: FC<Props> = ({
           timezone={timezone}
           needTimePicker={false}
           noConfirm
-          value={toDayjs(parsed.end)}
+          value={toDayjs(parsed.end, timezone)}
           onChange={(d) => {
             patch({ end: d ? d.format(DATE_FMT) : undefined })
           }}
