@@ -3707,22 +3707,6 @@
       "count": 4
     }
   },
-  "web/app/components/tools/workflow-tool/__tests__/configure-button.spec.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/tools/workflow-tool/configure-button.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/tools/workflow-tool/index.tsx": {
     "no-restricted-imports": {
       "count": 1
