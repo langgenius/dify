@@ -7,7 +7,7 @@ from typing import Any, Literal, NotRequired, TypedDict, cast, override
 
 import sqlalchemy as sa
 from pydantic import BaseModel, Field
-from sqlalchemy import ColumnElement, select
+from sqlalchemy import ColumnElement, CursorResult, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import InstrumentedAttribute, Session
 
@@ -933,7 +933,7 @@ class AppService:
             .values({column.key: value, "updated_by": current_user.id, "updated_at": now})
             .execution_options(synchronize_session=False)
         )
-        changed = bool(session.execute(stmt).rowcount)
+        changed = bool(cast(CursorResult, session.execute(stmt)).rowcount)
         # Post-operation the row is at `value` either way; keep the returned
         # object consistent with what was committed (only a real transition
         # moves updated_by/updated_at).
