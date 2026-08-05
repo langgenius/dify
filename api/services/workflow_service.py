@@ -357,10 +357,16 @@ class WorkflowService:
         stmt = (
             select(Workflow)
             .where(Workflow.app_id == app_model.id)
-            # `version` is a stringified timestamp whose microseconds are omitted when zero,
-            # so ordering by it misplaces versions across second boundaries. `version_number`
-            # cannot be used either: versions published before numbering was introduced are NULL.
-            .order_by(Workflow.created_at.desc(), Workflow.id.desc())
+            # The draft leads the list; its `created_at` is the app's creation time, so it would
+            # otherwise sort last. Published versions then order by publish time: `version` is a
+            # stringified timestamp whose microseconds are omitted when zero, so ordering by it
+            # misplaces versions across second boundaries, and `version_number` is NULL for
+            # versions published before numbering was introduced.
+            .order_by(
+                (Workflow.version == Workflow.VERSION_DRAFT).desc(),
+                Workflow.created_at.desc(),
+                Workflow.id.desc(),
+            )
             .limit(limit + 1)
             .offset((page - 1) * limit)
         )

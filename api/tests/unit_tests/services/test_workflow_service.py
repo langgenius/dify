@@ -11,6 +11,7 @@ This test suite covers:
 
 import json
 import uuid
+from datetime import datetime, timedelta
 from types import SimpleNamespace
 from typing import Any, cast
 from unittest.mock import ANY, MagicMock, patch, sentinel
@@ -1285,6 +1286,44 @@ class TestWorkflowService:
 
         assert len(workflows) == 5
         assert has_more is False
+
+    def test_get_all_published_workflow_lists_the_draft_first(
+        self, workflow_service: WorkflowService, sqlite_session: Session
+    ):
+        """
+        Test the draft heads the version list no matter how old it is.
+
+        A draft is created together with its app and its `created_at` is never refreshed,
+        so ordering purely by publish time would put it last — off the first page entirely
+        once the app has accumulated enough published versions.
+        """
+        app = TestWorkflowAssociatedDataFactory.create_app(workflow_id="workflow-3")
+        app_created_at = datetime(2026, 1, 1)
+
+        sqlite_session.add(
+            TestWorkflowAssociatedDataFactory.create_workflow(
+                workflow_id="workflow-draft",
+                version=Workflow.VERSION_DRAFT,
+                created_at=app_created_at,
+            )
+        )
+        sqlite_session.add_all(
+            [
+                TestWorkflowAssociatedDataFactory.create_workflow(
+                    workflow_id=f"workflow-{i}",
+                    version=f"2026-02-0{i} 00:00:00",
+                    created_at=app_created_at + timedelta(days=i),
+                )
+                for i in range(1, 4)
+            ]
+        )
+        sqlite_session.commit()
+
+        workflows, _ = workflow_service.get_all_published_workflow(
+            session=sqlite_session, app_model=app, page=1, limit=2, user_id=None
+        )
+
+        assert [workflow.id for workflow in workflows] == ["workflow-draft", "workflow-3"]
 
     def test_get_all_published_workflow_has_more(self, workflow_service: WorkflowService, sqlite_session: Session):
         """
