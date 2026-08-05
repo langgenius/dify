@@ -1,11 +1,11 @@
 # Unified Tracing Contract Completion Design
 
 **Date:** 2026-08-05  
-**Status:** Approved for implementation planning
+**Status:** Approved for implementation planning; revised after conformance audit
 
 ## Context
 
-The proposed unified tracing runtime ADR defines Core-owned canonical topology, provider adapters, and cross-task parent coordination. Review discussion identified several contract details that remain implicit or inconsistently implemented. This design completes those details while preserving existing trace payload compatibility and keeping tracing fail-soft for application execution.
+The unified tracing runtime ADR defines Core-owned canonical topology, provider adapters, and cross-task parent coordination. Review discussion identified several contract details that remain implicit or inconsistently implemented. This design completes those details while preserving existing trace payload compatibility and keeping tracing fail-soft for application execution.
 
 The design intentionally does not add span checkpoints, exactly-once delivery, a provider capability framework, a new database table, or a second authorization system for parent-context envelopes.
 
@@ -27,7 +27,7 @@ Core is the only component that constructs local parent relationships. An adapte
 - every non-root local `parent_id` identifies an earlier span in the same fragment;
 - cross-task parentage is represented by trace-level parent-resolution fields, not by a local `parent_id` that points outside the fragment.
 
-These invariants will be enforced through builder and adapter-contract tests rather than a generic runtime normalization layer. Canonical traces are built in the current worker from persisted `TraceInfo`; they are not deserialized from old canonical payloads. Correcting the builders therefore preserves old `TraceInfo` compatibility without maintaining two canonical formats.
+`CanonicalTrace` will validate these structural invariants at construction. It will also reject a fragment that sets both `external_parent` and `required_parent_context_id`. This is validation, not normalization: Core remains responsible for constructing the one valid topology rather than repairing malformed fragments differently for each adapter. Canonical traces are built in the current worker from persisted `TraceInfo`; they are not deserialized from old canonical payloads. Correcting the builders therefore preserves old `TraceInfo` compatibility without maintaining two canonical formats.
 
 If a future internal defect produces an irrecoverably invalid fragment, tracing may be skipped and logged but must not affect workflow or message execution.
 
@@ -73,7 +73,29 @@ For contract v1, adapter `emit` behavior means:
 
 An adapter may publish parent context only after the corresponding provider parent span has reached its acceptance boundary. Phoenix defines acceptance as `SpanExportResult.SUCCESS`. LangSmith defines acceptance as synchronous `create_run` return. A future adapter whose SDK only queues locally must provide a synchronous flush or acknowledgement boundary before it can conform to v1.
 
-Shared conformance tests will cover Core-resolved parent consumption, publication-after-acceptance, retryable failure propagation, and terminal failure behavior. Provider-specific tests will continue to define the concrete SDK success and error mapping.
+Phoenix and LangSmith behavior tests will apply the same conformance requirements without introducing a shared test framework. They cover Core-resolved parent consumption, publication-after-acceptance, retryable failure propagation, and terminal failure behavior while retaining provider-specific assertions for concrete SDK success and error mapping.
+
+### Canonical kind and logical-link preservation
+
+Every registered unified adapter must accept every `CanonicalSpanKind` in the current contract. Human Input waits map to the provider's generic chain concept because they represent a bounded workflow operation rather than an LLM, retriever, or tool:
+
+- Phoenix maps `HUMAN_WAIT` to OpenInference `CHAIN`;
+- LangSmith maps `HUMAN_WAIT` to `run_type="chain"`.
+
+Both adapters must write the reserved metadata field `dify.span.kind` from the canonical enum value. Canonical metadata overrides a conflicting caller-supplied reserved value.
+
+`CanonicalSpan.links` contains stable Dify logical identifiers, not provider-native trace and span context. Contract v1 therefore does not fabricate native provider links from those identifiers. When links are present, every adapter must preserve them in the reserved `dify.span.links` metadata field. A later contract may add native links when Core can supply real provider-resolvable link context; the logical metadata remains the cross-provider baseline.
+
+The current adapter behavior is:
+
+| Capability | Phoenix | LangSmith |
+|---|---|---|
+| Human Wait provider type | OpenInference `CHAIN` | `run_type="chain"` |
+| Canonical kind | `dify.span.kind` | `dify.span.kind` |
+| Logical links | `dify.span.links` metadata | `dify.span.links` metadata |
+| Provider identity | OpenTelemetry identifiers are not stable across replay; canonical ID is an attribute | provider run ID is derived deterministically from canonical ID |
+| Replay guarantee | duplicate effects are possible | stable ID does not imply runtime-wide exactly-once delivery |
+| Acceptance | exporter returns success | synchronous `create_run` returns |
 
 ### At-least-once and provider idempotency
 
@@ -162,9 +184,13 @@ Tests will cover:
 - retryable versus terminal adapter failures;
 - destination stability across credential changes;
 - parent-context lifecycle and version failure behavior.
+- rejection of duplicate span IDs, a missing or parented root, out-of-order or missing local parents, and conflicting trace-level parent modes;
+- behavioral conversion of every current canonical span kind by Phoenix and LangSmith;
+- `HUMAN_WAIT` mapping to each provider's generic chain type;
+- canonical `dify.span.kind` and `dify.span.links` preservation, including protection from conflicting caller metadata.
 
 Container nesting is documented as unsupported by v1 and is not given speculative runtime tests until Dify supports that product topology.
 
 ## Documentation Sequence
 
-Implementation and conformance tests will land first. The normative runtime specification will then record the implemented contract and a small set of examples. The ADR remains `Proposed` until review confirms the contract; it must not be changed to `Accepted` merely because the implementation exists.
+Implementation, conformance tests, and normative documentation will be updated as one contract change. The ADR status becomes `Revised` to record that the original decision has been materially updated after review; this status does not claim reviewer acceptance.
