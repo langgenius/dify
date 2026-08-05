@@ -213,6 +213,7 @@ export type ApplicationInteraction = {
   traceId: string
   difyTraceId: string
   deploymentVersionId: string
+  error?: string
   body?: string
   attributesJson?: string
   resourceAttributesJson?: string
@@ -774,6 +775,12 @@ export type RetryEnvironmentBootstrapResponse = {
   environment: Environment
 }
 
+export type SimpleAccount = {
+  id: string
+  name?: string
+  email?: string
+}
+
 export type SourceVersionDeployment = {
   sourceVersionId?: string
   environments?: Array<WorkflowDeploymentEnvironment>
@@ -844,6 +851,9 @@ export type WorkflowVersion = {
   marked_name?: string
   id: string
   marked_comment?: string
+  version_number?: number
+  created_at?: string
+  created_by?: SimpleAccount
 }
 
 export type Pagination = {

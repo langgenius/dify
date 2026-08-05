@@ -564,6 +564,7 @@ export const zApplicationInteraction = z.object({
   traceId: z.string(),
   difyTraceId: z.string(),
   deploymentVersionId: z.string(),
+  error: z.string().optional(),
   body: z.string().optional(),
   attributesJson: z.string().optional(),
   resourceAttributesJson: z.string().optional(),
@@ -640,6 +641,16 @@ export const zRetryEnvironmentBootstrapRequest = z.object({
 
 export const zRetryEnvironmentBootstrapResponse = z.object({
   environment: zEnvironment,
+})
+
+/**
+ * SimpleAccount mirrors the account shape Dify's console API returns, so a
+ * client can render an account the same way whichever API it came from.
+ */
+export const zSimpleAccount = z.object({
+  id: z.string(),
+  name: z.string().optional(),
+  email: z.string().optional(),
 })
 
 export const zTestConnectionRequest = z.object({
@@ -722,6 +733,13 @@ export const zWorkflowVersion = z.object({
   marked_name: z.string().optional(),
   id: z.string(),
   marked_comment: z.string().optional(),
+  version_number: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
+  created_at: z.iso.datetime().optional(),
+  created_by: zSimpleAccount.optional(),
 })
 
 export const zDeploymentOperation = z.object({
