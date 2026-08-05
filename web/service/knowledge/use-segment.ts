@@ -208,9 +208,9 @@ export const useSegmentBatchImport = () => {
 export const useCheckSegmentBatchImportProgress = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'batchImport', 'checkProgress'],
-    mutationFn: (payload: { jobID: string }) => {
-      const { jobID } = payload
-      return get<BatchImportResponse>(`/datasets/batch_import_status/${jobID}`)
+    mutationFn: (payload: { jobID: string; datasetID: string }) => {
+      const { jobID, datasetID } = payload
+      return get<BatchImportResponse>(`/datasets/${datasetID}/batch_import_status/${jobID}`)
     },
   })
 }
