@@ -224,8 +224,7 @@ class IMMessaging(Protocol):
     Each send invocation attempts to create the requested message at most once
     and never replays an ambiguous message-creation operation. Provider-specific
     prerequisite calls remain inside this capability. Unsupported CommonMark
-    formatting falls back to equivalent plain text. Borrowed root resources are
-    never closed or replaced by this view.
+    formatting falls back to equivalent plain text.
     """
 
     def send_text(

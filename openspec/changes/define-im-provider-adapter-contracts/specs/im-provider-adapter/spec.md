@@ -1,102 +1,90 @@
 ## ADDED Requirements
 
-### Requirement: IMProviderAdapter MUST bind one immutable Provider-specific configuration
-An `IMProviderAdapter` MUST be constructed from one concrete Provider's typed configuration and MUST bind that configuration for its lifetime. Construction MUST perform only local shape validation so that an adapter can still be created for candidate credentials that later fail remote testing. The adapter MAY own a Provider-specific API client context shared by credential testing, Directory, Messaging and Dynamic Card Messaging. Capability-specific logical state MAY remain private to its view and MUST NOT require root-level coordination. Any retained closeable resource used by those root-context capabilities MUST be owned by the root adapter rather than by a capability view. Webhook Events MUST depend only on immutable configuration, MUST NOT borrow root-owned resources and MUST remain outside the root close lifecycle.
+### Requirement: IMProviderAdapter MUST bind one immutable Provider-specific credential set
+An `IMProviderAdapter` MUST be constructed from one concrete Provider's resolved typed credentials and MUST bind those credentials for its lifetime. Adapter credentials MUST contain resolved values rather than controller update instructions. Construction MUST perform only local validation and MUST NOT perform remote credential testing. The adapter's `provider` property MUST identify the Provider bound to the adapter.
 
-#### Scenario: Two capabilities are used from one adapter
-- **WHEN** a caller obtains Messaging and Directory capabilities from the same adapter
-- **THEN** both capabilities MUST use the adapter-bound configuration and Provider namespace without accepting credentials again
-- **AND** when the concrete adapter provides a shared API client context, both capability views MUST borrow it without closing or replacing it
+#### Scenario: Candidate credentials are rejected remotely
+- **WHEN** a caller constructs an adapter with locally valid credentials that the Provider will reject
+- **THEN** construction MUST succeed so the caller can invoke `test_credentials()` and receive its typed result
 
-#### Scenario: One Provider requires multiple SDK client types
-- **WHEN** a concrete Provider requires distinct API and event clients
-- **THEN** the root adapter MAY own a Provider-specific bundle containing API client roles required by credential testing, Directory and Messaging capabilities
-- **AND** Webhook execution state and STREAM client roles MUST remain outside that bundle
+#### Scenario: Provider credentials change
+- **WHEN** a caller needs to use different credentials or event-transport material
+- **THEN** it MUST construct a new adapter rather than modify the existing adapter
+- **AND** constructing the new adapter MUST NOT mutate, invalidate or close the existing adapter
 
-#### Scenario: Provider configuration changes
-- **WHEN** a caller needs to use changed credentials or transport material
-- **THEN** it MUST construct a new adapter rather than replacing configuration inside the existing adapter
-- **AND** construction of the new adapter MUST NOT implicitly mutate, invalidate or close the existing adapter
-- **AND** the existing adapter MUST remain usable under its original bound configuration and lifecycle contract
-- **AND** each adapter's owner MUST independently decide whether to invoke `close()` when that instance's own lifecycle ends
+### Requirement: IMProviderAdapter MUST expose narrow capabilities
+Every adapter MUST expose required `directory` and `messaging` capabilities. It MUST expose `dynamic_card_messaging`, `create_webhook_handler(consumer)` and `create_stream_handler(consumer)` only according to the concrete Provider's supported capabilities. Each event transport factory MUST receive the application-supplied `IMEventConsumer` to which authenticated events will be delivered. An unsupported optional capability or event transport factory MUST return `None`. Capability presence or factory result MUST be the authoritative support signal; the adapter MUST NOT expose a separate support flag or a dummy unsupported capability.
 
-### Requirement: IMProviderAdapter MUST expose narrow capability views
-The adapter MUST expose required `directory` and `messaging` capability views. It MUST expose `dynamic_card_messaging` and `webhook_events` only when the concrete Provider supports them in this release. It MUST expose `create_stream_events()` as a factory returning a new independent `IMStreamEvents` instance when STREAM is supported and `None` otherwise. Capability presence or factory result MUST be the authoritative support signal; the adapter MUST NOT expose a separate support flag that can disagree with the capability view or factory result.
-
-#### Scenario: Initial Provider capabilities and STREAM factory are inspected
+#### Scenario: Initial Provider capabilities are inspected
 - **WHEN** callers inspect the five initial adapters
-- **THEN** all five MUST expose Directory and Basic Messaging, while Slack, Feishu/Lark and Microsoft Teams MUST expose Dynamic Card Messaging and Webhook Events
-- **AND** `create_stream_events()` MUST return a new `IMStreamEvents` for Slack and Feishu/Lark and `None` for DingTalk, WeCom and Microsoft Teams
+- **THEN** all five MUST expose Directory and Basic Messaging
+- **AND** Slack, Feishu/Lark and Microsoft Teams MUST expose Dynamic Card Messaging and create Webhook handlers
+- **AND** Slack and Feishu/Lark MUST create event streams
+- **AND** DingTalk and WeCom MUST expose neither event transport type
+- **AND** Microsoft Teams MUST return `None` from `create_stream_handler(consumer)`
 
-#### Scenario: Unsupported capability is requested
-- **WHEN** a caller inspects Dynamic Card Messaging or Webhook Events on an unsupported Provider, or calls `create_stream_events()` on DingTalk, WeCom or Microsoft Teams
-- **THEN** Dynamic Card Messaging and Webhook Events MUST be absent, and `create_stream_events()` MUST return `None`, rather than returning a dummy capability that fails with an unsupported result
+#### Scenario: Capabilities are inspected without invocation
+- **WHEN** a caller accesses a capability or creates a supported event transport with an `IMEventConsumer`
+- **THEN** the adapter MUST NOT test credentials, perform a Provider operation or start a STREAM connection
 
-### Requirement: IMProviderAdapter MUST expose credential testing over its bound configuration
-The adapter MUST expose `test_credentials()` without credential or event transport arguments. The operation MUST use the adapter-bound API credentials to authenticate, identify the stable Provider tenant and validate baseline permissions. It MUST remain independent from message-recipient reachability and event transport capability presence.
+### Requirement: IMProviderAdapter MUST test its bound credentials
+The adapter MUST expose `test_credentials()` without credential or event-transport arguments. A successful result MUST identify the normalized Provider and stable Provider tenant ID after the applicable authentication, tenant-identification and baseline-permission checks succeed. A failure MUST distinguish authentication rejection, unavailable stable tenant identity and an unknown result. Diagnostic reasons MUST be operator-safe and MUST NOT be treated as stable decision codes.
 
 #### Scenario: Bound credentials are valid
-- **WHEN** `test_credentials()` authenticates and confirms the required permissions
-- **THEN** it MUST return safe normalized facts containing the Provider, stable Provider tenant ID and permission result
+- **WHEN** authentication, tenant identification and baseline-permission checks succeed
+- **THEN** `test_credentials()` MUST return the Provider and stable Provider tenant ID
 
-#### Scenario: Bound credentials are rejected
-- **WHEN** authentication fails, a stable Provider tenant cannot be identified or baseline permissions are missing
-- **THEN** `test_credentials()` MUST return a typed safe failure without exposing raw credentials, SDK clients, raw Provider responses or Provider-specific exceptions
+#### Scenario: Credential testing has an unknown outcome
+- **WHEN** Provider or transport availability prevents a conclusive result
+- **THEN** `test_credentials()` MUST return an `UNKNOWN` failure rather than report success
 
 #### Scenario: Credential testing completes
 - **WHEN** `test_credentials()` returns success or failure
-- **THEN** it MUST NOT mutate remote Provider configuration or any caller-owned business state
+- **THEN** it MUST NOT mutate remote Provider configuration or caller-owned business state
 
-### Requirement: Provider configuration shapes MUST remain Provider-specific
-The shared adapter boundary MUST NOT flatten API credentials, Webhook verification material, encryption material or STREAM connection material into one generic key/value map. Each concrete adapter configuration MUST keep its typed Provider-specific shape while exposing the same shared capability interfaces.
+### Requirement: Provider credential types MUST remain Provider-specific
+The shared adapter boundary MUST NOT flatten API credentials, Webhook verification material, encryption material or STREAM connection material into a generic key/value map. Each concrete adapter MUST accept only its own resolved typed credential model while exposing the same shared capability interfaces.
 
-#### Scenario: Slack and Feishu adapters are constructed
-- **WHEN** Slack and Feishu/Lark require different API and event-transport configuration fields
-- **THEN** each adapter MUST receive only its own typed configuration without forcing the other Provider to accept irrelevant fields
+#### Scenario: Providers require different credential fields
+- **WHEN** two Providers require different API or event-transport credentials
+- **THEN** each adapter MUST receive only the fields defined by its own credential type
 
-### Requirement: Root-context operations MUST be externally serialized
-Every root operation other than `create_stream_events()`, every capability accessor, and every Directory, Messaging or Dynamic Card Messaging operation MUST be invoked serially and non-reentrantly. Calls in this root-context set on the same adapter MUST NOT overlap, including through interleaved tasks on one thread. They MAY execute sequentially on different threads after the preceding call has returned and the caller has performed a safe cross-thread handoff. The caller MUST provide serialization and handoff; implementations MUST NOT be required to add locks, active-operation tracking, waiting, cancellation or misuse detection for these APIs. `IMWebhookEvents.handle()` and `IMEventSink.accept()` are not part of this set and MUST follow their independent thread-safe contracts.
+### Requirement: IMProviderAdapter calls MUST be externally serialized
+An `IMProviderAdapter` is not thread-safe. Capability accessors, `create_webhook_handler(consumer)`, `create_stream_handler(consumer)`, `test_credentials()`, Directory, Messaging, Dynamic Card Messaging and root `close()` calls on the same adapter MUST NOT overlap or re-enter one another. The caller MUST externally serialize these calls. The shared contract makes no guarantee that an adapter or its root-bound capabilities can be handed across threads. A created `IMWebhookHandler`, a created `IMEventStream` and the supplied `IMEventConsumer` follow their independent concurrency and lifecycle contracts.
 
-#### Scenario: Directory and Messaging are invoked from one adapter
-- **WHEN** a caller invokes Directory and Messaging operations from one adapter instance
-- **THEN** every invocation MUST be externally serialized and MUST NOT overlap another root-context invocation on that adapter
-- **AND** a later invocation MAY run on a different thread after a safe handoff
-- **AND** the implementation MUST NOT be required to make their shared root context safe for overlapping calls
+#### Scenario: Directory and Messaging use one adapter
+- **WHEN** one thread invokes Directory and Messaging operations on its adapter
+- **THEN** each invocation MUST begin only after the preceding invocation returns
 
-#### Scenario: A callback re-enters the adapter
-- **WHEN** a root-context operation would invoke another root or root-context capability operation before the first invocation returns
-- **THEN** that re-entrant use MUST be outside the adapter contract
+#### Scenario: Two threads invoke one adapter concurrently
+- **WHEN** two threads invoke operations on the same adapter at the same time
+- **THEN** that use MUST be outside the adapter contract
 
-### Requirement: STREAM factory MUST be the only thread-safe root operation
-`create_stream_events()` MUST be safe to invoke concurrently with calls on the same adapter, including other factory calls, externally serialized root-context operations and Webhook handling. It MUST depend only on immutable Provider configuration, MUST NOT borrow closeable resources owned by the root adapter and MUST return a new independently owned `IMStreamEvents` instance on every supported invocation. The root adapter MUST NOT retain, enumerate or close returned STREAM instances. A returned instance MAY outlive the root adapter.
+#### Scenario: Adapter operation re-enters the adapter
+- **WHEN** one adapter operation invokes another before the first invocation returns
+- **THEN** that use MUST be outside the adapter contract
 
-#### Scenario: STREAM creation overlaps root-context use or close
-- **WHEN** a caller invokes `create_stream_events()` on a STREAM-capable adapter while another caller invokes Directory, Messaging or `close()`
-- **THEN** the factory MUST create the STREAM instance from immutable configuration without accessing or coordinating with the root-owned API client context
+### Requirement: STREAM creation MUST return independent event streams
+Every supported invocation of `create_stream_handler(consumer)` MUST return a distinct `IMEventStream` bound to the adapter's immutable Provider configuration and the supplied `IMEventConsumer`. Creation MUST follow the root adapter's external-serialization contract. Each returned event stream MUST have an independent run lifecycle and MAY outlive the root adapter.
 
-#### Scenario: Multiple STREAM instances are created
-- **WHEN** callers invoke `create_stream_events()` concurrently or sequentially more than once on a STREAM-capable adapter
-- **THEN** each call MUST return a distinct lifecycle owner whose resources are closed independently
+#### Scenario: Multiple event streams are created
+- **WHEN** a caller invokes `create_stream_handler(consumer)` more than once on a STREAM-capable adapter without overlapping the calls
+- **THEN** every call MUST return a distinct event stream whose run lifecycle does not affect the other event streams
 
-### Requirement: IMProviderAdapter close MUST be a serialized lifecycle boundary
-The adapter MUST expose one idempotent close operation. `close()` MAY execute on any thread, but the caller MUST invoke it only after every root-context operation has returned and MUST safely hand off the adapter when changing threads. It MUST release every closeable resource directly owned by the root adapter; when the adapter owns no such resource, cleanup MUST be a no-op. Concurrent or re-entrant close with another root-context operation, including another `close()`, MUST be outside the contract, so implementations MUST NOT wait for, cancel or synchronize with such an invocation. Concurrent `IMWebhookEvents.handle()` and `create_stream_events()` calls MUST remain independent because neither accesses root-owned resources. After close returns, the caller MUST NOT invoke any root or borrowed root-context capability operation other than a serialized repeated close; implementations MUST NOT be required to detect other post-close misuse. Root close MUST NOT affect an already obtained `IMWebhookEvents` view or an independently created `IMStreamEvents` instance.
+### Requirement: IMProviderAdapter close MUST define the root lifecycle boundary
+The adapter MUST expose an idempotent `close()` operation. The caller MUST invoke it only after all adapter operations return. After close returns, the caller MUST NOT access capabilities, create new event transports or invoke root, Directory, Messaging or Dynamic Card Messaging operations other than repeated `close()`. Root close MUST NOT invalidate a previously created `IMWebhookHandler` or `IMEventStream`.
 
-#### Scenario: Adapter is closed after serial use
-- **WHEN** every root-context operation has returned and a caller closes the adapter, possibly after a safe handoff to another thread
-- **THEN** close MUST idempotently release every directly owned closeable root-context resource without coordinating with another root-context invocation
+#### Scenario: Adapter is closed after serialized use
+- **WHEN** all root-context operations have returned and the caller invokes `close()` one or more times
+- **THEN** every invocation MUST complete without reopening the root lifecycle
 
-#### Scenario: Adapter owns no closeable resource
-- **WHEN** an adapter with no directly owned closeable resource is closed after its root-context calls have been serialized
-- **THEN** close MUST perform no cleanup
+#### Scenario: Root closes after event transports are created
+- **WHEN** an `IMWebhookHandler` or `IMEventStream` was created before root close
+- **THEN** that event transport MUST continue to follow its own documented lifecycle
 
-### Requirement: Feishu and Lark MUST share one verification evidence unit
-Feishu and Lark MUST remain distinct concrete adapters with separate typed credentials, Provider discriminators and API host configuration. Their shared SDK and protocol implementation MUST be verified as one Provider-family evidence unit rather than requiring duplicate real-execution and sanitized-fixture evidence for equivalent production paths. Real-execution and sanitized-fixture evidence for this shared unit MUST come from an authorized Feishu non-production environment. Configuration and composition tests MUST still cover both concrete adapters independently.
+### Requirement: Shared failures MUST remain safe and capability-scoped
+Shared failures MUST expose only distinctions defined by their capability. They MUST NOT contain credentials, verification material, raw Provider responses, Provider client objects or Provider-specific exceptions. Human-readable reasons MUST be operator-safe and MUST NOT be parsed as stable decision codes.
 
-#### Scenario: A shared Feishu or Lark path is verified
-- **WHEN** an operation or event path uses the same production implementation and protocol semantics for Feishu and Lark
-- **THEN** real execution against the authorized Feishu non-production environment and its sanitized fixture MUST close the shared Feishu/Lark evidence cell
-- **AND** tests MUST independently verify each adapter's credential type, Provider discriminator and API host selection
-
-#### Scenario: Feishu and Lark paths diverge
-- **WHEN** Feishu and Lark use different production code paths or Provider protocol semantics for an operation or event entry
-- **THEN** the shared evidence-unit assumption MUST be treated as invalid and the capability MUST remain incomplete pending spec review
+#### Scenario: Provider operation returns a shared failure
+- **WHEN** any shared capability returns a typed failure
+- **THEN** the caller MUST receive only the capability's stable failure facts and operator-safe diagnostics

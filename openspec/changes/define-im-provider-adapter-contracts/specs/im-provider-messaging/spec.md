@@ -1,102 +1,104 @@
 ## ADDED Requirements
 
 ### Requirement: Messaging MUST be exposed as adapter-bound capabilities
-Every initial `IMProviderAdapter` MUST expose Basic Messaging bound to the adapter's immutable Provider configuration and namespace. Only Slack, Feishu/Lark and Microsoft Teams MUST additionally expose Dynamic Card Messaging in this release; DingTalk and WeCom MUST not expose it. Messaging operations MUST NOT accept credentials, SDK clients or a generic integration context. Messaging views MAY borrow the root-owned Provider API client context and MUST NOT close or replace that context. Messaging operations belong to the adapter's externally serialized root-context set and MUST NOT overlap another root, Directory, Messaging or Dynamic Card Messaging operation on the same adapter. A later call MAY execute on a different thread after a safe caller-managed handoff. Independent Webhook handling and STREAM factory calls MAY overlap Messaging operations.
+Every initial `IMProviderAdapter` MUST expose Basic Messaging bound to the adapter's immutable Provider credentials and namespace. Only Slack, Feishu/Lark and Microsoft Teams MUST additionally expose Dynamic Card Messaging in this release. Messaging operations MUST accept no credentials, Provider clients or generic integration context and MUST follow the adapter's root-context concurrency and lifecycle contract.
 
 #### Scenario: Multiple Messaging operations use one adapter
 - **WHEN** a caller sends multiple messages through the same adapter
-- **THEN** the operations MUST execute serially using the same bound Provider configuration and namespace without receiving credentials again
-- **AND** when Messaging borrows a root-owned API client context, it MUST leave that context open for the root adapter to close
+- **THEN** the operations MUST use the same bound Provider namespace without receiving credentials again
 
-#### Scenario: Provider has no dynamic-card support
+#### Scenario: Provider has no Dynamic Card Messaging
 - **WHEN** a caller inspects Dynamic Card Messaging on DingTalk or WeCom
-- **THEN** the capability MUST be absent and MUST NOT be represented by dummy unsupported methods
+- **THEN** the capability MUST be `None`
 
 ### Requirement: New-message operations MUST receive ProviderUserId
-Every personal new-message operation MUST accept the same nominal `ProviderUserId` string type returned by Directory. The value MUST identify a user and be comparable only within the `(provider, provider_tenant_id)` namespace; it MUST NOT be globally comparable. For Feishu/Lark, Messaging MUST interpret the value as `union_id`, using the fixed `union_id` receive-ID type, and MUST NOT interpret it as application-scoped `open_id`. Messaging MUST NOT invoke Directory during send. The concrete Messaging capability MUST own any conversion from `ProviderUserId` to private transport addressing or conversation state.
+Every personal new-message operation MUST accept the nominal `ProviderUserId` returned by Directory. The value MUST be interpreted only within the `(provider, provider_tenant_id)` namespace and MUST NOT be globally comparable. The caller MUST NOT be required to supply a Provider-specific transport address or conversation state.
+
+For Feishu/Lark, Messaging MUST interpret `ProviderUserId` as `union_id` and MUST NOT interpret it as application-scoped `open_id`.
 
 #### Scenario: Feishu or Lark user is messaged
-- **WHEN** Messaging sends to a Feishu or Lark `ProviderUserId` returned by Directory
-- **THEN** the concrete adapter MUST use it as `union_id` without requiring the caller to select or supply a receive-ID type
+- **WHEN** Messaging receives a Feishu or Lark `ProviderUserId`
+- **THEN** the caller MUST NOT need to choose a receive-ID type or provide an `open_id`
 
-#### Scenario: Provider user identity is not a direct transport address
-- **WHEN** Microsoft Teams requires a personal conversation ID to send to one directory user
-- **THEN** Messaging MUST acquire or recover that conversation internally from `ProviderUserId`, bound configuration and capability-local state without requiring the caller to supply conversation facts
+#### Scenario: Provider identity is not a direct transport address
+- **WHEN** the Provider needs transport addressing in addition to `ProviderUserId`
+- **THEN** the shared new-message operation MUST still require only `ProviderUserId` from the caller
 
-### Requirement: Basic Messaging MUST be implemented by every initial Provider
-Slack, Feishu/Lark, DingTalk, WeCom and Microsoft Teams MUST implement Basic Messaging containing `send_text`. It MUST accept `ProviderUserId`. Basic Messaging MUST NOT expose a separate recipient-reachability preflight operation.
+### Requirement: Basic Messaging MUST expose send_text for every initial Provider
+Slack, Feishu/Lark, DingTalk, WeCom and Microsoft Teams MUST expose `send_text(provider_user_id, body)`. The body MUST be fully rendered CommonMark without custom tags. Unsupported formatting MUST preserve the same content as plain text rather than cause rejection for formatting alone. Basic Messaging MUST NOT expose a separate recipient-reachability preflight operation. `MessageSendingError` MUST mean that the operation did not obtain confirmed Provider acceptance; callers MUST NOT infer from that result alone whether the Provider accepted a message.
 
-#### Scenario: Provider user cannot receive a message
-- **WHEN** `send_text` attempts to send to a Provider user that cannot receive the message
-- **THEN** it MUST return a known rejection confirming that no message was accepted
-- **AND** it MUST NOT invoke Directory or automatically retry message creation
+#### Scenario: Provider accepts a text message
+- **WHEN** `send_text` is accepted by the Provider
+- **THEN** it MUST return `MessageAccepted` with an opaque `MessageReference`
+- **AND** the result MUST NOT claim end-user delivery
 
-### Requirement: Channel connection testing MUST remain outside Messaging
-Channel Test connection MUST be owned by channel-management and application orchestration. The orchestration MAY compose root adapter credential testing, channel-level checks and, when test delivery is required, a real send operation. It MUST NOT be represented by a dedicated Basic or Dynamic Card Messaging operation. Message-template tests and Debug Mode deliveries MUST exercise a real send operation rather than a recipient-reachability preflight.
+#### Scenario: Text send does not yield confirmed acceptance
+- **WHEN** `send_text` does not obtain confirmed Provider acceptance
+- **THEN** it MUST return `MessageSendingError` with an operator-safe diagnostic reason
+- **AND** the result MUST NOT claim that the Provider definitely rejected or accepted the message
 
-#### Scenario: Application tests an IM channel connection
-- **WHEN** channel-management tests one candidate IM channel configuration
-- **THEN** application orchestration MUST use the existing root and send operations required by its test policy
-- **AND** Messaging MUST expose neither a connection-test operation nor a recipient-reachability preflight
+### Requirement: Connection testing MUST remain outside Messaging
+Messaging MUST expose neither a dedicated connection-test operation nor a recipient-reachability preflight. An application test that requires delivery MUST use the normal `send_text` or `send_card` operation and interpret its normal result.
 
-#### Scenario: Application tests a configured message template
-- **WHEN** application orchestration delivers a template test to a selected Provider user
-- **THEN** the application MUST invoke the applicable real `send_text` or `send_card` operation and interpret its normal send result
+#### Scenario: Application tests message delivery
+- **WHEN** application orchestration sends a connection or template test to a selected Provider user
+- **THEN** it MUST invoke the applicable real send operation rather than a separate Messaging probe
 
-### Requirement: Dynamic Card Messaging MUST group assessment, send and update
-Dynamic Card Messaging MUST contain side-effect-free card representability assessment, `send_card` and exact-reference card update. Assessment MUST receive one complete normalized card intent whose form structure remains aligned with the HITL form presentation model, including rendered form content, complete ordered form inputs and actions. It MUST return a boolean representability decision plus an optional human-readable reason. The reason MUST be used only for diagnostics and MUST NOT be parsed as a stable decision code.
+### Requirement: Dynamic Card Messaging MUST assess complete normalized intents
+Dynamic Card Messaging MUST expose side-effect-free `assess(intent)`. `NormalizedCardIntent` MUST contain fully rendered CommonMark content and the complete immutable HITL form definition. Assessment MUST evaluate every ordered input, action, default value and presentation fact. It MUST return one whole-intent representability decision and MAY return an operator-safe diagnostic reason. The reason MUST NOT be parsed as a stable decision code.
 
 #### Scenario: Provider can represent a card intent
-- **WHEN** assessment receives a complete normalized card intent whose controls and semantics can all be preserved on the Provider
-- **THEN** it MUST return true without sending a message or creating Provider state
+- **WHEN** every control and semantic in the complete intent can be preserved
+- **THEN** assessment MUST return representable without creating Provider state
 
 #### Scenario: Provider cannot represent a card intent
-- **WHEN** assessment receives a complete normalized card intent containing any control or semantic that the Provider cannot map to its Card Input Controls
-- **THEN** it MUST return false for the entire intent with an optional reason and MUST NOT issue a Provider operation
+- **WHEN** any control or semantic in the complete intent cannot be preserved
+- **THEN** assessment MUST return not representable for the entire intent without creating Provider state
 
-### Requirement: Card assessment MUST evaluate every form input
-The normalized card intent accepted by assessment MUST preserve every HITL form input, including `FILE` and `FILE_LIST`. Assessment MUST evaluate the complete intent, MUST NOT ignore an unsupported input to report partial representability and MUST NOT substitute a Provider attachment or upload control for a form input. The assessment operation MUST return only its representability result and MUST NOT create, modify or select a business `DeliveryEndpoint`.
+#### Scenario: A form contains FILE or FILE_LIST
+- **WHEN** assessment for an initial Dynamic Card Provider receives a complete intent containing `FILE` or `FILE_LIST`
+- **THEN** it MUST return not representable without filtering out that input
 
-#### Scenario: A form contains one file input
-- **WHEN** Slack, Feishu/Lark or Microsoft Teams assessment receives a complete intent containing `FILE`
-- **THEN** it MUST return false without issuing a Provider operation because no initial Dynamic Card implementation can express that input control
+### Requirement: Dynamic Card Messaging MUST send one complete card
+Dynamic Card Messaging MUST expose `send_card(provider_user_id, intent, metadata)`. The operation MUST receive the same complete `NormalizedCardIntent` used by assessment. The caller MUST NOT invoke `send_card` when `assess(intent)` returns `representable=False`. If an unrepresentable intent is nevertheless passed, `send_card` MUST raise `DynamicCardMessagingError` before creating a Provider message. Metadata MUST be caller-owned immutable JSON used for later interaction correlation and MUST NOT be treated as Provider configuration or an adapter-issued reference. A card send failure MUST NOT implicitly send a text fallback or create a partial card.
 
-#### Scenario: A form contains a file-list input
-- **WHEN** Slack, Feishu/Lark or Microsoft Teams assessment receives a complete intent containing `FILE_LIST`
-- **THEN** it MUST return false without issuing a Provider operation because no initial Dynamic Card implementation can express that input control
+#### Scenario: Provider accepts a dynamic card
+- **WHEN** `send_card` is accepted by the Provider
+- **THEN** it MUST return `MessageAccepted` with an opaque `MessageReference`
 
-#### Scenario: Only one input is unsupported
-- **WHEN** every other form element is representable but one input cannot be mapped by the concrete Provider
-- **THEN** assessment MUST return false for the complete intent instead of reporting a partial-card result
+#### Scenario: Card intent cannot be represented
+- **WHEN** `send_card` cannot preserve the complete input intent
+- **THEN** it MUST raise `DynamicCardMessagingError` without creating a Provider message
 
-### Requirement: Basic and Dynamic Card Messaging MUST expose distinct send operations
-Basic Messaging MUST expose `send_text`; Dynamic Card Messaging MUST expose `send_card`. `send_text` MUST receive one `ProviderUserId` and one fully rendered CommonMark body without custom tags. The concrete adapter MUST render supported formatting for its Provider and MUST fall back to the same content as plain text when formatting is not expressible. `send_card` MUST receive one `ProviderUserId`, one normalized card intent and opaque caller metadata.
+### Requirement: MessageReference MUST be an opaque persistent round-trip value
+`MessageReference` MUST identify the exact Provider message accepted by `send_text` or `send_card`. A caller MAY persist, compare, rehydrate and return the exact value to a compatible adapter, including after adapter recreation or process restart. A caller MUST NOT interpret, alter or synthesize a reference. The common interface MUST NOT expose Provider locator fields or assume one Provider-wide scalar message ID format.
 
-#### Scenario: Provider cannot express CommonMark formatting
-- **WHEN** `send_text` receives valid CommonMark whose formatting cannot be represented on the target Provider
-- **THEN** the concrete adapter MUST send equivalent plain text instead of rejecting the operation
+#### Scenario: A message reference crosses a process boundary
+- **WHEN** a caller persists a successful send reference and later rehydrates it unchanged
+- **THEN** a compatible adapter MUST be able to consume the reference without access to the original adapter instance
 
-#### Scenario: Card renderer rejects its input
-- **WHEN** `send_card` receives an intent the concrete renderer cannot render
-- **THEN** it MUST return a typed rendering failure before issuing any Provider send call and MUST NOT invoke `send_text` implicitly
+#### Scenario: Providers use different message locators
+- **WHEN** Providers require different facts to identify an exact message
+- **THEN** those differences MUST remain opaque behind `MessageReference`
 
-### Requirement: Successful send MUST return Provider acceptance and an exact message reference
-A successful `send_text` or `send_card` MUST return available Provider acceptance facts and a Provider-discriminated message reference sufficient to target that exact message later. Provider acceptance MUST remain distinct from end-user delivery, and the shared contract MUST NOT assume one scalar message ID format.
+### Requirement: Messaging MUST NOT automatically repeat a requested mutation
+One `send_text` or `send_card` invocation MUST attempt the requested message creation at most once. One `replace_with_static` invocation MUST attempt the requested replacement at most once. An invocation MUST NOT automatically repeat a requested mutation whose outcome is uncertain.
 
-#### Scenario: Providers return different message locators
-- **WHEN** Slack identifies a message by channel and timestamp while Feishu/Lark identifies it by message ID
-- **THEN** Messaging MUST preserve each Provider's exact reference without coercing both into one global identifier
+#### Scenario: Message creation outcome is uncertain
+- **WHEN** Messaging cannot determine whether the Provider accepted a requested creation
+- **THEN** it MUST NOT attempt that creation again within the same invocation
 
-### Requirement: One Messaging invocation MUST attempt each requested message mutation at most once
-`send_text` and `send_card` MAY perform Provider-specific prerequisite operations such as Microsoft Teams conversation acquisition, but one invocation MUST attempt to create the requested message at most once. It MUST NOT automatically replay an ambiguous message-creation operation after timeout, connection reset, rate limit or ambiguous failure. Card update MUST likewise attempt the requested update at most once.
+### Requirement: Dynamic Card Messaging MUST replace the exact accepted card with a static presentation
+Dynamic Card Messaging MUST expose `replace_with_static(reference, intent)`. `StaticCardIntent` MUST contain the caller-rendered static CommonMark presentation and MUST contain no interactive inputs, actions or callback metadata. The operation MUST replace only the exact card identified by the supplied `MessageReference`. A successful operation MUST return `None`. A failure MUST return `ReplacementError`; its `kind` MUST be a `ReplacementErrorKind` distinguishing `INVALID_REFERENCE`, `STALE_REFERENCE` and `UNKNOWN`.
 
-#### Scenario: Send result is ambiguous
-- **WHEN** the adapter cannot determine whether a timed-out Provider request created a message
-- **THEN** it MUST return an ambiguous outcome and MUST NOT call the Provider again
+#### Scenario: A committed submission is reflected on the Provider
+- **WHEN** the caller passes the exact accepted card reference and a static intent after the business submission commits
+- **THEN** `replace_with_static` MUST replace that card with the supplied static presentation
 
-### Requirement: Dynamic Card Messaging MUST update the exact prior message reference
-Card update MUST target only the Provider message reference returned by the corresponding `send_card` result. The shared contract MUST preserve Slack channel and timestamp, Feishu/Lark message ID, and Microsoft Teams activity and conversation context as Provider-discriminated locators. Update MUST return its own typed outcome without changing the earlier send result.
+#### Scenario: Message reference is invalid or incompatible
+- **WHEN** `replace_with_static` receives a malformed, altered or incompatible reference
+- **THEN** it MUST return `INVALID_REFERENCE` without mutating a Provider message
 
-#### Scenario: Prior message reference is stale
-- **WHEN** the Provider no longer accepts the stored message reference
-- **THEN** card update MUST return a typed stale-reference failure and MUST NOT infer another message instance
+#### Scenario: Referenced card is stale
+- **WHEN** the Provider no longer accepts the referenced card for replacement
+- **THEN** `replace_with_static` MUST return `STALE_REFERENCE` without selecting another message
