@@ -72,7 +72,7 @@ describe('DebugInfo', () => {
     await user.click(trigger)
 
     expect(screen.getByText('plugin.debugInfo.title')).toBeInTheDocument()
-    expect(screen.getByText('plugin.debugInfo.title').closest('.w-\\[360px\\]')).toHaveClass(
+    expect(screen.getByText('plugin.debugInfo.title').closest('.w-90')).toHaveClass(
       'rounded-2xl',
       'shadow-2xl',
     )

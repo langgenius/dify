@@ -20,7 +20,7 @@ const PluginAuthInDataSourceNode = ({
       {!isAuthorized && (
         <div className="px-4 pb-2">
           <Button className="w-full" variant="primary" onClick={onJumpToDataSourcePage}>
-            <RiAddLine className="mr-1 size-4" />
+            <RiAddLine className="size-4" />
             {t(($) => $['integrations.connect'], { ns: 'common' })}
           </Button>
         </div>

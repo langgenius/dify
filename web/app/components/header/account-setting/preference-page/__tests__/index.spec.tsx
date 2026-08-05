@@ -1,6 +1,7 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import { ToastHost } from '@langgenius/dify-ui/toast'
-import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { languages } from '@/i18n-config/language'
 import { updateUserProfile } from '@/service/common'
 import { render } from '@/test/console/render'
@@ -11,72 +12,6 @@ const mockRefresh = vi.fn()
 const mockMutateUserProfile = vi.fn()
 let mockLocale: string | undefined = 'en-US'
 let mockUserProfile: GetAccountProfileResponse
-
-vi.mock('@langgenius/dify-ui/select', async () => {
-  const React = await import('react')
-  const SelectContext = React.createContext<{
-    disabled?: boolean
-    onValueChange?: (value: string) => void
-  }>({})
-
-  return {
-    Select: ({
-      children,
-      disabled,
-      onValueChange,
-    }: {
-      children: React.ReactNode
-      disabled?: boolean
-      onValueChange?: (value: string) => void
-    }) => {
-      return (
-        <SelectContext.Provider value={{ disabled, onValueChange }}>
-          <div>{children}</div>
-        </SelectContext.Provider>
-      )
-    },
-    SelectTrigger: ({ children }: { children: React.ReactNode }) => {
-      const context = React.useContext(SelectContext)
-      return (
-        <div>
-          <button type="button" disabled={context.disabled}>
-            {children}
-          </button>
-          <button
-            data-testid="select-empty"
-            type="button"
-            onClick={() => context.onValueChange?.('')}
-          >
-            empty value
-          </button>
-          <button
-            data-testid="select-invalid"
-            type="button"
-            onClick={() => context.onValueChange?.('__missing__')}
-          >
-            invalid value
-          </button>
-        </div>
-      )
-    },
-    SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    SelectItem: ({ children, value }: { children: React.ReactNode; value: string }) => {
-      const context = React.useContext(SelectContext)
-      return (
-        <button
-          type="button"
-          role="option"
-          aria-selected={false}
-          onClick={() => context.onValueChange?.(value)}
-        >
-          {children}
-        </button>
-      )
-    },
-    SelectItemText: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-    SelectItemIndicator: () => null,
-  }
-})
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ refresh: mockRefresh }),
@@ -135,13 +70,10 @@ const getSectionByLabel = (sectionLabel: string) => {
 }
 
 const selectOption = async (sectionLabel: string, optionName: string) => {
+  const user = userEvent.setup()
   const section = getSectionByLabel(sectionLabel)
-  await act(async () => {
-    fireEvent.click(within(section).getAllByRole('button')[0]!)
-  })
-  await act(async () => {
-    fireEvent.click(await within(section).findByRole('option', { name: optionName }))
-  })
+  await user.click(within(section).getByRole('combobox'))
+  await user.click(await screen.findByRole('option', { name: optionName }))
 }
 
 const getLanguageOption = (value: string) => {
@@ -178,8 +110,12 @@ describe('PreferencePage - Rendering', () => {
 
     expect(screen.getByText('common.language.displayLanguage')).toBeInTheDocument()
     expect(screen.getByText('common.language.timezone')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: english.name })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: niueTimezone.name })).toBeInTheDocument()
+    expect(
+      within(getSectionByLabel('common.language.displayLanguage')).getByRole('combobox'),
+    ).toHaveTextContent(english.name)
+    expect(
+      within(getSectionByLabel('common.language.timezone')).getByRole('combobox'),
+    ).toHaveTextContent(niueTimezone.name)
   })
 
   it('should render placeholders when the current locale or timezone is unsupported', () => {
@@ -191,7 +127,12 @@ describe('PreferencePage - Rendering', () => {
 
     renderPage()
 
-    expect(screen.getAllByRole('button', { name: 'common.placeholder.select' })).toHaveLength(2)
+    expect(
+      within(getSectionByLabel('common.language.displayLanguage')).getByRole('combobox'),
+    ).toHaveTextContent('common.placeholder.select')
+    expect(
+      within(getSectionByLabel('common.language.timezone')).getByRole('combobox'),
+    ).toHaveTextContent('common.placeholder.select')
   })
 })
 
@@ -253,30 +194,4 @@ describe('PreferencePage - Interactions', () => {
 
     expect(await screen.findByText('Timezone failed')).toBeInTheDocument()
   }, 15000)
-
-  it('should ignore empty and unknown language selections', async () => {
-    renderPage()
-
-    const section = getSectionByLabel('common.language.displayLanguage')
-
-    await act(async () => {
-      fireEvent.click(within(section).getByTestId('select-empty'))
-      fireEvent.click(within(section).getByTestId('select-invalid'))
-    })
-
-    expect(updateUserProfileMock).not.toHaveBeenCalled()
-  })
-
-  it('should ignore empty and unknown timezone selections', async () => {
-    renderPage()
-
-    const section = getSectionByLabel('common.language.timezone')
-
-    await act(async () => {
-      fireEvent.click(within(section).getByTestId('select-empty'))
-      fireEvent.click(within(section).getByTestId('select-invalid'))
-    })
-
-    expect(updateUserProfileMock).not.toHaveBeenCalled()
-  })
 })

@@ -115,7 +115,7 @@ const DebugWithMultipleModel = () => {
           <DebugItem
             key={modelConfig.id}
             modelAndParameter={modelConfig}
-            className={`absolute top-0 left-6 min-h-[200px] ${twoLine && index === 0 && 'mr-2'} ${threeLine && (index === 0 || index === 1) && 'mr-2'} ${fourLine && (index === 0 || index === 2) && 'mr-2'} ${fourLine && (index === 0 || index === 1) && 'mb-2'} `}
+            className={`absolute top-0 left-6 min-h-50 ${twoLine && index === 0 && 'mr-2'} ${threeLine && (index === 0 || index === 1) && 'mr-2'} ${fourLine && (index === 0 || index === 2) && 'mr-2'} ${fourLine && (index === 0 || index === 1) && 'mb-2'} `}
             style={{
               width: size.width,
               height: size.height,

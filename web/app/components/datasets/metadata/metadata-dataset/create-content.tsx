@@ -48,7 +48,7 @@ export function CreateContent({ onClose = noop, hasBack, onBack, onSave }: Props
       {hasBack && (
         <button
           type="button"
-          className="relative left-[-4px] mb-1 flex cursor-pointer items-center space-x-1 border-none bg-transparent px-0 py-1 text-left text-text-accent"
+          className="relative -left-1 mb-1 flex cursor-pointer items-center space-x-1 border-none bg-transparent px-0 py-1 text-left text-text-accent"
           onClick={onBack}
         >
           <span className="i-ri-arrow-left-line size-4" aria-hidden="true" />

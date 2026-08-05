@@ -62,7 +62,7 @@ const Filter: FC<IFilterProps> = ({
   return (
     <div className="mb-2 flex flex-row flex-wrap items-center gap-2">
       <Chip
-        className="min-w-[150px]"
+        className="min-w-37.5"
         panelClassName="w-[270px]"
         leftIcon={<RiCalendarLine className="size-4 text-text-secondary" />}
         value={queryParams.period}
@@ -81,7 +81,7 @@ const Filter: FC<IFilterProps> = ({
         }))}
       />
       <Chip
-        className="min-w-[150px]"
+        className="min-w-37.5"
         panelClassName="w-[270px]"
         showLeftIcon={false}
         value={queryParams.annotation_status || 'all'}

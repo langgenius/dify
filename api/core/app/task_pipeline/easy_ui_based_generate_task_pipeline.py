@@ -373,7 +373,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
 
         delta_text = ""
         # EasyUI streams text only; structured multimodal chunks contribute their text parts.
-        for content in delta_content:
+        for content in cast(list[object], delta_content):
             logger.debug("The content type %s in LLM chunk delta message content.: %r", type(content), content)
             match content:
                 case TextPromptMessageContent():

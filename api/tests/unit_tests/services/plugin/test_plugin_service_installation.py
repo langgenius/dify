@@ -294,6 +294,71 @@ class TestUpgradePluginWithMarketplace:
         mock_download.assert_called_once_with("new-uid")
         installer.upload_pkg.assert_called_once()
 
+    @pytest.mark.parametrize(
+        "scope",
+        [PluginInstallationScope.OFFICIAL_ONLY, PluginInstallationScope.OFFICIAL_AND_SPECIFIC_PARTNERS],
+    )
+    @patch("core.plugin.plugin_service.download_plugin_pkg")
+    @patch("core.plugin.plugin_service.marketplace")
+    @patch("core.plugin.plugin_service.FeatureService")
+    @patch("core.plugin.plugin_service.PluginInstaller")
+    @patch("core.plugin.plugin_service.dify_config")
+    def test_rejects_cached_pkg_outside_scope(
+        self, mock_config, mock_installer_cls, mock_fs, mock_marketplace, mock_download, scope
+    ):
+        mock_config.MARKETPLACE_ENABLED = True
+        mock_fs.get_plugin_installation_permission.return_value = _make_permission(scope=scope)
+        installer = mock_installer_cls.return_value
+        installer.fetch_plugin_manifest.return_value = MagicMock()
+        decode_resp = MagicMock()
+        decode_resp.verification.authorized_category = PluginVerification.AuthorizedCategory.Community
+        installer.decode_plugin_from_identifier.return_value = decode_resp
+
+        with pytest.raises(PluginInstallationForbiddenError):
+            PluginService.upgrade_plugin_with_marketplace("t1", "old-uid", "new-uid")
+
+        installer.upgrade_plugin.assert_not_called()
+        mock_marketplace.record_install_plugin_event.assert_not_called()
+        # the rejection must not fall through to the download branch and cache the pkg again
+        mock_download.assert_not_called()
+        installer.upload_pkg.assert_not_called()
+
+    @patch("core.plugin.plugin_service.FeatureService")
+    @patch("core.plugin.plugin_service.PluginInstaller")
+    @patch("core.plugin.plugin_service.dify_config")
+    def test_rejects_before_touching_daemon_when_scope_is_none(self, mock_config, mock_installer_cls, mock_fs):
+        mock_config.MARKETPLACE_ENABLED = True
+        mock_fs.get_plugin_installation_permission.return_value = _make_permission(scope=PluginInstallationScope.NONE)
+        installer = mock_installer_cls.return_value
+
+        with pytest.raises(PluginInstallationForbiddenError):
+            PluginService.upgrade_plugin_with_marketplace("t1", "old-uid", "new-uid")
+
+        installer.fetch_plugin_manifest.assert_not_called()
+        installer.upgrade_plugin.assert_not_called()
+
+    @patch("core.plugin.plugin_service.marketplace")
+    @patch("core.plugin.plugin_service.FeatureService")
+    @patch("core.plugin.plugin_service.PluginInstaller")
+    @patch("core.plugin.plugin_service.dify_config")
+    def test_allows_cached_official_pkg_under_official_only(
+        self, mock_config, mock_installer_cls, mock_fs, mock_marketplace
+    ):
+        mock_config.MARKETPLACE_ENABLED = True
+        mock_fs.get_plugin_installation_permission.return_value = _make_permission(
+            scope=PluginInstallationScope.OFFICIAL_ONLY
+        )
+        installer = mock_installer_cls.return_value
+        installer.fetch_plugin_manifest.return_value = MagicMock()
+        decode_resp = MagicMock()
+        decode_resp.verification.authorized_category = PluginVerification.AuthorizedCategory.Langgenius
+        installer.decode_plugin_from_identifier.return_value = decode_resp
+
+        PluginService.upgrade_plugin_with_marketplace("t1", "old-uid", "new-uid")
+
+        mock_marketplace.record_install_plugin_event.assert_called_once_with("new-uid")
+        installer.upgrade_plugin.assert_called_once()
+
 
 class TestUpgradePluginWithGithub:
     @patch("core.plugin.plugin_service.FeatureService")
@@ -374,6 +439,29 @@ class TestInstallFromMarketplacePkg:
         call_args = installer.install_from_identifiers.call_args[0]
         assert call_args[1] == ["uid-1"]
 
+    @patch("core.plugin.plugin_service.download_plugin_pkg")
+    @patch("core.plugin.plugin_service.FeatureService")
+    @patch("core.plugin.plugin_service.PluginInstaller")
+    @patch("core.plugin.plugin_service.dify_config")
+    def test_rejects_cached_pkg_outside_scope(self, mock_config, mock_installer_cls, mock_fs, mock_download):
+        mock_config.MARKETPLACE_ENABLED = True
+        mock_fs.get_plugin_installation_permission.return_value = _make_permission(
+            scope=PluginInstallationScope.OFFICIAL_ONLY
+        )
+        installer = mock_installer_cls.return_value
+        installer.fetch_plugin_manifest.return_value = MagicMock()
+        decode_resp = MagicMock()
+        decode_resp.verification.authorized_category = PluginVerification.AuthorizedCategory.Community
+        installer.decode_plugin_from_identifier.return_value = decode_resp
+
+        with pytest.raises(PluginInstallationForbiddenError):
+            PluginService.install_from_marketplace_pkg("t1", ["uid-1"])
+
+        installer.install_from_identifiers.assert_not_called()
+        # the rejection must not fall through to the download branch and cache the pkg again
+        mock_download.assert_not_called()
+        installer.upload_pkg.assert_not_called()
+
 
 class TestUninstall:
     @patch("core.plugin.plugin_service.PluginInstaller")
@@ -452,3 +540,78 @@ class TestUninstall:
             )
         ).all()
         assert len(remaining_prefs) == 0
+
+    @patch("core.plugin.plugin_service.PluginInstaller")
+    def test_preserves_credentials_when_replacing_plugin(
+        self, mock_installer_cls: MagicMock, plugin_db: Session
+    ) -> None:
+        tenant_id = str(uuid4())
+        plugin_id = "org/myplugin"
+        provider_name = f"{plugin_id}/model-provider"
+
+        credential = ProviderCredential(
+            tenant_id=tenant_id,
+            provider_name=provider_name,
+            credential_name="default",
+            encrypted_config="{}",
+        )
+        plugin_db.add(credential)
+        plugin_db.flush()
+
+        provider = Provider(
+            tenant_id=tenant_id,
+            provider_name=provider_name,
+            credential_id=credential.id,
+        )
+        plugin_db.add(provider)
+
+        preferred_provider = TenantPreferredModelProvider(
+            tenant_id=tenant_id,
+            provider_name=provider_name,
+            preferred_provider_type=ProviderType.CUSTOM,
+        )
+        plugin_db.add(preferred_provider)
+        plugin_db.commit()
+
+        plugin = MagicMock(installation_id="install-1", plugin_id=plugin_id)
+        installer = mock_installer_cls.return_value
+        installer.list_plugins.return_value = [plugin]
+        installer.uninstall.return_value = True
+
+        with patch("core.plugin.plugin_service.dify_config") as mock_config:
+            mock_config.ENTERPRISE_ENABLED = False
+            result = PluginService.uninstall(tenant_id, "install-1", preserve_credentials=True)
+
+        assert result is True
+        plugin_db.expire_all()
+        assert plugin_db.get(ProviderCredential, credential.id) is not None
+        assert plugin_db.get(Provider, provider.id).credential_id == credential.id
+        assert plugin_db.get(TenantPreferredModelProvider, preferred_provider.id) is not None
+
+    @patch("core.plugin.plugin_service.PluginInstaller")
+    def test_preserves_credentials_when_daemon_uninstall_fails(
+        self, mock_installer_cls: MagicMock, plugin_db: Session
+    ) -> None:
+        tenant_id = str(uuid4())
+        plugin_id = "org/myplugin"
+        credential = ProviderCredential(
+            tenant_id=tenant_id,
+            provider_name=f"{plugin_id}/model-provider",
+            credential_name="default",
+            encrypted_config="{}",
+        )
+        plugin_db.add(credential)
+        plugin_db.commit()
+
+        plugin = MagicMock(installation_id="install-1", plugin_id=plugin_id)
+        installer = mock_installer_cls.return_value
+        installer.list_plugins.return_value = [plugin]
+        installer.uninstall.return_value = False
+
+        with patch("core.plugin.plugin_service.dify_config") as mock_config:
+            mock_config.ENTERPRISE_ENABLED = False
+            result = PluginService.uninstall(tenant_id, "install-1")
+
+        assert result is False
+        plugin_db.expire_all()
+        assert plugin_db.get(ProviderCredential, credential.id) is not None

@@ -67,11 +67,7 @@ const APIKeyInfoPanel: FC = () => {
           {t(($) => $[`apiKeyInfo.cloud.${'trial'}.description`], { ns: 'appOverview' })}
         </div>
       )}
-      <Button
-        variant="primary"
-        className="mt-2 space-x-2"
-        onClick={() => setSettingsDestination('provider')}
-      >
+      <Button variant="primary" className="mt-2" onClick={() => setSettingsDestination('provider')}>
         <div className="text-sm font-medium">
           {t(($) => $['apiKeyInfo.setAPIBtn'], { ns: 'appOverview' })}
         </div>
@@ -79,7 +75,7 @@ const APIKeyInfoPanel: FC = () => {
       </Button>
       {!isCloud && (
         <a
-          className="mt-2 flex h-[26px] items-center space-x-1 p-1 text-xs font-medium text-[#155EEF]"
+          className="mt-2 flex h-6.5 items-center space-x-1 p-1 text-xs font-medium text-primary-600"
           href="https://cloud.dify.ai/apps"
           target="_blank"
           rel="noopener noreferrer"

@@ -14,7 +14,7 @@ from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec
 from dify_agent.server.settings import ServerSettings
 from dify_agent.runtime_backend.e2b import E2BExecutionBindingBackend
 from dify_agent.runtime_backend.enterprise import EnterpriseExecutionBindingBackend
-from dify_agent.runtime_backend.local import LocalExecutionBindingBackend
+from dify_agent.runtime_backend.local import LocalExecutionBindingBackend, LocalHomeSnapshotBackend
 
 
 def _base64url_secret(value: bytes) -> str:
@@ -71,11 +71,13 @@ def test_server_settings_defaults_shellctl_auth_token_to_none(
 
 def test_server_settings_reads_agent_stub_settings_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DIFY_AGENT_STUB_API_BASE_URL", "https://agent.example.com/agent-stub/")
+    monkeypatch.setenv("DIFY_AGENT_SANDBOX_FILES_BASE_URL", "https://dify.example.com/prefix/")
     monkeypatch.setenv("DIFY_AGENT_SERVER_SECRET_KEY", _base64url_secret(secrets.token_bytes(32)))
 
     settings = ServerSettings()
 
     assert settings.agent_stub_api_base_url == "https://agent.example.com/agent-stub"
+    assert settings.sandbox_files_base_url == "https://dify.example.com/prefix"
 
 
 def test_server_settings_normalizes_agent_stub_service_root_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -123,6 +125,23 @@ def test_server_settings_rejects_agent_stub_api_base_url_with_unexpected_path() 
 def test_server_settings_rejects_public_agent_stub_api_base_url_without_secret_key() -> None:
     with pytest.raises(ValidationError, match="DIFY_AGENT_SERVER_SECRET_KEY"):
         _ = ServerSettings(agent_stub_api_base_url="https://agent.example.com/agent-stub")
+
+
+def test_server_settings_requires_sandbox_files_base_url_for_agent_stub_file_operations() -> None:
+    with pytest.raises(ValidationError, match="DIFY_AGENT_SANDBOX_FILES_BASE_URL"):
+        _ = ServerSettings(
+            agent_stub_api_base_url="https://agent.example.com/agent-stub",
+            inner_api_key="inner-secret",
+            server_secret_key=_base64url_secret(secrets.token_bytes(32)),
+        )
+
+
+def test_server_settings_rejects_sandbox_files_base_url_query_or_fragment() -> None:
+    with pytest.raises(ValidationError, match="query string or fragment"):
+        _ = ServerSettings(sandbox_files_base_url="https://dify.example.com?x=1")
+
+    with pytest.raises(ValidationError, match="query string or fragment"):
+        _ = ServerSettings(sandbox_files_base_url="https://dify.example.com#fragment")
 
 
 def test_server_settings_accepts_grpc_agent_stub_api_base_url_and_bind_override() -> None:
@@ -210,6 +229,7 @@ def test_server_settings_create_agent_stub_file_request_handler_returns_handler_
     settings = ServerSettings(
         inner_api_url="https://api.example.com",
         inner_api_key="inner-secret",
+        sandbox_files_base_url="https://sandbox-files.example.com/dify",
     )
 
     handler = settings.create_agent_stub_file_request_handler()
@@ -217,6 +237,7 @@ def test_server_settings_create_agent_stub_file_request_handler_returns_handler_
     assert isinstance(handler, DifyApiAgentStubFileRequestHandler)
     assert handler.inner_api_url == "https://api.example.com"
     assert handler.inner_api_key == "inner-secret"
+    assert handler.sandbox_files_base_url == "https://sandbox-files.example.com/dify"
 
 
 def test_server_settings_create_agent_stub_drive_request_handler_returns_none_without_full_settings() -> None:
@@ -260,14 +281,22 @@ def test_build_runtime_backend_profile_returns_local_drivers_when_configured() -
         runtime_backend="local",
         local_sandbox_endpoint="http://shellctl.example",
         local_sandbox_auth_token="shell-secret",
+        local_sandbox_materialized_home_root="/tmp/dify/homes",
+        local_sandbox_workspace_root="/tmp/dify/workspaces",
+        local_sandbox_home_snapshot_root="/tmp/dify/snapshots",
     )
 
     profile = settings.build_runtime_backend_profile()
 
     assert profile is not None
     assert isinstance(profile.execution_bindings, LocalExecutionBindingBackend)
+    assert isinstance(profile.home_snapshots, LocalHomeSnapshotBackend)
     assert profile.execution_bindings.endpoint == "http://shellctl.example"
     assert profile.execution_bindings.auth_token == "shell-secret"
+    assert profile.execution_bindings.materialized_home_root == "/tmp/dify/homes"
+    assert profile.execution_bindings.workspace_root == "/tmp/dify/workspaces"
+    assert profile.execution_bindings.snapshot_root == "/tmp/dify/snapshots"
+    assert profile.home_snapshots.snapshot_root == "/tmp/dify/snapshots"
 
 
 def test_build_runtime_backend_profile_returns_enterprise_drivers_when_selected() -> None:

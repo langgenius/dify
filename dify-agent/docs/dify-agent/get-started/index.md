@@ -80,6 +80,10 @@ Binding backend. A standalone Local server normally uses:
 DIFY_AGENT_RUNTIME_BACKEND=local
 DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT=http://127.0.0.1:5004
 DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN=
+# Optional when shellctl runs directly on a host without /home/dify:
+# DIFY_AGENT_LOCAL_SANDBOX_MATERIALIZED_HOME_ROOT=/tmp/dify-agent/materialized-homes
+# DIFY_AGENT_LOCAL_SANDBOX_WORKSPACE_ROOT=/tmp/dify-agent/workspaces
+# DIFY_AGENT_LOCAL_SANDBOX_HOME_SNAPSHOT_ROOT=/tmp/dify-agent/home-snapshots
 DIFY_AGENT_SANDBOX_FILE_UPLOAD_MAX_BYTES=52428800
 ```
 
@@ -95,7 +99,8 @@ the request's product context;
 `DifyRuntimeLayerConfig.backend_binding_ref` carries only that opaque ref and
 opens a new operation-scoped `RuntimeLease` for the run. When shell jobs need to
 call back with the `dify-agent` command, also set
-`DIFY_AGENT_STUB_API_BASE_URL`. The supplied default configs include a
+`DIFY_AGENT_STUB_API_BASE_URL` and the Sandbox-reachable Dify API base
+`DIFY_AGENT_SANDBOX_FILES_BASE_URL`. The supplied default configs include a
 development `DIFY_AGENT_SERVER_SECRET_KEY`, but production deployments should
 override it with a unique 32-byte base64url value as documented in
 `.example.env`.

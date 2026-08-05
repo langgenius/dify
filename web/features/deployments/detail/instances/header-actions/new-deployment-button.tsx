@@ -20,7 +20,7 @@ export function NewDeploymentButton() {
     <Button
       size="medium"
       variant="primary"
-      className="gap-1.5"
+
       disabled={!appInstanceId}
       onClick={() => {
         if (!appInstanceId) return

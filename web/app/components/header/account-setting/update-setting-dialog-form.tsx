@@ -1,5 +1,5 @@
-import type { ReactElement, ReactNode } from 'react'
-import type { TriggerParams } from '@/app/components/base/date-and-time-picker/types'
+import type { ReactNode } from 'react'
+import type { TimePickerProps } from '@/app/components/base/date-and-time-picker/types'
 import type { AutoUpdateConfig } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/types'
 import type { dayjsToTimeOfDay } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/utils'
 import type { PluginCategoryEnum } from '@/app/components/plugins/types'
@@ -39,7 +39,7 @@ type UpdateSettingDialogFormProps = {
   onPluginsChange: (newPlugins: string[]) => void
   onRequestClose: () => void
   onUpdateTimeChange: (value: Parameters<typeof dayjsToTimeOfDay>[0]) => void
-  renderTimePickerTrigger: (params: TriggerParams) => ReactElement
+  renderTimePickerTrigger: NonNullable<TimePickerProps['renderTrigger']>
 }
 
 const updateSettingFormLabelClassName =
@@ -167,7 +167,7 @@ const UpdateSettingDialogForm = ({
             />
           </div>
           <div className="flex w-full flex-col items-start gap-2">
-            <div className="flex h-[60px] w-full flex-col items-start gap-1">
+            <div className="flex h-15 w-full flex-col items-start gap-1">
               <div className={updateSettingFormLabelClassName}>
                 {t(($) => $['autoUpdate.scope'], { ns: 'plugin' })}
               </div>

@@ -316,7 +316,7 @@ export function AgentPreviewChatConversation({
       isResponding={isResponding}
       sendButtonLabel={isEmptyChat ? sendButtonLabel : undefined}
       sendButtonLoading={sendButtonLoading}
-      chatContainerClassName={cn('pt-6', isEmptyChat ? 'px-12 pt-2 !pb-[88px]' : 'px-3')}
+      chatContainerClassName={cn('pt-6', isEmptyChat ? 'px-12 pt-2 pb-22!' : 'px-3')}
       chatFooterClassName={isEmptyChat ? 'hidden' : 'px-3 pb-0 pt-10'}
       suggestedQuestions={suggestedQuestions}
       onSend={doSend}

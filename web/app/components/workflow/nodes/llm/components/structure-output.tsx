@@ -27,7 +27,7 @@ export function StructureOutput({ className, value, onChange }: Props) {
   return (
     <div className={cn(className)}>
       <div className="flex justify-between">
-        <div className="flex items-center leading-[18px]">
+        <div className="flex items-center leading-4.5">
           <div className="code-sm-semibold text-text-secondary">structured_output</div>
           <div className="ml-2 system-xs-regular text-text-tertiary">object</div>
         </div>
@@ -37,7 +37,7 @@ export function StructureOutput({ className, value, onChange }: Props) {
           className="flex"
           onClick={() => setShowConfig(true)}
         >
-          <i className="mr-1 i-ri-edit-line size-3.5" aria-hidden="true" />
+          <i className="i-ri-edit-line size-3.5" aria-hidden="true" />
           <div className="system-xs-medium text-components-button-secondary-text">
             {t(($) => $['structOutput.configure'], { ns: 'app' })}
           </div>

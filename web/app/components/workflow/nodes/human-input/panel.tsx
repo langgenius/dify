@@ -104,7 +104,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
         className={cn(
           'px-4 py-2',
           isExpandFormContent &&
-            'fixed top-[244px] right-[4px] bottom-[8px] z-10 flex flex-col rounded-b-2xl bg-components-panel-bg',
+            'fixed top-61 right-1 bottom-2 z-10 flex flex-col rounded-b-2xl bg-components-panel-bg',
         )}
         style={{
           width: isExpandFormContent ? nodePanelWidth : '100%',
@@ -127,7 +127,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
                 variant="ghost"
                 size="small"
                 className={cn(
-                  'flex items-center space-x-1 px-2',
+                  'flex items-center px-2',
                   isPreview && 'bg-state-accent-active text-text-accent',
                 )}
                 onClick={() => setIsPreview((isPreview) => !isPreview)}

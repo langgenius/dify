@@ -85,7 +85,7 @@ const ConfigParamModal: FC<Props> = ({
         if (!open) onHide()
       }}
     >
-      <DialogContent className="mt-14! w-[640px]! max-w-none! border-none p-6! text-left align-middle">
+      <DialogContent className="mt-14! w-160! max-w-none! border-none p-6! text-left align-middle">
         <div className="mb-2 title-2xl-semi-bold text-text-primary">
           {t(($) => $[`initSetup.${isInit ? 'title' : 'configTitle'}`], { ns: 'appAnnotation' })}
         </div>
@@ -136,7 +136,6 @@ const ConfigParamModal: FC<Props> = ({
         <div className="mt-6 flex justify-end gap-2">
           <Button onClick={onHide}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
           <Button variant="primary" onClick={handleSave} loading={isLoading}>
-            <div></div>
             <div>
               {t(($) => $[`initSetup.${isInit ? 'confirmBtn' : 'configConfirmBtn'}`], {
                 ns: 'appAnnotation',

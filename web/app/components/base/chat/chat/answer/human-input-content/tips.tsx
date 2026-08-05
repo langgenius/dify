@@ -16,7 +16,7 @@ const Tips = ({ showEmailTip, isEmailDebugMode, showDebugModeTip }: TipsProps) =
 
   return (
     <>
-      <Divider className="my-2! w-[30px]" />
+      <Divider className="my-2! w-7.5" />
       <div className="space-y-1 pt-1" data-testid="tips">
         {showEmailTip && !isEmailDebugMode && (
           <div className="system-xs-regular text-text-secondary">

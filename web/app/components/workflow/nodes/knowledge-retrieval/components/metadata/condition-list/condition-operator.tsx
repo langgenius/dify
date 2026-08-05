@@ -55,7 +55,7 @@ const ConditionOperator = ({
             {selectedOption
               ? selectedOption.label
               : t(($) => $[`${i18nPrefix}.select`], { ns: 'workflow' })}
-            <RiArrowDownSLine className="ml-1 size-3.5" />
+            <RiArrowDownSLine className="size-3.5" />
           </Button>
         }
       />

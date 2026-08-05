@@ -540,7 +540,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
       className={cn(
         'relative mr-1 h-full',
         showMessageLogModal &&
-          'absolute z-0 mr-2 w-[400px] overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border shadow-lg transition-all',
+          'absolute z-0 mr-2 w-100 overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border shadow-lg transition-all',
       )}
       style={
         {

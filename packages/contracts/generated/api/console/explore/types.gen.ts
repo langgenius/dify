@@ -41,12 +41,12 @@ export type RecommendedAppDetailResponse = {
 }
 
 export type BannerResponse = {
-  content: unknown
-  created_at?: string | null
+  content: BannerContentResponse
+  created_at: string
   id: string
-  link?: string | null
+  link: string
   sort: number
-  status: string
+  status: BannerStatus
 }
 
 export type RecommendedAppInfoResponse = {
@@ -58,6 +58,15 @@ export type RecommendedAppInfoResponse = {
   mode?: string | null
   name?: string | null
 }
+
+export type BannerContentResponse = {
+  category: string
+  description: string
+  'img-src': string
+  title: string
+}
+
+export type BannerStatus = 'disabled' | 'enabled'
 
 export type RecommendedAppListResponseWritable = {
   categories: Array<string>

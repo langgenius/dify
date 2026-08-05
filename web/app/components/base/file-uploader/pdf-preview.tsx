@@ -57,7 +57,6 @@ const PdfPreview: FC<PdfPreviewProps> = ({ url, onCancel }) => {
         backdropClassName="bg-transparent!"
       >
         <div
-          aria-label={url}
           tabIndex={-1}
           onClick={(e) => e.stopPropagation()}
           className="h-[95vh] max-h-full w-screen max-w-full overflow-hidden"

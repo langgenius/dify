@@ -1011,9 +1011,7 @@ export type SyncDraftWorkflowPayload = {
   conversation_variables?: Array<{
     [key: string]: unknown
   }>
-  environment_variables?: Array<{
-    [key: string]: unknown
-  }>
+  environment_variable_patch?: SyncEnvironmentVariablePatchPayload | null
   features: {
     [key: string]: unknown
   }
@@ -1042,7 +1040,9 @@ export type EnvironmentVariableListResponse = {
 }
 
 export type EnvironmentVariableUpdatePayload = {
+  deleted_environment_variable_ids?: Array<string>
   environment_variables: Array<EnvironmentVariableItemPayload>
+  patch?: boolean
 }
 
 export type WorkflowFeaturesPayload = {
@@ -1975,6 +1975,13 @@ export type PipelineVariableResponse = {
   type: string
   unit?: string | null
   variable: string
+}
+
+export type SyncEnvironmentVariablePatchPayload = {
+  deleted_environment_variable_ids?: Array<string>
+  environment_variables?: Array<{
+    [key: string]: unknown
+  }>
 }
 
 export type ConversationVariableItemPayload = {
@@ -5010,6 +5017,27 @@ export type PutAppsByAppIdServerResponses = {
 export type PutAppsByAppIdServerResponse =
   PutAppsByAppIdServerResponses[keyof PutAppsByAppIdServerResponses]
 
+export type PostAppsByAppIdServerRefreshData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/server/refresh'
+}
+
+export type PostAppsByAppIdServerRefreshErrors = {
+  403: unknown
+  404: unknown
+}
+
+export type PostAppsByAppIdServerRefreshResponses = {
+  200: AppMcpServerResponse
+}
+
+export type PostAppsByAppIdServerRefreshResponse =
+  PostAppsByAppIdServerRefreshResponses[keyof PostAppsByAppIdServerRefreshResponses]
+
 export type PostAppsByAppIdSiteData = {
   body: AppSiteUpdatePayload
   path: {
@@ -7001,24 +7029,3 @@ export type DeleteAppsByResourceIdApiKeysByApiKeyIdResponses = {
 
 export type DeleteAppsByResourceIdApiKeysByApiKeyIdResponse =
   DeleteAppsByResourceIdApiKeysByApiKeyIdResponses[keyof DeleteAppsByResourceIdApiKeysByApiKeyIdResponses]
-
-export type GetAppsByServerIdServerRefreshData = {
-  body?: never
-  path: {
-    server_id: string
-  }
-  query?: never
-  url: '/apps/{server_id}/server/refresh'
-}
-
-export type GetAppsByServerIdServerRefreshErrors = {
-  403: unknown
-  404: unknown
-}
-
-export type GetAppsByServerIdServerRefreshResponses = {
-  200: AppMcpServerResponse
-}
-
-export type GetAppsByServerIdServerRefreshResponse =
-  GetAppsByServerIdServerRefreshResponses[keyof GetAppsByServerIdServerRefreshResponses]

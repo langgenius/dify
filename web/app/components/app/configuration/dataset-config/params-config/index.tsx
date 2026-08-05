@@ -113,7 +113,7 @@ const ParamsConfig = ({ disabled, selectedDatasets }: ParamsConfigProps) => {
         }}
         disabled={disabled}
       >
-        <RiEqualizer2Line className="mr-1 size-3.5" />
+        <RiEqualizer2Line className="size-3.5" />
         {t(($) => $.retrievalSettings, { ns: 'dataset' })}
       </Button>
       {rerankSettingModalOpen && (
@@ -125,7 +125,7 @@ const ParamsConfig = ({ disabled, selectedDatasets }: ParamsConfigProps) => {
             }
           }}
         >
-          <DialogContent className="w-full max-w-[480px] border-none text-left align-middle sm:min-w-[528px]">
+          <DialogContent className="w-full max-w-120 border-none text-left align-middle sm:min-w-132">
             <ConfigContent
               datasetConfigs={tempDataSetConfigs}
               onChange={handleSetTempDataSetConfigs}

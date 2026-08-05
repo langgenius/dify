@@ -13,6 +13,7 @@ import {
   DataSourceType,
   RerankingModeEnum,
 } from '@/models/datasets'
+import { consoleQuery } from '@/service/client'
 import { updateDatasetSetting } from '@/service/datasets'
 import { useMembers } from '@/service/use-common'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
@@ -93,12 +94,6 @@ vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
     modelProviders: [],
     textGenerationModelList: [],
-    supportRetrievalMethods: [
-      RETRIEVE_METHOD.semantic,
-      RETRIEVE_METHOD.fullText,
-      RETRIEVE_METHOD.hybrid,
-      RETRIEVE_METHOD.keywordSearch,
-    ],
   }),
 }))
 
@@ -206,9 +201,12 @@ const createDataset = (
 
 const renderWithProviders = (dataset: DataSet) => {
   const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
+    defaultOptions: { queries: { retry: false, staleTime: Number.POSITIVE_INFINITY } },
   })
   queryClient.setQueryData(systemFeaturesQueryOptions().queryKey, createSystemFeaturesFixture())
+  queryClient.setQueryData(consoleQuery.datasets.retrievalSetting.get.queryOptions().queryKey, {
+    retrieval_method: [RETRIEVE_METHOD.semantic, RETRIEVE_METHOD.fullText, RETRIEVE_METHOD.hybrid],
+  })
 
   return render(
     <QueryClientProvider client={queryClient}>

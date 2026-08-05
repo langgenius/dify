@@ -89,10 +89,7 @@ describe('AppCard', () => {
       // oxlint-disable-next-line eslint-react/no-context-provider
       <AppListContext.Provider
         value={{
-          currentApp: undefined,
-          isShowTryAppPanel: false,
-          setShowTryAppPanel: openPreview,
-          controlHideCreateFromTemplatePanel: 0,
+          openTryAppPanel: openPreview,
         }}
       >
         <AppCard app={app} canCreate onCreate={vi.fn()} />
@@ -105,6 +102,6 @@ describe('AppCard', () => {
       'preview_template',
       expect.objectContaining({ template_id: 'app-1', page: 'studio' }),
     )
-    expect(openPreview).toHaveBeenCalledWith(true, { appId: 'app-1', app })
+    expect(openPreview).toHaveBeenCalledWith({ appId: 'app-1', app })
   })
 })

@@ -59,10 +59,10 @@ function ComplianceDocActionVisual({
         disabled={isPending}
         loading={isPending}
         aria-hidden
-        className="pointer-events-none flex items-center gap-px"
+        className="pointer-events-none flex items-center"
       >
-        <span className="i-ri-arrow-down-circle-line size-[14px] text-components-button-secondary-text-disabled" />
-        <span className="px-[3px] system-xs-medium text-components-button-secondary-text">
+        <span className="i-ri-arrow-down-circle-line size-3.5 text-components-button-secondary-text-disabled" />
+        <span className="system-xs-medium text-components-button-secondary-text">
           {downloadText}
         </span>
       </Button>
@@ -79,7 +79,7 @@ function ComplianceDocActionVisual({
           <PremiumBadge color="blue" allowHover={true}>
             <SparklesSoft
               aria-hidden="true"
-              className="flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0"
+              className="flex h-3.5 w-3.5 items-center py-px pl-0.75 text-components-premium-badge-indigo-text-stop-0"
             />
             <div className="px-1 system-xs-medium">{upgradeText}</div>
           </PremiumBadge>
