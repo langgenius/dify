@@ -7,7 +7,7 @@ from urllib.parse import parse_qs, urlparse
 import pytest
 
 from configs import dify_config
-from configs.extra.public_storage_config import PublicStoragePolicyConfig
+from configs.extra.public_storage_config import PublicStorageDownloadMode, PublicStoragePolicyConfig
 from core.file import upload_file_policy
 from core.file.upload_file_policy import UploadFileStoragePolicy
 from extensions.storage.storage_type import StorageType
@@ -18,7 +18,7 @@ def _configure_icon_s3_policy(
     monkeypatch: pytest.MonkeyPatch,
     *,
     enabled: bool = True,
-    download_mode: str = "proxy",
+    download_mode: PublicStorageDownloadMode = "proxy",
 ) -> None:
     policy_config = PublicStoragePolicyConfig(
         download_mode=download_mode,
