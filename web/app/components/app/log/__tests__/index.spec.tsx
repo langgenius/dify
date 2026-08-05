@@ -211,7 +211,7 @@ describe('Logs', () => {
     )
   })
 
-  it('should use a valid period for the real Chip and request when a cached period settles to Sandbox', async () => {
+  it('should keep the period filter and request valid when the plan becomes restricted', async () => {
     const user = userEvent.setup()
     const appDetail = {
       id: 'app-period-transition',
@@ -222,7 +222,7 @@ describe('Logs', () => {
       refetch: vi.fn(),
     })
 
-    const unrestrictedRender = render(<Logs appDetail={appDetail} />)
+    const rendered = render(<Logs appDetail={appDetail} />)
 
     await user.click(screen.getByRole('combobox', { name: /appLog\.filter\.period\.last7days/ }))
     await user.click(await screen.findByText(/appLog\.filter\.period\.allTime/))
@@ -234,11 +234,9 @@ describe('Logs', () => {
         }),
       }),
     )
-    unrestrictedRender.unmount()
-
     mockPlanState.value = 'pending'
     mockDebouncedPeriod.value = '9'
-    const pendingRender = render(<Logs appDetail={appDetail} />)
+    rendered.rerender(<Logs appDetail={appDetail} />)
 
     expect(
       screen.getByRole('combobox', { name: /appLog\.filter\.period\.today/ }),
@@ -258,7 +256,7 @@ describe('Logs', () => {
     )
 
     mockPlanState.value = 'sandbox'
-    pendingRender.rerender(<Logs appDetail={appDetail} />)
+    rendered.rerender(<Logs appDetail={appDetail} />)
 
     expect(
       screen.getByRole('combobox', { name: /appLog\.filter\.period\.today/ }),

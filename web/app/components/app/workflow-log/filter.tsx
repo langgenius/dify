@@ -69,6 +69,7 @@ const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps)
         ]}
       />
       <Chip
+        key={isTimePeriodRestricted ? 'restricted' : 'unrestricted'}
         className="min-w-37.5"
         panelClassName="w-[270px]"
         leftIcon={<RiCalendarLine className="size-4 text-text-secondary" />}
