@@ -35,7 +35,7 @@ const mockConsoleState = vi.hoisted(() => ({
   deploymentEdition: 'COMMUNITY' as 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE',
 }))
 
-vi.mock('@/context/system-features-state', async () => {
+vi.mock('@/features/system-features/state', async () => {
   const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
   return createSystemFeaturesStateModuleMock(() => mockConsoleState)
 })
