@@ -2,6 +2,7 @@ import type {
   CollectionsAndPluginsSearchParams,
   MarketplaceCollection,
   MarketplacePlugin,
+  MarketplaceTemplate,
   PluginsSearchParams,
 } from '@dify/contracts/marketplace'
 import type { ActivePluginType } from './constants'
@@ -68,6 +69,22 @@ export const getPluginDetailLinkInMarketplace = (
 
   if (plugin.type === 'bundle') return `/bundles/${org}/${name}`
   return `/plugin/${org}/${name}`
+}
+
+export const getTemplateLinkInMarketplace = (
+  template: Pick<
+    MarketplaceTemplate,
+    'id' | 'publisher_handle' | 'publisher_unique_handle' | 'template_name'
+  >,
+  params?: Record<string, string | undefined>,
+) => {
+  const publisher = template.publisher_handle || template.publisher_unique_handle || 'template'
+  const path = `/template/${encodeURIComponent(publisher)}/${encodeURIComponent(template.template_name)}`
+
+  return getMarketplaceUrl(path, {
+    ...params,
+    templateId: template.id,
+  })
 }
 
 export const getMarketplaceCategoryUrl = (
