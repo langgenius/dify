@@ -53,32 +53,33 @@ def test_file_download_request_from_proto_respects_optional_reference() -> None:
 
     assert request.file.reference == _reference("tool-file-1")
     assert request.file.url is None
-    assert request.for_external is True
+    assert request.for_frontend is True
 
 
-def test_file_download_request_from_proto_preserves_explicit_internal_audience() -> None:
+def test_file_download_request_from_proto_preserves_explicit_sandbox_transfer_audience() -> None:
     message = agent_stub_pb2.FileDownloadRequest(
         file=agent_stub_pb2.FileMapping(
             transfer_method="tool_file",
             reference=_reference("tool-file-1"),
         ),
-        for_external=False,
+        for_frontend=False,
     )
 
     request = file_download_request_from_proto(message)
 
-    assert request.for_external is False
+    assert request.for_frontend is False
 
 
 def test_proto_file_download_request_preserves_selected_audience() -> None:
     message = proto_file_download_request(
         agent_stub_pb2,
         file=AgentStubFileMapping(transfer_method="tool_file", reference=_reference("tool-file-1")),
-        for_external=False,
+        for_frontend=False,
     )
 
-    assert message.HasField("for_external") is True
-    assert message.for_external is False
+    assert message.HasField("for_frontend") is True
+    assert message.for_frontend is False
+    assert agent_stub_pb2.FileDownloadRequest.DESCRIPTOR.fields_by_name["for_frontend"].number == 2
 
 
 def test_connect_request_from_proto_rejects_invalid_metadata_json() -> None:

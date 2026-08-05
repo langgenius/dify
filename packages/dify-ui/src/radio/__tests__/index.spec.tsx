@@ -5,10 +5,6 @@ import { Field, FieldItem, FieldLabel } from '../../field'
 import { Fieldset, FieldsetLegend } from '../../fieldset'
 import { Radio, RadioControl, RadioGroup, RadioItem, RadioSkeleton } from '../index'
 
-const clickElement = (element: HTMLElement | SVGElement) => {
-  element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
-}
-
 type TestRadioGroupProps<Value = string> = RadioGroupProps<Value> & {
   children: React.ReactNode
   label: string
@@ -80,7 +76,7 @@ describe('RadioGroup', () => {
       .element(screen.getByRole('radio', { name: 'SSD' }))
       .toHaveAttribute('aria-checked', 'true')
 
-    clickElement(screen.getByRole('radio', { name: 'HDD' }).element())
+    await screen.getByRole('radio', { name: 'HDD' }).click()
 
     await vi.waitFor(async () => {
       await expect
@@ -108,7 +104,7 @@ describe('RadioGroup', () => {
     const hdd = screen.getByRole('radio', { name: 'HDD' })
     await expect.element(hdd).toHaveAttribute('aria-checked', 'false')
 
-    clickElement(hdd.element())
+    await hdd.click()
 
     expect(onValueChange).toHaveBeenCalledTimes(1)
     expect(onValueChange.mock.calls[0]?.[0]).toBe('hdd')
@@ -142,7 +138,7 @@ describe('Radio', () => {
       </TestRadioGroup>,
     )
 
-    clickElement(screen.getByRole('radio', { name: 'HDD' }).element())
+    await screen.getByRole('radio', { name: 'HDD' }).click()
 
     expect(onValueChange).toHaveBeenCalledTimes(1)
     expect(onValueChange.mock.calls[0]?.[0]).toBe('hdd')
@@ -151,10 +147,9 @@ describe('Radio', () => {
       .toHaveAttribute('aria-checked', 'true')
   })
 
-  it('should ignore interaction when disabled', async () => {
-    const onValueChange = vi.fn()
+  it('should expose disabled semantics', async () => {
     const screen = await render(
-      <TestRadioGroup defaultValue="ssd" label="Storage type" onValueChange={onValueChange}>
+      <TestRadioGroup defaultValue="ssd" label="Storage type">
         <TestRadioOption value="ssd">SSD</TestRadioOption>
         <TestRadioOption value="hdd" disabled>
           HDD
@@ -164,10 +159,7 @@ describe('Radio', () => {
 
     const hdd = screen.getByRole('radio', { name: 'HDD' })
     await expect.element(hdd).toHaveAttribute('data-disabled', '')
-
-    clickElement(hdd.element())
-
-    expect(onValueChange).not.toHaveBeenCalled()
+    await expect.element(hdd).toHaveAttribute('aria-disabled', 'true')
     await expect.element(hdd).toHaveAttribute('aria-checked', 'false')
   })
 

@@ -1,4 +1,3 @@
-import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { FormData } from './form'
 import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answer/human-input-content/field-renderer'
 import type { UserAction } from '@/app/components/workflow/nodes/human-input/types'
@@ -99,7 +98,7 @@ const LoadedFormContent = ({
               <Button
                 key={action.id}
                 disabled={isActionDisabled}
-                variant={getButtonStyle(action.button_style) as ButtonProps['variant']}
+                variant={getButtonStyle(action.button_style)}
                 onClick={() => submit(action.id)}
               >
                 {action.title}

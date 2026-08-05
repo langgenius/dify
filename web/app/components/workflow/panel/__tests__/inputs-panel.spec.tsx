@@ -311,7 +311,6 @@ describe('InputsPanel', () => {
             handleRun,
             accessControl: {
               canEdit: true,
-              canComment: true,
               canRun: false,
               canImportExportDSL: true,
               canReleaseAndVersion: true,

@@ -67,6 +67,15 @@ from services.plugin.plugin_parameter_service import PluginParameterService
 from services.plugin.plugin_permission_service import PluginPermissionService
 from services.tools.tools_transform_service import ToolTransformService
 
+_PLUGIN_PACKAGE_UPLOAD_PARAMS = {
+    "pkg": {
+        "description": "Plugin package to upload",
+        "in": "formData",
+        "type": "file",
+        "required": True,
+    }
+}
+
 
 class AutoUpgradeSettingsResponse(TypedDict):
     strategy_setting: TenantPluginAutoUpgradeStrategySetting
@@ -141,6 +150,7 @@ class ParserGithubUpgrade(BaseModel):
 
 class ParserUninstall(BaseModel):
     plugin_installation_id: str
+    preserve_credentials: bool = False
 
 
 class ParserPermissionChange(BaseModel):
@@ -433,12 +443,10 @@ register_enum_models(
 )
 
 
-def _default_auto_upgrade_settings(
-    tenant_id: str,
-    category: TenantPluginAutoUpgradeCategory,
-) -> AutoUpgradeSettingsResponse:
+def _missing_auto_upgrade_settings(tenant_id: str) -> AutoUpgradeSettingsResponse:
+    """Represent a missing persisted strategy as effectively disabled."""
     return {
-        "strategy_setting": PluginAutoUpgradeService.default_strategy_setting_for_category(category),
+        "strategy_setting": TenantPluginAutoUpgradeStrategySetting.DISABLED,
         "upgrade_time_of_day": PluginAutoUpgradeService.default_upgrade_time_of_day(tenant_id),
         "upgrade_mode": TenantPluginAutoUpgradeMode.EXCLUDE,
         "exclude_plugins": [],
@@ -645,6 +653,7 @@ class PluginAssetApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/upload/pkg")
 class PluginUploadFromPkgApi(Resource):
+    @console_ns.doc(consumes=["multipart/form-data"], params=_PLUGIN_PACKAGE_UPLOAD_PARAMS)
     @console_ns.response(200, "Success", console_ns.models[PluginDecodeResponse.__name__])
     @setup_required
     @login_required
@@ -963,7 +972,13 @@ class PluginUninstallApi(Resource):
         args = ParserUninstall.model_validate(console_ns.payload)
 
         try:
-            return {"success": PluginService.uninstall(tenant_id, args.plugin_installation_id)}
+            return {
+                "success": PluginService.uninstall(
+                    tenant_id,
+                    args.plugin_installation_id,
+                    preserve_credentials=args.preserve_credentials,
+                )
+            }
         except PluginDaemonClientSideError as e:
             return {"code": "plugin_error", "message": e.description}, 400
 
@@ -1125,9 +1140,7 @@ class PluginFetchAutoUpgradeApi(Resource):
         args = ParserAutoUpgradeFetch.model_validate(request.args.to_dict(flat=True))
         auto_upgrade = PluginAutoUpgradeService.get_strategy(tenant_id, args.category, session=db.session())
         auto_upgrade_dict = (
-            _auto_upgrade_settings_to_dict(auto_upgrade)
-            if auto_upgrade
-            else _default_auto_upgrade_settings(tenant_id, args.category)
+            _auto_upgrade_settings_to_dict(auto_upgrade) if auto_upgrade else _missing_auto_upgrade_settings(tenant_id)
         )
 
         return jsonable_encoder(

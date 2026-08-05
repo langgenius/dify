@@ -1,3 +1,4 @@
+import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import {
   Pagination,
@@ -29,26 +30,28 @@ async function renderPagination({
   onPageSizeChange?: (pageSize: number) => void
 } = {}) {
   const screen = await render(
-    <PaginationRoot
-      page={page}
-      totalPages={totalPages}
-      onPageChange={onPageChange}
-      data-testid="pagination"
-    >
-      <PaginationContent data-testid="content">
-        <PaginationNavigation data-testid="controls">
-          <PaginationPrevious />
-          <PaginationPageJump />
-          <PaginationNext />
-        </PaginationNavigation>
-        <PaginationPageList data-testid="pages" />
-        <PaginationPageSize
-          value={pageSize}
-          options={[10, 25, 50]}
-          onValueChange={onPageSizeChange}
-        />
-      </PaginationContent>
-    </PaginationRoot>,
+    <div className="w-236">
+      <PaginationRoot
+        page={page}
+        totalPages={totalPages}
+        onPageChange={onPageChange}
+        data-testid="pagination"
+      >
+        <PaginationContent data-testid="content">
+          <PaginationNavigation data-testid="controls">
+            <PaginationPrevious />
+            <PaginationPageJump />
+            <PaginationNext />
+          </PaginationNavigation>
+          <PaginationPageList data-testid="pages" />
+          <PaginationPageSize
+            value={pageSize}
+            options={[10, 25, 50]}
+            onValueChange={onPageSizeChange}
+          />
+        </PaginationContent>
+      </PaginationRoot>
+    </div>,
   )
 
   return {
@@ -79,9 +82,9 @@ describe('Pagination primitive', () => {
   it('uses one-based page changes for previous, next, and page buttons', async () => {
     const { screen, onPageChange } = await renderPagination({ page: 4 })
 
-    asHTMLElement(screen.getByRole('button', { name: 'Previous page' }).element()).click()
-    asHTMLElement(screen.getByRole('button', { name: 'Next page' }).element()).click()
-    asHTMLElement(screen.getByRole('button', { name: 'Go to page 6' }).element()).click()
+    await screen.getByRole('button', { name: 'Previous page' }).click()
+    await screen.getByRole('button', { name: 'Next page' }).click()
+    await screen.getByRole('button', { name: 'Go to page 6' }).click()
 
     expect(onPageChange).toHaveBeenNthCalledWith(1, 3)
     expect(onPageChange).toHaveBeenNthCalledWith(2, 5)
@@ -114,9 +117,7 @@ describe('Pagination primitive', () => {
   it('switches the page summary into a selected labelled number field', async () => {
     const { screen } = await renderPagination()
 
-    asHTMLElement(
-      screen.getByRole('button', { name: 'Edit page number, current page 2 of 200' }).element(),
-    ).click()
+    await screen.getByRole('button', { name: 'Edit page number, current page 2 of 200' }).click()
 
     await expect.element(screen.getByRole('textbox', { name: 'Page number' })).toBeInTheDocument()
     const input = asHTMLElement(
@@ -137,9 +138,7 @@ describe('Pagination primitive', () => {
   it('returns to the summary button when the page input loses focus', async () => {
     const { screen } = await renderPagination()
 
-    asHTMLElement(
-      screen.getByRole('button', { name: 'Edit page number, current page 2 of 200' }).element(),
-    ).click()
+    await screen.getByRole('button', { name: 'Edit page number, current page 2 of 200' }).click()
     await expect.element(screen.getByRole('textbox', { name: 'Page number' })).toBeInTheDocument()
     asHTMLElement(screen.getByRole('textbox', { name: 'Page number' }).element()).blur()
 
@@ -151,9 +150,7 @@ describe('Pagination primitive', () => {
   it('commits the page input editing mode with Enter', async () => {
     const { screen } = await renderPagination()
 
-    asHTMLElement(
-      screen.getByRole('button', { name: 'Edit page number, current page 2 of 200' }).element(),
-    ).click()
+    await screen.getByRole('button', { name: 'Edit page number, current page 2 of 200' }).click()
     await expect.element(screen.getByRole('textbox', { name: 'Page number' })).toBeInTheDocument()
     const input = asHTMLElement(
       screen.getByRole('textbox', { name: 'Page number' }).element(),
@@ -163,13 +160,7 @@ describe('Pagination primitive', () => {
       expect(document.activeElement).toBe(input)
     })
 
-    input.dispatchEvent(
-      new KeyboardEvent('keydown', {
-        key: 'Enter',
-        bubbles: true,
-        cancelable: true,
-      }),
-    )
+    await userEvent.keyboard('{Enter}')
 
     const summaryButton = screen.getByRole('button', {
       name: 'Edit page number, current page 2 of 200',
@@ -183,9 +174,7 @@ describe('Pagination primitive', () => {
   it('cancels the page input editing mode with Escape', async () => {
     const { screen, onPageChange } = await renderPagination()
 
-    asHTMLElement(
-      screen.getByRole('button', { name: 'Edit page number, current page 2 of 200' }).element(),
-    ).click()
+    await screen.getByRole('button', { name: 'Edit page number, current page 2 of 200' }).click()
     await expect.element(screen.getByRole('textbox', { name: 'Page number' })).toBeInTheDocument()
     const input = asHTMLElement(
       screen.getByRole('textbox', { name: 'Page number' }).element(),
@@ -195,13 +184,7 @@ describe('Pagination primitive', () => {
       expect(document.activeElement).toBe(input)
     })
 
-    input.dispatchEvent(
-      new KeyboardEvent('keydown', {
-        key: 'Escape',
-        bubbles: true,
-        cancelable: true,
-      }),
-    )
+    await userEvent.keyboard('{Escape}')
 
     const summaryButton = screen.getByRole('button', {
       name: 'Edit page number, current page 2 of 200',
@@ -220,7 +203,7 @@ describe('Pagination primitive', () => {
       .element(screen.getByRole('button', { name: '25' }))
       .toHaveAttribute('aria-pressed', 'true')
 
-    asHTMLElement(screen.getByRole('button', { name: '50' }).element()).click()
+    await screen.getByRole('button', { name: '50' }).click()
 
     expect(onPageSizeChange).toHaveBeenCalledWith(50)
   })
@@ -321,7 +304,7 @@ describe('Pagination primitive', () => {
       </PaginationRoot>,
     )
 
-    asHTMLElement(screen.getByRole('button', { name: 'Go to page 4' }).element()).click()
+    await screen.getByRole('button', { name: 'Go to page 4' }).click()
 
     await expect
       .element(screen.getByRole('button', { name: 'Go to page 4' }))

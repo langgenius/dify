@@ -14,13 +14,20 @@ const { mockHandleNodeSelect, mockCanRunBySingle, mockUseNodesReadOnly } = vi.ho
 
 let mockPluginInstallLocked = false
 
-vi.mock('../../../../hooks', async () => {
-  const actual = await vi.importActual<typeof import('../../../../hooks')>('../../../../hooks')
+vi.mock('../../../../hooks/use-nodes-interactions', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../hooks/use-nodes-interactions')>()
   return {
     ...actual,
     useNodesInteractions: () => ({
       handleNodeSelect: mockHandleNodeSelect,
     }),
+  }
+})
+
+vi.mock('../../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../hooks/use-workflow')>()
+  return {
+    ...actual,
     useNodesReadOnly: mockUseNodesReadOnly,
   }
 })
@@ -147,7 +154,6 @@ describe('NodeControl', () => {
     it('should hide the run control when workflow run permission is missing', () => {
       renderNodeControl(<NodeControlHarness id="node-5" data={makeData()} />, {
         canEdit: false,
-        canComment: true,
         canRun: false,
         canImportExportDSL: false,
         canReleaseAndVersion: false,

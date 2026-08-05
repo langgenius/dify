@@ -73,11 +73,11 @@ const MemberSelector: FC<Props> = ({ value, onSelect, exclude = [] }) => {
         sideOffset={4}
         popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >
-        <div className="min-w-[372px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
+        <div className="min-w-93 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
           <div className="p-2 pb-1">
             <Input
-              data-testid="member-selector-search"
               showLeftIcon
+              aria-label={t(($) => $['operation.search'], { ns: 'common' })}
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
             />

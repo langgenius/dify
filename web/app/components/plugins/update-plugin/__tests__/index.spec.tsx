@@ -6,9 +6,10 @@ import type {
 } from '../../types'
 import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { render } from '@/test/console/render'
 import { PluginCategoryEnum, PluginSource, TaskStatus } from '../../types'
 import DowngradeWarningModal from '../downgrade-warning'
 import FromGitHub from '../from-github'
@@ -21,6 +22,13 @@ import PluginVersionPicker from '../plugin-version-picker'
 // Mock app context for useGetIcon
 
 // Mock hooks/use-timestamp
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
+})
+
 vi.mock('@/hooks/use-timestamp', () => ({
   default: () => ({
     formatDate: (timestamp: number, _format: string) => {
@@ -273,15 +281,6 @@ describe('update-plugin', () => {
       })
     })
 
-    describe('Component Memoization', () => {
-      it('should be memoized with React.memo', () => {
-        // Verify the component is wrapped with React.memo
-        expect(UpdatePlugin).toBeDefined()
-        // The component should have $$typeof indicating it's a memo component
-        expect((UpdatePlugin as { $$typeof?: symbol }).$$typeof?.toString()).toContain('Symbol')
-      })
-    })
-
     describe('Props Passing', () => {
       it('should pass correct props to UpdateFromGitHub', () => {
         // Arrange
@@ -360,13 +359,6 @@ describe('update-plugin', () => {
 
         // Assert
         expect(screen.getByTestId('install-from-github')).toBeInTheDocument()
-      })
-    })
-
-    describe('Component Memoization', () => {
-      it('should be memoized with React.memo', () => {
-        expect(FromGitHub).toBeDefined()
-        expect((FromGitHub as { $$typeof?: symbol }).$$typeof?.toString()).toContain('Symbol')
       })
     })
 
@@ -726,15 +718,6 @@ describe('update-plugin', () => {
       })
     })
 
-    describe('Component Memoization', () => {
-      it('should be memoized with React.memo', () => {
-        expect(UpdateFromMarketplace).toBeDefined()
-        expect((UpdateFromMarketplace as { $$typeof?: symbol }).$$typeof?.toString()).toContain(
-          'Symbol',
-        )
-      })
-    })
-
     describe('Exclude and Downgrade', () => {
       it('should call mutateAsync and handleConfirm when exclude and downgrade is clicked', async () => {
         // Arrange
@@ -922,7 +905,7 @@ describe('update-plugin', () => {
       onShowChange: vi.fn(),
       pluginID: 'test-plugin-id',
       currentVersion: '1.0.0',
-      trigger: <span>Select Version</span>,
+      trigger: () => <span>Select Version</span>,
       onSelect: vi.fn(),
     }
 
@@ -1100,15 +1083,6 @@ describe('update-plugin', () => {
         expect(screen.getByText('plugin.detailPanel.switchVersion')).toBeInTheDocument()
       })
     })
-
-    describe('Component Memoization', () => {
-      it('should be memoized with React.memo', () => {
-        expect(PluginVersionPicker).toBeDefined()
-        expect((PluginVersionPicker as { $$typeof?: symbol }).$$typeof?.toString()).toContain(
-          'Symbol',
-        )
-      })
-    })
   })
 
   // ============================================================
@@ -1162,7 +1136,7 @@ describe('update-plugin', () => {
             onShowChange: vi.fn(),
             pluginID: 'test',
             currentVersion: '1.0.0',
-            trigger: <span>Select</span>,
+            trigger: () => <span>Select</span>,
             onSelect: vi.fn(),
           }}
         />,

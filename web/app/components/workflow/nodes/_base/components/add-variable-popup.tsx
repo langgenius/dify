@@ -11,8 +11,8 @@ const AddVariablePopup = ({ availableVars, onSelect }: AddVariablePopupProps) =>
   const { t } = useTranslation()
 
   return (
-    <div className="w-[240px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg">
-      <div className="flex h-[34px] items-center border-b-[0.5px] border-b-divider-regular px-4 text-[13px] font-semibold text-text-secondary">
+    <div className="w-60 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg">
+      <div className="flex h-8.5 items-center border-b-[0.5px] border-b-divider-regular px-4 text-[13px] font-semibold text-text-secondary">
         {t(($) => $['nodes.variableAssigner.setAssignVariable'], { ns: 'workflow' })}
       </div>
       <div className="p-1">

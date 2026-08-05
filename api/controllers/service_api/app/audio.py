@@ -101,10 +101,15 @@ class AudioApi(Resource):
 
         Accepts an audio file upload and returns the transcribed text.
         """
-        file = request.files["file"]
+        file = request.files.get("file")
 
         try:
-            response = AudioService.transcript_asr(app_model=app_model, file=file, end_user=end_user.id)
+            response = AudioService.transcript_asr(
+                app_model=app_model,
+                file=file,
+                session=db.session(),
+                end_user=end_user.id,
+            )
 
             return dump_response(AudioTranscriptResponse, response)
         except services.errors.app_model_config.AppModelConfigBrokenError:

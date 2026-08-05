@@ -9,10 +9,10 @@ import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
-import { useEdgesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-edges-interactions-without-sync'
-import { useNodesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-nodes-interactions-without-sync'
 import { useStore } from '@/app/components/workflow/store'
-import { useWorkflowInteractions } from '../../hooks'
+import { useEdgesInteractionsWithoutSync } from '../../hooks/use-edges-interactions-without-sync'
+import { useNodesInteractionsWithoutSync } from '../../hooks/use-nodes-interactions-without-sync'
+import { useWorkflowInteractions } from '../../hooks/use-workflow-panel-interactions'
 import { useResizePanel } from '../../nodes/_base/hooks/use-resize-panel'
 import { useSetDebugPreviewPanelWidth } from '../../persistence/local-storage-options'
 import { BlockEnum } from '../../types'
@@ -119,7 +119,7 @@ const DebugAndPreview = () => {
                   </TooltipContent>
                 </Tooltip>
                 {expanded && (
-                  <div className="absolute right-[5px] bottom-[-17px] z-10 h-3 w-3 rotate-45 border-t-[0.5px] border-l-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg" />
+                  <div className="absolute right-1.25 -bottom-4.25 z-10 h-3 w-3 rotate-45 border-t-[0.5px] border-l-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg" />
                 )}
               </div>
             )}

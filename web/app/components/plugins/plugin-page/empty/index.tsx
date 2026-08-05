@@ -14,6 +14,7 @@ import { Github } from '@/app/components/base/icons/src/vender/solid/general'
 import { MagicBox } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import InstallFromGitHub from '@/app/components/plugins/install-plugin/install-from-github'
 import InstallFromLocalPackage from '@/app/components/plugins/install-plugin/install-from-local-package'
+import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useInstalledPluginList } from '@/service/use-plugins'
@@ -162,6 +163,13 @@ const Empty = ({
       : isIntegrationsExtension
         ? t(($) => $['list.noExtensionFound'], { ns: 'plugin' })
         : text
+  const emptyTarget = isIntegrationsTrigger
+    ? STEP_BY_STEP_TOUR_TARGETS.integrationTriggerGrid
+    : isIntegrationsAgentStrategy
+      ? STEP_BY_STEP_TOUR_TARGETS.integrationAgentStrategyEmpty
+      : isIntegrationsExtension
+        ? STEP_BY_STEP_TOUR_TARGETS.integrationExtensionGrid
+        : undefined
   const placeholderItemCount = isIntegrationsCategory ? 14 : 20
 
   return (
@@ -205,6 +213,7 @@ const Empty = ({
               'flex flex-col items-center',
               isIntegrationsCategory ? 'gap-y-6' : 'gap-y-3',
             )}
+            data-step-by-step-tour-target={emptyTarget}
           >
             <div className="flex flex-col items-center gap-y-3">
               <div
@@ -247,7 +256,7 @@ const Empty = ({
                 {emptyText}
               </div>
             </div>
-            <div className="flex w-[236px] flex-col">
+            <div className="flex w-59 flex-col">
               <input
                 type="file"
                 ref={fileInputRef}
@@ -262,7 +271,7 @@ const Empty = ({
                       key={action}
                       variant="secondary"
                       title={text}
-                      className="h-8 w-full justify-start gap-x-0.5 px-3 py-2 system-sm-medium"
+                      className="h-8 w-full justify-start py-2 system-sm-medium"
                       onClick={() => {
                         if (action === 'local') fileInputRef.current?.click()
                         else if (action === 'marketplace')
@@ -275,7 +284,7 @@ const Empty = ({
                       ) : (
                         <Icon className="size-4 text-components-button-secondary-text" />
                       )}
-                      <span className="min-w-0 flex-1 truncate px-0.5 text-left">{text}</span>
+                      <span className="min-w-0 flex-1 truncate text-left">{text}</span>
                     </Button>
                   ),
                 )}

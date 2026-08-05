@@ -1,12 +1,13 @@
 import type { ModelAndParameter } from '../../types'
 import type { ChatConfig, ChatItem as ChatItemType, OnSend } from '@/app/components/base/chat/types'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { TransferMethod } from '@/app/components/base/chat/types'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import { APP_CHAT_WITH_MULTIPLE_MODEL, APP_CHAT_WITH_MULTIPLE_MODEL_RESTART } from '../../types'
 import ChatItem from '../chat-item'
 
-const mockUseAppContext = vi.fn()
+const mockConsoleStateReader = vi.fn()
 const mockUseDebugConfigurationContext = vi.fn()
 const mockUseProviderContext = vi.fn()
 const mockUseFeatures = vi.fn()
@@ -101,10 +102,6 @@ vi.mock('@/app/components/base/chat/chat', () => ({
   },
 }))
 
-vi.mock('@langgenius/dify-ui/avatar', () => ({
-  Avatar: ({ name }: { name: string }) => <div data-testid="avatar">{name}</div>,
-}))
-
 const createModelAndParameter = (
   overrides: Partial<ModelAndParameter> = {},
 ): ModelAndParameter => ({
@@ -116,7 +113,7 @@ const createModelAndParameter = (
 })
 
 const createDefaultMocks = () => {
-  mockUseAppContext.mockReturnValue({
+  mockConsoleStateReader.mockReturnValue({
     userProfile: { avatar_url: 'http://avatar.url', name: 'Test User' },
   })
 
@@ -630,7 +627,6 @@ describe('ChatItem', () => {
         payload: { message: 'Hello', files: [] },
       })
 
-      // Should still call handleSend without crashing
       expect(handleSend).toHaveBeenCalled()
     })
 

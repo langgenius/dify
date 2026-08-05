@@ -19,7 +19,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
+import { Uploader } from '@/app/components/app/create-from-dsl-modal/uploader'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useRouter } from '@/next/navigation'
 import {

@@ -17,20 +17,20 @@ export function AgentLogNav({ agentOrToolLogItemStack, onShowAgentOrToolLog }: A
   return (
     <div className="flex h-8 items-center bg-components-panel-bg p-1 pr-3">
       <Button
-        className="shrink-0 px-[5px]"
+        className="shrink-0 px-1.25"
         size="small"
         variant="ghost-accent"
         onClick={() => {
           onShowAgentOrToolLog()
         }}
       >
-        <span aria-hidden className="mr-1 i-ri-arrow-left-line size-3.5" />
+        <span aria-hidden className="i-ri-arrow-left-line size-3.5" />
         AGENT
       </Button>
       <div className="mx-0.5 shrink-0 system-xs-regular text-divider-deep">/</div>
       {agentOrToolLogItemStackLength > 1 ? (
         <Button
-          className="shrink-0 px-[5px]"
+          className="shrink-0 px-1.25"
           size="small"
           variant="ghost-accent"
           onClick={() => onShowAgentOrToolLog(first)}
@@ -51,7 +51,7 @@ export function AgentLogNav({ agentOrToolLogItemStack, onShowAgentOrToolLog }: A
       {!!end && agentOrToolLogItemStackLength > 1 && (
         <>
           <div className="mx-0.5 shrink-0 system-xs-regular text-divider-deep">/</div>
-          <div className="flex items-center px-[5px] system-xs-medium-uppercase text-text-tertiary">
+          <div className="flex items-center px-1.25 system-xs-medium-uppercase text-text-tertiary">
             {end.label}
           </div>
         </>

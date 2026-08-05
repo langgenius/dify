@@ -1,5 +1,6 @@
 import type { MetaData, PluginCategoryEnum } from '../../types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { expectLoadingButton } from '@/test/button'
 // ==================== Imports (after mocks) ====================
@@ -93,8 +94,6 @@ vi.mock('../../plugin-page/plugin-info', () => ({
     </div>
   ),
 }))
-
-vi.mock('@langgenius/dify-ui/tooltip', () => import('@/__mocks__/base-ui-tooltip'))
 
 // ==================== Test Utilities ====================
 
@@ -229,7 +228,8 @@ describe('Action Component', () => {
       expect(queryActionButtons()).toHaveLength(0)
     })
 
-    it('should render tooltips for each button', () => {
+    it('should render tooltips for each button', async () => {
+      const user = userEvent.setup()
       // Arrange
       const props = createActionProps({
         isShowFetchNewVersion: true,
@@ -242,16 +242,16 @@ describe('Action Component', () => {
 
       // Assert
       const buttons = getActionButtons()
-      fireEvent.mouseEnter(buttons[0]!)
-      expect(screen.getByText('plugin.action.checkForUpdates'))!.toBeInTheDocument()
-      fireEvent.mouseLeave(buttons[0]!)
+      await user.hover(buttons[0]!)
+      expect(await screen.findByText('plugin.action.checkForUpdates'))!.toBeInTheDocument()
+      await user.unhover(buttons[0]!)
 
-      fireEvent.mouseEnter(buttons[1]!)
-      expect(screen.getByText('plugin.action.pluginInfo'))!.toBeInTheDocument()
-      fireEvent.mouseLeave(buttons[1]!)
+      await user.hover(buttons[1]!)
+      expect(await screen.findByText('plugin.action.pluginInfo'))!.toBeInTheDocument()
+      await user.unhover(buttons[1]!)
 
-      fireEvent.mouseEnter(buttons[2]!)
-      expect(screen.getByText('plugin.action.delete'))!.toBeInTheDocument()
+      await user.hover(buttons[2]!)
+      expect(await screen.findByText('plugin.action.delete'))!.toBeInTheDocument()
     })
   })
 
@@ -740,38 +740,6 @@ describe('Action Component', () => {
 
   // ==================== Callback Stability Tests ====================
   describe('Callback Stability (useCallback)', () => {
-    it('should have stable handleDelete callback with same dependencies', async () => {
-      // Arrange
-      mockUninstallPlugin.mockResolvedValue({ success: true })
-      const onDelete = vi.fn()
-      const props = createActionProps({
-        isShowDelete: true,
-        isShowInfo: false,
-        isShowFetchNewVersion: false,
-        onDelete,
-        installationId: 'stable-install-id',
-      })
-
-      // Act - First render and delete
-      const { rerender } = render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
-      fireEvent.click(getDeleteConfirmButton())
-
-      await waitFor(() => {
-        expect(mockUninstallPlugin).toHaveBeenCalledWith('stable-install-id')
-      })
-
-      // Re-render with same props
-      mockUninstallPlugin.mockClear()
-      rerender(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
-      fireEvent.click(getDeleteConfirmButton())
-
-      await waitFor(() => {
-        expect(mockUninstallPlugin).toHaveBeenCalledWith('stable-install-id')
-      })
-    })
-
     it('should update handleDelete when installationId changes', async () => {
       // Arrange
       mockUninstallPlugin.mockResolvedValue({ success: true })
@@ -847,19 +815,6 @@ describe('Action Component', () => {
 
   // ==================== Edge Cases ====================
   describe('Edge Cases', () => {
-    it('should handle undefined meta for info display', () => {
-      // Arrange - meta is required for info, but test defensive behavior
-      const props = createActionProps({
-        isShowInfo: false,
-        isShowDelete: true,
-        isShowFetchNewVersion: false,
-        meta: undefined,
-      })
-
-      // Act & Assert - Should not crash
-      expect(() => render(<Action {...props} />)).not.toThrow()
-    })
-
     it('should handle empty repo string', async () => {
       // Arrange
       mockFetchReleases.mockResolvedValue([{ version: '1.0.0' }])
@@ -933,15 +888,6 @@ describe('Action Component', () => {
       // Assert
       // Assert
       expect(screen.getByText('plugin-with-special@chars#123'))!.toBeInTheDocument()
-    })
-  })
-
-  // ==================== React.memo Tests ====================
-  describe('React.memo Behavior', () => {
-    it('should be wrapped with React.memo', () => {
-      // Assert
-      expect(Action).toBeDefined()
-      expect((Action as { $$typeof?: symbol }).$$typeof?.toString()).toContain('Symbol')
     })
   })
 

@@ -68,9 +68,9 @@ const FileTypeItem: FC<Props> = ({
             <TagInput
               items={customFileTypes}
               onChange={onCustomFileTypesChange}
-              placeholder={
-                t(($) => $['variableConfig.file.custom.createPlaceholder'], { ns: 'appDebug' })!
-              }
+              placeholder={t(($) => $['variableConfig.file.custom.createPlaceholder'], {
+                ns: 'appDebug',
+              })!}
             />
           </div>
         </div>

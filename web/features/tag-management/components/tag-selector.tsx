@@ -1,6 +1,5 @@
 import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
-import type { ComboboxProps } from '@langgenius/dify-ui/combobox'
-import type { ComponentProps } from 'react'
+import type { ComboboxContentProps, ComboboxProps } from '@langgenius/dify-ui/combobox'
 import type { TagComboboxItem } from './tag-combobox-item'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Combobox, ComboboxContent, ComboboxTrigger } from '@langgenius/dify-ui/combobox'
@@ -45,7 +44,7 @@ type TagSelectorRootProps = Omit<
   | 'children'
 >
 type TagSelectorContentProps = Pick<
-  ComponentProps<typeof ComboboxContent>,
+  ComboboxContentProps,
   | 'placement'
   | 'sideOffset'
   | 'alignOffset'
@@ -257,7 +256,7 @@ export const TagSelector = ({
         disabled={!canManageTags && !canBindOrUnbindTags}
         aria-label={triggerLabel}
         className={cn(
-          'block h-auto w-full rounded-lg border-0 bg-transparent p-0 text-left hover:bg-transparent focus:outline-hidden focus-visible:bg-transparent focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid data-popup-open:bg-state-base-hover data-popup-open:hover:bg-state-base-hover',
+          'block h-auto w-full rounded-lg border-0 bg-transparent p-0 text-left hover:bg-transparent focus:outline-hidden focus-visible:bg-transparent data-popup-open:bg-state-base-hover data-popup-open:hover:bg-state-base-hover',
         )}
         icon={false}
       >

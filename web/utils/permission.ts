@@ -29,12 +29,6 @@ export const DatasetACLPermission = {
   AccessConfig: 'dataset.acl.access_config',
 } as const
 
-export const BillingPermission = {
-  View: 'billing.view',
-  Manage: 'billing.manage',
-  SubscriptionManage: 'billing.subscription.manage',
-} as const
-
 export type ResourceMaintainerPermissionOptions = {
   currentUserId?: string | null
   resourceMaintainer?: string | null
@@ -47,7 +41,6 @@ type AppACLCapabilities = {
   canTestAndRun: boolean
   canEdit: boolean
   canAccessLayout: boolean
-  canComment: boolean
   canPreviewApp: boolean
   canImportExportDSL: boolean
   canDelete: boolean
@@ -144,7 +137,6 @@ export const getAppACLCapabilities = (
     canTestAndRun,
     canEdit,
     canAccessLayout: canViewLayout || canTestAndRun || canEdit,
-    canComment: canViewLayout || canEdit,
     canPreviewApp: canViewLayout || canTestAndRun,
     canImportExportDSL: hasResourcePermission(
       permissionKeys,

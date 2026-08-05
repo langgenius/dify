@@ -35,9 +35,15 @@ from models.workflow import (
     WorkflowType,
 )
 from repositories.factory import DifyAPIRepositoryFactory
+from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.tag_service import TagService
+from services.workflow_node_execution_trace_service import (
+    WorkflowNodeExecutionTrace,
+    assemble_workflow_node_execution_traces,
+)
 from services.workflow_restore import apply_published_workflow_snapshot_to_draft
+from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +82,7 @@ class SnippetService:
 
     @contextmanager
     def _session_scope(self) -> Generator[Session, None, None]:
-        current_session = getattr(self, "_session", None)
+        current_session = self._session
         if current_session is not None:
             yield current_session
             return
@@ -85,7 +91,7 @@ class SnippetService:
             yield session
 
     def _commit_if_owned(self, session: Session) -> None:
-        if getattr(self, "_session", None) is None:
+        if self._session is None:
             session.commit()
 
     @staticmethod
@@ -596,12 +602,13 @@ class SnippetService:
 
         from services.agent.workflow_publish_service import WorkflowAgentPublishService
 
+        retirement_candidates: set[str] = set()
         with self._session_scope() as session:
             session.add(workflow)
             session.add(snippet)
             if sync_agent_bindings:
                 session.flush()
-                WorkflowAgentPublishService.sync_agent_bindings_for_draft(
+                retirement_candidates = WorkflowAgentPublishService.sync_agent_bindings_for_draft(
                     session=session,
                     draft_workflow=workflow,
                     account_id=account.id,
@@ -611,6 +618,17 @@ class SnippetService:
                     draft_workflow=workflow,
                 )
             self._commit_if_owned(session)
+        if self._session is None:
+            binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
+                tenant_id=snippet.tenant_id,
+                agent_ids=retirement_candidates,
+                account_id=account.id,
+            )
+            enqueue_agent_resource_collection(
+                tenant_id=snippet.tenant_id,
+                binding_ids=binding_ids,
+                home_snapshot_ids=home_snapshot_ids,
+            )
         return workflow
 
     def restore_published_workflow_to_draft(
@@ -652,13 +670,24 @@ class SnippetService:
             session.flush()
             from services.agent.workflow_publish_service import WorkflowAgentPublishService
 
-            WorkflowAgentPublishService.restore_agent_node_bindings_to_draft(
+            retirement_candidates = WorkflowAgentPublishService.restore_agent_node_bindings_to_draft(
                 session=session,
                 source_workflow=source_workflow,
                 draft_workflow=draft_workflow,
                 account_id=account.id,
             )
             self._commit_if_owned(session)
+        if self._session is None:
+            binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
+                tenant_id=snippet.tenant_id,
+                agent_ids=retirement_candidates,
+                account_id=account.id,
+            )
+            enqueue_agent_resource_collection(
+                tenant_id=snippet.tenant_id,
+                binding_ids=binding_ids,
+                home_snapshot_ids=home_snapshot_ids,
+            )
         return draft_workflow
 
     def publish_workflow(
@@ -667,7 +696,7 @@ class SnippetService:
         session: Session,
         snippet: CustomizedSnippet,
         account: Account,
-    ) -> Workflow:
+    ) -> tuple[Workflow, set[str]]:
         """
         Publish the draft workflow as a new version.
 
@@ -688,6 +717,13 @@ class SnippetService:
             raise ValueError("No valid workflow found.")
 
         SnippetService.validate_snippet_graph_forbidden_nodes(draft_workflow.graph_dict)
+
+        from core.workflow.llm_environment_variable import validate_llm_environment_model_references
+
+        validate_llm_environment_model_references(
+            graph=draft_workflow.graph_dict,
+            environment_variables=draft_workflow.environment_variables,
+        )
 
         from services.agent.workflow_publish_service import WorkflowAgentPublishService
 
@@ -711,7 +747,7 @@ class SnippetService:
             kind=WorkflowKind.SNIPPET.value,
         )
         session.add(workflow)
-        WorkflowAgentPublishService.copy_agent_node_bindings_to_published(
+        retirement_candidates = WorkflowAgentPublishService.copy_agent_node_bindings_to_published(
             session=session,
             draft_workflow=draft_workflow,
             published_workflow=workflow,
@@ -724,7 +760,7 @@ class SnippetService:
         snippet.updated_by = account.id
         session.add(snippet)
 
-        return workflow
+        return workflow, retirement_candidates
 
     def get_all_published_workflows(
         self,
@@ -896,13 +932,13 @@ class SnippetService:
         *,
         snippet: CustomizedSnippet,
         run_id: str,
-    ) -> Sequence[WorkflowNodeExecutionModel]:
+    ) -> list[WorkflowNodeExecutionTrace]:
         """
         Get workflow run node execution list.
 
         :param snippet: CustomizedSnippet instance
         :param run_id: Workflow run ID
-        :return: List of WorkflowNodeExecutionModel
+        :return: Public terminal and retry trace records
         """
         workflow_run = self.get_snippet_workflow_run(snippet=snippet, run_id=run_id)
         if not workflow_run:
@@ -914,7 +950,7 @@ class SnippetService:
             workflow_run_id=workflow_run.id,
         )
 
-        return node_executions
+        return assemble_workflow_node_execution_traces(node_executions, self._node_execution_service_repo)
 
     # --- Node Execution Operations ---
 

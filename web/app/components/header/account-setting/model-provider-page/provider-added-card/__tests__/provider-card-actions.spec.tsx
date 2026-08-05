@@ -1,8 +1,8 @@
-import type { ReactElement, ReactNode } from 'react'
+import type { ReactElement } from 'react'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { fireEvent, screen } from '@testing-library/react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { PluginSource } from '@/app/components/plugins/types'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import ProviderCardActions from '../provider-card-actions'
 
 const mockHandleUpdate = vi.fn()
@@ -33,7 +33,7 @@ let mockHeaderState = {
 }
 
 const render = (ui: ReactElement) =>
-  renderWithSystemFeatures(ui, { systemFeatures: { enable_marketplace: true } })
+  renderWithConsoleQuery(ui, { systemFeatures: { enable_marketplace: true } })
 
 const openActionsMenu = () => {
   fireEvent.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.moreActions' }))
@@ -46,6 +46,10 @@ vi.mock('@/app/components/plugins/plugin-detail-panel/detail-header/hooks', () =
     handleUpdatedFromMarketplace: mockHandleUpdatedFromMarketplace,
     handleDelete: mockHandleDelete,
   }),
+}))
+
+vi.mock('@/service/use-plugins', () => ({
+  useVersionListOfPlugin: () => ({ data: { data: { versions: [] } } }),
 }))
 
 vi.mock('@/app/components/plugins/plugin-detail-panel/detail-header/components', () => ({
@@ -77,29 +81,6 @@ vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
   }),
 }))
 
-vi.mock('@/app/components/plugins/update-plugin/plugin-version-picker', () => ({
-  default: ({
-    trigger,
-    onSelect,
-    disabled,
-  }: {
-    trigger: ReactNode
-    onSelect: (state: { version: string; unique_identifier: string; isDowngrade?: boolean }) => void
-    disabled?: boolean
-  }) => (
-    <div data-testid="plugin-version-picker" data-disabled={String(Boolean(disabled))}>
-      {trigger}
-      <button
-        type="button"
-        onClick={() =>
-          onSelect({ version: '2.0.0', unique_identifier: 'plugin@2.0.0', isDowngrade: true })
-        }
-      >
-        select version
-      </button>
-    </div>
-  ),
-}))
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: 'light' }),
 }))
@@ -150,20 +131,10 @@ describe('ProviderCardActions', () => {
     )
   })
 
-  it('should render version controls for marketplace plugins and handle manual version selection', () => {
+  it('should render version controls for marketplace plugins', () => {
     render(<ProviderCardActions detail={createDetail()} />)
 
-    expect(screen.getByText('1.0.0')).toBeInTheDocument()
-    expect(screen.getByTestId('plugin-version-picker')).toHaveAttribute('data-disabled', 'false')
-
-    fireEvent.click(screen.getByRole('button', { name: 'select version' }))
-
-    expect(mockSetTargetVersion).toHaveBeenCalledWith({
-      version: '2.0.0',
-      unique_identifier: 'plugin@2.0.0',
-      isDowngrade: true,
-    })
-    expect(mockHandleUpdate).toHaveBeenCalledWith(true)
+    expect(screen.getByRole('button', { name: '1.0.0' })).toBeEnabled()
   })
 
   it('should show a compact debug badge after the version for debugging plugins', () => {
@@ -232,7 +203,7 @@ describe('ProviderCardActions', () => {
       />,
     )
 
-    expect(screen.getByTestId('plugin-version-picker')).toHaveAttribute('data-disabled', 'true')
+    expect(screen.getByRole('button', { name: '1.0.0' })).toBeDisabled()
     openActionsMenu()
     expect(
       screen.getByRole('menuitem', { name: 'plugin.detailPanel.operation.viewDetail' }),

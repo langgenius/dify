@@ -13,15 +13,14 @@ import { AppPublisher } from '@/app/components/app/app-publisher'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import { Plan } from '@/app/components/billing/type'
+// useWorkflowRunValidation,
+import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import {
   useChecklist,
   useChecklistBeforePublish,
-  useIsChatMode,
-  useNodesReadOnly,
-  useNodesSyncDraft,
-  // useWorkflowRunValidation,
-} from '@/app/components/workflow/hooks'
-import { useHooksStore } from '@/app/components/workflow/hooks-store'
+} from '@/app/components/workflow/hooks/use-checklist'
+import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
+import { useIsChatMode, useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
 import { isAgentV2NodeData } from '@/app/components/workflow/nodes/agent-v2/types'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
@@ -167,6 +166,9 @@ const FeaturesTrigger = () => {
 
       // Then perform the detailed validation
       if (await handleCheckBeforePublish()) {
+        const draftSyncResult = await handleSyncWorkflowDraft(true)
+        if (!draftSyncResult) throw new Error('Workflow draft sync failed')
+
         const res = await publishWorkflow({
           url: publishParams?.url || `/apps/${appID}/workflows/publish`,
           title: publishParams?.title || '',
@@ -206,6 +208,7 @@ const FeaturesTrigger = () => {
     [
       needWarningNodes,
       handleCheckBeforePublish,
+      handleSyncWorkflowDraft,
       publishWorkflow,
       appID,
       t,
@@ -222,7 +225,7 @@ const FeaturesTrigger = () => {
 
   const onPublisherToggle = useCallback(
     (state: boolean) => {
-      if (state) handleSyncWorkflowDraft(true)
+      if (state) void handleSyncWorkflowDraft(true)
     },
     [handleSyncWorkflowDraft],
   )
@@ -237,12 +240,12 @@ const FeaturesTrigger = () => {
       {isChatMode && (
         <Button
           className={cn(
-            'rounded-lg border border-transparent text-components-button-secondary-text',
-            theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-xs',
+            'rounded-lg text-components-button-secondary-text inset-ring-1 inset-ring-transparent',
+            theme === 'dark' && 'bg-white/10 inset-ring-black/5 backdrop-blur-xs',
           )}
           onClick={handleShowFeatures}
         >
-          <span className="mr-1 i-ri-apps-2-add-line size-4 text-components-button-secondary-text" />
+          <span className="i-ri-apps-2-add-line size-4 text-components-button-secondary-text" />
           {t(($) => $['common.features'], { ns: 'workflow' })}
         </Button>
       )}

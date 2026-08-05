@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resolveWebAppLoginRedirect } from '@/app/(shareLayout)/webapp-signin/login-redirect'
 import Input from '@/app/components/base/input'
-import { emailRegex, IS_CLOUD_EDITION } from '@/config'
+import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
 import { useWebAppStore } from '@/context/web-app-context'
 import Link from '@/next/link'
@@ -39,13 +39,13 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
 
   useEffect(() => {
     if (!resolveWebAppLoginRedirect(redirectUrl, window.location.origin))
-      replaceLoginRedirect(getClientLoginFallback(IS_CLOUD_EDITION), router.replace, basePath)
+      replaceLoginRedirect(getClientLoginFallback(), router.replace, basePath)
   }, [redirectUrl, router])
 
   const handleEmailPasswordLogin = async () => {
     const loginRedirect = resolveWebAppLoginRedirect(redirectUrl, window.location.origin)
     if (!loginRedirect) {
-      replaceLoginRedirect(getClientLoginFallback(IS_CLOUD_EDITION), router.replace, basePath)
+      replaceLoginRedirect(getClientLoginFallback(), router.replace, basePath)
       return
     }
     if (!email) {

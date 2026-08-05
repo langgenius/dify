@@ -22,9 +22,16 @@ import { AppCardActionBar } from './app-card'
 type StarredAppCardProps = {
   app: App
   onRefresh?: () => void
+  stepByStepTourCardTarget?: string
+  stepByStepTourCardHighlightPart?: string
 }
 
-export function StarredAppCard({ app, onRefresh }: StarredAppCardProps) {
+export function StarredAppCard({
+  app,
+  onRefresh,
+  stepByStepTourCardTarget,
+  stepByStepTourCardHighlightPart,
+}: StarredAppCardProps) {
   const { t } = useTranslation()
   const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
@@ -49,7 +56,7 @@ export function StarredAppCard({ app, onRefresh }: StarredAppCardProps) {
     isRbacEnabled,
   })
   const cardClassName = cn(
-    'flex h-[72px] min-w-0 items-center gap-3 overflow-hidden rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg px-4 py-3 shadow-xs outline-hidden transition-shadow duration-200',
+    'flex h-18 min-w-0 items-center gap-3 overflow-hidden rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg px-4 py-3 shadow-xs outline-hidden transition-shadow duration-200',
     isPreviewOnly
       ? 'cursor-not-allowed opacity-60 focus-visible:ring-2 focus-visible:ring-state-accent-solid'
       : 'hover:shadow-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid',
@@ -96,19 +103,26 @@ export function StarredAppCard({ app, onRefresh }: StarredAppCardProps) {
   return (
     <div className="group relative">
       {isPreviewOnly ? (
-        <article
+        <div
           role="button"
           tabIndex={0}
           aria-disabled="true"
           aria-label={app.name}
+          data-step-by-step-tour-target={stepByStepTourCardTarget}
+          data-step-by-step-tour-highlight-part={stepByStepTourCardHighlightPart}
           className={cardClassName}
           onClick={showPreviewOnlyAccessWarning}
           onKeyDown={handlePreviewOnlyCardKeyDown}
         >
           {cardContent}
-        </article>
+        </div>
       ) : (
-        <Link href={href} className={cardClassName}>
+        <Link
+          href={href}
+          data-step-by-step-tour-target={stepByStepTourCardTarget}
+          data-step-by-step-tour-highlight-part={stepByStepTourCardHighlightPart}
+          className={cardClassName}
+        >
           {cardContent}
         </Link>
       )}

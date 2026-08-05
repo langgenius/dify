@@ -197,8 +197,21 @@ const toToolRuntimeParameters = (settings: Record<string, unknown> | undefined) 
   return runtimeParameters
 }
 
+const getDifyToolProviderId = (tool: AgentSoulDifyToolConfig) =>
+  tool.provider_id ??
+  (tool.plugin_id && tool.provider
+    ? `${tool.plugin_id}/${tool.provider}`
+    : (tool.provider ?? tool.plugin_id ?? ''))
+
+const getDifyToolProviderName = (tool: AgentSoulDifyToolConfig) => {
+  if (tool.provider) return tool.provider
+
+  const providerIdSegments = getDifyToolProviderId(tool).split('/').filter(Boolean)
+  return providerIdSegments.at(-1) ?? ''
+}
+
 const getDifyToolActionId = (tool: AgentSoulDifyToolConfig) =>
-  `${tool.provider_id ?? tool.provider ?? tool.plugin_id ?? 'provider'}:${tool.tool_name ?? tool.name ?? 'tool'}`
+  `${getDifyToolProviderId(tool) || 'provider'}:${tool.tool_name ?? tool.name ?? 'tool'}`
 
 const toCredentialVariant = (tool: AgentSoulDifyToolConfig) => {
   const credentialType = tool.credential_type
@@ -227,7 +240,7 @@ const toProviderToolFormState = (
   const toolSettings: AgentSoulConfigFormState['toolSettings'] = {}
 
   for (const tool of config?.tools?.dify_tools ?? []) {
-    const providerId = tool.provider_id ?? tool.provider ?? tool.plugin_id ?? ''
+    const providerId = getDifyToolProviderId(tool)
     const toolName = tool.tool_name ?? tool.name ?? ''
     if (!providerId || !toolName) continue
 
@@ -249,8 +262,9 @@ const toProviderToolFormState = (
 
     toolByProviderId.set(providerId, {
       id: providerId,
-      name: tool.provider ?? providerId,
+      name: getDifyToolProviderName(tool),
       kind: 'provider',
+      pluginId: tool.plugin_id ?? undefined,
       iconClassName: 'i-custom-public-other-default-tool-icon text-text-tertiary',
       providerType: tool.provider_type,
       allowDelete:
@@ -287,7 +301,8 @@ const toDifyToolConfigs = (
       enabled: true,
       provider: tool.name,
       provider_id: tool.id,
-      provider_type: tool.providerType ?? 'builtin',
+      plugin_id: tool.pluginId,
+      provider_type: tool.providerType,
       tool_name: action.toolName,
       runtime_parameters: toToolRuntimeParameters(toolSettings[action.id]),
       credential_type: credentialType,
@@ -452,7 +467,7 @@ const toConfigSkillConfigs = (
   return skills.flatMap((skill) => {
     const existing = existingByName.get(skill.name)
     const fileId = skill.fileId ?? existing?.file_id
-    if (!fileId) return []
+    if (!fileId && !skill.isMissing) return []
 
     return [
       {
@@ -463,6 +478,7 @@ const toConfigSkillConfigs = (
         size: skill.size ?? existing?.size,
         hash: skill.hash ?? existing?.hash,
         mime_type: skill.mimeType ?? existing?.mime_type,
+        ...(skill.isMissing ? { is_missing: true } : {}),
       },
     ]
   })
@@ -480,7 +496,7 @@ const toConfigFileConfigs = (
     const configName = file.configName ?? file.name
     const existing = existingByName.get(configName)
     const fileId = file.fileId ?? existing?.file_id
-    if (!fileId) return []
+    if (!fileId && !file.isMissing) return []
 
     return [
       {
@@ -490,10 +506,14 @@ const toConfigFileConfigs = (
         size: file.size ?? existing?.size,
         hash: file.hash ?? existing?.hash,
         mime_type: file.mimeType ?? existing?.mime_type,
+        ...(file.isMissing ? { is_missing: true } : {}),
       },
     ]
   })
 }
+
+const isConfigReferenceMissing = (reference: object) =>
+  'is_missing' in reference && reference.is_missing === true
 
 const toSkillFormState = (config?: AgentSoulConfig): AgentSkill[] => {
   return (config?.config_skills ?? []).map((skill) => ({
@@ -501,6 +521,7 @@ const toSkillFormState = (config?: AgentSoulConfig): AgentSkill[] => {
     name: skill.name,
     description: skill.description ?? undefined,
     fileId: skill.file_id,
+    isMissing: isConfigReferenceMissing(skill) || undefined,
     size: skill.size ?? undefined,
     hash: skill.hash ?? undefined,
     mimeType: skill.mime_type ?? undefined,
@@ -513,6 +534,7 @@ const toFileFormState = (config?: AgentSoulConfig): AgentFileNode[] => {
     name: file.name,
     icon: getFileIconType(file.name, file.mime_type ?? undefined),
     fileId: file.file_id,
+    isMissing: isConfigReferenceMissing(file) || undefined,
     configName: file.name,
     size: file.size ?? undefined,
     hash: file.hash ?? undefined,

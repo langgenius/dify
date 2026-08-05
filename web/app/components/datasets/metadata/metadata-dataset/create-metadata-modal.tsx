@@ -27,7 +27,7 @@ export function CreateMetadataModal({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger render={triggerElement as React.ReactElement} />
+      <PopoverTrigger render={triggerElement} />
       <PopoverContent
         placement="left-start"
         sideOffset={popupLeft}

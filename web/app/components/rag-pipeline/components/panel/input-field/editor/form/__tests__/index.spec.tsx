@@ -59,7 +59,7 @@ const createInputFieldFormProps = (
   ...overrides,
 })
 
-const createTestQueryClient = () =>
+const createConsoleQueryClient = () =>
   new QueryClient({
     defaultOptions: {
       queries: {
@@ -70,7 +70,7 @@ const createTestQueryClient = () =>
   })
 
 const TestWrapper = ({ children }: { children: React.ReactNode }) => {
-  const queryClient = createTestQueryClient()
+  const queryClient = createConsoleQueryClient()
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 }
 
@@ -96,14 +96,6 @@ describe('InputFieldForm', () => {
   })
 
   describe('Rendering', () => {
-    it('should render form without crashing', () => {
-      const props = createInputFieldFormProps()
-
-      const { container } = renderWithProviders(<InputFieldForm {...props} />)
-
-      expect(container.querySelector('form')).toBeInTheDocument()
-    })
-
     it('should render cancel button', () => {
       const props = createInputFieldFormProps()
 
@@ -1331,17 +1323,6 @@ describe('TEXT_MAX_LENGTH', () => {
 describe('InitialFields', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-  })
-
-  describe('Rendering', () => {
-    it('should render InitialFields component without crashing', () => {
-      const initialData = createFormData()
-      const props = createInputFieldFormProps({ initialData })
-
-      const { container } = renderWithProviders(<InputFieldForm {...props} />)
-
-      expect(container.querySelector('form')).toBeInTheDocument()
-    })
   })
 
   describe('getFieldValue and setFieldValue Callbacks', () => {

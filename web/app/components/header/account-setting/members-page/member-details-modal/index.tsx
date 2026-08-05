@@ -55,8 +55,8 @@ const MemberDetailsModal = ({
           defaultValue: 'Assigned Roles',
         })
   const assignActionIconClassName = allowMultipleRoles
-    ? 'mr-0.5 i-ri-add-line h-3.5 w-3.5'
-    : 'mr-0.5 i-ri-edit-line h-3.5 w-3.5'
+    ? 'i-ri-add-line h-3.5 w-3.5'
+    : 'i-ri-edit-line h-3.5 w-3.5'
   const assignActionLabel = allowMultipleRoles
     ? t(($) => $['members.memberDetails.assign'], {
         ns: 'common',

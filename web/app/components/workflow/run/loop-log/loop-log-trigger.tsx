@@ -75,7 +75,7 @@ const LoopLogTrigger = ({ nodeInfo, allExecutions, onShowLoopResultList }: LoopL
 
   return (
     <Button
-      className="flex w-full cursor-pointer items-center gap-2 self-stretch rounded-lg border-none bg-components-button-tertiary-bg-hover px-3 py-2 hover:bg-components-button-tertiary-bg-hover"
+      className="flex w-full cursor-pointer items-center self-stretch rounded-lg bg-components-button-tertiary-bg-hover px-3 py-2 inset-ring-0 hover:bg-components-button-tertiary-bg-hover"
       onClick={handleOnShowLoopDetail}
     >
       <Loop className="size-4 shrink-0 text-components-button-tertiary-text" />

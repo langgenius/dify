@@ -16,6 +16,11 @@ type ToastToneStyle = {
 }
 
 const TOAST_TONE_STYLES = {
+  loading: {
+    iconClassName: 'i-ri-loader-2-line animate-spin text-text-accent motion-reduce:animate-none',
+    gradientClassName:
+      'from-components-badge-status-light-normal-halo to-background-gradient-mask-transparent',
+  },
   success: {
     iconClassName: 'i-ri-checkbox-circle-fill text-text-success',
     gradientClassName:
@@ -41,7 +46,8 @@ const TOAST_TONE_STYLES = {
 const toastCloseLabel = 'Close notification'
 const toastViewportLabel = 'Notifications'
 
-type ToastType = keyof typeof TOAST_TONE_STYLES
+type ToastRenderType = keyof typeof TOAST_TONE_STYLES
+type ToastType = Exclude<ToastRenderType, 'loading'>
 
 type ToastAddOptions = Omit<
   ToastManagerAddOptions<ToastData>,
@@ -96,12 +102,12 @@ type ToastApi = {
 
 const toastManager = BaseToast.createToastManager<ToastData>()
 
-function isToastType(type: string): type is ToastType {
+function isToastRenderType(type: string): type is ToastRenderType {
   return Object.prototype.hasOwnProperty.call(TOAST_TONE_STYLES, type)
 }
 
-function getToastType(type?: string): ToastType | undefined {
-  return type && isToastType(type) ? type : undefined
+function getToastRenderType(type?: string): ToastRenderType | undefined {
+  return type && isToastRenderType(type) ? type : undefined
 }
 
 function addToast(options: ToastAddOptions) {
@@ -135,7 +141,7 @@ function promiseToast<Value>(promiseValue: Promise<Value>, options: ToastPromise
   return toastManager.promise(promiseValue, options)
 }
 
-export const toast: ToastApi = Object.assign(showToast, {
+const toast: ToastApi = Object.assign(showToast, {
   success: createTypedToast('success'),
   error: createTypedToast('error'),
   warning: createTypedToast('warning'),
@@ -145,19 +151,19 @@ export const toast: ToastApi = Object.assign(showToast, {
   promise: promiseToast,
 })
 
-function ToastIcon({ type }: { type?: ToastType }) {
+function ToastIcon({ type }: { type?: ToastRenderType }) {
   return type ? (
     <span aria-hidden="true" className={cn('h-5 w-5', TOAST_TONE_STYLES[type].iconClassName)} />
   ) : null
 }
 
-function getToneGradientClasses(type?: ToastType) {
+function getToneGradientClasses(type?: ToastRenderType) {
   if (type) return TOAST_TONE_STYLES[type].gradientClassName
   return 'from-background-default-subtle to-background-gradient-mask-transparent'
 }
 
 function ToastCard({ toast: toastItem }: { toast: ToastObject<ToastData> }) {
-  const toastType = getToastType(toastItem.type)
+  const toastType = getToastRenderType(toastItem.type)
 
   return (
     <BaseToast.Root
@@ -245,7 +251,7 @@ function ToastViewport() {
   )
 }
 
-export function ToastHost({ timeout, limit }: ToastHostProps) {
+function ToastHost({ timeout, limit }: ToastHostProps) {
   return (
     <BaseToast.Provider toastManager={toastManager} timeout={timeout} limit={limit}>
       <BaseToast.Portal>
@@ -254,3 +260,7 @@ export function ToastHost({ timeout, limit }: ToastHostProps) {
     </BaseToast.Provider>
   )
 }
+
+export { toast, ToastHost }
+
+export type { ToastHostProps }

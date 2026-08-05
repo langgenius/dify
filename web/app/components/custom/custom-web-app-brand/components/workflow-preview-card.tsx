@@ -16,7 +16,7 @@ const WorkflowPreviewCard = ({
   imgKey,
 }: WorkflowPreviewCardProps) => {
   return (
-    <div className="flex h-[320px] grow basis-1/2 flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border-subtle bg-background-default-burn">
+    <div className="flex h-80 grow basis-1/2 flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border-subtle bg-background-default-burn">
       <div className="w-full border-b-[0.5px] border-divider-subtle p-4 pb-0">
         <div className="mb-2 flex items-center gap-3">
           <div
@@ -53,7 +53,7 @@ const WorkflowPreviewCard = ({
             <div className="h-2 w-10 rounded-xs bg-text-quaternary opacity-20"></div>
           </Button>
           <Button variant="primary" size="small" disabled>
-            <span className="mr-1 i-ri-play-large-line size-4" />
+            <span className="i-ri-play-large-line size-4" />
             <span>Execute</span>
           </Button>
         </div>

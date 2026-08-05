@@ -9,14 +9,16 @@ import (
 	"net/url"
 	"os"
 	"strings"
+
+	"github.com/langgenius/dify/dify-agent-runtime/internal/envvar"
 )
 
 const (
-	EnvAPIBaseURL = "DIFY_AGENT_STUB_API_BASE_URL"
-	EnvAuthJWE    = "DIFY_AGENT_STUB_AUTH_JWE"
-	EnvDriveBase  = "DIFY_AGENT_STUB_DRIVE_BASE"
+	EnvAPIBaseURL = envvar.EnvAgentStubAPIBaseURL
+	EnvAuthJWE    = envvar.EnvAgentStubAuthJWE
+	EnvDriveBase  = envvar.EnvAgentStubDriveBase
 
-	DefaultDriveBase = "/mnt/drive"
+	DefaultDriveBase = envvar.DefaultDriveBase
 )
 
 // Environment holds validated Agent Stub connection parameters.

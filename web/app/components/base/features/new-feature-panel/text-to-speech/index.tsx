@@ -75,7 +75,7 @@ const TextToSpeech = ({ disabled, onChange }: Props) => {
                     {languageInfo?.name || '-'}
                   </div>
                 </div>
-                <div className="h-[27px] w-px rotate-12 bg-divider-subtle"></div>
+                <div className="h-6.75 w-px rotate-12 bg-divider-subtle"></div>
                 <div className="">
                   <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">
                     {t(($) => $['voice.voiceSettings.voice'], { ns: 'appDebug' })}
@@ -85,7 +85,7 @@ const TextToSpeech = ({ disabled, onChange }: Props) => {
                       t(($) => $['voice.defaultDisplay'], { ns: 'appDebug' })}
                   </div>
                 </div>
-                <div className="h-[27px] w-px rotate-12 bg-divider-subtle"></div>
+                <div className="h-6.75 w-px rotate-12 bg-divider-subtle"></div>
                 <div className="">
                   <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">
                     {t(($) => $['voice.voiceSettings.autoPlay'], { ns: 'appDebug' })}
@@ -105,7 +105,7 @@ const TextToSpeech = ({ disabled, onChange }: Props) => {
                 onChange={onChange}
               >
                 <Button className="w-full" disabled={disabled}>
-                  <RiEqualizer2Line className="mr-1 size-4" />
+                  <RiEqualizer2Line className="size-4" />
                   {t(($) => $['voice.voiceSettings.title'], { ns: 'appDebug' })}
                 </Button>
               </VoiceSettings>

@@ -5,7 +5,6 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resolveWebAppLoginRedirect } from '@/app/(shareLayout)/webapp-signin/login-redirect'
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
-import { IS_CLOUD_EDITION } from '@/config'
 import { SSOProtocol } from '@/features/system-features/constants'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import {
@@ -32,13 +31,13 @@ function SSOAuth({ protocol }: SSOAuthProps) {
 
   useEffect(() => {
     if (!resolveWebAppLoginRedirect(redirectUrl, window.location.origin))
-      replaceLoginRedirect(getClientLoginFallback(IS_CLOUD_EDITION), router.replace, basePath)
+      replaceLoginRedirect(getClientLoginFallback(), router.replace, basePath)
   }, [redirectUrl, router])
 
   const handleSSOLogin = () => {
     const loginRedirect = resolveWebAppLoginRedirect(redirectUrl, window.location.origin)
     if (!loginRedirect) {
-      replaceLoginRedirect(getClientLoginFallback(IS_CLOUD_EDITION), router.replace, basePath)
+      replaceLoginRedirect(getClientLoginFallback(), router.replace, basePath)
       return
     }
     setIsLoading(true)
@@ -81,7 +80,7 @@ function SSOAuth({ protocol }: SSOAuthProps) {
       disabled={isLoading}
       className="w-full"
     >
-      <Lock01 className="mr-2 size-5 text-text-accent-light-mode-only" />
+      <Lock01 className="size-5 text-text-accent-light-mode-only" />
       <span className="truncate">{t(($) => $.withSSO, { ns: 'login' })}</span>
     </Button>
   )

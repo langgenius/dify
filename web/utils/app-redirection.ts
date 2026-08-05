@@ -2,16 +2,20 @@ import type { ResourceMaintainerPermissionOptions } from '@/utils/permission'
 import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
 
-type AppRedirectionTarget = {
+export type AppRedirectionTarget = {
   id: string
   mode: AppModeEnum
   permission_keys?: string[]
+  bound_agent_id?: string | null
 }
 
 export const getRedirectionPath = (
   app: AppRedirectionTarget,
   maintainerPermissionOptions?: ResourceMaintainerPermissionOptions,
 ) => {
+  if (app.mode === AppModeEnum.AGENT)
+    return app.bound_agent_id ? `/agents/${app.bound_agent_id}/configure` : '/agents'
+
   const appACLCapabilities = getAppACLCapabilities(app.permission_keys, maintainerPermissionOptions)
 
   if (appACLCapabilities.canAccessLayout) {

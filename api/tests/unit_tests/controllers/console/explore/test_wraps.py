@@ -24,8 +24,10 @@ from models import AccountTrialAppRecord, App, AppMode, InstalledApp, TrialApp
 
 
 def _bind_database(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
-    monkeypatch.setattr(wraps_module.db, "session", sqlite_session)
-    monkeypatch.setattr(model_module.db, "session", sqlite_session)
+    session_proxy = MagicMock(wraps=sqlite_session)
+    session_proxy.return_value = sqlite_session
+    monkeypatch.setattr(wraps_module.db, "session", session_proxy)
+    monkeypatch.setattr(model_module.db, "session", session_proxy)
 
 
 def _app() -> App:
@@ -253,11 +255,9 @@ def test_trial_feature_enable_disabled():
     def view():
         return "ok"
 
-    features = MagicMock(enable_trial_app=False)
-
     with patch(
-        "controllers.console.explore.wraps.FeatureService.get_system_features",
-        return_value=features,
+        "controllers.console.explore.wraps.RecommendedAppService.is_trial_app_enabled",
+        return_value=False,
     ):
         with pytest.raises(Forbidden):
             view()
@@ -268,11 +268,9 @@ def test_trial_feature_enable_enabled():
     def view():
         return "ok"
 
-    features = MagicMock(enable_trial_app=True)
-
     with patch(
-        "controllers.console.explore.wraps.FeatureService.get_system_features",
-        return_value=features,
+        "controllers.console.explore.wraps.RecommendedAppService.is_trial_app_enabled",
+        return_value=True,
     ):
         assert view() == "ok"
 
@@ -283,5 +281,9 @@ def test_installed_app_resource_decorators():
 
 
 def test_trial_app_resource_decorators():
-    decorators = TrialAppResource.method_decorators
-    assert len(decorators) == 3
+    assert TrialAppResource.method_decorators == [
+        trial_app_required,
+        trial_feature_enable,
+        wraps_module.account_initialization_required,
+        wraps_module.login_required,
+    ]

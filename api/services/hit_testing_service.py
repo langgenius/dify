@@ -235,7 +235,8 @@ class HitTestingService:
     def compact_retrieve_response(
         cls, query: str, documents: list[Document], *, session: Session
     ) -> RetrieveResponseDict:
-        records = RetrievalService.format_retrieval_documents(documents)
+        with Session(bind=session.get_bind()) as format_session:
+            records = RetrievalService.format_retrieval_documents(format_session, documents)
 
         return {
             "query": {

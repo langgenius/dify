@@ -175,7 +175,7 @@ const PluginPage = ({ plugins, marketplace }: PluginPageProps) => {
     >
       <div
         className={cn(
-          'sticky top-0 z-10 flex min-h-[60px] items-center gap-1 self-stretch bg-components-panel-bg px-12 pt-4 pb-2',
+          'sticky top-0 z-10 flex min-h-15 items-center gap-1 self-stretch bg-components-panel-bg px-12 pt-4 pb-2',
           isExploringMarketplace && 'bg-background-body',
         )}
       >
@@ -207,7 +207,7 @@ const PluginPage = ({ plugins, marketplace }: PluginPageProps) => {
                   target="_blank"
                 >
                   <Button className="px-3" variant="secondary-accent">
-                    <RiBookOpenLine className="mr-1 size-4" />
+                    <RiBookOpenLine className="size-4" />
                     {t(($) => $.publishPlugins, { ns: 'plugin' })}
                   </Button>
                 </Link>

@@ -5,6 +5,7 @@ import type { DataSourceProvider, NotionPage } from '@/models/common'
 import type { CrawlOptions, CrawlResultItem, FileItem } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiFolder6Line } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -15,7 +16,7 @@ import VectorSpaceFull from '@/app/components/billing/vector-space-full'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useProviderContext } from '@/context/provider-context'
 import { DataSourceType } from '@/models/datasets'
-import { useCurrentPlanVectorSpace } from '@/service/use-billing'
+import { consoleQuery } from '@/service/client'
 import EmptyDatasetCreationModal from '../empty-dataset-creation-modal'
 import FileUploader from '../file-uploader'
 import Website from '../website'
@@ -134,8 +135,9 @@ const StepOne = ({
   const allFileLoaded = files.length > 0 && files.every((file) => file.file.id)
   const hasNotion = notionPages.length > 0
   const shouldCheckVectorSpace = enableBilling && (allFileLoaded || hasNotion)
-  const { data: vectorSpace, isFetching: isFetchingVectorSpacePlan } =
-    useCurrentPlanVectorSpace(shouldCheckVectorSpace)
+  const { data: vectorSpace, isFetching: isFetchingVectorSpacePlan } = useQuery(
+    consoleQuery.features.vectorSpace.get.queryOptions({ enabled: shouldCheckVectorSpace }),
+  )
   const isCheckingVectorSpace = shouldCheckVectorSpace && !vectorSpace && isFetchingVectorSpacePlan
   const isVectorSpaceFull =
     !!vectorSpace && vectorSpace.limit > 0 && vectorSpace.size >= vectorSpace.limit
@@ -190,7 +192,7 @@ const StepOne = ({
 
   return (
     <div className="size-full overflow-x-auto">
-      <div className="flex h-full w-full min-w-[1440px]">
+      <div className="flex h-full w-full min-w-360">
         {/* Left Panel - Form */}
         <div className="relative h-full w-1/2 overflow-y-auto">
           <div className="flex justify-end">
@@ -224,7 +226,7 @@ const StepOne = ({
                     supportBatchUpload={supportBatchUpload}
                   />
                   {isShowVectorSpaceFull && (
-                    <div className="mb-4 max-w-[640px]">
+                    <div className="mb-4 max-w-160">
                       <VectorSpaceFull />
                     </div>
                   )}
@@ -242,13 +244,13 @@ const StepOne = ({
               {dataSourceType === DataSourceType.NOTION && (
                 <>
                   {!isNotionAuthed && (
-                    <div className={cn('mb-8 w-[640px]', !shouldShowDataSourceTypeList && 'mt-12')}>
+                    <div className={cn('mb-8 w-160', !shouldShowDataSourceTypeList && 'mt-12')}>
                       <NotionConnector onSetting={onSetting} />
                     </div>
                   )}
                   {isNotionAuthed && (
                     <>
-                      <div className="mb-8 w-[640px]">
+                      <div className="mb-8 w-160">
                         <NotionPageSelector
                           value={notionPages.map((page) => page.page_id)}
                           onSelect={updateNotionPages}
@@ -259,7 +261,7 @@ const StepOne = ({
                         />
                       </div>
                       {isShowVectorSpaceFull && (
-                        <div className="mb-4 max-w-[640px]">
+                        <div className="mb-4 max-w-160">
                           <VectorSpaceFull />
                         </div>
                       )}
@@ -275,7 +277,7 @@ const StepOne = ({
               {/* Web Data Source */}
               {dataSourceType === DataSourceType.WEB && (
                 <>
-                  <div className={cn('mb-8 w-[640px]', !shouldShowDataSourceTypeList && 'mt-12')}>
+                  <div className={cn('mb-8 w-160', !shouldShowDataSourceTypeList && 'mt-12')}>
                     <Website
                       onPreview={showWebsitePreview}
                       checkedCrawlResult={websitePages}
@@ -288,7 +290,7 @@ const StepOne = ({
                     />
                   </div>
                   {isShowVectorSpaceFull && (
-                    <div className="mb-4 max-w-[640px]">
+                    <div className="mb-4 max-w-160">
                       <VectorSpaceFull />
                     </div>
                   )}
@@ -302,7 +304,7 @@ const StepOne = ({
               {/* Empty Dataset Creation Link */}
               {!datasetId && (
                 <>
-                  <div className="my-8 h-px max-w-[640px] bg-divider-regular" />
+                  <div className="my-8 h-px max-w-160 bg-divider-regular" />
                   <span
                     className="inline-flex cursor-pointer items-center text-[13px] leading-4 text-text-accent"
                     onClick={openModal}

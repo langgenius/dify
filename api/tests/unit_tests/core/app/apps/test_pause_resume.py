@@ -274,6 +274,7 @@ def test_advanced_chat_pause_resume_matches_baseline(mocker: MockerFixture):
         user=SimpleNamespace(),
         conversation=SimpleNamespace(id="conv"),
         message=SimpleNamespace(id="msg"),
+        session=SimpleNamespace(),
         application_generate_entity=SimpleNamespace(
             stream=False,
             invoke_from=InvokeFrom.SERVICE_API,

@@ -207,21 +207,18 @@ const Authorized = ({
     <>
       <Popover open={mergedIsOpen} onOpenChange={setMergedIsOpen}>
         <PopoverTrigger
-          render={
-            <div className={triggerPopupSameWidth ? 'w-full' : 'inline-block'}>
+          render={(props, state) => (
+            <div
+              {...props}
+              className={cn(triggerPopupSameWidth ? 'w-full' : 'inline-block', props.className)}
+            >
               {renderTrigger ? (
-                renderTrigger(mergedIsOpen)
+                renderTrigger(state.open)
               ) : (
                 <Button
-                  className={cn(
-                    'w-full',
-                    mergedIsOpen && 'bg-components-button-secondary-bg-hover',
-                  )}
+                  className={cn('w-full', state.open && 'bg-components-button-secondary-bg-hover')}
                 >
-                  <StatusDot
-                    className="mr-2"
-                    status={unavailableCredential ? 'disabled' : 'success'}
-                  />
+                  <StatusDot status={unavailableCredential ? 'disabled' : 'success'} />
                   {credentials.length}
                   &nbsp;
                   {credentials.length > 1
@@ -229,11 +226,11 @@ const Authorized = ({
                     : t(($) => $['auth.authorization'], { ns: 'plugin' })}
                   {!!unavailableCredentials.length &&
                     ` (${unavailableCredentials.length} ${t(($) => $['auth.unavailable'], { ns: 'plugin' })})`}
-                  <span className="ml-0.5 i-ri-arrow-down-s-line size-4" />
+                  <span className="i-ri-arrow-down-s-line size-4" />
                 </Button>
               )}
             </div>
-          }
+          )}
         />
         <PopoverContent
           placement={placement}
@@ -244,7 +241,7 @@ const Authorized = ({
         >
           <div
             className={cn(
-              'max-h-[360px] overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg',
+              'max-h-90 overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg',
               popupClassName,
             )}
           >

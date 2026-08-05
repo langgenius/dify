@@ -56,6 +56,7 @@ class TestTraceClient:
         assert client.worker_thread.is_alive()
 
         client.shutdown()
+        # pyrefly: ignore [unnecessary-comparison]
         assert client.done is True
 
     @patch("dify_trace_aliyun.data_exporter.traceclient.OTLPSpanExporter")

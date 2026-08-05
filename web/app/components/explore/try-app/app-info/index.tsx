@@ -12,8 +12,10 @@ import useGetRequirements from './use-get-requirements'
 type Props = Readonly<{
   appId: string
   appDetail: TryAppInfo
+  canCreate?: boolean
   categories?: string[]
   className?: string
+  createButtonStepByStepTourTarget?: string
   onCreate: () => void
 }>
 
@@ -49,7 +51,15 @@ const RequirementIcon: FC<RequirementIconProps> = ({ iconUrl }) => {
   )
 }
 
-const AppInfo: FC<Props> = ({ appId, className, categories, appDetail, onCreate }) => {
+const AppInfo: FC<Props> = ({
+  appId,
+  canCreate = true,
+  className,
+  categories,
+  createButtonStepByStepTourTarget,
+  appDetail,
+  onCreate,
+}) => {
   const { t } = useTranslation()
   const mode = appDetail?.mode
   const visibleCategories = Array.from(new Set(categories?.filter(Boolean) ?? []))
@@ -78,7 +88,7 @@ const AppInfo: FC<Props> = ({ appId, className, categories, appDetail, onCreate 
               {appDetail.name}
             </div>
           </div>
-          <div className="flex items-center text-[10px] leading-[18px] font-medium text-text-tertiary">
+          <div className="flex items-center text-2xs leading-4.5 font-medium text-text-tertiary">
             {mode === 'advanced-chat' && (
               <div className="truncate">
                 {t(($) => $['types.advanced'], { ns: 'app' }).toUpperCase()}
@@ -108,16 +118,23 @@ const AppInfo: FC<Props> = ({ appId, className, categories, appDetail, onCreate 
         </div>
       </div>
       {appDetail.description && (
-        <div className="mt-[14px] shrink-0 system-sm-regular text-text-secondary">
+        <div className="mt-3.5 shrink-0 system-sm-regular text-text-secondary">
           {appDetail.description}
         </div>
       )}
-      <Button variant="primary" className="mt-3 flex w-full max-w-full" onClick={onCreate}>
-        <span className="mr-1 i-ri-add-line size-4 shrink-0" />
-        <span className="truncate">
-          {t(($) => $['tryApp.createFromSampleApp'], { ns: 'explore' })}
-        </span>
-      </Button>
+      {canCreate && (
+        <Button
+          variant="primary"
+          className="mt-3 flex w-full max-w-full"
+          data-step-by-step-tour-target={createButtonStepByStepTourTarget}
+          onClick={onCreate}
+        >
+          <span className="i-ri-add-line size-4 shrink-0" />
+          <span className="truncate">
+            {t(($) => $['tryApp.createFromSampleApp'], { ns: 'explore' })}
+          </span>
+        </Button>
+      )}
 
       {visibleCategories.length > 0 && (
         <div className="mt-6 shrink-0">

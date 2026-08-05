@@ -2,7 +2,7 @@ import type { PluginInstallationItemResponse } from '@dify/contracts/api/console
 import type { ReactNode } from 'react'
 import type { Permissions, PluginTaskStart } from '@/app/components/plugins/types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import {
@@ -15,19 +15,21 @@ import {
   PluginSource,
   TaskStatus,
 } from '@/app/components/plugins/types'
+import { renderHook } from '@/test/console/render'
 import {
   normalizeInstalledPluginDetail,
   useInstalledPluginList,
+  useInstallOrUpdate,
   useMutationPluginAutoUpgradeSettings,
   useMutationPluginPermissionSettings,
   usePluginAutoUpgradeSettings,
   usePluginTaskList,
 } from '../use-plugins'
 
-const { mockGet, mockPost, mockWorkspacePermissionKeysAtom } = vi.hoisted(() => ({
+const { mockGet, mockPost, mockUninstallPlugin } = vi.hoisted(() => ({
   mockGet: vi.fn(),
   mockPost: vi.fn(),
-  mockWorkspacePermissionKeysAtom: Symbol('workspacePermissionKeysAtom'),
+  mockUninstallPlugin: vi.fn(),
 }))
 
 vi.mock('@/service/base', () => ({
@@ -37,35 +39,24 @@ vi.mock('@/service/base', () => ({
   postMarketplace: vi.fn(),
 }))
 
+vi.mock('@/service/plugins', () => ({
+  fetchPluginInfoFromMarketPlace: vi.fn(),
+  uninstallPlugin: mockUninstallPlugin,
+}))
+
 vi.mock('@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list', () => ({
   default: () => ({
     refreshPluginList: vi.fn(),
   }),
 }))
 
-vi.mock('@/context/account-state', () => ({
-  workspacePermissionKeysAtom: mockWorkspacePermissionKeysAtom,
-}))
-vi.mock('@/context/workspace-state', () => ({
-  workspacePermissionKeysAtom: mockWorkspacePermissionKeysAtom,
-}))
-vi.mock('@/context/permission-state', () => ({
-  workspacePermissionKeysAtom: mockWorkspacePermissionKeysAtom,
-}))
-vi.mock('@/context/version-state', () => ({
-  workspacePermissionKeysAtom: mockWorkspacePermissionKeysAtom,
-}))
-vi.mock('@/context/system-features-state', () => ({
-  workspacePermissionKeysAtom: mockWorkspacePermissionKeysAtom,
-}))
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
 
-vi.mock('jotai', () => ({
-  useAtomValue: (atom: unknown) => {
-    if (atom === mockWorkspacePermissionKeysAtom) return ['plugin.install']
-
-    throw new Error('Unexpected atom')
-  },
-}))
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: ['plugin.install'],
+  }))
+})
 
 vi.mock('../use-tools', () => ({
   useInvalidateAllBuiltInTools: () => vi.fn(),
@@ -317,6 +308,54 @@ describe('use-plugins mutations', () => {
     })
 
     resolvePost({})
+  })
+
+  it('preserves credentials when replacing an installed bundle package', async () => {
+    const queryClient = createQueryClient()
+    mockUninstallPlugin.mockResolvedValue({ success: true })
+    mockPost.mockResolvedValue({ all_installed: true, task_id: '' })
+    const payload = [
+      {
+        type: 'package' as const,
+        value: {
+          unique_identifier: 'langgenius/openai:0.0.2@new',
+          manifest: {},
+        },
+      },
+    ]
+    const plugin = [
+      {
+        org: 'langgenius',
+        name: 'openai',
+      },
+    ]
+    const installedInfo = {
+      'langgenius/openai': {
+        installedId: 'installation-id',
+        installedVersion: '0.0.1',
+        uniqueIdentifier: 'langgenius/openai:0.0.1@old',
+      },
+    }
+    const { result } = renderHook(() => useInstallOrUpdate({}), {
+      wrapper: createWrapper(queryClient),
+    })
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        payload: payload as Parameters<typeof result.current.mutateAsync>[0]['payload'],
+        plugin: plugin as Parameters<typeof result.current.mutateAsync>[0]['plugin'],
+        installedInfo,
+      })
+    })
+
+    expect(mockUninstallPlugin).toHaveBeenCalledWith('installation-id', {
+      preserveCredentials: true,
+    })
+    expect(mockPost).toHaveBeenCalledWith('/workspaces/current/plugin/install/pkg', {
+      body: {
+        plugin_unique_identifiers: ['langgenius/openai:0.0.2@new'],
+      },
+    })
   })
 
   it('optimistically updates plugin permission cache before the request finishes', async () => {

@@ -243,6 +243,7 @@ export const zWorkflowRunNodeExecutionResponse = z.object({
   predecessor_node_id: z.string().nullish(),
   process_data: z.unknown().optional(),
   process_data_truncated: z.boolean().nullish(),
+  retry_index: z.int().nullish(),
   status: z.string().nullish(),
   title: z.string().nullish(),
 })
@@ -567,9 +568,10 @@ export const zAppVariableConfig = z.object({
  * Stable Agent Soul reference to one config file payload.
  */
 export const zAgentConfigFileRefConfig = z.object({
-  file_id: z.string().min(1).max(255),
+  file_id: z.string().max(255).optional().default(''),
   file_kind: z.enum(['tool_file', 'upload_file']),
   hash: z.string().nullish(),
+  is_missing: z.boolean().optional().default(false),
   mime_type: z.string().nullish(),
   name: z.string().min(1).max(255),
   size: z.int().nullish(),
@@ -582,9 +584,10 @@ export const zAgentConfigFileRefConfig = z.object({
  */
 export const zAgentConfigSkillRefConfig = z.object({
   description: z.string().optional().default(''),
-  file_id: z.string().min(1).max(255),
+  file_id: z.string().max(255).optional().default(''),
   file_kind: z.literal('tool_file').optional().default('tool_file'),
   hash: z.string().nullish(),
+  is_missing: z.boolean().optional().default(false),
   mime_type: z.string().nullish().default('application/zip'),
   name: z.string().min(1).max(255),
   size: z.int().nullish(),
@@ -657,10 +660,10 @@ export const zDeclaredArrayItem = z.object({
             description: z.string().nullish(),
             type: z.enum(['array', 'boolean', 'file', 'number', 'object', 'string']).optional(),
           })
-          .optional(),
+          .nullish(),
         children: z.array(z.record(z.string(), z.unknown())).optional(),
         description: z.string().nullish(),
-        file: z.record(z.string(), z.unknown()).optional(),
+        file: z.record(z.string(), z.unknown()).nullish(),
         name: z.string(),
         required: z.boolean().optional(),
         type: z.enum(['array', 'boolean', 'file', 'number', 'object', 'string']),
@@ -1211,10 +1214,10 @@ export const zDeclaredOutputConfig = z.object({
             description: z.string().nullish(),
             type: z.enum(['array', 'boolean', 'file', 'number', 'object', 'string']).optional(),
           })
-          .optional(),
+          .nullish(),
         children: z.array(z.record(z.string(), z.unknown())).optional(),
         description: z.string().nullish(),
-        file: z.record(z.string(), z.unknown()).optional(),
+        file: z.record(z.string(), z.unknown()).nullish(),
         name: z.string(),
         required: z.boolean().optional(),
         type: z.enum(['array', 'boolean', 'file', 'number', 'object', 'string']),
@@ -1259,6 +1262,21 @@ export const zAgentSoulDifyToolCredentialRef = z.object({
 })
 
 /**
+ * ToolProviderType
+ *
+ * Enum class for tool provider
+ */
+export const zToolProviderType = z.enum([
+  'api',
+  'app',
+  'builtin',
+  'dataset-retrieval',
+  'mcp',
+  'plugin',
+  'workflow',
+])
+
+/**
  * AgentSoulDifyToolConfig
  *
  * One Dify tool configured on Agent Soul.
@@ -1280,7 +1298,7 @@ export const zAgentSoulDifyToolConfig = z.object({
   plugin_id: z.string().max(255).nullish(),
   provider: z.string().max(255).nullish(),
   provider_id: z.string().max(255).nullish(),
-  provider_type: z.string().optional().default('plugin'),
+  provider_type: zToolProviderType,
   runtime_parameters: z
     .record(
       z.string(),

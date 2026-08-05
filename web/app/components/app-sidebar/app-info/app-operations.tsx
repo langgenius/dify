@@ -16,6 +16,8 @@ export type Operation = {
   title: string
   icon: JSX.Element
   onClick: () => void
+  disabled?: boolean
+  loading?: boolean
   type?: 'divider'
 }
 
@@ -126,7 +128,9 @@ const AppOperations = ({
             data-targetid={operation.id}
             size="small"
             variant="secondary"
-            className="gap-px focus-visible:ring-inset"
+            className="focus-visible:ring-inset"
+            disabled={operation.disabled}
+            loading={operation.loading}
             tabIndex={-1}
           >
             {cloneElement(operation.icon, {
@@ -141,7 +145,7 @@ const AppOperations = ({
           id="more-measure"
           size="small"
           variant="secondary"
-          className="gap-px focus-visible:ring-inset"
+          className="focus-visible:ring-inset"
           tabIndex={-1}
         >
           <RiMoreLine className="size-3.5 text-components-button-secondary-text" />
@@ -157,7 +161,9 @@ const AppOperations = ({
             data-targetid={operation.id}
             size="small"
             variant="secondary"
-            className="gap-px focus-visible:ring-inset"
+            className="focus-visible:ring-inset"
+            disabled={operation.disabled}
+            loading={operation.loading}
             onClick={operation.onClick}
           >
             {cloneElement(operation.icon, {
@@ -172,11 +178,7 @@ const AppOperations = ({
           <DropdownMenu open={showMore} onOpenChange={setShowMore}>
             <DropdownMenuTrigger
               render={
-                <Button
-                  size="small"
-                  variant="secondary"
-                  className="gap-px focus-visible:ring-inset"
-                />
+                <Button size="small" variant="secondary" className="focus-visible:ring-inset" />
               }
             >
               <>
@@ -195,7 +197,12 @@ const AppOperations = ({
                 item.type === 'divider' ? (
                   <DropdownMenuSeparator key={item.id} />
                 ) : (
-                  <DropdownMenuItem key={item.id} className="gap-x-1 px-1.5" onClick={item.onClick}>
+                  <DropdownMenuItem
+                    key={item.id}
+                    className="gap-x-1 px-1.5"
+                    disabled={item.disabled}
+                    onClick={item.onClick}
+                  >
                     {cloneElement(item.icon, { className: 'h-4 w-4 text-text-tertiary' })}
                     <span className="system-md-regular text-text-secondary">{item.title}</span>
                   </DropdownMenuItem>

@@ -296,8 +296,8 @@ const GenerationItem: FC<IGenerationItemProps> = ({
             {!isTop && (
               <div
                 className={cn(
-                  'absolute top-[-32px] flex h-[33px] w-4 justify-center',
-                  isMobile ? 'left-[17px]' : 'left-[50%] translate-x-[-50%]',
+                  'absolute -top-8 flex h-8.25 w-4 justify-center',
+                  isMobile ? 'left-4.25' : 'left-[50%] translate-x-[-50%]',
                 )}
               >
                 <div className="h-full w-0.5 bg-divider-regular"></div>

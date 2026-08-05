@@ -72,7 +72,7 @@ func (c *httpStubClient) CreateFileUploadURL(_ context.Context, filename, mimety
 	return resp.UploadURL, nil
 }
 
-func (c *httpStubClient) CreateFileDownloadURL(_ context.Context, transferMethod string, reference, url *string, forExternal bool) (*FileDownloadResponse, error) {
+func (c *httpStubClient) CreateFileDownloadURL(_ context.Context, transferMethod string, reference, url *string, forFrontend bool) (*FileDownloadResponse, error) {
 	fileMapping := map[string]any{
 		"transfer_method": transferMethod,
 	}
@@ -85,7 +85,7 @@ func (c *httpStubClient) CreateFileDownloadURL(_ context.Context, transferMethod
 
 	payload := map[string]any{
 		"file":         fileMapping,
-		"for_external": forExternal,
+		"for_frontend": forFrontend,
 	}
 	body, statusCode, err := c.http.postJSON("/files/download-request", payload)
 	if err != nil {

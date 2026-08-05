@@ -5,7 +5,6 @@ import { useCallback, useEffect, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import Loading from '@/app/components/base/loading'
-import { IS_CLOUD_EDITION } from '@/config'
 import { useWebAppStore } from '@/context/web-app-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode } from '@/models/access-control'
@@ -35,7 +34,7 @@ function WebSSOForm() {
 
   useEffect(() => {
     if (!resolveWebAppLoginRedirect(redirectUrl, window.location.origin))
-      replaceLoginRedirect(getClientLoginFallback(IS_CLOUD_EDITION), router.replace, basePath)
+      replaceLoginRedirect(getClientLoginFallback(), router.replace, basePath)
   }, [redirectUrl, router])
 
   const getSigninUrl = useCallback(() => {
@@ -75,7 +74,7 @@ function WebSSOForm() {
       webAppAccessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS)
   ) {
     return (
-      <div className="w-full max-w-[400px]">
+      <div className="w-full max-w-100">
         <NormalForm />
       </div>
     )

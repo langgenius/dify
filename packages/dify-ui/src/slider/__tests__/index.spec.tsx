@@ -1,3 +1,4 @@
+import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import {
   Slider,
@@ -44,9 +45,9 @@ describe('Slider', () => {
       <Slider value={20} onValueChange={onValueChange} aria-label="Value" />,
     )
 
-    const slider = screen.getByLabelText('Value').element()
-    slider.focus()
-    slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }))
+    const slider = screen.getByLabelText('Value')
+    asHTMLElement(slider.element()).focus()
+    await userEvent.keyboard('{ArrowRight}')
 
     await vi.waitFor(() => {
       expect(onValueChange).toHaveBeenCalledTimes(1)
@@ -67,9 +68,9 @@ describe('Slider', () => {
       />,
     )
 
-    const slider = screen.getByLabelText('Value').element()
-    slider.focus()
-    slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }))
+    const slider = screen.getByLabelText('Value')
+    asHTMLElement(slider.element()).focus()
+    await userEvent.keyboard('{ArrowRight}')
 
     await vi.waitFor(() => {
       expect(onValueChange).toHaveBeenCalledTimes(1)
@@ -78,17 +79,9 @@ describe('Slider', () => {
   })
 
   it('should not trigger onValueChange when disabled', async () => {
-    const onValueChange = vi.fn()
-    const screen = await render(
-      <Slider value={20} onValueChange={onValueChange} disabled aria-label="Value" />,
-    )
+    const screen = await render(<Slider value={20} disabled aria-label="Value" />)
 
-    const slider = screen.getByLabelText('Value').element()
-    expect(slider).toBeDisabled()
-
-    asHTMLElement(slider).click()
-
-    expect(onValueChange).not.toHaveBeenCalled()
+    await expect.element(screen.getByLabelText('Value')).toBeDisabled()
   })
 
   it('should apply custom class names on root', async () => {

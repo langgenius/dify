@@ -1,7 +1,7 @@
 import type { TFunction } from 'i18next'
 import type { NodeDefault } from '../../types'
 import type { CodeNodeType } from './types'
-import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
+import { BlockClassification } from '@/app/components/workflow/block-selector/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { CodeLanguage } from './types'
@@ -9,7 +9,7 @@ import { CodeLanguage } from './types'
 const i18nPrefix = 'errorMsg'
 
 const metaData = genNodeMetaData({
-  classification: BlockClassificationEnum.Transform,
+  classification: BlockClassification.Transform,
   sort: 1,
   type: BlockEnum.Code,
 })
