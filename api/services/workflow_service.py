@@ -142,6 +142,7 @@ HumanInputNode = _DebugHumanInputNode
 from services.human_input_service import HumanInputService
 from services.workflow.workflow_converter import WorkflowConverter
 from services.workflow_ref_service import WorkflowRef
+from services.workflow_version_number_service import allocate_version_number
 
 from .errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 from .human_input_delivery_test_service import (
@@ -356,7 +357,10 @@ class WorkflowService:
         stmt = (
             select(Workflow)
             .where(Workflow.app_id == app_model.id)
-            .order_by(Workflow.version.desc())
+            # `version` is a stringified timestamp whose microseconds are omitted when zero,
+            # so ordering by it misplaces versions across second boundaries. `version_number`
+            # cannot be used either: versions published before numbering was introduced are NULL.
+            .order_by(Workflow.created_at.desc(), Workflow.id.desc())
             .limit(limit + 1)
             .offset((page - 1) * limit)
         )
@@ -720,6 +724,7 @@ class WorkflowService:
             app_id=app_model.id,
             type=draft_workflow.type,
             version=Workflow.version_from_datetime(naive_utc_now()),
+            version_number=allocate_version_number(session=session, app_id=app_model.id),
             graph=draft_workflow.graph,
             created_by=account.id,
             environment_variables=draft_workflow.environment_variables,

@@ -148,7 +148,7 @@ class PublishWorkflowPayload(BaseModel):
     """Payload for publishing snippet workflow."""
 
     knowledge_base_setting: dict[str, Any] | None = Field(default=None)
-    marked_name: str | None = Field(default=None, max_length=20)
+    marked_name: str | None = Field(default=None, max_length=50)
     marked_comment: str | None = Field(default=None, max_length=100)
 
 
