@@ -11,11 +11,10 @@ import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { userProfileAtom } from '@/context/account-state'
+import type { CredentialPermission } from '@/models/permission'
 import { PermissionLevel } from '@/models/permission'
 
-export type CredentialPermission =
-  | typeof PermissionLevel.onlyMe
-  | typeof PermissionLevel.allTeamMembers
+export type { CredentialPermission }
 
 type PermissionSelectorProps = {
   disabled?: boolean

@@ -174,7 +174,7 @@ const OAuthClientSettings = ({
                   {t(($) => $['auth.whoCanUse'], { ns: 'plugin' })}
                 </div>
                 <PermissionSelector
-                  disabled={disabled}
+                  disabled={isDisabled}
                   permission={visibility}
                   onChange={onVisibilityChange}
                 />
