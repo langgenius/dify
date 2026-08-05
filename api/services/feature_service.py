@@ -39,6 +39,14 @@ class LimitationModel(FeatureResponseModel):
     limit: int = 0
 
 
+class VectorSpaceLimitationModel(LimitationModel):
+    model_config = ConfigDict(json_schema_serialization_defaults_required=False, protected_namespaces=())
+
+    size: int
+    limit: int
+    usage_unknown: bool = Field(default=False, exclude_if=lambda value: not value)
+
+
 class LicenseLimitationModel(FeatureResponseModel):
     """
     - enabled: whether this limit is enforced
@@ -228,14 +236,15 @@ class FeatureService:
         return features
 
     @classmethod
-    def get_vector_space(cls, tenant_id: str) -> LimitationModel:
-        vector_space = LimitationModel(size=0, limit=5)
+    def get_vector_space(cls, tenant_id: str) -> VectorSpaceLimitationModel:
+        vector_space = VectorSpaceLimitationModel(size=0, limit=5)
         if dify_config.BILLING_ENABLED and tenant_id:
             billing_vector_space = BillingService.get_vector_space(tenant_id)
             # NOTE: billing API returns vector_space.size as float (e.g. 0.0),
             # but feature API keeps LimitationModel.size as int for compatibility.
             vector_space.size = int(billing_vector_space["size"])
             vector_space.limit = billing_vector_space["limit"]
+            vector_space.usage_unknown = billing_vector_space.get("usage_unknown", False)
 
         return vector_space
 
