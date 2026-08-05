@@ -3,8 +3,8 @@ from datetime import datetime
 from http import HTTPStatus
 from inspect import unwrap
 from types import SimpleNamespace
-from typing import NamedTuple
-from unittest.mock import MagicMock, create_autospec, patch
+from typing import NamedTuple, override
+from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -41,6 +41,17 @@ from services.workspace_member_query_service import (
 )
 
 
+class _RecordingWorkspaceMemberQueryService(WorkspaceMemberQueryService):
+    def __init__(self, result: tuple[WorkspaceMemberSummary, ...]) -> None:
+        self._result = result
+        self.contexts: list[RequestContext] = []
+
+    @override
+    def list_current(self, context: RequestContext) -> tuple[WorkspaceMemberSummary, ...]:
+        self.contexts.append(context)
+        return self._result
+
+
 class _ApplicationServicesStub(NamedTuple):
     workspace_member_queries: WorkspaceMemberQueryService
 
@@ -56,23 +67,24 @@ class TestMemberListApi:
             active_workspace_id="workspace-1",
         )
         timestamp = datetime(2026, 1, 1)
-        workspace_member_queries = create_autospec(WorkspaceMemberQueryService, instance=True)
-        workspace_member_queries.list_current.return_value = (
-            WorkspaceMemberSummary(
-                id="member-1",
-                name="Member",
-                email="member@example.com",
-                avatar=None,
-                last_login_at=None,
-                last_active_at=timestamp,
-                created_at=timestamp,
-                role="owner",
-                roles=(
-                    WorkspaceMemberRole(id="workspace.owner", name="Owner"),
-                    WorkspaceMemberRole(id="workspace.editor", name="Editor"),
+        workspace_member_queries = _RecordingWorkspaceMemberQueryService(
+            (
+                WorkspaceMemberSummary(
+                    id="member-1",
+                    name="Member",
+                    email="member@example.com",
+                    avatar=None,
+                    last_login_at=None,
+                    last_active_at=timestamp,
+                    created_at=timestamp,
+                    role="owner",
+                    roles=(
+                        WorkspaceMemberRole(id="workspace.owner", name="Owner"),
+                        WorkspaceMemberRole(id="workspace.editor", name="Editor"),
+                    ),
+                    status="active",
                 ),
-                status="active",
-            ),
+            )
         )
         application_services_stub = _ApplicationServicesStub(workspace_member_queries=workspace_member_queries)
 
@@ -106,7 +118,7 @@ class TestMemberListApi:
                 }
             ]
         }
-        workspace_member_queries.list_current.assert_called_once_with(request_context)
+        assert workspace_member_queries.contexts == [request_context]
 
 
 class TestMemberInviteEmailApi:
