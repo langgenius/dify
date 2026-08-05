@@ -136,17 +136,6 @@ def test_child_uses_actual_parent_run_and_dotted_order(adapter):
     assert child_run["run_type"] == "llm"
 
 
-def test_root_does_not_infer_external_parent_from_local_parent_id(adapter):
-    subject, client = adapter
-    invalid_legacy_root = span(parent_id="00000000-0000-0000-0000-000000000099")
-
-    subject.emit(trace(invalid_legacy_root), None, MagicMock())
-
-    run = client.create_run.call_args.kwargs
-    assert run["trace_id"] == ROOT_ID
-    assert run["parent_run_id"] is None
-
-
 def test_synthetic_ids_are_mapped_consistently(adapter):
     subject, client = adapter
     root = span()

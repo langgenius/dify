@@ -2,9 +2,9 @@
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Any
+from typing import Any, Self
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from core.helper.trace_id_helper import ParentTraceContext
 
@@ -56,3 +56,25 @@ class CanonicalTrace(BaseModel):
     required_parent_context_id: str | None = None
 
     model_config = ConfigDict(extra="forbid", frozen=True)
+
+    @model_validator(mode="after")
+    def validate_fragment(self) -> Self:
+        if self.external_parent is not None and self.required_parent_context_id is not None:
+            raise ValueError("canonical trace cannot require two external parent modes")
+
+        seen: set[str] = set()
+        root_seen = False
+        for span in self.spans:
+            if span.id in seen:
+                raise ValueError(f"duplicate canonical span id: {span.id}")
+            if span.id == self.root_span_id:
+                root_seen = True
+                if span.parent_id is not None:
+                    raise ValueError("canonical trace root cannot have a local parent")
+            elif span.parent_id is None or span.parent_id not in seen:
+                raise ValueError(f"canonical span parent must appear first: {span.id}")
+            seen.add(span.id)
+
+        if not root_seen:
+            raise ValueError("canonical trace root is missing")
+        return self
