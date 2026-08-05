@@ -6,25 +6,15 @@ import type {
   MetadataShape,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  RiDeleteBinLine,
-} from '@remixicon/react'
-import {
-  useCallback,
-  useMemo,
-  useState,
-} from 'react'
+import { RiDeleteBinLine } from '@remixicon/react'
+import { useCallback, useMemo, useState } from 'react'
 import { MetadataFilteringVariableType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import MetadataIcon from '../metadata-icon'
 import ConditionDate from './condition-date'
 import ConditionNumber from './condition-number'
 import ConditionOperator from './condition-operator'
 import ConditionString from './condition-string'
-import {
-  COMMON_VARIABLE_REGEX,
-  comparisonOperatorNotRequireValue,
-  VARIABLE_REGEX,
-} from './utils'
+import { COMMON_VARIABLE_REGEX, comparisonOperatorNotRequireValue, VARIABLE_REGEX } from './utils'
 
 type ConditionItemProps = {
   className?: string
@@ -32,7 +22,17 @@ type ConditionItemProps = {
   condition: MetadataFilteringCondition // condition may the condition of case or condition of sub variable
   onRemoveCondition?: HandleRemoveCondition
   onUpdateCondition?: HandleUpdateCondition
-} & Pick<MetadataShape, 'metadataList' | 'availableStringVars' | 'availableStringNodesWithParent' | 'availableNumberVars' | 'availableNumberNodesWithParent' | 'isCommonVariable' | 'availableCommonStringVars' | 'availableCommonNumberVars'>
+} & Pick<
+  MetadataShape,
+  | 'metadataList'
+  | 'availableStringVars'
+  | 'availableStringNodesWithParent'
+  | 'availableNumberVars'
+  | 'availableNumberNodesWithParent'
+  | 'isCommonVariable'
+  | 'availableCommonStringVars'
+  | 'availableCommonNumberVars'
+>
 const ConditionItem = ({
   className,
   disabled,
@@ -51,8 +51,7 @@ const ConditionItem = ({
   const [isHovered, setIsHovered] = useState(false)
 
   const canChooseOperator = useMemo(() => {
-    if (disabled)
-      return false
+    if (disabled) return false
 
     return true
   }, [disabled])
@@ -63,35 +62,37 @@ const ConditionItem = ({
 
   const currentMetadata = useMemo(() => {
     if (condition.metadata_id) {
-      const foundByIdAndName = metadataList.find(metadata => metadata.id === condition.metadata_id && metadata.name === condition.name)
-      if (foundByIdAndName)
-        return foundByIdAndName
+      const foundByIdAndName = metadataList.find(
+        (metadata) => metadata.id === condition.metadata_id && metadata.name === condition.name,
+      )
+      if (foundByIdAndName) return foundByIdAndName
 
-      const foundById = metadataList.filter(metadata => metadata.id === condition.metadata_id)
-      if (foundById.length === 1)
-        return foundById[0]
+      const foundById = metadataList.filter((metadata) => metadata.id === condition.metadata_id)
+      if (foundById.length === 1) return foundById[0]
     }
 
-    return metadataList.find(metadata => metadata.name === condition.name)
+    return metadataList.find((metadata) => metadata.name === condition.name)
   }, [metadataList, condition.metadata_id, condition.name])
 
-  const handleConditionOperatorChange = useCallback((operator: ComparisonOperator) => {
-    onUpdateCondition?.(
-      condition.id,
-      {
+  const handleConditionOperatorChange = useCallback(
+    (operator: ComparisonOperator) => {
+      onUpdateCondition?.(condition.id, {
         ...condition,
-        value: comparisonOperatorNotRequireValue(condition.comparison_operator) ? undefined : condition.value,
+        value: comparisonOperatorNotRequireValue(condition.comparison_operator)
+          ? undefined
+          : condition.value,
         comparison_operator: operator,
-      },
-    )
-  }, [onUpdateCondition, condition])
+      })
+    },
+    [onUpdateCondition, condition],
+  )
 
   const valueAndValueMethod = useMemo(() => {
     if (
-      (currentMetadata?.type === MetadataFilteringVariableType.string
-        || currentMetadata?.type === MetadataFilteringVariableType.number
-        || currentMetadata?.type === MetadataFilteringVariableType.select)
-      && typeof condition.value === 'string'
+      (currentMetadata?.type === MetadataFilteringVariableType.string ||
+        currentMetadata?.type === MetadataFilteringVariableType.number ||
+        currentMetadata?.type === MetadataFilteringVariableType.select) &&
+      typeof condition.value === 'string'
     ) {
       const regex = isCommonVariable ? COMMON_VARIABLE_REGEX : VARIABLE_REGEX
       const matchedStartNumber = isCommonVariable ? 2 : 3
@@ -102,8 +103,7 @@ const ConditionItem = ({
           value: matched[0].slice(matchedStartNumber, -matchedStartNumber),
           valueMethod: 'variable',
         }
-      }
-      else {
+      } else {
         return {
           value: condition.value,
           valueMethod: 'constant',
@@ -118,29 +118,38 @@ const ConditionItem = ({
   }, [currentMetadata, condition.value, isCommonVariable])
   const [localValueMethod, setLocalValueMethod] = useState(valueAndValueMethod.valueMethod)
 
-  const handleValueMethodChange = useCallback((v: string) => {
-    setLocalValueMethod(v)
-    onUpdateCondition?.(condition.id, { ...condition, value: undefined })
-  }, [condition, onUpdateCondition])
+  const handleValueMethodChange = useCallback(
+    (v: string) => {
+      setLocalValueMethod(v)
+      onUpdateCondition?.(condition.id, { ...condition, value: undefined })
+    },
+    [condition, onUpdateCondition],
+  )
 
-  const handleValueChange = useCallback((v: any) => {
-    onUpdateCondition?.(condition.id, { ...condition, value: v })
-  }, [condition, onUpdateCondition])
+  const handleValueChange = useCallback(
+    (v: any) => {
+      onUpdateCondition?.(condition.id, { ...condition, value: v })
+    },
+    [condition, onUpdateCondition],
+  )
 
   return (
     <div className={cn('mb-1 flex last-of-type:mb-0', className)}>
-      <div className={cn(
-        'grow rounded-lg bg-components-input-bg-normal',
-        isHovered && 'bg-state-destructive-hover',
-      )}
+      <div
+        className={cn(
+          'grow rounded-lg bg-components-input-bg-normal',
+          isHovered && 'bg-state-destructive-hover',
+        )}
       >
         <div className="flex items-center p-1">
           <div className="w-0 grow">
             <div className="flex h-6 min-w-0 items-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark pr-1.5 pl-1 shadow-xs">
               <div className="mr-0.5 p-px">
-                <MetadataIcon type={currentMetadata?.type} className="h-3 w-3" />
+                <MetadataIcon type={currentMetadata?.type} className="size-3" />
               </div>
-              <div className="mr-0.5 min-w-0 flex-1 truncate system-xs-medium text-text-secondary">{currentMetadata?.name}</div>
+              <div className="mr-0.5 min-w-0 flex-1 truncate system-xs-medium text-text-secondary">
+                {currentMetadata?.name}
+              </div>
               <div className="system-xs-regular text-text-tertiary">{currentMetadata?.type}</div>
             </div>
           </div>
@@ -153,10 +162,9 @@ const ConditionItem = ({
           />
         </div>
         <div className="border-t border-t-divider-subtle">
-          {
-            !comparisonOperatorNotRequireValue(condition.comparison_operator)
-            && (currentMetadata?.type === MetadataFilteringVariableType.string
-              || currentMetadata?.type === MetadataFilteringVariableType.select) && (
+          {!comparisonOperatorNotRequireValue(condition.comparison_operator) &&
+            (currentMetadata?.type === MetadataFilteringVariableType.string ||
+              currentMetadata?.type === MetadataFilteringVariableType.select) && (
               <ConditionString
                 valueMethod={localValueMethod}
                 onValueMethodChange={handleValueMethodChange}
@@ -167,10 +175,9 @@ const ConditionItem = ({
                 isCommonVariable={isCommonVariable}
                 commonVariables={availableCommonStringVars}
               />
-            )
-          }
-          {
-            !comparisonOperatorNotRequireValue(condition.comparison_operator) && currentMetadata?.type === MetadataFilteringVariableType.number && (
+            )}
+          {!comparisonOperatorNotRequireValue(condition.comparison_operator) &&
+            currentMetadata?.type === MetadataFilteringVariableType.number && (
               <ConditionNumber
                 valueMethod={localValueMethod}
                 onValueMethodChange={handleValueMethodChange}
@@ -181,25 +188,20 @@ const ConditionItem = ({
                 isCommonVariable={isCommonVariable}
                 commonVariables={availableCommonNumberVars}
               />
-            )
-          }
-          {
-            !comparisonOperatorNotRequireValue(condition.comparison_operator) && currentMetadata?.type === MetadataFilteringVariableType.time && (
-              <ConditionDate
-                value={condition.value as number}
-                onChange={handleValueChange}
-              />
-            )
-          }
+            )}
+          {!comparisonOperatorNotRequireValue(condition.comparison_operator) &&
+            currentMetadata?.type === MetadataFilteringVariableType.time && (
+              <ConditionDate value={condition.value as number} onChange={handleValueChange} />
+            )}
         </div>
       </div>
       <div
-        className="mt-1 ml-1 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
+        className="mt-1 ml-1 flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onClick={doRemoveCondition}
       >
-        <RiDeleteBinLine className="h-4 w-4" />
+        <RiDeleteBinLine className="size-4" />
       </div>
     </div>
   )

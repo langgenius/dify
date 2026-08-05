@@ -17,12 +17,12 @@ jobs:
       pull-requests: write
     steps:
       - name: Checkout PR branch
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
       - name: Setup Python & UV
-        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
           enable-cache: true
 
@@ -65,6 +65,9 @@ jobs:
           # Save structured data for the fork-PR comment workflow
           cp /tmp/pyrefly_report_pr.json pr_report.json
           cp /tmp/pyrefly_report_base.json base_report.json
+          # Keep fork-PR comments correct while the trusted workflow_run job is
+          # still using the default-branch renderer, which resolves --base from api/.
+          cp /tmp/pyrefly_report_base.json api/base_report.json
 
       - name: Save PR number
         run: |
@@ -77,6 +80,7 @@ jobs:
           path: |
             pr_report.json
             base_report.json
+            api/base_report.json
             pr_number.txt
 
       - name: Comment PR with type coverage

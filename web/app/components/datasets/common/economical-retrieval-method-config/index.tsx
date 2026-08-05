@@ -9,17 +9,13 @@ import { EffectColor } from '../../settings/chunk-structure/types'
 import OptionCard from '../../settings/option-card'
 import RetrievalParamConfig from '../retrieval-param-config'
 
-type Props = {
+type Props = Readonly<{
   disabled?: boolean
   value: RetrievalConfig
   onChange: (value: RetrievalConfig) => void
-}
+}>
 
-const EconomicalRetrievalMethodConfig: FC<Props> = ({
-  disabled = false,
-  value,
-  onChange,
-}) => {
+const EconomicalRetrievalMethodConfig: FC<Props> = ({ disabled = false, value, onChange }) => {
   const { t } = useTranslation()
 
   return (
@@ -28,8 +24,8 @@ const EconomicalRetrievalMethodConfig: FC<Props> = ({
       disabled={disabled}
       icon={<VectorSearch className="size-4" />}
       iconActiveColor="text-util-colors-purple-purple-600"
-      title={t('retrieval.keyword_search.title', { ns: 'dataset' })}
-      description={t('retrieval.keyword_search.description', { ns: 'dataset' })}
+      title={t(($) => $['retrieval.keyword_search.title'], { ns: 'dataset' })}
+      description={t(($) => $['retrieval.keyword_search.description'], { ns: 'dataset' })}
       isActive
       effectColor={EffectColor.purple}
       showEffectColor
@@ -40,6 +36,7 @@ const EconomicalRetrievalMethodConfig: FC<Props> = ({
         type={RETRIEVE_METHOD.keywordSearch}
         value={value}
         onChange={onChange}
+        disabled={disabled}
       />
     </OptionCard>
   )

@@ -1,5 +1,4 @@
 {
-  "actionLogs": "Aktionsprotokolle",
   "circularInvocationTip": "Es gibt einen zirkulären Aufruf von Werkzeugen/Knoten im aktuellen Workflow.",
   "detail": "DETAILS",
   "input": "EINGABE",
@@ -10,7 +9,6 @@
   "meta.time": "Verstrichene Zeit",
   "meta.title": "METADATEN",
   "meta.tokens": "Gesamtzeichen",
-  "meta.version": "Version",
   "result": "ERGEBNIS",
   "resultEmpty.link": "Gruppe Detail",
   "resultEmpty.tipLeft": "Bitte gehen Sie zum ",

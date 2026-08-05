@@ -48,11 +48,7 @@ describe('Operation Component', () => {
   it('handles rename and delete visibility correctly', async () => {
     const user = userEvent.setup()
     const { rerender } = render(
-      <Operation
-        {...defaultProps}
-        isShowRenameConversation={false}
-        isShowDelete={false}
-      />,
+      <Operation {...defaultProps} isShowRenameConversation={false} isShowDelete={false} />,
     )
 
     await user.click(screen.getByText('Chat Title'))
@@ -95,10 +91,11 @@ describe('Operation Component', () => {
     const trigger = screen.getByText('Chat Title').closest('.cursor-pointer')
 
     // closed state
-    expect(trigger).not.toHaveClass('bg-state-base-hover')
+    expect(trigger).toHaveClass('data-popup-open:bg-state-base-hover')
+    expect(trigger).not.toHaveAttribute('data-popup-open')
 
     // open state
     await user.click(screen.getByText('Chat Title'))
-    expect(trigger).toHaveClass('bg-state-base-hover')
+    expect(trigger).toHaveAttribute('data-popup-open')
   })
 })

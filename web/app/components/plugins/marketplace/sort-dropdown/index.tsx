@@ -15,48 +15,41 @@ const SortDropdown = () => {
     {
       value: 'install_count',
       order: 'DESC',
-      text: t('marketplace.sortOption.mostPopular', { ns: 'plugin' }),
+      text: t(($) => $['marketplace.sortOption.mostPopular'], { ns: 'plugin' }),
     },
     {
       value: 'version_updated_at',
       order: 'DESC',
-      text: t('marketplace.sortOption.recentlyUpdated', { ns: 'plugin' }),
+      text: t(($) => $['marketplace.sortOption.recentlyUpdated'], { ns: 'plugin' }),
     },
     {
       value: 'created_at',
       order: 'DESC',
-      text: t('marketplace.sortOption.newlyReleased', { ns: 'plugin' }),
+      text: t(($) => $['marketplace.sortOption.newlyReleased'], { ns: 'plugin' }),
     },
     {
       value: 'created_at',
       order: 'ASC',
-      text: t('marketplace.sortOption.firstReleased', { ns: 'plugin' }),
+      text: t(($) => $['marketplace.sortOption.firstReleased'], { ns: 'plugin' }),
     },
   ]
   const [sort, handleSortChange] = useMarketplaceSort()
   const [open, setOpen] = useState(false)
-  const selectedOption = options.find(option => option.value === sort.sortBy && option.order === sort.sortOrder) ?? options[0]!
+  const selectedOption =
+    options.find((option) => option.value === sort.sortBy && option.order === sort.sortOrder) ??
+    options[0]!
 
   return (
-    <DropdownMenu
-      open={open}
-      onOpenChange={setOpen}
-    >
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger className="flex h-8 cursor-pointer items-center rounded-lg bg-state-base-hover-alt px-2 pr-3">
         <span className="mr-1 system-sm-regular text-text-secondary">
-          {t('marketplace.sortBy', { ns: 'plugin' })}
+          {t(($) => $['marketplace.sortBy'], { ns: 'plugin' })}
         </span>
-        <span className="mr-1 system-sm-medium text-text-primary">
-          {selectedOption.text}
-        </span>
-        <span aria-hidden className="i-ri-arrow-down-s-line h-4 w-4 text-text-tertiary" />
+        <span className="mr-1 system-sm-medium text-text-primary">{selectedOption.text}</span>
+        <span aria-hidden className="i-ri-arrow-down-s-line size-4 text-text-tertiary" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent
-        placement="bottom-start"
-        sideOffset={4}
-        popupClassName="p-1"
-      >
-        {options.map(option => (
+      <DropdownMenuContent placement="bottom-start" sideOffset={4} popupClassName="p-1">
+        {options.map((option) => (
           <DropdownMenuItem
             key={`${option.value}-${option.order}`}
             className="justify-between px-3 pr-2 system-md-regular text-text-primary"
@@ -67,7 +60,7 @@ const SortDropdown = () => {
           >
             {option.text}
             {sort.sortBy === option.value && sort.sortOrder === option.order && (
-              <span aria-hidden className="ml-2 i-ri-check-line h-4 w-4 text-text-accent" />
+              <span aria-hidden className="ml-2 i-ri-check-line size-4 text-text-accent" />
             )}
           </DropdownMenuItem>
         ))}

@@ -4,11 +4,7 @@ import SuggestedAction from '../suggested-action'
 
 describe('SuggestedAction', () => {
   it('should render an enabled external link', () => {
-    render(
-      <SuggestedAction link="https://example.com/docs">
-        Open docs
-      </SuggestedAction>,
-    )
+    render(<SuggestedAction link="https://example.com/docs">Open docs</SuggestedAction>)
 
     const link = screen.getByRole('link', { name: 'Open docs' })
     expect(link).toHaveAttribute('href', 'https://example.com/docs')
@@ -65,7 +61,10 @@ describe('SuggestedAction', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Configure action' }))
 
-    expect(screen.getByRole('link', { name: 'Configurable action' })).toHaveAttribute('href', 'https://example.com/docs')
+    expect(screen.getByRole('link', { name: 'Configurable action' })).toHaveAttribute(
+      'href',
+      'https://example.com/docs',
+    )
     expect(handleActionClick).toHaveBeenCalledTimes(1)
   })
 

@@ -9,13 +9,14 @@ This module tests the email code login mechanism including:
 """
 
 import base64
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from flask import Flask
+from pydantic import ValidationError
 
 from controllers.console.auth.error import EmailCodeError, InvalidEmailError, InvalidTokenError
-from controllers.console.auth.login import EmailCodeLoginApi, EmailCodeLoginSendEmailApi
+from controllers.console.auth.login import EmailCodeLoginApi, EmailCodeLoginPayload, EmailCodeLoginSendEmailApi
 from controllers.console.error import (
     AccountInFreezeError,
     AccountNotFound,
@@ -29,6 +30,18 @@ from services.errors.account import AccountRegisterError
 def encode_code(code: str) -> str:
     """Helper to encode verification code as Base64 for testing."""
     return base64.b64encode(code.encode("utf-8")).decode()
+
+
+def test_email_code_login_payload_rejects_invalid_timezone():
+    with pytest.raises(ValidationError):
+        EmailCodeLoginPayload.model_validate(
+            {
+                "email": "newuser@example.com",
+                "code": "123456",
+                "token": "token-123",
+                "timezone": "",
+            }
+        )
 
 
 class TestEmailCodeLoginSendEmailApi:
@@ -342,6 +355,7 @@ class TestEmailCodeLoginApi:
                 "code": encode_code("123456"),
                 "token": "valid_token",
                 "language": "en-US",
+                "timezone": "Asia/Shanghai",
             },
         ):
             api = EmailCodeLoginApi()
@@ -349,7 +363,13 @@ class TestEmailCodeLoginApi:
 
         # Assert
         assert response.json["result"] == "success"
-        mock_create_account.assert_called_once()
+        mock_create_account.assert_called_once_with(
+            email="newuser@example.com",
+            name="newuser@example.com",
+            interface_language="en-US",
+            timezone="Asia/Shanghai",
+            session=ANY,
+        )
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.AccountService.get_email_code_login_data")
@@ -422,10 +442,10 @@ class TestEmailCodeLoginApi:
     @patch("controllers.console.auth.login.AccountService.revoke_email_code_login_token")
     @patch("controllers.console.auth.login.AccountService.get_user_through_email")
     @patch("controllers.console.auth.login.TenantService.get_join_tenants")
-    @patch("controllers.console.auth.login.FeatureService.get_system_features")
+    @patch("controllers.console.auth.login.FeatureService.is_workspace_creation_allowed")
     def test_email_code_login_creates_workspace_for_user_without_tenant(
         self,
-        mock_get_features,
+        mock_is_workspace_creation_allowed,
         mock_get_tenants,
         mock_get_user,
         mock_revoke_token,
@@ -445,10 +465,7 @@ class TestEmailCodeLoginApi:
         mock_get_data.return_value = {"email": "test@example.com", "code": "123456"}
         mock_get_user.return_value = mock_account
         mock_get_tenants.return_value = []
-        mock_features = MagicMock()
-        mock_features.is_allow_create_workspace = True
-        mock_features.license.workspaces.is_available.return_value = True
-        mock_get_features.return_value = mock_features
+        mock_is_workspace_creation_allowed.return_value = True
 
         # Act & Assert - Should not raise WorkspacesLimitExceeded
         with app.test_request_context(
@@ -465,10 +482,12 @@ class TestEmailCodeLoginApi:
     @patch("controllers.console.auth.login.AccountService.revoke_email_code_login_token")
     @patch("controllers.console.auth.login.AccountService.get_user_through_email")
     @patch("controllers.console.auth.login.TenantService.get_join_tenants")
-    @patch("controllers.console.auth.login.FeatureService.get_system_features")
+    @patch("controllers.console.auth.login.FeatureService.get_license")
+    @patch("controllers.console.auth.login.FeatureService.is_workspace_creation_allowed")
     def test_email_code_login_workspace_limit_exceeded(
         self,
-        mock_get_features,
+        mock_is_workspace_creation_allowed,
+        mock_get_license,
         mock_get_tenants,
         mock_get_user,
         mock_revoke_token,
@@ -487,9 +506,8 @@ class TestEmailCodeLoginApi:
         mock_get_data.return_value = {"email": "test@example.com", "code": "123456"}
         mock_get_user.return_value = mock_account
         mock_get_tenants.return_value = []
-        mock_features = MagicMock()
-        mock_features.license.workspaces.is_available.return_value = False
-        mock_get_features.return_value = mock_features
+        mock_get_license.return_value.workspaces.is_available.return_value = False
+        mock_is_workspace_creation_allowed.return_value = True
 
         # Act & Assert
         with app.test_request_context(
@@ -506,10 +524,10 @@ class TestEmailCodeLoginApi:
     @patch("controllers.console.auth.login.AccountService.revoke_email_code_login_token")
     @patch("controllers.console.auth.login.AccountService.get_user_through_email")
     @patch("controllers.console.auth.login.TenantService.get_join_tenants")
-    @patch("controllers.console.auth.login.FeatureService.get_system_features")
+    @patch("controllers.console.auth.login.FeatureService.is_workspace_creation_allowed")
     def test_email_code_login_workspace_creation_not_allowed(
         self,
-        mock_get_features,
+        mock_is_workspace_creation_allowed,
         mock_get_tenants,
         mock_get_user,
         mock_revoke_token,
@@ -528,9 +546,7 @@ class TestEmailCodeLoginApi:
         mock_get_data.return_value = {"email": "test@example.com", "code": "123456"}
         mock_get_user.return_value = mock_account
         mock_get_tenants.return_value = []
-        mock_features = MagicMock()
-        mock_features.is_allow_create_workspace = False
-        mock_get_features.return_value = mock_features
+        mock_is_workspace_creation_allowed.return_value = False
 
         # Act & Assert
         with app.test_request_context(

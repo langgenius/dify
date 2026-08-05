@@ -22,6 +22,7 @@ from core.tools.entities.tool_entities import (
 
 from .base import TypeBase
 from .engine import db
+from .enums import PermissionEnum
 from .model import Account, App, Tenant
 from .types import EnumText, LongText, StringUUID
 
@@ -117,6 +118,12 @@ class BuiltinToolProvider(TypeBase):
         default=CredentialType.API_KEY,
     )
     expires_at: Mapped[int] = mapped_column(sa.BigInteger, nullable=False, server_default=sa.text("-1"), default=-1)
+    visibility: Mapped[PermissionEnum] = mapped_column(
+        EnumText(PermissionEnum, length=40),
+        nullable=False,
+        server_default=sa.text("'all_team_members'"),
+        default=PermissionEnum.ALL_TEAM,
+    )
 
     @property
     def credentials(self) -> dict[str, Any]:
@@ -342,6 +349,14 @@ class MCPToolProvider(TypeBase):
     )
     # encrypted headers for MCP server requests
     encrypted_headers: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+
+    # M2 (MCP user-identity forwarding) — which identity-forwarding mechanism
+    # this provider uses. Reserved values:
+    #   "off"       — no forwarding (default; preserves pre-M2 behaviour).
+    #   "idp_token" — forward an SSO access token minted by dify-enterprise.
+    identity_mode: Mapped[str] = mapped_column(
+        sa.String(32), nullable=False, server_default=sa.text("'off'"), default="off"
+    )
 
     def load_user(self) -> Account | None:
         return db.session.scalar(select(Account).where(Account.id == self.user_id))

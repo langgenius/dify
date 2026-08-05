@@ -1,3 +1,5 @@
+from typing import override
+
 from dify_vdb_oracle.oraclevector import OracleVector, OracleVectorConfig
 
 from core.rag.datasource.vdb.vector_integration_test_support import (
@@ -19,6 +21,7 @@ class OracleVectorTest(AbstractVectorTest):
             ),
         )
 
+    @override
     def search_by_full_text(self):
         hits_by_full_text: list[Document] = self.vector.search_by_full_text(query=get_example_text())
         assert len(hits_by_full_text) == 0

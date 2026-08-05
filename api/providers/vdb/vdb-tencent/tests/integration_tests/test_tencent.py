@@ -1,3 +1,4 @@
+from typing import override
 from unittest.mock import MagicMock
 
 from dify_vdb_tencent.tencent_vector import TencentConfig, TencentVector
@@ -25,10 +26,12 @@ class TencentVectorTest(AbstractVectorTest):
             ),
         )
 
+    @override
     def search_by_vector(self):
         hits_by_vector = self.vector.search_by_vector(query_vector=self.example_embedding)
         assert len(hits_by_vector) == 1
 
+    @override
     def search_by_full_text(self):
         hits_by_full_text = self.vector.search_by_full_text(query=get_example_text())
         assert len(hits_by_full_text) >= 0

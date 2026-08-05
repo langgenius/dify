@@ -8,13 +8,14 @@ type ISVGBtnProps = {
   setIsSVG: React.Dispatch<React.SetStateAction<boolean>>
 }
 
-const SVGBtn = ({
-  isSVG,
-  setIsSVG,
-}: ISVGBtnProps) => {
+const SVGBtn = ({ isSVG, setIsSVG }: ISVGBtnProps) => {
   return (
-    <ActionButton onClick={() => { setIsSVG(prevIsSVG => !prevIsSVG) }}>
-      <div className={cn('h-4 w-4', isSVG ? s.svgIconed : s.svgIcon)}></div>
+    <ActionButton
+      onClick={() => {
+        setIsSVG((prevIsSVG) => !prevIsSVG)
+      }}
+    >
+      <div className={cn('size-4', isSVG ? s.svgIconed : s.svgIcon)}></div>
     </ActionButton>
   )
 }

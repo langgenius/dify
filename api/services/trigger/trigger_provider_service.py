@@ -3,7 +3,10 @@ import logging
 import time as _time
 import uuid
 from collections.abc import Mapping
-from typing import Any, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict
+
+if TYPE_CHECKING:
+    from models.account import Account
 
 from sqlalchemy import delete, desc, func, select
 from sqlalchemy.orm import Session, sessionmaker
@@ -14,6 +17,7 @@ from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.helper.provider_encryption import ProviderConfigEncrypter, create_provider_encrypter
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
+from core.plugin.plugin_service import PluginService
 from core.tools.utils.system_encryption import decrypt_system_params
 from core.trigger.entities.api_entities import (
     TriggerProviderApiEntity,
@@ -37,7 +41,6 @@ from models.trigger import (
     TriggerSubscription,
     WorkflowPluginTrigger,
 )
-from services.plugin.plugin_service import PluginService
 
 logger = logging.getLogger(__name__)
 
@@ -66,21 +69,37 @@ class TriggerProviderService:
 
     @classmethod
     def list_trigger_provider_subscriptions(
-        cls, tenant_id: str, provider_id: TriggerProviderID
+        cls,
+        tenant_id: str,
+        provider_id: TriggerProviderID,
+        user: "Account | None" = None,
     ) -> list[TriggerProviderSubscriptionApiEntity]:
-        """List all trigger subscriptions for the current tenant"""
+        """List all trigger subscriptions for the current tenant, filtered by visibility."""
+        from models.credential_permission import CredentialType as CredPermType
+        from services.credential_permission_service import CredentialPermissionService
+
         subscriptions: list[TriggerProviderSubscriptionApiEntity] = []
         workflows_in_use_map: dict[str, int] = {}
         with Session(db.engine, expire_on_commit=False) as session:
-            # Get all subscriptions
-            subscriptions_db = session.scalars(
+            # Get all subscriptions with visibility filtering
+            query = (
                 select(TriggerSubscription)
                 .where(
                     TriggerSubscription.tenant_id == tenant_id,
                     TriggerSubscription.provider_id == str(provider_id),
                 )
                 .order_by(desc(TriggerSubscription.created_at))
-            ).all()
+            )
+            if user is not None:
+                query = CredentialPermissionService.apply_visibility_filter(
+                    query,
+                    model_id_column=TriggerSubscription.id,
+                    model_user_id_column=TriggerSubscription.user_id,
+                    model_visibility_column=TriggerSubscription.visibility,
+                    credential_type=CredPermType.TRIGGER_SUBSCRIPTION,
+                    user=user,
+                )
+            subscriptions_db = session.scalars(query).all()
             subscriptions = [subscription.to_api_entity() for subscription in subscriptions_db]
             if not subscriptions:
                 return []
@@ -369,7 +388,7 @@ class TriggerProviderService:
             return subscription
 
     @classmethod
-    def delete_trigger_provider(cls, session: Session, tenant_id: str, subscription_id: str):
+    def delete_trigger_provider(cls, tenant_id: str, subscription_id: str, *, session: Session):
         """
         Delete a trigger provider subscription within an existing session.
 
@@ -448,7 +467,7 @@ class TriggerProviderService:
             if not subscription:
                 raise ValueError(f"Trigger provider subscription {subscription_id} not found")
 
-            if subscription.credential_type != CredentialType.OAUTH2.value:
+            if subscription.credential_type != CredentialType.OAUTH2:
                 raise ValueError("Only OAuth credentials can be refreshed")
 
             provider_id = TriggerProviderID(subscription.provider_id)
@@ -456,7 +475,7 @@ class TriggerProviderService:
                 tenant_id=tenant_id, provider_id=provider_id
             )
             # Create encrypter
-            encrypter, cache = create_provider_encrypter(
+            encrypter, _ = create_provider_encrypter(
                 tenant_id=tenant_id,
                 config=[x.to_basic_provider_config() for x in provider_controller.get_oauth_client_schema()],
                 cache=NoOpProviderCredentialCache(),
@@ -487,13 +506,19 @@ class TriggerProviderService:
             subscription.credentials = dict(encrypter.encrypt(dict(refreshed_credentials.credentials)))
             subscription.credential_expires_at = refreshed_credentials.expires_at
 
-            # Clear cache
-            cache.delete()
-
-            return {
+            provider_id_value = subscription.provider_id
+            result = {
                 "result": "success",
                 "expires_at": refreshed_credentials.expires_at,
             }
+
+        # Clear the trigger runtime credential cache after the DB commit so dispatch uses the refreshed token.
+        delete_cache_for_subscription(
+            tenant_id=tenant_id,
+            provider_id=provider_id_value,
+            subscription_id=subscription_id,
+        )
+        return result
 
     @classmethod
     def refresh_subscription(

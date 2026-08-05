@@ -1,29 +1,72 @@
 'use client'
 
+import type { ComponentRenderFn, HTMLProps } from '@base-ui/react/types'
 import type { VariantProps } from 'class-variance-authority'
-import type { ReactNode } from 'react'
+import type * as React from 'react'
 import type { Placement } from '../placement'
 import { Select as BaseSelect } from '@base-ui/react/select'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
+import { formLabelClassName } from '../form-control-shared'
 import {
-  overlayLabelClassName,
-  overlaySeparatorClassName,
+  floatingGroupLabelClassName,
+  floatingItemIndicatorClassName,
+  floatingPopupAnimationClassName,
+  floatingSeparatorClassName,
 } from '../overlay-shared'
 import { parsePlacement } from '../placement'
 
-export type { Placement }
+type SelectProps<Value, Multiple extends boolean | undefined = false> = BaseSelect.Root.Props<
+  Value,
+  Multiple
+> &
+  ([Multiple] extends [true] ? { multiple: true } : unknown)
 
-export const Select = BaseSelect.Root
-export const SelectValue = BaseSelect.Value
-export const SelectGroup = BaseSelect.Group
+function Select<Value, Multiple extends boolean | undefined = false>(
+  props: SelectProps<Value, Multiple>,
+): React.JSX.Element {
+  return <BaseSelect.Root {...props} />
+}
+
+const SelectGroup = BaseSelect.Group
+
+type SelectSelectedValue<Value, Multiple extends boolean | undefined = false> =
+  | (Multiple extends true ? Value[] : Value)
+  | null
+type SelectValueState<Value = unknown, Multiple extends boolean | undefined = false> = Omit<
+  BaseSelect.Value.State,
+  'value'
+> & {
+  value: SelectSelectedValue<Value, Multiple>
+}
+type SelectValueProps<Value = unknown, Multiple extends boolean | undefined = false> = Omit<
+  BaseSelect.Value.Props,
+  'children' | 'className' | 'render' | 'style'
+> & {
+  children?: React.ReactNode | ((value: SelectSelectedValue<Value, Multiple>) => React.ReactNode)
+  className?: string | ((state: SelectValueState<Value, Multiple>) => string | undefined)
+  render?:
+    | React.ReactElement
+    | ComponentRenderFn<HTMLProps<HTMLSpanElement>, SelectValueState<Value, Multiple>>
+  style?:
+    | React.CSSProperties
+    | ((state: SelectValueState<Value, Multiple>) => React.CSSProperties | undefined)
+}
+function SelectValue<Value = unknown, Multiple extends boolean | undefined = false>(
+  props: SelectValueProps<Value, Multiple>,
+): React.JSX.Element
+function SelectValue(props: BaseSelect.Value.Props): React.JSX.Element {
+  return <BaseSelect.Value {...props} />
+}
+type SelectGroupProps = BaseSelect.Group.Props
 
 const selectTriggerVariants = cva(
   [
-    'group flex w-full items-center border-0 bg-components-input-bg-normal text-left text-components-input-text-filled outline-hidden',
-    'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-open:bg-state-base-hover-alt',
+    'group flex w-full items-center border-0 bg-components-input-bg-normal text-start text-components-input-text-filled outline-hidden',
+    'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt',
+    'focus-visible:ring-2 focus-visible:ring-state-accent-solid',
     'data-placeholder:text-components-input-text-placeholder',
-    'data-readonly:cursor-default data-readonly:bg-transparent data-readonly:hover:bg-transparent',
+    'data-readonly:cursor-default data-readonly:bg-components-input-bg-normal data-readonly:hover:bg-components-input-bg-normal',
     'data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled data-disabled:hover:bg-components-input-bg-disabled',
     'data-disabled:data-placeholder:text-components-input-text-disabled',
   ],
@@ -41,79 +84,64 @@ const selectTriggerVariants = cva(
   },
 )
 
-type SelectTriggerProps
-  = Omit<BaseSelect.Trigger.Props, 'className'>
-    & VariantProps<typeof selectTriggerVariants>
-    & { className?: string }
+type SelectSize = NonNullable<VariantProps<typeof selectTriggerVariants>['size']>
+type SelectTriggerProps = Omit<BaseSelect.Trigger.Props, 'className'> & {
+  className?: string
+  size?: SelectSize
+}
 
-export function SelectTrigger({
-  className,
-  children,
-  size,
-  ...props
-}: SelectTriggerProps) {
+function SelectTrigger({ className, children, size, ...props }: SelectTriggerProps) {
   return (
-    <BaseSelect.Trigger
-      className={cn(selectTriggerVariants({ size, className }))}
-      {...props}
-    >
-      <span className="min-w-0 grow truncate">
-        {children}
-      </span>
-      <BaseSelect.Icon className="shrink-0 text-text-quaternary transition-colors group-hover:text-text-secondary group-data-readonly:hidden data-open:text-text-secondary">
+    <BaseSelect.Trigger className={cn(selectTriggerVariants({ size, className }))} {...props}>
+      <span className="min-w-0 grow truncate">{children}</span>
+      <BaseSelect.Icon className="shrink-0 text-text-quaternary transition-colors group-hover:text-text-secondary group-data-readonly:hidden data-popup-open:text-text-secondary">
         <span className="i-ri-arrow-down-s-line h-4 w-4" aria-hidden="true" />
       </BaseSelect.Icon>
     </BaseSelect.Trigger>
   )
 }
 
-export function SelectLabel({
-  className,
-  ...props
-}: BaseSelect.GroupLabel.Props) {
-  return (
-    <BaseSelect.GroupLabel
-      className={cn(overlayLabelClassName, className)}
-      {...props}
-    />
-  )
+type SelectLabelProps = Omit<BaseSelect.Label.Props, 'className'> & { className?: string }
+
+function SelectLabel({ className, ...props }: SelectLabelProps) {
+  return <BaseSelect.Label className={cn(formLabelClassName, className)} {...props} />
 }
 
-export function SelectSeparator({
-  className,
-  ...props
-}: BaseSelect.Separator.Props) {
-  return (
-    <BaseSelect.Separator
-      className={cn(overlaySeparatorClassName, className)}
-      {...props}
-    />
-  )
+type SelectGroupLabelProps = Omit<BaseSelect.GroupLabel.Props, 'className'> & {
+  className?: string
 }
+
+function SelectGroupLabel({ className, ...props }: SelectGroupLabelProps) {
+  return <BaseSelect.GroupLabel className={cn(floatingGroupLabelClassName, className)} {...props} />
+}
+
+type SelectSeparatorProps = Omit<BaseSelect.Separator.Props, 'className'> & { className?: string }
+
+function SelectSeparator({ className, ...props }: SelectSeparatorProps) {
+  return <BaseSelect.Separator className={cn(floatingSeparatorClassName, className)} {...props} />
+}
+
+type SelectContentPositionerProps = Omit<
+  BaseSelect.Positioner.Props,
+  'children' | 'className' | 'side' | 'align' | 'sideOffset' | 'alignOffset'
+>
+type SelectContentPopupProps = Omit<BaseSelect.Popup.Props, 'children' | 'className'>
+type SelectContentListProps = Omit<BaseSelect.List.Props, 'children' | 'className'>
 
 type SelectContentProps = {
-  children: ReactNode
+  children: React.ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number
   className?: string
   popupClassName?: string
   listClassName?: string
-  positionerProps?: Omit<
-    BaseSelect.Positioner.Props,
-    'children' | 'className' | 'side' | 'align' | 'sideOffset' | 'alignOffset'
-  >
-  popupProps?: Omit<
-    BaseSelect.Popup.Props,
-    'children' | 'className'
-  >
-  listProps?: Omit<
-    BaseSelect.List.Props,
-    'children' | 'className'
-  >
+  positionerProps?: SelectContentPositionerProps
+  popupProps?: SelectContentPopupProps
+  listProps?: SelectContentListProps
 }
 
-export function SelectContent({
+function SelectContent({
   children,
   placement = 'bottom-start',
   sideOffset = 4,
@@ -140,8 +168,8 @@ export function SelectContent({
       >
         <BaseSelect.Popup
           className={cn(
-            'min-w-(--anchor-width) rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
-            'origin-(--transform-origin) transition-[transform,scale,opacity] data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 motion-reduce:transition-none',
+            'max-w-(--available-width) min-w-[min(var(--anchor-width),var(--available-width))] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg outline-hidden',
+            floatingPopupAnimationClassName,
             popupClassName,
           )}
           {...popupProps}
@@ -158,10 +186,12 @@ export function SelectContent({
   )
 }
 
-export function SelectItem({
-  className,
-  ...props
-}: BaseSelect.Item.Props) {
+type SelectItemProps<Value = unknown> = Omit<BaseSelect.Item.Props, 'className' | 'value'> & {
+  className?: string
+  value?: Value
+}
+
+function SelectItem<Value = unknown>({ className, ...props }: SelectItemProps<Value>) {
   return (
     <BaseSelect.Item
       className={cn(
@@ -174,28 +204,50 @@ export function SelectItem({
   )
 }
 
-export function SelectItemText({
-  className,
-  ...props
-}: BaseSelect.ItemText.Props) {
+type SelectItemTextProps = Omit<BaseSelect.ItemText.Props, 'className'> & { className?: string }
+
+function SelectItemText({ className, ...props }: SelectItemTextProps) {
   return (
-    <BaseSelect.ItemText
-      className={cn('mr-1 min-w-0 grow truncate px-1', className)}
-      {...props}
-    />
+    <BaseSelect.ItemText className={cn('me-1 min-w-0 grow truncate px-1', className)} {...props} />
   )
 }
 
-export function SelectItemIndicator({
-  className,
-  ...props
-}: Omit<BaseSelect.ItemIndicator.Props, 'children'>) {
+type SelectItemIndicatorProps = Omit<BaseSelect.ItemIndicator.Props, 'children' | 'className'> & {
+  className?: string
+}
+
+function SelectItemIndicator({ className, ...props }: SelectItemIndicatorProps) {
   return (
-    <BaseSelect.ItemIndicator
-      className={cn('ml-auto flex shrink-0 items-center text-text-accent', className)}
-      {...props}
-    >
+    <BaseSelect.ItemIndicator className={cn(floatingItemIndicatorClassName, className)} {...props}>
       <span className="i-ri-check-line h-4 w-4" aria-hidden />
     </BaseSelect.ItemIndicator>
   )
+}
+
+export {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectGroupLabel,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectLabel,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+}
+
+export type {
+  SelectContentProps,
+  SelectGroupLabelProps,
+  SelectGroupProps,
+  SelectItemIndicatorProps,
+  SelectItemProps,
+  SelectItemTextProps,
+  SelectLabelProps,
+  SelectProps,
+  SelectSeparatorProps,
+  SelectTriggerProps,
+  SelectValueProps,
 }

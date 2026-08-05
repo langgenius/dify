@@ -1,8 +1,8 @@
 import type { SchemaRoot } from '../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { toast } from '@langgenius/dify-ui/toast'
-import { ToggleGroup, ToggleGroupItem } from '@langgenius/dify-ui/toggle-group'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
@@ -46,7 +46,7 @@ function BracesIcon({ className }: IconProps) {
   return <span className={cn('i-ri-braces-line', className)} />
 }
 
-const VIEW_TABS = [
+const SCHEMA_VIEW_OPTIONS = [
   { Icon: TimelineViewIcon, text: 'Visual Editor', value: SchemaView.VisualEditor },
   { Icon: BracesIcon, text: 'JSON Schema', value: SchemaView.JsonSchema },
 ]
@@ -58,34 +58,31 @@ const DEFAULT_SCHEMA: SchemaRoot = {
   additionalProperties: false,
 }
 
-function JsonSchemaConfigContent({
-  defaultSchema,
-  onSave,
-  onClose,
-}: JsonSchemaConfigProps) {
+function JsonSchemaConfigContent({ defaultSchema, onSave, onClose }: JsonSchemaConfigProps) {
   const { t } = useTranslation()
-  const [currentTab, setCurrentTab] = useState<readonly SchemaView[]>([SchemaView.VisualEditor])
+  const [selectedSchemaViews, setSelectedSchemaViews] = useState<readonly SchemaView[]>([
+    SchemaView.VisualEditor,
+  ])
   const [jsonSchema, setJsonSchema] = useState(defaultSchema || DEFAULT_SCHEMA)
   const [json, setJson] = useState(() => JSON.stringify(jsonSchema, null, 2))
   const [btnWidth, setBtnWidth] = useState(0)
   const [parseError, setParseError] = useState<Error | null>(null)
   const [validationError, setValidationError] = useState<string>('')
-  const advancedEditing = useVisualEditorStore(state => state.advancedEditing)
-  const setAdvancedEditing = useVisualEditorStore(state => state.setAdvancedEditing)
-  const isAddingNewField = useVisualEditorStore(state => state.isAddingNewField)
-  const setIsAddingNewField = useVisualEditorStore(state => state.setIsAddingNewField)
-  const setHoveringProperty = useVisualEditorStore(state => state.setHoveringProperty)
+  const advancedEditing = useVisualEditorStore((state) => state.advancedEditing)
+  const setAdvancedEditing = useVisualEditorStore((state) => state.setAdvancedEditing)
+  const isAddingNewField = useVisualEditorStore((state) => state.isAddingNewField)
+  const setIsAddingNewField = useVisualEditorStore((state) => state.setIsAddingNewField)
+  const setHoveringProperty = useVisualEditorStore((state) => state.setHoveringProperty)
   const { emit } = useMittContext()
-  const selectedTab = currentTab[0] ?? SchemaView.VisualEditor
+  const selectedSchemaView = selectedSchemaViews[0] ?? SchemaView.VisualEditor
 
   function updateBtnWidth(width: number) {
     setBtnWidth(width + 32)
   }
 
-  function handleTabChange(value: SchemaView) {
-    if (selectedTab === value)
-      return
-    if (selectedTab === SchemaView.JsonSchema) {
+  function handleSchemaViewChange(value: SchemaView) {
+    if (selectedSchemaView === value) return
+    if (selectedSchemaView === SchemaView.JsonSchema) {
       try {
         const schema = JSON.parse(json)
         setParseError(null)
@@ -106,38 +103,32 @@ function JsonSchemaConfigContent({
         }
         setJsonSchema(schema)
         setValidationError('')
-      }
-      catch (error) {
+      } catch (error) {
         setValidationError('')
-        if (error instanceof Error)
-          setParseError(error)
-        else
-          setParseError(new Error('Invalid JSON'))
+        if (error instanceof Error) setParseError(error)
+        else setParseError(new Error('Invalid JSON'))
         return
       }
-    }
-    else if (selectedTab === SchemaView.VisualEditor) {
+    } else if (selectedSchemaView === SchemaView.VisualEditor) {
       if (advancedEditing || isAddingNewField)
-        emit('quitEditing', { callback: (backup: SchemaRoot) => setJson(JSON.stringify(backup || jsonSchema, null, 2)) })
-      else
-        setJson(JSON.stringify(jsonSchema, null, 2))
+        emit('quitEditing', {
+          callback: (backup: SchemaRoot) => setJson(JSON.stringify(backup || jsonSchema, null, 2)),
+        })
+      else setJson(JSON.stringify(jsonSchema, null, 2))
     }
 
-    setCurrentTab([value])
+    setSelectedSchemaViews([value])
   }
 
   function handleApplySchema(schema: SchemaRoot) {
-    if (selectedTab === SchemaView.VisualEditor)
-      setJsonSchema(schema)
-    else if (selectedTab === SchemaView.JsonSchema)
-      setJson(JSON.stringify(schema, null, 2))
+    if (selectedSchemaView === SchemaView.VisualEditor) setJsonSchema(schema)
+    else if (selectedSchemaView === SchemaView.JsonSchema) setJson(JSON.stringify(schema, null, 2))
   }
 
   function handleSubmit(schema: Record<string, unknown>) {
     const jsonSchema = jsonToSchema(schema) as SchemaRoot
-    if (selectedTab === SchemaView.VisualEditor)
-      setJsonSchema(jsonSchema)
-    else if (selectedTab === SchemaView.JsonSchema)
+    if (selectedSchemaView === SchemaView.VisualEditor) setJsonSchema(jsonSchema)
+    else if (selectedSchemaView === SchemaView.JsonSchema)
       setJson(JSON.stringify(jsonSchema, null, 2))
   }
 
@@ -150,12 +141,10 @@ function JsonSchemaConfigContent({
   }
 
   function handleResetDefaults() {
-    if (selectedTab === SchemaView.VisualEditor) {
+    if (selectedSchemaView === SchemaView.VisualEditor) {
       setHoveringProperty(null)
-      if (advancedEditing)
-        setAdvancedEditing(false)
-      if (isAddingNewField)
-        setIsAddingNewField(false)
+      if (advancedEditing) setAdvancedEditing(false)
+      if (isAddingNewField) setIsAddingNewField(false)
     }
     setJsonSchema(DEFAULT_SCHEMA)
     setJson(JSON.stringify(DEFAULT_SCHEMA, null, 2))
@@ -167,7 +156,7 @@ function JsonSchemaConfigContent({
 
   function handleSave() {
     let schema = jsonSchema
-    if (selectedTab === SchemaView.JsonSchema) {
+    if (selectedSchemaView === SchemaView.JsonSchema) {
       try {
         schema = JSON.parse(json)
         setParseError(null)
@@ -188,19 +177,17 @@ function JsonSchemaConfigContent({
         }
         setJsonSchema(schema)
         setValidationError('')
-      }
-      catch (error) {
+      } catch (error) {
         setValidationError('')
-        if (error instanceof Error)
-          setParseError(error)
-        else
-          setParseError(new Error('Invalid JSON'))
+        if (error instanceof Error) setParseError(error)
+        else setParseError(new Error('Invalid JSON'))
         return
       }
-    }
-    else if (selectedTab === SchemaView.VisualEditor) {
+    } else if (selectedSchemaView === SchemaView.VisualEditor) {
       if (advancedEditing || isAddingNewField) {
-        toast.warning(t('nodes.llm.jsonSchema.warningTips.saveSchema', { ns: 'workflow' }))
+        toast.warning(
+          t(($) => $['nodes.llm.jsonSchema.warningTips.saveSchema'], { ns: 'workflow' }),
+        )
         return
       }
     }
@@ -213,62 +200,47 @@ function JsonSchemaConfigContent({
       {/* Header */}
       <div className="relative flex p-6 pr-14 pb-3">
         <div className="grow truncate title-2xl-semi-bold text-text-primary">
-          {t('nodes.llm.jsonSchema.title', { ns: 'workflow' })}
+          {t(($) => $['nodes.llm.jsonSchema.title'], { ns: 'workflow' })}
         </div>
         <button
           type="button"
-          className="absolute top-5 right-5 flex h-8 w-8 items-center justify-center p-1.5"
-          aria-label={t('operation.close', { ns: 'common' })}
+          className="absolute top-5 right-5 flex size-8 items-center justify-center p-1.5"
+          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
           onClick={onClose}
         >
-          <span className="i-ri-close-line h-[18px] w-[18px] text-text-tertiary" />
+          <span className="i-ri-close-line h-4.5 w-4.5 text-text-tertiary" />
         </button>
       </div>
-      {/* Content */}
       <div className="flex items-center justify-between px-6 py-2">
-        {/* Tab */}
-        <ToggleGroup<SchemaView>
-          aria-label={t('nodes.llm.jsonSchema.title', { ns: 'workflow' })}
-          value={currentTab}
-          onValueChange={(nextTab) => {
-            const value = nextTab[0]
-            if (value)
-              handleTabChange(value)
+        <SegmentedControl<SchemaView>
+          aria-label={t(($) => $['nodes.llm.jsonSchema.title'], { ns: 'workflow' })}
+          value={selectedSchemaViews}
+          onValueChange={(nextSchemaViews) => {
+            const value = nextSchemaViews[0]
+            if (value) handleSchemaViewChange(value)
           }}
         >
-          {VIEW_TABS.map(({ Icon, text, value }) => (
-            <ToggleGroupItem key={value} value={value}>
+          {SCHEMA_VIEW_OPTIONS.map(({ Icon, text, value }) => (
+            <SegmentedControlItem key={value} value={value}>
               <Icon className="size-4 shrink-0" />
               <span className="p-0.5">{text}</span>
-            </ToggleGroupItem>
+            </SegmentedControlItem>
           ))}
-        </ToggleGroup>
+        </SegmentedControl>
         <div className="flex items-center gap-x-0.5">
           {/* JSON Schema Generator */}
-          <JsonSchemaGenerator
-            crossAxisOffset={btnWidth}
-            onApply={handleApplySchema}
-          />
+          <JsonSchemaGenerator crossAxisOffset={btnWidth} onApply={handleApplySchema} />
           <Divider type="vertical" className="h-3" />
           {/* JSON Schema Importer */}
-          <JsonImporter
-            updateBtnWidth={updateBtnWidth}
-            onSubmit={handleSubmit}
-          />
+          <JsonImporter updateBtnWidth={updateBtnWidth} onSubmit={handleSubmit} />
         </div>
       </div>
       <div className="flex grow flex-col gap-y-1 overflow-hidden px-6">
-        {selectedTab === SchemaView.VisualEditor && (
-          <VisualEditor
-            schema={jsonSchema}
-            onChange={handleVisualEditorUpdate}
-          />
+        {selectedSchemaView === SchemaView.VisualEditor && (
+          <VisualEditor schema={jsonSchema} onChange={handleVisualEditorUpdate} />
         )}
-        {selectedTab === SchemaView.JsonSchema && (
-          <SchemaEditor
-            schema={json}
-            onUpdate={handleSchemaEditorUpdate}
-          />
+        {selectedSchemaView === SchemaView.JsonSchema && (
+          <SchemaEditor schema={json} onUpdate={handleSchemaEditorUpdate} />
         )}
         {parseError && <ErrorMessage message={parseError.message} />}
         {validationError && <ErrorMessage message={validationError} />}
@@ -278,16 +250,16 @@ function JsonSchemaConfigContent({
         <div className="flex items-center gap-x-3">
           <div className="flex items-center gap-x-2">
             <Button variant="secondary" onClick={handleResetDefaults}>
-              {t('nodes.llm.jsonSchema.resetDefaults', { ns: 'workflow' })}
+              {t(($) => $['nodes.llm.jsonSchema.resetDefaults'], { ns: 'workflow' })}
             </Button>
             <Divider type="vertical" className="mr-0 ml-1 h-4" />
           </div>
           <div className="flex items-center gap-x-2">
             <Button variant="secondary" onClick={handleCancel}>
-              {t('operation.cancel', { ns: 'common' })}
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
             </Button>
             <Button variant="primary" onClick={handleSave}>
-              {t('operation.save', { ns: 'common' })}
+              {t(($) => $['operation.save'], { ns: 'common' })}
             </Button>
           </div>
         </div>

@@ -6,11 +6,11 @@ from typing import Any, TypedDict
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
+from core.plugin.plugin_service import PluginService
 from graphon.enums import WorkflowExecutionStatus
 from models import Account, App, EndUser, TenantAccountJoin, WorkflowAppLog, WorkflowArchiveLog, WorkflowRun
 from models.enums import AppTriggerType, CreatorUserRole
 from models.trigger import WorkflowTriggerLog
-from services.plugin.plugin_service import PluginService
 from services.workflow.entities import TriggerMetadata
 
 

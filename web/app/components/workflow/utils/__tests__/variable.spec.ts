@@ -8,7 +8,13 @@ describe('variableTransformer', () => {
     })
 
     it('should parse a deeply nested path', () => {
-      expect(variableTransformer('{{#node1.data.items.0.name#}}')).toEqual(['node1', 'data', 'items', '0', 'name'])
+      expect(variableTransformer('{{#node1.data.items.0.name#}}')).toEqual([
+        'node1',
+        'data',
+        'items',
+        '0',
+        'name',
+      ])
     })
 
     it('should handle a single-segment path', () => {
@@ -28,11 +34,20 @@ describe('variableTransformer', () => {
 })
 
 describe('isExceptionVariable', () => {
-  const errorHandleTypes = [BlockEnum.LLM, BlockEnum.Tool, BlockEnum.HttpRequest, BlockEnum.Code, BlockEnum.Agent]
+  const errorHandleTypes = [
+    BlockEnum.LLM,
+    BlockEnum.Tool,
+    BlockEnum.HttpRequest,
+    BlockEnum.Code,
+    BlockEnum.Agent,
+  ]
 
-  it.each(errorHandleTypes)('should return true for error_message with %s node type', (nodeType) => {
-    expect(isExceptionVariable('error_message', nodeType)).toBe(true)
-  })
+  it.each(errorHandleTypes)(
+    'should return true for error_message with %s node type',
+    (nodeType) => {
+      expect(isExceptionVariable('error_message', nodeType)).toBe(true)
+    },
+  )
 
   it.each(errorHandleTypes)('should return true for error_type with %s node type', (nodeType) => {
     expect(isExceptionVariable('error_type', nodeType)).toBe(true)

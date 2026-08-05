@@ -124,6 +124,7 @@ class ModelInstance:
         stop: list[str] | None = None,
         stream: Literal[True] = True,
         callbacks: list[Callback] | None = None,
+        request_metadata: Mapping[str, object] | None = None,
     ) -> Generator: ...
 
     @overload
@@ -135,6 +136,7 @@ class ModelInstance:
         stop: list[str] | None = None,
         stream: Literal[False] = False,
         callbacks: list[Callback] | None = None,
+        request_metadata: Mapping[str, object] | None = None,
     ) -> LLMResult: ...
 
     @overload
@@ -146,6 +148,7 @@ class ModelInstance:
         stop: list[str] | None = None,
         stream: bool = True,
         callbacks: list[Callback] | None = None,
+        request_metadata: Mapping[str, object] | None = None,
     ) -> Union[LLMResult, Generator]: ...
 
     def invoke_llm(
@@ -156,6 +159,7 @@ class ModelInstance:
         stop: Sequence[str] | None = None,
         stream: bool = True,
         callbacks: list[Callback] | None = None,
+        request_metadata: Mapping[str, object] | None = None,
     ) -> Union[LLMResult, Generator]:
         """
         Invoke large language model
@@ -166,6 +170,7 @@ class ModelInstance:
         :param stop: stop words
         :param stream: is stream response
         :param callbacks: callbacks
+        :param request_metadata: optional request metadata
         :return: full response or stream response chunk generator result
         """
         if not isinstance(self.model_type_instance, LargeLanguageModel):
@@ -182,6 +187,7 @@ class ModelInstance:
                 stop=list(stop) if stop else None,
                 stream=stream,
                 callbacks=callbacks,
+                request_metadata=request_metadata,
             ),
         )
 
@@ -391,10 +397,10 @@ class ModelInstance:
 
             # Additional policy compliance check as fallback (in case fetch_next didn't catch it)
             try:
-                from core.helper.credential_utils import check_credential_policy_compliance
+                from core.helper.credential_utils import runtime_check_credential_policy_compliance
 
                 if lb_config.credential_id:
-                    check_credential_policy_compliance(
+                    runtime_check_credential_policy_compliance(
                         credential_id=lb_config.credential_id,
                         provider=self.provider,
                         credential_type=PluginCredentialType.MODEL,
@@ -630,10 +636,10 @@ class LBModelManager:
 
             # Check policy compliance for the selected configuration
             try:
-                from core.helper.credential_utils import check_credential_policy_compliance
+                from core.helper.credential_utils import runtime_check_credential_policy_compliance
 
                 if config.credential_id:
-                    check_credential_policy_compliance(
+                    runtime_check_credential_policy_compliance(
                         credential_id=config.credential_id,
                         provider=self._provider,
                         credential_type=PluginCredentialType.MODEL,

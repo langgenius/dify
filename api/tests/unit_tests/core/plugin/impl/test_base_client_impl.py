@@ -1,11 +1,13 @@
 import json
+from urllib.parse import quote
 
 import pytest
 from pytest_mock import MockerFixture
 
 from core.plugin.endpoint.exc import EndpointSetupFailedError
 from core.plugin.entities.plugin_daemon import PluginDaemonInnerError
-from core.plugin.impl.base import BasePluginClient
+from core.plugin.impl.base import PLUGIN_DAEMON_MAX_PATH_LENGTH, BasePluginClient
+from core.plugin.impl.exc import PluginLLMPollingUnsupportedError, PluginRuntimeError
 from core.trigger.errors import (
     EventIgnoreError,
     TriggerInvokeError,
@@ -66,6 +68,36 @@ class TestBasePluginClientImpl:
 
         assert result == ["hello", "world"]
         assert stream_mock.call_args.kwargs["data"] == {"k": "v"}
+
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "plugin/tenant/%252e%252e%252ftarget",
+            "plugin/tenant/%2e%2e%252ftarget",
+        ],
+    )
+    def test_prepare_request_rejects_encoded_traversal_with_encoded_separator(self, path: str):
+        client = BasePluginClient()
+
+        with pytest.raises(ValueError, match="traversal sequence detected"):
+            client._prepare_request(path, None, None, None, None)
+
+    def test_prepare_request_rejects_path_exceeding_max_length(self):
+        client = BasePluginClient()
+        path = "a" * (PLUGIN_DAEMON_MAX_PATH_LENGTH + 1)
+
+        with pytest.raises(ValueError, match="path length exceeds"):
+            client._prepare_request(path, None, None, None, None)
+
+    def test_prepare_request_rejects_excessively_encoded_path(self):
+        client = BasePluginClient()
+        segment = "..%2Ftarget"
+        for _ in range(9):
+            segment = quote(segment, safe="")
+        path = f"plugin/tenant/{segment}"
+
+        with pytest.raises(ValueError, match="too deeply encoded"):
+            client._prepare_request(path, None, None, None, None)
 
     def test_request_with_plugin_daemon_response_handles_request_exception(self, mocker: MockerFixture):
         client = BasePluginClient()
@@ -136,3 +168,32 @@ class TestBasePluginClientImpl:
 
         with pytest.raises(expected):
             client._handle_plugin_daemon_error("PluginInvokeError", message)
+
+    def test_handle_plugin_daemon_error_maps_unsupported_polling_to_typed_exception(self):
+        client = BasePluginClient()
+        message = json.dumps({"error_type": PluginLLMPollingUnsupportedError.__name__, "message": "m"})
+
+        with pytest.raises(PluginLLMPollingUnsupportedError):
+            client._handle_plugin_daemon_error("PluginInvokeError", message)
+
+    def test_handle_plugin_daemon_error_maps_runtime_error_to_typed_exception(self):
+        client = BasePluginClient()
+        lambda_request_id = "45664803-3d3c-4d4f-93fe-e3b19e43092b"
+        message = json.dumps(
+            {
+                "error_type": PluginRuntimeError.__name__,
+                "message": (
+                    "Plugin runtime request failed: Runtime.ExitError: "
+                    f"RequestId: {lambda_request_id} Error: Runtime exited with error: exit status 1"
+                ),
+                "args": {"request_id": lambda_request_id, "status_code": 200},
+            }
+        )
+
+        with pytest.raises(PluginRuntimeError) as exc_info:
+            client._handle_plugin_daemon_error("PluginInvokeError", message)
+
+        assert exc_info.value.description == (
+            "Plugin runtime request failed: Runtime.ExitError: Runtime exited with error: exit status 1"
+        )
+        assert exc_info.value.lambda_request_id == lambda_request_id

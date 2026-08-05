@@ -12,6 +12,47 @@ parameters, response schemas, and Swagger documentation.
 - Do not add new Flask-RESTX `fields.*` dictionaries, `Namespace.model(...)` exports, or `@marshal_with(...)` for migrated or new endpoints.
 - Do not use `@ns.expect(...)` for GET query parameters. Flask-RESTX documents that as a request body.
 
+## Public System Features Contract
+
+The Console and Web `/system-features` endpoints share `SystemFeatureModel`. They are unauthenticated and may be
+requested during root SSR, so treat this response as a minimal public bootstrap allowlist. It is not a general
+configuration endpoint, a feature registry, or a mirror of environment and Enterprise settings. Existing fields are
+legacy inventory and do not establish precedent for new fields.
+
+A new field is eligible only when all of the following are true:
+
+1. Both Console and Web have named production consumers for the field.
+2. Both consumers need the value before authentication and tenant/workspace bootstrap to render initial state or
+   choose an authentication flow.
+3. The value varies at runtime or by deployment and cannot be safely derived from an existing public contract.
+4. The value is non-sensitive, safe to disclose without authentication, and has stable public API semantics.
+5. Sending the value on every root bootstrap is demonstrably clearer and cheaper than a consumer-owned query.
+
+Do not add:
+
+- Backend-only policy or enforcement inputs, including security decisions, upload limits, or integration toggles.
+- Console-only or Web-only configuration.
+- Tenant, workspace, account, permission, billing-detail, or other post-authentication state.
+- Provider payloads, operational diagnostics, large nested objects, or values without active consumers.
+- Speculative fields added for possible future use.
+
+Route excluded values to their actual owner:
+
+- Keep backend enforcement behind a narrow service method or domain policy.
+- Serve post-authentication state from an authenticated domain endpoint.
+- Serve surface-specific bootstrap state from a Console- or Web-specific endpoint and account for its SSR, caching,
+  and failure cost explicitly.
+- Load large, slow, or page-specific data lazily through a consumer-owned query.
+
+Every pull request that adds a System Features field must:
+
+- Name both production consumer paths and explain why they require the value before authentication.
+- Document the root SSR request, payload, caching, and failure-mode impact.
+- Update the Pydantic owner, regenerate OpenAPI Markdown and TypeScript/Zod contracts, and update shared fixtures.
+- Add Console and Web schema regression coverage. Do not hand-edit generated contracts or add compatibility defaults.
+
+Reviewers should reject a field when its owner, pre-authentication need, or consumers are unclear.
+
 ## Naming
 
 - Request body models: use a `Payload` suffix.
@@ -34,6 +75,7 @@ from controllers.common.schema import (
     register_response_schema_models,
     register_schema_models,
 )
+from libs.helper import dump_response
 ```
 
 Register request payload and query models with `register_schema_models(...)`:
@@ -82,7 +124,7 @@ register_schema_models(console_ns, DraftWorkflowNodeRunPayload)
 def post(self, app_model: App, node_id: str):
     payload = DraftWorkflowNodeRunPayload.model_validate(console_ns.payload or {})
     result = service.run(..., inputs=payload.inputs, query=payload.query)
-    return WorkflowRunNodeExecutionResponse.model_validate(result, from_attributes=True).model_dump(mode="json")
+    return dump_response(WorkflowRunNodeExecutionResponse, result)
 ```
 
 ## Query Parameters
@@ -105,7 +147,7 @@ class WorkflowRunListQuery(BaseModel):
 def get(self, app_model: App):
     query = WorkflowRunListQuery.model_validate(request.args.to_dict(flat=True))
     result = service.list(..., limit=query.limit, last_id=query.last_id)
-    return WorkflowRunPaginationResponse.model_validate(result, from_attributes=True).model_dump(mode="json")
+    return dump_response(WorkflowRunPaginationResponse, result)
 ```
 
 Do not do this for GET query parameters:
@@ -119,6 +161,9 @@ def get(...):
 That documents a GET request body and is not the expected contract.
 
 ## Responses
+
+`204 No Content` responses must not serialize a response body. Return the status using the established controller pattern;
+do not return a dictionary, response model, or other payload.
 
 Response models should inherit from `ResponseModel`:
 
@@ -145,10 +190,25 @@ def post(...):
 Serialize explicitly:
 
 ```python
-return WorkflowRunNodeExecutionResponse.model_validate(
-    workflow_node_execution,
-    from_attributes=True,
-).model_dump(mode="json")
+return dump_response(WorkflowRunNodeExecutionResponse, workflow_node_execution)
+```
+
+`dump_response(...)` is the preferred response serialization helper for a single Pydantic response DTO. It validates
+with `from_attributes=True` and returns `model_dump(mode="json")`, so SQLAlchemy models, plain objects, dictionaries,
+Pydantic aliases, computed fields, and `datetime` values are serialized consistently.
+
+For wrapper responses, pass a dictionary with the public wrapper fields:
+
+```python
+return dump_response(
+    WorkflowRunPaginationResponse,
+    {
+        "data": workflow_runs,
+        "page": page,
+        "limit": limit,
+        "has_more": has_more,
+    },
+)
 ```
 
 If the service can return `None`, translate that into the expected HTTP error before validation:
@@ -158,8 +218,11 @@ workflow_run = service.get_workflow_run(...)
 if workflow_run is None:
     raise NotFound("Workflow run not found")
 
-return WorkflowRunDetailResponse.model_validate(workflow_run, from_attributes=True).model_dump(mode="json")
+return dump_response(WorkflowRunDetailResponse, workflow_run)
 ```
+
+Use manual `model_validate(...).model_dump(...)` only when the endpoint needs behavior that `dump_response(...)` does
+not provide, such as returning a non-dict payload, intentionally excluding fields, or composing a `(body, status)` tuple.
 
 ## Legacy Flask-RESTX Patterns
 
@@ -190,4 +253,3 @@ Inspect affected endpoints with `jq`. Check that:
 - Request bodies appear only where the endpoint has a body.
 - Responses reference the expected `*Response` schema.
 - Response schemas use public serialized names, not internal validation aliases like `inputs_dict`.
-

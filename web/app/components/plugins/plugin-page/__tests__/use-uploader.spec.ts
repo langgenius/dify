@@ -19,8 +19,7 @@ describe('useUploader Hook', () => {
   })
 
   afterEach(() => {
-    if (mockContainer.parentNode)
-      document.body.removeChild(mockContainer)
+    if (mockContainer.parentNode) document.body.removeChild(mockContainer)
   })
 
   describe('Initial State', () => {

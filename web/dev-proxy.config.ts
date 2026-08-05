@@ -3,6 +3,7 @@ import type { CookieRewriteOptions, DevProxyConfig } from '@langgenius/dev-proxy
 const DIFY_CLOUD_TARGET = 'https://cloud.dify.ai'
 const DEV_PROXY_TARGET = process.env.DEV_PROXY_TARGET || DIFY_CLOUD_TARGET
 const DEV_PROXY_ENTERPRISE_TARGET = process.env.DEV_PROXY_ENTERPRISE_TARGET || DEV_PROXY_TARGET
+const DEV_PROXY_PUBLIC_TARGET = process.env.DEV_PROXY_PUBLIC_TARGET || DEV_PROXY_TARGET
 const DEV_PROXY_HOST = process.env.DEV_PROXY_HOST || '127.0.0.1'
 const DEV_PROXY_PORT = Number(process.env.DEV_PROXY_PORT || 5001)
 
@@ -14,6 +15,11 @@ const difyCookieRewrite: CookieRewriteOptions = {
     'webapp_access_token',
     /^passport-/,
   ],
+  localCookieScope: 'target-origin',
+  csrfHeader: {
+    cookieName: 'csrf_token',
+    headerName: 'X-CSRF-Token',
+  },
 }
 
 export default {
@@ -39,11 +45,13 @@ export default {
       cookieRewrite: difyCookieRewrite,
     },
     {
-      paths: [
-        '/console/api',
-        '/api',
-      ],
+      paths: ['/console/api', '/socket.io'],
       target: DEV_PROXY_TARGET,
+      cookieRewrite: difyCookieRewrite,
+    },
+    {
+      paths: ['/api'],
+      target: DEV_PROXY_PUBLIC_TARGET,
       cookieRewrite: difyCookieRewrite,
     },
   ],

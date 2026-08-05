@@ -6,7 +6,9 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
+from enums.deployment_edition import DeploymentEdition
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from services.credit_pool_service import CreditPoolBalance
 from services.workspace_service import WorkspaceService
 
 
@@ -22,7 +24,10 @@ class TestWorkspaceService:
             patch("services.workspace_service.dify_config") as mock_dify_config,
         ):
             # Setup default mock returns
-            mock_feature_service.get_features.return_value.can_replace_logo = True
+            feature = mock_feature_service.get_features.return_value
+            feature.can_replace_logo = True
+            feature.billing.enabled = True
+            feature.billing.subscription.plan = "professional"
             mock_tenant_service.has_roles.return_value = True
             mock_dify_config.FILES_URL = "https://example.com/files"
 
@@ -104,13 +109,13 @@ class TestWorkspaceService:
         # Mock current_user for flask_login
         with patch("services.workspace_service.current_user", account):
             # Act: Execute the method under test
-            result = WorkspaceService.get_tenant_info(tenant)
+            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
 
             # Assert: Verify the expected outcomes
             assert result is not None
             assert result["id"] == tenant.id
             assert result["name"] == tenant.name
-            assert result["plan"] == tenant.plan
+            assert result["plan"] == "professional"
             assert result["status"] == tenant.status
             assert result["role"] == TenantAccountRole.OWNER
             assert result["created_at"] == tenant.created_at
@@ -151,13 +156,13 @@ class TestWorkspaceService:
         # Mock current_user for flask_login
         with patch("services.workspace_service.current_user", account):
             # Act: Execute the method under test
-            result = WorkspaceService.get_tenant_info(tenant)
+            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
 
             # Assert: Verify the expected outcomes
             assert result is not None
             assert result["id"] == tenant.id
             assert result["name"] == tenant.name
-            assert result["plan"] == tenant.plan
+            assert result["plan"] == "professional"
             assert result["status"] == tenant.status
             assert result["role"] == TenantAccountRole.OWNER
             assert result["created_at"] == tenant.created_at
@@ -206,13 +211,13 @@ class TestWorkspaceService:
         # Mock current_user for flask_login
         with patch("services.workspace_service.current_user", account):
             # Act: Execute the method under test
-            result = WorkspaceService.get_tenant_info(tenant)
+            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
 
             # Assert: Verify the expected outcomes
             assert result is not None
             assert result["id"] == tenant.id
             assert result["name"] == tenant.name
-            assert result["plan"] == tenant.plan
+            assert result["plan"] == "professional"
             assert result["status"] == tenant.status
             assert result["role"] == TenantAccountRole.NORMAL
             assert result["created_at"] == tenant.created_at
@@ -261,7 +266,7 @@ class TestWorkspaceService:
         # Mock current_user for flask_login
         with patch("services.workspace_service.current_user", account):
             # Act: Execute the method under test
-            result = WorkspaceService.get_tenant_info(tenant)
+            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
 
             # Assert: Verify the expected outcomes
             assert result is not None
@@ -291,7 +296,7 @@ class TestWorkspaceService:
         # Arrange: No test data needed for this test
 
         # Act: Execute the method under test with None tenant
-        result = WorkspaceService.get_tenant_info(None)
+        result = WorkspaceService.get_tenant_info(None, db_session_with_containers)
 
         # Assert: Verify the expected outcomes
         assert result is None
@@ -341,7 +346,7 @@ class TestWorkspaceService:
             # Mock current_user for flask_login
             with patch("services.workspace_service.current_user", account):
                 # Act: Execute the method under test
-                result = WorkspaceService.get_tenant_info(tenant)
+                result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
 
                 # Assert: Verify the expected outcomes
                 assert result is not None
@@ -398,7 +403,7 @@ class TestWorkspaceService:
         # Mock current_user for flask_login
         with patch("services.workspace_service.current_user", account):
             # Act: Execute the method under test
-            result = WorkspaceService.get_tenant_info(tenant)
+            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
 
             # Assert: Verify the expected outcomes
             assert result is not None
@@ -448,7 +453,7 @@ class TestWorkspaceService:
         # Mock current_user for flask_login
         with patch("services.workspace_service.current_user", account):
             # Act: Execute the method under test
-            result = WorkspaceService.get_tenant_info(tenant)
+            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
 
             # Assert: Verify the expected outcomes
             assert result is not None
@@ -513,7 +518,7 @@ class TestWorkspaceService:
             # Mock current_user for flask_login
             with patch("services.workspace_service.current_user", account):
                 # Act: Execute the method under test
-                result = WorkspaceService.get_tenant_info(tenant)
+                result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
 
                 # Assert: Verify the expected outcomes
                 assert result is not None
@@ -553,7 +558,7 @@ class TestWorkspaceService:
         # No TenantAccountJoin created
         with patch("services.workspace_service.current_user", account):
             with pytest.raises(AssertionError, match="TenantAccountJoin not found"):
-                WorkspaceService.get_tenant_info(tenant)
+                WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
 
     def test_get_tenant_info_should_set_replace_webapp_logo_to_none_when_flag_absent(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -572,7 +577,7 @@ class TestWorkspaceService:
         mock_external_service_dependencies["tenant_service"].has_roles.return_value = True
 
         with patch("services.workspace_service.current_user", account):
-            result = WorkspaceService.get_tenant_info(tenant)
+            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
 
         assert result is not None
         assert result["custom_config"]["replace_webapp_logo"] is None
@@ -596,7 +601,7 @@ class TestWorkspaceService:
         mock_external_service_dependencies["tenant_service"].has_roles.return_value = True
 
         with patch("services.workspace_service.current_user", account):
-            result = WorkspaceService.get_tenant_info(tenant)
+            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
 
         assert result is not None
         assert result["custom_config"]["replace_webapp_logo"].startswith(custom_base)
@@ -604,20 +609,23 @@ class TestWorkspaceService:
     def test_get_tenant_info_should_not_include_cloud_fields_in_self_hosted(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
-        """next_credit_reset_date and trial_credits should NOT appear in SELF_HOSTED mode."""
+        """Cloud-only billing data should not appear in SELF_HOSTED mode."""
         fake = Faker()
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
 
-        mock_external_service_dependencies["dify_config"].EDITION = "SELF_HOSTED"
-        mock_external_service_dependencies["feature_service"].get_features.return_value.can_replace_logo = False
+        mock_external_service_dependencies["dify_config"].DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
+        feature = mock_external_service_dependencies["feature_service"].get_features.return_value
+        feature.can_replace_logo = False
+        feature.billing.enabled = False
         mock_external_service_dependencies["tenant_service"].has_roles.return_value = False
 
         with patch("services.workspace_service.current_user", account):
-            result = WorkspaceService.get_tenant_info(tenant)
+            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
 
         assert result is not None
+        assert result["plan"] is None
         assert "next_credit_reset_date" not in result
         assert "trial_credits" not in result
         assert "trial_credits_used" not in result
@@ -631,7 +639,7 @@ class TestWorkspaceService:
             db_session_with_containers, mock_external_service_dependencies
         )
 
-        mock_external_service_dependencies["dify_config"].EDITION = "CLOUD"
+        mock_external_service_dependencies["dify_config"].DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
         feature = mock_external_service_dependencies["feature_service"].get_features.return_value
         feature.can_replace_logo = False
         feature.next_credit_reset_date = "2025-02-01"
@@ -642,7 +650,7 @@ class TestWorkspaceService:
             patch("services.workspace_service.current_user", account),
             patch("services.credit_pool_service.CreditPoolService.get_pool", return_value=None),
         ):
-            result = WorkspaceService.get_tenant_info(tenant)
+            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
 
         assert result is not None
         assert result["next_credit_reset_date"] == "2025-02-01"
@@ -656,7 +664,7 @@ class TestWorkspaceService:
             db_session_with_containers, mock_external_service_dependencies
         )
 
-        mock_external_service_dependencies["dify_config"].EDITION = "CLOUD"
+        mock_external_service_dependencies["dify_config"].DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
         feature = mock_external_service_dependencies["feature_service"].get_features.return_value
         feature.can_replace_logo = False
         feature.next_credit_reset_date = "2025-02-01"
@@ -669,7 +677,7 @@ class TestWorkspaceService:
             patch("services.workspace_service.current_user", account),
             patch("services.credit_pool_service.CreditPoolService.get_pool", return_value=paid_pool),
         ):
-            result = WorkspaceService.get_tenant_info(tenant)
+            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
 
         assert result is not None
         assert result["trial_credits"] == 1000
@@ -684,7 +692,7 @@ class TestWorkspaceService:
             db_session_with_containers, mock_external_service_dependencies
         )
 
-        mock_external_service_dependencies["dify_config"].EDITION = "CLOUD"
+        mock_external_service_dependencies["dify_config"].DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
         feature = mock_external_service_dependencies["feature_service"].get_features.return_value
         feature.can_replace_logo = False
         feature.next_credit_reset_date = "2025-02-01"
@@ -697,7 +705,7 @@ class TestWorkspaceService:
             patch("services.workspace_service.current_user", account),
             patch("services.credit_pool_service.CreditPoolService.get_pool", side_effect=[paid_pool, None]),
         ):
-            result = WorkspaceService.get_tenant_info(tenant)
+            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
 
         assert result is not None
         assert result["trial_credits"] == -1
@@ -712,7 +720,7 @@ class TestWorkspaceService:
             db_session_with_containers, mock_external_service_dependencies
         )
 
-        mock_external_service_dependencies["dify_config"].EDITION = "CLOUD"
+        mock_external_service_dependencies["dify_config"].DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
         feature = mock_external_service_dependencies["feature_service"].get_features.return_value
         feature.can_replace_logo = False
         feature.next_credit_reset_date = "2025-02-01"
@@ -720,17 +728,24 @@ class TestWorkspaceService:
         mock_external_service_dependencies["tenant_service"].has_roles.return_value = False
 
         paid_pool = MagicMock(quota_limit=500, quota_used=500)
-        trial_pool = MagicMock(quota_limit=100, quota_used=10)
+        trial_pool = CreditPoolBalance(
+            tenant_id=tenant.id,
+            pool_type="trial",
+            quota_limit=100,
+            quota_used=100,
+            exhausted_at=1748908800,
+        )
 
         with (
             patch("services.workspace_service.current_user", account),
             patch("services.credit_pool_service.CreditPoolService.get_pool", side_effect=[paid_pool, trial_pool]),
         ):
-            result = WorkspaceService.get_tenant_info(tenant)
+            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
 
         assert result is not None
         assert result["trial_credits"] == 100
-        assert result["trial_credits_used"] == 10
+        assert result["trial_credits_used"] == 100
+        assert result["trial_credits_exhausted_at"] == 1748908800
 
     def test_get_tenant_info_cloud_fall_back_to_trial_when_paid_none(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -741,7 +756,7 @@ class TestWorkspaceService:
             db_session_with_containers, mock_external_service_dependencies
         )
 
-        mock_external_service_dependencies["dify_config"].EDITION = "CLOUD"
+        mock_external_service_dependencies["dify_config"].DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
         feature = mock_external_service_dependencies["feature_service"].get_features.return_value
         feature.can_replace_logo = False
         feature.next_credit_reset_date = "2025-02-01"
@@ -754,7 +769,7 @@ class TestWorkspaceService:
             patch("services.workspace_service.current_user", account),
             patch("services.credit_pool_service.CreditPoolService.get_pool", side_effect=[None, trial_pool]),
         ):
-            result = WorkspaceService.get_tenant_info(tenant)
+            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
 
         assert result is not None
         assert result["trial_credits"] == 50
@@ -771,7 +786,7 @@ class TestWorkspaceService:
             db_session_with_containers, mock_external_service_dependencies
         )
 
-        mock_external_service_dependencies["dify_config"].EDITION = "CLOUD"
+        mock_external_service_dependencies["dify_config"].DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
         feature = mock_external_service_dependencies["feature_service"].get_features.return_value
         feature.can_replace_logo = False
         feature.next_credit_reset_date = "2025-02-01"
@@ -785,7 +800,7 @@ class TestWorkspaceService:
             patch("services.workspace_service.current_user", account),
             patch("services.credit_pool_service.CreditPoolService.get_pool", side_effect=[paid_pool, trial_pool]),
         ):
-            result = WorkspaceService.get_tenant_info(tenant)
+            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
 
         assert result is not None
         assert result["trial_credits"] == 200
@@ -800,7 +815,7 @@ class TestWorkspaceService:
             db_session_with_containers, mock_external_service_dependencies
         )
 
-        mock_external_service_dependencies["dify_config"].EDITION = "CLOUD"
+        mock_external_service_dependencies["dify_config"].DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
         feature = mock_external_service_dependencies["feature_service"].get_features.return_value
         feature.can_replace_logo = False
         feature.next_credit_reset_date = "2025-02-01"
@@ -811,7 +826,7 @@ class TestWorkspaceService:
             patch("services.workspace_service.current_user", account),
             patch("services.credit_pool_service.CreditPoolService.get_pool", side_effect=[None, None]),
         ):
-            result = WorkspaceService.get_tenant_info(tenant)
+            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
 
         assert result is not None
         assert "trial_credits" not in result

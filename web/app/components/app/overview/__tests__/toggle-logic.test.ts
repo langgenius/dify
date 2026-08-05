@@ -25,22 +25,23 @@ describe('app-card-utils', () => {
 
   describe('hasWorkflowStartNode', () => {
     it('should detect a workflow start node', () => {
-      expect(hasWorkflowStartNode({
-        graph: {
-          nodes: [
-            { data: { type: 'llm' } },
-            { data: { type: 'start' } },
-          ],
-        },
-      })).toBe(true)
+      expect(
+        hasWorkflowStartNode({
+          graph: {
+            nodes: [{ data: { type: 'llm' } }, { data: { type: 'start' } }],
+          },
+        }),
+      ).toBe(true)
     })
 
     it('should return false when the workflow has no start node', () => {
-      expect(hasWorkflowStartNode({
-        graph: {
-          nodes: [{ data: { type: 'llm' } }],
-        },
-      })).toBe(false)
+      expect(
+        hasWorkflowStartNode({
+          graph: {
+            nodes: [{ data: { type: 'llm' } }],
+          },
+        }),
+      ).toBe(false)
     })
   })
 
@@ -50,8 +51,8 @@ describe('app-card-utils', () => {
         appInfo: baseAppInfo,
         cardType: 'webapp',
         currentWorkflow: null,
-        isCurrentWorkspaceEditor: true,
-        isCurrentWorkspaceManager: true,
+        canManageWebApp: true,
+        canManageApi: true,
       })
 
       expect(state.appUnpublished).toBe(true)
@@ -70,8 +71,8 @@ describe('app-card-utils', () => {
             nodes: [{ data: { type: 'start' } }],
           },
         },
-        isCurrentWorkspaceEditor: true,
-        isCurrentWorkspaceManager: true,
+        canManageWebApp: true,
+        canManageApi: true,
       })
 
       expect(state.appUnpublished).toBe(false)
@@ -84,41 +85,49 @@ describe('app-card-utils', () => {
 
   describe('getAppCardOperationKeys', () => {
     it('should include embedded and settings actions for editable chat webapps', () => {
-      expect(getAppCardOperationKeys({
-        cardType: 'webapp',
-        appMode: AppModeEnum.CHAT,
-        isCurrentWorkspaceEditor: true,
-      })).toEqual(['launch', 'embedded', 'customize', 'settings'])
+      expect(
+        getAppCardOperationKeys({
+          cardType: 'webapp',
+          appMode: AppModeEnum.CHAT,
+          canManageSettings: true,
+        }),
+      ).toEqual(['launch', 'embedded', 'customize', 'settings'])
     })
 
     it('should only expose the develop action for api cards', () => {
-      expect(getAppCardOperationKeys({
-        cardType: 'api',
-        appMode: AppModeEnum.COMPLETION,
-        isCurrentWorkspaceEditor: false,
-      })).toEqual(['develop'])
+      expect(
+        getAppCardOperationKeys({
+          cardType: 'api',
+          appMode: AppModeEnum.COMPLETION,
+          canManageSettings: false,
+        }),
+      ).toEqual(['develop'])
     })
   })
 
   describe('isAppAccessConfigured', () => {
     it('should require members or groups for specific access mode', () => {
-      expect(isAppAccessConfigured(
-        {
-          id: 'app-1',
-          access_mode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
-        } as unknown as AppDetailResponse,
-        { groups: [], members: [] },
-      )).toBe(false)
+      expect(
+        isAppAccessConfigured(
+          {
+            id: 'app-1',
+            access_mode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
+          } as unknown as AppDetailResponse,
+          { groups: [], members: [] },
+        ),
+      ).toBe(false)
     })
 
     it('should treat non-specific access modes as configured', () => {
-      expect(isAppAccessConfigured(
-        {
-          id: 'app-1',
-          access_mode: AccessMode.PUBLIC,
-        } as unknown as AppDetailResponse,
-        { groups: [], members: [] },
-      )).toBe(true)
+      expect(
+        isAppAccessConfigured(
+          {
+            id: 'app-1',
+            access_mode: AccessMode.PUBLIC,
+          } as unknown as AppDetailResponse,
+          { groups: [], members: [] },
+        ),
+      ).toBe(true)
     })
   })
 })

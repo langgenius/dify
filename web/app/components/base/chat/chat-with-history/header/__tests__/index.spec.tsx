@@ -16,26 +16,6 @@ vi.mock('@/app/components/base/chat/chat-with-history/inputs-form/content', () =
   default: () => <div data-testid="inputs-form-content">InputsFormContent</div>,
 }))
 
-vi.mock('@langgenius/dify-ui/dropdown-menu', () => import('@/__mocks__/base-ui-dropdown-menu'))
-vi.mock('@langgenius/dify-ui/tooltip', () => import('@/__mocks__/base-ui-tooltip'))
-
-// Mock Dialog to avoid Base UI focus/portal behavior in tests
-vi.mock('@langgenius/dify-ui/dialog', () => ({
-  Dialog: ({ children, open }: { children: React.ReactNode, open?: boolean }) => {
-    if (!open)
-      return null
-    return (
-      <div data-testid="modal">
-        {children}
-      </div>
-    )
-  },
-  DialogContent: ({ children }: { children: React.ReactNode }) => (
-    <div role="dialog" data-testid="modal-content">{children}</div>
-  ),
-  DialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}))
-
 const mockAppData: AppData = {
   app_id: 'app-1',
   site: {
@@ -101,8 +81,8 @@ describe('Header Component', () => {
       })
 
       const buttons = screen.getAllByRole('button')
-      // Sidebar(1) + NewChat(1) + ResetChat(1) + ViewForm(1) = 4 buttons
-      expect(buttons).toHaveLength(4)
+      // Sidebar(1) + Conversation operation(1) + NewChat(1) + ResetChat(1) + ViewForm(1) = 5 buttons
+      expect(buttons).toHaveLength(5)
     })
   })
 
@@ -215,7 +195,11 @@ describe('Header Component', () => {
       const saveBtn = await screen.findByText('common.operation.save')
       await userEvent.click(saveBtn)
 
-      expect(handleRenameConversation).toHaveBeenCalledWith('conv-1', 'New Name', expect.any(Object))
+      expect(handleRenameConversation).toHaveBeenCalledWith(
+        'conv-1',
+        'New Name',
+        expect.any(Object),
+      )
 
       const successCallback = handleRenameConversation.mock.calls[0]![2].onSuccess
       await act(async () => {
@@ -306,8 +290,8 @@ describe('Header Component', () => {
       })
 
       const buttons = screen.getAllByRole('button')
-      // Sidebar(1) + NewChat(1) + ResetChat(1) = 3 buttons
-      expect(buttons).toHaveLength(3)
+      // Sidebar(1) + Conversation operation(1) + NewChat(1) + ResetChat(1) = 4 buttons
+      expect(buttons).toHaveLength(4)
     })
 
     it('should render system title if conversation id is missing', () => {
@@ -398,7 +382,9 @@ describe('Header Component', () => {
         sidebarCollapseState: true,
       })
 
-      const operationTrigger = container.querySelector('.flex.cursor-pointer.items-center.rounded-lg.p-1\\.5.pl-2.text-text-secondary.hover\\:bg-state-base-hover') as HTMLElement
+      const operationTrigger = container.querySelector(
+        '.flex.cursor-pointer.items-center.rounded-lg.p-1\\.5.pl-2.text-text-secondary.hover\\:bg-state-base-hover',
+      ) as HTMLElement
       await userEvent.click(operationTrigger)
       await userEvent.click(await screen.findByText('explore.sidebar.action.rename'))
 

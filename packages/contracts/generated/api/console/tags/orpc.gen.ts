@@ -2,7 +2,6 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import {
   zDeleteTagsByTagIdPath,
   zDeleteTagsByTagIdResponse,
@@ -21,6 +20,7 @@ export const delete_ = oc
     method: 'DELETE',
     operationId: 'deleteTagsByTagId',
     path: '/tags/{tag_id}',
+    successStatus: 204,
     tags: ['console'],
   })
   .input(z.object({ params: zDeleteTagsByTagIdPath }))

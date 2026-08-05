@@ -1,10 +1,18 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import type * as React from 'react'
-import { useState } from 'react'
-import { Slider } from '.'
+import type { SliderProps } from '.'
+import * as React from 'react'
+import {
+  Slider,
+  SliderControl,
+  SliderIndicator,
+  SliderLabel,
+  SliderRoot,
+  SliderThumb,
+  SliderTrack,
+} from '.'
 
 const meta = {
-  title: 'Base/UI/Slider',
+  title: 'Base/Form/Slider',
   component: Slider,
   parameters: {
     layout: 'centered',
@@ -42,26 +50,19 @@ function SliderDemo({
   value: initialValue = 50,
   defaultValue: _defaultValue,
   ...args
-}: React.ComponentProps<typeof Slider>) {
-  const [value, setValue] = useState(initialValue)
+}: SliderProps) {
+  const [value, setValue] = React.useState(initialValue)
 
   return (
     <div className="w-[320px] space-y-3">
-      <Slider
-        {...args}
-        value={value}
-        onValueChange={setValue}
-        aria-label="Demo slider"
-      />
-      <div className="text-center system-sm-medium text-text-secondary">
-        {value}
-      </div>
+      <Slider {...args} value={value} onValueChange={setValue} aria-label="Demo slider" />
+      <div className="text-center system-sm-medium text-text-secondary">{value}</div>
     </div>
   )
 }
 
 export const Default: Story = {
-  render: args => <SliderDemo {...args} />,
+  render: (args) => <SliderDemo {...args} />,
   args: {
     value: 50,
     min: 0,
@@ -71,7 +72,7 @@ export const Default: Story = {
 }
 
 export const Decimal: Story = {
-  render: args => <SliderDemo {...args} />,
+  render: (args) => <SliderDemo {...args} />,
   args: {
     value: 0.5,
     min: 0,
@@ -81,7 +82,7 @@ export const Decimal: Story = {
 }
 
 export const Disabled: Story = {
-  render: args => <SliderDemo {...args} />,
+  render: (args) => <SliderDemo {...args} />,
   args: {
     value: 75,
     min: 0,
@@ -89,4 +90,55 @@ export const Disabled: Story = {
     step: 1,
     disabled: true,
   },
+}
+
+export const ComposedWithLabel: Story = {
+  render: () => (
+    <SliderRoot
+      defaultValue={50}
+      className="group/slider relative inline-flex w-[320px] flex-col gap-1 data-disabled:opacity-30"
+    >
+      <SliderLabel>Temperature</SliderLabel>
+      <SliderControl>
+        <SliderTrack>
+          <SliderIndicator />
+        </SliderTrack>
+        <SliderThumb />
+      </SliderControl>
+    </SliderRoot>
+  ),
+}
+
+type PriceRange = readonly [number, number]
+
+function RangeSliderDemo() {
+  const [range, setRange] = React.useState<PriceRange>([25, 75])
+
+  return (
+    <div className="w-[320px] space-y-3">
+      <SliderRoot<PriceRange>
+        value={range}
+        onValueChange={setRange}
+        min={0}
+        max={100}
+        className="group/slider relative inline-flex w-full flex-col gap-1 data-disabled:opacity-30"
+      >
+        <SliderLabel>Price range</SliderLabel>
+        <SliderControl>
+          <SliderTrack>
+            <SliderIndicator />
+          </SliderTrack>
+          <SliderThumb aria-label="Minimum price" />
+          <SliderThumb aria-label="Maximum price" />
+        </SliderControl>
+      </SliderRoot>
+      <div className="text-center system-sm-medium text-text-secondary">
+        {range[0]} – {range[1]}
+      </div>
+    </div>
+  )
+}
+
+export const Range: Story = {
+  render: () => <RangeSliderDemo />,
 }

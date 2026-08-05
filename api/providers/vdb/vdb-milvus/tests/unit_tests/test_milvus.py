@@ -163,6 +163,35 @@ def test_init_client_supports_token_and_user_password(milvus_module):
     assert user_client.init_kwargs["password"] == "Milvus"
 
 
+def test_init_client_passes_tls_kwargs_when_secure(milvus_module):
+    vector = milvus_module.MilvusVector.__new__(milvus_module.MilvusVector)
+    client = vector._init_client(
+        milvus_module.MilvusConfig.model_validate(
+            {
+                "uri": "https://milvus.example.com:19530",
+                "token": "abc",
+                "database": "db",
+                "secure": True,
+                "server_pem_path": "/etc/milvus/certs/server.pem",
+                "server_name": "milvus.example.com",
+            }
+        )
+    )
+    assert client.init_kwargs["secure"] is True
+    assert client.init_kwargs["server_pem_path"] == "/etc/milvus/certs/server.pem"
+    assert client.init_kwargs["server_name"] == "milvus.example.com"
+
+
+def test_init_client_omits_tls_kwargs_when_not_secure(milvus_module):
+    vector = milvus_module.MilvusVector.__new__(milvus_module.MilvusVector)
+    client = vector._init_client(
+        milvus_module.MilvusConfig.model_validate({"uri": "http://localhost:19530", "token": "abc", "database": "db"})
+    )
+    assert "secure" not in client.init_kwargs
+    assert "server_pem_path" not in client.init_kwargs
+    assert "server_name" not in client.init_kwargs
+
+
 def test_init_loads_fields_when_collection_exists(milvus_module):
     client = milvus_module.MilvusClient(uri="http://localhost:19530")
     client.has_collection.return_value = True

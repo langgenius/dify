@@ -32,8 +32,8 @@ describe('CheckboxWithLabel', () => {
   })
 
   it('should toggle checked state on checkbox click', () => {
-    render(<CheckboxWithLabel isChecked={false} onChange={onChange} label="Toggle" testId="my-check" />)
-    fireEvent.click(screen.getByTestId('checkbox-my-check'))
+    render(<CheckboxWithLabel isChecked={false} onChange={onChange} label="Toggle" />)
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Toggle' }))
     expect(onChange).toHaveBeenCalledWith(true)
   })
 })

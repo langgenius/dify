@@ -176,6 +176,7 @@ class DocumentValidationTestDataFactory:
         dataset.id = dataset_id
         dataset.tenant_id = tenant_id
         dataset.doc_form = doc_form
+        dataset.get_doc_form.return_value = doc_form
         dataset.indexing_technique = indexing_technique
         dataset.embedding_model_provider = embedding_model_provider
         dataset.embedding_model = embedding_model
@@ -327,9 +328,10 @@ class TestDatasetServiceCheckDocForm:
         # Arrange
         dataset = DocumentValidationTestDataFactory.create_dataset_mock(doc_form=IndexStructureType.PARAGRAPH_INDEX)
         doc_form = IndexStructureType.PARAGRAPH_INDEX
+        session = Mock()
 
         # Act (should not raise)
-        DatasetService.check_doc_form(dataset, doc_form)
+        DatasetService.check_doc_form(dataset, doc_form, session=session)
 
         # Assert
         # No exception should be raised
@@ -349,9 +351,10 @@ class TestDatasetServiceCheckDocForm:
         # Arrange
         dataset = DocumentValidationTestDataFactory.create_dataset_mock(doc_form=None)
         doc_form = IndexStructureType.PARAGRAPH_INDEX
+        session = Mock()
 
         # Act (should not raise)
-        DatasetService.check_doc_form(dataset, doc_form)
+        DatasetService.check_doc_form(dataset, doc_form, session=session)
 
         # Assert
         # No exception should be raised
@@ -371,10 +374,11 @@ class TestDatasetServiceCheckDocForm:
         # Arrange
         dataset = DocumentValidationTestDataFactory.create_dataset_mock(doc_form=IndexStructureType.PARAGRAPH_INDEX)
         doc_form = IndexStructureType.PARENT_CHILD_INDEX  # Different form
+        session = Mock()
 
         # Act & Assert
         with pytest.raises(ValueError, match="doc_form is different from the dataset doc_form"):
-            DatasetService.check_doc_form(dataset, doc_form)
+            DatasetService.check_doc_form(dataset, doc_form, session=session)
 
     def test_check_doc_form_different_form_types_error(self):
         """
@@ -390,10 +394,11 @@ class TestDatasetServiceCheckDocForm:
         # Arrange
         dataset = DocumentValidationTestDataFactory.create_dataset_mock(doc_form="knowledge_card")
         doc_form = IndexStructureType.PARAGRAPH_INDEX  # Different form
+        session = Mock()
 
         # Act & Assert
         with pytest.raises(ValueError, match="doc_form is different from the dataset doc_form"):
-            DatasetService.check_doc_form(dataset, doc_form)
+            DatasetService.check_doc_form(dataset, doc_form, session=session)
 
 
 # ============================================================================

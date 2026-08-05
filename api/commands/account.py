@@ -25,7 +25,7 @@ def reset_password(email, new_password, password_confirm):
         return
     normalized_email = email.strip().lower()
 
-    account = AccountService.get_account_by_email_with_case_fallback(email.strip())
+    account = AccountService.get_account_by_email_with_case_fallback(email.strip(), session=db.session())
 
     if not account:
         click.echo(click.style(f"Account not found for email: {email}", fg="red"))
@@ -67,7 +67,7 @@ def reset_email(email, new_email, email_confirm):
         return
     normalized_new_email = new_email.strip().lower()
 
-    account = AccountService.get_account_by_email_with_case_fallback(email.strip())
+    account = AccountService.get_account_by_email_with_case_fallback(email.strip(), session=db.session())
 
     if not account:
         click.echo(click.style(f"Account not found for email: {email}", fg="red"))
@@ -133,8 +133,9 @@ def create_tenant(email: str, language: str | None = None, name: str | None = No
         password=new_password,
         language=language,
         create_workspace_required=False,
+        session=db.session(),
     )
-    TenantService.create_owner_tenant_if_not_exist(account, name)
+    TenantService.create_owner_tenant_if_not_exist(account, name, session=db.session())
 
     click.echo(
         click.style(

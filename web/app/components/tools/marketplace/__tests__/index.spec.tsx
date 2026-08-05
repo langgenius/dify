@@ -1,3 +1,4 @@
+import type { SearchParamsFromCollection } from '@dify/contracts/marketplace'
 import type { useMarketplace } from '../hooks'
 import type { Plugin } from '@/app/components/plugins/types'
 import type { Collection } from '@/app/components/tools/types'
@@ -7,26 +8,42 @@ import * as React from 'react'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { getMarketplaceUrl } from '@/utils/var'
-
 import Marketplace from '../index'
+
+const { mockRouterPush } = vi.hoisted(() => ({
+  mockRouterPush: vi.fn(),
+}))
+
+const { mockCanInstallPlugin } = vi.hoisted(() => ({
+  mockCanInstallPlugin: vi.fn(() => true),
+}))
 
 const listRenderSpy = vi.fn()
 vi.mock('@/app/components/plugins/marketplace/list', () => ({
   default: (props: {
     marketplaceCollections: unknown[]
     marketplaceCollectionPluginsMap: Record<string, unknown[]>
+    cardContainerClassName?: string
     plugins?: unknown[]
     showInstallButton?: boolean
+    onCollectionMoreClick?: (searchParams?: SearchParamsFromCollection) => void
   }) => {
     listRenderSpy(props)
     return <div data-testid="marketplace-list" />
   },
 }))
 
+vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
+  usePluginSettingsAccess: () => ({
+    canInstallPlugin: mockCanInstallPlugin(),
+  }),
+}))
+
 const mockUseMarketplaceCollectionsAndPlugins = vi.fn()
 const mockUseMarketplacePlugins = vi.fn()
 vi.mock('@/app/components/plugins/marketplace/hooks', () => ({
-  useMarketplaceCollectionsAndPlugins: (...args: unknown[]) => mockUseMarketplaceCollectionsAndPlugins(...args),
+  useMarketplaceCollectionsAndPlugins: (...args: unknown[]) =>
+    mockUseMarketplaceCollectionsAndPlugins(...args),
   useMarketplacePlugins: (...args: unknown[]) => mockUseMarketplacePlugins(...args),
 }))
 
@@ -40,6 +57,12 @@ vi.mock('@/utils/var', () => ({
 }))
 
 const mockGetMarketplaceUrl = vi.mocked(getMarketplaceUrl)
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({
+    push: mockRouterPush,
+  }),
+}))
 
 const _createToolProvider = (overrides: Partial<Collection> = {}): Collection => ({
   id: 'provider-1',
@@ -95,6 +118,7 @@ const createMarketplaceContext = (overrides: Partial<ReturnType<typeof useMarket
 describe('Marketplace', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockCanInstallPlugin.mockReturnValue(true)
   })
 
   // Rendering the marketplace panel based on loading and visibility state.
@@ -135,9 +159,37 @@ describe('Marketplace', () => {
 
       // Assert
       expect(screen.getByTestId('marketplace-list')).toBeInTheDocument()
-      expect(listRenderSpy).toHaveBeenCalledWith(expect.objectContaining({
-        showInstallButton: true,
-      }))
+      expect(listRenderSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cardContainerClassName: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3',
+          onCollectionMoreClick: expect.any(Function),
+          showInstallButton: true,
+        }),
+      )
+    })
+
+    it('should hide install actions when plugin install permission is missing', () => {
+      mockCanInstallPlugin.mockReturnValue(false)
+      const marketplaceContext = createMarketplaceContext({
+        isLoading: false,
+        plugins: [createPlugin()],
+      })
+
+      render(
+        <Marketplace
+          searchPluginText=""
+          filterPluginTags={[]}
+          isMarketplaceArrowVisible={false}
+          showMarketplacePanel={vi.fn()}
+          marketplaceContext={marketplaceContext}
+        />,
+      )
+
+      expect(listRenderSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          showInstallButton: false,
+        }),
+      )
     })
   })
 
@@ -166,13 +218,62 @@ describe('Marketplace', () => {
       // Assert
       expect(showMarketplacePanel).toHaveBeenCalledTimes(1)
       expect(mockGetMarketplaceUrl).toHaveBeenCalledWith('', {
-        language: 'en',
+        language: 'en-US',
         q: 'vector',
         tags: 'tag-a,tag-b',
         theme: undefined,
       })
-      const marketplaceLink = screen.getByRole('link', { name: /plugin.marketplace.difyMarketplace/i })
+      const marketplaceLink = screen.getByRole('link', {
+        name: /plugin.marketplace.difyMarketplace/i,
+      })
       expect(marketplaceLink).toHaveAttribute('href', 'https://marketplace.test/market')
+    })
+
+    it('should use compact content inset when requested by parent layout', () => {
+      const marketplaceContext = createMarketplaceContext()
+      const { container } = render(
+        <Marketplace
+          searchPluginText=""
+          filterPluginTags={[]}
+          isMarketplaceArrowVisible={false}
+          showMarketplacePanel={vi.fn()}
+          marketplaceContext={marketplaceContext}
+          contentInset="compact"
+        />,
+      )
+
+      const contentFrames = Array.from(container.querySelectorAll('div')).filter((el) =>
+        el.classList.contains('max-w-[1600px]'),
+      )
+      expect(contentFrames).toHaveLength(2)
+      expect(contentFrames[0]).toHaveClass('px-6')
+      expect(contentFrames[1]).toHaveClass('px-6')
+    })
+
+    it('should open integrations marketplace when collection more is clicked', () => {
+      const marketplaceContext = createMarketplaceContext()
+      render(
+        <Marketplace
+          searchPluginText=""
+          filterPluginTags={[]}
+          isMarketplaceArrowVisible={false}
+          showMarketplacePanel={vi.fn()}
+          marketplaceContext={marketplaceContext}
+        />,
+      )
+
+      const props = listRenderSpy.mock.calls[0]![0] as {
+        onCollectionMoreClick: (searchParams?: SearchParamsFromCollection) => void
+      }
+      props.onCollectionMoreClick({
+        query: 'featured tools',
+        sort_by: 'install_count',
+        sort_order: 'DESC',
+      })
+
+      expect(mockRouterPush).toHaveBeenCalledWith(
+        '/marketplace?category=tool&q=featured+tools&sort_by=install_count&sort_order=DESC',
+      )
     })
   })
 })

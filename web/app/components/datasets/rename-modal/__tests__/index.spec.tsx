@@ -1,5 +1,6 @@
 import type { DataSet } from '@/models/datasets'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import RenameDatasetModal from '../index'
@@ -29,26 +30,53 @@ vi.mock('@/service/datasets', () => ({
 // Mock AppIcon - simplified mock to enable testing onClick callback
 vi.mock('../../../base/app-icon', () => ({
   default: ({ onClick }: { onClick?: () => void }) => (
-    <button data-testid="app-icon" onClick={onClick}>Icon</button>
+    <button data-testid="app-icon" onClick={onClick}>
+      Icon
+    </button>
   ),
 }))
 
-// Mock AppIconPicker - simplified mock to test onSelect and onClose callbacks
-vi.mock('../../../base/app-icon-picker', () => ({
-  default: ({ onSelect, onClose }: {
-    onSelect?: (icon: { type: string, icon?: string, background?: string, fileId?: string, url?: string }) => void
-    onClose?: () => void
-  }) => (
-    <div data-testid="app-icon-picker">
-      <button data-testid="select-emoji" onClick={() => onSelect?.({ type: 'emoji', icon: '🚀', background: '#E0F2FE' })}>
-        Select Emoji
-      </button>
-      <button data-testid="select-image" onClick={() => onSelect?.({ type: 'image', fileId: 'new-file', url: 'https://new.png' })}>
-        Select Image
-      </button>
-      <button data-testid="close-picker" onClick={onClose}>Close</button>
-    </div>
-  ),
+vi.mock('@/app/components/base/app-icon-picker', () => ({
+  default: ({
+    onOpenChange,
+    onSelect,
+  }: {
+    onOpenChange: (open: boolean) => void
+    onSelect: (payload: { type: 'emoji'; icon: string; background: string }) => void
+  }) => {
+    let selectedBackground = '#FFEAD5'
+    return (
+      <div>
+        <input placeholder="Search emojis..." />
+        <button
+          type="button"
+          aria-label="#E4FBCC"
+          onClick={() => {
+            selectedBackground = '#E4FBCC'
+          }}
+        />
+        <button
+          type="button"
+          aria-label="#E0F2FE"
+          onClick={() => {
+            selectedBackground = '#E0F2FE'
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => {
+            onSelect({ type: 'emoji', icon: '📊', background: selectedBackground })
+            onOpenChange(false)
+          }}
+        >
+          iconPicker.ok
+        </button>
+        <button type="button" onClick={() => onOpenChange(false)}>
+          iconPicker.cancel
+        </button>
+      </div>
+    )
+  },
 }))
 
 // The mock returns 'ns.key' format, e.g., 'common.operation.cancel'
@@ -103,24 +131,26 @@ describe('RenameDatasetModal', () => {
   })
 
   // Create a dataset with image icon
-  const createMockDatasetWithImageIcon = (): DataSet => createMockDataset({
-    icon_info: {
-      icon: 'file-id-123',
-      icon_type: 'image',
-      icon_background: undefined,
-      icon_url: 'https://example.com/icon.png',
-    },
-  })
+  const createMockDatasetWithImageIcon = (): DataSet =>
+    createMockDataset({
+      icon_info: {
+        icon: 'file-id-123',
+        icon_type: 'image',
+        icon_background: undefined,
+        icon_url: 'https://example.com/icon.png',
+      },
+    })
 
   // Create a dataset with external knowledge info
-  const createMockExternalDataset = (): DataSet => createMockDataset({
-    external_knowledge_info: {
-      external_knowledge_id: 'ext-knowledge-1',
-      external_knowledge_api_id: 'ext-api-1',
-      external_knowledge_api_name: 'External API',
-      external_knowledge_api_endpoint: 'https://api.example.com',
-    },
-  })
+  const createMockExternalDataset = (): DataSet =>
+    createMockDataset({
+      external_knowledge_info: {
+        external_knowledge_id: 'ext-knowledge-1',
+        external_knowledge_api_id: 'ext-api-1',
+        external_knowledge_api_name: 'External API',
+        external_knowledge_api_endpoint: 'https://api.example.com',
+      },
+    })
 
   const defaultProps = {
     show: true,
@@ -135,13 +165,6 @@ describe('RenameDatasetModal', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<RenameDatasetModal {...defaultProps} />)
-      // Check title is rendered (translation mock returns 'datasetSettings.title')
-      // Check title is rendered (translation mock returns 'datasetSettings.title')
-      expect(screen.getByText('datasetSettings.title'))!.toBeInTheDocument()
-    })
-
     it('should render modal when show is true', () => {
       render(<RenameDatasetModal {...defaultProps} show={true} />)
       expect(screen.getByText('datasetSettings.title'))!.toBeInTheDocument()
@@ -194,7 +217,9 @@ describe('RenameDatasetModal', () => {
       const dataset = createMockDataset({ description: '' })
       render(<RenameDatasetModal {...defaultProps} dataset={dataset} />)
       // Find the textarea by its placeholder
-      const descriptionTextarea = screen.getByPlaceholderText('datasetSettings.form.descPlaceholder')
+      const descriptionTextarea = screen.getByPlaceholderText(
+        'datasetSettings.form.descPlaceholder',
+      )
       expect(descriptionTextarea)!.toHaveValue('')
     })
 
@@ -322,9 +347,12 @@ describe('RenameDatasetModal', () => {
     it('should disable save button while loading', async () => {
       // Create a promise that we can control
       let resolvePromise: (value: DataSet) => void
-      mockUpdateDatasetSetting.mockImplementation(() => new Promise((resolve) => {
-        resolvePromise = resolve
-      }))
+      mockUpdateDatasetSetting.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolvePromise = resolve
+          }),
+      )
 
       render(<RenameDatasetModal {...defaultProps} />)
 
@@ -520,7 +548,9 @@ describe('RenameDatasetModal', () => {
     it('should call onSuccess and onClose after successful save', async () => {
       const handleSuccess = vi.fn()
       const handleClose = vi.fn()
-      render(<RenameDatasetModal {...defaultProps} onSuccess={handleSuccess} onClose={handleClose} />)
+      render(
+        <RenameDatasetModal {...defaultProps} onSuccess={handleSuccess} onClose={handleClose} />,
+      )
 
       const saveButton = screen.getByText('common.operation.save')
       await act(async () => {
@@ -859,66 +889,31 @@ describe('RenameDatasetModal', () => {
       // Initially picker should not be visible
       // Initially picker should not be visible
       // Initially picker should not be visible
-      expect(screen.queryByTestId('app-icon-picker')).not.toBeInTheDocument()
+      expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
 
       const appIcon = screen.getByTestId('app-icon')
       await act(async () => {
         fireEvent.click(appIcon)
       })
 
-      // Picker should now be visible
-      // Picker should now be visible
-      expect(screen.getByTestId('app-icon-picker'))!.toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+      })
     })
 
-    it('should select emoji icon and close picker (handleSelectAppIcon)', async () => {
+    it('should select emoji style and close picker (handleSelectAppIcon)', async () => {
+      const user = userEvent.setup()
       render(<RenameDatasetModal {...defaultProps} />)
 
-      // Open picker
-      const appIcon = screen.getByTestId('app-icon')
-      await act(async () => {
-        fireEvent.click(appIcon)
+      await user.click(screen.getByTestId('app-icon'))
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
       })
-
-      // Select emoji
-      const selectEmojiBtn = screen.getByTestId('select-emoji')
-      await act(async () => {
-        fireEvent.click(selectEmojiBtn)
+      await user.click(screen.getByRole('button', { name: '#E4FBCC' }))
+      await user.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
+      await waitFor(() => {
+        expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
       })
-
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      expect(screen.queryByTestId('app-icon-picker')).not.toBeInTheDocument()
 
       // Save and verify new icon is used
       const saveButton = screen.getByText('common.operation.save')
@@ -931,9 +926,9 @@ describe('RenameDatasetModal', () => {
           datasetId: 'dataset-1',
           body: expect.objectContaining({
             icon_info: {
-              icon: '🚀',
+              icon: '📊',
               icon_type: 'emoji',
-              icon_background: '#E0F2FE',
+              icon_background: '#E4FBCC',
               icon_url: undefined,
             },
           }),
@@ -941,56 +936,20 @@ describe('RenameDatasetModal', () => {
       })
     })
 
-    it('should select image icon and close picker (handleSelectAppIcon)', async () => {
+    it('should update emoji style through the picker (handleSelectAppIcon)', async () => {
+      const user = userEvent.setup()
       render(<RenameDatasetModal {...defaultProps} />)
 
-      // Open picker
-      const appIcon = screen.getByTestId('app-icon')
-      await act(async () => {
-        fireEvent.click(appIcon)
+      await user.click(screen.getByTestId('app-icon'))
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+      })
+      await user.click(screen.getByRole('button', { name: '#E0F2FE' }))
+      await user.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
+      await waitFor(() => {
+        expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
       })
 
-      // Select image
-      const selectImageBtn = screen.getByTestId('select-image')
-      await act(async () => {
-        fireEvent.click(selectImageBtn)
-      })
-
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      // Picker should close after selection
-      expect(screen.queryByTestId('app-icon-picker')).not.toBeInTheDocument()
-
-      // Save and verify new image icon is used
       const saveButton = screen.getByText('common.operation.save')
       await act(async () => {
         fireEvent.click(saveButton)
@@ -1001,10 +960,10 @@ describe('RenameDatasetModal', () => {
           datasetId: 'dataset-1',
           body: expect.objectContaining({
             icon_info: {
-              icon: 'new-file',
-              icon_type: 'image',
-              icon_background: undefined,
-              icon_url: 'https://new.png',
+              icon: '📊',
+              icon_type: 'emoji',
+              icon_background: '#E0F2FE',
+              icon_url: undefined,
             },
           }),
         })
@@ -1020,45 +979,14 @@ describe('RenameDatasetModal', () => {
         fireEvent.click(appIcon)
       })
 
-      // Close picker without selecting
-      const closeBtn = screen.getByTestId('close-picker')
-      await act(async () => {
-        fireEvent.click(closeBtn)
+      const user = userEvent.setup()
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
       })
-
-      // Picker should close
-      // Picker should close
-      // Picker should close
-      // Picker should close
-      // Picker should close
-      // Picker should close
-      // Picker should close
-      // Picker should close
-      // Picker should close
-      // Picker should close
-      // Picker should close
-      // Picker should close
-      // Picker should close
-      // Picker should close
-      // Picker should close
-      // Picker should close
-      // Picker should close
-      // Picker should close
-      // Picker should close
-      // Picker should close
-      // Picker should close
-      // Picker should close
-      // Picker should close
-      // Picker should close
-      // Picker should close
-      // Picker should close
-      // Picker should close
-      // Picker should close
-      // Picker should close
-      // Picker should close
-      // Picker should close
-      // Picker should close
-      expect(screen.queryByTestId('app-icon-picker')).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: /iconPicker\.cancel/ }))
+      await waitFor(() => {
+        expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+      })
 
       // Save and verify original icon is preserved
       const saveButton = screen.getByText('common.operation.save')
@@ -1199,9 +1127,12 @@ describe('RenameDatasetModal', () => {
     it('should handle double click on save button', async () => {
       // Use a promise we can control to ensure the first click is still "loading"
       let resolvePromise: (value: DataSet) => void
-      mockUpdateDatasetSetting.mockImplementationOnce(() => new Promise((resolve) => {
-        resolvePromise = resolve
-      }))
+      mockUpdateDatasetSetting.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolvePromise = resolve
+          }),
+      )
 
       render(<RenameDatasetModal {...defaultProps} />)
 
@@ -1265,7 +1196,10 @@ describe('RenameDatasetModal', () => {
 
       expect(screen.getByDisplayValue('Test Dataset'))!.toBeInTheDocument()
 
-      const newDataset = createMockDataset({ name: 'Different Dataset', description: 'Different description' })
+      const newDataset = createMockDataset({
+        name: 'Different Dataset',
+        description: 'Different description',
+      })
       rerender(<RenameDatasetModal {...defaultProps} dataset={newDataset} />)
 
       // Note: The component uses useState with initial value, so it won't update
@@ -1313,9 +1247,12 @@ describe('RenameDatasetModal', () => {
   describe('Loading State', () => {
     it('should show loading state during API call', async () => {
       let resolvePromise: (value: DataSet) => void
-      mockUpdateDatasetSetting.mockImplementation(() => new Promise((resolve) => {
-        resolvePromise = resolve
-      }))
+      mockUpdateDatasetSetting.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolvePromise = resolve
+          }),
+      )
 
       render(<RenameDatasetModal {...defaultProps} />)
 

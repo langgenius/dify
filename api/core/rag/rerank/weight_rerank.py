@@ -1,5 +1,6 @@
 import math
 from collections import Counter
+from typing import override
 
 import numpy as np
 
@@ -19,6 +20,7 @@ class WeightRerankRunner(BaseRerankRunner):
         self.tenant_id = tenant_id
         self.weights = weights
 
+    @override
     def run(
         self,
         query: str,

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from contextlib import contextmanager
+import logging
 from types import SimpleNamespace
-from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
@@ -26,6 +27,7 @@ from core.app.entities.queue_entities import (
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
     QueuePingEvent,
+    QueueReasoningChunkEvent,
     QueueStopEvent,
     QueueTextChunkEvent,
     QueueWorkflowFailedEvent,
@@ -40,6 +42,7 @@ from core.app.entities.task_entities import (
     MessageAudioEndStreamResponse,
     MessageAudioStreamResponse,
     PingStreamResponse,
+    ReasoningChunkStreamResponse,
     WorkflowAppPausedBlockingResponse,
     WorkflowFinishStreamResponse,
     WorkflowStartStreamResponse,
@@ -47,10 +50,12 @@ from core.app.entities.task_entities import (
 from core.base.tts.app_generator_tts_publisher import AudioTrunk
 from core.workflow.system_variables import build_system_variables, system_variables_to_mapping
 from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
+from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole
 from models.model import AppMode, EndUser
+from models.workflow import WorkflowAppLog
 from tests.workflow_test_utils import build_test_variable_pool
 
 
@@ -99,7 +104,7 @@ class TestWorkflowGenerateTaskPipeline:
                 variables=build_system_variables(workflow_execution_id="run-id"),
             ),
             start_at=0.0,
-            total_tokens=5,
+            llm_usage=LLMUsage.empty_usage().model_copy(update={"total_tokens": 5}),
             node_run_steps=2,
         )
 
@@ -134,6 +139,7 @@ class TestWorkflowGenerateTaskPipeline:
                 "actions": [],
                 "display_in_ui": False,
                 "form_token": None,
+                "approval_channels": [],
                 "resolved_default_values": {},
                 "expiration_time": 1,
             }
@@ -189,7 +195,7 @@ class TestWorkflowGenerateTaskPipeline:
 
         assert isinstance(responses[0], ValueError)
 
-    def test_handle_workflow_started_event_sets_run_id(self, monkeypatch: pytest.MonkeyPatch):
+    def test_handle_workflow_started_event_sets_run_id(self, monkeypatch: pytest.MonkeyPatch, sqlite_engine):
         pipeline = _make_pipeline()
         pipeline._graph_runtime_state = GraphRuntimeState(
             variable_pool=build_test_variable_pool(variables=build_system_variables(workflow_execution_id="run-id")),
@@ -197,11 +203,10 @@ class TestWorkflowGenerateTaskPipeline:
         )
         pipeline._workflow_response_converter.workflow_start_to_stream_response = lambda **kwargs: "started"
 
-        @contextmanager
-        def _fake_session():
-            yield SimpleNamespace()
-
-        monkeypatch.setattr(pipeline, "_database_session", _fake_session)
+        monkeypatch.setattr(
+            "core.app.apps.workflow.generate_task_pipeline.db",
+            SimpleNamespace(engine=sqlite_engine),
+        )
         monkeypatch.setattr(pipeline, "_save_workflow_app_log", lambda **kwargs: None)
 
         responses = list(pipeline._handle_workflow_started_event(QueueWorkflowStartedEvent()))
@@ -264,6 +269,41 @@ class TestWorkflowGenerateTaskPipeline:
         assert responses[0].data.text == "hi"
         assert published == [queue_message]
 
+    def test_handle_reasoning_chunk_event_emits_on_nonempty(self):
+        pipeline = _make_pipeline()
+        event = QueueReasoningChunkEvent(reasoning="pondering", from_node_id="llm-1", is_final=False)
+
+        responses = list(pipeline._handle_reasoning_chunk_event(event))
+
+        assert len(responses) == 1
+        response = responses[0]
+        assert isinstance(response, ReasoningChunkStreamResponse)
+        # workflow runs have no message, so the id is omitted
+        assert response.data.message_id is None
+        assert response.data.reasoning == "pondering"
+        assert response.data.node_id == "llm-1"
+        assert response.data.is_final is False
+
+    def test_handle_reasoning_chunk_event_drops_empty_nonfinal(self):
+        pipeline = _make_pipeline()
+        event = QueueReasoningChunkEvent(reasoning="", from_node_id="llm-1", is_final=False)
+
+        responses = list(pipeline._handle_reasoning_chunk_event(event))
+
+        assert responses == []
+
+    def test_handle_reasoning_chunk_event_emits_empty_final_marker(self):
+        pipeline = _make_pipeline()
+        event = QueueReasoningChunkEvent(reasoning="", from_node_id="llm-1", is_final=True)
+
+        responses = list(pipeline._handle_reasoning_chunk_event(event))
+
+        assert len(responses) == 1
+        response = responses[0]
+        assert isinstance(response, ReasoningChunkStreamResponse)
+        assert response.data.reasoning == ""
+        assert response.data.is_final is True
+
     def test_dispatch_event_handles_node_failed(self):
         pipeline = _make_pipeline()
         pipeline._workflow_response_converter.workflow_node_finish_to_stream_response = lambda **kwargs: "done"
@@ -300,19 +340,18 @@ class TestWorkflowGenerateTaskPipeline:
 
         assert responses == ["finish"]
 
-    def test_save_workflow_app_log_created_from(self):
+    @pytest.mark.parametrize("sqlite_session", [(WorkflowAppLog,)], indirect=True)
+    def test_save_workflow_app_log_created_from(self, sqlite_session: Session):
         pipeline = _make_pipeline()
         pipeline._application_generate_entity.invoke_from = InvokeFrom.SERVICE_API
         pipeline._user_id = "user"
-        added: list[object] = []
+        pipeline._save_workflow_app_log(session=sqlite_session, workflow_run_id="run-id")
+        sqlite_session.flush()
 
-        class _Session:
-            def add(self, item):
-                added.append(item)
-
-        pipeline._save_workflow_app_log(session=_Session(), workflow_run_id="run-id")
-
-        assert added
+        saved_log = sqlite_session.scalar(select(WorkflowAppLog))
+        assert saved_log is not None
+        assert saved_log.workflow_run_id == "run-id"
+        assert saved_log.created_from == "service-api"
 
     def test_iteration_loop_and_human_input_handlers(self):
         pipeline = _make_pipeline()
@@ -601,7 +640,9 @@ class TestWorkflowGenerateTaskPipeline:
         assert sleep_spy
         assert any(isinstance(item, MessageAudioEndStreamResponse) for item in responses)
 
-    def test_wrapper_process_stream_response_handles_audio_exception(self, monkeypatch: pytest.MonkeyPatch):
+    def test_wrapper_process_stream_response_handles_audio_exception(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ):
         pipeline = _make_pipeline()
         pipeline._workflow_features_dict = {
             "text_to_speech": {"enabled": True, "autoPlay": "enabled", "voice": "v", "language": "en"}
@@ -621,51 +662,41 @@ class TestWorkflowGenerateTaskPipeline:
             def publish(self, message):
                 _ = message
 
-        logger_exception = []
         monkeypatch.setattr("core.app.apps.workflow.generate_task_pipeline.time.time", lambda: 0.0)
-        monkeypatch.setattr(
-            "core.app.apps.workflow.generate_task_pipeline.logger.exception",
-            lambda *args, **kwargs: logger_exception.append((args, kwargs)),
-        )
         monkeypatch.setattr(
             "core.app.apps.workflow.generate_task_pipeline.AppGeneratorTTSPublisher",
             _Publisher,
         )
 
-        responses = list(pipeline._wrapper_process_stream_response())
+        with caplog.at_level(logging.ERROR, logger="core.app.apps.workflow.generate_task_pipeline"):
+            responses = list(pipeline._wrapper_process_stream_response())
 
-        assert logger_exception
+        assert "Fails to get audio trunk, task_id: task" in caplog.messages
         assert any(isinstance(item, MessageAudioEndStreamResponse) for item in responses)
 
-    def test_database_session_rolls_back_on_error(self, monkeypatch: pytest.MonkeyPatch):
+    @pytest.mark.parametrize("sqlite_session", [(WorkflowAppLog,)], indirect=True)
+    def test_database_session_rolls_back_on_error(
+        self, monkeypatch: pytest.MonkeyPatch, sqlite_engine, sqlite_session: Session
+    ):
         pipeline = _make_pipeline()
-        calls = {"enter": 0, "exit_exc": None}
+        pipeline._application_generate_entity.invoke_from = InvokeFrom.SERVICE_API
+        pipeline._user_id = "user"
+        monkeypatch.setattr(
+            "core.app.apps.workflow.generate_task_pipeline.db",
+            SimpleNamespace(engine=sqlite_engine),
+        )
 
-        class _BeginContext:
-            def __enter__(self):
-                calls["enter"] += 1
-                return MagicMock()
-
-            def __exit__(self, exc_type, exc, tb):
-                calls["exit_exc"] = exc_type
-                return False
-
-        class _Sessionmaker:
-            def __init__(self, *args, **kwargs):
-                pass
-
-            def begin(self):
-                return _BeginContext()
-
-        monkeypatch.setattr("core.app.apps.workflow.generate_task_pipeline.sessionmaker", _Sessionmaker)
-        monkeypatch.setattr("core.app.apps.workflow.generate_task_pipeline.db", SimpleNamespace(engine=object()))
-
-        with pytest.raises(RuntimeError, match="db error"):
-            with pipeline._database_session():
+        def persist_then_fail() -> None:
+            with pipeline._database_session() as session:
+                pipeline._save_workflow_app_log(session=session, workflow_run_id="run-id")
+                session.flush()
                 raise RuntimeError("db error")
 
-        assert calls["enter"] == 1
-        assert calls["exit_exc"] is RuntimeError
+        with pytest.raises(RuntimeError, match="db error"):
+            persist_then_fail()
+
+        sqlite_session.expire_all()
+        assert sqlite_session.scalar(select(WorkflowAppLog)) is None
 
     def test_node_retry_and_started_handlers_cover_none_and_value(self):
         pipeline = _make_pipeline()
@@ -825,31 +856,30 @@ class TestWorkflowGenerateTaskPipeline:
         pipeline._handle_workflow_failed_and_stop_events = lambda event, **kwargs: iter(["stopped"])
         assert list(pipeline._process_stream_response()) == ["stopped"]
 
-    def test_save_workflow_app_log_covers_invoke_from_variants(self):
+    @pytest.mark.parametrize("sqlite_session", [(WorkflowAppLog,)], indirect=True)
+    def test_save_workflow_app_log_covers_invoke_from_variants(self, sqlite_session: Session):
         pipeline = _make_pipeline()
         pipeline._user_id = "user-id"
-        added: list[object] = []
-
-        class _Session:
-            def add(self, item):
-                added.append(item)
 
         pipeline._application_generate_entity.invoke_from = InvokeFrom.EXPLORE
-        pipeline._save_workflow_app_log(session=_Session(), workflow_run_id="run-id")
-        assert added[-1].created_from == "installed-app"
+        pipeline._save_workflow_app_log(session=sqlite_session, workflow_run_id="run-id")
 
         pipeline._application_generate_entity.invoke_from = InvokeFrom.WEB_APP
-        pipeline._save_workflow_app_log(session=_Session(), workflow_run_id="run-id")
-        assert added[-1].created_from == "web-app"
+        pipeline._save_workflow_app_log(session=sqlite_session, workflow_run_id="run-id-2")
+        sqlite_session.flush()
+        saved_logs = sqlite_session.scalars(select(WorkflowAppLog).order_by(WorkflowAppLog.workflow_run_id)).all()
+        assert [log.created_from for log in saved_logs] == ["installed-app", "web-app"]
 
-        count_before = len(added)
+        count_before = len(saved_logs)
         pipeline._application_generate_entity.invoke_from = InvokeFrom.DEBUGGER
-        pipeline._save_workflow_app_log(session=_Session(), workflow_run_id="run-id")
-        assert len(added) == count_before
+        pipeline._save_workflow_app_log(session=sqlite_session, workflow_run_id="run-id-3")
+        sqlite_session.flush()
+        assert len(sqlite_session.scalars(select(WorkflowAppLog)).all()) == count_before
 
         pipeline._application_generate_entity.invoke_from = InvokeFrom.WEB_APP
-        pipeline._save_workflow_app_log(session=_Session(), workflow_run_id=None)
-        assert len(added) == count_before
+        pipeline._save_workflow_app_log(session=sqlite_session, workflow_run_id=None)
+        sqlite_session.flush()
+        assert len(sqlite_session.scalars(select(WorkflowAppLog)).all()) == count_before
 
     def test_save_output_for_event_writes_draft_variables(self):
         pipeline = _make_pipeline()

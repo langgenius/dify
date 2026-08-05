@@ -1,3 +1,7 @@
+import type {
+  DatasourceProviderType,
+  ToolProviderType,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { VarType } from '../workflow/types'
 
 type LocalizedText<T = string> = {
@@ -27,16 +31,20 @@ export type Credential = {
   api_key_query_param?: string
 }
 
-export enum CollectionType {
-  all = 'all',
-  builtIn = 'builtin',
-  custom = 'api',
-  model = 'model',
-  workflow = 'workflow',
-  mcp = 'mcp',
-  datasource = 'datasource',
-  trigger = 'trigger',
-}
+export const CollectionType = {
+  all: 'all',
+  builtIn: 'builtin',
+  custom: 'api',
+  model: 'model',
+  workflow: 'workflow',
+  mcp: 'mcp',
+  datasource: 'datasource',
+  trigger: 'trigger',
+} as const
+
+export type CollectionType = (typeof CollectionType)[keyof typeof CollectionType]
+
+export type CollectionProviderType = CollectionType | DatasourceProviderType | ToolProviderType
 
 export type Emoji = {
   background: string
@@ -51,11 +59,12 @@ export type Collection = {
   icon: string | Emoji
   icon_dark?: string | Emoji
   label: LocalizedText
-  type: CollectionType | string
+  type: CollectionProviderType
   team_credentials: Record<string, any>
   is_team_authorization: boolean
   allow_delete: boolean
   labels: string[]
+  tools?: Tool[]
   plugin_id?: string
   letter?: string
   // MCP Server
@@ -78,6 +87,11 @@ export type Collection = {
     timeout?: number
     sse_read_timeout?: number
   }
+  // M3 — user-identity forwarding (MCP). Single selector now drives both
+  // "is forwarding on?" and "which mechanism to use?". Pre-collapse builds
+  // also sent a redundant `forward_user_identity` boolean; the api dropped
+  // it, so the field is gone here too.
+  identity_mode?: 'off' | 'idp_token'
   // Workflow
   workflow_app_id?: string
 }
@@ -207,10 +221,13 @@ export type WorkflowToolProviderOutputParameter = {
 
 export type WorkflowToolProviderOutputSchema = {
   type: string
-  properties: Record<string, {
-    type: string
-    description: string
-  }>
+  properties: Record<
+    string,
+    {
+      type: string
+      description: string
+    }
+  >
 }
 
 export type WorkflowToolProviderRequest = {

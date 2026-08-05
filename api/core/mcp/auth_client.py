@@ -7,7 +7,7 @@ authentication failures and retries operations after refreshing tokens.
 
 import logging
 from collections.abc import Callable
-from typing import Any
+from typing import Any, override
 
 from sqlalchemy.orm import Session
 
@@ -40,6 +40,7 @@ class MCPClientWithAuthRetry(MCPClient):
         provider_entity: MCPProviderEntity | None = None,
         authorization_code: str | None = None,
         by_server_id: bool = False,
+        forward_identity_active: bool = False,
     ):
         """
         Initialize the MCP client with auth retry capability.
@@ -52,12 +53,15 @@ class MCPClientWithAuthRetry(MCPClient):
             provider_entity: Provider entity for authentication
             authorization_code: Optional authorization code for initial auth
             by_server_id: Whether to look up provider by server ID
+            forward_identity_active: If True, suppress the static-OAuth retry
+                on 401 — the forwarded identity must propagate as-is.
         """
         super().__init__(server_url, headers, timeout, sse_read_timeout)
 
         self.provider_entity = provider_entity
         self.authorization_code = authorization_code
         self.by_server_id = by_server_id
+        self.forward_identity_active = forward_identity_active
         self._has_retried = False
 
     def _handle_auth_error(self, error: MCPAuthError) -> None:
@@ -73,6 +77,8 @@ class MCPClientWithAuthRetry(MCPClient):
         Raises:
             MCPAuthError: If authentication fails or max retries reached
         """
+        if self.forward_identity_active:
+            raise error
         if not self.provider_entity:
             raise error
         if self._has_retried:
@@ -159,6 +165,7 @@ class MCPClientWithAuthRetry(MCPClient):
             # Reset retry flag after operation completes
             self._has_retried = False
 
+    @override
     def __enter__(self):
         """Enter the context manager with retry support."""
 
@@ -168,6 +175,7 @@ class MCPClientWithAuthRetry(MCPClient):
 
         return self._execute_with_retry(initialize_with_retry)
 
+    @override
     def list_tools(self) -> list[Tool]:
         """
         List available tools from the MCP server with auth retry.
@@ -180,6 +188,7 @@ class MCPClientWithAuthRetry(MCPClient):
         """
         return self._execute_with_retry(super().list_tools)
 
+    @override
     def invoke_tool(self, tool_name: str, tool_args: dict[str, Any]) -> CallToolResult:
         """
         Invoke a tool on the MCP server with auth retry.

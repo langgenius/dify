@@ -1,19 +1,28 @@
 from typing import Literal
+from uuid import UUID
 
 import sqlalchemy as sa
 from flask import abort, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, or_
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import Session, selectinload
 from werkzeug.exceptions import NotFound
 
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
+from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
+    account_initialization_required,
+    edit_permission_required,
+    rbac_permission_required,
+    setup_required,
+    with_current_user,
+)
 from core.app.entities.app_invoke_entities import InvokeFrom
-from extensions.ext_database import db
 from fields.conversation_fields import (
     Conversation as ConversationResponse,
 )
@@ -26,16 +35,17 @@ from fields.conversation_fields import (
 from fields.conversation_fields import (
     ConversationPagination as ConversationPaginationResponse,
 )
+from fields.conversation_fields import ConversationResponseSource
 from fields.conversation_fields import (
     ConversationWithSummaryPagination as ConversationWithSummaryPaginationResponse,
 )
-from fields.conversation_fields import (
-    ResultResponse,
-)
 from libs.datetime_utils import naive_utc_now, parse_time_range
-from libs.login import current_account_with_tenant, login_required
+from libs.helper import dump_response
+from libs.login import login_required
+from libs.pagination import paginate_query
 from models import Conversation, EndUser, Message, MessageAnnotation
-from models.model import AppMode
+from models.account import Account
+from models.model import App, AppMode
 from services.conversation_service import ConversationService
 from services.errors.conversation import ConversationNotExistsError
 
@@ -72,14 +82,14 @@ register_schema_models(
     console_ns,
     CompletionConversationQuery,
     ChatConversationQuery,
+)
+register_response_schema_models(
+    console_ns,
     ConversationResponse,
     ConversationPaginationResponse,
     ConversationMessageDetailResponse,
     ConversationWithSummaryPaginationResponse,
     ConversationDetailResponse,
-    ResultResponse,
-    CompletionConversationQuery,
-    ChatConversationQuery,
 )
 
 
@@ -87,17 +97,18 @@ register_schema_models(
 class CompletionConversationApi(Resource):
     @console_ns.doc("list_completion_conversations")
     @console_ns.doc(description="Get completion conversations with pagination and filtering")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[CompletionConversationQuery.__name__])
+    @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(CompletionConversationQuery)})
     @console_ns.response(200, "Success", console_ns.models[ConversationPaginationResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=AppMode.COMPLETION)
     @edit_permission_required
-    def get(self, app_model):
-        current_user, _ = current_account_with_tenant()
+    @with_current_user
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @with_session(write=False)
+    @get_app_model(mode=AppMode.COMPLETION)
+    def get(self, session: Session, current_user: Account, app_model: App):
         args = CompletionConversationQuery.model_validate(request.args.to_dict(flat=True))
 
         query = sa.select(Conversation).where(
@@ -137,7 +148,7 @@ class CompletionConversationApi(Resource):
                 .join(  # type: ignore
                     MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
                 )
-                .distinct()
+                .group_by(Conversation.id)
             )
         elif args.annotation_status == "not_annotated":
             query = (
@@ -148,10 +159,17 @@ class CompletionConversationApi(Resource):
 
         query = query.order_by(Conversation.created_at.desc())
 
-        conversations = db.paginate(query, page=args.page, per_page=args.limit, error_out=False)
+        conversations = paginate_query(query, session=session, page=args.page, per_page=args.limit)
 
-        return ConversationPaginationResponse.model_validate(conversations, from_attributes=True).model_dump(
-            mode="json"
+        return dump_response(
+            ConversationPaginationResponse,
+            {
+                "page": conversations.page,
+                "per_page": conversations.per_page,
+                "total": conversations.total,
+                "has_next": conversations.has_next,
+                "items": [ConversationResponseSource(item, session=session) for item in conversations.items],
+            },
         )
 
 
@@ -166,13 +184,19 @@ class CompletionConversationDetailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=AppMode.COMPLETION)
     @edit_permission_required
-    def get(self, app_model, conversation_id):
-        conversation_id = str(conversation_id)
-        return ConversationMessageDetailResponse.model_validate(
-            _get_conversation(app_model, conversation_id), from_attributes=True
-        ).model_dump(mode="json")
+    @with_current_user
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @with_session
+    @get_app_model(mode=AppMode.COMPLETION)
+    def get(self, session: Session, current_user: Account, app_model: App, conversation_id: UUID):
+        conversation_id_str = str(conversation_id)
+        return dump_response(
+            ConversationMessageDetailResponse,
+            ConversationResponseSource(
+                _get_conversation(session, current_user, app_model, conversation_id_str), session=session
+            ),
+        )
 
     @console_ns.doc("delete_completion_conversation")
     @console_ns.doc(description="Delete a completion conversation")
@@ -183,35 +207,38 @@ class CompletionConversationDetailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=AppMode.COMPLETION)
     @edit_permission_required
-    def delete(self, app_model, conversation_id):
-        current_user, _ = current_account_with_tenant()
-        conversation_id = str(conversation_id)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
+    @with_current_user
+    @with_session
+    @get_app_model(mode=AppMode.COMPLETION)
+    def delete(self, session: Session, current_user: Account, app_model: App, conversation_id: UUID):
+        conversation_id_str = str(conversation_id)
 
         try:
-            ConversationService.delete(app_model, conversation_id, current_user)
+            ConversationService.delete(app_model, conversation_id_str, current_user, session=session)
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 
-        return ResultResponse(result="success").model_dump(mode="json"), 204
+        return "", 204
 
 
 @console_ns.route("/apps/<uuid:app_id>/chat-conversations")
 class ChatConversationApi(Resource):
     @console_ns.doc("list_chat_conversations")
     @console_ns.doc(description="Get chat conversations with pagination, filtering and summary")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[ChatConversationQuery.__name__])
+    @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(ChatConversationQuery)})
     @console_ns.response(200, "Success", console_ns.models[ConversationWithSummaryPaginationResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     @edit_permission_required
-    def get(self, app_model):
-        current_user, _ = current_account_with_tenant()
+    @with_current_user
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @with_session(write=False)
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
+    def get(self, session: Session, current_user: Account, app_model: App):
         args = ChatConversationQuery.model_validate(request.args.to_dict(flat=True))
 
         subquery = (
@@ -275,7 +302,7 @@ class ChatConversationApi(Resource):
                     .join(  # type: ignore
                         MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
                     )
-                    .distinct()
+                    .group_by(Conversation.id)
                 )
             case "not_annotated":
                 query = (
@@ -301,10 +328,17 @@ class ChatConversationApi(Resource):
             case _:
                 query = query.order_by(Conversation.created_at.desc())
 
-        conversations = db.paginate(query, page=args.page, per_page=args.limit, error_out=False)
+        conversations = paginate_query(query, session=session, page=args.page, per_page=args.limit)
 
-        return ConversationWithSummaryPaginationResponse.model_validate(conversations, from_attributes=True).model_dump(
-            mode="json"
+        return dump_response(
+            ConversationWithSummaryPaginationResponse,
+            {
+                "page": conversations.page,
+                "per_page": conversations.per_page,
+                "total": conversations.total,
+                "has_next": conversations.has_next,
+                "items": [ConversationResponseSource(item, session=session) for item in conversations.items],
+            },
         )
 
 
@@ -319,13 +353,19 @@ class ChatConversationDetailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     @edit_permission_required
-    def get(self, app_model, conversation_id):
-        conversation_id = str(conversation_id)
-        return ConversationDetailResponse.model_validate(
-            _get_conversation(app_model, conversation_id), from_attributes=True
-        ).model_dump(mode="json")
+    @with_current_user
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @with_session
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
+    def get(self, session: Session, current_user: Account, app_model: App, conversation_id: UUID):
+        conversation_id_str = str(conversation_id)
+        return dump_response(
+            ConversationDetailResponse,
+            ConversationResponseSource(
+                _get_conversation(session, current_user, app_model, conversation_id_str), session=session
+            ),
+        )
 
     @console_ns.doc("delete_chat_conversation")
     @console_ns.doc(description="Delete a chat conversation")
@@ -335,31 +375,32 @@ class ChatConversationDetailApi(Resource):
     @console_ns.response(404, "Conversation not found")
     @setup_required
     @login_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     @account_initialization_required
     @edit_permission_required
-    def delete(self, app_model, conversation_id):
-        current_user, _ = current_account_with_tenant()
-        conversation_id = str(conversation_id)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
+    @with_current_user
+    @with_session
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
+    def delete(self, session: Session, current_user: Account, app_model: App, conversation_id: UUID):
+        conversation_id_str = str(conversation_id)
 
         try:
-            ConversationService.delete(app_model, conversation_id, current_user)
+            ConversationService.delete(app_model, conversation_id_str, current_user, session=session)
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 
-        return ResultResponse(result="success").model_dump(mode="json"), 204
+        return "", 204
 
 
-def _get_conversation(app_model, conversation_id):
-    current_user, _ = current_account_with_tenant()
-    conversation = db.session.scalar(
+def _get_conversation(session: Session, current_user: Account, app_model, conversation_id):
+    conversation = session.scalar(
         sa.select(Conversation).where(Conversation.id == conversation_id, Conversation.app_id == app_model.id).limit(1)
     )
 
     if not conversation:
         raise NotFound("Conversation Not Exists.")
 
-    db.session.execute(
+    session.execute(
         sa.update(Conversation)
         .where(Conversation.id == conversation_id, Conversation.read_at.is_(None))
         # Keep updated_at unchanged when only marking a conversation as read.
@@ -369,7 +410,7 @@ def _get_conversation(app_model, conversation_id):
             updated_at=Conversation.updated_at,
         )
     )
-    db.session.commit()
-    db.session.refresh(conversation)
+    session.flush()
+    session.refresh(conversation)
 
     return conversation

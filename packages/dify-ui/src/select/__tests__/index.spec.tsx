@@ -1,12 +1,21 @@
+import * as React from 'react'
+import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger, SelectValue } from '../index'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectGroupLabel,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from '../index'
 
-const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
-const renderWithSafeViewport = (ui: import('react').ReactNode) => render(
-  <div style={{ minHeight: '100vh', minWidth: '100vw', padding: '240px' }}>
-    {ui}
-  </div>,
-)
+const renderWithSafeViewport = (ui: React.ReactNode) =>
+  render(<div style={{ minHeight: '100vh', minWidth: '100vw', padding: '240px' }}>{ui}</div>)
 
 const renderOpenSelect = ({
   rootProps = {},
@@ -24,21 +33,7 @@ const renderOpenSelect = ({
       <SelectTrigger aria-label="city select" {...triggerProps}>
         <SelectValue />
       </SelectTrigger>
-      <SelectContent
-        positionerProps={{
-          'role': 'group',
-          'aria-label': 'select positioner',
-        }}
-        popupProps={{
-          'role': 'dialog',
-          'aria-label': 'select popup',
-        }}
-        listProps={{
-          'role': 'listbox',
-          'aria-label': 'select list',
-        }}
-        {...contentProps}
-      >
+      <SelectContent {...contentProps}>
         <SelectItem value="seattle">
           <SelectItemText>Seattle</SelectItemText>
           <SelectItemIndicator />
@@ -61,7 +56,7 @@ describe('Select wrappers', () => {
             <SelectTrigger aria-label="city select">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent listProps={{ 'role': 'listbox', 'aria-label': 'select list' }}>
+            <SelectContent>
               <SelectItem value="seattle">
                 <SelectItemText>Seattle</SelectItemText>
                 <SelectItemIndicator />
@@ -81,127 +76,225 @@ describe('Select wrappers', () => {
       expect(hiddenInput).toHaveAttribute('autocomplete', 'address-level2')
       expect(new FormData(form).get('city')).toBe('seattle')
     })
+
+    it('should expose a controlled null value to a typed multiple value renderer', async () => {
+      const screen = await renderWithSafeViewport(
+        <Select<string, true> multiple value={null}>
+          <SelectTrigger aria-label="city select">
+            <SelectValue<string, true>>
+              {(selectedValue) =>
+                selectedValue === null ? 'No cities selected' : selectedValue.join(', ')
+              }
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem<string> value="seattle">
+              <SelectItemText>Seattle</SelectItemText>
+            </SelectItem>
+          </SelectContent>
+        </Select>,
+      )
+
+      await expect.element(screen.getByText('No cities selected')).toBeInTheDocument()
+    })
   })
 
   describe('SelectTrigger', () => {
+    it('should use SelectLabel as the trigger accessible name', async () => {
+      const screen = await renderWithSafeViewport(
+        <Select defaultValue="seattle">
+          <SelectLabel>City</SelectLabel>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="seattle">
+              <SelectItemText>Seattle</SelectItemText>
+              <SelectItemIndicator />
+            </SelectItem>
+          </SelectContent>
+        </Select>,
+      )
+
+      await expect.element(screen.getByRole('combobox', { name: 'City' })).toBeInTheDocument()
+    })
+
     it('should forward native trigger props when trigger props are provided', async () => {
       const screen = await renderOpenSelect({
         triggerProps: {
           'aria-label': 'Choose option',
-          'disabled': true,
+          disabled: true,
         },
       })
 
       await expect.element(screen.getByRole('combobox', { name: 'Choose option' })).toBeDisabled()
     })
 
-    it('should apply regular size variant classes by default', async () => {
-      const screen = await renderOpenSelect()
-
-      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toMatch(/system-sm-regular/)
-      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toMatch(/rounded-lg/)
-    })
-
-    it('should apply small size variant classes when size is small', async () => {
-      const screen = await renderOpenSelect({
-        triggerProps: { size: 'small' },
-      })
-
-      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toMatch(/system-xs-regular/)
-      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toMatch(/rounded-md/)
-    })
-
-    it('should apply large size variant classes when size is large', async () => {
-      const screen = await renderOpenSelect({
-        triggerProps: { size: 'large' },
-      })
-
-      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toMatch(/system-md-regular/)
-    })
-
-    it('should apply disabled styling via data attributes when disabled', async () => {
+    it('should expose disabled state via data attributes when disabled', async () => {
       const screen = await renderOpenSelect({
         triggerProps: { disabled: true },
       })
 
-      await expect.element(screen.getByRole('combobox', { name: 'city select' })).toHaveAttribute('data-disabled')
-      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toContain('data-disabled:bg-components-input-bg-disabled')
+      await expect
+        .element(screen.getByRole('combobox', { name: 'city select' }))
+        .toHaveAttribute('data-disabled')
     })
 
-    it('should apply disabled placeholder color class for compound state', async () => {
-      const screen = await renderOpenSelect({
-        triggerProps: { disabled: true },
-      })
-
-      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toContain('data-disabled:data-placeholder:text-components-input-text-disabled')
-    })
-
-    it('should apply readonly styling via data attributes when Root is readOnly', async () => {
+    it('should expose readonly state via data attributes when Root is readOnly', async () => {
       const screen = await renderOpenSelect({
         rootProps: { readOnly: true },
       })
 
-      await expect.element(screen.getByRole('combobox', { name: 'city select' })).toHaveAttribute('data-readonly')
-      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toContain('data-readonly:bg-transparent')
-    })
-
-    it('should hide arrow icon via CSS when Root is readOnly', async () => {
-      const screen = await renderOpenSelect({
-        rootProps: { readOnly: true },
-      })
-
-      expect(screen.getByRole('combobox', { name: 'city select' }).element().querySelector('[class*="group-data-readonly:hidden"]')).toBeInTheDocument()
-    })
-
-    it('should set aria-hidden on decorative icons', async () => {
-      const screen = await renderOpenSelect()
-
-      expect(screen.getByRole('combobox', { name: 'city select' }).element().querySelector('.i-ri-arrow-down-s-line')).toHaveAttribute('aria-hidden', 'true')
-    })
-
-    it('should include placeholder color class via data attribute', async () => {
-      const screen = await renderOpenSelect()
-
-      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toContain('data-placeholder:text-components-input-text-placeholder')
-    })
-
-    it('should render built-in chevron icon', async () => {
-      const screen = await renderOpenSelect()
-
-      expect(screen.getByRole('combobox', { name: 'city select' }).element().querySelector('.i-ri-arrow-down-s-line')).toBeInTheDocument()
-    })
-
-    it('should include open state feedback classes', async () => {
-      const screen = await renderOpenSelect()
-
-      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toContain('data-open:bg-state-base-hover-alt')
+      await expect
+        .element(screen.getByRole('combobox', { name: 'city select' }))
+        .toHaveAttribute('data-readonly')
     })
   })
 
   describe('SelectContent', () => {
-    it('should use positioning attributes when placement is not provided', async () => {
-      const screen = await renderOpenSelect()
+    it('should keep long options inside a narrow viewport', async () => {
+      const popupRef = React.createRef<HTMLDivElement>()
+      const originalViewport = {
+        height: window.innerHeight,
+        width: window.innerWidth,
+      }
 
-      await expect.element(screen.getByRole('group', { name: 'select positioner' })).toHaveAttribute('data-side', 'bottom')
-      await expect.element(screen.getByRole('group', { name: 'select positioner' })).toHaveAttribute('data-align', 'start')
+      await page.viewport(320, 568)
+
+      try {
+        const screen = await render(
+          <div style={{ width: '100vw' }}>
+            <Select open defaultValue="english">
+              <SelectTrigger aria-label="deployment target">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent popupProps={{ ref: popupRef }}>
+                <SelectItem value="english">
+                  <SelectItemText>
+                    Production deployment with a long provider and region identifier
+                  </SelectItemText>
+                </SelectItem>
+                <SelectItem value="chinese">
+                  <SelectItemText>生产环境中的超长模型服务供应商和区域标识名称</SelectItemText>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>,
+        )
+
+        await expect.element(screen.getByRole('listbox')).toBeVisible()
+        await vi.waitFor(() => {
+          const viewportWidth = document.documentElement.clientWidth
+          const popupBounds = popupRef.current?.getBoundingClientRect()
+
+          expect(popupBounds).toBeDefined()
+          expect(viewportWidth).toBe(320)
+          expect(popupBounds?.left).toBeGreaterThanOrEqual(0)
+          expect(popupBounds?.right).toBeLessThanOrEqual(viewportWidth)
+          expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(viewportWidth)
+        })
+      } finally {
+        await page.viewport(originalViewport.width, originalViewport.height)
+      }
+    })
+
+    it('should preserve an explicit popup width when the viewport has enough space', async () => {
+      const popupRef = React.createRef<HTMLDivElement>()
+      const originalViewport = {
+        height: window.innerHeight,
+        width: window.innerWidth,
+      }
+
+      await page.viewport(800, 600)
+
+      try {
+        const screen = await render(
+          <div style={{ width: '256px' }}>
+            <Select open defaultValue="stable">
+              <SelectTrigger aria-label="package version">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent popupClassName="w-[512px]" popupProps={{ ref: popupRef }}>
+                <SelectItem value="stable">
+                  <SelectItemText>Stable package version</SelectItemText>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>,
+        )
+
+        await expect.element(screen.getByRole('listbox')).toBeVisible()
+        await vi.waitFor(() => {
+          expect(popupRef.current?.getBoundingClientRect().width).toBe(512)
+        })
+      } finally {
+        await page.viewport(originalViewport.width, originalViewport.height)
+      }
+    })
+
+    it('should render SelectGroupLabel for grouped options without naming the trigger', async () => {
+      const screen = await renderWithSafeViewport(
+        <Select open defaultValue="seattle">
+          <SelectTrigger aria-label="city select">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              <SelectGroupLabel className="custom-label">Popular cities</SelectGroupLabel>
+              <SelectItem value="seattle">
+                <SelectItemText>Seattle</SelectItemText>
+                <SelectItemIndicator />
+              </SelectItem>
+            </SelectGroup>
+          </SelectContent>
+        </Select>,
+      )
+
+      await expect
+        .element(screen.getByRole('combobox', { name: 'city select' }))
+        .toBeInTheDocument()
+      await expect.element(screen.getByText('Popular cities')).toHaveClass('custom-label')
+    })
+
+    it('should use positioning attributes when placement is not provided', async () => {
+      const positionerRef = React.createRef<HTMLDivElement>()
+
+      await renderOpenSelect({
+        contentProps: {
+          positionerProps: { ref: positionerRef },
+        },
+      })
+
+      await vi.waitFor(() => {
+        expect(positionerRef.current).toHaveAttribute('data-side', 'bottom')
+        expect(positionerRef.current).toHaveAttribute('data-align', 'start')
+      })
     })
 
     it('should preserve positioning attributes when placement props are provided', async () => {
-      const screen = await renderOpenSelect({
+      const positionerRef = React.createRef<HTMLDivElement>()
+
+      await renderOpenSelect({
         contentProps: {
           placement: 'top-end',
           sideOffset: 12,
           alignOffset: 6,
+          positionerProps: { ref: positionerRef },
         },
       })
 
-      await expect.element(screen.getByRole('group', { name: 'select positioner' })).toHaveAttribute('data-side', 'top')
-      await expect.element(screen.getByRole('group', { name: 'select positioner' })).toHaveAttribute('data-align', 'end')
+      await vi.waitFor(() => {
+        expect(positionerRef.current).toHaveAttribute('data-side', 'top')
+        expect(positionerRef.current).toHaveAttribute('data-align', 'end')
+      })
     })
 
     it('should forward passthrough props to positioner popup and list when passthrough props are provided', async () => {
       const onPopupClick = vi.fn()
       const onListFocus = vi.fn()
+      const positionerRef = React.createRef<HTMLDivElement>()
+      const popupRef = React.createRef<HTMLDivElement>()
+      const listRef = React.createRef<HTMLDivElement>()
 
       const screen = await render(
         <Select open defaultValue="seattle">
@@ -210,21 +303,19 @@ describe('Select wrappers', () => {
           </SelectTrigger>
           <SelectContent
             positionerProps={{
-              'role': 'group',
-              'aria-label': 'select positioner',
-              'id': 'select-positioner',
+              id: 'select-positioner',
+              ref: positionerRef,
             }}
             popupProps={{
-              'role': 'dialog',
-              'aria-label': 'select popup',
-              'id': 'select-popup',
-              'onClick': onPopupClick,
+              id: 'select-popup',
+              ref: popupRef,
+              onClick: onPopupClick,
             }}
             listProps={{
-              'role': 'listbox',
               'aria-label': 'select list',
-              'id': 'select-list',
-              'onFocus': onListFocus,
+              id: 'select-list',
+              ref: listRef,
+              onFocus: onListFocus,
             }}
           >
             <SelectItem value="seattle">
@@ -235,36 +326,31 @@ describe('Select wrappers', () => {
         </Select>,
       )
 
-      await screen.getByRole('dialog', { name: 'select popup' }).click()
-      screen.getByRole('listbox', { name: 'select list' }).element().dispatchEvent(new FocusEvent('focusin', {
-        bubbles: true,
-      }))
+      popupRef.current?.click()
+      listRef.current?.dispatchEvent(
+        new FocusEvent('focusin', {
+          bubbles: true,
+        }),
+      )
 
-      await expect.element(screen.getByRole('group', { name: 'select positioner' })).toHaveAttribute('id', 'select-positioner')
-      await expect.element(screen.getByRole('dialog', { name: 'select popup' })).toHaveAttribute('id', 'select-popup')
-      await expect.element(screen.getByRole('listbox', { name: 'select list' })).toHaveAttribute('id', 'select-list')
+      expect(positionerRef.current).toHaveAttribute('id', 'select-positioner')
+      expect(popupRef.current).toHaveAttribute('id', 'select-popup')
+      await expect
+        .element(screen.getByRole('listbox', { name: 'select list' }))
+        .toHaveAttribute('id', 'select-list')
       expect(onPopupClick).toHaveBeenCalledTimes(1)
       expect(onListFocus).toHaveBeenCalled()
     })
   })
 
   describe('SelectItem', () => {
-    it('should render options when children are provided', async () => {
-      const screen = await renderOpenSelect()
-
-      await expect.element(screen.getByRole('option', { name: 'Seattle' })).toBeInTheDocument()
-      await expect.element(screen.getByRole('option', { name: 'New York' })).toBeInTheDocument()
-    })
-
-    it('should not call onValueChange when disabled item is clicked', async () => {
-      const onValueChange = vi.fn()
-
+    it('should expose disabled item semantics', async () => {
       const screen = await render(
-        <Select open defaultValue="seattle" onValueChange={onValueChange}>
+        <Select open defaultValue="seattle">
           <SelectTrigger aria-label="city select">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent listProps={{ 'role': 'listbox', 'aria-label': 'select list' }}>
+          <SelectContent>
             <SelectItem value="seattle">
               <SelectItemText>Seattle</SelectItemText>
               <SelectItemIndicator />
@@ -277,9 +363,9 @@ describe('Select wrappers', () => {
         </Select>,
       )
 
-      asHTMLElement(screen.getByRole('option', { name: 'Disabled New York' }).element()).click()
-
-      expect(onValueChange).not.toHaveBeenCalled()
+      await expect
+        .element(screen.getByRole('option', { name: 'Disabled New York' }))
+        .toHaveAttribute('aria-disabled', 'true')
     })
 
     it('should support custom composition with SelectItemText without indicator', async () => {
@@ -288,7 +374,7 @@ describe('Select wrappers', () => {
           <SelectTrigger aria-label="custom select">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent listProps={{ 'role': 'listbox', 'aria-label': 'select list' }}>
+          <SelectContent>
             <SelectItem value="a" className="gap-2">
               <SelectItemText>Custom Item</SelectItemText>
             </SelectItem>

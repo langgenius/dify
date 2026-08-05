@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, override
 
 from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor
 from graphon.nodes.code.entities import CodeLanguage
@@ -11,6 +11,7 @@ from graphon.template_rendering import Jinja2TemplateRenderer, TemplateRenderErr
 class CodeExecutorJinja2TemplateRenderer(Jinja2TemplateRenderer):
     """Sandbox-backed Jinja2 renderer for workflow-owned node composition."""
 
+    @override
     def render_template(self, template: str, variables: Mapping[str, Any]) -> str:
         try:
             result = CodeExecutor.execute_workflow_code_template(

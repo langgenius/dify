@@ -1,3 +1,4 @@
+import { describe, expect, it, vi } from 'vitest'
 import { InputVarType } from '@/app/components/workflow/types'
 import {
   checkKey,
@@ -206,6 +207,33 @@ describe('Variable Utilities', () => {
       const url = getMarketplaceUrl('/plugins', { category: 'ai', version: undefined })
       expect(url).toContain('category=ai')
       expect(url).not.toContain('version=')
+    })
+
+    it('should include provided source without double encoding', () => {
+      const url = getMarketplaceUrl(
+        '/plugins',
+        { category: 'ai' },
+        { source: 'https://example.com/app' },
+      )
+      expect(url).toContain('source=https%3A%2F%2Fexample.com')
+      expect(url).not.toContain('source=https%253A%252F%252Fexample.com')
+    })
+
+    it('should not access window during server render', () => {
+      const originalWindow = window
+      vi.stubGlobal('window', undefined)
+
+      try {
+        const url = getMarketplaceUrl('/plugins', { category: 'ai' })
+        expect(url).toContain('category=ai')
+        expect(url).not.toContain('source=')
+      } finally {
+        vi.stubGlobal('window', originalWindow)
+      }
+    })
+
+    it('should not append empty query string when no params are available', () => {
+      expect(getMarketplaceUrl('/plugins')).toBe('/plugins')
     })
   })
 

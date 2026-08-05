@@ -1,3 +1,4 @@
+from collections import defaultdict
 from collections.abc import Sequence
 
 from sqlalchemy import select
@@ -153,16 +154,36 @@ class TokenBufferMemory:
 
         messages = list(reversed(thread_messages))
 
+        # Batch-load message files for the whole thread to avoid an N+1 query pattern.
+        # Previously each message issued two MessageFile queries (user + assistant),
+        # i.e. 2N+1 round-trips for N messages. We now use two batched queries keyed by
+        # message_id, preserving the exact filter semantics (user files include rows
+        # whose belongs_to is NULL).
+        message_ids = [message.id for message in messages]
+        user_files_by_message: dict[str, list[MessageFile]] = defaultdict(list)
+        assistant_files_by_message: dict[str, list[MessageFile]] = defaultdict(list)
+        if message_ids:
+            for message_file in db.session.scalars(
+                select(MessageFile).where(
+                    MessageFile.message_id.in_(message_ids),
+                    (MessageFile.belongs_to == "user") | (MessageFile.belongs_to.is_(None)),
+                )
+            ).all():
+                user_files_by_message[message_file.message_id].append(message_file)
+
+            for message_file in db.session.scalars(
+                select(MessageFile).where(
+                    MessageFile.message_id.in_(message_ids),
+                    MessageFile.belongs_to == "assistant",
+                )
+            ).all():
+                assistant_files_by_message[message_file.message_id].append(message_file)
+
         curr_message_tokens = 0
         prompt_messages: list[PromptMessage] = []
         for message in messages:
             # Process user message with files
-            user_files = db.session.scalars(
-                select(MessageFile).where(
-                    MessageFile.message_id == message.id,
-                    (MessageFile.belongs_to == "user") | (MessageFile.belongs_to.is_(None)),
-                )
-            ).all()
+            user_files = user_files_by_message.get(message.id, [])
 
             if user_files:
                 user_prompt_message = self._build_prompt_message_with_files(
@@ -177,9 +198,7 @@ class TokenBufferMemory:
                 prompt_messages.append(UserPromptMessage(content=message.query))
 
             # Process assistant message with files
-            assistant_files = db.session.scalars(
-                select(MessageFile).where(MessageFile.message_id == message.id, MessageFile.belongs_to == "assistant")
-            ).all()
+            assistant_files = assistant_files_by_message.get(message.id, [])
 
             if assistant_files:
                 assistant_prompt_message = self._build_prompt_message_with_files(
@@ -235,10 +254,11 @@ class TokenBufferMemory:
             if isinstance(m.content, list):
                 inner_msg = ""
                 for content in m.content:
-                    if isinstance(content, TextPromptMessageContent):
-                        inner_msg += f"{content.data}\n"
-                    elif isinstance(content, ImagePromptMessageContent):
-                        inner_msg += "[image]\n"
+                    match content:
+                        case TextPromptMessageContent():
+                            inner_msg += f"{content.data}\n"
+                        case ImagePromptMessageContent():
+                            inner_msg += "[image]\n"
 
                 string_messages.append(f"{role}: {inner_msg.strip()}")
             else:

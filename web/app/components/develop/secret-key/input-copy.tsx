@@ -12,13 +12,11 @@ type IInputCopyProps = {
   children?: React.ReactNode
 }
 
-const InputCopy = ({
-  value = '',
-  className,
-  children,
-}: IInputCopyProps) => {
+const InputCopy = ({ value = '', className, children }: IInputCopyProps) => {
   const [isCopied, setIsCopied] = useState(false)
-  const copyLabel = isCopied ? `${t('copied', { ns: 'appApi' })}` : `${t('copy', { ns: 'appApi' })}`
+  const copyLabel = isCopied
+    ? `${t(($) => $.copied, { ns: 'appApi' })}`
+    : `${t(($) => $.copy, { ns: 'appApi' })}`
   const handleCopy = () => {
     writeTextToClipboard(value).then(() => {
       setIsCopied(true)
@@ -38,28 +36,28 @@ const InputCopy = ({
   }, [isCopied])
 
   return (
-    <div className={`flex items-center rounded-lg bg-components-input-bg-normal py-2 hover:bg-state-base-hover ${className}`}>
+    <div
+      className={`flex items-center rounded-lg bg-components-input-bg-normal py-2 hover:bg-state-base-hover ${className}`}
+    >
       <div className="flex h-5 grow items-center">
         {children}
         <div className="relative h-full grow text-[13px]">
           <button
             type="button"
-            className="r-0 absolute top-0 left-0 w-full cursor-pointer truncate border-none bg-transparent py-0 pr-2 pl-2 text-left"
+            className="r-0 absolute top-0 left-0 w-full cursor-pointer truncate border-none bg-transparent px-2 py-0 text-left"
             aria-label={copyLabel}
             onClick={handleCopy}
           >
             <Tooltip>
-              <TooltipTrigger
-                render={<span className="text-text-secondary">{value}</span>}
-              />
-              <TooltipContent placement="bottom">
-                {copyLabel}
-              </TooltipContent>
+              <TooltipTrigger render={<span className="text-text-secondary">{value}</span>} />
+              <TooltipContent placement="bottom">{copyLabel}</TooltipContent>
             </Tooltip>
           </button>
         </div>
         <div className="h-4 w-px shrink-0 bg-divider-regular" />
-        <div className="mx-1"><CopyFeedback content={value} /></div>
+        <div className="mx-1">
+          <CopyFeedback content={value} />
+        </div>
       </div>
     </div>
   )

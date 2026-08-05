@@ -1,3 +1,7 @@
+import pytest
+from pytest_mock import MockerFixture
+from sqlalchemy.orm import Session
+
 from services.rag_pipeline.pipeline_template.built_in.built_in_retrieval import BuiltInPipelineTemplateRetrieval
 from services.rag_pipeline.pipeline_template.pipeline_template_type import PipelineTemplateType
 
@@ -8,7 +12,8 @@ def test_get_type() -> None:
     assert retrieval.get_type() == PipelineTemplateType.BUILTIN
 
 
-def test_get_pipeline_templates(mocker) -> None:
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+def test_get_pipeline_templates(mocker: MockerFixture, sqlite_session: Session) -> None:
     mocker.patch.object(
         BuiltInPipelineTemplateRetrieval,
         "_get_builtin_data",
@@ -21,12 +26,14 @@ def test_get_pipeline_templates(mocker) -> None:
     )
     retrieval = BuiltInPipelineTemplateRetrieval()
 
-    templates = retrieval.get_pipeline_templates("en-US")
+    templates = retrieval.get_pipeline_templates("en-US", session=sqlite_session)
 
     assert templates == {"pipeline_templates": [{"id": "tpl-1"}]}
+    assert not sqlite_session.in_transaction()
 
 
-def test_get_pipeline_template_detail(mocker) -> None:
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+def test_get_pipeline_template_detail(mocker: MockerFixture, sqlite_session: Session) -> None:
     mocker.patch.object(
         BuiltInPipelineTemplateRetrieval,
         "_get_builtin_data",
@@ -38,12 +45,16 @@ def test_get_pipeline_template_detail(mocker) -> None:
     )
     retrieval = BuiltInPipelineTemplateRetrieval()
 
-    detail = retrieval.get_pipeline_template_detail("tpl-1")
+    detail = retrieval.get_pipeline_template_detail("tpl-1", session=sqlite_session)
 
     assert detail == {"id": "tpl-1", "name": "Template 1"}
+    assert not sqlite_session.in_transaction()
 
 
-def test_get_pipeline_templates_missing_language_returns_empty_dict(mocker) -> None:
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+def test_get_pipeline_templates_missing_language_returns_empty_dict(
+    mocker: MockerFixture, sqlite_session: Session
+) -> None:
     mocker.patch.object(
         BuiltInPipelineTemplateRetrieval,
         "_get_builtin_data",
@@ -51,12 +62,16 @@ def test_get_pipeline_templates_missing_language_returns_empty_dict(mocker) -> N
     )
     retrieval = BuiltInPipelineTemplateRetrieval()
 
-    result = retrieval.get_pipeline_templates("fr-FR")
+    result = retrieval.get_pipeline_templates("fr-FR", session=sqlite_session)
 
     assert result == {}
+    assert not sqlite_session.in_transaction()
 
 
-def test_get_pipeline_template_detail_returns_none_for_unknown_id(mocker) -> None:
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+def test_get_pipeline_template_detail_returns_none_for_unknown_id(
+    mocker: MockerFixture, sqlite_session: Session
+) -> None:
     mocker.patch.object(
         BuiltInPipelineTemplateRetrieval,
         "_get_builtin_data",
@@ -64,12 +79,13 @@ def test_get_pipeline_template_detail_returns_none_for_unknown_id(mocker) -> Non
     )
     retrieval = BuiltInPipelineTemplateRetrieval()
 
-    result = retrieval.get_pipeline_template_detail("nonexistent-id")
+    result = retrieval.get_pipeline_template_detail("nonexistent-id", session=sqlite_session)
 
     assert result is None
+    assert not sqlite_session.in_transaction()
 
 
-def test_get_builtin_data_reads_from_file_and_caches(mocker) -> None:
+def test_get_builtin_data_reads_from_file_and_caches(mocker: MockerFixture) -> None:
     import json
 
     # Ensure no cached data
@@ -98,7 +114,7 @@ def test_get_builtin_data_reads_from_file_and_caches(mocker) -> None:
     BuiltInPipelineTemplateRetrieval.builtin_data = None
 
 
-def test_get_builtin_data_returns_cache_on_second_call(mocker) -> None:
+def test_get_builtin_data_returns_cache_on_second_call(mocker: MockerFixture) -> None:
     cached_data = {"pipeline_templates": {"en-US": {}}}
     BuiltInPipelineTemplateRetrieval.builtin_data = cached_data
 

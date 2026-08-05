@@ -154,6 +154,7 @@ class TestSendToTenantQueue:
         """When get_task_key() is truthy, tasks must be pushed via push_tasks()."""
         # Arrange
         proxy = make_proxy()
+        # pyrefly: ignore [missing-attribute]
         proxy._tenant_isolated_task_queue.get_task_key.return_value = "existing-key"
         task_func = MagicMock()
 
@@ -169,6 +170,7 @@ class TestSendToTenantQueue:
         """When a key already exists, task_func.delay must never be called."""
         # Arrange
         proxy = make_proxy()
+        # pyrefly: ignore [missing-attribute]
         proxy._tenant_isolated_task_queue.get_task_key.return_value = "existing-key"
         task_func = MagicMock()
 
@@ -182,6 +184,7 @@ class TestSendToTenantQueue:
         """When a key already exists, set_task_waiting_time must never be called."""
         # Arrange
         proxy = make_proxy()
+        # pyrefly: ignore [missing-attribute]
         proxy._tenant_isolated_task_queue.get_task_key.return_value = "existing-key"
         task_func = MagicMock()
 
@@ -196,6 +199,7 @@ class TestSendToTenantQueue:
         """Verify the serialised payload matches asdict(DocumentTask(...))."""
         # Arrange
         proxy = make_proxy(document_ids=["doc-x"])
+        # pyrefly: ignore [missing-attribute]
         proxy._tenant_isolated_task_queue.get_task_key.return_value = "k"
         task_func = MagicMock()
 
@@ -219,6 +223,7 @@ class TestSendToTenantQueue:
         """When get_task_key() is falsy, set_task_waiting_time and task_func.delay are invoked."""
         # Arrange
         proxy = make_proxy()
+        # pyrefly: ignore [missing-attribute]
         proxy._tenant_isolated_task_queue.get_task_key.return_value = None
         task_func = MagicMock()
 
@@ -238,6 +243,7 @@ class TestSendToTenantQueue:
         """When get_task_key() is falsy, push_tasks must never be called."""
         # Arrange
         proxy = make_proxy()
+        # pyrefly: ignore [missing-attribute]
         proxy._tenant_isolated_task_queue.get_task_key.return_value = None
         task_func = MagicMock()
 
@@ -253,6 +259,7 @@ class TestSendToTenantQueue:
         """Verify that any falsy return from get_task_key() triggers the init branch."""
         # Arrange
         proxy = make_proxy()
+        # pyrefly: ignore [missing-attribute]
         proxy._tenant_isolated_task_queue.get_task_key.return_value = falsy_key
         task_func = MagicMock()
 
@@ -278,6 +285,7 @@ class TestDispatchRouting:
         """Sandbox plan routes to normal priority queue with tenant isolation."""
         # Arrange
         proxy = make_proxy()
+        # pyrefly: ignore [missing-attribute]
         proxy._tenant_isolated_task_queue.get_task_key.return_value = None
 
         with patch("services.document_indexing_proxy.base.FeatureService.get_features") as mock_features:
@@ -344,7 +352,7 @@ class TestDispatchRouting:
                 proxy._dispatch()
 
         # Assert
-        mock_features.assert_called_once_with(TENANT_ID)
+        mock_features.assert_called_once_with(TENANT_ID, exclude_vector_space=True)
 
 
 class TestBaseRouterHelpers:

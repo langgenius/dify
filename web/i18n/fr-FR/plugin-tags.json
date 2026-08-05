@@ -1,5 +1,6 @@
 {
   "allTags": "Tous les mots-clés",
+  "clearSelectedTags": "Effacer les tags sélectionnés : {{tags}}",
   "searchTags": "Mots-clés de recherche",
   "tags.agent": "Agent",
   "tags.business": "Affaire",

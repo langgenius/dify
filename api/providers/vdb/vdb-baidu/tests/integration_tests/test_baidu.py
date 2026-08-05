@@ -1,3 +1,5 @@
+from typing import override
+
 from dify_vdb_baidu.baidu_vector import BaiduConfig, BaiduVector
 
 from core.rag.datasource.vdb.vector_integration_test_support import AbstractVectorTest, get_example_text
@@ -18,10 +20,12 @@ class BaiduVectorTest(AbstractVectorTest):
             ),
         )
 
+    @override
     def search_by_vector(self):
         hits_by_vector = self.vector.search_by_vector(query_vector=self.example_embedding)
         assert len(hits_by_vector) == 1
 
+    @override
     def search_by_full_text(self):
         hits_by_full_text = self.vector.search_by_full_text(query=get_example_text())
         assert len(hits_by_full_text) == 0

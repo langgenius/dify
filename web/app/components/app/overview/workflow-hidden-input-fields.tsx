@@ -7,9 +7,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@langgenius/dify-ui/select'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
-
 import { InputVarType } from '@/app/components/workflow/types'
 
 type WorkflowHiddenInputFieldsProps = {
@@ -34,13 +33,13 @@ const WorkflowHiddenInputFields = ({
       return (
         <Select
           value={typeof fieldValue === 'string' ? fieldValue : ''}
-          onValueChange={value => onValueChange(variable.variable, value ?? '')}
+          onValueChange={(value) => onValueChange(variable.variable, value ?? '')}
         >
           <SelectTrigger className="w-full" aria-label={label}>
             <SelectValue placeholder={label} />
           </SelectTrigger>
           <SelectContent>
-            {(variable.options ?? []).map(option => (
+            {(variable.options ?? []).map((option) => (
               <SelectItem key={option} value={option}>
                 {option}
               </SelectItem>
@@ -57,8 +56,10 @@ const WorkflowHiddenInputFields = ({
             id={fieldId}
             type="checkbox"
             checked={Boolean(fieldValue)}
-            onChange={(event: ChangeEvent<HTMLInputElement>) => onValueChange(variable.variable, event.target.checked)}
-            className="h-4 w-4 rounded border-divider-subtle"
+            onChange={(event: ChangeEvent<HTMLInputElement>) =>
+              onValueChange(variable.variable, event.target.checked)
+            }
+            className="size-4 rounded border-divider-subtle"
           />
           <span className="system-sm-regular text-text-secondary">{label}</span>
         </label>
@@ -66,15 +67,15 @@ const WorkflowHiddenInputFields = ({
     }
 
     if (
-      variable.type === InputVarType.paragraph
-      || variable.type === InputVarType.json
-      || variable.type === InputVarType.jsonObject
+      variable.type === InputVarType.paragraph ||
+      variable.type === InputVarType.json ||
+      variable.type === InputVarType.jsonObject
     ) {
       return (
         <Textarea
           id={fieldId}
           value={typeof fieldValue === 'string' ? fieldValue : ''}
-          onChange={(event: ChangeEvent<HTMLTextAreaElement>) => onValueChange(variable.variable, event.target.value)}
+          onValueChange={(value) => onValueChange(variable.variable, value)}
           placeholder={label}
           maxLength={variable.max_length}
           className="min-h-24"
@@ -87,7 +88,9 @@ const WorkflowHiddenInputFields = ({
         id={fieldId}
         type={variable.type === InputVarType.number ? 'number' : 'text'}
         value={typeof fieldValue === 'string' ? fieldValue : ''}
-        onChange={(event: ChangeEvent<HTMLInputElement>) => onValueChange(variable.variable, event.target.value)}
+        onChange={(event: ChangeEvent<HTMLInputElement>) =>
+          onValueChange(variable.variable, event.target.value)
+        }
         placeholder={label}
         maxLength={variable.max_length}
       />
@@ -96,7 +99,7 @@ const WorkflowHiddenInputFields = ({
 
   return (
     <>
-      {hiddenVariables.map(variable => (
+      {hiddenVariables.map((variable) => (
         <div key={variable.variable} className="space-y-1.5">
           {variable.type !== InputVarType.checkbox && (
             <label

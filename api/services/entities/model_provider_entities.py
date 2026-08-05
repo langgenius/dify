@@ -1,7 +1,9 @@
 from collections.abc import Sequence
+from decimal import Decimal
 from enum import StrEnum
+from typing import Annotated, Any
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from configs import dify_config
 from core.entities.model_entities import (
@@ -16,15 +18,23 @@ from core.entities.provider_entities import (
     UnaddedModelConfiguration,
 )
 from graphon.model_runtime.entities.common_entities import I18nObject
-from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.model_entities import (
+    FetchFrom,
+    ModelFeature,
+    ModelPropertyKey,
+    ModelType,
+    ParameterRule,
+)
 from graphon.model_runtime.entities.provider_entities import (
     ConfigurateMethod,
     ModelCredentialSchema,
     ProviderCredentialSchema,
     ProviderHelpEntity,
-    SimpleProviderEntity,
 )
 from models.provider import ProviderType
+
+_DECIMAL_STRING_PATTERN = r"^(?![-+.]*$)[+-]?0*\d*\.?\d*$"
+CodegenSafeDecimal = Annotated[Decimal, Field(json_schema_extra={"pattern": _DECIMAL_STRING_PATTERN})]
 
 
 class CustomConfigurationStatus(StrEnum):
@@ -130,12 +140,40 @@ class ProviderWithModelsResponse(BaseModel):
         return self
 
 
-class SimpleProviderEntityResponse(SimpleProviderEntity):
+class PriceConfigResponse(BaseModel):
+    """Serialized pricing info with codegen-safe decimal string patterns."""
+
+    input: CodegenSafeDecimal
+    output: CodegenSafeDecimal | None = None
+    unit: CodegenSafeDecimal
+    currency: str
+
+
+class AIModelEntityResponse(BaseModel):
+    model: str
+    label: I18nObject
+    model_type: ModelType
+    features: list[ModelFeature] | None = None
+    fetch_from: FetchFrom
+    model_properties: dict[ModelPropertyKey, Any]
+    deprecated: bool = False
+    parameter_rules: list[ParameterRule] = []
+    pricing: PriceConfigResponse | None = None
+
+
+class SimpleProviderEntityResponse(BaseModel):
     """
     Simple provider entity response.
     """
 
+    provider: str
+    provider_name: str = ""
+    label: I18nObject
+    icon_small: I18nObject | None = None
+    icon_small_dark: I18nObject | None = None
+    supported_model_types: Sequence[ModelType]
     tenant_id: str
+    models: list[AIModelEntityResponse] = []
 
     @model_validator(mode="after")
     def _(self):
@@ -152,6 +190,27 @@ class SimpleProviderEntityResponse(SimpleProviderEntity):
                 en_US=f"{url_prefix}/icon_small_dark/en_US", zh_Hans=f"{url_prefix}/icon_small_dark/zh_Hans"
             )
         return self
+
+
+class ProviderEntityResponse(BaseModel):
+    """Runtime provider response with codegen-safe model pricing schemas."""
+
+    provider: str
+    provider_name: str = ""
+    label: I18nObject
+    description: I18nObject | None = None
+    icon_small: I18nObject | None = None
+    icon_small_dark: I18nObject | None = None
+    background: str | None = None
+    help: ProviderHelpEntity | None = None
+    supported_model_types: Sequence[ModelType]
+    configurate_methods: list[ConfigurateMethod]
+    models: list[AIModelEntityResponse] = []
+    provider_credential_schema: ProviderCredentialSchema | None = None
+    model_credential_schema: ModelCredentialSchema | None = None
+    position: dict[str, list[str]] | None = {}
+
+    model_config = ConfigDict(from_attributes=True, protected_namespaces=())
 
 
 class DefaultModelResponse(BaseModel):

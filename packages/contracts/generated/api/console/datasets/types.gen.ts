@@ -4,14 +4,66 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type DatasetListResponse = {
+  data: Array<DatasetListItemResponse>
+  has_more: boolean
+  limit: number
+  page: number
+  total: number
+}
+
 export type DatasetCreatePayload = {
   description?: string
   external_knowledge_api_id?: string | null
   external_knowledge_id?: string | null
   indexing_technique?: string | null
   name: string
-  permission?: DatasetPermissionEnum
+  permission?: PermissionEnum | null
   provider?: string
+}
+
+export type DatasetDetailResponse = {
+  app_count: number
+  author_name: string | null
+  built_in_field_enabled: boolean
+  chunk_structure: string | null
+  created_at: number
+  created_by: string
+  data_source_type: string | null
+  description: string | null
+  doc_form: string | null
+  doc_metadata: Array<DatasetDocMetadataResponse>
+  document_count: number
+  embedding_available?: boolean | null
+  embedding_model: string | null
+  embedding_model_provider: string | null
+  enable_api: boolean
+  external_knowledge_info?: DatasetExternalKnowledgeInfoResponse
+  external_retrieval_model: DatasetExternalRetrievalModelResponse | null
+  icon_info?: DatasetIconInfoResponse
+  id: string
+  indexing_technique: string | null
+  is_multimodal: boolean
+  is_published: boolean
+  maintainer?: string | null
+  name: string
+  permission: string
+  permission_keys?: Array<string>
+  pipeline_id: string | null
+  provider: string
+  retrieval_model_dict: DatasetRetrievalModelResponse
+  runtime_mode: string | null
+  summary_index_setting?: DatasetSummaryIndexSettingResponse
+  tags: Array<DatasetTagResponse>
+  total_available_documents: number
+  total_documents: number
+  updated_at: number
+  updated_by: string | null
+  word_count: number
+}
+
+export type ApiBaseUrlResponse = {
+  api_base_url: string
 }
 
 export type ApiKeyList = {
@@ -24,6 +76,11 @@ export type ApiKeyItem = {
   last_used_at?: number | null
   token: string
   type: string
+}
+
+export type SegmentBatchImportStatusResponse = {
+  job_id: string
+  job_status: string
 }
 
 export type BatchImportPayload = {
@@ -40,8 +97,12 @@ export type ExternalDatasetCreatePayload = {
   name: string
 }
 
-export type DatasetDetail = {
-  [key: string]: unknown
+export type ExternalKnowledgeApiListResponse = {
+  data: Array<ExternalKnowledgeApiResponse>
+  has_more: boolean
+  limit: number
+  page: number
+  total: number | null
 }
 
 export type ExternalKnowledgeApiPayload = {
@@ -49,6 +110,24 @@ export type ExternalKnowledgeApiPayload = {
   settings: {
     [key: string]: unknown
   }
+}
+
+export type ExternalKnowledgeApiResponse = {
+  created_at: string
+  created_by: string
+  dataset_bindings: Array<ExternalKnowledgeApiBindingResponse>
+  description: string
+  id: string
+  name: string
+  settings: {
+    [key: string]: unknown
+  } | null
+  tenant_id: string
+}
+
+export type UsageCountResponse = {
+  count: number
+  is_using: boolean
 }
 
 export type IndexingEstimatePayload = {
@@ -64,21 +143,33 @@ export type IndexingEstimatePayload = {
   }
 }
 
+export type IndexingEstimateResponse = {
+  currency: string
+  preview: Array<PreviewDetail>
+  qa_preview?: Array<QaPreviewDetail> | null
+  tokens: number
+  total_price: number | number
+  total_segments: number
+}
+
 export type KnowledgeConfig = {
-  data_source?: DataSource
-  doc_form?: string
+  data_source?: DataSource | null
+  doc_form?: 'hierarchical_model' | 'qa_model' | 'text_model'
   doc_language?: string
   duplicate?: boolean
   embedding_model?: string | null
   embedding_model_provider?: string | null
-  indexing_technique: 'high_quality' | 'economy'
+  indexing_technique: 'economy' | 'high_quality'
   is_multimodal?: boolean
   name?: string | null
   original_document_id?: string | null
-  process_rule?: ProcessRule
-  retrieval_model?: RetrievalModel
+  process_rule?: ProcessRule | null
+  retrieval_model?: RetrievalModel | null
   summary_index_setting?: {
-    [key: string]: unknown
+    enable?: boolean
+    model_name?: string
+    model_provider_name?: string
+    summary_prompt?: string
   } | null
 }
 
@@ -86,6 +177,10 @@ export type DatasetAndDocumentResponse = {
   batch: string
   dataset: DatasetResponse
   documents: Array<DocumentResponse>
+}
+
+export type DatasetMetadataBuiltInFieldsResponse = {
+  fields: Array<DatasetMetadataBuiltInFieldResponse>
 }
 
 export type NotionEstimatePayload = {
@@ -97,6 +192,65 @@ export type NotionEstimatePayload = {
   process_rule: {
     [key: string]: unknown
   }
+}
+
+export type IndexingEstimate = {
+  preview: Array<PreviewDetail>
+  qa_preview?: Array<QaPreviewDetail> | null
+  total_segments: number
+}
+
+export type ProcessRuleResponse = {
+  limits: {
+    [key: string]: unknown
+  }
+  mode: ProcessRuleMode
+  rules?: Rule | null
+}
+
+export type RetrievalSettingResponse = {
+  retrieval_method: Array<string>
+}
+
+export type DatasetDetailWithPartialMembersResponse = {
+  app_count: number
+  author_name: string | null
+  built_in_field_enabled: boolean
+  chunk_structure: string | null
+  created_at: number
+  created_by: string
+  data_source_type: string | null
+  description: string | null
+  doc_form: string | null
+  doc_metadata: Array<DatasetDocMetadataResponse>
+  document_count: number
+  embedding_available?: boolean | null
+  embedding_model: string | null
+  embedding_model_provider: string | null
+  enable_api: boolean
+  external_knowledge_info?: DatasetExternalKnowledgeInfoResponse
+  external_retrieval_model: DatasetExternalRetrievalModelResponse | null
+  icon_info?: DatasetIconInfoResponse
+  id: string
+  indexing_technique: string | null
+  is_multimodal: boolean
+  is_published: boolean
+  maintainer?: string | null
+  name: string
+  partial_member_list?: Array<string> | null
+  permission: string
+  permission_keys?: Array<string>
+  pipeline_id: string | null
+  provider: string
+  retrieval_model_dict: DatasetRetrievalModelResponse
+  runtime_mode: string | null
+  summary_index_setting?: DatasetSummaryIndexSettingResponse
+  tags: Array<DatasetTagResponse>
+  total_available_documents: number
+  total_documents: number
+  updated_at: number
+  updated_by: string | null
+  word_count: number
 }
 
 export type DatasetUpdatePayload = {
@@ -117,13 +271,34 @@ export type DatasetUpdatePayload = {
   partial_member_list?: Array<{
     [key: string]: string
   }> | null
-  permission?: DatasetPermissionEnum
+  permission?: PermissionEnum | null
   retrieval_model?: {
     [key: string]: unknown
   } | null
   summary_index_setting?: {
     [key: string]: unknown
   } | null
+}
+
+export type SimpleResultResponse = {
+  result: string
+}
+
+export type AutoDisableLogsResponse = {
+  count: number
+  document_ids: Array<string>
+}
+
+export type DocumentStatusListResponse = {
+  data: Array<DocumentStatusResponse>
+}
+
+export type DocumentWithSegmentsListResponse = {
+  data: Array<DocumentWithSegmentsResponse>
+  has_more: boolean
+  limit: number
+  page: number
+  total: number
 }
 
 export type DocumentBatchDownloadZipPayload = {
@@ -138,9 +313,74 @@ export type MetadataOperationData = {
   operation_data: Array<DocumentMetadataOperation>
 }
 
+export type DocumentDetailResponse = {
+  archived?: boolean | null
+  average_segment_length?: number | null
+  completed_at?: number | null
+  created_at?: number | null
+  created_by?: string | null
+  created_from?: string | null
+  data_source_detail_dict?: unknown
+  data_source_info?: unknown
+  data_source_type?: string | null
+  dataset_process_rule?: unknown
+  dataset_process_rule_id?: string | null
+  disabled_at?: number | null
+  disabled_by?: string | null
+  display_status?: string | null
+  doc_form?: string | null
+  doc_language?: string | null
+  doc_metadata?: Array<DocumentMetadataResponse> | null
+  doc_type?: string | null
+  document_process_rule?: unknown
+  enabled?: boolean | null
+  error?: string | null
+  hit_count?: number | null
+  id: string
+  indexing_latency?: number | null
+  indexing_status?: string | null
+  name?: string | null
+  need_summary?: boolean | null
+  position?: number | null
+  segment_count?: number | null
+  tokens?: number | null
+  updated_at?: number | null
+}
+
+export type UrlResponse = {
+  url: string
+}
+
+export type DocumentStatusResponse = {
+  cleaning_completed_at: number | null
+  completed_at: number | null
+  completed_segments?: number | null
+  error: string | null
+  id: string
+  indexing_status: string
+  parsing_completed_at: number | null
+  paused_at: number | null
+  processing_started_at: number | null
+  splitting_completed_at: number | null
+  stopped_at: number | null
+  total_segments?: number | null
+}
+
 export type DocumentMetadataUpdatePayload = {
   doc_metadata?: unknown
   doc_type?: string | null
+}
+
+export type SimpleResultMessageResponse = {
+  message: string
+  result: string
+}
+
+export type DocumentPipelineExecutionLogResponse = {
+  datasource_info?: JsonValue | null
+  datasource_node_id?: string | null
+  datasource_type?: string | null
+  input_data?: JsonValue | null
 }
 
 export type DocumentRenamePayload = {
@@ -153,14 +393,14 @@ export type DocumentResponse = {
   created_by?: string | null
   created_from?: string | null
   data_source_detail_dict?: unknown
-  data_source_info_dict?: unknown
+  data_source_info?: unknown
   data_source_type?: string | null
   dataset_process_rule_id?: string | null
   disabled_at?: number | null
   disabled_by?: string | null
   display_status?: string | null
   doc_form?: string | null
-  doc_metadata_details?: Array<DocumentMetadataResponse>
+  doc_metadata?: Array<DocumentMetadataResponse>
   enabled?: boolean | null
   error?: string | null
   hit_count?: number | null
@@ -181,6 +421,19 @@ export type SegmentCreatePayload = {
   keywords?: Array<string> | null
 }
 
+export type SegmentDetailResponse = {
+  data: SegmentResponse
+  doc_form: string
+}
+
+export type ConsoleSegmentListResponse = {
+  data: Array<SegmentResponse>
+  limit: number
+  page: number
+  total: number
+  total_pages: number
+}
+
 export type SegmentUpdatePayload = {
   answer?: string | null
   attachment_ids?: Array<string> | null
@@ -190,12 +443,43 @@ export type SegmentUpdatePayload = {
   summary?: string | null
 }
 
+export type ChildChunkListResponse = {
+  data: Array<ChildChunkResponse>
+  limit: number
+  page: number
+  total: number
+  total_pages: number
+}
+
+export type ChildChunkBatchUpdatePayload = {
+  chunks: Array<ChildChunkUpdateArgs>
+}
+
+export type ChildChunkBatchUpdateResponse = {
+  data: Array<ChildChunkResponse>
+}
+
 export type ChildChunkCreatePayload = {
   content: string
 }
 
+export type ChildChunkDetailResponse = {
+  data: ChildChunkResponse
+}
+
 export type ChildChunkUpdatePayload = {
   content: string
+}
+
+export type DocumentSummaryStatusResponse = {
+  summaries: Array<SummaryEntryResponse>
+  summary_status: SummaryStatusResponse
+  total_segments: number
+}
+
+export type ErrorDocsResponse = {
+  data: Array<DocumentStatusResponse>
+  total: number
 }
 
 export type ExternalHitTestingPayload = {
@@ -208,62 +492,200 @@ export type ExternalHitTestingPayload = {
   query: string
 }
 
+export type ExternalHitTestingResponse = {
+  query: ExternalHitTestingQueryResponse
+  records: Array<ExternalHitTestingRecordResponse>
+}
+
 export type HitTestingPayload = {
   attachment_ids?: Array<string> | null
   external_retrieval_model?: {
-    [key: string]: unknown
+    score_threshold?: number
+    score_threshold_enabled?: boolean
+    top_k?: number
   } | null
   query: string
-  retrieval_model?: RetrievalModel
+  retrieval_model?: RetrievalModel | null
 }
 
 export type HitTestingResponse = {
-  query: string
-  records?: Array<HitTestingRecord>
+  query: HitTestingQuery
+  records: Array<HitTestingRecord>
+}
+
+export type DatasetMetadataListResponse = {
+  built_in_field_enabled: boolean
+  doc_metadata: Array<DatasetMetadataListItemResponse>
 }
 
 export type MetadataArgs = {
   name: string
-  type: 'string' | 'number' | 'time'
+  type: 'number' | 'string' | 'time'
+}
+
+export type DatasetMetadataResponse = {
+  id: string
+  name: string
+  type: string
 }
 
 export type MetadataUpdatePayload = {
   name: string
 }
 
-export type DatasetQueryDetail = {
-  [key: string]: unknown
+export type PartialMemberListResponse = {
+  data: Array<string>
 }
 
-export type RelatedAppList = {
-  [key: string]: unknown
+export type DatasetQueryListResponse = {
+  data: Array<DatasetQueryDetailResponse>
+  has_more: boolean
+  limit: number
+  page: number
+  total: number
+}
+
+export type RelatedAppListResponse = {
+  data: Array<RelatedAppResponse>
+  total: number
 }
 
 export type DocumentRetryPayload = {
   document_ids: Array<string>
 }
 
-export type DatasetPermissionEnum = 'only_me' | 'all_team_members' | 'partial_members'
+export type UsageCheckResponse = {
+  is_using: boolean
+}
+
+export type DatasetListItemResponse = {
+  app_count: number
+  author_name: string | null
+  built_in_field_enabled: boolean
+  chunk_structure: string | null
+  created_at: number
+  created_by: string
+  data_source_type: string | null
+  description: string | null
+  doc_form: string | null
+  doc_metadata: Array<DatasetDocMetadataResponse>
+  document_count: number
+  embedding_available?: boolean | null
+  embedding_model: string | null
+  embedding_model_provider: string | null
+  enable_api: boolean
+  external_knowledge_info?: DatasetExternalKnowledgeInfoResponse
+  external_retrieval_model: DatasetExternalRetrievalModelResponse | null
+  icon_info?: DatasetIconInfoResponse
+  id: string
+  indexing_technique: string | null
+  is_multimodal: boolean
+  is_published: boolean
+  maintainer?: string | null
+  name: string
+  partial_member_list: Array<string>
+  permission: string
+  permission_keys?: Array<string>
+  pipeline_id: string | null
+  provider: string
+  retrieval_model_dict: DatasetRetrievalModelResponse
+  runtime_mode: string | null
+  summary_index_setting?: DatasetSummaryIndexSettingResponse
+  tags: Array<DatasetTagResponse>
+  total_available_documents: number
+  total_documents: number
+  updated_at: number
+  updated_by: string | null
+  word_count: number
+}
+
+export type PermissionEnum = 'all_team_members' | 'only_me' | 'partial_members'
+
+export type DatasetDocMetadataResponse = {
+  id: string
+  name: string
+  type: string
+}
+
+export type DatasetExternalKnowledgeInfoResponse = {
+  external_knowledge_api_endpoint?: string | null
+  external_knowledge_api_id?: string | null
+  external_knowledge_api_name?: string | null
+  external_knowledge_id?: string | null
+}
+
+export type DatasetExternalRetrievalModelResponse = {
+  score_threshold?: number | null
+  score_threshold_enabled?: boolean | null
+  top_k: number
+}
+
+export type DatasetIconInfoResponse = {
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  icon_url?: string | null
+}
+
+export type DatasetRetrievalModelResponse = {
+  reranking_enable: boolean
+  reranking_mode?: string | null
+  reranking_model?: DatasetRerankingModelResponse
+  score_threshold?: number | null
+  score_threshold_enabled: boolean
+  search_method: string
+  top_k: number
+  weights?: DatasetWeightedScoreResponse | null
+}
+
+export type DatasetSummaryIndexSettingResponse = {
+  enable?: boolean | null
+  model_name?: string | null
+  model_provider_name?: string | null
+  summary_prompt?: string | null
+}
+
+export type DatasetTagResponse = {
+  id: string
+  name: string
+  type: string
+}
+
+export type ExternalKnowledgeApiBindingResponse = {
+  id: string
+  name: string
+}
+
+export type PreviewDetail = {
+  child_chunks?: Array<string> | null
+  content: string
+  summary?: string | null
+}
+
+export type QaPreviewDetail = {
+  answer: string
+  question: string
+}
 
 export type DataSource = {
   info_list: InfoList
 }
 
 export type ProcessRule = {
-  mode: 'automatic' | 'custom' | 'hierarchical'
-  rules?: Rule
+  mode: ProcessRuleMode
+  rules?: Rule | null
 }
 
 export type RetrievalModel = {
-  metadata_filtering_conditions?: MetadataFilteringCondition
+  metadata_filtering_conditions?: MetadataFilteringCondition | null
   reranking_enable: boolean
-  reranking_mode?: string | null
-  reranking_model?: RerankingModel
+  reranking_mode?: 'reranking_model' | 'weighted_score' | null
+  reranking_model?: RerankingModel | null
   score_threshold?: number | null
   score_threshold_enabled: boolean
   search_method: RetrievalMethod
   top_k: number
-  weights?: WeightModel
+  weights?: WeightModel | null
 }
 
 export type DatasetResponse = {
@@ -277,6 +699,50 @@ export type DatasetResponse = {
   permission?: string | null
 }
 
+export type DatasetMetadataBuiltInFieldResponse = {
+  name: string
+  type: string
+}
+
+export type ProcessRuleMode = 'automatic' | 'custom' | 'hierarchical'
+
+export type Rule = {
+  parent_mode?: 'full-doc' | 'paragraph' | null
+  pre_processing_rules?: Array<PreProcessingRule> | null
+  segmentation?: Segmentation | null
+  subchunk_segmentation?: Segmentation | null
+}
+
+export type DocumentWithSegmentsResponse = {
+  archived?: boolean | null
+  completed_segments?: number | null
+  created_at?: number | null
+  created_by?: string | null
+  created_from?: string | null
+  data_source_detail_dict?: unknown
+  data_source_info?: unknown
+  data_source_type?: string | null
+  dataset_process_rule_id?: string | null
+  disabled_at?: number | null
+  disabled_by?: string | null
+  display_status?: string | null
+  doc_form?: string | null
+  doc_metadata?: Array<DocumentMetadataResponse>
+  enabled?: boolean | null
+  error?: string | null
+  hit_count?: number | null
+  id: string
+  indexing_status?: string | null
+  name: string
+  need_summary?: boolean | null
+  position?: number | null
+  process_rule_dict?: unknown
+  summary_index_status?: string | null
+  tokens?: number | null
+  total_segments?: number | null
+  word_count?: number | null
+}
+
 export type DocumentMetadataOperation = {
   document_id: string
   metadata_list: Array<MetadataDetail>
@@ -287,30 +753,145 @@ export type DocumentMetadataResponse = {
   id: string
   name: string
   type: string
-  value?: string | null
+  value?: string | number | number | boolean | null
+}
+
+export type JsonValue = unknown
+
+export type SegmentResponse = {
+  answer: string | null
+  attachments: Array<SegmentAttachmentResponse>
+  child_chunks: Array<ChildChunkResponse>
+  completed_at: number | null
+  content: string
+  created_at: number
+  created_by: string
+  disabled_at: number | null
+  disabled_by: string | null
+  document_id: string
+  enabled: boolean
+  error: string | null
+  hit_count: number
+  id: string
+  index_node_hash: string | null
+  index_node_id: string | null
+  indexing_at: number | null
+  keywords: Array<string> | null
+  position: number
+  sign_content: string
+  status: string
+  stopped_at: number | null
+  summary: string | null
+  tokens: number
+  updated_at: number
+  updated_by: string | null
+  word_count: number
+}
+
+export type ChildChunkResponse = {
+  content: string
+  created_at: number
+  id: string
+  position: number
+  segment_id: string
+  type: string
+  updated_at: number
+  word_count: number
+}
+
+export type ChildChunkUpdateArgs = {
+  content: string
+  id?: string | null
+}
+
+export type SummaryEntryResponse = {
+  created_at?: number | null
+  error?: string | null
+  segment_id: string
+  segment_position: number
+  status: string
+  summary_preview?: string | null
+  updated_at?: number | null
+}
+
+export type SummaryStatusResponse = {
+  completed?: number
+  error?: number
+  generating?: number
+  not_started?: number
+  timeout?: number
+}
+
+export type ExternalHitTestingQueryResponse = {
+  content: string
+}
+
+export type ExternalHitTestingRecordResponse = {
+  content?: string | null
+  metadata?: {
+    [key: string]: unknown
+  } | null
+  score?: number | null
+  title?: string | null
+}
+
+export type HitTestingQuery = {
+  content: string
 }
 
 export type HitTestingRecord = {
-  child_chunks?: Array<HitTestingChildChunk>
-  files?: Array<HitTestingFile>
-  score?: number | null
-  segment?: HitTestingSegment
-  summary?: string | null
-  tsne_position?: unknown
+  child_chunks: Array<HitTestingChildChunk>
+  files: Array<HitTestingFile>
+  score: number | null
+  segment: HitTestingSegment
+  summary: string | null
+  tsne_position: unknown | null
+}
+
+export type DatasetMetadataListItemResponse = {
+  count?: number
+  id: string
+  name: string
+  type: string
+}
+
+export type DatasetQueryDetailResponse = {
+  created_at: number
+  created_by: string
+  created_by_role: string
+  id: string
+  queries: Array<DatasetQueryContentResponse>
+  source: string
+  source_app_id: string | null
+}
+
+export type RelatedAppResponse = {
+  description: string
+  icon: string | null
+  icon_background: string | null
+  icon_type: string | null
+  icon_url?: string | null
+  id: string
+  mode: string
+  name: string
+}
+
+export type DatasetRerankingModelResponse = {
+  reranking_model_name?: string | null
+  reranking_provider_name?: string | null
+}
+
+export type DatasetWeightedScoreResponse = {
+  keyword_setting?: DatasetKeywordSettingResponse
+  vector_setting?: DatasetVectorSettingResponse
+  weight_type?: string | null
 }
 
 export type InfoList = {
-  data_source_type: 'upload_file' | 'notion_import' | 'website_crawl'
-  file_info_list?: FileInfo
+  data_source_type: 'notion_import' | 'upload_file' | 'website_crawl'
+  file_info_list?: FileInfo | null
   notion_info_list?: Array<NotionInfo> | null
-  website_info_list?: WebsiteInfo
-}
-
-export type Rule = {
-  parent_mode?: 'full-doc' | 'paragraph' | null
-  pre_processing_rules?: Array<PreProcessingRule> | null
-  segmentation?: Segmentation
-  subchunk_segmentation?: Segmentation
+  website_info_list?: WebsiteInfo | null
 }
 
 export type MetadataFilteringCondition = {
@@ -323,64 +904,100 @@ export type RerankingModel = {
   reranking_provider_name?: string | null
 }
 
-export type RetrievalMethod
-  = | 'semantic_search'
-    | 'full_text_search'
-    | 'hybrid_search'
-    | 'keyword_search'
+export type RetrievalMethod =
+  | 'full_text_search'
+  | 'hybrid_search'
+  | 'keyword_search'
+  | 'semantic_search'
 
 export type WeightModel = {
-  keyword_setting?: WeightKeywordSetting
-  vector_setting?: WeightVectorSetting
-  weight_type?: 'semantic_first' | 'keyword_first' | 'customized' | null
+  keyword_setting?: WeightKeywordSetting | null
+  vector_setting?: WeightVectorSetting | null
+  weight_type?: 'customized' | 'keyword_first' | 'semantic_first' | null
+}
+
+export type PreProcessingRule = {
+  enabled: boolean
+  id: 'remove_extra_spaces' | 'remove_stopwords' | 'remove_urls_emails'
+}
+
+export type Segmentation = {
+  chunk_overlap?: number
+  max_tokens: number
+  separator?: string
 }
 
 export type MetadataDetail = {
   id: string
   name: string
-  value?: unknown
+  value?: string | number | number | null
+}
+
+export type SegmentAttachmentResponse = {
+  extension: string
+  id: string
+  mime_type: string | null
+  name: string
+  size: number
+  source_url: string
 }
 
 export type HitTestingChildChunk = {
-  content?: string | null
-  id?: string | null
-  position?: number | null
-  score?: number | null
+  content: string
+  id: string
+  position: number
+  score: number
 }
 
 export type HitTestingFile = {
-  extension?: string | null
-  id?: string | null
-  mime_type?: string | null
-  name?: string | null
-  size?: number | null
-  source_url?: string | null
+  extension: string
+  id: string
+  mime_type: string
+  name: string
+  size: number
+  source_url: string
 }
 
 export type HitTestingSegment = {
-  answer?: string | null
-  completed_at?: number | null
-  content?: string | null
-  created_at?: number | null
-  created_by?: string | null
-  disabled_at?: number | null
-  disabled_by?: string | null
-  document?: HitTestingDocument
-  document_id?: string | null
-  enabled?: boolean | null
-  error?: string | null
-  hit_count?: number | null
-  id?: string | null
-  index_node_hash?: string | null
-  index_node_id?: string | null
-  indexing_at?: number | null
-  keywords?: Array<string>
-  position?: number | null
-  sign_content?: string | null
-  status?: string | null
-  stopped_at?: number | null
-  tokens?: number | null
-  word_count?: number | null
+  answer: string | null
+  completed_at: number | null
+  content: string
+  created_at: number
+  created_by: string
+  disabled_at: number | null
+  disabled_by: string | null
+  document: HitTestingDocument
+  document_id: string
+  enabled: boolean
+  error: string | null
+  hit_count: number
+  id: string
+  index_node_hash: string | null
+  index_node_id: string | null
+  indexing_at: number | null
+  keywords: Array<string>
+  position: number
+  sign_content: string | null
+  status: string
+  stopped_at: number | null
+  tokens: number
+  word_count: number
+}
+
+export type DatasetQueryContentResponse = {
+  content: string
+  content_type: string
+  file_info?: DatasetQueryFileInfoResponse | null
+}
+
+export type DatasetKeywordSettingResponse = {
+  keyword_weight?: number | null
+}
+
+export type DatasetVectorSettingResponse = {
+  embedding_model_name?: string | null
+  embedding_provider_name?: string | null
+  vector_weight?: number | null
 }
 
 export type FileInfo = {
@@ -400,39 +1017,28 @@ export type WebsiteInfo = {
   urls: Array<string>
 }
 
-export type PreProcessingRule = {
-  enabled: boolean
-  id: string
-}
-
-export type Segmentation = {
-  chunk_overlap?: number
-  max_tokens: number
-  separator?: string
-}
-
 export type Condition = {
   comparison_operator:
+    | '<'
+    | '='
+    | '>'
+    | 'after'
+    | 'before'
     | 'contains'
-    | 'not contains'
-    | 'start with'
+    | 'empty'
     | 'end with'
+    | 'in'
     | 'is'
     | 'is not'
-    | 'empty'
+    | 'not contains'
     | 'not empty'
-    | 'in'
     | 'not in'
-    | '='
+    | 'start with'
     | '≠'
-    | '>'
-    | '<'
-    | '≥'
     | '≤'
-    | 'before'
-    | 'after'
+    | '≥'
   name: string
-  value?: unknown
+  value?: string | Array<string> | number | null
 }
 
 export type WeightKeywordSetting = {
@@ -446,15 +1052,24 @@ export type WeightVectorSetting = {
 }
 
 export type HitTestingDocument = {
-  data_source_type?: string | null
-  doc_metadata?: unknown
-  doc_type?: string | null
-  id?: string | null
-  name?: string | null
+  data_source_type: string
+  doc_metadata: unknown | null
+  doc_type: string | null
+  id: string
+  name: string
+}
+
+export type DatasetQueryFileInfoResponse = {
+  extension: string
+  id: string
+  mime_type: string
+  name: string
+  size: number
+  source_url: string
 }
 
 export type NotionPage = {
-  page_icon?: NotionIcon
+  page_icon?: NotionIcon | null
   page_id: string
   page_name: string
   type: string
@@ -470,20 +1085,18 @@ export type GetDatasetsData = {
   body?: never
   path?: never
   query?: {
-    page?: string
-    limit?: string
-    ids?: string
+    ids?: Array<string>
+    include_all?: boolean
     keyword?: string
-    tag_ids?: string
-    include_all?: string
+    limit?: number
+    page?: number
+    tag_ids?: Array<string>
   }
   url: '/datasets'
 }
 
 export type GetDatasetsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DatasetListResponse
 }
 
 export type GetDatasetsResponse = GetDatasetsResponses[keyof GetDatasetsResponses]
@@ -496,17 +1109,11 @@ export type PostDatasetsData = {
 }
 
 export type PostDatasetsErrors = {
-  400: {
-    [key: string]: unknown
-  }
+  400: unknown
 }
 
-export type PostDatasetsError = PostDatasetsErrors[keyof PostDatasetsErrors]
-
 export type PostDatasetsResponses = {
-  201: {
-    [key: string]: unknown
-  }
+  201: DatasetDetailResponse
 }
 
 export type PostDatasetsResponse = PostDatasetsResponses[keyof PostDatasetsResponses]
@@ -519,13 +1126,11 @@ export type GetDatasetsApiBaseInfoData = {
 }
 
 export type GetDatasetsApiBaseInfoResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ApiBaseUrlResponse
 }
 
-export type GetDatasetsApiBaseInfoResponse
-  = GetDatasetsApiBaseInfoResponses[keyof GetDatasetsApiBaseInfoResponses]
+export type GetDatasetsApiBaseInfoResponse =
+  GetDatasetsApiBaseInfoResponses[keyof GetDatasetsApiBaseInfoResponses]
 
 export type GetDatasetsApiKeysData = {
   body?: never
@@ -538,8 +1143,8 @@ export type GetDatasetsApiKeysResponses = {
   200: ApiKeyList
 }
 
-export type GetDatasetsApiKeysResponse
-  = GetDatasetsApiKeysResponses[keyof GetDatasetsApiKeysResponses]
+export type GetDatasetsApiKeysResponse =
+  GetDatasetsApiKeysResponses[keyof GetDatasetsApiKeysResponses]
 
 export type PostDatasetsApiKeysData = {
   body?: never
@@ -549,19 +1154,15 @@ export type PostDatasetsApiKeysData = {
 }
 
 export type PostDatasetsApiKeysErrors = {
-  400: {
-    [key: string]: unknown
-  }
+  400: unknown
 }
-
-export type PostDatasetsApiKeysError = PostDatasetsApiKeysErrors[keyof PostDatasetsApiKeysErrors]
 
 export type PostDatasetsApiKeysResponses = {
   200: ApiKeyItem
 }
 
-export type PostDatasetsApiKeysResponse
-  = PostDatasetsApiKeysResponses[keyof PostDatasetsApiKeysResponses]
+export type PostDatasetsApiKeysResponse =
+  PostDatasetsApiKeysResponses[keyof PostDatasetsApiKeysResponses]
 
 export type DeleteDatasetsApiKeysByApiKeyIdData = {
   body?: never
@@ -573,13 +1174,11 @@ export type DeleteDatasetsApiKeysByApiKeyIdData = {
 }
 
 export type DeleteDatasetsApiKeysByApiKeyIdResponses = {
-  204: {
-    [key: string]: unknown
-  }
+  204: void
 }
 
-export type DeleteDatasetsApiKeysByApiKeyIdResponse
-  = DeleteDatasetsApiKeysByApiKeyIdResponses[keyof DeleteDatasetsApiKeysByApiKeyIdResponses]
+export type DeleteDatasetsApiKeysByApiKeyIdResponse =
+  DeleteDatasetsApiKeysByApiKeyIdResponses[keyof DeleteDatasetsApiKeysByApiKeyIdResponses]
 
 export type GetDatasetsBatchImportStatusByJobIdData = {
   body?: never
@@ -591,13 +1190,11 @@ export type GetDatasetsBatchImportStatusByJobIdData = {
 }
 
 export type GetDatasetsBatchImportStatusByJobIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SegmentBatchImportStatusResponse
 }
 
-export type GetDatasetsBatchImportStatusByJobIdResponse
-  = GetDatasetsBatchImportStatusByJobIdResponses[keyof GetDatasetsBatchImportStatusByJobIdResponses]
+export type GetDatasetsBatchImportStatusByJobIdResponse =
+  GetDatasetsBatchImportStatusByJobIdResponses[keyof GetDatasetsBatchImportStatusByJobIdResponses]
 
 export type PostDatasetsBatchImportStatusByJobIdData = {
   body: BatchImportPayload
@@ -609,13 +1206,11 @@ export type PostDatasetsBatchImportStatusByJobIdData = {
 }
 
 export type PostDatasetsBatchImportStatusByJobIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SegmentBatchImportStatusResponse
 }
 
-export type PostDatasetsBatchImportStatusByJobIdResponse
-  = PostDatasetsBatchImportStatusByJobIdResponses[keyof PostDatasetsBatchImportStatusByJobIdResponses]
+export type PostDatasetsBatchImportStatusByJobIdResponse =
+  PostDatasetsBatchImportStatusByJobIdResponses[keyof PostDatasetsBatchImportStatusByJobIdResponses]
 
 export type PostDatasetsExternalData = {
   body: ExternalDatasetCreatePayload
@@ -625,42 +1220,34 @@ export type PostDatasetsExternalData = {
 }
 
 export type PostDatasetsExternalErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
+  400: unknown
+  403: unknown
 }
-
-export type PostDatasetsExternalError = PostDatasetsExternalErrors[keyof PostDatasetsExternalErrors]
 
 export type PostDatasetsExternalResponses = {
-  201: DatasetDetail
+  201: DatasetDetailResponse
 }
 
-export type PostDatasetsExternalResponse
-  = PostDatasetsExternalResponses[keyof PostDatasetsExternalResponses]
+export type PostDatasetsExternalResponse =
+  PostDatasetsExternalResponses[keyof PostDatasetsExternalResponses]
 
 export type GetDatasetsExternalKnowledgeApiData = {
   body?: never
   path?: never
   query?: {
-    page?: string
-    limit?: string
     keyword?: string
+    limit?: number
+    page?: number
   }
   url: '/datasets/external-knowledge-api'
 }
 
 export type GetDatasetsExternalKnowledgeApiResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ExternalKnowledgeApiListResponse
 }
 
-export type GetDatasetsExternalKnowledgeApiResponse
-  = GetDatasetsExternalKnowledgeApiResponses[keyof GetDatasetsExternalKnowledgeApiResponses]
+export type GetDatasetsExternalKnowledgeApiResponse =
+  GetDatasetsExternalKnowledgeApiResponses[keyof GetDatasetsExternalKnowledgeApiResponses]
 
 export type PostDatasetsExternalKnowledgeApiData = {
   body: ExternalKnowledgeApiPayload
@@ -669,14 +1256,16 @@ export type PostDatasetsExternalKnowledgeApiData = {
   url: '/datasets/external-knowledge-api'
 }
 
-export type PostDatasetsExternalKnowledgeApiResponses = {
-  200: {
-    [key: string]: unknown
-  }
+export type PostDatasetsExternalKnowledgeApiErrors = {
+  403: unknown
 }
 
-export type PostDatasetsExternalKnowledgeApiResponse
-  = PostDatasetsExternalKnowledgeApiResponses[keyof PostDatasetsExternalKnowledgeApiResponses]
+export type PostDatasetsExternalKnowledgeApiResponses = {
+  201: ExternalKnowledgeApiResponse
+}
+
+export type PostDatasetsExternalKnowledgeApiResponse =
+  PostDatasetsExternalKnowledgeApiResponses[keyof PostDatasetsExternalKnowledgeApiResponses]
 
 export type DeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdData = {
   body?: never
@@ -688,13 +1277,11 @@ export type DeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdData = {
 }
 
 export type DeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  204: void
 }
 
-export type DeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse
-  = DeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponses[keyof DeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponses]
+export type DeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse =
+  DeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponses[keyof DeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponses]
 
 export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdData = {
   body?: never
@@ -706,22 +1293,15 @@ export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdData = {
 }
 
 export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdErrors = {
-  404: {
-    [key: string]: unknown
-  }
+  404: unknown
 }
-
-export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdError
-  = GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdErrors[keyof GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdErrors]
 
 export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ExternalKnowledgeApiResponse
 }
 
-export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse
-  = GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponses[keyof GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponses]
+export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse =
+  GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponses[keyof GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponses]
 
 export type PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdData = {
   body: ExternalKnowledgeApiPayload
@@ -732,14 +1312,16 @@ export type PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdData = {
   url: '/datasets/external-knowledge-api/{external_knowledge_api_id}'
 }
 
-export type PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+export type PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdErrors = {
+  404: unknown
 }
 
-export type PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse
-  = PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponses[keyof PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponses]
+export type PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponses = {
+  200: ExternalKnowledgeApiResponse
+}
+
+export type PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse =
+  PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponses[keyof PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponses]
 
 export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckData = {
   body?: never
@@ -751,13 +1333,11 @@ export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckData 
 }
 
 export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: UsageCountResponse
 }
 
-export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckResponse
-  = GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckResponses[keyof GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckResponses]
+export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckResponse =
+  GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckResponses[keyof GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckResponses]
 
 export type PostDatasetsIndexingEstimateData = {
   body: IndexingEstimatePayload
@@ -767,13 +1347,11 @@ export type PostDatasetsIndexingEstimateData = {
 }
 
 export type PostDatasetsIndexingEstimateResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: IndexingEstimateResponse
 }
 
-export type PostDatasetsIndexingEstimateResponse
-  = PostDatasetsIndexingEstimateResponses[keyof PostDatasetsIndexingEstimateResponses]
+export type PostDatasetsIndexingEstimateResponse =
+  PostDatasetsIndexingEstimateResponses[keyof PostDatasetsIndexingEstimateResponses]
 
 export type PostDatasetsInitData = {
   body: KnowledgeConfig
@@ -783,15 +1361,11 @@ export type PostDatasetsInitData = {
 }
 
 export type PostDatasetsInitErrors = {
-  400: {
-    [key: string]: unknown
-  }
+  400: unknown
 }
 
-export type PostDatasetsInitError = PostDatasetsInitErrors[keyof PostDatasetsInitErrors]
-
 export type PostDatasetsInitResponses = {
-  201: DatasetAndDocumentResponse
+  200: DatasetAndDocumentResponse
 }
 
 export type PostDatasetsInitResponse = PostDatasetsInitResponses[keyof PostDatasetsInitResponses]
@@ -804,29 +1378,11 @@ export type GetDatasetsMetadataBuiltInData = {
 }
 
 export type GetDatasetsMetadataBuiltInResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DatasetMetadataBuiltInFieldsResponse
 }
 
-export type GetDatasetsMetadataBuiltInResponse
-  = GetDatasetsMetadataBuiltInResponses[keyof GetDatasetsMetadataBuiltInResponses]
-
-export type GetDatasetsNotionIndexingEstimateData = {
-  body?: never
-  path?: never
-  query?: never
-  url: '/datasets/notion-indexing-estimate'
-}
-
-export type GetDatasetsNotionIndexingEstimateResponses = {
-  200: {
-    [key: string]: unknown
-  }
-}
-
-export type GetDatasetsNotionIndexingEstimateResponse
-  = GetDatasetsNotionIndexingEstimateResponses[keyof GetDatasetsNotionIndexingEstimateResponses]
+export type GetDatasetsMetadataBuiltInResponse =
+  GetDatasetsMetadataBuiltInResponses[keyof GetDatasetsMetadataBuiltInResponses]
 
 export type PostDatasetsNotionIndexingEstimateData = {
   body: NotionEstimatePayload
@@ -836,13 +1392,11 @@ export type PostDatasetsNotionIndexingEstimateData = {
 }
 
 export type PostDatasetsNotionIndexingEstimateResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: IndexingEstimate
 }
 
-export type PostDatasetsNotionIndexingEstimateResponse
-  = PostDatasetsNotionIndexingEstimateResponses[keyof PostDatasetsNotionIndexingEstimateResponses]
+export type PostDatasetsNotionIndexingEstimateResponse =
+  PostDatasetsNotionIndexingEstimateResponses[keyof PostDatasetsNotionIndexingEstimateResponses]
 
 export type GetDatasetsProcessRuleData = {
   body?: never
@@ -854,13 +1408,11 @@ export type GetDatasetsProcessRuleData = {
 }
 
 export type GetDatasetsProcessRuleResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ProcessRuleResponse
 }
 
-export type GetDatasetsProcessRuleResponse
-  = GetDatasetsProcessRuleResponses[keyof GetDatasetsProcessRuleResponses]
+export type GetDatasetsProcessRuleResponse =
+  GetDatasetsProcessRuleResponses[keyof GetDatasetsProcessRuleResponses]
 
 export type GetDatasetsRetrievalSettingData = {
   body?: never
@@ -870,13 +1422,11 @@ export type GetDatasetsRetrievalSettingData = {
 }
 
 export type GetDatasetsRetrievalSettingResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RetrievalSettingResponse
 }
 
-export type GetDatasetsRetrievalSettingResponse
-  = GetDatasetsRetrievalSettingResponses[keyof GetDatasetsRetrievalSettingResponses]
+export type GetDatasetsRetrievalSettingResponse =
+  GetDatasetsRetrievalSettingResponses[keyof GetDatasetsRetrievalSettingResponses]
 
 export type GetDatasetsRetrievalSettingByVectorTypeData = {
   body?: never
@@ -888,13 +1438,11 @@ export type GetDatasetsRetrievalSettingByVectorTypeData = {
 }
 
 export type GetDatasetsRetrievalSettingByVectorTypeResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RetrievalSettingResponse
 }
 
-export type GetDatasetsRetrievalSettingByVectorTypeResponse
-  = GetDatasetsRetrievalSettingByVectorTypeResponses[keyof GetDatasetsRetrievalSettingByVectorTypeResponses]
+export type GetDatasetsRetrievalSettingByVectorTypeResponse =
+  GetDatasetsRetrievalSettingByVectorTypeResponses[keyof GetDatasetsRetrievalSettingByVectorTypeResponses]
 
 export type DeleteDatasetsByDatasetIdData = {
   body?: never
@@ -906,13 +1454,11 @@ export type DeleteDatasetsByDatasetIdData = {
 }
 
 export type DeleteDatasetsByDatasetIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  204: void
 }
 
-export type DeleteDatasetsByDatasetIdResponse
-  = DeleteDatasetsByDatasetIdResponses[keyof DeleteDatasetsByDatasetIdResponses]
+export type DeleteDatasetsByDatasetIdResponse =
+  DeleteDatasetsByDatasetIdResponses[keyof DeleteDatasetsByDatasetIdResponses]
 
 export type GetDatasetsByDatasetIdData = {
   body?: never
@@ -924,23 +1470,16 @@ export type GetDatasetsByDatasetIdData = {
 }
 
 export type GetDatasetsByDatasetIdErrors = {
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  403: unknown
+  404: unknown
 }
-
-export type GetDatasetsByDatasetIdError
-  = GetDatasetsByDatasetIdErrors[keyof GetDatasetsByDatasetIdErrors]
 
 export type GetDatasetsByDatasetIdResponses = {
-  200: DatasetDetail
+  200: DatasetDetailWithPartialMembersResponse
 }
 
-export type GetDatasetsByDatasetIdResponse
-  = GetDatasetsByDatasetIdResponses[keyof GetDatasetsByDatasetIdResponses]
+export type GetDatasetsByDatasetIdResponse =
+  GetDatasetsByDatasetIdResponses[keyof GetDatasetsByDatasetIdResponses]
 
 export type PatchDatasetsByDatasetIdData = {
   body: DatasetUpdatePayload
@@ -952,23 +1491,16 @@ export type PatchDatasetsByDatasetIdData = {
 }
 
 export type PatchDatasetsByDatasetIdErrors = {
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  403: unknown
+  404: unknown
 }
-
-export type PatchDatasetsByDatasetIdError
-  = PatchDatasetsByDatasetIdErrors[keyof PatchDatasetsByDatasetIdErrors]
 
 export type PatchDatasetsByDatasetIdResponses = {
-  200: DatasetDetail
+  200: DatasetDetailWithPartialMembersResponse
 }
 
-export type PatchDatasetsByDatasetIdResponse
-  = PatchDatasetsByDatasetIdResponses[keyof PatchDatasetsByDatasetIdResponses]
+export type PatchDatasetsByDatasetIdResponse =
+  PatchDatasetsByDatasetIdResponses[keyof PatchDatasetsByDatasetIdResponses]
 
 export type PostDatasetsByDatasetIdApiKeysByStatusData = {
   body?: never
@@ -981,13 +1513,11 @@ export type PostDatasetsByDatasetIdApiKeysByStatusData = {
 }
 
 export type PostDatasetsByDatasetIdApiKeysByStatusResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
-export type PostDatasetsByDatasetIdApiKeysByStatusResponse
-  = PostDatasetsByDatasetIdApiKeysByStatusResponses[keyof PostDatasetsByDatasetIdApiKeysByStatusResponses]
+export type PostDatasetsByDatasetIdApiKeysByStatusResponse =
+  PostDatasetsByDatasetIdApiKeysByStatusResponses[keyof PostDatasetsByDatasetIdApiKeysByStatusResponses]
 
 export type GetDatasetsByDatasetIdAutoDisableLogsData = {
   body?: never
@@ -999,60 +1529,49 @@ export type GetDatasetsByDatasetIdAutoDisableLogsData = {
 }
 
 export type GetDatasetsByDatasetIdAutoDisableLogsErrors = {
-  404: {
-    [key: string]: unknown
-  }
+  404: unknown
 }
-
-export type GetDatasetsByDatasetIdAutoDisableLogsError
-  = GetDatasetsByDatasetIdAutoDisableLogsErrors[keyof GetDatasetsByDatasetIdAutoDisableLogsErrors]
 
 export type GetDatasetsByDatasetIdAutoDisableLogsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AutoDisableLogsResponse
 }
 
-export type GetDatasetsByDatasetIdAutoDisableLogsResponse
-  = GetDatasetsByDatasetIdAutoDisableLogsResponses[keyof GetDatasetsByDatasetIdAutoDisableLogsResponses]
+export type GetDatasetsByDatasetIdAutoDisableLogsResponse =
+  GetDatasetsByDatasetIdAutoDisableLogsResponses[keyof GetDatasetsByDatasetIdAutoDisableLogsResponses]
 
 export type GetDatasetsByDatasetIdBatchByBatchIndexingEstimateData = {
   body?: never
   path: {
-    dataset_id: string
     batch: string
+    dataset_id: string
   }
   query?: never
   url: '/datasets/{dataset_id}/batch/{batch}/indexing-estimate'
 }
 
 export type GetDatasetsByDatasetIdBatchByBatchIndexingEstimateResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: IndexingEstimateResponse
 }
 
-export type GetDatasetsByDatasetIdBatchByBatchIndexingEstimateResponse
-  = GetDatasetsByDatasetIdBatchByBatchIndexingEstimateResponses[keyof GetDatasetsByDatasetIdBatchByBatchIndexingEstimateResponses]
+export type GetDatasetsByDatasetIdBatchByBatchIndexingEstimateResponse =
+  GetDatasetsByDatasetIdBatchByBatchIndexingEstimateResponses[keyof GetDatasetsByDatasetIdBatchByBatchIndexingEstimateResponses]
 
 export type GetDatasetsByDatasetIdBatchByBatchIndexingStatusData = {
   body?: never
   path: {
-    dataset_id: string
     batch: string
+    dataset_id: string
   }
   query?: never
   url: '/datasets/{dataset_id}/batch/{batch}/indexing-status'
 }
 
 export type GetDatasetsByDatasetIdBatchByBatchIndexingStatusResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentStatusListResponse
 }
 
-export type GetDatasetsByDatasetIdBatchByBatchIndexingStatusResponse
-  = GetDatasetsByDatasetIdBatchByBatchIndexingStatusResponses[keyof GetDatasetsByDatasetIdBatchByBatchIndexingStatusResponses]
+export type GetDatasetsByDatasetIdBatchByBatchIndexingStatusResponse =
+  GetDatasetsByDatasetIdBatchByBatchIndexingStatusResponses[keyof GetDatasetsByDatasetIdBatchByBatchIndexingStatusResponses]
 
 export type DeleteDatasetsByDatasetIdDocumentsData = {
   body?: never
@@ -1064,13 +1583,11 @@ export type DeleteDatasetsByDatasetIdDocumentsData = {
 }
 
 export type DeleteDatasetsByDatasetIdDocumentsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  204: void
 }
 
-export type DeleteDatasetsByDatasetIdDocumentsResponse
-  = DeleteDatasetsByDatasetIdDocumentsResponses[keyof DeleteDatasetsByDatasetIdDocumentsResponses]
+export type DeleteDatasetsByDatasetIdDocumentsResponse =
+  DeleteDatasetsByDatasetIdDocumentsResponses[keyof DeleteDatasetsByDatasetIdDocumentsResponses]
 
 export type GetDatasetsByDatasetIdDocumentsData = {
   body?: never
@@ -1078,24 +1595,22 @@ export type GetDatasetsByDatasetIdDocumentsData = {
     dataset_id: string
   }
   query?: {
-    page?: string
-    limit?: string
-    keyword?: string
-    sort?: string
     fetch?: string
+    keyword?: string
+    limit?: string
+    page?: string
+    sort?: string
     status?: string
   }
   url: '/datasets/{dataset_id}/documents'
 }
 
 export type GetDatasetsByDatasetIdDocumentsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentWithSegmentsListResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsResponse
-  = GetDatasetsByDatasetIdDocumentsResponses[keyof GetDatasetsByDatasetIdDocumentsResponses]
+export type GetDatasetsByDatasetIdDocumentsResponse =
+  GetDatasetsByDatasetIdDocumentsResponses[keyof GetDatasetsByDatasetIdDocumentsResponses]
 
 export type PostDatasetsByDatasetIdDocumentsData = {
   body: KnowledgeConfig
@@ -1110,8 +1625,8 @@ export type PostDatasetsByDatasetIdDocumentsResponses = {
   200: DatasetAndDocumentResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentsResponse
-  = PostDatasetsByDatasetIdDocumentsResponses[keyof PostDatasetsByDatasetIdDocumentsResponses]
+export type PostDatasetsByDatasetIdDocumentsResponse =
+  PostDatasetsByDatasetIdDocumentsResponses[keyof PostDatasetsByDatasetIdDocumentsResponses]
 
 export type PostDatasetsByDatasetIdDocumentsDownloadZipData = {
   body: DocumentBatchDownloadZipPayload
@@ -1128,8 +1643,8 @@ export type PostDatasetsByDatasetIdDocumentsDownloadZipResponses = {
   }
 }
 
-export type PostDatasetsByDatasetIdDocumentsDownloadZipResponse
-  = PostDatasetsByDatasetIdDocumentsDownloadZipResponses[keyof PostDatasetsByDatasetIdDocumentsDownloadZipResponses]
+export type PostDatasetsByDatasetIdDocumentsDownloadZipResponse =
+  PostDatasetsByDatasetIdDocumentsDownloadZipResponses[keyof PostDatasetsByDatasetIdDocumentsDownloadZipResponses]
 
 export type PostDatasetsByDatasetIdDocumentsGenerateSummaryData = {
   body: GenerateSummaryPayload
@@ -1141,28 +1656,17 @@ export type PostDatasetsByDatasetIdDocumentsGenerateSummaryData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsGenerateSummaryErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: unknown
+  403: unknown
+  404: unknown
 }
-
-export type PostDatasetsByDatasetIdDocumentsGenerateSummaryError
-  = PostDatasetsByDatasetIdDocumentsGenerateSummaryErrors[keyof PostDatasetsByDatasetIdDocumentsGenerateSummaryErrors]
 
 export type PostDatasetsByDatasetIdDocumentsGenerateSummaryResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentsGenerateSummaryResponse
-  = PostDatasetsByDatasetIdDocumentsGenerateSummaryResponses[keyof PostDatasetsByDatasetIdDocumentsGenerateSummaryResponses]
+export type PostDatasetsByDatasetIdDocumentsGenerateSummaryResponse =
+  PostDatasetsByDatasetIdDocumentsGenerateSummaryResponses[keyof PostDatasetsByDatasetIdDocumentsGenerateSummaryResponses]
 
 export type PostDatasetsByDatasetIdDocumentsMetadataData = {
   body: MetadataOperationData
@@ -1174,51 +1678,45 @@ export type PostDatasetsByDatasetIdDocumentsMetadataData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsMetadataResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  204: void
 }
 
-export type PostDatasetsByDatasetIdDocumentsMetadataResponse
-  = PostDatasetsByDatasetIdDocumentsMetadataResponses[keyof PostDatasetsByDatasetIdDocumentsMetadataResponses]
+export type PostDatasetsByDatasetIdDocumentsMetadataResponse =
+  PostDatasetsByDatasetIdDocumentsMetadataResponses[keyof PostDatasetsByDatasetIdDocumentsMetadataResponses]
 
 export type PatchDatasetsByDatasetIdDocumentsStatusByActionBatchData = {
   body?: never
   path: {
-    dataset_id: string
     action: string
+    dataset_id: string
   }
   query?: never
   url: '/datasets/{dataset_id}/documents/status/{action}/batch'
 }
 
 export type PatchDatasetsByDatasetIdDocumentsStatusByActionBatchResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
-export type PatchDatasetsByDatasetIdDocumentsStatusByActionBatchResponse
-  = PatchDatasetsByDatasetIdDocumentsStatusByActionBatchResponses[keyof PatchDatasetsByDatasetIdDocumentsStatusByActionBatchResponses]
+export type PatchDatasetsByDatasetIdDocumentsStatusByActionBatchResponse =
+  PatchDatasetsByDatasetIdDocumentsStatusByActionBatchResponses[keyof PatchDatasetsByDatasetIdDocumentsStatusByActionBatchResponses]
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdData = {
   body?: never
   path: {
-    document_id: string
     dataset_id: string
+    document_id: string
   }
   query?: never
   url: '/datasets/{dataset_id}/documents/{document_id}'
 }
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  204: void
 }
 
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponse
-  = DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponses[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponses]
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponse =
+  DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponses[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponses]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdData = {
   body?: never
@@ -1233,22 +1731,15 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
-  404: {
-    [key: string]: unknown
-  }
+  404: unknown
 }
-
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdError
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdErrors]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentDetailResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdResponse
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdResponses]
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdResponse =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdResponses]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadData = {
   body?: never
@@ -1261,13 +1752,11 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: UrlResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponse
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponses]
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponse =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponses]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateData = {
   body?: never
@@ -1280,25 +1769,16 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: unknown
+  404: unknown
 }
-
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateError
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateErrors]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: IndexingEstimateResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateResponse
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateResponses]
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateResponse =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateResponses]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusData = {
   body?: never
@@ -1311,22 +1791,15 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusErrors = {
-  404: {
-    [key: string]: unknown
-  }
+  404: unknown
 }
-
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusError
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusErrors]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentStatusResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusResponse
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusResponses]
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusResponse =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusResponses]
 
 export type PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataData = {
   body: DocumentMetadataUpdatePayload
@@ -1339,25 +1812,16 @@ export type PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataData = {
 }
 
 export type PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataErrors = {
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  403: unknown
+  404: unknown
 }
-
-export type PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataError
-  = PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataErrors[keyof PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataErrors]
 
 export type PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultMessageResponse
 }
 
-export type PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataResponse
-  = PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataResponses[keyof PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataResponses]
+export type PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataResponse =
+  PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataResponses[keyof PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataResponses]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncData = {
   body?: never
@@ -1370,13 +1834,11 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncResponse
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncResponses]
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncResponse =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncResponses]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogData = {
   body?: never
@@ -1389,13 +1851,11 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogData 
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentPipelineExecutionLogResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogResponse
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogResponses]
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogResponse =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogResponses]
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseData = {
   body?: never
@@ -1408,13 +1868,11 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseData = {
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  204: void
 }
 
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseResponse
-  = PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseResponses]
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseResponse =
+  PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseResponses]
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeData = {
   body?: never
@@ -1427,45 +1885,34 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeData = 
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  204: void
 }
 
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeResponse
-  = PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeResponses]
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeResponse =
+  PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeResponses]
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionData = {
   body?: never
   path: {
+    action: string
     dataset_id: string
     document_id: string
-    action: string
   }
   query?: never
   url: '/datasets/{dataset_id}/documents/{document_id}/processing/{action}'
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: unknown
+  404: unknown
 }
-
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionError
-  = PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionErrors[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionErrors]
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionResponse
-  = PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionResponses]
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionResponse =
+  PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionResponses]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdRenameData = {
   body: DocumentRenamePayload
@@ -1481,8 +1928,8 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdRenameResponses = {
   200: DocumentResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentsByDocumentIdRenameResponse
-  = PostDatasetsByDatasetIdDocumentsByDocumentIdRenameResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdRenameResponses]
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdRenameResponse =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdRenameResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdRenameResponses]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentData = {
   body: SegmentCreatePayload
@@ -1495,33 +1942,31 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SegmentDetailResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentResponse
-  = PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentResponses]
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentResponse =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentResponses]
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionData = {
   body?: never
   path: {
+    action: string
     dataset_id: string
     document_id: string
-    action: string
   }
-  query?: never
+  query?: {
+    segment_id?: Array<string>
+  }
   url: '/datasets/{dataset_id}/documents/{document_id}/segment/{action}'
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionResponse
-  = PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionResponses]
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionResponse =
+  PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionResponses]
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsData = {
   body?: never
@@ -1529,18 +1974,18 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsData = {
     dataset_id: string
     document_id: string
   }
-  query?: never
+  query?: {
+    segment_id?: Array<string>
+  }
   url: '/datasets/{dataset_id}/documents/{document_id}/segments'
 }
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  204: void
 }
 
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse
-  = DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses]
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse =
+  DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsData = {
   body?: never
@@ -1548,18 +1993,23 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsData = {
     dataset_id: string
     document_id: string
   }
-  query?: never
+  query?: {
+    enabled?: string
+    hit_count_gte?: number
+    keyword?: string
+    limit?: number
+    page?: number
+    status?: Array<string>
+  }
   url: '/datasets/{dataset_id}/documents/{document_id}/segments'
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ConsoleSegmentListResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses]
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportData = {
   body?: never
@@ -1572,13 +2022,11 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportData =
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SegmentBatchImportStatusResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponses]
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponses]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportData = {
   body: BatchImportPayload
@@ -1591,13 +2039,11 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportData 
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SegmentBatchImportStatusResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse
-  = PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponses]
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponses]
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdData = {
   body?: never
@@ -1611,13 +2057,11 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdDat
 }
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  204: void
 }
 
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse
-  = DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses]
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse =
+  DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses]
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdData = {
   body: SegmentUpdatePayload
@@ -1631,13 +2075,11 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdData
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SegmentDetailResponse
 }
 
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse
-  = PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses]
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse =
+  PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksData = {
   body?: never
@@ -1646,21 +2088,23 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildC
     document_id: string
     segment_id: string
   }
-  query?: never
+  query?: {
+    keyword?: string
+    limit?: number
+    page?: number
+  }
   url: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks'
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ChildChunkListResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses]
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses]
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksData = {
-  body?: never
+  body: ChildChunkBatchUpdatePayload
   path: {
     dataset_id: string
     document_id: string
@@ -1671,13 +2115,11 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChil
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ChildChunkBatchUpdateResponse
 }
 
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse
-  = PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses]
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse =
+  PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksData = {
   body: ChildChunkCreatePayload
@@ -1691,59 +2133,53 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChild
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ChildChunkDetailResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse
-  = PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses]
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses]
 
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdData
-  = {
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdData =
+  {
     body?: never
     path: {
+      child_chunk_id: string
       dataset_id: string
       document_id: string
       segment_id: string
-      child_chunk_id: string
     }
     query?: never
     url: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}'
   }
 
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses
-  = {
-    200: {
-      [key: string]: unknown
-    }
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses =
+  {
+    204: void
   }
 
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse
-  = DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses]
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse =
+  DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses]
 
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdData
-  = {
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdData =
+  {
     body: ChildChunkUpdatePayload
     path: {
+      child_chunk_id: string
       dataset_id: string
       document_id: string
       segment_id: string
-      child_chunk_id: string
     }
     query?: never
     url: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}'
   }
 
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses
-  = {
-    200: {
-      [key: string]: unknown
-    }
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses =
+  {
+    200: ChildChunkDetailResponse
   }
 
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse
-  = PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses]
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse =
+  PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusData = {
   body?: never
@@ -1756,22 +2192,15 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusErrors = {
-  404: {
-    [key: string]: unknown
-  }
+  404: unknown
 }
-
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusError
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusErrors]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentSummaryStatusResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusResponse
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusResponses]
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusResponse =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusResponses]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncData = {
   body?: never
@@ -1784,13 +2213,11 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncResponse
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncResponses]
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncResponse =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncResponses]
 
 export type GetDatasetsByDatasetIdErrorDocsData = {
   body?: never
@@ -1802,22 +2229,15 @@ export type GetDatasetsByDatasetIdErrorDocsData = {
 }
 
 export type GetDatasetsByDatasetIdErrorDocsErrors = {
-  404: {
-    [key: string]: unknown
-  }
+  404: unknown
 }
-
-export type GetDatasetsByDatasetIdErrorDocsError
-  = GetDatasetsByDatasetIdErrorDocsErrors[keyof GetDatasetsByDatasetIdErrorDocsErrors]
 
 export type GetDatasetsByDatasetIdErrorDocsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ErrorDocsResponse
 }
 
-export type GetDatasetsByDatasetIdErrorDocsResponse
-  = GetDatasetsByDatasetIdErrorDocsResponses[keyof GetDatasetsByDatasetIdErrorDocsResponses]
+export type GetDatasetsByDatasetIdErrorDocsResponse =
+  GetDatasetsByDatasetIdErrorDocsResponses[keyof GetDatasetsByDatasetIdErrorDocsResponses]
 
 export type PostDatasetsByDatasetIdExternalHitTestingData = {
   body: ExternalHitTestingPayload
@@ -1829,25 +2249,16 @@ export type PostDatasetsByDatasetIdExternalHitTestingData = {
 }
 
 export type PostDatasetsByDatasetIdExternalHitTestingErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: unknown
+  404: unknown
 }
-
-export type PostDatasetsByDatasetIdExternalHitTestingError
-  = PostDatasetsByDatasetIdExternalHitTestingErrors[keyof PostDatasetsByDatasetIdExternalHitTestingErrors]
 
 export type PostDatasetsByDatasetIdExternalHitTestingResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ExternalHitTestingResponse
 }
 
-export type PostDatasetsByDatasetIdExternalHitTestingResponse
-  = PostDatasetsByDatasetIdExternalHitTestingResponses[keyof PostDatasetsByDatasetIdExternalHitTestingResponses]
+export type PostDatasetsByDatasetIdExternalHitTestingResponse =
+  PostDatasetsByDatasetIdExternalHitTestingResponses[keyof PostDatasetsByDatasetIdExternalHitTestingResponses]
 
 export type PostDatasetsByDatasetIdHitTestingData = {
   body: HitTestingPayload
@@ -1859,23 +2270,16 @@ export type PostDatasetsByDatasetIdHitTestingData = {
 }
 
 export type PostDatasetsByDatasetIdHitTestingErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: unknown
+  404: unknown
 }
-
-export type PostDatasetsByDatasetIdHitTestingError
-  = PostDatasetsByDatasetIdHitTestingErrors[keyof PostDatasetsByDatasetIdHitTestingErrors]
 
 export type PostDatasetsByDatasetIdHitTestingResponses = {
   200: HitTestingResponse
 }
 
-export type PostDatasetsByDatasetIdHitTestingResponse
-  = PostDatasetsByDatasetIdHitTestingResponses[keyof PostDatasetsByDatasetIdHitTestingResponses]
+export type PostDatasetsByDatasetIdHitTestingResponse =
+  PostDatasetsByDatasetIdHitTestingResponses[keyof PostDatasetsByDatasetIdHitTestingResponses]
 
 export type GetDatasetsByDatasetIdIndexingStatusData = {
   body?: never
@@ -1887,13 +2291,11 @@ export type GetDatasetsByDatasetIdIndexingStatusData = {
 }
 
 export type GetDatasetsByDatasetIdIndexingStatusResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentStatusListResponse
 }
 
-export type GetDatasetsByDatasetIdIndexingStatusResponse
-  = GetDatasetsByDatasetIdIndexingStatusResponses[keyof GetDatasetsByDatasetIdIndexingStatusResponses]
+export type GetDatasetsByDatasetIdIndexingStatusResponse =
+  GetDatasetsByDatasetIdIndexingStatusResponses[keyof GetDatasetsByDatasetIdIndexingStatusResponses]
 
 export type GetDatasetsByDatasetIdMetadataData = {
   body?: never
@@ -1905,13 +2307,11 @@ export type GetDatasetsByDatasetIdMetadataData = {
 }
 
 export type GetDatasetsByDatasetIdMetadataResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DatasetMetadataListResponse
 }
 
-export type GetDatasetsByDatasetIdMetadataResponse
-  = GetDatasetsByDatasetIdMetadataResponses[keyof GetDatasetsByDatasetIdMetadataResponses]
+export type GetDatasetsByDatasetIdMetadataResponse =
+  GetDatasetsByDatasetIdMetadataResponses[keyof GetDatasetsByDatasetIdMetadataResponses]
 
 export type PostDatasetsByDatasetIdMetadataData = {
   body: MetadataArgs
@@ -1923,32 +2323,28 @@ export type PostDatasetsByDatasetIdMetadataData = {
 }
 
 export type PostDatasetsByDatasetIdMetadataResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  201: DatasetMetadataResponse
 }
 
-export type PostDatasetsByDatasetIdMetadataResponse
-  = PostDatasetsByDatasetIdMetadataResponses[keyof PostDatasetsByDatasetIdMetadataResponses]
+export type PostDatasetsByDatasetIdMetadataResponse =
+  PostDatasetsByDatasetIdMetadataResponses[keyof PostDatasetsByDatasetIdMetadataResponses]
 
 export type PostDatasetsByDatasetIdMetadataBuiltInByActionData = {
   body?: never
   path: {
-    dataset_id: string
     action: string
+    dataset_id: string
   }
   query?: never
   url: '/datasets/{dataset_id}/metadata/built-in/{action}'
 }
 
 export type PostDatasetsByDatasetIdMetadataBuiltInByActionResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  204: void
 }
 
-export type PostDatasetsByDatasetIdMetadataBuiltInByActionResponse
-  = PostDatasetsByDatasetIdMetadataBuiltInByActionResponses[keyof PostDatasetsByDatasetIdMetadataBuiltInByActionResponses]
+export type PostDatasetsByDatasetIdMetadataBuiltInByActionResponse =
+  PostDatasetsByDatasetIdMetadataBuiltInByActionResponses[keyof PostDatasetsByDatasetIdMetadataBuiltInByActionResponses]
 
 export type DeleteDatasetsByDatasetIdMetadataByMetadataIdData = {
   body?: never
@@ -1961,13 +2357,11 @@ export type DeleteDatasetsByDatasetIdMetadataByMetadataIdData = {
 }
 
 export type DeleteDatasetsByDatasetIdMetadataByMetadataIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  204: void
 }
 
-export type DeleteDatasetsByDatasetIdMetadataByMetadataIdResponse
-  = DeleteDatasetsByDatasetIdMetadataByMetadataIdResponses[keyof DeleteDatasetsByDatasetIdMetadataByMetadataIdResponses]
+export type DeleteDatasetsByDatasetIdMetadataByMetadataIdResponse =
+  DeleteDatasetsByDatasetIdMetadataByMetadataIdResponses[keyof DeleteDatasetsByDatasetIdMetadataByMetadataIdResponses]
 
 export type PatchDatasetsByDatasetIdMetadataByMetadataIdData = {
   body: MetadataUpdatePayload
@@ -1980,13 +2374,11 @@ export type PatchDatasetsByDatasetIdMetadataByMetadataIdData = {
 }
 
 export type PatchDatasetsByDatasetIdMetadataByMetadataIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DatasetMetadataResponse
 }
 
-export type PatchDatasetsByDatasetIdMetadataByMetadataIdResponse
-  = PatchDatasetsByDatasetIdMetadataByMetadataIdResponses[keyof PatchDatasetsByDatasetIdMetadataByMetadataIdResponses]
+export type PatchDatasetsByDatasetIdMetadataByMetadataIdResponse =
+  PatchDatasetsByDatasetIdMetadataByMetadataIdResponses[keyof PatchDatasetsByDatasetIdMetadataByMetadataIdResponses]
 
 export type GetDatasetsByDatasetIdNotionSyncData = {
   body?: never
@@ -1998,13 +2390,11 @@ export type GetDatasetsByDatasetIdNotionSyncData = {
 }
 
 export type GetDatasetsByDatasetIdNotionSyncResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
-export type GetDatasetsByDatasetIdNotionSyncResponse
-  = GetDatasetsByDatasetIdNotionSyncResponses[keyof GetDatasetsByDatasetIdNotionSyncResponses]
+export type GetDatasetsByDatasetIdNotionSyncResponse =
+  GetDatasetsByDatasetIdNotionSyncResponses[keyof GetDatasetsByDatasetIdNotionSyncResponses]
 
 export type GetDatasetsByDatasetIdPermissionPartUsersData = {
   body?: never
@@ -2016,25 +2406,16 @@ export type GetDatasetsByDatasetIdPermissionPartUsersData = {
 }
 
 export type GetDatasetsByDatasetIdPermissionPartUsersErrors = {
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  403: unknown
+  404: unknown
 }
-
-export type GetDatasetsByDatasetIdPermissionPartUsersError
-  = GetDatasetsByDatasetIdPermissionPartUsersErrors[keyof GetDatasetsByDatasetIdPermissionPartUsersErrors]
 
 export type GetDatasetsByDatasetIdPermissionPartUsersResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: PartialMemberListResponse
 }
 
-export type GetDatasetsByDatasetIdPermissionPartUsersResponse
-  = GetDatasetsByDatasetIdPermissionPartUsersResponses[keyof GetDatasetsByDatasetIdPermissionPartUsersResponses]
+export type GetDatasetsByDatasetIdPermissionPartUsersResponse =
+  GetDatasetsByDatasetIdPermissionPartUsersResponses[keyof GetDatasetsByDatasetIdPermissionPartUsersResponses]
 
 export type GetDatasetsByDatasetIdQueriesData = {
   body?: never
@@ -2046,11 +2427,11 @@ export type GetDatasetsByDatasetIdQueriesData = {
 }
 
 export type GetDatasetsByDatasetIdQueriesResponses = {
-  200: DatasetQueryDetail
+  200: DatasetQueryListResponse
 }
 
-export type GetDatasetsByDatasetIdQueriesResponse
-  = GetDatasetsByDatasetIdQueriesResponses[keyof GetDatasetsByDatasetIdQueriesResponses]
+export type GetDatasetsByDatasetIdQueriesResponse =
+  GetDatasetsByDatasetIdQueriesResponses[keyof GetDatasetsByDatasetIdQueriesResponses]
 
 export type GetDatasetsByDatasetIdRelatedAppsData = {
   body?: never
@@ -2062,11 +2443,11 @@ export type GetDatasetsByDatasetIdRelatedAppsData = {
 }
 
 export type GetDatasetsByDatasetIdRelatedAppsResponses = {
-  200: RelatedAppList
+  200: RelatedAppListResponse
 }
 
-export type GetDatasetsByDatasetIdRelatedAppsResponse
-  = GetDatasetsByDatasetIdRelatedAppsResponses[keyof GetDatasetsByDatasetIdRelatedAppsResponses]
+export type GetDatasetsByDatasetIdRelatedAppsResponse =
+  GetDatasetsByDatasetIdRelatedAppsResponses[keyof GetDatasetsByDatasetIdRelatedAppsResponses]
 
 export type PostDatasetsByDatasetIdRetryData = {
   body: DocumentRetryPayload
@@ -2078,13 +2459,11 @@ export type PostDatasetsByDatasetIdRetryData = {
 }
 
 export type PostDatasetsByDatasetIdRetryResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  204: void
 }
 
-export type PostDatasetsByDatasetIdRetryResponse
-  = PostDatasetsByDatasetIdRetryResponses[keyof PostDatasetsByDatasetIdRetryResponses]
+export type PostDatasetsByDatasetIdRetryResponse =
+  PostDatasetsByDatasetIdRetryResponses[keyof PostDatasetsByDatasetIdRetryResponses]
 
 export type GetDatasetsByDatasetIdUseCheckData = {
   body?: never
@@ -2096,13 +2475,11 @@ export type GetDatasetsByDatasetIdUseCheckData = {
 }
 
 export type GetDatasetsByDatasetIdUseCheckResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: UsageCheckResponse
 }
 
-export type GetDatasetsByDatasetIdUseCheckResponse
-  = GetDatasetsByDatasetIdUseCheckResponses[keyof GetDatasetsByDatasetIdUseCheckResponses]
+export type GetDatasetsByDatasetIdUseCheckResponse =
+  GetDatasetsByDatasetIdUseCheckResponses[keyof GetDatasetsByDatasetIdUseCheckResponses]
 
 export type GetDatasetsByResourceIdApiKeysData = {
   body?: never
@@ -2117,8 +2494,8 @@ export type GetDatasetsByResourceIdApiKeysResponses = {
   200: ApiKeyList
 }
 
-export type GetDatasetsByResourceIdApiKeysResponse
-  = GetDatasetsByResourceIdApiKeysResponses[keyof GetDatasetsByResourceIdApiKeysResponses]
+export type GetDatasetsByResourceIdApiKeysResponse =
+  GetDatasetsByResourceIdApiKeysResponses[keyof GetDatasetsByResourceIdApiKeysResponses]
 
 export type PostDatasetsByResourceIdApiKeysData = {
   body?: never
@@ -2130,36 +2507,29 @@ export type PostDatasetsByResourceIdApiKeysData = {
 }
 
 export type PostDatasetsByResourceIdApiKeysErrors = {
-  400: {
-    [key: string]: unknown
-  }
+  400: unknown
 }
-
-export type PostDatasetsByResourceIdApiKeysError
-  = PostDatasetsByResourceIdApiKeysErrors[keyof PostDatasetsByResourceIdApiKeysErrors]
 
 export type PostDatasetsByResourceIdApiKeysResponses = {
   201: ApiKeyItem
 }
 
-export type PostDatasetsByResourceIdApiKeysResponse
-  = PostDatasetsByResourceIdApiKeysResponses[keyof PostDatasetsByResourceIdApiKeysResponses]
+export type PostDatasetsByResourceIdApiKeysResponse =
+  PostDatasetsByResourceIdApiKeysResponses[keyof PostDatasetsByResourceIdApiKeysResponses]
 
 export type DeleteDatasetsByResourceIdApiKeysByApiKeyIdData = {
   body?: never
   path: {
-    resource_id: string
     api_key_id: string
+    resource_id: string
   }
   query?: never
   url: '/datasets/{resource_id}/api-keys/{api_key_id}'
 }
 
 export type DeleteDatasetsByResourceIdApiKeysByApiKeyIdResponses = {
-  204: {
-    [key: string]: unknown
-  }
+  204: void
 }
 
-export type DeleteDatasetsByResourceIdApiKeysByApiKeyIdResponse
-  = DeleteDatasetsByResourceIdApiKeysByApiKeyIdResponses[keyof DeleteDatasetsByResourceIdApiKeysByApiKeyIdResponses]
+export type DeleteDatasetsByResourceIdApiKeysByApiKeyIdResponse =
+  DeleteDatasetsByResourceIdApiKeysByApiKeyIdResponses[keyof DeleteDatasetsByResourceIdApiKeysByApiKeyIdResponses]

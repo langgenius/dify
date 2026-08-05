@@ -1,11 +1,12 @@
+from typing import Protocol, override
+
 """
 Queue dispatcher system for async workflow execution.
 
-Implements an ABC-based pattern for handling different subscription tiers
+Implements a Protocol-based pattern for handling different subscription tiers
 with appropriate queue routing and priority assignment.
 """
 
-from abc import ABC, abstractmethod
 from enum import StrEnum
 
 from configs import dify_config
@@ -20,26 +21,26 @@ class QueuePriority(StrEnum):
     SANDBOX = "workflow_sandbox"  # Free tier
 
 
-class BaseQueueDispatcher(ABC):
-    """Abstract base class for queue dispatchers"""
+class BaseQueueDispatcher(Protocol):
+    """Protocol for queue dispatchers"""
 
-    @abstractmethod
     def get_queue_name(self) -> str:
         """Get the queue name for this dispatcher"""
-        pass
+        ...
 
-    @abstractmethod
     def get_priority(self) -> int:
         """Get task priority level"""
-        pass
+        ...
 
 
 class ProfessionalQueueDispatcher(BaseQueueDispatcher):
     """Dispatcher for professional tier"""
 
+    @override
     def get_queue_name(self) -> str:
         return QueuePriority.PROFESSIONAL
 
+    @override
     def get_priority(self) -> int:
         return 100
 
@@ -47,9 +48,11 @@ class ProfessionalQueueDispatcher(BaseQueueDispatcher):
 class TeamQueueDispatcher(BaseQueueDispatcher):
     """Dispatcher for team tier"""
 
+    @override
     def get_queue_name(self) -> str:
         return QueuePriority.TEAM
 
+    @override
     def get_priority(self) -> int:
         return 50
 
@@ -57,9 +60,11 @@ class TeamQueueDispatcher(BaseQueueDispatcher):
 class SandboxQueueDispatcher(BaseQueueDispatcher):
     """Dispatcher for free/sandbox tier"""
 
+    @override
     def get_queue_name(self) -> str:
         return QueuePriority.SANDBOX
 
+    @override
     def get_priority(self) -> int:
         return 10
 

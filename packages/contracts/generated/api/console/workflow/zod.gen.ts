@@ -2,20 +2,51 @@
 
 import * as z from 'zod'
 
+/**
+ * EventStreamResponse
+ */
+export const zEventStreamResponse = z.string()
+
+/**
+ * HumanInputPauseTypeResponse
+ */
+export const zHumanInputPauseTypeResponse = z.object({
+  backstage_input_url: z.string().nullish(),
+  form_id: z.string(),
+  type: z.literal('human_input'),
+})
+
+/**
+ * PausedNodeResponse
+ */
+export const zPausedNodeResponse = z.object({
+  node_id: z.string(),
+  node_title: z.string(),
+  pause_type: zHumanInputPauseTypeResponse,
+})
+
+/**
+ * WorkflowPauseDetailsResponse
+ */
+export const zWorkflowPauseDetailsResponse = z.object({
+  paused_at: z.string().nullish(),
+  paused_nodes: z.array(zPausedNodeResponse),
+})
+
 export const zGetWorkflowByWorkflowRunIdEventsPath = z.object({
   workflow_run_id: z.string(),
 })
 
 /**
- * Success
+ * SSE event stream
  */
-export const zGetWorkflowByWorkflowRunIdEventsResponse = z.record(z.string(), z.unknown())
+export const zGetWorkflowByWorkflowRunIdEventsResponse = zEventStreamResponse
 
 export const zGetWorkflowByWorkflowRunIdPauseDetailsPath = z.object({
   workflow_run_id: z.string(),
 })
 
 /**
- * Success
+ * Workflow pause details retrieved successfully
  */
-export const zGetWorkflowByWorkflowRunIdPauseDetailsResponse = z.record(z.string(), z.unknown())
+export const zGetWorkflowByWorkflowRunIdPauseDetailsResponse = zWorkflowPauseDetailsResponse

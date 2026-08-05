@@ -4,13 +4,18 @@ import type { Inputs } from '@/models/debug'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
-  RiArrowDownSLine,
-  RiArrowRightSLine,
-  RiPlayLargeFill,
-} from '@remixicon/react'
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectTrigger,
+  SelectValue,
+} from '@langgenius/dify-ui/select'
+import { Textarea } from '@langgenius/dify-ui/textarea'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { RiArrowDownSLine, RiArrowRightSLine, RiPlayLargeFill } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -19,7 +24,6 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import FeatureBar from '@/app/components/base/features/new-feature-panel/feature-bar'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
 import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 import ConfigContext from '@/context/debug-configuration'
 import { AppModeEnum, ModelModeType } from '@/types/app'
@@ -40,7 +44,18 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
   onVisionFilesChange,
 }) => {
   const { t } = useTranslation()
-  const { readonly, modelModeType, modelConfig, setInputs, mode, isAdvancedMode, completionPromptConfig, chatPromptConfig } = useContext(ConfigContext)
+  const {
+    readonly,
+    canTestAndRun = false,
+    modelModeType,
+    modelConfig,
+    setInputs,
+    mode,
+    isAdvancedMode,
+    completionPromptConfig,
+    chatPromptConfig,
+  } = useContext(ConfigContext)
+  const debugInputReadonly = !canTestAndRun
   const [userInputFieldCollapse, setUserInputFieldCollapse] = useState(false)
   const promptVariables = modelConfig.configs.prompt_variables.filter(({ key, name }) => {
     return key && key?.trim() && name && name?.trim()
@@ -62,42 +77,52 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
     promptVariables.forEach((variable) => {
       const { key, default: defaultValue } = variable
       // Only set default value if the field is empty and a default exists
-      if (defaultValue !== undefined && defaultValue !== null && defaultValue !== '' && (inputs[key] === undefined || inputs[key] === null || inputs[key] === '')) {
+      if (
+        defaultValue !== undefined &&
+        defaultValue !== null &&
+        defaultValue !== '' &&
+        (inputs[key] === undefined || inputs[key] === null || inputs[key] === '')
+      ) {
         newInputs[key] = defaultValue
         hasChanges = true
       }
     })
 
-    if (hasChanges)
-      setInputs(newInputs)
+    if (hasChanges) setInputs(newInputs)
   }, [promptVariables, inputs, setInputs])
 
   const canNotRun = useMemo(() => {
-    if (mode !== AppModeEnum.COMPLETION)
-      return true
+    if (mode !== AppModeEnum.COMPLETION) return true
 
     if (isAdvancedMode) {
       if (modelModeType === ModelModeType.chat)
         return chatPromptConfig?.prompt.every(({ text }) => !text)
       return !completionPromptConfig.prompt?.text
+    } else {
+      return !modelConfig.configs.prompt_template
     }
-
-    else { return !modelConfig.configs.prompt_template }
-  }, [chatPromptConfig?.prompt, completionPromptConfig.prompt?.text, isAdvancedMode, mode, modelConfig.configs.prompt_template, modelModeType])
+  }, [
+    chatPromptConfig?.prompt,
+    completionPromptConfig.prompt?.text,
+    isAdvancedMode,
+    mode,
+    modelConfig.configs.prompt_template,
+    modelModeType,
+  ])
 
   const handleInputValueChange = (key: string, value: string | boolean) => {
-    if (!(key in promptVariableObj))
-      return
+    if (debugInputReadonly) return
+    if (!(key in promptVariableObj)) return
 
     const newInputs = { ...inputs }
     promptVariables.forEach((input) => {
-      if (input.key === key)
-        newInputs[key] = value
+      if (input.key === key) newInputs[key] = value
     })
     setInputs(newInputs)
   }
 
   const onClear = () => {
+    if (debugInputReadonly) return
     const newInputs: Inputs = {}
     promptVariables.forEach((item) => {
       newInputs[item.key] = ''
@@ -105,7 +130,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
     setInputs(newInputs)
   }
 
-  const setShowAppConfigureFeaturesModal = useAppStore(s => s.setShowAppConfigureFeaturesModal)
+  const setShowAppConfigureFeaturesModal = useAppStore((s) => s.setShowAppConfigureFeaturesModal)
 
   return (
     <>
@@ -116,63 +141,80 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
             className="flex cursor-pointer items-center gap-0.5 border-none bg-transparent px-0 py-0.5 text-left focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
             onClick={() => setUserInputFieldCollapse(!userInputFieldCollapse)}
           >
-            <div className="system-md-semibold-uppercase text-text-secondary">{t('inputs.userInputField', { ns: 'appDebug' })}</div>
-            {userInputFieldCollapse && <RiArrowRightSLine className="h-4 w-4 text-text-secondary" aria-hidden="true" />}
-            {!userInputFieldCollapse && <RiArrowDownSLine className="h-4 w-4 text-text-secondary" aria-hidden="true" />}
+            <div className="system-md-semibold-uppercase text-text-secondary">
+              {t(($) => $['inputs.userInputField'], { ns: 'appDebug' })}
+            </div>
+            {userInputFieldCollapse && (
+              <RiArrowRightSLine className="size-4 text-text-secondary" aria-hidden="true" />
+            )}
+            {!userInputFieldCollapse && (
+              <RiArrowDownSLine className="size-4 text-text-secondary" aria-hidden="true" />
+            )}
           </button>
           {!userInputFieldCollapse && (
-            <div className="mt-1 system-xs-regular text-text-tertiary">{t('inputs.completionVarTip', { ns: 'appDebug' })}</div>
+            <div className="mt-1 system-xs-regular text-text-tertiary">
+              {t(($) => $['inputs.completionVarTip'], { ns: 'appDebug' })}
+            </div>
           )}
         </div>
         {!userInputFieldCollapse && promptVariables.length > 0 && (
           <div className="px-4 pt-3 pb-4">
             {promptVariables.map(({ key, name, type, options, max_length, required }, index) => (
-              <div
-                key={key}
-                className="mb-4 last-of-type:mb-0"
-              >
+              <div key={key} className="mb-4 last-of-type:mb-0">
                 <div>
                   {type !== 'checkbox' && (
                     <div className="mb-1 flex h-6 items-center gap-1 system-sm-semibold text-text-secondary">
                       <div className="truncate">{name || key}</div>
-                      {!required && <span className="system-xs-regular text-text-tertiary">{t('panel.optional', { ns: 'workflow' })}</span>}
+                      {!required && (
+                        <span className="system-xs-regular text-text-tertiary">
+                          {t(($) => $['panel.optional'], { ns: 'workflow' })}
+                        </span>
+                      )}
                     </div>
                   )}
                   <div className="grow">
                     {type === 'string' && (
                       <Input
                         value={inputs[key] ? `${inputs[key]}` : ''}
-                        onChange={(e) => { handleInputValueChange(key, e.target.value) }}
+                        onChange={(e) => {
+                          handleInputValueChange(key, e.target.value)
+                        }}
                         placeholder={name}
                         autoFocus={index === 0}
                         maxLength={max_length}
-                        readOnly={readonly}
+                        readOnly={debugInputReadonly}
                       />
                     )}
                     {type === 'paragraph' && (
                       <Textarea
-                        className="h-[120px] grow"
+                        aria-label={name}
+                        className="h-30 grow"
                         placeholder={name}
                         value={inputs[key] ? `${inputs[key]}` : ''}
-                        onChange={(e) => { handleInputValueChange(key, e.target.value) }}
-                        readOnly={readonly}
+                        onValueChange={(value) => {
+                          handleInputValueChange(key, value)
+                        }}
+                        readOnly={debugInputReadonly}
                       />
                     )}
                     {type === 'select' && (
-                      <Select
-                        value={inputs[key] ? String(inputs[key]) : null}
-                        disabled={readonly}
+                      <Select<string>
+                        value={
+                          typeof inputs[key] === 'string' && inputs[key] !== '' ? inputs[key] : null
+                        }
+                        disabled={debugInputReadonly}
                         onValueChange={(nextValue) => {
-                          if (!nextValue)
-                            return
+                          if (nextValue == null || nextValue === '') return
                           handleInputValueChange(key, nextValue)
                         }}
                       >
                         <SelectTrigger className="w-full bg-gray-50">
-                          {String(inputs[key] || t('placeholder.select', { ns: 'common' }))}
+                          <SelectValue
+                            placeholder={t(($) => $['placeholder.select'], { ns: 'common' })}
+                          />
                         </SelectTrigger>
                         <SelectContent>
-                          {(options || []).map(option => (
+                          {(options || []).map((option) => (
                             <SelectItem key={option} value={option}>
                               <SelectItemText>{option}</SelectItemText>
                               <SelectItemIndicator />
@@ -185,11 +227,13 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                       <Input
                         type="number"
                         value={inputs[key] ? `${inputs[key]}` : ''}
-                        onChange={(e) => { handleInputValueChange(key, e.target.value) }}
+                        onChange={(e) => {
+                          handleInputValueChange(key, e.target.value)
+                        }}
                         placeholder={name}
                         autoFocus={index === 0}
                         maxLength={max_length}
-                        readOnly={readonly}
+                        readOnly={debugInputReadonly}
                       />
                     )}
                     {type === 'checkbox' && (
@@ -197,8 +241,10 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                         name={name || key}
                         value={!!inputs[key]}
                         required={required}
-                        onChange={(value) => { handleInputValueChange(key, value) }}
-                        readonly={readonly}
+                        onChange={(value) => {
+                          handleInputValueChange(key, value)
+                        }}
+                        readonly={debugInputReadonly}
                       />
                     )}
                   </div>
@@ -207,17 +253,25 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
             ))}
             {visionConfig?.enabled && (
               <div className="mt-3 justify-between xl:flex">
-                <div className="mr-1 w-[120px] shrink-0 py-2 text-sm text-text-primary">{t('imageUploader.imageUpload', { ns: 'common' })}</div>
+                <div className="mr-1 w-30 shrink-0 py-2 text-sm text-text-primary">
+                  {t(($) => $['imageUploader.imageUpload'], { ns: 'common' })}
+                </div>
                 <div className="grow">
                   <TextGenerationImageUploader
                     settings={visionConfig}
-                    onFilesChange={files => onVisionFilesChange(files.filter(file => file.progress !== -1).map(fileItem => ({
-                      type: 'image',
-                      transfer_method: fileItem.type,
-                      url: fileItem.url,
-                      upload_file_id: fileItem.fileId,
-                    })))}
-                    disabled={readonly}
+                    onFilesChange={(files) =>
+                      onVisionFilesChange(
+                        files
+                          .filter((file) => file.progress !== -1)
+                          .map((fileItem) => ({
+                            type: 'image',
+                            transfer_method: fileItem.type,
+                            url: fileItem.url,
+                            upload_file_id: fileItem.fileId,
+                          })),
+                      )
+                    }
+                    disabled={debugInputReadonly}
                   />
                 </div>
               </div>
@@ -226,36 +280,38 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
         )}
         {!userInputFieldCollapse && (
           <div className="flex justify-between border-t border-divider-subtle p-4 pt-3">
-            <Button className="w-[72px]" disabled={readonly} onClick={onClear}>{t('operation.clear', { ns: 'common' })}</Button>
+            <Button className="w-18" disabled={debugInputReadonly} onClick={onClear}>
+              {t(($) => $['operation.clear'], { ns: 'common' })}
+            </Button>
             {canNotRun && (
               <Tooltip>
                 <TooltipTrigger
-                  render={(
+                  render={
                     <Button
                       variant="primary"
-                      disabled={canNotRun || readonly}
+                      disabled={canNotRun || !canTestAndRun}
                       onClick={() => onSend?.()}
-                      className="w-[96px]"
+                      className="w-24"
                     >
-                      <RiPlayLargeFill className="mr-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                      {t('inputs.run', { ns: 'appDebug' })}
+                      <RiPlayLargeFill className="size-4 shrink-0" aria-hidden="true" />
+                      {t(($) => $['inputs.run'], { ns: 'appDebug' })}
                     </Button>
-                  )}
+                  }
                 />
                 <TooltipContent>
-                  {t('otherError.promptNoBeEmpty', { ns: 'appDebug' })}
+                  {t(($) => $['otherError.promptNoBeEmpty'], { ns: 'appDebug' })}
                 </TooltipContent>
               </Tooltip>
             )}
             {!canNotRun && (
               <Button
                 variant="primary"
-                disabled={canNotRun || readonly}
+                disabled={canNotRun || !canTestAndRun}
                 onClick={() => onSend?.()}
-                className="w-[96px]"
+                className="w-24"
               >
-                <RiPlayLargeFill className="mr-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                {t('inputs.run', { ns: 'appDebug' })}
+                <RiPlayLargeFill className="size-4 shrink-0" aria-hidden="true" />
+                {t(($) => $['inputs.run'], { ns: 'appDebug' })}
               </Button>
             )}
           </div>

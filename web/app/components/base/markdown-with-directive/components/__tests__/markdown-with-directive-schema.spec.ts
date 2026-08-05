@@ -7,12 +7,10 @@ describe('markdown-with-directive-schema', () => {
 
   // Validate the happy path for known directives.
   describe('valid props', () => {
-    it('should return true for withiconcardlist when className is provided', () => {
-      expect(validateDirectiveProps('withiconcardlist', { className: 'custom-list' })).toBe(true)
-    })
-
     it('should return true for withiconcarditem when icon is https URL', () => {
-      expect(validateDirectiveProps('withiconcarditem', { icon: 'https://example.com/icon.png' })).toBe(true)
+      expect(
+        validateDirectiveProps('withiconcarditem', { icon: 'https://example.com/icon.png' }),
+      ).toBe(true)
     })
   })
 
@@ -36,7 +34,9 @@ describe('markdown-with-directive-schema', () => {
     it('should return false and log error for non-http icon URL', () => {
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
-      const isValid = validateDirectiveProps('withiconcarditem', { icon: 'ftp://example.com/icon.png' })
+      const isValid = validateDirectiveProps('withiconcarditem', {
+        icon: 'ftp://example.com/icon.png',
+      })
 
       expect(isValid).toBe(false)
       expect(consoleErrorSpy).toHaveBeenCalledWith(

@@ -3,6 +3,13 @@
 import * as z from 'zod'
 
 /**
+ * BillingInvoiceResponse
+ */
+export const zBillingInvoiceResponse = z.object({
+  url: z.string(),
+})
+
+/**
  * PartnerTenantsPayload
  */
 export const zPartnerTenantsPayload = z.object({
@@ -10,9 +17,14 @@ export const zPartnerTenantsPayload = z.object({
 })
 
 /**
+ * BillingResponse
+ */
+export const zBillingResponse = z.record(z.string(), z.unknown())
+
+/**
  * Success
  */
-export const zGetBillingInvoicesResponse = z.record(z.string(), z.unknown())
+export const zGetBillingInvoicesResponse = zBillingInvoiceResponse
 
 export const zPutBillingPartnersByPartnerKeyTenantsBody = zPartnerTenantsPayload
 
@@ -23,9 +35,14 @@ export const zPutBillingPartnersByPartnerKeyTenantsPath = z.object({
 /**
  * Tenants synced to partner successfully
  */
-export const zPutBillingPartnersByPartnerKeyTenantsResponse = z.record(z.string(), z.unknown())
+export const zPutBillingPartnersByPartnerKeyTenantsResponse = zBillingResponse
+
+export const zGetBillingSubscriptionQuery = z.object({
+  interval: z.enum(['month', 'year']),
+  plan: z.enum(['professional', 'team']),
+})
 
 /**
  * Success
  */
-export const zGetBillingSubscriptionResponse = z.record(z.string(), z.unknown())
+export const zGetBillingSubscriptionResponse = zBillingResponse

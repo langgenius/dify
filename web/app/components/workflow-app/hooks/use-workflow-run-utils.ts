@@ -4,6 +4,7 @@ import type { IOtherOptions } from '@/service/base'
 import type { VersionHistory } from '@/types/workflow'
 import { toast } from '@langgenius/dify-ui/toast'
 import { noop } from 'es-toolkit/function'
+import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { handleStream, post } from '@/service/base'
@@ -32,7 +33,12 @@ type TTSParamsLike = {
 }
 
 type ListeningStateActions = {
-  setWorkflowRunningData: (data: ReturnType<typeof createRunningWorkflowState> | ReturnType<typeof createFailedWorkflowState> | ReturnType<typeof createStoppedWorkflowState>) => void
+  setWorkflowRunningData: (
+    data:
+      | ReturnType<typeof createRunningWorkflowState>
+      | ReturnType<typeof createFailedWorkflowState>
+      | ReturnType<typeof createStoppedWorkflowState>,
+  ) => void
   setIsListening: (value: boolean) => void
   setShowVariableInspectPanel: (value: boolean) => void
   setListeningTriggerType: (value: TriggerNodeType | null) => void
@@ -77,6 +83,8 @@ export const createRunningWorkflowState = () => {
     },
     tracing: [],
     resultText: '',
+    reasoningContent: {},
+    reasoningFinished: false,
   }
 }
 
@@ -117,7 +125,11 @@ export const resolveWorkflowRunUrl = (
   runMode: HandleRunMode,
   isInWorkflowDebug: boolean,
 ) => {
-  if (runMode === TriggerType.Plugin || runMode === TriggerType.Webhook || runMode === TriggerType.Schedule) {
+  if (
+    runMode === TriggerType.Plugin ||
+    runMode === TriggerType.Webhook ||
+    runMode === TriggerType.Schedule
+  ) {
     if (!appDetail?.id) {
       console.error('handleRun: missing app id for trigger plugin run')
       return ''
@@ -138,8 +150,7 @@ export const resolveWorkflowRunUrl = (
   if (appDetail?.mode === AppModeEnum.ADVANCED_CHAT)
     return `/apps/${appDetail.id}/advanced-chat/workflows/draft/run`
 
-  if (isInWorkflowDebug && appDetail?.id)
-    return `/apps/${appDetail.id}/workflows/draft/run`
+  if (isInWorkflowDebug && appDetail?.id) return `/apps/${appDetail.id}/workflows/draft/run`
 
   return ''
 }
@@ -149,25 +160,18 @@ export const buildWorkflowRunRequestBody = (
   resolvedParams: Record<string, unknown>,
   options?: HandleRunOptions,
 ) => {
-  if (runMode === TriggerType.Schedule)
-    return { node_id: options?.scheduleNodeId }
+  if (runMode === TriggerType.Schedule) return { node_id: options?.scheduleNodeId }
 
-  if (runMode === TriggerType.Webhook)
-    return { node_id: options?.webhookNodeId }
+  if (runMode === TriggerType.Webhook) return { node_id: options?.webhookNodeId }
 
-  if (runMode === TriggerType.Plugin)
-    return { node_id: options?.pluginNodeId }
+  if (runMode === TriggerType.Plugin) return { node_id: options?.pluginNodeId }
 
-  if (runMode === TriggerType.All)
-    return { node_ids: options?.allNodeIds }
+  if (runMode === TriggerType.All) return { node_ids: options?.allNodeIds }
 
   return resolvedParams
 }
 
-export const validateWorkflowRunRequest = (
-  runMode: HandleRunMode,
-  options?: HandleRunOptions,
-) => {
+export const validateWorkflowRunRequest = (runMode: HandleRunMode, options?: HandleRunOptions) => {
   if (runMode === TriggerType.Schedule && !options?.scheduleNodeId)
     return 'handleRun: schedule trigger run requires node id'
 
@@ -187,10 +191,10 @@ export const isDebuggableTriggerType = (
   runMode: HandleRunMode,
 ): runMode is DebuggableTriggerType => {
   return (
-    runMode === TriggerType.Schedule
-    || runMode === TriggerType.Webhook
-    || runMode === TriggerType.Plugin
-    || runMode === TriggerType.All
+    runMode === TriggerType.Schedule ||
+    runMode === TriggerType.Webhook ||
+    runMode === TriggerType.Plugin ||
+    runMode === TriggerType.All
   )
 }
 
@@ -198,17 +202,13 @@ export const buildListeningTriggerNodeIds = (
   runMode: DebuggableTriggerType,
   options?: HandleRunOptions,
 ) => {
-  if (runMode === TriggerType.All)
-    return options?.allNodeIds ?? []
+  if (runMode === TriggerType.All) return options?.allNodeIds ?? []
 
-  if (runMode === TriggerType.Webhook && options?.webhookNodeId)
-    return [options.webhookNodeId]
+  if (runMode === TriggerType.Webhook && options?.webhookNodeId) return [options.webhookNodeId]
 
-  if (runMode === TriggerType.Schedule && options?.scheduleNodeId)
-    return [options.scheduleNodeId]
+  if (runMode === TriggerType.Schedule && options?.scheduleNodeId) return [options.scheduleNodeId]
 
-  if (runMode === TriggerType.Plugin && options?.pluginNodeId)
-    return [options.pluginNodeId]
+  if (runMode === TriggerType.Plugin && options?.pluginNodeId) return [options.pluginNodeId]
 
   return []
 }
@@ -235,7 +235,16 @@ export const applyRunningStateForMode = (
   actions.setWorkflowRunningData(createRunningWorkflowState())
 }
 
-export const clearListeningState = (actions: Pick<ListeningStateActions, 'setIsListening' | 'setListeningTriggerType' | 'setListeningTriggerNodeId' | 'setListeningTriggerNodeIds' | 'setListeningTriggerIsAll'>) => {
+export const clearListeningState = (
+  actions: Pick<
+    ListeningStateActions,
+    | 'setIsListening'
+    | 'setListeningTriggerType'
+    | 'setListeningTriggerNodeId'
+    | 'setListeningTriggerNodeIds'
+    | 'setListeningTriggerIsAll'
+  >,
+) => {
   actions.setIsListening(false)
   actions.setListeningTriggerType(null)
   actions.setListeningTriggerNodeId(null)
@@ -243,7 +252,16 @@ export const clearListeningState = (actions: Pick<ListeningStateActions, 'setIsL
   actions.setListeningTriggerIsAll(false)
 }
 
-export const applyStoppedState = (actions: Pick<ListeningStateActions, 'setWorkflowRunningData' | 'setIsListening' | 'setShowVariableInspectPanel' | 'setListeningTriggerType' | 'setListeningTriggerNodeId'>) => {
+export const applyStoppedState = (
+  actions: Pick<
+    ListeningStateActions,
+    | 'setWorkflowRunningData'
+    | 'setIsListening'
+    | 'setShowVariableInspectPanel'
+    | 'setListeningTriggerType'
+    | 'setListeningTriggerNodeId'
+  >,
+) => {
   actions.setWorkflowRunningData(createStoppedWorkflowState())
   actions.setIsListening(false)
   actions.setListeningTriggerType(null)
@@ -265,12 +283,10 @@ export const buildTTSConfig = (resolvedParams: TTSParamsLike, pathname: string) 
   if (resolvedParams.token) {
     ttsUrl = '/text-to-audio'
     ttsIsPublic = true
-  }
-  else if (resolvedParams.appId) {
-    if (pathname.search('explore/installed') > -1)
+  } else if (resolvedParams.appId) {
+    if (isInstalledAppPath(pathname))
       ttsUrl = `/installed-apps/${resolvedParams.appId}/text-to-audio`
-    else
-      ttsUrl = `/apps/${resolvedParams.appId}/text-to-audio`
+    else ttsUrl = `/apps/${resolvedParams.appId}/text-to-audio`
   }
 
   return {
@@ -282,7 +298,9 @@ export const buildTTSConfig = (resolvedParams: TTSParamsLike, pathname: string) 
 export const mapPublishedWorkflowFeatures = (publishedWorkflow: VersionHistory): FeaturesData => {
   return {
     opening: {
-      enabled: !!publishedWorkflow.features.opening_statement || !!publishedWorkflow.features.suggested_questions.length,
+      enabled:
+        !!publishedWorkflow.features.opening_statement ||
+        !!publishedWorkflow.features.suggested_questions.length,
       opening_statement: publishedWorkflow.features.opening_statement,
       suggested_questions: publishedWorkflow.features.suggested_questions,
     },
@@ -296,7 +314,7 @@ export const mapPublishedWorkflowFeatures = (publishedWorkflow: VersionHistory):
 }
 
 export const normalizePublishedWorkflowNodes = (publishedWorkflow: VersionHistory) => {
-  return publishedWorkflow.graph.nodes.map(node => ({
+  return publishedWorkflow.graph.nodes.map((node) => ({
     ...node,
     selected: false,
     data: {
@@ -306,13 +324,18 @@ export const normalizePublishedWorkflowNodes = (publishedWorkflow: VersionHistor
   }))
 }
 
-const waitWithAbort = (signal: AbortSignal, delay: number) => new Promise<void>((resolve) => {
-  const timer = window.setTimeout(resolve, delay)
-  signal.addEventListener('abort', () => {
-    clearTimeout(timer)
-    resolve()
-  }, { once: true })
-})
+const waitWithAbort = (signal: AbortSignal, delay: number) =>
+  new Promise<void>((resolve) => {
+    const timer = window.setTimeout(resolve, delay)
+    signal.addEventListener(
+      'abort',
+      () => {
+        clearTimeout(timer)
+        resolve()
+      },
+      { once: true },
+    )
+  })
 
 export const runTriggerDebug = async ({
   debugType,
@@ -335,15 +358,18 @@ export const runTriggerDebug = async ({
 
   const poll = async (): Promise<void> => {
     try {
-      const response = await post<Response>(url, {
-        body: requestBody,
-        signal: controller.signal,
-      }, {
-        needAllResponseContent: true,
-      })
+      const response = await post<Response>(
+        url,
+        {
+          body: requestBody,
+          signal: controller.signal,
+        },
+        {
+          needAllResponseContent: true,
+        },
+      )
 
-      if (controller.signal.aborted)
-        return
+      if (controller.signal.aborted) return
 
       if (!response) {
         const message = `${debugLabel} debug request failed`
@@ -357,29 +383,30 @@ export const runTriggerDebug = async ({
       if (contentType.includes(ContentType.json)) {
         let data: Record<string, unknown> | null = null
         try {
-          data = await response.json() as Record<string, unknown>
-        }
-        catch (jsonError) {
-          console.error(`handleRun: ${debugLabel.toLowerCase()} debug response parse error`, jsonError)
+          data = (await response.json()) as Record<string, unknown>
+        } catch (jsonError) {
+          console.error(
+            `handleRun: ${debugLabel.toLowerCase()} debug response parse error`,
+            jsonError,
+          )
           toast.error(`${debugLabel} debug request failed`)
           clearAbortController()
           clearListeningState()
           return
         }
 
-        if (controller.signal.aborted)
-          return
+        if (controller.signal.aborted) return
 
         if (data?.status === 'waiting') {
           const delay = Number(data.retry_in) || 2000
           await waitWithAbort(controller.signal, delay)
-          if (controller.signal.aborted)
-            return
+          if (controller.signal.aborted) return
           await poll()
           return
         }
 
-        const errorMessage = typeof data?.message === 'string' ? data.message : `${debugLabel} debug failed`
+        const errorMessage =
+          typeof data?.message === 'string' ? data.message : `${debugLabel} debug failed`
         toast.error(errorMessage)
         clearAbortController()
         setWorkflowRunningData(createFailedWorkflowState(errorMessage))
@@ -422,13 +449,11 @@ export const runTriggerDebug = async ({
         baseSseOptions.onDataSourceNodeCompleted,
         baseSseOptions.onDataSourceNodeError,
       )
-    }
-    catch (error) {
-      if (controller.signal.aborted)
-        return
+    } catch (error) {
+      if (controller.signal.aborted) return
 
       if (error instanceof Response) {
-        const data = await error.clone().json() as Record<string, unknown>
+        const data = (await error.clone().json()) as Record<string, unknown>
         const errorMessage = typeof data?.error === 'string' ? data.error : ''
         toast.error(errorMessage)
         clearAbortController()

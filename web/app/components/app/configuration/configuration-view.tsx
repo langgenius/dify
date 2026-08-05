@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { ConfigurationViewModel } from './hooks/use-configuration'
+import type { InstallBundleCompleteCallback } from '@/app/components/plugins/install-plugin/install-bundle'
 import { CodeBracketIcon } from '@heroicons/react/20/solid'
 import {
   AlertDialog,
@@ -21,6 +22,8 @@ import {
   DrawerPortal,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { produce } from 'immer'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import AppPublisher from '@/app/components/app/app-publisher/features-wrapper'
@@ -36,8 +39,45 @@ import Loading from '@/app/components/base/loading'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import PluginDependency from '@/app/components/workflow/plugin-dependency'
 import ConfigContext from '@/context/debug-configuration'
-import { MittProvider } from '@/context/mitt-context-provider'
+import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
+import Link from '@/next/link'
 import { AppModeEnum, ModelModeType } from '@/types/app'
+
+function LegacyAgentBadge() {
+  const { t } = useTranslation()
+  const description = t(($) => $['legacyAgentBadge.description'], { ns: 'appDebug' })
+
+  return (
+    <Popover>
+      <PopoverTrigger
+        openOnHover
+        delay={300}
+        closeDelay={200}
+        type="button"
+        className="inline-flex h-5 shrink-0 cursor-pointer items-center gap-0.5 rounded-[5px] border border-text-warning bg-components-badge-bg-dimm px-1.25 system-2xs-medium-uppercase whitespace-nowrap text-text-warning outline-hidden hover:bg-state-warning-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+      >
+        <span aria-hidden className="i-ri-alert-fill size-3 shrink-0" />
+        {t(($) => $['legacyAgentBadge.label'], { ns: 'appDebug' })}
+      </PopoverTrigger>
+      <PopoverContent
+        placement="bottom-start"
+        sideOffset={6}
+        popupClassName="max-w-[300px] px-3 py-2 system-xs-regular text-text-tertiary"
+      >
+        <div>{description}</div>
+        <Link
+          href="/agents"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-1 inline-flex items-center gap-0.5 rounded-md system-xs-medium text-text-accent outline-hidden hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+        >
+          <span>{t(($) => $['legacyAgentBadge.action'], { ns: 'appDebug' })}</span>
+          <span aria-hidden className="i-ri-arrow-right-up-line size-3.5" />
+        </Link>
+      </PopoverContent>
+    </Popover>
+  )
+}
 
 const ConfigurationView: FC<ConfigurationViewModel> = ({
   appPublisherProps,
@@ -76,6 +116,24 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
 }) => {
   const { t } = useTranslation()
   const debugWithMultipleModel = appPublisherProps.debugWithMultipleModel
+  const showLegacyAgentBadge = isAgentV2Enabled() && contextValue.mode === AppModeEnum.AGENT_CHAT
+  const handlePluginInstallComplete: InstallBundleCompleteCallback = (plugins, installStatus) => {
+    if (!installStatus.some((status) => status.success)) return
+
+    const installedPluginNames = plugins.map((plugin) => `${plugin.plugin_id}/${plugin.name}`)
+    const nextModelConfig = produce(contextValue.modelConfig, (draft) => {
+      draft.agentConfig.tools.forEach((tool) => {
+        if (
+          'provider_id' in tool &&
+          tool.isDeleted &&
+          installedPluginNames.includes(tool.provider_id)
+        ) {
+          tool.isDeleted = false
+        }
+      })
+    })
+    contextValue.setModelConfig(nextModelConfig)
+  }
 
   if (showLoading) {
     return (
@@ -88,20 +146,21 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
   return (
     <ConfigContext.Provider value={contextValue}>
       <FeaturesProvider features={featuresData}>
-        <MittProvider>
+        <>
           <div className="flex h-full flex-col">
-            <div className="relative flex h-[200px] grow pt-14">
+            <div className="relative flex h-50 grow pt-14">
               <div className="bg-default-subtle absolute top-0 left-0 h-14 w-full">
                 <div className="flex h-14 items-center justify-between px-6">
-                  <div className="flex items-center">
-                    <div className="system-xl-semibold text-text-primary">{t('orchestrate', { ns: 'appDebug' })}</div>
-                    <div className="flex h-[14px] items-center space-x-1 text-xs">
-                      {isAdvancedMode && (
-                        <div className="ml-1 flex h-5 items-center rounded-md border border-components-button-secondary-border px-1.5 system-xs-medium-uppercase text-text-tertiary uppercase">
-                          {t('promptMode.advanced', { ns: 'appDebug' })}
-                        </div>
-                      )}
+                  <div className="flex items-center gap-2">
+                    <div className="system-xl-semibold text-text-primary">
+                      {t(($) => $.orchestrate, { ns: 'appDebug' })}
                     </div>
+                    {showLegacyAgentBadge && <LegacyAgentBadge />}
+                    {isAdvancedMode && (
+                      <div className="flex h-5 items-center rounded-md border border-components-button-secondary-border px-1.5 system-xs-medium-uppercase text-text-tertiary uppercase">
+                        {t(($) => $['promptMode.advanced'], { ns: 'appDebug' })}
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center">
                     {isAgent && (
@@ -109,6 +168,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                         isChatModel={contextValue.modelModeType === ModelModeType.chat}
                         agentConfig={modelConfig.agentConfig}
                         isFunctionCall={contextValue.isFunctionCall}
+                        disabled={contextValue.readonly}
                         onAgentSettingChange={onAgentSettingChange}
                       />
                     )}
@@ -119,29 +179,38 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                           provider={modelConfig.provider}
                           completionParams={contextValue.completionParams}
                           modelId={modelConfig.model_id}
+                          readonly={contextValue.readonly}
                           setModel={onModelChange}
                           onCompletionParamsChange={onCompletionParamsChange}
                           debugWithMultipleModel={debugWithMultipleModel}
                           onDebugWithMultipleModelChange={onEnableMultipleModelDebug}
                         />
-                        <Divider type="vertical" className="mx-2 h-[14px]" />
+                        <Divider type="vertical" className="mx-2 h-3.5" />
                       </>
                     )}
                     {isMobile && (
-                      <Button className="mr-2 h-8! text-[13px]! font-medium" onClick={onOpenDebugPanel}>
-                        <span className="mr-1">{t('operation.debugConfig', { ns: 'appDebug' })}</span>
-                        <CodeBracketIcon className="h-4 w-4 text-text-tertiary" />
+                      <Button
+                        className="mr-2 h-8! text-[13px]! font-medium"
+                        onClick={onOpenDebugPanel}
+                      >
+                        <span>{t(($) => $['operation.debugConfig'], { ns: 'appDebug' })}</span>
+                        <CodeBracketIcon className="size-4 text-text-tertiary" />
                       </Button>
                     )}
                     <AppPublisher {...appPublisherProps} />
                   </div>
                 </div>
               </div>
-              <div className={`flex h-full w-full shrink-0 flex-col sm:w-1/2 ${debugWithMultipleModel && 'max-w-[560px]'}`}>
+              <div
+                className={`flex size-full shrink-0 flex-col sm:w-1/2 ${debugWithMultipleModel && 'max-w-140'}`}
+              >
                 <Config />
               </div>
               {!isMobile && (
-                <div className="relative flex h-full w-1/2 grow flex-col overflow-y-auto" style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
+                <div
+                  className="relative flex h-full w-1/2 grow flex-col overflow-y-auto"
+                  style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}
+                >
                   <div className="flex grow flex-col rounded-tl-2xl border-t-[0.5px] border-l-[0.5px] border-components-panel-border bg-chatbot-bg">
                     <Debug
                       isAPIKeySet={contextValue.isAPIKeySet}
@@ -161,22 +230,29 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
             </div>
           </div>
 
-          <AlertDialog open={showUseGPT4Confirm} onOpenChange={open => !open && setShowUseGPT4Confirm(false)}>
+          <AlertDialog
+            open={showUseGPT4Confirm}
+            onOpenChange={(open) => !open && setShowUseGPT4Confirm(false)}
+          >
             <AlertDialogContent>
               <div className="flex flex-col items-start gap-2 self-stretch px-6 pt-6 pb-4">
                 <AlertDialogTitle className="w-full title-2xl-semi-bold text-text-primary">
-                  {t('trailUseGPT4Info.title', { ns: 'appDebug' })}
+                  {t(($) => $['trailUseGPT4Info.title'], { ns: 'appDebug' })}
                 </AlertDialogTitle>
                 <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                  {t('trailUseGPT4Info.description', { ns: 'appDebug' })}
+                  {t(($) => $['trailUseGPT4Info.description'], { ns: 'appDebug' })}
                 </AlertDialogDescription>
               </div>
               <AlertDialogActions>
                 <AlertDialogCancelButton tone="default">
-                  {t('operation.cancel', { ns: 'common' })}
+                  {t(($) => $['operation.cancel'], { ns: 'common' })}
                 </AlertDialogCancelButton>
-                <AlertDialogConfirmButton variant="primary" tone="default" onClick={onConfirmUseGPT4}>
-                  {t('operation.confirm', { ns: 'common' })}
+                <AlertDialogConfirmButton
+                  variant="primary"
+                  tone="default"
+                  onClick={onConfirmUseGPT4}
+                >
+                  {t(($) => $['operation.confirm'], { ns: 'common' })}
                 </AlertDialogConfirmButton>
               </AlertDialogActions>
             </AlertDialogContent>
@@ -205,8 +281,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
               modal
               swipeDirection="right"
               onOpenChange={(open) => {
-                if (!open)
-                  onHideDebugPanel()
+                if (!open) onHideDebugPanel()
               }}
             >
               <DrawerPortal>
@@ -216,8 +291,8 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                     <DrawerContent className="flex min-h-0 flex-1 flex-col">
                       <div className="mb-4 flex shrink-0 justify-end">
                         <DrawerCloseButton
-                          aria-label={t('operation.close', { ns: 'common' })}
-                          className="h-6 w-6 rounded-md"
+                          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                          className="size-6 rounded-md"
                         />
                       </div>
                       <Debug
@@ -245,15 +320,15 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
               inWorkflow={false}
               showFileUpload={false}
               isChatMode={contextValue.mode !== AppModeEnum.COMPLETION}
-              disabled={false}
+              disabled={!!contextValue.readonly}
               onChange={onFeaturesChange}
               onClose={onCloseFeaturePanel}
               promptVariables={promptVariables}
               onAutoAddPromptVariable={onAutoAddPromptVariable}
             />
           )}
-          <PluginDependency />
-        </MittProvider>
+          <PluginDependency onInstallComplete={isAgent ? handlePluginInstallComplete : undefined} />
+        </>
       </FeaturesProvider>
     </ConfigContext.Provider>
   )

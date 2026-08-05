@@ -1,28 +1,20 @@
 import type { StartNodeType } from '../../nodes/start/types'
-
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiCloseLine, RiEqualizer2Line } from '@remixicon/react'
 import { debounce } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
-import {
-  memo,
-  useCallback,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
-import { useEdgesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-edges-interactions-without-sync'
-import { useNodesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-nodes-interactions-without-sync'
 import { useStore } from '@/app/components/workflow/store'
-import {
-  useWorkflowInteractions,
-} from '../../hooks'
+import { useEdgesInteractionsWithoutSync } from '../../hooks/use-edges-interactions-without-sync'
+import { useNodesInteractionsWithoutSync } from '../../hooks/use-nodes-interactions-without-sync'
+import { useWorkflowInteractions } from '../../hooks/use-workflow-panel-interactions'
 import { useResizePanel } from '../../nodes/_base/hooks/use-resize-panel'
+import { useSetDebugPreviewPanelWidth } from '../../persistence/local-storage-options'
 import { BlockEnum } from '../../types'
 import ChatWrapper from './chat-wrapper'
 
@@ -37,8 +29,8 @@ const DebugAndPreview = () => {
   const { handleEdgeCancelRunningStatus } = useEdgesInteractionsWithoutSync()
   const [expanded, setExpanded] = useState(true)
   const nodes = useNodes<StartNodeType>()
-  const selectedNode = nodes.find(node => node.data.selected)
-  const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
+  const selectedNode = nodes.find((node) => node.data.selected)
+  const startNode = nodes.find((node) => node.data.type === BlockEnum.Start)
   const variables = startNode?.data.variables || []
   const visibleVariables = variables
 
@@ -50,28 +42,26 @@ const DebugAndPreview = () => {
     chatRef.current.handleRestart()
   }
 
-  const workflowCanvasWidth = useStore(s => s.workflowCanvasWidth)
-  const nodePanelWidth = useStore(s => s.nodePanelWidth)
-  const panelWidth = useStore(s => s.previewPanelWidth)
-  const setPanelWidth = useStore(s => s.setPreviewPanelWidth)
-  const handleResize = useCallback((width: number, source: 'user' | 'system' = 'user') => {
-    if (source === 'user')
-      localStorage.setItem('debug-and-preview-panel-width', `${width}`)
-    setPanelWidth(width)
-  }, [setPanelWidth])
+  const workflowCanvasWidth = useStore((s) => s.workflowCanvasWidth)
+  const nodePanelWidth = useStore((s) => s.nodePanelWidth)
+  const panelWidth = useStore((s) => s.previewPanelWidth)
+  const setPanelWidth = useStore((s) => s.setPreviewPanelWidth)
+  const setPanelWidthStorage = useSetDebugPreviewPanelWidth()
+  const handleResize = useCallback(
+    (width: number, source: 'user' | 'system' = 'user') => {
+      if (source === 'user') setPanelWidthStorage(width)
+      setPanelWidth(width)
+    },
+    [setPanelWidth, setPanelWidthStorage],
+  )
   const maxPanelWidth = useMemo(() => {
-    if (!workflowCanvasWidth)
-      return 720
+    if (!workflowCanvasWidth) return 720
 
-    if (!selectedNode)
-      return workflowCanvasWidth - 400
+    if (!selectedNode) return workflowCanvasWidth - 400
 
     return workflowCanvasWidth - 400 - 400
   }, [workflowCanvasWidth, selectedNode, nodePanelWidth])
-  const {
-    triggerRef,
-    containerRef,
-  } = useResizePanel({
+  const { triggerRef, containerRef } = useResizePanel({
     direction: 'horizontal',
     triggerDirection: 'left',
     minWidth: 400,
@@ -97,43 +87,48 @@ const DebugAndPreview = () => {
         style={{ width: `${panelWidth}px` }}
       >
         <div className="flex shrink-0 items-center justify-between px-4 pt-3 pb-2 system-xl-semibold text-text-primary">
-          <div className="h-8">{t('common.debugAndPreview', { ns: 'workflow' }).toLocaleUpperCase()}</div>
+          <div className="h-8">
+            {t(($) => $['common.debugAndPreview'], { ns: 'workflow' }).toLocaleUpperCase()}
+          </div>
           <div className="flex items-center gap-1">
             <Tooltip>
               <TooltipTrigger
-                render={(
+                render={
                   <ActionButton onClick={() => handleRestartChat()}>
-                    <RefreshCcw01 className="h-4 w-4" />
+                    <RefreshCcw01 className="size-4" />
                   </ActionButton>
-                )}
+                }
               />
-              <TooltipContent>
-                {t('operation.refresh', { ns: 'common' })}
-              </TooltipContent>
+              <TooltipContent>{t(($) => $['operation.refresh'], { ns: 'common' })}</TooltipContent>
             </Tooltip>
             {visibleVariables.length > 0 && (
               <div className="relative">
                 <Tooltip>
                   <TooltipTrigger
-                    render={(
-                      <ActionButton state={expanded ? ActionButtonState.Active : undefined} onClick={() => setExpanded(!expanded)}>
-                        <RiEqualizer2Line className="h-4 w-4" />
+                    render={
+                      <ActionButton
+                        state={expanded ? ActionButtonState.Active : undefined}
+                        onClick={() => setExpanded(!expanded)}
+                      >
+                        <RiEqualizer2Line className="size-4" />
                       </ActionButton>
-                    )}
+                    }
                   />
                   <TooltipContent>
-                    {t('panel.userInputField', { ns: 'workflow' })}
+                    {t(($) => $['panel.userInputField'], { ns: 'workflow' })}
                   </TooltipContent>
                 </Tooltip>
-                {expanded && <div className="absolute right-[5px] bottom-[-17px] z-10 h-3 w-3 rotate-45 border-t-[0.5px] border-l-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg" />}
+                {expanded && (
+                  <div className="absolute right-1.25 -bottom-4.25 z-10 h-3 w-3 rotate-45 border-t-[0.5px] border-l-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg" />
+                )}
               </div>
             )}
             <div className="mx-3 h-3.5 w-px bg-divider-regular"></div>
             <div
-              className="flex h-6 w-6 cursor-pointer items-center justify-center"
+              className="flex size-6 cursor-pointer items-center justify-center"
               onClick={handleCancelDebugAndPreviewPanel}
             >
-              <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+              <RiCloseLine className="size-4 text-text-tertiary" />
             </div>
           </div>
         </div>
