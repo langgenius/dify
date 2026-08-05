@@ -32,6 +32,14 @@ class UnifiedTraceAdapter(Protocol):
         parent: ParentResolution | None,
         publish_parent_context: ParentContextPublisher,
     ) -> None:
+        """Emit one Core-resolved, parent-first canonical fragment.
+
+        Return only after the provider-specific synchronous acceptance step succeeds.
+        Raise RetryableTraceDispatchError when acceptance is unconfirmed because of a
+        recoverable provider or transport failure. Raise another exception for a
+        terminal failure. Publish parent context only after the corresponding provider
+        parent span has been accepted.
+        """
         raise NotImplementedError
 
 

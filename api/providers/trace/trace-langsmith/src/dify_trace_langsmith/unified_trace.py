@@ -94,13 +94,8 @@ class UnifiedLangSmithAdapter:
             if not external_parent_order:
                 raise InvalidTraceParentContextError("LangSmith parent context is missing dotted_order")
         else:
-            root_span = next(span for span in trace.spans if span.id == trace.root_span_id)
-            external_parent_id = (
-                _provider_run_id(root_span.parent_id)
-                if root_span.parent_id and root_span.parent_id not in provider_id_by_canonical_id
-                else None
-            )
-            trace_id = external_parent_id or root_provider_id
+            trace_id = root_provider_id
+            external_parent_id = None
             external_parent_order = None
 
         dotted_order_by_canonical_id: dict[str, str] = {}
