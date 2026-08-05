@@ -175,7 +175,7 @@ const makeChatConfig = (overrides: Partial<ChatConfig> = {}): ChatConfig =>
 const mockContextValue: ChatContextValue = {
   chatList: [],
   config: makeChatConfig({ supportFeedback: true }),
-  onFeedback: vi.fn().mockResolvedValue(undefined),
+  onFeedback: vi.fn().mockResolvedValue(true),
   onRegenerate: vi.fn(),
   showRegenerate: false,
   onAnnotationAdded: vi.fn(),
@@ -259,7 +259,7 @@ describe('Operation', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockContextValue.config = makeChatConfig({ supportFeedback: true })
-    mockContextValue.onFeedback = vi.fn().mockResolvedValue(undefined)
+    mockContextValue.onFeedback = vi.fn().mockResolvedValue(true)
     mockContextValue.onRegenerate = vi.fn()
     mockContextValue.onAnnotationAdded = vi.fn()
     mockContextValue.onAnnotationEdited = vi.fn()
@@ -725,6 +725,25 @@ describe('Operation', () => {
       })
     })
 
+    it('should keep the feedback dialog and local state unchanged when submission fails', async () => {
+      const user = userEvent.setup()
+      mockContextValue.onFeedback = vi.fn().mockResolvedValue(false)
+      renderOperation()
+
+      await user.click(
+        screen.getByRole('button', { name: 'table.header.adminRate: detail.operation.dislike' }),
+      )
+      const textarea = screen.getByRole('textbox', { name: 'feedback.content' })
+      await user.type(textarea, 'Needs work')
+      await user.click(screen.getByRole('button', { name: 'operation.submit' }))
+
+      expect(screen.getByRole('dialog', { name: 'feedback.title' })).toBeInTheDocument()
+      expect(textarea).toHaveValue('Needs work')
+      expect(
+        screen.queryByRole('button', { name: 'table.header.adminRate: operation.remove' }),
+      ).not.toBeInTheDocument()
+    })
+
     it('should open feedback modal on admin dislike click', async () => {
       const user = userEvent.setup()
       renderOperation()
@@ -734,11 +753,23 @@ describe('Operation', () => {
       expect(screen.getByRole('textbox'))!.toBeInTheDocument()
     })
 
-    it('should show user feedback read-only in admin bar when user has liked', () => {
-      const item = { ...baseItem, feedback: { rating: 'like' as const } }
+    it('should expose user feedback as a non-interactive status in the admin bar', () => {
+      const item = {
+        ...baseItem,
+        feedback: { rating: 'dislike' as const, content: 'Needs work' },
+      }
       renderOperation({ ...baseProps, item })
-      const bar = screen.getByTestId('operation-bar')
-      expect(bar.querySelectorAll('.i-ri-thumb-up-line').length).toBeGreaterThanOrEqual(2)
+
+      expect(
+        screen.getByRole('img', {
+          name: 'table.header.userRate: detail.operation.dislike - Needs work',
+        }),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', {
+          name: 'table.header.userRate: detail.operation.dislike',
+        }),
+      ).not.toBeInTheDocument()
     })
 
     it('should show separator in admin bar when user has feedback', () => {

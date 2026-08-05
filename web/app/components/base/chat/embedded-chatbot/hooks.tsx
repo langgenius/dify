@@ -445,6 +445,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
         appId,
       )
       toast.success(t(($) => $['api.success'], { ns: 'common' }))
+      return true
     },
     [appSourceType, appId, t],
   )

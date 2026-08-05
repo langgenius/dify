@@ -155,18 +155,24 @@ function Operation({
     content?: string,
     target: 'user' | 'admin' = 'user',
   ) => {
-    if (!config?.supportFeedback || !onFeedback) return
+    if (!config?.supportFeedback || !onFeedback) return false
 
-    await onFeedback?.(id, { rating, content })
+    try {
+      const succeeded = await onFeedback(id, { rating, content })
+      if (!succeeded) return false
 
-    const nextFeedback = rating === null ? { rating: null } : { rating, content }
+      const nextFeedback = rating === null ? { rating: null } : { rating, content }
 
-    if (target === 'admin') setAdminLocalFeedback(nextFeedback)
-    else setUserLocalFeedback(nextFeedback)
+      if (target === 'admin') setAdminLocalFeedback(nextFeedback)
+      else setUserLocalFeedback(nextFeedback)
+      return true
+    } catch {
+      return false
+    }
   }
 
   const handleLikeClick = (target: 'user' | 'admin') => {
-    handleFeedback('like', undefined, target)
+    void handleFeedback('like', undefined, target)
   }
 
   const handleDislikeClick = (target: 'user' | 'admin') => {
@@ -175,7 +181,9 @@ function Operation({
   }
 
   const handleFeedbackSubmit = async () => {
-    await handleFeedback('dislike', feedbackContent, feedbackTarget)
+    const succeeded = await handleFeedback('dislike', feedbackContent, feedbackTarget)
+    if (!succeeded) return
+
     setFeedbackContent('')
     setIsShowFeedbackModal(false)
   }
@@ -291,21 +299,26 @@ function Operation({
               <FeedbackTooltip
                 content={buildFeedbackTooltip(displayUserFeedback, userFeedbackLabel)}
               >
-                {displayUserFeedback.rating === 'like' ? (
-                  <ActionButton
-                    aria-label={`${userFeedbackLabel}: ${likeLabel}`}
-                    state={ActionButtonState.Active}
-                  >
-                    <span aria-hidden="true" className="i-ri-thumb-up-line size-4" />
-                  </ActionButton>
-                ) : (
-                  <ActionButton
-                    aria-label={`${userFeedbackLabel}: ${dislikeLabel}`}
-                    state={ActionButtonState.Destructive}
-                  >
-                    <span aria-hidden="true" className="i-ri-thumb-down-line size-4" />
-                  </ActionButton>
-                )}
+                <span
+                  role="img"
+                  aria-label={buildFeedbackTooltip(displayUserFeedback, userFeedbackLabel)}
+                  className={cn(
+                    'inline-flex size-6 items-center justify-center rounded-lg p-0.5',
+                    displayUserFeedback.rating === 'like'
+                      ? 'bg-state-accent-active text-text-accent'
+                      : 'bg-state-destructive-hover text-text-destructive',
+                  )}
+                >
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      'size-4',
+                      displayUserFeedback.rating === 'like'
+                        ? 'i-ri-thumb-up-line'
+                        : 'i-ri-thumb-down-line',
+                    )}
+                  />
+                </span>
               </FeedbackTooltip>
             )}
 
