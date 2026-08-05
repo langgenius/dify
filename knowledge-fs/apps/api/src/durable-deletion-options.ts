@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import {
+  type DurableDeletionJob,
   type DurableDeletionOutboxDispatcher,
   type DurableDeletionRepository,
   type DurableDeletionRuntime,
@@ -94,6 +95,7 @@ export function createApiDurableDeletionAssembly({
     maxBatchSize: 10,
     maxRetryDelayMs: 5 * 60_000,
     maxStepsPerLease: 25,
+    onError: writeDurableDeletionErrorLog,
     processor,
     repository,
     stepTimeoutMs: 5_000,
@@ -123,4 +125,30 @@ export function createApiDurableDeletionAssembly({
       dispatcher.stop();
     },
   };
+}
+
+export function writeDurableDeletionErrorLog(input: {
+  readonly error: unknown;
+  readonly job?: DurableDeletionJob | undefined;
+}): void {
+  const error = input.error instanceof Error ? input.error : undefined;
+  process.stderr.write(
+    `${JSON.stringify({
+      checkpoint: input.job?.checkpoint,
+      errorMessage: boundedLogValue(error?.message ?? String(input.error), 16_384),
+      errorName: error?.name ?? "UnknownError",
+      errorStack: error?.stack ? boundedLogValue(error.stack, 32_768) : undefined,
+      event: "knowledge_fs.durable_deletion.failed",
+      executionAttempts: input.job?.executionAttempts,
+      jobId: input.job?.id,
+      knowledgeSpaceId: input.job?.knowledgeSpaceId,
+      runState: input.job?.runState,
+      targetId: input.job?.targetId,
+      targetType: input.job?.targetType,
+    })}\n`,
+  );
+}
+
+function boundedLogValue(value: string, limit: number): string {
+  return value.length <= limit ? value : `${value.slice(0, limit)}...[truncated]`;
 }

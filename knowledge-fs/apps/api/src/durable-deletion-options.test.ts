@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   assertApiDurableDeletionDataReadiness,
   createApiDurableDeletionAssembly,
+  writeDurableDeletionErrorLog,
 } from "./durable-deletion-options";
 
 type DatabaseExecuteInput = Parameters<
@@ -136,6 +137,29 @@ describe("API durable deletion assembly", () => {
     await vi.advanceTimersByTimeAsync(60_000);
     expect(repository.claimJobs).toHaveBeenCalledTimes(1);
     expect(repository.claimOutbox).toHaveBeenCalledTimes(1);
+  });
+
+  it("logs durable deletion failures with job correlation and the original error", () => {
+    const write = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+
+    writeDurableDeletionErrorLog({
+      error: new Error("derived data cleanup failed"),
+      job: {
+        checkpoint: "deleting_derived_data",
+        executionAttempts: 10,
+        id: "deletion-job-1",
+        knowledgeSpaceId: "knowledge-space-1",
+        runState: "failed",
+        targetId: "source-1",
+        targetType: "source",
+      } as never,
+    });
+
+    expect(write).toHaveBeenCalledOnce();
+    expect(write.mock.calls[0]?.[0]).toContain('"event":"knowledge_fs.durable_deletion.failed"');
+    expect(write.mock.calls[0]?.[0]).toContain('"jobId":"deletion-job-1"');
+    expect(write.mock.calls[0]?.[0]).toContain('"checkpoint":"deleting_derived_data"');
+    expect(write.mock.calls[0]?.[0]).toContain('"errorMessage":"derived data cleanup failed"');
   });
 });
 
