@@ -170,6 +170,40 @@ describe('AddOAuthButton', () => {
     expect(mockOpenOAuthPopup).not.toHaveBeenCalled()
   })
 
+  it('should skip visibility picker for categories without backend visibility support', async () => {
+    // Trigger / model OAuth endpoints don't yet accept a visibility value on
+    // the backend — the picker would let users select "Only me" while the
+    // credential silently defaults to all_team_members. Tool and datasource
+    // are both wired end-to-end so they DO get the picker.
+    const triggerPayload = { category: AuthCategory.trigger, provider: 'test-trigger' }
+    render(<AddOAuthButton pluginPayload={triggerPayload} buttonText="Use OAuth" />)
+
+    const button = screen.getByText('Use OAuth').closest('button')
+    if (button) fireEvent.click(button)
+
+    await waitFor(() => {
+      expect(mockGetPluginOAuthUrl).toHaveBeenCalledWith(undefined)
+    })
+    // No pre-OAuth visibility modal should ever appear for unsupported categories.
+    expect(screen.queryByText('plugin.auth.saveAndAuth')).not.toBeInTheDocument()
+  })
+
+  it('should show visibility picker for datasource category (backend now supports it)', async () => {
+    const datasourcePayload = { category: AuthCategory.datasource, provider: 'test-datasource' }
+    render(<AddOAuthButton pluginPayload={datasourcePayload} buttonText="Use OAuth" />)
+
+    const button = screen.getByText('Use OAuth').closest('button')
+    if (button) fireEvent.click(button)
+
+    // Visibility picker appears for datasource just like it does for tool.
+    const confirmButton = await screen.findByText('plugin.auth.saveAndAuth')
+    fireEvent.click(confirmButton)
+
+    await waitFor(() => {
+      expect(mockGetPluginOAuthUrl).toHaveBeenCalledWith({ visibility: 'only_me' })
+    })
+  })
+
   it('should be disabled when disabled prop is true', () => {
     render(<AddOAuthButton pluginPayload={basePayload} buttonText="Use OAuth" disabled />)
 

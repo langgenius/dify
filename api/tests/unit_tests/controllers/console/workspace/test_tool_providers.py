@@ -815,7 +815,7 @@ def _mock_oauth_start_deps(controller_module: ModuleType, monkeypatch: pytest.Mo
 
 
 @pytest.mark.parametrize(
-    "query_visibility,expected_stored",
+    ("query_visibility", "expected_stored"),
     [
         ("only_me", "only_me"),
         ("all_team_members", "all_team_members"),
@@ -909,7 +909,7 @@ def _mock_oauth_callback_deps(controller_module: ModuleType, monkeypatch: pytest
 
 
 @pytest.mark.parametrize(
-    "stored,expected",
+    ("stored", "expected"),
     [
         ("only_me", "only_me"),
         ("all_team_members", "all_team_members"),
