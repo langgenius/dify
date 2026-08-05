@@ -64,7 +64,7 @@ describe('bootstrapMarketplacePlugins', () => {
         data: {
           body: {
             message:
-              'Reached maximum retries (3) for URL https://marketplace.test/plugins/download',
+              'Reached maximum retries (3) for URL https://marketplace.test/plugins/download-url',
           },
         },
         status: 500,
