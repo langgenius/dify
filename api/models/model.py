@@ -2515,7 +2515,7 @@ class MessageChain(TypeBase):
     )
 
 
-def select_tool_occurrence(value: Any, occurrence: int, occurrences: int) -> Any:
+def _select_tool_occurrence(value: Any, occurrence: int, occurrences: int) -> Any:
     """
     Pick one call's value out of a persisted agent thought payload.
 
@@ -2667,7 +2667,7 @@ class MessageAgentThought(TypeBase):
         for tool in self.tools:
             occurrence = seen[tool]
             seen[tool] += 1
-            per_call.append(select_tool_occurrence(values_by_tool.get(tool, {}), occurrence, occurrences[tool]))
+            per_call.append(_select_tool_occurrence(values_by_tool.get(tool, {}), occurrence, occurrences[tool]))
 
         return per_call
 
