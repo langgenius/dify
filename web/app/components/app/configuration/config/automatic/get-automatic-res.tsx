@@ -382,7 +382,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
                   {t(($) => $[`${i18nPrefix}.dismiss`], { ns: 'appDebug' })}
                 </Button>
                 <Button
-                  className="flex space-x-1"
+                  className="flex"
                   variant="primary"
                   onClick={onGenerate}
                   disabled={isLoading}

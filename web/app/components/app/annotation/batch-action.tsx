@@ -52,19 +52,14 @@ const BatchAction: FC<IBatchActionProps> = ({
           </span>
         </div>
         <Divider type="vertical" className="mx-0.5 h-3.5 bg-divider-regular" />
-        <Button
-          variant="ghost"
-          tone="destructive"
-          className="gap-x-0.5 px-3"
-          onClick={showDeleteConfirm}
-        >
+        <Button variant="ghost" tone="destructive" onClick={showDeleteConfirm}>
           <span aria-hidden className="i-ri-delete-bin-line size-4" />
-          <span className="px-0.5">{t(($) => $['operation.delete'], { ns: 'common' })}</span>
+          <span>{t(($) => $['operation.delete'], { ns: 'common' })}</span>
         </Button>
 
         <Divider type="vertical" className="mx-0.5 h-3.5 bg-divider-regular" />
-        <Button variant="ghost" className="px-3" onClick={() => onSelectedIdsChange([])}>
-          <span className="px-0.5">{t(($) => $['operation.cancel'], { ns: 'common' })}</span>
+        <Button variant="ghost" onClick={() => onSelectedIdsChange([])}>
+          <span>{t(($) => $['operation.cancel'], { ns: 'common' })}</span>
         </Button>
       </div>
       <AlertDialog open={isShowDeleteConfirm} onOpenChange={(open) => !open && hideDeleteConfirm()}>

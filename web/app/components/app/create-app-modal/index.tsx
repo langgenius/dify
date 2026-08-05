@@ -345,7 +345,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                 <Button onClick={onClose}>{t(($) => $['newApp.Cancel'], { ns: 'app' })}</Button>
                 <Button
                   disabled={!canCreateApp || isAppsFull || !name}
-                  className="gap-1"
+
                   variant="primary"
                   onClick={handleCreateApp}
                 >

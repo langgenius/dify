@@ -701,7 +701,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                 "only the accepted file-mapping shape and the returned `reference`; never invent the `reference` "
                 "value.",
                 "If you are replying to the user in natural language and want them to open or download the produced "
-                "file, include the returned `download_url` in that reply instead of copying it into structured "
+                "file, include the returned `public_download_url` in that reply instead of copying it into structured "
                 "`final_output` unless the schema explicitly asks for it.",
                 *file_output_lines,
             ]

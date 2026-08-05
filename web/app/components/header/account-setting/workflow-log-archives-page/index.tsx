@@ -399,7 +399,7 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
                 variant="secondary"
                 loading={isPreparing}
                 disabled={isPreparing}
-                className="gap-1 px-2"
+                className="px-2"
                 aria-label={buttonAriaLabel}
                 onClick={onAction}
               >
