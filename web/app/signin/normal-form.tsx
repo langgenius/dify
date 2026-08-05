@@ -1,3 +1,4 @@
+import { zLicenseStatus } from '@dify/contracts/api/console/system-features/zod.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiContractLine, RiDoorLockLine, RiErrorWarningFill } from '@remixicon/react'
@@ -6,7 +7,6 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isLegacyBase401, userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { LicenseStatus } from '@/features/system-features/constants'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { invitationCheck } from '@/service/common'
@@ -119,7 +119,7 @@ function NormalForm() {
       </div>
     )
   }
-  if (systemFeatures.license?.status === LicenseStatus.LOST) {
+  if (systemFeatures.license?.status === zLicenseStatus.enum.lost) {
     return (
       <div className="mx-auto mt-8 w-full">
         <div className="relative">
@@ -139,7 +139,7 @@ function NormalForm() {
       </div>
     )
   }
-  if (systemFeatures.license?.status === LicenseStatus.EXPIRED) {
+  if (systemFeatures.license?.status === zLicenseStatus.enum.expired) {
     return (
       <div className="mx-auto mt-8 w-full">
         <div className="relative">
@@ -159,7 +159,7 @@ function NormalForm() {
       </div>
     )
   }
-  if (systemFeatures.license?.status === LicenseStatus.INACTIVE) {
+  if (systemFeatures.license?.status === zLicenseStatus.enum.inactive) {
     return (
       <div className="mx-auto mt-8 w-full">
         <div className="relative">

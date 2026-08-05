@@ -17,7 +17,7 @@ import {
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ZENDESK_FIELD_IDS } from '@/config'
-import { deploymentEditionAtom } from '@/context/system-features-state'
+import { deploymentEditionAtom } from '@/features/system-features/state'
 import { fetchCurrentPlanInfo } from '@/service/billing'
 import { useModelListByType, useModelProviders } from '@/service/use-common'
 import { useEducationStatus } from '@/service/use-education'
