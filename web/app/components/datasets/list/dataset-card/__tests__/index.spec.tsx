@@ -383,7 +383,7 @@ describe('DatasetCard Component', () => {
 
     const card = screen.getByRole('button', { name: 'Preview Only Dataset' })
     expect(card).toHaveClass('opacity-60')
-    expect(card).toHaveAttribute('aria-disabled', 'true')
+    expect(card).not.toHaveAttribute('aria-disabled')
     expect(screen.getByText('Preview Only Dataset')).toBeInTheDocument()
     const tagArea = screen.getByTestId('tag-area')
     expect(tagArea).toHaveAttribute('data-can-bind-or-unbind-tags', 'false')
