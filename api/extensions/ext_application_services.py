@@ -10,7 +10,7 @@ from core.db.session_factory import get_session_maker
 from repositories.workspace_member_query_repository import WorkspaceMemberQueryRepository
 from repositories.workspace_query_repository import WorkspaceQueryRepository
 from services.workspace_member_query_service import WorkspaceMemberQueryService
-from services.workspace_member_role_resolver import CompatibleWorkspaceMemberRoleResolver
+from services.workspace_member_role_resolver import DeploymentWorkspaceMemberRoleResolver
 from services.workspace_query_compat import LegacyWorkspacePlanGateway
 from services.workspace_query_service import WorkspaceQueryService
 
@@ -38,7 +38,7 @@ def build_application_services(
             members=WorkspaceMemberQueryRepository(
                 session_factory=database_client,
             ),
-            roles=CompatibleWorkspaceMemberRoleResolver(),
+            roles=DeploymentWorkspaceMemberRoleResolver(),
         ),
     )
 

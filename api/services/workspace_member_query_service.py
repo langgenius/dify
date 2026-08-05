@@ -7,10 +7,6 @@ from typing import NamedTuple, Protocol
 from machinery.context import RequestContext
 
 
-class CurrentWorkspaceRequiredError(ValueError):
-    """Raised when a current-workspace use case has no active workspace."""
-
-
 class WorkspaceMemberRole(NamedTuple):
     id: str
     name: str
@@ -72,7 +68,7 @@ class WorkspaceMemberQueryService:
     def list_current(self, context: RequestContext) -> tuple[WorkspaceMemberSummary, ...]:
         workspace_id = context.active_workspace_id
         if workspace_id is None:
-            raise CurrentWorkspaceRequiredError("No current tenant")
+            raise RuntimeError("Console account admission did not resolve an active workspace")
 
         records = tuple(self._members.list_for_workspace(workspace_id))
         role_subjects = tuple(

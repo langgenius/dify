@@ -12,7 +12,7 @@ from services.workspace_member_query_service import (
 )
 
 
-class CompatibleWorkspaceMemberRoleResolver(WorkspaceMemberRoleResolver):
+class DeploymentWorkspaceMemberRoleResolver(WorkspaceMemberRoleResolver):
     """Preserve deployment-specific legacy and enterprise role behavior."""
 
     @override

@@ -5,7 +5,6 @@ import pytest
 
 from machinery.context import RequestContext
 from services.workspace_member_query_service import (
-    CurrentWorkspaceRequiredError,
     WorkspaceMemberQueryService,
     WorkspaceMemberRecord,
     WorkspaceMemberRole,
@@ -136,7 +135,7 @@ def test_list_current_rejects_missing_workspace_before_calling_ports() -> None:
     roles = RecordingRoleResolver({})
     service = WorkspaceMemberQueryService(members=members, roles=roles)
 
-    with pytest.raises(CurrentWorkspaceRequiredError, match="No current tenant"):
+    with pytest.raises(RuntimeError, match="Console account admission did not resolve an active workspace"):
         service.list_current(make_context(workspace_id=None))
 
     assert members.workspace_ids == []

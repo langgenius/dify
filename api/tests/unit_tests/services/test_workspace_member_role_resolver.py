@@ -39,7 +39,7 @@ def test_legacy_mode_projects_join_roles_without_enterprise_call(
     owner = make_subject("owner", legacy_role="owner")
     member = make_subject("member")
 
-    result = workspace_member_role_resolver.CompatibleWorkspaceMemberRoleResolver().resolve_many(
+    result = workspace_member_role_resolver.DeploymentWorkspaceMemberRoleResolver().resolve_many(
         "workspace-1",
         "actor-1",
         [owner, member],
@@ -77,7 +77,7 @@ def test_rbac_mode_maps_batch_response_without_legacy_fallback(
         )
     ]
 
-    result = workspace_member_role_resolver.CompatibleWorkspaceMemberRoleResolver().resolve_many(
+    result = workspace_member_role_resolver.DeploymentWorkspaceMemberRoleResolver().resolve_many(
         "workspace-1",
         "actor-1",
         [owner, omitted],
@@ -101,7 +101,7 @@ def test_rbac_failure_propagates(
     batch_get.side_effect = RoleResolutionError("enterprise unavailable")
 
     with pytest.raises(RoleResolutionError, match="enterprise unavailable"):
-        workspace_member_role_resolver.CompatibleWorkspaceMemberRoleResolver().resolve_many(
+        workspace_member_role_resolver.DeploymentWorkspaceMemberRoleResolver().resolve_many(
             "workspace-1",
             "actor-1",
             [make_subject("member-1")],
@@ -114,7 +114,7 @@ def test_empty_member_list_skips_enterprise_call(
 ) -> None:
     configure_rbac(monkeypatch, enabled=True)
 
-    result = workspace_member_role_resolver.CompatibleWorkspaceMemberRoleResolver().resolve_many(
+    result = workspace_member_role_resolver.DeploymentWorkspaceMemberRoleResolver().resolve_many(
         "workspace-1",
         "actor-1",
         [],
