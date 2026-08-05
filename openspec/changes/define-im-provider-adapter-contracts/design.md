@@ -72,6 +72,8 @@ Directory 不再次接收 credentials、Provider client 或 generic integration 
 
 Basic Messaging 定义 `send_text`。Dynamic Card Messaging 定义 side-effect-free `assess`、`send_card` 和 exact-reference `replace_with_static`。Messaging 接收 `ProviderUserId`，不向 caller 暴露 destination ID、conversation state 或其他 Provider transport addressing。
 
+`send_card` 接收 Dify 侧预先生成的 nominal `CorrelationToken`。该 token 是 caller-owned opaque string；任一卡片交互 callback 都必须原样暴露同一个 token，使其可关联到 Dify interaction，adapter 不解释其内容。Provider-native action identity 继续区分具体按钮，`CorrelationToken` 不承担 action identity、Provider configuration 或 message location；后者仍由 `MessageReference` 表达。共享 contract 不规定 concrete adapter 使用 card-level metadata、action-level data、encoding 或 external lookup 实现该语义。
+
 Card assessment 对完整 `NormalizedCardIntent` 做整体 representability judgment。它不能忽略不支持的 input 并报告 partial success。初始 card-capable Providers 对包含 `FILE` 或 `FILE_LIST` 的 intent 返回 not representable。Caller 不得把 assessment 判定为不可表示的 intent 传给 `send_card`；如果仍然传入，`send_card` 必须在创建 Provider message 之前抛出 `DynamicCardMessagingError`。
 
 一次 send invocation 对目标 message creation 至多尝试一次；一次 `replace_with_static` invocation 对目标 replacement 至多尝试一次。只有获得 confirmed Provider acceptance 才返回 success；明确拒绝或无法确认 acceptance 都返回统一的 `MessageSendingError`，caller 不能据此推断 Provider 是否接受了消息。结果不确定时不自动 replay。成功只表示 Provider acceptance，并返回能够定位该 Provider message 的 discriminated exact reference，不表示 end-user delivery。`replace_with_static` 成功返回 `None`；失败返回携带 `ReplacementErrorKind` 的 `ReplacementError`。
@@ -80,17 +82,21 @@ Card assessment 对完整 `NormalizedCardIntent` 做整体 representability judg
 
 `IMEventConsumer.accept()` 返回 `ACCEPTED` 或 `NOT_ACCEPTED`。当 Provider protocol 暴露由 adapter 控制的 acknowledgement decision 时，`ACCEPTED` 必须映射为 successful ACK，`NOT_ACCEPTED` 则不得映射为 successful ACK。同一个 consumer 可以被多个 Webhook calls 或 STREAM instances 并发调用，因此必须 thread-safe；其 processing、persistence、queueing 和 duplicate handling 不属于 Provider contract。
 
+Webhook framework input 与 STREAM SDK callback value 在调用 consumer 前都由 concrete adapter 转换为 serialized Provider payload，但两种 transport 分别定义其 payload 来源。
+
 `IMWebhookHandler.handle()` 使用 framework-neutral request/response values，支持同一 handler 上的 concurrent calls，也可以与 root operations 或 root close overlap。Root close 不使已经创建的 Webhook handler 失效。
 
 每个 `IMEventStream` instance 至多启动一次 blocking `run(signal)` lifecycle。`StopSignal.stop_requested` 变为 true 后，event stream 不再建立或重连 Provider connection，释放该 instance 拥有的资源，并等待所有 in-flight consumer calls 完成；`run()` 返回后不得再启动新的 consumer call。第二次调用 `run()` 必须抛出 `IMStreamRunError`。每次 `create_stream_handler(consumer)` 返回独立 instance，root close 不替代 instance 自身的 lifecycle management。Contract 不规定内部 state representation、atomic primitive、callback model 或 reconnect algorithm。
 
 ### 7. AuthenticatedIMEvent carries Provider evidence, not business state
 
-`AuthenticatedIMEvent` 包含 Provider、stable Provider tenant ID、optional real Provider event ID、optional Provider event time、local receive time、immutable decrypted Provider-native payload，以及 optional Provider event-type discriminator。
+`AuthenticatedIMEvent` 包含 Provider、stable Provider tenant ID、optional real Provider event ID、optional Provider event time、local receive time、transport-specific Provider payload 的 immutable JSON-encoded snapshot，以及 optional Provider event-type discriminator。
 
-Transport secret、encrypted envelope、HTTP response、ACK handle、connection object、SDK client、persistence ID 和 consumer state 不进入该 model。只有 Provider 明确提供且能确认其 redelivery stability 的 event ID 才能保留；contract 不从 payload hash、timestamp 或 transport envelope 合成 ID。
+对 Webhook，payload 是 successful authentication 和 applicable decryption 后，从 Provider HTTP request body 得到的完整 decoded JSON object 的 serialization。Adapter 保留 decoded JSON data model 的全部 object members、array elements、scalar values 和 nulls，不做 consumer-specific transformation。Provider 使用 encrypted envelope 时，payload 表示 decrypted plaintext JSON object，而不是外层 encrypted envelope。该 contract 不保留 original body bytes、object-member order、whitespace 或其他 lexical JSON representation。
 
-Provider-native payload 的 business decoding 由独立 consumer 完成。
+对 STREAM，payload 是 Provider SDK 交给 event callback 的完整 native event value 的 JSON serialization。Adapter 使用 Provider SDK 支持的 serialization，并保留该 serialization 暴露的全部 fields 和 values，不做 consumer-specific transformation。共享 contract 不要求保留 original STREAM wire bytes 或 Provider SDK 未暴露的字段，也不保证 Webhook 与 STREAM 生成 byte-for-byte identical JSON。
+
+Concrete adapter 只负责 authentication、applicable decryption、control-message handling 和 transport-specific Provider payload serialization。Adapter-owned transport credential、signature header、raw encrypted envelope、HTTP response state、connection state、control frame、ACK handle、Provider client、persistence ID 和 consumer state 不得加入该 model；但 Provider payload 自身已有的 fields 不得因此被删除。只有 Provider 明确提供且能确认其 redelivery stability 的 event ID 才能保留；contract 不从 payload hash、timestamp 或 transport envelope 合成 ID。Serialized Provider payload 的 business decoding 由独立 consumer 完成。
 
 ### 8. Failure contracts remain capability-scoped
 
@@ -110,7 +116,7 @@ Evidence matrix 不规定 concrete adapter 使用哪个 SDK、怎样组织 clien
 
 - [Interface contract leaves implementation freedom] → Future concrete adapters need black-box conformance tests, but they may choose SDK and resource strategies appropriate to each Provider.
 - [Externally serialized root adapters limit overlap] → Callers prevent overlapping and re-entrant adapter calls; created Webhook handlers and event streams retain independent concurrency and lifecycle contracts.
-- [Provider-native payload delays normalization] → This keeps Provider authentication separate from consumer-specific business decoding.
+- [Serialized Provider payload delays normalization] → This keeps Provider authentication and event capture separate from consumer-specific business decoding, at the cost of decoding the JSON snapshot at the consumer boundary.
 - [Capability absence can be ignored] → Required capabilities remain non-optional, while optional capability absence is explicit in the type surface.
 
 ## Migration Plan

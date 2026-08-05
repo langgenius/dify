@@ -33,8 +33,8 @@ The same `IMEventConsumer` MAY receive concurrent calls from Webhook handlers an
 - **WHEN** concurrent Webhook or STREAM deliveries invoke one event consumer
 - **THEN** the consumer MUST preserve its acceptance semantics under concurrent use
 
-### Requirement: AuthenticatedIMEvent MUST contain only authenticated Provider facts
-After successful authentication and applicable decryption, Webhook handlers and event streams MUST produce the same immutable `AuthenticatedIMEvent`. The event MUST contain Provider, stable Provider tenant ID, local receive time and decrypted Provider-native payload. Its real Provider event ID, Provider event type and Provider event time MUST each be optional and MUST be present only when the Provider supplies that fact with confirmed semantics.
+### Requirement: AuthenticatedIMEvent MUST contain only authenticated delivery facts
+After successful authentication and applicable decryption, Webhook handlers and event streams MUST produce values conforming to the same immutable `AuthenticatedIMEvent` contract. The event MUST contain Provider, stable Provider tenant ID, trusted local receive time and the transport-specific serialized Provider payload defined below. Its real Provider event ID, Provider event type and Provider event time MUST each be optional and MUST be present only when the Provider supplies that fact with confirmed semantics.
 
 #### Scenario: Inbound delivery is authenticated
 - **WHEN** a Webhook or STREAM delivery passes all applicable authentication and decryption checks
@@ -55,12 +55,28 @@ An event transport MUST preserve a Provider event ID only when authoritative Pro
 - **WHEN** an authenticated delivery has no confirmed stable Provider event ID
 - **THEN** `AuthenticatedIMEvent` MUST contain no event ID
 
-### Requirement: Provider event payload MUST remain independent from consumer schemas
-`AuthenticatedIMEvent` MUST retain the decrypted Provider-native JSON payload and MAY include a Provider-owned event-type discriminator. The Provider adapter contract MUST NOT expose a consumer-specific command, persistence record or business event in place of that payload.
+### Requirement: Serialized Provider payload MUST remain independent from consumer schemas
+For Webhook transports, `AuthenticatedIMEvent.payload` MUST be a string containing the JSON serialization of the complete JSON object obtained from the Provider HTTP request body after successful authentication and, when applicable, decryption. The adapter MUST preserve every field and value in the decoded JSON data model and MUST NOT perform consumer-specific transformation. If the Provider uses an encrypted envelope, `payload` MUST represent the decrypted plaintext JSON object rather than the outer encrypted envelope. This preservation requirement does not require retaining the original body bytes, object-member order, whitespace or other lexical JSON representation.
+
+For STREAM transports, `AuthenticatedIMEvent.payload` MUST be the complete JSON serialization of the native event value supplied by the Provider SDK to the event callback. The adapter MUST use the Provider SDK's supported serialization, preserve every field and value exposed by that serialization and MUST NOT perform consumer-specific transformation. The contract does not require preservation of original STREAM wire bytes or fields not exposed by the Provider SDK. Webhook and STREAM payloads are not required to be byte-for-byte identical.
+
+For both transports, the adapter MUST NOT replace the serialized Provider payload with a consumer-specific command, persistence record or business event.
 
 #### Scenario: Consumer needs a specialized event model
 - **WHEN** a consumer receives an `AuthenticatedIMEvent`
 - **THEN** consumer-specific interpretation MUST occur after the Provider adapter boundary
+
+#### Scenario: Webhook body contains a complete JSON data model
+- **WHEN** a successfully authenticated Webhook request yields a decoded Provider JSON object
+- **THEN** `AuthenticatedIMEvent.payload` MUST preserve every object member, array element, scalar value and null from that JSON object
+
+#### Scenario: Webhook body uses an encrypted envelope
+- **WHEN** a successfully authenticated Provider Webhook request contains an applicable encrypted envelope
+- **THEN** `AuthenticatedIMEvent.payload` MUST serialize the complete decrypted plaintext JSON object rather than the outer encrypted envelope
+
+#### Scenario: SDK callback contains Provider-defined envelope metadata
+- **WHEN** a Provider SDK supplies a serializable Python native value containing both event data and Provider-defined envelope metadata
+- **THEN** `AuthenticatedIMEvent.payload` MUST preserve every field and value exposed by the Provider SDK's supported serialization without requiring a business-field projection
 
 ### Requirement: WebhookRequest and WebhookResponse MUST be framework-neutral
 `WebhookRequest` MUST carry the uppercase HTTP method, ordered headers with duplicates preserved, exact body bytes before decoding and trusted local receive time. `WebhookResponse` MUST carry status code, ordered response headers and exact response body bytes. Neither value MUST expose framework request or response objects.
@@ -119,9 +135,9 @@ A `StopSignal` MUST wrap a caller-owned stop source. Its `stop_requested` proper
 - **WHEN** the caller requests stop repeatedly through the same source
 - **THEN** `stop_requested` MUST remain true without creating a new termination lifecycle
 
-### Requirement: Transport lifecycle values MUST remain outside AuthenticatedIMEvent
-Transport credentials, signature headers, encrypted envelopes, HTTP response state, connection state, control frames, acknowledgement handles and Provider client objects MUST NOT appear in `AuthenticatedIMEvent`.
+### Requirement: Transport implementation context MUST remain outside AuthenticatedIMEvent
+An adapter MUST NOT augment `AuthenticatedIMEvent` with transport credentials, signature headers, raw encrypted envelopes, HTTP response state, connection state, control frames, acknowledgement handles, Provider client objects or other adapter-owned transport context not explicitly defined by the shared contract. This restriction MUST NOT remove fields already present in the decoded Webhook JSON object or exposed by the Provider SDK's supported STREAM serialization.
 
 #### Scenario: Authenticated event reaches the application consumer
 - **WHEN** a Webhook handler or event stream invokes `IMEventConsumer`
-- **THEN** the event MUST contain authenticated Provider facts and decrypted payload without transport lifecycle values
+- **THEN** the event MUST contain authenticated delivery facts and a serialized Provider payload without transport implementation context not defined by the shared contract

@@ -60,11 +60,16 @@ Dynamic Card Messaging MUST expose side-effect-free `assess(intent)`. `Normalize
 - **THEN** it MUST return not representable without filtering out that input
 
 ### Requirement: Dynamic Card Messaging MUST send one complete card
-Dynamic Card Messaging MUST expose `send_card(provider_user_id, intent, metadata)`. The operation MUST receive the same complete `NormalizedCardIntent` used by assessment. The caller MUST NOT invoke `send_card` when `assess(intent)` returns `representable=False`. If an unrepresentable intent is nevertheless passed, `send_card` MUST raise `DynamicCardMessagingError` before creating a Provider message. Metadata MUST be caller-owned immutable JSON used for later interaction correlation and MUST NOT be treated as Provider configuration or an adapter-issued reference. A card send failure MUST NOT implicitly send a text fallback or create a partial card.
+Dynamic Card Messaging MUST expose `send_card(provider_user_id, intent, correlation_token)`. The operation MUST receive the same complete `NormalizedCardIntent` used by assessment. The caller MUST NOT invoke `send_card` when `assess(intent)` returns `representable=False`. If an unrepresentable intent is nevertheless passed, `send_card` MUST raise `DynamicCardMessagingError` before creating a Provider message. `CorrelationToken` MUST be a caller-issued opaque string used only for later interaction correlation. Every interaction callback originating from the card MUST expose the supplied token unchanged, and the adapter MUST NOT interpret it. A card send failure MUST NOT implicitly send a text fallback or create a partial card.
 
 #### Scenario: Provider accepts a dynamic card
 - **WHEN** `send_card` is accepted by the Provider
 - **THEN** it MUST return `MessageAccepted` with an opaque `MessageReference`
+
+#### Scenario: A dynamic card contains multiple callback-capable actions
+- **WHEN** different callback-capable actions on a card are invoked
+- **THEN** every resulting callback MUST expose the same `CorrelationToken` supplied to `send_card`
+- **AND** each callback MUST preserve the identity of the invoked action
 
 #### Scenario: Card intent cannot be represented
 - **WHEN** `send_card` cannot preserve the complete input intent

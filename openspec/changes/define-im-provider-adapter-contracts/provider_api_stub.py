@@ -7,14 +7,13 @@ not imported by production code and deliberately contains no SDK behavior.
 from __future__ import annotations
 
 import threading
-from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Annotated, Literal, NewType, Protocol
 
 from core.human_input_v2.approval.form import FrozenFormDefinition
 from core.human_input_v2.entities import IMProvider
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, NaiveDatetime
+from pydantic import BaseModel, ConfigDict, Field, NaiveDatetime
 
 
 class _ResolvedIMIntegrationCredentials(BaseModel):
@@ -66,6 +65,11 @@ ProviderUserId = NewType("ProviderUserId", str)
 # Provider and tenant. References from different adapter types, Providers, or
 # tenants are not interchangeable.
 MessageReference = NewType("MessageReference", str)
+
+
+# Caller-issued opaque value exposed unchanged by interaction callbacks from
+# one dynamic card.
+CorrelationToken = NewType("CorrelationToken", str)
 
 
 class CredentialTestFailureKind(StrEnum):
@@ -251,7 +255,7 @@ class IMDynamicCardMessaging(Protocol):
         self,
         provider_user_id: ProviderUserId,
         intent: NormalizedCardIntent,
-        metadata: Mapping[str, JsonValue],
+        correlation_token: CorrelationToken,
     ) -> MessageSendingResult:
         """Send one complete dynamic card and return its opaque exact reference.
 
@@ -259,8 +263,8 @@ class IMDynamicCardMessaging(Protocol):
         raise a `DynamicCardMessagingError` exception, and must not downgrades to text implicitly
         or emits a partial card.
 
-        ``metadata`` is caller-owned immutable JSON embedded for later interaction
-        correlation. The adapter may encode it but must not reinterpret it.
+        Every interaction callback originating from the card must expose
+        ``correlation_token`` unchanged. The adapter must not interpret it.
         """
         ...
 
@@ -317,8 +321,7 @@ class AuthenticatedIMEvent:
     """Authenticated Provider evidence before consumer-specific decoding.
 
     Authentication, replay checks and decryption have completed before this
-    value is created. The payload remains Provider-native because the adapter
-    does not own card-submission or workflow schemas.
+    value is created.
 
     ``event_id`` is present only when Provider evidence confirms a stable ID
     across redelivery. The adapter must never synthesize it from payloads,
@@ -343,8 +346,21 @@ class AuthenticatedIMEvent:
     # Trusted local time at which Dify received the delivery.
     received_at: NaiveDatetime
 
-    # Immutable decrypted Provider-native JSON for independent consumers.
-    payload: Mapping[str, JsonValue]
+    # For Webhook transports, the JSON serialization of the complete JSON object
+    # obtained from the Provider HTTP request body after authentication and
+    # applicable decryption. It preserves the entire decoded JSON data model
+    # without consumer-specific transformation. For an encrypted envelope, this
+    # is the decrypted plaintext object rather than the outer envelope.
+    #
+    # For STREAM transports, the complete JSON serialization of the native event
+    # value supplied to the callback by the Provider SDK. It preserves every
+    # field and value exposed by the SDK's supported serialization without
+    # consumer-specific transformation.
+    #
+    # Original wire bytes and byte-for-byte equality between Webhook and STREAM
+    # payloads are not guaranteed. STREAM payloads do not preserve fields that
+    # the Provider SDK does not expose.
+    payload: str
 
 
 class EventAcceptance(StrEnum):
