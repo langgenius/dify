@@ -13,7 +13,7 @@
   "embedding.segmentLength": "طول قطعات",
   "embedding.segments": "پاراگراف‌ها",
   "embedding.textCleaning": "پیش‌تعریف و تمیز کردن متن",
-  "embedding.vectorSpaceEstimateExceeded.description": "سند دریافت شد، اما مجموع فضای ذخیره‌سازی برداری تخمینی پس از بارگذاری {{estimated}} MB است و از سقف {{limit}} MB طرح فعلی شما بیشتر است؛ بنابراین هیچ برداری ثبت نشد. حجم فایل یا تعداد قطعه‌ها را کاهش دهید و دوباره تلاش کنید.",
+  "embedding.vectorSpaceEstimateExceeded.description": "سند دریافت شد، اما فضای ذخیره‌سازی تخمینی بردارها {{estimated}} MB است که از سقف {{limit}} MB طرح شما بیشتر است؛ بنابراین هیچ برداری ذخیره نشد. اگر سند دیگری در حال پردازش است یا پردازش آن به‌تازگی ناموفق بوده، بعداً دوباره تلاش کنید؛ در غیر این صورت، حجم فایل یا تعداد بخش‌ها را کاهش دهید.",
   "embedding.vectorSpaceEstimateExceeded.title": "فضای ذخیره‌سازی برداری تخمینی پس از بارگذاری از ظرفیت طرح شما بیشتر است",
   "embedding.waiting": "در حال انتظار برای جاسازی...",
   "list.action.addButton": "اضافه کردن قطعه",

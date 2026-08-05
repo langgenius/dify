@@ -13,7 +13,7 @@
   "embedding.segmentLength": "Panjang Potongan Maksimum",
   "embedding.segments": "Paragraf",
   "embedding.textCleaning": "Aturan Prapemrosesan Teks",
-  "embedding.vectorSpaceEstimateExceeded.description": "Dokumen telah diterima, tetapi perkiraan total penyimpanan vektor setelah diunggah adalah {{estimated}} MB, melebihi batas paket Anda saat ini sebesar {{limit}} MB, sehingga belum ada vektor yang ditulis. Kurangi ukuran file atau jumlah potongan, lalu coba lagi.",
+  "embedding.vectorSpaceEstimateExceeded.description": "Dokumen diterima, tetapi estimasi penyimpanan vektornya {{estimated}} MB, melebihi batas paket Anda sebesar {{limit}} MB, sehingga tidak ada vektor yang ditulis. Jika dokumen lain sedang diproses atau baru saja gagal, coba lagi nanti; jika tidak, kurangi ukuran file atau jumlah chunk.",
   "embedding.vectorSpaceEstimateExceeded.title": "Perkiraan penyimpanan vektor setelah diunggah melebihi kapasitas paket Anda",
   "embedding.waiting": "Menunggu embedding...",
   "list.action.addButton": "Tambahkan potongan",
