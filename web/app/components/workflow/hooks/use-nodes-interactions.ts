@@ -1786,7 +1786,6 @@ export const useNodesInteractions = () => {
       BlockEnum.Loop,
       BlockEnum.DataSource,
       BlockEnum.KnowledgeBase,
-      BlockEnum.HumanInput,
     ]
     // Same-canvas copy keeps the source container selected, so only treat a
     // selected container as the paste target when it is not part of the clipboard.
