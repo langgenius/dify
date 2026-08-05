@@ -15,7 +15,7 @@ Contract v1 covers:
 - cross-task parent-context coordination;
 - workflow and Agent App Human Input tracing.
 
-Nested Loop or Iteration containers are not a supported Dify topology and are outside contract v1. Adapters MUST NOT infer nested containment. Dify MUST extend Core topology semantics and conformance tests before a product release enables nested-container execution under unified tracing.
+Contract v1 accepts only the non-nested Loop and Iteration topology produced by supported Dify product paths. The tracing runtime does not detect, flatten, or warn about nested-container state that the product contract cannot produce. Before any supported producer may emit nested containers, Dify MUST revise Core topology semantics and conformance tests. Adapters MUST NOT infer nested containment.
 
 ## Ownership
 
@@ -44,11 +44,14 @@ For every canonical fragment:
 1. Span identifiers MUST be unique within the fragment.
 2. `root_span_id` MUST identify exactly one span in the fragment.
 3. The fragment root MUST have `parent_id=None`.
-4. A non-root local `parent_id`, when present, MUST identify an earlier span in the same fragment.
+4. Every non-root span MUST have a local `parent_id` that identifies an earlier span in the same fragment.
 5. Cross-task parentage MUST be represented by `external_parent` or `required_parent_context_id`, never by a local `parent_id` outside the fragment.
-6. Sibling serialization order MUST be deterministic and MUST NOT imply causality.
-7. An ambiguous, missing, or cyclic local workflow relationship MUST fall back conservatively to the workflow root.
-8. Adapters MUST consume the supplied order and relationships without reconstructing them.
+6. `external_parent` and `required_parent_context_id` MUST NOT both be present.
+7. Sibling serialization order MUST be deterministic and MUST NOT imply causality.
+8. An ambiguous, missing, or cyclic local workflow relationship MUST fall back conservatively to the workflow root.
+9. Adapters MUST consume the supplied order and relationships without reconstructing them.
+
+Core MUST reject a malformed canonical fragment as a terminal tracing failure. That failure MUST NOT change the workflow or Message business outcome.
 
 A workflow dispatch produces one fragment. A nested workflow produces a separate fragment with `external_parent`. A standalone Message child produces a separate root fragment with `required_parent_context_id` equal to the owning Message identifier.
 
@@ -137,12 +140,16 @@ An adapter's `emit` method receives one Core-resolved, parent-first fragment and
 - raise another exception for a terminal failure;
 - publish provider parent context only after acceptance of the corresponding parent span.
 
+Every registered adapter MUST accept every current `CanonicalSpanKind`. It MUST preserve the canonical kind in the reserved `dify.span.kind` metadata field. When `CanonicalSpan.links` is non-empty, the adapter MUST preserve those stable Dify logical identifiers in `dify.span.links`. Reserved canonical metadata MUST override conflicting caller metadata.
+
+Logical links do not contain provider-native trace and span context. A v1 adapter MUST NOT fabricate a provider-native link from a logical identifier. A future contract MAY add native links when Core supplies provider-resolvable link context; `dify.span.links` remains the cross-provider representation.
+
 For the v1 adapters:
 
-| Adapter | Synchronous acceptance boundary |
-|---|---|
-| Phoenix | exporter returns `SpanExportResult.SUCCESS` |
-| LangSmith | synchronous `create_run` returns normally |
+| Adapter | Human Wait mapping | Logical links | Provider identity and replay | Synchronous acceptance boundary |
+|---|---|---|---|---|
+| Phoenix | OpenInference `CHAIN` | `dify.span.links` metadata | OpenTelemetry identifiers may change on replay; `dify.span.id` preserves canonical identity | exporter returns `SpanExportResult.SUCCESS` |
+| LangSmith | `run_type="chain"` | `dify.span.links` metadata | run ID is derived deterministically from canonical identity, without an exactly-once guarantee | synchronous `create_run` returns normally |
 
 An adapter backed only by a local asynchronous SDK queue MUST provide a synchronous flush or acknowledgement boundary before it can conform to v1.
 

@@ -1,7 +1,8 @@
 # ADR-0001: Define a Provider-Neutral Unified Tracing Runtime
 
-- Status: Proposed
+- Status: Revised
 - Date: 2026-07-23
+- Revised: 2026-08-05
 
 ## Context
 
@@ -54,7 +55,7 @@ For the workflow topology currently supported by Dify:
 
 Persisted workflow and node execution identifiers are canonical identities. Synthetic wrapper identities are deterministically derived from wrapper kind, container execution identity, and iteration or loop index. Provider-native identities remain adapter concerns.
 
-Nested Loop or Iteration containers are outside the v1 product and tracing contract. Adapters must not infer nested containment. If Dify adds nested-container execution, Core topology semantics and conformance tests must be extended before unified tracing claims support; v1 does not add speculative runtime detection for topology the product cannot produce.
+Contract v1 accepts only the non-nested Loop and Iteration topology produced by supported Dify product paths. The tracing runtime does not detect, flatten, or warn about nested-container state that the product contract cannot produce. Before any supported producer may emit nested containers, Core topology semantics and conformance tests must be revised; adapters never infer nested containment.
 
 Standalone operations without a persisted execution identifier receive an additive operation identifier when their trace payload is first stored. New payloads reuse that canonical identity across delivery attempts. Older payloads without the field remain readable and retain the generated-identity fallback. Canonical, delivery-file, and provider-native identities remain distinct.
 
@@ -126,6 +127,19 @@ Parent-context envelopes are versioned and strictly validated. An unsupported en
 
 A registered unified adapter implements the complete current runtime contract. Its emission call returns only after its provider-specific synchronous acceptance step succeeds. Recoverable provider or transport failures use the Core retryable error contract; other failures are terminal. Parent context is published only after the corresponding provider parent span is accepted.
 
+Complete support includes every current canonical span kind. Human Input waits map to each provider's generic chain concept while retaining `dify.span.kind=human_wait`. Every canonical kind is preserved in `dify.span.kind`; non-empty logical links are preserved in `dify.span.links`. These reserved canonical values override conflicting caller metadata.
+
+Logical links contain stable Dify identifiers, not provider-native span context. Contract v1 therefore does not fabricate native provider links. Native links may be added later when Core can provide real provider-resolvable link context, while the logical metadata remains the cross-provider baseline.
+
+| Capability | Phoenix | LangSmith |
+|---|---|---|
+| Human Wait provider type | OpenInference `CHAIN` | `run_type="chain"` |
+| Canonical kind | `dify.span.kind` | `dify.span.kind` |
+| Logical links | `dify.span.links` metadata | `dify.span.links` metadata |
+| Provider identity | OpenTelemetry identifiers are not stable across replay; canonical ID is an attribute | provider run ID is derived deterministically from canonical ID |
+| Replay guarantee | duplicate effects are possible | stable ID does not imply exactly-once delivery |
+| Acceptance | exporter returns success | synchronous `create_run` returns |
+
 The existing trace task payload remains backwards compatible and canonical traces remain an in-process boundary, so contract v1 does not add versions to those structures. Unified mode is enabled only after all `ops_trace` workers support the current contract. A future incompatible serialized-payload change must add explicit versioning and deploy readers before writers.
 
 ## Supported Semantics
@@ -138,6 +152,8 @@ Maintainers and provider adapters may rely on these invariants:
 - ambiguous and cyclic persisted relationships are handled conservatively and deterministically;
 - workflow-owned human waits prefer exact node execution identity and only fall back to static-node matching for legacy records;
 - every local parent belongs to the same fragment and appears before its child; cross-task parentage is resolved explicitly by Core;
+- every fragment has exactly one local root, and its two trace-level external-parent modes are mutually exclusive;
+- every registered adapter preserves all canonical kinds and logical links through the contract's reserved metadata;
 - standalone operation identity remains stable across retries when the additive persisted identifier is present, while older payloads remain readable;
 - a Workflow or Chatflow pause never exports a partial final trace; restored tracing state accumulates until one terminal workflow outcome;
 - a global-timeout pause snapshot remains authoritative until its durable final payload is accepted for asynchronous dispatch;
