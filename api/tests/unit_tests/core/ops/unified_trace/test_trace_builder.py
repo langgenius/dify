@@ -7,9 +7,18 @@ from uuid import UUID
 
 import pytest
 
-from core.ops.entities.trace_entity import GenerateNameTraceInfo, MessageTraceInfo, WorkflowTraceInfo
+from core.ops.entities.trace_entity import (
+    BaseTraceInfo,
+    DatasetRetrievalTraceInfo,
+    GenerateNameTraceInfo,
+    MessageTraceInfo,
+    ModerationTraceInfo,
+    SuggestedQuestionTraceInfo,
+    ToolTraceInfo,
+    WorkflowTraceInfo,
+)
 from core.ops.unified_trace.agent_events import AgentRunTraceFragment, AgentTraceOperation
-from core.ops.unified_trace.entities import CanonicalSpanKind, CanonicalSpanStatus
+from core.ops.unified_trace.entities import CanonicalSpanKind, CanonicalSpanStatus, CanonicalTrace
 from core.ops.unified_trace.human_wait import HumanWaitRecord
 from core.ops.unified_trace.trace_builder import (
     CanonicalTraceBuilder,
@@ -588,7 +597,73 @@ def test_generate_name_uses_message_parent_and_conversation_session() -> None:
     assert trace.trace_id == "message-1"
     assert trace.session_id == "conversation-1"
     assert trace.required_parent_context_id == "message-1"
-    assert trace.spans[0].parent_id == "message-1"
+    assert trace.spans[0].parent_id is None
+
+
+@pytest.mark.parametrize(
+    "info",
+    [
+        ModerationTraceInfo(
+            message_id="message-1",
+            message_data=SimpleNamespace(id="message-1"),
+            flagged=False,
+            action="direct_output",
+            preset_response="",
+            query="hello",
+            metadata={},
+        ),
+        SuggestedQuestionTraceInfo(
+            message_id="message-1",
+            message_data=SimpleNamespace(id="message-1"),
+            total_tokens=1,
+            suggested_question=["next"],
+            level="info",
+            metadata={},
+        ),
+        DatasetRetrievalTraceInfo(
+            message_id="message-1",
+            message_data=SimpleNamespace(id="message-1"),
+            documents=[],
+            metadata={},
+        ),
+        ToolTraceInfo(
+            message_id="message-1",
+            tool_name="search",
+            tool_inputs={},
+            tool_outputs="done",
+            tool_config={},
+            time_cost=0.1,
+            tool_parameters={},
+            metadata={},
+        ),
+        GenerateNameTraceInfo(
+            tenant_id="tenant-1",
+            conversation_id="conversation-1",
+            message_id="message-1",
+            metadata={},
+        ),
+    ],
+)
+def test_standalone_message_child_uses_explicit_required_parent(info: BaseTraceInfo) -> None:
+    trace = CanonicalTraceBuilder(lambda _info: []).build(info)
+
+    assert trace is not None
+    assert trace.spans[0].parent_id is None
+    assert trace.required_parent_context_id == "message-1"
+    assert_fragment_is_parent_first(trace)
+
+
+def assert_fragment_is_parent_first(trace: CanonicalTrace) -> None:
+    seen: set[str] = set()
+    ids = [span.id for span in trace.spans]
+    assert len(ids) == len(set(ids))
+    assert trace.root_span_id in ids
+    for span in trace.spans:
+        if span.id == trace.root_span_id:
+            assert span.parent_id is None
+        elif span.parent_id is not None:
+            assert span.parent_id in seen
+        seen.add(span.id)
 
 
 def test_generate_name_without_message_remains_root_in_conversation_session() -> None:

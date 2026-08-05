@@ -431,16 +431,15 @@ class CanonicalTraceBuilder:
         error: str | None = None,
         start_time: datetime | None = None,
         end_time: datetime | None = None,
-        parent_id: str | None = None,
+        parent_context_id: str | None = None,
         span_id: str | None = None,
         session_id: str | None = None,
-        required_parent_context_id: str | None = None,
     ) -> CanonicalTrace:
         operation_id = span_id or trace_info.operation_id or str(uuid4())
-        trace_id = trace_info.resolved_trace_id or parent_id or operation_id
+        trace_id = trace_info.resolved_trace_id or parent_context_id or operation_id
         span = CanonicalSpan(
             id=operation_id,
-            parent_id=parent_id,
+            parent_id=None,
             name=name,
             kind=kind,
             start_time=_started_at(start_time or trace_info.start_time),
@@ -456,7 +455,7 @@ class CanonicalTraceBuilder:
             session_id=session_id if session_id is not None else _single_session_id(trace_info),
             root_span_id=operation_id,
             spans=(span,),
-            required_parent_context_id=required_parent_context_id,
+            required_parent_context_id=parent_context_id,
         )
 
     def _build_message(self, trace_info: MessageTraceInfo) -> CanonicalTrace | None:
@@ -579,7 +578,7 @@ class CanonicalTraceBuilder:
             kind=CanonicalSpanKind.TOOL,
             inputs=trace_info.inputs,
             outputs={"action": trace_info.action, "flagged": trace_info.flagged},
-            parent_id=trace_info.message_id,
+            parent_context_id=trace_info.message_id,
         )
 
     def _build_suggested_question(self, trace_info: SuggestedQuestionTraceInfo) -> CanonicalTrace | None:
@@ -592,7 +591,7 @@ class CanonicalTraceBuilder:
             inputs=trace_info.inputs,
             outputs=trace_info.suggested_question,
             error=trace_info.error,
-            parent_id=trace_info.message_id,
+            parent_context_id=trace_info.message_id,
         )
 
     def _build_dataset_retrieval(self, trace_info: DatasetRetrievalTraceInfo) -> CanonicalTrace | None:
@@ -605,7 +604,7 @@ class CanonicalTraceBuilder:
             inputs=trace_info.inputs,
             outputs={"documents": trace_info.documents},
             error=trace_info.error,
-            parent_id=trace_info.message_id,
+            parent_context_id=trace_info.message_id,
         )
 
     def _build_tool(self, trace_info: ToolTraceInfo) -> CanonicalTrace:
@@ -616,7 +615,7 @@ class CanonicalTraceBuilder:
             inputs=trace_info.tool_inputs,
             outputs=trace_info.tool_outputs,
             error=trace_info.error,
-            parent_id=trace_info.message_id,
+            parent_context_id=trace_info.message_id,
         )
 
     def _build_generate_name(self, trace_info: GenerateNameTraceInfo) -> CanonicalTrace:
@@ -626,7 +625,6 @@ class CanonicalTraceBuilder:
             kind=CanonicalSpanKind.TOOL,
             inputs=trace_info.inputs,
             outputs=trace_info.outputs,
-            parent_id=trace_info.message_id,
+            parent_context_id=trace_info.message_id,
             session_id=_single_session_id(trace_info) or trace_info.conversation_id or "",
-            required_parent_context_id=trace_info.message_id,
         )

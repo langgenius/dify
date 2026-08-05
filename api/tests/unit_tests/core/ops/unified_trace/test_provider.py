@@ -84,10 +84,13 @@ def test_runtime_resolves_nested_parent_before_emission() -> None:
 def test_runtime_resolves_required_message_parent_before_emission() -> None:
     runtime, _, adapter, coordinator = make_runtime(canonical_trace(required_parent_context_id="message-1"))
     resolution = ParentResolution.restored(MagicMock())
-    coordinator.resolve_required.return_value = resolution
+    events: list[str] = []
+    coordinator.resolve_required.side_effect = lambda *_args, **_kwargs: events.append("resolve") or resolution
+    adapter.emit.side_effect = lambda *_args: events.append("emit")
 
     runtime.trace(MagicMock())
 
+    assert events == ["resolve", "emit"]
     coordinator.resolve_required.assert_called_once_with(
         "message-1",
         expected_provider="langsmith",
