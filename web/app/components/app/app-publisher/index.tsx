@@ -1,3 +1,4 @@
+import type { QueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import type { ModelAndParameter } from '../configuration/debug/types'
 import type {
@@ -15,6 +16,10 @@ import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { use, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import {
+  appWorkflowVersionsInfiniteQueryOptions,
+  latestPublishedWorkflowQueryOptions,
+} from '@/app/components/app/deploy/state'
 import { WorkflowLaunchDialog } from '@/app/components/app/overview/app-card-sections'
 import {
   buildWorkflowLaunchUrl,
@@ -112,6 +117,18 @@ type AppPublisherPublishHandler =
   | ((params?: unknown) => Promise<unknown> | unknown)
 
 type AppPublisherRestoreHandler = () => Promise<unknown> | unknown
+
+function refreshAppDeploymentWorkflowVersions(queryClient: QueryClient, appId: string) {
+  const latestPublishedWorkflowQuery = latestPublishedWorkflowQueryOptions(appId)
+  const workflowVersionsQuery = appWorkflowVersionsInfiniteQueryOptions(appId)
+
+  void Promise.all([
+    queryClient.invalidateQueries({ queryKey: latestPublishedWorkflowQuery.queryKey }),
+    queryClient.invalidateQueries({ queryKey: workflowVersionsQuery.queryKey }),
+  ]).catch((error) => {
+    console.warn('[app-publisher] refresh deployment workflow versions failed', error)
+  })
+}
 
 export function AppPublisher(props: AppPublisherProps) {
   const [open, setOpen] = useAtom(appPublisherOpenAtom)
@@ -276,8 +293,10 @@ function AppPublisherContent({
 
       const appId = appDetail?.id
       const socket = appId ? webSocketClient.getSocket(appId) : null
-      if (appId) invalidateAppWorkflow(appId)
-      else console.warn('[app-publisher] missing appId, skip workflow invalidate and socket emit')
+      if (appId) {
+        invalidateAppWorkflow(appId)
+        if (supportsMultiEnvironment) refreshAppDeploymentWorkflowVersions(queryClient, appId)
+      } else console.warn('[app-publisher] missing appId, skip workflow invalidate and socket emit')
       if (socket) {
         const timestamp = Date.now()
         socket.emit('collaboration_event', {
@@ -423,6 +442,7 @@ function AppPublisherContent({
     const unsubscribe = collaborationManager.onAppPublishUpdate((update: CollaborationUpdate) => {
       const action = typeof update.data.action === 'string' ? update.data.action : undefined
       if (action === 'published') {
+        if (supportsMultiEnvironment) refreshAppDeploymentWorkflowVersions(queryClient, appId)
         void queryClient
           .fetchQuery(appWorkflowQueryOptions(appId))
           .then((publishedWorkflow) => {
@@ -435,7 +455,7 @@ function AppPublisherContent({
     })
 
     return unsubscribe
-  }, [appDetail?.id, queryClient, workflowStore])
+  }, [appDetail?.id, queryClient, supportsMultiEnvironment, workflowStore])
 
   const workflowToolVisible =
     appDetail?.mode === AppModeEnum.WORKFLOW && !hasHumanInputNode && !hasTriggerNode

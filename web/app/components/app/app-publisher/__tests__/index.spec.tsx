@@ -6,6 +6,10 @@ import {
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
+import {
+  appWorkflowVersionsInfiniteQueryOptions,
+  latestPublishedWorkflowQueryOptions,
+} from '@/app/components/app/deploy/state'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { AccessMode } from '@/models/access-control'
 import { consoleQuery } from '@/service/client'
@@ -319,6 +323,73 @@ describe('AppPublisher', () => {
         }),
       )
     })
+  })
+
+  it('should refresh deployment workflow versions after publishing when multi-environment deployment is available', async () => {
+    const user = userEvent.setup()
+    const queryClient = createConsoleQueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    mockAppDetail = {
+      ...mockAppDetail,
+      mode: AppModeEnum.WORKFLOW,
+      permission_keys: [AppACLPermission.Deploy],
+    }
+    mockOnPublish.mockResolvedValue(undefined)
+    const environmentsQuery =
+      consoleQuery.enterprise.appDeploy.deploymentService.listAppEnvironments.queryOptions({
+        enabled: true,
+        input: {
+          params: {
+            app_id: 'app-1',
+          },
+        },
+      })
+    queryClient.setQueryDefaults(environmentsQuery.queryKey, { staleTime: Infinity })
+    queryClient.setQueryData(environmentsQuery.queryKey, { data: [] })
+
+    renderWithConsoleQuery(
+      <AppPublisher hasUnpublishedChanges publishedAt={Date.now()} onPublish={mockOnPublish} />,
+      { queryClient },
+    )
+
+    await user.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
+    await user.click(screen.getByText('publisher-summary-publish'))
+
+    const latestPublishedWorkflowQuery = latestPublishedWorkflowQueryOptions('app-1')
+    const workflowVersionsQuery = appWorkflowVersionsInfiniteQueryOptions('app-1')
+    await waitFor(() => {
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: latestPublishedWorkflowQuery.queryKey,
+      })
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: workflowVersionsQuery.queryKey,
+      })
+    })
+  })
+
+  it('should not refresh deployment workflow versions after publishing without multi-environment deployment', async () => {
+    const user = userEvent.setup()
+    const queryClient = createConsoleQueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    mockAppDetail = {
+      ...mockAppDetail,
+      mode: AppModeEnum.WORKFLOW,
+      permission_keys: [],
+    }
+    mockOnPublish.mockResolvedValue(undefined)
+
+    renderWithConsoleQuery(
+      <AppPublisher hasUnpublishedChanges publishedAt={Date.now()} onPublish={mockOnPublish} />,
+      { queryClient },
+    )
+
+    await user.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
+    await user.click(screen.getByText('publisher-summary-publish'))
+
+    await waitFor(() => {
+      expect(mockOnPublish).toHaveBeenCalledTimes(1)
+    })
+    expect(invalidateQueries).not.toHaveBeenCalled()
   })
 
   it('should edit the current workflow version from the publish summary', () => {
