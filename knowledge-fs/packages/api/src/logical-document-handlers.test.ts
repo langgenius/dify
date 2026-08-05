@@ -413,6 +413,18 @@ describe("logical document handlers", () => {
     await expect(found.json()).resolves.toEqual(publicChunkFixture());
     await expectStatus(app.request(`${collectionPath}/${chunkId}`), 404);
 
+    const legacyChunk = { ...chunk, systemMetadata: { kind: "invalid", private: true } };
+    const legacyApp = handlerApp({
+      chunks: chunkRepository({ list: vi.fn(async () => ({ items: [legacyChunk] })) }),
+    });
+    const legacyResponse = await legacyApp.request(collectionPath);
+    expect(legacyResponse.status, await legacyResponse.clone().text()).toBe(200);
+    const legacyPayload = await legacyResponse.json();
+    expect(legacyPayload).toMatchObject({
+      items: [{ kind: "chunk", sectionPath: [] }],
+    });
+    expect(JSON.stringify(legacyPayload)).not.toContain("private");
+
     await expectStatus(handlerApp().request(collectionPath), 404);
     const hidden = handlerApp({
       chunks: chunkRepository(),
@@ -986,7 +998,16 @@ function chunkFixture(): DocumentRevisionChunk {
     knowledgeSpaceId,
     ordinal: 0,
     parentChunkId: assetId,
-    systemMetadata: { private: true },
+    systemMetadata: {
+      kind: "chunk",
+      private: true,
+      sourceLocation: {
+        endOffset: 12,
+        pageNumber: 2,
+        sectionPath: ["Setup", "Requirements"],
+        startOffset: 0,
+      },
+    },
     tenantId,
     text: "Design chunk",
     tokenCount: 2,
@@ -996,7 +1017,11 @@ function chunkFixture(): DocumentRevisionChunk {
 
 function publicChunkFixture() {
   const { systemMetadata: _systemMetadata, tenantId: _tenantId, ...chunk } = chunkFixture();
-  return chunk;
+  return {
+    ...chunk,
+    kind: "chunk",
+    sectionPath: ["Setup", "Requirements"],
+  };
 }
 
 function chunkRepository(

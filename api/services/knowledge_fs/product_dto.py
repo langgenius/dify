@@ -1127,9 +1127,11 @@ class KnowledgeFSDocumentChunkResponse(ResponseModel):
     document_revision: int = Field(ge=1, validation_alias=AliasChoices("document_revision", "documentRevision"))
     enabled: bool
     id: str
+    kind: Literal["chunk", "section", "table", "image", "summary"] = "chunk"
     knowledge_space_id: str = Field(validation_alias=AliasChoices("knowledge_space_id", "knowledgeSpaceId"))
     ordinal: int = Field(ge=0)
     parent_chunk_id: str | None = Field(default=None, validation_alias=AliasChoices("parent_chunk_id", "parentChunkId"))
+    section_path: list[str] = Field(default_factory=list, validation_alias=AliasChoices("section_path", "sectionPath"))
     text: str
     token_count: int = Field(ge=0, validation_alias=AliasChoices("token_count", "tokenCount"))
     user_metadata: dict[str, object] = Field(validation_alias=AliasChoices("user_metadata", "userMetadata"))

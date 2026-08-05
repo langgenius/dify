@@ -7,10 +7,15 @@ import type {
 export type DocumentChunkTreeNode = {
   children: DocumentChunkTreeNode[]
   chunk: DocumentRevisionChunk
+  id: string
+  label: string
+  parentId?: string
+  targetChunkId: string
 }
 
 export type DocumentChunkTree = {
   byId: Map<string, DocumentChunkTreeNode>
+  chunksById: Map<string, DocumentRevisionChunk>
   roots: DocumentChunkTreeNode[]
 }
 
@@ -57,32 +62,76 @@ function cyclicChunkIds(chunksById: Map<string, DocumentRevisionChunk>) {
 export function buildDocumentChunkTree(chunks: DocumentRevisionChunk[]): DocumentChunkTree {
   const sortedChunks = [...chunks].sort(compareChunks)
   const chunksById = new Map(sortedChunks.map((chunk) => [chunk.id, chunk]))
-  const cycleIds = cyclicChunkIds(chunksById)
-  const byId = new Map<string, DocumentChunkTreeNode>(
-    sortedChunks.map((chunk) => [
-      chunk.id,
-      { children: [], chunk } satisfies DocumentChunkTreeNode,
-    ]),
-  )
+  const byId = new Map<string, DocumentChunkTreeNode>()
   const roots: DocumentChunkTreeNode[] = []
+  const sectionedChunkIds = new Set<string>()
 
   for (const chunk of sortedChunks) {
-    const node = byId.get(chunk.id)!
+    const sectionPath = chunk.sectionPath.map((segment) => segment.trim()).filter(Boolean)
+    if (!sectionPath.length) continue
+    sectionedChunkIds.add(chunk.id)
+    let parent: DocumentChunkTreeNode | undefined
+    for (let index = 0; index < sectionPath.length; index++) {
+      const path = sectionPath.slice(0, index + 1)
+      const id = sectionTreeNodeId(path)
+      let node = byId.get(id)
+      if (!node) {
+        node = {
+          children: [],
+          chunk,
+          id,
+          label: path.at(-1)!,
+          ...(parent ? { parentId: parent.id } : {}),
+          targetChunkId: chunk.id,
+        }
+        byId.set(id, node)
+        if (parent) parent.children.push(node)
+        else roots.push(node)
+      }
+      parent = node
+    }
+  }
+
+  const unsectionedChunks = sortedChunks.filter((chunk) => !sectionedChunkIds.has(chunk.id))
+  const unsectionedChunksById = new Map(unsectionedChunks.map((chunk) => [chunk.id, chunk]))
+  const cycleIds = cyclicChunkIds(unsectionedChunksById)
+  const fallbackByChunkId = new Map<string, DocumentChunkTreeNode>()
+  for (const chunk of unsectionedChunks) {
+    const node = {
+      children: [],
+      chunk,
+      id: chunk.id,
+      label: `#${chunk.ordinal}`,
+      targetChunkId: chunk.id,
+    } satisfies DocumentChunkTreeNode
+    fallbackByChunkId.set(chunk.id, node)
+    byId.set(node.id, node)
+  }
+
+  for (const chunk of unsectionedChunks) {
+    const node = fallbackByChunkId.get(chunk.id)!
     const parentId = chunk.parentChunkId
-    const parent = parentId ? byId.get(parentId) : undefined
+    const parent = parentId ? fallbackByChunkId.get(parentId) : undefined
     if (!parent || !parentId || cycleIds.has(chunk.id)) roots.push(node)
-    else parent.children.push(node)
+    else {
+      node.parentId = parent.id
+      parent.children.push(node)
+    }
   }
 
   for (const node of byId.values())
     node.children.sort((left, right) => compareChunks(left.chunk, right.chunk))
   roots.sort((left, right) => compareChunks(left.chunk, right.chunk))
-  return { byId, roots }
+  return { byId, chunksById, roots }
+}
+
+function sectionTreeNodeId(sectionPath: string[]) {
+  return `section:${encodeURIComponent(JSON.stringify(sectionPath))}`
 }
 
 export function visibleDocumentChunkNodes(
   roots: DocumentChunkTreeNode[],
-  expandedChunkIds: Set<string>,
+  expandedNodeIds: Set<string>,
 ) {
   const visible: Array<{
     depth: number
@@ -102,7 +151,7 @@ export function visibleDocumentChunkNodes(
     const item = pending.pop()!
     const { depth, node } = item
     visible.push(item)
-    if (!expandedChunkIds.has(node.chunk.id)) continue
+    if (!expandedNodeIds.has(node.id)) continue
     for (let index = node.children.length - 1; index >= 0; index--)
       pending.push({
         depth: depth + 1,
@@ -131,30 +180,23 @@ export function initialDocumentRevision(
     )
 }
 
-export function chunkTreeLabel(text: string, ordinal: number) {
-  const firstLine = cleanMarkdownHeading(text.split(/\r?\n/, 1)[0] ?? '')
-  if (!firstLine) return `#${ordinal}`
+export function chunkTreeLabel(label: string) {
+  const normalizedLabel = label.trim()
   const graphemes: string[] = []
   for (const { segment } of new Intl.Segmenter(undefined, {
     granularity: 'grapheme',
-  }).segment(firstLine)) {
+  }).segment(normalizedLabel)) {
     graphemes.push(segment)
     if (graphemes.length > 120) break
   }
-  return graphemes.length > 120 ? `${graphemes.slice(0, 119).join('')}…` : firstLine
+  return graphemes.length > 120 ? `${graphemes.slice(0, 119).join('')}…` : normalizedLabel
 }
 
-export function chunkContentParts(text: string) {
-  const lineBreak = text.search(/\r?\n/)
-  if (lineBreak < 0) return { body: '', heading: cleanMarkdownHeading(text) }
+export function chunkContentParts(chunk: DocumentRevisionChunk) {
   return {
-    body: text.slice(lineBreak).trimStart(),
-    heading: cleanMarkdownHeading(text.slice(0, lineBreak)),
+    body: chunk.text,
+    heading: chunk.sectionPath.at(-1)?.trim() ?? '',
   }
-}
-
-function cleanMarkdownHeading(text: string) {
-  return text.replace(/^\s{0,3}#{1,6}(?:\s+|$)/, '').trim()
 }
 
 export function chunkCharacterCount(text: string) {

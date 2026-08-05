@@ -12,6 +12,7 @@ import {
   initialDocumentRevision,
   visibleDocumentChunkNodes,
 } from '../document-detail-model'
+import { documentChunkListFromApi } from '../document-models'
 
 const chunk = (overrides: Partial<DocumentRevisionChunk>): DocumentRevisionChunk => ({
   createdAt: '2026-07-21T10:00:00Z',
@@ -19,8 +20,10 @@ const chunk = (overrides: Partial<DocumentRevisionChunk>): DocumentRevisionChunk
   documentRevision: 3,
   enabled: true,
   id: 'chunk-1',
+  kind: 'chunk',
   knowledgeSpaceId: 'space-1',
   ordinal: 1,
+  sectionPath: [],
   text: 'Chunk content',
   tokenCount: 2,
   userMetadata: {},
@@ -66,6 +69,60 @@ const revision = (value: number): Exclude<LogicalDocumentRevision, null> => ({
 })
 
 describe('document detail model', () => {
+  it('maps structured chunk metadata and remains compatible with legacy responses', () => {
+    const base = {
+      created_at: '2026-07-21T10:00:00Z',
+      document_id: 'document-1',
+      document_revision: 3,
+      enabled: true,
+      knowledge_space_id: 'space-1',
+      ordinal: 1,
+      text: 'Chunk content',
+      token_count: 2,
+      user_metadata: {},
+    }
+
+    const result = documentChunkListFromApi({
+      data: [
+        {
+          ...base,
+          id: 'structured',
+          kind: 'table',
+          section_path: ['Invoices', 'Tax breakdown'],
+        },
+        { ...base, id: 'legacy' },
+      ],
+    })
+
+    expect(result.items[0]).toMatchObject({
+      kind: 'table',
+      sectionPath: ['Invoices', 'Tax breakdown'],
+    })
+    expect(result.items[1]).toMatchObject({ kind: 'chunk', sectionPath: [] })
+  })
+
+  it('builds the chapter hierarchy from structured section paths instead of chunk text', () => {
+    const tree = buildDocumentChunkTree([
+      chunk({
+        id: 'tax-table',
+        ordinal: 3,
+        sectionPath: ['Invoices', 'Tax breakdown'],
+        text: 'A first line that is not a chapter title',
+      }),
+      chunk({
+        id: 'invoice-intro',
+        ordinal: 1,
+        sectionPath: ['Invoices'],
+        text: 'Body only',
+      }),
+    ])
+
+    expect(tree.roots.map((node) => node.label)).toEqual(['Invoices'])
+    expect(tree.roots[0]?.children.map((node) => node.label)).toEqual(['Tax breakdown'])
+    expect(tree.roots[0]?.targetChunkId).toBe('invoice-intro')
+    expect(tree.roots[0]?.children[0]?.targetChunkId).toBe('tax-table')
+  })
+
   it('builds a deterministic parent-child tree and keeps orphans visible', () => {
     const tree = buildDocumentChunkTree([
       chunk({ id: 'child-b', ordinal: 3, parentChunkId: 'parent' }),
@@ -167,26 +224,27 @@ describe('document detail model', () => {
     ])
   })
 
-  it('bounds tree labels to a single readable summary', () => {
-    expect(chunkTreeLabel('First line\nfull body', 3)).toBe('First line')
-    expect(chunkTreeLabel('## Markdown heading\nfull body', 3)).toBe('Markdown heading')
-    expect(chunkTreeLabel('  ', 3)).toBe('#3')
-    expect(chunkTreeLabel('x'.repeat(121), 3)).toBe(`${'x'.repeat(119)}…`)
-    expect(chunkTreeLabel(`${'x'.repeat(118)}👨‍👩‍👧‍👦yz`, 3)).toBe(`${'x'.repeat(118)}👨‍👩‍👧‍👦…`)
+  it('bounds explicit tree labels without reading chunk content', () => {
+    expect(chunkTreeLabel('  Tax breakdown  ')).toBe('Tax breakdown')
+    expect(chunkTreeLabel('x'.repeat(121))).toBe(`${'x'.repeat(119)}…`)
+    expect(chunkTreeLabel(`${'x'.repeat(118)}👨‍👩‍👧‍👦yz`)).toBe(`${'x'.repeat(118)}👨‍👩‍👧‍👦…`)
   })
 
-  it('separates multiline chunk headings without duplicating standalone content', () => {
-    expect(chunkContentParts('Setup requirements\n\nWorkspace contract details')).toEqual({
-      body: 'Workspace contract details',
+  it('uses structured headings and preserves the complete chunk text', () => {
+    expect(
+      chunkContentParts(
+        chunk({
+          sectionPath: ['Guide', 'Setup requirements'],
+          text: 'First source line\n\nWorkspace contract details',
+        }),
+      ),
+    ).toEqual({
+      body: 'First source line\n\nWorkspace contract details',
       heading: 'Setup requirements',
     })
-    expect(chunkContentParts('Standalone content')).toEqual({
-      body: '',
-      heading: 'Standalone content',
-    })
-    expect(chunkContentParts('### Setup requirements\nWorkspace contract details')).toEqual({
-      body: 'Workspace contract details',
-      heading: 'Setup requirements',
+    expect(chunkContentParts(chunk({ text: 'Standalone content' }))).toEqual({
+      body: 'Standalone content',
+      heading: '',
     })
   })
 })

@@ -15,6 +15,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSCatResponse,
     KnowledgeFSDiffQuery,
     KnowledgeFSDiffResponse,
+    KnowledgeFSDocumentChunkResponse,
     KnowledgeFSDocumentReindexPayload,
     KnowledgeFSFindQuery,
     KnowledgeFSGoldenQuestionPayload,
@@ -224,6 +225,45 @@ def test_space_list_item_converts_aware_database_timestamps_to_utc() -> None:
     )
 
     assert response.updated_at == datetime(2026, 7, 27, 22, 59, 16, tzinfo=UTC)
+
+
+def test_document_chunk_preserves_structured_section_metadata() -> None:
+    response = KnowledgeFSDocumentChunkResponse.model_validate(
+        {
+            "createdAt": "2026-07-21T10:00:00Z",
+            "documentId": "document-1",
+            "documentRevision": 3,
+            "enabled": True,
+            "id": "chunk-1",
+            "kind": "table",
+            "knowledgeSpaceId": "space-1",
+            "ordinal": 1,
+            "sectionPath": ["Invoices", "Tax breakdown"],
+            "text": "Tax table content",
+            "tokenCount": 3,
+            "userMetadata": {},
+        }
+    )
+
+    assert response.model_dump(mode="json")["kind"] == "table"
+    assert response.model_dump(mode="json")["section_path"] == ["Invoices", "Tax breakdown"]
+
+    legacy_response = KnowledgeFSDocumentChunkResponse.model_validate(
+        {
+            "createdAt": "2026-07-21T10:00:00Z",
+            "documentId": "document-1",
+            "documentRevision": 3,
+            "enabled": True,
+            "id": "chunk-1",
+            "knowledgeSpaceId": "space-1",
+            "ordinal": 1,
+            "text": "Legacy chunk",
+            "tokenCount": 2,
+            "userMetadata": {},
+        }
+    )
+    assert legacy_response.kind == "chunk"
+    assert legacy_response.section_path == []
 
 
 @pytest.mark.parametrize(

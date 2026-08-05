@@ -1,4 +1,5 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
+import { SourceLocationSchema } from "@knowledge/core";
 
 import {
   candidatePermissionAllowsAsset,
@@ -55,6 +56,7 @@ import {
   rollbackDocumentRevisionRoute,
   streamDocumentProcessingTaskRoute,
 } from "./logical-document-routes";
+import { DocumentRevisionChunkKindSchema } from "./logical-document-schemas";
 
 export interface DocumentRevisionRollbackCoordinator {
   request(input: {
@@ -1041,7 +1043,13 @@ function toPublicRevision(revision: DocumentRevision) {
 function toPublicChunk(chunk: Awaited<ReturnType<DocumentChunkRepository["get"]>> & {}) {
   if (!chunk) throw new Error("Chunk is required");
   const { systemMetadata: _systemMetadata, tenantId: _tenantId, ...publicChunk } = chunk;
-  return publicChunk;
+  const kind = DocumentRevisionChunkKindSchema.safeParse(chunk.systemMetadata.kind);
+  const sourceLocation = SourceLocationSchema.safeParse(chunk.systemMetadata.sourceLocation);
+  return {
+    ...publicChunk,
+    kind: kind.success ? kind.data : "chunk",
+    sectionPath: sourceLocation.success ? [...sourceLocation.data.sectionPath] : [],
+  };
 }
 
 function toPublicSettingsHead(head: DocumentSettingsHead) {

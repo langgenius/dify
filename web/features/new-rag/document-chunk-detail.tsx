@@ -123,7 +123,7 @@ export function DocumentChunkDetail({
             data-testid="chunk-content-scroll"
           >
             {chunks.map((chunk) => {
-              const content = chunkContentParts(chunk.text)
+              const content = chunkContentParts(chunk)
               const markerLabel = chunkMarkerLabels.get(chunk.id)
               return (
                 <section
