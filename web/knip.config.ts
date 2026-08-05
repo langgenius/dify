@@ -9,7 +9,7 @@ const config: KnipConfig = {
   },
   entry: [
     // todo: Keep the deploy drawer analyzed while the deployments routes are disabled. Delete this entry when relative files are deleted.
-    'features/deployments/deploy-drawer/index.tsx',
+    'features/deployments/deploy-drawer/index.tsx!',
     'scripts/**/*.{js,ts,mjs}',
     'bin/**/*.{js,ts,mjs}',
     'tsslint.config.ts',

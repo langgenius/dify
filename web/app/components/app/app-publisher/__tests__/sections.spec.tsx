@@ -20,15 +20,6 @@ vi.mock('../publish-with-multiple-model', () => ({
   ),
 }))
 
-vi.mock('@/app/components/tools/workflow-tool/configure-button', () => ({
-  default: (props: Record<string, unknown>) => (
-    <div>
-      workflow-tool-configure
-      <span>{String(props.disabledReason || '')}</span>
-    </div>
-  ),
-}))
-
 const createVersionInfo = (overrides: Partial<VersionHistory> = {}): VersionHistory => ({
   id: 'workflow-version-1',
   graph: {
