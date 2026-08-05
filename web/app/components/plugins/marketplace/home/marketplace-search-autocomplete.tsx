@@ -166,7 +166,6 @@ export function MarketplaceSearchAutocomplete({
           className="px-2 text-sm"
           placeholder={placeholder}
           size="large"
-          type="search"
         />
         {!!value && (
           <AutocompleteClear

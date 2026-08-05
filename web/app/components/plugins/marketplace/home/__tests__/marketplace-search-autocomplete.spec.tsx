@@ -119,6 +119,8 @@ describe('MarketplaceSearchAutocomplete', () => {
     expect(screen.getByText('Research legal questions with cited sources.')).toBeInTheDocument()
     expect(container.querySelector('form')).toHaveAttribute('action', '/templates/knowledge')
     expect(container.querySelector('input[role="combobox"]')).toHaveAttribute('name', 'q')
+    expect(container.querySelector('input[role="combobox"]')).toHaveAttribute('type', 'text')
+    expect(container.querySelectorAll('button[aria-label="clearSearch"]')).toHaveLength(1)
     expect(container.querySelector('input[type="hidden"]')).toHaveValue('en-US')
     expect(mockPluginSearch).not.toHaveBeenCalled()
   })
