@@ -46,13 +46,17 @@ For the workflow topology currently supported by Dify:
 
 - a predecessor becomes the parent only when its graph node identifies one execution unambiguously;
 - structured iteration or loop membership produces one deterministic synthetic wrapper per container execution and index;
-- the current contract covers non-nested Loop and Iteration containers;
+- contract v1 covers only the non-nested Loop and Iteration containers supported by the Dify product;
 - parallel-branch metadata does not create an additional parent relationship; persisted predecessor and containment relationships remain authoritative;
 - repeated graph node identifiers are treated as ambiguous rather than guessed;
 - cyclic parent edges are removed deterministically;
 - a span with an ambiguous, missing, or cyclic local relationship falls back to the workflow root.
 
 Persisted workflow and node execution identifiers are canonical identities. Synthetic wrapper identities are deterministically derived from wrapper kind, container execution identity, and iteration or loop index. Provider-native identities remain adapter concerns.
+
+Nested Loop or Iteration containers are outside the v1 product and tracing contract. Adapters must not infer nested containment. If Dify adds nested-container execution, Core topology semantics and conformance tests must be extended before unified tracing claims support; v1 does not add speculative runtime detection for topology the product cannot produce.
+
+Standalone operations without a persisted execution identifier receive an additive operation identifier when their trace payload is first stored. New payloads reuse that canonical identity across delivery attempts. Older payloads without the field remain readable and retain the generated-identity fallback. Canonical, delivery-file, and provider-native identities remain distinct.
 
 Workflow-owned Human Input forms may use the owning node execution identifier as their form identifier. When a human-wait identifier matches a canonical node execution span, Core uses that exact execution as the wait parent. Static graph node identifiers and timestamp proximity are only a compatibility fallback for older records without execution-scoped form identity. This prevents repeated executions of one Human Input node inside a supported Loop or Iteration container from being associated with the wrong container run.
 
@@ -83,6 +87,8 @@ Unified tracing is controlled by a global feature switch that defaults to disabl
 - an unregistered provider continues to use its legacy implementation.
 
 Selection occurs before constructing and dispatching a trace instance. A unified failure never falls back to legacy dispatch because tracing writes are non-transactional and fallback could duplicate spans or split one execution across traces.
+
+Each delivery attempt resolves the latest enabled mode, provider, destination, and credentials. Configuration is not frozen into the trace payload. One attempt uses exactly one selected runtime and destination; a change between attempts may route a whole-fragment replay to a different destination after an earlier destination observed partial effects.
 
 Unified and legacy runtimes use separate provider classes, registries, cache identities, mutable SDK clients, and parent-context namespaces. Existing provider configuration persistence and management APIs remain unchanged.
 
@@ -116,6 +122,12 @@ Temporary Agent-fragment cache retention is not workflow lifecycle authority. Th
 
 Parent-context envelopes are versioned and strictly validated. An unsupported envelope version fails closed rather than being guessed. Provider-specific restoration fields remain opaque to Core outside version, provider, destination, and structural validation. Partial per-span routing is not supported.
 
+### Adapter acceptance and contract evolution
+
+A registered unified adapter implements the complete current runtime contract. Its emission call returns only after its provider-specific synchronous acceptance step succeeds. Recoverable provider or transport failures use the Core retryable error contract; other failures are terminal. Parent context is published only after the corresponding provider parent span is accepted.
+
+The existing trace task payload remains backwards compatible and canonical traces remain an in-process boundary, so contract v1 does not add versions to those structures. Unified mode is enabled only after all `ops_trace` workers support the current contract. A future incompatible serialized-payload change must add explicit versioning and deploy readers before writers.
+
 ## Supported Semantics
 
 Maintainers and provider adapters may rely on these invariants:
@@ -125,6 +137,8 @@ Maintainers and provider adapters may rely on these invariants:
 - spans are supplied parent-first with deterministic, non-causal sibling ordering;
 - ambiguous and cyclic persisted relationships are handled conservatively and deterministically;
 - workflow-owned human waits prefer exact node execution identity and only fall back to static-node matching for legacy records;
+- every local parent belongs to the same fragment and appears before its child; cross-task parentage is resolved explicitly by Core;
+- standalone operation identity remains stable across retries when the additive persisted identifier is present, while older payloads remain readable;
 - a Workflow or Chatflow pause never exports a partial final trace; restored tracing state accumulates until one terminal workflow outcome;
 - a global-timeout pause snapshot remains authoritative until its durable final payload is accepted for asynchronous dispatch;
 - final-payload handoff recovery and provider export use separate bounded retry budgets;
@@ -135,6 +149,8 @@ Maintainers and provider adapters may rely on these invariants:
 - Agent App waits correlate two Message traces without creating a parent-child relationship across trace roots;
 - registered unified providers receive the same logical topology and normalized Dify semantics;
 - one dispatch attempt uses either the unified or legacy runtime, never both;
+- each attempt uses the latest configuration but fixes one runtime and destination for that attempt;
+- adapter return means its synchronous provider acceptance boundary succeeded;
 - unified dispatch does not fall back to legacy after failure;
 - compatible cross-task parents are restored from validated provider context;
 - incompatible tracing destinations remain separate roots with explicit Dify correlation metadata;
