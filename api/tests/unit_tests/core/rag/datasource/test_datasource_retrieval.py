@@ -158,11 +158,12 @@ class _SimpleRetrievalSegment:
 class TestRetrievalServiceInternals:
     @pytest.fixture
     def internal_dataset(self) -> Dataset:
-        dataset = Mock(spec=Dataset)
-        dataset.id = "dataset-id"
-        dataset.tenant_id = "tenant-id"
-        dataset.is_multimodal = False
-        dataset.doc_form = IndexStructureType.PARENT_CHILD_INDEX
+        dataset = Dataset(
+            id="dataset-id",
+            tenant_id="tenant-id",
+            is_multimodal=False,
+            chunk_structure=IndexStructureType.PARENT_CHILD_INDEX,
+        )
         return dataset
 
     @pytest.fixture
@@ -264,7 +265,7 @@ class TestRetrievalServiceInternals:
 
     @patch("core.rag.datasource.retrieval_service.Session")
     def test_get_dataset_queries_by_id(self, mock_session_class):
-        expected_dataset = Mock(spec=Dataset)
+        expected_dataset = Dataset()
         mock_session = Mock()
         mock_session.scalar.return_value = expected_dataset
         mock_session_class.return_value.__enter__.return_value = mock_session
