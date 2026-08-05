@@ -1193,6 +1193,13 @@ describe('consoleQuery tag mutation defaults', () => {
         },
       },
     })
+    const skillListKey = consoleQuery.tags.get.queryKey({
+      input: {
+        query: {
+          type: 'skill',
+        },
+      },
+    })
     const existingAppTag = createTag({ id: 'tag-1', name: 'Existing' })
     const existingKnowledgeTag = createTag({
       id: 'knowledge-tag-1',
@@ -1200,9 +1207,11 @@ describe('consoleQuery tag mutation defaults', () => {
       type: 'knowledge',
     })
     const createdTag = createTag({ id: 'tag-2', name: 'Created' })
+    const createdSkillTag = createTag({ id: 'skill-tag-1', name: 'Skill', type: 'skill' })
 
     queryClient.setQueryData(appListKey, [existingAppTag])
     queryClient.setQueryData(knowledgeListKey, [existingKnowledgeTag])
+    queryClient.setQueryData(skillListKey, [])
 
     const mutationOptions = consoleQuery.tags.post.mutationOptions()
     await mutationOptions.onSuccess?.(
@@ -1219,6 +1228,20 @@ describe('consoleQuery tag mutation defaults', () => {
 
     expect(queryClient.getQueryData(appListKey)).toEqual([createdTag, existingAppTag])
     expect(queryClient.getQueryData(knowledgeListKey)).toEqual([existingKnowledgeTag])
+
+    await mutationOptions.onSuccess?.(
+      createdSkillTag,
+      {
+        body: {
+          name: createdSkillTag.name,
+          type: 'skill',
+        },
+      },
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(queryClient.getQueryData(skillListKey)).toEqual([createdSkillTag])
   })
 
   it('should update matching tags across cached list queries', async () => {

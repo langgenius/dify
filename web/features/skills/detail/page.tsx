@@ -253,6 +253,9 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
           void queryClient.invalidateQueries({
             queryKey: consoleQuery.workspaces.current.skills.get.key({ type: 'query' }),
           })
+          void queryClient.invalidateQueries({
+            queryKey: consoleQuery.workspaces.current.skills.get.key({ type: 'infinite' }),
+          })
         },
         onError: () => {
           toast.error(t(($) => $['skillManagement.detail.publishFailed']))
@@ -287,6 +290,9 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
       })
       void queryClient.invalidateQueries({
         queryKey: consoleQuery.workspaces.current.skills.get.key({ type: 'query' }),
+      })
+      void queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.skills.get.key({ type: 'infinite' }),
       })
       toast.success(t(($) => $['skillManagement.detail.restoreVersionSuccess']))
       setSelectedVersionId(null)

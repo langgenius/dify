@@ -2433,6 +2433,21 @@ def test_import_skill_package_rejects_missing_frontmatter_description() -> None:
     assert exc_info.value.details == {"path": "SKILL.md", "field": "description", "line": 2}
 
 
+def test_import_skill_package_rejects_archive_larger_than_upload_skill_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("services.skill_management_service.dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT", 0)
+
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+
+    with pytest.raises(SkillManagementServiceError) as exc_info:
+        service.import_skill(
+            tenant_id=TENANT,
+            user_id=USER,
+            payload=SkillImportPayload(content=b"not-empty", filename="expense-sop.zip"),
+        )
+
+    assert exc_info.value.code == "archive_too_large"
+
+
 def test_publish_and_export_include_binary_tool_files() -> None:
     captured: dict[str, bytes] = {}
 
