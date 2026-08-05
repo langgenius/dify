@@ -11,6 +11,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/langgenius/dify/dify-agent-runtime/internal/jobmode"
 )
 
 // Service is the core job lifecycle manager backed by SQLite and tmux.
@@ -105,7 +107,9 @@ func (s *Service) StartBackgroundGC() {
 	}()
 }
 
-// StartBackgroundPipeMonitor starts the periodic pipe health check goroutine.
+// StartBackgroundPipeMonitor periodically reconciles mode-aware runtime state:
+// PTY pane pipe/drain state, and stdio session state plus completion
+// materialization from exit artifacts.
 func (s *Service) StartBackgroundPipeMonitor() {
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancelMon = cancel
@@ -194,6 +198,7 @@ func (s *Service) RunJob(req *RunJobRequest) (*JobResult, error) {
 		JobID:        jobID,
 		ScriptPath:   fmt.Sprintf("jobs/%s/script", jobID),
 		OutputPath:   fmt.Sprintf("jobs/%s/output.log", jobID),
+		Mode:         req.Mode,
 		Cwd:          cwd,
 		TerminalCols: cols,
 		TerminalRows: rows,
@@ -220,9 +225,10 @@ func (s *Service) RunJob(req *RunJobRequest) (*JobResult, error) {
 		Target:      StatusStarting,
 	})
 
-	// Create tmux session and enable output pipe
+	// Start the mode-specific runtime: PTY manages pane piping and drain, while
+	// stdio tracks the session and materializes completion from exit artifacts.
 	log.Printf("RunJob [%s]: starting job, cwd=%s", jobID, cwd)
-	startErr := s.startJob(jobID, jobDir, cwd, cols, rows)
+	startErr := s.startJob(jobID, jobDir, cwd, cols, rows, req.Mode)
 	if startErr != nil {
 		log.Printf("RunJob [%s]: start failed: %v", jobID, startErr)
 		reason := "start_failed"
@@ -251,24 +257,26 @@ func (s *Service) RunJob(req *RunJobRequest) (*JobResult, error) {
 	})
 }
 
-func (s *Service) startJob(jobID, jobDir, cwd string, cols, rows int) error {
+func (s *Service) startJob(jobID, jobDir, cwd string, cols, rows int, mode jobmode.Mode) error {
 	log.Printf("startJob [%s]: creating tmux session", jobID)
-	if err := s.tmux.CreateJobSession(jobID, jobDir, cwd, cols, rows); err != nil {
+	if err := s.tmux.CreateJobSession(jobID, jobDir, cwd, cols, rows, mode); err != nil {
 		log.Printf("startJob [%s]: tmux session failed: %v", jobID, err)
 		return err
 	}
 
 	pipeReadyPath := filepath.Join(jobDir, ".pipe-ready")
-	log.Printf("startJob [%s]: enabling output pipe", jobID)
-	if err := s.tmux.EnableOutputPipe(jobID, jobDir, pipeReadyPath); err != nil {
-		log.Printf("startJob [%s]: pipe-pane failed: %v", jobID, err)
-		return err
-	}
+	if mode == jobmode.PTY {
+		log.Printf("startJob [%s]: enabling output pipe", jobID)
+		if err := s.tmux.EnableOutputPipe(jobID, jobDir, pipeReadyPath); err != nil {
+			log.Printf("startJob [%s]: pipe-pane failed: %v", jobID, err)
+			return err
+		}
 
-	// Wait for pipe ready handshake
-	if err := s.waitForPipeReady(jobID, pipeReadyPath); err != nil {
-		log.Printf("startJob [%s]: pipe-ready timeout: %v", jobID, err)
-		return err
+		// Wait for pipe ready handshake
+		if err := s.waitForPipeReady(jobID, pipeReadyPath); err != nil {
+			log.Printf("startJob [%s]: pipe-ready timeout: %v", jobID, err)
+			return err
+		}
 	}
 
 	// Open start gate
@@ -285,8 +293,9 @@ func (s *Service) startJob(jobID, jobDir, cwd string, cols, rows int) error {
 		RequireExitCodeNull: true,
 	})
 
-	// Clean up ready file
-	_ = os.Remove(pipeReadyPath)
+	if mode == jobmode.PTY {
+		_ = os.Remove(pipeReadyPath)
+	}
 	return nil
 }
 
@@ -425,11 +434,15 @@ func (s *Service) TailJob(jobID string, outputLimit int) (*JobResult, error) {
 
 // GetJobStatus materializes the current status from SQLite + live tmux state.
 func (s *Service) GetJobStatus(jobID string) (*JobStatusView, error) {
-	sessionExists, pipeActive, err := s.liveRuntimeState(jobID)
+	row, err := s.db.GetJob(jobID)
 	if err != nil {
 		return nil, err
 	}
-	return s.materializeStatusView(jobID, sessionExists, pipeActive)
+	sessionExists, pipeActive, err := s.liveRuntimeState(row)
+	if err != nil {
+		return nil, err
+	}
+	return s.materializeStatusView(row, sessionExists, pipeActive)
 }
 
 // ListJobs returns recent jobs, optionally filtered by status.
@@ -473,6 +486,13 @@ func (s *Service) SendInput(jobID string, req *InputJobRequest) (*JobResult, err
 	}
 	if view.Done {
 		return nil, NewServerError(409, "job_not_running", fmt.Sprintf("Job %s is already terminal", jobID))
+	}
+	row, err := s.db.GetJob(jobID)
+	if err != nil {
+		return nil, err
+	}
+	if row.Mode == jobmode.Stdio {
+		return nil, NewServerError(409, "input_unsupported", "stdio jobs do not support input")
 	}
 
 	if err := s.tmux.SendInput(jobID, req.Text); err != nil {
@@ -594,7 +614,8 @@ func (s *Service) GCOnce() error {
 	return nil
 }
 
-// CheckRunningJobsPipeHealth fails running jobs whose pipe died.
+// CheckRunningJobsPipeHealth reconciles PTY pane pipe/drain state and stdio
+// session state, materializing completion from exit artifacts.
 func (s *Service) CheckRunningJobsPipeHealth() {
 	rows, _ := s.db.ListJobs([]JobStatusName{StatusRunning})
 	for _, row := range rows {
@@ -602,12 +623,8 @@ func (s *Service) CheckRunningJobsPipeHealth() {
 	}
 }
 
-func (s *Service) materializeStatusView(jobID string, sessionExists bool, pipeActive *bool) (*JobStatusView, error) {
-	row, err := s.db.GetJob(jobID)
-	if err != nil {
-		return nil, err
-	}
-
+func (s *Service) materializeStatusView(row *JobRow, sessionExists bool, pipeActive *bool) (*JobStatusView, error) {
+	jobID := row.JobID
 	status := row.Status
 
 	if status.IsTerminal() {
@@ -631,14 +648,14 @@ func (s *Service) materializeStatusView(jobID string, sessionExists bool, pipeAc
 		}); err == nil {
 			row = r
 		}
-	} else if exit := s.drainedNormalExitMetadata(jobID); exit != nil {
-		// Recover from drained exit artifacts
+	} else if exit := s.completedExitMetadata(row); exit != nil {
+		// Recover from mode-specific completed exit artifacts.
 		_ = s.db.RecordRunnerExit(jobID, exit.exitCode, exit.endedAt)
 		if r, err := s.db.GetJob(jobID); err == nil {
 			row = r
 		}
 	} else if sessionExists {
-		if pipeActive != nil && !*pipeActive {
+		if row.Mode == jobmode.PTY && pipeActive != nil && !*pipeActive {
 			s.mu.Lock()
 			isStarting := s.startingJobs[jobID]
 			s.mu.Unlock()
@@ -670,7 +687,7 @@ func (s *Service) materializeStatusView(jobID string, sessionExists bool, pipeAc
 		}
 	} else {
 		// No session
-		if s.normalExitCommitPending(jobID) {
+		if s.normalExitCommitPending(row) {
 			// Wait for pipe drain finalizer
 		} else {
 			s.mu.Lock()
@@ -694,15 +711,18 @@ func (s *Service) materializeStatusView(jobID string, sessionExists bool, pipeAc
 	return s.statusViewFromRow(row), nil
 }
 
-func (s *Service) liveRuntimeState(jobID string) (bool, *bool, error) {
-	exists, err := s.tmux.SessionExists(JobSessionName(jobID))
+func (s *Service) liveRuntimeState(row *JobRow) (bool, *bool, error) {
+	exists, err := s.tmux.SessionExists(row.SessionName)
 	if err != nil {
 		return false, nil, err
 	}
 	if !exists {
 		return false, nil, nil
 	}
-	active, err := s.tmux.IsOutputPipeActive(jobID)
+	if row.Mode == jobmode.Stdio {
+		return true, nil, nil
+	}
+	active, err := s.tmux.IsOutputPipeActive(row.JobID)
 	if err != nil {
 		return false, nil, err
 	}
@@ -717,13 +737,16 @@ type exitMetadata struct {
 	endedAt  string
 }
 
-func (s *Service) drainedNormalExitMetadata(jobID string) *exitMetadata {
-	jobDir := filepath.Join(s.config.JobsDir(), jobID)
+func (s *Service) completedExitMetadata(row *JobRow) *exitMetadata {
+	jobDir := filepath.Join(s.config.JobsDir(), row.JobID)
 	drainedPath := filepath.Join(jobDir, ".pipe-drained")
 	exitCodePath := filepath.Join(jobDir, "runner-exit-code")
 	endedAtPath := filepath.Join(jobDir, "runner-ended-at")
 
-	if !fileExists(drainedPath) || !fileExists(exitCodePath) || !fileExists(endedAtPath) {
+	if row.Mode == jobmode.PTY && !fileExists(drainedPath) {
+		return nil
+	}
+	if !fileExists(exitCodePath) || !fileExists(endedAtPath) {
 		return nil
 	}
 
@@ -750,8 +773,11 @@ func (s *Service) drainedNormalExitMetadata(jobID string) *exitMetadata {
 	return &exitMetadata{exitCode: code, endedAt: endedAtStr}
 }
 
-func (s *Service) normalExitCommitPending(jobID string) bool {
-	jobDir := filepath.Join(s.config.JobsDir(), jobID)
+func (s *Service) normalExitCommitPending(row *JobRow) bool {
+	if row.Mode != jobmode.PTY {
+		return false
+	}
+	jobDir := filepath.Join(s.config.JobsDir(), row.JobID)
 	return fileExists(filepath.Join(jobDir, "runner-exit-code")) &&
 		fileExists(filepath.Join(jobDir, "runner-ended-at")) &&
 		!fileExists(filepath.Join(jobDir, ".pipe-drained")) &&

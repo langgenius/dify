@@ -5,8 +5,18 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/langgenius/dify/dify-agent-runtime/internal/jobmode"
+
 	_ "modernc.org/sqlite"
 )
+
+const latestSchemaVersion = 1
+
+type schemaMigration func(*sql.Tx) error
+
+var schemaMigrations = []schemaMigration{
+	migrateSchemaV1,
+}
 
 // JobStatusName represents the lifecycle states of a shellctl job.
 type JobStatusName string
@@ -35,6 +45,7 @@ type JobRow struct {
 	JobID        string
 	ScriptPath   string
 	OutputPath   string
+	Mode         jobmode.Mode
 	Cwd          string
 	TerminalCols int
 	TerminalRows int
@@ -72,9 +83,63 @@ func (d *DB) Close() error {
 	return d.db.Close()
 }
 
-// InitSchema creates the jobs table if it does not exist.
+// InitSchema creates the v0 baseline and applies pending schema migrations.
 func (d *DB) InitSchema() error {
-	_, err := d.db.Exec(`
+	var currentVersion int
+	if err := d.db.QueryRow("PRAGMA user_version").Scan(&currentVersion); err != nil {
+		return fmt.Errorf("read schema version: %w", err)
+	}
+	if currentVersion > latestSchemaVersion {
+		return fmt.Errorf(
+			"database schema version %d is newer than supported version %d",
+			currentVersion,
+			latestSchemaVersion,
+		)
+	}
+
+	if currentVersion == 0 {
+		if err := d.createSchemaV0(); err != nil {
+			return err
+		}
+	}
+
+	for currentVersion < latestSchemaVersion {
+		targetVersion := currentVersion + 1
+		if err := d.applySchemaMigration(targetVersion, schemaMigrations[targetVersion-1]); err != nil {
+			return err
+		}
+		currentVersion = targetVersion
+	}
+	return nil
+}
+
+// applySchemaMigration commits migration SQL and PRAGMA user_version together,
+// rolling back the entire version if either operation fails.
+func (d *DB) applySchemaMigration(targetVersion int, migration schemaMigration) error {
+	tx, err := d.db.Begin()
+	if err != nil {
+		return fmt.Errorf("begin schema migration v%d: %w", targetVersion, err)
+	}
+	if err := migration(tx); err != nil {
+		_ = tx.Rollback()
+		return fmt.Errorf("apply schema migration v%d: %w", targetVersion, err)
+	}
+	if _, err := tx.Exec(fmt.Sprintf("PRAGMA user_version = %d", targetVersion)); err != nil {
+		_ = tx.Rollback()
+		return fmt.Errorf("record schema migration v%d: %w", targetVersion, err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit schema migration v%d: %w", targetVersion, err)
+	}
+	return nil
+}
+
+func (d *DB) createSchemaV0() error {
+	tx, err := d.db.Begin()
+	if err != nil {
+		return fmt.Errorf("begin schema v0: %w", err)
+	}
+	if _, err := tx.Exec(`
 		CREATE TABLE IF NOT EXISTS jobs (
 			job_id       TEXT PRIMARY KEY,
 			script_path  TEXT NOT NULL,
@@ -93,18 +158,29 @@ func (d *DB) InitSchema() error {
 			ended_at     TEXT,
 			updated_at   TEXT NOT NULL
 		)
-	`)
+	`); err != nil {
+		_ = tx.Rollback()
+		return fmt.Errorf("create schema v0: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit schema v0: %w", err)
+	}
+	return nil
+}
+
+func migrateSchemaV1(tx *sql.Tx) error {
+	_, err := tx.Exec(`ALTER TABLE jobs ADD COLUMN mode TEXT NOT NULL DEFAULT 'pty'`)
 	return err
 }
 
 // InsertJob inserts a new job row. Returns false if the job_id already exists.
 func (d *DB) InsertJob(row *JobRow) (bool, error) {
 	_, err := d.db.Exec(`
-		INSERT INTO jobs (job_id, script_path, output_path, cwd, terminal_cols, terminal_rows,
+		INSERT INTO jobs (job_id, script_path, output_path, mode, cwd, terminal_cols, terminal_rows,
 			status, session_name, pane_target, exit_code, reason, message,
 			created_at, started_at, ended_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		row.JobID, row.ScriptPath, row.OutputPath, row.Cwd,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		row.JobID, row.ScriptPath, row.OutputPath, string(row.Mode), row.Cwd,
 		row.TerminalCols, row.TerminalRows,
 		string(row.Status), row.SessionName, row.PaneTarget,
 		row.ExitCode, row.Reason, row.Message,
@@ -123,7 +199,7 @@ func (d *DB) InsertJob(row *JobRow) (bool, error) {
 // GetJob retrieves a single job row by ID.
 func (d *DB) GetJob(jobID string) (*JobRow, error) {
 	row := d.db.QueryRow(`
-		SELECT job_id, script_path, output_path, cwd, terminal_cols, terminal_rows,
+		SELECT job_id, script_path, output_path, mode, cwd, terminal_cols, terminal_rows,
 			status, session_name, pane_target, exit_code, reason, message,
 			created_at, started_at, ended_at, updated_at
 		FROM jobs WHERE job_id = ?`, jobID)
@@ -136,7 +212,7 @@ func (d *DB) ListJobs(statuses []JobStatusName) ([]*JobRow, error) {
 	var err error
 
 	if len(statuses) == 0 {
-		rows, err = d.db.Query(`SELECT job_id, script_path, output_path, cwd,
+		rows, err = d.db.Query(`SELECT job_id, script_path, output_path, mode, cwd,
 			terminal_cols, terminal_rows, status, session_name, pane_target,
 			exit_code, reason, message, created_at, started_at, ended_at, updated_at
 			FROM jobs ORDER BY created_at DESC`)
@@ -150,7 +226,7 @@ func (d *DB) ListJobs(statuses []JobStatusName) ([]*JobRow, error) {
 			}
 			placeholders += "?"
 		}
-		query := fmt.Sprintf(`SELECT job_id, script_path, output_path, cwd,
+		query := fmt.Sprintf(`SELECT job_id, script_path, output_path, mode, cwd,
 			terminal_cols, terminal_rows, status, session_name, pane_target,
 			exit_code, reason, message, created_at, started_at, ended_at, updated_at
 			FROM jobs WHERE status IN (%s) ORDER BY created_at DESC`, placeholders)
@@ -313,9 +389,9 @@ type TransitionOpts struct {
 
 func scanJobRow(row *sql.Row) (*JobRow, error) {
 	var jr JobRow
-	var status string
+	var mode, status string
 	err := row.Scan(
-		&jr.JobID, &jr.ScriptPath, &jr.OutputPath, &jr.Cwd,
+		&jr.JobID, &jr.ScriptPath, &jr.OutputPath, &mode, &jr.Cwd,
 		&jr.TerminalCols, &jr.TerminalRows,
 		&status, &jr.SessionName, &jr.PaneTarget,
 		&jr.ExitCode, &jr.Reason, &jr.Message,
@@ -327,15 +403,16 @@ func scanJobRow(row *sql.Row) (*JobRow, error) {
 	if err != nil {
 		return nil, err
 	}
+	jr.Mode = jobmode.Mode(mode)
 	jr.Status = JobStatusName(status)
 	return &jr, nil
 }
 
 func scanJobRows(rows *sql.Rows) (*JobRow, error) {
 	var jr JobRow
-	var status string
+	var mode, status string
 	err := rows.Scan(
-		&jr.JobID, &jr.ScriptPath, &jr.OutputPath, &jr.Cwd,
+		&jr.JobID, &jr.ScriptPath, &jr.OutputPath, &mode, &jr.Cwd,
 		&jr.TerminalCols, &jr.TerminalRows,
 		&status, &jr.SessionName, &jr.PaneTarget,
 		&jr.ExitCode, &jr.Reason, &jr.Message,
@@ -344,6 +421,7 @@ func scanJobRows(rows *sql.Rows) (*JobRow, error) {
 	if err != nil {
 		return nil, err
 	}
+	jr.Mode = jobmode.Mode(mode)
 	jr.Status = JobStatusName(status)
 	return &jr, nil
 }

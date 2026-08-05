@@ -554,6 +554,7 @@ async def execute_complete_with_commands(
     timeout: float,
     max_output_bytes: int,
 ) -> CompleteShellCommandResult:
+    """Collect a bounded internal command through the stdout-only stdio path."""
     deadline = time.monotonic() + timeout
     job_id: str | None = None
     result: ShellCommandResult | None = None
@@ -561,7 +562,13 @@ async def execute_complete_with_commands(
     captured_bytes = 0
     incomplete_reason: Literal["output_limit", "timeout"] | None = None
     try:
-        result = await commands.run(script, cwd=cwd, env=env, timeout=_remaining_time(deadline))
+        result = await commands.run(
+            script,
+            cwd=cwd,
+            env=env,
+            timeout=_remaining_time(deadline),
+            mode="stdio",
+        )
         job_id = result.job_id
         while True:
             remaining_bytes = max(max_output_bytes - captured_bytes, 0)
