@@ -130,7 +130,7 @@ describe('HomeCatalogNavigation', () => {
     expect(screen.queryByTestId('plugin-type-switch')).not.toBeInTheDocument()
   })
 
-  it('links Dify users to the hosted Marketplace templates page', () => {
+  it('keeps Dify template navigation on the current origin', () => {
     renderNavigation(false)
 
     expect(screen.getByRole('link', { name: 'plugin.marketplace.home.plugins' })).toHaveAttribute(
@@ -139,7 +139,7 @@ describe('HomeCatalogNavigation', () => {
     )
     expect(
       screen.getByRole('link', { name: /plugin\.marketplace\.home\.templates/ }),
-    ).toHaveAttribute('href', 'https://marketplace.dify.ai/templates?source=console')
+    ).toHaveAttribute('href', '/templates')
   })
 
   it('shows the compact navigation and header tabs after reaching the sticky header', () => {

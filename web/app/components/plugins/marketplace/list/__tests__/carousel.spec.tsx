@@ -5,7 +5,10 @@ import Carousel from '../carousel'
 
 const mocks = vi.hoisted(() => {
   const listeners = new Map<string, Set<() => void>>()
-  const carouselState = { selectedIndex: 0 }
+  const carouselState = {
+    scrollSnaps: [0, 1, 2, 3, 4],
+    selectedIndex: 0,
+  }
   const api = {
     off: vi.fn((event: string, listener: () => void) => {
       listeners.get(event)?.delete(listener)
@@ -17,7 +20,7 @@ const mocks = vi.hoisted(() => {
     }),
     scrollNext: vi.fn(),
     scrollPrev: vi.fn(),
-    scrollSnapList: vi.fn(() => [0, 1, 2, 3, 4]),
+    scrollSnapList: vi.fn(() => carouselState.scrollSnaps),
     scrollTo: vi.fn(),
     selectedScrollSnap: vi.fn(() => carouselState.selectedIndex),
   }
@@ -108,6 +111,7 @@ describe('Marketplace Carousel', () => {
     mocks.listeners.clear()
     mocks.autoplayInstances.length = 0
     mocks.autoplayOptions.length = 0
+    mocks.carouselState.scrollSnaps = [0, 1, 2, 3, 4]
     mocks.carouselState.selectedIndex = 0
     intersectionObservers.length = 0
     vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
@@ -262,5 +266,17 @@ describe('Marketplace Carousel', () => {
       stopOnMouseEnter: true,
     })
     expect(intersectionObservers).toHaveLength(0)
+  })
+
+  it('does not start managed autoplay when the carousel has only one page', () => {
+    installIntersectionObserver()
+    mocks.carouselState.scrollSnaps = [0]
+
+    render(<Carousel pages={pages.slice(0, 1)} autoPlay deferMountPages pauseWhenOffscreen />)
+    const autoplay = mocks.autoplayInstances[0]!
+
+    triggerIntersection(intersectionObservers[0]!, 1)
+
+    expect(autoplay.play).not.toHaveBeenCalled()
   })
 })
