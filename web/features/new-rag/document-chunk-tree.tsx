@@ -76,27 +76,30 @@ export function DocumentChunkTreePanel({
 }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
-  const [collapsedChunkIds, setCollapsedChunkIds] = useState<Set<string>>(() => new Set())
-  const [focusedChunkId, setFocusedChunkId] = useState<string>()
+  const [collapsedNodeIds, setCollapsedNodeIds] = useState<Set<string>>(() => new Set())
+  const [focusedNodeId, setFocusedNodeId] = useState<string>()
+  const [selectedNodeId, setSelectedNodeId] = useState<string>()
   const [treeHasFocus, setTreeHasFocus] = useState(false)
   const treeScrollRef = useRef<HTMLDivElement>(null)
-  const expandedChunkIds = useMemo(
-    () => new Set([...tree.byId.keys()].filter((id) => !collapsedChunkIds.has(id))),
-    [collapsedChunkIds, tree.byId],
+  const expandedNodeIds = useMemo(
+    () => new Set([...tree.byId.keys()].filter((id) => !collapsedNodeIds.has(id))),
+    [collapsedNodeIds, tree.byId],
   )
   const visibleNodes = useMemo(
-    () => visibleDocumentChunkNodes(tree.roots, expandedChunkIds),
-    [expandedChunkIds, tree.roots],
+    () => visibleDocumentChunkNodes(tree.roots, expandedNodeIds),
+    [expandedNodeIds, tree.roots],
   )
   const shouldVirtualize = visibleNodes.length > VIRTUALIZATION_THRESHOLD
-  const currentFocusedChunkId = focusedChunkId ?? visibleNodes[0]?.node.chunk.id
-  const focusedIndex = visibleNodes.findIndex(
-    (item) => item.node.chunk.id === currentFocusedChunkId,
-  )
+  const currentFocusedNodeId = focusedNodeId ?? visibleNodes[0]?.node.id
+  const activeSelectedNodeId =
+    selectedNodeId && tree.byId.has(selectedNodeId)
+      ? selectedNodeId
+      : visibleNodes.find((item) => item.node.targetChunkId === selectedChunkId)?.node.id
+  const focusedIndex = visibleNodes.findIndex((item) => item.node.id === currentFocusedNodeId)
   const rowVirtualizer = useVirtualizer({
     count: shouldVirtualize ? visibleNodes.length : 0,
     estimateSize: () => TREE_ROW_HEIGHT,
-    getItemKey: (index) => visibleNodes[index]?.node.chunk.id ?? index,
+    getItemKey: (index) => visibleNodes[index]?.node.id ?? index,
     getScrollElement: () => treeScrollRef.current,
     overscan: 8,
     rangeExtractor: (range) => {
@@ -107,78 +110,82 @@ export function DocumentChunkTreePanel({
   })
   const virtualRows = rowVirtualizer.getVirtualItems()
 
-  const toggleExpanded = (chunkId: string) => {
-    setCollapsedChunkIds((current) => {
+  const toggleExpanded = (nodeId: string) => {
+    setCollapsedNodeIds((current) => {
       const next = new Set(current)
-      if (next.has(chunkId)) next.delete(chunkId)
-      else next.add(chunkId)
+      if (next.has(nodeId)) next.delete(nodeId)
+      else next.add(nodeId)
       return next
     })
   }
 
-  const focusChunk = (chunkId: string) => {
-    const index = visibleNodes.findIndex((item) => item.node.chunk.id === chunkId)
+  const focusNode = (nodeId: string) => {
+    const index = visibleNodes.findIndex((item) => item.node.id === nodeId)
     if (index < 0) return
-    setFocusedChunkId(chunkId)
+    setFocusedNodeId(nodeId)
     if (shouldVirtualize) rowVirtualizer.scrollToIndex(index, { align: 'auto' })
     treeScrollRef.current?.focus()
   }
 
+  const selectNode = (node: (typeof visibleNodes)[number]['node']) => {
+    setSelectedNodeId(node.id)
+    onSelectChunk(node.targetChunkId)
+  }
+
   const handleTreeKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    const chunkId = currentFocusedChunkId
-    if (!chunkId) return
-    const index = visibleNodes.findIndex((item) => item.node.chunk.id === chunkId)
+    const nodeId = currentFocusedNodeId
+    if (!nodeId) return
+    const index = visibleNodes.findIndex((item) => item.node.id === nodeId)
     const current = visibleNodes[index]
     if (!current) return
-    const parentId = current.node.chunk.parentChunkId
+    const parentId = current.node.parentId
     let nextId: string | undefined
-    if (event.key === 'ArrowDown') nextId = visibleNodes[index + 1]?.node.chunk.id
-    else if (event.key === 'ArrowUp') nextId = visibleNodes[index - 1]?.node.chunk.id
-    else if (event.key === 'Home') nextId = visibleNodes[0]?.node.chunk.id
-    else if (event.key === 'End') nextId = visibleNodes.at(-1)?.node.chunk.id
+    if (event.key === 'ArrowDown') nextId = visibleNodes[index + 1]?.node.id
+    else if (event.key === 'ArrowUp') nextId = visibleNodes[index - 1]?.node.id
+    else if (event.key === 'Home') nextId = visibleNodes[0]?.node.id
+    else if (event.key === 'End') nextId = visibleNodes.at(-1)?.node.id
     else if (event.key === 'ArrowRight' && current.node.children.length) {
-      if (collapsedChunkIds.has(chunkId)) toggleExpanded(chunkId)
-      else nextId = current.node.children[0]?.chunk.id
+      if (collapsedNodeIds.has(nodeId)) toggleExpanded(nodeId)
+      else nextId = current.node.children[0]?.id
     } else if (event.key === 'ArrowLeft') {
-      if (current.node.children.length && !collapsedChunkIds.has(chunkId)) toggleExpanded(chunkId)
+      if (current.node.children.length && !collapsedNodeIds.has(nodeId)) toggleExpanded(nodeId)
       else if (parentId && tree.byId.has(parentId)) nextId = parentId
-    } else if (event.key === 'Enter' || event.key === ' ') onSelectChunk(chunkId)
+    } else if (event.key === 'Enter' || event.key === ' ') selectNode(current.node)
     else return
     event.preventDefault()
-    if (nextId) focusChunk(nextId)
+    if (nextId) focusNode(nextId)
   }
 
   const renderTreeItem = (item: (typeof visibleNodes)[number], style?: React.CSSProperties) => {
     const { depth, node, positionInSet, setSize } = item
-    const { chunk } = node
     const hasChildren = node.children.length > 0
-    const expanded = !collapsedChunkIds.has(chunk.id)
-    const label = chunkTreeLabel(chunk.text, chunk.ordinal)
+    const expanded = !collapsedNodeIds.has(node.id)
+    const label = chunkTreeLabel(node.label)
     return (
       <button
-        key={chunk.id}
-        id={`document-chunk-treeitem-${chunk.id}`}
+        key={node.id}
+        id={`document-chunk-treeitem-${node.id}`}
         aria-expanded={hasChildren ? expanded : undefined}
         aria-label={label}
         aria-level={depth + 1}
         aria-posinset={positionInSet}
-        aria-selected={selectedChunkId === chunk.id}
+        aria-selected={activeSelectedNodeId === node.id}
         aria-setsize={hasNextPage ? -1 : setSize}
         className={cn(
           'flex h-8 w-full items-center gap-1.5 rounded-lg pr-2 text-left system-xs-regular outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
-          selectedChunkId === chunk.id && 'bg-state-accent-hover text-text-accent',
+          activeSelectedNodeId === node.id && 'bg-state-accent-hover text-text-accent',
           treeHasFocus &&
-            currentFocusedChunkId === chunk.id &&
+            currentFocusedNodeId === node.id &&
             'bg-state-base-hover ring-1 ring-state-accent-solid ring-inset',
         )}
         role="treeitem"
         style={{ ...style, paddingInlineStart: `${8 + depth * 16}px` }}
         tabIndex={-1}
         onClick={() => {
-          setFocusedChunkId(chunk.id)
+          setFocusedNodeId(node.id)
           treeScrollRef.current?.focus()
-          onSelectChunk(chunk.id)
-          if (hasChildren) toggleExpanded(chunk.id)
+          selectNode(node)
+          if (hasChildren) toggleExpanded(node.id)
         }}
       >
         <span
@@ -229,7 +236,7 @@ export function DocumentChunkTreePanel({
         <div
           ref={treeScrollRef}
           aria-activedescendant={
-            currentFocusedChunkId ? `document-chunk-treeitem-${currentFocusedChunkId}` : undefined
+            currentFocusedNodeId ? `document-chunk-treeitem-${currentFocusedNodeId}` : undefined
           }
           aria-label={t(($) => $['newKnowledge.documentContents'])}
           className="max-h-[70vh] overflow-auto py-1 pr-4 pl-1 outline-hidden xl:max-h-none xl:min-h-0 xl:flex-1"

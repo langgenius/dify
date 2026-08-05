@@ -54,9 +54,11 @@ export type DocumentRevisionChunk = {
   documentRevision: number
   enabled: boolean
   id: string
+  kind: NonNullable<KnowledgeFsDocumentChunkResponse['kind']>
   knowledgeSpaceId: string
   ordinal: number
   parentChunkId?: string
+  sectionPath: string[]
   text: string
   tokenCount: number
   userMetadata: Record<string, unknown>
@@ -195,9 +197,11 @@ function documentChunkFromApi(chunk: KnowledgeFsDocumentChunkResponse): Document
     documentRevision: chunk.document_revision,
     enabled: chunk.enabled,
     id: chunk.id,
+    kind: chunk.kind ?? 'chunk',
     knowledgeSpaceId: chunk.knowledge_space_id,
     ordinal: chunk.ordinal,
     parentChunkId: chunk.parent_chunk_id ?? undefined,
+    sectionPath: chunk.section_path ?? [],
     text: chunk.text,
     tokenCount: chunk.token_count,
     userMetadata: chunk.user_metadata,

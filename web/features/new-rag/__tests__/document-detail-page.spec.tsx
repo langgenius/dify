@@ -146,9 +146,11 @@ const chunkApiResponse = vi.hoisted(() => (item: DocumentRevisionChunk) => ({
   document_revision: item.documentRevision,
   enabled: item.enabled,
   id: item.id,
+  kind: item.kind,
   knowledge_space_id: item.knowledgeSpaceId,
   ordinal: item.ordinal,
   parent_chunk_id: item.parentChunkId ?? null,
+  section_path: item.sectionPath,
   text: item.text,
   token_count: item.tokenCount,
   user_metadata: item.userMetadata,
@@ -455,19 +457,24 @@ const logicalDocument = (overrides: Partial<LogicalDocument> = {}): LogicalDocum
   ...overrides,
 })
 
-const chunk = (overrides: Partial<DocumentRevisionChunk>): DocumentRevisionChunk => ({
-  createdAt: '2026-07-21T10:00:00Z',
-  documentId: 'document-1',
-  documentRevision: 3,
-  enabled: true,
-  id: 'parent',
-  knowledgeSpaceId: 'space-1',
-  ordinal: 1,
-  text: 'Parent content',
-  tokenCount: 10,
-  userMetadata: {},
-  ...overrides,
-})
+const chunk = (overrides: Partial<DocumentRevisionChunk>): DocumentRevisionChunk => {
+  const text = overrides.text ?? 'Parent content'
+  return {
+    createdAt: '2026-07-21T10:00:00Z',
+    documentId: 'document-1',
+    documentRevision: 3,
+    enabled: true,
+    id: 'parent',
+    kind: 'chunk',
+    knowledgeSpaceId: 'space-1',
+    ordinal: 1,
+    sectionPath: [text.split(/\r?\n/, 1)[0] ?? text],
+    text,
+    tokenCount: 10,
+    userMetadata: {},
+    ...overrides,
+  }
+}
 
 const task = (overrides: Partial<DocumentProcessingTask>): DocumentProcessingTask => ({
   createdAt: '2026-07-21T10:00:00Z',
@@ -655,6 +662,32 @@ describe('DocumentDetailPage', () => {
     expect(screen.queryByText(/\[Learn more\]\(/)).not.toBeInTheDocument()
   })
 
+  it('uses structured chapter paths and keeps the first source line in the chunk body', () => {
+    chunksQuery.data = {
+      pages: [
+        {
+          items: [
+            chunk({
+              sectionPath: ['Invoices', 'Tax breakdown'],
+              text: 'This first line is source content, not a title.\nThe tax total is 6.55.',
+            }),
+          ],
+        },
+      ],
+    }
+
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    const tree = screen.getByRole('tree')
+    expect(within(tree).getByRole('treeitem', { name: 'Invoices' })).toBeInTheDocument()
+    expect(within(tree).getByRole('treeitem', { name: 'Tax breakdown' })).toBeInTheDocument()
+    expect(within(tree).queryByRole('treeitem', { name: /This first line/ })).toBeNull()
+    expect(screen.getByRole('heading', { name: 'Tax breakdown' })).toBeInTheDocument()
+    expect(screen.getByRole('article')).toHaveTextContent(
+      'This first line is source content, not a title.',
+    )
+  })
+
   it('labels flat document chunks by their visible order', () => {
     chunksQuery.data = {
       pages: [
@@ -703,12 +736,17 @@ describe('DocumentDetailPage', () => {
       pages: [
         {
           items: [
-            chunk({ id: 'parent', text: 'Setup requirements' }),
+            chunk({
+              id: 'parent',
+              sectionPath: ['Setup requirements'],
+              text: 'Parent source content',
+            }),
             chunk({
               id: 'child',
               ordinal: 2,
               parentChunkId: 'parent',
-              text: 'Workspace contract details',
+              sectionPath: ['Setup requirements', 'Workspace contract details'],
+              text: 'Workspace source content',
               tokenCount: 4,
               userMetadata: { section: '2.1', sourcePage: 8 },
             }),
@@ -734,7 +772,7 @@ describe('DocumentDetailPage', () => {
     await user.click(
       within(selectedChunkSection!).getByRole('button', { name: 'common.operation.copy' }),
     )
-    expect(copy).toHaveBeenCalledWith('Workspace contract details')
+    expect(copy).toHaveBeenCalledWith('Workspace source content')
     expect(toastState.success).toHaveBeenCalledWith('common.actionMsg.copySuccessfully')
     expect(screen.getByRole('heading', { name: 'dataset.metadata.metadata' })).toBeInTheDocument()
     expect(screen.getByText('common.operation.added')).toBeInTheDocument()
@@ -762,9 +800,15 @@ describe('DocumentDetailPage', () => {
       pages: [
         {
           items: [
-            chunk({ id: 'parent', text: 'Parent node' }),
-            chunk({ id: 'child', ordinal: 2, parentChunkId: 'parent', text: 'Child node' }),
-            chunk({ id: 'second', ordinal: 3, text: 'Second root' }),
+            chunk({ id: 'parent', sectionPath: ['Parent node'], text: 'Parent content' }),
+            chunk({
+              id: 'child',
+              ordinal: 2,
+              parentChunkId: 'parent',
+              sectionPath: ['Parent node', 'Child node'],
+              text: 'Child content',
+            }),
+            chunk({ id: 'second', ordinal: 3, sectionPath: ['Second root'] }),
           ],
         },
       ],
@@ -773,11 +817,13 @@ describe('DocumentDetailPage', () => {
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
     const tree = screen.getByRole('tree')
     const parent = screen.getByRole('treeitem', { name: /Parent node/ })
+    const child = screen.getByRole('treeitem', { name: /Child node/ })
+    const second = screen.getByRole('treeitem', { name: /Second root/ })
     tree.focus()
     fireEvent.keyDown(tree, { key: 'ArrowRight' })
-    expect(tree).toHaveAttribute('aria-activedescendant', 'document-chunk-treeitem-child')
+    expect(tree).toHaveAttribute('aria-activedescendant', child.id)
     fireEvent.keyDown(tree, { key: 'ArrowDown' })
-    expect(tree).toHaveAttribute('aria-activedescendant', 'document-chunk-treeitem-second')
+    expect(tree).toHaveAttribute('aria-activedescendant', second.id)
     fireEvent.keyDown(tree, { key: 'Home' })
     fireEvent.keyDown(tree, { key: 'ArrowLeft' })
     expect(parent).toHaveAttribute('aria-expanded', 'false')
@@ -792,8 +838,14 @@ describe('DocumentDetailPage', () => {
       pages: [
         {
           items: [
-            chunk({ id: 'parent', text: 'Parent node' }),
-            chunk({ id: 'child', ordinal: 2, parentChunkId: 'parent', text: 'Child node' }),
+            chunk({ id: 'parent', sectionPath: ['Parent node'], text: 'Parent content' }),
+            chunk({
+              id: 'child',
+              ordinal: 2,
+              parentChunkId: 'parent',
+              sectionPath: ['Parent node', 'Child node'],
+              text: 'Child content',
+            }),
           ],
         },
       ],
@@ -1173,7 +1225,12 @@ describe('DocumentDetailPage', () => {
       pages: [
         {
           items: Array.from({ length: 100 }, (_, index) =>
-            chunk({ id: `chunk-${index}`, ordinal: index + 1, text: `${'x'.repeat(150)}\nbody` }),
+            chunk({
+              id: `chunk-${index}`,
+              ordinal: index + 1,
+              sectionPath: [`${'x'.repeat(150)} ${index}`],
+              text: `${'x'.repeat(150)}\nbody`,
+            }),
           ),
         },
       ],
@@ -1827,23 +1884,17 @@ describe('DocumentDetailPage', () => {
     }
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
     const tree = screen.getByRole('tree')
+    const first = screen.getByRole('treeitem', { name: 'Chunk 1' })
 
     tree.focus()
     fireEvent.keyDown(tree, { key: 'End' })
+    const last = screen.getByRole('treeitem', { name: 'Chunk 100' })
     expect(tree).toHaveFocus()
-    expect(tree).toHaveAttribute('aria-activedescendant', 'document-chunk-treeitem-chunk-99')
-    expect(screen.getByRole('treeitem', { name: 'Chunk 100' })).toHaveAttribute(
-      'aria-posinset',
-      '100',
-    )
-    expect(screen.getByRole('treeitem', { name: 'Chunk 100' })).toHaveAttribute(
-      'aria-setsize',
-      '100',
-    )
-    expect(screen.getByRole('treeitem', { name: 'Chunk 100' })).toHaveClass(
-      'ring-state-accent-solid',
-    )
+    expect(tree).toHaveAttribute('aria-activedescendant', last.id)
+    expect(last).toHaveAttribute('aria-posinset', '100')
+    expect(last).toHaveAttribute('aria-setsize', '100')
+    expect(last).toHaveClass('ring-state-accent-solid')
     fireEvent.keyDown(tree, { key: 'Home' })
-    expect(tree).toHaveAttribute('aria-activedescendant', 'document-chunk-treeitem-chunk-0')
+    expect(tree).toHaveAttribute('aria-activedescendant', first.id)
   })
 })

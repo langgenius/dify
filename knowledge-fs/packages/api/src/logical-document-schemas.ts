@@ -96,6 +96,14 @@ export const RollbackDocumentRevisionSchema = z
   })
   .strict();
 
+export const DocumentRevisionChunkKindSchema = z.enum([
+  "chunk",
+  "section",
+  "table",
+  "image",
+  "summary",
+]);
+
 export const DocumentRevisionChunkSchema = z
   .object({
     createdAt: z.string(),
@@ -103,9 +111,11 @@ export const DocumentRevisionChunkSchema = z
     documentRevision: z.number().int().positive(),
     enabled: z.boolean(),
     id: z.string().uuid(),
+    kind: DocumentRevisionChunkKindSchema,
     knowledgeSpaceId: z.string().uuid(),
     ordinal: z.number().int().nonnegative(),
     parentChunkId: z.string().uuid().optional(),
+    sectionPath: z.array(z.string().min(1)),
     text: z.string(),
     tokenCount: z.number().int().nonnegative(),
     userMetadata: z.record(z.unknown()),

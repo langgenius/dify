@@ -269,9 +269,11 @@ export type KnowledgeFsDocumentChunkResponse = {
   document_revision: number
   enabled: boolean
   id: string
+  kind?: 'chunk' | 'image' | 'section' | 'summary' | 'table'
   knowledge_space_id: string
   ordinal: number
   parent_chunk_id?: string | null
+  section_path?: Array<string>
   text: string
   token_count: number
   user_metadata: {
