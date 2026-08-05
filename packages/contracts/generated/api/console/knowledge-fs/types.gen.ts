@@ -903,6 +903,7 @@ export type KnowledgeFsSpaceListItemResponse = {
   control_space_id: string
   created_at: string
   knowledge_space_id: string | null
+  linked_apps: number
   owner_account_id: string
   permission_keys: Array<KnowledgeFsProductPermission>
   resource_version: number

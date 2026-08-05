@@ -100,6 +100,7 @@
   "metadata.batchEditMetadata.editDocumentsNum": "संपादित कर रहे हैं {{num}} दस्तावेज़",
   "metadata.batchEditMetadata.editMetadata": "मेटाडेटा संपादित करें",
   "metadata.batchEditMetadata.multipleValue": "कई मान",
+  "metadata.checkName.duplicate": "इस नाम वाला मेटाडेटा फ़ील्ड पहले से मौजूद है",
   "metadata.checkName.empty": "मेटाडाटा का नाम खाली नहीं हो सकता",
   "metadata.checkName.invalid": "मेटाडेटा नाम में केवल छोटे अक्षर, संख्या और अंडरस्कोर शामिल हो सकते हैं और इसे छोटे अक्षर से शुरू होना चाहिए।",
   "metadata.checkName.tooLong": "मेटाडेटा नाम {{max}} वर्णों से अधिक नहीं हो सकता",

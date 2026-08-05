@@ -17,7 +17,6 @@ import {
   SelectLabel,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
-import { toast } from '@langgenius/dify-ui/toast'
 import { memo, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
@@ -332,6 +331,7 @@ export function DocumentsList({
   onAddDocument,
   onFilterChange,
   onLoadMore,
+  onOpenMetadata,
   onOpenTasks,
   onRemoveDocument,
   onRenameDocument,
@@ -377,6 +377,7 @@ export function DocumentsList({
   onAddDocument: () => void
   onFilterChange: (filter: DocumentFilter) => void
   onLoadMore: () => void
+  onOpenMetadata: () => void
   onOpenTasks: () => void
   onRemoveDocument: (documentId: string) => Promise<boolean>
   onRenameDocument: (documentId: string, title: string) => Promise<boolean>
@@ -481,10 +482,7 @@ export function DocumentsList({
             tasksLiveStatus={tasksLiveStatus}
           />
         )}
-        <Button
-          className="gap-1 pl-3"
-          onClick={() => toast.info(t(($) => $['newKnowledge.filtersUnavailable']))}
-        >
+        <Button className="gap-1 pl-3" onClick={onOpenMetadata}>
           <span aria-hidden className="i-ri-file-text-line size-4" />
           {t(($) => $['newKnowledge.metadata'])}
         </Button>

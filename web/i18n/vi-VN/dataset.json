@@ -100,6 +100,7 @@
   "metadata.batchEditMetadata.editDocumentsNum": "Chỉnh sửa {{num}} tài liệu",
   "metadata.batchEditMetadata.editMetadata": "Chỉnh sửa siêu dữ liệu",
   "metadata.batchEditMetadata.multipleValue": "Nhiều giá trị",
+  "metadata.checkName.duplicate": "Trường siêu dữ liệu có tên này đã tồn tại.",
   "metadata.checkName.empty": "Tên siêu dữ liệu không được để trống",
   "metadata.checkName.invalid": "Tên siêu dữ liệu chỉ có thể chứa chữ cái thường, số và dấu gạch dưới, và phải bắt đầu bằng một chữ cái thường.",
   "metadata.checkName.tooLong": "Tên siêu dữ liệu không được vượt quá {{max}} ký tự",

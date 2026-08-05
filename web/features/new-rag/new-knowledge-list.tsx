@@ -1,6 +1,6 @@
 'use client'
 
-import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -113,14 +113,14 @@ export function NewKnowledgeList({
               <Button
                 variant="ghost"
                 size="small"
-                className="gap-1 overflow-hidden px-1.5 text-text-tertiary"
+                className="overflow-hidden text-text-tertiary"
                 onClick={() => setShowExternalApiPanel(true)}
               >
                 <span
                   aria-hidden
                   className="i-custom-vender-solid-development-api-connection-mod size-3.5 shrink-0"
                 />
-                <span className="px-0.5 system-xs-medium">{t(($) => $.externalAPIPanelTitle)}</span>
+                <span className="system-xs-medium">{t(($) => $.externalAPIPanelTitle)}</span>
               </Button>
             )}
             <ServiceApi apiBaseUrl={apiBaseInfo?.api_base_url ?? ''} />
@@ -141,18 +141,15 @@ export function NewKnowledgeList({
           </div>
           {canCreate && (
             <div className="flex items-center gap-1">
-              <Link
-                href="/datasets/new/create"
-                className={buttonVariants({
-                  className:
-                    'w-24 gap-0.5 overflow-hidden border-[0.5px]! border-components-button-primary-border-hover! bg-components-button-primary-bg-hover! p-2! shadow-xs',
-                  size: 'medium',
-                  variant: 'primary',
-                })}
+              <Button
+                render={<Link href="/datasets/new/create" />}
+                variant="primary"
+                size="medium"
+                className="w-24 gap-0.5 overflow-hidden border-[0.5px]! border-components-button-primary-border-hover! bg-components-button-primary-bg-hover! p-2! shadow-xs"
               >
                 <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
                 <span className="pl-1">{createLabel}</span>
-              </Link>
+              </Button>
             </div>
           )}
         </div>

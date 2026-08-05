@@ -9,9 +9,8 @@ import {
   documentUploadFileExtension,
   documentUploadIssue,
 } from './document-upload-policy'
+import { canPreviewLocalFile, openLocalFilePreview } from './local-file-preview'
 import { createRequestId } from './request-id'
-
-const PREVIEWABLE_EXTENSIONS = new Set(['doc', 'docx', 'html', 'markdown', 'md', 'pdf', 'txt'])
 
 export type QueuedUpload = {
   file: File
@@ -67,12 +66,6 @@ export function CreateUploadQueue({
   const { t: tCommon } = useTranslation('common')
   const inputId = useId()
   const [dragging, setDragging] = useState(false)
-  const previewUnavailable = uploads.some(
-    (upload) =>
-      !upload.issue &&
-      !uploading &&
-      PREVIEWABLE_EXTENSIONS.has(documentUploadFileExtension(upload.file.name)),
-  )
 
   const addFiles = (files: File[]) => {
     if (!disabled && files.length) onChange(mergeFiles(uploads, files))
@@ -180,18 +173,15 @@ export function CreateUploadQueue({
                         : `${formatFileSize(upload.file.size)} · ${t(($) => $['newKnowledge.uploadCharactersUnavailable'])}`}
                 </span>
               </span>
-              {!uploading &&
-                !upload.issue &&
-                PREVIEWABLE_EXTENSIONS.has(documentUploadFileExtension(upload.file.name)) && (
-                  <Button
-                    size="small"
-                    disabled
-                    aria-describedby={`${inputId}-preview-unavailable`}
-                    className="shrink-0"
-                  >
-                    {t(($) => $['newKnowledge.preview'])}
-                  </Button>
-                )}
+              {!uploading && !upload.issue && canPreviewLocalFile(upload.file) && (
+                <Button
+                  size="small"
+                  className="shrink-0"
+                  onClick={() => openLocalFilePreview(upload.file)}
+                >
+                  {t(($) => $['newKnowledge.preview'])}
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="small"
@@ -205,11 +195,6 @@ export function CreateUploadQueue({
             </li>
           ))}
         </ul>
-      )}
-      {previewUnavailable && (
-        <p id={`${inputId}-preview-unavailable`} className="system-2xs-regular text-text-tertiary">
-          {t(($) => $['newKnowledge.previewUnavailable'])}
-        </p>
       )}
     </div>
   )

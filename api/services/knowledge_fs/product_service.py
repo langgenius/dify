@@ -11,7 +11,12 @@ from typing import Literal, NamedTuple
 import sqlalchemy as sa
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.knowledge_fs import KnowledgeFSControlSpace, KnowledgeFSControlSpaceState
+from models.knowledge_fs import (
+    AppKnowledgeFSSpaceJoin,
+    KnowledgeFSAppSpaceJoinStatus,
+    KnowledgeFSControlSpace,
+    KnowledgeFSControlSpaceState,
+)
 from services.knowledge_fs.batch_capability import (
     KnowledgeFSBatchCapabilityIssuerPort,
     KnowledgeFSBatchSpaceBinding,
@@ -105,6 +110,11 @@ class KnowledgeFSProductService:
             offset = (page - 1) * limit
             page_candidates = authorized_candidates[offset : offset + limit + 1]
             authorized = page_candidates[:limit]
+            linked_apps_by_control_space_id = _active_app_counts(
+                session,
+                tenant_id=tenant_id,
+                control_space_ids=tuple(space.id for space in authorized),
+            )
             session.expunge_all()
 
         active_bindings = tuple(
@@ -120,7 +130,12 @@ class KnowledgeFSProductService:
         )
         return KnowledgeFSSpaceListResponse(
             data=[
-                _list_item(space, summaries=summaries, permission_keys=effective_permissions[space.id])
+                _list_item(
+                    space,
+                    summaries=summaries,
+                    permission_keys=effective_permissions[space.id],
+                    linked_apps=linked_apps_by_control_space_id.get(space.id, 0),
+                )
                 for space in authorized
             ],
             page=page,
@@ -211,8 +226,11 @@ class KnowledgeFSProductService:
             else (),
             trace_id=str(uuid.uuid4()),
         )
-        item = _list_item(space, summaries=summaries, permission_keys=authorized.permission_keys)
-        return KnowledgeFSSpaceDetailResponse(**item.model_dump())
+        return _space_response(
+            space,
+            summaries=summaries,
+            permission_keys=authorized.permission_keys,
+        )
 
     def require_product_routes(self, *, tenant_id: str) -> None:
         self._cutover_gate.require_product_routes(tenant_id=tenant_id)
@@ -293,7 +311,18 @@ def _list_item(
     *,
     summaries: dict[str, KnowledgeFSTechnicalSummary],
     permission_keys: tuple[KnowledgeFSProductPermission, ...],
+    linked_apps: int,
 ) -> KnowledgeFSSpaceListItemResponse:
+    response = _space_response(space, summaries=summaries, permission_keys=permission_keys)
+    return KnowledgeFSSpaceListItemResponse(**response.model_dump(), linked_apps=linked_apps)
+
+
+def _space_response(
+    space: KnowledgeFSControlSpace,
+    *,
+    summaries: dict[str, KnowledgeFSTechnicalSummary],
+    permission_keys: tuple[KnowledgeFSProductPermission, ...],
+) -> KnowledgeFSSpaceDetailResponse:
     summary = summaries.get(space.knowledge_space_id or "")
     technical_status: Literal["available", "not_ready", "unavailable"]
     if space.state is not KnowledgeFSControlSpaceState.ACTIVE or space.knowledge_space_id is None:
@@ -302,7 +331,7 @@ def _list_item(
         technical_status = "unavailable"
     else:
         technical_status = "available"
-    return KnowledgeFSSpaceListItemResponse(
+    return KnowledgeFSSpaceDetailResponse(
         control_space_id=space.id,
         created_at=space.created_at,
         state=space.state,
@@ -315,6 +344,29 @@ def _list_item(
         technical_summary=summary,
         updated_at=space.updated_at,
     )
+
+
+def _active_app_counts(
+    session: Session,
+    *,
+    tenant_id: str,
+    control_space_ids: tuple[str, ...],
+) -> dict[str, int]:
+    if not control_space_ids:
+        return {}
+    rows = session.execute(
+        sa.select(
+            AppKnowledgeFSSpaceJoin.control_space_id,
+            sa.func.count(sa.distinct(AppKnowledgeFSSpaceJoin.app_id)),
+        )
+        .where(
+            AppKnowledgeFSSpaceJoin.tenant_id == tenant_id,
+            AppKnowledgeFSSpaceJoin.control_space_id.in_(control_space_ids),
+            AppKnowledgeFSSpaceJoin.status == KnowledgeFSAppSpaceJoinStatus.ACTIVE,
+        )
+        .group_by(AppKnowledgeFSSpaceJoin.control_space_id)
+    )
+    return dict(rows.tuples().all())
 
 
 __all__ = ["AuthorizedKnowledgeFSControlSpace", "KnowledgeFSProductService"]

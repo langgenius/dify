@@ -100,6 +100,7 @@
   "metadata.batchEditMetadata.editDocumentsNum": "การแก้ไขเอกสาร {{num}} ฉบับ",
   "metadata.batchEditMetadata.editMetadata": "แก้ไขข้อมูลเมตา",
   "metadata.batchEditMetadata.multipleValue": "หลายค่า",
+  "metadata.checkName.duplicate": "มีฟิลด์ข้อมูลเมตาชื่อนี้อยู่แล้ว",
   "metadata.checkName.empty": "ชื่อข้อมูลเมตาไม่สามารถเป็นค่าแEmpty",
   "metadata.checkName.invalid": "ชื่อเมตาดาต้าต้องประกอบด้วยตัวอักษรตัวเล็กเท่านั้น เลข และขีดล่าง และต้องเริ่มต้นด้วยตัวอักษรตัวเล็ก",
   "metadata.checkName.tooLong": "ชื่อเมตาดาต้าไม่สามารถเกิน {{max}} ตัวอักษร",

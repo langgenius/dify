@@ -35,6 +35,7 @@ import {
   DocumentsEmpty,
   DocumentsList,
 } from './document-list'
+import { DocumentMetadataDrawer } from './document-metadata-drawer'
 import {
   ACTIVE_TASK_STATES,
   documentDisplayStatus,
@@ -84,6 +85,9 @@ const documentSearchParser = parseAsString.withDefault('').withOptions({
   limitUrlUpdates: debounce(300),
 })
 const documentUploadParser = parseAsStringLiteral(['1'] as const).withOptions({
+  history: 'replace',
+})
+const documentMetadataParser = parseAsStringLiteral(['1'] as const).withOptions({
   history: 'replace',
 })
 
@@ -244,6 +248,14 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const [filter, setFilter] = useQueryState('status', documentFilterParser)
   const [search, setSearch] = useQueryState('query', documentSearchParser)
   const [uploadRequest, setUploadRequest] = useQueryState('upload', documentUploadParser)
+  const [metadataRequest, setMetadataRequest] = useQueryState('metadata', documentMetadataParser)
+  const metadataOpen = metadataRequest === '1'
+  const setMetadataOpen = useCallback(
+    (open: boolean) => {
+      void setMetadataRequest(open ? '1' : null)
+    },
+    [setMetadataRequest],
+  )
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<Set<string>>(() => new Set())
   const [uploadFormInitialFiles, setUploadFormInitialFiles] = useState<File[]>([])
   const [isFileDragActive, setIsFileDragActive] = useState(false)
@@ -2472,6 +2484,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             onAddDocument={() => openUploadForm()}
             onFilterChange={setFilter}
             onLoadMore={loadMoreResults}
+            onOpenMetadata={() => setMetadataOpen(true)}
             onOpenTasks={() => setTasksOpen(true)}
             onRemoveDocument={handleRemoveDocument}
             onRenameDocument={handleRenameDocument}
@@ -2566,6 +2579,13 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         taskQueryFetching={tasksQuery.isFetching}
         taskProgressStore={taskProgressStore}
         tasks={drawerTasks}
+      />
+      <DocumentMetadataDrawer
+        documents={documents}
+        knowledgeSpaceId={knowledgeSpaceId}
+        onOpenChange={setMetadataOpen}
+        open={metadataOpen && !permissionDenied}
+        readOnly={!canWrite}
       />
       <KnowledgeModelSetupDialog
         open={modelSetupDialogOpen}

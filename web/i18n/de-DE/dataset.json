@@ -100,6 +100,7 @@
   "metadata.batchEditMetadata.editDocumentsNum": "Bearbeiten von {{num}} Dokumenten",
   "metadata.batchEditMetadata.editMetadata": "Metadaten bearbeiten",
   "metadata.batchEditMetadata.multipleValue": "Mehrwert",
+  "metadata.checkName.duplicate": "Ein Metadatenfeld mit diesem Namen existiert bereits.",
   "metadata.checkName.empty": "Der Metadatenname darf nicht leer sein.",
   "metadata.checkName.invalid": "Der Metadatenname darf nur Kleinbuchstaben, Zahlen und Unterstriche enthalten und muss mit einem Kleinbuchstaben beginnen.",
   "metadata.checkName.tooLong": "Der Metadatenname darf {{max}} Zeichen nicht überschreiten.",

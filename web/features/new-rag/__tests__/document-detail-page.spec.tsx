@@ -100,6 +100,15 @@ const permissionState = vi.hoisted(() => ({
 }))
 const reindexMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
 const cancelMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
+const patchDocumentMetadata = vi.hoisted(() => vi.fn())
+const listLogicalDocuments = vi.hoisted(() => vi.fn())
+const metadataDocumentsQuery = vi.hoisted(() => ({
+  data: [] as LogicalDocument[] | undefined,
+  error: null as unknown,
+  isFetching: false,
+  isPending: false,
+  refetch: vi.fn(),
+}))
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }))
 const settingsState = vi.hoisted(() => ({
   configurationState: 'active' as 'active' | 'setup-required',
@@ -337,7 +346,8 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
     },
     useMutation: (options: { mutationKind?: string }) =>
       options.mutationKind === 'cancel' ? cancelMutation : reindexMutation,
-    useQuery: (options: { queryKind?: string }) => {
+    useQuery: (options: { queryKey?: readonly unknown[]; queryKind?: string }) => {
+      if (options.queryKey?.includes('document-metadata-documents')) return metadataDocumentsQuery
       if (options.queryKind === 'settings')
         return {
           data: {
@@ -356,6 +366,22 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 })
 
 vi.mock('@/service/client', () => ({
+  consoleClient: {
+    knowledgeFs: {
+      spaces: {
+        byControlSpaceId: {
+          documents: {
+            byDocumentId: {
+              patch: patchDocumentMetadata,
+            },
+          },
+          logicalDocuments: {
+            get: listLogicalDocuments,
+          },
+        },
+      },
+    },
+  },
   consoleQuery: {
     knowledgeFs: {
       spaces: {
@@ -563,6 +589,10 @@ describe('DocumentDetailPage', () => {
     tasksQuery.isFetchNextPageError = false
     tasksQuery.isFetchingNextPage = false
     tasksQuery.isPending = false
+    metadataDocumentsQuery.data = []
+    metadataDocumentsQuery.error = null
+    metadataDocumentsQuery.isFetching = false
+    metadataDocumentsQuery.isPending = false
     permissionState.refresh.mockResolvedValue({
       data: { dataset: { default_permission_keys: ['dataset.acl.edit'] } },
       error: null,
@@ -579,6 +609,13 @@ describe('DocumentDetailPage', () => {
     }))
     reindexMutation.mutateAsync.mockResolvedValue(queuedReindexResult())
     cancelMutation.mutateAsync.mockResolvedValue(taskApiResponse(task({ state: 'canceled' })))
+    patchDocumentMetadata.mockImplementation(async () =>
+      logicalDocumentApiResponse(logicalDocument({ rowVersion: 3 })),
+    )
+    listLogicalDocuments.mockResolvedValue({
+      data: [logicalDocumentApiResponse(logicalDocument())],
+      next_cursor: null,
+    })
     queryClient.invalidateQueries.mockResolvedValue(undefined)
   })
 
@@ -789,9 +826,393 @@ describe('DocumentDetailPage', () => {
     })
     expect(startLabeling).toBeEnabled()
     await user.click(startLabeling)
-    expect(toastState.info).toHaveBeenCalledWith('dataset.newKnowledge.filtersUnavailable')
+    expect(
+      await screen.findByRole('button', { name: 'dataset.metadata.addMetadata' }),
+    ).toBeInTheDocument()
+    expect(toastState.info).not.toHaveBeenCalled()
     expect(screen.getByTestId('chunk-content-scroll')).toBe(previousContentScroller)
     expect(screen.getByRole('heading', { name: 'Setup requirements' })).toBeInTheDocument()
+  })
+
+  it('updates document metadata through the KnowledgeFS metadata endpoint', async () => {
+    const user = userEvent.setup()
+    documentQuery.data = logicalDocument({
+      knowledgeSpaceId: 'remote-space-1',
+      userMetadata: { category: 'support', sourceName: 'Notion support SOP' },
+    })
+
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    expect(screen.getByText('category')).toBeInTheDocument()
+    expect(screen.queryByText('sourceName')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+    const valueInput = await screen.findByRole('textbox', { name: 'category' })
+    await user.clear(valueInput)
+    await user.type(valueInput, 'security')
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+    expect(patchDocumentMetadata).toHaveBeenCalledWith({
+      body: { expectedRowVersion: 2, patch: { category: 'security' } },
+      params: { control_space_id: 'space-1', document_id: 'document-1' },
+    })
+    await waitFor(() => expect(toastState.success).toHaveBeenCalledWith('common.api.actionSuccess'))
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ['knowledge-fs', 'document'],
+    })
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ['knowledge-fs', 'documents'],
+    })
+  })
+
+  it('lets users choose the type of a new document metadata field', async () => {
+    const user = userEvent.setup()
+    metadataDocumentsQuery.data = [
+      logicalDocument(),
+      logicalDocument({
+        id: 'document-2',
+        rowVersion: 4,
+        userMetadata: { priority: 0 },
+      }),
+    ]
+
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.metadata.documentMetadata.startLabeling',
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }))
+    await user.click(await screen.findByRole('option', { name: /priority/ }))
+    const valueInput = screen.getByRole('spinbutton', { name: 'priority' })
+    await user.clear(valueInput)
+    await user.type(valueInput, '42')
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+    expect(patchDocumentMetadata).toHaveBeenCalledWith({
+      body: { expectedRowVersion: 2, patch: { priority: 42 } },
+      params: { control_space_id: 'space-1', document_id: 'document-1' },
+    })
+  })
+
+  it('keeps selected number and time metadata empty until the user enters a value', async () => {
+    const user = userEvent.setup()
+    metadataDocumentsQuery.data = [
+      logicalDocument(),
+      logicalDocument({
+        id: 'document-2',
+        userMetadata: {
+          priority: 7,
+          reviewed_at: '2026-08-04T10:00:00.000Z',
+        },
+      }),
+    ]
+
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.metadata.documentMetadata.startLabeling',
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }))
+    await user.click(await screen.findByRole('option', { name: /priority/ }))
+    expect(screen.getByLabelText('priority')).toHaveValue(null)
+
+    await user.click(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }))
+    await user.click(await screen.findByRole('option', { name: /reviewed_at/ }))
+    expect(screen.getByLabelText('reviewed_at')).toHaveValue('')
+  })
+
+  it('preserves a time field editor when this document has an empty value', async () => {
+    const user = userEvent.setup()
+    documentQuery.data = logicalDocument({ userMetadata: { reviewed_at: '' } })
+    metadataDocumentsQuery.data = [
+      logicalDocument({ userMetadata: { reviewed_at: '' } }),
+      logicalDocument({
+        id: 'document-2',
+        userMetadata: { reviewed_at: '2026-08-04T10:00:00.000Z' },
+      }),
+    ]
+
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+
+    expect(screen.getByLabelText('reviewed_at')).toHaveAttribute('type', 'datetime-local')
+  })
+
+  it('keeps the edit action busy while resolving metadata types', async () => {
+    const user = userEvent.setup()
+    let resolveMetadataRefetch!: (value: { data: LogicalDocument[] }) => void
+    documentQuery.data = logicalDocument({ userMetadata: { category: '' } })
+    metadataDocumentsQuery.data = undefined
+    metadataDocumentsQuery.refetch.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveMetadataRefetch = resolve
+        }),
+    )
+
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    const editButton = screen.getByRole('button', { name: 'common.operation.edit' })
+    await user.click(editButton)
+
+    expect(editButton).toHaveAttribute('aria-disabled', 'true')
+    await user.click(editButton)
+    expect(metadataDocumentsQuery.refetch).toHaveBeenCalledOnce()
+
+    await act(async () => {
+      resolveMetadataRefetch({ data: [logicalDocument({ userMetadata: { category: '' } })] })
+    })
+    expect(await screen.findByLabelText('category')).toBeInTheDocument()
+  })
+
+  it('converts UTC metadata timestamps to local datetime input values', async () => {
+    const user = userEvent.setup()
+    const getTimezoneOffset = vi.spyOn(Date.prototype, 'getTimezoneOffset').mockReturnValue(-480)
+    documentQuery.data = logicalDocument({
+      userMetadata: { reviewed_at: '2026-08-04T10:00:00.000Z' },
+    })
+    metadataDocumentsQuery.data = [documentQuery.data]
+
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+
+    expect(screen.getByLabelText('reviewed_at')).toHaveValue('2026-08-04T18:00')
+    getTimezoneOffset.mockRestore()
+  })
+
+  it('creates a reusable metadata field across KnowledgeFS documents', async () => {
+    const user = userEvent.setup()
+    const secondDocument = logicalDocument({ id: 'document-2', rowVersion: 4 })
+    listLogicalDocuments.mockResolvedValue({
+      data: [
+        logicalDocumentApiResponse(logicalDocument()),
+        logicalDocumentApiResponse(secondDocument),
+      ],
+      next_cursor: null,
+    })
+
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.metadata.documentMetadata.startLabeling',
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }))
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.metadata.selectMetadata.newAction' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'number' }))
+    await user.type(
+      screen.getByRole('textbox', { name: 'dataset.metadata.createMetadata.name' }),
+      'priority',
+    )
+    await user.keyboard('{Enter}')
+
+    expect(listLogicalDocuments).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1' },
+      query: {},
+    })
+    expect(patchDocumentMetadata).toHaveBeenCalledWith({
+      body: { expectedRowVersion: 2, patch: { priority: 0 } },
+      params: { control_space_id: 'space-1', document_id: 'document-1' },
+    })
+    expect(patchDocumentMetadata).toHaveBeenCalledWith({
+      body: { expectedRowVersion: 4, patch: { priority: 0 } },
+      params: { control_space_id: 'space-1', document_id: 'document-2' },
+    })
+  })
+
+  it('keeps a newly created field in the current document draft', async () => {
+    const user = userEvent.setup()
+    const currentDocument = logicalDocument()
+    const secondDocument = logicalDocument({ id: 'document-2', rowVersion: 4 })
+    const documents = [currentDocument, secondDocument]
+    documentQuery.data = currentDocument
+    metadataDocumentsQuery.data = documents
+    listLogicalDocuments.mockImplementation(async () => ({
+      data: documents.map(logicalDocumentApiResponse),
+      next_cursor: null,
+    }))
+    patchDocumentMetadata.mockImplementation(
+      async ({
+        body,
+        params,
+      }: {
+        body: { patch: Record<string, unknown> }
+        params: { document_id: string }
+      }) => {
+        const index = documents.findIndex((candidate) => candidate.id === params.document_id)
+        if (index < 0) throw new Error(`Unknown document ${params.document_id}`)
+        const candidate = documents[index]
+        if (!candidate) throw new Error(`Unknown document ${params.document_id}`)
+        const updated = logicalDocument({
+          ...candidate,
+          id: candidate.id,
+          rowVersion: candidate.rowVersion + 1,
+          userMetadata: { ...candidate.userMetadata, ...body.patch },
+        })
+        documents[index] = updated
+        if (updated.id === currentDocument.id) documentQuery.data = updated
+        return logicalDocumentApiResponse(updated)
+      },
+    )
+
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.metadata.documentMetadata.startLabeling',
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }))
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.metadata.selectMetadata.newAction' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'number' }))
+    await user.type(
+      screen.getByRole('textbox', { name: 'dataset.metadata.createMetadata.name' }),
+      'priority',
+    )
+    await user.keyboard('{Enter}')
+    await waitFor(() => expect(screen.getByLabelText('priority')).toHaveValue(0))
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+    expect(patchDocumentMetadata).toHaveBeenCalledTimes(2)
+    expect(patchDocumentMetadata).not.toHaveBeenCalledWith(
+      expect.objectContaining({ body: expect.objectContaining({ patch: { priority: null } }) }),
+    )
+  })
+
+  it('keeps metadata creation unavailable while the full field list is loading', async () => {
+    const user = userEvent.setup()
+    metadataDocumentsQuery.isPending = true
+
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.metadata.documentMetadata.startLabeling',
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }))
+
+    expect(
+      screen.getByRole('button', { name: 'dataset.metadata.selectMetadata.newAction' }),
+    ).toBeDisabled()
+  })
+
+  it('keeps the metadata create form open when creation fails', async () => {
+    const user = userEvent.setup()
+    patchDocumentMetadata.mockRejectedValueOnce(new Error('metadata update failed'))
+
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.metadata.documentMetadata.startLabeling',
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }))
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.metadata.selectMetadata.newAction' }),
+    )
+    const nameInput = screen.getByRole('textbox', {
+      name: 'dataset.metadata.createMetadata.name',
+    })
+    const createDialog = nameInput.closest<HTMLElement>('[role="dialog"]')!
+    await user.type(nameInput, 'category')
+    await user.click(within(createDialog).getByRole('button', { name: 'common.operation.save' }))
+
+    expect(nameInput).toHaveValue('category')
+    expect(nameInput).toBeInTheDocument()
+    await waitFor(() =>
+      expect(toastState.error).toHaveBeenCalledWith('dataset.newKnowledge.settings.saveFailed'),
+    )
+  })
+
+  it('validates a new metadata name before submitting it', async () => {
+    const user = userEvent.setup()
+    metadataDocumentsQuery.data = [
+      logicalDocument({ id: 'document-2', userMetadata: { existing_field: '' } }),
+    ]
+
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.metadata.documentMetadata.startLabeling',
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }))
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.metadata.selectMetadata.newAction' }),
+    )
+    const dialog = screen.getByRole('dialog')
+    const nameInput = within(dialog).getByRole('textbox', {
+      name: 'dataset.metadata.createMetadata.name',
+    })
+    const save = within(dialog).getByRole('button', { name: 'common.operation.save' })
+    expect(save).toBeDisabled()
+
+    await user.type(nameInput, 'Priority')
+    expect(nameInput).toHaveAttribute('aria-invalid', 'true')
+    expect(within(dialog).getByRole('alert')).toHaveTextContent(
+      'dataset.metadata.checkName.invalid',
+    )
+    expect(save).toBeDisabled()
+
+    await user.clear(nameInput)
+    await user.type(nameInput, 'existing_field')
+    expect(nameInput).toHaveAttribute('aria-invalid', 'true')
+    expect(within(dialog).getByRole('alert')).toHaveTextContent(
+      'dataset.metadata.checkName.duplicate',
+    )
+    expect(save).toBeDisabled()
+
+    await user.clear(nameInput)
+    await user.type(nameInput, 'a'.repeat(256))
+    expect(within(dialog).getByRole('alert')).toHaveTextContent(
+      'dataset.metadata.checkName.tooLong',
+    )
+    expect(save).toBeDisabled()
+
+    await user.clear(nameInput)
+    await user.type(nameInput, 'sourceName')
+    expect(within(dialog).getByRole('alert')).toHaveTextContent(
+      'dataset.metadata.checkName.invalid',
+    )
+    expect(save).toBeDisabled()
+
+    await user.clear(nameInput)
+    await user.type(nameInput, 'priority_1')
+    expect(nameInput).not.toHaveAttribute('aria-invalid')
+    expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
+    expect(save).toBeEnabled()
+  })
+
+  it('opens the New RAG metadata manager from the document picker', async () => {
+    const user = userEvent.setup()
+
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.metadata.documentMetadata.startLabeling',
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }))
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.metadata.selectMetadata.manageAction' }),
+    )
+
+    expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/documents?metadata=1')
   })
 
   it('supports tree keyboard navigation, collapse, and selection', async () => {

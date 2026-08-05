@@ -192,6 +192,7 @@ def test_space_list_item_serializes_naive_database_timestamps_as_utc() -> None:
             "control_space_id": "control-space-1",
             "created_at": datetime(2026, 7, 28, 6, 58, 18),
             "knowledge_space_id": "knowledge-space-1",
+            "linked_apps": 2,
             "owner_account_id": "account-1",
             "permission_keys": ["knowledge_space_read"],
             "resource_version": 1,
@@ -205,6 +206,7 @@ def test_space_list_item_serializes_naive_database_timestamps_as_utc() -> None:
     payload = response.model_dump(mode="json")
 
     assert payload["created_at"] == "2026-07-28T06:58:18Z"
+    assert payload["linked_apps"] == 2
     assert payload["updated_at"] == "2026-07-28T06:59:16Z"
 
 
@@ -214,6 +216,7 @@ def test_space_list_item_converts_aware_database_timestamps_to_utc() -> None:
             "control_space_id": "control-space-1",
             "created_at": datetime(2026, 7, 28, 6, 58, 18, tzinfo=UTC),
             "knowledge_space_id": "knowledge-space-1",
+            "linked_apps": 0,
             "owner_account_id": "account-1",
             "permission_keys": ["knowledge_space_read"],
             "resource_version": 1,

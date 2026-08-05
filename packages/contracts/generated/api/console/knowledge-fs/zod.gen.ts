@@ -775,6 +775,7 @@ export const zKnowledgeFsSpaceListItemResponse = z.object({
   control_space_id: z.string(),
   created_at: z.iso.datetime(),
   knowledge_space_id: z.string().nullable(),
+  linked_apps: z.int().gte(0),
   owner_account_id: z.string(),
   permission_keys: z.array(zKnowledgeFsProductPermission),
   resource_version: z.int(),

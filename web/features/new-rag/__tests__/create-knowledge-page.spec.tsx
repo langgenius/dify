@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CreateKnowledgePage } from '../create-knowledge-page'
 import { newKnowledgeSourceDraftStorageKey } from '../routes'
@@ -864,14 +864,40 @@ describe('CreateKnowledgePage', () => {
     )
     const queue = screen.getByRole('list', { name: 'dataset.newKnowledge.uploadFiles' })
     const preview = within(queue).getByRole('button', { name: 'dataset.newKnowledge.preview' })
-    expect(preview).toBeDisabled()
-    expect(preview).toHaveAccessibleDescription('dataset.newKnowledge.previewUnavailable')
-    expect(screen.getByText('dataset.newKnowledge.previewUnavailable')).toBeVisible()
+    expect(preview).toBeEnabled()
+    expect(screen.queryByText('dataset.newKnowledge.previewUnavailable')).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
 
     expect(await within(queue).findByText('dataset.newKnowledge.uploadingFiles')).toBeVisible()
     expect(within(queue).queryByRole('button', { name: 'dataset.newKnowledge.preview' })).toBeNull()
+  })
+
+  it('previews a selected file locally without uploading it', () => {
+    navigationMock.startMode = 'upload'
+    const file = new File(['local content'], 'handbook.md', { type: 'text/markdown' })
+    const createObjectUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:handbook')
+    const revokeObjectUrl = vi.spyOn(URL, 'revokeObjectURL')
+    const open = vi.spyOn(globalThis, 'open').mockReturnValue(null)
+    vi.useFakeTimers()
+    renderPage()
+
+    fireEvent.change(
+      screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
+        selector: 'input[type="file"]',
+      }),
+      { target: { files: [file] } },
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'dataset.newKnowledge.preview' }))
+
+    expect(createObjectUrl).toHaveBeenCalledWith(expect.any(Blob))
+    expect((createObjectUrl.mock.calls[0]?.[0] as Blob).type).toBe('text/plain')
+    expect(open).toHaveBeenCalledWith('blob:handbook', '_blank', 'noopener,noreferrer')
+    expect(serviceMock.upload).not.toHaveBeenCalled()
+    expect(revokeObjectUrl).not.toHaveBeenCalled()
+
+    vi.advanceTimersByTime(60_000)
+    expect(revokeObjectUrl).toHaveBeenCalledWith('blob:handbook')
   })
 
   it('retries upload without creating a duplicate knowledge space', async () => {

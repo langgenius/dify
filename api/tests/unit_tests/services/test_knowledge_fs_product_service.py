@@ -5,9 +5,13 @@ from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy import event
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.knowledge_fs import (
+    AppKnowledgeFSSpaceJoin,
+    KnowledgeFSAppSpaceJoinStatus,
+    KnowledgeFSAppSpaceJoinType,
     KnowledgeFSControlSpace,
     KnowledgeFSControlSpacePermission,
     KnowledgeFSControlSpacePermissionRole,
@@ -168,7 +172,7 @@ def _space(
 
 @pytest.mark.parametrize(
     "sqlite_session",
-    [(KnowledgeFSControlSpace, KnowledgeFSControlSpacePermission)],
+    [(KnowledgeFSControlSpace, KnowledgeFSControlSpacePermission, AppKnowledgeFSSpaceJoin)],
     indirect=True,
 )
 def test_list_filters_locally_then_fetches_one_explicit_authorized_batch(sqlite_session: Session) -> None:
@@ -209,6 +213,41 @@ def test_list_filters_locally_then_fetches_one_explicit_authorized_batch(sqlite_
             role=KnowledgeFSControlSpacePermissionRole.VIEWER,
         )
     )
+    sqlite_session.add_all(
+        [
+            AppKnowledgeFSSpaceJoin(
+                tenant_id="tenant-1",
+                control_space_id=owner.id,
+                app_id="app-1",
+                join_type=KnowledgeFSAppSpaceJoinType.AGENT,
+            ),
+            AppKnowledgeFSSpaceJoin(
+                tenant_id="tenant-1",
+                control_space_id=owner.id,
+                app_id="app-1",
+                join_type=KnowledgeFSAppSpaceJoinType.WORKFLOW,
+            ),
+            AppKnowledgeFSSpaceJoin(
+                tenant_id="tenant-1",
+                control_space_id=owner.id,
+                app_id="app-revoked",
+                join_type=KnowledgeFSAppSpaceJoinType.AGENT,
+                status=KnowledgeFSAppSpaceJoinStatus.REVOKED,
+            ),
+            AppKnowledgeFSSpaceJoin(
+                tenant_id="tenant-1",
+                control_space_id=all_team.id,
+                app_id="app-2",
+                join_type=KnowledgeFSAppSpaceJoinType.AGENT,
+            ),
+            AppKnowledgeFSSpaceJoin(
+                tenant_id="tenant-1",
+                control_space_id=hidden.id,
+                app_id="app-hidden",
+                join_type=KnowledgeFSAppSpaceJoinType.AGENT,
+            ),
+        ]
+    )
     sqlite_session.commit()
     summary = KnowledgeFSTechnicalSummary(
         knowledge_space_id="space-owner",
@@ -231,10 +270,25 @@ def test_list_filters_locally_then_fetches_one_explicit_authorized_batch(sqlite_
         clock=lambda: next(clock),
     )
 
-    response = service.list_spaces(tenant_id="tenant-1", account_id="account-1", page=1, limit=20)
+    app_binding_selects = 0
+
+    def count_app_binding_selects(*args: object) -> None:
+        nonlocal app_binding_selects
+        if "app_knowledge_fs_space_joins" in str(args[2]):
+            app_binding_selects += 1
+
+    engine = sqlite_session.get_bind()
+    event.listen(engine, "before_cursor_execute", count_app_binding_selects)
+    try:
+        response = service.list_spaces(tenant_id="tenant-1", account_id="account-1", page=1, limit=20)
+    finally:
+        event.remove(engine, "before_cursor_execute", count_app_binding_selects)
 
     returned_ids = {item.control_space_id for item in response.data}
     assert returned_ids == {owner.id, all_team.id, partial.id}
+    assert app_binding_selects == 1
+    linked_apps = {item.control_space_id: item.linked_apps for item in response.data}
+    assert linked_apps == {owner.id: 1, all_team.id: 1, partial.id: 0}
     assert len(rbac.batch_calls) == 1
     assert len(remote.batch_calls) == 1
     assert {binding.knowledge_space_id for binding in batch_capabilities.calls[0]} == {
@@ -265,7 +319,7 @@ def test_list_filters_locally_then_fetches_one_explicit_authorized_batch(sqlite_
 
 @pytest.mark.parametrize(
     "sqlite_session",
-    [(KnowledgeFSControlSpace, KnowledgeFSControlSpacePermission)],
+    [(KnowledgeFSControlSpace, KnowledgeFSControlSpacePermission, AppKnowledgeFSSpaceJoin)],
     indirect=True,
 )
 def test_list_excludes_deleting_and_deleted_spaces_before_authorization(sqlite_session: Session) -> None:
@@ -309,7 +363,7 @@ def test_list_excludes_deleting_and_deleted_spaces_before_authorization(sqlite_s
 
 @pytest.mark.parametrize(
     "sqlite_session",
-    [(KnowledgeFSControlSpace, KnowledgeFSControlSpacePermission)],
+    [(KnowledgeFSControlSpace, KnowledgeFSControlSpacePermission, AppKnowledgeFSSpaceJoin)],
     indirect=True,
 )
 def test_detail_conceals_unauthorized_space_without_remote_io(sqlite_session: Session) -> None:
@@ -339,7 +393,7 @@ def test_detail_conceals_unauthorized_space_without_remote_io(sqlite_session: Se
 
 @pytest.mark.parametrize(
     "sqlite_session",
-    [(KnowledgeFSControlSpace, KnowledgeFSControlSpacePermission)],
+    [(KnowledgeFSControlSpace, KnowledgeFSControlSpacePermission, AppKnowledgeFSSpaceJoin)],
     indirect=True,
 )
 def test_list_applies_rbac_before_pagination(sqlite_session: Session) -> None:
@@ -381,7 +435,7 @@ def test_list_applies_rbac_before_pagination(sqlite_session: Session) -> None:
 
 @pytest.mark.parametrize(
     "sqlite_session",
-    [(KnowledgeFSControlSpace, KnowledgeFSControlSpacePermission)],
+    [(KnowledgeFSControlSpace, KnowledgeFSControlSpacePermission, AppKnowledgeFSSpaceJoin)],
     indirect=True,
 )
 def test_list_fails_closed_without_remote_io_when_batch_capability_cannot_be_issued(

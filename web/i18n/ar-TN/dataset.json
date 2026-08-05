@@ -100,6 +100,7 @@
   "metadata.batchEditMetadata.editDocumentsNum": "تعديل {{num}} مستندات",
   "metadata.batchEditMetadata.editMetadata": "تعديل البيانات الوصفية",
   "metadata.batchEditMetadata.multipleValue": "قيمة متعددة",
+  "metadata.checkName.duplicate": "يوجد حقل بيانات وصفية بهذا الاسم بالفعل",
   "metadata.checkName.empty": "لا يمكن أن يكون اسم البيانات الوصفية فارغًا",
   "metadata.checkName.invalid": "يمكن أن يحتوي اسم البيانات الوصفية فقط على أحرف صغيرة وأرقام وشرطات سفلية ويجب أن يبدأ بحرف صغير",
   "metadata.checkName.tooLong": "لا يمكن أن يتجاوز اسم البيانات الوصفية {{max}} حرفًا",

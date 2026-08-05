@@ -81,6 +81,11 @@ Utilities:
 
 ## Button loading and disabled contract
 
+`Button` owns the spacing between direct children. Regular (`medium`) and Large sizes use
+4px and 6px gaps. Small uses 3px for Primary and 4px for the other variants. Do not add icon
+margins or a standard `gap-*` at call sites; use a Button `className` override only for a
+documented layout exception.
+
 `Button` keeps normal `disabled` controls native-disabled by default so unavailable actions are removed from the keyboard focus order.
 
 When `loading` is true, `Button` defaults `focusableWhenDisabled` to true. Loading represents an action that has already been triggered and is temporarily pending, so the button remains focusable while Base UI still suppresses click, pointer, keyboard activation, and submit-button activation. Pass `focusableWhenDisabled={false}` only when a loading button should use native disabled behavior.

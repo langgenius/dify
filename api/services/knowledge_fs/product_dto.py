@@ -712,7 +712,7 @@ class KnowledgeFSOverviewStatsResponse(ResponseModel):
     window: Literal["24h", "7d", "30d"]
 
 
-class KnowledgeFSSpaceListItemResponse(ResponseModel):
+class KnowledgeFSSpaceResponse(ResponseModel):
     control_space_id: str
     created_at: datetime
     state: KnowledgeFSControlSpaceState
@@ -733,6 +733,10 @@ class KnowledgeFSSpaceListItemResponse(ResponseModel):
         return value.astimezone(UTC)
 
 
+class KnowledgeFSSpaceListItemResponse(KnowledgeFSSpaceResponse):
+    linked_apps: int = Field(ge=0)
+
+
 class KnowledgeFSSpaceListResponse(ResponseModel):
     data: list[KnowledgeFSSpaceListItemResponse]
     page: int
@@ -740,7 +744,7 @@ class KnowledgeFSSpaceListResponse(ResponseModel):
     has_more: bool
 
 
-class KnowledgeFSSpaceDetailResponse(KnowledgeFSSpaceListItemResponse):
+class KnowledgeFSSpaceDetailResponse(KnowledgeFSSpaceResponse):
     pass
 
 

@@ -22222,6 +22222,7 @@ Input field definition for snippet parameters.
 | control_space_id | string |  | Yes |
 | created_at | dateTime |  | Yes |
 | knowledge_space_id | string |  | Yes |
+| linked_apps | integer |  | Yes |
 | owner_account_id | string |  | Yes |
 | permission_keys | [ [KnowledgeFSProductPermission](#knowledgefsproductpermission) ] |  | Yes |
 | resource_version | integer |  | Yes |

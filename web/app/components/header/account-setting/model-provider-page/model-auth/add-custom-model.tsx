@@ -66,7 +66,7 @@ const AddCustomModel = ({
             disabled && 'cursor-not-allowed opacity-50',
           )}
         >
-          <span className="mr-1 i-ri-add-circle-fill size-3.5" />
+          <span className="i-ri-add-circle-fill size-3.5" />
           {t(($) => $['modelProvider.addModel'], { ns: 'common' })}
         </Button>
       )

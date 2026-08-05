@@ -100,6 +100,7 @@
   "metadata.batchEditMetadata.editDocumentsNum": "ویرایش {{num}} سند",
   "metadata.batchEditMetadata.editMetadata": "ویرایش متا داده ها",
   "metadata.batchEditMetadata.multipleValue": "چندین ارزش",
+  "metadata.checkName.duplicate": "یک فیلد فراداده با این نام از قبل وجود دارد",
   "metadata.checkName.empty": "نام فراداده نمی‌تواند خالی باشد",
   "metadata.checkName.invalid": "نام متاداده فقط می‌تواند شامل حروف کوچک، اعداد و زیرخط‌ها باشد و باید با یک حرف کوچک آغاز شود.",
   "metadata.checkName.tooLong": "نام متا داده نمی‌تواند بیشتر از {{max}} کاراکتر باشد",

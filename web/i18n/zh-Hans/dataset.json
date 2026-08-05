@@ -100,6 +100,7 @@
   "metadata.batchEditMetadata.editDocumentsNum": "编辑 {{num}} 个文档",
   "metadata.batchEditMetadata.editMetadata": "编辑元数据",
   "metadata.batchEditMetadata.multipleValue": "多个值",
+  "metadata.checkName.duplicate": "已存在同名的元数据字段",
   "metadata.checkName.empty": "元数据名称不能为空",
   "metadata.checkName.invalid": "元数据名称只能包含小写字母、数字和下划线，并且必须以小写字母开头",
   "metadata.checkName.tooLong": "元数据名称不得超过{{max}}个字符",
