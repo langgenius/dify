@@ -20,9 +20,9 @@ from configs import dify_config
 from core.helper.encrypter import batch_decrypt_token, encrypt_token, obfuscated_token
 from core.helper.trace_id_helper import ParentTraceContext
 from core.ops.entities.config_entity import (
-    OPS_FILE_PATH,
     BaseTracingConfig,
     TracingProviderEnum,
+    ops_trace_payload_path,
 )
 from core.ops.entities.trace_entity import (
     DatasetRetrievalTraceInfo,
@@ -1567,30 +1567,55 @@ class TraceQueueManager:
             trace_manager_timer.daemon = False
             trace_manager_timer.start()
 
+    def _resolve_storage_id(self, task: TraceTask) -> str | None:
+        storage_id = task.app_id
+        if storage_id is not None:
+            return storage_id
+
+        tenant_id = task.kwargs.get("tenant_id")
+        if tenant_id:
+            return f"tenant-{tenant_id}"
+
+        logger.warning("Skipping trace without app_id or tenant_id, trace_type: %s", task.trace_type)
+        return None
+
+    def persist_trace_task(self, task: TraceTask, *, file_id: str | None = None) -> dict[str, str] | None:
+        if not (self._enterprise_telemetry_enabled or self.trace_instance):
+            return None
+
+        task.app_id = self.app_id
+        storage_id = self._resolve_storage_id(task)
+        if storage_id is None:
+            return None
+
+        resolved_file_id = file_id or uuid4().hex
+        trace_info = task.execute()
+        task_data = TaskData(
+            app_id=storage_id,
+            trace_info_type=type(trace_info).__name__,
+            trace_info=trace_info.model_dump() if trace_info else None,
+        )
+        storage.save(
+            ops_trace_payload_path(storage_id, resolved_file_id),
+            task_data.model_dump_json().encode("utf-8"),
+        )
+        return {"file_id": resolved_file_id, "app_id": storage_id}
+
+    def enqueue_persisted_trace(self, file_info: dict[str, str]) -> None:
+        process_trace_tasks.apply_async(
+            args=[file_info],
+            retry=True,
+            retry_policy={
+                "max_retries": 3,
+                "interval_start": 0,
+                "interval_step": 1,
+                "interval_max": 2,
+            },
+        )
+
     def send_to_celery(self, tasks: list[TraceTask]):
         with self.flask_app.app_context():
             for task in tasks:
-                storage_id = task.app_id
-                if storage_id is None:
-                    tenant_id = task.kwargs.get("tenant_id")
-                    if tenant_id:
-                        storage_id = f"tenant-{tenant_id}"
-                    else:
-                        logger.warning("Skipping trace without app_id or tenant_id, trace_type: %s", task.trace_type)
-                        continue
-
-                file_id = uuid4().hex
-                trace_info = task.execute()
-
-                task_data = TaskData(
-                    app_id=storage_id,
-                    trace_info_type=type(trace_info).__name__,
-                    trace_info=trace_info.model_dump() if trace_info else None,
-                )
-                file_path = f"{OPS_FILE_PATH}{storage_id}/{file_id}.json"
-                storage.save(file_path, task_data.model_dump_json().encode("utf-8"))
-                file_info = {
-                    "file_id": file_id,
-                    "app_id": storage_id,
-                }
-                process_trace_tasks.delay(file_info)  # type: ignore
+                file_info = self.persist_trace_task(task)
+                if file_info is not None:
+                    self.enqueue_persisted_trace(file_info)

@@ -135,9 +135,11 @@ class RecordingStorage:
 class RecordingDispatcher:
     def __init__(self) -> None:
         self.payloads: list[dict[str, str]] = []
+        self.options: list[dict[str, object]] = []
 
-    def delay(self, payload: dict[str, str]) -> None:
-        self.payloads.append(payload)
+    def apply_async(self, *, args: list[dict[str, str]], **kwargs: object) -> None:
+        self.payloads.append(args[0])
+        self.options.append(kwargs)
 
 
 @pytest.fixture
@@ -699,7 +701,7 @@ def test_trace_queue_collect_run_and_storage_boundary(monkeypatch: pytest.Monkey
     recording_storage = RecordingStorage()
     dispatcher = RecordingDispatcher()
     monkeypatch.setattr(module.storage, "save", recording_storage.save)
-    monkeypatch.setattr(module.process_trace_tasks, "delay", dispatcher.delay)
+    monkeypatch.setattr(module.process_trace_tasks, "apply_async", dispatcher.apply_async)
     file_id = UUID("00000000-0000-0000-0000-000000000123")
     monkeypatch.setattr(module, "uuid4", lambda: file_id)
     manager.add_trace_task(task)
@@ -710,3 +712,52 @@ def test_trace_queue_collect_run_and_storage_boundary(monkeypatch: pytest.Monkey
     assert path.endswith(f"app-id/{file_id.hex}.json")
     assert json.loads(data)["app_id"] == "app-id"
     assert dispatcher.payloads == [{"file_id": file_id.hex, "app_id": "app-id"}]
+
+
+def test_trace_queue_persists_with_caller_supplied_file_id(
+    monkeypatch: pytest.MonkeyPatch, trace_environment: None
+) -> None:
+    monkeypatch.setattr(OpsTraceManager, "get_ops_trace_instance", classmethod(lambda cls, _app_id: True))
+    manager = TraceQueueManager(app_id="app-id", user_id="user-1")
+    task = TraceTask(
+        trace_type=TraceTaskName.GENERATE_NAME_TRACE,
+        conversation_id="conversation-1",
+        timer={"start": 1, "end": 2},
+        tenant_id="tenant-1",
+        generate_conversation_name="name",
+        inputs="query",
+    )
+    recording_storage = RecordingStorage()
+    monkeypatch.setattr(module.storage, "save", recording_storage.save)
+
+    file_info = manager.persist_trace_task(task, file_id="workflow-final-run-1")
+
+    assert file_info == {"file_id": "workflow-final-run-1", "app_id": "app-id"}
+    assert recording_storage.writes[0][0] == "ops_trace/app-id/workflow-final-run-1.json"
+
+
+def test_trace_queue_persistence_error_propagates(monkeypatch: pytest.MonkeyPatch, trace_environment: None) -> None:
+    monkeypatch.setattr(OpsTraceManager, "get_ops_trace_instance", classmethod(lambda cls, _app_id: True))
+    manager = TraceQueueManager(app_id="app-id", user_id="user-1")
+    task = TraceTask(trace_type=TraceTaskName.GENERATE_NAME_TRACE)
+
+    def fail_save(_path: str, _data: bytes) -> None:
+        raise OSError("storage unavailable")
+
+    monkeypatch.setattr(module.storage, "save", fail_save)
+
+    with pytest.raises(OSError, match="storage unavailable"):
+        manager.persist_trace_task(task, file_id="workflow-final-run-1")
+
+
+def test_trace_queue_enqueue_error_propagates(monkeypatch: pytest.MonkeyPatch, trace_environment: None) -> None:
+    monkeypatch.setattr(OpsTraceManager, "get_ops_trace_instance", classmethod(lambda cls, _app_id: True))
+    manager = TraceQueueManager(app_id="app-id", user_id="user-1")
+
+    def fail_enqueue(*_args: object, **_kwargs: object) -> None:
+        raise ConnectionError("broker unavailable")
+
+    monkeypatch.setattr(module.process_trace_tasks, "apply_async", fail_enqueue)
+
+    with pytest.raises(ConnectionError, match="broker unavailable"):
+        manager.enqueue_persisted_trace({"file_id": "workflow-final-run-1", "app_id": "app-id"})
