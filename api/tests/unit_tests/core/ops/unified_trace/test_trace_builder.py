@@ -319,6 +319,50 @@ def test_workflow_human_wait_resolves_persisted_node_id_to_execution_id() -> Non
     assert span.metadata["owner_kind"] == "agent_node"
 
 
+def test_workflow_human_wait_prefers_form_execution_id_for_repeated_container_node() -> None:
+    started_at = datetime(2025, 1, 1)
+    wait = HumanWaitRecord(
+        wait_id="human-exec-2",
+        owner_id="human-input-node",
+        owner_kind="workflow_node",
+        start_time=started_at,
+        end_time=started_at + timedelta(seconds=1),
+        outcome="submitted",
+    )
+    builder = CanonicalTraceBuilder(
+        lambda _info: [
+            node_execution(
+                id="human-exec-1",
+                node_id="human-input-node",
+                node_type="human-input",
+                iteration_id="iteration-node",
+                iteration_index=0,
+                created_at=started_at,
+            ),
+            node_execution(
+                id="human-exec-2",
+                node_id="human-input-node",
+                node_type="human-input",
+                iteration_id="iteration-node",
+                iteration_index=1,
+                created_at=started_at,
+            ),
+            node_execution(
+                id="iteration-exec",
+                node_id="iteration-node",
+                node_type="iteration",
+                created_at=started_at,
+            ),
+        ]
+    )
+
+    trace = builder.build(workflow_info(metadata={"human_waits": [wait]}))
+
+    assert trace is not None
+    span = next(span for span in trace.spans if span.id == "human_wait:human-exec-2")
+    assert span.parent_id == "human-exec-2"
+
+
 def test_workflow_tool_is_marked_as_nested_workflow_parent() -> None:
     builder = CanonicalTraceBuilder(lambda _info: [node_execution(id="tool-exec")])
 

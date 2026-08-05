@@ -54,6 +54,8 @@ For the workflow topology currently supported by Dify:
 
 Persisted workflow and node execution identifiers are canonical identities. Synthetic wrapper identities are deterministically derived from wrapper kind, container execution identity, and iteration or loop index. Provider-native identities remain adapter concerns.
 
+Workflow-owned Human Input forms may use the owning node execution identifier as their form identifier. When a human-wait identifier matches a canonical node execution span, Core uses that exact execution as the wait parent. Static graph node identifiers and timestamp proximity are only a compatibility fallback for older records without execution-scoped form identity. This prevents repeated executions of one Human Input node inside a supported Loop or Iteration container from being associated with the wrong container run.
+
 ### Runtime selection and legacy isolation
 
 Unified tracing is controlled by a global feature switch that defaults to disabled. `OpsTraceManager` is the runtime selection point:
@@ -102,6 +104,7 @@ Maintainers and provider adapters may rely on these invariants:
 - Core, not adapters, decides supported local workflow hierarchy;
 - spans are supplied parent-first with deterministic, non-causal sibling ordering;
 - ambiguous and cyclic persisted relationships are handled conservatively and deterministically;
+- workflow-owned human waits prefer exact node execution identity and only fall back to static-node matching for legacy records;
 - registered unified providers receive the same logical topology and normalized Dify semantics;
 - one dispatch attempt uses either the unified or legacy runtime, never both;
 - unified dispatch does not fall back to legacy after failure;

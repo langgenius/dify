@@ -326,7 +326,7 @@ class CanonicalTraceBuilder:
             )
 
         for wait in _human_waits(trace_info.metadata):
-            owner_id = wait.owner_id
+            owner_id = wait.wait_id if wait.owner_kind == "workflow_node" and wait.wait_id in spans else wait.owner_id
             if owner_id not in spans:
                 candidates = [
                     span
