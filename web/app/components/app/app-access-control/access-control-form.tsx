@@ -20,7 +20,6 @@ export type AccessControlFormProps = {
   accessMode: AccessMode
   subjects: AccessControlSubjects
   subjectsStatus: AccessControlSubjectsStatus
-  supportedModes: readonly AccessMode[]
   updatePending: boolean
   publicAccessDisabled: boolean
   externalMembersTipHidden: boolean
@@ -35,7 +34,6 @@ export function AccessControlForm({
   accessMode,
   subjects,
   subjectsStatus,
-  supportedModes,
   updatePending,
   publicAccessDisabled,
   externalMembersTipHidden,
@@ -47,10 +45,8 @@ export function AccessControlForm({
 }: AccessControlFormProps) {
   const accessControlOptionsLabelId = useId()
   const { t } = useTranslation()
-  const currentModeSupported = supportedModes.includes(accessMode)
   const confirmDisabled =
     updatePending ||
-    !currentModeSupported ||
     (accessMode === AccessModeValue.PUBLIC && publicAccessDisabled) ||
     (accessMode === AccessModeValue.SPECIFIC_GROUPS_MEMBERS && subjectsStatus !== 'success')
 
@@ -76,70 +72,59 @@ export function AccessControlForm({
               {t(($) => $['accessControlDialog.accessLabel'], { ns: 'app' })}
             </p>
           </div>
-          {supportedModes.includes(AccessModeValue.ORGANIZATION) && (
-            <AccessControlItem type={AccessModeValue.ORGANIZATION}>
-              <div className="flex items-center p-3">
-                <div className="flex grow items-center gap-x-2">
-                  <span
-                    aria-hidden="true"
-                    className="i-ri-building-line size-4 text-text-primary"
-                  />
-                  <p className="system-sm-medium text-text-primary">
-                    {t(($) => $['accessControlDialog.accessItems.organization'], { ns: 'app' })}
-                  </p>
-                </div>
-              </div>
-            </AccessControlItem>
-          )}
-          {supportedModes.includes(AccessModeValue.SPECIFIC_GROUPS_MEMBERS) && (
-            <AccessControlItem type={AccessModeValue.SPECIFIC_GROUPS_MEMBERS}>
-              <SpecificGroupsOrMembers
-                accessMode={accessMode}
-                subjects={subjects}
-                subjectsStatus={subjectsStatus}
-                onSubjectsChange={onSubjectsChange}
-                onRetrySubjects={onRetrySubjects}
-              />
-            </AccessControlItem>
-          )}
-          {supportedModes.includes(AccessModeValue.EXTERNAL_MEMBERS) && (
-            <AccessControlItem type={AccessModeValue.EXTERNAL_MEMBERS}>
-              <div className="flex items-center p-3">
-                <div className="flex grow items-center gap-x-2">
-                  <span
-                    aria-hidden="true"
-                    className="i-ri-verified-badge-line size-4 text-text-primary"
-                  />
-                  <p className="system-sm-medium text-text-primary">
-                    {t(($) => $['accessControlDialog.accessItems.external'], { ns: 'app' })}
-                  </p>
-                </div>
-                {!externalMembersTipHidden && <WebAppSSONotEnabledTip />}
-              </div>
-            </AccessControlItem>
-          )}
-          {supportedModes.includes(AccessModeValue.PUBLIC) && (
-            <AccessControlItem type={AccessModeValue.PUBLIC} disabled={publicAccessDisabled}>
-              <div className="flex items-center gap-x-2 p-3">
-                <span aria-hidden="true" className="i-ri-global-line size-4 text-text-primary" />
+          <AccessControlItem type={AccessModeValue.ORGANIZATION}>
+            <div className="flex items-center p-3">
+              <div className="flex grow items-center gap-x-2">
+                <span aria-hidden="true" className="i-ri-building-line size-4 text-text-primary" />
                 <p className="system-sm-medium text-text-primary">
-                  {t(($) => $['accessControlDialog.accessItems.anyone'], { ns: 'app' })}
+                  {t(($) => $['accessControlDialog.accessItems.organization'], { ns: 'app' })}
                 </p>
-                {publicAccessDisabled && (
-                  <Infotip
-                    aria-label={t(($) => $['accessControlDialog.webAppPublicAccessDisabledTip'], {
-                      ns: 'app',
-                    })}
-                    className="h-4 w-4 shrink-0 text-text-warning-secondary hover:text-text-warning-secondary"
-                  >
-                    {t(($) => $['accessControlDialog.webAppPublicAccessDisabledTip'], {
-                      ns: 'app',
-                    })}
-                  </Infotip>
-                )}
               </div>
-            </AccessControlItem>
-          )}
+            </div>
+          </AccessControlItem>
+          <AccessControlItem type={AccessModeValue.SPECIFIC_GROUPS_MEMBERS}>
+            <SpecificGroupsOrMembers
+              accessMode={accessMode}
+              subjects={subjects}
+              subjectsStatus={subjectsStatus}
+              onSubjectsChange={onSubjectsChange}
+              onRetrySubjects={onRetrySubjects}
+            />
+          </AccessControlItem>
+          <AccessControlItem type={AccessModeValue.EXTERNAL_MEMBERS}>
+            <div className="flex items-center p-3">
+              <div className="flex grow items-center gap-x-2">
+                <span
+                  aria-hidden="true"
+                  className="i-ri-verified-badge-line size-4 text-text-primary"
+                />
+                <p className="system-sm-medium text-text-primary">
+                  {t(($) => $['accessControlDialog.accessItems.external'], { ns: 'app' })}
+                </p>
+              </div>
+              {!externalMembersTipHidden && <WebAppSSONotEnabledTip />}
+            </div>
+          </AccessControlItem>
+          <AccessControlItem type={AccessModeValue.PUBLIC} disabled={publicAccessDisabled}>
+            <div className="flex items-center gap-x-2 p-3">
+              <span aria-hidden="true" className="i-ri-global-line size-4 text-text-primary" />
+              <p className="system-sm-medium text-text-primary">
+                {t(($) => $['accessControlDialog.accessItems.anyone'], { ns: 'app' })}
+              </p>
+              {publicAccessDisabled && (
+                <Infotip
+                  aria-label={t(($) => $['accessControlDialog.webAppPublicAccessDisabledTip'], {
+                    ns: 'app',
+                  })}
+                  className="h-4 w-4 shrink-0 text-text-warning-secondary hover:text-text-warning-secondary"
+                >
+                  {t(($) => $['accessControlDialog.webAppPublicAccessDisabledTip'], {
+                    ns: 'app',
+                  })}
+                </Infotip>
+              )}
+            </div>
+          </AccessControlItem>
         </RadioGroup>
         <div className="flex items-center justify-end gap-x-2 p-6 pt-5">
           <Button onClick={onClose}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>

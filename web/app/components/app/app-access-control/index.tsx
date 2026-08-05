@@ -16,13 +16,6 @@ import { useAppWhiteListSubjects } from '@/service/access-control'
 import { consoleQuery } from '@/service/client'
 import { AccessControlForm } from './access-control-form'
 
-const APP_ACCESS_MODES = [
-  AccessMode.ORGANIZATION,
-  AccessMode.SPECIFIC_GROUPS_MEMBERS,
-  AccessMode.EXTERNAL_MEMBERS,
-  AccessMode.PUBLIC,
-] as const satisfies readonly AccessMode[]
-
 const EMPTY_SUBJECTS: AccessControlSubjects = {
   groups: [],
   members: [],
@@ -104,7 +97,6 @@ function AppAccessControlContainer({ app, onClose, onConfirm }: AccessControlPro
       accessMode={accessMode}
       subjects={subjects}
       subjectsStatus={subjectsStatus}
-      supportedModes={APP_ACCESS_MODES}
       updatePending={updateAccessModeMutation.isPending}
       publicAccessDisabled={publicAccessDisabled}
       externalMembersTipHidden={externalMembersTipHidden}

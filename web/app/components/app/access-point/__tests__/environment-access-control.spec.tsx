@@ -145,6 +145,41 @@ describe('EnvironmentAccessControl', () => {
     })
   })
 
+  it('should allow authenticated external users to access the environment Web app', async () => {
+    const user = userEvent.setup()
+    const onConfirm = vi.fn()
+    renderAccessControl(
+      <EnvironmentAccessControl
+        appId="app-1"
+        environmentId="staging"
+        accessMode={AccessMode.ORGANIZATION}
+        canManage
+        onClose={vi.fn()}
+        onConfirm={onConfirm}
+      />,
+    )
+
+    await user.click(
+      screen.getByRole('radio', {
+        name: 'app.accessControlDialog.accessItems.external',
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+
+    await waitFor(() => {
+      expect(mocks.updateAccessMode.mock.calls[0]?.[0]).toEqual({
+        params: {
+          app_id: 'app-1',
+          environment_id: 'staging',
+        },
+        body: {
+          access_mode: AccessMode.EXTERNAL_MEMBERS,
+        },
+      })
+      expect(onConfirm).toHaveBeenCalledTimes(1)
+    })
+  })
+
   it('should keep confirmation disabled when the environment subjects query fails', async () => {
     const user = userEvent.setup()
     mocks.getSubjects.mockRejectedValue(new Error('subjects unavailable'))

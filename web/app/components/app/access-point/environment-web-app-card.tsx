@@ -1,6 +1,5 @@
 'use client'
 
-import type { EnvironmentAccessMode } from './environment-web-app-utils'
 import type { AccessPointAppInfo } from './utils'
 import {
   AlertDialog,
@@ -21,21 +20,19 @@ import SettingsModal from '@/app/components/app/overview/settings'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import AppIcon from '@/app/components/base/app-icon'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { AccessMode } from '@/models/access-control'
+import { AccessMode, isAccessMode } from '@/models/access-control'
 import { consoleQuery } from '@/service/client'
 import { AccessPointCard } from './access-point-card'
 import { AccessPointUrl } from './access-point-url'
 import { EnvironmentAccessControl } from './environment-access-control'
-import {
-  getEnvironmentWebAppUrl,
-  normalizeEnvironmentAccessMode,
-} from './environment-web-app-utils'
+import { getEnvironmentWebAppUrl } from './environment-web-app-utils'
 import { useBuiltInAccessPointActions } from './use-built-in-actions'
 import { WebAppAccessControlEntry } from './web-app-access-control'
 
-const ACCESS_MODE_ICON_MAP: Record<EnvironmentAccessMode, string> = {
+const ACCESS_MODE_ICON_MAP: Record<AccessMode, string> = {
   [AccessMode.ORGANIZATION]: 'i-ri-building-line',
   [AccessMode.SPECIFIC_GROUPS_MEMBERS]: 'i-ri-lock-line',
+  [AccessMode.EXTERNAL_MEMBERS]: 'i-ri-verified-badge-line',
   [AccessMode.PUBLIC]: 'i-ri-global-line',
 }
 
@@ -73,12 +70,13 @@ export function EnvironmentWebAppCard({
     })
   const siteQuery = useQuery(siteQueryOptions)
   const site = siteQuery.data
+  const siteAccessMode = site?.access_mode
   const apiQuery = useQuery(
     consoleQuery.enterprise.appDeploy.accessService.getEnvironmentApi.queryOptions({
       input: { params },
     }),
   )
-  const accessMode = normalizeEnvironmentAccessMode(site?.access_mode)
+  const accessMode = isAccessMode(siteAccessMode) ? siteAccessMode : AccessMode.ORGANIZATION
   const subjectsQueryOptions =
     consoleQuery.enterprise.appDeploy.accessService.getEnvironmentWebAppSubjects.queryOptions({
       input: { params },
@@ -133,7 +131,9 @@ export function EnvironmentWebAppCard({
       ? t(($) => $['accessControlDialog.accessItems.organization'], { ns: 'app' })
       : accessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS
         ? t(($) => $['accessControlDialog.accessItems.specific'], { ns: 'app' })
-        : t(($) => $['accessControlDialog.accessItems.anyone'], { ns: 'app' })
+        : accessMode === AccessMode.EXTERNAL_MEMBERS
+          ? t(($) => $['accessControlDialog.accessItems.external'], { ns: 'app' })
+          : t(($) => $['accessControlDialog.accessItems.anyone'], { ns: 'app' })
   const handleEnabledChange = (enabled: boolean) => {
     if (!canManage) return
 
