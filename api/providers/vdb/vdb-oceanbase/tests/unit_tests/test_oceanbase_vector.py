@@ -53,7 +53,7 @@ def _build_fake_pyobvector_module():
 
 
 @pytest.fixture
-def oceanbase_module(monkeypatch):
+def oceanbase_module(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setitem(sys.modules, "pyobvector", _build_fake_pyobvector_module())
 
     import dify_vdb_oceanbase.oceanbase_vector as module
@@ -208,7 +208,7 @@ def test_create_delegates_to_collection_and_insert(oceanbase_module):
     vector.add_texts.assert_called_once_with(docs, [[0.1, 0.2]])
 
 
-def test_create_collection_cache_and_existing_table_short_circuits(oceanbase_module, monkeypatch):
+def test_create_collection_cache_and_existing_table_short_circuits(oceanbase_module, monkeypatch: pytest.MonkeyPatch):
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -234,7 +234,7 @@ def test_create_collection_cache_and_existing_table_short_circuits(oceanbase_mod
     vector.delete.assert_not_called()
 
 
-def test_create_collection_happy_path_with_hybrid_and_index(oceanbase_module, monkeypatch):
+def test_create_collection_happy_path_with_hybrid_and_index(oceanbase_module, monkeypatch: pytest.MonkeyPatch):
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -271,7 +271,7 @@ def test_create_collection_happy_path_with_hybrid_and_index(oceanbase_module, mo
     oceanbase_module.redis_client.set.assert_called_once()
 
 
-def test_create_collection_error_paths(oceanbase_module, monkeypatch):
+def test_create_collection_error_paths(oceanbase_module, monkeypatch: pytest.MonkeyPatch):
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -308,7 +308,7 @@ def test_create_collection_error_paths(oceanbase_module, monkeypatch):
         vector._create_collection()
 
 
-def test_create_collection_fulltext_and_metadata_index_exceptions(oceanbase_module, monkeypatch):
+def test_create_collection_fulltext_and_metadata_index_exceptions(oceanbase_module, monkeypatch: pytest.MonkeyPatch):
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -517,7 +517,7 @@ def test_delete_success_and_exception(oceanbase_module):
         vector.delete()
 
 
-def test_oceanbase_factory_uses_existing_or_generated_collection(oceanbase_module, monkeypatch):
+def test_oceanbase_factory_uses_existing_or_generated_collection(oceanbase_module, monkeypatch: pytest.MonkeyPatch):
     factory = oceanbase_module.OceanBaseVectorFactory()
     dataset_with_index = SimpleNamespace(
         id="dataset-1",
@@ -551,3 +551,54 @@ def test_oceanbase_factory_uses_existing_or_generated_collection(oceanbase_modul
     assert vector_cls.call_args_list[0].args[0] == "existing_collection"
     assert vector_cls.call_args_list[1].args[0] == "auto_collection"
     assert dataset_without_index.index_struct is not None
+
+
+@pytest.mark.parametrize(
+    "bad_doc_id",
+    [
+        "doc-123\n",  # trailing LF -- the bug the #39884 fix closes
+        "doc-123\r",  # trailing CR
+        "doc-123\r\n",  # trailing CRLF
+    ],
+)
+def test_search_by_vector_rejects_document_id_with_trailing_newline(oceanbase_module, bad_doc_id):
+    """Regression for #39884 (sibling of #39234 / #39548 / #39666 / #39730 / #39880).
+
+    The old `re.match(r"^[a-zA-Z0-9_-]+$", doc_id)` accepted a doc_id ending in
+    `\n` because Python's `$` matches just before a trailing newline. The fix
+    uses `re.fullmatch`, which requires the whole string to match. The
+    doc_ids are joined into a SQL `IN` clause so a trailing newline would
+    land in the SQL fragment.
+    """
+    vector = oceanbase_module.OceanBaseVector.__new__(oceanbase_module.OceanBaseVector)
+    vector._collection_name = "collection_1"
+    vector._hnsw_ef_search = -1
+    vector._config = SimpleNamespace(metric_type="cosine")
+    vector._client = MagicMock()
+
+    with pytest.raises(ValueError, match="Invalid document ID format"):
+        vector.search_by_vector([0.1, 0.2], document_ids_filter=[bad_doc_id])
+
+
+@pytest.mark.parametrize(
+    "bad_key",
+    [
+        "user_id\n",  # trailing LF -- the bug the #39884 fix closes
+        "user_id\r",  # trailing CR
+        "user_id\r\n",  # trailing CRLF
+    ],
+)
+def test_get_ids_by_metadata_field_rejects_key_with_trailing_newline(oceanbase_module, bad_key):
+    """Regression for #39884 (sibling of #39234 / #39548 / #39666 / #39730 / #39880).
+
+    The old `re.match(r"^[a-zA-Z0-9_.]+$", key)` accepted a key ending in `\n`.
+    The key is interpolated into a SQL JSON-path expression
+    (`WHERE metadata->>'$.{key}' = :value`), so a trailing newline would
+    land in the SQL fragment.
+    """
+    vector = oceanbase_module.OceanBaseVector.__new__(oceanbase_module.OceanBaseVector)
+    vector._collection_name = "collection_1"
+    vector._client = MagicMock()
+
+    with pytest.raises(Exception, match="Failed to query documents by metadata field"):
+        vector.get_ids_by_metadata_field(bad_key, "doc-1")

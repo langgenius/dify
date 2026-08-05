@@ -33,23 +33,32 @@ for module_name in RESOURCE_MODULES:
 # Ensure resource modules are imported so route decorators are evaluated.
 # Import other controllers
 from . import (
-    admin,
     apikey,
     extension,
     feature,
     human_input_form,
     init_validate,
+    knowledge_fs_proxy,
     notification,
+    onboarding,
     ping,
     setup,
     spec,
     version,
+    workflow_run_archive,
 )
+from .agent import composer as agent_composer
+from .agent import roster as agent_roster
 
 # Import app controllers
 from .app import (
     advanced_prompt_template,
     agent,
+    agent_app_access,
+    agent_app_feature,
+    agent_app_sandbox,
+    agent_config_inspector,
+    agent_drive_inspector,
     annotation,
     app,
     audio,
@@ -67,6 +76,7 @@ from .app import (
     workflow_app_log,
     workflow_comment,
     workflow_draft_variable,
+    workflow_node_output_inspector,
     workflow_run,
     workflow_statistic,
     workflow_trigger,
@@ -117,7 +127,8 @@ from .explore import (
     saved_message,
     trial,
 )
-from .socketio import workflow as socketio_workflow  # pyright: ignore[reportUnusedImport]
+from .snippets import snippet_workflow, snippet_workflow_draft_variable
+from .socketio import workflow as socketio_workflow
 
 # Import tag controllers
 from .tag import tags
@@ -132,6 +143,8 @@ from .workspace import (
     model_providers,
     models,
     plugin,
+    rbac,
+    snippets,
     tool_providers,
     trigger_providers,
     workspace,
@@ -142,10 +155,16 @@ api.add_namespace(console_ns)
 __all__ = [
     "account",
     "activate",
-    "admin",
     "advanced_prompt_template",
     "agent",
+    "agent_app_access",
+    "agent_app_feature",
+    "agent_app_sandbox",
+    "agent_composer",
+    "agent_config_inspector",
+    "agent_drive_inspector",
     "agent_providers",
+    "agent_roster",
     "annotation",
     "api",
     "apikey",
@@ -178,6 +197,7 @@ __all__ = [
     "human_input_form",
     "init_validate",
     "installed_app",
+    "knowledge_fs_proxy",
     "load_balancing_config",
     "login",
     "mcp_server",
@@ -190,6 +210,7 @@ __all__ = [
     "notification",
     "oauth",
     "oauth_server",
+    "onboarding",
     "ops_trace",
     "parameter",
     "ping",
@@ -199,10 +220,14 @@ __all__ = [
     "rag_pipeline_draft_variable",
     "rag_pipeline_import",
     "rag_pipeline_workflow",
+    "rbac",
     "recommended_app",
     "saved_message",
     "setup",
     "site",
+    "snippet_workflow",
+    "snippet_workflow_draft_variable",
+    "snippets",
     "socketio_workflow",
     "spec",
     "statistic",
@@ -216,7 +241,9 @@ __all__ = [
     "workflow_app_log",
     "workflow_comment",
     "workflow_draft_variable",
+    "workflow_node_output_inspector",
     "workflow_run",
+    "workflow_run_archive",
     "workflow_statistic",
     "workflow_trigger",
     "workspace",

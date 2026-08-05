@@ -16,10 +16,14 @@ Focus on:
 import sys
 import uuid
 from datetime import UTC, datetime
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
+from flask import Flask
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound
 
 import services
@@ -37,23 +41,43 @@ from controllers.service_api.app.conversation import (
     ConversationVariableUpdatePayload,
 )
 from controllers.service_api.app.error import NotChatAppError
+from core.app.entities.app_invoke_entities import InvokeFrom
 from fields._value_type_serializer import serialize_value_type
 from graphon.variables import StringSegment
 from graphon.variables.types import SegmentType
-from models.model import App, AppMode, EndUser
+from models.enums import ConversationFromSource
+from models.model import App, AppMode, Conversation, EndUser
 from services.conversation_service import ConversationService
 from services.errors.conversation import (
     ConversationNotExistsError,
     ConversationVariableNotExistsError,
     ConversationVariableTypeMismatchError,
-    LastConversationNotExistsError,
 )
 
 
-def _unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
+def _end_user(user_id: str = "end-user-1") -> EndUser:
+    end_user = EndUser()
+    end_user.id = user_id
+    return end_user
+
+
+def _conversation(
+    *,
+    conversation_id: str,
+    app_id: str = "app-1",
+    end_user_id: str = "end-user-1",
+) -> Conversation:
+    conversation = Conversation(
+        app_id=app_id,
+        mode=AppMode.CHAT,
+        name="Original Name",
+        from_source=ConversationFromSource.API,
+        from_end_user_id=end_user_id,
+        invoke_from=InvokeFrom.SERVICE_API,
+    )
+    conversation.id = conversation_id
+    conversation.inputs = {}
+    return conversation
 
 
 class TestConversationListQuery:
@@ -339,15 +363,16 @@ class TestConversationAppModeValidation:
     @pytest.mark.parametrize(
         "mode",
         [
-            AppMode.CHAT.value,
+            AppMode.CHAT,
             AppMode.AGENT_CHAT.value,
+            AppMode.AGENT.value,
             AppMode.ADVANCED_CHAT.value,
         ],
     )
     def test_chat_modes_are_valid_for_conversation_endpoints(self, mode):
         """Test that all chat modes are valid for conversation endpoints.
 
-        Verifies that CHAT, AGENT_CHAT, and ADVANCED_CHAT modes pass
+        Verifies that CHAT, AGENT_CHAT, AGENT, and ADVANCED_CHAT modes pass
         validation without raising NotChatAppError.
         """
         app = Mock(spec=App)
@@ -355,7 +380,7 @@ class TestConversationAppModeValidation:
 
         # Validation should pass without raising for chat modes
         app_mode = AppMode.value_of(app.mode)
-        assert app_mode in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}
+        assert app_mode in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}
 
     def test_completion_mode_is_invalid_for_conversation_endpoints(self):
         """Test that COMPLETION mode is invalid for conversation endpoints.
@@ -364,10 +389,10 @@ class TestConversationAppModeValidation:
         app raises NotChatAppError.
         """
         app = Mock(spec=App)
-        app.mode = AppMode.COMPLETION.value
+        app.mode = AppMode.COMPLETION
 
         app_mode = AppMode.value_of(app.mode)
-        assert app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}
+        assert app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}
         with pytest.raises(NotChatAppError):
             raise NotChatAppError()
 
@@ -378,10 +403,10 @@ class TestConversationAppModeValidation:
         app raises NotChatAppError.
         """
         app = Mock(spec=App)
-        app.mode = AppMode.WORKFLOW.value
+        app.mode = AppMode.WORKFLOW
 
         app_mode = AppMode.value_of(app.mode)
-        assert app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}
+        assert app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}
         with pytest.raises(NotChatAppError):
             raise NotChatAppError()
 
@@ -465,22 +490,30 @@ class TestConversationService:
         assert hasattr(result, "limit")
         assert hasattr(result, "has_more")
 
-    @patch.object(ConversationService, "rename")
-    def test_rename_returns_conversation(self, mock_rename):
+    @pytest.mark.parametrize("sqlite_session", [(Conversation,)], indirect=True)
+    def test_rename_returns_conversation(self, sqlite_session: Session):
         """Test rename returns updated conversation."""
-        mock_conversation = Mock()
-        mock_conversation.name = "New Name"
-        mock_rename.return_value = mock_conversation
+        conversation_id = "00000000-0000-0000-0000-000000000001"
+        conversation = _conversation(conversation_id=conversation_id)
+        sqlite_session.add(conversation)
+        sqlite_session.commit()
+
+        app_model = App()
+        app_model.id = "app-1"
+        end_user = _end_user()
 
         result = ConversationService.rename(
-            app_model=Mock(spec=App),
-            conversation_id="conv_123",
-            user=Mock(spec=EndUser),
+            app_model=app_model,
+            conversation_id=conversation_id,
+            user=end_user,
             name="New Name",
             auto_generate=False,
+            session=sqlite_session,
         )
 
         assert result.name == "New Name"
+        sqlite_session.refresh(conversation)
+        assert conversation.name == "New Name"
 
 
 class TestConversationPayloadsController:
@@ -494,47 +527,39 @@ class TestConversationPayloadsController:
 
 
 class TestConversationApiController:
-    def test_list_not_chat(self, app) -> None:
+    def test_list_not_chat(self, app: Flask) -> None:
         api = ConversationApi()
-        handler = _unwrap(api.get)
-        app_model = SimpleNamespace(mode=AppMode.COMPLETION.value)
+        handler = unwrap(api.get)
+        app_model = SimpleNamespace(mode=AppMode.COMPLETION)
         end_user = SimpleNamespace()
 
         with app.test_request_context("/conversations", method="GET"):
             with pytest.raises(NotChatAppError):
                 handler(api, app_model=app_model, end_user=end_user)
 
-    def test_list_last_not_found(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
-        class _BeginStub:
-            def __enter__(self):
-                return SimpleNamespace()
+    @pytest.mark.parametrize("sqlite_session", [(Conversation,)], indirect=True)
+    def test_list_last_not_found(
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_engine: Engine,
+        sqlite_session: Session,
+    ) -> None:
+        last_id = "00000000-0000-0000-0000-000000000001"
+        # The id exists for a different app, proving pagination cannot cross app boundaries.
+        sqlite_session.add(_conversation(conversation_id=last_id, app_id="other-app"))
+        sqlite_session.commit()
 
-            def __exit__(self, exc_type, exc, tb):
-                return False
-
-        class _SessionMakerStub:
-            def __init__(self, *args, **kwargs):
-                pass
-
-            def begin(self):
-                return _BeginStub()
-
-        monkeypatch.setattr(
-            ConversationService,
-            "pagination_by_last_id",
-            lambda *_args, **_kwargs: (_ for _ in ()).throw(LastConversationNotExistsError()),
-        )
         conversation_module = sys.modules["controllers.service_api.app.conversation"]
-        monkeypatch.setattr(conversation_module, "db", SimpleNamespace(engine=object()))
-        monkeypatch.setattr(conversation_module, "sessionmaker", _SessionMakerStub)
+        monkeypatch.setattr(conversation_module, "db", SimpleNamespace(engine=sqlite_engine))
 
         api = ConversationApi()
-        handler = _unwrap(api.get)
-        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
-        end_user = SimpleNamespace()
+        handler = unwrap(api.get)
+        app_model = SimpleNamespace(id="app-1", mode=AppMode.CHAT)
+        end_user = _end_user()
 
         with app.test_request_context(
-            "/conversations?last_id=00000000-0000-0000-0000-000000000001&limit=20",
+            f"/conversations?last_id={last_id}&limit=20",
             method="GET",
         ):
             with pytest.raises(NotFound):
@@ -542,17 +567,17 @@ class TestConversationApiController:
 
 
 class TestConversationDetailApiController:
-    def test_delete_not_chat(self, app) -> None:
+    def test_delete_not_chat(self, app: Flask) -> None:
         api = ConversationDetailApi()
-        handler = _unwrap(api.delete)
-        app_model = SimpleNamespace(mode=AppMode.COMPLETION.value)
+        handler = unwrap(api.delete)
+        app_model = SimpleNamespace(mode=AppMode.COMPLETION)
         end_user = SimpleNamespace()
 
         with app.test_request_context("/conversations/1", method="DELETE"):
             with pytest.raises(NotChatAppError):
                 handler(api, app_model=app_model, end_user=end_user, c_id="00000000-0000-0000-0000-000000000001")
 
-    def test_delete_not_found(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_delete_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             ConversationService,
             "delete",
@@ -560,8 +585,8 @@ class TestConversationDetailApiController:
         )
 
         api = ConversationDetailApi()
-        handler = _unwrap(api.delete)
-        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        handler = unwrap(api.delete)
+        app_model = SimpleNamespace(mode=AppMode.CHAT)
         end_user = SimpleNamespace()
 
         with app.test_request_context("/conversations/1", method="DELETE"):
@@ -570,7 +595,7 @@ class TestConversationDetailApiController:
 
 
 class TestConversationRenameApiController:
-    def test_not_found(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             ConversationService,
             "rename",
@@ -578,8 +603,8 @@ class TestConversationRenameApiController:
         )
 
         api = ConversationRenameApi()
-        handler = _unwrap(api.post)
-        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        handler = unwrap(api.post)
+        app_model = SimpleNamespace(mode=AppMode.CHAT)
         end_user = SimpleNamespace()
 
         with app.test_request_context(
@@ -592,17 +617,17 @@ class TestConversationRenameApiController:
 
 
 class TestConversationVariablesApiController:
-    def test_not_chat(self, app) -> None:
+    def test_not_chat(self, app: Flask) -> None:
         api = ConversationVariablesApi()
-        handler = _unwrap(api.get)
-        app_model = SimpleNamespace(mode=AppMode.COMPLETION.value)
+        handler = unwrap(api.get)
+        app_model = SimpleNamespace(mode=AppMode.COMPLETION)
         end_user = SimpleNamespace()
 
         with app.test_request_context("/conversations/1/variables", method="GET"):
             with pytest.raises(NotChatAppError):
                 handler(api, app_model=app_model, end_user=end_user, c_id="00000000-0000-0000-0000-000000000001")
 
-    def test_not_found(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             ConversationService,
             "get_conversational_variable",
@@ -610,8 +635,8 @@ class TestConversationVariablesApiController:
         )
 
         api = ConversationVariablesApi()
-        handler = _unwrap(api.get)
-        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        handler = unwrap(api.get)
+        app_model = SimpleNamespace(mode=AppMode.CHAT)
         end_user = SimpleNamespace()
 
         with app.test_request_context(
@@ -621,7 +646,7 @@ class TestConversationVariablesApiController:
             with pytest.raises(NotFound):
                 handler(api, app_model=app_model, end_user=end_user, c_id="00000000-0000-0000-0000-000000000001")
 
-    def test_success_serializes_response(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_success_serializes_response(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         created_at = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
         monkeypatch.setattr(
             ConversationService,
@@ -643,8 +668,8 @@ class TestConversationVariablesApiController:
         )
 
         api = ConversationVariablesApi()
-        handler = _unwrap(api.get)
-        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        handler = unwrap(api.get)
+        app_model = SimpleNamespace(mode=AppMode.CHAT)
         end_user = SimpleNamespace()
 
         with app.test_request_context(
@@ -661,7 +686,7 @@ class TestConversationVariablesApiController:
 
 
 class TestConversationVariableDetailApiController:
-    def test_update_type_mismatch(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_update_type_mismatch(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             ConversationService,
             "update_conversation_variable",
@@ -669,8 +694,8 @@ class TestConversationVariableDetailApiController:
         )
 
         api = ConversationVariableDetailApi()
-        handler = _unwrap(api.put)
-        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        handler = unwrap(api.put)
+        app_model = SimpleNamespace(mode=AppMode.CHAT)
         end_user = SimpleNamespace()
 
         with app.test_request_context(
@@ -687,7 +712,7 @@ class TestConversationVariableDetailApiController:
                     variable_id="00000000-0000-0000-0000-000000000002",
                 )
 
-    def test_update_not_found(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_update_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             ConversationService,
             "update_conversation_variable",
@@ -695,8 +720,8 @@ class TestConversationVariableDetailApiController:
         )
 
         api = ConversationVariableDetailApi()
-        handler = _unwrap(api.put)
-        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        handler = unwrap(api.put)
+        app_model = SimpleNamespace(mode=AppMode.CHAT)
         end_user = SimpleNamespace()
 
         with app.test_request_context(
@@ -713,7 +738,7 @@ class TestConversationVariableDetailApiController:
                     variable_id="00000000-0000-0000-0000-000000000002",
                 )
 
-    def test_update_success_serializes_response(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_update_success_serializes_response(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         created_at = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
         monkeypatch.setattr(
             ConversationService,
@@ -729,8 +754,8 @@ class TestConversationVariableDetailApiController:
         )
 
         api = ConversationVariableDetailApi()
-        handler = _unwrap(api.put)
-        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        handler = unwrap(api.put)
+        app_model = SimpleNamespace(mode=AppMode.CHAT)
         end_user = SimpleNamespace()
 
         with app.test_request_context(

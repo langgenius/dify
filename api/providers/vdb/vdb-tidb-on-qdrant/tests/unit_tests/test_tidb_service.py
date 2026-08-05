@@ -1,7 +1,10 @@
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 from dify_vdb_tidb_on_qdrant.tidb_service import TidbService
+
+from models.enums import TidbAuthBindingStatus
 
 
 class TestExtractQdrantEndpoint:
@@ -216,3 +219,86 @@ class TestBatchCreateEdgeCases:
                 private_key="priv",
                 region="us-east-1",
             )
+
+
+class TestBatchUpdateTidbServerlessClusterStatus:
+    """Verify that status updates only expose clusters after qdrant endpoint is ready."""
+
+    @patch("dify_vdb_tidb_on_qdrant.tidb_service.db")
+    @patch("dify_vdb_tidb_on_qdrant.tidb_service._tidb_http_client")
+    def test_sets_active_when_batch_response_contains_endpoint(self, mock_http, mock_db):
+        binding = SimpleNamespace(
+            cluster_id="c-1",
+            status=TidbAuthBindingStatus.CREATING,
+            account="root",
+            qdrant_endpoint=None,
+        )
+        mock_http.get.return_value = MagicMock(
+            status_code=200,
+            json=lambda: {
+                "clusters": [
+                    {
+                        "clusterId": "c-1",
+                        "state": "ACTIVE",
+                        "userPrefix": "pfx",
+                        "endpoints": {"public": {"host": "gw.tidbcloud.com"}},
+                    }
+                ]
+            },
+        )
+
+        TidbService.batch_update_tidb_serverless_cluster_status([binding], "proj", "url", "iam", "pub", "priv")
+
+        assert binding.account == "pfx.root"
+        assert binding.qdrant_endpoint == "https://qdrant-gw.tidbcloud.com"
+        assert binding.status == TidbAuthBindingStatus.ACTIVE
+        mock_db.session.add.assert_called_once_with(binding)
+        mock_db.session.commit.assert_called_once()
+
+    @patch.object(TidbService, "fetch_qdrant_endpoint", return_value="https://qdrant-gw.tidbcloud.com")
+    @patch("dify_vdb_tidb_on_qdrant.tidb_service.db")
+    @patch("dify_vdb_tidb_on_qdrant.tidb_service._tidb_http_client")
+    def test_fetches_endpoint_when_batch_response_omits_it(self, mock_http, mock_db, mock_fetch_endpoint):
+        binding = SimpleNamespace(
+            cluster_id="c-1",
+            status=TidbAuthBindingStatus.CREATING,
+            account="root",
+            qdrant_endpoint=None,
+        )
+        mock_http.get.return_value = MagicMock(
+            status_code=200,
+            json=lambda: {"clusters": [{"clusterId": "c-1", "state": "ACTIVE", "userPrefix": "pfx", "endpoints": {}}]},
+        )
+
+        TidbService.batch_update_tidb_serverless_cluster_status([binding], "proj", "url", "iam", "pub", "priv")
+
+        assert binding.account == "pfx.root"
+        assert binding.qdrant_endpoint == "https://qdrant-gw.tidbcloud.com"
+        assert binding.status == TidbAuthBindingStatus.ACTIVE
+        mock_fetch_endpoint.assert_called_once_with("url", "pub", "priv", "c-1")
+        mock_db.session.add.assert_called_once_with(binding)
+        mock_db.session.commit.assert_called_once()
+
+    @patch.object(TidbService, "fetch_qdrant_endpoint", return_value=None)
+    @patch("dify_vdb_tidb_on_qdrant.tidb_service.db")
+    @patch("dify_vdb_tidb_on_qdrant.tidb_service._tidb_http_client")
+    def test_keeps_creating_when_endpoint_is_not_ready(self, mock_http, mock_db, mock_fetch_endpoint):
+        binding = SimpleNamespace(
+            cluster_id="c-1",
+            status=TidbAuthBindingStatus.CREATING,
+            account="root",
+            qdrant_endpoint=None,
+        )
+        mock_http.get.return_value = MagicMock(
+            status_code=200,
+            json=lambda: {"clusters": [{"clusterId": "c-1", "state": "ACTIVE", "userPrefix": "pfx", "endpoints": {}}]},
+        )
+
+        TidbService.batch_update_tidb_serverless_cluster_status([binding], "proj", "url", "iam", "pub", "priv")
+
+        assert binding.account == "pfx.root"
+        assert binding.qdrant_endpoint is None
+        assert binding.status == TidbAuthBindingStatus.CREATING
+        mock_fetch_endpoint.assert_called_once_with("url", "pub", "priv", "c-1")
+        mock_db.session.add.assert_called_once_with(binding)
+        mock_db.session.commit.assert_called_once()

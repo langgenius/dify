@@ -5,17 +5,18 @@ from __future__ import annotations
 import json
 import sys
 from datetime import UTC, datetime
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import NotFound
 
 from controllers.service_api.app.error import NotWorkflowAppError
 from controllers.service_api.app.workflow_events import WorkflowEventsApi
 from models.enums import CreatorUserRole
 from models.model import AppMode
-from tests.unit_tests.controllers.service_api.conftest import _unwrap
 
 
 def _mock_repo_for_run(monkeypatch: pytest.MonkeyPatch, workflow_run):
@@ -31,9 +32,9 @@ def _mock_repo_for_run(monkeypatch: pytest.MonkeyPatch, workflow_run):
 
 
 class TestWorkflowEventsApi:
-    def test_wrong_app_mode(self, app) -> None:
+    def test_wrong_app_mode(self, app: Flask) -> None:
         api = WorkflowEventsApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(mode=AppMode.CHAT.value)
         end_user = SimpleNamespace(id="end-user-1")
 
@@ -41,18 +42,18 @@ class TestWorkflowEventsApi:
             with pytest.raises(NotWorkflowAppError):
                 handler(api, app_model=app_model, end_user=end_user, task_id="run-1")
 
-    def test_workflow_run_not_found(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_workflow_run_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         _mock_repo_for_run(monkeypatch, workflow_run=None)
         api = WorkflowEventsApi()
-        handler = _unwrap(api.get)
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW.value)
+        handler = unwrap(api.get)
+        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
         end_user = SimpleNamespace(id="end-user-1")
 
         with app.test_request_context("/workflow/run-1/events?user=u1", method="GET"):
             with pytest.raises(NotFound):
                 handler(api, app_model=app_model, end_user=end_user, task_id="run-1")
 
-    def test_workflow_run_permission_denied(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_workflow_run_permission_denied(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         workflow_run = SimpleNamespace(
             id="run-1",
             app_id="app-1",
@@ -62,15 +63,15 @@ class TestWorkflowEventsApi:
         )
         _mock_repo_for_run(monkeypatch, workflow_run=workflow_run)
         api = WorkflowEventsApi()
-        handler = _unwrap(api.get)
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW.value)
+        handler = unwrap(api.get)
+        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
         end_user = SimpleNamespace(id="end-user-1")
 
         with app.test_request_context("/workflow/run-1/events?user=u1", method="GET"):
             with pytest.raises(NotFound):
                 handler(api, app_model=app_model, end_user=end_user, task_id="run-1")
 
-    def test_finished_run_returns_sse(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_finished_run_returns_sse(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         workflow_run = SimpleNamespace(
             id="run-1",
             app_id="app-1",
@@ -89,8 +90,8 @@ class TestWorkflowEventsApi:
         )
 
         api = WorkflowEventsApi()
-        handler = _unwrap(api.get)
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW.value)
+        handler = unwrap(api.get)
+        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
         end_user = SimpleNamespace(id="end-user-1")
 
         with app.test_request_context("/workflow/run-1/events?user=u1", method="GET"):
@@ -103,7 +104,7 @@ class TestWorkflowEventsApi:
         assert payload["task_id"] == "run-1"
         assert payload["event"] == "workflow_finished"
 
-    def test_running_run_streams_events(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_running_run_streams_events(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         workflow_run = SimpleNamespace(
             id="run-1",
             app_id="app-1",
@@ -120,8 +121,8 @@ class TestWorkflowEventsApi:
         monkeypatch.setattr(workflow_events_module, "WorkflowAppGenerator", lambda: workflow_generator)
 
         api = WorkflowEventsApi()
-        handler = _unwrap(api.get)
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW.value)
+        handler = unwrap(api.get)
+        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
         end_user = SimpleNamespace(id="end-user-1")
 
         with app.test_request_context("/workflow/run-1/events?user=u1", method="GET"):
@@ -135,7 +136,7 @@ class TestWorkflowEventsApi:
         )
         workflow_generator.convert_to_event_stream.assert_called_once_with(["raw-event"])
 
-    def test_running_run_with_snapshot(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_running_run_with_snapshot(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         workflow_run = SimpleNamespace(
             id="run-1",
             app_id="app-1",
@@ -153,8 +154,8 @@ class TestWorkflowEventsApi:
         monkeypatch.setattr(workflow_events_module, "build_workflow_event_stream", snapshot_builder)
 
         api = WorkflowEventsApi()
-        handler = _unwrap(api.get)
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW.value)
+        handler = unwrap(api.get)
+        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
         end_user = SimpleNamespace(id="end-user-1")
 
         with app.test_request_context("/workflow/run-1/events?user=u1&include_state_snapshot=true", method="GET"):

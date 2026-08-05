@@ -1,41 +1,36 @@
 import time
 import uuid
-from unittest.mock import MagicMock
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.system_variables import build_system_variables
-from extensions.ext_database import db
 from graphon.enums import WorkflowNodeExecutionStatus
-from graphon.graph import Graph
 from graphon.nodes.answer.answer_node import AnswerNode
 from graphon.nodes.answer.entities import AnswerNodeData
 from graphon.runtime import GraphRuntimeState, VariablePool
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
-def test_execute_answer():
+def _build_variable_pool() -> VariablePool:
+    return VariablePool.from_bootstrap(
+        system_variables=build_system_variables(user_id="aaa", files=[]),
+        user_inputs={},
+    )
+
+
+def _build_answer_node(*, answer: str, variable_pool: VariablePool) -> AnswerNode:
     graph_config = {
-        "edges": [
-            {
-                "id": "start-source-answer-target",
-                "source": "start",
-                "target": "answer",
-            },
-        ],
+        "edges": [],
         "nodes": [
-            {"data": {"type": "start", "title": "Start"}, "id": "start"},
             {
                 "data": {
-                    "title": "123",
+                    "title": "Answer",
                     "type": "answer",
-                    "answer": "Today's weather is {{#start.weather#}}\n{{#llm.text#}}\n{{img}}\nFin.",
+                    "answer": answer,
                 },
                 "id": "answer",
-            },
+            }
         ],
     }
-
     init_params = build_test_graph_init_params(
         workflow_id="1",
         graph_config=graph_config,
@@ -46,42 +41,31 @@ def test_execute_answer():
         invoke_from=InvokeFrom.DEBUGGER,
         call_depth=0,
     )
-
-    # construct variable pool
-    variable_pool = VariablePool(
-        system_variables=build_system_variables(user_id="aaa", files=[]),
-        user_inputs={},
-        environment_variables=[],
-        conversation_variables=[],
+    graph_runtime_state = GraphRuntimeState(
+        variable_pool=variable_pool,
+        start_at=time.perf_counter(),
     )
-    variable_pool.add(["start", "weather"], "sunny")
-    variable_pool.add(["llm", "text"], "You are a helpful AI.")
-
-    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
-
-    # create node factory
-    node_factory = DifyNodeFactory(
-        graph_init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
-    )
-
-    graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
-
-    node = AnswerNode(
+    return AnswerNode(
         node_id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
-        config=AnswerNodeData(
-            title="123",
+        data=AnswerNodeData(
+            title="Answer",
             type="answer",
-            answer="Today's weather is {{#start.weather#}}\n{{#llm.text#}}\n{{img}}\nFin.",
+            answer=answer,
         ),
     )
 
-    # Mock db.session.close()
-    db.session.close = MagicMock()
 
-    # execute node
+def test_execute_answer_renders_variable_selectors() -> None:
+    variable_pool = _build_variable_pool()
+    variable_pool.add(["start", "weather"], "sunny")
+    variable_pool.add(["llm", "text"], "You are a helpful AI.")
+    node = _build_answer_node(
+        answer="Today's weather is {{#start.weather#}}\n{{#llm.text#}}\n{{img}}\nFin.",
+        variable_pool=variable_pool,
+    )
+
     result = node._run()
 
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
@@ -89,36 +73,11 @@ def test_execute_answer():
 
 
 def test_execute_answer_renders_structured_output_object_as_json() -> None:
-    init_params = build_test_graph_init_params(
-        workflow_id="1",
-        graph_config={"nodes": [], "edges": []},
-        tenant_id="1",
-        app_id="1",
-        user_id="1",
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.DEBUGGER,
-        call_depth=0,
-    )
-
-    variable_pool = VariablePool(
-        system_variables=build_system_variables(user_id="aaa", files=[]),
-        user_inputs={},
-        environment_variables=[],
-        conversation_variables=[],
-    )
+    variable_pool = _build_variable_pool()
     variable_pool.add(["1777539038857", "structured_output"], {"type": "greeting"})
-
-    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
-
-    node = AnswerNode(
-        node_id=str(uuid.uuid4()),
-        graph_init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
-        config=AnswerNodeData(
-            title="123",
-            type="answer",
-            answer="{{#1777539038857.structured_output#}}",
-        ),
+    node = _build_answer_node(
+        answer="{{#1777539038857.structured_output#}}",
+        variable_pool=variable_pool,
     )
 
     result = node._run()
@@ -128,35 +87,9 @@ def test_execute_answer_renders_structured_output_object_as_json() -> None:
 
 
 def test_execute_answer_falls_back_to_plain_selector_text_when_structured_output_missing() -> None:
-    init_params = build_test_graph_init_params(
-        workflow_id="1",
-        graph_config={"nodes": [], "edges": []},
-        tenant_id="1",
-        app_id="1",
-        user_id="1",
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.DEBUGGER,
-        call_depth=0,
-    )
-
-    variable_pool = VariablePool(
-        system_variables=build_system_variables(user_id="aaa", files=[]),
-        user_inputs={},
-        environment_variables=[],
-        conversation_variables=[],
-    )
-
-    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
-
-    node = AnswerNode(
-        node_id=str(uuid.uuid4()),
-        graph_init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
-        config=AnswerNodeData(
-            title="123",
-            type="answer",
-            answer="{{#1777539038857.structured_output#}}",
-        ),
+    node = _build_answer_node(
+        answer="{{#1777539038857.structured_output#}}",
+        variable_pool=_build_variable_pool(),
     )
 
     result = node._run()

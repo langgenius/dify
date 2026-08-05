@@ -5,13 +5,16 @@ import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthCategory } from '../../types'
 
-const mockGetPluginOAuthUrl = vi.fn().mockResolvedValue({ authorization_url: 'https://auth.example.com' })
+const mockGetPluginOAuthUrl = vi
+  .fn()
+  .mockResolvedValue({ authorization_url: 'https://auth.example.com' })
 const mockOpenOAuthPopup = vi.fn()
 const mockWriteText = vi.fn()
 const mockOAuthClientSettingsProps: OAuthClientSettingsProps[] = []
 
 vi.mock('@/hooks/use-i18n', () => ({
-  useRenderI18nObject: () => (obj: Record<string, string> | string) => typeof obj === 'string' ? obj : obj.en_US || '',
+  useRenderI18nObject: () => (obj: Record<string, string> | string) =>
+    typeof obj === 'string' ? obj : obj.en_US || '',
 }))
 
 vi.mock('@/hooks/use-oauth', () => ({
@@ -37,15 +40,9 @@ vi.mock('../../hooks/use-credential', () => ({
 vi.mock('../oauth-client-settings', () => ({
   default: (props: OAuthClientSettingsProps) => {
     mockOAuthClientSettingsProps.push(props)
-    const {
-      open = true,
-      onClose,
-      onOpenChange,
-      schemas,
-    } = props
+    const { open = true, onClose, onOpenChange, schemas } = props
 
-    if (!open)
-      return null
+    if (!open) return null
 
     const handleClose = () => {
       onOpenChange?.(false)
@@ -54,8 +51,10 @@ vi.mock('../oauth-client-settings', () => ({
 
     return (
       <div data-testid="oauth-settings-modal">
-        <button data-testid="oauth-settings-close" onClick={handleClose}>Close</button>
-        {schemas.map(schema => (
+        <button data-testid="oauth-settings-close" onClick={handleClose}>
+          Close
+        </button>
+        {schemas.map((schema) => (
           <div key={schema.name} data-testid={`oauth-schema-${schema.name}`}>
             <div data-testid={`oauth-schema-label-${schema.name}`}>
               {React.isValidElement(schema.label) ? schema.label : String(schema.label || '')}
@@ -104,7 +103,7 @@ describe('AddOAuthButton', () => {
   it('should open OAuth settings modal when settings icon clicked', () => {
     render(<AddOAuthButton pluginPayload={basePayload} buttonText="Use OAuth" />)
 
-    fireEvent.click(screen.getByTestId('oauth-settings-button'))
+    fireEvent.click(screen.getByRole('button', { name: /plugin\.auth\.oauthClientSettings/i }))
 
     expect(screen.getByTestId('oauth-settings-modal')).toBeInTheDocument()
     expect(mockOAuthClientSettingsProps.at(-1)?.open).toBe(true)
@@ -113,7 +112,7 @@ describe('AddOAuthButton', () => {
   it('should close OAuth settings modal', () => {
     render(<AddOAuthButton pluginPayload={basePayload} buttonText="Use OAuth" />)
 
-    fireEvent.click(screen.getByTestId('oauth-settings-button'))
+    fireEvent.click(screen.getByRole('button', { name: /plugin\.auth\.oauthClientSettings/i }))
     fireEvent.click(screen.getByTestId('oauth-settings-close'))
 
     expect(screen.queryByTestId('oauth-settings-modal')).not.toBeInTheDocument()
@@ -121,20 +120,23 @@ describe('AddOAuthButton', () => {
 
   it('should trigger OAuth flow on main button click', async () => {
     const mockOnUpdate = vi.fn()
-    render(<AddOAuthButton pluginPayload={basePayload} buttonText="Use OAuth" onUpdate={mockOnUpdate} />)
+    render(
+      <AddOAuthButton pluginPayload={basePayload} buttonText="Use OAuth" onUpdate={mockOnUpdate} />,
+    )
 
     const button = screen.getByText('Use OAuth').closest('button')
-    if (button)
-      fireEvent.click(button)
+    if (button) fireEvent.click(button)
 
     await waitFor(() => {
-      expect(mockOpenOAuthPopup).toHaveBeenCalledWith('https://auth.example.com', expect.any(Function))
+      expect(mockOpenOAuthPopup).toHaveBeenCalledWith(
+        'https://auth.example.com',
+        expect.any(Function),
+      )
     })
 
     const handleOAuthSuccess = mockOpenOAuthPopup.mock.calls[0]?.[1]
     expect(handleOAuthSuccess).toBeTypeOf('function')
-    if (typeof handleOAuthSuccess === 'function')
-      handleOAuthSuccess()
+    if (typeof handleOAuthSuccess === 'function') handleOAuthSuccess()
 
     expect(mockOnUpdate).toHaveBeenCalled()
   })
@@ -144,8 +146,7 @@ describe('AddOAuthButton', () => {
     render(<AddOAuthButton pluginPayload={basePayload} buttonText="Use OAuth" />)
 
     const button = screen.getByText('Use OAuth').closest('button')
-    if (button)
-      fireEvent.click(button)
+    if (button) fireEvent.click(button)
 
     await waitFor(() => {
       expect(mockGetPluginOAuthUrl).toHaveBeenCalled()
@@ -223,7 +224,7 @@ describe('AddOAuthButton', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('oauth-settings-button'))
+    fireEvent.click(screen.getByRole('button', { name: /plugin\.auth\.oauthClientSettings/i }))
 
     const settingsProps = mockOAuthClientSettingsProps.at(-1)
     expect(settingsProps?.editValues).toMatchObject({

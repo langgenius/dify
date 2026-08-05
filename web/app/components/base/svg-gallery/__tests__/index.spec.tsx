@@ -17,7 +17,7 @@ vi.mock('@svgdotjs/svg.js', () => ({
 
 vi.mock('dompurify', () => ({
   default: {
-    sanitize: vi.fn(content => content),
+    sanitize: vi.fn((content) => content),
   },
 }))
 
@@ -111,10 +111,7 @@ describe('SVGRenderer', () => {
       })
       const img = screen.getByAltText('Preview')
       expect(img)!.toBeInTheDocument()
-      expect(img)!.toHaveAttribute(
-        'src',
-        expect.stringContaining('data:image/svg+xml;base64'),
-      )
+      expect(img)!.toHaveAttribute('src', expect.stringContaining('data:image/svg+xml;base64'))
     })
 
     it('closes image preview on cancel', async () => {
@@ -131,7 +128,7 @@ describe('SVGRenderer', () => {
 
       expect(screen.getByAltText('Preview'))!.toBeInTheDocument()
 
-      await user.click(screen.getByTestId('image-preview-close-button'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
       await waitFor(() => {
         expect(screen.queryByAltText('Preview')).not.toBeInTheDocument()

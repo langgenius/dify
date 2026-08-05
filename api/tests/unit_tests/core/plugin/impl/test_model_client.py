@@ -1,16 +1,21 @@
 from __future__ import annotations
 
 import io
+import json
 from types import SimpleNamespace
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.plugin.entities.plugin_daemon import PluginDaemonInnerError
+from core.plugin.impl.exc import PluginInvokeError, PluginLLMPollingUnsupportedError
 from core.plugin.impl.model import PluginModelClient
+from graphon.model_runtime.entities.llm_entities import LLMPollingResult, LLMPollingStatus, LLMResult, LLMUsage
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 
 
 class TestPluginModelClient:
-    def test_fetch_model_providers(self, mocker):
+    def test_fetch_model_providers(self, mocker: MockerFixture):
         client = PluginModelClient()
         request_mock = mocker.patch.object(client, "_request_with_plugin_daemon_response", return_value=["provider-a"])
 
@@ -23,7 +28,7 @@ class TestPluginModelClient:
         )
         assert request_mock.call_args.kwargs["params"] == {"page": 1, "page_size": 256}
 
-    def test_get_model_schema(self, mocker):
+    def test_get_model_schema(self, mocker: MockerFixture):
         client = PluginModelClient()
         schema = SimpleNamespace(name="schema")
         stream_mock = mocker.patch.object(
@@ -45,7 +50,7 @@ class TestPluginModelClient:
         assert result is schema
         assert stream_mock.call_args.args[:2] == ("POST", "plugin/tenant-1/dispatch/model/schema")
 
-    def test_get_model_schema_empty_stream_returns_none(self, mocker):
+    def test_get_model_schema_empty_stream_returns_none(self, mocker: MockerFixture):
         client = PluginModelClient()
         mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
 
@@ -53,7 +58,7 @@ class TestPluginModelClient:
 
         assert result is None
 
-    def test_validate_provider_credentials(self, mocker):
+    def test_validate_provider_credentials(self, mocker: MockerFixture):
         client = PluginModelClient()
         stream_mock = mocker.patch.object(
             client,
@@ -77,7 +82,7 @@ class TestPluginModelClient:
             "plugin/tenant-1/dispatch/model/validate_provider_credentials",
         )
 
-    def test_validate_provider_credentials_without_dict_update(self, mocker):
+    def test_validate_provider_credentials_without_dict_update(self, mocker: MockerFixture):
         client = PluginModelClient()
         mocker.patch.object(
             client,
@@ -91,13 +96,13 @@ class TestPluginModelClient:
         assert result is False
         assert credentials == {"api_key": "same"}
 
-    def test_validate_provider_credentials_empty_returns_false(self, mocker):
+    def test_validate_provider_credentials_empty_returns_false(self, mocker: MockerFixture):
         client = PluginModelClient()
         mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
 
         assert client.validate_provider_credentials("tenant-1", "user-1", "org/plugin:1", "provider-a", {}) is False
 
-    def test_validate_model_credentials(self, mocker):
+    def test_validate_model_credentials(self, mocker: MockerFixture):
         client = PluginModelClient()
         stream_mock = mocker.patch.object(
             client,
@@ -123,7 +128,7 @@ class TestPluginModelClient:
             "plugin/tenant-1/dispatch/model/validate_model_credentials",
         )
 
-    def test_validate_model_credentials_empty_returns_false(self, mocker):
+    def test_validate_model_credentials_empty_returns_false(self, mocker: MockerFixture):
         client = PluginModelClient()
         mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
 
@@ -132,7 +137,7 @@ class TestPluginModelClient:
             is False
         )
 
-    def test_invoke_llm(self, mocker):
+    def test_invoke_llm(self, mocker: MockerFixture):
         client = PluginModelClient()
         stream_mock = mocker.patch.object(
             client, "_request_with_plugin_daemon_response_stream", return_value=iter(["chunk-1"])
@@ -151,16 +156,36 @@ class TestPluginModelClient:
                 tools=[],
                 stop=["STOP"],
                 stream=False,
+                app_id="app-1",
             )
         )
 
         assert result == ["chunk-1"]
         call_kwargs = stream_mock.call_args.kwargs
         assert call_kwargs["path"] == "plugin/tenant-1/dispatch/llm/invoke"
+        assert call_kwargs["data"]["app_id"] == "app-1"
         assert call_kwargs["data"]["data"]["stream"] is False
         assert call_kwargs["data"]["data"]["model_parameters"] == {"temperature": 0.1}
 
-    def test_invoke_llm_wraps_plugin_daemon_inner_error(self, mocker):
+    def test_invoke_llm_omits_app_id_when_missing(self, mocker: MockerFixture):
+        client = PluginModelClient()
+        stream_mock = mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
+
+        list(
+            client.invoke_llm(
+                tenant_id="tenant-1",
+                user_id="user-1",
+                plugin_id="org/plugin:1",
+                provider="provider-a",
+                model="gpt-test",
+                credentials={},
+                prompt_messages=[],
+            )
+        )
+
+        assert "app_id" not in stream_mock.call_args.kwargs["data"]
+
+    def test_invoke_llm_wraps_plugin_daemon_inner_error(self, mocker: MockerFixture):
         client = PluginModelClient()
 
         def _boom():
@@ -182,7 +207,114 @@ class TestPluginModelClient:
                 )
             )
 
-    def test_get_llm_num_tokens(self, mocker):
+    def test_start_llm_polling(self, mocker: MockerFixture):
+        client = PluginModelClient()
+        polling_result = LLMPollingResult(
+            status=LLMPollingStatus.RUNNING,
+            plugin_state={"task_id": "poll-1"},
+            next_check_after_seconds=3,
+        )
+        request_mock = mocker.patch.object(
+            client,
+            "_request_with_plugin_daemon_response",
+            return_value=polling_result,
+        )
+
+        result = client.start_llm_polling(
+            tenant_id="tenant-1",
+            user_id="user-1",
+            plugin_id="org/plugin:1",
+            provider="provider-a",
+            model="gpt-test",
+            credentials={"api_key": "key"},
+            prompt_messages=[],
+            model_parameters={"temperature": 0.1},
+            tools=[],
+            stop=["STOP"],
+            json_schema={"type": "object"},
+        )
+
+        assert result == polling_result
+        call_kwargs = request_mock.call_args.kwargs
+        assert call_kwargs["path"] == "plugin/tenant-1/dispatch/model/polling/start"
+        assert call_kwargs["data"]["data"] == {
+            "provider": "provider-a",
+            "model_type": "llm",
+            "model": "gpt-test",
+            "credentials": {"api_key": "key"},
+            "prompt_messages": [],
+            "model_parameters": {"temperature": 0.1},
+            "tools": [],
+            "stop": ["STOP"],
+            "stream": False,
+            "json_schema": {"type": "object"},
+        }
+
+    def test_check_llm_polling(self, mocker: MockerFixture):
+        client = PluginModelClient()
+        polling_result = LLMPollingResult(
+            status=LLMPollingStatus.SUCCEEDED,
+            result=LLMResult(
+                model="gpt-test",
+                prompt_messages=[],
+                message=AssistantPromptMessage(content="done"),
+                usage=LLMUsage.empty_usage(),
+            ),
+        )
+        request_mock = mocker.patch.object(
+            client,
+            "_request_with_plugin_daemon_response",
+            return_value=polling_result,
+        )
+
+        result = client.check_llm_polling(
+            tenant_id="tenant-1",
+            user_id="user-1",
+            plugin_id="org/plugin:1",
+            provider="provider-a",
+            model="gpt-test",
+            credentials={"api_key": "key"},
+            plugin_state={"task_id": "poll-1"},
+        )
+
+        assert result == polling_result
+        call_kwargs = request_mock.call_args.kwargs
+        assert call_kwargs["path"] == "plugin/tenant-1/dispatch/model/polling/check"
+        assert call_kwargs["data"]["data"] == {
+            "provider": "provider-a",
+            "model_type": "llm",
+            "model": "gpt-test",
+            "credentials": {"api_key": "key"},
+            "plugin_state": {"task_id": "poll-1"},
+        }
+
+    def test_start_llm_polling_maps_unsupported_polling_invoke_error(self, mocker: MockerFixture):
+        client = PluginModelClient()
+        mocker.patch.object(
+            client,
+            "_request_with_plugin_daemon_response",
+            side_effect=PluginInvokeError(
+                json.dumps(
+                    {
+                        "error_type": PluginLLMPollingUnsupportedError.__name__,
+                        "message": "Model `gpt-test` does not support polling.",
+                    }
+                )
+            ),
+        )
+
+        with pytest.raises(PluginLLMPollingUnsupportedError):
+            client.start_llm_polling(
+                tenant_id="tenant-1",
+                user_id="user-1",
+                plugin_id="org/plugin:1",
+                provider="provider-a",
+                model="gpt-test",
+                credentials={"api_key": "key"},
+                prompt_messages=[],
+            )
+
+    def test_get_llm_num_tokens(self, mocker: MockerFixture):
         client = PluginModelClient()
         mocker.patch.object(
             client,
@@ -204,7 +336,7 @@ class TestPluginModelClient:
 
         assert result == 42
 
-    def test_get_llm_num_tokens_empty_returns_zero(self, mocker):
+    def test_get_llm_num_tokens_empty_returns_zero(self, mocker: MockerFixture):
         client = PluginModelClient()
         mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
 
@@ -213,7 +345,7 @@ class TestPluginModelClient:
             == 0
         )
 
-    def test_invoke_text_embedding(self, mocker):
+    def test_invoke_text_embedding(self, mocker: MockerFixture):
         client = PluginModelClient()
         embedding_result = SimpleNamespace(data=[[0.1, 0.2]])
         mocker.patch.object(
@@ -233,7 +365,7 @@ class TestPluginModelClient:
 
         assert result is embedding_result
 
-    def test_invoke_text_embedding_empty_raises(self, mocker):
+    def test_invoke_text_embedding_empty_raises(self, mocker: MockerFixture):
         client = PluginModelClient()
         mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
 
@@ -242,7 +374,7 @@ class TestPluginModelClient:
                 "tenant-1", "user-1", "org/plugin:1", "provider-a", "embedding-a", {}, ["hello"], "x"
             )
 
-    def test_invoke_multimodal_embedding(self, mocker):
+    def test_invoke_multimodal_embedding(self, mocker: MockerFixture):
         client = PluginModelClient()
         embedding_result = SimpleNamespace(data=[[0.3, 0.4]])
         mocker.patch.object(
@@ -262,7 +394,7 @@ class TestPluginModelClient:
 
         assert result is embedding_result
 
-    def test_invoke_multimodal_embedding_empty_raises(self, mocker):
+    def test_invoke_multimodal_embedding_empty_raises(self, mocker: MockerFixture):
         client = PluginModelClient()
         mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
 
@@ -271,7 +403,7 @@ class TestPluginModelClient:
                 "tenant-1", "user-1", "org/plugin:1", "provider-a", "embedding-a", {}, [{"type": "image"}], "x"
             )
 
-    def test_get_text_embedding_num_tokens(self, mocker):
+    def test_get_text_embedding_num_tokens(self, mocker: MockerFixture):
         client = PluginModelClient()
         mocker.patch.object(
             client,
@@ -287,7 +419,7 @@ class TestPluginModelClient:
             3,
         ]
 
-    def test_get_text_embedding_num_tokens_empty_returns_list(self, mocker):
+    def test_get_text_embedding_num_tokens_empty_returns_list(self, mocker: MockerFixture):
         client = PluginModelClient()
         mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
 
@@ -298,7 +430,7 @@ class TestPluginModelClient:
             == []
         )
 
-    def test_invoke_rerank(self, mocker):
+    def test_invoke_rerank(self, mocker: MockerFixture):
         client = PluginModelClient()
         rerank_result = SimpleNamespace(scores=[0.9])
         mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([rerank_result]))
@@ -318,14 +450,14 @@ class TestPluginModelClient:
 
         assert result is rerank_result
 
-    def test_invoke_rerank_empty_raises(self, mocker):
+    def test_invoke_rerank_empty_raises(self, mocker: MockerFixture):
         client = PluginModelClient()
         mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
 
         with pytest.raises(ValueError, match="Failed to invoke rerank"):
             client.invoke_rerank("tenant-1", "user-1", "org/plugin:1", "provider-a", "rerank-a", {}, "q", ["doc-1"])
 
-    def test_invoke_multimodal_rerank(self, mocker):
+    def test_invoke_multimodal_rerank(self, mocker: MockerFixture):
         client = PluginModelClient()
         rerank_result = SimpleNamespace(scores=[0.8])
         mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([rerank_result]))
@@ -345,7 +477,7 @@ class TestPluginModelClient:
 
         assert result is rerank_result
 
-    def test_invoke_multimodal_rerank_empty_raises(self, mocker):
+    def test_invoke_multimodal_rerank_empty_raises(self, mocker: MockerFixture):
         client = PluginModelClient()
         mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
 
@@ -361,7 +493,7 @@ class TestPluginModelClient:
                 [{"type": "image"}],
             )
 
-    def test_invoke_tts(self, mocker):
+    def test_invoke_tts(self, mocker: MockerFixture):
         client = PluginModelClient()
         mocker.patch.object(
             client,
@@ -384,7 +516,7 @@ class TestPluginModelClient:
 
         assert result == [b"hello", b"!"]
 
-    def test_invoke_tts_wraps_plugin_daemon_inner_error(self, mocker):
+    def test_invoke_tts_wraps_plugin_daemon_inner_error(self, mocker: MockerFixture):
         client = PluginModelClient()
 
         def _boom():
@@ -396,7 +528,7 @@ class TestPluginModelClient:
         with pytest.raises(ValueError, match="tts error-400"):
             list(client.invoke_tts("tenant-1", "user-1", "org/plugin:1", "provider-a", "tts-a", {}, "hello", "alloy"))
 
-    def test_get_tts_model_voices(self, mocker):
+    def test_get_tts_model_voices(self, mocker: MockerFixture):
         client = PluginModelClient()
         mocker.patch.object(
             client,
@@ -425,13 +557,13 @@ class TestPluginModelClient:
 
         assert result == [{"name": "Alloy", "value": "alloy"}, {"name": "Echo", "value": "echo"}]
 
-    def test_get_tts_model_voices_empty_returns_list(self, mocker):
+    def test_get_tts_model_voices_empty_returns_list(self, mocker: MockerFixture):
         client = PluginModelClient()
         mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
 
         assert client.get_tts_model_voices("tenant-1", "user-1", "org/plugin:1", "provider-a", "tts-a", {}) == []
 
-    def test_invoke_speech_to_text(self, mocker):
+    def test_invoke_speech_to_text(self, mocker: MockerFixture):
         client = PluginModelClient()
         stream_mock = mocker.patch.object(
             client,
@@ -452,7 +584,7 @@ class TestPluginModelClient:
         assert result == "transcribed text"
         assert stream_mock.call_args.kwargs["data"]["data"]["file"] == "616263"
 
-    def test_invoke_speech_to_text_empty_raises(self, mocker):
+    def test_invoke_speech_to_text_empty_raises(self, mocker: MockerFixture):
         client = PluginModelClient()
         mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
 
@@ -461,7 +593,7 @@ class TestPluginModelClient:
                 "tenant-1", "user-1", "org/plugin:1", "provider-a", "stt-a", {}, io.BytesIO(b"abc")
             )
 
-    def test_invoke_moderation(self, mocker):
+    def test_invoke_moderation(self, mocker: MockerFixture):
         client = PluginModelClient()
         stream_mock = mocker.patch.object(
             client,
@@ -482,7 +614,7 @@ class TestPluginModelClient:
         assert result is True
         assert stream_mock.call_args.kwargs["path"] == "plugin/tenant-1/dispatch/moderation/invoke"
 
-    def test_invoke_moderation_empty_raises(self, mocker):
+    def test_invoke_moderation_empty_raises(self, mocker: MockerFixture):
         client = PluginModelClient()
         mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
 

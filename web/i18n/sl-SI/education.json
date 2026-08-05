@@ -1,5 +1,14 @@
 {
+  "applied.activeSubscription.description": "Imate aktivno naročnino. Izobraževalni popust lahko uporabite po poteku naročnine. Potrdite naročnino v <stripeLink>Stripe</stripeLink>.",
+  "applied.noPaymentPermission.description": "V tem delovnem prostoru nimate dovoljenja za plačilo. Preklopite na delovni prostor, kjer lahko upravljate obračunavanje, da uporabite izobraževalni popust.",
+  "applied.noPaymentPermission.returnHome": "Nazaj na Dify",
+  "applied.step1.description": "Uspešno ste se prijavili za izobraževalni popust.",
+  "applied.step2.description": "Izberite delovni prostor, ki ga želite uporabiti z izobraževalnim popustom.",
   "currentSigned": "Trenutno prijavljen kot",
+  "educationPricingConfirm.cancel": "Obdrži trenutni paket",
+  "educationPricingConfirm.continue": "Preklopi na letni Professional",
+  "educationPricingConfirm.description": "Izobraževalni popust velja samo za letni paket Professional. Če obdržite trenutni paket, popust ne bo vključen.",
+  "educationPricingConfirm.title": "Izbrani paket ne podpira izobraževalnega popusta",
   "emailLabel": "Vaš trenutni elektronski naslov",
   "form.schoolName.placeholder": "Vpišite uradno, neokrnjeno ime vaše šole",
   "form.schoolName.title": "Ime vaše šole",
@@ -31,14 +40,14 @@
   "notice.stillInEducation.expired": "Ponovno preverite zdaj, da pridobite nov kupon za prihajajoče šolsko leto. Dodali ga bomo vašemu računu in lahko ga uporabite za naslednjo nadgradnjo.",
   "notice.stillInEducation.isAboutToExpire": "Ponovno preverite zdaj, da pridobite nov kupon za prihajajoče akademsko leto. Shranjen bo na vašem računu in pripravljen za uporabo ob vaši naslednji obnovitvi.",
   "notice.stillInEducation.title": "Še vedno v izobraževanju?",
+  "planNotSupportEducationDiscount": "Ni upravičen do izobraževalnih cen",
   "rejectContent": "Na žalost niste upravičeni do statusa Verificirane izobrazbe in zato ne morete prejeti ekskluzivnega 100-odstotnega kupona za Dify profesionalni načrt, če uporabljate ta e-poštni naslov.",
   "rejectTitle": "Vaša Dify izobraževalna verifikacija je bila zavrnjena.",
   "submit": "Predloži",
   "submitError": "Pošiljanje obrazca ni uspelo. Prosimo, poskusite znova kasneje.",
-  "successContent": "Za vaše račune smo izdali kupon za 100% popust na profesionalni načrt Dify. Kupon je veljaven eno leto, prosimo, uporabite ga v veljavnem obdobju.",
-  "successTitle": "Imate verifikacijo izobraževanja Dify",
   "toVerified": "Preverite izobrazbo",
   "toVerifiedTip.coupon": "izključno 100% kupon",
   "toVerifiedTip.end": "za profesionalni načrt Dify.",
-  "toVerifiedTip.front": "Zdaj ste upravičeni do statusa Preverjeno izobraževanje. Prosimo, vnesite svoje izobraževalne podatke spodaj, da zaključite postopek in prejmete"
+  "toVerifiedTip.front": "Zdaj ste upravičeni do statusa Preverjeno izobraževanje. Prosimo, vnesite svoje izobraževalne podatke spodaj, da zaključite postopek in prejmete",
+  "useEducationDiscount": "Uporabi izobraževalni popust"
 }

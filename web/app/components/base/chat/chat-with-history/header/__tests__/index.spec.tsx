@@ -16,45 +16,6 @@ vi.mock('@/app/components/base/chat/chat-with-history/inputs-form/content', () =
   default: () => <div data-testid="inputs-form-content">InputsFormContent</div>,
 }))
 
-// Mock PortalToFollowElem using React Context
-vi.mock('@/app/components/base/portal-to-follow-elem', async () => {
-  const React = await import('react')
-  const MockContext = React.createContext(false)
-
-  return {
-    PortalToFollowElem: ({ children, open }: { children: React.ReactNode, open: boolean }) => {
-      return (
-        <MockContext.Provider value={open}>
-          <div data-open={open}>{children}</div>
-        </MockContext.Provider>
-      )
-    },
-    PortalToFollowElemContent: ({ children }: { children: React.ReactNode }) => {
-      const open = React.useContext(MockContext)
-      if (!open)
-        return null
-      return <div>{children}</div>
-    },
-    PortalToFollowElemTrigger: ({ children, onClick }: { children: React.ReactNode, onClick: () => void }) => (
-      <div onClick={onClick}>{children}</div>
-    ),
-  }
-})
-
-// Mock Modal to avoid Headless UI issues in tests
-vi.mock('@/app/components/base/modal', () => ({
-  default: ({ children, isShow, title }: { children: React.ReactNode, isShow: boolean, title: React.ReactNode }) => {
-    if (!isShow)
-      return null
-    return (
-      <div data-testid="modal">
-        {!!title && <div>{title}</div>}
-        {children}
-      </div>
-    )
-  },
-}))
-
 const mockAppData: AppData = {
   app_id: 'app-1',
   site: {
@@ -120,8 +81,8 @@ describe('Header Component', () => {
       })
 
       const buttons = screen.getAllByRole('button')
-      // Sidebar(1) + NewChat(1) + ResetChat(1) + ViewForm(1) = 4 buttons
-      expect(buttons).toHaveLength(4)
+      // Sidebar(1) + Conversation operation(1) + NewChat(1) + ResetChat(1) + ViewForm(1) = 5 buttons
+      expect(buttons).toHaveLength(5)
     })
   })
 
@@ -234,7 +195,11 @@ describe('Header Component', () => {
       const saveBtn = await screen.findByText('common.operation.save')
       await userEvent.click(saveBtn)
 
-      expect(handleRenameConversation).toHaveBeenCalledWith('conv-1', 'New Name', expect.any(Object))
+      expect(handleRenameConversation).toHaveBeenCalledWith(
+        'conv-1',
+        'New Name',
+        expect.any(Object),
+      )
 
       const successCallback = handleRenameConversation.mock.calls[0]![2].onSuccess
       await act(async () => {
@@ -325,8 +290,8 @@ describe('Header Component', () => {
       })
 
       const buttons = screen.getAllByRole('button')
-      // Sidebar(1) + NewChat(1) + ResetChat(1) = 3 buttons
-      expect(buttons).toHaveLength(3)
+      // Sidebar(1) + Conversation operation(1) + NewChat(1) + ResetChat(1) = 4 buttons
+      expect(buttons).toHaveLength(4)
     })
 
     it('should render system title if conversation id is missing', () => {
@@ -417,7 +382,9 @@ describe('Header Component', () => {
         sidebarCollapseState: true,
       })
 
-      const operationTrigger = container.querySelector('.flex.cursor-pointer.items-center.rounded-lg.p-1\\.5.pl-2.text-text-secondary.hover\\:bg-state-base-hover') as HTMLElement
+      const operationTrigger = container.querySelector(
+        '.flex.cursor-pointer.items-center.rounded-lg.p-1\\.5.pl-2.text-text-secondary.hover\\:bg-state-base-hover',
+      ) as HTMLElement
       await userEvent.click(operationTrigger)
       await userEvent.click(await screen.findByText('explore.sidebar.action.rename'))
 

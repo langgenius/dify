@@ -13,7 +13,7 @@ from controllers.console.app import wraps
 from libs.datetime_utils import naive_utc_now
 from models import App, Tenant
 from models.account import Account, TenantAccountJoin, TenantAccountRole
-from models.enums import ConversationFromSource
+from models.enums import AppStatus, ConversationFromSource
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 
@@ -28,7 +28,7 @@ class TestChatMessageApiPermissions:
         app.id = str(uuid.uuid4())
         app.mode = AppMode.CHAT
         app.tenant_id = str(uuid.uuid4())
-        app.status = "normal"
+        app.status = AppStatus.NORMAL
         return app
 
     @pytest.fixture
@@ -78,7 +78,7 @@ class TestChatMessageApiPermissions:
         self,
         test_client: FlaskClient,
         auth_header,
-        monkeypatch,
+        monkeypatch: pytest.MonkeyPatch,
         mock_app_model,
         mock_account,
         role: TenantAccountRole,
@@ -90,7 +90,7 @@ class TestChatMessageApiPermissions:
         # Mock app loading
 
         mock_load_app_model = mock.Mock(return_value=mock_app_model)
-        monkeypatch.setattr(wraps, "_load_app_model", mock_load_app_model)
+        monkeypatch.setattr(wraps, "_load_app_model_from_scoped_session", mock_load_app_model)
 
         # Mock current user
         monkeypatch.setattr(completion_api, "current_user", mock_account)
@@ -130,7 +130,7 @@ class TestChatMessageApiPermissions:
         self,
         test_client: FlaskClient,
         auth_header,
-        monkeypatch,
+        monkeypatch: pytest.MonkeyPatch,
         mock_app_model,
         mock_account,
         role: TenantAccountRole,
@@ -139,7 +139,7 @@ class TestChatMessageApiPermissions:
         """Ensure GET chat-messages endpoint enforces edit permissions."""
 
         mock_load_app_model = mock.Mock(return_value=mock_app_model)
-        monkeypatch.setattr(wraps, "_load_app_model", mock_load_app_model)
+        monkeypatch.setattr(wraps, "_load_app_model_from_scoped_session", mock_load_app_model)
 
         conversation_id = uuid.uuid4()
         created_at = naive_utc_now()

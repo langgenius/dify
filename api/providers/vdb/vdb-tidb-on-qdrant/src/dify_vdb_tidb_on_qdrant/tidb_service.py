@@ -1,7 +1,8 @@
 import logging
 import time
 import uuid
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from typing import Any
 
 import httpx
 from httpx import DigestAuth
@@ -24,7 +25,7 @@ _tidb_http_client: httpx.Client = get_pooled_http_client(
 
 class TidbService:
     @staticmethod
-    def extract_qdrant_endpoint(cluster_response: dict) -> str | None:
+    def extract_qdrant_endpoint(cluster_response: Mapping[str, Any]) -> str | None:
         """Extract the qdrant endpoint URL from a Get Cluster API response.
 
         Reads ``endpoints.public.host`` (e.g. ``gateway01.xx.tidbcloud.com``),
@@ -246,8 +247,18 @@ class TidbService:
                 userPrefix = item["userPrefix"]
                 if state == "ACTIVE" and len(userPrefix) > 0:
                     cluster_info = tidb_serverless_list_map[item["clusterId"]]
-                    cluster_info.status = TidbAuthBindingStatus.ACTIVE
                     cluster_info.account = f"{userPrefix}.root"
+                    if not cluster_info.qdrant_endpoint:
+                        cluster_info.qdrant_endpoint = TidbService.extract_qdrant_endpoint(
+                            item
+                        ) or TidbService.fetch_qdrant_endpoint(api_url, public_key, private_key, item["clusterId"])
+                    if cluster_info.qdrant_endpoint:
+                        cluster_info.status = TidbAuthBindingStatus.ACTIVE
+                    else:
+                        logger.warning(
+                            "Cluster %s is ACTIVE but qdrant endpoint is not ready; will retry later",
+                            item["clusterId"],
+                        )
                     db.session.add(cluster_info)
             db.session.commit()
         else:

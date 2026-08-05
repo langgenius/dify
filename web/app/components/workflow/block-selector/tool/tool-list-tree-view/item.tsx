@@ -2,23 +2,26 @@
 import type { FC } from 'react'
 import type { BlockEnum, ToolWithProvider } from '../../../types'
 import type { ToolDefaultValue, ToolValue } from '../../types'
+import type { ToolActionPreviewCardHandle } from '../action-item'
 import * as React from 'react'
-import { ViewType } from '../../view-type-select'
+import { ViewType } from '../../types'
 import Tool from '../tool'
 
-type Props = {
+type Props = Readonly<{
   groupName: string
   toolList: ToolWithProvider[]
+  previewCardHandle: ToolActionPreviewCardHandle
   hasSearchText: boolean
   onSelect: (type: BlockEnum, tool: ToolDefaultValue) => void
   canNotSelectMultiple?: boolean
   onSelectMultiple?: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   selectedTools?: ToolValue[]
-}
+}>
 
 const Item: FC<Props> = ({
   groupName,
   toolList,
+  previewCardHandle,
   hasSearchText,
   onSelect,
   canNotSelectMultiple,
@@ -27,7 +30,7 @@ const Item: FC<Props> = ({
 }) => {
   return (
     <div>
-      <div className="flex h-[22px] items-center px-3 text-xs font-medium text-text-tertiary">
+      <div className="flex h-5.5 items-center px-3 text-xs font-medium text-text-tertiary">
         {groupName}
       </div>
       <div>
@@ -35,6 +38,7 @@ const Item: FC<Props> = ({
           <Tool
             key={tool.id}
             payload={tool}
+            previewCardHandle={previewCardHandle}
             viewType={ViewType.tree}
             hasSearchText={hasSearchText}
             onSelect={onSelect}

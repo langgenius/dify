@@ -1,6 +1,7 @@
 import logging
 import subprocess
 import time
+from typing import override
 
 from dify_vdb_couchbase.couchbase_vector import CouchbaseConfig, CouchbaseVector
 
@@ -40,6 +41,7 @@ class CouchbaseTest(AbstractVectorTest):
             ),
         )
 
+    @override
     def search_by_vector(self):
         # brief sleep to ensure document is indexed
         time.sleep(5)

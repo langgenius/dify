@@ -1,11 +1,18 @@
-"""Adapters from persisted message files to graph-layer file values."""
+"""Adapters from persisted message files to graph-layer file values.
+
+Replay paths only: files in conversation history were validated at upload time,
+so these helpers deliberately do not accept (or forward) a ``FileUploadConfig`` —
+re-validation here would break replays whenever workflow ``file_upload`` config
+drifts between rounds. Mirrors ``build_file_from_stored_mapping`` in
+``models/utils/file_input_compat.py``.
+"""
 
 from __future__ import annotations
 
 from collections.abc import Sequence
 
 from core.app.file_access import FileAccessControllerProtocol
-from graphon.file import File, FileBelongsTo, FileTransferMethod, FileUploadConfig
+from graphon.file import File, FileBelongsTo, FileTransferMethod
 from models import MessageFile
 
 from .builders import build_from_mapping
@@ -15,14 +22,12 @@ def build_from_message_files(
     *,
     message_files: Sequence[MessageFile],
     tenant_id: str,
-    config: FileUploadConfig | None = None,
     access_controller: FileAccessControllerProtocol,
 ) -> Sequence[File]:
     return [
         build_from_message_file(
             message_file=message_file,
             tenant_id=tenant_id,
-            config=config,
             access_controller=access_controller,
         )
         for message_file in message_files
@@ -34,7 +39,6 @@ def build_from_message_file(
     *,
     message_file: MessageFile,
     tenant_id: str,
-    config: FileUploadConfig | None,
     access_controller: FileAccessControllerProtocol,
 ) -> File:
     mapping = {
@@ -54,6 +58,5 @@ def build_from_message_file(
     return build_from_mapping(
         mapping=mapping,
         tenant_id=tenant_id,
-        config=config,
         access_controller=access_controller,
     )

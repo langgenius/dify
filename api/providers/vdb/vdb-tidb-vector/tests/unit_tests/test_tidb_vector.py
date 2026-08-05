@@ -46,7 +46,7 @@ def test_tidb_config_validation(tidb_module, field, value, message):
         tidb_module.TiDBVectorConfig.model_validate(values)
 
 
-def test_init_get_type_and_distance_func(tidb_module, monkeypatch):
+def test_init_get_type_and_distance_func(tidb_module, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(tidb_module, "create_engine", MagicMock(return_value="engine"))
 
     vector = tidb_module.TiDBVector("collection_1", _config(tidb_module), distance_func="L2")
@@ -63,7 +63,7 @@ def test_init_get_type_and_distance_func(tidb_module, monkeypatch):
     assert vector._get_distance_func() == "VEC_COSINE_DISTANCE"
 
 
-def test_table_builds_columns_with_tidb_vector_type(tidb_module, monkeypatch):
+def test_table_builds_columns_with_tidb_vector_type(tidb_module, monkeypatch: pytest.MonkeyPatch):
     fake_tidb_vector = types.ModuleType("tidb_vector")
     fake_tidb_sqlalchemy = types.ModuleType("tidb_vector.sqlalchemy")
 
@@ -107,7 +107,7 @@ def test_create_calls_collection_and_add_texts(tidb_module):
     assert vector._dimension == 2
 
 
-def test_create_collection_skips_when_cache_hit(tidb_module, monkeypatch):
+def test_create_collection_skips_when_cache_hit(tidb_module, monkeypatch: pytest.MonkeyPatch):
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -127,7 +127,7 @@ def test_create_collection_skips_when_cache_hit(tidb_module, monkeypatch):
     tidb_module.redis_client.set.assert_not_called()
 
 
-def test_create_collection_executes_create_sql_and_sets_cache(tidb_module, monkeypatch):
+def test_create_collection_executes_create_sql_and_sets_cache(tidb_module, monkeypatch: pytest.MonkeyPatch):
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -160,7 +160,7 @@ def test_create_collection_executes_create_sql_and_sets_cache(tidb_module, monke
     tidb_module.redis_client.set.assert_called_once()
 
 
-def test_add_texts_batches_inserts_and_returns_ids(tidb_module, monkeypatch):
+def test_add_texts_batches_inserts_and_returns_ids(tidb_module, monkeypatch: pytest.MonkeyPatch):
     class _InsertStmt:
         def __init__(self, table):
             self.table = table
@@ -198,7 +198,7 @@ def test_add_texts_batches_inserts_and_returns_ids(tidb_module, monkeypatch):
 
 
 @pytest.fixture
-def tidb_vector_with_session(tidb_module, monkeypatch):
+def tidb_vector_with_session(tidb_module, monkeypatch: pytest.MonkeyPatch):
     vector = tidb_module.TiDBVector.__new__(tidb_module.TiDBVector)
     vector._collection_name = "collection_1"
     vector._engine = MagicMock()
@@ -354,7 +354,7 @@ def test_delete_by_metadata_field_does_nothing_when_no_ids(tidb_module):
 
 
 # Test search_by_vector filters and scores
-def test_search_by_vector_filters_and_scores(tidb_module, monkeypatch):
+def test_search_by_vector_filters_and_scores(tidb_module, monkeypatch: pytest.MonkeyPatch):
     session = MagicMock()
     session.execute.return_value = [
         ('{"doc_id":"id-1","document_id":"d-1"}', "text-1", 0.2),
@@ -392,7 +392,7 @@ def test_search_by_vector_filters_and_scores(tidb_module, monkeypatch):
 
 
 # Test delete drops table
-def test_delete_drops_table(tidb_module, monkeypatch):
+def test_delete_drops_table(tidb_module, monkeypatch: pytest.MonkeyPatch):
     session = MagicMock()
     session.execute.return_value = None
 
@@ -413,7 +413,7 @@ def test_delete_drops_table(tidb_module, monkeypatch):
     assert "DROP TABLE IF EXISTS collection_1" in drop_sql
 
 
-def test_tidb_factory_uses_existing_or_generated_collection(tidb_module, monkeypatch):
+def test_tidb_factory_uses_existing_or_generated_collection(tidb_module, monkeypatch: pytest.MonkeyPatch):
     factory = tidb_module.TiDBVectorFactory()
     dataset_with_index = SimpleNamespace(
         id="dataset-1",

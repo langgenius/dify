@@ -121,9 +121,7 @@ class TriggerSubscriptionBuilderService:
             if not subscription_builder.name:
                 raise ValueError("Subscription builder name is required")
 
-            credential_type = CredentialType.of(
-                subscription_builder.credential_type or CredentialType.UNAUTHORIZED.value
-            )
+            credential_type = CredentialType.of(subscription_builder.credential_type or CredentialType.UNAUTHORIZED)
             if credential_type == CredentialType.UNAUTHORIZED:
                 # manually create
                 TriggerProviderService.add_trigger_subscription(
@@ -321,9 +319,7 @@ class TriggerSubscriptionBuilderService:
                 raise ValueError("Subscription builder name is required")
 
             # Build
-            credential_type = CredentialType.of(
-                subscription_builder.credential_type or CredentialType.UNAUTHORIZED.value
-            )
+            credential_type = CredentialType.of(subscription_builder.credential_type or CredentialType.UNAUTHORIZED)
             if credential_type == CredentialType.UNAUTHORIZED:
                 # manually create
                 TriggerProviderService.add_trigger_subscription(

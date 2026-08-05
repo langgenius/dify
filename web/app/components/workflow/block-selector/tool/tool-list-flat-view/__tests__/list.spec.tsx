@@ -1,3 +1,4 @@
+import { createPreviewCardHandle } from '@langgenius/dify-ui/preview-card'
 import { render, screen } from '@testing-library/react'
 import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
@@ -37,6 +38,7 @@ describe('ToolListFlatView', () => {
     render(
       <List
         letters={['A', 'B']}
+        previewCardHandle={createPreviewCardHandle()}
         payload={[
           createToolProvider({
             id: 'provider-a',

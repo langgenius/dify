@@ -19,22 +19,22 @@ class TestOutputModeration:
         return ModerationRule(type="keywords", config={"keywords": "badword"})
 
     @pytest.fixture
-    def output_moderation(self, mock_queue_manager, moderation_rule):
+    def output_moderation(self, mock_queue_manager, moderation_rule: ModerationRule):
         return OutputModeration(
             tenant_id="test_tenant", app_id="test_app", rule=moderation_rule, queue_manager=mock_queue_manager
         )
 
-    def test_should_direct_output(self, output_moderation):
+    def test_should_direct_output(self, output_moderation: OutputModeration):
         assert output_moderation.should_direct_output() is False
         output_moderation.final_output = "blocked"
         assert output_moderation.should_direct_output() is True
 
-    def test_get_final_output(self, output_moderation):
+    def test_get_final_output(self, output_moderation: OutputModeration):
         assert output_moderation.get_final_output() == ""
         output_moderation.final_output = "blocked"
         assert output_moderation.get_final_output() == "blocked"
 
-    def test_append_new_token(self, output_moderation):
+    def test_append_new_token(self, output_moderation: OutputModeration):
         with patch.object(OutputModeration, "start_thread") as mock_start:
             output_moderation.append_new_token("hello")
             assert output_moderation.buffer == "hello"
@@ -45,7 +45,7 @@ class TestOutputModeration:
             assert output_moderation.buffer == "hello world"
             assert mock_start.call_count == 1
 
-    def test_moderation_completion_no_flag(self, output_moderation):
+    def test_moderation_completion_no_flag(self, output_moderation: OutputModeration):
         with patch.object(OutputModeration, "moderation") as mock_moderation:
             mock_moderation.return_value = ModerationOutputsResult(flagged=False, action=ModerationAction.DIRECT_OUTPUT)
 
@@ -55,7 +55,7 @@ class TestOutputModeration:
             assert flagged is False
             assert output_moderation.is_final_chunk is True
 
-    def test_moderation_completion_flagged_direct_output(self, output_moderation, mock_queue_manager):
+    def test_moderation_completion_flagged_direct_output(self, output_moderation: OutputModeration, mock_queue_manager):
         with patch.object(OutputModeration, "moderation") as mock_moderation:
             mock_moderation.return_value = ModerationOutputsResult(
                 flagged=True, action=ModerationAction.DIRECT_OUTPUT, preset_response="preset"
@@ -71,7 +71,7 @@ class TestOutputModeration:
             assert args[0].text == "preset"
             assert args[1] == PublishFrom.TASK_PIPELINE
 
-    def test_moderation_completion_flagged_overridden(self, output_moderation, mock_queue_manager):
+    def test_moderation_completion_flagged_overridden(self, output_moderation: OutputModeration, mock_queue_manager):
         with patch.object(OutputModeration, "moderation") as mock_moderation:
             mock_moderation.return_value = ModerationOutputsResult(
                 flagged=True, action=ModerationAction.OVERRIDDEN, text="masked content"
@@ -85,10 +85,10 @@ class TestOutputModeration:
             args, _ = mock_queue_manager.publish.call_args
             assert args[0].text == "masked content"
 
-    def test_start_thread(self, output_moderation):
+    def test_start_thread(self, output_moderation: OutputModeration):
         mock_app = MagicMock(spec=Flask)
         with patch("core.moderation.output_moderation.current_app") as mock_current_app:
-            mock_current_app._get_current_object.return_value = mock_app
+            mock_current_app._get_current_object = MagicMock(return_value=mock_app)
             with patch("threading.Thread") as mock_thread_class:
                 mock_thread_instance = MagicMock()
                 mock_thread_class.return_value = mock_thread_instance
@@ -99,7 +99,7 @@ class TestOutputModeration:
                 mock_thread_class.assert_called_once()
                 mock_thread_instance.start.assert_called_once()
 
-    def test_stop_thread(self, output_moderation):
+    def test_stop_thread(self, output_moderation: OutputModeration):
         mock_thread = MagicMock()
         mock_thread.is_alive.return_value = True
         output_moderation.thread = mock_thread
@@ -113,7 +113,7 @@ class TestOutputModeration:
         assert output_moderation.thread_running is True
 
     @patch("core.moderation.output_moderation.ModerationFactory")
-    def test_moderation_success(self, mock_factory_class, output_moderation):
+    def test_moderation_success(self, mock_factory_class, output_moderation: OutputModeration):
         mock_factory = mock_factory_class.return_value
         mock_result = ModerationOutputsResult(flagged=False, action=ModerationAction.DIRECT_OUTPUT)
         mock_factory.moderation_for_outputs.return_value = mock_result
@@ -126,13 +126,13 @@ class TestOutputModeration:
         )
 
     @patch("core.moderation.output_moderation.ModerationFactory")
-    def test_moderation_exception(self, mock_factory_class, output_moderation):
+    def test_moderation_exception(self, mock_factory_class, output_moderation: OutputModeration):
         mock_factory_class.side_effect = Exception("error")
 
         result = output_moderation.moderation("tenant", "app", "buffer")
         assert result is None
 
-    def test_worker_loop_and_exit(self, output_moderation, mock_queue_manager):
+    def test_worker_loop_and_exit(self, output_moderation: OutputModeration, mock_queue_manager):
         mock_app = MagicMock(spec=Flask)
 
         # Test exit on thread_running=False
@@ -140,7 +140,7 @@ class TestOutputModeration:
         output_moderation.worker(mock_app, 10)
         # Should exit immediately
 
-    def test_worker_no_flag(self, output_moderation):
+    def test_worker_no_flag(self, output_moderation: OutputModeration):
         mock_app = MagicMock(spec=Flask)
 
         with patch.object(OutputModeration, "moderation") as mock_moderation:
@@ -160,7 +160,7 @@ class TestOutputModeration:
 
             assert mock_moderation.called
 
-    def test_worker_flagged_direct_output(self, output_moderation, mock_queue_manager):
+    def test_worker_flagged_direct_output(self, output_moderation: OutputModeration, mock_queue_manager):
         mock_app = MagicMock(spec=Flask)
 
         with patch.object(OutputModeration, "moderation") as mock_moderation:
@@ -177,7 +177,7 @@ class TestOutputModeration:
             mock_queue_manager.publish.assert_called_once()
             # It breaks on DIRECT_OUTPUT
 
-    def test_worker_flagged_overridden(self, output_moderation, mock_queue_manager):
+    def test_worker_flagged_overridden(self, output_moderation: OutputModeration, mock_queue_manager):
         mock_app = MagicMock(spec=Flask)
 
         with patch.object(OutputModeration, "moderation") as mock_moderation:
@@ -199,7 +199,7 @@ class TestOutputModeration:
             args, _ = mock_queue_manager.publish.call_args
             assert args[0].text == "masked"
 
-    def test_worker_chunk_too_small(self, output_moderation):
+    def test_worker_chunk_too_small(self, output_moderation: OutputModeration):
         mock_app = MagicMock(spec=Flask)
         with patch("time.sleep") as mock_sleep:
             # chunk_length < buffer_size and not is_final_chunk
@@ -215,7 +215,7 @@ class TestOutputModeration:
 
             mock_sleep.assert_called_once_with(1)
 
-    def test_worker_empty_not_flagged(self, output_moderation, mock_queue_manager):
+    def test_worker_empty_not_flagged(self, output_moderation: OutputModeration, mock_queue_manager):
         mock_app = MagicMock(spec=Flask)
         with patch.object(OutputModeration, "moderation") as mock_moderation:
             # Return None (exception or no rule)

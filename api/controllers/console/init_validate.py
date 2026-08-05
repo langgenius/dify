@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from controllers.fastopenapi import console_router
+from enums.deployment_edition import DeploymentEdition
 from extensions.ext_database import db
 from models.model import DifySetup
 from services.account_service import TenantService
@@ -50,7 +51,7 @@ def get_init_status() -> InitStatusResponse:
 @only_edition_self_hosted
 def validate_init_password(payload: InitValidatePayload) -> InitValidateResponse:
     """Validate initialization password."""
-    tenant_count = TenantService.get_tenant_count()
+    tenant_count = TenantService.get_tenant_count(session=db.session())
     if tenant_count > 0:
         raise AlreadySetupError()
 
@@ -63,7 +64,7 @@ def validate_init_password(payload: InitValidatePayload) -> InitValidateResponse
 
 
 def get_init_validate_status() -> bool:
-    if dify_config.EDITION == "SELF_HOSTED":
+    if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
         if os.environ.get("INIT_PASSWORD"):
             if session.get("is_init_validated"):
                 return True

@@ -50,7 +50,7 @@ describe('MemberSelector', () => {
     render(<MemberSelector onSelect={mockOnSelect} />)
 
     await user.click(screen.getByTestId('member-selector-trigger'))
-    await user.type(screen.getByTestId('member-selector-search'), 'Jane')
+    await user.type(screen.getByRole('textbox', { name: 'common.operation.search' }), 'Jane')
 
     const items = screen.getAllByTestId('member-selector-item')
     expect(items).toHaveLength(1)
@@ -67,7 +67,9 @@ describe('MemberSelector', () => {
 
     expect(mockOnSelect).toHaveBeenCalledWith('2')
     await waitFor(() => {
-      expect(screen.queryByTestId('member-selector-search')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('textbox', { name: 'common.operation.search' }),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -76,7 +78,7 @@ describe('MemberSelector', () => {
     render(<MemberSelector onSelect={mockOnSelect} />)
 
     await user.click(screen.getByTestId('member-selector-trigger'))
-    await user.type(screen.getByTestId('member-selector-search'), 'john@')
+    await user.type(screen.getByRole('textbox', { name: 'common.operation.search' }), 'john@')
 
     const items = screen.getAllByTestId('member-selector-item')
     expect(items).toHaveLength(1)
@@ -91,7 +93,9 @@ describe('MemberSelector', () => {
   })
 
   it('should handle missing data gracefully', () => {
-    vi.mocked(useMembers).mockReturnValue({ data: undefined } as unknown as ReturnType<typeof useMembers>)
+    vi.mocked(useMembers).mockReturnValue({ data: undefined } as unknown as ReturnType<
+      typeof useMembers
+    >)
     render(<MemberSelector onSelect={mockOnSelect} />)
     expect(screen.getByText(/members\.transferModal\.transferPlaceholder/i)).toBeInTheDocument()
   })
@@ -99,12 +103,17 @@ describe('MemberSelector', () => {
   it('should filter by email when account name is empty', async () => {
     const user = userEvent.setup()
     vi.mocked(useMembers).mockReturnValue({
-      data: { accounts: [...mockAccounts, { id: '4', name: '', email: 'noname@example.com', avatar_url: '' }] },
+      data: {
+        accounts: [
+          ...mockAccounts,
+          { id: '4', name: '', email: 'noname@example.com', avatar_url: '' },
+        ],
+      },
     } as unknown as ReturnType<typeof useMembers>)
     render(<MemberSelector onSelect={mockOnSelect} />)
 
     await user.click(screen.getByTestId('member-selector-trigger'))
-    await user.type(screen.getByTestId('member-selector-search'), 'noname@')
+    await user.type(screen.getByRole('textbox', { name: 'common.operation.search' }), 'noname@')
 
     const items = screen.getAllByTestId('member-selector-item')
     expect(items).toHaveLength(1)
@@ -117,7 +126,7 @@ describe('MemberSelector', () => {
     const trigger = screen.getByTestId('member-selector-trigger')
     await user.click(trigger)
 
-    expect(trigger).toHaveClass('bg-state-base-hover-alt')
+    expect(trigger).toHaveAttribute('data-popup-open')
   })
 
   it('should not match account when neither name nor email contains search value', async () => {
@@ -125,7 +134,10 @@ describe('MemberSelector', () => {
     render(<MemberSelector onSelect={mockOnSelect} />)
 
     await user.click(screen.getByTestId('member-selector-trigger'))
-    await user.type(screen.getByTestId('member-selector-search'), 'xyz-no-match-xyz')
+    await user.type(
+      screen.getByRole('textbox', { name: 'common.operation.search' }),
+      'xyz-no-match-xyz',
+    )
 
     expect(screen.queryByTestId('member-selector-item')).not.toBeInTheDocument()
   })
@@ -142,7 +154,7 @@ describe('MemberSelector', () => {
     render(<MemberSelector onSelect={mockOnSelect} />)
 
     await user.click(screen.getByTestId('member-selector-trigger'))
-    await user.type(screen.getByTestId('member-selector-search'), 'john')
+    await user.type(screen.getByRole('textbox', { name: 'common.operation.search' }), 'john')
 
     const items = screen.getAllByTestId('member-selector-item')
     expect(items).toHaveLength(1)

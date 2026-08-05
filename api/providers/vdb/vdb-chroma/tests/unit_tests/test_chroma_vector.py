@@ -44,7 +44,7 @@ def _build_fake_chroma_modules():
 
 
 @pytest.fixture
-def chroma_module(monkeypatch):
+def chroma_module(monkeypatch: pytest.MonkeyPatch):
     fake_chroma = _build_fake_chroma_modules()
     monkeypatch.setitem(sys.modules, "chromadb", fake_chroma)
     import dify_vdb_chroma.chroma_vector as module
@@ -73,7 +73,7 @@ def test_chroma_config_to_params_builds_expected_payload(chroma_module):
     assert params["settings"].chroma_client_auth_credentials == "credentials"
 
 
-def test_create_collection_uses_redis_lock_and_cache(chroma_module, monkeypatch):
+def test_create_collection_uses_redis_lock_and_cache(chroma_module, monkeypatch: pytest.MonkeyPatch):
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -173,7 +173,7 @@ def test_search_by_full_text_returns_empty_list(chroma_module):
     assert vector.search_by_full_text("query") == []
 
 
-def test_factory_init_vector_uses_existing_or_generated_collection(chroma_module, monkeypatch):
+def test_factory_init_vector_uses_existing_or_generated_collection(chroma_module, monkeypatch: pytest.MonkeyPatch):
     factory = chroma_module.ChromaVectorFactory()
     dataset_with_index = SimpleNamespace(
         id="dataset-1", index_struct_dict={"vector_store": {"class_prefix": "EXISTING"}}, index_struct=None

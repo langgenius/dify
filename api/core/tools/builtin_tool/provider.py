@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from os import listdir, path
-from typing import Any
+from typing import Any, override
 
 from core.entities.provider_entities import ProviderConfig
 from core.helper.module_import_helper import load_single_subclass_from_source
@@ -21,7 +21,7 @@ from core.tools.errors import (
 from core.tools.utils.yaml_utils import load_yaml_file_cached
 
 
-class BuiltinToolProviderController(ToolProviderController):
+class BuiltinToolProviderController(ToolProviderController[ToolProviderEntity, BuiltinTool | None]):
     tools: list[BuiltinTool]
 
     def __init__(self, **data: Any):
@@ -105,6 +105,7 @@ class BuiltinToolProviderController(ToolProviderController):
         """
         return self.tools
 
+    @override
     def get_credentials_schema(self) -> list[ProviderConfig]:
         """
         returns the credentials schema of the provider
@@ -162,7 +163,8 @@ class BuiltinToolProviderController(ToolProviderController):
         """
         return self._get_builtin_tools()
 
-    def get_tool(self, tool_name: str) -> BuiltinTool | None:  # type: ignore
+    @override
+    def get_tool(self, tool_name: str) -> BuiltinTool | None:
         """
         returns the tool that the provider can provide
         """
@@ -182,6 +184,7 @@ class BuiltinToolProviderController(ToolProviderController):
         )
 
     @property
+    @override
     def provider_type(self) -> ToolProviderType:
         """
         returns the type of the provider

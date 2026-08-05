@@ -17,10 +17,11 @@ class _SimpleJinja2Renderer:
     """Minimal Jinja2-based renderer for integration tests (no code executor)."""
 
     def render_template(self, template: str, variables: dict[str, object]) -> str:
-        from jinja2 import Template
+        from jinja2.sandbox import SandboxedEnvironment
 
         try:
-            return Template(template).render(**variables)
+            env = SandboxedEnvironment()
+            return env.from_string(template).render(**variables)
         except Exception as exc:
             raise TemplateRenderError(str(exc)) from exc
 
@@ -66,7 +67,7 @@ def test_execute_template_transform():
     )
 
     # construct variable pool
-    variable_pool = VariablePool(
+    variable_pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(user_id="aaa", files=[]),
         user_inputs={},
         environment_variables=[],
@@ -88,7 +89,7 @@ def test_execute_template_transform():
 
     node = TemplateTransformNode(
         node_id=str(uuid.uuid4()),
-        config=TemplateTransformNodeData.model_validate(config["data"]),
+        data=TemplateTransformNodeData.model_validate(config["data"]),
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
         jinja2_template_renderer=_SimpleJinja2Renderer(),

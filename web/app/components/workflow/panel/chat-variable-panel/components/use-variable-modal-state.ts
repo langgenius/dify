@@ -1,4 +1,8 @@
-import type { ObjectValueItem, ToastPayload } from './variable-modal.helpers'
+import type {
+  ChatVariableTranslator,
+  ObjectValueItem,
+  ToastPayload,
+} from './variable-modal.helpers'
 import type { ConversationVariable } from '@/app/components/workflow/types'
 import { useMemo, useState } from 'react'
 import { v4 as uuid4 } from 'uuid'
@@ -11,6 +15,7 @@ import {
   getEditorMinHeight,
   getPlaceholderByType,
   getTypeChangeState,
+  MAX_DESCRIPTION_LENGTH,
   parseEditorContent,
   validateVariableName,
 } from './variable-modal.helpers'
@@ -21,7 +26,7 @@ type UseVariableModalStateOptions = {
   notify: (props: ToastPayload) => void
   onClose: () => void
   onSave: (chatVar: ConversationVariable) => void
-  t: (key: string, options?: Record<string, unknown>) => string
+  t: ChatVariableTranslator
 }
 
 type VariableModalState = {
@@ -35,7 +40,7 @@ type VariableModalState = {
 }
 
 const buildObjectValueListFromRecord = (record: Record<string, string | number>) => {
-  return Object.keys(record).map(key => ({
+  return Object.keys(record).map((key) => ({
     key,
     type: typeof record[key] === 'string' ? ChatVarType.String : ChatVarType.Number,
     value: record[key],
@@ -58,7 +63,8 @@ const buildInitialState = (chatVar?: ConversationVariable): VariableModalState =
   return {
     description: chatVar.description,
     editInJSON: chatVar.value_type === ChatVarType.ArrayObject,
-    editorContent: chatVar.value_type === ChatVarType.ArrayObject ? JSON.stringify(chatVar.value) : undefined,
+    editorContent:
+      chatVar.value_type === ChatVarType.ArrayObject ? JSON.stringify(chatVar.value) : undefined,
     name: chatVar.name,
     objectValue: buildObjectValueItems(chatVar),
     type: chatVar.value_type,
@@ -80,12 +86,12 @@ export const useVariableModalState = ({
   const placeholder = useMemo(() => getPlaceholderByType(state.type), [state.type])
 
   const handleVarNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setState(prev => ({ ...prev, name: e.target.value || '' }))
+    setState((prev) => ({ ...prev, name: e.target.value || '' }))
   }
 
   const handleTypeChange = (nextType: ChatVarType) => {
     const nextState = getTypeChangeState(nextType)
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       editInJSON: nextState.editInJSON,
       editorContent: nextState.editorContent,
@@ -96,7 +102,7 @@ export const useVariableModalState = ({
   }
 
   const handleStringOrNumberChange = (nextValue: Array<string | number | undefined>) => {
-    setState(prev => ({ ...prev, value: nextValue[0] }))
+    setState((prev) => ({ ...prev, value: nextValue[0] }))
   }
 
   const handleEditorChange = (nextEditInJSON: boolean) => {
@@ -108,7 +114,9 @@ export const useVariableModalState = ({
 
       if (prev.type === ChatVarType.Object) {
         if (nextEditInJSON) {
-          const nextValue = prev.objectValue.some(item => item.key) ? formatObjectValueFromList(prev.objectValue) : undefined
+          const nextValue = prev.objectValue.some((item) => item.key)
+            ? formatObjectValueFromList(prev.objectValue)
+            : undefined
           nextState.value = nextValue
           nextState.editorContent = JSON.stringify(nextValue)
           return nextState
@@ -124,8 +132,7 @@ export const useVariableModalState = ({
           const nextValue = JSON.parse(prev.editorContent) as Record<string, string | number>
           nextState.value = nextValue
           nextState.objectValue = buildObjectValueListFromRecord(nextValue)
-        }
-        catch {
+        } catch {
           // ignore JSON.parse errors
         }
         return nextState
@@ -134,14 +141,11 @@ export const useVariableModalState = ({
       if (prev.type === ChatVarType.ArrayString || prev.type === ChatVarType.ArrayNumber) {
         if (nextEditInJSON) {
           const compactValues = Array.isArray(prev.value)
-            ? prev.value.filter(item => item !== null && item !== undefined && item !== '')
+            ? prev.value.filter((item) => item !== null && item !== undefined && item !== '')
             : []
-          const nextValue = compactValues.length
-            ? compactValues
-            : undefined
+          const nextValue = compactValues.length ? compactValues : undefined
           nextState.value = nextValue
-          if (!prev.editorContent)
-            nextState.editorContent = JSON.stringify(nextValue)
+          if (!prev.editorContent) nextState.editorContent = JSON.stringify(nextValue)
           return nextState
         }
 
@@ -150,7 +154,9 @@ export const useVariableModalState = ({
       }
 
       if (prev.type === ChatVarType.ArrayBoolean && Array.isArray(prev.value) && nextEditInJSON)
-        nextState.editorContent = JSON.stringify(prev.value.map(item => item ? 'True' : 'False'))
+        nextState.editorContent = JSON.stringify(
+          prev.value.map((item) => (item ? 'True' : 'False')),
+        )
 
       return nextState
     })
@@ -170,8 +176,7 @@ export const useVariableModalState = ({
 
       try {
         nextState.value = parseEditorContent({ content, type: prev.type })
-      }
-      catch {
+      } catch {
         // ignore JSON.parse errors
       }
 
@@ -180,19 +185,38 @@ export const useVariableModalState = ({
   }
 
   const handleSave = () => {
-    if (!validateVariableName({ name: state.name, notify, t }))
-      return
+    if (!validateVariableName({ name: state.name, notify, t })) return
 
-    if (!chatVar && conversationVariables.some(item => item.name === state.name)) {
+    if (!chatVar && conversationVariables.some((item) => item.name === state.name)) {
       notify({
         type: 'error',
-        message: t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: t('chatVariable.modal.name', { ns: 'workflow' }) }),
+        message: t(($) => $['varKeyError.keyAlreadyExists'], {
+          ns: 'appDebug',
+          key: t(($) => $['chatVariable.modal.name'], { ns: 'workflow' }),
+        }),
       })
       return
     }
 
-    if (state.type === ChatVarType.Object && state.objectValue.some(item => !item.key && item.value !== undefined && item.value !== '')) {
-      notify({ type: 'error', message: t('chatVariable.modal.objectKeyRequired', { ns: 'workflow' }) })
+    if (
+      state.type === ChatVarType.Object &&
+      state.objectValue.some((item) => !item.key && item.value !== undefined && item.value !== '')
+    ) {
+      notify({
+        type: 'error',
+        message: t(($) => $['chatVariable.modal.objectKeyRequired'], { ns: 'workflow' }),
+      })
+      return
+    }
+
+    if (state.description.length > MAX_DESCRIPTION_LENGTH) {
+      notify({
+        type: 'error',
+        message: t(($) => $['chatVariable.modal.descriptionTooLong'], {
+          maxLength: MAX_DESCRIPTION_LENGTH,
+          ns: 'workflow',
+        }),
+      })
       return
     }
 
@@ -225,9 +249,10 @@ export const useVariableModalState = ({
     name: state.name,
     objectValue: state.objectValue,
     placeholder,
-    setDescription: (description: string) => setState(prev => ({ ...prev, description })),
-    setObjectValue: (objectValue: ObjectValueItem[]) => setState(prev => ({ ...prev, objectValue })),
-    setValue: (value: unknown) => setState(prev => ({ ...prev, value })),
+    setDescription: (description: string) => setState((prev) => ({ ...prev, description })),
+    setObjectValue: (objectValue: ObjectValueItem[]) =>
+      setState((prev) => ({ ...prev, objectValue })),
+    setValue: (value: unknown) => setState((prev) => ({ ...prev, value })),
     type: state.type,
     value: state.value,
   }

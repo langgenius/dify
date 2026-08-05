@@ -7,8 +7,7 @@ const SignIn = () => {
   const searchParams = useSearchParams()
   const step = searchParams.get('step')
 
-  if (step === 'next')
-    return <OneMoreStep />
+  if (step === 'next') return <OneMoreStep />
   return <NormalForm />
 }
 

@@ -21,7 +21,7 @@ describe('CheckboxField', () => {
   it('should toggle on when unchecked users click the checkbox', () => {
     mockField.state.value = false
     render(<CheckboxField label="Enable feature" />)
-    fireEvent.click(screen.getByTestId('checkbox-checkbox-field'))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Enable feature' }))
     expect(mockField.handleChange).toHaveBeenCalledWith(true)
   })
 

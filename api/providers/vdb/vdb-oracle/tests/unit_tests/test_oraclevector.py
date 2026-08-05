@@ -51,7 +51,7 @@ def _connection_with_cursor(cursor):
 
 
 @pytest.fixture
-def oracle_module(monkeypatch):
+def oracle_module(monkeypatch: pytest.MonkeyPatch):
     for name, module in _build_fake_oracle_modules().items():
         monkeypatch.setitem(sys.modules, name, module)
 
@@ -94,7 +94,7 @@ def test_oracle_config_validation_autonomous_requirements(oracle_module):
         )
 
 
-def test_init_and_get_type(oracle_module, monkeypatch):
+def test_init_and_get_type(oracle_module, monkeypatch: pytest.MonkeyPatch):
     pool = MagicMock()
     monkeypatch.setattr(oracle_module.oracledb, "create_pool", MagicMock(return_value=pool))
     vector = oracle_module.OracleVector("collection_1", _config(oracle_module))
@@ -139,7 +139,7 @@ def test_numpy_converters_and_type_handlers(oracle_module):
     assert out_float64.dtype == numpy.float64
 
 
-def test_get_connection_supports_standard_and_autonomous_paths(oracle_module, monkeypatch):
+def test_get_connection_supports_standard_and_autonomous_paths(oracle_module, monkeypatch: pytest.MonkeyPatch):
     connect = MagicMock(return_value="connection")
     monkeypatch.setattr(oracle_module.oracledb, "connect", connect)
 
@@ -173,7 +173,7 @@ def test_create_delegates_collection_and_insert(oracle_module):
     vector.add_texts.assert_called_once_with(docs, [[0.1, 0.2]])
 
 
-def test_add_texts_inserts_and_logs_on_failures(oracle_module, monkeypatch):
+def test_add_texts_inserts_and_logs_on_failures(oracle_module, monkeypatch: pytest.MonkeyPatch):
     vector = oracle_module.OracleVector.__new__(oracle_module.OracleVector)
     vector.table_name = "embedding_collection_1"
     vector.input_type_handler = MagicMock()
@@ -279,7 +279,7 @@ def _fake_nltk_module(*, missing_data=False):
     return nltk, nltk_corpus
 
 
-def test_search_by_full_text_chinese_and_english_paths(oracle_module, monkeypatch):
+def test_search_by_full_text_chinese_and_english_paths(oracle_module, monkeypatch: pytest.MonkeyPatch):
     vector = oracle_module.OracleVector.__new__(oracle_module.OracleVector)
     vector.table_name = "embedding_collection_1"
 
@@ -305,7 +305,7 @@ def test_search_by_full_text_chinese_and_english_paths(oracle_module, monkeypatc
     assert "doc_id_0" in en_params
 
 
-def test_search_by_full_text_empty_query_and_missing_nltk(oracle_module, monkeypatch):
+def test_search_by_full_text_empty_query_and_missing_nltk(oracle_module, monkeypatch: pytest.MonkeyPatch):
     vector = oracle_module.OracleVector.__new__(oracle_module.OracleVector)
     vector.table_name = "embedding_collection_1"
     vector._get_connection = MagicMock()
@@ -320,7 +320,7 @@ def test_search_by_full_text_empty_query_and_missing_nltk(oracle_module, monkeyp
         vector.search_by_full_text("english query")
 
 
-def test_create_collection_cache_and_execute_path(oracle_module, monkeypatch):
+def test_create_collection_cache_and_execute_path(oracle_module, monkeypatch: pytest.MonkeyPatch):
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -346,7 +346,9 @@ def test_create_collection_cache_and_execute_path(oracle_module, monkeypatch):
     oracle_module.redis_client.set.assert_called_once()
 
 
-def test_oracle_factory_init_vector_uses_existing_or_generated_collection(oracle_module, monkeypatch):
+def test_oracle_factory_init_vector_uses_existing_or_generated_collection(
+    oracle_module, monkeypatch: pytest.MonkeyPatch
+):
     factory = oracle_module.OracleVectorFactory()
     dataset_with_index = SimpleNamespace(
         id="dataset-1",

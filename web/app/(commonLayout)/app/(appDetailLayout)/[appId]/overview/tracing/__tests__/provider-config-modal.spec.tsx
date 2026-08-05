@@ -1,4 +1,15 @@
-import type { AliyunConfig, ArizeConfig, DatabricksConfig, LangFuseConfig, LangSmithConfig, MLflowConfig, OpikConfig, PhoenixConfig, TencentConfig, WeaveConfig } from '../type'
+import type {
+  AliyunConfig,
+  ArizeConfig,
+  DatabricksConfig,
+  LangFuseConfig,
+  LangSmithConfig,
+  MLflowConfig,
+  OpikConfig,
+  PhoenixConfig,
+  TencentConfig,
+  WeaveConfig,
+} from '../type'
 import { toast } from '@langgenius/dify-ui/toast'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -17,7 +28,17 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: vi.fn(),
 }))
 
-type ProviderPayload = AliyunConfig | ArizeConfig | DatabricksConfig | LangFuseConfig | LangSmithConfig | MLflowConfig | OpikConfig | PhoenixConfig | TencentConfig | WeaveConfig
+type ProviderPayload =
+  | AliyunConfig
+  | ArizeConfig
+  | DatabricksConfig
+  | LangFuseConfig
+  | LangSmithConfig
+  | MLflowConfig
+  | OpikConfig
+  | PhoenixConfig
+  | TencentConfig
+  | WeaveConfig
 
 const validConfigs = {
   [TracingProvider.arize]: {
@@ -80,15 +101,41 @@ const validConfigs = {
 } satisfies Record<TracingProvider, ProviderPayload>
 
 const providerFieldLabels = [
-  [TracingProvider.arize, ['API Key', 'Space ID', 'app.tracing.configProvider.project', 'Endpoint']],
+  [
+    TracingProvider.arize,
+    ['API Key', 'Space ID', 'app.tracing.configProvider.project', 'Endpoint'],
+  ],
   [TracingProvider.phoenix, ['API Key', 'app.tracing.configProvider.project', 'Endpoint']],
   [TracingProvider.langSmith, ['API Key', 'app.tracing.configProvider.project', 'Endpoint']],
-  [TracingProvider.langfuse, ['app.tracing.configProvider.secretKey', 'app.tracing.configProvider.publicKey', 'Host']],
+  [
+    TracingProvider.langfuse,
+    ['app.tracing.configProvider.secretKey', 'app.tracing.configProvider.publicKey', 'Host'],
+  ],
   [TracingProvider.opik, ['API Key', 'app.tracing.configProvider.project', 'Workspace', 'Url']],
-  [TracingProvider.weave, ['API Key', 'app.tracing.configProvider.project', 'Entity', 'Endpoint', 'Host']],
+  [
+    TracingProvider.weave,
+    ['API Key', 'app.tracing.configProvider.project', 'Entity', 'Endpoint', 'Host'],
+  ],
   [TracingProvider.aliyun, ['License Key', 'Endpoint', 'App Name']],
-  [TracingProvider.mlflow, ['app.tracing.configProvider.trackingUri', 'app.tracing.configProvider.experimentId', 'app.tracing.configProvider.username', 'app.tracing.configProvider.password']],
-  [TracingProvider.databricks, ['app.tracing.configProvider.experimentId', 'app.tracing.configProvider.databricksHost', 'app.tracing.configProvider.clientId', 'app.tracing.configProvider.clientSecret', 'app.tracing.configProvider.personalAccessToken']],
+  [
+    TracingProvider.mlflow,
+    [
+      'app.tracing.configProvider.trackingUri',
+      'app.tracing.configProvider.experimentId',
+      'app.tracing.configProvider.username',
+      'app.tracing.configProvider.password',
+    ],
+  ],
+  [
+    TracingProvider.databricks,
+    [
+      'app.tracing.configProvider.experimentId',
+      'app.tracing.configProvider.databricksHost',
+      'app.tracing.configProvider.clientId',
+      'app.tracing.configProvider.clientSecret',
+      'app.tracing.configProvider.personalAccessToken',
+    ],
+  ],
   [TracingProvider.tencent, ['Token', 'Endpoint', 'Service Name']],
 ] as const
 
@@ -97,27 +144,111 @@ const invalidConfigCases: Array<{
   payload: ProviderPayload
   missingField: string
 }> = [
-  { provider: TracingProvider.arize, payload: { ...validConfigs[TracingProvider.arize], api_key: '' }, missingField: 'API Key' },
-  { provider: TracingProvider.arize, payload: { ...validConfigs[TracingProvider.arize], space_id: '' }, missingField: 'Space ID' },
-  { provider: TracingProvider.arize, payload: { ...validConfigs[TracingProvider.arize], project: '' }, missingField: 'app.tracing.configProvider.project' },
-  { provider: TracingProvider.phoenix, payload: { ...validConfigs[TracingProvider.phoenix], api_key: '' }, missingField: 'API Key' },
-  { provider: TracingProvider.phoenix, payload: { ...validConfigs[TracingProvider.phoenix], project: '' }, missingField: 'app.tracing.configProvider.project' },
-  { provider: TracingProvider.langSmith, payload: { ...validConfigs[TracingProvider.langSmith], api_key: '' }, missingField: 'API Key' },
-  { provider: TracingProvider.langSmith, payload: { ...validConfigs[TracingProvider.langSmith], project: '' }, missingField: 'app.tracing.configProvider.project' },
-  { provider: TracingProvider.langfuse, payload: { ...validConfigs[TracingProvider.langfuse], secret_key: '' }, missingField: 'app.tracing.configProvider.secretKey' },
-  { provider: TracingProvider.langfuse, payload: { ...validConfigs[TracingProvider.langfuse], public_key: '' }, missingField: 'app.tracing.configProvider.publicKey' },
-  { provider: TracingProvider.langfuse, payload: { ...validConfigs[TracingProvider.langfuse], host: '' }, missingField: 'Host' },
-  { provider: TracingProvider.weave, payload: { ...validConfigs[TracingProvider.weave], api_key: '' }, missingField: 'API Key' },
-  { provider: TracingProvider.weave, payload: { ...validConfigs[TracingProvider.weave], project: '' }, missingField: 'app.tracing.configProvider.project' },
-  { provider: TracingProvider.aliyun, payload: { ...validConfigs[TracingProvider.aliyun], app_name: '' }, missingField: 'App Name' },
-  { provider: TracingProvider.aliyun, payload: { ...validConfigs[TracingProvider.aliyun], license_key: '' }, missingField: 'License Key' },
-  { provider: TracingProvider.aliyun, payload: { ...validConfigs[TracingProvider.aliyun], endpoint: '' }, missingField: 'Endpoint' },
-  { provider: TracingProvider.mlflow, payload: { ...validConfigs[TracingProvider.mlflow], tracking_uri: '' }, missingField: 'Tracking URI' },
-  { provider: TracingProvider.databricks, payload: { ...validConfigs[TracingProvider.databricks], experiment_id: '' }, missingField: 'Experiment ID' },
-  { provider: TracingProvider.databricks, payload: { ...validConfigs[TracingProvider.databricks], host: '' }, missingField: 'Host' },
-  { provider: TracingProvider.tencent, payload: { ...validConfigs[TracingProvider.tencent], token: '' }, missingField: 'Token' },
-  { provider: TracingProvider.tencent, payload: { ...validConfigs[TracingProvider.tencent], endpoint: '' }, missingField: 'Endpoint' },
-  { provider: TracingProvider.tencent, payload: { ...validConfigs[TracingProvider.tencent], service_name: '' }, missingField: 'Service Name' },
+  {
+    provider: TracingProvider.arize,
+    payload: { ...validConfigs[TracingProvider.arize], api_key: '' },
+    missingField: 'API Key',
+  },
+  {
+    provider: TracingProvider.arize,
+    payload: { ...validConfigs[TracingProvider.arize], space_id: '' },
+    missingField: 'Space ID',
+  },
+  {
+    provider: TracingProvider.arize,
+    payload: { ...validConfigs[TracingProvider.arize], project: '' },
+    missingField: 'app.tracing.configProvider.project',
+  },
+  {
+    provider: TracingProvider.phoenix,
+    payload: { ...validConfigs[TracingProvider.phoenix], api_key: '' },
+    missingField: 'API Key',
+  },
+  {
+    provider: TracingProvider.phoenix,
+    payload: { ...validConfigs[TracingProvider.phoenix], project: '' },
+    missingField: 'app.tracing.configProvider.project',
+  },
+  {
+    provider: TracingProvider.langSmith,
+    payload: { ...validConfigs[TracingProvider.langSmith], api_key: '' },
+    missingField: 'API Key',
+  },
+  {
+    provider: TracingProvider.langSmith,
+    payload: { ...validConfigs[TracingProvider.langSmith], project: '' },
+    missingField: 'app.tracing.configProvider.project',
+  },
+  {
+    provider: TracingProvider.langfuse,
+    payload: { ...validConfigs[TracingProvider.langfuse], secret_key: '' },
+    missingField: 'app.tracing.configProvider.secretKey',
+  },
+  {
+    provider: TracingProvider.langfuse,
+    payload: { ...validConfigs[TracingProvider.langfuse], public_key: '' },
+    missingField: 'app.tracing.configProvider.publicKey',
+  },
+  {
+    provider: TracingProvider.langfuse,
+    payload: { ...validConfigs[TracingProvider.langfuse], host: '' },
+    missingField: 'Host',
+  },
+  {
+    provider: TracingProvider.weave,
+    payload: { ...validConfigs[TracingProvider.weave], api_key: '' },
+    missingField: 'API Key',
+  },
+  {
+    provider: TracingProvider.weave,
+    payload: { ...validConfigs[TracingProvider.weave], project: '' },
+    missingField: 'app.tracing.configProvider.project',
+  },
+  {
+    provider: TracingProvider.aliyun,
+    payload: { ...validConfigs[TracingProvider.aliyun], app_name: '' },
+    missingField: 'App Name',
+  },
+  {
+    provider: TracingProvider.aliyun,
+    payload: { ...validConfigs[TracingProvider.aliyun], license_key: '' },
+    missingField: 'License Key',
+  },
+  {
+    provider: TracingProvider.aliyun,
+    payload: { ...validConfigs[TracingProvider.aliyun], endpoint: '' },
+    missingField: 'Endpoint',
+  },
+  {
+    provider: TracingProvider.mlflow,
+    payload: { ...validConfigs[TracingProvider.mlflow], tracking_uri: '' },
+    missingField: 'Tracking URI',
+  },
+  {
+    provider: TracingProvider.databricks,
+    payload: { ...validConfigs[TracingProvider.databricks], experiment_id: '' },
+    missingField: 'Experiment ID',
+  },
+  {
+    provider: TracingProvider.databricks,
+    payload: { ...validConfigs[TracingProvider.databricks], host: '' },
+    missingField: 'Host',
+  },
+  {
+    provider: TracingProvider.tencent,
+    payload: { ...validConfigs[TracingProvider.tencent], token: '' },
+    missingField: 'Token',
+  },
+  {
+    provider: TracingProvider.tencent,
+    payload: { ...validConfigs[TracingProvider.tencent], endpoint: '' },
+    missingField: 'Endpoint',
+  },
+  {
+    provider: TracingProvider.tencent,
+    payload: { ...validConfigs[TracingProvider.tencent], service_name: '' },
+    missingField: 'Service Name',
+  },
 ]
 
 const renderConfigButton = () => {
@@ -199,27 +330,38 @@ describe('ProviderConfigModal', () => {
       expect(configActions.length).toBeGreaterThan(0)
       await user.click(configActions[0]!)
       await waitFor(() => {
-        expect(screen.getByText('app.tracing.configProvider.titleapp.tracing.langfuse.title')).toBeInTheDocument()
+        expect(
+          screen.getByText('app.tracing.configProvider.titleapp.tracing.langfuse.title'),
+        ).toBeInTheDocument()
       })
       expect(screen.getByRole('dialog')).toBeInTheDocument()
 
       await user.click(screen.getByPlaceholderText('https://cloud.langfuse.com'))
 
       expect(screen.getByText('app.tracing.tracing')).toBeInTheDocument()
-      expect(screen.getByText('app.tracing.configProvider.titleapp.tracing.langfuse.title')).toBeInTheDocument()
+      expect(
+        screen.getByText('app.tracing.configProvider.titleapp.tracing.langfuse.title'),
+      ).toBeInTheDocument()
     })
   })
 
   describe('Rendering', () => {
-    it.each(providerFieldLabels)('should render %s fields when adding a provider', (provider, expectedLabels) => {
-      renderProviderConfigModal({ type: provider })
+    it.each(providerFieldLabels)(
+      'should render %s fields when adding a provider',
+      (provider, expectedLabels) => {
+        renderProviderConfigModal({ type: provider })
 
-      expect(screen.getByText(`app.tracing.configProvider.titleapp.tracing.${provider}.title`)).toBeInTheDocument()
-      expectedLabels.forEach((label) => {
-        expect(screen.getByText(label)).toBeInTheDocument()
-      })
-      expect(screen.getByRole('button', { name: 'common.operation.saveAndEnable' })).toBeInTheDocument()
-    })
+        expect(
+          screen.getByText(`app.tracing.configProvider.titleapp.tracing.${provider}.title`),
+        ).toBeInTheDocument()
+        expectedLabels.forEach((label) => {
+          expect(screen.getByText(label)).toBeInTheDocument()
+        })
+        expect(
+          screen.getByRole('button', { name: 'common.operation.saveAndEnable' }),
+        ).toBeInTheDocument()
+      },
+    )
   })
 
   describe('Saving', () => {
@@ -247,43 +389,46 @@ describe('ProviderConfigModal', () => {
       expect(toast).toHaveBeenCalledWith('common.api.success', { type: 'success' })
     })
 
-    it.each(Object.values(TracingProvider))('should update valid %s config in edit mode', async (provider) => {
-      const user = userEvent.setup()
-      const callbacks = renderProviderConfigModal({
-        type: provider,
-        payload: validConfigs[provider],
-      })
-
-      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
-
-      await waitFor(() => {
-        expect(updateTracingConfig).toHaveBeenCalledWith({
-          appId: 'app-id',
-          body: {
-            tracing_provider: provider,
-            tracing_config: validConfigs[provider],
-          },
+    it.each(Object.values(TracingProvider))(
+      'should update valid %s config in edit mode',
+      async (provider) => {
+        const user = userEvent.setup()
+        const callbacks = renderProviderConfigModal({
+          type: provider,
+          payload: validConfigs[provider],
         })
-      })
-      expect(callbacks.onSaved).toHaveBeenCalledWith(validConfigs[provider])
-      expect(callbacks.onChosen).not.toHaveBeenCalled()
-    })
 
-    it.each(invalidConfigCases)('should reject $provider config when $missingField is missing', async ({ provider, payload, missingField }) => {
-      const user = userEvent.setup()
-      renderProviderConfigModal({
-        type: provider,
-        payload,
-      })
+        await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+        await waitFor(() => {
+          expect(updateTracingConfig).toHaveBeenCalledWith({
+            appId: 'app-id',
+            body: {
+              tracing_provider: provider,
+              tracing_config: validConfigs[provider],
+            },
+          })
+        })
+        expect(callbacks.onSaved).toHaveBeenCalledWith(validConfigs[provider])
+        expect(callbacks.onChosen).not.toHaveBeenCalled()
+      },
+    )
 
-      expect(updateTracingConfig).not.toHaveBeenCalled()
-      expect(toast).toHaveBeenCalledWith(
-        expect.stringContaining(missingField),
-        { type: 'error' },
-      )
-    })
+    it.each(invalidConfigCases)(
+      'should reject $provider config when $missingField is missing',
+      async ({ provider, payload, missingField }) => {
+        const user = userEvent.setup()
+        renderProviderConfigModal({
+          type: provider,
+          payload,
+        })
+
+        await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+        expect(updateTracingConfig).not.toHaveBeenCalled()
+        expect(toast).toHaveBeenCalledWith(expect.stringContaining(missingField), { type: 'error' })
+      },
+    )
   })
 
   describe('Closing And Removing', () => {
@@ -315,7 +460,11 @@ describe('ProviderConfigModal', () => {
       })
 
       await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
-      expect(screen.getByText('app.tracing.configProvider.removeConfirmTitle:{"key":"app.tracing.langfuse.title"}')).toBeInTheDocument()
+      expect(
+        screen.getByText(
+          'app.tracing.configProvider.removeConfirmTitle:{"key":"app.tracing.langfuse.title"}',
+        ),
+      ).toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
@@ -340,7 +489,9 @@ describe('ProviderConfigModal', () => {
       await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
       expect(removeTracingConfig).not.toHaveBeenCalled()
-      expect(screen.getByText('app.tracing.configProvider.titleapp.tracing.langfuse.title')).toBeInTheDocument()
+      expect(
+        screen.getByText('app.tracing.configProvider.titleapp.tracing.langfuse.title'),
+      ).toBeInTheDocument()
     })
   })
 })

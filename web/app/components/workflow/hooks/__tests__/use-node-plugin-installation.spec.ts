@@ -1,4 +1,5 @@
 import type { CommonNodeType } from '../../types'
+import type { CollectionProviderType } from '@/app/components/tools/types'
 import { act } from '@testing-library/react'
 import { CollectionType } from '@/app/components/tools/types'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
@@ -13,13 +14,22 @@ const mockInvalidToolsByType = vi.fn()
 const mockTriggerPlugins = vi.fn()
 const mockInvalidateTriggers = vi.fn()
 const mockInvalidDataSourceList = vi.fn()
+let mockWorkspacePermissionKeys = ['plugin.install']
+
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
 
 vi.mock('@/service/use-tools', () => ({
   useAllBuiltInTools: (enabled: boolean) => mockBuiltInTools(enabled),
   useAllCustomTools: (enabled: boolean) => mockCustomTools(enabled),
   useAllWorkflowTools: (enabled: boolean) => mockWorkflowTools(enabled),
   useAllMCPTools: (enabled: boolean) => mockMcpTools(enabled),
-  useInvalidToolsByType: (providerType?: string) => mockInvalidToolsByType(providerType),
+  useInvalidToolsByType: (providerType?: CollectionProviderType) =>
+    mockInvalidToolsByType(providerType),
 }))
 
 vi.mock('@/service/use-triggers', () => ({
@@ -31,38 +41,41 @@ vi.mock('@/service/use-pipeline', () => ({
   useInvalidDataSourceList: () => mockInvalidDataSourceList,
 }))
 
-const makeToolNode = (overrides: Partial<CommonNodeType> = {}) => ({
-  type: BlockEnum.Tool,
-  title: 'Tool node',
-  desc: '',
-  provider_type: CollectionType.builtIn,
-  provider_id: 'search',
-  provider_name: 'search',
-  plugin_id: 'plugin-search',
-  plugin_unique_identifier: 'plugin-search@1.0.0',
-  ...overrides,
-}) as CommonNodeType
+const makeToolNode = (overrides: Partial<CommonNodeType> = {}) =>
+  ({
+    type: BlockEnum.Tool,
+    title: 'Tool node',
+    desc: '',
+    provider_type: CollectionType.builtIn,
+    provider_id: 'search',
+    provider_name: 'search',
+    plugin_id: 'plugin-search',
+    plugin_unique_identifier: 'plugin-search@1.0.0',
+    ...overrides,
+  }) as CommonNodeType
 
-const makeTriggerNode = (overrides: Partial<CommonNodeType> = {}) => ({
-  type: BlockEnum.TriggerPlugin,
-  title: 'Trigger node',
-  desc: '',
-  provider_id: 'trigger-provider',
-  provider_name: 'trigger-provider',
-  plugin_id: 'trigger-plugin',
-  plugin_unique_identifier: 'trigger-plugin@1.0.0',
-  ...overrides,
-}) as CommonNodeType
+const makeTriggerNode = (overrides: Partial<CommonNodeType> = {}) =>
+  ({
+    type: BlockEnum.TriggerPlugin,
+    title: 'Trigger node',
+    desc: '',
+    provider_id: 'trigger-provider',
+    provider_name: 'trigger-provider',
+    plugin_id: 'trigger-plugin',
+    plugin_unique_identifier: 'trigger-plugin@1.0.0',
+    ...overrides,
+  }) as CommonNodeType
 
-const makeDataSourceNode = (overrides: Partial<CommonNodeType> = {}) => ({
-  type: BlockEnum.DataSource,
-  title: 'Data source node',
-  desc: '',
-  provider_name: 'knowledge-provider',
-  plugin_id: 'knowledge-plugin',
-  plugin_unique_identifier: 'knowledge-plugin@1.0.0',
-  ...overrides,
-}) as CommonNodeType
+const makeDataSourceNode = (overrides: Partial<CommonNodeType> = {}) =>
+  ({
+    type: BlockEnum.DataSource,
+    title: 'Data source node',
+    desc: '',
+    provider_name: 'knowledge-provider',
+    plugin_id: 'knowledge-plugin',
+    plugin_unique_identifier: 'knowledge-plugin@1.0.0',
+    ...overrides,
+  }) as CommonNodeType
 
 const matchedTool = {
   plugin_id: 'plugin-search',
@@ -86,6 +99,7 @@ const matchedDataSource = {
 describe('useNodePluginInstallation', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockWorkspacePermissionKeys = ['plugin.install']
     mockBuiltInTools.mockReturnValue({ data: undefined, isLoading: false })
     mockCustomTools.mockReturnValue({ data: undefined, isLoading: false })
     mockWorkflowTools.mockReturnValue({ data: undefined, isLoading: false })
@@ -152,14 +166,16 @@ describe('useNodePluginInstallation', () => {
     expect(result.current.shouldDim).toBe(false)
   })
 
-  it('should keep unknown tool collection types installable without collection state', () => {
+  it('should keep plugin tool collections installable without collection state', () => {
     const { result } = renderWorkflowHook(() =>
-      useNodePluginInstallation(makeToolNode({
-        provider_type: 'unknown' as CollectionType,
-        plugin_unique_identifier: undefined,
-        plugin_id: undefined,
-        provider_id: 'legacy-provider',
-      })),
+      useNodePluginInstallation(
+        makeToolNode({
+          provider_type: 'plugin',
+          plugin_unique_identifier: undefined,
+          plugin_id: undefined,
+          provider_id: 'legacy-provider',
+        }),
+      ),
     )
 
     expect(result.current.isChecking).toBe(false)
@@ -169,15 +185,28 @@ describe('useNodePluginInstallation', () => {
     expect(result.current.shouldDim).toBe(false)
   })
 
+  it('should not allow installing missing tool plugins without plugin install permission', () => {
+    mockWorkspacePermissionKeys = []
+    mockBuiltInTools.mockReturnValue({ data: [], isLoading: false })
+
+    const { result } = renderWorkflowHook(() => useNodePluginInstallation(makeToolNode()))
+
+    expect(result.current.isMissing).toBe(true)
+    expect(result.current.uniqueIdentifier).toBe('plugin-search@1.0.0')
+    expect(result.current.canInstall).toBe(false)
+  })
+
   it('should flag missing trigger plugins and invalidate trigger data after installation', () => {
     mockTriggerPlugins.mockReturnValue({ data: [matchedTriggerProvider], isLoading: false })
 
     const { result } = renderWorkflowHook(() =>
-      useNodePluginInstallation(makeTriggerNode({
-        provider_id: 'missing-trigger',
-        provider_name: 'missing-trigger',
-        plugin_id: 'missing-trigger',
-      })),
+      useNodePluginInstallation(
+        makeTriggerNode({
+          provider_id: 'missing-trigger',
+          provider_name: 'missing-trigger',
+          plugin_id: 'missing-trigger',
+        }),
+      ),
     )
 
     expect(mockTriggerPlugins).toHaveBeenCalledWith(true)
@@ -196,7 +225,9 @@ describe('useNodePluginInstallation', () => {
     mockTriggerPlugins.mockReturnValue({ data: undefined, isLoading: true })
 
     const { result } = renderWorkflowHook(() =>
-      useNodePluginInstallation(makeTriggerNode({ plugin_unique_identifier: undefined, plugin_id: 'trigger-plugin' })),
+      useNodePluginInstallation(
+        makeTriggerNode({ plugin_unique_identifier: undefined, plugin_id: 'trigger-plugin' }),
+      ),
     )
 
     expect(result.current.isChecking).toBe(true)
@@ -208,11 +239,14 @@ describe('useNodePluginInstallation', () => {
 
   it('should track missing and matched data source providers based on workflow store state', () => {
     const missingRender = renderWorkflowHook(
-      () => useNodePluginInstallation(makeDataSourceNode({
-        provider_name: 'missing-provider',
-        plugin_id: 'missing-plugin',
-        plugin_unique_identifier: 'missing-plugin@1.0.0',
-      })),
+      () =>
+        useNodePluginInstallation(
+          makeDataSourceNode({
+            provider_name: 'missing-provider',
+            plugin_id: 'missing-plugin',
+            plugin_unique_identifier: 'missing-plugin@1.0.0',
+          }),
+        ),
       {
         initialStoreState: {
           dataSourceList: [matchedDataSource] as never,

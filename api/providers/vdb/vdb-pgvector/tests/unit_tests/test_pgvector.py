@@ -336,7 +336,7 @@ def test_create_delegates_collection_creation_and_insert():
     vector.add_texts.assert_called_once_with(docs, [[0.1, 0.2]])
 
 
-def test_add_texts_uses_execute_values_and_returns_ids(monkeypatch):
+def test_add_texts_uses_execute_values_and_returns_ids(monkeypatch: pytest.MonkeyPatch):
     vector = PGVector.__new__(PGVector)
     vector.table_name = "embedding_collection_1"
 
@@ -387,7 +387,7 @@ def test_text_get_and_delete_methods():
     assert any("DROP TABLE IF EXISTS embedding_collection_1" in sql for sql in executed_sql)
 
 
-def test_delete_by_ids_handles_empty_undefined_table_and_generic_exception(monkeypatch):
+def test_delete_by_ids_handles_empty_undefined_table_and_generic_exception(monkeypatch: pytest.MonkeyPatch):
     vector = PGVector.__new__(PGVector)
     vector.table_name = "embedding_collection_1"
     cursor = MagicMock()
@@ -464,7 +464,7 @@ def test_search_by_full_text_branches_for_bigm_and_standard():
     assert "bigm_similarity" in cursor.execute.call_args_list[1].args[0]
 
 
-def test_pgvector_factory_initializes_expected_collection_name(monkeypatch):
+def test_pgvector_factory_initializes_expected_collection_name(monkeypatch: pytest.MonkeyPatch):
     factory = pgvector_module.PGVectorFactory()
     dataset_with_index = SimpleNamespace(
         id="dataset-1",

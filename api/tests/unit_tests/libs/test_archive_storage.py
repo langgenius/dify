@@ -4,7 +4,7 @@ from datetime import datetime
 from unittest.mock import ANY, MagicMock
 
 import pytest
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, EndpointConnectionError
 
 from libs import archive_storage as storage_module
 from libs.archive_storage import (
@@ -16,7 +16,7 @@ from libs.archive_storage import (
 BUCKET_NAME = "archive-bucket"
 
 
-def _configure_storage(monkeypatch, **overrides):
+def _configure_storage(monkeypatch: pytest.MonkeyPatch, **overrides):
     defaults = {
         "ARCHIVE_STORAGE_ENABLED": True,
         "ARCHIVE_STORAGE_ENDPOINT": "https://storage.example.com",
@@ -34,7 +34,11 @@ def _client_error(code: str) -> ClientError:
     return ClientError({"Error": {"Code": code}}, "Operation")
 
 
-def _mock_client(monkeypatch):
+def _network_error() -> EndpointConnectionError:
+    return EndpointConnectionError(endpoint_url="https://storage.example.com")
+
+
+def _mock_client(monkeypatch: pytest.MonkeyPatch):
     client = MagicMock()
     client.head_bucket.return_value = None
     # Configure put_object to return a proper ETag that matches the MD5 hash
@@ -56,19 +60,19 @@ def _mock_client(monkeypatch):
     return client, boto_client
 
 
-def test_init_disabled(monkeypatch):
+def test_init_disabled(monkeypatch: pytest.MonkeyPatch):
     _configure_storage(monkeypatch, ARCHIVE_STORAGE_ENABLED=False)
     with pytest.raises(ArchiveStorageNotConfiguredError, match="not enabled"):
         ArchiveStorage(bucket=BUCKET_NAME)
 
 
-def test_init_missing_config(monkeypatch):
+def test_init_missing_config(monkeypatch: pytest.MonkeyPatch):
     _configure_storage(monkeypatch, ARCHIVE_STORAGE_ENDPOINT=None)
     with pytest.raises(ArchiveStorageNotConfiguredError, match="incomplete"):
         ArchiveStorage(bucket=BUCKET_NAME)
 
 
-def test_init_bucket_not_found(monkeypatch):
+def test_init_bucket_not_found(monkeypatch: pytest.MonkeyPatch):
     _configure_storage(monkeypatch)
     client, _ = _mock_client(monkeypatch)
     client.head_bucket.side_effect = _client_error("404")
@@ -77,7 +81,7 @@ def test_init_bucket_not_found(monkeypatch):
         ArchiveStorage(bucket=BUCKET_NAME)
 
 
-def test_init_bucket_access_denied(monkeypatch):
+def test_init_bucket_access_denied(monkeypatch: pytest.MonkeyPatch):
     _configure_storage(monkeypatch)
     client, _ = _mock_client(monkeypatch)
     client.head_bucket.side_effect = _client_error("403")
@@ -86,7 +90,7 @@ def test_init_bucket_access_denied(monkeypatch):
         ArchiveStorage(bucket=BUCKET_NAME)
 
 
-def test_init_bucket_other_error(monkeypatch):
+def test_init_bucket_other_error(monkeypatch: pytest.MonkeyPatch):
     _configure_storage(monkeypatch)
     client, _ = _mock_client(monkeypatch)
     client.head_bucket.side_effect = _client_error("500")
@@ -95,7 +99,7 @@ def test_init_bucket_other_error(monkeypatch):
         ArchiveStorage(bucket=BUCKET_NAME)
 
 
-def test_init_sets_client(monkeypatch):
+def test_init_sets_client(monkeypatch: pytest.MonkeyPatch):
     _configure_storage(monkeypatch)
     client, boto_client = _mock_client(monkeypatch)
 
@@ -113,7 +117,7 @@ def test_init_sets_client(monkeypatch):
     assert storage.bucket == BUCKET_NAME
 
 
-def test_put_object_returns_checksum(monkeypatch):
+def test_put_object_returns_checksum(monkeypatch: pytest.MonkeyPatch):
     _configure_storage(monkeypatch)
     client, _ = _mock_client(monkeypatch)
     storage = ArchiveStorage(bucket=BUCKET_NAME)
@@ -132,7 +136,7 @@ def test_put_object_returns_checksum(monkeypatch):
     assert checksum == expected_md5
 
 
-def test_put_object_raises_on_error(monkeypatch):
+def test_put_object_raises_on_error(monkeypatch: pytest.MonkeyPatch):
     _configure_storage(monkeypatch)
     client, _ = _mock_client(monkeypatch)
     storage = ArchiveStorage(bucket=BUCKET_NAME)
@@ -142,7 +146,7 @@ def test_put_object_raises_on_error(monkeypatch):
         storage.put_object("key", b"data")
 
 
-def test_get_object_returns_bytes(monkeypatch):
+def test_get_object_returns_bytes(monkeypatch: pytest.MonkeyPatch):
     _configure_storage(monkeypatch)
     client, _ = _mock_client(monkeypatch)
     body = MagicMock()
@@ -153,17 +157,39 @@ def test_get_object_returns_bytes(monkeypatch):
     assert storage.get_object("key") == b"payload"
 
 
-def test_get_object_missing(monkeypatch):
+@pytest.mark.parametrize("error_code", ["404", "NoSuchKey", "NotFound"])
+def test_get_object_missing(monkeypatch: pytest.MonkeyPatch, error_code: str):
     _configure_storage(monkeypatch)
     client, _ = _mock_client(monkeypatch)
-    client.get_object.side_effect = _client_error("NoSuchKey")
+    client.get_object.side_effect = _client_error(error_code)
     storage = ArchiveStorage(bucket=BUCKET_NAME)
 
     with pytest.raises(FileNotFoundError, match="Archive object not found"):
         storage.get_object("missing")
 
 
-def test_get_object_stream(monkeypatch):
+@pytest.mark.parametrize("error_code", ["403", "429", "500", "SlowDown"])
+def test_get_object_non_missing_error_fails_closed(monkeypatch: pytest.MonkeyPatch, error_code: str):
+    _configure_storage(monkeypatch)
+    client, _ = _mock_client(monkeypatch)
+    client.get_object.side_effect = _client_error(error_code)
+    storage = ArchiveStorage(bucket=BUCKET_NAME)
+
+    with pytest.raises(ArchiveStorageError, match="Failed to download object"):
+        storage.get_object("key")
+
+
+def test_get_object_network_error_fails_closed(monkeypatch: pytest.MonkeyPatch):
+    _configure_storage(monkeypatch)
+    client, _ = _mock_client(monkeypatch)
+    client.get_object.side_effect = _network_error()
+    storage = ArchiveStorage(bucket=BUCKET_NAME)
+
+    with pytest.raises(ArchiveStorageError, match="Failed to download object"):
+        storage.get_object("key")
+
+
+def test_get_object_stream(monkeypatch: pytest.MonkeyPatch):
     _configure_storage(monkeypatch)
     client, _ = _mock_client(monkeypatch)
     body = MagicMock()
@@ -174,37 +200,87 @@ def test_get_object_stream(monkeypatch):
     assert list(storage.get_object_stream("key")) == [b"a", b"b"]
 
 
-def test_get_object_stream_missing(monkeypatch):
+@pytest.mark.parametrize("error_code", ["404", "NoSuchKey", "NotFound"])
+def test_get_object_stream_missing(monkeypatch: pytest.MonkeyPatch, error_code: str):
     _configure_storage(monkeypatch)
     client, _ = _mock_client(monkeypatch)
-    client.get_object.side_effect = _client_error("NoSuchKey")
+    client.get_object.side_effect = _client_error(error_code)
     storage = ArchiveStorage(bucket=BUCKET_NAME)
 
     with pytest.raises(FileNotFoundError, match="Archive object not found"):
         list(storage.get_object_stream("missing"))
 
 
-def test_object_exists(monkeypatch):
+@pytest.mark.parametrize("error_code", ["404", "NoSuchKey", "NotFound"])
+def test_object_exists_returns_false_only_for_not_found(
+    monkeypatch: pytest.MonkeyPatch,
+    error_code: str,
+):
     _configure_storage(monkeypatch)
     client, _ = _mock_client(monkeypatch)
     storage = ArchiveStorage(bucket=BUCKET_NAME)
 
     assert storage.object_exists("key") is True
-    client.head_object.side_effect = _client_error("404")
+    client.head_object.side_effect = _client_error(error_code)
     assert storage.object_exists("missing") is False
 
 
-def test_delete_object_error(monkeypatch):
+@pytest.mark.parametrize("error_code", ["403", "429", "500", "SlowDown"])
+def test_object_exists_raises_when_existence_is_unknown(
+    monkeypatch: pytest.MonkeyPatch,
+    error_code: str,
+):
     _configure_storage(monkeypatch)
     client, _ = _mock_client(monkeypatch)
-    client.delete_object.side_effect = _client_error("500")
+    client.head_object.side_effect = _client_error(error_code)
+    storage = ArchiveStorage(bucket=BUCKET_NAME)
+
+    with pytest.raises(ArchiveStorageError, match="Failed to check archive object"):
+        storage.object_exists("key")
+
+
+def test_object_exists_network_error_fails_closed(monkeypatch: pytest.MonkeyPatch):
+    _configure_storage(monkeypatch)
+    client, _ = _mock_client(monkeypatch)
+    client.head_object.side_effect = _network_error()
+    storage = ArchiveStorage(bucket=BUCKET_NAME)
+
+    with pytest.raises(ArchiveStorageError, match="Failed to check archive object"):
+        storage.object_exists("key")
+
+
+@pytest.mark.parametrize("error_code", ["403", "429", "500", "SlowDown"])
+def test_delete_object_error(monkeypatch: pytest.MonkeyPatch, error_code: str):
+    _configure_storage(monkeypatch)
+    client, _ = _mock_client(monkeypatch)
+    client.delete_object.side_effect = _client_error(error_code)
     storage = ArchiveStorage(bucket=BUCKET_NAME)
 
     with pytest.raises(ArchiveStorageError, match="Failed to delete object"):
         storage.delete_object("key")
 
 
-def test_list_objects(monkeypatch):
+@pytest.mark.parametrize("error_code", ["404", "NoSuchKey", "NotFound"])
+def test_delete_object_missing_is_idempotent(monkeypatch: pytest.MonkeyPatch, error_code: str):
+    _configure_storage(monkeypatch)
+    client, _ = _mock_client(monkeypatch)
+    client.delete_object.side_effect = _client_error(error_code)
+    storage = ArchiveStorage(bucket=BUCKET_NAME)
+
+    storage.delete_object("missing")
+
+
+def test_delete_object_network_error_fails_closed(monkeypatch: pytest.MonkeyPatch):
+    _configure_storage(monkeypatch)
+    client, _ = _mock_client(monkeypatch)
+    client.delete_object.side_effect = _network_error()
+    storage = ArchiveStorage(bucket=BUCKET_NAME)
+
+    with pytest.raises(ArchiveStorageError, match="Failed to delete object"):
+        storage.delete_object("key")
+
+
+def test_list_objects(monkeypatch: pytest.MonkeyPatch):
     _configure_storage(monkeypatch)
     client, _ = _mock_client(monkeypatch)
     paginator = MagicMock()
@@ -219,7 +295,7 @@ def test_list_objects(monkeypatch):
     paginator.paginate.assert_called_once_with(Bucket="archive-bucket", Prefix="prefix")
 
 
-def test_list_objects_error(monkeypatch):
+def test_list_objects_error(monkeypatch: pytest.MonkeyPatch):
     _configure_storage(monkeypatch)
     client, _ = _mock_client(monkeypatch)
     paginator = MagicMock()
@@ -231,7 +307,7 @@ def test_list_objects_error(monkeypatch):
         storage.list_objects("prefix")
 
 
-def test_generate_presigned_url(monkeypatch):
+def test_generate_presigned_url(monkeypatch: pytest.MonkeyPatch):
     _configure_storage(monkeypatch)
     client, _ = _mock_client(monkeypatch)
     client.generate_presigned_url.return_value = "http://signed-url"
@@ -247,7 +323,33 @@ def test_generate_presigned_url(monkeypatch):
     assert url == "http://signed-url"
 
 
-def test_generate_presigned_url_error(monkeypatch):
+def test_generate_presigned_url_with_download_headers(monkeypatch: pytest.MonkeyPatch):
+    _configure_storage(monkeypatch)
+    client, _ = _mock_client(monkeypatch)
+    client.generate_presigned_url.return_value = "http://signed-url"
+    storage = ArchiveStorage(bucket=BUCKET_NAME)
+
+    url = storage.generate_presigned_url(
+        "key",
+        expires_in=123,
+        filename="workflow-run-logs-2025-03.zip",
+        content_type="application/zip",
+    )
+
+    client.generate_presigned_url.assert_called_once_with(
+        ClientMethod="get_object",
+        Params={
+            "Bucket": "archive-bucket",
+            "Key": "key",
+            "ResponseContentDisposition": "attachment; filename*=UTF-8''workflow-run-logs-2025-03.zip",
+            "ResponseContentType": "application/zip",
+        },
+        ExpiresIn=123,
+    )
+    assert url == "http://signed-url"
+
+
+def test_generate_presigned_url_error(monkeypatch: pytest.MonkeyPatch):
     _configure_storage(monkeypatch)
     client, _ = _mock_client(monkeypatch)
     client.generate_presigned_url.side_effect = _client_error("500")

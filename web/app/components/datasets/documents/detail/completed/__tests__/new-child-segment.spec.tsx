@@ -1,7 +1,6 @@
 import { toast, ToastHost } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
 import NewChildSegmentModal from '../new-child-segment'
 
 vi.mock('@/next/navigation', () => ({
@@ -26,7 +25,9 @@ vi.mock('../../context', () => ({
 let mockFullScreen = false
 const mockToggleFullScreen = vi.fn()
 vi.mock('../index', () => ({
-  useSegmentListContext: (selector: (state: { fullScreen: boolean, toggleFullScreen: () => void }) => unknown) => {
+  useSegmentListContext: (
+    selector: (state: { fullScreen: boolean; toggleFullScreen: () => void }) => unknown,
+  ) => {
     const state = {
       fullScreen: mockFullScreen,
       toggleFullScreen: mockToggleFullScreen,
@@ -44,9 +45,23 @@ vi.mock('@/service/knowledge/use-segment', () => ({
 }))
 
 vi.mock('../common/action-buttons', () => ({
-  default: ({ handleCancel, handleSave, loading, actionType, isChildChunk }: { handleCancel: () => void, handleSave: () => void, loading: boolean, actionType: string, isChildChunk?: boolean }) => (
+  ActionButtons: ({
+    handleCancel,
+    handleSave,
+    loading,
+    actionType,
+    isChildChunk,
+  }: {
+    handleCancel: () => void
+    handleSave: () => void
+    loading: boolean
+    actionType: string
+    isChildChunk?: boolean
+  }) => (
     <div data-testid="action-buttons">
-      <button onClick={handleCancel} data-testid="cancel-btn">Cancel</button>
+      <button onClick={handleCancel} data-testid="cancel-btn">
+        Cancel
+      </button>
       <button onClick={handleSave} disabled={loading} data-testid="save-btn">
         {loading ? 'Saving...' : 'Save'}
       </button>
@@ -57,25 +72,41 @@ vi.mock('../common/action-buttons', () => ({
 }))
 
 vi.mock('../common/add-another', () => ({
-  default: ({ isChecked, onCheck, className }: { isChecked: boolean, onCheck: () => void, className?: string }) => (
-    <div data-testid="add-another" className={className}>
+  default: ({
+    checked,
+    onCheckedChange,
+    className,
+  }: {
+    checked: boolean
+    onCheckedChange: (checked: boolean) => void
+    className?: string
+  }) => (
+    <label className={className}>
       <input
         type="checkbox"
-        checked={isChecked}
-        onChange={onCheck}
-        data-testid="add-another-checkbox"
+        checked={checked}
+        onChange={(event) => onCheckedChange(event.currentTarget.checked)}
       />
-    </div>
+      datasetDocuments.segment.addAnother
+    </label>
   ),
 }))
 
 vi.mock('../common/chunk-content', () => ({
-  default: ({ question, onQuestionChange, isEditMode }: { question: string, onQuestionChange: (v: string) => void, isEditMode: boolean }) => (
+  default: ({
+    question,
+    onQuestionChange,
+    isEditMode,
+  }: {
+    question: string
+    onQuestionChange: (v: string) => void
+    isEditMode: boolean
+  }) => (
     <div data-testid="chunk-content">
       <input
         data-testid="content-input"
         value={question}
-        onChange={e => onQuestionChange(e.target.value)}
+        onChange={(e) => onQuestionChange(e.target.value)}
       />
       <span data-testid="edit-mode">{isEditMode ? 'editing' : 'viewing'}</span>
     </div>
@@ -87,7 +118,9 @@ vi.mock('../common/dot', () => ({
 }))
 
 vi.mock('../common/segment-index-tag', () => ({
-  SegmentIndexTag: ({ label }: { label: string }) => <span data-testid="segment-index-tag">{label}</span>,
+  SegmentIndexTag: ({ label }: { label: string }) => (
+    <span data-testid="segment-index-tag">{label}</span>
+  ),
 }))
 
 describe('NewChildSegmentModal', () => {
@@ -107,12 +140,6 @@ describe('NewChildSegmentModal', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(<NewChildSegmentModal {...defaultProps} />)
-
-      expect(container.firstChild)!.toBeInTheDocument()
-    })
-
     it('should render add child chunk title', () => {
       render(<NewChildSegmentModal {...defaultProps} />)
 
@@ -134,30 +161,26 @@ describe('NewChildSegmentModal', () => {
     it('should render add another checkbox', () => {
       render(<NewChildSegmentModal {...defaultProps} />)
 
-      expect(screen.getByTestId('add-another'))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('checkbox', { name: 'datasetDocuments.segment.addAnother' }),
+      )!.toBeInTheDocument()
     })
   })
 
   describe('User Interactions', () => {
     it('should call onCancel when close button is clicked', () => {
       const mockOnCancel = vi.fn()
-      const { container } = render(
-        <NewChildSegmentModal {...defaultProps} onCancel={mockOnCancel} />,
-      )
+      render(<NewChildSegmentModal {...defaultProps} onCancel={mockOnCancel} />)
 
-      const closeButtons = container.querySelectorAll('.cursor-pointer')
-      if (closeButtons.length > 1)
-        fireEvent.click(closeButtons[1]!)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       expect(mockOnCancel).toHaveBeenCalled()
     })
 
     it('should call toggleFullScreen when expand button is clicked', () => {
-      const { container } = render(<NewChildSegmentModal {...defaultProps} />)
+      render(<NewChildSegmentModal {...defaultProps} />)
 
-      const expandButtons = container.querySelectorAll('.cursor-pointer')
-      if (expandButtons.length > 0)
-        fireEvent.click(expandButtons[0]!)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.zoomIn' }))
 
       expect(mockToggleFullScreen).toHaveBeenCalled()
     })
@@ -174,7 +197,7 @@ describe('NewChildSegmentModal', () => {
 
     it('should toggle add another checkbox', () => {
       render(<NewChildSegmentModal {...defaultProps} />)
-      const checkbox = screen.getByTestId('add-another-checkbox')
+      const checkbox = screen.getByRole('checkbox', { name: 'datasetDocuments.segment.addAnother' })
 
       fireEvent.click(checkbox)
 
@@ -261,7 +284,9 @@ describe('NewChildSegmentModal', () => {
 
       render(<NewChildSegmentModal {...defaultProps} />)
 
-      expect(screen.getByTestId('add-another'))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('checkbox', { name: 'datasetDocuments.segment.addAnother' }),
+      )!.toBeInTheDocument()
     })
   })
 
@@ -287,14 +312,6 @@ describe('NewChildSegmentModal', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should handle undefined viewNewlyAddedChildChunk', () => {
-      const props = { ...defaultProps, viewNewlyAddedChildChunk: undefined }
-
-      const { container } = render(<NewChildSegmentModal {...props} />)
-
-      expect(container.firstChild)!.toBeInTheDocument()
-    })
-
     it('should maintain structure when rerendered', () => {
       const { rerender } = render(<NewChildSegmentModal {...defaultProps} />)
 
@@ -316,8 +333,7 @@ describe('NewChildSegmentModal', () => {
 
       render(<NewChildSegmentModal {...defaultProps} onCancel={mockOnCancel} />)
 
-      // Uncheck add another
-      fireEvent.click(screen.getByTestId('add-another-checkbox'))
+      fireEvent.click(screen.getByRole('checkbox', { name: 'datasetDocuments.segment.addAnother' }))
 
       // Enter valid content
       fireEvent.change(screen.getByTestId('content-input'), {

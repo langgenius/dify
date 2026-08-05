@@ -1,73 +1,70 @@
-/* eslint-disable ts/no-explicit-any */
 import type { AccessControlAccount, AccessControlGroup, Subject } from '@/models/access-control'
 import type { App } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
 import useAccessControlStore from '@/context/access-control-store'
 import { AccessMode, SubjectType } from '@/models/access-control'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import AccessControlDialog from '../access-control-dialog'
-import AccessControlItem from '../access-control-item'
 import AddMemberOrGroupDialog from '../add-member-or-group-pop'
 import AccessControl from '../index'
 import SpecificGroupsOrMembers from '../specific-groups-or-members'
 
 const mockUseAppWhiteListSubjects = vi.fn()
 const mockUseSearchForWhiteListCandidates = vi.fn()
-const mockMutateAsync = vi.fn()
-const mockUseUpdateAccessMode = vi.fn(() => ({
-  isPending: false,
-  mutateAsync: mockMutateAsync,
+const { mockMutateAsync } = vi.hoisted(() => ({
+  mockMutateAsync: vi.fn(),
 }))
 const intersectionObserverMocks = vi.hoisted(() => ({
   callback: null as null | ((entries: Array<{ isIntersecting: boolean }>) => void),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: <T,>(selector: (value: { userProfile: { email: string, id?: string, name?: string, avatar?: string, avatar_url?: string, is_password_set?: boolean } }) => T) => selector({
-    userProfile: {
-      id: 'current-user',
-      name: 'Current User',
-      email: 'member@example.com',
-      avatar: '',
-      avatar_url: '',
-      is_password_set: true,
-    },
-  }),
-}))
-
 vi.mock('@/service/access-control', () => ({
   useAppWhiteListSubjects: (...args: unknown[]) => mockUseAppWhiteListSubjects(...args),
-  useSearchForWhiteListCandidates: (...args: unknown[]) => mockUseSearchForWhiteListCandidates(...args),
-  useUpdateAccessMode: () => mockUseUpdateAccessMode(),
+  useSearchForWhiteListCandidates: (...args: unknown[]) =>
+    mockUseSearchForWhiteListCandidates(...args),
 }))
 
-vi.mock('@headlessui/react', () => {
-  const DialogComponent: any = ({ children, className, ...rest }: any) => (
-    <div role="dialog" className={className} {...rest}>{children}</div>
-  )
-  DialogComponent.Panel = ({ children, className, ...rest }: any) => (
-    <div className={className} {...rest}>{children}</div>
-  )
-  const DialogTitle = ({ children, className, ...rest }: any) => (
-    <div className={className} {...rest}>{children}</div>
-  )
-  const DialogDescription = ({ children, className, ...rest }: any) => (
-    <div className={className} {...rest}>{children}</div>
-  )
-  const TransitionChild = ({ children }: any) => (
-    <>{typeof children === 'function' ? children({}) : children}</>
-  )
-  const Transition = ({ show = true, children }: any) => (
-    show ? <>{typeof children === 'function' ? children({}) : children}</> : null
-  )
-  Transition.Child = TransitionChild
+vi.mock('@/service/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/client')>()
+  const webAppAuth = new Proxy(actual.consoleQuery.enterprise.webAppAuth, {
+    get(target, property, receiver) {
+      if (property === 'updateWebAppWhitelistSubjects')
+        return { mutationOptions: () => ({ mutationFn: mockMutateAsync }) }
+      return Reflect.get(target, property, receiver)
+    },
+  })
+  const enterprise = new Proxy(actual.consoleQuery.enterprise, {
+    get(target, property, receiver) {
+      if (property === 'webAppAuth') return webAppAuth
+      return Reflect.get(target, property, receiver)
+    },
+  })
+
   return {
-    Dialog: DialogComponent,
-    Transition,
-    DialogTitle,
-    Description: DialogDescription,
+    ...actual,
+    consoleQuery: new Proxy(actual.consoleQuery, {
+      get(target, property, receiver) {
+        if (property === 'enterprise') return enterprise
+        return Reflect.get(target, property, receiver)
+      },
+    }),
+  }
+})
+
+vi.mock('@/context/account-state', async () => {
+  const { atom } = await vi.importActual<typeof import('jotai')>('jotai')
+  return {
+    userProfileAtom: atom({
+      id: 'user-1',
+      name: 'Test User',
+      email: 'test@dify.ai',
+      avatar: '',
+      avatar_url: null,
+      is_password_set: false,
+      timezone: 'UTC',
+    }),
   }
 })
 
@@ -79,21 +76,23 @@ vi.mock('ahooks', async (importOriginal) => {
   }
 })
 
-const createGroup = (overrides: Partial<AccessControlGroup> = {}): AccessControlGroup => ({
-  id: 'group-1',
-  name: 'Group One',
-  groupSize: 5,
-  ...overrides,
-} as AccessControlGroup)
+const createGroup = (overrides: Partial<AccessControlGroup> = {}): AccessControlGroup =>
+  ({
+    id: 'group-1',
+    name: 'Group One',
+    groupSize: 5,
+    ...overrides,
+  }) as AccessControlGroup
 
-const createMember = (overrides: Partial<AccessControlAccount> = {}): AccessControlAccount => ({
-  id: 'member-1',
-  name: 'Member One',
-  email: 'member@example.com',
-  avatar: '',
-  avatarUrl: '',
-  ...overrides,
-} as AccessControlAccount)
+const createMember = (overrides: Partial<AccessControlAccount> = {}): AccessControlAccount =>
+  ({
+    id: 'member-1',
+    name: 'Member One',
+    email: 'member@example.com',
+    avatar: '',
+    avatarUrl: '',
+    ...overrides,
+  }) as AccessControlAccount
 
 const baseGroup = createGroup()
 const baseMember = createMember()
@@ -123,11 +122,8 @@ beforeAll(() => {
 })
 
 beforeEach(() => {
+  vi.clearAllMocks()
   mockMutateAsync.mockResolvedValue(undefined)
-  mockUseUpdateAccessMode.mockReturnValue({
-    isPending: false,
-    mutateAsync: mockMutateAsync,
-  })
   mockUseAppWhiteListSubjects.mockReturnValue({
     isPending: false,
     data: {
@@ -143,40 +139,7 @@ beforeEach(() => {
   })
 })
 
-// AccessControlItem handles selected vs. unselected styling and click state updates
-describe('AccessControlItem', () => {
-  it('should update current menu when selecting a different access type', () => {
-    useAccessControlStore.setState({ currentMenu: AccessMode.PUBLIC })
-    render(
-      <AccessControlItem type={AccessMode.ORGANIZATION}>
-        <span>Organization Only</span>
-      </AccessControlItem>,
-    )
-
-    const option = screen.getByText('Organization Only').parentElement as HTMLElement
-    expect(option).toHaveClass('cursor-pointer')
-
-    fireEvent.click(option)
-
-    expect(useAccessControlStore.getState().currentMenu).toBe(AccessMode.ORGANIZATION)
-  })
-
-  it('should keep current menu when clicking the selected access type', () => {
-    useAccessControlStore.setState({ currentMenu: AccessMode.ORGANIZATION })
-    render(
-      <AccessControlItem type={AccessMode.ORGANIZATION}>
-        <span>Organization Only</span>
-      </AccessControlItem>,
-    )
-
-    const option = screen.getByText('Organization Only').parentElement as HTMLElement
-    fireEvent.click(option)
-
-    expect(useAccessControlStore.getState().currentMenu).toBe(AccessMode.ORGANIZATION)
-  })
-})
-
-// AccessControlDialog renders a headless UI dialog with a manual close control
+// AccessControlDialog renders the shared dialog primitive with a close control.
 describe('AccessControlDialog', () => {
   it('should render dialog content when visible', () => {
     render(
@@ -191,13 +154,13 @@ describe('AccessControlDialog', () => {
 
   it('should trigger onClose when clicking the close control', async () => {
     const handleClose = vi.fn()
-    const { container } = render(
+    render(
       <AccessControlDialog show onClose={handleClose}>
         <div>Dialog Content</div>
       </AccessControlDialog>,
     )
 
-    const closeButton = container.querySelector('.absolute.right-5.top-5') as HTMLElement
+    const closeButton = screen.getByRole('button', { name: 'Close' })
     fireEvent.click(closeButton)
 
     await waitFor(() => {
@@ -218,7 +181,10 @@ describe('SpecificGroupsOrMembers', () => {
   })
 
   it('should show loading state while pending', async () => {
-    useAccessControlStore.setState({ appId: 'app-1', currentMenu: AccessMode.SPECIFIC_GROUPS_MEMBERS })
+    useAccessControlStore.setState({
+      appId: 'app-1',
+      currentMenu: AccessMode.SPECIFIC_GROUPS_MEMBERS,
+    })
     mockUseAppWhiteListSubjects.mockReturnValue({
       isPending: true,
       data: undefined,
@@ -232,7 +198,10 @@ describe('SpecificGroupsOrMembers', () => {
   })
 
   it('should render fetched groups and members and support removal', async () => {
-    useAccessControlStore.setState({ appId: 'app-1', currentMenu: AccessMode.SPECIFIC_GROUPS_MEMBERS })
+    useAccessControlStore.setState({
+      appId: 'app-1',
+      currentMenu: AccessMode.SPECIFIC_GROUPS_MEMBERS,
+    })
 
     render(<SpecificGroupsOrMembers />)
 
@@ -241,16 +210,16 @@ describe('SpecificGroupsOrMembers', () => {
       expect(screen.getByText(baseMember.name)).toBeInTheDocument()
     })
 
-    const groupItem = screen.getByText(baseGroup.name).closest('div')
-    const groupRemove = groupItem?.querySelector('.h-4.w-4.cursor-pointer') as HTMLElement
+    const groupRemove = screen.getAllByRole('button', { name: /operation\.remove$/ })[0]!
+
     fireEvent.click(groupRemove)
 
     await waitFor(() => {
       expect(screen.queryByText(baseGroup.name)).not.toBeInTheDocument()
     })
 
-    const memberItem = screen.getByText(baseMember.name).closest('div')
-    const memberRemove = memberItem?.querySelector('.h-4.w-4.cursor-pointer') as HTMLElement
+    const memberRemove = screen.getAllByRole('button', { name: /operation\.remove$/ })[0]!
+
     fireEvent.click(memberRemove)
 
     await waitFor(() => {
@@ -268,7 +237,11 @@ describe('AddMemberOrGroupDialog', () => {
 
     await user.click(screen.getByText('common.operation.add'))
 
-    expect(screen.getByPlaceholderText('app.accessControlDialog.operateGroupAndMember.searchPlaceholder')).toBeInTheDocument()
+    expect(
+      screen.getByPlaceholderText(
+        'app.accessControlDialog.operateGroupAndMember.searchPlaceholder',
+      ),
+    ).toBeInTheDocument()
     expect(screen.getByText(baseGroup.name)).toBeInTheDocument()
     expect(screen.getByText(baseMember.name)).toBeInTheDocument()
   })
@@ -283,9 +256,7 @@ describe('AddMemberOrGroupDialog', () => {
     await user.click(expandButton)
     expect(useAccessControlStore.getState().selectedGroupsForBreadcrumb).toEqual([baseGroup])
 
-    const memberLabel = screen.getByText(baseMember.name)
-    const memberCheckbox = memberLabel.parentElement?.previousElementSibling as HTMLElement
-    fireEvent.click(memberCheckbox)
+    await user.click(screen.getByRole('option', { name: /Member One/ }))
 
     expect(useAccessControlStore.getState().specificMembers).toEqual([baseMember])
   })
@@ -303,16 +274,27 @@ describe('AddMemberOrGroupDialog', () => {
     render(<AddMemberOrGroupDialog />)
 
     await user.click(screen.getByText('common.operation.add'))
-    await user.type(screen.getByPlaceholderText('app.accessControlDialog.operateGroupAndMember.searchPlaceholder'), 'Group')
+    await user.type(
+      screen.getByPlaceholderText(
+        'app.accessControlDialog.operateGroupAndMember.searchPlaceholder',
+      ),
+      'Group',
+    )
     expect(document.querySelector('.spin-animation')).toBeInTheDocument()
 
-    const groupCheckbox = screen.getByText(baseGroup.name).closest('div')?.previousElementSibling as HTMLElement
-    fireEvent.click(groupCheckbox)
-    fireEvent.click(groupCheckbox)
+    const groupOption = screen.getByRole('option', { name: /Group One/ })
+    expect(groupOption).not.toHaveAttribute('data-selected')
+    fireEvent.click(groupOption)
+    expect(groupOption).toHaveAttribute('data-selected')
+    fireEvent.click(groupOption)
+    expect(groupOption).not.toHaveAttribute('data-selected')
 
-    const memberCheckbox = screen.getByText(baseMember.name).parentElement?.previousElementSibling as HTMLElement
-    fireEvent.click(memberCheckbox)
-    fireEvent.click(memberCheckbox)
+    const memberOption = screen.getByRole('option', { name: /Member One/ })
+    expect(memberOption).not.toHaveAttribute('data-selected')
+    fireEvent.click(memberOption)
+    expect(memberOption).toHaveAttribute('data-selected')
+    fireEvent.click(memberOption)
+    expect(memberOption).not.toHaveAttribute('data-selected')
 
     fireEvent.click(screen.getByText('app.accessControlDialog.operateGroupAndMember.expand'))
     fireEvent.click(screen.getByText('app.accessControlDialog.operateGroupAndMember.allMembers'))
@@ -336,7 +318,9 @@ describe('AddMemberOrGroupDialog', () => {
 
     await user.click(screen.getByText('common.operation.add'))
 
-    expect(screen.getByText('app.accessControlDialog.operateGroupAndMember.noResult')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'app.accessControlDialog.operateGroupAndMember.noResult',
+    )
   })
 })
 
@@ -355,13 +339,7 @@ describe('AccessControl', () => {
       access_mode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
     } as App
 
-    render(
-      <AccessControl
-        app={app}
-        onClose={onClose}
-        onConfirm={onConfirm}
-      />,
-    )
+    render(<AccessControl app={app} onClose={onClose} onConfirm={onConfirm} />)
 
     await waitFor(() => {
       expect(useAccessControlStore.getState().currentMenu).toBe(AccessMode.SPECIFIC_GROUPS_MEMBERS)
@@ -370,13 +348,15 @@ describe('AccessControl', () => {
     fireEvent.click(screen.getByText('common.operation.confirm'))
 
     await waitFor(() => {
-      expect(mockMutateAsync).toHaveBeenCalledWith({
-        appId: app.id,
-        accessMode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
-        subjects: [
-          { subjectId: baseGroup.id, subjectType: SubjectType.GROUP },
-          { subjectId: baseMember.id, subjectType: SubjectType.ACCOUNT },
-        ],
+      expect(mockMutateAsync.mock.calls[0]?.[0]).toEqual({
+        body: {
+          appId: app.id,
+          accessMode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
+          subjects: [
+            { subjectId: baseGroup.id, subjectType: SubjectType.GROUP },
+            { subjectId: baseMember.id, subjectType: SubjectType.ACCOUNT },
+          ],
+        },
       })
       expect(toastSpy).toHaveBeenCalledWith('app.accessControlDialog.updateSuccess')
       expect(onConfirm).toHaveBeenCalled()
@@ -389,12 +369,7 @@ describe('AccessControl', () => {
       access_mode: AccessMode.PUBLIC,
     } as App
 
-    render(
-      <AccessControl
-        app={app}
-        onClose={vi.fn()}
-      />,
-    )
+    render(<AccessControl app={app} onClose={vi.fn()} />)
 
     expect(screen.getByText('app.accessControlDialog.accessItems.external')).toBeInTheDocument()
     expect(screen.getByText('app.accessControlDialog.accessItems.anyone')).toBeInTheDocument()

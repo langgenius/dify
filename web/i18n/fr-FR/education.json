@@ -1,5 +1,14 @@
 {
+  "applied.activeSubscription.description": "Vous avez un abonnement actif. Vous pouvez utiliser la remise éducative après l'expiration de votre abonnement. Confirmez votre abonnement dans <stripeLink>Stripe</stripeLink>.",
+  "applied.noPaymentPermission.description": "Vous n'avez pas la permission de payer dans cet espace de travail. Veuillez passer à un espace de travail où vous pouvez gérer la facturation pour utiliser la remise éducative.",
+  "applied.noPaymentPermission.returnHome": "Retour à Dify",
+  "applied.step1.description": "Vous avez fait la demande de remise éducative avec succès.",
+  "applied.step2.description": "Sélectionnez l'espace de travail que vous souhaitez utiliser avec la remise éducative.",
   "currentSigned": "ACTUELLEMENT CONNECTÉ EN TANT QUE",
+  "educationPricingConfirm.cancel": "Conserver le plan actuel",
+  "educationPricingConfirm.continue": "Passer à Professional annuel",
+  "educationPricingConfirm.description": "La remise éducation s'applique uniquement au plan Professional annuel. En conservant votre plan actuel, la remise ne sera pas incluse.",
+  "educationPricingConfirm.title": "Le plan sélectionné ne prend pas en charge la remise éducation",
   "emailLabel": "Votre email actuel",
   "form.schoolName.placeholder": "Entrez le nom officiel et complet de votre école",
   "form.schoolName.title": "Le nom de votre école",
@@ -31,14 +40,14 @@
   "notice.stillInEducation.expired": "Veuillez vérifier à nouveau maintenant pour obtenir un nouveau coupon pour la prochaine année académique. Nous l'ajouterons à votre compte et vous pourrez l'utiliser pour la prochaine mise à niveau.",
   "notice.stillInEducation.isAboutToExpire": "Vérifiez de nouveau maintenant pour obtenir un nouveau coupon pour la prochaine année académique. Il sera enregistré dans votre compte et prêt à être utilisé lors de votre prochain renouvellement.",
   "notice.stillInEducation.title": "Encore dans l'éducation ?",
+  "planNotSupportEducationDiscount": "Non éligible aux tarifs éducatifs",
   "rejectContent": "Malheureusement, vous n'êtes pas éligible au statut Éducation Vérifié et ne pouvez donc pas recevoir le coupon exclusif de 100 % pour le Plan Professionnel Dify si vous utilisez cette adresse e-mail.",
   "rejectTitle": "Votre vérification éducative Dify a été rejetée.",
   "submit": "Soumettre",
   "submitError": "L'envoi du formulaire a échoué. Veuillez réessayer plus tard.",
-  "successContent": "Nous avons émis un coupon de réduction de 100 % pour le plan Dify Professionnel sur votre compte. Le coupon est valable pendant un an, veuillez l'utiliser dans la période de validité.",
-  "successTitle": "Vous avez obtenu une éducation Dify vérifiée.",
   "toVerified": "Faire vérifier l'éducation",
   "toVerifiedTip.coupon": "coupon exclusif 100%",
   "toVerifiedTip.end": "pour le Plan Professionnel Dify.",
-  "toVerifiedTip.front": "Vous êtes maintenant éligible pour le statut Vérifié en Éducation. Veuillez entrer vos informations éducatives ci-dessous pour compléter le processus et recevoir un"
+  "toVerifiedTip.front": "Vous êtes maintenant éligible pour le statut Vérifié en Éducation. Veuillez entrer vos informations éducatives ci-dessous pour compléter le processus et recevoir un",
+  "useEducationDiscount": "Utiliser la remise éducative"
 }

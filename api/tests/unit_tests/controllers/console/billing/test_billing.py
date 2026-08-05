@@ -1,15 +1,23 @@
 import base64
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest
 
+from controllers.console import wraps as console_wraps
 from controllers.console.billing.billing import PartnerTenants
-from models.account import Account
+from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models.model import DifySetup
 
 
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [(DifySetup, Account, Tenant, TenantAccountJoin)],
+    indirect=True,
+)
 class TestPartnerTenants:
     """Unit tests for PartnerTenants controller."""
 
@@ -22,13 +30,27 @@ class TestPartnerTenants:
         return app
 
     @pytest.fixture
-    def mock_account(self):
-        """Create a mock account."""
-        account = MagicMock(spec=Account)
-        account.id = "account-123"
-        account.email = "test@example.com"
-        account.current_tenant_id = "tenant-456"
-        account.is_authenticated = True
+    def mock_account(self, sqlite_session: Session):
+        """Persist an initialized account with an owner workspace membership."""
+        tenant = Tenant(name="Billing Tenant")
+        account = Account(name="Billing User", email="test@example.com")
+        sqlite_session.add_all([tenant, account])
+        sqlite_session.flush()
+        sqlite_session.add_all(
+            [
+                TenantAccountJoin(
+                    tenant_id=tenant.id,
+                    account_id=account.id,
+                    current=True,
+                    role=TenantAccountRole.OWNER,
+                    invited_by=None,
+                ),
+                DifySetup(version="test"),
+            ]
+        )
+        sqlite_session.commit()
+        account._current_tenant = tenant
+        sqlite_session.expunge(account)
         return account
 
     @pytest.fixture
@@ -38,18 +60,20 @@ class TestPartnerTenants:
             yield mock_service
 
     @pytest.fixture
-    def mock_decorators(self):
-        """Mock decorators to avoid database access."""
+    def mock_decorators(self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+        """Keep authentication mocked while the setup guard uses SQLite."""
+        console_wraps._is_setup_completed.reset_success()
+        monkeypatch.setattr(console_wraps.db, "session", sqlite_session)
         with (
-            patch("controllers.console.wraps.db") as mock_db,
             patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
             patch("libs.login.dify_config.LOGIN_DISABLED", False),
             patch("libs.login.check_csrf_token") as mock_csrf,
         ):
             mock_csrf.return_value = None
-            yield {"db": mock_db, "csrf": mock_csrf}
+            yield mock_csrf
+        console_wraps._is_setup_completed.reset_success()
 
-    def test_put_success(self, app, mock_account, mock_billing_service, mock_decorators):
+    def test_put_success(self, app: Flask, mock_account, mock_billing_service, mock_decorators):
         """Test successful partner tenants bindings sync."""
         # Arrange
         partner_key_encoded = base64.b64encode(b"partner-key-123").decode("utf-8")
@@ -65,8 +89,8 @@ class TestPartnerTenants:
         ):
             with (
                 patch(
-                    "controllers.console.billing.billing.current_account_with_tenant",
-                    return_value=(mock_account, "tenant-456"),
+                    "controllers.console.wraps.current_account_with_tenant",
+                    return_value=(mock_account, mock_account.current_tenant_id),
                 ),
                 patch("libs.login._get_user", return_value=mock_account),
             ):
@@ -79,7 +103,7 @@ class TestPartnerTenants:
             mock_account.id, "partner-key-123", click_id
         )
 
-    def test_put_invalid_partner_key_base64(self, app, mock_account, mock_billing_service, mock_decorators):
+    def test_put_invalid_partner_key_base64(self, app: Flask, mock_account, mock_billing_service, mock_decorators):
         """Test that invalid base64 partner_key raises BadRequest."""
         # Arrange
         invalid_partner_key = "invalid-base64-!@#$"
@@ -92,8 +116,8 @@ class TestPartnerTenants:
         ):
             with (
                 patch(
-                    "controllers.console.billing.billing.current_account_with_tenant",
-                    return_value=(mock_account, "tenant-456"),
+                    "controllers.console.wraps.current_account_with_tenant",
+                    return_value=(mock_account, mock_account.current_tenant_id),
                 ),
                 patch("libs.login._get_user", return_value=mock_account),
             ):
@@ -104,7 +128,7 @@ class TestPartnerTenants:
                     resource.put(invalid_partner_key)
                 assert "Invalid partner_key" in str(exc_info.value)
 
-    def test_put_missing_click_id(self, app, mock_account, mock_billing_service, mock_decorators):
+    def test_put_missing_click_id(self, app: Flask, mock_account, mock_billing_service, mock_decorators):
         """Test that missing click_id raises BadRequest."""
         # Arrange
         partner_key_encoded = base64.b64encode(b"partner-key-123").decode("utf-8")
@@ -116,8 +140,8 @@ class TestPartnerTenants:
         ):
             with (
                 patch(
-                    "controllers.console.billing.billing.current_account_with_tenant",
-                    return_value=(mock_account, "tenant-456"),
+                    "controllers.console.wraps.current_account_with_tenant",
+                    return_value=(mock_account, mock_account.current_tenant_id),
                 ),
                 patch("libs.login._get_user", return_value=mock_account),
             ):
@@ -128,7 +152,9 @@ class TestPartnerTenants:
                 with pytest.raises(BadRequest):
                     resource.put(partner_key_encoded)
 
-    def test_put_billing_service_json_decode_error(self, app, mock_account, mock_billing_service, mock_decorators):
+    def test_put_billing_service_json_decode_error(
+        self, app: Flask, mock_account, mock_billing_service, mock_decorators
+    ):
         """Test handling of billing service JSON decode error.
 
         When billing service returns non-200 status code with invalid JSON response,
@@ -156,8 +182,8 @@ class TestPartnerTenants:
         ):
             with (
                 patch(
-                    "controllers.console.billing.billing.current_account_with_tenant",
-                    return_value=(mock_account, "tenant-456"),
+                    "controllers.console.wraps.current_account_with_tenant",
+                    return_value=(mock_account, mock_account.current_tenant_id),
                 ),
                 patch("libs.login._get_user", return_value=mock_account),
             ):
@@ -174,7 +200,7 @@ class TestPartnerTenants:
                 assert isinstance(exc_info.value, json.JSONDecodeError)
                 assert "Expecting value" in str(exc_info.value)
 
-    def test_put_empty_click_id(self, app, mock_account, mock_billing_service, mock_decorators):
+    def test_put_empty_click_id(self, app: Flask, mock_account, mock_billing_service, mock_decorators):
         """Test that empty click_id raises BadRequest."""
         # Arrange
         partner_key_encoded = base64.b64encode(b"partner-key-123").decode("utf-8")
@@ -187,8 +213,8 @@ class TestPartnerTenants:
         ):
             with (
                 patch(
-                    "controllers.console.billing.billing.current_account_with_tenant",
-                    return_value=(mock_account, "tenant-456"),
+                    "controllers.console.wraps.current_account_with_tenant",
+                    return_value=(mock_account, mock_account.current_tenant_id),
                 ),
                 patch("libs.login._get_user", return_value=mock_account),
             ):
@@ -199,7 +225,7 @@ class TestPartnerTenants:
                     resource.put(partner_key_encoded)
                 assert "Invalid partner information" in str(exc_info.value)
 
-    def test_put_empty_partner_key_after_decode(self, app, mock_account, mock_billing_service, mock_decorators):
+    def test_put_empty_partner_key_after_decode(self, app: Flask, mock_account, mock_billing_service, mock_decorators):
         """Test that empty partner_key after decode raises BadRequest."""
         # Arrange
         # Base64 encode an empty string
@@ -213,8 +239,8 @@ class TestPartnerTenants:
         ):
             with (
                 patch(
-                    "controllers.console.billing.billing.current_account_with_tenant",
-                    return_value=(mock_account, "tenant-456"),
+                    "controllers.console.wraps.current_account_with_tenant",
+                    return_value=(mock_account, mock_account.current_tenant_id),
                 ),
                 patch("libs.login._get_user", return_value=mock_account),
             ):
@@ -225,7 +251,7 @@ class TestPartnerTenants:
                     resource.put(empty_partner_key_encoded)
                 assert "Invalid partner information" in str(exc_info.value)
 
-    def test_put_empty_user_id(self, app, mock_account, mock_billing_service, mock_decorators):
+    def test_put_empty_user_id(self, app: Flask, mock_account, mock_billing_service, mock_decorators):
         """Test that empty user id raises BadRequest."""
         # Arrange
         partner_key_encoded = base64.b64encode(b"partner-key-123").decode("utf-8")
@@ -239,8 +265,8 @@ class TestPartnerTenants:
         ):
             with (
                 patch(
-                    "controllers.console.billing.billing.current_account_with_tenant",
-                    return_value=(mock_account, "tenant-456"),
+                    "controllers.console.wraps.current_account_with_tenant",
+                    return_value=(mock_account, mock_account.current_tenant_id),
                 ),
                 patch("libs.login._get_user", return_value=mock_account),
             ):

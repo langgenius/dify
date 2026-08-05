@@ -80,9 +80,9 @@ def service(mocker: MockerFixture) -> ModelLoadBalancingService:
 
 
 @pytest.fixture
-def mock_db(mocker: MockerFixture) -> MagicMock:
+def mock_db() -> MagicMock:
     # Arrange
-    mocked_db = mocker.patch("services.model_load_balancing_service.db")
+    mocked_db = MagicMock()
     mocked_db.session = MagicMock()
     return mocked_db
 
@@ -104,9 +104,31 @@ def test_enable_disable_model_load_balancing_should_call_provider_configuration_
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
 
     # Act
-    getattr(service, method_name)("tenant-1", "openai", "gpt-4o-mini", ModelType.LLM.value)
+    getattr(service, method_name)("tenant-1", "openai", "gpt-4o-mini", ModelType.LLM)
 
     # Assert
+    getattr(provider_configuration, expected_provider_method).assert_called_once_with(
+        model="gpt-4o-mini", model_type=ModelType.LLM
+    )
+
+
+@pytest.mark.parametrize(
+    ("method_name", "expected_provider_method"),
+    [
+        ("enable_model_load_balancing", "enable_model_load_balancing"),
+        ("disable_model_load_balancing", "disable_model_load_balancing"),
+    ],
+)
+def test_enable_disable_model_load_balancing_uses_model_type_constructor_directly(
+    method_name: str,
+    expected_provider_method: str,
+    service: ModelLoadBalancingService,
+) -> None:
+    provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
+    service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
+
+    getattr(service, method_name)("tenant-1", "openai", "gpt-4o-mini", "llm")
+
     getattr(provider_configuration, expected_provider_method).assert_called_once_with(
         model="gpt-4o-mini", model_type=ModelType.LLM
     )
@@ -125,7 +147,7 @@ def test_enable_disable_model_load_balancing_should_raise_value_error_when_provi
 
     # Act + Assert
     with pytest.raises(ValueError, match="Provider openai does not exist"):
-        getattr(service, method_name)("tenant-1", "openai", "gpt-4o-mini", ModelType.LLM.value)
+        getattr(service, method_name)("tenant-1", "openai", "gpt-4o-mini", ModelType.LLM)
 
 
 def test_get_load_balancing_configs_should_raise_value_error_when_provider_missing(
@@ -136,7 +158,7 @@ def test_get_load_balancing_configs_should_raise_value_error_when_provider_missi
 
     # Act + Assert
     with pytest.raises(ValueError, match="Provider openai does not exist"):
-        service.get_load_balancing_configs("tenant-1", "openai", "gpt-4o-mini", ModelType.LLM.value)
+        service.get_load_balancing_configs("tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, session=MagicMock())
 
 
 def test_get_load_balancing_configs_should_insert_inherit_config_when_missing_for_custom_provider(
@@ -177,7 +199,8 @@ def test_get_load_balancing_configs_should_insert_inherit_config_when_missing_fo
         "tenant-1",
         "openai",
         "gpt-4o-mini",
-        ModelType.LLM.value,
+        ModelType.LLM,
+        session=mock_db.session,
     )
 
     # Assert
@@ -238,8 +261,9 @@ def test_get_load_balancing_configs_should_reorder_existing_inherit_and_tolerate
         "tenant-1",
         "openai",
         "gpt-4o-mini",
-        ModelType.LLM.value,
+        ModelType.LLM,
         config_from="predefined-model",
+        session=mock_db.session,
     )
 
     # Assert
@@ -259,7 +283,9 @@ def test_get_load_balancing_config_should_raise_value_error_when_provider_missin
 
     # Act + Assert
     with pytest.raises(ValueError, match="Provider openai does not exist"):
-        service.get_load_balancing_config("tenant-1", "openai", "gpt-4o-mini", ModelType.LLM.value, "cfg-1")
+        service.get_load_balancing_config(
+            "tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, "cfg-1", session=MagicMock()
+        )
 
 
 def test_get_load_balancing_config_should_return_none_when_config_not_found(
@@ -272,7 +298,9 @@ def test_get_load_balancing_config_should_return_none_when_config_not_found(
     mock_db.session.scalar.return_value = None
 
     # Act
-    result = service.get_load_balancing_config("tenant-1", "openai", "gpt-4o-mini", ModelType.LLM.value, "cfg-1")
+    result = service.get_load_balancing_config(
+        "tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, "cfg-1", session=mock_db.session
+    )
 
     # Assert
     assert result is None
@@ -292,7 +320,9 @@ def test_get_load_balancing_config_should_return_obfuscated_payload_when_config_
     mock_db.session.scalar.return_value = config
 
     # Act
-    result = service.get_load_balancing_config("tenant-1", "openai", "gpt-4o-mini", ModelType.LLM.value, "cfg-1")
+    result = service.get_load_balancing_config(
+        "tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, "cfg-1", session=mock_db.session
+    )
 
     # Assert
     assert result == {
@@ -311,7 +341,9 @@ def test_init_inherit_config_should_create_and_persist_inherit_configuration(
     model_type = ModelType.LLM
 
     # Act
-    inherit_config = service._init_inherit_config("tenant-1", "openai", "gpt-4o-mini", model_type)
+    inherit_config = service._init_inherit_config(
+        "tenant-1", "openai", "gpt-4o-mini", model_type, session=mock_db.session
+    )
 
     # Assert
     assert inherit_config.tenant_id == "tenant-1"
@@ -335,9 +367,10 @@ def test_update_load_balancing_configs_should_raise_value_error_when_provider_mi
             "tenant-1",
             "openai",
             "gpt-4o-mini",
-            ModelType.LLM.value,
+            ModelType.LLM,
             [],
             "custom-model",
+            session=MagicMock(),
         )
 
 
@@ -354,9 +387,10 @@ def test_update_load_balancing_configs_should_raise_value_error_when_configs_is_
             "tenant-1",
             "openai",
             "gpt-4o-mini",
-            ModelType.LLM.value,
+            ModelType.LLM,
             cast(list[dict[str, object]], "invalid-configs"),
             "custom-model",
+            session=MagicMock(),
         )
 
 
@@ -375,9 +409,10 @@ def test_update_load_balancing_configs_should_raise_value_error_when_config_item
             "tenant-1",
             "openai",
             "gpt-4o-mini",
-            ModelType.LLM.value,
+            ModelType.LLM,
             cast(list[dict[str, object]], ["bad-item"]),
             "custom-model",
+            session=mock_db.session,
         )
 
 
@@ -397,9 +432,10 @@ def test_update_load_balancing_configs_should_raise_value_error_when_credential_
             "tenant-1",
             "openai",
             "gpt-4o-mini",
-            ModelType.LLM.value,
+            ModelType.LLM,
             [{"credential_id": "cred-1", "enabled": True}],
             "predefined-model",
+            session=mock_db.session,
         )
 
 
@@ -418,9 +454,10 @@ def test_update_load_balancing_configs_should_raise_value_error_when_name_or_ena
             "tenant-1",
             "openai",
             "gpt-4o-mini",
-            ModelType.LLM.value,
+            ModelType.LLM,
             [{"enabled": True}],
             "custom-model",
+            session=mock_db.session,
         )
 
     with pytest.raises(ValueError, match="Invalid load balancing config enabled"):
@@ -428,9 +465,10 @@ def test_update_load_balancing_configs_should_raise_value_error_when_name_or_ena
             "tenant-1",
             "openai",
             "gpt-4o-mini",
-            ModelType.LLM.value,
+            ModelType.LLM,
             [{"name": "cfg-without-enabled"}],
             "custom-model",
+            session=mock_db.session,
         )
 
 
@@ -450,9 +488,10 @@ def test_update_load_balancing_configs_should_raise_value_error_when_existing_co
             "tenant-1",
             "openai",
             "gpt-4o-mini",
-            ModelType.LLM.value,
+            ModelType.LLM,
             [{"id": "cfg-2", "name": "invalid", "enabled": True}],
             "custom-model",
+            session=mock_db.session,
         )
 
 
@@ -472,9 +511,10 @@ def test_update_load_balancing_configs_should_raise_value_error_when_credentials
             "tenant-1",
             "openai",
             "gpt-4o-mini",
-            ModelType.LLM.value,
+            ModelType.LLM,
             [{"id": "cfg-1", "name": "new", "enabled": True, "credentials": "bad"}],
             "custom-model",
+            session=mock_db.session,
         )
 
     with pytest.raises(ValueError, match="Invalid load balancing config credentials"):
@@ -482,9 +522,10 @@ def test_update_load_balancing_configs_should_raise_value_error_when_credentials
             "tenant-1",
             "openai",
             "gpt-4o-mini",
-            ModelType.LLM.value,
+            ModelType.LLM,
             [{"name": "new-config", "enabled": True, "credentials": "bad"}],
             "custom-model",
+            session=mock_db.session,
         )
 
 
@@ -519,12 +560,13 @@ def test_update_load_balancing_configs_should_update_existing_create_new_and_del
         "tenant-1",
         "openai",
         "gpt-4o-mini",
-        ModelType.LLM.value,
+        ModelType.LLM,
         [
             {"id": "cfg-1", "name": "updated-name", "enabled": False, "credentials": {"api_key": "plain"}},
             {"name": "new-config", "enabled": True, "credentials": {"api_key": "plain"}},
         ],
         "custom-model",
+        session=mock_db.session,
     )
 
     # Assert
@@ -553,9 +595,10 @@ def test_update_load_balancing_configs_should_raise_value_error_for_invalid_new_
             "tenant-1",
             "openai",
             "gpt-4o-mini",
-            ModelType.LLM.value,
+            ModelType.LLM,
             [{"name": "__inherit__", "enabled": True, "credentials": {"api_key": "x"}}],
             "custom-model",
+            session=mock_db.session,
         )
 
     with pytest.raises(ValueError, match="Invalid load balancing config credentials"):
@@ -563,9 +606,10 @@ def test_update_load_balancing_configs_should_raise_value_error_for_invalid_new_
             "tenant-1",
             "openai",
             "gpt-4o-mini",
-            ModelType.LLM.value,
+            ModelType.LLM,
             [{"name": "new", "enabled": True}],
             "custom-model",
+            session=mock_db.session,
         )
 
 
@@ -585,9 +629,10 @@ def test_update_load_balancing_configs_should_create_from_existing_provider_cred
         "tenant-1",
         "openai",
         "gpt-4o-mini",
-        ModelType.LLM.value,
+        ModelType.LLM,
         [{"credential_id": "cred-1", "enabled": True}],
         "predefined-model",
+        session=mock_db.session,
     )
 
     # Assert
@@ -611,8 +656,9 @@ def test_validate_load_balancing_credentials_should_raise_value_error_when_provi
             "tenant-1",
             "openai",
             "gpt-4o-mini",
-            ModelType.LLM.value,
+            ModelType.LLM,
             {"api_key": "plain"},
+            session=MagicMock(),
         )
 
 
@@ -631,9 +677,10 @@ def test_validate_load_balancing_credentials_should_raise_value_error_when_confi
             "tenant-1",
             "openai",
             "gpt-4o-mini",
-            ModelType.LLM.value,
+            ModelType.LLM,
             {"api_key": "plain"},
             config_id="cfg-1",
+            session=mock_db.session,
         )
 
 
@@ -654,16 +701,18 @@ def test_validate_load_balancing_credentials_should_delegate_to_custom_validate_
         "tenant-1",
         "openai",
         "gpt-4o-mini",
-        ModelType.LLM.value,
+        ModelType.LLM,
         {"api_key": "plain"},
         config_id="cfg-1",
+        session=mock_db.session,
     )
     service.validate_load_balancing_credentials(
         "tenant-1",
         "openai",
         "gpt-4o-mini",
-        ModelType.LLM.value,
+        ModelType.LLM,
         {"api_key": "plain"},
+        session=mock_db.session,
     )
 
     # Assert

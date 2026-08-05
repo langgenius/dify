@@ -55,7 +55,7 @@ describe('ProgressTooltip', () => {
 
       await user.hover(screen.getByTestId('progress-trigger-content'))
 
-      expect(screen.getByTestId('progress-tooltip-popup')).toBeInTheDocument()
+      expect(await screen.findByTestId('progress-tooltip-popup')).toBeInTheDocument()
     })
 
     it('should hide the tooltip popup on mouse leave', async () => {
@@ -74,7 +74,7 @@ describe('ProgressTooltip', () => {
 
       await user.hover(screen.getByTestId('progress-trigger-content'))
 
-      expect(screen.getByTestId('progress-tooltip-popup')).toHaveTextContent(/hitScore/i)
+      expect(await screen.findByTestId('progress-tooltip-popup')).toHaveTextContent(/hitScore/i)
     })
 
     it('should show the data value inside the tooltip popup', async () => {
@@ -83,7 +83,7 @@ describe('ProgressTooltip', () => {
 
       await user.hover(screen.getByTestId('progress-trigger-content'))
 
-      expect(screen.getByTestId('progress-tooltip-popup')).toHaveTextContent('0.8')
+      expect(await screen.findByTestId('progress-tooltip-popup')).toHaveTextContent('0.8')
     })
   })
 
@@ -110,14 +110,6 @@ describe('ProgressTooltip', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should render without crashing when data is exactly 0', () => {
-      expect(() => render(<ProgressTooltip data={0} />)).not.toThrow()
-    })
-
-    it('should render without crashing when data is exactly 1', () => {
-      expect(() => render(<ProgressTooltip data={1} />)).not.toThrow()
-    })
-
     it('should re-show tooltip after hover → unhover → hover cycle', async () => {
       const user = userEvent.setup()
       render(<ProgressTooltip data={0.5} />)
@@ -126,7 +118,7 @@ describe('ProgressTooltip', () => {
       await user.unhover(screen.getByTestId('progress-trigger-content'))
       await user.hover(screen.getByTestId('progress-trigger-content'))
 
-      expect(screen.getByTestId('progress-tooltip-popup')).toBeInTheDocument()
+      expect(await screen.findByTestId('progress-tooltip-popup')).toBeInTheDocument()
     })
 
     it('should keep tooltip closed without any interaction', () => {

@@ -79,7 +79,7 @@ def _patch_both(monkeypatch, module, calls, execute_results=None):
 
 
 @pytest.fixture
-def pgvecto_module(monkeypatch):
+def pgvecto_module(monkeypatch: pytest.MonkeyPatch):
     for name, module in _build_fake_pgvecto_modules().items():
         monkeypatch.setitem(sys.modules, name, module)
 
@@ -126,7 +126,7 @@ def test_collection_base_has_expected_annotations(pgvecto_module):
     assert {"id", "text", "meta", "vector"} <= set(annotations)
 
 
-def test_init_get_type_and_create_delegate(pgvecto_module, monkeypatch):
+def test_init_get_type_and_create_delegate(pgvecto_module, monkeypatch: pytest.MonkeyPatch):
     module, _ = pgvecto_module
     session_calls = []
     monkeypatch.setattr(module, "create_engine", MagicMock(return_value="engine"))
@@ -145,7 +145,7 @@ def test_init_get_type_and_create_delegate(pgvecto_module, monkeypatch):
     vector.add_texts.assert_called_once_with(docs, [[0.1, 0.2]])
 
 
-def test_create_collection_cache_and_sql_execution(pgvecto_module, monkeypatch):
+def test_create_collection_cache_and_sql_execution(pgvecto_module, monkeypatch: pytest.MonkeyPatch):
     module, _ = pgvecto_module
     session_calls = []
     monkeypatch.setattr(module, "create_engine", MagicMock(return_value="engine"))
@@ -169,7 +169,7 @@ def test_create_collection_cache_and_sql_execution(pgvecto_module, monkeypatch):
     module.redis_client.set.assert_called()
 
 
-def test_add_texts_get_ids_and_delete_methods(pgvecto_module, monkeypatch):
+def test_add_texts_get_ids_and_delete_methods(pgvecto_module, monkeypatch: pytest.MonkeyPatch):
     module, _ = pgvecto_module
     init_calls = []
     runtime_calls = []
@@ -241,7 +241,7 @@ def test_add_texts_get_ids_and_delete_methods(pgvecto_module, monkeypatch):
     assert any("DROP TABLE IF EXISTS collection_1" in str(args[0]) for args, _ in runtime_calls)
 
 
-def test_text_exists_search_and_full_text(pgvecto_module, monkeypatch):
+def test_text_exists_search_and_full_text(pgvecto_module, monkeypatch: pytest.MonkeyPatch):
     module, _ = pgvecto_module
     init_calls = []
     monkeypatch.setattr(module, "create_engine", MagicMock(return_value="engine"))
@@ -313,7 +313,7 @@ def test_text_exists_search_and_full_text(pgvecto_module, monkeypatch):
     assert vector.search_by_full_text("hello") == []
 
 
-def test_factory_uses_existing_or_generated_collection(pgvecto_module, monkeypatch):
+def test_factory_uses_existing_or_generated_collection(pgvecto_module, monkeypatch: pytest.MonkeyPatch):
     module, _ = pgvecto_module
     factory = module.PGVectoRSFactory()
     dataset_with_index = SimpleNamespace(

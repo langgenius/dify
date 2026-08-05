@@ -20,7 +20,7 @@ def test_validate_distance_function_rejects_unsupported_values():
         factory._validate_distance_function("dot_product")
 
 
-def test_factory_init_vector_uses_existing_index_struct_class_prefix(monkeypatch):
+def test_factory_init_vector_uses_existing_index_struct_class_prefix(monkeypatch: pytest.MonkeyPatch):
     factory = AlibabaCloudMySQLVectorFactory()
     dataset = SimpleNamespace(
         id="dataset-1",
@@ -45,7 +45,7 @@ def test_factory_init_vector_uses_existing_index_struct_class_prefix(monkeypatch
     assert vector_cls.call_args.kwargs["collection_name"] == "existing_collection"
 
 
-def test_factory_init_vector_generates_collection_name_when_index_struct_is_missing(monkeypatch):
+def test_factory_init_vector_generates_collection_name_when_index_struct_is_missing(monkeypatch: pytest.MonkeyPatch):
     factory = AlibabaCloudMySQLVectorFactory()
     dataset = SimpleNamespace(
         id="dataset-2",

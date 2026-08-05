@@ -1,70 +1,67 @@
-import type { FormatDisplayOptions, RegisterableHotkey } from '@tanstack/react-hotkeys'
-import type { WorkflowShortcutId } from './definitions'
+import type { KbdColor } from '@langgenius/dify-ui/kbd'
+import type { FormatDisplayOptions, Hotkey, IndividualKey } from '@tanstack/react-hotkeys'
+import type { WorkflowCanvasShortcutId } from './definitions'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
-import { getWorkflowShortcutDisplayHotkey } from './definitions'
+import { getWorkflowCanvasShortcutDisplayKey } from './definitions'
 
-type ShortcutKbdProps = {
-  shortcut?: WorkflowShortcutId
-  hotkey?: RegisterableHotkey | (string & {})
+type ShortcutKbdSource =
+  | { shortcut: WorkflowCanvasShortcutId; hotkey?: never; displayKey?: never }
+  | { shortcut?: never; hotkey: Hotkey; displayKey?: never }
+  | { shortcut?: never; hotkey?: never; displayKey: string }
+
+type ShortcutKbdProps = ShortcutKbdSource & {
   className?: string
   textColor?: 'default' | 'secondary'
-  bgColor?: 'gray' | 'white'
+  bgColor?: KbdColor
   platform?: FormatDisplayOptions['platform']
 }
 
 const getDisplayKeys = (
-  hotkey: RegisterableHotkey | (string & {}),
+  hotkey: Hotkey | IndividualKey,
   platform?: FormatDisplayOptions['platform'],
 ) => {
   const displayOptions = platform ? { platform } : undefined
 
-  if (typeof hotkey !== 'string')
-    return [formatForDisplay(hotkey, displayOptions)]
-
   return hotkey
     .split('+')
     .filter(Boolean)
-    .map(key => formatForDisplay(key, displayOptions))
+    .map((key) => formatForDisplay(key, displayOptions))
 }
 
 export const ShortcutKbd = ({
   shortcut,
   hotkey,
+  displayKey,
   className,
   textColor = 'default',
   bgColor = 'gray',
   platform,
 }: ShortcutKbdProps) => {
-  const displayHotkey = hotkey ?? (shortcut ? getWorkflowShortcutDisplayHotkey(shortcut) : undefined)
+  const shortcutDisplayKey =
+    hotkey ?? (shortcut ? getWorkflowCanvasShortcutDisplayKey(shortcut) : undefined)
 
-  if (!displayHotkey)
-    return null
+  const displayOptions = platform ? { platform } : undefined
+  const displayKeys = displayKey
+    ? [formatForDisplay(displayKey, displayOptions)]
+    : shortcutDisplayKey
+      ? getDisplayKeys(shortcutDisplayKey, platform)
+      : []
 
-  const displayKeys = getDisplayKeys(displayHotkey, platform)
+  if (!displayKeys.length) return null
 
   return (
-    <span
-      className={cn(
-        'flex items-center gap-0.5',
-        className,
-      )}
-    >
-      {
-        displayKeys.map((key, index) => (
-          <kbd
-            key={`${key}-${index}`}
-            className={cn(
-              'flex h-4 min-w-4 items-center justify-center rounded-sm px-1 font-sans system-kbd capitalize not-italic',
-              bgColor === 'gray' && 'bg-components-kbd-bg-gray',
-              bgColor === 'white' && 'bg-components-kbd-bg-white text-text-primary-on-surface',
-              textColor === 'secondary' && 'text-text-tertiary',
-            )}
-          >
-            {key}
-          </kbd>
-        ))
-      }
-    </span>
+    <KbdGroup className={cn(className)}>
+      {displayKeys.map((key) => (
+        <Kbd
+          key={key}
+          color={bgColor}
+          className={cn(textColor === 'secondary' && 'text-text-tertiary')}
+        >
+          {key}
+        </Kbd>
+      ))}
+    </KbdGroup>
   )
 }

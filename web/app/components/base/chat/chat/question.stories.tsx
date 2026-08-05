@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-
 import type { ChatItem } from '../types'
 import { User } from '@/app/components/base/icons/src/public/avatar'
 import Question from './question'
@@ -28,7 +27,7 @@ export const Default: Story = {
     theme: undefined,
     questionIcon: (
       <div className="h-full w-full rounded-full border-[0.5px] border-black/5">
-        <User className="h-full w-full" />
+        <User className="size-full" />
       </div>
     ),
   },

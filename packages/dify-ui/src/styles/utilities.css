@@ -265,6 +265,12 @@
   line-height: 1.2;
 }
 
+@utility title-5xl-semi-bold {
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
 @utility title-5xl-bold {
   font-size: 30px;
   font-weight: 700;

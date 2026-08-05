@@ -8,7 +8,7 @@ from yarl import URL
 
 
 @pytest.fixture(autouse=True)
-def _patch_creators_url(monkeypatch):
+def _patch_creators_url(monkeypatch: pytest.MonkeyPatch):
     """Patch the module-level creators_platform_api_url for all tests."""
     monkeypatch.setattr(
         "core.helper.creators.creators_platform_api_url",
@@ -38,6 +38,18 @@ class TestUploadDSL:
     def test_raises_on_missing_claim_code(self, mock_post):
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.json.return_value = {"data": {}}
+        mock_response.raise_for_status = MagicMock()
+        mock_post.return_value = mock_response
+
+        from core.helper.creators import upload_dsl
+
+        with pytest.raises(ValueError, match="claim_code"):
+            upload_dsl(b"app: demo")
+
+    @patch("core.helper.creators.httpx.post")
+    def test_raises_on_non_string_claim_code(self, mock_post):
+        mock_response = MagicMock(spec=httpx.Response)
+        mock_response.json.return_value = {"data": {"claim_code": 123}}
         mock_response.raise_for_status = MagicMock()
         mock_post.return_value = mock_response
 

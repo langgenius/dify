@@ -1,57 +1,53 @@
-import { parseAsArrayOf, parseAsBoolean, parseAsString, useQueryStates } from 'nuqs'
-import { useCallback, useMemo } from 'react'
+import type { AppListCategory } from '../app-type-filter-shared'
+import { debounce, parseAsString, useQueryStates } from 'nuqs'
+import { useCallback, useMemo, useState } from 'react'
+import { parseAsAppListCategory } from '../app-type-filter-shared'
+import { APP_LIST_SEARCH_DEBOUNCE_MS } from '../constants'
 
-type AppsQuery = {
-  tagIDs?: string[]
-  keywords?: string
-  isCreatedByMe?: boolean
+const appListQueryParsers = {
+  category: parseAsAppListCategory,
+  keywords: parseAsString.withDefault('').withOptions({
+    limitUrlUpdates: debounce(APP_LIST_SEARCH_DEBOUNCE_MS),
+  }),
 }
 
-const normalizeKeywords = (value: string | null) => value || undefined
+export function useAppsQueryState() {
+  const [urlQuery, setUrlQuery] = useQueryStates(appListQueryParsers)
+  const [creatorIDs, setCreatorIDs] = useState<string[]>([])
 
-function useAppsQueryState() {
-  const [urlQuery, setUrlQuery] = useQueryStates(
-    {
-      tagIDs: parseAsArrayOf(parseAsString, ';'),
-      keywords: parseAsString,
-      isCreatedByMe: parseAsBoolean,
+  const setCategory = useCallback(
+    (category: AppListCategory) => {
+      setUrlQuery({ category })
     },
-    {
-      history: 'push',
-    },
+    [setUrlQuery],
   )
 
-  const query = useMemo<AppsQuery>(() => ({
-    tagIDs: urlQuery.tagIDs ?? undefined,
-    keywords: normalizeKeywords(urlQuery.keywords),
-    isCreatedByMe: urlQuery.isCreatedByMe ?? false,
-  }), [urlQuery.isCreatedByMe, urlQuery.keywords, urlQuery.tagIDs])
+  const setKeywords = useCallback(
+    (keywords: string) => {
+      setUrlQuery({ keywords })
+    },
+    [setUrlQuery],
+  )
 
-  const setQuery = useCallback((next: AppsQuery | ((prev: AppsQuery) => AppsQuery)) => {
-    const buildPatch = (patch: AppsQuery) => {
-      const result: Partial<typeof urlQuery> = {}
-      if ('tagIDs' in patch)
-        result.tagIDs = patch.tagIDs && patch.tagIDs.length > 0 ? patch.tagIDs : null
-      if ('keywords' in patch)
-        result.keywords = patch.keywords ? patch.keywords : null
-      if ('isCreatedByMe' in patch)
-        result.isCreatedByMe = patch.isCreatedByMe ? true : null
-      return result
-    }
+  const handleSetCreatorIDs = useCallback((creatorIDs: string[]) => {
+    setCreatorIDs(creatorIDs)
+  }, [])
 
-    if (typeof next === 'function') {
-      setUrlQuery(prev => buildPatch(next({
-        tagIDs: prev.tagIDs ?? undefined,
-        keywords: normalizeKeywords(prev.keywords),
-        isCreatedByMe: prev.isCreatedByMe ?? false,
-      })))
-      return
-    }
+  const query = useMemo(
+    () => ({
+      ...urlQuery,
+      creatorIDs,
+    }),
+    [creatorIDs, urlQuery],
+  )
 
-    setUrlQuery(buildPatch(next))
-  }, [setUrlQuery])
-
-  return useMemo(() => ({ query, setQuery }), [query, setQuery])
+  return useMemo(
+    () => ({
+      query,
+      setCategory,
+      setKeywords,
+      setCreatorIDs: handleSetCreatorIDs,
+    }),
+    [handleSetCreatorIDs, query, setCategory, setKeywords],
+  )
 }
-
-export default useAppsQueryState

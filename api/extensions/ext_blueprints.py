@@ -8,6 +8,8 @@ AUTHENTICATED_HEADERS: tuple[str, ...] = (*SERVICE_API_HEADERS, HEADER_NAME_CSRF
 FILES_HEADERS: tuple[str, ...] = (*BASE_CORS_HEADERS, HEADER_NAME_CSRF_TOKEN)
 EMBED_HEADERS: tuple[str, ...] = ("Content-Type", HEADER_NAME_APP_CODE)
 EXPOSED_HEADERS: tuple[str, ...] = ("X-Version", "X-Env", "X-Trace-Id")
+OPENAPI_HEADERS: tuple[str, ...] = ("Authorization", "Content-Type", HEADER_NAME_CSRF_TOKEN)
+OPENAPI_MAX_AGE_SECONDS: int = 600
 
 
 def _apply_cors_once(bp, /, **cors_kwargs):
@@ -29,6 +31,7 @@ def init_app(app: DifyApp):
     from controllers.files import bp as files_bp
     from controllers.inner_api import bp as inner_api_bp
     from controllers.mcp import bp as mcp_bp
+    from controllers.openapi import bp as openapi_bp
     from controllers.service_api import bp as service_api_bp
     from controllers.trigger import bp as trigger_bp
     from controllers.web import bp as web_bp
@@ -40,6 +43,23 @@ def init_app(app: DifyApp):
         expose_headers=list(EXPOSED_HEADERS),
     )
     app.register_blueprint(service_api_bp)
+
+    if dify_config.OPENAPI_ENABLED:
+        # User-scoped programmatic API. Default empty allowlist = same-origin
+        # only; expand via OPENAPI_CORS_ALLOW_ORIGINS for third-party
+        # integrations. supports_credentials so cookie-authed approve/deny
+        # work; cross-origin OPTIONS without an allowed origin will fail
+        # the same as on the console blueprint.
+        _apply_cors_once(
+            openapi_bp,
+            resources={r"/*": {"origins": dify_config.OPENAPI_CORS_ALLOW_ORIGINS}},
+            supports_credentials=True,
+            allow_headers=list(OPENAPI_HEADERS),
+            methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+            expose_headers=list(EXPOSED_HEADERS),
+            max_age=OPENAPI_MAX_AGE_SECONDS,
+        )
+        app.register_blueprint(openapi_bp)
 
     _apply_cors_once(
         web_bp,

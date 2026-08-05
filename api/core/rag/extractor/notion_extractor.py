@@ -1,7 +1,7 @@
 import json
 import logging
 import operator
-from typing import Any, cast
+from typing import Any, cast, override
 
 import httpx
 from sqlalchemy import update
@@ -21,6 +21,11 @@ SEARCH_URL = "https://api.notion.com/v1/search"
 
 RETRIEVE_PAGE_URL_TMPL = "https://api.notion.com/v1/pages/{page_id}"
 RETRIEVE_DATABASE_URL_TMPL = "https://api.notion.com/v1/databases/{database_id}"
+
+# Bounded connect/read timeout so a slow or hanging Notion API cannot block
+# dataset extraction indefinitely.
+_REQUEST_TIMEOUT = httpx.Timeout(30.0, connect=5.0)
+
 # if user want split by headings, use the corresponding splitter
 HEADING_SPLITTER = {
     "heading_1": "# ",
@@ -67,6 +72,7 @@ class NotionExtractor(BaseExtractor):
 
                 self._notion_access_token = integration_token
 
+    @override
     def extract(self) -> list[Document]:
         self.update_last_edited_time(self._document_model)
 
@@ -109,6 +115,7 @@ class NotionExtractor(BaseExtractor):
                     "Notion-Version": "2022-06-28",
                 },
                 json=current_query,
+                timeout=_REQUEST_TIMEOUT,
             )
 
             response_data = res.json()
@@ -178,6 +185,7 @@ class NotionExtractor(BaseExtractor):
                         "Notion-Version": "2022-06-28",
                     },
                     params=query_dict,
+                    timeout=_REQUEST_TIMEOUT,
                 )
                 if res.status_code != 200:
                     raise ValueError(f"Error fetching Notion block data: {res.text}")
@@ -240,6 +248,7 @@ class NotionExtractor(BaseExtractor):
                     "Notion-Version": "2022-06-28",
                 },
                 params=query_dict,
+                timeout=_REQUEST_TIMEOUT,
             )
             data = res.json()
             if "results" not in data or data["results"] is None:
@@ -300,6 +309,7 @@ class NotionExtractor(BaseExtractor):
                     "Notion-Version": "2022-06-28",
                 },
                 params=query_dict,
+                timeout=_REQUEST_TIMEOUT,
             )
             data = res.json()
             # get table headers text
@@ -374,6 +384,7 @@ class NotionExtractor(BaseExtractor):
                 "Notion-Version": "2022-06-28",
             },
             json=query_dict,
+            timeout=_REQUEST_TIMEOUT,
         )
 
         data = res.json()

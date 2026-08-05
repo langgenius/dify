@@ -1,8 +1,9 @@
 import type { AccessControlAccount, AccessControlGroup, Subject } from '@/models/access-control'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import useAccessControlStore from '@/context/access-control-store'
 import { SubjectType } from '@/models/access-control'
+import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import AddMemberOrGroupDialog from '../add-member-or-group-pop'
 
 const mockUseSearchForWhiteListCandidates = vi.fn()
@@ -10,33 +11,28 @@ const intersectionObserverMocks = vi.hoisted(() => ({
   callback: null as null | ((entries: Array<{ isIntersecting: boolean }>) => void),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: <T,>(selector: (value: { userProfile: { email: string } }) => T) => selector({
-    userProfile: {
-      email: 'member@example.com',
-    },
-  }),
-}))
-
 vi.mock('@/service/access-control', () => ({
-  useSearchForWhiteListCandidates: (...args: unknown[]) => mockUseSearchForWhiteListCandidates(...args),
+  useSearchForWhiteListCandidates: (...args: unknown[]) =>
+    mockUseSearchForWhiteListCandidates(...args),
 }))
 
-const createGroup = (overrides: Partial<AccessControlGroup> = {}): AccessControlGroup => ({
-  id: 'group-1',
-  name: 'Group One',
-  groupSize: 5,
-  ...overrides,
-} as AccessControlGroup)
+const createGroup = (overrides: Partial<AccessControlGroup> = {}): AccessControlGroup =>
+  ({
+    id: 'group-1',
+    name: 'Group One',
+    groupSize: 5,
+    ...overrides,
+  }) as AccessControlGroup
 
-const createMember = (overrides: Partial<AccessControlAccount> = {}): AccessControlAccount => ({
-  id: 'member-1',
-  name: 'Member One',
-  email: 'member@example.com',
-  avatar: '',
-  avatarUrl: '',
-  ...overrides,
-} as AccessControlAccount)
+const createMember = (overrides: Partial<AccessControlAccount> = {}): AccessControlAccount =>
+  ({
+    id: 'member-1',
+    name: 'Member One',
+    email: 'member@example.com',
+    avatar: '',
+    avatarUrl: '',
+    ...overrides,
+  }) as AccessControlAccount
 
 describe('AddMemberOrGroupDialog', () => {
   const baseGroup = createGroup()
@@ -92,7 +88,11 @@ describe('AddMemberOrGroupDialog', () => {
 
     await user.click(screen.getByText('common.operation.add'))
 
-    expect(screen.getByPlaceholderText('app.accessControlDialog.operateGroupAndMember.searchPlaceholder')).toBeInTheDocument()
+    expect(
+      screen.getByPlaceholderText(
+        'app.accessControlDialog.operateGroupAndMember.searchPlaceholder',
+      ),
+    ).toBeInTheDocument()
     expect(screen.getByText(baseGroup.name)).toBeInTheDocument()
     expect(screen.getByText(baseMember.name)).toBeInTheDocument()
   })
@@ -106,8 +106,7 @@ describe('AddMemberOrGroupDialog', () => {
 
     expect(useAccessControlStore.getState().selectedGroupsForBreadcrumb).toEqual([baseGroup])
 
-    const memberCheckbox = screen.getByText(baseMember.name).parentElement?.previousElementSibling as HTMLElement
-    fireEvent.click(memberCheckbox)
+    await user.click(screen.getByRole('option', { name: /Member One/ }))
 
     expect(useAccessControlStore.getState().specificMembers).toEqual([baseMember])
   })
@@ -125,6 +124,43 @@ describe('AddMemberOrGroupDialog', () => {
 
     await user.click(screen.getByText('common.operation.add'))
 
-    expect(screen.getByText('app.accessControlDialog.operateGroupAndMember.noResult')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'app.accessControlDialog.operateGroupAndMember.noResult',
+    )
+  })
+
+  it('should keep breadcrumbs visible when the current group has no candidates', async () => {
+    useAccessControlStore.setState({
+      selectedGroupsForBreadcrumb: [baseGroup],
+    })
+    mockUseSearchForWhiteListCandidates.mockReturnValue({
+      isLoading: false,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
+      data: { pages: [{ currPage: 1, subjects: [], hasMore: false }] },
+    })
+
+    const user = userEvent.setup()
+    render(<AddMemberOrGroupDialog />)
+
+    await user.click(screen.getByText('common.operation.add'))
+
+    expect(
+      screen.getByRole('button', {
+        name: 'app.accessControlDialog.operateGroupAndMember.allMembers',
+      }),
+    ).toBeInTheDocument()
+    expect(screen.getByText(baseGroup.name)).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'app.accessControlDialog.operateGroupAndMember.noResult',
+    )
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'app.accessControlDialog.operateGroupAndMember.allMembers',
+      }),
+    )
+
+    expect(useAccessControlStore.getState().selectedGroupsForBreadcrumb).toEqual([])
   })
 })

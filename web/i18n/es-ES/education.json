@@ -1,5 +1,14 @@
 {
+  "applied.activeSubscription.description": "Tienes una suscripción activa. Puedes usar el descuento educativo después de que expire tu suscripción. Confirma tu suscripción en <stripeLink>Stripe</stripeLink>.",
+  "applied.noPaymentPermission.description": "No tienes permiso de pago en este workspace. Por favor, cambia a un workspace donde puedas gestionar la facturación para usar el descuento educativo.",
+  "applied.noPaymentPermission.returnHome": "Volver a Dify",
+  "applied.step1.description": "Has solicitado exitosamente el descuento educativo.",
+  "applied.step2.description": "Selecciona el workspace que deseas usar con el descuento educativo.",
   "currentSigned": "ACTUALMENTE CONECTADO COMO",
+  "educationPricingConfirm.cancel": "Mantener el plan actual",
+  "educationPricingConfirm.continue": "Cambiar a Professional anual",
+  "educationPricingConfirm.description": "El descuento educativo solo se aplica al plan Professional anual. Si mantienes tu plan actual, no se incluirá el descuento.",
+  "educationPricingConfirm.title": "El plan seleccionado no admite el descuento educativo",
   "emailLabel": "Tu correo electrónico actual",
   "form.schoolName.placeholder": "Ingrese el nombre oficial y completo de su escuela",
   "form.schoolName.title": "El nombre de tu escuela",
@@ -31,14 +40,14 @@
   "notice.stillInEducation.expired": "Verifica de nuevo ahora para obtener un nuevo cupón para el próximo año académico. Lo añadiremos a tu cuenta y podrás usarlo para la próxima actualización.",
   "notice.stillInEducation.isAboutToExpire": "Verifica de nuevo ahora para obtener un nuevo cupón para el próximo año académico. Se guardará en tu cuenta y estará listo para usar en tu próxima renovación.",
   "notice.stillInEducation.title": "¿Aún en educación?",
+  "planNotSupportEducationDiscount": "No elegible para precios educativos",
   "rejectContent": "Desafortunadamente, no eres elegible para el estado de Educación Verificada y, por lo tanto, no puedes recibir el exclusivo cupón del 100% para el Plan Profesional de Dify si utilizas esta dirección de correo electrónico.",
   "rejectTitle": "Su verificación educativa de Dify ha sido rechazada.",
   "submit": "Enviar",
   "submitError": "Error en el envío del formulario. Por favor, inténtelo de nuevo más tarde.",
-  "successContent": "Hemos emitido un cupón de descuento del 100% para el plan Dify Professional en tu cuenta. El cupón es válido por un año, por favor utilízalo dentro del período de validez.",
-  "successTitle": "Tienes la educación Dify verificada",
   "toVerified": "Verifica la educación",
   "toVerifiedTip.coupon": "cupón exclusivo del 100%",
   "toVerifiedTip.end": "para el Plan Profesional de Dify.",
-  "toVerifiedTip.front": "Ahora eres elegible para el estado de Educación Verificada. Por favor, introduce tu información educativa a continuación para completar el proceso y recibir un"
+  "toVerifiedTip.front": "Ahora eres elegible para el estado de Educación Verificada. Por favor, introduce tu información educativa a continuación para completar el proceso y recibir un",
+  "useEducationDiscount": "Usar descuento educativo"
 }

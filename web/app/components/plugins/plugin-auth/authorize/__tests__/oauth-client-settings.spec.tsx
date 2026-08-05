@@ -9,10 +9,14 @@ import { AuthCategory } from '../../types'
 
 const mockNotify = vi.fn()
 const mockToast = {
-  success: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'success', message, ...options }),
-  error: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'error', message, ...options }),
-  warning: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'warning', message, ...options }),
-  info: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'info', message, ...options }),
+  success: (message: string, options?: Record<string, unknown>) =>
+    mockNotify({ type: 'success', message, ...options }),
+  error: (message: string, options?: Record<string, unknown>) =>
+    mockNotify({ type: 'error', message, ...options }),
+  warning: (message: string, options?: Record<string, unknown>) =>
+    mockNotify({ type: 'warning', message, ...options }),
+  info: (message: string, options?: Record<string, unknown>) =>
+    mockNotify({ type: 'info', message, ...options }),
   dismiss: vi.fn(),
   update: vi.fn(),
   promise: vi.fn(),
@@ -24,7 +28,10 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 const mockSetPluginOAuthCustomClient = vi.fn().mockResolvedValue({})
 const mockDeletePluginOAuthCustomClient = vi.fn().mockResolvedValue({})
 const mockInvalidPluginOAuthClientSchema = vi.fn()
-let mockFormValues = { isCheckValidated: true, values: { __oauth_client__: 'custom', client_id: 'test-id' } }
+let mockFormValues = {
+  isCheckValidated: true,
+  values: { __oauth_client__: 'custom', client_id: 'test-id' },
+}
 let mockAuthFormProps: Record<string, unknown> | undefined
 
 vi.mock('../../hooks/use-credential', () => ({
@@ -41,12 +48,11 @@ vi.mock('../../../readme-panel/entrance', () => ({
   ReadmeEntrance: () => <div data-testid="readme-entrance" />,
 }))
 
-vi.mock('../../../readme-panel/store', () => ({
-  ReadmeShowType: { modal: 'modal' },
-}))
-
 vi.mock('@/app/components/base/form/form-scenarios/auth', () => {
-  const MockAuthForm = ({ ref, ...props }: { ref?: React.Ref<unknown> } & Record<string, unknown>) => {
+  const MockAuthForm = ({
+    ref,
+    ...props
+  }: { ref?: React.Ref<unknown> } & Record<string, unknown>) => {
     mockAuthFormProps = props
     React.useImperativeHandle(ref, () => ({
       getFormValues: () => mockFormValues,
@@ -93,8 +99,7 @@ const PopoverSettingsHarness = ({
       open={open}
       onOpenChange={(nextOpen) => {
         setOpen(nextOpen)
-        if (!nextOpen)
-          onPopoverClose()
+        if (!nextOpen) onPopoverClose()
       }}
     >
       <PopoverTrigger render={<button type="button">OAuth</button>} />
@@ -141,30 +146,25 @@ describe('OAuthClientSettings', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks()
-    mockFormValues = { isCheckValidated: true, values: { __oauth_client__: 'custom', client_id: 'test-id' } }
+    mockFormValues = {
+      isCheckValidated: true,
+      values: { __oauth_client__: 'custom', client_id: 'test-id' },
+    }
     mockAuthFormProps = undefined
     const mod = await import('../oauth-client-settings')
     OAuthClientSettings = mod.default
   })
 
   it('should render modal with correct title', () => {
-    render(
-      <OAuthClientSettings
-        pluginPayload={basePayload}
-        schemas={defaultSchemas}
-      />,
-    )
+    render(<OAuthClientSettings pluginPayload={basePayload} schemas={defaultSchemas} />)
 
-    expect(screen.getByTestId('modal-title')).toHaveTextContent('plugin.auth.oauthClientSettings')
+    expect(
+      screen.getByRole('heading', { name: 'plugin.auth.oauthClientSettings' }),
+    ).toBeInTheDocument()
   })
 
   it('should render auth form', () => {
-    render(
-      <OAuthClientSettings
-        pluginPayload={basePayload}
-        schemas={defaultSchemas}
-      />,
-    )
+    render(<OAuthClientSettings pluginPayload={basePayload} schemas={defaultSchemas} />)
 
     expect(screen.getByTestId('auth-form')).toBeInTheDocument()
   })
@@ -173,10 +173,7 @@ describe('OAuthClientSettings', () => {
     render(
       <Dialog open>
         <DialogContent backdropClassName="bg-transparent">
-          <OAuthClientSettings
-            pluginPayload={basePayload}
-            schemas={defaultSchemas}
-          />
+          <OAuthClientSettings pluginPayload={basePayload} schemas={defaultSchemas} />
         </DialogContent>
       </Dialog>,
     )
@@ -188,9 +185,17 @@ describe('OAuthClientSettings', () => {
     render(
       <OAuthClientSettings
         pluginPayload={basePayload}
-        schemas={[
-          { name: 'client_id', label: 'Client ID', type: 'text-input', required: true, default: 'default-client-id' },
-        ] as never}
+        schemas={
+          [
+            {
+              name: 'client_id',
+              label: 'Client ID',
+              type: 'text-input',
+              required: true,
+              default: 'default-client-id',
+            },
+          ] as never
+        }
       />,
     )
 
@@ -209,15 +214,17 @@ describe('OAuthClientSettings', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('modal-close'))
+    fireEvent.click(screen.getByRole('button', { name: /operation\.cancel/i }))
     expect(mockOnClose).toHaveBeenCalled()
   })
 
   it('should close through controlled open state when cancel clicked', async () => {
     const mockOnClose = vi.fn()
-    render(<ControlledSettingsHarness OAuthClientSettings={OAuthClientSettings} onClose={mockOnClose} />)
+    render(
+      <ControlledSettingsHarness OAuthClientSettings={OAuthClientSettings} onClose={mockOnClose} />,
+    )
 
-    fireEvent.click(screen.getByTestId('modal-close'))
+    fireEvent.click(screen.getByRole('button', { name: /operation\.cancel/i }))
 
     await waitFor(() => {
       expect(screen.getByTestId('modal-open-state')).toHaveTextContent('false')
@@ -225,19 +232,19 @@ describe('OAuthClientSettings', () => {
     expect(mockOnClose).toHaveBeenCalled()
   })
 
-  it('should close when backdrop is clicked', async () => {
+  it('should stay open when backdrop is clicked', () => {
     const mockOnClose = vi.fn()
-    render(<ControlledSettingsHarness OAuthClientSettings={OAuthClientSettings} onClose={mockOnClose} />)
+    render(
+      <ControlledSettingsHarness OAuthClientSettings={OAuthClientSettings} onClose={mockOnClose} />,
+    )
 
     const backdrop = document.querySelector('.bg-background-overlay')
     expect(backdrop).toBeInTheDocument()
 
     fireEvent.click(backdrop!)
 
-    await waitFor(() => {
-      expect(screen.getByTestId('modal-open-state')).toHaveTextContent('false')
-    })
-    expect(mockOnClose).toHaveBeenCalled()
+    expect(screen.getByTestId('modal-open-state')).toHaveTextContent('true')
+    expect(mockOnClose).not.toHaveBeenCalled()
   })
 
   it('should save settings on save only button click', async () => {
@@ -252,21 +259,26 @@ describe('OAuthClientSettings', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('modal-cancel'))
+    fireEvent.click(screen.getByRole('button', { name: 'plugin.auth.saveOnly' }))
 
     await waitFor(() => {
-      expect(mockSetPluginOAuthCustomClient).toHaveBeenCalledWith(expect.objectContaining({
-        enable_oauth_custom_client: true,
-      }))
+      expect(mockSetPluginOAuthCustomClient).toHaveBeenCalledWith(
+        expect.objectContaining({
+          enable_oauth_custom_client: true,
+        }),
+      )
     })
   })
 
   it('should ignore duplicate save clicks while action is pending', async () => {
     const mockOnClose = vi.fn()
     let resolveSave: (value: object) => void = () => {}
-    mockSetPluginOAuthCustomClient.mockImplementationOnce(() => new Promise((resolve) => {
-      resolveSave = resolve
-    }))
+    mockSetPluginOAuthCustomClient.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveSave = resolve
+        }),
+    )
 
     render(
       <OAuthClientSettings
@@ -276,13 +288,13 @@ describe('OAuthClientSettings', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('modal-cancel'))
+    fireEvent.click(screen.getByRole('button', { name: 'plugin.auth.saveOnly' }))
 
     await waitFor(() => {
       expect(mockSetPluginOAuthCustomClient).toHaveBeenCalledTimes(1)
     })
 
-    fireEvent.click(screen.getByTestId('modal-cancel'))
+    fireEvent.click(screen.getByRole('button', { name: 'plugin.auth.saveOnly' }))
 
     expect(mockSetPluginOAuthCustomClient).toHaveBeenCalledTimes(1)
 
@@ -303,7 +315,7 @@ describe('OAuthClientSettings', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('modal-confirm'))
+    fireEvent.click(screen.getByRole('button', { name: 'plugin.auth.saveAndAuth' }))
 
     await waitFor(() => {
       expect(mockSetPluginOAuthCustomClient).toHaveBeenCalled()
@@ -324,7 +336,7 @@ describe('OAuthClientSettings', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('modal-extra'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.remove' }))
 
     await waitFor(() => {
       expect(mockDeletePluginOAuthCustomClient).toHaveBeenCalled()
@@ -332,20 +344,17 @@ describe('OAuthClientSettings', () => {
     expect(mockOnClose).toHaveBeenCalled()
     expect(mockOnUpdate).toHaveBeenCalled()
     expect(mockInvalidPluginOAuthClientSchema).toHaveBeenCalled()
-    expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
-      message: 'common.api.actionSuccess',
-      type: 'success',
-    }))
+    expect(mockNotify).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'common.api.actionSuccess',
+        type: 'success',
+      }),
+    )
   })
 
   it('should render readme entrance when detail is provided', () => {
     const payload = { ...basePayload, detail: { name: 'Test' } as never }
-    render(
-      <OAuthClientSettings
-        pluginPayload={payload}
-        schemas={defaultSchemas}
-      />,
-    )
+    render(<OAuthClientSettings pluginPayload={payload} schemas={defaultSchemas} />)
 
     expect(screen.getByTestId('readme-entrance')).toBeInTheDocument()
   })
@@ -369,6 +378,6 @@ describe('OAuthClientSettings', () => {
 
     expect(mockOnClose).not.toHaveBeenCalled()
     expect(mockOnPopoverClose).not.toHaveBeenCalled()
-    expect(screen.getByTestId('modal')).toBeInTheDocument()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 })

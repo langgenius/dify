@@ -10,7 +10,7 @@ from __future__ import annotations
 import enum
 import uuid
 from collections.abc import Mapping, Sequence
-from typing import Annotated, Any, ClassVar, Literal
+from typing import Annotated, Any, ClassVar, Literal, override
 
 import bleach
 import markdown
@@ -21,6 +21,7 @@ from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
 from graphon.runtime import VariablePool
 from graphon.variables.consts import SELECTORS_LENGTH
+from graphon.variables.template_resolution import convert_template
 
 
 class DeliveryMethodType(enum.StrEnum):
@@ -116,7 +117,7 @@ class EmailDeliveryConfig(BaseModel):
         templated_body = cls.replace_url_placeholder(body, url)
         if variable_pool is None:
             return templated_body
-        return variable_pool.convert_template(templated_body).text
+        return convert_template(variable_pool, templated_body).text
 
     @classmethod
     def render_markdown_body(cls, body: str) -> str:
@@ -158,6 +159,7 @@ class EmailDeliveryMethod(_DeliveryMethodBase):
     type: Literal[DeliveryMethodType.EMAIL] = DeliveryMethodType.EMAIL
     config: EmailDeliveryConfig
 
+    @override
     def extract_variable_selectors(self) -> Sequence[Sequence[str]]:
         variable_template_parser = VariableTemplateParser(template=self.config.body)
         selectors: list[Sequence[str]] = []

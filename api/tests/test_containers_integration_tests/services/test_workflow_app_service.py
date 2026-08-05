@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import uuid
 from datetime import UTC, datetime, timedelta
-from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -12,13 +11,13 @@ from sqlalchemy.orm import Session
 
 from graphon.enums import WorkflowExecutionStatus
 from models import EndUser, Workflow, WorkflowAppLog, WorkflowArchiveLog, WorkflowRun
-from models.enums import AppTriggerType, CreatorUserRole, WorkflowRunTriggeredFrom
+from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowAppLogCreatedFrom
 from services.account_service import AccountService, TenantService
 
 # Delay import of AppService to avoid circular dependency
-# from services.app_service import AppService
-from services.workflow_app_service import LogView, WorkflowAppService
+# from services.app_service import AppService, CreateAppParams
+from services.workflow_app_service import WorkflowAppService
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
@@ -78,27 +77,28 @@ class TestWorkflowAppService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
-        # Create app with realistic data
-        app_args = {
-            "name": fake.company(),
-            "description": fake.text(max_nb_chars=100),
-            "mode": "workflow",
-            "icon_type": "emoji",
-            "icon": "🤖",
-            "icon_background": "#FF6B6B",
-            "api_rph": 100,
-            "api_rpm": 10,
-        }
-
         # Import here to avoid circular dependency
-        from services.app_service import AppService
+        from services.app_service import AppService, CreateAppParams
+
+        # Create app with realistic data
+        app_args = CreateAppParams(
+            name=fake.company(),
+            description=fake.text(max_nb_chars=100),
+            mode="workflow",
+            icon_type="emoji",
+            icon="🤖",
+            icon_background="#FF6B6B",
+            api_rph=100,
+            api_rpm=10,
+        )
 
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_args, account)
+        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
 
         return app, account
 
@@ -126,8 +126,9 @@ class TestWorkflowAppService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         return tenant, account
@@ -146,23 +147,23 @@ class TestWorkflowAppService:
         """
         fake = Faker()
 
-        # Create app with realistic data
-        app_args = {
-            "name": fake.company(),
-            "description": fake.text(max_nb_chars=100),
-            "mode": "workflow",
-            "icon_type": "emoji",
-            "icon": "🤖",
-            "icon_background": "#FF6B6B",
-            "api_rph": 100,
-            "api_rpm": 10,
-        }
-
         # Import here to avoid circular dependency
-        from services.app_service import AppService
+        from services.app_service import AppService, CreateAppParams
+
+        # Create app with realistic data
+        app_args = CreateAppParams(
+            name=fake.company(),
+            description=fake.text(max_nb_chars=100),
+            mode="workflow",
+            icon_type="emoji",
+            icon="🤖",
+            icon_background="#FF6B6B",
+            api_rph=100,
+            api_rpm=10,
+        )
 
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_args, account)
+        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
 
         return app
 
@@ -821,7 +822,7 @@ class TestWorkflowAppService:
             id=str(uuid.uuid4()),
             tenant_id=app.tenant_id,
             app_id=app.id,
-            type="web",
+            type=EndUserType.BROWSER,
             is_anonymous=False,
             session_id="test_session_123",
             created_at=datetime.now(UTC),
@@ -1530,7 +1531,7 @@ class TestWorkflowAppService:
         assert result_cross_tenant["total"] == 0
 
     def test_get_paginate_workflow_app_logs_raises_when_account_filter_email_not_found(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         service = WorkflowAppService()
@@ -1543,7 +1544,7 @@ class TestWorkflowAppService:
             )
 
     def test_get_paginate_workflow_app_logs_filters_by_account(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         service = WorkflowAppService()
@@ -1558,14 +1559,16 @@ class TestWorkflowAppService:
         assert result["total"] >= 0
         assert isinstance(result["data"], list)
 
-    def test_get_paginate_workflow_archive_logs(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_paginate_workflow_archive_logs(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         service = WorkflowAppService()
 
         end_user = EndUser(
             tenant_id=app.tenant_id,
             app_id=app.id,
-            type="browser",
+            type=EndUserType.BROWSER,
             is_anonymous=False,
             session_id="session-1",
         )
@@ -1623,73 +1626,3 @@ class TestWorkflowAppService:
         end_user_item = next(d for d in result["data"] if d["created_by_end_user"] is not None)
         assert account_item["created_by_account"].id == account.id
         assert end_user_item["created_by_end_user"].id == end_user.id
-
-
-class TestLogView:
-    def test_details_and_proxy_attributes(self):
-        log = SimpleNamespace(id="log-1", status="succeeded")
-        view = LogView(log=log, details={"trigger_metadata": {"type": "plugin"}})
-
-        assert view.details == {"trigger_metadata": {"type": "plugin"}}
-        assert view.status == "succeeded"
-
-
-class TestHandleTriggerMetadata:
-    def test_returns_empty_dict_when_metadata_missing(self):
-        service = WorkflowAppService()
-        assert service.handle_trigger_metadata("tenant-1", None) == {}
-
-    def test_enriches_plugin_icons(self):
-        service = WorkflowAppService()
-        meta = {
-            "type": AppTriggerType.TRIGGER_PLUGIN.value,
-            "icon_filename": "light.png",
-            "icon_dark_filename": "dark.png",
-        }
-        with patch(
-            "services.workflow_app_service.PluginService.get_plugin_icon_url",
-            side_effect=["https://cdn/light.png", "https://cdn/dark.png"],
-        ) as mock_icon:
-            result = service.handle_trigger_metadata("tenant-1", json.dumps(meta))
-
-        assert result["icon"] == "https://cdn/light.png"
-        assert result["icon_dark"] == "https://cdn/dark.png"
-        assert mock_icon.call_count == 2
-
-    def test_non_plugin_metadata_without_icon_lookup(self):
-        service = WorkflowAppService()
-        meta = {"type": AppTriggerType.TRIGGER_WEBHOOK.value}
-        with patch("services.workflow_app_service.PluginService.get_plugin_icon_url") as mock_icon:
-            result = service.handle_trigger_metadata("tenant-1", json.dumps(meta))
-
-        assert result["type"] == AppTriggerType.TRIGGER_WEBHOOK.value
-        mock_icon.assert_not_called()
-
-
-class TestSafeJsonLoads:
-    @pytest.mark.parametrize(
-        ("value", "expected"),
-        [
-            (None, None),
-            ("", None),
-            ('{"k":"v"}', {"k": "v"}),
-            ("not-json", None),
-            ({"raw": True}, {"raw": True}),
-        ],
-    )
-    def test_handles_various_inputs(self, value, expected):
-        assert WorkflowAppService._safe_json_loads(value) == expected
-
-
-class TestSafeParseUuid:
-    def test_returns_none_for_short_or_invalid_values(self):
-        service = WorkflowAppService()
-        assert service._safe_parse_uuid("short") is None
-        assert service._safe_parse_uuid("x" * 40) is None
-
-    def test_returns_uuid_for_valid_string(self):
-        service = WorkflowAppService()
-        raw = str(uuid.uuid4())
-        result = service._safe_parse_uuid(raw)
-        assert result is not None
-        assert str(result) == raw

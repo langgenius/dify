@@ -1,8 +1,9 @@
 import time
 import uuid
-from unittest.mock import Mock
+from unittest.mock import MagicMock, Mock
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
@@ -40,7 +41,7 @@ def mock_graph_init_params():
 @pytest.fixture
 def mock_graph_runtime_state():
     """Create mock GraphRuntimeState."""
-    variable_pool = VariablePool(
+    variable_pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(user_id=str(uuid.uuid4()), files=[]),
         user_inputs={},
         environment_variables=[],
@@ -50,7 +51,7 @@ def mock_graph_runtime_state():
 
 
 @pytest.fixture
-def mock_index_processor(mocker):
+def mock_index_processor(mocker: MockerFixture):
     """Create mock IndexProcessorProtocol."""
     mock_processor = Mock(spec=IndexProcessorProtocol)
     mocker.patch(
@@ -61,7 +62,7 @@ def mock_index_processor(mocker):
 
 
 @pytest.fixture
-def mock_summary_index_service(mocker):
+def mock_summary_index_service(mocker: MockerFixture):
     """Create mock SummaryIndexServiceProtocol."""
     mock_service = Mock(spec=SummaryIndexServiceProtocol)
     mocker.patch(
@@ -102,7 +103,7 @@ def _build_node(
 ) -> KnowledgeIndexNode:
     return KnowledgeIndexNode(
         node_id=node_id,
-        config=(
+        data=(
             node_data
             if isinstance(node_data, KnowledgeIndexNodeData)
             else KnowledgeIndexNodeData.model_validate(node_data)
@@ -247,6 +248,7 @@ class TestKnowledgeIndexNode:
 
     def test_run_preview_mode_success(
         self,
+        mocker: MockerFixture,
         mock_graph_init_params,
         mock_graph_runtime_state,
         mock_index_processor,
@@ -281,6 +283,13 @@ class TestKnowledgeIndexNode:
             total_segments=2,
         )
         mock_index_processor.get_preview_output.return_value = mock_preview
+        session = MagicMock()
+        session_context = MagicMock()
+        session_context.__enter__.return_value = session
+        mocker.patch(
+            "core.workflow.nodes.knowledge_index.knowledge_index_node.session_factory.create_session",
+            return_value=session_context,
+        )
 
         node_id = str(uuid.uuid4())
         config = {
@@ -301,7 +310,7 @@ class TestKnowledgeIndexNode:
         # Assert
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert result.outputs is not None
-        assert mock_index_processor.get_preview_output.called
+        assert mock_index_processor.get_preview_output.call_args.kwargs["session"] is session
 
     def test_run_production_mode_success(
         self,
@@ -563,7 +572,9 @@ class TestKnowledgeIndexNode:
         )
 
         # Act
+        session = MagicMock()
         result = node._invoke_knowledge_index(
+            session=session,
             dataset_id=dataset_id,
             document_id=document_id,
             original_document_id=original_document_id,
@@ -576,6 +587,7 @@ class TestKnowledgeIndexNode:
         # Assert
         assert mock_summary_index_service.generate_and_vectorize_summary.called
         assert mock_index_processor.index_and_clean.called
+        session.commit.assert_called_once()
         assert result == {"status": "indexed"}
 
     def test_version_method(self):
@@ -650,7 +662,9 @@ class TestInvokeKnowledgeIndex:
         )
 
         # Act
+        session = MagicMock()
         result = node._invoke_knowledge_index(
+            session=session,
             dataset_id=dataset_id,
             document_id=document_id,
             original_document_id=original_document_id,
@@ -665,6 +679,7 @@ class TestInvokeKnowledgeIndex:
             dataset_id, document_id, False, summary_setting
         )
         mock_index_processor.index_and_clean.assert_called_once_with(
-            dataset_id, document_id, original_document_id, chunks, batch, summary_setting
+            dataset_id, document_id, original_document_id, chunks, batch, summary_setting, session=session
         )
+        session.commit.assert_called_once()
         assert result == {"status": "indexed"}

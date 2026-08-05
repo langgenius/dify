@@ -6,7 +6,6 @@ import type {
   DatasetListRequest,
   DataSetListResponse,
   ErrorDocsResponse,
-  ExternalAPIListResponse,
   FetchDatasetsParams,
   HitTestingRecordsResponse,
   IndexingStatusBatchRequest,
@@ -27,17 +26,10 @@ import { useInvalid } from '../use-base'
 
 const NAME_SPACE = 'dataset'
 
-const DatasetListKey = [NAME_SPACE, 'list']
+const datasetListQueryKey = [NAME_SPACE, 'list']
 
 const normalizeDatasetsParams = (params: Partial<FetchDatasetsParams['params']> = {}) => {
-  const {
-    page = 1,
-    limit,
-    ids,
-    tag_ids,
-    include_all,
-    keyword,
-  } = params
+  const { page = 1, limit, ids, tag_ids, include_all, keyword } = params
 
   return {
     page,
@@ -62,18 +54,20 @@ export const useInfiniteDatasets = (
   options?: UseInfiniteDatasetsOptions,
 ) => {
   const normalizedParams = normalizeDatasetsParams(params)
-  const buildUrl = (pageParam: number | undefined) => {
-    const queryString = qs.stringify({
-      ...normalizedParams,
-      page: pageParam ?? normalizedParams.page,
-    }, { indices: false })
-    return `/datasets?${queryString}`
-  }
 
   return useInfiniteQuery<DataSetListResponse>({
-    queryKey: [...DatasetListKey, 'infinite', normalizedParams],
-    queryFn: ({ pageParam = normalizedParams.page }) => get<DataSetListResponse>(buildUrl(pageParam as number | undefined)),
-    getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
+    queryKey: [...datasetListQueryKey, 'infinite', normalizedParams],
+    queryFn: ({ pageParam = normalizedParams.page }) => {
+      const queryString = qs.stringify(
+        {
+          ...normalizedParams,
+          page: pageParam as number | undefined,
+        },
+        { indices: false },
+      )
+      return get<DataSetListResponse>(`/datasets?${queryString}`)
+    },
+    getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
     initialPageParam: normalizedParams.page,
     staleTime: 0,
     refetchOnMount: 'always',
@@ -84,24 +78,28 @@ export const useInfiniteDatasets = (
 export const useDatasetList = (params: DatasetListRequest) => {
   const { initialPage, tag_ids, limit, include_all, keyword } = params
   return useInfiniteQuery({
-    queryKey: [...DatasetListKey, initialPage, tag_ids, limit, include_all, keyword],
+    queryKey: [...datasetListQueryKey, initialPage, tag_ids, limit, include_all, keyword],
     queryFn: ({ pageParam = 1 }) => {
-      const urlParams = qs.stringify({
-        tag_ids,
-        limit,
-        include_all,
-        keyword,
-        page: pageParam,
-      }, { indices: false })
+      const urlParams = qs.stringify(
+        {
+          tag_ids,
+          limit,
+          include_all,
+          keyword,
+          page: pageParam,
+        },
+        { indices: false },
+      )
       return get<DataSetListResponse>(`/datasets?${urlParams}`)
     },
-    getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : null,
+    getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : null),
     initialPageParam: initialPage,
+    placeholderData: keepPreviousData,
   })
 }
 
 export const useInvalidDatasetList = () => {
-  return useInvalid([...DatasetListKey])
+  return useInvalid([...datasetListQueryKey])
 }
 
 export const datasetDetailQueryKeyPrefix = [NAME_SPACE, 'detail']
@@ -111,13 +109,19 @@ export const useDatasetDetail = (datasetId: string) => {
     queryKey: [...datasetDetailQueryKeyPrefix, datasetId],
     queryFn: () => get<DataSet>(`/datasets/${datasetId}`),
     enabled: !!datasetId,
+    retry: (failureCount, error) => {
+      if (error instanceof Response && [403, 404].includes(error.status)) return false
+
+      return failureCount < 3
+    },
   })
 }
 
-export const useDatasetRelatedApps = (datasetId: string) => {
+export const useDatasetRelatedApps = (datasetId: string, options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'related-apps', datasetId],
     queryFn: () => get<RelatedAppResponse>(`/datasets/${datasetId}/related-apps`),
+    enabled: options?.enabled ?? !!datasetId,
   })
 }
 
@@ -128,7 +132,8 @@ export const useIndexingStatusBatch = (
   const { datasetId, batchId } = params
   return useMutation({
     mutationKey: [NAME_SPACE, 'indexing-status-batch', datasetId, batchId],
-    mutationFn: () => get<IndexingStatusBatchResponse>(`/datasets/${datasetId}/batch/${batchId}/indexing-status`),
+    mutationFn: () =>
+      get<IndexingStatusBatchResponse>(`/datasets/${datasetId}/batch/${batchId}/indexing-status`),
     ...mutationOptions,
   })
 }
@@ -136,7 +141,8 @@ export const useIndexingStatusBatch = (
 export const useProcessRule = (documentId?: string) => {
   return useQuery<ProcessRuleResponse>({
     queryKey: [NAME_SPACE, 'process-rule', documentId],
-    queryFn: () => get<ProcessRuleResponse>('/datasets/process-rule', { params: { document_id: documentId } }),
+    queryFn: () =>
+      get<ProcessRuleResponse>('/datasets/process-rule', { params: { document_id: documentId } }),
     enabled: !!documentId,
     refetchOnWindowFocus: false,
   })
@@ -152,14 +158,16 @@ export const useDatasetApiBaseUrl = () => {
 export const useEnableDatasetServiceApi = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'enable-api'],
-    mutationFn: (datasetId: string) => post<CommonResponse>(`/datasets/${datasetId}/api-keys/enable`),
+    mutationFn: (datasetId: string) =>
+      post<CommonResponse>(`/datasets/${datasetId}/api-keys/enable`),
   })
 }
 
 export const useDisableDatasetServiceApi = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'disable-api'],
-    mutationFn: (datasetId: string) => post<CommonResponse>(`/datasets/${datasetId}/api-keys/disable`),
+    mutationFn: (datasetId: string) =>
+      post<CommonResponse>(`/datasets/${datasetId}/api-keys/disable`),
   })
 }
 
@@ -180,22 +188,15 @@ export const useInvalidateDatasetApiKeys = () => {
   }
 }
 
-export const useExternalKnowledgeApiList = (options?: { enabled?: boolean }) => {
-  return useQuery<ExternalAPIListResponse>({
-    queryKey: [NAME_SPACE, 'external-knowledge-api'],
-    queryFn: () => get<ExternalAPIListResponse>('/datasets/external-knowledge-api'),
-    enabled: options?.enabled ?? true,
-  })
-}
-
 export const useDatasetTestingRecords = (
   datasetId?: string,
-  params?: { page: number, limit: number },
+  params?: { page: number; limit: number },
+  options?: { enabled?: boolean },
 ) => {
   return useQuery<HitTestingRecordsResponse>({
     queryKey: [NAME_SPACE, 'testing-records', datasetId, params],
     queryFn: () => get<HitTestingRecordsResponse>(`/datasets/${datasetId}/queries`, { params }),
-    enabled: !!datasetId && !!params,
+    enabled: !!datasetId && !!params && (options?.enabled ?? true),
     placeholderData: keepPreviousData,
   })
 }

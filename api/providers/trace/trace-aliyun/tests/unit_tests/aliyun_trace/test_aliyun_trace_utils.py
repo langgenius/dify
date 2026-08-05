@@ -1,8 +1,11 @@
+"""Unit tests for Aliyun trace utility transformations and database lookups."""
+
 import json
 from collections.abc import Mapping
 from typing import Any, cast
 from unittest.mock import MagicMock
 
+import pytest
 from dify_trace_aliyun.entities.semconv import (
     GEN_AI_FRAMEWORK,
     GEN_AI_SESSION_ID,
@@ -24,14 +27,16 @@ from dify_trace_aliyun.utils import (
     serialize_json_data,
 )
 from opentelemetry.trace import Link, StatusCode
+from sqlalchemy.orm import Session
 
 from core.rag.models.document import Document
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import WorkflowNodeExecutionStatus
 from models import EndUser
+from models.enums import EndUserType
 
 
-def test_get_user_id_from_message_data_no_end_user(monkeypatch):
+def test_get_user_id_from_message_data_no_end_user(monkeypatch: pytest.MonkeyPatch):
     message_data = MagicMock()
     message_data.from_account_id = "account_id"
     message_data.from_end_user_id = None
@@ -39,35 +44,40 @@ def test_get_user_id_from_message_data_no_end_user(monkeypatch):
     assert get_user_id_from_message_data(message_data) == "account_id"
 
 
-def test_get_user_id_from_message_data_with_end_user(monkeypatch):
+@pytest.mark.parametrize("sqlite3_session", [(EndUser,)], indirect=True)
+def test_get_user_id_from_message_data_with_end_user(monkeypatch: pytest.MonkeyPatch, sqlite3_session: Session) -> None:
     message_data = MagicMock()
     message_data.from_account_id = "account_id"
     message_data.from_end_user_id = "end_user_id"
 
-    end_user_data = MagicMock(spec=EndUser)
-    end_user_data.session_id = "session_id"
-
-    mock_session = MagicMock()
-    mock_session.get.return_value = end_user_data
+    end_user_data = EndUser(
+        id="end_user_id",
+        tenant_id="tenant_id",
+        app_id="app_id",
+        type=EndUserType.BROWSER,
+        session_id="session_id",
+    )
+    sqlite3_session.add(end_user_data)
+    sqlite3_session.commit()
 
     from dify_trace_aliyun.utils import db
 
-    monkeypatch.setattr(db, "session", mock_session)
+    monkeypatch.setattr(db, "session", sqlite3_session)
 
     assert get_user_id_from_message_data(message_data) == "session_id"
 
 
-def test_get_user_id_from_message_data_end_user_not_found(monkeypatch):
+@pytest.mark.parametrize("sqlite3_session", [(EndUser,)], indirect=True)
+def test_get_user_id_from_message_data_end_user_not_found(
+    monkeypatch: pytest.MonkeyPatch, sqlite3_session: Session
+) -> None:
     message_data = MagicMock()
     message_data.from_account_id = "account_id"
     message_data.from_end_user_id = "end_user_id"
 
-    mock_session = MagicMock()
-    mock_session.get.return_value = None
-
     from dify_trace_aliyun.utils import db
 
-    monkeypatch.setattr(db, "session", mock_session)
+    monkeypatch.setattr(db, "session", sqlite3_session)
 
     assert get_user_id_from_message_data(message_data) == "account_id"
 
@@ -111,7 +121,7 @@ def test_get_workflow_node_status():
     assert status.status_code == StatusCode.UNSET
 
 
-def test_create_links_from_trace_id(monkeypatch):
+def test_create_links_from_trace_id(monkeypatch: pytest.MonkeyPatch):
     # Mock create_link
     mock_link = MagicMock(spec=Link)
     import dify_trace_aliyun.data_exporter.traceclient

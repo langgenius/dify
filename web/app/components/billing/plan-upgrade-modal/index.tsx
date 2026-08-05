@@ -8,7 +8,7 @@ import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { useModalContext } from '@/context/modal-context'
 import { SquareChecklist } from '../../base/icons/src/vender/other'
 
-type Props = {
+type Props = Readonly<{
   Icon?: ComponentType<{ className?: string }>
   title: string
   description: string
@@ -16,7 +16,7 @@ type Props = {
   show: boolean
   onClose: () => void
   onUpgrade?: () => void
-}
+}>
 
 export function PlanUpgradeModal({
   Icon = SquareChecklist,
@@ -32,26 +32,22 @@ export function PlanUpgradeModal({
 
   const handleUpgrade = useCallback(() => {
     onClose()
-    if (onUpgrade)
-      onUpgrade()
-    else
-      setShowPricingModal()
+    if (onUpgrade) onUpgrade()
+    else setShowPricingModal()
   }, [onClose, onUpgrade, setShowPricingModal])
 
   return (
     <UpgradeModal
       open={show}
-      onOpenChange={open => !open && onClose()}
+      onOpenChange={(open) => !open && onClose()}
       Icon={Icon}
       title={title}
       description={description}
       extraInfo={extraInfo}
-      footer={(
+      footer={
         <>
-          <Button
-            onClick={onClose}
-          >
-            {t('triggerLimitModal.dismiss', { ns: 'billing' })}
+          <Button onClick={onClose}>
+            {t(($) => $['triggerLimitModal.dismiss'], { ns: 'billing' })}
           </Button>
           <UpgradeBtn
             size="custom"
@@ -62,7 +58,7 @@ export function PlanUpgradeModal({
             loc="trigger-events-limit-modal"
           />
         </>
-      )}
+      }
     />
   )
 }

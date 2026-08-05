@@ -12,6 +12,7 @@ from libs.broadcast_channel.redis.streams_channel import (
     StreamsTopic,
     _StreamsSubscription,
 )
+from libs.broadcast_channel.signals import SIG_CLOSE
 
 
 class FakeStreamsRedis:
@@ -77,11 +78,28 @@ class FailExpireRedis(FakeStreamsRedis):
 
 
 class BlockingRedis:
+    """A Redis mock whose xread blocks until a control event is xadd-ed."""
+
     def __init__(self) -> None:
         self._release = threading.Event()
+        self._store: dict[str, list[tuple[str, dict]]] = {}
+        self._next_id: dict[str, int] = {}
+
+    def xadd(self, key: str, fields: dict[str, Any], *, maxlen: int | None = None) -> str:
+        n = self._next_id.get(key, 0) + 1
+        self._next_id[key] = n
+        entry_id = f"{n}-0"
+        self._store.setdefault(key, []).append((entry_id, fields))
+        self._release.set()  # Wake up any blocked xread
+        return entry_id
 
     def xread(self, streams: dict[str, Any], block: int | None = None, count: int | None = None):
         self._release.wait(timeout=block / 1000.0 if block else None)
+        key = next(iter(streams))
+        entries = self._store.get(key, [])
+        if entries:
+            self._store[key] = []  # Consume entries
+            return [(key, entries)]
         return []
 
     def release(self) -> None:
@@ -265,6 +283,34 @@ class TestStreamsSubscription:
 
         assert received == case.expected_messages
 
+    def test_listener_ignores_close_signal_from_another_subscription(self):
+        class OneShotRedis:
+            def __init__(self) -> None:
+                self._calls = 0
+
+            def xread(self, streams: dict[str, Any], block: int | None = None, count: int | None = None):
+                self._calls += 1
+                if self._calls == 1:
+                    key = next(iter(streams))
+                    return [
+                        (
+                            key,
+                            [
+                                ("1-0", {b"data": SIG_CLOSE}),
+                                ("2-0", {b"data": b"next-event"}),
+                            ],
+                        )
+                    ]
+                subscription._closed = True
+                return []
+
+        subscription = _StreamsSubscription(OneShotRedis(), "stream:close-signal")
+        subscription._listen()
+
+        assert subscription._queue.get_nowait() == b"next-event"
+        assert subscription._queue.get_nowait() is subscription._SENTINEL
+        assert subscription._queue.empty()
+
     def test_iterator_yields_messages_until_subscription_is_closed(self, streams_channel: StreamsBroadcastChannel):
         topic = streams_channel.topic("iter")
         subscription = topic.subscribe()
@@ -342,31 +388,32 @@ class TestStreamsSubscription:
 
         assert next(iter(subscription)) == b"event"
 
-    def test_close_logs_warning_when_listener_does_not_stop_in_time(
-        self,
-        caplog: pytest.LogCaptureFixture,
-    ):
+    def test_control_event_unblocks_listener_for_prompt_close(self):
+        """close() returns promptly because the control event (xadd) unblocks
+        the listener from its blocking xread call.
+        """
         blocking_redis = BlockingRedis()
-        subscription = _StreamsSubscription(blocking_redis, "stream:slow-close")
+        subscription = _StreamsSubscription(blocking_redis, "stream:prompt-close")
 
+        # Drive listener startup so the thread is blocked in xread.
         subscription._start_if_needed()
         listener = subscription._listener
         assert listener is not None
+        assert listener.is_alive()
 
-        original_join = listener.join
-        original_is_alive = listener.is_alive
+        started = time.monotonic()
+        subscription.close()
+        elapsed = time.monotonic() - started
 
-        def delayed_join(timeout: float | None = None) -> None:
-            original_join(0.01)
+        # The control event (xadd) wakes up xread immediately, so close()
+        # should return well under 1s (the xread BLOCK timeout).
+        assert elapsed < 0.5, f"close() took {elapsed:.3f}s; expected prompt return via control event"
 
-        listener.join = delayed_join  # type: ignore[method-assign]
-        listener.is_alive = lambda: True  # type: ignore[method-assign]
+    def test_control_event_not_sent_when_listener_not_started(self):
+        """close() should not fail when the listener was never started."""
+        subscription = _StreamsSubscription(FakeStreamsRedis(), "stream:no-listener")
+        subscription.close()
 
-        try:
-            subscription.close()
-            assert "did not stop within timeout" in caplog.text
-        finally:
-            listener.join = original_join  # type: ignore[method-assign]
-            listener.is_alive = original_is_alive  # type: ignore[method-assign]
-            blocking_redis.release()
-            original_join(timeout=1)
+        assert subscription._listener is None
+        with pytest.raises(SubscriptionClosedError):
+            subscription.receive(timeout=0.01)

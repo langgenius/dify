@@ -3,38 +3,36 @@ import type { ModelAndParameter } from '../configuration/debug/types'
 import type { AppPublisherProps } from './index'
 import type { PublishWorkflowParams } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@langgenius/dify-ui/tooltip'
+import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import { CodeBrowser } from '@/app/components/base/icons/src/vender/line/development'
 import Loading from '@/app/components/base/loading'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import WorkflowToolConfigureButton from '@/app/components/tools/workflow-tool/configure-button'
-import { appDefaultIconBackground } from '@/config'
 import { AppModeEnum } from '@/types/app'
-import ShortcutsName from '../../workflow/shortcuts-name'
+import { APP_PUBLISH_HOTKEY } from './hotkeys'
 import PublishWithMultipleModel from './publish-with-multiple-model'
 import SuggestedAction from './suggested-action'
 import { ACCESS_MODE_MAP } from './utils'
 
-type SummarySectionProps = Pick<AppPublisherProps, | 'debugWithMultipleModel'
+type SummarySectionProps = Pick<
+  AppPublisherProps,
+  | 'debugWithMultipleModel'
   | 'draftUpdatedAt'
   | 'multipleModelConfigs'
   | 'publishDisabled'
   | 'publishedAt'
-  | 'startNodeLimitExceeded'> & {
-    formatTimeFromNow: (value: number) => string
-    handlePublish: (params?: ModelAndParameter | PublishWorkflowParams) => Promise<void>
-    handleRestore: () => Promise<void>
-    isChatApp: boolean
-    published: boolean
-    publishShortcut: string[]
-    upgradeHighlightStyle: CSSProperties
-  }
+  | 'startNodeLimitExceeded'
+> & {
+  formatTimeFromNow: (value: number) => string
+  handlePublish: (params?: ModelAndParameter | PublishWorkflowParams) => Promise<void>
+  handleRestore: () => Promise<void>
+  isChatApp: boolean
+  published: boolean
+  upgradeHighlightStyle: CSSProperties
+}
 
 type AccessSectionProps = {
   enabled: boolean
@@ -44,47 +42,57 @@ type AccessSectionProps = {
   onClick: () => void
 }
 
-type ActionsSectionProps = Pick<AppPublisherProps, | 'hasHumanInputNode'
+type ActionsSectionProps = Pick<
+  AppPublisherProps,
+  | 'hasHumanInputNode'
   | 'hasTriggerNode'
-  | 'inputs'
   | 'missingStartNode'
-  | 'onRefreshData'
   | 'toolPublished'
-  | 'outputs'
   | 'publishedAt'
-  | 'workflowToolAvailable'> & {
-    appDetail: {
-      id?: string
-      icon?: string
-      icon_type?: string | null
-      icon_background?: string | null
-      description?: string
-      mode?: AppModeEnum
-      name?: string
-    } | null | undefined
-    appURL: string
-    disabledFunctionButton: boolean
-    disabledFunctionTooltip?: string
-    handleEmbed: () => void
-    handleOpenInExplore: () => void
-    handlePublish: (params?: ModelAndParameter | PublishWorkflowParams) => Promise<void>
-    published: boolean
-    workflowToolMessage?: string
-  }
+  | 'workflowToolAvailable'
+> & {
+  appDetail:
+    | {
+        id?: string
+        icon?: string
+        icon_type?: string | null
+        icon_background?: string | null
+        description?: string
+        mode?: AppModeEnum
+        name?: string
+      }
+    | null
+    | undefined
+  appURL: string
+  disabledFunctionButton: boolean
+  disabledFunctionTooltip?: string
+  handleEmbed: () => void
+  handleOpenInExplore: () => void
+  handleOpenRunConfig?: (url: string) => void
+  handlePublish: (params?: ModelAndParameter | PublishWorkflowParams) => Promise<void>
+  published: boolean
+  showBatchRunConfig?: boolean
+  showRunConfig?: boolean
+  workflowToolIsLoading: boolean
+  workflowToolOutdated: boolean
+  workflowToolMessage?: string
+  onConfigureWorkflowTool: () => void
+}
 
 export const AccessModeDisplay = ({ mode }: { mode?: keyof typeof ACCESS_MODE_MAP }) => {
   const { t } = useTranslation()
 
-  if (!mode || !ACCESS_MODE_MAP[mode])
-    return null
+  if (!mode || !ACCESS_MODE_MAP[mode]) return null
 
   const { icon, label } = ACCESS_MODE_MAP[mode]
 
   return (
     <>
-      <span className={`${icon} h-4 w-4 shrink-0 text-text-secondary`} />
+      <span className={`${icon} size-4 shrink-0 text-text-secondary`} />
       <div className="grow truncate">
-        <span className="system-sm-medium text-text-secondary">{t(`accessControlDialog.accessItems.${label}`, { ns: 'app' })}</span>
+        <span className="system-sm-medium text-text-secondary">
+          {t(($) => $[`accessControlDialog.accessItems.${label}`], { ns: 'app' })}
+        </span>
       </div>
     </>
   )
@@ -101,7 +109,6 @@ export const PublisherSummarySection = ({
   publishDisabled = false,
   published,
   publishedAt,
-  publishShortcut,
   startNodeLimitExceeded = false,
   upgradeHighlightStyle,
 }: SummarySectionProps) => {
@@ -110,80 +117,78 @@ export const PublisherSummarySection = ({
   return (
     <div className="p-4 pt-3">
       <div className="flex h-6 items-center system-xs-medium-uppercase text-text-tertiary">
-        {publishedAt ? t('common.latestPublished', { ns: 'workflow' }) : t('common.currentDraftUnpublished', { ns: 'workflow' })}
+        {publishedAt
+          ? t(($) => $['common.latestPublished'], { ns: 'workflow' })
+          : t(($) => $['common.currentDraftUnpublished'], { ns: 'workflow' })}
       </div>
-      {publishedAt
-        ? (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center system-sm-medium text-text-secondary">
-                {t('common.publishedAt', { ns: 'workflow' })}
-                {' '}
-                {formatTimeFromNow(publishedAt)}
+      {publishedAt ? (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center system-sm-medium text-text-secondary">
+            {t(($) => $['common.publishedAt'], { ns: 'workflow' })} {formatTimeFromNow(publishedAt)}
+          </div>
+          {isChatApp && (
+            <Button
+              variant="secondary-accent"
+              size="small"
+              onClick={handleRestore}
+              disabled={published}
+            >
+              {t(($) => $['common.restore'], { ns: 'workflow' })}
+            </Button>
+          )}
+        </div>
+      ) : (
+        <div className="flex items-center system-sm-medium text-text-secondary">
+          {t(($) => $['common.autoSaved'], { ns: 'workflow' })} ·
+          {Boolean(draftUpdatedAt) && formatTimeFromNow(draftUpdatedAt!)}
+        </div>
+      )}
+      {debugWithMultipleModel ? (
+        <PublishWithMultipleModel
+          multipleModelConfigs={multipleModelConfigs}
+          onSelect={(item) => handlePublish(item)}
+        />
+      ) : (
+        <>
+          <Button
+            variant="primary"
+            className="mt-3 w-full"
+            onClick={() => handlePublish()}
+            disabled={publishDisabled || published}
+          >
+            {published ? (
+              t(($) => $['common.published'], { ns: 'workflow' })
+            ) : (
+              <div className="flex gap-1">
+                <span>{t(($) => $['common.publishUpdate'], { ns: 'workflow' })}</span>
+                <KbdGroup>
+                  {APP_PUBLISH_HOTKEY.split('+').map((key) => (
+                    <Kbd key={key} color="white">
+                      {formatForDisplay(key)}
+                    </Kbd>
+                  ))}
+                </KbdGroup>
               </div>
-              {isChatApp && (
-                <Button
-                  variant="secondary-accent"
-                  size="small"
-                  onClick={handleRestore}
-                  disabled={published}
-                >
-                  {t('common.restore', { ns: 'workflow' })}
-                </Button>
-              )}
-            </div>
-          )
-        : (
-            <div className="flex items-center system-sm-medium text-text-secondary">
-              {t('common.autoSaved', { ns: 'workflow' })}
-              {' '}
-              ·
-              {Boolean(draftUpdatedAt) && formatTimeFromNow(draftUpdatedAt!)}
+            )}
+          </Button>
+          {startNodeLimitExceeded && (
+            <div className="mt-3 flex flex-col items-stretch">
+              <p className="text-sm/5 font-semibold text-transparent" style={upgradeHighlightStyle}>
+                <span className="block">
+                  {t(($) => $['publishLimit.startNodeTitlePrefix'], { ns: 'workflow' })}
+                </span>
+                <span className="block">
+                  {t(($) => $['publishLimit.startNodeTitleSuffix'], { ns: 'workflow' })}
+                </span>
+              </p>
+              <p className="mt-1 text-xs/4 text-text-secondary">
+                {t(($) => $['publishLimit.startNodeDesc'], { ns: 'workflow' })}
+              </p>
+              <UpgradeBtn isShort className="mt-2.25 mb-3 h-8 w-23.25 self-start" />
             </div>
           )}
-      {debugWithMultipleModel
-        ? (
-            <PublishWithMultipleModel
-              multipleModelConfigs={multipleModelConfigs}
-              onSelect={item => handlePublish(item)}
-            />
-          )
-        : (
-            <>
-              <Button
-                variant="primary"
-                className="mt-3 w-full"
-                onClick={() => handlePublish()}
-                disabled={publishDisabled || published}
-              >
-                {published
-                  ? t('common.published', { ns: 'workflow' })
-                  : (
-                      <div className="flex gap-1">
-                        <span>{t('common.publishUpdate', { ns: 'workflow' })}</span>
-                        <ShortcutsName keys={publishShortcut} bgColor="white" />
-                      </div>
-                    )}
-              </Button>
-              {startNodeLimitExceeded && (
-                <div className="mt-3 flex flex-col items-stretch">
-                  <p
-                    className="text-sm leading-5 font-semibold text-transparent"
-                    style={upgradeHighlightStyle}
-                  >
-                    <span className="block">{t('publishLimit.startNodeTitlePrefix', { ns: 'workflow' })}</span>
-                    <span className="block">{t('publishLimit.startNodeTitleSuffix', { ns: 'workflow' })}</span>
-                  </p>
-                  <p className="mt-1 text-xs leading-4 text-text-secondary">
-                    {t('publishLimit.startNodeDesc', { ns: 'workflow' })}
-                  </p>
-                  <UpgradeBtn
-                    isShort
-                    className="mt-[9px] mb-[12px] h-[32px] w-[93px] self-start"
-                  />
-                </div>
-              )}
-            </>
-          )}
+        </>
+      )}
     </div>
   )
 }
@@ -198,7 +203,11 @@ export const PublisherAccessSection = ({
   const { t } = useTranslation()
 
   if (isLoading)
-    return <div className="py-2"><Loading /></div>
+    return (
+      <div className="py-2">
+        <Loading />
+      </div>
+    )
 
   return (
     <>
@@ -206,7 +215,9 @@ export const PublisherAccessSection = ({
       {enabled && (
         <div className="p-4 pt-3">
           <div className="flex h-6 items-center">
-            <p className="system-xs-medium text-text-tertiary">{t('publishApp.title', { ns: 'app' })}</p>
+            <p className="system-xs-medium text-text-tertiary">
+              {t(($) => $['publishApp.title'], { ns: 'app' })}
+            </p>
           </div>
           <div
             className="flex h-8 cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal py-1 pr-2 pl-2.5 hover:bg-primary-50 hover:text-text-accent"
@@ -215,12 +226,20 @@ export const PublisherAccessSection = ({
             <div className="flex grow items-center gap-x-1.5 overflow-hidden pr-1">
               <AccessModeDisplay mode={accessMode} />
             </div>
-            {!isAppAccessSet && <p className="shrink-0 system-xs-regular text-text-tertiary">{t('publishApp.notSet', { ns: 'app' })}</p>}
-            <div className="flex h-4 w-4 shrink-0 items-center justify-center">
-              <span className="i-ri-arrow-right-s-line h-4 w-4 text-text-quaternary" />
+            {!isAppAccessSet && (
+              <p className="shrink-0 system-xs-regular text-text-tertiary">
+                {t(($) => $['publishApp.notSet'], { ns: 'app' })}
+              </p>
+            )}
+            <div className="flex size-4 shrink-0 items-center justify-center">
+              <span className="i-ri-arrow-right-s-line size-4 text-text-quaternary" />
             </div>
           </div>
-          {!isAppAccessSet && <p className="mt-1 system-xs-regular text-text-warning">{t('publishApp.notSetDesc', { ns: 'app' })}</p>}
+          {!isAppAccessSet && (
+            <p className="mt-1 system-xs-regular text-text-warning">
+              {t(($) => $['publishApp.notSetDesc'], { ns: 'app' })}
+            </p>
+          )}
         </div>
       )}
     </>
@@ -236,15 +255,12 @@ const ActionTooltip = ({
   tooltip?: ReactNode
   children: ReactNode
 }) => {
-  if (!disabled || !tooltip)
-    return <>{children}</>
+  if (!disabled || !tooltip) return <>{children}</>
 
   return (
     <Tooltip>
       <TooltipTrigger render={<div className="flex">{children}</div>} />
-      <TooltipContent>
-        {tooltip}
-      </TooltipContent>
+      <TooltipContent>{tooltip}</TooltipContent>
     </Tooltip>
   )
 }
@@ -256,23 +272,23 @@ export const PublisherActionsSection = ({
   disabledFunctionTooltip,
   handleEmbed,
   handleOpenInExplore,
-  handlePublish,
+  handleOpenRunConfig,
   hasHumanInputNode = false,
   hasTriggerNode = false,
-  inputs,
   missingStartNode = false,
-  onRefreshData,
-  outputs,
-  published,
   publishedAt,
+  showBatchRunConfig = false,
+  showRunConfig = false,
   toolPublished,
   workflowToolAvailable = true,
+  workflowToolIsLoading,
+  workflowToolOutdated,
   workflowToolMessage,
+  onConfigureWorkflowTool,
 }: ActionsSectionProps) => {
   const { t } = useTranslation()
 
-  if (hasTriggerNode)
-    return null
+  if (hasTriggerNode) return null
 
   const workflowToolDisabled = !publishedAt || !workflowToolAvailable
 
@@ -283,75 +299,88 @@ export const PublisherActionsSection = ({
           className="flex-1"
           disabled={disabledFunctionButton}
           link={appURL}
-          icon={<span className="i-ri-play-circle-line h-4 w-4" />}
+          icon={<span className="i-ri-play-circle-line size-4" />}
+          actionButton={
+            showRunConfig
+              ? {
+                  ariaLabel: t(($) => $['operation.config'], { ns: 'common' }),
+                  icon: <span className="i-ri-settings-2-line size-4" />,
+                  onClick: () => handleOpenRunConfig?.(appURL),
+                }
+              : undefined
+          }
         >
-          {t('common.runApp', { ns: 'workflow' })}
+          {t(($) => $['common.runApp'], { ns: 'workflow' })}
         </SuggestedAction>
       </ActionTooltip>
-      {appDetail?.mode === AppModeEnum.WORKFLOW || appDetail?.mode === AppModeEnum.COMPLETION
-        ? (
-            <ActionTooltip disabled={disabledFunctionButton} tooltip={disabledFunctionTooltip}>
-              <SuggestedAction
-                className="flex-1"
-                disabled={disabledFunctionButton}
-                link={`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`}
-                icon={<span className="i-ri-play-list-2-line h-4 w-4" />}
-              >
-                {t('common.batchRunApp', { ns: 'workflow' })}
-              </SuggestedAction>
-            </ActionTooltip>
-          )
-        : (
-            <SuggestedAction
-              onClick={handleEmbed}
-              disabled={!publishedAt}
-              icon={<CodeBrowser className="h-4 w-4" />}
-            >
-              {t('common.embedIntoSite', { ns: 'workflow' })}
-            </SuggestedAction>
-          )}
+      {appDetail?.mode === AppModeEnum.WORKFLOW || appDetail?.mode === AppModeEnum.COMPLETION ? (
+        <ActionTooltip disabled={disabledFunctionButton} tooltip={disabledFunctionTooltip}>
+          <SuggestedAction
+            className="flex-1"
+            disabled={disabledFunctionButton}
+            link={`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`}
+            icon={<span className="i-ri-play-list-2-line size-4" />}
+            actionButton={
+              showBatchRunConfig
+                ? {
+                    ariaLabel: t(($) => $['operation.config'], { ns: 'common' }),
+                    icon: <span className="i-ri-settings-2-line size-4" />,
+                    onClick: () =>
+                      handleOpenRunConfig?.(
+                        `${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`,
+                      ),
+                  }
+                : undefined
+            }
+          >
+            {t(($) => $['common.batchRunApp'], { ns: 'workflow' })}
+          </SuggestedAction>
+        </ActionTooltip>
+      ) : (
+        <SuggestedAction
+          onClick={handleEmbed}
+          disabled={!publishedAt}
+          icon={<span className="i-custom-vender-line-development-code-browser size-4" />}
+        >
+          {t(($) => $['common.embedIntoSite'], { ns: 'workflow' })}
+        </SuggestedAction>
+      )}
       <ActionTooltip disabled={disabledFunctionButton} tooltip={disabledFunctionTooltip}>
         <SuggestedAction
           className="flex-1"
           onClick={() => {
-            if (publishedAt)
-              handleOpenInExplore()
+            if (publishedAt) handleOpenInExplore()
           }}
           disabled={disabledFunctionButton}
-          icon={<span className="i-ri-planet-line h-4 w-4" />}
+          icon={<span className="i-ri-planet-line size-4" />}
         >
-          {t('common.openInExplore', { ns: 'workflow' })}
+          {t(($) => $['common.openInExplore'], { ns: 'workflow' })}
         </SuggestedAction>
       </ActionTooltip>
       <ActionTooltip
         disabled={!publishedAt || missingStartNode}
-        tooltip={!publishedAt ? t('notPublishedYet', { ns: 'app' }) : t('noUserInputNode', { ns: 'app' })}
+        tooltip={
+          !publishedAt
+            ? t(($) => $.notPublishedYet, { ns: 'app' })
+            : t(($) => $.noUserInputNode, { ns: 'app' })
+        }
       >
         <SuggestedAction
           className="flex-1"
           disabled={!publishedAt || missingStartNode}
           link="./develop"
-          icon={<span className="i-ri-terminal-box-line h-4 w-4" />}
+          icon={<span className="i-ri-terminal-box-line size-4" />}
         >
-          {t('common.accessAPIReference', { ns: 'workflow' })}
+          {t(($) => $['common.accessAPIReference'], { ns: 'workflow' })}
         </SuggestedAction>
       </ActionTooltip>
       {appDetail?.mode === AppModeEnum.WORKFLOW && !hasHumanInputNode && (
         <WorkflowToolConfigureButton
           disabled={workflowToolDisabled}
           published={!!toolPublished}
-          detailNeedUpdate={!!toolPublished && published}
-          workflowAppId={appDetail?.id ?? ''}
-          icon={{
-            content: (appDetail.icon_type === 'image' ? '🤖' : appDetail?.icon) || '🤖',
-            background: (appDetail.icon_type === 'image' ? appDefaultIconBackground : appDetail?.icon_background) || appDefaultIconBackground,
-          }}
-          name={appDetail?.name ?? ''}
-          description={appDetail?.description ?? ''}
-          inputs={inputs}
-          outputs={outputs}
-          handlePublish={handlePublish}
-          onRefreshData={onRefreshData}
+          isLoading={workflowToolIsLoading}
+          outdated={workflowToolOutdated}
+          onConfigure={onConfigureWorkflowTool}
           disabledReason={workflowToolMessage}
         />
       )}

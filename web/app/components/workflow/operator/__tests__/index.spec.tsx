@@ -1,4 +1,4 @@
-import { act, screen } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import { createNode } from '../../__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../types'
@@ -7,13 +7,20 @@ import Operator from '../index'
 const mockEmit = vi.fn()
 const mockDeleteAllInspectorVars = vi.fn()
 
-vi.mock('../../hooks', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../hooks')>()
+vi.mock('../../hooks/use-nodes-sync-draft', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks/use-nodes-sync-draft')>()
   return {
     ...actual,
     useNodesSyncDraft: () => ({
       handleSyncWorkflowDraft: vi.fn(),
     }),
+  }
+})
+
+vi.mock('../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks/use-workflow')>()
+  return {
+    ...actual,
     useWorkflowReadOnly: () => ({
       workflowReadOnly: false,
       getWorkflowReadOnly: () => false,
@@ -62,25 +69,24 @@ class MockResizeObserver {
 }
 
 const renderOperator = (initialStoreState: Record<string, unknown> = {}) => {
-  return renderWorkflowFlowComponent(
-    <Operator handleUndo={vi.fn()} handleRedo={vi.fn()} />,
-    {
-      nodes: [createNode({
+  return renderWorkflowFlowComponent(<Operator handleUndo={vi.fn()} handleRedo={vi.fn()} />, {
+    nodes: [
+      createNode({
         id: 'node-1',
         data: {
           type: BlockEnum.Code,
           title: 'Code',
           desc: '',
         },
-      })],
+      }),
+    ],
+    edges: [],
+    initialStoreState,
+    historyStore: {
+      nodes: [],
       edges: [],
-      initialStoreState,
-      historyStore: {
-        nodes: [],
-        edges: [],
-      },
     },
-  )
+  })
 }
 
 describe('Operator', () => {
@@ -110,7 +116,7 @@ describe('Operator', () => {
     expect(container.querySelector('div[style*="width: auto"]')).toBeInTheDocument()
   })
 
-  it('should sync the observed panel size back into the workflow store and disconnect on unmount', () => {
+  it('should sync the observed panel size back into the workflow store and disconnect on unmount', async () => {
     const { store, unmount } = renderOperator({
       workflowCanvasWidth: 900,
       rightPanelWidth: 260,
@@ -119,15 +125,20 @@ describe('Operator', () => {
     expect(observeSpy).toHaveBeenCalled()
 
     act(() => {
-      resizeObserverCallback?.([
-        {
-          borderBoxSize: [{ inlineSize: 512, blockSize: 188 }],
-        } as unknown as ResizeObserverEntry,
-      ], {} as ResizeObserver)
+      resizeObserverCallback?.(
+        [
+          {
+            borderBoxSize: [{ inlineSize: 512, blockSize: 188 }],
+          } as unknown as ResizeObserverEntry,
+        ],
+        {} as ResizeObserver,
+      )
     })
 
-    expect(store.getState().bottomPanelWidth).toBe(512)
-    expect(store.getState().bottomPanelHeight).toBe(188)
+    await waitFor(() => {
+      expect(store.getState().bottomPanelWidth).toBe(512)
+      expect(store.getState().bottomPanelHeight).toBe(188)
+    })
 
     unmount()
 

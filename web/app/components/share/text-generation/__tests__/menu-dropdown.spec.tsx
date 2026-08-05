@@ -13,12 +13,13 @@ vi.mock('../info-modal', () => ({
     onClose: () => void
     data?: SiteInfo
   }) => {
-    if (!isShow)
-      return null
+    if (!isShow) return null
     return (
       <div data-testid="info-modal">
         <span>{data?.title}</span>
-        <button type="button" onClick={onClose}>Close Info</button>
+        <button type="button" onClick={onClose}>
+          Close Info
+        </button>
       </div>
     )
   },
@@ -233,25 +234,6 @@ describe('MenuDropdown', () => {
     })
   })
 
-  describe('forceClose prop', () => {
-    it('should close dropdown when forceClose changes to true', async () => {
-      const { rerender } = render(<MenuDropdown data={baseSiteInfo} forceClose={false} />)
-
-      const triggerButton = screen.getByRole('button')
-      fireEvent.click(triggerButton)
-
-      await waitFor(() => {
-        expect(screen.getByText('common.theme.theme')).toBeInTheDocument()
-      })
-
-      rerender(<MenuDropdown data={baseSiteInfo} forceClose={true} />)
-
-      await waitFor(() => {
-        expect(screen.queryByText('common.theme.theme')).not.toBeInTheDocument()
-      })
-    })
-  })
-
   describe('placement prop', () => {
     it('should accept custom placement', () => {
       render(<MenuDropdown data={baseSiteInfo} placement="top-start" />)
@@ -276,12 +258,6 @@ describe('MenuDropdown', () => {
       await waitFor(() => {
         expect(screen.queryByText('common.theme.theme')).not.toBeInTheDocument()
       })
-    })
-  })
-
-  describe('memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      expect((MenuDropdown as unknown as { $$typeof: symbol }).$$typeof).toBe(Symbol.for('react.memo'))
     })
   })
 })

@@ -1,25 +1,53 @@
-/* eslint-disable ts/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import type { ReactNode } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { AccessMode } from '@/models/access-control'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
-import { AccessModeDisplay, PublisherAccessSection, PublisherActionsSection, PublisherSummarySection } from '../sections'
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
+import {
+  AccessModeDisplay,
+  PublisherAccessSection,
+  PublisherActionsSection,
+  PublisherSummarySection,
+} from '../sections'
 
 vi.mock('../publish-with-multiple-model', () => ({
   default: ({ onSelect }: { onSelect: (item: Record<string, unknown>) => void }) => (
-    <button type="button" onClick={() => onSelect({ model: 'gpt-4o' })}>publish-multiple-model</button>
+    <button type="button" onClick={() => onSelect({ model: 'gpt-4o' })}>
+      publish-multiple-model
+    </button>
   ),
 }))
 
 vi.mock('../suggested-action', () => ({
-  default: ({ children, onClick, link, disabled }: { children: ReactNode, onClick?: () => void, link?: string, disabled?: boolean }) => (
-    <button type="button" data-link={link} disabled={disabled} onClick={onClick}>{children}</button>
+  default: ({
+    children,
+    onClick,
+    link,
+    disabled,
+    actionButton,
+  }: {
+    children: ReactNode
+    onClick?: () => void
+    link?: string
+    disabled?: boolean
+    actionButton?: { ariaLabel: string; onClick: () => void }
+  }) => (
+    <div>
+      <button type="button" data-link={link} disabled={disabled} onClick={onClick}>
+        {children}
+      </button>
+      {actionButton && (
+        <button
+          type="button"
+          aria-label={actionButton.ariaLabel}
+          disabled={disabled}
+          onClick={actionButton.onClick}
+        >
+          {actionButton.ariaLabel}
+        </button>
+      )}
+    </div>
   ),
 }))
 
@@ -48,13 +76,12 @@ describe('app-publisher sections', () => {
         publishDisabled={false}
         published={false}
         publishedAt={Date.now()}
-        publishShortcut={['ctrl', '⇧', 'P']}
         startNodeLimitExceeded={false}
         upgradeHighlightStyle={{}}
       />,
     )
 
-    fireEvent.click(screen.getByText('common.restore'))
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.restore(?=$|:)/))
     expect(handleRestore).toHaveBeenCalled()
   })
 
@@ -69,8 +96,8 @@ describe('app-publisher sections', () => {
       />,
     )
 
-    expect(screen.getByText('publishApp.notSet')).toBeInTheDocument()
-    expect(screen.getByText('publishApp.notSetDesc')).toBeInTheDocument()
+    expect(screen.getByText(/(?:^|\.)publishApp\.notSet(?=$|:)/)).toBeInTheDocument()
+    expect(screen.getByText(/(?:^|\.)publishApp\.notSetDesc(?=$|:)/)).toBeInTheDocument()
   })
 
   it('should render the publish update action when the draft has not been published yet', () => {
@@ -86,13 +113,12 @@ describe('app-publisher sections', () => {
         publishDisabled={false}
         published={false}
         publishedAt={undefined}
-        publishShortcut={['ctrl', '⇧', 'P']}
         startNodeLimitExceeded={false}
         upgradeHighlightStyle={{}}
       />,
     )
 
-    expect(screen.getByText('common.publishUpdate')).toBeInTheDocument()
+    expect(screen.getByText(/(?:^|\.)common\.publishUpdate(?=$|:)/)).toBeInTheDocument()
   })
 
   it('should render multiple-model publishing', () => {
@@ -110,7 +136,6 @@ describe('app-publisher sections', () => {
         publishDisabled={false}
         published={false}
         publishedAt={undefined}
-        publishShortcut={['ctrl', '⇧', 'P']}
         startNodeLimitExceeded={false}
         upgradeHighlightStyle={{}}
       />,
@@ -134,13 +159,12 @@ describe('app-publisher sections', () => {
         publishDisabled={false}
         published={false}
         publishedAt={undefined}
-        publishShortcut={['ctrl', '⇧', 'P']}
         startNodeLimitExceeded
         upgradeHighlightStyle={{}}
       />,
     )
 
-    expect(screen.getByText('publishLimit.startNodeDesc')).toBeInTheDocument()
+    expect(screen.getByText(/(?:^|\.)publishLimit\.startNodeDesc(?=$|:)/)).toBeInTheDocument()
   })
 
   it('should render loading access state and access mode labels when enabled', () => {
@@ -166,13 +190,33 @@ describe('app-publisher sections', () => {
       />,
     )
 
-    expect(screen.getByText('accessControlDialog.accessItems.anyone')).toBeInTheDocument()
+    expect(
+      screen.getByText(/(?:^|\.)accessControlDialog\.accessItems\.anyone(?=$|:)/),
+    ).toBeInTheDocument()
     expect(render(<AccessModeDisplay />).container).toBeEmptyDOMElement()
+  })
+
+  it('should hide access control content when enabled is false', () => {
+    render(
+      <PublisherAccessSection
+        enabled={false}
+        isAppAccessSet
+        isLoading={false}
+        accessMode={AccessMode.PUBLIC}
+        onClick={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByText(/(?:^|\.)publishApp\.title(?=$|:)/)).not.toBeInTheDocument()
+    expect(
+      screen.queryByText(/(?:^|\.)accessControlDialog\.accessItems\.anyone(?=$|:)/),
+    ).not.toBeInTheDocument()
   })
 
   it('should render workflow actions, batch run links, and workflow tool configuration', () => {
     const handleOpenInExplore = vi.fn()
     const handleEmbed = vi.fn()
+    const handleOpenRunConfig = vi.fn()
 
     const { rerender } = render(
       <PublisherActionsSection
@@ -190,23 +234,33 @@ describe('app-publisher sections', () => {
         disabledFunctionTooltip="disabled"
         handleEmbed={handleEmbed}
         handleOpenInExplore={handleOpenInExplore}
+        handleOpenRunConfig={handleOpenRunConfig}
         handlePublish={vi.fn()}
         hasHumanInputNode={false}
         hasTriggerNode={false}
-        inputs={[]}
         missingStartNode={false}
-        onRefreshData={vi.fn()}
-        outputs={[]}
-        published={true}
+        published={false}
         publishedAt={Date.now()}
+        showBatchRunConfig
+        showRunConfig
         toolPublished
         workflowToolAvailable={false}
+        workflowToolIsLoading={false}
+        workflowToolOutdated={false}
         workflowToolMessage="workflow-disabled"
+        onConfigureWorkflowTool={vi.fn()}
       />,
     )
 
-    expect(screen.getByText('common.batchRunApp')).toHaveAttribute('data-link', 'https://example.com/app?mode=batch')
-    fireEvent.click(screen.getByText('common.openInExplore'))
+    expect(screen.getByText(/(?:^|\.)common\.batchRunApp(?=$|:)/)).toHaveAttribute(
+      'data-link',
+      'https://example.com/app?mode=batch',
+    )
+    fireEvent.click(screen.getAllByRole('button', { name: /(?:^|\.)operation\.config(?=$|:)/ })[0]!)
+    expect(handleOpenRunConfig).toHaveBeenCalledWith('https://example.com/app')
+    fireEvent.click(screen.getAllByRole('button', { name: /(?:^|\.)operation\.config(?=$|:)/ })[1]!)
+    expect(handleOpenRunConfig).toHaveBeenCalledWith('https://example.com/app?mode=batch')
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.openInExplore(?=$|:)/))
     expect(handleOpenInExplore).toHaveBeenCalled()
     expect(screen.getByText('workflow-tool-configure')).toBeInTheDocument()
     expect(screen.getByText('workflow-disabled')).toBeInTheDocument()
@@ -223,23 +277,24 @@ describe('app-publisher sections', () => {
         disabledFunctionTooltip="disabled"
         handleEmbed={handleEmbed}
         handleOpenInExplore={handleOpenInExplore}
+        handleOpenRunConfig={handleOpenRunConfig}
         handlePublish={vi.fn()}
         hasHumanInputNode={false}
         hasTriggerNode={false}
-        inputs={[]}
         missingStartNode
-        onRefreshData={vi.fn()}
-        outputs={[]}
         published={false}
         publishedAt={Date.now()}
         toolPublished={false}
         workflowToolAvailable
+        workflowToolIsLoading={false}
+        workflowToolOutdated={false}
+        onConfigureWorkflowTool={vi.fn()}
       />,
     )
 
-    fireEvent.click(screen.getByText('common.embedIntoSite'))
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.embedIntoSite(?=$|:)/))
     expect(handleEmbed).toHaveBeenCalled()
-    expect(screen.getByText('common.accessAPIReference')).toBeDisabled()
+    expect(screen.getByText(/(?:^|\.)common\.accessAPIReference(?=$|:)/)).toBeDisabled()
 
     rerender(
       <PublisherActionsSection
@@ -248,19 +303,21 @@ describe('app-publisher sections', () => {
         disabledFunctionButton={false}
         handleEmbed={handleEmbed}
         handleOpenInExplore={handleOpenInExplore}
+        handleOpenRunConfig={handleOpenRunConfig}
         handlePublish={vi.fn()}
         hasHumanInputNode={false}
         hasTriggerNode
-        inputs={[]}
         missingStartNode={false}
-        outputs={[]}
         published={false}
         publishedAt={undefined}
         toolPublished={false}
         workflowToolAvailable
+        workflowToolIsLoading={false}
+        workflowToolOutdated={false}
+        onConfigureWorkflowTool={vi.fn()}
       />,
     )
 
-    expect(screen.queryByText('common.runApp')).not.toBeInTheDocument()
+    expect(screen.queryByText(/(?:^|\.)common\.runApp(?=$|:)/)).not.toBeInTheDocument()
   })
 })

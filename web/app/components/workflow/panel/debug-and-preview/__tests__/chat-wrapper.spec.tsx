@@ -1,17 +1,14 @@
 import type { ChatWrapperRefType } from '../index'
+import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answer/human-input-content/field-renderer'
+import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { createStartNode } from '@/app/components/workflow/__tests__/fixtures'
-import {
-  renderWorkflowFlowComponent,
-} from '@/app/components/workflow/__tests__/workflow-test-env'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { InputVarType } from '@/app/components/workflow/types'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
-import {
-  fetchSuggestedQuestions,
-  stopChatMessageResponding,
-} from '@/service/debug'
+import { fetchSuggestedQuestions, stopChatMessageResponding } from '@/service/debug'
 import ChatWrapper from '../chat-wrapper'
 
 const mockUseChat = vi.hoisted(() => vi.fn())
@@ -31,32 +28,63 @@ vi.mock('@/app/components/base/chat/chat', () => ({
     switchSibling,
     onHumanInputFormSubmit,
     onFeatureBarClick,
+    speechToTextTarget,
   }: {
     chatNode: React.ReactNode
     inputDisabled?: boolean
     onSend?: (message: string, files: unknown[]) => void
-    onRegenerate?: (chatItem: { id: string, parentMessageId?: string, content?: string, message_files?: unknown[] }) => void
+    onRegenerate?: (chatItem: {
+      id: string
+      parentMessageId?: string
+      content?: string
+      message_files?: unknown[]
+    }) => void
     switchSibling?: (siblingMessageId: string) => void
-    onHumanInputFormSubmit?: (formToken: string, formData: Record<string, string>) => Promise<void>
+    onHumanInputFormSubmit?: (
+      formToken: string,
+      formData: { inputs: Record<string, HumanInputFieldValue>; action: string },
+    ) => Promise<void>
     onFeatureBarClick?: (state: boolean) => void
+    speechToTextTarget?: SpeechToTextTarget
   }) => (
-    <div data-testid="chat-shell">
+    <div
+      data-testid="chat-shell"
+      data-speech-app-id={
+        speechToTextTarget?.type === 'consoleApp' ? speechToTextTarget.appId : undefined
+      }
+      data-speech-target={speechToTextTarget?.type}
+    >
       <div data-testid="chat-input-disabled">{`${inputDisabled}`}</div>
-      <button type="button" onClick={() => onSend?.('hello', [])}>send-chat</button>
+      <button type="button" onClick={() => onSend?.('hello', [])}>
+        send-chat
+      </button>
       <button
         type="button"
-        onClick={() => onRegenerate?.({
-          id: 'answer-2',
-          parentMessageId: 'question-1',
-          content: 'latest answer',
-          message_files: [],
-        })}
+        onClick={() =>
+          onRegenerate?.({
+            id: 'answer-2',
+            parentMessageId: 'question-1',
+            content: 'latest answer',
+            message_files: [],
+          })
+        }
       >
         regenerate-chat
       </button>
-      <button type="button" onClick={() => switchSibling?.('sibling-2')}>switch-sibling</button>
-      <button type="button" onClick={() => onHumanInputFormSubmit?.('token-1', { answer: 'ok' })}>submit-human-input</button>
-      <button type="button" onClick={() => onFeatureBarClick?.(true)}>open-feature-panel</button>
+      <button type="button" onClick={() => switchSibling?.('sibling-2')}>
+        switch-sibling
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          onHumanInputFormSubmit?.('token-1', { inputs: { answer: 'ok' }, action: 'approve' })
+        }
+      >
+        submit-human-input
+      </button>
+      <button type="button" onClick={() => onFeatureBarClick?.(true)}>
+        open-feature-panel
+      </button>
       {chatNode}
     </div>
   ),
@@ -67,27 +95,30 @@ vi.mock('../hooks', () => ({
 }))
 
 vi.mock('@/app/components/base/features/hooks', () => ({
-  useFeatures: <T,>(selector: (state: {
-    features: {
-      opening?: { enabled?: boolean, opening_statement?: string, suggested_questions?: string[] }
-      suggested: boolean
-      text2speech: boolean
-      speech2text: boolean
-      citation: boolean
-      moderation: boolean
-      file: { enabled: boolean }
-    }
-  }) => T) => selector({
-    features: {
-      opening: { enabled: false, opening_statement: '', suggested_questions: [] },
-      suggested: false,
-      text2speech: false,
-      speech2text: false,
-      citation: false,
-      moderation: false,
-      file: { enabled: false },
-    },
-  }),
+  useFeatures: <T,>(
+    selector: (state: {
+      features: {
+        opening?: { enabled?: boolean; opening_statement?: string; suggested_questions?: string[] }
+        suggested: boolean
+        text2speech: boolean
+        speech2text: boolean
+        citation: boolean
+        moderation: boolean
+        file: { enabled: boolean }
+      }
+    }) => T,
+  ) =>
+    selector({
+      features: {
+        opening: { enabled: false, opening_statement: '', suggested_questions: [] },
+        suggested: false,
+        text2speech: false,
+        speech2text: false,
+        citation: false,
+        moderation: false,
+        file: { enabled: false },
+      },
+    }),
 }))
 
 vi.mock('@/context/event-emitter', () => ({
@@ -115,7 +146,8 @@ const createChatState = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 })
 
-const createChatWrapperRef = () => ({ current: null }) as unknown as React.RefObject<ChatWrapperRefType>
+const createChatWrapperRef = () =>
+  ({ current: null }) as unknown as React.RefObject<ChatWrapperRefType>
 
 describe('ChatWrapper', () => {
   beforeEach(() => {
@@ -149,12 +181,14 @@ describe('ChatWrapper', () => {
         nodes: [
           createStartNode({
             data: {
-              variables: [{
-                type: InputVarType.textInput,
-                variable: 'name',
-                label: 'Name',
-                default: 'Ada',
-              }],
+              variables: [
+                {
+                  type: InputVarType.textInput,
+                  variable: 'name',
+                  label: 'Name',
+                  default: 'Ada',
+                },
+              ],
             },
           }),
         ],
@@ -191,35 +225,37 @@ describe('ChatWrapper', () => {
     const handleSubmitHumanInputForm = vi.fn().mockResolvedValue(undefined)
     const handleStop = vi.fn()
 
-    mockUseChat.mockReturnValue(createChatState({
-      chatList: [
-        {
-          id: 'answer-1',
-          isAnswer: true,
-          content: 'first answer',
-        },
-        {
-          id: 'question-1',
-          isAnswer: false,
-          content: 'first question',
-          parentMessageId: 'answer-1',
-          message_files: [],
-        },
-        {
-          id: 'answer-2',
-          isAnswer: true,
-          parentMessageId: 'question-1',
-          content: 'latest answer',
-          workflowProcess: {
-            status: 'paused',
+    mockUseChat.mockReturnValue(
+      createChatState({
+        chatList: [
+          {
+            id: 'answer-1',
+            isAnswer: true,
+            content: 'first answer',
           },
-        },
-      ],
-      handleSend,
-      handleSwitchSibling,
-      handleSubmitHumanInputForm,
-      handleStop,
-    }))
+          {
+            id: 'question-1',
+            isAnswer: false,
+            content: 'first question',
+            parentMessageId: 'answer-1',
+            message_files: [],
+          },
+          {
+            id: 'answer-2',
+            isAnswer: true,
+            parentMessageId: 'question-1',
+            content: 'latest answer',
+            workflowProcess: {
+              status: 'paused',
+            },
+          },
+        ],
+        handleSend,
+        handleSwitchSibling,
+        handleSubmitHumanInputForm,
+        handleStop,
+      }),
+    )
 
     const { store } = renderWorkflowFlowComponent(
       <ChatWrapper
@@ -233,12 +269,14 @@ describe('ChatWrapper', () => {
         nodes: [
           createStartNode({
             data: {
-              variables: [{
-                type: InputVarType.textInput,
-                variable: 'name',
-                label: 'Name',
-                default: 'Ada',
-              }],
+              variables: [
+                {
+                  type: InputVarType.textInput,
+                  variable: 'name',
+                  label: 'Name',
+                  default: 'Ada',
+                },
+              ],
             },
           }),
         ],
@@ -261,34 +299,51 @@ describe('ChatWrapper', () => {
     expect(screen.getByTestId('chat-input-disabled')).toHaveTextContent('true')
 
     await user.click(screen.getByRole('button', { name: 'send-chat' }))
-    expect(handleSend).toHaveBeenCalledWith(expect.objectContaining({
-      query: 'hello',
-      conversation_id: 'conversation-1',
-      inputs: {
-        existing: 'value',
-        name: 'Ada',
-      },
-      parent_message_id: 'answer-2',
-    }), expect.objectContaining({
-      onGetSuggestedQuestions: expect.any(Function),
-    }))
+    expect(handleSend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        query: 'hello',
+        conversation_id: 'conversation-1',
+        inputs: {
+          existing: 'value',
+          name: 'Ada',
+        },
+        parent_message_id: 'answer-2',
+      }),
+      expect.objectContaining({
+        onGetSuggestedQuestions: expect.any(Function),
+      }),
+    )
 
     const sendCallbacks = handleSend.mock.calls[0]?.[1] as {
-      onGetSuggestedQuestions: (messageId: string, getAbortController: () => AbortController) => void
+      onGetSuggestedQuestions: (
+        messageId: string,
+        getAbortController: () => AbortController,
+      ) => void
     }
     sendCallbacks.onGetSuggestedQuestions('message-1', () => new AbortController())
-    expect(mockFetchSuggestedQuestions).toHaveBeenCalledWith('app-1', 'message-1', expect.any(Function))
+    expect(mockFetchSuggestedQuestions).toHaveBeenCalledWith(
+      'app-1',
+      'message-1',
+      expect.any(Function),
+    )
 
     await user.click(screen.getByRole('button', { name: 'regenerate-chat' }))
-    expect(handleSend).toHaveBeenNthCalledWith(2, expect.objectContaining({
-      query: 'first question',
-      parent_message_id: 'answer-1',
-    }), expect.any(Object))
+    expect(handleSend).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        query: 'first question',
+        parent_message_id: 'answer-1',
+      }),
+      expect.any(Object),
+    )
 
     await user.click(screen.getByRole('button', { name: 'switch-sibling' }))
-    expect(handleSwitchSibling).toHaveBeenCalledWith('sibling-2', expect.objectContaining({
-      onGetSuggestedQuestions: expect.any(Function),
-    }))
+    expect(handleSwitchSibling).toHaveBeenCalledWith(
+      'sibling-2',
+      expect.objectContaining({
+        onGetSuggestedQuestions: expect.any(Function),
+      }),
+    )
 
     const stopResponding = mockUseChat.mock.calls[0]?.[3] as (taskId: string) => void
     stopResponding('task-1')
@@ -296,10 +351,15 @@ describe('ChatWrapper', () => {
 
     await user.click(screen.getByRole('button', { name: 'submit-human-input' }))
     await waitFor(() => {
-      expect(handleSubmitHumanInputForm).toHaveBeenCalledWith('token-1', { answer: 'ok' })
+      expect(handleSubmitHumanInputForm).toHaveBeenCalledWith('token-1', {
+        inputs: { answer: 'ok' },
+        action: 'approve',
+      })
     })
 
-    const subscription = mockUseSubscription.mock.calls[0]?.[0] as (payload: { type: string }) => void
+    const subscription = mockUseSubscription.mock.calls[0]?.[0] as (payload: {
+      type: string
+    }) => void
     act(() => {
       subscription({ type: EVENT_WORKFLOW_STOP })
     })
@@ -309,9 +369,11 @@ describe('ChatWrapper', () => {
 
   it('collapses the side panel while the chat is responding', async () => {
     const onHide = vi.fn()
-    mockUseChat.mockReturnValue(createChatState({
-      isResponding: true,
-    }))
+    mockUseChat.mockReturnValue(
+      createChatState({
+        isResponding: true,
+      }),
+    )
 
     renderWorkflowFlowComponent(
       <ChatWrapper
@@ -330,5 +392,24 @@ describe('ChatWrapper', () => {
     await waitFor(() => {
       expect(onHide).toHaveBeenCalledTimes(1)
     })
+  })
+
+  it('passes the workflow App target to speech-to-text', () => {
+    renderWorkflowFlowComponent(
+      <ChatWrapper
+        ref={createChatWrapperRef()}
+        showConversationVariableModal={false}
+        onConversationModalHide={vi.fn()}
+        showInputsFieldsPanel={false}
+        onHide={vi.fn()}
+      />,
+      {
+        nodes: [createStartNode()],
+        edges: [],
+      },
+    )
+
+    expect(screen.getByTestId('chat-shell')).toHaveAttribute('data-speech-target', 'consoleApp')
+    expect(screen.getByTestId('chat-shell')).toHaveAttribute('data-speech-app-id', 'app-1')
   })
 })

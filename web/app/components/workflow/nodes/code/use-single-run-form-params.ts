@@ -23,15 +23,17 @@ const useSingleRunFormParams = ({
   const { inputs } = useNodeCrud<CodeNodeType>(id, payload)
 
   const varInputs = toVarInputs(inputs.variables)
-  const setInputVarValues = useCallback((newPayload: Record<string, any>) => {
-    setRunInputData(newPayload)
-  }, [setRunInputData])
+  const setInputVarValues = useCallback(
+    (newPayload: Record<string, any>) => {
+      setRunInputData(newPayload)
+    },
+    [setRunInputData],
+  )
   const inputVarValues = (() => {
     const vars: Record<string, any> = {}
-    Object.keys(runInputData)
-      .forEach((key) => {
-        vars[key] = runInputData[key]
-      })
+    Object.keys(runInputData).forEach((key) => {
+      vars[key] = runInputData[key]
+    })
     return vars
   })()
 
@@ -46,13 +48,12 @@ const useSingleRunFormParams = ({
   }, [inputVarValues, setInputVarValues, varInputs])
 
   const getDependentVars = () => {
-    return payload.variables.map(v => v.value_selector)
+    return payload.variables.map((v) => v.value_selector)
   }
 
   const getDependentVar = (variable: string) => {
-    const varItem = payload.variables.find(v => v.variable === variable)
-    if (varItem)
-      return varItem.value_selector
+    const varItem = payload.variables.find((v) => v.variable === variable)
+    if (varItem) return varItem.value_selector
   }
 
   return {

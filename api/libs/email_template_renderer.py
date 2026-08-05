@@ -4,7 +4,7 @@ Email template rendering helpers with configurable safety modes.
 
 import time
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, override
 
 from flask import render_template_string
 from jinja2.runtime import Context
@@ -21,6 +21,7 @@ class SandboxedEnvironment(ImmutableSandboxedEnvironment):
         self._deadline = time.time() + timeout if timeout else None
         super().__init__(*args, **kwargs)
 
+    @override
     def call(self, context: Context, obj: Any, *args: Any, **kwargs: Any) -> Any:
         if self._deadline is not None and time.time() > self._deadline:
             raise TimeoutError("Template rendering timeout")

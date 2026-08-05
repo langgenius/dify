@@ -1,16 +1,19 @@
 from __future__ import annotations
 
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any
+from functools import singledispatchmethod
+from typing import TYPE_CHECKING, Any, override
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
+from graphon.graph_events import GraphNodeEventBase
 from graphon.node_events import NodeEventBase, NodeRunResult, StreamCompletedEvent
 from graphon.nodes.base.node import Node
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
 
 from .entities import AgentNodeData
+from .events import AgentLogEvent, NodeRunAgentLogEvent
 from .exceptions import (
     AgentInvocationError,
     AgentMessageTransformError,
@@ -35,7 +38,7 @@ class AgentNode(Node[AgentNodeData]):
     def __init__(
         self,
         node_id: str,
-        config: AgentNodeData,
+        data: AgentNodeData,
         *,
         graph_init_params: GraphInitParams,
         graph_runtime_state: GraphRuntimeState,
@@ -46,7 +49,7 @@ class AgentNode(Node[AgentNodeData]):
     ) -> None:
         super().__init__(
             node_id=node_id,
-            config=config,
+            data=data,
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
@@ -56,9 +59,11 @@ class AgentNode(Node[AgentNodeData]):
         self._message_transformer = message_transformer
 
     @classmethod
+    @override
     def version(cls) -> str:
         return "1"
 
+    @override
     def populate_start_event(self, event) -> None:
         dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
         event.extras["agent_strategy"] = {
@@ -69,6 +74,30 @@ class AgentNode(Node[AgentNodeData]):
             ),
         }
 
+    @override
+    @singledispatchmethod
+    def _dispatch(  # pyrefly: ignore[missing-override-decorator]
+        self, event: NodeEventBase
+    ) -> GraphNodeEventBase:
+        return super()._dispatch(event)
+
+    @_dispatch.register
+    def _dispatch_agent_log(self, event: AgentLogEvent) -> NodeRunAgentLogEvent:
+        return NodeRunAgentLogEvent(
+            id=self.execution_id,
+            node_id=self._node_id,
+            node_type=self.node_type,
+            message_id=event.message_id,
+            label=event.label,
+            node_execution_id=event.node_execution_id,
+            parent_id=event.parent_id,
+            error=event.error,
+            status=event.status,
+            data=event.data,
+            metadata=event.metadata,
+        )
+
+    @override
     def _run(self) -> Generator[NodeEventBase, None, None]:
         from core.plugin.impl.exc import PluginDaemonClientSideError
 
@@ -167,6 +196,7 @@ class AgentNode(Node[AgentNodeData]):
             )
 
     @classmethod
+    @override
     def _extract_variable_selector_to_variable_mapping(
         cls,
         *,

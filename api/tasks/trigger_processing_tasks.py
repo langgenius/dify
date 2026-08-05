@@ -12,10 +12,9 @@ from datetime import UTC, datetime
 from typing import Any
 
 from celery import shared_task
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.app.entities.app_invoke_entities import InvokeFrom
 from core.db.session_factory import session_factory
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.entities.request import TriggerInvokeEventResponse
@@ -32,10 +31,11 @@ from graphon.enums import WorkflowExecutionStatus
 from models.enums import (
     AppTriggerType,
     CreatorUserRole,
+    EndUserType,
     WorkflowRunTriggeredFrom,
     WorkflowTriggerStatus,
 )
-from models.model import EndUser
+from models.model import App, EndUser
 from models.provider_ids import TriggerProviderID
 from models.trigger import TriggerSubscription, WorkflowPluginTrigger, WorkflowTriggerLog
 from models.workflow import Workflow, WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun
@@ -99,23 +99,25 @@ def dispatch_trigger_debug_event(
         return 0
 
 
-def _get_latest_workflows_by_app_ids(
+def _get_published_workflows_by_app_ids(
     session: Session, subscribers: Sequence[WorkflowPluginTrigger]
 ) -> Mapping[str, Workflow]:
-    """Get the latest workflows by app_ids"""
-    workflow_query = (
-        select(Workflow.app_id, func.max(Workflow.created_at).label("max_created_at"))
-        .where(
-            Workflow.app_id.in_({t.app_id for t in subscribers}),
-            Workflow.version != Workflow.VERSION_DRAFT,
-        )
-        .group_by(Workflow.app_id)
-        .subquery()
-    )
+    """Get current published workflows through apps.workflow_id."""
+    app_ids = {trigger.app_id for trigger in subscribers}
+    tenant_ids = {trigger.tenant_id for trigger in subscribers}
+    if not app_ids or not tenant_ids:
+        return {}
+
     workflows = session.scalars(
-        select(Workflow).join(
-            workflow_query,
-            (Workflow.app_id == workflow_query.c.app_id) & (Workflow.created_at == workflow_query.c.max_created_at),
+        select(Workflow)
+        .join(App, App.workflow_id == Workflow.id)
+        .where(
+            App.id.in_(app_ids),
+            App.tenant_id.in_(tenant_ids),
+            App.workflow_id.isnot(None),
+            Workflow.app_id == App.id,
+            Workflow.tenant_id == App.tenant_id,
+            Workflow.version != Workflow.VERSION_DRAFT,
         )
     ).all()
     return {w.app_id: w for w in workflows}
@@ -262,10 +264,10 @@ def dispatch_triggered_workflow(
 
     # Ensure expire_on_commit is set to False to remain workflows available
     with session_factory.create_session() as session:
-        workflows: Mapping[str, Workflow] = _get_latest_workflows_by_app_ids(session, subscribers)
+        workflows: Mapping[str, Workflow] = _get_published_workflows_by_app_ids(session, subscribers)
 
     end_users: Mapping[str, EndUser] = EndUserService.create_end_user_batch(
-        type=InvokeFrom.TRIGGER,
+        type=EndUserType.TRIGGER,
         tenant_id=subscription.tenant_id,
         app_ids=[plugin_trigger.app_id for plugin_trigger in subscribers],
         user_id=user_id,

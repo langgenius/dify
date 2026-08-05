@@ -1,6 +1,8 @@
 from unittest.mock import MagicMock
 
 import pytest
+from pydantic import ValidationError
+from pytest_mock import MockerFixture
 
 from core.app.app_config.common.sensitive_word_avoidance.manager import (
     SensitiveWordAvoidanceConfigManager,
@@ -26,7 +28,7 @@ class TestSensitiveWordAvoidanceConfigManagerConvert:
         # Assert
         assert result is None
 
-    def test_convert_returns_entity_when_enabled(self, mocker):
+    def test_convert_returns_entity_when_enabled(self, mocker: MockerFixture):
         # Arrange
         mock_entity = MagicMock()
         mocker.patch(
@@ -48,7 +50,7 @@ class TestSensitiveWordAvoidanceConfigManagerConvert:
         # Assert
         assert result == mock_entity
 
-    def test_convert_enabled_without_type_or_config(self, mocker):
+    def test_convert_enabled_without_type_or_config(self, mocker: MockerFixture):
         # Arrange
         mock_entity = MagicMock()
         patched = mocker.patch(
@@ -109,7 +111,7 @@ class TestSensitiveWordAvoidanceConfigManagerValidateAndSetDefaults:
     def test_validate_raises_when_enabled_true_without_type(self):
         config = {"sensitive_word_avoidance": {"enabled": True}}
 
-        with pytest.raises(ValueError, match="type is required"):
+        with pytest.raises(ValidationError, match="discriminator 'type'"):
             SensitiveWordAvoidanceConfigManager.validate_and_set_defaults(tenant_id="tenant1", config=config)
 
     def test_validate_raises_when_type_not_string(self):
@@ -120,22 +122,33 @@ class TestSensitiveWordAvoidanceConfigManagerValidateAndSetDefaults:
             }
         }
 
-        with pytest.raises(ValueError, match="must be a string"):
+        with pytest.raises(ValidationError, match="does not match any of the expected tags"):
+            SensitiveWordAvoidanceConfigManager.validate_and_set_defaults(tenant_id="tenant1", config=config)
+
+    def test_validate_raises_when_type_invalid(self):
+        config = {
+            "sensitive_word_avoidance": {
+                "enabled": True,
+                "type": "mock_type",
+            }
+        }
+
+        with pytest.raises(ValidationError, match="does not match any of the expected tags"):
             SensitiveWordAvoidanceConfigManager.validate_and_set_defaults(tenant_id="tenant1", config=config)
 
     def test_validate_raises_when_config_not_dict(self):
         config = {
             "sensitive_word_avoidance": {
                 "enabled": True,
-                "type": "mock_type",
+                "type": "keywords",
                 "config": "invalid",
             }
         }
 
-        with pytest.raises(ValueError, match="must be a dict"):
+        with pytest.raises(ValidationError, match="valid dictionary"):
             SensitiveWordAvoidanceConfigManager.validate_and_set_defaults(tenant_id="tenant1", config=config)
 
-    def test_validate_calls_moderation_factory(self, mocker):
+    def test_validate_calls_moderation_factory(self, mocker: MockerFixture):
         # Arrange
         mock_validate = mocker.patch(
             "core.app.app_config.common.sensitive_word_avoidance.manager.ModerationFactory.validate_config"
@@ -144,7 +157,7 @@ class TestSensitiveWordAvoidanceConfigManagerValidateAndSetDefaults:
         config = {
             "sensitive_word_avoidance": {
                 "enabled": True,
-                "type": "mock_type",
+                "type": "keywords",
                 "config": {"k": "v"},
             }
         }
@@ -155,11 +168,11 @@ class TestSensitiveWordAvoidanceConfigManagerValidateAndSetDefaults:
         )
 
         # Assert
-        mock_validate.assert_called_once_with(name="mock_type", tenant_id="tenant1", config={"k": "v"})
+        mock_validate.assert_called_once_with(name="keywords", tenant_id="tenant1", config={"k": "v"})
         assert result_config["sensitive_word_avoidance"]["enabled"] is True
         assert fields == ["sensitive_word_avoidance"]
 
-    def test_validate_sets_empty_dict_when_config_none(self, mocker):
+    def test_validate_sets_empty_dict_when_config_none(self, mocker: MockerFixture):
         # Arrange
         mock_validate = mocker.patch(
             "core.app.app_config.common.sensitive_word_avoidance.manager.ModerationFactory.validate_config"
@@ -168,7 +181,7 @@ class TestSensitiveWordAvoidanceConfigManagerValidateAndSetDefaults:
         config = {
             "sensitive_word_avoidance": {
                 "enabled": True,
-                "type": "mock_type",
+                "type": "keywords",
                 "config": None,
             }
         }
@@ -177,9 +190,9 @@ class TestSensitiveWordAvoidanceConfigManagerValidateAndSetDefaults:
         SensitiveWordAvoidanceConfigManager.validate_and_set_defaults(tenant_id="tenant1", config=config)
 
         # Assert
-        mock_validate.assert_called_once_with(name="mock_type", tenant_id="tenant1", config={})
+        mock_validate.assert_called_once_with(name="keywords", tenant_id="tenant1", config={})
 
-    def test_validate_only_structure_validate_skips_factory(self, mocker):
+    def test_validate_only_structure_validate_skips_factory(self, mocker: MockerFixture):
         # Arrange
         mock_validate = mocker.patch(
             "core.app.app_config.common.sensitive_word_avoidance.manager.ModerationFactory.validate_config"
@@ -188,7 +201,7 @@ class TestSensitiveWordAvoidanceConfigManagerValidateAndSetDefaults:
         config = {
             "sensitive_word_avoidance": {
                 "enabled": True,
-                "type": "mock_type",
+                "type": "keywords",
                 "config": {"k": "v"},
             }
         }

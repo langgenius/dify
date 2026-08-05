@@ -37,7 +37,7 @@ class TestCFSPlanScheduler:
             granularity=10,
         )
         with pytest.raises(TypeError):
-            CFSPlanScheduler(plan)
+            CFSPlanScheduler(plan)  # type: ignore
 
     def test_concrete_subclass_can_schedule(self):
         plan = WorkflowScheduleCFSPlanEntity(

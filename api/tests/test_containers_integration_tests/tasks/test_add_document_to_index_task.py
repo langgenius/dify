@@ -128,7 +128,6 @@ class TestAddDocumentToIndexTask:
 
         for i in range(3):
             segment = DocumentSegment(
-                id=fake.uuid4(),
                 tenant_id=document.tenant_id,
                 dataset_id=dataset.id,
                 document_id=document.id,
@@ -451,7 +450,6 @@ class TestAddDocumentToIndexTask:
         segments = []
         for i in range(3):
             segment = DocumentSegment(
-                id=fake.uuid4(),
                 tenant_id=document.tenant_id,
                 dataset_id=dataset.id,
                 document_id=document.id,
@@ -630,7 +628,6 @@ class TestAddDocumentToIndexTask:
 
         # Segment 1: Should be processed (enabled=False, status=SegmentStatus.COMPLETED)
         segment1 = DocumentSegment(
-            id=fake.uuid4(),
             tenant_id=document.tenant_id,
             dataset_id=dataset.id,
             document_id=document.id,
@@ -650,7 +647,6 @@ class TestAddDocumentToIndexTask:
         # Segment 2: Should be processed (enabled=True, status=SegmentStatus.COMPLETED)
         # Note: Implementation doesn't filter by enabled status, only by status=SegmentStatus.COMPLETED
         segment2 = DocumentSegment(
-            id=fake.uuid4(),
             tenant_id=document.tenant_id,
             dataset_id=dataset.id,
             document_id=document.id,
@@ -669,7 +665,6 @@ class TestAddDocumentToIndexTask:
 
         # Segment 3: Should NOT be processed (enabled=False, status="processing")
         segment3 = DocumentSegment(
-            id=fake.uuid4(),
             tenant_id=document.tenant_id,
             dataset_id=dataset.id,
             document_id=document.id,
@@ -688,7 +683,6 @@ class TestAddDocumentToIndexTask:
 
         # Segment 4: Should be processed (enabled=False, status=SegmentStatus.COMPLETED)
         segment4 = DocumentSegment(
-            id=fake.uuid4(),
             tenant_id=document.tenant_id,
             dataset_id=dataset.id,
             document_id=document.id,

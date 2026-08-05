@@ -38,7 +38,7 @@ def _build_fake_elasticsearch_modules():
 
 
 @pytest.fixture
-def elasticsearch_module(monkeypatch):
+def elasticsearch_module(monkeypatch: pytest.MonkeyPatch):
     for name, module in _build_fake_elasticsearch_modules().items():
         monkeypatch.setitem(sys.modules, name, module)
 
@@ -287,7 +287,7 @@ def test_search_by_vector_and_full_text(elasticsearch_module):
     assert "bool" in query
 
 
-def test_create_and_create_collection_paths(elasticsearch_module, monkeypatch):
+def test_create_and_create_collection_paths(elasticsearch_module, monkeypatch: pytest.MonkeyPatch):
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -331,7 +331,7 @@ def test_create_and_create_collection_paths(elasticsearch_module, monkeypatch):
     elasticsearch_module.redis_client.set.assert_called_once()
 
 
-def test_elasticsearch_factory_branches(elasticsearch_module, monkeypatch):
+def test_elasticsearch_factory_branches(elasticsearch_module, monkeypatch: pytest.MonkeyPatch):
     factory = elasticsearch_module.ElasticSearchVectorFactory()
     dataset_with_index = SimpleNamespace(
         id="dataset-1",

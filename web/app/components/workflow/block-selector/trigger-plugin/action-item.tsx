@@ -1,50 +1,69 @@
 'use client'
+import type { PreviewCardHandle } from '@langgenius/dify-ui/preview-card'
 import type { FC } from 'react'
 import type { TriggerDefaultValue, TriggerWithProvider } from '../types'
 import type { Event } from '@/app/components/tools/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { PreviewCard, PreviewCardContent, PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
+import { PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useGetLanguage } from '@/context/i18n'
 import BlockIcon from '../../block-icon'
 import { BlockEnum } from '../../types'
+import { BlockSelectorPreviewCardContent } from '../preview-card'
 
-type Props = {
+type Props = Readonly<{
   provider: TriggerWithProvider
   payload: Event
+  previewCardHandle: TriggerPluginActionPreviewCardHandle
   disabled?: boolean
   isAdded?: boolean
   onSelect: (type: BlockEnum, trigger?: TriggerDefaultValue) => void
+}>
+
+export type TriggerPluginActionPreviewPayload = {
+  provider: TriggerWithProvider
+  payload: Event
+  language: ReturnType<typeof useGetLanguage>
 }
+
+export type TriggerPluginActionPreviewCardHandle =
+  PreviewCardHandle<TriggerPluginActionPreviewPayload>
 
 const TriggerPluginActionItem: FC<Props> = ({
   provider,
   payload,
+  previewCardHandle,
   onSelect,
   disabled,
   isAdded,
 }) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
+  const previewDescriptionId = React.useId()
+  const previewDescription = payload.description[language]
 
   const row = (
-    <div
-      key={payload.name}
-      className="flex cursor-pointer items-center justify-between rounded-lg pr-1 pl-[21px] hover:bg-state-base-hover"
+    <button
+      type="button"
+      aria-describedby={previewDescription ? previewDescriptionId : undefined}
+      disabled={disabled}
+      className={cn(
+        'flex w-full items-center justify-between rounded-lg border-0 bg-transparent pr-1 pl-5.25 text-left focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden',
+        disabled ? 'cursor-default' : 'cursor-pointer hover:bg-state-base-hover',
+      )}
       onClick={() => {
-        if (disabled)
-          return
+        if (disabled) return
         const params: Record<string, string> = {}
         if (payload.parameters) {
-          payload.parameters.forEach((item: any) => {
+          payload.parameters.forEach((item) => {
             params[item.name] = ''
           })
         }
         onSelect(BlockEnum.TriggerPlugin, {
           plugin_id: provider.plugin_id,
           provider_id: provider.name,
-          provider_type: provider.type as string,
+          provider_type: provider.type,
           provider_name: provider.name,
           event_name: payload.name,
           event_label: payload.label[language]!,
@@ -59,35 +78,58 @@ const TriggerPluginActionItem: FC<Props> = ({
         })
       }}
     >
-      <div className={cn('truncate border-l-2 border-divider-subtle py-2 pl-4 system-sm-medium text-text-secondary')}>
+      <div className="truncate border-l-2 border-divider-subtle py-2 pl-4 system-sm-medium text-text-secondary">
         <span className={cn(disabled && 'opacity-30')}>{payload.label[language]}</span>
       </div>
       {isAdded && (
-        <div className="mr-4 system-xs-regular text-text-tertiary">{t('addToolModal.added', { ns: 'tools' })}</div>
+        <div className="mr-4 system-xs-regular text-text-tertiary">
+          {t(($) => $['addToolModal.added'], { ns: 'tools' })}
+        </div>
       )}
-    </div>
+    </button>
   )
 
   return (
-    // Preview is supplementary: provider icon, event label and description are all
-    // reachable from the node inspector after the row is clicked to add the trigger,
-    // so hover/focus-only activation is a11y-safe. See
-    // packages/dify-ui/AGENTS.md → Overlay Primitive Selection.
-    <PreviewCard key={payload.name}>
-      <PreviewCardTrigger delay={150} closeDelay={150} render={row} />
-      <PreviewCardContent placement="right" popupClassName="w-[224px] px-3 py-2.5">
-        <div>
-          <BlockIcon
-            size="md"
-            className="mb-2"
-            type={BlockEnum.TriggerPlugin}
-            toolIcon={provider.icon}
-          />
-          <div className="mb-1 text-sm leading-5 text-text-primary">{payload.label[language]}</div>
-          <div className="text-xs leading-[18px] text-text-secondary">{payload.description[language]}</div>
-        </div>
-      </PreviewCardContent>
-    </PreviewCard>
+    <>
+      <PreviewCardTrigger
+        delay={150}
+        closeDelay={150}
+        handle={previewCardHandle}
+        payload={{ provider, payload, language }}
+        render={row}
+      />
+      {previewDescription && (
+        <span id={previewDescriptionId} className="sr-only">
+          {previewDescription}
+        </span>
+      )}
+    </>
   )
 }
+
+type TriggerPluginActionPreviewCardProps = {
+  payload?: TriggerPluginActionPreviewPayload
+}
+
+export function TriggerPluginActionPreviewCard({ payload }: TriggerPluginActionPreviewCardProps) {
+  if (!payload) return null
+
+  return (
+    <BlockSelectorPreviewCardContent>
+      <BlockIcon
+        size="md"
+        className="mb-2"
+        type={BlockEnum.TriggerPlugin}
+        toolIcon={payload.provider.icon}
+      />
+      <div className="mb-1 text-sm/5 text-text-primary">
+        {payload.payload.label[payload.language]}
+      </div>
+      <div className="text-xs leading-4.5 wrap-break-word text-text-secondary">
+        {payload.payload.description[payload.language]}
+      </div>
+    </BlockSelectorPreviewCardContent>
+  )
+}
+
 export default React.memo(TriggerPluginActionItem)

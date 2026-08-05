@@ -2,6 +2,7 @@ import logging
 from typing import cast
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.base_app_runner import AppRunner
@@ -10,10 +11,10 @@ from core.app.entities.app_invoke_entities import (
     CompletionAppGenerateEntity,
 )
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
+from core.db.session_factory import create_session
 from core.model_manager import ModelInstance
 from core.moderation.base import ModerationError
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
-from extensions.ext_database import db
 from graphon.file import File
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from models.model import App, Message
@@ -27,10 +28,17 @@ class CompletionAppRunner(AppRunner):
     """
 
     def run(
-        self, application_generate_entity: CompletionAppGenerateEntity, queue_manager: AppQueueManager, message: Message
+        self,
+        application_generate_entity: CompletionAppGenerateEntity,
+        queue_manager: AppQueueManager,
+        message: Message,
+        session: Session,
     ):
-        """
-        Run application
+        """Run the application without retaining ``session`` during model I/O.
+
+        Database preparation is committed and the connection is released before
+        the provider response is requested or consumed.
+
         :param application_generate_entity: application generate entity
         :param queue_manager: application queue manager
         :param message: message
@@ -39,7 +47,10 @@ class CompletionAppRunner(AppRunner):
         app_config = application_generate_entity.app_config
         app_config = cast(CompletionAppConfig, app_config)
         stmt = select(App).where(App.id == app_config.app_id)
-        app_record = db.session.scalar(stmt)
+        with create_session() as read_session:
+            app_record = read_session.scalar(stmt)
+            if app_record:
+                read_session.expunge(app_record)
         if not app_record:
             raise ValueError("App not found")
 
@@ -119,6 +130,7 @@ class CompletionAppRunner(AppRunner):
 
             dataset_retrieval = DatasetRetrieval(application_generate_entity)
             context, retrieved_files = dataset_retrieval.retrieve(
+                session=session,
                 app_id=app_record.id,
                 user_id=application_generate_entity.user_id,
                 tenant_id=app_record.tenant_id,
@@ -139,6 +151,9 @@ class CompletionAppRunner(AppRunner):
                 ),
             )
             context_files = retrieved_files or []
+
+        session.commit()
+        session.close()
 
         # reorganize all inputs and template to prompt messages
         # Include: prompt template, inputs, query(optional), files(optional)
@@ -174,13 +189,12 @@ class CompletionAppRunner(AppRunner):
             model=application_generate_entity.model_conf.model,
         )
 
-        db.session.close()
-
         invoke_result = model_instance.invoke_llm(
             prompt_messages=prompt_messages,
             model_parameters=application_generate_entity.model_conf.parameters,
             stop=stop,
             stream=application_generate_entity.stream,
+            request_metadata={"app_id": app_config.app_id},
         )
 
         # handle invoke result

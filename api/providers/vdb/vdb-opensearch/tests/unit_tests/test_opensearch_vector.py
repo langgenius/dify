@@ -58,7 +58,7 @@ def _build_fake_opensearch_modules():
 
 
 @pytest.fixture
-def opensearch_module(monkeypatch):
+def opensearch_module(monkeypatch: pytest.MonkeyPatch):
     for name, module in _build_fake_opensearch_modules().items():
         monkeypatch.setitem(sys.modules, name, module)
 
@@ -116,7 +116,7 @@ def test_config_validation_for_aws_auth_and_https_fields(opensearch_module):
         opensearch_module.OpenSearchConfig.model_validate(values)
 
 
-def test_create_aws_managed_iam_auth(opensearch_module, monkeypatch):
+def test_create_aws_managed_iam_auth(opensearch_module, monkeypatch: pytest.MonkeyPatch):
     class _Session:
         def get_credentials(self):
             return "creds"
@@ -167,7 +167,7 @@ def test_init_and_create_delegate_calls(opensearch_module):
     vector.add_texts.assert_called_once_with(docs, [[0.1, 0.2]])
 
 
-def test_add_texts_supports_regular_and_aoss_clients(opensearch_module, monkeypatch):
+def test_add_texts_supports_regular_and_aoss_clients(opensearch_module, monkeypatch: pytest.MonkeyPatch):
     vector = opensearch_module.OpenSearchVector("Collection_1", _config(opensearch_module, aws_service="es"))
     docs = [
         Document(page_content="a", metadata={"doc_id": "1"}),
@@ -308,7 +308,7 @@ def test_search_by_full_text_and_filters(opensearch_module):
     assert query["query"]["bool"]["filter"] == [{"terms": {"metadata.document_id": ["d-1"]}}]
 
 
-def test_create_collection_cache_and_create_path(opensearch_module, monkeypatch):
+def test_create_collection_cache_and_create_path(opensearch_module, monkeypatch: pytest.MonkeyPatch):
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -331,7 +331,7 @@ def test_create_collection_cache_and_create_path(opensearch_module, monkeypatch)
     opensearch_module.redis_client.set.assert_called()
 
 
-def test_opensearch_factory_initializes_expected_collection_name(opensearch_module, monkeypatch):
+def test_opensearch_factory_initializes_expected_collection_name(opensearch_module, monkeypatch: pytest.MonkeyPatch):
     factory = opensearch_module.OpenSearchVectorFactory()
     dataset_with_index = SimpleNamespace(
         id="dataset-1",

@@ -28,10 +28,13 @@ export function NodeActionsDropdown({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
-  const handleOpenChange = useCallback((nextOpen: boolean) => {
-    setOpen(nextOpen)
-    onOpenChange?.(nextOpen)
-  }, [onOpenChange])
+  const handleOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      setOpen(nextOpen)
+      onOpenChange?.(nextOpen)
+    },
+    [onOpenChange],
+  )
 
   const closeMenu = useCallback(() => {
     setOpen(false)
@@ -39,25 +42,21 @@ export function NodeActionsDropdown({
   }, [onOpenChange])
 
   return (
-    <DropdownMenu
-      modal={false}
-      open={open}
-      onOpenChange={handleOpenChange}
-    >
+    <DropdownMenu modal={false} open={open} onOpenChange={handleOpenChange}>
       <DropdownMenuTrigger
-        render={(
+        render={
           <button
             type="button"
-            aria-label={t('operation.more', { ns: 'common' })}
+            aria-label={t(($) => $['operation.more'], { ns: 'common' })}
             className={cn(
-              'flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 text-text-tertiary hover:bg-state-base-hover',
+              'flex size-6 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 text-text-tertiary hover:bg-state-base-hover',
               'focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden data-popup-open:bg-state-base-hover',
               triggerClassName,
             )}
           >
-            <span aria-hidden className="i-ri-more-fill h-4 w-4" />
+            <span aria-hidden className="i-ri-more-fill size-4" />
           </button>
-        )}
+        }
       />
       <DropdownMenuContent
         placement="bottom-end"

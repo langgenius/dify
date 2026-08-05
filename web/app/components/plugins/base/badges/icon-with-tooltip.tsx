@@ -20,19 +20,15 @@ const IconWithTooltip: FC<IconWithTooltipProps> = ({
   BadgeIconDark,
 }) => {
   const isDark = theme === Theme.dark
-  const iconClassName = cn('h-5 w-5', className)
+  const iconClassName = cn('size-5', className)
   const Icon = isDark ? BadgeIconDark : BadgeIconLight
   const icon = (
-    <span
-      aria-label={popupContent}
-      className="flex shrink-0 items-center justify-center"
-    >
+    <span aria-label={popupContent} className="flex shrink-0 items-center justify-center">
       <Icon className={iconClassName} />
     </span>
   )
 
-  if (!popupContent)
-    return icon
+  if (!popupContent) return icon
 
   return (
     <Tooltip>

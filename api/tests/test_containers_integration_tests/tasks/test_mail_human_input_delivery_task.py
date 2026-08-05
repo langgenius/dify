@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 import pytest
 from sqlalchemy import delete
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
@@ -17,9 +18,9 @@ from core.workflow.human_input_adapter import (
     ExternalRecipient,
     MemberRecipient,
 )
+from core.workflow.nodes.human_input.entities import HumanInputNodeData
 from extensions.ext_storage import storage
 from graphon.enums import WorkflowExecutionStatus
-from graphon.nodes.human_input.entities import HumanInputNodeData
 from graphon.runtime import GraphRuntimeState, VariablePool
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
@@ -30,7 +31,7 @@ from tasks.mail_human_input_delivery_task import dispatch_human_input_email_task
 
 
 @pytest.fixture(autouse=True)
-def cleanup_database(db_session_with_containers):
+def cleanup_database(db_session_with_containers: Session):
     db_session_with_containers.execute(delete(HumanInputFormRecipient))
     db_session_with_containers.execute(delete(HumanInputDelivery))
     db_session_with_containers.execute(delete(HumanInputForm))
@@ -42,7 +43,7 @@ def cleanup_database(db_session_with_containers):
     db_session_with_containers.commit()
 
 
-def _create_workspace_member(db_session_with_containers):
+def _create_workspace_member(db_session_with_containers: Session):
     account = Account(
         email="owner@example.com",
         name="Owner",
@@ -172,7 +173,9 @@ def _create_workflow_pause_state(
     db_session_with_containers.commit()
 
 
-def test_dispatch_human_input_email_task_integration(monkeypatch: pytest.MonkeyPatch, db_session_with_containers):
+def test_dispatch_human_input_email_task_integration(
+    monkeypatch: pytest.MonkeyPatch, db_session_with_containers: Session
+):
     tenant, account = _create_workspace_member(db_session_with_containers)
     workflow_run_id = str(uuid.uuid4())
     workflow_id = str(uuid.uuid4())

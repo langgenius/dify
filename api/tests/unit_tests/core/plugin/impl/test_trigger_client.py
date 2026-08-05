@@ -2,6 +2,7 @@ from io import BytesIO
 from types import SimpleNamespace
 
 import pytest
+from pytest_mock import MockerFixture
 from werkzeug import Request
 
 from core.plugin.entities.plugin_daemon import CredentialType
@@ -62,7 +63,7 @@ def _subscription_call_kwargs(method_name: str) -> dict:
 
 
 class TestPluginTriggerClient:
-    def test_fetch_trigger_providers(self, mocker):
+    def test_fetch_trigger_providers(self, mocker: MockerFixture):
         client = PluginTriggerClient()
         provider = _trigger_provider("remote")
 
@@ -89,7 +90,7 @@ class TestPluginTriggerClient:
         assert result[0].declaration.identity.name == "org/plugin/remote"
         assert result[0].declaration.events[0].identity.provider == "org/plugin/remote"
 
-    def test_fetch_trigger_provider(self, mocker):
+    def test_fetch_trigger_provider(self, mocker: MockerFixture):
         client = PluginTriggerClient()
         provider = _trigger_provider("provider")
 
@@ -108,7 +109,7 @@ class TestPluginTriggerClient:
         assert result.declaration.identity.name == "org/plugin/provider"
         assert result.declaration.events[0].identity.provider == "org/plugin/provider"
 
-    def test_invoke_trigger_event(self, mocker):
+    def test_invoke_trigger_event(self, mocker: MockerFixture):
         client = PluginTriggerClient()
         stream_mock = mocker.patch.object(
             client,
@@ -132,7 +133,7 @@ class TestPluginTriggerClient:
         assert result.variables == {"ok": True}
         assert stream_mock.call_count == 1
 
-    def test_invoke_trigger_event_no_response_raises(self, mocker):
+    def test_invoke_trigger_event_no_response_raises(self, mocker: MockerFixture):
         client = PluginTriggerClient()
         mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
 
@@ -150,7 +151,7 @@ class TestPluginTriggerClient:
                 payload={"payload": 1},
             )
 
-    def test_validate_provider_credentials(self, mocker):
+    def test_validate_provider_credentials(self, mocker: MockerFixture):
         client = PluginTriggerClient()
         stream_mock = mocker.patch.object(client, "_request_with_plugin_daemon_response_stream")
 
@@ -163,7 +164,7 @@ class TestPluginTriggerClient:
         ):
             client.validate_provider_credentials("tenant-1", "user-1", "org/plugin/provider", {"k": "v"})
 
-    def test_dispatch_event(self, mocker):
+    def test_dispatch_event(self, mocker: MockerFixture):
         client = PluginTriggerClient()
         stream_mock = mocker.patch.object(
             client,
@@ -195,7 +196,7 @@ class TestPluginTriggerClient:
             )
 
     @pytest.mark.parametrize("method_name", ["subscribe", "unsubscribe", "refresh"])
-    def test_subscription_operations_success(self, mocker, method_name):
+    def test_subscription_operations_success(self, mocker: MockerFixture, method_name):
         client = PluginTriggerClient()
         stream_mock = mocker.patch.object(
             client,
@@ -217,7 +218,7 @@ class TestPluginTriggerClient:
             ("refresh", "No response received from plugin daemon for refresh"),
         ],
     )
-    def test_subscription_operations_no_response(self, mocker, method_name, expected):
+    def test_subscription_operations_no_response(self, mocker: MockerFixture, method_name, expected):
         client = PluginTriggerClient()
         mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
         method = getattr(client, method_name)

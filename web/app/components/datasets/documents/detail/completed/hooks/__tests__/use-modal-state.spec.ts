@@ -1,7 +1,9 @@
 import type { ChildChunkDetail, SegmentDetailModel } from '@/models/datasets'
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { useModalState } from '../use-modal-state'
+import * as modalStateHooks from '../use-modal-state'
+
+const renderDatasetModalState = modalStateHooks.useModalState
 
 describe('useModalState', () => {
   const onNewSegmentModalChange = vi.fn()
@@ -10,22 +12,21 @@ describe('useModalState', () => {
     vi.clearAllMocks()
   })
 
-  const renderUseModalState = () =>
-    renderHook(() => useModalState({ onNewSegmentModalChange }))
+  const renderModalState = () =>
+    renderHook(() => renderDatasetModalState({ onNewSegmentModalChange }))
 
   it('should initialize with all modals closed', () => {
-    const { result } = renderUseModalState()
+    const { result } = renderModalState()
 
     expect(result.current.currSegment.showModal).toBe(false)
     expect(result.current.currChildChunk.showModal).toBe(false)
     expect(result.current.showNewChildSegmentModal).toBe(false)
-    expect(result.current.isRegenerationModalOpen).toBe(false)
     expect(result.current.fullScreen).toBe(false)
     expect(result.current.isCollapsed).toBe(true)
   })
 
   it('should open segment detail on card click', () => {
-    const { result } = renderUseModalState()
+    const { result } = renderModalState()
     const detail = { id: 'seg-1', content: 'test' } as unknown as SegmentDetailModel
 
     act(() => {
@@ -37,8 +38,25 @@ describe('useModalState', () => {
     expect(result.current.currSegment.isEditMode).toBe(true)
   })
 
+  it('should close child detail when opening segment detail', () => {
+    const { result } = renderModalState()
+    const childDetail = { id: 'child-1', segment_id: 'seg-1' } as unknown as ChildChunkDetail
+    const segmentDetail = { id: 'seg-1' } as unknown as SegmentDetailModel
+
+    act(() => {
+      result.current.onClickSlice(childDetail)
+    })
+    act(() => {
+      result.current.onClickCard(segmentDetail)
+    })
+
+    expect(result.current.currSegment.showModal).toBe(true)
+    expect(result.current.currSegment.segInfo).toBe(segmentDetail)
+    expect(result.current.currChildChunk.showModal).toBe(false)
+  })
+
   it('should close segment detail and reset fullscreen', () => {
-    const { result } = renderUseModalState()
+    const { result } = renderModalState()
 
     act(() => {
       result.current.onClickCard({ id: 'seg-1' } as unknown as SegmentDetailModel)
@@ -55,7 +73,7 @@ describe('useModalState', () => {
   })
 
   it('should open child segment detail on slice click', () => {
-    const { result } = renderUseModalState()
+    const { result } = renderModalState()
     const childDetail = { id: 'child-1', segment_id: 'seg-1' } as unknown as ChildChunkDetail
 
     act(() => {
@@ -67,8 +85,25 @@ describe('useModalState', () => {
     expect(result.current.currChunkId).toBe('seg-1')
   })
 
+  it('should close segment detail when opening child detail', () => {
+    const { result } = renderModalState()
+    const segmentDetail = { id: 'seg-1' } as unknown as SegmentDetailModel
+    const childDetail = { id: 'child-1', segment_id: 'seg-1' } as unknown as ChildChunkDetail
+
+    act(() => {
+      result.current.onClickCard(segmentDetail)
+    })
+    act(() => {
+      result.current.onClickSlice(childDetail)
+    })
+
+    expect(result.current.currSegment.showModal).toBe(false)
+    expect(result.current.currChildChunk.showModal).toBe(true)
+    expect(result.current.currChildChunk.childChunkInfo).toBe(childDetail)
+  })
+
   it('should close child segment detail', () => {
-    const { result } = renderUseModalState()
+    const { result } = renderModalState()
 
     act(() => {
       result.current.onClickSlice({ id: 'c1', segment_id: 's1' } as unknown as ChildChunkDetail)
@@ -81,7 +116,7 @@ describe('useModalState', () => {
   })
 
   it('should handle new child chunk modal', () => {
-    const { result } = renderUseModalState()
+    const { result } = renderModalState()
 
     act(() => {
       result.current.handleAddNewChildChunk('parent-chunk-1')
@@ -98,7 +133,7 @@ describe('useModalState', () => {
   })
 
   it('should close new segment modal and notify parent', () => {
-    const { result } = renderUseModalState()
+    const { result } = renderModalState()
 
     act(() => {
       result.current.onCloseNewSegmentModal()
@@ -108,7 +143,7 @@ describe('useModalState', () => {
   })
 
   it('should toggle full screen', () => {
-    const { result } = renderUseModalState()
+    const { result } = renderModalState()
 
     act(() => {
       result.current.toggleFullScreen()
@@ -122,7 +157,7 @@ describe('useModalState', () => {
   })
 
   it('should toggle collapsed', () => {
-    const { result } = renderUseModalState()
+    const { result } = renderModalState()
 
     act(() => {
       result.current.toggleCollapsed()
@@ -133,14 +168,5 @@ describe('useModalState', () => {
       result.current.toggleCollapsed()
     })
     expect(result.current.isCollapsed).toBe(true)
-  })
-
-  it('should set regeneration modal state', () => {
-    const { result } = renderUseModalState()
-
-    act(() => {
-      result.current.setIsRegenerationModalOpen(true)
-    })
-    expect(result.current.isRegenerationModalOpen).toBe(true)
   })
 })

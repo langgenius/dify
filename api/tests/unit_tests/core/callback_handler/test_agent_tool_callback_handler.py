@@ -1,8 +1,10 @@
 from unittest.mock import MagicMock
 
 import pytest
+from pytest_mock import MockerFixture
 
 import core.callback_handler.agent_tool_callback_handler as module
+from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 
 # -----------------------------
 # Fixtures
@@ -10,17 +12,17 @@ import core.callback_handler.agent_tool_callback_handler as module
 
 
 @pytest.fixture
-def enable_debug(mocker):
+def enable_debug(mocker: MockerFixture):
     mocker.patch.object(module.dify_config, "DEBUG", True)
 
 
 @pytest.fixture
-def disable_debug(mocker):
+def disable_debug(mocker: MockerFixture):
     mocker.patch.object(module.dify_config, "DEBUG", False)
 
 
 @pytest.fixture
-def mock_print(mocker):
+def mock_print(mocker: MockerFixture):
     return mocker.patch("builtins.print")
 
 
@@ -71,7 +73,7 @@ class TestPrintText:
         module.print_text("hello")
         mock_print.assert_called_once_with("hello", end="", file=None)
 
-    def test_print_text_with_color(self, mocker, mock_print):
+    def test_print_text_with_color(self, mocker: MockerFixture, mock_print):
         mock_get_color = mocker.patch(
             "core.callback_handler.agent_tool_callback_handler.get_colored_text",
             return_value="colored_text",
@@ -82,7 +84,7 @@ class TestPrintText:
         mock_get_color.assert_called_once_with("hello", "green")
         mock_print.assert_called_once_with("colored_text", end="", file=None)
 
-    def test_print_text_with_file_flush(self, mocker):
+    def test_print_text_with_file_flush(self, mocker: MockerFixture):
         mock_file = MagicMock()
         mock_print = mocker.patch("builtins.print")
 
@@ -107,21 +109,25 @@ class TestDifyAgentCallbackHandler:
         assert handler.color == "green"
         assert handler.current_loop == 1
 
-    def test_on_tool_start_debug_enabled(self, handler, enable_debug, mocker):
+    def test_on_tool_start_debug_enabled(self, handler: DifyAgentCallbackHandler, enable_debug, mocker: MockerFixture):
         mock_print_text = mocker.patch("core.callback_handler.agent_tool_callback_handler.print_text")
 
         handler.on_tool_start("tool1", {"a": 1})
 
         mock_print_text.assert_called()
 
-    def test_on_tool_start_debug_disabled(self, handler, disable_debug, mocker):
+    def test_on_tool_start_debug_disabled(
+        self, handler: DifyAgentCallbackHandler, disable_debug, mocker: MockerFixture
+    ):
         mock_print_text = mocker.patch("core.callback_handler.agent_tool_callback_handler.print_text")
 
         handler.on_tool_start("tool1", {"a": 1})
 
         mock_print_text.assert_not_called()
 
-    def test_on_tool_end_debug_enabled_and_trace(self, handler, enable_debug, mocker):
+    def test_on_tool_end_debug_enabled_and_trace(
+        self, handler: DifyAgentCallbackHandler, enable_debug, mocker: MockerFixture
+    ):
         mock_print_text = mocker.patch("core.callback_handler.agent_tool_callback_handler.print_text")
         mock_trace_manager = MagicMock()
 
@@ -137,7 +143,9 @@ class TestDifyAgentCallbackHandler:
         assert mock_print_text.call_count >= 1
         mock_trace_manager.add_trace_task.assert_called_once()
 
-    def test_on_tool_end_without_trace_manager(self, handler, enable_debug, mocker):
+    def test_on_tool_end_without_trace_manager(
+        self, handler: DifyAgentCallbackHandler, enable_debug, mocker: MockerFixture
+    ):
         mock_print_text = mocker.patch("core.callback_handler.agent_tool_callback_handler.print_text")
 
         handler.on_tool_end(
@@ -148,14 +156,16 @@ class TestDifyAgentCallbackHandler:
 
         assert mock_print_text.call_count >= 1
 
-    def test_on_tool_error_debug_enabled(self, handler, enable_debug, mocker):
+    def test_on_tool_error_debug_enabled(self, handler: DifyAgentCallbackHandler, enable_debug, mocker: MockerFixture):
         mock_print_text = mocker.patch("core.callback_handler.agent_tool_callback_handler.print_text")
 
         handler.on_tool_error(Exception("error"))
 
         mock_print_text.assert_called_once()
 
-    def test_on_tool_error_debug_disabled(self, handler, disable_debug, mocker):
+    def test_on_tool_error_debug_disabled(
+        self, handler: DifyAgentCallbackHandler, disable_debug, mocker: MockerFixture
+    ):
         mock_print_text = mocker.patch("core.callback_handler.agent_tool_callback_handler.print_text")
 
         handler.on_tool_error(Exception("error"))
@@ -163,14 +173,16 @@ class TestDifyAgentCallbackHandler:
         mock_print_text.assert_not_called()
 
     @pytest.mark.parametrize("thought", ["thinking", ""])
-    def test_on_agent_start(self, handler, enable_debug, mocker, thought):
+    def test_on_agent_start(self, handler: DifyAgentCallbackHandler, enable_debug, mocker: MockerFixture, thought):
         mock_print_text = mocker.patch("core.callback_handler.agent_tool_callback_handler.print_text")
 
         handler.on_agent_start(thought)
 
         mock_print_text.assert_called()
 
-    def test_on_agent_finish_increments_loop(self, handler, enable_debug, mocker):
+    def test_on_agent_finish_increments_loop(
+        self, handler: DifyAgentCallbackHandler, enable_debug, mocker: MockerFixture
+    ):
         mock_print_text = mocker.patch("core.callback_handler.agent_tool_callback_handler.print_text")
 
         current_loop = handler.current_loop
@@ -179,19 +191,21 @@ class TestDifyAgentCallbackHandler:
         assert handler.current_loop == current_loop + 1
         mock_print_text.assert_called()
 
-    def test_on_datasource_start_debug_enabled(self, handler, enable_debug, mocker):
+    def test_on_datasource_start_debug_enabled(
+        self, handler: DifyAgentCallbackHandler, enable_debug, mocker: MockerFixture
+    ):
         mock_print_text = mocker.patch("core.callback_handler.agent_tool_callback_handler.print_text")
 
         handler.on_datasource_start("ds1", {"x": 1})
 
         mock_print_text.assert_called_once()
 
-    def test_ignore_agent_property(self, disable_debug, handler):
+    def test_ignore_agent_property(self, disable_debug, handler: DifyAgentCallbackHandler):
         assert handler.ignore_agent is True
 
-    def test_ignore_chat_model_property(self, disable_debug, handler):
+    def test_ignore_chat_model_property(self, disable_debug, handler: DifyAgentCallbackHandler):
         assert handler.ignore_chat_model is True
 
-    def test_ignore_properties_when_debug_enabled(self, enable_debug, handler):
+    def test_ignore_properties_when_debug_enabled(self, enable_debug, handler: DifyAgentCallbackHandler):
         assert handler.ignore_agent is False
         assert handler.ignore_chat_model is False

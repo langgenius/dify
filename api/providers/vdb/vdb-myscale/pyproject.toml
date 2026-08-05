@@ -3,7 +3,7 @@ name = "dify-vdb-myscale"
 version = "0.0.1"
 
 dependencies = [
-    "clickhouse-connect~=0.15.0",
+    "clickhouse-connect==0.15.1",
 ]
 description = "Dify vector store backend (dify-vdb-myscale)."
 

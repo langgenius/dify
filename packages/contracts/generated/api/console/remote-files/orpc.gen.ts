@@ -2,10 +2,10 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import {
   zGetRemoteFilesByUrlPath,
   zGetRemoteFilesByUrlResponse,
+  zPostRemoteFilesUploadBody,
   zPostRemoteFilesUploadResponse,
 } from './zod.gen'
 
@@ -15,8 +15,10 @@ export const post = oc
     method: 'POST',
     operationId: 'postRemoteFilesUpload',
     path: '/remote-files/upload',
+    successStatus: 201,
     tags: ['console'],
   })
+  .input(z.object({ body: zPostRemoteFilesUploadBody }))
   .output(zPostRemoteFilesUploadResponse)
 
 export const upload = {

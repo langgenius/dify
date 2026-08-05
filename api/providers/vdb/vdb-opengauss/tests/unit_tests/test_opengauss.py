@@ -37,7 +37,7 @@ def _build_fake_psycopg2_modules():
 
 
 @pytest.fixture
-def opengauss_module(monkeypatch):
+def opengauss_module(monkeypatch: pytest.MonkeyPatch):
     for name, module in _build_fake_psycopg2_modules().items():
         monkeypatch.setitem(sys.modules, name, module)
 
@@ -88,7 +88,7 @@ def test_opengauss_config_validation_rejects_min_greater_than_max(opengauss_modu
         opengauss_module.OpenGaussConfig.model_validate(values)
 
 
-def test_init_sets_table_name_and_vector_type(opengauss_module, monkeypatch):
+def test_init_sets_table_name_and_vector_type(opengauss_module, monkeypatch: pytest.MonkeyPatch):
     pool = MagicMock()
     monkeypatch.setattr(opengauss_module.psycopg2.pool, "SimpleConnectionPool", MagicMock(return_value=pool))
 
@@ -99,7 +99,7 @@ def test_init_sets_table_name_and_vector_type(opengauss_module, monkeypatch):
     assert vector.pool is pool
 
 
-def test_create_index_with_pq_executes_pq_sql(opengauss_module, monkeypatch):
+def test_create_index_with_pq_executes_pq_sql(opengauss_module, monkeypatch: pytest.MonkeyPatch):
     pool = MagicMock()
     monkeypatch.setattr(opengauss_module.psycopg2.pool, "SimpleConnectionPool", MagicMock(return_value=pool))
 
@@ -126,7 +126,7 @@ def test_create_index_with_pq_executes_pq_sql(opengauss_module, monkeypatch):
     opengauss_module.redis_client.set.assert_called_once()
 
 
-def test_create_index_skips_index_sql_for_large_dimension(opengauss_module, monkeypatch):
+def test_create_index_skips_index_sql_for_large_dimension(opengauss_module, monkeypatch: pytest.MonkeyPatch):
     pool = MagicMock()
     monkeypatch.setattr(opengauss_module.psycopg2.pool, "SimpleConnectionPool", MagicMock(return_value=pool))
 
@@ -158,7 +158,7 @@ def test_search_by_vector_validates_top_k(opengauss_module):
         vector.search_by_vector([0.1, 0.2], top_k=0)
 
 
-def test_delete_by_ids_short_circuits_with_empty_input(opengauss_module, monkeypatch):
+def test_delete_by_ids_short_circuits_with_empty_input(opengauss_module, monkeypatch: pytest.MonkeyPatch):
     pool = MagicMock()
     monkeypatch.setattr(opengauss_module.psycopg2.pool, "SimpleConnectionPool", MagicMock(return_value=pool))
     vector = opengauss_module.OpenGauss("collection_1", _config(opengauss_module))
@@ -200,7 +200,7 @@ def test_create_calls_collection_insert_and_index(opengauss_module):
     vector._create_index.assert_called_once_with(2)
 
 
-def test_create_index_returns_early_on_cache_hit(opengauss_module, monkeypatch):
+def test_create_index_returns_early_on_cache_hit(opengauss_module, monkeypatch: pytest.MonkeyPatch):
     pool = MagicMock()
     monkeypatch.setattr(opengauss_module.psycopg2.pool, "SimpleConnectionPool", MagicMock(return_value=pool))
 
@@ -220,7 +220,7 @@ def test_create_index_returns_early_on_cache_hit(opengauss_module, monkeypatch):
     opengauss_module.redis_client.set.assert_not_called()
 
 
-def test_create_index_without_pq_executes_standard_index_sql(opengauss_module, monkeypatch):
+def test_create_index_without_pq_executes_standard_index_sql(opengauss_module, monkeypatch: pytest.MonkeyPatch):
     pool = MagicMock()
     monkeypatch.setattr(opengauss_module.psycopg2.pool, "SimpleConnectionPool", MagicMock(return_value=pool))
 
@@ -245,7 +245,7 @@ def test_create_index_without_pq_executes_standard_index_sql(opengauss_module, m
     assert any("embedding_cosine_embedding_collection_1_idx" in query for query in sql)
 
 
-def test_add_texts_uses_execute_values(opengauss_module, monkeypatch):
+def test_add_texts_uses_execute_values(opengauss_module, monkeypatch: pytest.MonkeyPatch):
     pool = MagicMock()
     monkeypatch.setattr(opengauss_module.psycopg2.pool, "SimpleConnectionPool", MagicMock(return_value=pool))
     vector = opengauss_module.OpenGauss("collection_1", _config(opengauss_module))
@@ -342,7 +342,7 @@ def test_search_by_full_text_validates_top_k(opengauss_module):
         vector.search_by_full_text("query", top_k=0)
 
 
-def test_create_collection_cache_and_create_path(opengauss_module, monkeypatch):
+def test_create_collection_cache_and_create_path(opengauss_module, monkeypatch: pytest.MonkeyPatch):
     pool = MagicMock()
     monkeypatch.setattr(opengauss_module.psycopg2.pool, "SimpleConnectionPool", MagicMock(return_value=pool))
     lock = MagicMock()
@@ -370,7 +370,7 @@ def test_create_collection_cache_and_create_path(opengauss_module, monkeypatch):
     opengauss_module.redis_client.set.assert_called_once()
 
 
-def test_opengauss_factory_uses_existing_or_generated_collection(opengauss_module, monkeypatch):
+def test_opengauss_factory_uses_existing_or_generated_collection(opengauss_module, monkeypatch: pytest.MonkeyPatch):
     factory = opengauss_module.OpenGaussFactory()
     dataset_with_index = SimpleNamespace(
         id="dataset-1",

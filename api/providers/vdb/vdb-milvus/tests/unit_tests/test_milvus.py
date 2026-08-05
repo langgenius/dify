@@ -99,7 +99,7 @@ def _build_fake_pymilvus_modules():
 
 
 @pytest.fixture
-def milvus_module(monkeypatch):
+def milvus_module(monkeypatch: pytest.MonkeyPatch):
     for name, module in _build_fake_pymilvus_modules().items():
         monkeypatch.setitem(sys.modules, name, module)
 
@@ -161,6 +161,35 @@ def test_init_client_supports_token_and_user_password(milvus_module):
     assert user_client.init_kwargs["uri"] == "http://localhost:19530"
     assert user_client.init_kwargs["user"] == "root"
     assert user_client.init_kwargs["password"] == "Milvus"
+
+
+def test_init_client_passes_tls_kwargs_when_secure(milvus_module):
+    vector = milvus_module.MilvusVector.__new__(milvus_module.MilvusVector)
+    client = vector._init_client(
+        milvus_module.MilvusConfig.model_validate(
+            {
+                "uri": "https://milvus.example.com:19530",
+                "token": "abc",
+                "database": "db",
+                "secure": True,
+                "server_pem_path": "/etc/milvus/certs/server.pem",
+                "server_name": "milvus.example.com",
+            }
+        )
+    )
+    assert client.init_kwargs["secure"] is True
+    assert client.init_kwargs["server_pem_path"] == "/etc/milvus/certs/server.pem"
+    assert client.init_kwargs["server_name"] == "milvus.example.com"
+
+
+def test_init_client_omits_tls_kwargs_when_not_secure(milvus_module):
+    vector = milvus_module.MilvusVector.__new__(milvus_module.MilvusVector)
+    client = vector._init_client(
+        milvus_module.MilvusConfig.model_validate({"uri": "http://localhost:19530", "token": "abc", "database": "db"})
+    )
+    assert "secure" not in client.init_kwargs
+    assert "server_pem_path" not in client.init_kwargs
+    assert "server_name" not in client.init_kwargs
 
 
 def test_init_loads_fields_when_collection_exists(milvus_module):
@@ -327,7 +356,7 @@ def test_process_search_results_and_search_methods(milvus_module):
     assert "document_id" in vector._client.search.call_args.kwargs["filter"]
 
 
-def test_create_collection_cache_and_existing_collection(milvus_module, monkeypatch):
+def test_create_collection_cache_and_existing_collection(milvus_module, monkeypatch: pytest.MonkeyPatch):
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -351,7 +380,7 @@ def test_create_collection_cache_and_existing_collection(milvus_module, monkeypa
     milvus_module.redis_client.set.assert_called()
 
 
-def test_create_collection_builds_schema_and_indexes(milvus_module, monkeypatch):
+def test_create_collection_builds_schema_and_indexes(milvus_module, monkeypatch: pytest.MonkeyPatch):
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -385,7 +414,7 @@ def test_create_collection_builds_schema_and_indexes(milvus_module, monkeypatch)
     assert call_kwargs["consistency_level"] == "Session"
 
 
-def test_factory_initializes_milvus_vector(milvus_module, monkeypatch):
+def test_factory_initializes_milvus_vector(milvus_module, monkeypatch: pytest.MonkeyPatch):
     factory = milvus_module.MilvusVectorFactory()
     dataset_with_index = SimpleNamespace(
         id="dataset-1",

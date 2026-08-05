@@ -1,11 +1,16 @@
 'use client'
 import type { FC } from 'react'
 import type { DataSet } from '@/models/datasets'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
-  RiDeleteBinLine,
-  RiEditLine,
-} from '@remixicon/react'
-import { useBoolean } from 'ahooks'
+  Drawer,
+  DrawerBackdrop,
+  DrawerContent,
+  DrawerPopup,
+  DrawerPortal,
+  DrawerViewport,
+} from '@langgenius/dify-ui/drawer'
+import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -13,19 +18,22 @@ import SettingsModal from '@/app/components/app/configuration/dataset-config/set
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
-import Drawer from '@/app/components/base/drawer'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import FeatureIcon from '@/app/components/header/account-setting/model-provider-page/model-selector/feature-icon'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useKnowledge } from '@/hooks/use-knowledge'
 
-type Props = {
+type Props = Readonly<{
   payload: DataSet
   onRemove: () => void
   onChange: (dataSet: DataSet) => void
   readonly?: boolean
   editable?: boolean
-}
+  settingsDrawerBackdropClassName?: string
+  settingsDrawerBackdropForceRender?: boolean
+  settingsDrawerPopupClassName?: string
+  settingsModalHeight?: string
+}>
 
 const DatasetItem: FC<Props> = ({
   payload,
@@ -33,6 +41,10 @@ const DatasetItem: FC<Props> = ({
   onChange,
   readonly,
   editable = true,
+  settingsDrawerBackdropClassName,
+  settingsDrawerBackdropForceRender,
+  settingsDrawerPopupClassName,
+  settingsModalHeight,
 }) => {
   const media = useBreakpoints()
   const { t } = useTranslation()
@@ -40,20 +52,23 @@ const DatasetItem: FC<Props> = ({
   const { formatIndexingTechniqueAndMethod } = useKnowledge()
   const [isDeleteHovered, setIsDeleteHovered] = useState(false)
 
-  const [isShowSettingsModal, {
-    setTrue: showSettingsModal,
-    setFalse: hideSettingsModal,
-  }] = useBoolean(false)
+  const [isShowSettingsModal, setIsShowSettingsModal] = useState(false)
 
-  const handleSave = useCallback((newDataset: DataSet) => {
-    onChange(newDataset)
-    hideSettingsModal()
-  }, [hideSettingsModal, onChange])
+  const handleSave = useCallback(
+    (newDataset: DataSet) => {
+      onChange(newDataset)
+      setIsShowSettingsModal(false)
+    },
+    [onChange],
+  )
 
-  const handleRemove = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation()
-    onRemove()
-  }, [onRemove])
+  const handleRemove = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      onRemove()
+    },
+    [onRemove],
+  )
 
   const iconInfo = payload.icon_info || {
     icon: '📙',
@@ -63,12 +78,12 @@ const DatasetItem: FC<Props> = ({
   }
 
   return (
-    <div className={`group/dataset-item flex h-10 cursor-pointer items-center justify-between rounded-lg
-      border-[0.5px] border-components-panel-border-subtle px-2
-      ${isDeleteHovered
-      ? 'border-state-destructive-border bg-state-destructive-hover'
-      : 'bg-components-panel-on-panel-item-bg hover:bg-components-panel-on-panel-item-bg-hover'
-    }`}
+    <div
+      className={`group/dataset-item flex h-10 cursor-pointer items-center justify-between rounded-lg border-[0.5px] border-components-panel-border-subtle px-2 ${
+        isDeleteHovered
+          ? 'border-state-destructive-border bg-state-destructive-hover'
+          : 'bg-components-panel-on-panel-item-bg hover:bg-components-panel-on-panel-item-bg-hover'
+      }`}
     >
       <div className="flex w-0 grow items-center space-x-1.5">
         <AppIcon
@@ -82,29 +97,27 @@ const DatasetItem: FC<Props> = ({
       </div>
       {!readonly && (
         <div className="ml-2 hidden shrink-0 items-center space-x-1 group-hover/dataset-item:flex">
-          {
-            editable && (
-              <ActionButton
-                aria-label={t('operation.edit', { ns: 'common' })}
-                data-testid="dataset-item-edit-button"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  showSettingsModal()
-                }}
-              >
-                <RiEditLine className="h-4 w-4 shrink-0 text-text-tertiary" />
-              </ActionButton>
-            )
-          }
+          {editable && (
+            <ActionButton
+              aria-label={t(($) => $['operation.edit'], { ns: 'common' })}
+              onClick={(e) => {
+                e.stopPropagation()
+                setIsShowSettingsModal(true)
+              }}
+            >
+              <RiEditLine className="size-4 shrink-0 text-text-tertiary" />
+            </ActionButton>
+          )}
           <ActionButton
-            aria-label={t('operation.remove', { ns: 'common' })}
-            data-testid="dataset-item-remove-button"
+            aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
             onClick={handleRemove}
             state={isDeleteHovered ? ActionButtonState.Destructive : ActionButtonState.Default}
             onMouseEnter={() => setIsDeleteHovered(true)}
             onMouseLeave={() => setIsDeleteHovered(false)}
           >
-            <RiDeleteBinLine className={`h-4 w-4 shrink-0 ${isDeleteHovered ? 'text-text-destructive' : 'text-text-tertiary'}`} />
+            <RiDeleteBinLine
+              className={`size-4 shrink-0 ${isDeleteHovered ? 'text-text-destructive' : 'text-text-tertiary'}`}
+            />
           </ActionButton>
         </div>
       )}
@@ -113,30 +126,58 @@ const DatasetItem: FC<Props> = ({
           <FeatureIcon feature={ModelFeatureEnum.vision} />
         </div>
       )}
-      {
-        !!payload.indexing_technique && (
-          <Badge
-            className="shrink-0 group-hover/dataset-item:hidden"
-            text={formatIndexingTechniqueAndMethod(payload.indexing_technique, payload.retrieval_model_dict?.search_method)}
-          />
-        )
-      }
-      {
-        payload.provider === 'external' && (
-          <Badge
-            className="shrink-0 group-hover/dataset-item:hidden"
-            text={t('externalTag', { ns: 'dataset' })}
-          />
-        )
-      }
+      {!!payload.indexing_technique && (
+        <Badge
+          className="shrink-0 group-hover/dataset-item:hidden"
+          text={formatIndexingTechniqueAndMethod(
+            payload.indexing_technique,
+            payload.retrieval_model_dict?.search_method,
+          )}
+        />
+      )}
+      {payload.provider === 'external' && (
+        <Badge
+          className="shrink-0 group-hover/dataset-item:hidden"
+          text={t(($) => $.externalTag, { ns: 'dataset' })}
+        />
+      )}
 
       {isShowSettingsModal && (
-        <Drawer isOpen={isShowSettingsModal} onClose={hideSettingsModal} footer={null} mask={isMobile} panelClassName="mt-16 mx-2 sm:mr-2 mb-3 p-0! max-w-[640px]! rounded-xl">
-          <SettingsModal
-            currentDataset={payload}
-            onCancel={hideSettingsModal}
-            onSave={handleSave}
-          />
+        <Drawer
+          open={isShowSettingsModal}
+          modal
+          swipeDirection="right"
+          onOpenChange={(open) => {
+            if (!open) setIsShowSettingsModal(false)
+          }}
+        >
+          <DrawerPortal>
+            <DrawerBackdrop
+              forceRender={settingsDrawerBackdropForceRender}
+              className={cn(
+                !settingsDrawerBackdropClassName && !isMobile && 'bg-transparent',
+                settingsDrawerBackdropClassName,
+              )}
+            />
+            <DrawerViewport>
+              <DrawerPopup
+                className={cn(
+                  'p-0! data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-160 data-[swipe-direction=right]:rounded-xl',
+                  settingsDrawerPopupClassName ??
+                    'data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:bottom-3',
+                )}
+              >
+                <DrawerContent className="flex h-full min-h-0 flex-1 flex-col p-0 pb-0">
+                  <SettingsModal
+                    currentDataset={payload}
+                    height={settingsModalHeight}
+                    onCancel={() => setIsShowSettingsModal(false)}
+                    onSave={handleSave}
+                  />
+                </DrawerContent>
+              </DrawerPopup>
+            </DrawerViewport>
+          </DrawerPortal>
         </Drawer>
       )}
     </div>
