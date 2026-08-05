@@ -1,68 +1,61 @@
 'use client'
 
-import type { Plugin } from '@/app/components/plugins/types'
+import type { MarketplaceTemplate } from '@dify/contracts/marketplace'
 import { useTheme } from 'next-themes'
 import { useCallback } from 'react'
 import { useLocale, useTranslation } from '#i18n'
-import { getPluginLinkInMarketplace } from '../utils'
-import MarketplaceDetailDialogFrame from './frame'
+import MarketplaceDetailDialogFrame from '../detail-dialog/frame'
+import { getTemplateLinkInMarketplace } from '../utils'
 
-const MARKETPLACE_INSTALL_MESSAGE_TYPE = 'dify-marketplace:install-plugin'
+const MARKETPLACE_INSTALL_MESSAGE_TYPE = 'dify-marketplace:install-template'
 
-type MarketplaceDetailDialogProps = {
-  isInstalled: boolean
+type TemplateDetailDialogProps = {
   open: boolean
-  plugin: Plugin
+  template: MarketplaceTemplate
   onInstall: () => void
   onOpenChange: (open: boolean) => void
 }
 
-function MarketplaceDetailDialog({
-  isInstalled,
+export default function TemplateDetailDialog({
   open,
-  plugin,
+  template,
   onInstall,
   onOpenChange,
-}: MarketplaceDetailDialogProps) {
+}: TemplateDetailDialogProps) {
   const { t } = useTranslation()
   const locale = useLocale()
   const { theme } = useTheme()
-  const pluginLabel = plugin.label[locale] ?? plugin.label['en-US'] ?? plugin.name
   const detailLabel = t(($) => $['detailPanel.operation.detail'], { ns: 'plugin' })
-  const detailURL = getPluginLinkInMarketplace(plugin, {
-    installed: String(isInstalled),
+  const detailURL = getTemplateLinkInMarketplace(template, {
     language: locale,
     source: globalThis.location?.origin,
     theme,
     view: 'modal',
   })
-
   const handleMessage = useCallback(
     (data: unknown) => {
       if (
         typeof data !== 'object' ||
         data === null ||
         !('type' in data) ||
-        !('pluginUniqueIdentifier' in data) ||
+        !('templateId' in data) ||
         data.type !== MARKETPLACE_INSTALL_MESSAGE_TYPE ||
-        data.pluginUniqueIdentifier !== plugin.latest_package_identifier
+        data.templateId !== template.id
       )
         return
 
       onInstall()
     },
-    [onInstall, plugin.latest_package_identifier],
+    [onInstall, template.id],
   )
 
   return (
     <MarketplaceDetailDialogFrame
       open={open}
       src={detailURL}
-      title={`${pluginLabel} · ${detailLabel}`}
-      onMessage={isInstalled ? undefined : handleMessage}
+      title={`${template.template_name} · ${detailLabel}`}
+      onMessage={handleMessage}
       onOpenChange={onOpenChange}
     />
   )
 }
-
-export default MarketplaceDetailDialog
