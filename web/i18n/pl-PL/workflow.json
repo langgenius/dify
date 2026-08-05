@@ -1304,6 +1304,7 @@
   "variableReference.noAvailableVars": "Brak dostępnych zmiennych",
   "variableReference.noVarsForOperation": "Nie ma dostępnych zmiennych do przypisania do wybranej operacji.",
   "versionHistory.action.copyIdSuccess": "Identyfikator skopiowany do schowka",
+  "versionHistory.action.deleteDeployedVersionError": "Ta wersja przepływu pracy jest wdrożona lub właśnie wdrażana w co najmniej jednym środowisku. Wycofaj ją ze wszystkich środowisk przed usunięciem wersji.",
   "versionHistory.action.deleteFailure": "Nie udało się usunąć wersji",
   "versionHistory.action.deleteSuccess": "Wersja usunięta",
   "versionHistory.action.restoreFailure": "Nie udało się przywrócić wersji",

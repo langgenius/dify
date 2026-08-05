@@ -1304,6 +1304,7 @@
   "variableReference.noAvailableVars": "Ni razpoložljivih spremenljivk.",
   "variableReference.noVarsForOperation": "Za izbrano operacijo ni nobenih spremenljivk, ki bi jih bilo mogoče dodeliti.",
   "versionHistory.action.copyIdSuccess": "ID kopiran v odložišče",
+  "versionHistory.action.deleteDeployedVersionError": "Ta različica delovnega toka je uvedena ali se uvaja v enem ali več okoljih. Pred brisanjem različice jo odstranite iz vseh okolij.",
   "versionHistory.action.deleteFailure": "Brisanje različice ni uspelo",
   "versionHistory.action.deleteSuccess": "Različica izbrisana",
   "versionHistory.action.restoreFailure": "Obnavljanje različice ni uspelo",

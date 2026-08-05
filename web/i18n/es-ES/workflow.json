@@ -1304,6 +1304,7 @@
   "variableReference.noAvailableVars": "No hay variables disponibles",
   "variableReference.noVarsForOperation": "No hay variables disponibles para la asignación con la operación seleccionada.",
   "versionHistory.action.copyIdSuccess": "ID copiado en el portapapeles",
+  "versionHistory.action.deleteDeployedVersionError": "Esta versión del flujo de trabajo está desplegada, o se está desplegando, en uno o más entornos. Retírala de todos los entornos antes de eliminarla.",
   "versionHistory.action.deleteFailure": "Error al eliminar la versión",
   "versionHistory.action.deleteSuccess": "Versión eliminada",
   "versionHistory.action.restoreFailure": "Error al restaurar la versión",

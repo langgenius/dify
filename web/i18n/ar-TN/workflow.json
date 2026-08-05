@@ -1304,6 +1304,7 @@
   "variableReference.noAvailableVars": "لا توجد متغيرات متاحة",
   "variableReference.noVarsForOperation": "لا توجد متغيرات متاحة للتعيين مع العملية المحددة.",
   "versionHistory.action.copyIdSuccess": "تم نسخ المعرف إلى الحافظة",
+  "versionHistory.action.deleteDeployedVersionError": "تم نشر إصدار سير العمل هذا، أو جارٍ نشره، في بيئة واحدة أو أكثر. ألغِ نشره من جميع البيئات قبل حذف الإصدار.",
   "versionHistory.action.deleteFailure": "فشل حذف الإصدار",
   "versionHistory.action.deleteSuccess": "تم حذف الإصدار",
   "versionHistory.action.restoreFailure": "فشل استعادة الإصدار",

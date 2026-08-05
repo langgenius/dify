@@ -1304,6 +1304,7 @@
   "variableReference.noAvailableVars": "Tidak ada variabel yang tersedia",
   "variableReference.noVarsForOperation": "Tidak ada variabel yang tersedia untuk penugasan dengan operasi yang dipilih.",
   "versionHistory.action.copyIdSuccess": "ID disalin ke clipboard",
+  "versionHistory.action.deleteDeployedVersionError": "Versi alur kerja ini telah diterapkan, atau sedang diterapkan, ke satu atau beberapa lingkungan. Batalkan penerapan dari semua lingkungan sebelum menghapus versi.",
   "versionHistory.action.deleteFailure": "Gagal menghapus versi",
   "versionHistory.action.deleteSuccess": "Versi dihapus",
   "versionHistory.action.restoreFailure": "Gagal memulihkan versi",

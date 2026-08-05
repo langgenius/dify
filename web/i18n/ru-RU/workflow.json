@@ -1304,6 +1304,7 @@
   "variableReference.noAvailableVars": "Нет доступных переменных",
   "variableReference.noVarsForOperation": "Переменные для присвоения выбранной операции отсутствуют.",
   "versionHistory.action.copyIdSuccess": "ID скопирован в буфер обмена",
+  "versionHistory.action.deleteDeployedVersionError": "Эта версия рабочего процесса развернута или развертывается в одной или нескольких средах. Перед удалением версии отмените ее развертывание во всех средах.",
   "versionHistory.action.deleteFailure": "Не удалось удалить версию",
   "versionHistory.action.deleteSuccess": "Версия удалена",
   "versionHistory.action.restoreFailure": "Не удалось восстановить версию",

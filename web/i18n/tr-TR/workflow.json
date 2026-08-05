@@ -1304,6 +1304,7 @@
   "variableReference.noAvailableVars": "Kullanılabilir değişken yok",
   "variableReference.noVarsForOperation": "Seçilen işlemle atanabilecek değişken yok.",
   "versionHistory.action.copyIdSuccess": "Kimlik panoya kopyalandı",
+  "versionHistory.action.deleteDeployedVersionError": "Bu iş akışı sürümü bir veya daha fazla ortama dağıtılmıştır ya da dağıtılmaktadır. Sürümü silmeden önce tüm ortamlardaki dağıtımı kaldırın.",
   "versionHistory.action.deleteFailure": "Versiyonu silme işlemi başarısız oldu",
   "versionHistory.action.deleteSuccess": "Sürüm silindi",
   "versionHistory.action.restoreFailure": "Sürümü geri yüklemekte başarısız olundu",

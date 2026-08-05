@@ -137,6 +137,13 @@ export const VersionHistoryPanel = ({
 
   const handleClickActionMenuItem = useCallback(
     (item: VersionHistory, operation: VersionHistoryContextMenuOptions) => {
+      if (operation === VersionHistoryContextMenuOptions.delete && item.environments?.length) {
+        toast.error(
+          t(($) => $['versionHistory.action.deleteDeployedVersionError'], { ns: 'workflow' }),
+        )
+        return
+      }
+
       setOperatedItem(item)
       switch (operation) {
         case VersionHistoryContextMenuOptions.restore:

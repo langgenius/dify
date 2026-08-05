@@ -1304,6 +1304,7 @@
   "variableReference.noAvailableVars": "無可用變數",
   "variableReference.noVarsForOperation": "所選操作沒有可用於賦值的變數。",
   "versionHistory.action.copyIdSuccess": "ID 已複製到剪貼板",
+  "versionHistory.action.deleteDeployedVersionError": "此工作流程版本已部署或正在部署至一個或多個環境。請先從所有環境中取消部署，再刪除該版本。",
   "versionHistory.action.deleteFailure": "無法刪除版本",
   "versionHistory.action.deleteSuccess": "版本已刪除",
   "versionHistory.action.restoreFailure": "無法恢復版本",

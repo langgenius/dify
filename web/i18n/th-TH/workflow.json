@@ -1304,6 +1304,7 @@
   "variableReference.noAvailableVars": "ไม่มีตัวแปรที่ใช้ได้",
   "variableReference.noVarsForOperation": "ไม่มีตัวแปรที่พร้อมใช้งานสําหรับการกําหนดด้วยการดําเนินการที่เลือก",
   "versionHistory.action.copyIdSuccess": "คัดลอกรหัสไปยังคลิปบอร์ด",
+  "versionHistory.action.deleteDeployedVersionError": "เวิร์กโฟลว์เวอร์ชันนี้ถูกนำไปใช้งานแล้วหรือกำลังนำไปใช้งานในสภาพแวดล้อมอย่างน้อยหนึ่งแห่ง โปรดยกเลิกการนำไปใช้งานจากทุกสภาพแวดล้อมก่อนลบเวอร์ชัน",
   "versionHistory.action.deleteFailure": "ลบเวอร์ชันไม่สำเร็จ",
   "versionHistory.action.deleteSuccess": "เวอร์ชันถูกลบ",
   "versionHistory.action.restoreFailure": "ไม่สามารถกู้คืนเวอร์ชันได้",

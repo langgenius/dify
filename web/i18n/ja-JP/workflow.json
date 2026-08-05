@@ -1304,6 +1304,7 @@
   "variableReference.noAvailableVars": "利用可能な変数がありません",
   "variableReference.noVarsForOperation": "この操作に割り当て可能な変数が存在しません。",
   "versionHistory.action.copyIdSuccess": "IDがクリップボードにコピーされました",
+  "versionHistory.action.deleteDeployedVersionError": "このワークフローバージョンは、1つ以上の環境にデプロイ済み、またはデプロイ中です。バージョンを削除する前に、すべての環境からデプロイを解除してください。",
   "versionHistory.action.deleteFailure": "削除に失敗しました",
   "versionHistory.action.deleteSuccess": "削除が完了しました",
   "versionHistory.action.restoreFailure": "復元に失敗しました",

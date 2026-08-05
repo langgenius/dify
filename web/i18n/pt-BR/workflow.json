@@ -1304,6 +1304,7 @@
   "variableReference.noAvailableVars": "Nenhuma variável disponível",
   "variableReference.noVarsForOperation": "Não há variáveis disponíveis para atribuição com a operação selecionada.",
   "versionHistory.action.copyIdSuccess": "ID copiado para a área de transferência",
+  "versionHistory.action.deleteDeployedVersionError": "Esta versão do workflow está implantada, ou sendo implantada, em um ou mais ambientes. Remova-a de todos os ambientes antes de excluir a versão.",
   "versionHistory.action.deleteFailure": "Falha ao deletar versão",
   "versionHistory.action.deleteSuccess": "Versão excluída",
   "versionHistory.action.restoreFailure": "Falha ao restaurar versão",

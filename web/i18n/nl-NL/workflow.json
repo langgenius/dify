@@ -1304,6 +1304,7 @@
   "variableReference.noAvailableVars": "No available variables",
   "variableReference.noVarsForOperation": "There are no variables available for assignment with the selected operation.",
   "versionHistory.action.copyIdSuccess": "ID copied to clipboard",
+  "versionHistory.action.deleteDeployedVersionError": "Deze workflowversie is geïmplementeerd, of wordt momenteel geïmplementeerd, in een of meer omgevingen. Verwijder de implementatie uit alle omgevingen voordat u de versie verwijdert.",
   "versionHistory.action.deleteFailure": "Failed to delete version",
   "versionHistory.action.deleteSuccess": "Version deleted",
   "versionHistory.action.restoreFailure": "Failed to restore version",

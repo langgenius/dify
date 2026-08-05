@@ -1304,6 +1304,7 @@
   "variableReference.noAvailableVars": "Keine verfügbaren Variablen",
   "variableReference.noVarsForOperation": "Es stehen keine Variablen für die Zuweisung mit der ausgewählten Operation zur Verfügung.",
   "versionHistory.action.copyIdSuccess": "ID in die Zwischenablage kopiert",
+  "versionHistory.action.deleteDeployedVersionError": "Diese Workflow-Version ist in einer oder mehreren Umgebungen bereitgestellt oder wird gerade bereitgestellt. Heben Sie die Bereitstellung in allen Umgebungen auf, bevor Sie die Version löschen.",
   "versionHistory.action.deleteFailure": "Version löschen fehlgeschlagen",
   "versionHistory.action.deleteSuccess": "Version gelöscht",
   "versionHistory.action.restoreFailure": "Wiederherstellung der Version fehlgeschlagen",

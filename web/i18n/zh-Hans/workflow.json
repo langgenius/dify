@@ -1304,6 +1304,7 @@
   "variableReference.noAvailableVars": "没有可用变量",
   "variableReference.noVarsForOperation": "当前选择的操作没有可用的变量进行赋值。",
   "versionHistory.action.copyIdSuccess": "ID 已复制到剪贴板",
+  "versionHistory.action.deleteDeployedVersionError": "此工作流版本已部署或正在部署到一个或多个环境。请先从所有环境中取消部署，再删除该版本。",
   "versionHistory.action.deleteFailure": "删除失败",
   "versionHistory.action.deleteSuccess": "版本已删除",
   "versionHistory.action.restoreFailure": "回滚失败",

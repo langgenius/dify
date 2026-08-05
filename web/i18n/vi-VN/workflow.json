@@ -1304,6 +1304,7 @@
   "variableReference.noAvailableVars": "Không có biến khả dụng",
   "variableReference.noVarsForOperation": "Không có biến nào có sẵn để gán với hoạt động đã chọn.",
   "versionHistory.action.copyIdSuccess": "ID được sao chép vào khay nhớ tạm",
+  "versionHistory.action.deleteDeployedVersionError": "Phiên bản quy trình làm việc này đã được triển khai hoặc đang được triển khai tới một hay nhiều môi trường. Hãy hủy triển khai khỏi tất cả môi trường trước khi xóa phiên bản.",
   "versionHistory.action.deleteFailure": "Xóa phiên bản thất bại",
   "versionHistory.action.deleteSuccess": "Phiên bản đã bị xóa",
   "versionHistory.action.restoreFailure": "Không thể khôi phục phiên bản",

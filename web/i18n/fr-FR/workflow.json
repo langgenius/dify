@@ -1304,6 +1304,7 @@
   "variableReference.noAvailableVars": "Aucune variable disponible",
   "variableReference.noVarsForOperation": "Aucune variable n’est disponible pour l’affectation avec l’opération sélectionnée.",
   "versionHistory.action.copyIdSuccess": "ID copié dans le presse-papiers",
+  "versionHistory.action.deleteDeployedVersionError": "Cette version du workflow est déployée, ou en cours de déploiement, dans un ou plusieurs environnements. Annulez son déploiement dans tous les environnements avant de la supprimer.",
   "versionHistory.action.deleteFailure": "Échec de la suppression de la version",
   "versionHistory.action.deleteSuccess": "Version supprimée",
   "versionHistory.action.restoreFailure": "Échec de la restauration de la version",

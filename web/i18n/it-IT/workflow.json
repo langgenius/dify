@@ -1304,6 +1304,7 @@
   "variableReference.noAvailableVars": "Nessuna variabile disponibile",
   "variableReference.noVarsForOperation": "Non ci sono variabili disponibili per l'assegnazione con l'operazione selezionata.",
   "versionHistory.action.copyIdSuccess": "ID copiato negli appunti",
+  "versionHistory.action.deleteDeployedVersionError": "Questa versione del workflow è distribuita, o in fase di distribuzione, in uno o più ambienti. Annulla la distribuzione da tutti gli ambienti prima di eliminare la versione.",
   "versionHistory.action.deleteFailure": "Impossibile eliminare la versione",
   "versionHistory.action.deleteSuccess": "Versione eliminata",
   "versionHistory.action.restoreFailure": "Impossibile ripristinare la versione",

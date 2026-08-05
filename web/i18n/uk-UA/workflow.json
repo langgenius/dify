@@ -1304,6 +1304,7 @@
   "variableReference.noAvailableVars": "Немає доступних змінних",
   "variableReference.noVarsForOperation": "Немає доступних змінних для призначення з обраною операцією.",
   "versionHistory.action.copyIdSuccess": "ID скопійовано в буфер обміну",
+  "versionHistory.action.deleteDeployedVersionError": "Цю версію робочого процесу розгорнуто або зараз розгортають в одному чи кількох середовищах. Перед видаленням версії скасуйте її розгортання в усіх середовищах.",
   "versionHistory.action.deleteFailure": "Не вдалося видалити версію",
   "versionHistory.action.deleteSuccess": "Версія видалена",
   "versionHistory.action.restoreFailure": "Не вдалося відновити версію",

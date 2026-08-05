@@ -1304,6 +1304,7 @@
   "variableReference.noAvailableVars": "هیچ متغیری موجود نیست",
   "variableReference.noVarsForOperation": "هیچ متغیری برای تخصیص با عملیات انتخاب‌شده موجود نیست.",
   "versionHistory.action.copyIdSuccess": "شناسه کپی شد",
+  "versionHistory.action.deleteDeployedVersionError": "این نسخه گردش‌کار در یک یا چند محیط مستقر شده یا در حال استقرار است. پیش از حذف نسخه، استقرار آن را از همه محیط‌ها لغو کنید.",
   "versionHistory.action.deleteFailure": "حذف نسخه ناموفق بود",
   "versionHistory.action.deleteSuccess": "نسخه حذف شد",
   "versionHistory.action.restoreFailure": "بازیابی نسخه ناموفق بود",
