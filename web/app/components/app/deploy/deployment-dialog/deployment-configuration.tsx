@@ -86,7 +86,7 @@ function ConfigurationLoading({ label }: { label: string }) {
   )
 }
 
-export function DeploymentConfigurationContent({
+function DeploymentConfigurationContent({
   compact = false,
   onValuesChange,
   queryState,

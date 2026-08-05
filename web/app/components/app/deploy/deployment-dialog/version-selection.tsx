@@ -36,7 +36,7 @@ function VersionTag({ children }: { children: ReactNode }) {
   )
 }
 
-export function VersionChoice({
+function VersionChoice({
   version,
   current,
   disabled = false,

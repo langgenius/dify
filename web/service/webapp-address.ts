@@ -56,7 +56,7 @@ export const getWebAppPassportKey = (address: WebAppAddress) => {
   return `environment:${address.environmentId}:${address.code}`
 }
 
-export const isDifyWebAppAuthPath = (path: string) => {
+const isDifyWebAppAuthPath = (path: string) => {
   const pathname = normalizePath(path).split('?')[0] || ''
   return (
     pathname === '/login' ||

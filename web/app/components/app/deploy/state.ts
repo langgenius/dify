@@ -21,7 +21,7 @@ import { consoleQuery } from '@/service/client'
 const DEPLOYMENT_STATUS_POLLING_INTERVAL = 3000
 const WORKFLOW_VERSIONS_PAGE_SIZE = 10
 
-export type EnvironmentDeploymentActionKind =
+type EnvironmentDeploymentActionKind =
   | 'changeVersion'
   | 'deployLatest'
   | 'redeploy'

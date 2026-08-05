@@ -26,7 +26,7 @@ const environmentDeploymentPollingByAppIdAtom = atom<
   Record<string, PublisherEnvironmentDeploymentPolling>
 >({})
 
-export const clearPublisherEnvironmentDeploymentPollingAtom = atom(null, (get, set) => {
+const clearPublisherEnvironmentDeploymentPollingAtom = atom(null, (get, set) => {
   const appId = get(appPublisherAppIdAtom)
   if (!appId) return
 
@@ -115,16 +115,6 @@ export const appPublisherEnvironmentsAtom = atom(
     get(appPublisherEnvironmentsDataAtom)?.filter(
       (environment) => environment.id !== BUILT_IN_ENVIRONMENT_ID,
     ) ?? [],
-)
-
-export const appPublisherEnvironmentsIsLoadingAtom = selectAtom(
-  appPublisherEnvironmentsQueryAtom,
-  (query) => query.isLoading,
-)
-
-export const appPublisherEnvironmentsIsErrorAtom = selectAtom(
-  appPublisherEnvironmentsQueryAtom,
-  (query) => query.isError,
 )
 
 export const selectedPublisherEnvironmentIdAtom = atom(
