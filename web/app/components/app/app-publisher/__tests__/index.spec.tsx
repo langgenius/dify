@@ -642,7 +642,7 @@ describe('AppPublisher', () => {
     expect(screen.getByText('publisher-summary-publish')).toBeInTheDocument()
   })
 
-  it('stops the selected environment query when closed and checks it again when reopened', async () => {
+  it('returns to the built-in environment when reopened', async () => {
     const user = userEvent.setup()
     const queryClient = createConsoleQueryClient()
     const detailRequests: Request[] = []
@@ -733,19 +733,22 @@ describe('AppPublisher', () => {
     await waitFor(() => {
       expect(detailRequests.length).toBeGreaterThan(0)
     })
+    expect(screen.getByRole('button', { name: 'Staging' })).toHaveAttribute('aria-current', 'true')
 
     await user.click(publishButton)
 
     expect(publishButton).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByRole('button', { name: 'Staging' })).not.toBeInTheDocument()
-    const requestsBeforeReopen = detailRequests.length
 
     await user.click(publishButton)
     expect(publishButton).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByRole('button', { name: 'Staging' })).toBeInTheDocument()
-    await waitFor(() => {
-      expect(detailRequests.length).toBeGreaterThan(requestsBeforeReopen)
-    })
+    expect(
+      screen.getByRole('button', { name: /nodes\.common\.memories\.builtIn/ }),
+    ).toHaveAttribute('aria-current', 'true')
+    expect(screen.getByRole('button', { name: 'Staging' })).not.toHaveAttribute(
+      'aria-current',
+      'true',
+    )
   })
 
   it('should collect hidden inputs before opening the web app from its config action', async () => {

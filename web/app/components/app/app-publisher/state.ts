@@ -41,7 +41,23 @@ export const clearPublisherEnvironmentDeploymentPollingAtom = atom(null, (get, s
 
 export const appPublisherOpenAtom = atom(
   (get) => get(appPublisherOpenStateAtom),
-  (_get, set, open: boolean) => {
+  (get, set, open: boolean) => {
+    const isReopening = open && !get(appPublisherOpenStateAtom)
+    if (isReopening && get(appPublisherEnvironmentQueryEnabledAtom)) {
+      const appId = get(appPublisherAppIdAtom)
+      const selectedEnvironmentId = appId
+        ? (get(selectedEnvironmentByAppIdAtom)[appId] ?? BUILT_IN_ENVIRONMENT_ID)
+        : BUILT_IN_ENVIRONMENT_ID
+
+      if (appId && selectedEnvironmentId !== BUILT_IN_ENVIRONMENT_ID) {
+        set(clearPublisherEnvironmentDeploymentPollingAtom)
+        set(selectedEnvironmentByAppIdAtom, (current) => ({
+          ...current,
+          [appId]: BUILT_IN_ENVIRONMENT_ID,
+        }))
+      }
+    }
+
     set(appPublisherOpenStateAtom, open)
     if (!open) set(clearPublisherEnvironmentDeploymentPollingAtom)
   },
