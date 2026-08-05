@@ -1,5 +1,6 @@
 import type { i18n as I18nInstance, Resource, ResourceLanguage } from 'i18next'
 import type { Locale } from '.'
+import type { SupportedLocale } from './language'
 import type { Namespace, NamespaceInFileName } from './resources'
 import { match } from '@formatjs/intl-localematcher'
 import { camelCase } from 'es-toolkit/string'
@@ -15,7 +16,7 @@ import { loadI18nResource } from './load-resource'
 import { namespacesInFileName } from './resources'
 import { getInitOptions } from './settings'
 
-const [getLocaleCache, setLocaleCache] = serverOnlyContext<Locale | null>(null)
+const [getLocaleCache, setLocaleCache] = serverOnlyContext<SupportedLocale | null>(null)
 const [getI18nInstance, setI18nInstance] = serverOnlyContext<I18nInstance | null>(null)
 
 const getOrCreateI18next = async (lng: Locale) => {
@@ -49,11 +50,11 @@ export async function getTranslation<T extends Namespace>(lng: Locale, ns?: T) {
   }
 }
 
-export const getLocaleOnServer = async (): Promise<Locale> => {
+export const getLocaleOnServer = async (): Promise<SupportedLocale> => {
   const cached = getLocaleCache()
   if (cached) return cached
 
-  const locales: string[] = i18n.locales
+  const locales = i18n.locales
 
   let languages: string[] | undefined
   // get locale from cookie
@@ -77,7 +78,8 @@ export const getLocaleOnServer = async (): Promise<Locale> => {
     languages = [i18n.defaultLocale]
 
   // match locale
-  const matchedLocale = match(languages, locales, i18n.defaultLocale) as Locale
+  // intl-localematcher returns an available locale or the default, but types it as string.
+  const matchedLocale = match(languages, locales, i18n.defaultLocale) as SupportedLocale
   setLocaleCache(matchedLocale)
   return matchedLocale
 }

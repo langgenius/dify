@@ -1,21 +1,25 @@
 import type { DocLanguage } from '@/types/doc-paths'
 import data from './languages'
 
-export type I18nText = Record<(typeof LanguagesSupported)[number], string>
-
 export const languages = data.languages
 
-// for compatibility
-export type Locale = 'ja_JP' | 'zh_Hans' | 'en_US' | (typeof languages)[number]['value']
+type SupportedLanguage = Extract<(typeof languages)[number], { supported: true }>
+export type SupportedLocale = SupportedLanguage['value']
 
-export const LanguagesSupported: Locale[] = languages
-  .filter((item) => item.supported)
+// Plugin and model metadata still use underscore-separated locale keys.
+export type LegacyLocale = 'ja_JP' | 'zh_Hans' | 'en_US'
+export type Locale = LegacyLocale | (typeof languages)[number]['value']
+
+export type I18nText = Record<Locale, string>
+
+export const LanguagesSupported: SupportedLocale[] = languages
+  .filter((item): item is SupportedLanguage => item.supported)
   .map((item) => item.value)
 
-export const getLanguage = (locale: Locale): Locale => {
-  if (['zh-Hans', 'ja-JP'].includes(locale)) return locale.replace('-', '_') as Locale
+export const getLanguage = (locale: Locale): LegacyLocale => {
+  if (['zh-Hans', 'ja-JP'].includes(locale)) return locale.replace('-', '_') as LegacyLocale
 
-  return LanguagesSupported[0]!.replace('-', '_') as Locale
+  return LanguagesSupported[0]!.replace('-', '_') as LegacyLocale
 }
 
 const DOC_LANGUAGE: Record<string, DocLanguage | undefined> = {

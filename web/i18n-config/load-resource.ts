@@ -1,5 +1,5 @@
 import type { ResourceKey } from 'i18next'
-import type { Locale } from './language'
+import type { Locale, SupportedLocale } from './language'
 import type { Namespace, NamespaceInFileName } from './resources'
 import { kebabCase } from 'es-toolkit/string'
 import { LanguagesSupported } from './language'
@@ -18,7 +18,7 @@ const defaultLocale = 'en-US' satisfies Locale
 
 const normalizeLocale = (locale: Locale): Locale => {
   const normalized = legacyLocaleMap[locale] ?? locale
-  if (LanguagesSupported.includes(normalized)) return normalized
+  if (LanguagesSupported.includes(normalized as SupportedLocale)) return normalized
 
   return defaultLocale
 }
