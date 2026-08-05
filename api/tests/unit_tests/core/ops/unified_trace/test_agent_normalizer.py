@@ -79,9 +79,7 @@ def test_normalizer_emits_tool_events_from_function_tool_lifecycle() -> None:
         id="event-2",
         run_id="run-1",
         created_at=created_at,
-        data=FunctionToolResultEvent(
-            part=ToolReturnPart(tool_name="weather", content="sunny", tool_call_id="call-1")
-        ),
+        data=FunctionToolResultEvent(part=ToolReturnPart(tool_name="weather", content="sunny", tool_call_id="call-1")),
     )
 
     normalized_call = PydanticAIAgentEventNormalizer().normalize(call)

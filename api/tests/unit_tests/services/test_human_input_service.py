@@ -306,7 +306,7 @@ def test_submit_form_by_token_calls_repository_and_enqueue(
     assert call_kwargs["form_data"] == {"field": "value"}
     assert call_kwargs["submission_end_user_id"] == "end-user-id"
     enqueue_spy.assert_called_once()
-    workflow_run_id, = enqueue_spy.call_args.args
+    (workflow_run_id,) = enqueue_spy.call_args.args
     wait = enqueue_spy.call_args.kwargs["human_wait"]
     assert workflow_run_id == sample_form_record.workflow_run_id
     assert isinstance(wait, HumanWaitRecord)
