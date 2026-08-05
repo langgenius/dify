@@ -43,13 +43,12 @@ def mock_provider_full(mock_user):
     provider.id = "provider-id-123"
     provider.server_identifier = "server-identifier-456"
     provider.name = "Test MCP Provider"
-    provider.provider_icon = "icon.png"
+    provider.icon = "icon.png"
     provider.authed = True
-    provider.masked_server_url = "https://*****.com/mcp"
+    provider.server_url = "https://*****.com/mcp"
     provider.timeout = 30
     provider.sse_read_timeout = 300
-    provider.masked_headers = {"Authorization": "Bearer *****"}
-    provider.decrypted_headers = {"Authorization": "Bearer secret-token"}
+    provider.encrypted_headers = "{}"
 
     # Mock timestamp
     mock_updated_at = Mock()
