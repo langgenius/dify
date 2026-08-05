@@ -83,21 +83,17 @@ class MCPAppApi(Resource):
                 return self._protocol_version_error_response(request_id, header_value)
 
         with Session(db.engine, expire_on_commit=False) as session:
-            try:
-                # Get MCP server and app
-                mcp_server, app = self._get_mcp_server_and_app(server_code, session)
-                self._validate_server_status(mcp_server)
-                # Get user input form
-                user_input_form = self._get_user_input_form(app)
-                # Handle notification vs request differently
-                response = self._process_mcp_message(
-                    mcp_request, request_id, app, mcp_server, user_input_form, session, protocol_version
-                )
-                session.commit()
-                return response
-            except Exception:
-                session.rollback()
-                raise
+            # Get MCP server and app
+            mcp_server, app = self._get_mcp_server_and_app(server_code, session)
+            self._validate_server_status(mcp_server)
+            # Get user input form
+            user_input_form = self._get_user_input_form(app)
+            # Handle notification vs request differently
+            response = self._process_mcp_message(
+                mcp_request, request_id, app, mcp_server, user_input_form, session, protocol_version
+            )
+            session.commit()
+            return response
 
     def _protocol_version_error_response(
         self, request_id: Union[int, str] | None, header_value: str | None
