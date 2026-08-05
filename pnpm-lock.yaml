@@ -46,8 +46,8 @@ catalogs:
       specifier: 2.2.0
       version: 2.2.0
     '@hey-api/openapi-ts':
-      specifier: 0.98.2
-      version: 0.98.2
+      specifier: 0.0.0-next-20260724070045
+      version: 0.0.0-next-20260724070045
     '@hono/node-server':
       specifier: 2.0.12
       version: 2.0.12
@@ -909,7 +909,7 @@ importers:
         version: link:../tsconfig
       '@hey-api/openapi-ts':
         specifier: 'catalog:'
-        version: 0.98.2(@typescript/typescript6@6.0.2)(magicast@0.5.3)
+        version: 0.0.0-next-20260724070045(magicast@0.5.3)
       '@types/node':
         specifier: 'catalog:'
         version: 25.9.5
@@ -2295,27 +2295,29 @@ packages:
     peerDependencies:
       react: '>= 16 || ^19.0.0-rc'
 
-  '@hey-api/codegen-core@0.9.0':
-    resolution: {integrity: sha512-OK9/R8WuujwgvnrDIPnEiIf6WnfUOi3GaEr6kIngqoI5FUQwYbeDKHE/frTVUl2A76ZQPCrMknHtPx6Gqtwf8Q==}
+  '@hey-api/codegen-cli@0.0.0-next-20260724070045':
+    resolution: {integrity: sha512-bn0ncYXv9PhqsA3u7WJuxTO8uCF/JNUn2SjmNhZkvXf/8E0iAXGkEiLZX2Ed+3cWwiEIQjrP+knrud2b16MBCQ==}
     engines: {node: '>=22.18.0'}
 
-  '@hey-api/json-schema-ref-parser@1.4.3':
-    resolution: {integrity: sha512-UzGSDzh3QUhrnwl4atnHc2YqDO6KemYVEOwl1Ynowm/tcr0XlpdHOpyWr5UaWIJfiXTXdYRIC9k2Yxm19pcPzQ==}
+  '@hey-api/codegen-core@0.0.0-next-20260724070045':
+    resolution: {integrity: sha512-nzNZVgqrAY86CmjslqKMZM1C3Ai/zaB3lzBvOv5U3NJUO5ZOqU0LDPwMoJGQK/Dpw4TaKPWJ/arjIUS03281iw==}
     engines: {node: '>=22.18.0'}
 
-  '@hey-api/openapi-ts@0.98.2':
-    resolution: {integrity: sha512-2nVJXH8tpFPGTBOhxyjEd1Jw0hsRqJqeTQW3kltAjVdSU4YWxeu97x5sgNOmsbsfeg6Dqz7Wfzs26walBOuswA==}
+  '@hey-api/json-schema-ref-parser@0.0.0-next-20260724070045':
+    resolution: {integrity: sha512-Od4kqGNUUhh2ZvyGcbijvH/1FNttvFvbwybuGc8mXSTdRVHz8GNMoIoXb3mkugcvuL+myqVFqBpXl/yGNtuF9A==}
+    engines: {node: '>=22.18.0'}
+
+  '@hey-api/openapi-ts@0.0.0-next-20260724070045':
+    resolution: {integrity: sha512-EZFQ2Q20sB5f39mSur1lacSDZdzhhpV/ZWyDzSLLY0fK9GhVbkltW5/y26w+sUA5aC1C2fa78jy+fgLGMra8JA==}
     engines: {node: '>=22.18.0'}
     hasBin: true
-    peerDependencies:
-      typescript: '>=5.5.3 || >=6.0.0 || 6.0.1-rc'
 
-  '@hey-api/shared@0.4.8':
-    resolution: {integrity: sha512-29Pg2FB0UW20pplYgcfiQn1hQYpbZ9D2gdDJc7nDK3xh3pvHOTGP0v3R2ueFpFnw9GN1SRhIdhiVuAYWMDimjA==}
+  '@hey-api/shared@0.0.0-next-20260724070045':
+    resolution: {integrity: sha512-1l5mWzZ09PLDXtdYWcHweefWqq+6VtXVZjeA3m+YFs+zw9lWcdYIs0LPFMKSqv2sXgnj2c1m5vK1urnDvmmqNQ==}
     engines: {node: '>=22.18.0'}
 
-  '@hey-api/spec-types@0.2.0':
-    resolution: {integrity: sha512-ibQ8Is7evMavzr8GNyJCcTg975d8DpaMUyLmOrQ85UBdy1l6t1KuRAwgChAbesJsIlNV6gjmlXruWyegDX18Fg==}
+  '@hey-api/spec-types@0.0.0-next-20260724070045':
+    resolution: {integrity: sha512-HkYEwGQlj9X8+KYVFJYAEo4cKsMaZ8z/rF95v8ppIIleZJA+hRaFDZNZPMwCNPXtraTELcc1BUZ4f4rJaBvpLw==}
 
   '@hey-api/types@0.1.4':
     resolution: {integrity: sha512-thWfawrDIP7wSI9ioT13I5soaaqB5vAPIiZmgD8PbeEVKNrkonc0N/Sjj97ezl7oQgusZmaNphGdMKipPO6IBg==}
@@ -5405,6 +5407,9 @@ packages:
     resolution: {integrity: sha512-77PSwercCZU2Fc4sX94eF8k8Pxte6JAwL4/ICZLFjJLqegs7kCuAsqqj/70NQF6TvDpgFjkubQB2FW2ZZddvQg==}
     engines: {node: '>=8'}
 
+  citty@0.2.2:
+    resolution: {integrity: sha512-+6vJA3L98yv+IdfKGZHBNiGW5KHn22e/JwID0Strsz8h4S/csAu/OuICwxrg44k5MRiZHWIo8XXuJgQTriRP4w==}
+
   class-variance-authority@0.7.1:
     resolution: {integrity: sha512-Ka+9Trutv7G8M6WT6SeiRWz792K5qEqIGEGzXKhAE6xOWAY6pPH8U+9IY3oCMv6kqTmLsv7Xh/2w2RigkePMsg==}
 
@@ -5452,6 +5457,7 @@ packages:
 
   color-support@1.1.3:
     resolution: {integrity: sha512-qiBjkpbMLO/HL68y+lh4q0/O1MZFj2RX6X/KmMa3+gJD3z+WwI1ZzDHysvqHGS3mP6mznPckpXmw1nI9cJjyRg==}
+    hasBin: true
 
   comma-separated-tokens@2.0.3:
     resolution: {integrity: sha512-Fu4hJdvzeylCfQPp9SGWidpzrMs7tTrlu6Vb8XGaRGck8QSNZJJp538Wrb60Lax4fPwR64ViY468OIUTbRlGZg==}
@@ -6401,6 +6407,7 @@ packages:
 
   giget@3.3.0:
     resolution: {integrity: sha512-gzi2D96p+AMfDcmJHGDj3KJ9NRiwvlFAU5yfa3ROwWZmFUjX4P43x3BcyRaOMMLto1vUo7C+86+MFhYTl6Ryiw==}
+    hasBin: true
 
   github-from-package@0.0.0:
     resolution: {integrity: sha512-SyHy3T1v2NUXn29OsWdxmK6RwHD+vkj3v8en8AOBZ1wBQ/hCAQ5bAQTD02kW4W9tUp/3Qh6J8r9EvntiyCmOOw==}
@@ -6781,8 +6788,8 @@ packages:
   js-tokens@9.0.1:
     resolution: {integrity: sha512-mxa9E9ITFOt0ban3j6L5MpjwegGz6lBQmM1IJkWeBZGcMxto50+eWdjC/52xDbS2vy0k7vIMK0Fe2wfL9OQSpQ==}
 
-  js-yaml@4.3.0:
-    resolution: {integrity: sha512-1td788aAnnZ5qs7V2QIRl1owjtYpbKt749Y3xauqQgwIIGF/xXWz1wMTEBx5O3LK3lXLVuqXPdPxj2BoFHaW9Q==}
+  js-yaml@5.2.0:
+    resolution: {integrity: sha512-YeLUMlvR4Ou1B119LIaM0r65JvbOBooJDc9yEu0dClb/uSC5P4FrLU8OCCz/HXWvtPoIrR0dRzABTjo1sTN9Bw==}
     hasBin: true
 
   js-yaml@5.2.2:
@@ -8240,11 +8247,6 @@ packages:
 
   semver@6.3.1:
     resolution: {integrity: sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA==}
-    hasBin: true
-
-  semver@7.8.2:
-    resolution: {integrity: sha512-c8jsqUZm3omBOI66G90z1Dyw5z622G8oLG+omfsHBJf3CWQTlOcwOjvOG6wtiNfW6anKm/eA39LMwMtMez2TiQ==}
-    engines: {node: '>=10'}
     hasBin: true
 
   semver@7.8.5:
@@ -9988,7 +9990,11 @@ snapshots:
     dependencies:
       react: 19.2.8
 
-  '@hey-api/codegen-core@0.9.0(magicast@0.5.3)':
+  '@hey-api/codegen-cli@0.0.0-next-20260724070045':
+    dependencies:
+      citty: 0.2.2
+
+  '@hey-api/codegen-core@0.0.0-next-20260724070045(magicast@0.5.3)':
     dependencies:
       '@hey-api/types': 0.1.4
       ansi-colors: 4.1.3
@@ -9997,42 +10003,41 @@ snapshots:
     transitivePeerDependencies:
       - magicast
 
-  '@hey-api/json-schema-ref-parser@1.4.3':
+  '@hey-api/json-schema-ref-parser@0.0.0-next-20260724070045':
     dependencies:
       '@jsdevtools/ono': 7.1.3
       '@types/json-schema': 7.0.15
-      js-yaml: 4.3.0
+      js-yaml: 5.2.0
 
-  '@hey-api/openapi-ts@0.98.2(@typescript/typescript6@6.0.2)(magicast@0.5.3)':
+  '@hey-api/openapi-ts@0.0.0-next-20260724070045(magicast@0.5.3)':
     dependencies:
-      '@hey-api/codegen-core': 0.9.0(magicast@0.5.3)
-      '@hey-api/json-schema-ref-parser': 1.4.3
-      '@hey-api/shared': 0.4.8(magicast@0.5.3)
-      '@hey-api/spec-types': 0.2.0
+      '@hey-api/codegen-cli': 0.0.0-next-20260724070045
+      '@hey-api/codegen-core': 0.0.0-next-20260724070045(magicast@0.5.3)
+      '@hey-api/json-schema-ref-parser': 0.0.0-next-20260724070045
+      '@hey-api/shared': 0.0.0-next-20260724070045(magicast@0.5.3)
+      '@hey-api/spec-types': 0.0.0-next-20260724070045
       '@hey-api/types': 0.1.4
       '@lukeed/ms': 2.0.2
       ansi-colors: 4.1.3
       color-support: 1.1.3
-      commander: 15.0.0
       get-tsconfig: 4.14.0
-      typescript: '@typescript/typescript6@6.0.2'
     transitivePeerDependencies:
       - magicast
 
-  '@hey-api/shared@0.4.8(magicast@0.5.3)':
+  '@hey-api/shared@0.0.0-next-20260724070045(magicast@0.5.3)':
     dependencies:
-      '@hey-api/codegen-core': 0.9.0(magicast@0.5.3)
-      '@hey-api/json-schema-ref-parser': 1.4.3
-      '@hey-api/spec-types': 0.2.0
+      '@hey-api/codegen-core': 0.0.0-next-20260724070045(magicast@0.5.3)
+      '@hey-api/json-schema-ref-parser': 0.0.0-next-20260724070045
+      '@hey-api/spec-types': 0.0.0-next-20260724070045
       '@hey-api/types': 0.1.4
       ansi-colors: 4.1.3
       cross-spawn: 7.0.6
       open: 11.0.0
-      semver: 7.8.2
+      semver: 7.8.5
     transitivePeerDependencies:
       - magicast
 
-  '@hey-api/spec-types@0.2.0':
+  '@hey-api/spec-types@0.0.0-next-20260724070045':
     dependencies:
       '@hey-api/types': 0.1.4
 
@@ -12990,6 +12995,8 @@ snapshots:
 
   ci-info@4.4.0: {}
 
+  citty@0.2.2: {}
+
   class-variance-authority@0.7.1:
     dependencies:
       clsx: 2.1.1
@@ -14552,7 +14559,7 @@ snapshots:
 
   js-tokens@9.0.1: {}
 
-  js-yaml@4.3.0:
+  js-yaml@5.2.0:
     dependencies:
       argparse: 2.0.1
 
@@ -16438,8 +16445,6 @@ snapshots:
 
   semver@6.3.1: {}
 
-  semver@7.8.2: {}
-
   semver@7.8.5: {}
 
   server-only@0.0.1: {}
@@ -17625,7 +17630,7 @@ time:
   '@floating-ui/react@0.27.20': '2026-07-11T08:41:33.223Z'
   '@formatjs/intl-localematcher@0.8.13': '2026-07-16T04:15:53.223Z'
   '@heroicons/react@2.2.0': '2024-11-18T15:33:27.317Z'
-  '@hey-api/openapi-ts@0.98.2': '2026-06-08T05:37:17.524Z'
+  '@hey-api/openapi-ts@0.0.0-next-20260724070045': '2026-07-24T07:02:37.380Z'
   '@hono/node-server@2.0.12': '2026-07-26T05:02:01.126Z'
   '@iconify-json/heroicons@1.2.3': '2025-09-20T05:33:02.364Z'
   '@iconify-json/ri@1.2.10': '2026-02-10T08:41:46.666Z'

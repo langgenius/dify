@@ -397,7 +397,7 @@ export const get6 = oc
     path: '/datasets/external-knowledge-api',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetDatasetsExternalKnowledgeApiQuery.optional() }))
+  .input(z.object({ query: zGetDatasetsExternalKnowledgeApiQuery.optional() }).optional())
   .output(zGetDatasetsExternalKnowledgeApiResponse)
 
 /**
@@ -505,7 +505,7 @@ export const get8 = oc
     path: '/datasets/process-rule',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetDatasetsProcessRuleQuery.optional() }))
+  .input(z.object({ query: zGetDatasetsProcessRuleQuery.optional() }).optional())
   .output(zGetDatasetsProcessRuleResponse)
 
 export const processRule = {
@@ -1186,11 +1186,11 @@ export const segments = {
  * Returns:
  * - total_segments: Total number of segments in the document
  * - summary_status: Dictionary with status counts
- * - completed: Number of summaries completed
- * - generating: Number of summaries being generated
- * - error: Number of summaries with errors
- * - not_started: Number of segments without summary records
- * - timeout: Number of summaries that timed out
+ *   - completed: Number of summaries completed
+ *   - generating: Number of summaries being generated
+ *   - error: Number of summaries with errors
+ *   - not_started: Number of segments without summary records
+ *   - timeout: Number of summaries that timed out
  * - summaries: List of summary records with status and content preview
  */
 export const get22 = oc
@@ -1777,7 +1777,7 @@ export const get36 = oc
     path: '/datasets',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetDatasetsQuery.optional() }))
+  .input(z.object({ query: zGetDatasetsQuery.optional() }).optional())
   .output(zGetDatasetsResponse)
 
 /**

@@ -35,10 +35,10 @@ export const get = oc
  *
  * Request body:
  * {
- * "inputs": {
- * "content": "User input content"
- * },
- * "action": "Approve"
+ *     "inputs": {
+ *         "content": "User input content"
+ *     },
+ *     "action": "Approve"
  * }
  */
 export const post = oc

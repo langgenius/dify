@@ -145,7 +145,8 @@ export const zTextToAudioPayload = z.object({
  * AudioBinaryResponse
  */
 export const zAudioBinaryResponse = z.custom<Blob | File>(
-  (value) => value instanceof Blob || value instanceof File,
+  (value) =>
+    Blob.prototype.isPrototypeOf(Object(value)) || File.prototype.isPrototypeOf(Object(value)),
 )
 
 /**
@@ -496,10 +497,10 @@ export const zSelectInputConfig = z.object({
 })
 
 export const zFormInputConfig = z.discriminatedUnion('type', [
-  zParagraphInputConfig.extend({ type: z.literal('paragraph') }),
-  zSelectInputConfig.extend({ type: z.literal('select') }),
-  zFileInputConfig.extend({ type: z.literal('file') }),
-  zFileListInputConfig.extend({ type: z.literal('file-list') }),
+  zParagraphInputConfig,
+  zSelectInputConfig,
+  zFileInputConfig,
+  zFileListInputConfig,
 ])
 
 /**

@@ -65,7 +65,10 @@ export const zGetFilesSupportTypeResponse = zAllowedExtensionsResponse
 export const zGetFilesUploadResponse = zUploadConfig
 
 export const zPostFilesUploadBody = z.object({
-  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+  file: z.custom<Blob | File>(
+    (value) =>
+      Blob.prototype.isPrototypeOf(Object(value)) || File.prototype.isPrototypeOf(Object(value)),
+  ),
   source: z.enum(['datasets']).optional(),
 })
 

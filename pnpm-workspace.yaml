@@ -63,7 +63,7 @@ catalog:
   '@floating-ui/react': 0.27.20
   '@formatjs/intl-localematcher': 0.8.13
   '@heroicons/react': 2.2.0
-  '@hey-api/openapi-ts': 0.98.2
+  '@hey-api/openapi-ts': 0.0.0-next-20260724070045
   '@hono/node-server': 2.0.12
   '@iconify-json/heroicons': 1.2.3
   '@iconify-json/ri': 1.2.10

@@ -7,12 +7,12 @@ import { zGetSetupResponse, zPostSetupBody, zPostSetupResponse } from './zod.gen
 /**
  * Get system setup status.
  *
- * NOTE: This endpoint is unauthenticated by design.
+ *     NOTE: This endpoint is unauthenticated by design.
  *
- * During first-time bootstrap there is no admin account yet, so frontend initialization must be
- * able to query setup progress before any login flow exists.
+ *     During first-time bootstrap there is no admin account yet, so frontend initialization must be
+ *     able to query setup progress before any login flow exists.
  *
- * Only bootstrap-safe status information should be returned by this endpoint.
+ *     Only bootstrap-safe status information should be returned by this endpoint.
  *
  */
 export const get = oc
@@ -30,9 +30,9 @@ export const get = oc
 /**
  * Initialize system setup with admin account.
  *
- * NOTE: This endpoint is unauthenticated by design for first-time bootstrap.
- * Access is restricted by deployment mode (`SELF_HOSTED`), one-time setup guards,
- * and init-password validation rather than user session authentication.
+ *     NOTE: This endpoint is unauthenticated by design for first-time bootstrap.
+ *     Access is restricted by deployment mode (`SELF_HOSTED`), one-time setup guards,
+ *     and init-password validation rather than user session authentication.
  *
  */
 export const post = oc

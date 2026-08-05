@@ -116,7 +116,8 @@ export const zTextToSpeechRequest = z.object({
  * AudioBinaryResponse
  */
 export const zAudioBinaryResponse = z.custom<Blob | File>(
-  (value) => value instanceof Blob || value instanceof File,
+  (value) =>
+    Blob.prototype.isPrototypeOf(Object(value)) || File.prototype.isPrototypeOf(Object(value)),
 )
 
 /**
@@ -459,7 +460,10 @@ export const zGetTrialAppsByAppIdDatasetsQuery = z.object({
 export const zGetTrialAppsByAppIdDatasetsResponse = zTrialDatasetListResponse
 
 export const zPostTrialAppsByAppIdFilesUploadBody = z.object({
-  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+  file: z.custom<Blob | File>(
+    (value) =>
+      Blob.prototype.isPrototypeOf(Object(value)) || File.prototype.isPrototypeOf(Object(value)),
+  ),
   source: z.enum(['datasets']).optional(),
 })
 

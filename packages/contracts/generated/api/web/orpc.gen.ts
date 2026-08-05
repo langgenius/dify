@@ -295,7 +295,7 @@ export const get = oc
     path: '/conversations',
     tags: ['web'],
   })
-  .input(z.object({ query: zGetConversationsQuery.optional() }))
+  .input(z.object({ query: zGetConversationsQuery.optional() }).optional())
   .output(zGetConversationsResponse)
 
 export const conversations = {
@@ -350,23 +350,23 @@ export const emailCodeLogin = {
  * multiple file types with automatic validation and storage.
  *
  * Args:
- * app_model: The associated application model
- * end_user: The end user uploading the file
+ *     app_model: The associated application model
+ *     end_user: The end user uploading the file
  *
  * Form Parameters:
- * file: The file to upload (required)
- * source: Optional source type (datasets or None)
+ *     file: The file to upload (required)
+ *     source: Optional source type (datasets or None)
  *
  * Returns:
- * dict: File information including ID, URL, and metadata
- * int: HTTP status code 201 for success
+ *     dict: File information including ID, URL, and metadata
+ *     int: HTTP status code 201 for success
  *
  * Raises:
- * NoFileUploadedError: No file provided in request
- * TooManyFilesError: Multiple files provided (only one allowed)
- * FilenameNotExistsError: File has no filename
- * FileTooLargeError: File exceeds size limit
- * UnsupportedFileTypeError: File type not supported
+ *     NoFileUploadedError: No file provided in request
+ *     TooManyFilesError: Multiple files provided (only one allowed)
+ *     FilenameNotExistsError: File has no filename
+ *     FileTooLargeError: File exceeds size limit
+ *     UnsupportedFileTypeError: File type not supported
  */
 export const post9 = oc
   .route({
@@ -501,10 +501,10 @@ export const get2 = oc
  *
  * Request body:
  * {
- * "inputs": {
- * "content": "User input content"
- * },
- * "action": "Approve"
+ *     "inputs": {
+ *         "content": "User input content"
+ *     },
+ *     "action": "Approve"
  * }
  */
 export const post14 = oc
@@ -575,7 +575,7 @@ export const get3 = oc
     path: '/login/status',
     tags: ['web'],
   })
-  .input(z.object({ query: zGetLoginStatusQuery.optional() }))
+  .input(z.object({ query: zGetLoginStatusQuery.optional() }).optional())
   .output(zGetLoginStatusResponse)
 
 export const status = {
@@ -771,7 +771,7 @@ export const get9 = oc
     path: '/passport',
     tags: ['web'],
   })
-  .input(z.object({ query: zGetPassportQuery.optional() }))
+  .input(z.object({ query: zGetPassportQuery.optional() }).optional())
   .output(zGetPassportResponse)
 
 export const passport = {
@@ -786,20 +786,20 @@ export const passport = {
  * to the platform storage for use in web applications.
  *
  * Args:
- * app_model: The associated application model
- * end_user: The end user making the request
+ *     app_model: The associated application model
+ *     end_user: The end user making the request
  *
  * JSON Parameters:
- * url: The remote URL to download the file from (required)
+ *     url: The remote URL to download the file from (required)
  *
  * Returns:
- * dict: File information including ID, signed URL, and metadata
- * int: HTTP status code 201 for success
+ *     dict: File information including ID, signed URL, and metadata
+ *     int: HTTP status code 201 for success
  *
  * Raises:
- * RemoteFileUploadError: Failed to fetch file from remote URL
- * FileTooLargeError: File exceeds size limit
- * UnsupportedFileTypeError: File type not supported
+ *     RemoteFileUploadError: Failed to fetch file from remote URL
+ *     FileTooLargeError: File exceeds size limit
+ *     UnsupportedFileTypeError: File type not supported
  */
 export const post19 = oc
   .route({
@@ -828,15 +828,15 @@ export const upload2 = {
  * including content type and content length.
  *
  * Args:
- * app_model: The associated application model
- * end_user: The end user making the request
- * url: URL-encoded path to the remote file
+ *     app_model: The associated application model
+ *     end_user: The end user making the request
+ *     url: URL-encoded path to the remote file
  *
  * Returns:
- * dict: Remote file information including type and length
+ *     dict: Remote file information including type and length
  *
  * Raises:
- * HTTPException: If the remote file cannot be accessed
+ *     HTTPException: If the remote file cannot be accessed
  */
 export const get10 = oc
   .route({
@@ -893,7 +893,7 @@ export const get11 = oc
     path: '/saved-messages',
     tags: ['web'],
   })
-  .input(z.object({ query: zGetSavedMessagesQuery.optional() }))
+  .input(z.object({ query: zGetSavedMessagesQuery.optional() }).optional())
   .output(zGetSavedMessagesResponse)
 
 /**
@@ -998,7 +998,7 @@ export const get14 = oc
     path: '/webapp/access-mode',
     tags: ['web'],
   })
-  .input(z.object({ query: zGetWebappAccessModeQuery.optional() }))
+  .input(z.object({ query: zGetWebappAccessModeQuery.optional() }).optional())
   .output(zGetWebappAccessModeResponse)
 
 export const accessMode = {
