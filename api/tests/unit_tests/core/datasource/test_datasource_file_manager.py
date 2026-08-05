@@ -1,3 +1,4 @@
+from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import httpx
@@ -219,9 +220,19 @@ class TestDatasourceFileManager:
     @patch("core.datasource.datasource_file_manager.storage")
     def test_get_file_binary(self, mock_storage, mock_db):
         # Setup
-        mock_upload_file = MagicMock(spec=UploadFile)
-        mock_upload_file.key = "some_key"
-        mock_upload_file.mime_type = "image/png"
+        mock_upload_file = UploadFile(
+            tenant_id="tenant-id",
+            storage_type="opendal",
+            key="some_key",
+            name="test.txt",
+            size=0,
+            extension="txt",
+            mime_type="image/png",
+            created_by_role="account",
+            created_by="account-id",
+            created_at=datetime.now(),
+            used=False,
+        )
 
         mock_db.session.get.return_value = mock_upload_file
 
@@ -241,12 +252,22 @@ class TestDatasourceFileManager:
     @patch("core.datasource.datasource_file_manager.storage")
     def test_get_file_binary_by_message_file_id(self, mock_storage, mock_db):
         # Setup
-        mock_message_file = MagicMock(spec=MessageFile)
-        mock_message_file.url = "http://localhost/files/tools/tool_id.png"
+        mock_message_file = MessageFile(
+            message_id="message-id",
+            type="image",
+            transfer_method="local_file",
+            created_by_role="user",
+            created_by="user-id",
+            url="http://localhost/files/tools/tool_id.png",
+        )
 
-        mock_tool_file = MagicMock(spec=ToolFile)
-        mock_tool_file.file_key = "tool_key"
-        mock_tool_file.mimetype = "image/png"
+        mock_tool_file = ToolFile(
+            user_id="user-id",
+            tenant_id="tenant-id",
+            conversation_id="conversation-id",
+            file_key="tool_key",
+            mimetype="image/png",
+        )
 
         def mock_get(model, id):
             if model == MessageFile:
@@ -268,13 +289,23 @@ class TestDatasourceFileManager:
     @patch("core.datasource.datasource_file_manager.storage")
     def test_get_file_binary_by_message_file_id_with_extension(self, mock_storage, mock_db):
         # Test that it correctly parses tool_id even with extension in URL
-        mock_message_file = MagicMock(spec=MessageFile)
-        mock_message_file.url = "http://localhost/files/tools/abcdef.png"
+        mock_message_file = MessageFile(
+            message_id="message-id",
+            type="image",
+            transfer_method="local_file",
+            created_by_role="user",
+            created_by="user-id",
+            url="http://localhost/files/tools/abcdef.png",
+        )
 
-        mock_tool_file = MagicMock(spec=ToolFile)
+        mock_tool_file = ToolFile(
+            user_id="user-id",
+            tenant_id="tenant-id",
+            conversation_id="conversation-id",
+            file_key="tk",
+            mimetype="image/png",
+        )
         mock_tool_file.id = "abcdef"
-        mock_tool_file.file_key = "tk"
-        mock_tool_file.mimetype = "image/png"
 
         def mock_get(model, id):
             if model == MessageFile:
@@ -295,8 +326,14 @@ class TestDatasourceFileManager:
         assert DatasourceFileManager.get_file_binary_by_message_file_id("none") is None
 
         # Case 2: Message file found but tool file not found
-        mock_message_file = MagicMock(spec=MessageFile)
-        mock_message_file.url = None
+        mock_message_file = MessageFile(
+            message_id="message-id",
+            type="image",
+            transfer_method="local_file",
+            created_by_role="user",
+            created_by="user-id",
+            url=None,
+        )
 
         def mock_get_v2(model, id):
             if model == MessageFile:
@@ -310,9 +347,19 @@ class TestDatasourceFileManager:
     @patch("core.datasource.datasource_file_manager.storage")
     def test_get_file_generator_by_upload_file_id(self, mock_storage, mock_db):
         # Setup
-        mock_upload_file = MagicMock(spec=UploadFile)
-        mock_upload_file.key = "upload_key"
-        mock_upload_file.mime_type = "text/plain"
+        mock_upload_file = UploadFile(
+            tenant_id="tenant-id",
+            storage_type="opendal",
+            key="upload_key",
+            name="test.txt",
+            size=0,
+            extension="txt",
+            mime_type="text/plain",
+            created_by_role="account",
+            created_by="account-id",
+            created_at=datetime.now(),
+            used=False,
+        )
 
         mock_db.session.get.return_value = mock_upload_file
 
