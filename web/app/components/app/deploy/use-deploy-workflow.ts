@@ -19,7 +19,6 @@ export function useDeployWorkflow({
 
   return useMutation(
     consoleQuery.enterprise.appDeploy.deploymentService.deployWorkflow.mutationOptions({
-      context: { silent: true },
       onSuccess: async (response) => {
         if (!appId) return
 

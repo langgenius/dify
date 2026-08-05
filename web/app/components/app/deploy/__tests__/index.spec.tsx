@@ -18,6 +18,7 @@ import {
   OperatorType,
   PluginCategory,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
+import { toast } from '@langgenius/dify-ui/toast'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/client'
@@ -725,8 +726,15 @@ vi.mock('@/context/permission-state', async () => {
   return createPermissionStateModuleMock(() => mockConsoleState)
 })
 
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: {
+    error: vi.fn(),
+  },
+}))
+
 describe('AppDeploy', () => {
   beforeEach(() => {
+    vi.clearAllMocks()
     appPermissionKeys = [AppACLPermission.Deploy]
     mockBuiltInEnvironment.appDetail.enable_api = false
     mockBuiltInEnvironment.appDetail.enable_site = true
@@ -1236,6 +1244,43 @@ describe('AppDeploy', () => {
         new URL(request.url).pathname.endsWith('/enterprise/app-deploy/apps/app-1/environments'),
       ),
     ).toHaveLength(1)
+  })
+
+  it('shows deploy API failures through the fetch toast without an inline configuration error', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const request = input instanceof Request ? input : new Request(input, init)
+
+      if (request.url.includes('/deployment:deploy')) {
+        return new Response(JSON.stringify({ message: 'Deployment service unavailable' }), {
+          headers: { 'Content-Type': 'application/json' },
+          status: 502,
+        })
+      }
+
+      throw new Error(`Unexpected request: ${request.method} ${request.url}`)
+    })
+    render(<AppDeploy />)
+
+    await user.click(screen.getByRole('button', { name: 'common.appMenus.deploy' }))
+    await user.click(screen.getByRole('menuitem', { name: /Dev/ }))
+    const versionDialog = await screen.findByRole('dialog', {
+      name: 'deployments.versions.deployTo:{"name":"Dev"}',
+    })
+    await user.click(within(versionDialog).getByRole('button', { name: /Release 6/ }))
+
+    const configurationDialog = await screen.findByRole('dialog', {
+      name: 'deployments.studio.deployConfiguration',
+    })
+    await user.click(
+      within(configurationDialog).getByRole('button', { name: 'common.appMenus.deploy' }),
+    )
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Deployment service unavailable')
+    })
+    expect(configurationDialog).toBeInTheDocument()
+    expect(within(configurationDialog).queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('refreshes all environments after deployment polling finishes', async () => {

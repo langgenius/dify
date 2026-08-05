@@ -88,7 +88,6 @@ function ConfigurationLoading({ label }: { label: string }) {
 
 export function DeploymentConfigurationContent({
   compact = false,
-  deploymentError,
   onValuesChange,
   queryState,
   request,
@@ -96,7 +95,6 @@ export function DeploymentConfigurationContent({
   version,
 }: {
   compact?: boolean
-  deploymentError?: unknown
   onValuesChange: Dispatch<SetStateAction<DeploymentConfigurationValues>>
   queryState: DeploymentConfigurationQueryState
   request: DeploymentDialogRequest
@@ -182,18 +180,6 @@ export function DeploymentConfigurationContent({
                 errorMessage(
                   deploymentOptionsError,
                   t(($) => $['deployDrawer.bindingOptionsFailed']),
-                ),
-              ]}
-            />
-          </div>
-        )}
-        {Boolean(deploymentError) && (
-          <div className={cn('pt-4', horizontalPaddingClassName)}>
-            <ConfigurationError
-              messages={[
-                errorMessage(
-                  deploymentError,
-                  t(($) => $['deployDrawer.deployFailed']),
                 ),
               ]}
             />
@@ -391,7 +377,6 @@ export function DeploymentConfiguration({
 
       <DeploymentConfigurationContent
         compact={embedded}
-        deploymentError={deployMutation.error}
         onValuesChange={setConfigurationValues}
         queryState={queryState}
         request={request}
