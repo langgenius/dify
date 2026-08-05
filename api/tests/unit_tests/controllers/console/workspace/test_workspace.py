@@ -42,7 +42,7 @@ from libs.datetime_utils import naive_utc_now
 from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantCustomConfigDict, TenantStatus
 from repositories.workspace_query_repository import WorkspaceQueryRepository
-from services import workspace_query_compat
+from services import workspace_plan_gateway
 from services.workspace_query_service import WorkspaceQueryService, WorkspaceRecord
 
 
@@ -61,8 +61,8 @@ def workspace_session(sqlite_engine: Engine) -> Iterator[scoped_session[Session]
 def workspace_plan_dependencies(monkeypatch: pytest.MonkeyPatch) -> tuple[MagicMock, MagicMock]:
     get_plan_bulk = MagicMock()
     get_features = MagicMock()
-    monkeypatch.setattr(workspace_query_compat.BillingService, "get_plan_bulk", get_plan_bulk)
-    monkeypatch.setattr(workspace_query_compat.FeatureService, "get_features", get_features)
+    monkeypatch.setattr(workspace_plan_gateway.BillingService, "get_plan_bulk", get_plan_bulk)
+    monkeypatch.setattr(workspace_plan_gateway.FeatureService, "get_features", get_features)
     return get_plan_bulk, get_features
 
 
@@ -74,7 +74,7 @@ def configure_workspace_plans(
     edition: DeploymentEdition = DeploymentEdition.CLOUD,
 ) -> None:
     monkeypatch.setattr(
-        workspace_query_compat,
+        workspace_plan_gateway,
         "dify_config",
         SimpleNamespace(
             ENTERPRISE_ENABLED=enterprise_enabled,
@@ -229,7 +229,7 @@ class TestWorkspaceQueryRepository:
         )
 
 
-class TestLegacyWorkspacePlanGateway:
+class TestDeploymentWorkspacePlanGateway:
     def test_saas_uses_bulk_plans_and_feature_fallback(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -240,7 +240,7 @@ class TestLegacyWorkspacePlanGateway:
         get_plan_bulk.return_value = {"workspace-1": {"plan": CloudPlan.TEAM, "expiration_date": 0}}
         get_features.return_value = features_with_plan(CloudPlan.PROFESSIONAL)
 
-        result = workspace_query_compat.LegacyWorkspacePlanGateway().resolve_many(["workspace-1", "workspace-2"])
+        result = workspace_plan_gateway.DeploymentWorkspacePlanGateway().resolve_many(["workspace-1", "workspace-2"])
 
         assert result == {"workspace-1": CloudPlan.TEAM, "workspace-2": CloudPlan.PROFESSIONAL}
         get_plan_bulk.assert_called_once()
@@ -258,11 +258,13 @@ class TestLegacyWorkspacePlanGateway:
         get_plan_bulk.return_value = {}
         get_features.return_value = features_with_plan(CloudPlan.TEAM)
 
-        with caplog.at_level(logging.WARNING, logger=workspace_query_compat.__name__):
-            result = workspace_query_compat.LegacyWorkspacePlanGateway().resolve_many(["workspace-1", "workspace-2"])
+        with caplog.at_level(logging.WARNING, logger=workspace_plan_gateway.__name__):
+            result = workspace_plan_gateway.DeploymentWorkspacePlanGateway().resolve_many(
+                ["workspace-1", "workspace-2"]
+            )
 
         assert result == {"workspace-1": CloudPlan.TEAM, "workspace-2": CloudPlan.TEAM}
-        assert "get_plan_bulk returned empty result, falling back to legacy feature path" in caplog.messages
+        assert "get_plan_bulk returned empty result, falling back to FeatureService" in caplog.messages
 
     def test_non_saas_uses_features(
         self,
@@ -277,7 +279,7 @@ class TestLegacyWorkspacePlanGateway:
         get_plan_bulk, get_features = workspace_plan_dependencies
         get_features.return_value = features_with_plan(CloudPlan.SANDBOX)
 
-        result = workspace_query_compat.LegacyWorkspacePlanGateway().resolve_many(["workspace-1"])
+        result = workspace_plan_gateway.DeploymentWorkspacePlanGateway().resolve_many(["workspace-1"])
 
         assert result == {"workspace-1": CloudPlan.SANDBOX}
         get_plan_bulk.assert_not_called()
@@ -296,7 +298,7 @@ class TestLegacyWorkspacePlanGateway:
         )
         get_plan_bulk, get_features = workspace_plan_dependencies
 
-        result = workspace_query_compat.LegacyWorkspacePlanGateway().resolve_many(["workspace-1", "workspace-2"])
+        result = workspace_plan_gateway.DeploymentWorkspacePlanGateway().resolve_many(["workspace-1", "workspace-2"])
 
         assert result == {"workspace-1": CloudPlan.SANDBOX, "workspace-2": CloudPlan.SANDBOX}
         get_plan_bulk.assert_not_called()
