@@ -65,6 +65,7 @@ from fields.base import ResponseModel
 from libs.helper import alphanumeric, dump_response, uuid_value
 from libs.login import login_required
 from models import Account
+from models.enums import PermissionEnum
 from models.provider_ids import ToolProviderID
 
 # from models.provider_ids import ToolProviderID
@@ -1136,11 +1137,15 @@ class ToolPluginOAuthApi(Resource):
 
         # Visibility is chosen by the user in the frontend before the redirect,
         # then read back in the callback below when the credential is created.
-        # Only two values are accepted; anything else falls back to only_me
-        # (OAuth tokens are personal by nature).
-        requested_visibility = request.args.get("visibility") or "only_me"
-        if requested_visibility not in ("only_me", "all_team_members"):
-            requested_visibility = "only_me"
+        # Only ONLY_ME / ALL_TEAM are accepted; anything else falls back to
+        # ONLY_ME (OAuth tokens are personal by nature).
+        raw_visibility = request.args.get("visibility")
+        try:
+            requested_visibility = PermissionEnum(raw_visibility) if raw_visibility else PermissionEnum.ONLY_ME
+        except ValueError:
+            requested_visibility = PermissionEnum.ONLY_ME
+        if requested_visibility not in (PermissionEnum.ONLY_ME, PermissionEnum.ALL_TEAM):
+            requested_visibility = PermissionEnum.ONLY_ME
 
         oauth_handler = OAuthHandler()
         context_id = OAuthProxyService.create_proxy_context(
@@ -1148,7 +1153,7 @@ class ToolPluginOAuthApi(Resource):
             tenant_id=tenant_id,
             plugin_id=plugin_id,
             provider=provider_name,
-            extra_data={"visibility": requested_visibility},
+            extra_data={"visibility": requested_visibility.value},
         )
         redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider}/tool/callback"
         authorization_url_response = oauth_handler.get_authorization_url(
@@ -1213,11 +1218,16 @@ class ToolOAuthCallback(Resource):
             raise Exception("the plugin credentials failed")
 
         # Visibility was chosen by the user before the redirect and stashed in
-        # the proxy context. Fall back to only_me for older cookies (or for
+        # the proxy context. Fall back to ONLY_ME for older cookies (or for
         # anything that somehow wrote an unexpected value) — OAuth tokens are
         # personal by default.
         stored_visibility = context.get("visibility")
-        visibility = stored_visibility if stored_visibility in ("only_me", "all_team_members") else "only_me"
+        try:
+            visibility = PermissionEnum(stored_visibility) if stored_visibility else PermissionEnum.ONLY_ME
+        except ValueError:
+            visibility = PermissionEnum.ONLY_ME
+        if visibility not in (PermissionEnum.ONLY_ME, PermissionEnum.ALL_TEAM):
+            visibility = PermissionEnum.ONLY_ME
         BuiltinToolManageService.add_builtin_tool_provider(
             user_id=user_id,
             tenant_id=tenant_id,
@@ -1225,7 +1235,7 @@ class ToolOAuthCallback(Resource):
             credentials=dict(credentials),
             expires_at=expires_at,
             api_type=CredentialType.OAUTH2,
-            visibility=visibility,
+            visibility=visibility.value,
         )
         # response-contract:ignore redirect response
         return redirect(f"{dify_config.CONSOLE_WEB_URL}/oauth-callback")
