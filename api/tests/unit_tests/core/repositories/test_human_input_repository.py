@@ -3,12 +3,6 @@ from __future__ import annotations
 import json
 from collections.abc import Iterator, Sequence
 from datetime import datetime, timedelta
-from types import SimpleNamespace
-from typing import Any, cast
-from unittest.mock import MagicMock
-
-import pytest
-from sqlalchemy.orm import Session
 from typing import Any
 
 import pytest
