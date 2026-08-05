@@ -1,4 +1,5 @@
 import logging
+import urllib.parse
 from collections.abc import Callable, Generator
 from typing import Literal, Union, overload, override
 
@@ -159,24 +160,47 @@ class PublicStorage(Storage):
             self.enabled = False
             return
 
+        bucket_name = dify_config.PUBLIC_STORAGE_ICON_S3_BUCKET or dify_config.S3_BUCKET_NAME
         required_settings = (
             dify_config.PUBLIC_STORAGE_ENDPOINT,
-            dify_config.PUBLIC_STORAGE_BUCKET_NAME,
+            bucket_name,
             dify_config.PUBLIC_STORAGE_ACCESS_KEY,
             dify_config.PUBLIC_STORAGE_SECRET_KEY,
         )
         if not all(required_settings):
             raise ValueError(
                 "Public storage configuration is incomplete. Required: PUBLIC_STORAGE_ENDPOINT, "
-                "PUBLIC_STORAGE_BUCKET_NAME, PUBLIC_STORAGE_ACCESS_KEY, and PUBLIC_STORAGE_SECRET_KEY"
+                "PUBLIC_STORAGE_ICON_S3_BUCKET or S3_BUCKET_NAME, PUBLIC_STORAGE_ACCESS_KEY, "
+                "and PUBLIC_STORAGE_SECRET_KEY"
             )
+
+        download_mode = dify_config.PUBLIC_STORAGE_ICON_S3_DOWNLOAD_MODE
+        cf_waf_hmac_base_url = dify_config.PUBLIC_STORAGE_ICON_S3_CF_WAF_HMAC_BASE_URL
+        cf_waf_hmac_secret = dify_config.PUBLIC_STORAGE_ICON_S3_CF_WAF_HMAC_SECRET
+        if download_mode == "cf_waf_hmac" and not all((cf_waf_hmac_base_url, cf_waf_hmac_secret)):
+            raise ValueError(
+                "Icon S3 Cloudflare WAF HMAC configuration is incomplete. Required: "
+                "PUBLIC_STORAGE_ICON_S3_CF_WAF_HMAC_BASE_URL and "
+                "PUBLIC_STORAGE_ICON_S3_CF_WAF_HMAC_SECRET"
+            )
+        if cf_waf_hmac_base_url:
+            parsed_base_url = urllib.parse.urlsplit(cf_waf_hmac_base_url)
+            if (
+                parsed_base_url.scheme not in {"http", "https"}
+                or not parsed_base_url.netloc
+                or parsed_base_url.query
+                or parsed_base_url.fragment
+            ):
+                raise ValueError(
+                    "PUBLIC_STORAGE_ICON_S3_CF_WAF_HMAC_BASE_URL must be an HTTP(S) URL without a query or fragment"
+                )
 
         from extensions.storage.aws_s3_storage import AwsS3Storage, AwsS3StorageSettings
 
         settings = AwsS3StorageSettings(
             endpoint=dify_config.PUBLIC_STORAGE_ENDPOINT,
             region=dify_config.PUBLIC_STORAGE_REGION,
-            bucket_name=dify_config.PUBLIC_STORAGE_BUCKET_NAME,
+            bucket_name=bucket_name,
             access_key=dify_config.PUBLIC_STORAGE_ACCESS_KEY,
             secret_key=dify_config.PUBLIC_STORAGE_SECRET_KEY,
             address_style=dify_config.PUBLIC_STORAGE_ADDRESS_STYLE,

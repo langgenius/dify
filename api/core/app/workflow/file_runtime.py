@@ -13,6 +13,10 @@ from configs import dify_config
 from core.app.file_access import DatabaseFileAccessController, FileAccessControllerProtocol
 from core.db.session_factory import session_factory
 from core.file import remote_fetcher
+from core.file.upload_file_policy import (
+    has_direct_upload_file_download_policy,
+    resolve_upload_file_storage_policy,
+)
 from core.tools.signature import sign_tool_file
 from core.workflow.file_reference import parse_file_reference
 from extensions.ext_storage import storage
@@ -20,6 +24,7 @@ from graphon.file import FileTransferMethod
 from graphon.file.protocols import WorkflowFileRuntimeProtocol
 from graphon.file.runtime import set_workflow_file_runtime
 from graphon.http.protocols import HttpResponseProtocol
+from models import UploadFile
 
 if TYPE_CHECKING:
     from graphon.file import File
@@ -99,7 +104,24 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
         as_attachment: bool = False,
         for_external: bool = True,
     ) -> str:
-        self._assert_upload_file_access(upload_file_id=upload_file_id)
+        upload_file: UploadFile | None = None
+        if has_direct_upload_file_download_policy() and not as_attachment:
+            upload_file = self._get_upload_file(upload_file_id=upload_file_id)
+            policy = resolve_upload_file_storage_policy(
+                upload_file.purpose,
+                storage_type=upload_file.storage_type,
+                key=upload_file.key,
+            )
+            if policy is not None:
+                direct_url = policy.generate_download_url(
+                    upload_file.key,
+                    content_type=upload_file.mime_type,
+                )
+                if direct_url is not None:
+                    return direct_url
+
+        if upload_file is None:
+            self._assert_upload_file_access(upload_file_id=upload_file_id)
         base_url = self._base_url(for_external=for_external)
         url = f"{base_url}/files/{upload_file_id}/file-preview"
         query = self._sign_query(payload=f"file-preview|{upload_file_id}")
@@ -174,10 +196,14 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
         if self._file_access_controller.current_scope() is None:
             return
 
+        self._get_upload_file(upload_file_id=upload_file_id)
+
+    def _get_upload_file(self, *, upload_file_id: str) -> UploadFile:
         with session_factory.create_session() as session:
             upload_file = self._file_access_controller.get_upload_file(session=session, file_id=upload_file_id)
             if upload_file is None:
                 raise ValueError(f"Upload file {upload_file_id} not found")
+            return upload_file
 
     def _assert_tool_file_access(self, *, tool_file_id: str) -> None:
         if self._file_access_controller.current_scope() is None:

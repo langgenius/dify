@@ -44,10 +44,11 @@ class TestFileService:
         mime_type: str = "text/plain",
         key: str = "key",
         purpose: UploadFilePurpose | None = None,
+        storage_type: StorageType = StorageType.LOCAL,
     ) -> UploadFile:
         upload_file = UploadFile(
             tenant_id=tenant_id,
-            storage_type=StorageType.LOCAL,
+            storage_type=storage_type,
             purpose=purpose,
             key=key,
             name=f"test.{extension}",
@@ -143,7 +144,7 @@ class TestFileService:
 
         with (
             patch("services.file_service.storage") as private_storage,
-            patch("services.file_service.public_storage") as public_storage,
+            patch("core.file.upload_file_policy.public_storage") as public_storage,
             patch("services.file_service.extract_tenant_id", return_value="tenant-id"),
             patch("services.file_service.file_helpers.get_signed_file_url"),
         ):
@@ -166,7 +167,7 @@ class TestFileService:
     def test_resolve_upload_file_storage(self):
         with (
             patch("services.file_service.storage") as private_storage,
-            patch("services.file_service.public_storage") as public_storage,
+            patch("core.file.upload_file_policy.public_storage") as public_storage,
         ):
             public_storage.enabled = True
 
@@ -191,7 +192,7 @@ class TestFileService:
             assert resolve_upload_file_storage(UploadFilePurpose.ICON) is private_storage
 
     def test_resolve_public_upload_file_requires_public_storage(self):
-        with patch("services.file_service.public_storage") as public_storage:
+        with patch("core.file.upload_file_policy.public_storage") as public_storage:
             public_storage.enabled = False
 
             with pytest.raises(RuntimeError, match="Public storage is required"):
@@ -295,11 +296,16 @@ class TestFileService:
 
     def test_get_file_base64_uses_public_storage_for_icon(self, file_service: FileService, db_session: Session):
         key = "public/upload_files/tenant-id/icon.png"
-        self._persist_upload_file(db_session, key=key, purpose=UploadFilePurpose.ICON)
+        self._persist_upload_file(
+            db_session,
+            key=key,
+            purpose=UploadFilePurpose.ICON,
+            storage_type=StorageType.S3,
+        )
 
         with (
             patch("services.file_service.storage") as private_storage,
-            patch("services.file_service.public_storage") as public_storage,
+            patch("core.file.upload_file_policy.public_storage") as public_storage,
         ):
             public_storage.enabled = True
             public_storage.load_once.return_value = b"test content"
@@ -445,12 +451,17 @@ class TestFileService:
         self, file_service: FileService, db_session: Session
     ):
         key = "public/upload_files/tenant-id/icon.png"
-        upload_file = self._persist_upload_file(db_session, key=key, purpose=UploadFilePurpose.ICON)
+        upload_file = self._persist_upload_file(
+            db_session,
+            key=key,
+            purpose=UploadFilePurpose.ICON,
+            storage_type=StorageType.S3,
+        )
 
         with (
             patch("services.file_service.file_helpers.verify_file_signature", return_value=True),
             patch("services.file_service.storage") as private_storage,
-            patch("services.file_service.public_storage") as public_storage,
+            patch("core.file.upload_file_policy.public_storage") as public_storage,
         ):
             public_storage.enabled = True
             public_storage.load.return_value = iter([b"chunk"])
@@ -516,11 +527,16 @@ class TestFileService:
 
     def test_delete_file_uses_public_storage_for_icon(self, file_service: FileService, db_session: Session):
         key = "public/upload_files/tenant-id/icon.png"
-        self._persist_upload_file(db_session, key=key, purpose=UploadFilePurpose.ICON)
+        self._persist_upload_file(
+            db_session,
+            key=key,
+            purpose=UploadFilePurpose.ICON,
+            storage_type=StorageType.S3,
+        )
 
         with (
             patch("services.file_service.storage") as private_storage,
-            patch("services.file_service.public_storage") as public_storage,
+            patch("core.file.upload_file_policy.public_storage") as public_storage,
         ):
             public_storage.enabled = True
             file_service.delete_file("file_id")
