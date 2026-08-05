@@ -24,21 +24,21 @@ def _request_context():
 
 
 class TestSniffAudioContentType:
-    def test_wav(self):
+    def test_wav(self) -> None:
         assert _sniff_audio_content_type(WAV_HEADER) == "audio/wav"
 
-    def test_mp3_id3_and_frame_sync(self):
+    def test_mp3_id3_and_frame_sync(self) -> None:
         assert _sniff_audio_content_type(MP3_ID3) == "audio/mpeg"
         assert _sniff_audio_content_type(MP3_FRAME) == "audio/mpeg"
 
-    def test_ogg_and_flac(self):
+    def test_ogg_and_flac(self) -> None:
         assert _sniff_audio_content_type(OGG_HEADER) == "audio/ogg"
         assert _sniff_audio_content_type(FLAC_HEADER) == "audio/flac"
 
-    def test_unknown_falls_back_to_mpeg(self):
+    def test_unknown_falls_back_to_mpeg(self) -> None:
         assert _sniff_audio_content_type(b"\x00\x01\x02\x03") == "audio/mpeg"
 
-    def test_short_chunk_falls_back_to_mpeg(self):
+    def test_short_chunk_falls_back_to_mpeg(self) -> None:
         assert _sniff_audio_content_type(b"RIFF") == "audio/mpeg"
 
 
@@ -46,21 +46,21 @@ class TestStreamAudioWithSniffedType:
     def _gen(self, chunks: list[bytes]) -> Generator:
         yield from chunks
 
-    def test_wav_stream_gets_wav_type_and_keeps_bytes(self):
+    def test_wav_stream_gets_wav_type_and_keeps_bytes(self) -> None:
         chunks = [WAV_HEADER, b"data-1", b"data-2"]
         resp = _stream_audio_with_sniffed_type(self._gen(chunks))
         assert resp.content_type == "audio/wav"
         assert b"".join(resp.response) == b"".join(chunks)
 
-    def test_mp3_stream_gets_mpeg_type(self):
+    def test_mp3_stream_gets_mpeg_type(self) -> None:
         resp = _stream_audio_with_sniffed_type(self._gen([MP3_ID3, b"payload"]))
         assert resp.content_type == "audio/mpeg"
 
-    def test_empty_stream_keeps_mpeg_default(self):
+    def test_empty_stream_keeps_mpeg_default(self) -> None:
         resp = _stream_audio_with_sniffed_type(self._gen([]))
         assert resp.content_type == "audio/mpeg"
 
-    def test_first_chunk_is_not_dropped(self):
+    def test_first_chunk_is_not_dropped(self) -> None:
         chunks = [OGG_HEADER, b"x" * 100]
         resp = _stream_audio_with_sniffed_type(self._gen(chunks))
         streamed = list(resp.response)
