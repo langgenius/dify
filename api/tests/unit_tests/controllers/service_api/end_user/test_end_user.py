@@ -1,5 +1,4 @@
 from datetime import UTC, datetime
-from unittest.mock import Mock
 from uuid import UUID, uuid4
 
 import pytest
@@ -18,25 +17,27 @@ class TestEndUserApi:
 
     @pytest.fixture
     def app_model(self) -> App:
-        app = Mock(spec=App)
-        app.id = str(uuid4())
-        app.tenant_id = str(uuid4())
+        app = App(
+            id=str(uuid4()),
+            tenant_id=str(uuid4()),
+        )
         return app
 
     def test_get_end_user_returns_all_attributes(
         self, mocker: MockerFixture, resource: EndUserApi, app_model: App
     ) -> None:
-        end_user = Mock(spec=EndUser)
-        end_user.id = str(uuid4())
-        end_user.tenant_id = app_model.tenant_id
-        end_user.app_id = app_model.id
-        end_user.type = EndUserType.SERVICE_API
-        end_user.external_user_id = "external-123"
-        end_user.name = "Alice"
-        end_user._is_anonymous = True
-        end_user.session_id = "session-xyz"
-        end_user.created_at = datetime(2024, 1, 1, tzinfo=UTC)
-        end_user.updated_at = datetime(2024, 1, 2, tzinfo=UTC)
+        end_user = EndUser(
+            id=str(uuid4()),
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            type=EndUserType.SERVICE_API,
+            external_user_id="external-123",
+            name="Alice",
+            _is_anonymous=True,
+            session_id="session-xyz",
+            created_at=datetime(2024, 1, 1, tzinfo=UTC),
+            updated_at=datetime(2024, 1, 2, tzinfo=UTC),
+        )
 
         get_end_user_by_id = mocker.patch(
             "controllers.service_api.end_user.end_user.EndUserService.get_end_user_by_id", return_value=end_user
