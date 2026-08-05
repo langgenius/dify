@@ -10,7 +10,7 @@ from opentelemetry.sdk.trace.export import SpanExportResult
 from opentelemetry.trace import StatusCode
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 
-from core.ops.exceptions import InvalidTraceParentContextError
+from core.ops.exceptions import InvalidTraceParentContextError, RetryableTraceDispatchError
 from core.ops.unified_trace.entities import CanonicalSpan, CanonicalSpanKind, CanonicalSpanStatus, CanonicalTrace
 from core.ops.unified_trace.parent_context import ParentResolution, ProviderParentContext, destination_scope
 
@@ -145,8 +145,19 @@ def test_emit_does_not_publish_parent_context_when_export_fails(adapter):
     publish = MagicMock()
     tool = span(id="tool-exec", kind=CanonicalSpanKind.TOOL, can_parent_workflow=True)
 
-    with pytest.raises(RuntimeError, match="Phoenix span export failed"):
+    with pytest.raises(RetryableTraceDispatchError, match="Phoenix span export failed"):
         subject.emit(trace(tool), None, publish)
+
+    publish.assert_not_called()
+
+
+def test_emit_maps_exporter_exception_to_retryable_failure(adapter):
+    subject, _, _ = adapter
+    subject._exporter.export.side_effect = ConnectionError("network unavailable")
+    publish = MagicMock()
+
+    with pytest.raises(RetryableTraceDispatchError, match="Phoenix span export failed"):
+        subject.emit(trace(), None, publish)
 
     publish.assert_not_called()
 

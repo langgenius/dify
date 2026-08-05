@@ -5,8 +5,14 @@ from typing import Any, Literal
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 from langsmith import Client
+from langsmith.utils import (
+    LangSmithAPIError,
+    LangSmithConnectionError,
+    LangSmithRateLimitError,
+    LangSmithRequestTimeout,
+)
 
-from core.ops.exceptions import InvalidTraceParentContextError
+from core.ops.exceptions import InvalidTraceParentContextError, RetryableTraceDispatchError
 from core.ops.unified_trace.entities import CanonicalSpan, CanonicalSpanKind, CanonicalSpanStatus, CanonicalTrace
 from core.ops.unified_trace.parent_context import (
     ParentContextCoordinator,
@@ -120,22 +126,30 @@ class UnifiedLangSmithAdapter:
                     metadata["linked_parent_workflow_run_id"] = parent.linked_parent.parent_workflow_run_id
                     metadata["linked_parent_node_execution_id"] = parent.linked_parent.parent_node_execution_id
 
-            self._client.create_run(
-                id=provider_id,
-                name=canonical_span.name,
-                inputs=_langsmith_inputs(canonical_span),
-                outputs=_langsmith_value(canonical_span.outputs, "output"),
-                run_type=_RUN_TYPE[canonical_span.kind],
-                start_time=canonical_span.start_time,
-                end_time=canonical_span.end_time,
-                error=canonical_span.error if canonical_span.status is CanonicalSpanStatus.ERROR else None,
-                extra={"metadata": metadata},
-                tags=["dify", "synthetic" if canonical_span.synthetic else "execution"],
-                parent_run_id=parent_run_id,
-                trace_id=trace_id,
-                dotted_order=dotted_order,
-                session_name=self._project_name,
-            )
+            try:
+                self._client.create_run(
+                    id=provider_id,
+                    name=canonical_span.name,
+                    inputs=_langsmith_inputs(canonical_span),
+                    outputs=_langsmith_value(canonical_span.outputs, "output"),
+                    run_type=_RUN_TYPE[canonical_span.kind],
+                    start_time=canonical_span.start_time,
+                    end_time=canonical_span.end_time,
+                    error=canonical_span.error if canonical_span.status is CanonicalSpanStatus.ERROR else None,
+                    extra={"metadata": metadata},
+                    tags=["dify", "synthetic" if canonical_span.synthetic else "execution"],
+                    parent_run_id=parent_run_id,
+                    trace_id=trace_id,
+                    dotted_order=dotted_order,
+                    session_name=self._project_name,
+                )
+            except (
+                LangSmithAPIError,
+                LangSmithConnectionError,
+                LangSmithRateLimitError,
+                LangSmithRequestTimeout,
+            ) as error:
+                raise RetryableTraceDispatchError("LangSmith run export failed") from error
             dotted_order_by_canonical_id[canonical_span.id] = dotted_order
 
             if canonical_span.can_parent_workflow or canonical_span.publishes_parent_context:

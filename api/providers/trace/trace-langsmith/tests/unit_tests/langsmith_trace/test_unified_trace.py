@@ -4,8 +4,16 @@ from unittest.mock import MagicMock
 import pytest
 from dify_trace_langsmith.config import LangSmithConfig
 from dify_trace_langsmith.unified_trace import UnifiedLangSmithAdapter
+from langsmith.utils import (
+    LangSmithAPIError,
+    LangSmithAuthError,
+    LangSmithConnectionError,
+    LangSmithRateLimitError,
+    LangSmithRequestTimeout,
+    LangSmithUserError,
+)
 
-from core.ops.exceptions import InvalidTraceParentContextError
+from core.ops.exceptions import InvalidTraceParentContextError, RetryableTraceDispatchError
 from core.ops.unified_trace.entities import CanonicalSpan, CanonicalSpanKind, CanonicalSpanStatus, CanonicalTrace
 from core.ops.unified_trace.parent_context import ParentResolution, ProviderParentContext, destination_scope
 
@@ -193,6 +201,32 @@ def test_tool_context_is_published_only_after_create_run_succeeds(adapter):
     with pytest.raises(RuntimeError, match="rejected"):
         subject.emit(trace(tool), None, publish)
     publish.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        LangSmithConnectionError("down"),
+        LangSmithRequestTimeout("slow"),
+        LangSmithRateLimitError("limited"),
+        LangSmithAPIError("server"),
+    ],
+)
+def test_emit_maps_recoverable_sdk_errors_to_retryable_failure(adapter, error):
+    subject, client = adapter
+    client.create_run.side_effect = error
+
+    with pytest.raises(RetryableTraceDispatchError):
+        subject.emit(trace(), None, MagicMock())
+
+
+@pytest.mark.parametrize("error", [LangSmithAuthError("unauthorized"), LangSmithUserError("invalid")])
+def test_emit_keeps_terminal_sdk_errors(adapter, error):
+    subject, client = adapter
+    client.create_run.side_effect = error
+
+    with pytest.raises(type(error)):
+        subject.emit(trace(), None, MagicMock())
 
 
 def test_retry_metadata_is_forwarded_to_langsmith(adapter):

@@ -15,7 +15,7 @@ from opentelemetry.trace import Span, Status, StatusCode, get_current_span, set_
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 from opentelemetry.util.types import AttributeValue
 
-from core.ops.exceptions import InvalidTraceParentContextError
+from core.ops.exceptions import InvalidTraceParentContextError, RetryableTraceDispatchError
 from core.ops.unified_trace.entities import CanonicalSpan, CanonicalSpanKind, CanonicalSpanStatus, CanonicalTrace
 from core.ops.unified_trace.parent_context import (
     ParentContextCoordinator,
@@ -167,11 +167,14 @@ class UnifiedPhoenixAdapter:
                 span.end(end_time=_nanos(canonical_span.end_time))
             token = attach(set_value(_SUPPRESS_INSTRUMENTATION_KEY, True))
             try:
-                export_result = self._exporter.export((cast(trace_sdk.ReadableSpan, span),))
+                try:
+                    export_result = self._exporter.export((cast(trace_sdk.ReadableSpan, span),))
+                except Exception as error:
+                    raise RetryableTraceDispatchError("Phoenix span export failed") from error
             finally:
                 detach(token)
             if export_result is not SpanExportResult.SUCCESS:
-                raise RuntimeError(f"Phoenix span export failed: canonical_span_id={canonical_span.id}")
+                raise RetryableTraceDispatchError(f"Phoenix span export failed: canonical_span_id={canonical_span.id}")
             if provider_parent_context is not None:
                 publish_parent_context(canonical_span.id, provider_parent_context)
 
