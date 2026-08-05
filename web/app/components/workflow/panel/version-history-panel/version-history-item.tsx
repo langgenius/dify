@@ -6,6 +6,7 @@ import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge/index'
+import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { WorkflowVersion } from '../../types'
 import ActionMenu from './action-menu'
 
@@ -107,7 +108,10 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
           >
             {isDraft
               ? t(($) => $['versionHistory.currentDraft'], { ns: 'workflow' })
-              : item.marked_name || t(($) => $['versionHistory.defaultName'], { ns: 'workflow' })}
+              : getWorkflowVersionName(
+                  item,
+                  t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
+                )}
           </div>
           {isLatest && (
             <div className="flex h-5 shrink-0 items-center rounded-md border border-text-accent-secondary bg-components-badge-bg-dimm px-1.25 system-2xs-medium-uppercase text-text-accent-secondary">

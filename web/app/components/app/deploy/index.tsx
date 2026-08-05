@@ -11,6 +11,7 @@ import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { consoleQuery } from '@/service/client'
@@ -19,24 +20,21 @@ import { getAppACLCapabilities } from '@/utils/permission'
 import { BuiltInEnvironmentCard } from './built-in-environment-card'
 import { DeploymentDialog } from './deployment-dialog'
 import { EnvironmentTable } from './environment-table'
-import {
-  AppDeployStateBoundary,
-  getWorkflowVersionName,
-  latestAppWorkflowVersionAtom,
-} from './state'
+import { AppDeployStateBoundary, latestAppWorkflowVersionAtom } from './state'
 import { useRefreshAppEnvironmentsAfterDeploymentPolling } from './use-refresh-app-environments-after-deployment-polling'
 
-function toDialogVersion(version: WorkflowVersion): DeploymentVersion {
+function toDialogVersion(version: WorkflowVersion, defaultName: string): DeploymentVersion {
   return {
     description: version.marked_comment || undefined,
     id: version.id,
-    name: getWorkflowVersionName(version) ?? version.version,
+    name: getWorkflowVersionName(version, defaultName),
   }
 }
 
 function AppDeployContent({ appId }: { appId: string }) {
   const { t } = useTranslation('deployments')
   const { t: tCommon } = useTranslation('common')
+  const { t: tWorkflow } = useTranslation('workflow')
   const [deploymentRequest, setDeploymentRequest] = useState<DeploymentDialogRequest>()
   const latestVersion = useAtomValue(latestAppWorkflowVersionAtom)
   const queryClient = useQueryClient()
@@ -91,7 +89,10 @@ function AppDeployContent({ appId }: { appId: string }) {
       currentVersionId: deploymentState?.current_version?.id,
       environment,
       environmentId,
-      initialVersion: toDialogVersion(version),
+      initialVersion: toDialogVersion(
+        version,
+        tWorkflow(($) => $['versionHistory.defaultName']),
+      ),
       kind: 'redeploy',
     })
   }

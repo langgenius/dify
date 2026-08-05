@@ -11,6 +11,7 @@ import VersionInfoModal from '@/app/components/app/app-publisher/version-info-mo
 import Divider from '@/app/components/base/divider'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
 import { Plan } from '@/app/components/billing/type'
+import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { userProfileAtom } from '@/context/account-state'
 import { useProviderContext } from '@/context/provider-context'
 import {
@@ -189,7 +190,10 @@ export const VersionHistoryPanel = ({
           await import('../../collaboration/core/collaboration-manager')
         collaborationManager.emitRestoreIntent({
           versionId: item.id,
-          versionName: item.marked_name,
+          versionName: getWorkflowVersionName(
+            item,
+            t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
+          ),
           initiatorUserId: userProfile.id,
           initiatorName: userProfile.name,
         })
@@ -197,7 +201,7 @@ export const VersionHistoryPanel = ({
         console.error('Failed to emit restore intent:', error)
       }
     },
-    [userProfile.id, userProfile.name],
+    [t, userProfile.id, userProfile.name],
   )
 
   const emitRestoreComplete = useCallback(

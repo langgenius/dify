@@ -196,6 +196,7 @@ const createCurrentVersion = (): NonNullable<Shape['currentVersion']> => ({
   tool_published: false,
   environment_variables: [],
   version: WorkflowVersion.Latest,
+  version_number: 5,
   marked_name: '',
   marked_comment: '',
 })
@@ -336,7 +337,7 @@ describe('Header layout components', () => {
       })
       expect(mockEmitRestoreIntent).toHaveBeenCalledWith({
         versionId: currentVersion.id,
-        versionName: currentVersion.marked_name,
+        versionName: '# 5',
         initiatorUserId: '',
         initiatorName: '',
       })

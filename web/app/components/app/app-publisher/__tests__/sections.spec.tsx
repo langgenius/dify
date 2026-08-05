@@ -172,11 +172,12 @@ describe('app-publisher sections', () => {
         publishedAt={1_710_000_100_000}
         startNodeLimitExceeded={false}
         upgradeHighlightStyle={{}}
-        versionInfo={createVersionInfo()}
+        versionInfo={createVersionInfo({ version_number: 5 })}
       />,
     )
 
-    expect(screen.getByText('2024-03-09T16:00:00Z')).toBeInTheDocument()
+    expect(screen.getByText('# 5')).toBeInTheDocument()
+    expect(screen.queryByText('2024-03-09T16:00:00Z')).not.toBeInTheDocument()
     const nameButton = screen.getByRole('button', {
       name: /versionHistory\.nameIt\b/,
     })

@@ -74,11 +74,13 @@ function workflowVersion({
   name,
   publishedBy,
   version = `2026-07-30.${id}`,
+  versionNumber,
 }: {
   id: string
   name: string
   publishedBy: string
   version?: string
+  versionNumber?: number
 }): WorkflowResponse {
   return {
     conversation_variables: [],
@@ -99,6 +101,7 @@ function workflowVersion({
     tool_published: false,
     updated_at: 1_710_000_100,
     version,
+    version_number: versionNumber,
   }
 }
 
@@ -127,8 +130,9 @@ function render(ui: ReactElement) {
   })
   const previousVersion = workflowVersion({
     id: 'version-2',
-    name: 'Release 2',
+    name: '',
     publishedBy: 'Bob',
+    versionNumber: 2,
   })
   const draftVersion = workflowVersion({
     id: 'draft-version',
@@ -173,7 +177,7 @@ describe('app deploy workflow version state', () => {
 
     expect(screen.getByText('Latest: Release 3')).toBeInTheDocument()
     expect(screen.getByText('Release 3 · Alice · latest')).toBeInTheDocument()
-    expect(screen.getByText('Release 2 · Bob · previous')).toBeInTheDocument()
+    expect(screen.getByText('# 2 · Bob · previous')).toBeInTheDocument()
     expect(screen.queryByText(/Draft/)).not.toBeInTheDocument()
 
     expect(queryOptionsMocks.latest).toHaveBeenCalledWith({

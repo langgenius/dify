@@ -7,6 +7,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
 import SuggestedAction from '@/app/components/app/app-publisher/suggested-action'
+import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { PublisherTimelineMarker } from './sections'
 
@@ -166,7 +167,10 @@ export function PublisherEnvironmentSummarySection({
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex min-w-0 items-center gap-1">
             <span className="truncate system-sm-semibold text-text-secondary">
-              {deployedVersion.marked_name || deployedVersion.version}
+              {getWorkflowVersionName(
+                deployedVersion,
+                t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
+              )}
             </span>
             {versionsBehindLabel && !isLatestVersion && (
               <Tooltip>

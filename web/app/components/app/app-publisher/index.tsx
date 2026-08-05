@@ -29,6 +29,7 @@ import { useConfigureButton } from '@/app/components/tools/workflow-tool/hooks/u
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { WorkflowContext } from '@/app/components/workflow/context'
+import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { appDefaultIconBackground } from '@/config'
 import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -486,7 +487,10 @@ function AppPublisherContent({
           description: publishedWorkflow.marked_comment || undefined,
           id: publishedWorkflow.id,
           latest: true,
-          name: publishedWorkflow.marked_name || publishedWorkflow.version,
+          name: getWorkflowVersionName(
+            publishedWorkflow,
+            t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
+          ),
           publishedAt: publishedWorkflow.created_at * 1000,
           publishedBy: publishedWorkflow.created_by?.name,
         }

@@ -11,6 +11,7 @@ import {
 } from '@langgenius/dify-ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
+import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 
 function isWorkflowVersion(
@@ -32,7 +33,12 @@ export function VersionLabel({
   if (!version) return <span className="text-text-quaternary">--</span>
 
   const fromDeployment = isWorkflowVersion(version)
-  const name = fromDeployment ? version.marked_name || version.version : version.name
+  const name = fromDeployment
+    ? getWorkflowVersionName(
+        version,
+        t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
+      )
+    : version.name
   const description = fromDeployment ? version.marked_comment : version.description
   const publishedAt = fromDeployment ? undefined : version.publishedAt
   const publishedBy = fromDeployment ? undefined : version.publishedBy

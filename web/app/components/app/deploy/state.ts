@@ -1,10 +1,7 @@
 'use client'
 
 import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
-import type {
-  EnvironmentDeployment,
-  WorkflowVersion,
-} from '@dify/contracts/enterprise-app-deploy/types.gen'
+import type { EnvironmentDeployment } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { ReactNode } from 'react'
 import type { DeploymentVersion } from './version'
 import type { VersionEnvironment } from '@/types/workflow'
@@ -17,6 +14,8 @@ import { skipToken } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import { atomWithInfiniteQuery, atomWithQuery } from 'jotai-tanstack-query'
 import { selectAtom, useHydrateAtoms } from 'jotai/utils'
+import { useTranslation } from 'react-i18next'
+import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { consoleQuery } from '@/service/client'
 
 const DEPLOYMENT_STATUS_POLLING_INTERVAL = 3000
@@ -35,6 +34,7 @@ export type EnvironmentDeploymentAction = {
 }
 
 const appDeployAppIdAtom = atom<string | null>(null)
+const defaultWorkflowVersionNameAtom = atom('')
 
 export function AppDeployStateBoundary({
   appId,
@@ -43,22 +43,31 @@ export function AppDeployStateBoundary({
   appId: string
   children: ReactNode
 }) {
-  useHydrateAtoms([[appDeployAppIdAtom, appId]] as const, {
-    dangerouslyForceHydrate: true,
-  })
+  const { t } = useTranslation('workflow')
+
+  useHydrateAtoms(
+    [
+      [appDeployAppIdAtom, appId],
+      [defaultWorkflowVersionNameAtom, t(($) => $['versionHistory.defaultName'])],
+    ] as const,
+    {
+      dangerouslyForceHydrate: true,
+    },
+  )
 
   return children
 }
 
 function toDeploymentVersion(
   workflow: WorkflowResponse & { environments?: VersionEnvironment[] },
+  defaultName: string,
   latestWorkflowId?: string,
 ): DeploymentVersion {
   return {
     description: workflow.marked_comment || undefined,
     id: workflow.id,
     latest: workflow.id === latestWorkflowId,
-    name: workflow.marked_name || workflow.version,
+    name: getWorkflowVersionName(workflow, defaultName),
     publishedAt: workflow.created_at * 1000,
     publishedBy: workflow.created_by?.name,
     tags: workflow.environments?.map((environment) => environment.name) ?? [],
@@ -90,7 +99,7 @@ export const latestAppWorkflowVersionAtom = atom((get) => {
   const workflow = get(latestPublishedWorkflowAtom)
   if (!workflow) return
 
-  return toDeploymentVersion(workflow, workflow.id)
+  return toDeploymentVersion(workflow, get(defaultWorkflowVersionNameAtom), workflow.id)
 })
 
 const appWorkflowVersionsQueryAtom = atomWithInfiniteQuery((get) => {
@@ -117,12 +126,13 @@ const appWorkflowVersionsDataAtom = selectAtom(appWorkflowVersionsQueryAtom, (qu
 
 export const appWorkflowVersionsAtom = atom((get) => {
   const latestWorkflowId = get(latestPublishedWorkflowAtom)?.id
+  const defaultName = get(defaultWorkflowVersionNameAtom)
   const pages = get(appWorkflowVersionsDataAtom)?.pages ?? []
 
   return pages.flatMap((page) =>
     page.items
       .filter((workflow) => workflow.version !== 'draft')
-      .map((workflow) => toDeploymentVersion(workflow, latestWorkflowId)),
+      .map((workflow) => toDeploymentVersion(workflow, defaultName, latestWorkflowId)),
   )
 })
 
@@ -245,12 +255,6 @@ export const appEnvironmentDeploymentsRefetchAtom = selectAtom(
   appEnvironmentDeploymentsQueryAtom,
   (query) => query.refetch,
 )
-
-export function getWorkflowVersionName(version?: WorkflowVersion) {
-  if (!version) return
-
-  return version.marked_name || version.version
-}
 
 function deploymentActions(
   kinds: EnvironmentDeploymentActionKind[],

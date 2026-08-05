@@ -24,6 +24,7 @@ import { useAtomValue } from 'jotai'
 import { Fragment, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
+import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { ACCESS_POINT_ORDER, getAccessPointHref } from './access-point'
 import { AccessPointIcon } from './access-point-icon'
@@ -38,7 +39,6 @@ import {
   appEnvironmentDeploymentsRefetchAtom,
   appEnvironmentUsageAtom,
   getEnvironmentDeploymentActions,
-  getWorkflowVersionName,
 } from './state'
 import { UndeployConfirmDialog } from './undeploy-confirm-dialog'
 import { VersionLabel } from './version-label'
@@ -46,11 +46,12 @@ import { VersionLabel } from './version-label'
 function activityLabel(
   activity: EnvironmentDeploymentOperation,
   t: ReturnType<typeof useTranslation<'deployments'>>['t'],
+  defaultVersionName: string,
 ) {
   if (activity.type === DeploymentOperationType.DEPLOYMENT_OPERATION_TYPE_UNDEPLOY)
     return t(($) => $['deployTab.undeploy'])
 
-  const target = getWorkflowVersionName(activity.target_version) ?? `#${activity.id}`
+  const target = getWorkflowVersionName(activity.target_version, defaultVersionName)
   if (activity.status === DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_FAILED)
     return t(($) => $['studio.activity.deployFailed'], { target })
   if (activity.status === DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_SUCCEEDED)
@@ -60,6 +61,7 @@ function activityLabel(
 
 function ActivityCell({ activity }: { activity?: EnvironmentDeploymentOperation }) {
   const { t } = useTranslation('deployments')
+  const { t: tWorkflow } = useTranslation('workflow')
   const { formatTimeFromNow } = useFormatTimeFromNow()
   if (!activity) return <span className="text-text-quaternary">--</span>
 
@@ -76,7 +78,13 @@ function ActivityCell({ activity }: { activity?: EnvironmentDeploymentOperation 
         {failed && (
           <span aria-hidden className="i-ri-error-warning-fill size-3 shrink-0 text-text-warning" />
         )}
-        <span className="truncate">{activityLabel(activity, t)}</span>
+        <span className="truncate">
+          {activityLabel(
+            activity,
+            t,
+            tWorkflow(($) => $['versionHistory.defaultName']),
+          )}
+        </span>
       </div>
       <div className="truncate system-xs-regular text-text-tertiary">
         {t(($) => $['studio.activity.meta'], {
@@ -92,6 +100,7 @@ function rowActionLabel(
   action: EnvironmentDeploymentAction,
   row: EnvironmentDeployment,
   t: ReturnType<typeof useTranslation<'deployments'>>['t'],
+  defaultVersionName: string,
 ) {
   switch (action.kind) {
     case 'changeVersion':
@@ -102,10 +111,10 @@ function rowActionLabel(
       return t(($) => $['deployTab.redeploy'])
     case 'retry': {
       const operation = row.deployment?.latest_operation
-      const version =
-        getWorkflowVersionName(operation?.target_version) ??
-        getWorkflowVersionName(row.deployment?.current_version) ??
-        `#${operation?.id ?? row.environment.id}`
+      const version = getWorkflowVersionName(
+        operation?.target_version ?? row.deployment?.current_version,
+        defaultVersionName,
+      )
       return t(($) => $['studio.retryVersion'], { version })
     }
     case 'undeploy':
@@ -137,6 +146,8 @@ function RowActions({
   onUndeploy?: UndeployHandler
 }) {
   const { t } = useTranslation('deployments')
+  const { t: tWorkflow } = useTranslation('workflow')
+  const defaultVersionName = tWorkflow(($) => $['versionHistory.defaultName'])
   const [showUndeployConfirm, setShowUndeployConfirm] = useState(false)
   const [isUndeploying, setIsUndeploying] = useState(false)
   const actions = getEnvironmentDeploymentActions(row)
@@ -196,7 +207,9 @@ function RowActions({
             aria-hidden
             className={cn(ROW_ACTION_ICON_CLASS_NAMES[primaryAction.kind], 'size-3.5 shrink-0')}
           />
-          <span className="truncate">{rowActionLabel(primaryAction, row, t)}</span>
+          <span className="truncate">
+            {rowActionLabel(primaryAction, row, t, defaultVersionName)}
+          </span>
         </Button>
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger
@@ -228,7 +241,7 @@ function RowActions({
                     )}
                   />
                   <span className="min-w-0 flex-1 truncate system-md-regular text-text-secondary">
-                    {rowActionLabel(action, row, t)}
+                    {rowActionLabel(action, row, t, defaultVersionName)}
                   </span>
                 </DropdownMenuItem>
               </Fragment>

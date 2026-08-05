@@ -149,6 +149,7 @@ export type FetchWorkflowDraftResponse = {
   conversation_variables?: ConversationVariable[]
   rag_pipeline_variables?: RAGPipelineVariables
   version: string
+  version_number?: number | null
   marked_name: string
   marked_comment: string
   environments?: VersionEnvironment[]

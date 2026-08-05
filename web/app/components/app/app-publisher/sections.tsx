@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import Loading from '@/app/components/base/loading'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
+import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { AppModeEnum } from '@/types/app'
 import { APP_PUBLISH_HOTKEY } from './hotkeys'
 import PublishWithMultipleModel from './publish-with-multiple-model'
@@ -166,7 +167,10 @@ export const PublisherSummarySection = ({
           <div className="flex min-w-0 flex-1 flex-col gap-1">
             <div className="flex min-h-4 min-w-0 items-center gap-1">
               <span className="truncate system-sm-semibold text-text-secondary">
-                {markedName || versionInfo?.version}
+                {getWorkflowVersionName(
+                  versionInfo,
+                  t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
+                )}
               </span>
               <span aria-hidden className="system-xs-regular text-text-tertiary">
                 ·
