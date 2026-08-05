@@ -9,10 +9,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: web-tests-${{ github.event.pull_request.number || github.event.merge_group.head_sha || github.run_id }}
-  cancel-in-progress: true
-
 jobs:
   test:
     name: Web Tests (${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
