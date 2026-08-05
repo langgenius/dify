@@ -10,6 +10,10 @@ from configs.app_config import DifyConfig
 from configs.feature import OpsTraceConfig
 
 
+def test_ops_trace_final_handoff_retry_default() -> None:
+    assert OpsTraceConfig().OPS_TRACE_FINAL_TRACE_HANDOFF_MAX_RETRIES == 60
+
+
 def test_ops_trace_config_rejects_parent_context_ttl_shorter_than_retry_window() -> None:
     with pytest.raises(ValidationError, match="must cover the retry window"):
         OpsTraceConfig(

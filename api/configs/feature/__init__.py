@@ -1354,6 +1354,11 @@ class OpsTraceConfig(BaseSettings):
         default=5,
     )
 
+    OPS_TRACE_FINAL_TRACE_HANDOFF_MAX_RETRIES: PositiveInt = Field(
+        description="Maximum recovery attempts before a final workflow trace handoff is marked failed.",
+        default=60,
+    )
+
     OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS: PositiveInt = Field(
         description="Retention in seconds for unified tracing parent contexts.",
         default=1800,
