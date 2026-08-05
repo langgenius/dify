@@ -35,11 +35,11 @@ Webhook and STREAM capabilities MUST deliver authenticated events through an app
 
 #### Scenario: Sink accepts an event
 - **WHEN** the sink returns `ACCEPTED` for one authenticated event
-- **THEN** the concrete adapter MUST complete the Provider-specific successful ACK
+- **THEN** the concrete event capability MUST complete the Provider-specific successful ACK
 
 #### Scenario: Sink cannot accept an event
 - **WHEN** the sink returns `RETRY` or raises an unexpected failure
-- **THEN** the concrete adapter MUST NOT send a successful ACK and MUST use the Provider-specific retry-compatible failure behavior
+- **THEN** the concrete event capability MUST NOT send a successful ACK and MUST use the Provider-specific retry-compatible failure behavior
 
 #### Scenario: Sink recognizes an identified duplicate
 - **WHEN** the sink has already accepted an event with the same real Provider event ID
@@ -71,19 +71,20 @@ The concrete capability MUST own thread-safe challenge handling, signature and t
 
 #### Scenario: Provider sends a URL challenge
 - **WHEN** a Provider sends a valid Webhook URL challenge
-- **THEN** the adapter MUST return the Provider-specific challenge response without calling the sink
+- **THEN** the Webhook capability MUST return the Provider-specific challenge response without calling the sink
 
 #### Scenario: Authenticated Webhook event is accepted
-- **WHEN** the adapter authenticates one event and the sink returns `ACCEPTED`
+- **WHEN** the Webhook capability authenticates one event and the sink returns `ACCEPTED`
 - **THEN** `handle` MUST return the Provider-specific successful response
 
 ### Requirement: STREAM Events MUST own an independent single-run lifecycle
 
-Each `IMStreamEvents` instance MUST own the STREAM resources it creates and MUST start at most one `run(sink, stop)` lifecycle. `close()` MUST be thread-safe and idempotent. If close is requested before run starts, the instance MUST NOT establish a Provider connection. If close is requested while run is active, run MUST stop reconnecting and release its owned resources before returning. After run completes or close is requested, the instance MUST NOT start another connection lifecycle. `IMProviderAdapter` MUST NOT track or close returned `IMStreamEvents` instances.
+Each `IMStreamEvents` instance MUST own the STREAM resources it creates and MUST start in `NEW`. Its only state-advancing transitions MUST be `NEW -> RUNNING`, `NEW -> CLOSED` and `RUNNING -> CLOSED`; `CLOSED` MUST be terminal. The first eligible `run(sink, stop)` MUST atomically transition `NEW` to `RUNNING`; the instance MUST enter `RUNNING` at most once. Return, stop or terminal failure from that run, or `close()` from `NEW` or `RUNNING`, MUST transition the instance to `CLOSED`. `close()` MUST be thread-safe and idempotent. If close wins before run starts, the instance MUST NOT establish a Provider connection. If close is requested while run is active, run MUST stop reconnecting and release its owned resources before returning. Once `CLOSED`, the instance MUST NOT start another connection lifecycle. `IMProviderAdapter` MUST NOT track or close returned `IMStreamEvents` instances.
 
-#### Scenario: Another run is invoked while running
-- **WHEN** another thread invokes `run()` after the instance has entered `RUNNING`
-- **THEN** that invocation MUST return without starting a second lifecycle, establishing another connection or changing the instance state
+#### Scenario: Run calls compete on a new instance
+- **WHEN** two or more threads concurrently invoke `run()` while the instance is `NEW`
+- **THEN** at most one invocation MUST atomically transition the instance to `RUNNING`
+- **AND** every other invocation MUST return without starting another lifecycle, establishing another connection or changing the instance state
 
 #### Scenario: Close is called before run
 - **WHEN** `close()` is invoked on a `NEW` instance
@@ -94,17 +95,21 @@ Each `IMStreamEvents` instance MUST own the STREAM resources it creates and MUST
 - **WHEN** `close()` is invoked on a `RUNNING` instance, including from another thread
 - **THEN** the instance MUST enter `CLOSED`, prevent any not-yet-started connection or reconnect, and release or arrange release of every in-flight or established STREAM resource according to the concrete SDK lifecycle
 
+#### Scenario: Run and close compete on a new instance
+- **WHEN** `run()` and `close()` concurrently attempt to transition one `NEW` instance
+- **THEN** the transition MUST be atomic: either close wins and `run()` establishes no connection, or run wins and close terminally stops that single run lifecycle
+
 #### Scenario: Closed instance is used again
 - **WHEN** `close()` or `run()` is invoked after the instance has entered `CLOSED`
 - **THEN** `close()` MUST remain a no-op and `run()` MUST return without leaving `CLOSED` or establishing a Provider connection
 
 #### Scenario: Provider SDK invokes an event callback
 - **WHEN** a STREAM SDK callback receives an authenticated business delivery
-- **THEN** the adapter MUST call the supplied sink and MUST keep Provider-specific ACK ownership inside the callback path
+- **THEN** the STREAM capability MUST call the supplied sink and MUST keep Provider-specific ACK ownership inside the callback path
 
 #### Scenario: Provider sends a control frame
 - **WHEN** a Provider sends ping, reconnect, disconnect or another connection-control frame
-- **THEN** the adapter MUST handle it without producing an `AuthenticatedIMEvent`
+- **THEN** the STREAM capability MUST handle it without producing an `AuthenticatedIMEvent`
 
 #### Scenario: Stop is requested
 - **WHEN** the supplied stop signal requests termination

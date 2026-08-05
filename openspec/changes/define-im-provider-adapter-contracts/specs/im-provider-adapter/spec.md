@@ -70,8 +70,12 @@ Every root operation other than `create_stream_events()`, every capability acces
 ### Requirement: STREAM factory MUST be the only thread-safe root operation
 `create_stream_events()` MUST be safe to invoke concurrently with calls on the same adapter, including other factory calls, externally serialized root-context operations and Webhook handling. It MUST depend only on immutable Provider configuration, MUST NOT borrow closeable resources owned by the root adapter and MUST return a new independently owned `IMStreamEvents` instance on every supported invocation. The root adapter MUST NOT retain, enumerate or close returned STREAM instances. A returned instance MAY outlive the root adapter.
 
+#### Scenario: STREAM creation overlaps root-context use or close
+- **WHEN** a caller invokes `create_stream_events()` on a STREAM-capable adapter while another caller invokes Directory, Messaging or `close()`
+- **THEN** the factory MUST create the STREAM instance from immutable configuration without accessing or coordinating with the root-owned API client context
+
 #### Scenario: Multiple STREAM instances are created
-- **WHEN** callers invoke `create_stream_events()` more than once on a STREAM-capable adapter
+- **WHEN** callers invoke `create_stream_events()` concurrently or sequentially more than once on a STREAM-capable adapter
 - **THEN** each call MUST return a distinct lifecycle owner whose resources are closed independently
 
 ### Requirement: IMProviderAdapter close MUST be a serialized lifecycle boundary
