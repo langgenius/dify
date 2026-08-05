@@ -113,7 +113,7 @@ const ParamsConfig = ({ disabled, selectedDatasets }: ParamsConfigProps) => {
         }}
         disabled={disabled}
       >
-        <RiEqualizer2Line className="mr-1 size-3.5" />
+        <RiEqualizer2Line className="size-3.5" />
         {t(($) => $.retrievalSettings, { ns: 'dataset' })}
       </Button>
       {rerankSettingModalOpen && (

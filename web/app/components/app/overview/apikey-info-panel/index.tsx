@@ -67,11 +67,7 @@ const APIKeyInfoPanel: FC = () => {
           {t(($) => $[`apiKeyInfo.cloud.${'trial'}.description`], { ns: 'appOverview' })}
         </div>
       )}
-      <Button
-        variant="primary"
-        className="mt-2 space-x-2"
-        onClick={() => setSettingsDestination('provider')}
-      >
+      <Button variant="primary" className="mt-2" onClick={() => setSettingsDestination('provider')}>
         <div className="text-sm font-medium">
           {t(($) => $['apiKeyInfo.setAPIBtn'], { ns: 'appOverview' })}
         </div>

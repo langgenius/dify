@@ -155,6 +155,32 @@ class RedisRunStore(RunEventSink):
             event_id=event_id,
         )
 
+    async def wait_for_cancellation(self, run_id: str) -> bool:
+        """Wait until cancellation or another terminal state wins for one run.
+
+        The stream cursor is captured before reading the record so a terminal
+        transition cannot fall between the initial status check and blocking
+        stream read.
+        """
+        events_key = run_events_key(self.prefix, run_id)
+        latest_events = await self.redis.xrevrange(events_key, count=1)
+        cursor = _decode_redis_text(latest_events[0][0]) if latest_events else "0-0"
+        record = await self.get_run(run_id)
+        if record.status != "running":
+            return record.status == "cancelled"
+
+        while True:
+            response = await self.redis.xread({events_key: cursor}, block=0, count=100)
+            for _stream_name, entries in response:
+                for raw_id, fields in entries:
+                    event = self._decode_event(run_id, raw_id, fields)
+                    if event.id is not None:
+                        cursor = event.id
+                    if event.type == "run_cancelled":
+                        return True
+                    if event.type in {"run_succeeded", "run_failed"}:
+                        return False
+
     async def get_events(self, run_id: str, *, after: str = "0-0", limit: int = 100) -> RunEventsResponse:
         """Read a bounded page of events after ``after`` cursor."""
         await self.get_run(run_id)

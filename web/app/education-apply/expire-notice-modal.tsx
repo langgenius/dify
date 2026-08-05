@@ -114,7 +114,7 @@ const ExpireNoticeModal: React.FC<Props> = ({ expireAt, expired, onClose }) => {
                   onClose()
                   setShowPricingModal()
                 }}
-                className="flex items-center space-x-1"
+                className="flex items-center"
               >
                 <SparklesSoftAccent className="size-4" />
                 <div className="text-components-button-secondary-accent-text">

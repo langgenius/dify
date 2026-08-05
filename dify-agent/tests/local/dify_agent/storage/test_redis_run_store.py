@@ -31,6 +31,7 @@ class FakeRedis:
         self.commands = []
         self.values = {}
         self.streams = {}
+        self.stream_changed = asyncio.Event()
 
     async def set(self, key: str, value: object, *, ex: int | None = None) -> None:
         self.commands.append(("set", key, value, ex))
@@ -52,7 +53,45 @@ class FakeRedis:
         entries = self.streams.setdefault(key, [])
         event_id = f"{len(entries) + 1}-0"
         entries.append((event_id, dict(fields)))
+        self.stream_changed.set()
         return event_id
+
+    async def xrevrange(
+        self,
+        key: str,
+        max: str = "+",
+        min: str = "-",
+        *,
+        count: int | None = None,
+    ) -> list[tuple[str, dict[str, object]]]:
+        self.commands.append(("xrevrange", key, max, min, count))
+        entries = list(reversed(self.streams.get(key, [])))
+        return entries[:count] if count is not None else entries
+
+    async def xread(
+        self,
+        streams: Mapping[str, str],
+        *,
+        count: int | None = None,
+        block: int | None = None,
+    ) -> list[tuple[str, list[tuple[str, dict[str, object]]]]]:
+        self.commands.append(("xread", dict(streams), count, block))
+        while True:
+            response: list[tuple[str, list[tuple[str, dict[str, object]]]]] = []
+            for key, cursor in streams.items():
+                entries = [
+                    entry
+                    for entry in self.streams.get(key, [])
+                    if self._stream_id_value(entry[0]) > self._stream_id_value(cursor)
+                ]
+                if count is not None:
+                    entries = entries[:count]
+                if entries:
+                    response.append((key, entries))
+            if response:
+                return response
+            self.stream_changed.clear()
+            await self.stream_changed.wait()
 
     async def xrange(
         self, key: str, *, min: str = "-", count: int | None = None
@@ -309,6 +348,101 @@ def test_finalize_run_raises_when_record_is_missing() -> None:
         asyncio.run(
             store.finalize_run(RunCancelledEvent(run_id="missing", data=RunCancelledEventData(reason="cancelled")))
         )
+
+
+def test_wait_for_cancellation_observes_terminal_record_before_starting() -> None:
+    redis = FakeRedis()
+    store = RedisRunStore(redis, prefix="test")  # pyright: ignore[reportArgumentType]
+
+    async def scenario() -> bool:
+        record = await store.create_run()
+        _ = await store.finalize_run(
+            RunCancelledEvent(run_id=record.run_id, data=RunCancelledEventData(reason="cancelled"))
+        )
+        redis.commands.clear()
+        return await store.wait_for_cancellation(record.run_id)
+
+    assert asyncio.run(scenario()) is True
+    assert [command[0] for command in redis.commands] == ["xrevrange", "get"]
+
+
+def test_wait_for_cancellation_covers_terminal_transition_during_initialization() -> None:
+    class PausingRecordReadRedis(FakeRedis):
+        record_read_started: asyncio.Event
+        release_record_read: asyncio.Event
+        pause_next_record_read: bool
+
+        def __init__(self) -> None:
+            super().__init__()
+            self.record_read_started = asyncio.Event()
+            self.release_record_read = asyncio.Event()
+            self.pause_next_record_read = True
+
+        async def get(self, key: str) -> object | None:
+            if self.pause_next_record_read and key.endswith(":record"):
+                self.pause_next_record_read = False
+                self.record_read_started.set()
+                await self.release_record_read.wait()
+            return await super().get(key)
+
+    redis = PausingRecordReadRedis()
+    observer_store = RedisRunStore(redis, prefix="test")  # pyright: ignore[reportArgumentType]
+    cancelling_store = RedisRunStore(redis, prefix="test")  # pyright: ignore[reportArgumentType]
+
+    async def scenario() -> bool:
+        record = await observer_store.create_run()
+        observer = asyncio.create_task(observer_store.wait_for_cancellation(record.run_id))
+        await asyncio.wait_for(redis.record_read_started.wait(), timeout=1)
+        _ = await cancelling_store.finalize_run(
+            RunCancelledEvent(run_id=record.run_id, data=RunCancelledEventData(reason="cancelled"))
+        )
+        redis.release_record_read.set()
+        return await asyncio.wait_for(observer, timeout=1)
+
+    assert asyncio.run(scenario()) is True
+
+
+def test_wait_for_cancellation_advances_past_non_terminal_events() -> None:
+    redis = FakeRedis()
+    store = RedisRunStore(redis, prefix="test")  # pyright: ignore[reportArgumentType]
+
+    async def scenario() -> bool:
+        record = await store.create_run()
+        observer = asyncio.create_task(store.wait_for_cancellation(record.run_id))
+        await asyncio.sleep(0)
+        _ = await store.append_event(RunStartedEvent(run_id=record.run_id))
+        await asyncio.sleep(0)
+        _ = await store.finalize_run(
+            RunCancelledEvent(run_id=record.run_id, data=RunCancelledEventData(reason="cancelled"))
+        )
+        return await asyncio.wait_for(observer, timeout=1)
+
+    assert asyncio.run(scenario()) is True
+    cursors = [command[1] for command in redis.commands if command[0] == "xread"]
+    assert any("0-0" in streams.values() for streams in cursors if isinstance(streams, dict))
+    assert any("1-0" in streams.values() for streams in cursors if isinstance(streams, dict))
+
+
+def test_wait_for_cancellation_returns_false_when_success_wins() -> None:
+    redis = FakeRedis()
+    store = RedisRunStore(redis, prefix="test")  # pyright: ignore[reportArgumentType]
+
+    async def scenario() -> bool:
+        record = await store.create_run()
+        observer = asyncio.create_task(store.wait_for_cancellation(record.run_id))
+        await asyncio.sleep(0)
+        _ = await store.finalize_run(
+            RunSucceededEvent(
+                run_id=record.run_id,
+                data=RunSucceededEventData(
+                    output="done",
+                    session_snapshot=CompositorSessionSnapshot(layers=[]),
+                ),
+            )
+        )
+        return await asyncio.wait_for(observer, timeout=1)
+
+    assert asyncio.run(scenario()) is False
 
 
 def test_append_event_serializes_typed_event_without_id_and_expires_run_keys() -> None:

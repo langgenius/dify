@@ -89,11 +89,9 @@ const Details = ({ id, type, onApplyTemplate, onClose }: DetailsProps) => {
           {pipelineTemplateInfo.description}
         </p>
         <div className="p-3">
-          <Button variant="primary" onClick={onApplyTemplate} className="w-full gap-x-0.5">
+          <Button variant="primary" onClick={onApplyTemplate} className="w-full">
             <RiAddLine className="size-4" />
-            <span className="px-0.5">
-              {t(($) => $['operations.useTemplate'], { ns: 'datasetPipeline' })}
-            </span>
+            <span>{t(($) => $['operations.useTemplate'], { ns: 'datasetPipeline' })}</span>
           </Button>
         </div>
         <div className="flex flex-col gap-y-1 px-4 py-2">
