@@ -274,7 +274,7 @@ export const createApikey = ({
   url: string
   body: Record<string, any>
 }): Promise<CreateApiKeyResponse> => {
-  return post<CreateApiKeyResponse>(url, body)
+  return post<CreateApiKeyResponse>(url, { body })
 }
 
 export const createFirecrawlTask = (body: Record<string, any>): Promise<CommonResponse> => {
