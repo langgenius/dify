@@ -1,7 +1,7 @@
 'use client'
 
+import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { WorkflowVersion } from '@dify/contracts/enterprise-app-deploy/types.gen'
-import type { DeploymentVersion } from './version'
 import {
   Popover,
   PopoverContent,
@@ -14,40 +14,34 @@ import { useTranslation } from 'react-i18next'
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 
-function isWorkflowVersion(
-  version: DeploymentVersion | WorkflowVersion,
-): version is WorkflowVersion {
-  return 'marked_name' in version
+type VersionLabelWorkflowVersion = WorkflowVersion & {
+  created_at?: WorkflowResponse['created_at']
+  created_by?: WorkflowResponse['created_by']
 }
 
 export function VersionLabel({
   version,
   versionsBehind,
+  isLatest,
 }: {
-  version?: DeploymentVersion | WorkflowVersion
+  version?: VersionLabelWorkflowVersion
   versionsBehind?: number
+  isLatest?: boolean
 }) {
   const { t } = useTranslation('deployments')
   const { formatTimeFromNow } = useFormatTimeFromNow()
 
   if (!version) return <span className="text-text-quaternary">--</span>
 
-  const fromDeployment = isWorkflowVersion(version)
-  const name = fromDeployment
-    ? getWorkflowVersionName(
-        version,
-        t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
-      )
-    : version.name
-  const description = fromDeployment ? version.marked_comment : version.description
-  const publishedAt = fromDeployment ? undefined : version.publishedAt
-  const publishedBy = fromDeployment ? undefined : version.publishedBy
-  const latest = fromDeployment ? versionsBehind === 0 : version.latest
-  const behind = fromDeployment
-    ? versionsBehind !== undefined && versionsBehind > 0
-      ? versionsBehind
-      : undefined
-    : version.behind
+  const name = getWorkflowVersionName(
+    version,
+    t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
+  )
+  const description = version.marked_comment
+  const publishedAt = version.created_at === undefined ? undefined : version.created_at * 1000
+  const publishedBy = version.created_by?.name
+  const latest = isLatest ?? versionsBehind === 0
+  const behind = versionsBehind !== undefined && versionsBehind > 0 ? versionsBehind : undefined
   const versionsBehindLabel =
     behind === undefined
       ? ''

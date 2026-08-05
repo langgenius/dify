@@ -6,7 +6,6 @@ import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { BlockEnum, isTriggerNode } from '@/app/components/workflow/types'
-import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useMCPServerDetail } from '@/service/use-tools'
 import { ACCESS_POINT_ORDER, getAccessPointHref } from './access-point'
@@ -40,19 +39,6 @@ export function BuiltInEnvironmentCard() {
   }
   const publishedBy = publishedWorkflow?.created_by?.name ?? appDetail?.author_name ?? '--'
   const updatedBy = publishedWorkflow?.updated_by?.name ?? publishedBy
-  const liveVersion = publishedWorkflow
-    ? {
-        description: publishedWorkflow.marked_comment || undefined,
-        id: publishedWorkflow.id,
-        latest: true,
-        name: getWorkflowVersionName(
-          publishedWorkflow,
-          t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
-        ),
-        publishedAt: publishedWorkflow.created_at * 1000,
-        publishedBy,
-      }
-    : undefined
 
   return (
     <section
@@ -79,7 +65,7 @@ export function BuiltInEnvironmentCard() {
             <div className="system-2xs-medium-uppercase text-text-tertiary">
               {t(($) => $['studio.liveVersion'])}
             </div>
-            <VersionLabel version={liveVersion} />
+            <VersionLabel version={publishedWorkflow} isLatest />
           </div>
           <Divider />
           <div className="flex flex-col gap-1">
