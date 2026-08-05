@@ -175,7 +175,7 @@ const makeChatConfig = (overrides: Partial<ChatConfig> = {}): ChatConfig =>
 const mockContextValue: ChatContextValue = {
   chatList: [],
   config: makeChatConfig({ supportFeedback: true }),
-  onFeedback: vi.fn().mockResolvedValue(true),
+  onFeedback: vi.fn().mockResolvedValue(undefined),
   onRegenerate: vi.fn(),
   showRegenerate: false,
   onAnnotationAdded: vi.fn(),
@@ -259,7 +259,7 @@ describe('Operation', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockContextValue.config = makeChatConfig({ supportFeedback: true })
-    mockContextValue.onFeedback = vi.fn().mockResolvedValue(true)
+    mockContextValue.onFeedback = vi.fn().mockResolvedValue(undefined)
     mockContextValue.onRegenerate = vi.fn()
     mockContextValue.onAnnotationAdded = vi.fn()
     mockContextValue.onAnnotationEdited = vi.fn()
@@ -727,7 +727,7 @@ describe('Operation', () => {
 
     it('should keep the feedback dialog and local state unchanged when submission fails', async () => {
       const user = userEvent.setup()
-      mockContextValue.onFeedback = vi.fn().mockResolvedValue(false)
+      mockContextValue.onFeedback = vi.fn().mockRejectedValue(new Error('submission failed'))
       renderOperation()
 
       await user.click(
@@ -770,6 +770,32 @@ describe('Operation', () => {
           name: 'table.header.userRate: detail.operation.dislike',
         }),
       ).not.toBeInTheDocument()
+    })
+
+    it('should reflect feedback received from refreshed message props', () => {
+      const { rerender } = renderOperation()
+
+      rerender(
+        <div className="group">
+          <Operation
+            {...baseProps}
+            item={{
+              ...baseItem,
+              feedback: { rating: 'like' },
+              adminFeedback: { rating: 'dislike', content: 'Needs work' },
+            }}
+          />
+        </div>,
+      )
+
+      expect(
+        screen.getByRole('img', {
+          name: 'table.header.userRate: detail.operation.like',
+        }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'table.header.adminRate: operation.remove' }),
+      ).toBeInTheDocument()
     })
 
     it('should show separator in admin bar when user has feedback', () => {

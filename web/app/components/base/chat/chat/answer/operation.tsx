@@ -98,20 +98,19 @@ function Operation({
   const [feedbackContent, setFeedbackContent] = useState('')
   const { id, isOpeningStatement, annotation, feedback, adminFeedback, humanInputFormDataList } =
     item
-  const [userLocalFeedback, setUserLocalFeedback] = useState(feedback)
-  const [adminLocalFeedback, setAdminLocalFeedback] = useState(adminFeedback)
+  const [userFeedbackOverride, setUserFeedbackOverride] = useState<Feedback>()
+  const [adminFeedbackOverride, setAdminFeedbackOverride] = useState<Feedback>()
   const [feedbackTarget, setFeedbackTarget] = useState<'user' | 'admin'>('user')
   const feedbackTextareaId = useId()
-
-  const userFeedback = feedback
 
   const content = getPublicResponseContent(item)
   const hasPublicContent = !!content.trim()
 
-  const displayUserFeedback = userLocalFeedback ?? userFeedback
+  const displayUserFeedback = userFeedbackOverride ?? feedback
+  const displayAdminFeedback = adminFeedbackOverride ?? adminFeedback
 
   const hasUserFeedback = !!displayUserFeedback?.rating
-  const hasAdminFeedback = !!adminLocalFeedback?.rating
+  const hasAdminFeedback = !!displayAdminFeedback?.rating
 
   const shouldShowUserFeedbackBar =
     !isOpeningStatement && config?.supportFeedback && !!onFeedback && !config?.supportAnnotation
@@ -158,13 +157,12 @@ function Operation({
     if (!config?.supportFeedback || !onFeedback) return false
 
     try {
-      const succeeded = await onFeedback(id, { rating, content })
-      if (!succeeded) return false
+      await onFeedback(id, { rating, content })
 
       const nextFeedback = rating === null ? { rating: null } : { rating, content }
 
-      if (target === 'admin') setAdminLocalFeedback(nextFeedback)
-      else setUserLocalFeedback(nextFeedback)
+      if (target === 'admin') setAdminFeedbackOverride(nextFeedback)
+      else setUserFeedbackOverride(nextFeedback)
       return true
     } catch {
       return false
@@ -327,18 +325,18 @@ function Operation({
             )}
             {hasAdminFeedback ? (
               <FeedbackTooltip
-                content={buildFeedbackTooltip(adminLocalFeedback, adminFeedbackLabel)}
+                content={buildFeedbackTooltip(displayAdminFeedback, adminFeedbackLabel)}
               >
                 <ActionButton
                   aria-label={`${adminFeedbackLabel}: ${removeFeedbackLabel}`}
                   state={
-                    adminLocalFeedback?.rating === 'like'
+                    displayAdminFeedback?.rating === 'like'
                       ? ActionButtonState.Active
                       : ActionButtonState.Destructive
                   }
                   onClick={() => handleFeedback(null, undefined, 'admin')}
                 >
-                  {adminLocalFeedback?.rating === 'like' ? (
+                  {displayAdminFeedback?.rating === 'like' ? (
                     <span aria-hidden="true" className="i-ri-thumb-up-line size-4" />
                   ) : (
                     <span aria-hidden="true" className="i-ri-thumb-down-line size-4" />
@@ -348,12 +346,12 @@ function Operation({
             ) : (
               <>
                 <FeedbackTooltip
-                  content={buildFeedbackTooltip(adminLocalFeedback, adminFeedbackLabel)}
+                  content={buildFeedbackTooltip(displayAdminFeedback, adminFeedbackLabel)}
                 >
                   <ActionButton
                     aria-label={`${adminFeedbackLabel}: ${likeLabel}`}
                     state={
-                      adminLocalFeedback?.rating === 'like'
+                      displayAdminFeedback?.rating === 'like'
                         ? ActionButtonState.Active
                         : ActionButtonState.Default
                     }
@@ -363,12 +361,12 @@ function Operation({
                   </ActionButton>
                 </FeedbackTooltip>
                 <FeedbackTooltip
-                  content={buildFeedbackTooltip(adminLocalFeedback, adminFeedbackLabel)}
+                  content={buildFeedbackTooltip(displayAdminFeedback, adminFeedbackLabel)}
                 >
                   <ActionButton
                     aria-label={`${adminFeedbackLabel}: ${dislikeLabel}`}
                     state={
-                      adminLocalFeedback?.rating === 'dislike'
+                      displayAdminFeedback?.rating === 'dislike'
                         ? ActionButtonState.Destructive
                         : ActionButtonState.Default
                     }
