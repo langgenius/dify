@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 import uuid
+from collections import Counter
 from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime
 from decimal import Decimal
@@ -2514,6 +2515,21 @@ class MessageChain(TypeBase):
     )
 
 
+def select_tool_occurrence(value: Any, occurrence: int, occurrences: int) -> Any:
+    """
+    Pick one call's value out of a persisted agent thought payload.
+
+    A tool called several times in one turn stores one value per call, in call
+    order. Records written before those calls were kept apart store a single
+    value for the tool name, and every occurrence replays it — the behaviour
+    those records were written with.
+    """
+    if occurrences > 1 and isinstance(value, list) and len(value) == occurrences:
+        return value[occurrence]
+
+    return value
+
+
 class MessageAgentThought(TypeBase):
     __tablename__ = "message_agent_thoughts"
     __table_args__ = (
@@ -2634,6 +2650,38 @@ class MessageAgentThought(TypeBase):
                 return dict.fromkeys(tools, self.observation)
             else:
                 return {}
+
+    def _per_call(self, values_by_tool: dict[str, Any]) -> list[Any]:
+        """
+        Spread a tool-name-keyed payload over the turn's calls, in call order.
+
+        One entry per entry in ``tools``, so a tool called twice gets two, each
+        holding that call's own value. A name whose stored value is not one
+        value per call — every record written before those calls were kept
+        apart — gives the same value to each of its calls, which is what those
+        records mean.
+        """
+        occurrences = Counter(self.tools)
+        seen: Counter[str] = Counter()
+        per_call: list[Any] = []
+        for tool in self.tools:
+            occurrence = seen[tool]
+            seen[tool] += 1
+            per_call.append(select_tool_occurrence(values_by_tool.get(tool, {}), occurrence, occurrences[tool]))
+
+        return per_call
+
+    @property
+    def tool_inputs_per_call(self) -> list[Any]:
+        return self._per_call(self.tool_inputs_dict)
+
+    @property
+    def tool_outputs_per_call(self) -> list[Any]:
+        return self._per_call(self.tool_outputs_dict)
+
+    @property
+    def tool_metas_per_call(self) -> list[Any]:
+        return self._per_call(self.tool_meta)
 
 
 class DatasetRetrieverResource(TypeBase):

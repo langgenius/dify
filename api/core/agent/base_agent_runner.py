@@ -3,7 +3,7 @@ import logging
 import uuid
 from collections import Counter
 from decimal import Decimal
-from typing import Any, Union, cast
+from typing import Union, cast
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -43,25 +43,17 @@ from graphon.model_runtime.entities.message_entities import ImagePromptMessageCo
 from graphon.model_runtime.entities.model_entities import ModelFeature
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from models.enums import CreatorUserRole
-from models.model import Conversation, Message, MessageAgentThought, MessageFile, load_annotation_reply_config
+from models.model import (
+    Conversation,
+    Message,
+    MessageAgentThought,
+    MessageFile,
+    load_annotation_reply_config,
+    select_tool_occurrence,
+)
 
 logger = logging.getLogger(__name__)
 _file_access_controller = DatabaseFileAccessController()
-
-
-def _select_tool_occurrence(value: Any, occurrence: int, occurrences: int) -> Any:
-    """
-    Pick one call's value out of a persisted agent thought payload.
-
-    A tool called several times in one turn stores one value per call, in call
-    order. Records written before those calls were kept apart store a single
-    value for the tool name, and every occurrence replays it — the behaviour
-    those records were written with.
-    """
-    if occurrences > 1 and isinstance(value, list) and len(value) == occurrences:
-        return value[occurrence]
-
-    return value
 
 
 class BaseAgentRunner(AppRunner):
@@ -438,7 +430,7 @@ class BaseAgentRunner(AppRunner):
                                     function=AssistantPromptMessage.ToolCall.ToolCallFunction(
                                         name=tool,
                                         arguments=json.dumps(
-                                            _select_tool_occurrence(
+                                            select_tool_occurrence(
                                                 tool_inputs.get(tool, {}), occurrence, tool_occurrences[tool]
                                             )
                                         ),
@@ -447,7 +439,7 @@ class BaseAgentRunner(AppRunner):
                             )
                             tool_call_response.append(
                                 ToolPromptMessage(
-                                    content=_select_tool_occurrence(
+                                    content=select_tool_occurrence(
                                         tool_responses.get(tool, agent_thought.observation),
                                         occurrence,
                                         tool_occurrences[tool],

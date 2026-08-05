@@ -1197,6 +1197,12 @@ class TraceTask:
             if tool_name in agent_thought.tools:
                 created_time = agent_thought.created_at
                 tool_meta_data = agent_thought.tool_meta.get(tool_name, {})
+                if isinstance(tool_meta_data, list):
+                    # a tool called several times in one turn keeps one meta per
+                    # call; this trace covers the tool, not one call of it, so it
+                    # takes the last — the only one a record written before those
+                    # calls were kept apart had
+                    tool_meta_data = tool_meta_data[-1] if tool_meta_data else {}
                 tool_config = tool_meta_data.get("tool_config", {})
                 time_cost = tool_meta_data.get("time_cost", 0)
                 end_time = created_time + timedelta(seconds=time_cost)

@@ -393,9 +393,12 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     tool_name="",
                     tool_input="",
                     thought="",
-                    tool_invoke_meta={
-                        tool_response["tool_call_name"]: tool_response["meta"] for tool_response in tool_responses
-                    },
+                    tool_invoke_meta=_group_by_tool_name(
+                        [
+                            (str(tool_response["tool_call_name"]), tool_response["meta"])
+                            for tool_response in tool_responses
+                        ]
+                    ),
                     observation=_group_by_tool_name(
                         [
                             (str(tool_response["tool_call_name"]), tool_response["tool_response"])
