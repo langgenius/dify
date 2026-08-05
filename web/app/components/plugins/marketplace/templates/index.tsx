@@ -18,6 +18,7 @@ import HomeSearch from '../home/home-search'
 import { HomeStickyStateProvider } from '../home/home-sticky-state-provider'
 import styles from '../home/home-sticky.module.css'
 import HomeTrending from '../home/home-trending'
+import { MarketplaceSearchForm } from '../home/marketplace-search-autocomplete'
 import { GRID_CLASS } from '../list/collection-constants'
 import pluginTypeStyles from '../plugin-type-switch.module.css'
 import { TEMPLATE_CATEGORIES } from './categories'
@@ -35,32 +36,6 @@ type EmbeddedTemplatesMarketplaceProps = {
 }
 
 type TemplateCategoryLabels = Record<TemplateCategory, string>
-
-function TemplateSearchForm({
-  action,
-  placeholder,
-  query,
-}: {
-  action: string
-  placeholder: string
-  query: string
-}) {
-  return (
-    <form action={action} className="relative w-full shrink-0">
-      <span
-        aria-hidden
-        className="pointer-events-none absolute top-1/2 left-3 i-ri-search-line size-4 -translate-y-1/2 text-text-tertiary"
-      />
-      <input
-        type="search"
-        name="q"
-        defaultValue={query}
-        placeholder={placeholder}
-        className="h-9 w-full rounded-[10px] border-[0.5px] border-components-input-border-active bg-components-input-bg-normal py-2 pr-3 pl-9 text-sm text-text-primary outline-none placeholder:text-text-quaternary focus:border-state-accent-solid"
-      />
-    </form>
-  )
-}
 
 function TemplateCategoryNavigation({
   activeCategory,
@@ -206,10 +181,14 @@ export async function EmbeddedTemplatesMarketplace({
             subtitle={tExplore('apps.description' as never)}
           />
           <HomeSearch>
-            <TemplateSearchForm
+            <MarketplaceSearchForm
               action={category === 'all' ? '/templates' : `/templates/${category}`}
+              category={category}
+              className="w-full"
+              locale={locale}
               placeholder={tApp('newAppFromTemplate.searchAllTemplate' as never)}
               query={query}
+              scope="templates"
             />
           </HomeSearch>
           {banners.length > 0 && (
