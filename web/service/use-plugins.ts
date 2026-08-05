@@ -676,14 +676,22 @@ export const useInvalidateInstalledPluginList = () => {
   const queryClient = useQueryClient()
   const invalidateAllBuiltInTools = useInvalidateAllBuiltInTools()
   return (category?: PluginCategoryEnum) => {
-    if (category)
-      return queryClient.invalidateQueries({
+    if (category) {
+      const invalidateCategoryPluginList = queryClient.invalidateQueries({
         queryKey: [...useInstalledPluginListKey, category],
         exact: true,
       })
 
-    queryClient.invalidateQueries({ queryKey: useInstalledPluginListKey })
-    invalidateAllBuiltInTools()
+      if (category === PluginCategoryEnum.tool)
+        return Promise.all([invalidateCategoryPluginList, invalidateAllBuiltInTools()])
+
+      return invalidateCategoryPluginList
+    }
+
+    return Promise.all([
+      queryClient.invalidateQueries({ queryKey: useInstalledPluginListKey }),
+      invalidateAllBuiltInTools(),
+    ])
   }
 }
 
