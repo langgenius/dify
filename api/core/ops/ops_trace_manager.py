@@ -25,6 +25,7 @@ from core.ops.entities.config_entity import (
     ops_trace_payload_path,
 )
 from core.ops.entities.trace_entity import (
+    BaseTraceInfo,
     DatasetRetrievalTraceInfo,
     DraftNodeExecutionTrace,
     GenerateNameTraceInfo,
@@ -1590,6 +1591,8 @@ class TraceQueueManager:
 
         resolved_file_id = file_id or uuid4().hex
         trace_info = task.execute()
+        if isinstance(trace_info, BaseTraceInfo) and trace_info.operation_id is None:
+            trace_info = trace_info.model_copy(update={"operation_id": str(uuid4())})
         task_data = TaskData(
             app_id=storage_id,
             trace_info_type=type(trace_info).__name__,

@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock
+from uuid import UUID
 
 import pytest
 
@@ -606,3 +607,40 @@ def test_generate_name_without_message_remains_root_in_conversation_session() ->
     assert trace.session_id == "conversation-1"
     assert trace.required_parent_context_id is None
     assert trace.spans[0].parent_id is None
+
+
+def test_standalone_trace_reuses_persisted_operation_id() -> None:
+    builder = CanonicalTraceBuilder(lambda _info: [])
+    info = GenerateNameTraceInfo(
+        tenant_id="tenant-1",
+        conversation_id="conversation-1",
+        inputs="title prompt",
+        outputs="title",
+        operation_id="00000000-0000-0000-0000-000000000099",
+        metadata={},
+    )
+
+    first = builder.build(info)
+    second = builder.build(info)
+
+    assert first is not None
+    assert second is not None
+    assert first.root_span_id == "00000000-0000-0000-0000-000000000099"
+    assert second.root_span_id == first.root_span_id
+
+
+def test_standalone_trace_accepts_legacy_payload_without_operation_id() -> None:
+    info = GenerateNameTraceInfo.model_validate(
+        {
+            "tenant_id": "tenant-1",
+            "conversation_id": "conversation-1",
+            "inputs": "title prompt",
+            "outputs": "title",
+            "metadata": {},
+        }
+    )
+
+    trace = CanonicalTraceBuilder(lambda _info: []).build(info)
+
+    assert trace is not None
+    assert UUID(trace.root_span_id)

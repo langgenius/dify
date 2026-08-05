@@ -733,7 +733,10 @@ def test_trace_queue_persists_with_caller_supplied_file_id(
     file_info = manager.persist_trace_task(task, file_id="workflow-final-run-1")
 
     assert file_info == {"file_id": "workflow-final-run-1", "app_id": "app-id"}
-    assert recording_storage.writes[0][0] == "ops_trace/app-id/workflow-final-run-1.json"
+    path, data = recording_storage.writes[0]
+    payload = json.loads(data)
+    assert path == "ops_trace/app-id/workflow-final-run-1.json"
+    assert UUID(payload["trace_info"]["operation_id"])
 
 
 def test_trace_queue_persistence_error_propagates(monkeypatch: pytest.MonkeyPatch, trace_environment: None) -> None:

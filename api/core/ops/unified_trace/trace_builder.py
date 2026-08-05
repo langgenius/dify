@@ -436,7 +436,7 @@ class CanonicalTraceBuilder:
         session_id: str | None = None,
         required_parent_context_id: str | None = None,
     ) -> CanonicalTrace:
-        operation_id = span_id or str(uuid4())
+        operation_id = span_id or trace_info.operation_id or str(uuid4())
         trace_id = trace_info.resolved_trace_id or parent_id or operation_id
         span = CanonicalSpan(
             id=operation_id,
