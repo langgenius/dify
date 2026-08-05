@@ -108,10 +108,6 @@ const DatasetCard = ({
     showPreviewOnlyAccessWarning()
   }
 
-  const handleTagAreaClick = (e: MouseEvent) => {
-    e.stopPropagation()
-    e.preventDefault()
-  }
   const cardClassName = cn(
     'group relative col-span-1 flex h-41.5 flex-col overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-[background-color,box-shadow] duration-200 ease-in-out',
     isPreviewOnly
@@ -139,7 +135,6 @@ const DatasetCard = ({
           datasetId={dataset.id}
           embeddingAvailable={dataset.embedding_available}
           tags={dataset.tags}
-          onClick={handleTagAreaClick}
           onOpenTagManagement={onOpenTagManagement}
           onTagsChange={onSuccess}
           canBindOrUnbindTags={canBindOrUnbindTags}

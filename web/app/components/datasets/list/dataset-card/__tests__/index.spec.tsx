@@ -120,17 +120,11 @@ vi.mock('../components/dataset-card-modals', () => ({
   ),
 }))
 vi.mock('@/features/tag-management/components/dataset-card-tags', () => ({
-  DatasetCardTags: ({
-    onClick,
-    canBindOrUnbindTags,
-  }: {
-    onClick: (e: React.MouseEvent) => void
-    canBindOrUnbindTags?: boolean
-  }) => (
-    <div
+  DatasetCardTags: ({ canBindOrUnbindTags }: { canBindOrUnbindTags?: boolean }) => (
+    <button
+      type="button"
       data-testid="tag-area"
       data-can-bind-or-unbind-tags={String(Boolean(canBindOrUnbindTags))}
-      onClick={onClick}
     />
   ),
 }))
@@ -395,11 +389,6 @@ describe('DatasetCard Component', () => {
     expect(tagArea).toHaveAttribute('data-can-bind-or-unbind-tags', 'false')
     expect(screen.queryByTestId('operations-dropdown')).not.toBeInTheDocument()
 
-    fireEvent.click(tagArea)
-
-    expect(mockPush).not.toHaveBeenCalled()
-    expect(toastMocks.record).not.toHaveBeenCalled()
-
     fireEvent.click(card)
 
     expect(mockPush).not.toHaveBeenCalled()
@@ -476,16 +465,6 @@ describe('DatasetCard Component', () => {
 
     fireEvent.click(screen.getByText('Test Dataset'))
     expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/pipeline')
-  })
-
-  it('should stop propagation when tag area is clicked', () => {
-    const dataset = createMockDataset()
-    render(<DatasetCard dataset={dataset} />)
-
-    const tagArea = screen.getByTestId('tag-area')
-    fireEvent.click(tagArea)
-    // Tag area click should not trigger card navigation
-    expect(mockPush).not.toHaveBeenCalled()
   })
 
   it('should allow tag binding when dataset has edit ACL', () => {
