@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
+import { Plan } from '@/app/components/billing/type'
 import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import {
@@ -121,13 +122,22 @@ const CreateFormPipeline = () => {
       onlineDocuments.length > 0 ||
       websitePages.length > 0 ||
       selectedFileIds.length > 0)
-  const { data: vectorSpace, isFetching: isFetchingVectorSpacePlan } = useQuery(
+  const {
+    data: vectorSpace,
+    isFetching: isFetchingVectorSpacePlan,
+    refetch: refetchVectorSpace,
+  } = useQuery(
     consoleQuery.features.vectorSpace.get.queryOptions({ enabled: shouldCheckVectorSpace }),
   )
   const isCheckingVectorSpace = shouldCheckVectorSpace && !vectorSpace && isFetchingVectorSpacePlan
+  const isVectorSpaceUnavailable =
+    shouldCheckVectorSpace && plan.type === Plan.sandbox && !!vectorSpace?.usage_unknown
   const isVectorSpaceFull =
-    !!vectorSpace && vectorSpace.limit > 0 && vectorSpace.size >= vectorSpace.limit
-  const supportBatchUpload = !enableBilling || plan.type !== 'sandbox'
+    !!vectorSpace &&
+    !vectorSpace.usage_unknown &&
+    vectorSpace.limit > 0 &&
+    vectorSpace.size >= vectorSpace.limit
+  const supportBatchUpload = !enableBilling || plan.type !== Plan.sandbox
 
   // UI state
   const {
@@ -147,7 +157,7 @@ const CreateFormPipeline = () => {
     selectedFileIdsLength: selectedFileIds.length,
     onlineDriveFileList,
     isVectorSpaceFull,
-    isCheckingVectorSpace,
+    isCheckingVectorSpace: isCheckingVectorSpace || isVectorSpaceUnavailable,
     enableBilling,
     currentWorkspacePagesLength: currentWorkspace?.pages.length ?? 0,
     fileUploadConfig,
@@ -246,6 +256,8 @@ const CreateFormPipeline = () => {
                 pipelineNodes={(pipelineInfo?.graph.nodes || []) as Node<DataSourceNodeType>[]}
                 supportBatchUpload={supportBatchUpload}
                 isShowVectorSpaceFull={isShowVectorSpaceFull}
+                isShowVectorSpaceUnavailable={isVectorSpaceUnavailable}
+                isRetryingVectorSpace={isFetchingVectorSpacePlan}
                 showSelect={showSelect}
                 totalOptions={totalOptions}
                 selectedOptions={selectedOptions}
@@ -254,6 +266,7 @@ const CreateFormPipeline = () => {
                 onSelectDataSource={handleSwitchDataSource}
                 onCredentialChange={handleCredentialChange}
                 onSelectAll={handleSelectAll}
+                onRetryVectorSpace={() => void refetchVectorSpace()}
                 onNextStep={handleNextStep}
               />
             )}

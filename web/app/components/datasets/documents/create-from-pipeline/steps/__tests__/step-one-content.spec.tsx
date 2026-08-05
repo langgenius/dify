@@ -255,6 +255,8 @@ describe('StepOneContent', () => {
     pipelineNodes: mockPipelineNodes,
     supportBatchUpload: true,
     isShowVectorSpaceFull: false,
+    isShowVectorSpaceUnavailable: false,
+    isRetryingVectorSpace: false,
     showSelect: false,
     totalOptions: 10,
     selectedOptions: 5,
@@ -263,6 +265,7 @@ describe('StepOneContent', () => {
     onSelectDataSource: vi.fn(),
     onCredentialChange: vi.fn(),
     onSelectAll: vi.fn(),
+    onRetryVectorSpace: vi.fn(),
     onNextStep: vi.fn(),
   }
 
@@ -322,6 +325,23 @@ describe('StepOneContent', () => {
     it('should not render VectorSpaceFull when isShowVectorSpaceFull is false', () => {
       render(<StepOneContent {...defaultProps} isShowVectorSpaceFull={false} />)
       expect(screen.queryByTestId('vector-space-full')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('Conditional Rendering - VectorSpaceUnavailable', () => {
+    it('should render the retry action when vector space usage is unavailable', () => {
+      const onRetryVectorSpace = vi.fn()
+      render(
+        <StepOneContent
+          {...defaultProps}
+          isShowVectorSpaceUnavailable
+          onRetryVectorSpace={onRetryVectorSpace}
+        />,
+      )
+
+      screen.getByRole('button', { name: 'common.operation.retry' }).click()
+
+      expect(onRetryVectorSpace).toHaveBeenCalledOnce()
     })
   })
 
