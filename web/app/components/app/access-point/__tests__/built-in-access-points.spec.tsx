@@ -179,7 +179,7 @@ describe('BuiltInAccessPoints', () => {
     mocks.workflow = {
       data: {
         graph: {
-          nodes: [{ data: { type: 'start' } }, { data: { type: 'trigger-webhook' } }],
+          nodes: [{ data: { type: 'trigger-webhook' } }],
         },
       },
       isPending: false,
