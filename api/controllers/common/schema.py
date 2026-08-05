@@ -234,15 +234,9 @@ def _query_param_from_property(
             items = param_schema.get("items")
             if isinstance(items, Mapping):
                 item_schema = _resolve_schema_ref(items, definitions)
-                item_type = item_schema.get("type")
-                if isinstance(item_type, str):
-                    param_doc["items"] = {"type": item_type}
-                item_enum = item_schema.get("enum")
-                if isinstance(item_enum, list):
-                    param_doc.setdefault("items", {})["enum"] = item_enum
-                item_format = item_schema.get("format")
-                if isinstance(item_format, str):
-                    param_doc.setdefault("items", {})["format"] = item_format
+                item_doc = _query_param_item_schema(item_schema)
+                if item_doc:
+                    param_doc["items"] = item_doc
 
     enum = param_schema.get("enum")
     if isinstance(enum, list):
@@ -301,6 +295,31 @@ def _query_param_from_property(
         param_doc["multipleOf"] = multiple_of
 
     return param_doc
+
+
+def _query_param_item_schema(item_schema: Mapping[str, Any]) -> dict[str, object]:
+    item_doc: dict[str, object] = {}
+
+    for key in ("type", "format", "pattern"):
+        value = item_schema.get(key)
+        if isinstance(value, str):
+            item_doc[key] = value
+
+    enum = item_schema.get("enum")
+    if isinstance(enum, list):
+        item_doc["enum"] = enum
+
+    for key in ("minLength", "maxLength"):
+        value = item_schema.get(key)
+        if isinstance(value, int):
+            item_doc[key] = value
+
+    for key in ("minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf"):
+        value = item_schema.get(key)
+        if isinstance(value, int | float):
+            item_doc[key] = value
+
+    return item_doc
 
 
 def _resolve_schema_ref(property_schema: Mapping[str, Any], definitions: Mapping[str, Any]) -> Mapping[str, Any]:

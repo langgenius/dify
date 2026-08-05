@@ -307,6 +307,7 @@
   "newKnowledge.loadMoreRevisions": "تحميل مراجعات أقدم",
   "newKnowledge.loadingSyncPolicy": "جارٍ تحميل سياسة المزامنة",
   "newKnowledge.manualUpload": "التحميل اليدوي",
+  "newKnowledge.maxCreators": "الحد الأقصى لعدد المنشئين",
   "newKnowledge.maxPages": "الحد الأقصى للصفحات",
   "newKnowledge.metadata": "بيانات التعريف",
   "newKnowledge.mimeType": "نوع الملف",

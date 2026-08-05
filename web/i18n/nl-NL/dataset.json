@@ -307,6 +307,7 @@
   "newKnowledge.loadMoreRevisions": "Oudere revisies laden",
   "newKnowledge.loadingSyncPolicy": "Synchronisatiebeleid laden",
   "newKnowledge.manualUpload": "Handmatig uploaden",
+  "newKnowledge.maxCreators": "Maximumaantal makers",
   "newKnowledge.maxPages": "Maximumaantal pagina’s",
   "newKnowledge.metadata": "Metagegevens",
   "newKnowledge.mimeType": "Bestandstype",

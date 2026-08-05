@@ -307,6 +307,7 @@
   "newKnowledge.loadMoreRevisions": "Завантажити попередні редакції",
   "newKnowledge.loadingSyncPolicy": "Завантаження політики синхронізації",
   "newKnowledge.manualUpload": "Ручне завантаження",
+  "newKnowledge.maxCreators": "Максимум авторів",
   "newKnowledge.maxPages": "Максимум сторінок",
   "newKnowledge.metadata": "Метадані",
   "newKnowledge.mimeType": "Тип файлу",

@@ -307,6 +307,7 @@
   "newKnowledge.loadMoreRevisions": "이전 리비전 불러오기",
   "newKnowledge.loadingSyncPolicy": "동기화 정책 불러오는 중",
   "newKnowledge.manualUpload": "수동 업로드",
+  "newKnowledge.maxCreators": "최대 생성자 수",
   "newKnowledge.maxPages": "최대 페이지 수",
   "newKnowledge.metadata": "메타데이터",
   "newKnowledge.mimeType": "파일 형식",

@@ -124,8 +124,18 @@ class KnowledgeFSSpaceUpdatePayload(BaseModel):
 class KnowledgeFSSpaceListQuery(BaseModel):
     page: int = Field(default=1, ge=1)
     limit: int = Field(default=20, ge=1, le=100)
+    creator_ids: list[Annotated[str, Field(min_length=1, max_length=255)]] | None = Field(
+        default=None,
+        max_length=100,
+        description="Filter by creator account IDs",
+    )
 
     model_config = ConfigDict(extra="forbid")
+
+    @field_validator("creator_ids")
+    @classmethod
+    def normalize_creator_ids(cls, value: list[str] | None) -> list[str] | None:
+        return value or None
 
 
 class KnowledgeFSCursorQuery(BaseModel):

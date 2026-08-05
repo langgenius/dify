@@ -83,12 +83,14 @@ class KnowledgeFSProductService:
         account_id: str,
         page: int,
         limit: int,
+        creator_ids: list[str] | None = None,
     ) -> KnowledgeFSSpaceListResponse:
         self.require_product_routes(tenant_id=tenant_id)
         with self._session_maker() as session:
-            statement = visible_control_space_statement(tenant_id=tenant_id, account_id=account_id).order_by(
-                KnowledgeFSControlSpace.created_at.desc(), KnowledgeFSControlSpace.id.desc()
-            )
+            statement = visible_control_space_statement(tenant_id=tenant_id, account_id=account_id)
+            if creator_ids:
+                statement = statement.where(KnowledgeFSControlSpace.owner_account_id.in_(creator_ids))
+            statement = statement.order_by(KnowledgeFSControlSpace.created_at.desc(), KnowledgeFSControlSpace.id.desc())
             candidates = tuple(session.scalars(statement))
             rbac_permissions = self._rbac.permission_keys_by_control_space(
                 session=session,

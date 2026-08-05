@@ -307,6 +307,7 @@
   "newKnowledge.loadMoreRevisions": "पुराने संशोधन लोड करें",
   "newKnowledge.loadingSyncPolicy": "सिंक नीति लोड हो रही है",
   "newKnowledge.manualUpload": "मैन्युअल अपलोड",
+  "newKnowledge.maxCreators": "अधिकतम निर्माता",
   "newKnowledge.maxPages": "अधिकतम पेज",
   "newKnowledge.metadata": "मेटा डेटा",
   "newKnowledge.mimeType": "फ़ाइल प्रकार",

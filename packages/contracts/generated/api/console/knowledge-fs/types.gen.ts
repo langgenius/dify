@@ -1607,6 +1607,7 @@ export type GetKnowledgeFsSpacesData = {
   body?: never
   path?: never
   query?: {
+    creator_ids?: Array<string>
     limit?: number
     page?: number
   }

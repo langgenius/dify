@@ -307,6 +307,7 @@
   "newKnowledge.loadMoreRevisions": "Naloži starejše različice",
   "newKnowledge.loadingSyncPolicy": "Nalaganje pravilnika sinhronizacije",
   "newKnowledge.manualUpload": "Ročno nalaganje",
+  "newKnowledge.maxCreators": "Največje število ustvarjalcev",
   "newKnowledge.maxPages": "Največje število strani",
   "newKnowledge.metadata": "Meta podatki",
   "newKnowledge.mimeType": "Vrsta datoteke",

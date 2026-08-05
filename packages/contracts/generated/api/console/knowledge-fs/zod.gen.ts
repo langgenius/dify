@@ -2114,6 +2114,7 @@ export const zGetKnowledgeFsResearchTasksByTaskIdEventsQuery = z.object({
 export const zGetKnowledgeFsResearchTasksByTaskIdEventsResponse = z.record(z.string(), z.unknown())
 
 export const zGetKnowledgeFsSpacesQuery = z.object({
+  creator_ids: z.array(z.string().min(1).max(255)).max(100).optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).optional().default(1),
 })

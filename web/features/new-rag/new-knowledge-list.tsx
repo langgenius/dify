@@ -4,6 +4,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
+import { createParser, useQueryState } from 'nuqs'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
@@ -15,6 +16,11 @@ import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
 import { useDatasetApiBaseUrl } from '@/service/knowledge/use-dataset'
 import { hasPermission } from '@/utils/permission'
+import {
+  CREATOR_FILTER_MAX_ID_LENGTH,
+  CREATOR_FILTER_MAX_SELECTION,
+  CreatorFilter,
+} from './components/creator-filter'
 import { KnowledgeSpaceCard } from './components/knowledge-space-card'
 import { KnowledgeViewSwitcher } from './components/knowledge-view-switcher'
 import {
@@ -25,6 +31,21 @@ import {
 } from './components/new-knowledge-list-states'
 
 const PAGE_SIZE = 30
+
+function normalizeCreatorIds(creatorIds: string[]) {
+  return [...new Set(creatorIds)]
+    .filter((creatorId) => creatorId.length > 0 && creatorId.length <= CREATOR_FILTER_MAX_ID_LENGTH)
+    .slice(0, CREATOR_FILTER_MAX_SELECTION)
+}
+
+const creatorIdsParser = createParser<string[]>({
+  eq: (left, right) =>
+    left.length === right.length && left.every((creatorId, index) => creatorId === right[index]),
+  parse: (query) => normalizeCreatorIds(query.split(';')),
+  serialize: (creatorIds) => normalizeCreatorIds(creatorIds).join(';'),
+})
+  .withDefault([])
+  .withOptions({ history: 'push' })
 
 function isUnavailableError(error: unknown) {
   if (!error || typeof error !== 'object') return false
@@ -69,12 +90,14 @@ export function NewKnowledgeList({
   const showFilterBoundary = () => toast.info(filtersUnavailable)
   const createLabel = tCommon(($) => $['operation.create'])
   const [searchValue, setSearchValue] = useState('')
+  const [creatorIds, setCreatorIds] = useQueryState('creator_ids', creatorIdsParser)
   const knowledgeSpacesQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.get.infiniteOptions({
       input: (pageParam) => ({
         query: {
           limit: PAGE_SIZE,
           page: pageParam,
+          ...(creatorIds.length > 0 ? { creator_ids: creatorIds } : {}),
         },
       }),
       getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
@@ -129,9 +152,9 @@ export function NewKnowledgeList({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
             <MetadataFilter label={t(($) => $['newKnowledge.tags'])} onClick={showFilterBoundary} />
-            <MetadataFilter
-              label={t(($) => $['newKnowledge.creators'])}
-              onClick={showFilterBoundary}
+            <CreatorFilter
+              value={creatorIds}
+              onChange={(nextCreatorIds) => void setCreatorIds(nextCreatorIds)}
             />
             <SearchInput
               className="w-full min-w-0 sm:w-50"
@@ -178,12 +201,18 @@ export function NewKnowledgeList({
               />
             )}
           </div>
-        ) : knowledgeSpaces.length === 0 ? (
+        ) : knowledgeSpaces.length === 0 && creatorIds.length === 0 ? (
           <NewKnowledgeEmptyState
             canConnect={canConnect}
             canCreate={canCreate}
             uploadAvailable={uploadAvailable}
           />
+        ) : knowledgeSpaces.length === 0 ? (
+          <div className="flex min-h-105 items-center justify-center px-6 text-center text-text-tertiary">
+            {tCommon(($) => $['operation.noSearchResults'], {
+              content: t(($) => $['newKnowledge.creators']),
+            })}
+          </div>
         ) : (
           <div className="px-4 pt-2 pb-8 sm:px-8">
             <ul className={KNOWLEDGE_SPACE_GRID_CLASS_NAME} aria-label={t(($) => $.knowledge)}>

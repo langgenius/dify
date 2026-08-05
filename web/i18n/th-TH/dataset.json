@@ -307,6 +307,7 @@
   "newKnowledge.loadMoreRevisions": "โหลดรุ่นแก้ไขก่อนหน้า",
   "newKnowledge.loadingSyncPolicy": "กำลังโหลดนโยบายการซิงค์",
   "newKnowledge.manualUpload": "อัพโหลดด้วยตนเอง",
+  "newKnowledge.maxCreators": "จำนวนผู้สร้างสูงสุด",
   "newKnowledge.maxPages": "จำนวนหน้าสูงสุด",
   "newKnowledge.metadata": "ข้อมูลเมตา",
   "newKnowledge.mimeType": "ประเภทไฟล์",

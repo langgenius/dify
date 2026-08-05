@@ -51,12 +51,21 @@ class KnowledgeFSProductApplicationService:
         self._facade = facade
         self._rbac = rbac
 
-    def list_spaces(self, *, tenant_id: str, account_id: str, page: int, limit: int) -> KnowledgeFSSpaceListResponse:
+    def list_spaces(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        page: int,
+        limit: int,
+        creator_ids: list[str] | None = None,
+    ) -> KnowledgeFSSpaceListResponse:
         return self._product.list_spaces(
             tenant_id=tenant_id,
             account_id=account_id,
             page=page,
             limit=limit,
+            creator_ids=creator_ids,
         )
 
     def create_space(
