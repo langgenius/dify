@@ -9,10 +9,13 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict
 
 from core.ops.unified_trace.agent_events import bound_trace_value
+from core.repositories.human_input_repository import HumanInputFormEntity, HumanInputFormRecord
+from models.human_input import HumanInputForm
 
 HumanWaitOutcome = Literal["waiting", "submitted", "timed_out", "expired", "canceled"]
 HumanWaitOwnerKind = Literal["workflow_node", "agent_node", "agent_message"]
 HumanWaitPhase = Literal["requested", "resumed"]
+type HumanWaitForm = HumanInputForm | HumanInputFormEntity | HumanInputFormRecord
 
 
 class HumanWaitRecord(BaseModel):
@@ -34,25 +37,35 @@ class HumanWaitRecord(BaseModel):
     @classmethod
     def from_form(
         cls,
-        form: object,
+        form: HumanWaitForm,
         *,
         owner_kind: HumanWaitOwnerKind,
         owner_id: str,
         tool_call_id: str | None = None,
     ) -> HumanWaitRecord:
-        start_time = _required_datetime(form, "created_at")
-        submitted_at = _optional_datetime(form, "submitted_at")
-        status = _status_value(form)
-        outcome = _outcome(status)
+        if isinstance(form, HumanInputFormRecord):
+            wait_id = form.form_id
+            submitted_at = form.submitted_at
+            updated_at = form.updated_at
+        elif isinstance(form, HumanInputForm):
+            wait_id = form.id
+            submitted_at = form.submitted_at
+            updated_at = form.updated_at
+        else:
+            wait_id = form.id
+            submitted_at = None
+            updated_at = None
+
+        outcome = _outcome(form.status.value)
         return cls(
-            wait_id=_required_string(form, "id", fallback_name="form_id"),
+            wait_id=wait_id,
             owner_id=owner_id,
             owner_kind=owner_kind,
-            start_time=start_time,
-            end_time=_terminal_time(form, outcome=outcome, submitted_at=submitted_at),
+            start_time=form.created_at,
+            end_time=_terminal_time(outcome=outcome, submitted_at=submitted_at, updated_at=updated_at),
             outcome=outcome,
-            input=bound_trace_value(_optional_value(form, "rendered_content")),
-            output=bound_trace_value(_submitted_data(form)) if outcome == "submitted" else None,
+            input=bound_trace_value(form.rendered_content),
+            output=bound_trace_value(_submitted_data(form.submitted_data)) if outcome == "submitted" else None,
             tool_call_id=tool_call_id,
         )
 
@@ -90,7 +103,7 @@ class HumanWaitRecord(BaseModel):
 
 
 def try_build_human_wait_record(
-    form: object,
+    form: HumanWaitForm,
     *,
     owner_kind: HumanWaitOwnerKind,
     owner_id: str,
@@ -108,37 +121,6 @@ def try_build_human_wait_record(
         return None
 
 
-def _required_string(value: object, name: str, *, fallback_name: str | None = None) -> str:
-    field = getattr(value, name, None)
-    if (not isinstance(field, str) or not field) and fallback_name is not None:
-        field = getattr(value, fallback_name, None)
-    if not isinstance(field, str) or not field:
-        raise ValueError(f"Human wait form has no {name}")
-    return field
-
-
-def _required_datetime(value: object, name: str) -> datetime:
-    field = _optional_datetime(value, name)
-    if field is None:
-        raise ValueError(f"Human wait form has no {name}")
-    return field
-
-
-def _optional_datetime(value: object, name: str) -> datetime | None:
-    field = getattr(value, name, None)
-    return field if isinstance(field, datetime) else None
-
-
-def _optional_value(value: object, name: str) -> Any:
-    return getattr(value, name, None)
-
-
-def _status_value(form: object) -> str:
-    status = getattr(form, "status", "waiting")
-    value = getattr(status, "value", status)
-    return value if isinstance(value, str) else "waiting"
-
-
 def _outcome(status: str) -> HumanWaitOutcome:
     if status == "submitted":
         return "submitted"
@@ -152,20 +134,19 @@ def _outcome(status: str) -> HumanWaitOutcome:
 
 
 def _terminal_time(
-    form: object,
     *,
     outcome: HumanWaitOutcome,
     submitted_at: datetime | None,
+    updated_at: datetime | None,
 ) -> datetime | None:
     if outcome == "submitted":
         return submitted_at
     if outcome in {"timed_out", "expired", "canceled"}:
-        return _optional_datetime(form, "updated_at")
+        return updated_at
     return None
 
 
-def _submitted_data(form: object) -> Any:
-    value = getattr(form, "submitted_data", None)
+def _submitted_data(value: Any) -> Any:
     if not isinstance(value, str):
         return value
     try:

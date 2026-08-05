@@ -268,7 +268,7 @@ class HumanInputFormRecord:
             recipient_id=recipient_model.id if recipient_model else None,
             recipient_type=recipient_model.recipient_type if recipient_model else None,
             access_token=recipient_model.access_token if recipient_model else None,
-            updated_at=getattr(form_model, "updated_at", None),
+            updated_at=form_model.updated_at,
         )
 
 

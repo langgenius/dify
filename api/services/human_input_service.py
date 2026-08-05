@@ -291,7 +291,7 @@ class HumanInputService:
             return
 
         if app.mode in {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT}:
-            payload = {"workflow_run_id": workflow_run_id}
+            payload: dict[str, Any] = {"workflow_run_id": workflow_run_id}
             if human_wait is not None:
                 payload["human_wait"] = human_wait.model_dump(mode="json")
             try:

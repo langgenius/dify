@@ -688,24 +688,21 @@ class AgentAppRunner:
         ):
             try:
                 form = HumanInputFormSubmissionRepository().get_by_form_id(stored.pending_form_id)
-                wait = (
-                    try_build_human_wait_record(
+                if form is not None:
+                    wait = try_build_human_wait_record(
                         form,
                         owner_kind="agent_message",
                         owner_id=message_id,
                         tool_call_id=stored.pending_tool_call_id,
                     )
-                    if form is not None
-                    else None
-                )
-                if wait is not None:
-                    on_human_wait(
-                        wait.with_phase(
-                            "resumed",
-                            message_id=message_id,
-                            linked_message_id=form.node_id,
+                    if wait is not None:
+                        on_human_wait(
+                            wait.with_phase(
+                                "resumed",
+                                message_id=message_id,
+                                linked_message_id=form.node_id,
+                            )
                         )
-                    )
             except Exception:
                 logger.warning("Failed to record Agent App resumed human wait", exc_info=True)
 

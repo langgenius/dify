@@ -40,7 +40,7 @@ from dify_agent.layers.ask_human import (
 from dify_agent.protocol import DeferredToolCallPayload
 from pydantic import ValidationError
 
-from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepository
+from core.repositories.human_input_repository import FormCreateParams, HumanInputFormEntity, HumanInputFormRepository
 from core.workflow.human_input_adapter import (
     DeliveryChannelConfig,
     EmailDeliveryConfig,

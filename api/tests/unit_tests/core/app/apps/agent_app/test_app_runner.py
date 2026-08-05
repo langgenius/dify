@@ -7,7 +7,6 @@ from __future__ import annotations
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
 from decimal import Decimal
-from types import SimpleNamespace
 from typing import Any, override
 from unittest.mock import MagicMock
 
@@ -58,9 +57,11 @@ from core.app.entities.queue_entities import (
 )
 from core.ops.unified_trace.agent_events import AgentRunTraceFragment
 from core.ops.unified_trace.human_wait import HumanWaitRecord
+from core.repositories.human_input_repository import HumanInputFormRecord
 from core.workflow.nodes.agent_v2.ask_human_resume import AskHumanResumeOutcome
 from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentToolLayers
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
+from core.workflow.nodes.human_input.entities import FormDefinition
+from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from graphon.model_runtime.entities.llm_entities import LLMResult
 from graphon.model_runtime.errors.invoke import InvokeRateLimitError
 from models.agent_config_entities import AgentSoulConfig
@@ -1283,15 +1284,29 @@ def test_submitted_form_resumes_turn_with_deferred_tool_results(monkeypatch: pyt
         lambda **_kwargs: submitted,
     )
     terminal_at = datetime(2026, 7, 29, 0, 1)
-    form_record = SimpleNamespace(
+    form_record = HumanInputFormRecord(
         form_id="form-1",
+        workflow_run_id=None,
+        conversation_id="conv-1",
         node_id="message-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        form_kind=HumanInputFormKind.RUNTIME,
+        definition=FormDefinition(form_content="", rendered_content="Need approval", expiration_time=terminal_at),
+        expiration_time=terminal_at,
         created_at=datetime(2026, 7, 29),
         submitted_at=terminal_at,
         updated_at=terminal_at,
         status=HumanInputFormStatus.SUBMITTED,
         rendered_content="Need approval",
         submitted_data={"ok": True},
+        selected_action_id=None,
+        submission_user_id=None,
+        submission_end_user_id=None,
+        completed_by_recipient_id=None,
+        recipient_id=None,
+        recipient_type=None,
+        access_token=None,
     )
     form_repo = MagicMock()
     form_repo.get_by_form_id.return_value = form_record

@@ -6,6 +6,7 @@ from sqlalchemy import or_, select, update
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
+from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
 from core.ops.entities.config_entity import workflow_final_trace_file_id
 from core.ops.entities.trace_entity import TraceTaskName
@@ -94,7 +95,11 @@ def _attempt_pending_final_trace_handoff(pause_id: str, session_factory: session
                 TraceTaskName.WORKFLOW_TRACE,
                 workflow_run_id=workflow_run.id,
                 workflow_total_tokens=workflow_run.total_tokens,
-                conversation_id=getattr(generate_entity, "conversation_id", None),
+                conversation_id=(
+                    generate_entity.conversation_id
+                    if isinstance(generate_entity, AdvancedChatAppGenerateEntity)
+                    else None
+                ),
                 user_id=generate_entity.user_id,
                 external_trace_id=extras.get("external_trace_id"),
                 trace_session_id=extras.get("trace_session_id"),

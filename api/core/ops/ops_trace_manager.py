@@ -1606,7 +1606,7 @@ class TraceQueueManager:
 
     def enqueue_persisted_trace(self, file_info: dict[str, str]) -> None:
         process_trace_tasks.apply_async(
-            args=[file_info],
+            args=(file_info,),
             retry=True,
             retry_policy={
                 "max_retries": 3,

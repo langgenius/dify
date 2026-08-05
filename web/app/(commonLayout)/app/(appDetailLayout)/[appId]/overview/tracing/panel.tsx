@@ -50,7 +50,7 @@ import { TracingProvider } from './type'
 
 const I18N_PREFIX = 'tracing'
 
-export type TracingPanelProps = {
+type TracingPanelProps = {
   appId: string
   readOnly?: boolean
 }
