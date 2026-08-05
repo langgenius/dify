@@ -71,7 +71,7 @@ Dynamic Card Messaging MUST expose `send_card(provider_user_id, intent, metadata
 - **THEN** it MUST raise `DynamicCardMessagingError` without creating a Provider message
 
 ### Requirement: MessageReference MUST be an opaque persistent round-trip value
-`MessageReference` MUST identify the exact Provider message accepted by `send_text` or `send_card`. A caller MAY persist, compare, rehydrate and return the exact value to a compatible adapter, including after adapter recreation or process restart. A caller MUST NOT interpret, alter or synthesize a reference. The common interface MUST NOT expose Provider locator fields or assume one Provider-wide scalar message ID format.
+`MessageReference` MUST identify the exact Provider message accepted by `send_text` or `send_card`. A caller MAY persist, compare, and return the exact value to a compatible adapter, including after adapter recreation or process restart. A caller MUST NOT interpret, alter or synthesize a reference. The common interface MUST NOT expose Provider locator fields or assume one Provider-wide scalar message ID format.
 
 #### Scenario: A message reference crosses a process boundary
 - **WHEN** a caller persists a successful send reference and later rehydrates it unchanged
@@ -89,7 +89,7 @@ One `send_text` or `send_card` invocation MUST attempt the requested message cre
 - **THEN** it MUST NOT attempt that creation again within the same invocation
 
 ### Requirement: Dynamic Card Messaging MUST replace the exact accepted card with a static presentation
-Dynamic Card Messaging MUST expose `replace_with_static(reference, intent)`. `StaticCardIntent` MUST contain the caller-rendered static CommonMark presentation and MUST contain no interactive inputs, actions or callback metadata. The operation MUST replace only the exact card identified by the supplied `MessageReference`. A successful operation MUST return `None`. A failure MUST return `ReplacementError`; its `kind` MUST be a `ReplacementErrorKind` distinguishing `INVALID_REFERENCE`, `STALE_REFERENCE` and `UNKNOWN`.
+Dynamic Card Messaging MUST expose `replace_with_static(reference, intent)`. The `reference` argument MUST be an unmodified `MessageReference` returned by `send_card` from a compatible adapter bound to the same Provider and tenant. `StaticCardIntent` MUST contain the caller-rendered static CommonMark presentation and MUST contain no interactive inputs, actions or callback metadata. The operation MUST replace only the exact card identified by the supplied `MessageReference`. A successful operation MUST return `None`. A failure MUST return `ReplacementError`; its `kind` MUST be a `ReplacementErrorKind` distinguishing `INVALID_REFERENCE`, `STALE_REFERENCE` and `UNKNOWN`.
 
 #### Scenario: A committed submission is reflected on the Provider
 - **WHEN** the caller passes the exact accepted card reference and a static intent after the business submission commits

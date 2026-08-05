@@ -269,7 +269,10 @@ class IMDynamicCardMessaging(Protocol):
         reference: MessageReference,
         intent: StaticCardIntent,
     ) -> ReplacementError | None:
-        """Replace the referenced interactive card with a static presentation."""
+        """Replace the referenced interactive card with a static presentation.
+
+        The `reference` argument must be a valid reference returned by `send_card`.
+        """
         ...
 
 
