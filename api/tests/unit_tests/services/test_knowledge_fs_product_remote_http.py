@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 import httpx
 import pytest
 
@@ -1002,6 +1004,34 @@ def test_json_remote_closes_and_maps_upstream_response_failures(
         assert isinstance(raised.value, KnowledgeFSProductRequestRejectedError)
         assert raised.value.status_code == expected_status
     assert response.is_closed
+
+
+def test_json_remote_logs_bounded_upstream_rejection_details(
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    response = httpx.Response(
+        400,
+        json={
+            "code": "SOURCE_CONNECTION_CONFIGURATION_INVALID",
+            "error": "Required source connection field providerKind is missing",
+            "credentials": {"accessToken": "must-not-be-logged"},
+        },
+    )
+    monkeypatch.setattr(ssrf_proxy, "make_request", lambda **_: response)
+    monkeypatch.setattr(ssrf_proxy, "buffer_response", lambda buffered, **_: buffered)
+    client = HTTPKnowledgeFSProductRemoteClient(base_url="https://knowledge-fs.test", timeout_seconds=3)
+
+    with caplog.at_level(logging.WARNING, logger=product_remote_http.__name__):
+        with pytest.raises(KnowledgeFSProductRequestRejectedError):
+            client.execute_json(_json_request())
+
+    assert "operation_id=getSettings" in caplog.text
+    assert "trace_id=trace-1" in caplog.text
+    assert "status_code=400" in caplog.text
+    assert "upstream_code=SOURCE_CONNECTION_CONFIGURATION_INVALID" in caplog.text
+    assert "upstream_message=Required source connection field providerKind is missing" in caplog.text
+    assert "must-not-be-logged" not in caplog.text
 
 
 def test_json_remote_preserves_authoritative_resource_not_found(

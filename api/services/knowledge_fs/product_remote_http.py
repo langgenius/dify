@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from http import HTTPStatus
 from urllib.parse import urlencode
 
@@ -29,6 +30,7 @@ from services.knowledge_fs.product_remote import (
 )
 
 _JSON_ADAPTER: TypeAdapter[JsonValue] = TypeAdapter(JsonValue)
+logger = logging.getLogger(__name__)
 _MAX_BATCH_SUMMARIES = 100
 _SSE_RESPONSE_HEADERS = (
     "cache-control",
@@ -71,6 +73,7 @@ class HTTPKnowledgeFSProductRemoteClient:
         ):
             raise KnowledgeFSProductRemoteError("KnowledgeFS batch request binding is invalid")
         payload = self._request_json(
+            operation_id="batchSpaceSummaries",
             method=operation.method,
             path=operation.kfs_path,
             capability_token=capability_token,
@@ -111,6 +114,7 @@ class HTTPKnowledgeFSProductRemoteClient:
             raise KnowledgeFSProductRemoteError("KnowledgeFS request binding is incomplete")
 
         return self._request_json(
+            operation_id=request.operation_id,
             method=request.method,
             path=request.path,
             capability_token=request.capability_token,
@@ -362,6 +366,7 @@ class HTTPKnowledgeFSProductRemoteClient:
     def _request_json(
         self,
         *,
+        operation_id: str,
         method: str,
         path: str,
         capability_token: str,
@@ -417,6 +422,12 @@ class HTTPKnowledgeFSProductRemoteClient:
         except (ssrf_proxy.ResponseLimitError, httpx.RequestError, ToolSSRFError) as exc:
             raise KnowledgeFSProductRemoteError("KnowledgeFS request failed") from exc
         try:
+            if response.status_code in {400, 409, 413, 422}:
+                _log_upstream_rejection(
+                    operation_id=operation_id,
+                    trace_id=trace_id,
+                    response=response,
+                )
             if response.status_code == 400:
                 raise KnowledgeFSProductRequestRejectedError(status_code=400)
             if response.status_code == 409:
@@ -440,6 +451,32 @@ class HTTPKnowledgeFSProductRemoteClient:
                 raise KnowledgeFSProductRemoteError("KnowledgeFS returned invalid JSON") from exc
         finally:
             response.close()
+
+
+def _log_upstream_rejection(*, operation_id: str, trace_id: str, response: httpx.Response) -> None:
+    """Log bounded, non-secret KnowledgeFS error fields without exposing request or response payloads."""
+    code: str | None = None
+    message: str | None = None
+    try:
+        body = response.json()
+        if isinstance(body, dict):
+            raw_code = body.get("code")
+            raw_message = body.get("error", body.get("message"))
+            if isinstance(raw_code, str):
+                code = raw_code[:256]
+            if isinstance(raw_message, str):
+                message = raw_message[:1024]
+    except (ValueError, ValidationError):
+        pass
+    logger.warning(
+        "KnowledgeFS rejected JSON request: operation_id=%s trace_id=%s status_code=%s "
+        "upstream_code=%s upstream_message=%s",
+        operation_id,
+        trace_id,
+        response.status_code,
+        code or "unavailable",
+        message or "unavailable",
+    )
 
 
 def _matches_path(template: str, path: str) -> bool:
