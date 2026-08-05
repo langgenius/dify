@@ -47,7 +47,6 @@ import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AppCardTags } from '@/features/tag-management/components/app-card-tags'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
-import { AccessMode } from '@/models/access-control'
 import dynamic from '@/next/dynamic'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
@@ -80,23 +79,6 @@ const DSLExportConfirmModal = dynamic(
     ssr: false,
   },
 )
-const AccessControl = dynamic(() => import('@/app/components/app/app-access-control'), {
-  ssr: false,
-})
-
-const ACCESS_MODE_ICON_CLASS_NAMES: Record<AccessMode, string> = {
-  [AccessMode.PUBLIC]: 'i-ri-global-line',
-  [AccessMode.SPECIFIC_GROUPS_MEMBERS]: 'i-ri-lock-line',
-  [AccessMode.ORGANIZATION]: 'i-ri-building-line',
-  [AccessMode.EXTERNAL_MEMBERS]: 'i-ri-verified-badge-line',
-}
-
-const ACCESS_MODE_LABEL_KEYS = {
-  [AccessMode.PUBLIC]: 'accessItemsDescription.anyone',
-  [AccessMode.SPECIFIC_GROUPS_MEMBERS]: 'accessItemsDescription.specific',
-  [AccessMode.ORGANIZATION]: 'accessItemsDescription.organization',
-  [AccessMode.EXTERNAL_MEMBERS]: 'accessItemsDescription.external',
-} as const
 
 const APP_MODES_REQUIRING_PUBLISHED_WORKFLOW_IN_EXPLORE = new Set<AppModeEnum>([
   AppModeEnum.ADVANCED_CHAT,
@@ -115,44 +97,10 @@ type AppCardProps = {
   stepByStepTourActionMenuHighlightPart?: string
 }
 
-type AppAccessModeIconProps = {
-  accessMode?: AccessMode | null
-}
-
 const getAppResourceMaintainer = (app: App) => app.maintainer
 
 function requiresPublishedWorkflowInExplore(app: App) {
   return APP_MODES_REQUIRING_PUBLISHED_WORKFLOW_IN_EXPLORE.has(app.mode)
-}
-
-function AppAccessModeIcon({ accessMode }: AppAccessModeIconProps) {
-  const { t } = useTranslation()
-
-  if (!accessMode) return null
-
-  const iconClassName = ACCESS_MODE_ICON_CLASS_NAMES[accessMode]
-  const labelKey = ACCESS_MODE_LABEL_KEYS[accessMode]
-
-  if (!iconClassName || !labelKey) return null
-
-  const label = t(($) => $[labelKey], { ns: 'app' })
-
-  return (
-    <div className="absolute right-3 bottom-3 flex size-4 items-center justify-center">
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <span
-              role="img"
-              aria-label={label}
-              className={cn(iconClassName, 'size-4 text-text-quaternary')}
-            />
-          }
-        />
-        <TooltipContent>{label}</TooltipContent>
-      </Tooltip>
-    </div>
-  )
 }
 
 type AppCardOperationsMenuProps = {
@@ -162,7 +110,6 @@ type AppCardOperationsMenuProps = {
   shouldShowExportOption: boolean
   shouldShowSwitchOption: boolean
   shouldShowOpenInExploreOption: boolean
-  shouldShowAccessControlOption: boolean
   shouldShowAccessConfigOption: boolean
   shouldShowDeleteOption: boolean
   isExporting: boolean
@@ -171,7 +118,6 @@ type AppCardOperationsMenuProps = {
   onExport: () => void
   onSwitch: () => void
   onDelete: () => void
-  onAccessControl: () => void
   onAccessConfig: () => void
 }
 
@@ -182,7 +128,6 @@ function AppCardOperationsMenu({
   shouldShowExportOption,
   shouldShowSwitchOption,
   shouldShowOpenInExploreOption,
-  shouldShowAccessControlOption,
   shouldShowAccessConfigOption,
   shouldShowDeleteOption,
   isExporting,
@@ -191,7 +136,6 @@ function AppCardOperationsMenu({
   onExport,
   onSwitch,
   onDelete,
-  onAccessControl,
   onAccessConfig,
 }: AppCardOperationsMenuProps) {
   const { t } = useTranslation()
@@ -199,8 +143,7 @@ function AppCardOperationsMenu({
   const hasEditGroup = shouldShowEditOption
   const hasCreateExportGroup = shouldShowDuplicateOption || shouldShowExportOption
   const hasSwitchOrExploreGroup = shouldShowSwitchOption || shouldShowOpenInExploreOption
-  const hasAccessDeleteGroup =
-    shouldShowAccessControlOption || shouldShowAccessConfigOption || shouldShowDeleteOption
+  const hasAccessDeleteGroup = shouldShowAccessConfigOption || shouldShowDeleteOption
 
   function handleMenuAction(e: MouseEvent<HTMLElement>, action: () => void) {
     e.stopPropagation()
@@ -283,16 +226,6 @@ function AppCardOperationsMenu({
         </DropdownMenuItem>
       )}
       {hasSwitchOrExploreGroup && hasAccessDeleteGroup && <DropdownMenuSeparator />}
-      {shouldShowAccessControlOption && (
-        <DropdownMenuItem
-          className="gap-2 px-3"
-          onClick={(e) => handleMenuAction(e, onAccessControl)}
-        >
-          <span className="text-sm/5 text-text-secondary">
-            {t(($) => $.accessControl, { ns: 'app' })}
-          </span>
-        </DropdownMenuItem>
-      )}
       {shouldShowAccessConfigOption && (
         <DropdownMenuItem
           className="gap-2 px-3"
@@ -303,8 +236,7 @@ function AppCardOperationsMenu({
           </span>
         </DropdownMenuItem>
       )}
-      {(shouldShowAccessControlOption || shouldShowAccessConfigOption) &&
-        shouldShowDeleteOption && <DropdownMenuSeparator />}
+      {shouldShowAccessConfigOption && shouldShowDeleteOption && <DropdownMenuSeparator />}
       {shouldShowDeleteOption && (
         <DropdownMenuItem
           variant="destructive"
@@ -367,7 +299,6 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
   const [showSwitchModal, setShowSwitchModal] = useState<boolean>(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
-  const [showAccessControl, setShowAccessControl] = useState(false)
   const [isOperationsMenuOpen, setIsOperationsMenuOpen] = useState(false)
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariableItemResponse[]>([])
   const { mutateAsync: mutateDeleteApp, isPending: isDeleting } = useDeleteAppMutation()
@@ -453,13 +384,6 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
     setIsOperationsMenuOpen(false)
     queueMicrotask(() => {
       setShowConfirmDelete(true)
-    })
-  }, [])
-
-  const handleShowAccessControl = useCallback(() => {
-    setIsOperationsMenuOpen(false)
-    queueMicrotask(() => {
-      setShowAccessControl(true)
     })
   }, [])
 
@@ -551,11 +475,6 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
     setShowSwitchModal(false)
   }
 
-  const onUpdateAccessControl = useCallback(() => {
-    onRefresh?.()
-    setShowAccessControl(false)
-  }, [onRefresh, setShowAccessControl])
-
   const handleToggleStar = useCallback(
     async (e: MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation()
@@ -585,8 +504,6 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
     canCreateApp &&
     appACLCapabilities.canEdit &&
     (app.mode === AppModeEnum.COMPLETION || app.mode === AppModeEnum.CHAT)
-  const shouldShowAccessControlOption =
-    systemFeatures.webapp_auth.enabled && appACLCapabilities.canReleaseAndVersion
   const shouldShowAccessConfigOption = appACLCapabilities.canAccessConfig
   const shouldShowDeleteOption = appACLCapabilities.canDelete
   const shouldShowOperationsMenu =
@@ -594,7 +511,6 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
     shouldShowDuplicateOption ||
     shouldShowExportOption ||
     shouldShowSwitchOption ||
-    shouldShowAccessControlOption ||
     shouldShowAccessConfigOption ||
     shouldShowDeleteOption
   const starActionLabel = app.is_starred
@@ -680,7 +596,6 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
                     shouldShowDuplicateOption={shouldShowDuplicateOption}
                     shouldShowExportOption={shouldShowExportOption}
                     shouldShowSwitchOption={shouldShowSwitchOption}
-                    shouldShowAccessControlOption={shouldShowAccessControlOption}
                     shouldShowAccessConfigOption={shouldShowAccessConfigOption}
                     shouldShowDeleteOption={shouldShowDeleteOption}
                     isExporting={isExporting}
@@ -689,7 +604,6 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
                     onExport={exportCheck}
                     onSwitch={handleShowSwitchModal}
                     onDelete={handleShowDeleteConfirm}
-                    onAccessControl={handleShowAccessControl}
                     onAccessConfig={handleOpenAccessConfig}
                   />
                 ) : (
@@ -700,7 +614,6 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
                     shouldShowExportOption={shouldShowExportOption}
                     shouldShowSwitchOption={shouldShowSwitchOption}
                     shouldShowOpenInExploreOption={!app.has_draft_trigger}
-                    shouldShowAccessControlOption={shouldShowAccessControlOption}
                     shouldShowAccessConfigOption={shouldShowAccessConfigOption}
                     shouldShowDeleteOption={shouldShowDeleteOption}
                     isExporting={isExporting}
@@ -709,7 +622,6 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
                     onExport={exportCheck}
                     onSwitch={handleShowSwitchModal}
                     onDelete={handleShowDeleteConfirm}
-                    onAccessControl={handleShowAccessControl}
                     onAccessConfig={handleOpenAccessConfig}
                   />
                 )}
@@ -811,13 +723,6 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
           onClose={() => setSecretEnvList([])}
         />
       )}
-      {showAccessControl && (
-        <AccessControl
-          app={app}
-          onConfirm={onUpdateAccessControl}
-          onClose={() => setShowAccessControl(false)}
-        />
-      )}
     </>
   )
 }
@@ -845,7 +750,6 @@ export function AppCard({
   const [showSwitchModal, setShowSwitchModal] = useState<boolean>(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
-  const [showAccessControl, setShowAccessControl] = useState(false)
   const operationsMenu = useStepByStepTourControlledDropdown({
     allowTriggerCloseWhileControlled: false,
     controlledOpen: stepByStepTourActionMenuOpen,
@@ -934,17 +838,10 @@ export function AppCard({
     })
   }
 
-  function handleShowAccessControl() {
-    setIsOperationsMenuOpen(false)
-    queueMicrotask(() => {
-      setShowAccessControl(true)
-    })
-  }
-
   const handleOpenAccessConfig = useCallback(() => {
     setIsOperationsMenuOpen(false)
     push(`/app/${app.id}/access-config`)
-  }, [app.id, push])
+  }, [app.id, push, setIsOperationsMenuOpen])
 
   const onEdit: CreateAppModalProps['onConfirm'] = async ({
     name,
@@ -1026,11 +923,6 @@ export function AppCard({
     setShowSwitchModal(false)
   }
 
-  function onUpdateAccessControl() {
-    if (onRefresh) onRefresh()
-    setShowAccessControl(false)
-  }
-
   const handleToggleStar = useCallback(
     async (e: React.MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation()
@@ -1059,8 +951,6 @@ export function AppCard({
   const shouldShowSwitchOption =
     appACLCapabilities.canEdit &&
     (app.mode === AppModeEnum.COMPLETION || app.mode === AppModeEnum.CHAT)
-  const shouldShowAccessControlOption =
-    systemFeatures.webapp_auth.enabled && appACLCapabilities.canReleaseAndVersion
   const shouldShowAccessConfigOption = appACLCapabilities.canAccessConfig
   const shouldShowDeleteOption = appACLCapabilities.canDelete
   const shouldShowOperationsMenu =
@@ -1068,7 +958,6 @@ export function AppCard({
     shouldShowDuplicateOption ||
     shouldShowExportOption ||
     shouldShowSwitchOption ||
-    shouldShowAccessControlOption ||
     shouldShowAccessConfigOption ||
     shouldShowDeleteOption
   const canBindOrUnbindTags = !isPreviewOnly && (canManageAppTags || appACLCapabilities.canEdit)
@@ -1178,12 +1067,7 @@ export function AppCard({
         </div>
       </div>
       <div className="flex h-6.5 shrink-0 items-start px-3" />
-      <div
-        className={cn(
-          'flex min-w-0 shrink-0 items-center overflow-hidden pt-2 pb-3 pl-4 system-xs-regular text-text-tertiary',
-          app.access_mode ? 'pr-9' : 'pr-4',
-        )}
-      >
+      <div className="flex min-w-0 shrink-0 items-center overflow-hidden pt-2 pr-4 pb-3 pl-4 system-xs-regular text-text-tertiary">
         <div className="flex min-w-0 flex-1 items-center gap-1 whitespace-nowrap">
           {app.author_name && (
             <>
@@ -1226,7 +1110,6 @@ export function AppCard({
             {appCardContent}
           </Link>
         )}
-        <AppAccessModeIcon accessMode={app.access_mode} />
         {!isPreviewOnly && (
           <div
             className={cn(
@@ -1306,7 +1189,6 @@ export function AppCard({
                       shouldShowDuplicateOption={shouldShowDuplicateOption}
                       shouldShowExportOption={shouldShowExportOption}
                       shouldShowSwitchOption={shouldShowSwitchOption}
-                      shouldShowAccessControlOption={shouldShowAccessControlOption}
                       shouldShowAccessConfigOption={shouldShowAccessConfigOption}
                       shouldShowDeleteOption={shouldShowDeleteOption}
                       isExporting={isExporting}
@@ -1315,7 +1197,6 @@ export function AppCard({
                       onExport={exportCheck}
                       onSwitch={handleShowSwitchModal}
                       onDelete={handleShowDeleteConfirm}
-                      onAccessControl={handleShowAccessControl}
                       onAccessConfig={handleOpenAccessConfig}
                     />
                   ) : (
@@ -1326,7 +1207,6 @@ export function AppCard({
                       shouldShowExportOption={shouldShowExportOption}
                       shouldShowSwitchOption={shouldShowSwitchOption}
                       shouldShowOpenInExploreOption={!app.has_draft_trigger}
-                      shouldShowAccessControlOption={shouldShowAccessControlOption}
                       shouldShowAccessConfigOption={shouldShowAccessConfigOption}
                       shouldShowDeleteOption={shouldShowDeleteOption}
                       isExporting={isExporting}
@@ -1335,7 +1215,6 @@ export function AppCard({
                       onExport={exportCheck}
                       onSwitch={handleShowSwitchModal}
                       onDelete={handleShowDeleteConfirm}
-                      onAccessControl={handleShowAccessControl}
                       onAccessConfig={handleOpenAccessConfig}
                     />
                   )}
@@ -1454,13 +1333,6 @@ export function AppCard({
           envList={secretEnvList}
           onConfirm={onExport}
           onClose={() => setSecretEnvList([])}
-        />
-      )}
-      {showAccessControl && (
-        <AccessControl
-          app={app}
-          onConfirm={onUpdateAccessControl}
-          onClose={() => setShowAccessControl(false)}
         />
       )}
     </>
