@@ -415,6 +415,36 @@ describe('consoleQuery transport context', () => {
     expect(requestURL.searchParams.has('ids[1]')).toBe(false)
   })
 
+  it('should serialize KnowledgeFS creator ids as repeated query params', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ data: [], has_more: false, limit: 30, page: 1 }), {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
+        },
+      }),
+    )
+    const consoleQuery = await loadConsoleQueryWithFetch()
+    const queryOptions = consoleQuery.knowledgeFs.spaces.get.queryOptions({
+      input: {
+        query: {
+          creator_ids: ['creator-1', 'creator-2'],
+          limit: 30,
+          page: 1,
+        },
+      },
+    })
+
+    await queryOptions.queryFn({ signal: new AbortController().signal } as QueryFunctionContext)
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    const resource = fetchSpy.mock.calls[0]![0]
+    const requestURL = new URL(resource instanceof Request ? resource.url : resource.toString())
+    expect(requestURL.searchParams.getAll('creator_ids')).toEqual(['creator-1', 'creator-2'])
+    expect(requestURL.searchParams.has('creator_ids[0]')).toBe(false)
+    expect(requestURL.searchParams.has('creator_ids[1]')).toBe(false)
+  })
+
   it('should request KnowledgeFS documents through the control-space contract', async () => {
     const request = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ data: [], next_cursor: null }), {

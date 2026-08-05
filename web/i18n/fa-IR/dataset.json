@@ -307,6 +307,7 @@
   "newKnowledge.loadMoreRevisions": "بارگیری بازبینی‌های قدیمی‌تر",
   "newKnowledge.loadingSyncPolicy": "در حال بارگیری سیاست همگام‌سازی",
   "newKnowledge.manualUpload": "آپلود دستی",
+  "newKnowledge.maxCreators": "حداکثر سازندگان",
   "newKnowledge.maxPages": "حداکثر صفحه‌ها",
   "newKnowledge.metadata": "متا دیتا",
   "newKnowledge.mimeType": "نوع فایل",

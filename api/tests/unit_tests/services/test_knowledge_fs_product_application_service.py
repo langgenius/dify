@@ -131,9 +131,24 @@ def test_product_application_delegates_reads_without_reauthorizing() -> None:
     product.list_spaces.return_value = listed
     product.get_space.return_value = detail
 
-    assert application.list_spaces(tenant_id="tenant-1", account_id="account-1", page=2, limit=25) is listed
+    assert (
+        application.list_spaces(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            page=2,
+            limit=25,
+            creator_ids=["creator-1", "creator-2"],
+        )
+        is listed
+    )
     assert application.get_space(tenant_id="tenant-1", account_id="account-1", control_space_id="control-1") is detail
-    product.list_spaces.assert_called_once_with(tenant_id="tenant-1", account_id="account-1", page=2, limit=25)
+    product.list_spaces.assert_called_once_with(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        page=2,
+        limit=25,
+        creator_ids=["creator-1", "creator-2"],
+    )
     product.get_space.assert_called_once_with(
         tenant_id="tenant-1", account_id="account-1", control_space_id="control-1"
     )

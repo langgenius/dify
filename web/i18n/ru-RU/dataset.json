@@ -307,6 +307,7 @@
   "newKnowledge.loadMoreRevisions": "Загрузить предыдущие редакции",
   "newKnowledge.loadingSyncPolicy": "Загрузка политики синхронизации",
   "newKnowledge.manualUpload": "Загрузка вручную",
+  "newKnowledge.maxCreators": "Максимум создателей",
   "newKnowledge.maxPages": "Максимум страниц",
   "newKnowledge.metadata": "Метаданные",
   "newKnowledge.mimeType": "Тип файла",

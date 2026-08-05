@@ -307,6 +307,7 @@
   "newKnowledge.loadMoreRevisions": "Încarcă revizii mai vechi",
   "newKnowledge.loadingSyncPolicy": "Se încarcă politica de sincronizare",
   "newKnowledge.manualUpload": "Încărcare manuală",
+  "newKnowledge.maxCreators": "Număr maxim de creatori",
   "newKnowledge.maxPages": "Număr maxim de pagini",
   "newKnowledge.metadata": "Metadate",
   "newKnowledge.mimeType": "Tip de fișier",

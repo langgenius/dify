@@ -307,6 +307,7 @@
   "newKnowledge.loadMoreRevisions": "Load older revisions",
   "newKnowledge.loadingSyncPolicy": "Loading sync policy",
   "newKnowledge.manualUpload": "Manual upload",
+  "newKnowledge.maxCreators": "Maximum creators",
   "newKnowledge.maxPages": "Maximum pages",
   "newKnowledge.metadata": "Meta Data",
   "newKnowledge.mimeType": "File type",

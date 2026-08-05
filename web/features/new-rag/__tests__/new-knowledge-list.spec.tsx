@@ -29,6 +29,7 @@ type ListKnowledgeSpacesInfiniteOptions = {
   initialPageParam: number
   input: (pageParam: unknown) => {
     query: {
+      creator_ids?: string[]
       limit: number
       page: number
     }
@@ -93,7 +94,37 @@ const consoleQueryMock = vi.hoisted(() => ({
   deleteMutationOptions: vi.fn(() => ({ mutationFn: deleteSpaceMock })),
   infiniteOptions: vi.fn((_options: ListKnowledgeSpacesInfiniteOptions) => ({})),
   listKey: ['knowledge-fs', 'spaces'],
+  membersQueryOptions: vi.fn(() => ({})),
 }))
+
+const membersMock = vi.hoisted(() => ({
+  data: undefined as
+    | {
+        accounts: Array<{
+          avatar_url: null
+          id: string
+          name: string
+          status: 'active' | 'pending'
+        }>
+      }
+    | undefined,
+  isError: false,
+  isPending: false,
+  refetch: vi.fn(),
+}))
+
+const resolvedMembers = {
+  accounts: [
+    { avatar_url: null, id: 'account-1', name: 'Alice', status: 'active' as const },
+    { avatar_url: null, id: 'account-2', name: 'Bob', status: 'active' as const },
+    {
+      avatar_url: null,
+      id: 'account-pending',
+      name: 'Pending member',
+      status: 'pending' as const,
+    },
+  ],
+}
 
 const permissionStateMock = vi.hoisted(() => ({
   workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
@@ -102,6 +133,9 @@ const permissionStateMock = vi.hoisted(() => ({
 const systemFeaturesStateMock = vi.hoisted(() => ({
   knowledgeFsUploadEnabled: true,
   knowledgeFsUploadEnabledAtom: Symbol('knowledgeFsUploadEnabledAtom'),
+}))
+const accountStateMock = vi.hoisted(() => ({
+  userProfileIdAtom: Symbol('userProfileIdAtom'),
 }))
 
 vi.mock('@/service/knowledge/use-dataset', () => ({
@@ -151,6 +185,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
           }
         : undefined,
     }),
+    useQuery: () => ({ ...membersMock }),
     useQueryClient: () => ({
       invalidateQueries: invalidateQueriesMock,
     }),
@@ -166,6 +201,7 @@ vi.mock('jotai', async (importOriginal) => {
         return permissionStateMock.workspacePermissionKeys
       if (atom === systemFeaturesStateMock.knowledgeFsUploadEnabledAtom)
         return systemFeaturesStateMock.knowledgeFsUploadEnabled
+      if (atom === accountStateMock.userProfileIdAtom) return 'account-1'
       return original.useAtomValue(atom as Parameters<typeof original.useAtomValue>[0])
     },
   }
@@ -179,8 +215,21 @@ vi.mock('@/context/system-features-state', () => ({
   knowledgeFsUploadEnabledAtom: systemFeaturesStateMock.knowledgeFsUploadEnabledAtom,
 }))
 
+vi.mock('@/context/account-state', () => ({
+  userProfileIdAtom: accountStateMock.userProfileIdAtom,
+}))
+
 vi.mock('@/service/client', () => ({
   consoleQuery: {
+    workspaces: {
+      current: {
+        members: {
+          get: {
+            queryOptions: consoleQueryMock.membersQueryOptions,
+          },
+        },
+      },
+    },
     knowledgeFs: {
       spaces: {
         byControlSpaceId: {
@@ -213,6 +262,10 @@ describe('NewKnowledgeList', () => {
     queryMock.isFetchNextPageError = false
     queryMock.isFetchingNextPage = false
     queryMock.isPending = false
+    membersMock.data = resolvedMembers
+    membersMock.isError = false
+    membersMock.isPending = false
+    membersMock.refetch.mockResolvedValue(undefined)
     deleteSpaceMock.mockResolvedValue(undefined)
     invalidateQueriesMock.mockResolvedValue(undefined)
     permissionStateMock.workspacePermissionKeys = [
@@ -449,6 +502,140 @@ describe('NewKnowledgeList', () => {
     await user.type(search, 'customer support')
     expect(screen.getByText('Support knowledge')).toBeInTheDocument()
     expect(screen.queryByText('Engineering handbook')).not.toBeInTheDocument()
+  })
+
+  it('filters the collection by selected creators and clears the filter', async () => {
+    const user = userEvent.setup()
+    setResolvedPage([
+      {
+        createdAt: '2026-07-15T00:00:00Z',
+        id: 'space-1',
+        name: 'Support knowledge',
+        revision: 1,
+        slug: 'support-knowledge',
+        tenantId: 'tenant-1',
+        updatedAt: '2026-07-18T00:00:00Z',
+      },
+    ])
+
+    const { onUrlUpdate } = renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.creators' }))
+    expect(screen.queryByRole('checkbox', { name: /Pending member/ })).not.toBeInTheDocument()
+    const creatorSearch = screen.getByRole('textbox', {
+      name: 'app.studio.filters.searchCreators',
+    })
+    await user.type(creatorSearch, 'ali')
+    expect(creatorSearch).toHaveValue('ali')
+    expect(screen.getByRole('checkbox', { name: /Alice/ })).toBeInTheDocument()
+    expect(screen.queryByRole('checkbox', { name: /Bob/ })).not.toBeInTheDocument()
+
+    await user.clear(creatorSearch)
+    await user.click(screen.getByRole('checkbox', { name: /Alice/ }))
+    await user.click(screen.getByRole('checkbox', { name: /Bob/ }))
+
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.creators: 2' }),
+    ).toBeInTheDocument()
+    await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+    expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('creator_ids')).toBe(
+      'account-1;account-2',
+    )
+
+    let options = consoleQueryMock.infiniteOptions.mock.calls.at(-1)?.[0]
+    expect(options?.input(1)).toEqual({
+      query: { creator_ids: ['account-1', 'account-2'], limit: 30, page: 1 },
+    })
+
+    await user.click(screen.getByRole('button', { name: 'app.studio.filters.reset' }))
+    await waitFor(() => {
+      expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.has('creator_ids')).toBe(false)
+    })
+    options = consoleQueryMock.infiniteOptions.mock.calls.at(-1)?.[0]
+    expect(options?.input(1)).toEqual({ query: { limit: 30, page: 1 } })
+  })
+
+  it('restores the creator filter from the URL', () => {
+    setResolvedPage()
+
+    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />, {
+      searchParams: '?creator_ids=account-2',
+    })
+
+    const options = consoleQueryMock.infiniteOptions.mock.calls.at(-1)?.[0]
+    expect(options?.input(1)).toEqual({
+      query: { creator_ids: ['account-2'], limit: 30, page: 1 },
+    })
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.creators: 1' }),
+    ).toBeInTheDocument()
+  })
+
+  it('caps creator filters at the API contract limit', async () => {
+    const user = userEvent.setup()
+    const accounts = Array.from({ length: 101 }, (_, index) => ({
+      avatar_url: null,
+      id: `account-${index + 1}`,
+      name: `Member ${index + 1}`,
+      status: 'active' as const,
+    }))
+    const creatorIdsFromUrl = accounts.map((account) => account.id)
+    membersMock.data = { accounts }
+    setResolvedPage()
+
+    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />, {
+      searchParams: `?creator_ids=${creatorIdsFromUrl.join(';')}`,
+    })
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.creators: 100' }))
+
+    const unselectedCreator = screen.getByRole('checkbox', { name: /Member 101/ })
+    expect(unselectedCreator).toHaveAttribute('aria-disabled', 'true')
+    expect(unselectedCreator).toHaveAccessibleDescription('dataset.newKnowledge.maxCreators: 100')
+    const options = consoleQueryMock.infiniteOptions.mock.calls.at(-1)?.[0]
+    expect(options?.input(1).query.creator_ids).toHaveLength(100)
+  })
+
+  it('shows creator loading state while workspace members are pending', async () => {
+    const user = userEvent.setup()
+    membersMock.data = undefined
+    membersMock.isPending = true
+    setResolvedPage()
+
+    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.creators' }))
+    expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
+    expect(screen.queryByText('common.noData')).not.toBeInTheDocument()
+  })
+
+  it('shows creator loading failure and retries the members request', async () => {
+    const user = userEvent.setup()
+    membersMock.data = undefined
+    membersMock.isError = true
+    setResolvedPage()
+
+    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.creators' }))
+    expect(screen.getByRole('alert')).toHaveTextContent('common.error')
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    expect(membersMock.refetch).toHaveBeenCalledOnce()
+  })
+
+  it('keeps cached creators available when a background members refresh fails', async () => {
+    const user = userEvent.setup()
+    membersMock.data = resolvedMembers
+    membersMock.isError = true
+    setResolvedPage()
+
+    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.creators' }))
+    expect(screen.getByRole('checkbox', { name: /Alice/ })).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent('common.error')
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    expect(membersMock.refetch).toHaveBeenCalledOnce()
   })
 
   it('links available creation modes from the empty state', () => {

@@ -438,6 +438,57 @@ def test_list_applies_rbac_before_pagination(sqlite_session: Session) -> None:
     [(KnowledgeFSControlSpace, KnowledgeFSControlSpacePermission, AppKnowledgeFSSpaceJoin)],
     indirect=True,
 )
+def test_list_filters_by_creator_before_authorization_pagination_and_remote_io(sqlite_session: Session) -> None:
+    other_creator = _space(
+        owner="owner-1",
+        visibility=KnowledgeFSControlSpaceVisibility.ALL_TEAM_MEMBERS,
+        key="other-creator",
+        remote_id="space-other-creator",
+    )
+    matching_spaces = [
+        _space(
+            owner="owner-2",
+            visibility=KnowledgeFSControlSpaceVisibility.ALL_TEAM_MEMBERS,
+            key=f"matching-{index}",
+            remote_id=f"space-matching-{index}",
+        )
+        for index in range(2)
+    ]
+    sqlite_session.add_all([other_creator, *matching_spaces])
+    sqlite_session.commit()
+    remote = FakeRemote({})
+    batch_capabilities = FakeBatchCapabilities()
+    rbac = FakeRBAC()
+    service = KnowledgeFSProductService(
+        sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False),
+        batch_capabilities=batch_capabilities,
+        cutover_gate=FakeCutoverGate(),
+        remote=remote,
+        rbac=rbac,
+    )
+
+    response = service.list_spaces(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        page=1,
+        limit=1,
+        creator_ids=["owner-2"],
+    )
+
+    matching_ids = {space.id for space in matching_spaces}
+    assert len(response.data) == 1
+    assert response.data[0].control_space_id in matching_ids
+    assert response.has_more is True
+    assert set(rbac.batch_calls[0]) == matching_ids
+    assert other_creator.id not in rbac.batch_calls[0]
+    assert remote.batch_calls == [(response.data[0].knowledge_space_id,)]
+
+
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [(KnowledgeFSControlSpace, KnowledgeFSControlSpacePermission, AppKnowledgeFSSpaceJoin)],
+    indirect=True,
+)
 def test_list_fails_closed_without_remote_io_when_batch_capability_cannot_be_issued(
     sqlite_session: Session,
 ) -> None:

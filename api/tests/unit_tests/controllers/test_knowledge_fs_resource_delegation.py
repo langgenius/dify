@@ -649,6 +649,28 @@ def test_console_resources_delegate_one_tenant_scoped_product_operation(
         assert result == ("", HTTPStatus.NO_CONTENT)
 
 
+def test_console_space_list_preserves_repeated_creator_filters(monkeypatch: pytest.MonkeyPatch) -> None:
+    application = MagicMock()
+    application.list_spaces.return_value = _RAW_RESULT
+    runtime = SimpleNamespace(application=application)
+    monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
+    monkeypatch.setattr(console_resources, "_console_services", lambda: runtime)
+    monkeypatch.setattr(console_resources, "dump_response", lambda _schema, raw: raw)
+    app = Flask(__name__)
+
+    with app.test_request_context("/?page=2&limit=10&creator_ids=creator-1&creator_ids=creator-2"):
+        result = _invoke(console_resources, "KnowledgeFSSpacesApi", "get")
+
+    application.list_spaces.assert_called_once_with(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        page=2,
+        limit=10,
+        creator_ids=["creator-1", "creator-2"],
+    )
+    assert result is _RAW_RESULT
+
+
 def test_console_overview_stats_composes_kfs_metrics_with_dify_app_bindings(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

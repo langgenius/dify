@@ -307,6 +307,7 @@
   "newKnowledge.loadMoreRevisions": "載入較早的修訂版本",
   "newKnowledge.loadingSyncPolicy": "正在載入同步政策",
   "newKnowledge.manualUpload": "手動上傳",
+  "newKnowledge.maxCreators": "建立者數上限",
   "newKnowledge.maxPages": "頁面數上限",
   "newKnowledge.metadata": "中繼資料",
   "newKnowledge.mimeType": "檔案類型",

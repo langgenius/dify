@@ -307,6 +307,7 @@
   "newKnowledge.loadMoreRevisions": "Charger les anciennes révisions",
   "newKnowledge.loadingSyncPolicy": "Chargement de la politique de synchronisation",
   "newKnowledge.manualUpload": "Téléchargement manuel",
+  "newKnowledge.maxCreators": "Nombre maximal de créateurs",
   "newKnowledge.maxPages": "Nombre maximal de pages",
   "newKnowledge.metadata": "Métadonnées",
   "newKnowledge.mimeType": "Type de fichier",

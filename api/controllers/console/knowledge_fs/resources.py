@@ -17,6 +17,7 @@ from werkzeug.exceptions import Conflict, NotFound, RequestEntityTooLarge, Servi
 from configs import dify_config
 from controllers.common.schema import (
     query_params_from_model,
+    query_params_from_request,
     register_response_schema_models,
     register_schema_models,
 )
@@ -565,12 +566,13 @@ class KnowledgeFSSpacesApi(Resource):
     @_knowledge_fs_errors
     def get(self):
         actor_id, tenant_id = _actor()
-        query = KnowledgeFSSpaceListQuery.model_validate(request.args.to_dict())
+        query = query_params_from_request(KnowledgeFSSpaceListQuery, list_fields=("creator_ids",))
         result = _console_services().application.list_spaces(
             tenant_id=tenant_id,
             account_id=actor_id,
             page=query.page,
             limit=query.limit,
+            creator_ids=query.creator_ids,
         )
         return dump_response(KnowledgeFSSpaceListResponse, result)
 

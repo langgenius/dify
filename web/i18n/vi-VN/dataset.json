@@ -307,6 +307,7 @@
   "newKnowledge.loadMoreRevisions": "Tải các bản sửa đổi cũ hơn",
   "newKnowledge.loadingSyncPolicy": "Đang tải chính sách đồng bộ",
   "newKnowledge.manualUpload": "Tải lên thủ công",
+  "newKnowledge.maxCreators": "Số người tạo tối đa",
   "newKnowledge.maxPages": "Số trang tối đa",
   "newKnowledge.metadata": "Siêu dữ liệu",
   "newKnowledge.mimeType": "Loại tệp",

@@ -307,6 +307,7 @@
   "newKnowledge.loadMoreRevisions": "古いリビジョンを読み込む",
   "newKnowledge.loadingSyncPolicy": "同期ポリシーを読み込み中",
   "newKnowledge.manualUpload": "手動アップロード",
+  "newKnowledge.maxCreators": "最大作成者数",
   "newKnowledge.maxPages": "最大ページ数",
   "newKnowledge.metadata": "メタデータ",
   "newKnowledge.mimeType": "ファイル形式",
