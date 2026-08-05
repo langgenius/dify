@@ -1,6 +1,6 @@
 """Tests for the TTS response content-type sniffing in audio_service."""
 
-from collections.abc import Generator
+from collections.abc import Generator, Iterator
 
 import pytest
 from flask import Flask
@@ -15,7 +15,7 @@ FLAC_HEADER = b'fLaC\x00\x00\x00"'
 
 
 @pytest.fixture(autouse=True)
-def _request_context():
+def _request_context() -> Iterator[None]:
     """stream_with_context requires an active request context."""
     ctx = Flask(__name__).test_request_context()
     ctx.push()
@@ -43,14 +43,14 @@ class TestSniffAudioContentType:
 
 
 class TestStreamAudioWithSniffedType:
-    def _gen(self, chunks: list[bytes]) -> Generator:
+    def _gen(self, chunks: list[bytes]) -> Generator[bytes, None, None]:
         yield from chunks
 
     def test_wav_stream_gets_wav_type_and_keeps_bytes(self) -> None:
         chunks = [WAV_HEADER, b"data-1", b"data-2"]
         resp = _stream_audio_with_sniffed_type(self._gen(chunks))
         assert resp.content_type == "audio/wav"
-        assert b"".join(resp.response) == b"".join(chunks)
+        assert b"".join(c if isinstance(c, bytes) else c.encode() for c in resp.response) == b"".join(chunks)
 
     def test_mp3_stream_gets_mpeg_type(self) -> None:
         resp = _stream_audio_with_sniffed_type(self._gen([MP3_ID3, b"payload"]))
