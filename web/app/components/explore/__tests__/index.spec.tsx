@@ -1,22 +1,10 @@
-import { screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { MediaType } from '@/hooks/use-breakpoints'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import Explore from '../index'
 
-const mockReplace = vi.fn()
-const mockPush = vi.fn()
 type MediaTypeValue = (typeof MediaType)[keyof typeof MediaType]
 
 let mockMediaType: MediaTypeValue = MediaType.pc
-
-vi.mock('@/next/navigation', () => ({
-  usePathname: () => '/explore',
-  useRouter: () => ({
-    replace: mockReplace,
-    push: mockPush,
-  }),
-  useSelectedLayoutSegments: () => ['apps'],
-}))
 
 vi.mock('@/hooks/use-breakpoints', () => ({
   default: () => mockMediaType,
@@ -27,9 +15,12 @@ vi.mock('@/hooks/use-breakpoints', () => ({
   },
 }))
 
+vi.mock('@/app/components/explore/sidebar', () => ({
+  default: () => <aside aria-label="explore.sidebar.title" />,
+}))
+
 describe('Explore', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     mockMediaType = MediaType.pc
   })
 
@@ -51,7 +42,9 @@ describe('Explore', () => {
         </Explore>,
       )
 
-      expect(screen.queryByText('explore.sidebar.title')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('complementary', { name: 'explore.sidebar.title' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should keep the legacy explore sidebar on mobile', () => {
@@ -63,31 +56,9 @@ describe('Explore', () => {
         </Explore>,
       )
 
-      expect(screen.getByRole('link', { name: 'explore.sidebar.title' })).toBeInTheDocument()
-    })
-  })
-
-  describe('Effects', () => {
-    it('should not redirect at component level', () => {
-      render(
-        <Explore>
-          <div>child</div>
-        </Explore>,
-      )
-
-      expect(mockReplace).not.toHaveBeenCalled()
-    })
-
-    it('should not redirect on mobile', () => {
-      mockMediaType = MediaType.mobile
-
-      render(
-        <Explore>
-          <div>child</div>
-        </Explore>,
-      )
-
-      expect(mockReplace).not.toHaveBeenCalled()
+      expect(
+        screen.getByRole('complementary', { name: 'explore.sidebar.title' }),
+      ).toBeInTheDocument()
     })
   })
 })

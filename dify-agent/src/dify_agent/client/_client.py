@@ -383,8 +383,8 @@ class Client:
     async def cancel_run(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
         """Request explicit cancellation for ``run_id``.
 
-        The server may accept cancellation only for active runs; unsupported
-        deployments return an HTTP error rather than overloading ``run_failed``.
+        Acceptance atomically persists the cancelled state. The process executing
+        the run observes that state and performs runner cleanup asynchronously.
         """
         request_model = request or CancelRunRequest()
         try:

@@ -159,7 +159,7 @@ const Prompt: FC<IPromptProps> = ({
       {modelModeType === ModelModeType.chat &&
         (currentAdvancedPrompt as PromptItem[]).length < MAX_PROMPT_MESSAGE_LENGTH && (
           <Button onClick={handleAddMessage} className="mt-3 w-full">
-            <RiAddLine className="mr-2 size-4" />
+            <RiAddLine className="size-4" />
             <div>{t(($) => $['promptMode.operation.addMessage'], { ns: 'appDebug' })}</div>
           </Button>
         )}

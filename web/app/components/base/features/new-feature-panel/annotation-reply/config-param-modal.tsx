@@ -136,7 +136,6 @@ const ConfigParamModal: FC<Props> = ({
         <div className="mt-6 flex justify-end gap-2">
           <Button onClick={onHide}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
           <Button variant="primary" onClick={handleSave} loading={isLoading}>
-            <div></div>
             <div>
               {t(($) => $[`initSetup.${isInit ? 'confirmBtn' : 'configConfirmBtn'}`], {
                 ns: 'appAnnotation',

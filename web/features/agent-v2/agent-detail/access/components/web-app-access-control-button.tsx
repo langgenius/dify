@@ -45,7 +45,7 @@ export function WebAppAccessControlButton({ agent }: { agent?: AgentAppDetailWit
       <Button
         variant="secondary"
         size="medium"
-        className="gap-1.5 px-3"
+        className="px-3"
         onClick={() => setShowAccessControl(true)}
       >
         <span aria-hidden className="i-ri-lock-2-line size-4" />

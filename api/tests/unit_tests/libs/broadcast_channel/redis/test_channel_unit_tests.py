@@ -27,6 +27,7 @@ from libs.broadcast_channel.redis.sharded_channel import (
     ShardedTopic,
     _RedisShardedSubscription,
 )
+from libs.broadcast_channel.signals import SIG_CLOSE
 
 
 class TestBroadcastChannel:
@@ -1238,6 +1239,30 @@ class TestRedisSubscriptionCommon:
         """Test that subscription returns correct type."""
         subscription_type, _ = subscription_params
         assert subscription._get_subscription_type() == subscription_type
+
+    def test_listener_ignores_close_signal_from_another_subscription(self, subscription, subscription_params):
+        subscription_type, _ = subscription_params
+        topic = f"test-{subscription_type}-topic"
+        message_type = "message" if subscription_type == "regular" else "smessage"
+        messages = iter(
+            [
+                {"type": message_type, "channel": topic, "data": SIG_CLOSE},
+                {"type": message_type, "channel": topic, "data": b"next-event"},
+            ]
+        )
+
+        def get_message():
+            try:
+                return next(messages)
+            except StopIteration:
+                subscription._closed.set()
+                return None
+
+        subscription._get_message = get_message
+        subscription._listen()
+
+        assert subscription._queue.get_nowait() == b"next-event"
+        assert subscription._queue.empty()
 
     # ==================== Lifecycle Tests ====================
 

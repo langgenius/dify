@@ -60,13 +60,13 @@ const SwitchCredentialInLoadBalancing = ({
       <Button
         variant="secondary"
         className={cn(
-          'shrink-0 space-x-1',
+          'shrink-0',
           (authRemoved || unavailable) && 'text-components-button-destructive-secondary-text',
           (!canOpenCredentialMenu || (empty && !canCreateCredential)) &&
             'cursor-not-allowed opacity-50',
         )}
       >
-        {!empty && <StatusDot className="mr-2" status={color} />}
+        {!empty && <StatusDot status={color} />}
         {authRemoved && t(($) => $['modelProvider.auth.authRemoved'], { ns: 'common' })}
         {unavailable && t(($) => $['auth.credentialUnavailableInButton'], { ns: 'plugin' })}
         {empty &&
@@ -77,7 +77,7 @@ const SwitchCredentialInLoadBalancing = ({
           (!canCreateCredential || notAllowCustomCredential) &&
           t(($) => $['auth.credentialUnavailableInButton'], { ns: 'plugin' })}
         {!authRemoved && !unavailable && !empty && customModelCredential?.credential_name}
-        {currentCredential?.from_enterprise && <Badge className="ml-2">Enterprise</Badge>}
+        {currentCredential?.from_enterprise && <Badge>Enterprise</Badge>}
         <span className="i-ri-arrow-down-s-line size-4" />
       </Button>
     )
