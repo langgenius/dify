@@ -62,9 +62,17 @@ A Workflow or Chatflow execution remains one logical trace across any number of 
 
 The private pause state retains Agent fragments and their owning node executions, plus completed human-wait records. Records are accumulated by stable run or wait identity so replayed resume delivery replaces the same logical record instead of duplicating it. This state is part of the versioned workflow resumption context; an external cache and its TTL are cleanup mechanisms, not the lifecycle authority.
 
-`HumanInputForm` is the lifecycle authority for a human wait. Core normalizes its request and completion timestamps and one of `waiting`, `submitted`, `timed_out`, `expired`, or `canceled` into a bounded, provider-neutral record. A terminal workflow-owned wait becomes a direct child of its exact owning node execution and spans the actual waiting interval. A node timeout resumes normal workflow execution with a terminal wait record; a global timeout stops the workflow and attempts to enqueue the final trace from retained pause state before that state is deleted. Tracing normalization and export remain fail-soft and must not prevent submission, timeout handling, or workflow resumption.
+`HumanInputForm` is the lifecycle authority for a human wait. Core normalizes its request and completion timestamps and one of `waiting`, `submitted`, `timed_out`, `expired`, or `canceled` into a bounded, provider-neutral record. A terminal workflow-owned wait becomes a direct child of its exact owning node execution and spans the actual waiting interval. A node timeout resumes normal workflow execution with a terminal wait record; a global timeout stops the workflow and marks the retained pause state for final-trace handoff. Tracing normalization and export remain fail-soft and must not prevent submission, timeout handling, workflow resumption, or the workflow's terminal business outcome.
 
 Agent App Human Input intentionally follows the Message boundary instead. The requesting and resuming Messages are separate traces in the same conversation session. They contain `requested` and `resumed` human-wait phases correlated by stable wait identity and a span link, never by a cross-trace parent-child edge. The first Message may therefore export when it pauses, and no Agent App fragment needs to survive the wait.
+
+### Reliable final delivery
+
+A global-timeout pause snapshot remains authoritative until Core has persisted a deterministic final canonical payload and the asynchronous dispatcher has accepted it. A failed handoff retains the snapshot for a bounded recovery process. Once the dispatcher accepts the payload, ownership transfers to asynchronous provider dispatch and the pause snapshot can be removed.
+
+Handoff recovery and provider export have separate bounded retry budgets. Handoff retries rebuild the final fragment from the authoritative snapshot and terminal Human Input records. Provider retries retain the durable payload only for recoverable transport failures. Terminal failures and provider retry exhaustion clean up that payload.
+
+Retries replay the whole canonical fragment and may duplicate provider effects after an ambiguous or partially successful attempt. This at-least-once behavior is preferred to silently losing the terminal trace; provider adapters must therefore preserve deterministic identities where their protocol permits.
 
 ### Runtime selection and legacy isolation
 
@@ -102,6 +110,8 @@ For an asynchronous child whose canonical parent is known to share the destinati
 
 Context lookup does not consume the stored value, allowing multiple children to restore the same parent. Retention is bounded and cleanup is automatic. Concrete storage technology, keys, TTL values, retry counts, and retry delays are replaceable operational mechanisms.
 
+Temporary Agent-fragment cache retention is not workflow lifecycle authority. This does not weaken the independent requirement that parent-restoration context remain available long enough for bounded child dispatch retries.
+
 ### Envelope compatibility
 
 Parent-context envelopes are versioned and strictly validated. An unsupported envelope version fails closed rather than being guessed. Provider-specific restoration fields remain opaque to Core outside version, provider, destination, and structural validation. Partial per-span routing is not supported.
@@ -116,6 +126,11 @@ Maintainers and provider adapters may rely on these invariants:
 - ambiguous and cyclic persisted relationships are handled conservatively and deterministically;
 - workflow-owned human waits prefer exact node execution identity and only fall back to static-node matching for legacy records;
 - a Workflow or Chatflow pause never exports a partial final trace; restored tracing state accumulates until one terminal workflow outcome;
+- a global-timeout pause snapshot remains authoritative until its durable final payload is accepted for asynchronous dispatch;
+- final-payload handoff recovery and provider export use separate bounded retry budgets;
+- retry replays a whole canonical fragment and may duplicate provider effects;
+- recoverable provider transport failures retain the durable payload, while terminal failures and retry exhaustion remove it;
+- tracing delivery failure never changes the workflow's terminal business outcome;
 - a workflow-owned human wait records its real lifecycle interval and cannot make pause, resume, or timeout processing fail;
 - Agent App waits correlate two Message traces without creating a parent-child relationship across trace roots;
 - registered unified providers receive the same logical topology and normalized Dify semantics;
@@ -133,6 +148,7 @@ Maintainers and provider adapters may rely on these invariants:
 - Nested workflow export may wait while parent context becomes available.
 - Context-store availability and retention affect reliable cross-task assembly.
 - Workflow and Chatflow traces are delayed while Human Input is pending and require tracing state to remain compatible with persisted pause snapshots.
+- Global-timeout final delivery is at least once: bounded retries reduce loss but can duplicate provider-side effects.
 - Agent App Human Input appears as two correlated wait phases rather than one cross-Message span.
 - During migration, registered providers retain separate legacy and unified implementations.
 - Some provider capabilities have no canonical equivalent and remain adapter-local.
