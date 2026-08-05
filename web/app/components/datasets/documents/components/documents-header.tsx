@@ -191,7 +191,7 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
           )}
           {embeddingAvailable && canManageMetadata && (
             <Button variant="secondary" className="shrink-0" onClick={showEditMetadataModal}>
-              <span className="mr-1 i-ri-draft-line size-4" />
+              <span className="i-ri-draft-line size-4" />
               {t(($) => $['metadata.metadata'], { ns: 'dataset' })}
             </Button>
           )}
@@ -209,7 +209,7 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
           )}
           {embeddingAvailable && canAddDocument && (
             <Button variant="primary" onClick={onAddDocument} className="shrink-0">
-              <span className="mr-2 i-heroicons-plus-solid size-4 stroke-current" />
+              <span className="i-heroicons-plus-solid size-4 stroke-current" />
               {addButtonText}
             </Button>
           )}

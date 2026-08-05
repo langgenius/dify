@@ -346,11 +346,11 @@ function GroupItem({ group, subject, selectedGroups, onExpand }: GroupItemProps)
         size="small"
         disabled={isChecked}
         variant="ghost-accent"
-        className="mr-1 flex shrink-0 items-center justify-between px-1.5 py-1"
+        className="mr-1 flex shrink-0 items-center justify-between py-1"
         onPointerDown={(event) => event.preventDefault()}
         onClick={handleExpandClick}
       >
-        <span className="px-0.75">
+        <span>
           {t(($) => $['accessControlDialog.operateGroupAndMember.expand'], { ns: 'app' })}
         </span>
         <span aria-hidden="true" className="i-ri-arrow-right-s-line size-4" />
