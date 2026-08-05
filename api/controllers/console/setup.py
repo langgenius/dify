@@ -13,7 +13,7 @@ from models.model import DifySetup, db
 from services.account_service import RegisterService, TenantService
 
 from .error import AlreadySetupError, NotInitValidateError
-from .init_validate import get_init_validate_status
+from .init_validate import is_init_validated
 from .wraps import mark_setup_completed, only_edition_self_hosted
 
 
@@ -84,7 +84,7 @@ def setup_system(payload: SetupRequestPayload) -> SetupResponse:
     if tenant_count > 0:
         raise AlreadySetupError()
 
-    if not get_init_validate_status():
+    if not is_init_validated():
         raise NotInitValidateError()
 
     normalized_email = payload.email.lower()

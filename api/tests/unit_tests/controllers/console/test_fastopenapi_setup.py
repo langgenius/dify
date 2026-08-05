@@ -46,7 +46,7 @@ def test_console_setup_fastopenapi_post_success(app: Flask):
         patch("controllers.console.wraps.dify_config.EDITION", "SELF_HOSTED"),
         patch("controllers.console.setup.get_setup_status", return_value=None),
         patch("controllers.console.setup.TenantService.get_tenant_count", return_value=0),
-        patch("controllers.console.setup.get_init_validate_status", return_value=True),
+        patch("controllers.console.setup.is_init_validated", return_value=True),
         patch("controllers.console.setup.RegisterService.setup"),
         patch("controllers.console.setup.mark_setup_completed") as mark_setup_completed,
     ):

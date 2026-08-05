@@ -63,8 +63,8 @@ def _mock_console_guards(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     account.is_authenticated = True
 
     monkeypatch.setattr(wraps_module.dify_config, "EDITION", "CLOUD")
+    monkeypatch.setattr(wraps_module.dify_config, "INIT_PASSWORD", None)
     monkeypatch.setattr("libs.login.dify_config.LOGIN_DISABLED", True)
-    monkeypatch.delenv("INIT_PASSWORD", raising=False)
     monkeypatch.setattr(wraps_module, "current_account_with_tenant", lambda: (account, "tenant-123"))
 
     # The login_required decorator consults the shared LocalProxy in libs.login.
