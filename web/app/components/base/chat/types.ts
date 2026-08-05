@@ -75,3 +75,5 @@ export type Feedback = {
   rating: 'like' | 'dislike' | null
   content?: string | null
 }
+
+export type OnFeedback = (messageId: string, feedback: Feedback) => Promise<void>

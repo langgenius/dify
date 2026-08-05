@@ -1,6 +1,6 @@
 import type { InstalledAppResponse } from '@dify/contracts/api/console/installed-apps/types.gen'
 import type { ExtraContent } from '../chat/type'
-import type { Callback, ChatConfig, ChatItem, Feedback } from '../types'
+import type { Callback, ChatConfig, ChatItem, OnFeedback } from '../types'
 import type { AppData, ConversationItem } from '@/models/share'
 import type { HumanInputFilledFormData, HumanInputFormData } from '@/types/workflow'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -585,8 +585,8 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     },
     [handleConversationIdInfoChange, invalidateShareConversations],
   )
-  const handleFeedback = useCallback(
-    async (messageId: string, feedback: Feedback) => {
+  const handleFeedback: OnFeedback = useCallback(
+    async (messageId, feedback) => {
       await updateFeedback(
         {
           url: `/messages/${messageId}/feedbacks`,

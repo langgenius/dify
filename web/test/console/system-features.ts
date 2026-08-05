@@ -2,7 +2,10 @@ import type {
   GetSystemFeaturesLicenseResponse,
   GetSystemFeaturesResponse,
 } from '@dify/contracts/api/console/system-features/types.gen'
-import { InstallationScope, LicenseStatus } from '@/features/system-features/constants'
+import {
+  zLicenseStatus,
+  zPluginInstallationScope,
+} from '@dify/contracts/api/console/system-features/zod.gen'
 
 export type DeepPartial<T> =
   T extends Array<infer U>
@@ -25,7 +28,7 @@ const baseSystemFeatures = {
   is_email_setup: false,
   enable_change_email: true,
   license: {
-    status: LicenseStatus.NONE,
+    status: zLicenseStatus.enum.none,
   },
   branding: {
     enabled: false,
@@ -45,7 +48,7 @@ const baseSystemFeatures = {
     allow_public_access: true,
   },
   plugin_installation_permission: {
-    plugin_installation_scope: InstallationScope.ALL,
+    plugin_installation_scope: zPluginInstallationScope.enum.all,
     restrict_to_marketplace_only: false,
   },
   rbac_enabled: false,
@@ -57,7 +60,7 @@ const baseSystemFeatures = {
 } satisfies GetSystemFeaturesResponse
 
 const baseSystemFeaturesLicense = {
-  status: LicenseStatus.NONE,
+  status: zLicenseStatus.enum.none,
   expired_at: '',
   workspaces: {
     enabled: false,
