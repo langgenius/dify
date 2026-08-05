@@ -12,6 +12,9 @@ catalogs:
     '@amplitude/plugin-session-replay-browser':
       specifier: 1.33.6
       version: 1.33.6
+    '@axe-core/playwright':
+      specifier: 4.12.1
+      version: 4.12.1
     '@base-ui/react':
       specifier: 1.7.0
       version: 1.7.0
@@ -843,6 +846,9 @@ importers:
 
   e2e:
     devDependencies:
+      '@axe-core/playwright':
+        specifier: 'catalog:'
+        version: 4.12.1(playwright-core@1.62.0)
       '@cucumber/cucumber':
         specifier: 'catalog:'
         version: 13.2.0
@@ -1746,6 +1752,11 @@ packages:
 
   '@amplitude/targeting@0.3.8':
     resolution: {integrity: sha512-UsQSOgFdVgI2RtAX81inlf7qxAGcGPB4zuEoIYczBndzNiBZV8Xq5cxpLbpI9e07/NK3jbLtxrho3pvq+UB7XA==}
+
+  '@axe-core/playwright@4.12.1':
+    resolution: {integrity: sha512-rMd7xriptqKpP+w5265i4Hdkv2X5kbu6uiBi/B2I7uf3hieRBM3qDCfaKPtxfiYb2mKXfF+yLODJwIx+Jv1GDw==}
+    peerDependencies:
+      playwright-core: '>= 1.0.0'
 
   '@antfu/install-pkg@1.1.0':
     resolution: {integrity: sha512-MGQsmw10ZyI+EJo45CdSER4zEb+p31LpDAFp2Z3gkSd1yqVZGi0Ebx++YTEMonJy4oChEMLsxZ64j8FH6sSqtQ==}
@@ -9324,6 +9335,11 @@ snapshots:
       '@amplitude/experiment-core': 0.7.2
       idb: 8.0.0
       tslib: 2.8.1
+
+  '@axe-core/playwright@4.12.1(playwright-core@1.62.0)':
+    dependencies:
+      axe-core: 4.12.1
+      playwright-core: 1.62.0
 
   '@antfu/install-pkg@1.1.0':
     dependencies:
