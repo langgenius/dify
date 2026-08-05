@@ -25,18 +25,18 @@ class ApplicationServices:
 
 def build_application_services(
     *,
-    session_factory: sessionmaker[Session],
+    database_client: sessionmaker[Session],
 ) -> ApplicationServices:
     return ApplicationServices(
         workspace_queries=WorkspaceQueryService(
             workspaces=WorkspaceQueryRepository(
-                client=session_factory,
+                client=database_client,
             ),
             plans=LegacyWorkspacePlanGateway(),
         ),
         workspace_member_queries=WorkspaceMemberQueryService(
             members=WorkspaceMemberQueryRepository(
-                session_factory=session_factory,
+                session_factory=database_client,
             ),
             roles=CompatibleWorkspaceMemberRoleResolver(),
         ),
@@ -45,7 +45,7 @@ def build_application_services(
 
 def init_app(app: Flask) -> None:
     app.extensions[_EXTENSION_KEY] = build_application_services(
-        session_factory=get_session_maker(),
+        database_client=get_session_maker(),
     )
 
 
