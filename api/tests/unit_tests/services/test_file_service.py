@@ -11,12 +11,17 @@ from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
+from configs.extra.public_storage_config import PublicStoragePolicyConfig
 from extensions.storage.storage_type import StorageType
 from models.base import TypeBase
 from models.enums import CreatorUserRole, UploadFilePurpose
 from models.model import Account, EndUser, UploadFile
 from services.errors.file import BlockedFileExtensionError, FileTooLargeError, UnsupportedFileTypeError
 from services.file_service import FileService, resolve_upload_file_storage
+
+
+def _icon_s3_policies() -> dict[str, dict[StorageType, PublicStoragePolicyConfig]]:
+    return {"ICON": {StorageType.S3: PublicStoragePolicyConfig()}}
 
 
 class TestFileService:
@@ -144,12 +149,14 @@ class TestFileService:
 
         with (
             patch("services.file_service.storage") as private_storage,
-            patch("core.file.upload_file_policy.public_storage") as public_storage,
+            patch("core.file.upload_file_policy.public_storage") as public_storage_registry,
+            patch.object(dify_config, "PUBLIC_STORAGE_POLICIES", _icon_s3_policies()),
             patch("services.file_service.extract_tenant_id", return_value="tenant-id"),
             patch("services.file_service.file_helpers.get_signed_file_url"),
         ):
-            public_storage.enabled = True
+            public_storage = MagicMock()
             public_storage.storage_type = StorageType.S3
+            public_storage_registry.get.return_value = public_storage
             result = file_service.upload_file(
                 filename="icon.png",
                 content=b"test",
@@ -167,9 +174,11 @@ class TestFileService:
     def test_resolve_upload_file_storage(self):
         with (
             patch("services.file_service.storage") as private_storage,
-            patch("core.file.upload_file_policy.public_storage") as public_storage,
+            patch("core.file.upload_file_policy.public_storage") as public_storage_registry,
+            patch.object(dify_config, "PUBLIC_STORAGE_POLICIES", _icon_s3_policies()),
         ):
-            public_storage.enabled = True
+            public_storage = MagicMock()
+            public_storage_registry.get.return_value = public_storage
 
             assert resolve_upload_file_storage(UploadFilePurpose.ICON) is public_storage
             assert (
@@ -188,12 +197,15 @@ class TestFileService:
             )
             assert resolve_upload_file_storage(None) is private_storage
 
-            public_storage.enabled = False
+            public_storage_registry.get.return_value = None
             assert resolve_upload_file_storage(UploadFilePurpose.ICON) is private_storage
 
     def test_resolve_public_upload_file_requires_public_storage(self):
-        with patch("core.file.upload_file_policy.public_storage") as public_storage:
-            public_storage.enabled = False
+        with (
+            patch("core.file.upload_file_policy.public_storage") as public_storage_registry,
+            patch.object(dify_config, "PUBLIC_STORAGE_POLICIES", _icon_s3_policies()),
+        ):
+            public_storage_registry.get.return_value = None
 
             with pytest.raises(RuntimeError, match="Public storage is required"):
                 resolve_upload_file_storage(
@@ -305,9 +317,11 @@ class TestFileService:
 
         with (
             patch("services.file_service.storage") as private_storage,
-            patch("core.file.upload_file_policy.public_storage") as public_storage,
+            patch("core.file.upload_file_policy.public_storage") as public_storage_registry,
+            patch.object(dify_config, "PUBLIC_STORAGE_POLICIES", _icon_s3_policies()),
         ):
-            public_storage.enabled = True
+            public_storage = MagicMock()
+            public_storage_registry.get.return_value = public_storage
             public_storage.load_once.return_value = b"test content"
 
             result = file_service.get_file_base64("file_id")
@@ -461,9 +475,11 @@ class TestFileService:
         with (
             patch("services.file_service.file_helpers.verify_file_signature", return_value=True),
             patch("services.file_service.storage") as private_storage,
-            patch("core.file.upload_file_policy.public_storage") as public_storage,
+            patch("core.file.upload_file_policy.public_storage") as public_storage_registry,
+            patch.object(dify_config, "PUBLIC_STORAGE_POLICIES", _icon_s3_policies()),
         ):
-            public_storage.enabled = True
+            public_storage = MagicMock()
+            public_storage_registry.get.return_value = public_storage
             public_storage.load.return_value = iter([b"chunk"])
 
             generator, result = file_service.get_file_generator_by_file_id("file_id", "ts", "nonce", "sign")
@@ -536,9 +552,11 @@ class TestFileService:
 
         with (
             patch("services.file_service.storage") as private_storage,
-            patch("core.file.upload_file_policy.public_storage") as public_storage,
+            patch("core.file.upload_file_policy.public_storage") as public_storage_registry,
+            patch.object(dify_config, "PUBLIC_STORAGE_POLICIES", _icon_s3_policies()),
         ):
-            public_storage.enabled = True
+            public_storage = MagicMock()
+            public_storage_registry.get.return_value = public_storage
             file_service.delete_file("file_id")
 
         public_storage.delete.assert_called_once_with(key)

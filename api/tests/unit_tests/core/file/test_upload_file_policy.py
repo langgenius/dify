@@ -7,6 +7,7 @@ from urllib.parse import parse_qs, urlparse
 import pytest
 
 from configs import dify_config
+from configs.extra.public_storage_config import PublicStoragePolicyConfig
 from core.file import upload_file_policy
 from core.file.upload_file_policy import UploadFileStoragePolicy
 from extensions.storage.storage_type import StorageType
@@ -19,15 +20,19 @@ def _configure_icon_s3_policy(
     enabled: bool = True,
     download_mode: str = "proxy",
 ) -> None:
-    monkeypatch.setattr(upload_file_policy.public_storage, "enabled", enabled)
-    monkeypatch.setattr(dify_config, "PUBLIC_STORAGE_ICON_S3_DOWNLOAD_MODE", download_mode)
-    monkeypatch.setattr(dify_config, "PUBLIC_STORAGE_ICON_S3_DOWNLOAD_URL_EXPIRES_IN", 300)
+    policy_config = PublicStoragePolicyConfig(
+        download_mode=download_mode,
+        download_url_expires_in=300,
+        cf_waf_hmac_base_url="https://icons.example.com",
+        cf_waf_hmac_secret="unit-secret",
+    )
     monkeypatch.setattr(
         dify_config,
-        "PUBLIC_STORAGE_ICON_S3_CF_WAF_HMAC_BASE_URL",
-        "https://icons.example.com",
+        "PUBLIC_STORAGE_POLICIES",
+        {"ICON": {StorageType.S3: policy_config}},
     )
-    monkeypatch.setattr(dify_config, "PUBLIC_STORAGE_ICON_S3_CF_WAF_HMAC_SECRET", "unit-secret")
+    policy_storage = MagicMock() if enabled else None
+    monkeypatch.setattr(upload_file_policy.public_storage, "get", lambda *_: policy_storage)
 
 
 def test_resolve_upload_file_storage_policy_matches_purpose_storage_type_and_key(
@@ -135,5 +140,5 @@ def test_has_direct_upload_file_download_policy(monkeypatch: pytest.MonkeyPatch)
     _configure_icon_s3_policy(monkeypatch, download_mode="proxy")
     assert upload_file_policy.has_direct_upload_file_download_policy() is False
 
-    monkeypatch.setattr(dify_config, "PUBLIC_STORAGE_ICON_S3_DOWNLOAD_MODE", "presigned")
+    dify_config.PUBLIC_STORAGE_POLICIES["ICON"][StorageType.S3].download_mode = "presigned"
     assert upload_file_policy.has_direct_upload_file_download_policy() is True

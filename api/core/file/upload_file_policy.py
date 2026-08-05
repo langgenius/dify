@@ -4,14 +4,12 @@ import hmac
 import time
 import urllib.parse
 from dataclasses import dataclass
-from typing import Literal
 
 from configs import dify_config
+from configs.extra.public_storage_config import PublicStorageDownloadMode
 from extensions.ext_storage import Storage, public_storage
 from extensions.storage.storage_type import StorageType
 from models.enums import UploadFilePurpose
-
-type UploadFileDownloadMode = Literal["proxy", "presigned", "cf_waf_hmac"]
 
 PUBLIC_UPLOAD_FILE_KEY_PREFIX = "public/upload_files/"
 
@@ -20,10 +18,10 @@ PUBLIC_UPLOAD_FILE_KEY_PREFIX = "public/upload_files/"
 class UploadFileStoragePolicy:
     purpose: UploadFilePurpose
     storage_type: StorageType
-    storage: Storage
+    storage: Storage | None
     key_prefix: str
     enabled: bool
-    download_mode: UploadFileDownloadMode
+    download_mode: PublicStorageDownloadMode
     download_url_expires_in: int
     cf_waf_hmac_base_url: str | None = None
     cf_waf_hmac_secret: str | None = None
@@ -31,11 +29,16 @@ class UploadFileStoragePolicy:
     def owns_key(self, key: str) -> bool:
         return key.startswith(self.key_prefix)
 
+    def require_storage(self) -> Storage:
+        if self.storage is None:
+            raise RuntimeError("Public storage is not initialized for this upload file policy")
+        return self.storage
+
     def generate_download_url(self, key: str, *, content_type: str | None = None) -> str | None:
         if self.download_mode == "proxy":
             return None
         if self.download_mode == "presigned":
-            return self.storage.generate_presigned_url(
+            return self.require_storage().generate_presigned_url(
                 key,
                 expires_in=self.download_url_expires_in,
                 content_type=content_type,
@@ -62,19 +65,24 @@ class UploadFileStoragePolicy:
 
 
 def _configured_upload_file_storage_policies() -> tuple[UploadFileStoragePolicy, ...]:
-    return (
-        UploadFileStoragePolicy(
-            purpose=UploadFilePurpose.ICON,
-            storage_type=StorageType.S3,
-            storage=public_storage,
-            key_prefix=PUBLIC_UPLOAD_FILE_KEY_PREFIX,
-            enabled=public_storage.enabled,
-            download_mode=dify_config.PUBLIC_STORAGE_ICON_S3_DOWNLOAD_MODE,
-            download_url_expires_in=dify_config.PUBLIC_STORAGE_ICON_S3_DOWNLOAD_URL_EXPIRES_IN,
-            cf_waf_hmac_base_url=dify_config.PUBLIC_STORAGE_ICON_S3_CF_WAF_HMAC_BASE_URL,
-            cf_waf_hmac_secret=dify_config.PUBLIC_STORAGE_ICON_S3_CF_WAF_HMAC_SECRET,
-        ),
-    )
+    policies: list[UploadFileStoragePolicy] = []
+    for purpose in UploadFilePurpose:
+        for storage_type, config in dify_config.PUBLIC_STORAGE_POLICIES.get(purpose.name, {}).items():
+            policy_storage = public_storage.get(purpose.name, storage_type)
+            policies.append(
+                UploadFileStoragePolicy(
+                    purpose=purpose,
+                    storage_type=storage_type,
+                    storage=policy_storage,
+                    key_prefix=PUBLIC_UPLOAD_FILE_KEY_PREFIX,
+                    enabled=policy_storage is not None,
+                    download_mode=config.download_mode,
+                    download_url_expires_in=config.download_url_expires_in,
+                    cf_waf_hmac_base_url=config.cf_waf_hmac_base_url,
+                    cf_waf_hmac_secret=config.cf_waf_hmac_secret,
+                )
+            )
+    return tuple(policies)
 
 
 def resolve_upload_file_storage_policy(

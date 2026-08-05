@@ -51,7 +51,7 @@ def resolve_upload_file_storage(
         key=key,
     )
     if policy is not None:
-        return policy.storage
+        return policy.require_storage()
 
     if key is not None:
         unavailable_policy = resolve_upload_file_storage_policy(
@@ -121,7 +121,7 @@ class FileService:
 
         # save file to storage
         upload_policy = resolve_upload_file_storage_policy(purpose)
-        upload_storage = upload_policy.storage if upload_policy is not None else storage
+        upload_storage = upload_policy.require_storage() if upload_policy is not None else storage
         key_prefix = upload_policy.key_prefix if upload_policy is not None else PRIVATE_UPLOAD_FILE_KEY_PREFIX
         file_key = key_prefix + (resource_tenant_id or "") + "/" + file_uuid + "." + extension
         upload_storage.save(file_key, content)

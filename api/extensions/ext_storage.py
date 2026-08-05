@@ -1,11 +1,11 @@
 import logging
-import urllib.parse
 from collections.abc import Callable, Generator
 from typing import Literal, Union, overload, override
 
 from flask import Flask
 
 from configs import dify_config
+from configs.extra.public_storage_config import PublicStoragePolicyConfig
 from dify_app import DifyApp
 from extensions.storage.base_storage import BaseStorage
 from extensions.storage.storage_type import StorageType
@@ -146,21 +146,21 @@ class Storage:
 
 
 class PublicStorage(Storage):
-    """Optional S3-compatible storage for upload purposes intended to be public."""
+    """Storage backend for one public upload policy."""
 
     enabled: bool
 
-    def __init__(self):
-        super().__init__(StorageType.S3)
+    def __init__(self, storage_type: StorageType, policy_config: PublicStoragePolicyConfig):
+        super().__init__(storage_type)
+        self.policy_config = policy_config
         self.enabled = False
 
     @override
     def init_app(self, app: Flask):
-        if not dify_config.PUBLIC_STORAGE_ENABLED:
-            self.enabled = False
-            return
+        if self.storage_type != StorageType.S3:
+            raise ValueError(f"unsupported public storage type {self.storage_type}")
 
-        bucket_name = dify_config.PUBLIC_STORAGE_ICON_S3_BUCKET or dify_config.S3_BUCKET_NAME
+        bucket_name = self.policy_config.bucket or dify_config.S3_BUCKET_NAME
         required_settings = (
             dify_config.PUBLIC_STORAGE_ENDPOINT,
             bucket_name,
@@ -170,30 +170,9 @@ class PublicStorage(Storage):
         if not all(required_settings):
             raise ValueError(
                 "Public storage configuration is incomplete. Required: PUBLIC_STORAGE_ENDPOINT, "
-                "PUBLIC_STORAGE_ICON_S3_BUCKET or S3_BUCKET_NAME, PUBLIC_STORAGE_ACCESS_KEY, "
+                "PUBLIC_STORAGE_<PURPOSE>_S3_BUCKET or S3_BUCKET_NAME, PUBLIC_STORAGE_ACCESS_KEY, "
                 "and PUBLIC_STORAGE_SECRET_KEY"
             )
-
-        download_mode = dify_config.PUBLIC_STORAGE_ICON_S3_DOWNLOAD_MODE
-        cf_waf_hmac_base_url = dify_config.PUBLIC_STORAGE_ICON_S3_CF_WAF_HMAC_BASE_URL
-        cf_waf_hmac_secret = dify_config.PUBLIC_STORAGE_ICON_S3_CF_WAF_HMAC_SECRET
-        if download_mode == "cf_waf_hmac" and not all((cf_waf_hmac_base_url, cf_waf_hmac_secret)):
-            raise ValueError(
-                "Icon S3 Cloudflare WAF HMAC configuration is incomplete. Required: "
-                "PUBLIC_STORAGE_ICON_S3_CF_WAF_HMAC_BASE_URL and "
-                "PUBLIC_STORAGE_ICON_S3_CF_WAF_HMAC_SECRET"
-            )
-        if cf_waf_hmac_base_url:
-            parsed_base_url = urllib.parse.urlsplit(cf_waf_hmac_base_url)
-            if (
-                parsed_base_url.scheme not in {"http", "https"}
-                or not parsed_base_url.netloc
-                or parsed_base_url.query
-                or parsed_base_url.fragment
-            ):
-                raise ValueError(
-                    "PUBLIC_STORAGE_ICON_S3_CF_WAF_HMAC_BASE_URL must be an HTTP(S) URL without a query or fragment"
-                )
 
         from extensions.storage.aws_s3_storage import AwsS3Storage, AwsS3StorageSettings
 
@@ -211,8 +190,41 @@ class PublicStorage(Storage):
         self.enabled = True
 
 
+class PublicStorageRegistry:
+    def __init__(self):
+        self._storages: dict[tuple[str, StorageType], PublicStorage] = {}
+
+    @property
+    def enabled(self) -> bool:
+        return bool(self._storages)
+
+    def init_app(self, app: Flask) -> None:
+        self._storages.clear()
+        if not dify_config.PUBLIC_STORAGE_ENABLED:
+            return
+        if not dify_config.PUBLIC_STORAGE_POLICIES:
+            raise ValueError("PUBLIC_STORAGE_ENABLED requires at least one public storage policy")
+
+        from models.enums import UploadFilePurpose
+
+        for purpose_name, storage_policies in dify_config.PUBLIC_STORAGE_POLICIES.items():
+            if purpose_name not in UploadFilePurpose.__members__:
+                raise ValueError(f"unsupported public upload purpose {purpose_name}")
+            if len(storage_policies) != 1:
+                raise ValueError(f"public upload purpose {purpose_name} must configure exactly one storage type")
+
+            for storage_type, policy_config in storage_policies.items():
+                policy_config.validate_policy()
+                policy_storage = PublicStorage(storage_type, policy_config)
+                policy_storage.init_app(app)
+                self._storages[(purpose_name, storage_type)] = policy_storage
+
+    def get(self, purpose_name: str, storage_type: StorageType) -> PublicStorage | None:
+        return self._storages.get((purpose_name, storage_type))
+
+
 storage = Storage()
-public_storage = PublicStorage()
+public_storage = PublicStorageRegistry()
 
 
 def init_app(app: DifyApp):

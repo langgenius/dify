@@ -48,3 +48,7 @@ class NacosSettingsSource(RemoteSettingsSource):
             return None, field_name, False
 
         return field_value, field_name, False
+
+    @override
+    def get_all(self) -> Mapping[str, Any]:
+        return self.remote_configs

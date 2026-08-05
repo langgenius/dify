@@ -1,9 +1,15 @@
 import logging
 from pathlib import Path
-from typing import Any, override
+from typing import Any, cast, override
 
 from pydantic.fields import FieldInfo
-from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict, TomlConfigSettingsSource
+from pydantic_settings import (
+    BaseSettings,
+    EnvSettingsSource,
+    PydanticBaseSettingsSource,
+    SettingsConfigDict,
+    TomlConfigSettingsSource,
+)
 
 from enums.deployment_edition import DeploymentEdition
 from libs.file_utils import search_file_upwards
@@ -11,6 +17,7 @@ from libs.file_utils import search_file_upwards
 from .deploy import DeploymentConfig
 from .enterprise import EnterpriseFeatureConfig, EnterpriseTelemetryConfig
 from .extra import ExtraServiceConfig
+from .extra.public_storage_config import PublicStoragePolicySettingsSource, parse_public_storage_policy_settings
 from .feature import FeatureConfig
 from .middleware import MiddlewareConfig
 from .observability import ObservabilityConfig
@@ -54,6 +61,8 @@ class RemoteSettingsSourceFactory(PydanticBaseSettingsSource):
             field_value = remote_source.prepare_field_value(field_name, field, field_value, value_is_complex)
             if field_value is not None:
                 d[field_key] = field_value
+
+        d.update(parse_public_storage_policy_settings(remote_source.get_all()))
 
         return d
 
@@ -102,10 +111,14 @@ class DifyConfig(
         dotenv_settings: PydanticBaseSettingsSource,
         file_secret_settings: PydanticBaseSettingsSource,
     ) -> tuple[PydanticBaseSettingsSource, ...]:
+        env_values = cast(EnvSettingsSource, env_settings).env_vars
+        dotenv_values = cast(EnvSettingsSource, dotenv_settings).env_vars
         return (
             init_settings,
+            PublicStoragePolicySettingsSource(settings_cls, env_values),
             env_settings,
             RemoteSettingsSourceFactory(settings_cls),
+            PublicStoragePolicySettingsSource(settings_cls, dotenv_values),
             dotenv_settings,
             file_secret_settings,
             TomlConfigSettingsSource(
