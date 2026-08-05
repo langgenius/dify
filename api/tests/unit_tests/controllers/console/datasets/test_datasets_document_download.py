@@ -179,8 +179,8 @@ def test_batch_download_zip_returns_send_file(
         datasets_document_module.FileService,
         "get_upload_files_by_ids",
         lambda *_args, **_kwargs: {
-            "file-1": SimpleNamespace(id="file-1", name="a.txt", key="k1"),
-            "file-2": SimpleNamespace(id="file-2", name="b.txt", key="k2"),
+            "file-1": SimpleNamespace(id="file-1", name="a.txt", key="k1", purpose=None, storage_type=None),
+            "file-2": SimpleNamespace(id="file-2", name="b.txt", key="k2", purpose=None, storage_type=None),
         },
     )
 
@@ -246,8 +246,8 @@ def test_batch_download_zip_response_is_openable_zip(
         datasets_document_module.FileService,
         "get_upload_files_by_ids",
         lambda *_args, **_kwargs: {
-            "file-1": SimpleNamespace(id="file-1", name="a.txt", key="k1"),
-            "file-2": SimpleNamespace(id="file-2", name="b.txt", key="k2"),
+            "file-1": SimpleNamespace(id="file-1", name="a.txt", key="k1", purpose=None, storage_type=None),
+            "file-2": SimpleNamespace(id="file-2", name="b.txt", key="k2", purpose=None, storage_type=None),
         },
     )
 
