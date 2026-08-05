@@ -331,7 +331,10 @@ progress:
   `next_cursor` cursors.
 - `GET /runs/{run_id}/events/sse` replays and streams events over SSE. The SSE
   `id` is the event Redis Stream ID. `after` query cursors take precedence over
-  `Last-Event-ID` headers.
+  `Last-Event-ID` headers. The server closes the SSE response normally after
+  delivering a terminal event. Clients must stop reconnecting after consuming
+  that event. Both cursor forms remain exclusive resume cursors, so the server
+  does not resend a terminal event that the supplied cursor already excludes.
 
 Successful runs emit `run_started`, zero or more `pydantic_ai_event`, and
 `run_succeeded`. Failed runs end with `run_failed`, and accepted cancellations
