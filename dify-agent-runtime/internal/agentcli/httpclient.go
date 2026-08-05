@@ -93,11 +93,6 @@ func (c *HTTPClient) getJSON(path string, params map[string]string) ([]byte, int
 	return respBody, resp.StatusCode, nil
 }
 
-// getRaw sends a GET request and returns raw bytes (for binary downloads).
-func (c *HTTPClient) getRaw(path string, params map[string]string) ([]byte, int, error) {
-	return c.getJSON(path, params)
-}
-
 // patchJSON sends a PATCH request with JSON body.
 func (c *HTTPClient) patchJSON(path string, payload any) ([]byte, int, error) {
 	body, err := json.Marshal(payload)
