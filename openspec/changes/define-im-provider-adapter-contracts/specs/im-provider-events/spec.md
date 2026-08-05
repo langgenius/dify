@@ -1,19 +1,19 @@
 ## ADDED Requirements
 
 ### Requirement: Event transport support MUST be expressed by adapter capabilities
-Slack and Feishu/Lark adapters MUST expose both Webhook Events and STREAM Events. Microsoft Teams MUST expose Webhook Events only. DingTalk and WeCom MUST expose neither event capability in this release. Capability presence MUST be authoritative; no separate transport-support flag or dummy unsupported event capability may exist.
+Slack and Feishu/Lark adapters MUST expose Webhook Events and return new STREAM Events instances from `create_stream_events()`. Microsoft Teams MUST expose Webhook Events and return no STREAM instance. DingTalk and WeCom MUST expose neither Webhook Events nor a STREAM instance in this release. Capability presence and the STREAM factory result MUST be authoritative; no separate transport-support flag or dummy unsupported event capability may exist.
 
 #### Scenario: Microsoft Teams event capabilities are inspected
 - **WHEN** a caller inspects a Microsoft Teams adapter
-- **THEN** Webhook Events MUST be present and STREAM Events MUST be absent
+- **THEN** Webhook Events MUST be present and `create_stream_events()` MUST return `None`
 
 #### Scenario: DingTalk event capabilities are inspected
 - **WHEN** a caller inspects a DingTalk adapter
-- **THEN** both Webhook Events and STREAM Events MUST be absent
+- **THEN** Webhook Events MUST be absent and `create_stream_events()` MUST return `None`
 
 #### Scenario: WeCom event capabilities are inspected
 - **WHEN** a caller inspects a WeCom adapter
-- **THEN** both Webhook Events and STREAM Events MUST be absent
+- **THEN** Webhook Events MUST be absent and `create_stream_events()` MUST return `None`
 
 ### Requirement: Webhook and STREAM authentication MUST converge at AuthenticatedIMEvent
 Webhook and STREAM capabilities MUST keep their wire authentication and lifecycle differences before a shared immutable `AuthenticatedIMEvent`. A successful event MUST contain provider, stable Provider tenant ID, optional real Provider event ID, optional Provider event time, local receive time and decrypted Provider-native payload.
@@ -45,8 +45,29 @@ Webhook and STREAM capabilities MUST deliver authenticated events through an app
 - **WHEN** the sink has already accepted an event with the same real Provider event ID
 - **THEN** it MAY return `ACCEPTED` so the adapter acknowledges the redelivery without exposing deduplication state through the Provider contract
 
+### Requirement: IMEventSink MUST be thread-safe
+The same `IMEventSink` MAY be shared by multiple Webhook adapters, multiple `IMStreamEvents` instances and Provider SDK callback threads. `accept(event)` MUST safely support concurrent invocations and MUST NOT rely on a root adapter or event capability to serialize calls globally. Each concrete event capability MUST still invoke the sink at most once for one authenticated delivery.
+
+#### Scenario: Multiple authenticated deliveries reach one sink concurrently
+- **WHEN** different Webhook requests, STREAM instances or SDK callback threads concurrently invoke `accept` on the same sink
+- **THEN** the sink MUST preserve its acceptance and duplicate-handling semantics without data races or an adapter-provided global lock
+
 ### Requirement: Webhook Events MUST expose caller-driven request handling
-Webhook Events MUST expose `handle(request, sink) -> response` using framework-neutral Webhook request and response values. The concrete adapter MUST own URL challenge, signature and timestamp verification, replay checks, decryption and Provider-specific response encoding. It MUST call the sink at most once for one authenticated event and only return a successful ACK response after the sink returns `ACCEPTED`.
+Webhook Events MUST expose thread-safe `handle(request, sink) -> response` using framework-neutral Webhook request and response values. Calls on the same `IMWebhookEvents` view MAY overlap each other and MAY overlap any root adapter operation, including `close()`. The view MUST depend only on immutable Provider-specific Webhook configuration; configuration material is not a runtime resource. It MUST NOT read, mutate, borrow or close a root-owned API client, session, cache or other runtime resource. The root adapter MUST NOT coordinate Webhook calls or invalidate an already obtained Webhook view during close. A Webhook view MAY outlive its root adapter.
+
+The concrete capability MUST own thread-safe challenge handling, signature and timestamp verification, replay checks, decryption and Provider-specific response encoding. It MUST NOT retain a closeable runtime resource between `handle` calls. It MUST call the sink at most once for one authenticated event and only return a successful ACK response after the sink returns `ACCEPTED`.
+
+#### Scenario: Webhook requests overlap
+- **WHEN** multiple threads invoke `handle(request, sink)` concurrently on the same Webhook view
+- **THEN** every invocation MUST authenticate and produce its response independently without accessing a root-owned resource
+
+#### Scenario: Webhook handling overlaps root usage
+- **WHEN** one thread invokes `handle(request, sink)` while another caller invokes Directory, Messaging, credential testing or `close()`
+- **THEN** Webhook handling and the root operation MUST proceed without coordination or shared mutable runtime resources
+
+#### Scenario: Root adapter closes after a Webhook view is obtained
+- **WHEN** the root adapter closes before or during a call on an already obtained Webhook view
+- **THEN** root close MUST NOT cancel, invalidate or close the Webhook view, and the view MUST remain usable from immutable configuration
 
 #### Scenario: Provider sends a URL challenge
 - **WHEN** a Provider sends a valid Webhook URL challenge
@@ -56,8 +77,26 @@ Webhook Events MUST expose `handle(request, sink) -> response` using framework-n
 - **WHEN** the adapter authenticates one event and the sink returns `ACCEPTED`
 - **THEN** `handle` MUST return the Provider-specific successful response
 
-### Requirement: STREAM Events MUST expose SDK-driven run lifecycle
-STREAM Events MUST expose a long-running `run(sink, stop)` operation. The concrete adapter MUST own Provider SDK connection establishment, callback registration, connection authentication, control frames, reconnect behavior and protocol ACK. Provider SDK callbacks MUST authenticate and normalize one delivery, call the sink, and map the sink outcome to the ACK owned by the same callback or connection.
+### Requirement: STREAM Events MUST own an independent single-run lifecycle
+
+Each `IMStreamEvents` instance MUST own the STREAM resources it creates and MUST start at most one `run(sink, stop)` lifecycle. `close()` MUST be thread-safe and idempotent. If close is requested before run starts, the instance MUST NOT establish a Provider connection. If close is requested while run is active, run MUST stop reconnecting and release its owned resources before returning. After run completes or close is requested, the instance MUST NOT start another connection lifecycle. `IMProviderAdapter` MUST NOT track or close returned `IMStreamEvents` instances.
+
+#### Scenario: Another run is invoked while running
+- **WHEN** another thread invokes `run()` after the instance has entered `RUNNING`
+- **THEN** that invocation MUST return without starting a second lifecycle, establishing another connection or changing the instance state
+
+#### Scenario: Close is called before run
+- **WHEN** `close()` is invoked on a `NEW` instance
+- **THEN** the instance MUST permanently enter `CLOSED` without establishing a connection
+- **AND** any later `run()` invocation MUST return without registering callbacks or invoking the sink
+
+#### Scenario: Close is called while run is active
+- **WHEN** `close()` is invoked on a `RUNNING` instance, including from another thread
+- **THEN** the instance MUST enter `CLOSED`, prevent any not-yet-started connection or reconnect, and release or arrange release of every in-flight or established STREAM resource according to the concrete SDK lifecycle
+
+#### Scenario: Closed instance is used again
+- **WHEN** `close()` or `run()` is invoked after the instance has entered `CLOSED`
+- **THEN** `close()` MUST remain a no-op and `run()` MUST return without leaving `CLOSED` or establishing a Provider connection
 
 #### Scenario: Provider SDK invokes an event callback
 - **WHEN** a STREAM SDK callback receives an authenticated business delivery
@@ -69,7 +108,11 @@ STREAM Events MUST expose a long-running `run(sink, stop)` operation. The concre
 
 #### Scenario: Stop is requested
 - **WHEN** the supplied stop signal requests termination
-- **THEN** `run` MUST stop reconnecting, close adapter-owned STREAM resources and return according to the concrete SDK lifecycle
+- **THEN** `run` MUST stop reconnecting, close resources owned by that `IMStreamEvents` capability, transition to `CLOSED` and return according to the concrete SDK lifecycle
+
+#### Scenario: Root adapter is closed after a STREAM instance starts
+- **WHEN** an independently created `IMStreamEvents` is active and a caller invokes `IMProviderAdapter.close()` after all externally serialized root-context operations have returned
+- **THEN** the STREAM resources MUST remain the responsibility of that instance's own run/close lifecycle rather than requiring the root adapter to track it
 
 ### Requirement: Transport lifecycle MUST remain outside AuthenticatedIMEvent
 URL challenge data, HTTP response encoding, signature headers, encrypted request bodies, decryption keys, stream connection state, control frames, ACK envelope identifiers and SDK clients MUST remain inside the applicable concrete event capability.

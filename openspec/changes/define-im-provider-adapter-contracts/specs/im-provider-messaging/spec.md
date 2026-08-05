@@ -1,18 +1,19 @@
 ## ADDED Requirements
 
 ### Requirement: Messaging MUST be exposed as adapter-bound capabilities
-Every initial `IMProviderAdapter` MUST expose Basic Messaging backed by the adapter-owned client context. Only Slack, Feishu/Lark and Microsoft Teams MUST additionally expose Dynamic Card Messaging in this release; DingTalk and WeCom MUST not expose it. Messaging operations MUST NOT accept credentials, SDK clients or a generic integration context, and obtaining either capability MUST NOT construct an independent Provider client.
+Every initial `IMProviderAdapter` MUST expose Basic Messaging bound to the adapter's immutable Provider configuration and namespace. Only Slack, Feishu/Lark and Microsoft Teams MUST additionally expose Dynamic Card Messaging in this release; DingTalk and WeCom MUST not expose it. Messaging operations MUST NOT accept credentials, SDK clients or a generic integration context. Messaging views MAY borrow the root-owned Provider API client context and MUST NOT close or replace that context. Messaging operations belong to the adapter's externally serialized root-context set and MUST NOT overlap another root, Directory, Messaging or Dynamic Card Messaging operation on the same adapter. A later call MAY execute on a different thread after a safe caller-managed handoff. Independent Webhook handling and STREAM factory calls MAY overlap Messaging operations.
 
 #### Scenario: Multiple Messaging operations use one adapter
 - **WHEN** a caller sends multiple messages through the same adapter
-- **THEN** both operations MUST reuse the adapter-owned client context without receiving credentials again
+- **THEN** the operations MUST execute serially using the same bound Provider configuration and namespace without receiving credentials again
+- **AND** when Messaging borrows a root-owned API client context, it MUST leave that context open for the root adapter to close
 
 #### Scenario: Provider has no dynamic-card support
 - **WHEN** a caller inspects Dynamic Card Messaging on DingTalk or WeCom
 - **THEN** the capability MUST be absent and MUST NOT be represented by dummy unsupported methods
 
 ### Requirement: New-message operations MUST receive ProviderUserId
-Every personal new-message operation MUST accept the same nominal `ProviderUserId` string type returned by Directory. The value MUST identify a user and be comparable only within the `(provider, provider_tenant_id)` namespace; it MUST NOT be globally comparable. For Feishu/Lark, Messaging MUST interpret the value as `union_id`, using the fixed `union_id` receive-ID type, and MUST NOT interpret it as application-scoped `open_id`. Messaging MUST NOT invoke Directory during send. The concrete adapter MUST own any conversion from `ProviderUserId` to private transport addressing or conversation state.
+Every personal new-message operation MUST accept the same nominal `ProviderUserId` string type returned by Directory. The value MUST identify a user and be comparable only within the `(provider, provider_tenant_id)` namespace; it MUST NOT be globally comparable. For Feishu/Lark, Messaging MUST interpret the value as `union_id`, using the fixed `union_id` receive-ID type, and MUST NOT interpret it as application-scoped `open_id`. Messaging MUST NOT invoke Directory during send. The concrete Messaging capability MUST own any conversion from `ProviderUserId` to private transport addressing or conversation state.
 
 #### Scenario: Feishu or Lark user is messaged
 - **WHEN** Messaging sends to a Feishu or Lark `ProviderUserId` returned by Directory
@@ -20,7 +21,7 @@ Every personal new-message operation MUST accept the same nominal `ProviderUserI
 
 #### Scenario: Provider user identity is not a direct transport address
 - **WHEN** Microsoft Teams requires a personal conversation ID to send to one directory user
-- **THEN** Messaging MUST acquire or recover that conversation internally from `ProviderUserId` and adapter-bound context without requiring the caller to supply conversation facts
+- **THEN** Messaging MUST acquire or recover that conversation internally from `ProviderUserId`, bound configuration and capability-local state without requiring the caller to supply conversation facts
 
 ### Requirement: Basic Messaging MUST be implemented by every initial Provider
 Slack, Feishu/Lark, DingTalk, WeCom and Microsoft Teams MUST implement Basic Messaging containing `send_text`. It MUST accept `ProviderUserId`. Basic Messaging MUST NOT expose a separate recipient-reachability preflight operation.

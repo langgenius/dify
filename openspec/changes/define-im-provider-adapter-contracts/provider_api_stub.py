@@ -47,8 +47,8 @@ The following values are intentionally not adapter-issued opaque references:
 
 * ``ProviderUserId`` is a Provider-issued user identity meaningful and
   comparable only within the ``(provider, provider_tenant_id)`` namespace.
-  Callers may persist and reconcile it within that namespace, while the
-  concrete adapter owns any conversion to private transport addressing. This
+  Callers may persist and reconcile it within that namespace, while the concrete
+  Messaging capability owns conversion to private transport addressing. This
   contract assumes that applications configured for one such namespace share
   one Provider developer identity; Feishu/Lark therefore use ``union_id``, not
   application-scoped ``open_id``.
@@ -69,16 +69,15 @@ Task 1.3 is an evidence gate that each concrete adapter can attempt personal
 messaging from ``ProviderUserId``. Microsoft Teams conversation acquisition and
 refresh, including conversation IDs and service URLs, remain adapter-private.
 If an initial Provider cannot address a user from this identity plus its bound
-configuration and private state, the design must return for review rather than
-leak a Provider-specific destination DTO into the common API.
+configuration and private Messaging state, the design must return for review
+rather than leak a Provider-specific destination DTO into the common API.
 
 Failure policy
 --------------
 Result variants expose only distinctions that a current caller can act on.
 Every ``reason`` is operator-safe diagnostic text and must never be parsed as a
 stable decision code. Raw Provider responses, SDK exceptions and credentials do
-not cross these contracts. Adapter lifecycle misuse is represented by the
-custom ``IMProviderAdapterClosedError`` rather than a generic runtime error.
+not cross these contracts.
 """
 
 from __future__ import annotations
@@ -221,14 +220,6 @@ ProviderUserId = NewType("ProviderUserId", str)
 MessageReference = NewType("MessageReference", str)
 
 
-class IMProviderAdapterClosedError(Exception):
-    """A capability was used after its owning root adapter was closed.
-
-    Closing is idempotent, but every later capability operation fails with this
-    stable exception. A closed adapter must never lazily recreate SDK resources.
-    """
-
-
 class CredentialTestFailureKind(StrEnum):
     """Credential-test distinctions required by the configuration caller."""
 
@@ -302,11 +293,12 @@ class DirectoryReadFailure:
 
 
 class IMDirectory(Protocol):
-    """Complete-snapshot directory view backed by the root adapter context.
+    """Externally serialized snapshot view borrowing the root API context.
 
     The operation accepts no credentials, SDK clients, pagination cursors or
-    integration context. Concrete adapters own traversal, rate-limit handling
-    and failure translation. Messaging is never invoked by this capability.
+    integration context. The capability owns traversal, rate-limit handling and
+    failure translation. It never invokes Messaging and never closes or replaces
+    resources borrowed from the root adapter.
     """
 
     def read_snapshot(self) -> DirectorySnapshot | DirectoryReadFailure:
@@ -413,17 +405,18 @@ class MarkAsSubmissionError:
 
 
 class IMMessaging(Protocol):
-    """Basic outbound messaging bound to one concrete Provider adapter.
+    """Externally serialized messaging view borrowing the root API context.
 
     ``ProviderUserId`` identifies a user in the adapter's
-    ``(provider, provider_tenant_id)`` namespace. The concrete adapter owns any
-    private transport-address or conversation acquisition and never invokes
-    Directory during a Messaging operation.
+    ``(provider, provider_tenant_id)`` namespace. The concrete Messaging
+    capability owns private transport-address or conversation acquisition and
+    never invokes Directory during a Messaging operation.
 
     Each send invocation attempts to create the requested message at most once
     and never replays an ambiguous message-creation operation. Provider-specific
-    prerequisite calls remain inside the adapter. Unsupported CommonMark
-    formatting falls back to equivalent plain text.
+    prerequisite calls remain inside this capability. Unsupported CommonMark
+    formatting falls back to equivalent plain text. Borrowed root resources are
+    never closed or replaced by this view.
     """
 
     def send_text(
@@ -434,7 +427,7 @@ class IMMessaging(Protocol):
 
 
 class IMDynamicCardMessaging(Protocol):
-    """Optional complete-card capability backed by the root adapter context.
+    """Optional externally serialized card view borrowing the root API context.
 
     Assessment is authoritative and side-effect free. Send never downgrades to
     text implicitly or emits a partial card. ``mark_as_submitted`` is the only
@@ -555,11 +548,13 @@ class EventAcceptance(StrEnum):
 
 
 class IMEventSink(Protocol):
-    """Only downstream dependency shared by Webhook and STREAM event views.
+    """Thread-safe downstream dependency shared by all event capabilities.
 
     Implementations may persist or enqueue events, but business processing must
     not block the Provider ACK path. Raising unexpectedly is treated the same as
-    ``RETRY`` by the concrete event adapter.
+    ``RETRY`` by the concrete event adapter. ``accept`` may be invoked
+    concurrently by multiple Webhook adapters, STREAM instances or SDK callback
+    threads and must not rely on adapter-provided serialization.
     """
 
     def accept(self, event: AuthenticatedIMEvent) -> EventAcceptance:
@@ -580,52 +575,75 @@ class StopSignal(Protocol):
 
 
 class IMWebhookEvents(Protocol):
-    """Caller-driven Webhook capability owning the complete Provider protocol.
+    """Thread-safe config-only Webhook capability owning Provider verification.
 
-    The concrete view owns challenge handling, authentication, replay checks,
-    decryption and response encoding. It calls the sink at most once and only
-    after authentication. Challenge and authentication failures never reach the
-    sink.
+    The view depends only on immutable Provider-specific Webhook configuration.
+    Concurrent calls own their request-local work and may overlap each other,
+    root operations and root close. The view never borrows root-owned resources,
+    retains no closeable runtime resource between calls and may outlive root
+    close. Challenge and authentication failures never reach the sink.
     """
 
     def handle(self, request: WebhookRequest, sink: IMEventSink) -> WebhookResponse:
-        """Map one inbound request and sink decision to a Provider response."""
+        """Thread-safely map one request and sink decision to a response."""
         ...
 
 
 class IMStreamRunError(Exception):
     """Operator-safe terminal STREAM failure after internal reconnect policy.
 
+    The instance enters CLOSED before this exception crosses the contract.
     Provider SDK exceptions and connection objects are retained as private
     causes and must not become public fields on this exception.
     """
 
 
 class IMStreamEvents(Protocol):
-    """SDK-driven long-running event capability owning connection and ACK state.
+    """Independently owned single-run connection and ACK lifecycle.
 
-    Concrete views own connection establishment, callbacks, control frames,
-    reconnect policy and ACK mapping. Stop suppresses further reconnects and
-    returns normally; only a terminal translated failure raises
-    ``IMStreamRunError``.
+    The instance owns connection establishment, callbacks, control frames,
+    reconnect policy and ACK mapping without borrowing root closeable resources.
+    It starts in NEW. The first eligible ``run`` atomically enters RUNNING; any
+    competing ``run`` returns without starting another lifecycle. Return, stop or
+    terminal failure releases or arranges release of owned resources and enters
+    CLOSED. Thread-safe ``close`` moves NEW or RUNNING to terminal CLOSED and may
+    request cancellation from another thread. A ``run`` that observes CLOSED
+    returns without establishing a connection. State synchronization remains
+    private to this instance.
     """
 
     def run(self, sink: IMEventSink, stop: StopSignal) -> None:
-        """Run until cooperative stop or a translated terminal stream failure."""
+        """Run at most once, ending permanently in CLOSED.
+
+        If another run owns RUNNING, or close has moved the instance to CLOSED,
+        return without establishing another connection, registering callbacks or
+        invoking the sink from this invocation.
+        """
+        ...
+
+    def close(self) -> None:
+        """Idempotently enter terminal CLOSED and release owned resources."""
         ...
 
 
 class IMProviderAdapter(Protocol):
-    """Root lifecycle owner exposing narrow views over one Provider context.
+    """Owner exposing views over one immutable Provider configuration.
 
-    Construction performs local shape validation only and no remote I/O. The
-    canonical credentials, SDK clients, token caches and connection resources
-    remain private instance state. Capability properties are side-effect free
-    and never create a second client role.
+    Construction performs local shape validation only and no remote I/O.
+    A configuration change creates a new adapter without mutating, invalidating
+    or closing the old adapter. Each owner independently decides whether to close
+    its adapter when that instance's own lifecycle ends.
+    Credential testing, Directory and Messaging views may borrow the root-owned
+    Provider API client context. Root and root-context calls are externally
+    serialized and non-reentrant: the caller prevents overlap but may perform a
+    later call on another thread after a safe handoff. The adapter has no thread
+    affinity. ``IMWebhookEvents.handle`` and ``IMEventSink.accept`` follow their
+    independent thread-safe contracts.
 
     Required Directory and Basic Messaging views are always present. Optional
-    views use ``None`` as the sole support signal; there are no parallel support
-    flags and unsupported Providers do not return dummy capabilities.
+    views and the STREAM factory use ``None`` as the sole support signal; there
+    are no parallel support flags or dummy capabilities. ``create_stream_events``
+    is the only thread-safe root operation and returns a new independent owner.
     """
 
     @property
@@ -634,17 +652,17 @@ class IMProviderAdapter(Protocol):
         ...
 
     def test_credentials(self) -> CredentialTestSuccess | CredentialTestFailure:
-        """Authenticate and identify the tenant without permission inspection."""
+        """Authenticate, identify the tenant and inspect baseline permissions."""
         ...
 
     @property
     def directory(self) -> IMDirectory:
-        """Return the required directory view backed by the root client context."""
+        """Return the required externally serialized root-context view."""
         ...
 
     @property
     def messaging(self) -> IMMessaging:
-        """Return the required basic messaging view backed by the root context."""
+        """Return the required externally serialized root-context view."""
         ...
 
     @property
@@ -654,16 +672,23 @@ class IMProviderAdapter(Protocol):
 
     @property
     def webhook_events(self) -> IMWebhookEvents | None:
-        """Return the optional caller-driven event view without remote I/O."""
+        """Return the optional config-only view whose handle is thread-safe."""
         ...
 
-    @property
-    def stream_events(self) -> IMStreamEvents | None:
-        """Return the optional SDK-driven event view without opening a connection."""
+    def create_stream_events(self) -> IMStreamEvents | None:
+        """Thread-safely create one independent STREAM lifecycle owner."""
         ...
 
     def close(self) -> None:
-        """Idempotently release every resource owned by this root adapter."""
+        """Idempotently release root-owned resources after serialized use.
+
+        The caller may invoke this on any thread after all root-context calls
+        return and a safe handoff completes. This is the final serialized
+        root-context operation other than serialized repeated close. It never
+        synchronizes with independent Webhook calls or closes Webhook views or
+        STREAM instances. Cleanup is a no-op when no closeable root resource
+        exists.
+        """
         ...
 
 
@@ -683,8 +708,7 @@ class SlackIMProviderAdapter(IMProviderAdapter, Protocol):
     @property
     def webhook_events(self) -> IMWebhookEvents: ...
 
-    @property
-    def stream_events(self) -> IMStreamEvents: ...
+    def create_stream_events(self) -> IMStreamEvents: ...
 
 
 class FeishuIMProviderAdapter(IMProviderAdapter, Protocol):
@@ -703,8 +727,7 @@ class FeishuIMProviderAdapter(IMProviderAdapter, Protocol):
     @property
     def webhook_events(self) -> IMWebhookEvents: ...
 
-    @property
-    def stream_events(self) -> IMStreamEvents: ...
+    def create_stream_events(self) -> IMStreamEvents: ...
 
 
 class LarkIMProviderAdapter(IMProviderAdapter, Protocol):
@@ -723,8 +746,7 @@ class LarkIMProviderAdapter(IMProviderAdapter, Protocol):
     @property
     def webhook_events(self) -> IMWebhookEvents: ...
 
-    @property
-    def stream_events(self) -> IMStreamEvents: ...
+    def create_stream_events(self) -> IMStreamEvents: ...
 
 
 class DingTalkIMProviderAdapter(IMProviderAdapter, Protocol):
@@ -738,8 +760,7 @@ class DingTalkIMProviderAdapter(IMProviderAdapter, Protocol):
     @property
     def webhook_events(self) -> None: ...
 
-    @property
-    def stream_events(self) -> None: ...
+    def create_stream_events(self) -> None: ...
 
 
 class WeComIMProviderAdapter(IMProviderAdapter, Protocol):
@@ -753,17 +774,16 @@ class WeComIMProviderAdapter(IMProviderAdapter, Protocol):
     @property
     def webhook_events(self) -> None: ...
 
-    @property
-    def stream_events(self) -> None: ...
+    def create_stream_events(self) -> None: ...
 
 
 class MSTeamsIMProviderAdapter(IMProviderAdapter, Protocol):
-    """Teams composition with card and Webhook capabilities but no STREAM view.
+    """Teams composition whose STREAM factory always returns ``None``.
 
     Tenant ID and bot application identity are immutable instance configuration.
     ``service_url``, channel IDs and SDK conversation objects remain private
-    adapter state. Messaging accepts a Provider user ID; the adapter acquires
-    and refreshes any required personal conversation without exposing its ID.
+    Messaging state. Messaging accepts a Provider user ID and acquires or
+    refreshes any required personal conversation without exposing its ID.
     """
 
     def __init__(self, credentials: MSTeamsIMIntegrationCredentials) -> None: ...
@@ -774,5 +794,4 @@ class MSTeamsIMProviderAdapter(IMProviderAdapter, Protocol):
     @property
     def webhook_events(self) -> IMWebhookEvents: ...
 
-    @property
-    def stream_events(self) -> None: ...
+    def create_stream_events(self) -> None: ...

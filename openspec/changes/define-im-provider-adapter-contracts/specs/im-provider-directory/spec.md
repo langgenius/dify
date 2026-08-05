@@ -1,11 +1,12 @@
 ## ADDED Requirements
 
 ### Requirement: Directory MUST be an adapter-bound capability
-Every initial `IMProviderAdapter` MUST expose a Directory capability backed by the adapter-owned client context. Directory operations MUST NOT accept credentials, SDK clients or a generic integration context, and obtaining the capability MUST NOT construct an independent Provider client.
+Every initial `IMProviderAdapter` MUST expose a Directory capability bound to the adapter's immutable Provider configuration and namespace. Directory operations MUST NOT accept credentials, SDK clients or a generic integration context. The capability view MAY borrow the root-owned Provider API client context and MUST NOT close or replace that context. Directory operations belong to the adapter's externally serialized root-context set and MUST NOT overlap another root, Directory, Messaging or Dynamic Card Messaging operation on the same adapter. A later call MAY execute on a different thread after a safe caller-managed handoff. Independent Webhook handling and STREAM factory calls MAY overlap Directory operations.
 
 #### Scenario: Directory is used after Messaging
 - **WHEN** a caller obtains Directory after using Messaging from the same adapter
-- **THEN** Directory MUST reuse the root adapter's client context without requiring credentials again
+- **THEN** Directory MUST use the same bound Provider configuration and namespace without requiring credentials again
+- **AND** when both views borrow one root-owned API client context, neither view may close or replace it
 
 ### Requirement: Directory MUST remain independent from Messaging and consumer processing
 Directory MUST only read Provider identity facts. It MUST NOT send messages, test message-recipient reachability or perform caller-owned matching, reconciliation, persistence or business processing.
