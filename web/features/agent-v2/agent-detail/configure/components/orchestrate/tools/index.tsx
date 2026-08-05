@@ -16,6 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { useAtomValue, useSetAtom } from 'jotai'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { parseToolProviderType } from '@/app/components/tools/provider-type'
 import { CollectionType } from '@/app/components/tools/types'
 import { ToolPickerContent } from '@/app/components/workflow/block-selector/tool-picker'
@@ -517,7 +518,10 @@ export function AgentTools() {
     [setProviderToolCredential],
   )
   const handlePluginInstalled = useCallback(() => {
-    void Promise.allSettled([invalidateAllBuiltInTools(), invalidateInstalledPluginList()])
+    void Promise.allSettled([
+      invalidateAllBuiltInTools(),
+      invalidateInstalledPluginList(PluginCategoryEnum.tool),
+    ])
   }, [invalidateAllBuiltInTools, invalidateInstalledPluginList])
   const visibleTools = useMemo(
     () => (ENABLE_AGENT_CLI_TOOLS ? tools : tools.filter((tool) => tool.kind !== 'cli')),

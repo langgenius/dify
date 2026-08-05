@@ -20,6 +20,7 @@ import {
   normalizeInstalledPluginDetail,
   useInstalledPluginList,
   useInstallOrUpdate,
+  useInvalidateInstalledPluginList,
   useMutationPluginAutoUpgradeSettings,
   useMutationPluginPermissionSettings,
   usePluginAutoUpgradeSettings,
@@ -57,10 +58,6 @@ vi.mock('@/context/permission-state', async () => {
     workspacePermissionKeys: ['plugin.install'],
   }))
 })
-
-vi.mock('../use-tools', () => ({
-  useInvalidateAllBuiltInTools: () => vi.fn(),
-}))
 
 const createQueryClient = () =>
   new QueryClient({
@@ -668,6 +665,61 @@ describe('useInstalledPluginList', () => {
       ])
     })
     expect(result.current.data?.builtin_tools).toEqual(builtinTools)
+  })
+})
+
+describe('useInvalidateInstalledPluginList', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('only invalidates the requested category list', async () => {
+    const queryClient = createQueryClient()
+    const allPluginsKey = ['plugins', 'installedPluginList']
+    const modelPluginsKey = [...allPluginsKey, PluginCategoryEnum.model]
+    const toolPluginsKey = [...allPluginsKey, PluginCategoryEnum.tool]
+    const builtInToolsKey = ['tools', 'builtIn']
+
+    queryClient.setQueryData(allPluginsKey, { plugins: [] })
+    queryClient.setQueryData(modelPluginsKey, { plugins: [] })
+    queryClient.setQueryData(toolPluginsKey, { plugins: [] })
+    queryClient.setQueryData(builtInToolsKey, [])
+
+    const { result } = renderHook(() => useInvalidateInstalledPluginList(), {
+      wrapper: createWrapper(queryClient),
+    })
+
+    await act(async () => {
+      await result.current(PluginCategoryEnum.model)
+    })
+
+    expect(queryClient.getQueryState(modelPluginsKey)?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(allPluginsKey)?.isInvalidated).toBe(false)
+    expect(queryClient.getQueryState(toolPluginsKey)?.isInvalidated).toBe(false)
+    expect(queryClient.getQueryState(builtInToolsKey)?.isInvalidated).toBe(false)
+  })
+
+  it('invalidates built-in tools when invalidating the tool category list', async () => {
+    const queryClient = createQueryClient()
+    const modelPluginsKey = ['plugins', 'installedPluginList', PluginCategoryEnum.model]
+    const toolPluginsKey = ['plugins', 'installedPluginList', PluginCategoryEnum.tool]
+    const builtInToolsKey = ['tools', 'builtIn']
+
+    queryClient.setQueryData(modelPluginsKey, { plugins: [] })
+    queryClient.setQueryData(toolPluginsKey, { plugins: [] })
+    queryClient.setQueryData(builtInToolsKey, [])
+
+    const { result } = renderHook(() => useInvalidateInstalledPluginList(), {
+      wrapper: createWrapper(queryClient),
+    })
+
+    await act(async () => {
+      await result.current(PluginCategoryEnum.tool)
+    })
+
+    expect(queryClient.getQueryState(toolPluginsKey)?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(builtInToolsKey)?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(modelPluginsKey)?.isInvalidated).toBe(false)
   })
 })
 
