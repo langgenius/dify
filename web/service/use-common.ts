@@ -1,3 +1,5 @@
+// oxlint-disable-next-line no-restricted-imports
+import type { IOtherOptions } from './base'
 import type { FileTypesRes } from './datasets'
 import type {
   Model,
@@ -248,14 +250,24 @@ export const useNotionBinding = (code?: string | null, enabled?: boolean) => {
   })
 }
 
-export const useModelParameterRules = (provider?: string, model?: string, enabled?: boolean) => {
+export type ModelParameterRulesQueryOptions = {
+  enabled?: boolean
+  errorToastOptions?: IOtherOptions['errorToastOptions']
+}
+
+export const useModelParameterRules = (
+  provider?: string,
+  model?: string,
+  options: ModelParameterRulesQueryOptions = {},
+) => {
   return useQuery<{ data: ModelParameterRule[] }>({
-    queryKey: commonQueryKeys.modelParameterRules(provider, model),
+    queryKey: [...commonQueryKeys.modelParameterRules(provider, model), options.errorToastOptions],
     queryFn: () =>
       get<{ data: ModelParameterRule[] }>(
         `/workspaces/current/model-providers/${provider}/models/parameter-rules`,
-        { params: { model }, silent: true },
+        { params: { model } },
+        options.errorToastOptions ? { errorToastOptions: options.errorToastOptions } : undefined,
       ),
-    enabled: !!provider && !!model && (enabled ?? true),
+    enabled: !!provider && !!model && (options.enabled ?? true),
   })
 }

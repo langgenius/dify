@@ -32,6 +32,7 @@ import EditHistoryModal from '@/app/components/app/configuration/config-prompt/c
 import AgentSettingButton from '@/app/components/app/configuration/config/agent-setting-button'
 import SelectDataSet from '@/app/components/app/configuration/dataset-config/select-dataset'
 import Debug from '@/app/components/app/configuration/debug'
+import { getDebugErrorToastOptions } from '@/app/components/app/configuration/debug/types'
 import Divider from '@/app/components/base/divider'
 import { FeaturesProvider } from '@/app/components/base/features'
 import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
@@ -184,6 +185,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                           onCompletionParamsChange={onCompletionParamsChange}
                           debugWithMultipleModel={debugWithMultipleModel}
                           onDebugWithMultipleModelChange={onEnableMultipleModelDebug}
+                          errorToastOptions={getDebugErrorToastOptions(contextValue.mode)}
                         />
                         <Divider type="vertical" className="mx-2 h-3.5" />
                       </>

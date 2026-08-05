@@ -46,7 +46,11 @@ import FormattingChanged from '../base/warning-mask/formatting-changed'
 import HasNotSetAPIKEY from '../base/warning-mask/has-not-set-api'
 import DebugWithMultipleModel from './debug-with-multiple-model'
 import DebugWithSingleModel from './debug-with-single-model'
-import { APP_CHAT_WITH_MULTIPLE_MODEL, APP_CHAT_WITH_MULTIPLE_MODEL_RESTART } from './types'
+import {
+  APP_CHAT_WITH_MULTIPLE_MODEL,
+  APP_CHAT_WITH_MULTIPLE_MODEL_RESTART,
+  getDebugErrorToastOptions,
+} from './types'
 
 type IDebug = {
   isAPIKeySet: boolean
@@ -135,20 +139,25 @@ const Debug: FC<IDebug> = ({
     setIsShowFormattingChangeConfirm(false)
     setFormattingChanged(false)
   }
-  const logError = useCallback((message: string) => {
-    toast.error(message)
-  }, [])
+  const errorToastOptions = getDebugErrorToastOptions(mode)
+  const logError = useCallback(
+    (message: string) => {
+      if (errorToastOptions) toast.error(message, errorToastOptions)
+      else toast.error(message)
+    },
+    [errorToastOptions],
+  )
   const [completionFiles, setCompletionFiles] = useState<VisionFile[]>([])
 
   const checkCanSend = useCallback(() => {
     if (isAdvancedMode && mode !== AppModeEnum.COMPLETION) {
       if (modelModeType === ModelModeType.completion) {
         if (!hasSetBlockStatus.history) {
-          toast.error(t(($) => $['otherError.historyNoBeEmpty'], { ns: 'appDebug' }))
+          logError(t(($) => $['otherError.historyNoBeEmpty'], { ns: 'appDebug' }))
           return false
         }
         if (!hasSetBlockStatus.query) {
-          toast.error(t(($) => $['otherError.queryNoBeEmpty'], { ns: 'appDebug' }))
+          logError(t(($) => $['otherError.queryNoBeEmpty'], { ns: 'appDebug' }))
           return false
         }
       }
@@ -305,6 +314,7 @@ const Debug: FC<IDebug> = ({
       onError() {
         setRespondingFalse()
       },
+      ...(errorToastOptions && { errorToastOptions }),
     })
   }
 

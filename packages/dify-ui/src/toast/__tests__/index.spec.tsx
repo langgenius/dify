@@ -54,6 +54,20 @@ describe('@langgenius/dify-ui/toast', () => {
     await expect.element(screen.getByText('Neutral toast')).toBeInTheDocument()
   })
 
+  it('should place an individual toast at its configured top position', async () => {
+    const screen = await render(<ToastHost />)
+
+    toast.error('Positioned toast', {
+      position: { top: 80 },
+    })
+
+    const toastDialog = screen.getByRole('dialog', { name: 'Positioned toast' })
+    await expect.element(toastDialog).toBeInTheDocument()
+    await vi.waitFor(() => {
+      expect(toastDialog.element().getBoundingClientRect().top).toBeCloseTo(80, 0)
+    })
+  })
+
   it('should mark overflow toasts as limited when the stack exceeds the configured limit', async () => {
     const screen = await render(<ToastHost limit={1} />)
 

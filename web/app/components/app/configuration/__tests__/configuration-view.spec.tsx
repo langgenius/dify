@@ -13,6 +13,7 @@ import { AppModeEnum, ModelModeType } from '@/types/app'
 import ConfigurationView from '../configuration-view'
 
 const mockIsAgentV2Enabled = vi.hoisted(() => vi.fn(() => false))
+let capturedModelParameterModalProps: Record<string, unknown> | null = null
 
 vi.mock('@/features/agent-v2/feature-flag', () => ({
   isAgentV2Enabled: () => mockIsAgentV2Enabled(),
@@ -37,7 +38,10 @@ vi.mock('@/app/components/app/configuration/config/agent-setting-button', () => 
 vi.mock(
   '@/app/components/header/account-setting/model-provider-page/model-parameter-modal',
   () => ({
-    default: () => <div data-testid="model-parameter-modal" />,
+    default: (props: Record<string, unknown>) => {
+      capturedModelParameterModalProps = props
+      return <div data-testid="model-parameter-modal" />
+    },
   }),
 )
 
@@ -314,7 +318,24 @@ describe('ConfigurationView', () => {
     vi.clearAllMocks()
     mockIsAgentV2Enabled.mockReturnValue(false)
     pluginDependencyOnInstallComplete = undefined
+    capturedModelParameterModalProps = null
   })
+
+  it.each([AppModeEnum.CHAT, AppModeEnum.AGENT_CHAT, AppModeEnum.COMPLETION])(
+    'should position model parameter rule errors below the header for %s apps',
+    (mode) => {
+      const contextValue = createContextValue()
+      contextValue.mode = mode
+
+      render(<ConfigurationView {...createViewModel({ contextValue })} />)
+
+      expect(capturedModelParameterModalProps).toEqual(
+        expect.objectContaining({
+          errorToastOptions: { position: { top: 60 } },
+        }),
+      )
+    },
+  )
 
   it('should render a loading state before configuration data is ready', () => {
     render(<ConfigurationView {...createViewModel({ showLoading: true })} />)

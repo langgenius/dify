@@ -69,6 +69,7 @@ type SendCallback = {
   onUnhandledEvent?: IOtherOptions['onUnhandledEvent']
   onSendSettled?: (hasError?: boolean) => void
   isPublicAPI?: boolean
+  errorToastOptions?: IOtherOptions['errorToastOptions']
 }
 
 type UseChatOptions = {
@@ -578,7 +579,13 @@ export const useChat = (
     async (
       messageId: string,
       workflowRunId: string,
-      { onGetSuggestedQuestions, onConversationComplete, onSendSettled, isPublicAPI }: SendCallback,
+      {
+        onGetSuggestedQuestions,
+        onConversationComplete,
+        onSendSettled,
+        isPublicAPI,
+        errorToastOptions,
+      }: SendCallback,
     ) => {
       const hasActiveSubscription =
         workflowEventsSubscriptionActiveRef.current &&
@@ -600,6 +607,7 @@ export const useChat = (
       }
       const otherOptions: IOtherOptions = {
         isPublicAPI,
+        ...(errorToastOptions && { errorToastOptions }),
         getAbortController: (abortController) => {
           workflowEventsAbortControllerRef.current = abortController
         },
@@ -1086,6 +1094,7 @@ export const useChat = (
         onUnhandledEvent,
         onSendSettled,
         isPublicAPI,
+        errorToastOptions,
       }: SendCallback,
     ) => {
       setSuggestedQuestions([])
@@ -1186,6 +1195,7 @@ export const useChat = (
 
       const otherOptions: IOtherOptions = {
         isPublicAPI,
+        ...(errorToastOptions && { errorToastOptions }),
         onUnhandledEvent,
         getAbortController: (abortController) => {
           workflowEventsAbortControllerRef.current = abortController

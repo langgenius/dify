@@ -14,7 +14,7 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useProviderContext } from '@/context/provider-context'
 import { AppSourceType } from '@/service/share'
 import { promptVariablesToUserInputsForm } from '@/utils/model-config'
-import { APP_CHAT_WITH_MULTIPLE_MODEL } from '../types'
+import { APP_CHAT_WITH_MULTIPLE_MODEL, getDebugErrorToastOptions } from '../types'
 
 type TextGenerationItemProps = {
   modelAndParameter: ModelAndParameter
@@ -35,6 +35,7 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({ modelAndParameter }) 
     completionPromptConfig,
     dataSets,
     datasetConfigs,
+    mode,
   } = useDebugConfigurationContext()
   const { textGenerationModelList } = useProviderContext()
   const features = useFeatures((s) => s.features)
@@ -76,7 +77,9 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({ modelAndParameter }) 
     },
     system_parameters: modelConfig.system_parameters,
   }
-  const { completion, handleSend, isResponding, messageId } = useTextGeneration()
+  const { completion, handleSend, isResponding, messageId } = useTextGeneration({
+    errorToastOptions: getDebugErrorToastOptions(mode),
+  })
 
   const doSend: OnSend = (message, files) => {
     const currentProvider = textGenerationModelList.find(

@@ -3,6 +3,7 @@ import type { DefaultModel, FormValue, Model, ModelParameterRule } from '../decl
 import type { ParameterValue } from './parameter-item'
 import type { TriggerProps } from './types'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
+import type { ModelParameterRulesQueryOptions } from '@/service/use-common'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useMemo, useState } from 'react'
@@ -41,6 +42,7 @@ export type ModelParameterModalProps = {
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
   modelList?: Model[]
+  errorToastOptions?: ModelParameterRulesQueryOptions['errorToastOptions']
 }
 
 const ModelParameterModal: FC<ModelParameterModalProps> = ({
@@ -61,10 +63,13 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   nodesOutputVars,
   availableNodes,
   modelList,
+  errorToastOptions,
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
-  const { data: parameterRulesData, isLoading } = useModelParameterRules(provider, modelId)
+  const { data: parameterRulesData, isLoading } = useModelParameterRules(provider, modelId, {
+    errorToastOptions,
+  })
   const isRulesLoading = !!provider && !!modelId && isLoading
   const { currentProvider, currentModel, activeTextGenerationModelList } =
     useTextGenerationCurrentProviderAndModelAndModelList({ provider, model: modelId })

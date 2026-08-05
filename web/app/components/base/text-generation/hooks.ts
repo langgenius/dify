@@ -3,7 +3,11 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ssePost } from '@/service/base'
 
-export const useTextGeneration = () => {
+type UseTextGenerationOptions = {
+  errorToastOptions?: Parameters<typeof toast.error>[1]
+}
+
+export const useTextGeneration = ({ errorToastOptions }: UseTextGenerationOptions = {}) => {
   const { t } = useTranslation()
   const [isResponding, setIsResponding] = useState(false)
   const [completion, setCompletion] = useState('')
@@ -41,6 +45,7 @@ export const useTextGeneration = () => {
         onError() {
           setIsResponding(false)
         },
+        ...(errorToastOptions && { errorToastOptions }),
       },
     )
     return true

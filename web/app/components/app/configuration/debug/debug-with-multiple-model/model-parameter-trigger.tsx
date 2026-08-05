@@ -15,6 +15,7 @@ import ModelParameterModal from '@/app/components/header/account-setting/model-p
 import { useCredentialPanelState } from '@/app/components/header/account-setting/model-provider-page/provider-added-card/use-credential-panel-state'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
 import { useProviderContext } from '@/context/provider-context'
+import { getDebugErrorToastOptions } from '../types'
 import { useDebugWithMultipleModelContext } from './context'
 
 type ModelParameterTriggerProps = {
@@ -22,7 +23,7 @@ type ModelParameterTriggerProps = {
 }
 const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({ modelAndParameter }) => {
   const { t } = useTranslation()
-  const { isAdvancedMode } = useDebugConfigurationContext()
+  const { isAdvancedMode, mode } = useDebugConfigurationContext()
   const { multipleModelConfigs, onMultipleModelConfigsChange, onDebugWithMultipleModelChange } =
     useDebugWithMultipleModelContext()
   const { modelProviders } = useProviderContext()
@@ -60,6 +61,7 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({ modelAndParamet
       setModel={handleSelectModel}
       debugWithMultipleModel
       onDebugWithMultipleModelChange={() => onDebugWithMultipleModelChange(modelAndParameter)}
+      errorToastOptions={getDebugErrorToastOptions(mode)}
       renderTrigger={({ open, currentProvider, currentModel }) => {
         const status = deriveModelStatus(
           modelAndParameter.model,

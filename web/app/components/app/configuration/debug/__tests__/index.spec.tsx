@@ -678,6 +678,7 @@ describe('Debug', () => {
       expect(notify).toHaveBeenCalledWith({
         type: 'error',
         message: 'appDebug.otherError.historyNoBeEmpty',
+        position: { top: 60 },
       })
     })
 
@@ -695,6 +696,7 @@ describe('Debug', () => {
       expect(notify).toHaveBeenCalledWith({
         type: 'error',
         message: 'appDebug.otherError.queryNoBeEmpty',
+        position: { top: 60 },
       })
     })
   })
@@ -737,6 +739,7 @@ describe('Debug', () => {
       expect(notify).toHaveBeenCalledWith({
         type: 'error',
         message: 'appDebug.errorMessage.valueOfVarRequired:{"key":"Question"}',
+        position: { top: 60 },
       })
       expect(mockState.mockSendCompletionMessage).not.toHaveBeenCalled()
     })
@@ -846,10 +849,8 @@ describe('Debug', () => {
       fireEvent.click(screen.getByTestId('panel-send'))
 
       await waitFor(() => expect(mockState.mockSendCompletionMessage).toHaveBeenCalledTimes(1))
-      const [, requestData] = (mockState.mockSendCompletionMessage.mock.calls[0] ?? []) as [
-        unknown,
-        any,
-      ]
+      const [, requestData, handlers] = (mockState.mockSendCompletionMessage.mock.calls[0] ??
+        []) as [unknown, any, Record<string, unknown>]
       expect(requestData).toMatchObject({
         inputs: { question: 'hello' },
         model_config: {
@@ -863,6 +864,11 @@ describe('Debug', () => {
       expect(screen.getByTestId('text-generation'))!.toHaveTextContent('final answer')
       expect(screen.getByTestId('text-generation'))!.toHaveAttribute('data-message-id', 'msg-1')
       expect(screen.getByTestId('text-generation'))!.toHaveAttribute('data-tts', 'true')
+      expect(handlers).toEqual(
+        expect.objectContaining({
+          errorToastOptions: { position: { top: 60 } },
+        }),
+      )
     })
 
     it('should notify when sending again while a response is in progress', async () => {

@@ -15,6 +15,7 @@ import {
   ModelTypeEnum,
   PreferredProviderTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { AppModeEnum } from '@/types/app'
 import ModelParameterTrigger from '../model-parameter-trigger'
 
 const mockUseDebugConfigurationContext = vi.fn()
@@ -38,6 +39,7 @@ let capturedModalProps: {
   debugWithMultipleModel: boolean
   onDebugWithMultipleModelChange: () => void
   renderTrigger: (props: RenderTriggerProps) => ReactNode
+  errorToastOptions?: { position: { top: number } }
 } | null = null
 
 vi.mock('@/context/debug-configuration', () => ({
@@ -149,6 +151,7 @@ describe('ModelParameterTrigger', () => {
 
     mockUseDebugConfigurationContext.mockReturnValue({
       isAdvancedMode: false,
+      mode: AppModeEnum.CHAT,
     })
 
     mockUseDebugWithMultipleModelContext.mockReturnValue({
@@ -193,6 +196,7 @@ describe('ModelParameterTrigger', () => {
       expect(capturedModalProps?.modelId).toBe('claude-3')
       expect(capturedModalProps?.completionParams).toEqual({ max_tokens: 1000 })
       expect(capturedModalProps?.debugWithMultipleModel).toBe(true)
+      expect(capturedModalProps?.errorToastOptions).toEqual({ position: { top: 60 } })
     })
 
     it('should pass isAdvancedMode from context', () => {

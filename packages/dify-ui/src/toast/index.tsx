@@ -9,7 +9,11 @@ import type * as React from 'react'
 import { Toast as BaseToast } from '@base-ui/react/toast'
 import { cn } from '../cn'
 
-type ToastData = Record<string, never>
+type ToastData = {
+  position?: {
+    top: number
+  }
+}
 type ToastToneStyle = {
   gradientClassName: string
   iconClassName: string
@@ -53,6 +57,7 @@ type ToastAddOptions = Omit<
   ToastManagerAddOptions<ToastData>,
   'data' | 'positionerProps' | 'type'
 > & {
+  position?: ToastData['position']
   type?: ToastType
 }
 
@@ -110,8 +115,11 @@ function getToastRenderType(type?: string): ToastRenderType | undefined {
   return type && isToastRenderType(type) ? type : undefined
 }
 
-function addToast(options: ToastAddOptions) {
-  return toastManager.add(options)
+function addToast({ position, ...options }: ToastAddOptions) {
+  return toastManager.add({
+    ...options,
+    data: { position },
+  })
 }
 
 const showToast: ToastCall = (title, options) =>
@@ -168,6 +176,11 @@ function ToastCard({ toast: toastItem }: { toast: ToastObject<ToastData> }) {
   return (
     <BaseToast.Root
       toast={toastItem}
+      style={
+        toastItem.data?.position
+          ? { top: `calc(${toastItem.data.position.top}px - 1rem)` }
+          : undefined
+      }
       className={cn(
         'pointer-events-auto absolute top-0 right-0 w-full origin-top cursor-default rounded-xl select-none focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
         '[--toast-current-height:var(--toast-frontmost-height,var(--toast-height))] [--toast-gap:8px] [--toast-peek:5px] [--toast-scale:calc(1-(var(--toast-index)*0.0225))] [--toast-shrink:calc(1-var(--toast-scale))]',

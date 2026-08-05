@@ -21,7 +21,11 @@ import {
 } from '@/service/debug'
 import { canFindTool } from '@/utils'
 import { useConfigFromDebugContext, useFormattingChangedSubscription } from '../hooks'
-import { APP_CHAT_WITH_MULTIPLE_MODEL, APP_CHAT_WITH_MULTIPLE_MODEL_RESTART } from '../types'
+import {
+  APP_CHAT_WITH_MULTIPLE_MODEL,
+  APP_CHAT_WITH_MULTIPLE_MODEL_RESTART,
+  getDebugErrorToastOptions,
+} from '../types'
 
 type ChatItemProps = {
   modelAndParameter: ModelAndParameter
@@ -34,7 +38,9 @@ const ChatItem: FC<ChatItemProps> = ({ modelAndParameter }) => {
     inputs,
     collectionList,
     canTestAndRun = false,
+    mode,
   } = useDebugConfigurationContext()
+  const errorToastOptions = getDebugErrorToastOptions(mode)
   const { textGenerationModelList } = useProviderContext()
   const features = useFeatures((s) => s.features)
   const configTemplate = useConfigFromDebugContext()
@@ -106,6 +112,7 @@ const ChatItem: FC<ChatItemProps> = ({ modelAndParameter }) => {
           fetchConversationMessages(appId, conversationId, getAbortController),
         onGetSuggestedQuestions: (responseItemId, getAbortController) =>
           fetchSuggestedQuestions(appId, responseItemId, getAbortController),
+        ...(errorToastOptions && { errorToastOptions }),
       })
     },
     [
@@ -113,6 +120,7 @@ const ChatItem: FC<ChatItemProps> = ({ modelAndParameter }) => {
       canTestAndRun,
       chatList,
       config,
+      errorToastOptions,
       handleSend,
       inputs,
       modelAndParameter.model,

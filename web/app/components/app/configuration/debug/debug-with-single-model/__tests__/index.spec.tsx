@@ -673,6 +673,11 @@ describe('DebugWithSingleModel', () => {
       })
 
       expect(mockSsePost.mock.calls[0]![0]).toBe('apps/test-app-id/chat-messages')
+      expect(mockSsePost.mock.calls[0]![2]).toEqual(
+        expect.objectContaining({
+          errorToastOptions: { position: { top: 60 } },
+        }),
+      )
     })
 
     it('should prevent send when checkCanSend returns false', async () => {
@@ -693,6 +698,26 @@ describe('DebugWithSingleModel', () => {
         expect(checkCanSend).toHaveReturnedWith(false)
       })
       expect(mockSsePost).not.toHaveBeenCalled()
+    })
+
+    it('should position error toasts below the header for agent-chat apps', async () => {
+      mockUseDebugConfigurationContext.mockReturnValue({
+        ...mockDebugConfigContext,
+        mode: AppModeEnum.AGENT_CHAT,
+      })
+
+      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+
+      fireEvent.click(screen.getByTestId('send-button'))
+
+      await waitFor(() => {
+        expect(mockSsePost).toHaveBeenCalled()
+      })
+      expect(mockSsePost.mock.calls[0]![2]).toEqual(
+        expect.objectContaining({
+          errorToastOptions: { position: { top: 60 } },
+        }),
+      )
     })
   })
 

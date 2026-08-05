@@ -1,6 +1,7 @@
 import type { ModelAndParameter } from '../../types'
 import { render, screen } from '@testing-library/react'
 import { TransferMethod } from '@/app/components/base/chat/types'
+import { AppModeEnum } from '@/types/app'
 import { APP_CHAT_WITH_MULTIPLE_MODEL } from '../../types'
 import TextGenerationItem from '../text-generation-item'
 
@@ -36,7 +37,7 @@ vi.mock('@/app/components/base/features/hooks', () => ({
 }))
 
 vi.mock('@/app/components/base/text-generation/hooks', () => ({
-  useTextGeneration: () => mockUseTextGeneration(),
+  useTextGeneration: (...args: unknown[]) => mockUseTextGeneration(...args),
 }))
 
 vi.mock('@/context/event-emitter', () => ({
@@ -94,6 +95,7 @@ const createDefaultMocks = () => {
     completionPromptConfig: {},
     dataSets: [{ id: 'ds-1' }],
     datasetConfigs: { retrieval_model: 'single' },
+    mode: AppModeEnum.COMPLETION,
   })
 
   mockUseProviderContext.mockReturnValue({
@@ -165,6 +167,9 @@ describe('TextGenerationItem', () => {
       renderComponent()
 
       expect(screen.getByTestId('text-generation')).toBeInTheDocument()
+      expect(mockUseTextGeneration).toHaveBeenCalledWith({
+        errorToastOptions: { position: { top: 60 } },
+      })
     })
 
     it('should pass completion content to TextGeneration', () => {

@@ -73,6 +73,31 @@ describe('base', () => {
       expect(toast.error).toHaveBeenCalledWith('Invalid DSL kind')
     })
 
+    it('should apply custom positioning to an error toast', async () => {
+      const errorToastOptions = { position: { top: 60 } } as const
+      const errorResponse = new Response(
+        JSON.stringify({
+          code: 'invalid_param',
+          message: 'Invalid model',
+          status: 400,
+        }),
+        {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+      )
+
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(errorResponse)
+
+      await expect(
+        base('/model-parameter-rules', {}, { errorToastOptions }),
+      ).rejects.toBeInstanceOf(Response)
+
+      expect(toast.error).toHaveBeenCalledWith('Invalid model', errorToastOptions)
+    })
+
     it('should not display an empty error toast when message and error are absent', async () => {
       const errorResponse = new Response(
         JSON.stringify({

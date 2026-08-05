@@ -11,7 +11,6 @@ import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/cha
 import { useFeatures } from '@/app/components/base/features/hooks'
 import { userProfileAtom } from '@/context/account-state'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
-import { useProviderContext } from '@/context/provider-context'
 import {
   fetchConversationMessages,
   fetchSuggestedQuestions,
@@ -19,6 +18,7 @@ import {
 } from '@/service/debug'
 import { canFindTool } from '@/utils'
 import { useConfigFromDebugContext, useFormattingChangedSubscription } from '../hooks'
+import { getDebugErrorToastOptions } from '../types'
 
 type DebugWithSingleModelProps = {
   checkCanSend?: () => boolean
@@ -41,11 +41,12 @@ const DebugWithSingleModel = ({
     inputs,
     collectionList,
     completionParams,
+    mode,
     // isShowVisionConfig,
   } = useDebugConfigurationContext()
+  const errorToastOptions = getDebugErrorToastOptions(mode)
   const debugInputReadonly = !canTestAndRun
   const canManageAnnotation = !readonly && canTestAndRun
-  const { textGenerationModelList } = useProviderContext()
   const features = useFeatures((s) => s.features)
   const configTemplate = useConfigFromDebugContext()
   const config = useMemo(() => {
@@ -121,6 +122,7 @@ const DebugWithSingleModel = ({
           fetchConversationMessages(appId, conversationId, getAbortController),
         onGetSuggestedQuestions: (responseItemId, getAbortController) =>
           fetchSuggestedQuestions(appId, responseItemId, getAbortController),
+        ...(errorToastOptions && { errorToastOptions }),
       })
     },
     [
@@ -130,12 +132,12 @@ const DebugWithSingleModel = ({
       checkCanSend,
       completionParams,
       config,
+      errorToastOptions,
       handleSend,
       inputs,
       modelConfig.mode,
       modelConfig.model_id,
       modelConfig.provider,
-      textGenerationModelList,
     ],
   )
 

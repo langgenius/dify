@@ -14,6 +14,7 @@ let parameterRules: Array<Record<string, unknown>> | undefined = [
 ]
 let isRulesLoading = false
 let isRulesPending = false
+let modelParameterRulesArgs: unknown[] = []
 let currentProvider: Record<string, unknown> | undefined = {
   provider: 'openai',
   label: { en_US: 'OpenAI' },
@@ -48,13 +49,16 @@ vi.mock('@/context/provider-context', () => ({
 }))
 
 vi.mock('@/service/use-common', () => ({
-  useModelParameterRules: () => ({
-    data: {
-      data: parameterRules,
-    },
-    isLoading: isRulesLoading,
-    isPending: isRulesPending,
-  }),
+  useModelParameterRules: (...args: unknown[]) => {
+    modelParameterRulesArgs = args
+    return {
+      data: {
+        data: parameterRules,
+      },
+      isLoading: isRulesLoading,
+      isPending: isRulesPending,
+    }
+  },
 }))
 
 vi.mock('../../hooks', () => ({
@@ -197,6 +201,19 @@ describe('ModelParameterModal', () => {
         ],
       },
     ]
+    modelParameterRulesArgs = []
+  })
+
+  it('should pass error toast options to the parameter-rules query', () => {
+    const errorToastOptions = { position: { top: 60 } } as const
+
+    render(<ModelParameterModal {...defaultProps} errorToastOptions={errorToastOptions} />)
+
+    expect(modelParameterRulesArgs).toEqual([
+      defaultProps.provider,
+      defaultProps.modelId,
+      { errorToastOptions },
+    ])
   })
 
   it('should render trigger and open modal content when trigger is clicked', () => {

@@ -81,6 +81,17 @@ describe('useTextGeneration', () => {
       )
     })
 
+    it('should forward configured error toast options to the stream request', async () => {
+      const errorToastOptions = { position: { top: 60 } } as const
+      const { result } = renderHook(() => useTextGeneration({ errorToastOptions }))
+
+      await act(async () => {
+        await result.current.handleSend('/console/api', { query: 'hello' })
+      })
+
+      expect(getLatestStreamOptions().errorToastOptions).toEqual(errorToastOptions)
+    })
+
     it('should append chunks and update messageId when onData is triggered', async () => {
       const { result } = renderHook(() => useTextGeneration())
 

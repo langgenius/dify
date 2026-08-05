@@ -383,6 +383,27 @@ describe('ssePost and sseGet', () => {
     expect(toast.error).toHaveBeenCalledWith('TypeError: Network failed')
   })
 
+  it('should apply custom positioning to a stream error toast', async () => {
+    const errorToastOptions = { position: { top: 80 } } as const
+    vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new TypeError('Network failed'))
+
+    await ssePost(
+      '/chat-messages',
+      {
+        body: {
+          query: 'hello',
+        },
+      },
+      {
+        errorToastOptions,
+      },
+    )
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('TypeError: Network failed', errorToastOptions)
+    })
+  })
+
   it('should report token refresh failures through onError', async () => {
     const onError = vi.fn()
     refreshAccessTokenOrReLoginMock.mockRejectedValueOnce(new Error('refresh failed'))

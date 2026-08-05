@@ -4,6 +4,7 @@ import { screen } from '@testing-library/react'
 import { TransferMethod } from '@/app/components/base/chat/types'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { renderWithAccountProfile as render } from '@/test/console/account-profile'
+import { AppModeEnum } from '@/types/app'
 import { APP_CHAT_WITH_MULTIPLE_MODEL, APP_CHAT_WITH_MULTIPLE_MODEL_RESTART } from '../../types'
 import ChatItem from '../chat-item'
 
@@ -126,6 +127,7 @@ const createDefaultMocks = () => {
     inputs: { key: 'value' },
     collectionList: [],
     canTestAndRun: true,
+    mode: AppModeEnum.CHAT,
   })
 
   mockUseProviderContext.mockReturnValue({
@@ -338,7 +340,9 @@ describe('ChatItem', () => {
           query: 'Hello',
           inputs: { key: 'value' },
         }),
-        expect.any(Object),
+        expect.objectContaining({
+          errorToastOptions: { position: { top: 60 } },
+        }),
       )
     })
 
@@ -359,6 +363,43 @@ describe('ChatItem', () => {
       })
 
       expect(handleRestart).toHaveBeenCalled()
+    })
+
+    it('should position error toasts below the header for agent-chat apps', () => {
+      const handleSend = vi.fn()
+      mockUseDebugConfigurationContext.mockReturnValue({
+        modelConfig: {
+          configs: { prompt_variables: [] },
+          agentConfig: { tools: [] },
+        },
+        appId: 'app-123',
+        inputs: { key: 'value' },
+        collectionList: [],
+        canTestAndRun: true,
+        mode: AppModeEnum.AGENT_CHAT,
+      })
+      mockUseChat.mockReturnValue({
+        chatList: [{ id: 'msg-1' }],
+        isResponding: false,
+        handleSend,
+        suggestedQuestions: [],
+        handleRestart: vi.fn(),
+      })
+
+      renderComponent()
+
+      eventSubscriptionCallback?.({
+        type: APP_CHAT_WITH_MULTIPLE_MODEL,
+        payload: { message: 'Hello', files: [] },
+      })
+
+      expect(handleSend).toHaveBeenCalledWith(
+        'apps/app-123/chat-messages',
+        expect.any(Object),
+        expect.objectContaining({
+          errorToastOptions: { position: { top: 60 } },
+        }),
+      )
     })
 
     it('should ignore unrelated events', () => {

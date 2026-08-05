@@ -59,6 +59,11 @@ const isAbortError = (error: unknown) => {
 const shouldNotifyStreamError = (error: unknown) =>
   !isAbortError(error) && !String(error).includes('TypeError: Cannot assign to read only property')
 
+const showErrorToast = (message: string, options?: Parameters<typeof toast.error>[1]) => {
+  if (options) toast.error(message, options)
+  else toast.error(message)
+}
+
 export type IOnDataMoreInfo = {
   event?: string
   conversationId?: string
@@ -120,6 +125,7 @@ export type IOtherOptions = {
   needAllResponseContent?: boolean
   deleteContentType?: boolean
   silent?: boolean
+  errorToastOptions?: Parameters<typeof toast.error>[1]
 
   /** If true, behaves like standard fetch: no URL prefix, returns raw Response */
   fetchCompat?: boolean
@@ -556,6 +562,7 @@ export const ssePost = async (
     onDataSourceNodeCompleted,
     onDataSourceNodeError,
     onUnhandledEvent,
+    errorToastOptions,
   } = otherOptions
   const abortController = new AbortController()
 
@@ -617,7 +624,7 @@ export const ssePost = async (
           }
         } else {
           res.json().then((data) => {
-            toast.error(data.message || 'Server Error')
+            showErrorToast(data.message || 'Server Error', errorToastOptions)
           })
           onError?.('Server Error')
         }
@@ -629,7 +636,8 @@ export const ssePost = async (
           if (moreInfo.errorMessage) {
             onError?.(moreInfo.errorMessage, moreInfo.errorCode)
             // These errors can happen when a stream is intentionally stopped or its page is left.
-            if (shouldNotifyStreamError(moreInfo.errorMessage)) toast.error(moreInfo.errorMessage)
+            if (shouldNotifyStreamError(moreInfo.errorMessage))
+              showErrorToast(moreInfo.errorMessage, errorToastOptions)
             return
           }
           onData?.(str, isFirstMessage, moreInfo)
@@ -670,7 +678,7 @@ export const ssePost = async (
     })
     .catch((e) => {
       const errorMessage = String(e)
-      if (shouldNotifyStreamError(e)) toast.error(errorMessage)
+      if (shouldNotifyStreamError(e)) showErrorToast(errorMessage, errorToastOptions)
       onError?.(errorMessage)
     })
 }
@@ -717,6 +725,7 @@ export const sseGet = async (
     onDataSourceNodeCompleted,
     onDataSourceNodeError,
     onUnhandledEvent,
+    errorToastOptions,
   } = otherOptions
   const abortController = new AbortController()
 
@@ -772,7 +781,7 @@ export const sseGet = async (
           }
         } else {
           res.json().then((data) => {
-            toast.error(data.message || 'Server Error')
+            showErrorToast(data.message || 'Server Error', errorToastOptions)
           })
           onError?.('Server Error')
         }
@@ -784,7 +793,8 @@ export const sseGet = async (
           if (moreInfo.errorMessage) {
             onError?.(moreInfo.errorMessage, moreInfo.errorCode)
             // These errors can happen when a stream is intentionally stopped or its page is left.
-            if (shouldNotifyStreamError(moreInfo.errorMessage)) toast.error(moreInfo.errorMessage)
+            if (shouldNotifyStreamError(moreInfo.errorMessage))
+              showErrorToast(moreInfo.errorMessage, errorToastOptions)
             return
           }
           onData?.(str, isFirstMessage, moreInfo)
@@ -825,7 +835,7 @@ export const sseGet = async (
     })
     .catch((e) => {
       const errorMessage = String(e)
-      if (shouldNotifyStreamError(e)) toast.error(errorMessage)
+      if (shouldNotifyStreamError(e)) showErrorToast(errorMessage, errorToastOptions)
       onError?.(errorMessage)
     })
 }
@@ -975,7 +985,7 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
         return Promise.reject(err)
       }
       if (code === 'init_validate_failed' && !silent) {
-        toast.error(message, { timeout: 4000 })
+        toast.error(message, { ...otherOptionsForBaseFetch.errorToastOptions, timeout: 4000 })
         return Promise.reject(err)
       }
       if (code === 'not_init_validated') {
@@ -999,7 +1009,7 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
         return Promise.reject(err)
       }
       if (!silent) {
-        toast.error(message)
+        showErrorToast(message, otherOptionsForBaseFetch.errorToastOptions)
         return Promise.reject(err)
       }
       jumpTo(buildSigninUrlWithRedirect())
