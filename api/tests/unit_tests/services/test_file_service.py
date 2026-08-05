@@ -112,6 +112,20 @@ class TestFileService:
         assert persisted is not None
         assert persisted.hash == result.hash
 
+    @pytest.mark.parametrize("text", ["ASCII text", "包含多字节 UTF-8 文本 🚀"])
+    def test_upload_text_uses_utf8_byte_length(self, text: str, file_service: FileService):
+        with patch("services.file_service.storage") as mock_storage:
+            result = file_service.upload_text(
+                text=text,
+                text_name="test.txt",
+                user_id="user_id",
+                tenant_id="tenant_id",
+            )
+
+        expected_content = text.encode("utf-8")
+        assert result.size == len(expected_content)
+        mock_storage.save.assert_called_once_with(result.key, expected_content)
+
     def test_upload_file_uses_explicit_resource_tenant(self, file_service: FileService):
         user = MagicMock(spec=Account)
         user.id = "user-id"
