@@ -2,6 +2,7 @@ import logging
 import time
 from collections.abc import Generator, Mapping, Sequence
 from typing import Any, TypedDict
+from uuid import uuid4
 
 from configs import dify_config
 from context import capture_current_context
@@ -26,10 +27,10 @@ from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add
 from core.workflow.variable_prefixes import ENVIRONMENT_VARIABLE_NODE_ID
 from extensions.otel.runtime import is_instrument_flag_enabled
 from factories import file_factory
-from graphon.entities import GraphInitParams
 from graphon.entities.graph_config import NodeConfigDictAdapter
 from graphon.errors import WorkflowNodeRunFailedError
 from graphon.file import File
+from graphon.filters import GraphEventFilterContext, ResponseStreamFilter, filter_graph_events
 from graphon.graph import Graph
 from graphon.graph_engine import GraphEngine, GraphEngineConfig
 from graphon.graph_engine.command_channels import CommandChannel, InMemoryChannel
@@ -37,7 +38,8 @@ from graphon.graph_engine.layers import DebugLoggingLayer, ExecutionLimitsLayer
 from graphon.graph_events import GraphEngineEvent, GraphNodeEventBase, GraphRunFailedEvent
 from graphon.nodes import BuiltinNodeTypes
 from graphon.nodes.base.node import Node
-from graphon.runtime import ChildGraphNotFoundError, GraphRuntimeState, VariablePool
+from graphon.nodes.container_effects import ContainerAwaitRequest
+from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from models.workflow import Workflow
 
@@ -45,75 +47,27 @@ logger = logging.getLogger(__name__)
 _file_access_controller = DatabaseFileAccessController()
 
 
-class _WorkflowChildEngineBuilder:
-    tenant_id: str
+def iter_dify_graph_engine_events(
+    engine: GraphEngine,
+    response_stream_filter: ResponseStreamFilter | None = None,
+) -> Generator[GraphEngineEvent, None, None]:
+    """
+    Apply Dify's response streaming compatibility filter to GraphEngine events.
 
-    def __init__(self, *, tenant_id: str) -> None:
-        self.tenant_id = tenant_id
+    Graphon v0.5.0 emits raw variable stream chunks and requires callers to opt
+    into the legacy response-ordered stream behavior that Dify exposes to its
+    workflow runners and tests.
 
-    @staticmethod
-    def _has_node_id(graph_config: Mapping[str, Any], node_id: str) -> bool | None:
-        """
-        Return whether `graph_config["nodes"]` contains the given node id.
-
-        Returns `None` when the nodes payload shape is unexpected, so graph-level
-        validation can surface the original configuration error.
-        """
-        nodes = graph_config.get("nodes")
-        if not isinstance(nodes, list):
-            return None
-
-        for node in nodes:
-            if not isinstance(node, Mapping):
-                return None
-            current_id = node.get("id")
-            if isinstance(current_id, str) and current_id == node_id:
-                return True
-        return False
-
-    def build_child_engine(
-        self,
-        *,
-        workflow_id: str,
-        graph_init_params: GraphInitParams,
-        parent_graph_runtime_state: GraphRuntimeState,
-        root_node_id: str,
-        variable_pool: VariablePool | None = None,
-    ) -> GraphEngine:
-        """Build a child engine with a fresh runtime state and only child-safe layers."""
-        child_graph_runtime_state = GraphRuntimeState(
-            variable_pool=variable_pool if variable_pool is not None else parent_graph_runtime_state.variable_pool,
-            start_at=time.perf_counter(),
-            execution_context=parent_graph_runtime_state.execution_context,
-        )
-        node_factory = DifyNodeFactory(
-            graph_init_params=graph_init_params,
-            graph_runtime_state=child_graph_runtime_state,
-        )
-
-        graph_config = graph_init_params.graph_config
-        has_root_node = self._has_node_id(graph_config=graph_config, node_id=root_node_id)
-        if has_root_node is False:
-            raise ChildGraphNotFoundError(f"child graph root node '{root_node_id}' not found")
-
-        child_graph = Graph.init(
-            graph_config=graph_config,
-            node_factory=node_factory,
-            root_node_id=root_node_id,
-        )
-
-        command_channel = InMemoryChannel()
-        config = GraphEngineConfig()
-        child_engine = GraphEngine(
-            workflow_id=workflow_id,
-            graph=child_graph,
-            graph_runtime_state=child_graph_runtime_state,
-            command_channel=command_channel,
-            config=config,
-            child_engine_builder=self,
-        )
-        child_engine.layer(LLMQuotaLayer(tenant_id=self.tenant_id))
-        return child_engine
+    ``response_stream_filter``, when supplied, must be the same instance a
+    caller intends to persist on pause (see ``PauseStatePersistenceLayer``) so
+    the filter's ``paths_map`` reflects everything the engine has actually
+    streamed for this run.
+    """
+    yield from filter_graph_events(
+        engine.run(),
+        context=GraphEventFilterContext.from_engine(engine),
+        filters=[response_stream_filter or ResponseStreamFilter()],
+    )
 
 
 class _NodeConfigDict(TypedDict):
@@ -151,6 +105,7 @@ class WorkflowEntry:
         variable_pool: VariablePool,
         graph_runtime_state: GraphRuntimeState,
         command_channel: CommandChannel | None = None,
+        response_stream_filter: ResponseStreamFilter | None = None,
     ) -> None:
         """
         Init workflow entry
@@ -167,6 +122,8 @@ class WorkflowEntry:
         :param variable_pool: variable pool
         :param graph_runtime_state: pre-created graph runtime state
         :param command_channel: command channel for external control (optional, defaults to InMemoryChannel)
+        :param response_stream_filter: pre-restored filter for resumed runs (optional, defaults to a fresh
+            ResponseStreamFilter for runs with no prior pause)
         :param thread_pool_id: thread pool id
         """
         # check call depth
@@ -179,9 +136,10 @@ class WorkflowEntry:
             command_channel = InMemoryChannel()
 
         self.command_channel = command_channel
+        self._response_stream_filter = response_stream_filter or ResponseStreamFilter()
         execution_context = capture_current_context()
-        graph_runtime_state.execution_context = execution_context
-        self._child_engine_builder = _WorkflowChildEngineBuilder(tenant_id=tenant_id)
+        # ponytail: Graphon snapshots omit process-local context; use a public rebind API when Graphon exposes one.
+        graph_runtime_state._execution_context = execution_context
         self.graph_engine = GraphEngine(
             workflow_id=workflow_id,
             graph=graph,
@@ -193,7 +151,6 @@ class WorkflowEntry:
                 scale_up_threshold=dify_config.GRAPH_ENGINE_SCALE_UP_THRESHOLD,
                 scale_down_idle_time=dify_config.GRAPH_ENGINE_SCALE_DOWN_IDLE_TIME,
             ),
-            child_engine_builder=self._child_engine_builder,
         )
 
         # Add debug logging layer when in debug mode
@@ -223,8 +180,8 @@ class WorkflowEntry:
         graph_engine = self.graph_engine
 
         try:
-            # run workflow
-            generator = graph_engine.run()
+            # Preserve Dify's response-stream semantics on top of Graphon 0.5.0.
+            generator = iter_dify_graph_engine_events(graph_engine, self._response_stream_filter)
             yield from generator
         except GenerateTaskStoppedError:
             pass
@@ -243,7 +200,7 @@ class WorkflowEntry:
         user_inputs: Mapping[str, Any],
         variable_pool: VariablePool,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
-    ) -> tuple[Node, Generator[GraphNodeEventBase, None, None]]:
+    ) -> tuple[Node, Generator[GraphNodeEventBase | ContainerAwaitRequest, None, None]]:
         """
         Single step run workflow node
         :param workflow: Workflow instance
@@ -257,6 +214,8 @@ class WorkflowEntry:
 
         # Get node type
         node_type = node_config_data.type
+        if node_type in {BuiltinNodeTypes.LOOP, BuiltinNodeTypes.ITERATION}:
+            raise ValueError("Loop and Iteration nodes must use their engine-backed debug endpoints")
         node_version = str(node_config_data.version)
         node_cls = resolve_workflow_node_class(node_type=node_type, node_version=node_version)
 
@@ -391,7 +350,7 @@ class WorkflowEntry:
     @classmethod
     def run_free_node(
         cls, node_data: dict[str, Any], node_id: str, tenant_id: str, user_id: str, user_inputs: dict[str, Any]
-    ) -> tuple[Node, Generator[GraphNodeEventBase, None, None]]:
+    ) -> tuple[Node, Generator[GraphNodeEventBase | ContainerAwaitRequest, None, None]]:
         """
         Run free node
 
@@ -585,14 +544,14 @@ class WorkflowEntry:
                 variable_pool.add([variable_node_id] + variable_key_list, input_value)
 
     @staticmethod
-    def _traced_node_run(node: Node) -> Generator[GraphNodeEventBase, None, None]:
+    def _traced_node_run(node: Node) -> Generator[GraphNodeEventBase | ContainerAwaitRequest, None, None]:
         """
         Wraps a node's run method with OpenTelemetry tracing and returns a generator.
         """
         # Wrap node.run() with ObservabilityLayer hooks to produce node-level spans
         layer = ObservabilityLayer()
         layer.on_graph_start()
-        node.ensure_execution_id()
+        node.bind_execution_id(str(uuid4()))
 
         def _gen():
             error: Exception | None = None

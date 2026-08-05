@@ -1,32 +1,52 @@
 'use client'
 
-import type { ReactNode } from 'react'
-import type { OverlayItemVariant } from '../overlay-shared'
+import type * as React from 'react'
+import type { MenuItemVariant } from '../overlay-shared'
 import type { Placement } from '../placement'
 import { ContextMenu as BaseContextMenu } from '@base-ui/react/context-menu'
 import { cn } from '../cn'
 import {
-  overlayBackdropClassName,
-  overlayDestructiveClassName,
-  overlayIndicatorClassName,
-  overlayLabelClassName,
-  overlayPopupAnimationClassName,
-  overlayPopupBaseClassName,
-  overlayRowClassName,
-  overlaySeparatorClassName,
+  floatingGroupLabelClassName,
+  floatingItemIndicatorClassName,
+  floatingPopupAnimationClassName,
+  floatingSeparatorClassName,
+  menuItemClassName,
+  menuItemDestructiveClassName,
+  menuPopupClassName,
 } from '../overlay-shared'
 import { parsePlacement } from '../placement'
 
-export type { Placement }
+const ContextMenu = BaseContextMenu.Root
+const ContextMenuTrigger = BaseContextMenu.Trigger
+const ContextMenuSub = BaseContextMenu.SubmenuRoot
+const ContextMenuGroup = BaseContextMenu.Group
+type ContextMenuProps = BaseContextMenu.Root.Props
+type ContextMenuActions = BaseContextMenu.Root.Actions
+type ContextMenuTriggerProps = BaseContextMenu.Trigger.Props
+type ContextMenuSubProps = BaseContextMenu.SubmenuRoot.Props
+type ContextMenuGroupProps = BaseContextMenu.Group.Props
+type ContextMenuRadioGroupProps<Value = unknown> = Omit<
+  BaseContextMenu.RadioGroup.Props,
+  'defaultValue' | 'onValueChange' | 'value'
+> & {
+  defaultValue?: Value
+  onValueChange?: (
+    value: Value,
+    eventDetails: BaseContextMenu.RadioGroup.ChangeEventDetails,
+  ) => void
+  value?: Value
+}
+type ContextMenuItemVariant = MenuItemVariant
+// Intentionally no public Backdrop export; Base UI handles context-menu modal dismissal internally.
 
-export const ContextMenu = BaseContextMenu.Root
-export const ContextMenuTrigger = BaseContextMenu.Trigger
-export const ContextMenuSub = BaseContextMenu.SubmenuRoot
-export const ContextMenuGroup = BaseContextMenu.Group
-export const ContextMenuRadioGroup = BaseContextMenu.RadioGroup
+function ContextMenuRadioGroup<Value = unknown>(
+  props: ContextMenuRadioGroupProps<Value>,
+): React.JSX.Element {
+  return <BaseContextMenu.RadioGroup {...props} />
+}
 
 type ContextMenuContentProps = {
-  children: ReactNode
+  children: React.ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number
@@ -36,10 +56,7 @@ type ContextMenuContentProps = {
     BaseContextMenu.Positioner.Props,
     'children' | 'className' | 'side' | 'align' | 'sideOffset' | 'alignOffset'
   >
-  popupProps?: Omit<
-    BaseContextMenu.Popup.Props,
-    'children' | 'className'
-  >
+  popupProps?: Omit<BaseContextMenu.Popup.Props, 'children' | 'className'>
 }
 
 type ContextMenuPopupRenderProps = Required<Pick<ContextMenuContentProps, 'children'>> & {
@@ -50,7 +67,6 @@ type ContextMenuPopupRenderProps = Required<Pick<ContextMenuContentProps, 'child
   popupClassName?: string
   positionerProps?: ContextMenuContentProps['positionerProps']
   popupProps?: ContextMenuContentProps['popupProps']
-  withBackdrop?: boolean
 }
 
 function renderContextMenuPopup({
@@ -62,15 +78,11 @@ function renderContextMenuPopup({
   popupClassName,
   positionerProps,
   popupProps,
-  withBackdrop = false,
 }: ContextMenuPopupRenderProps) {
   const { side, align } = parsePlacement(placement)
 
   return (
     <BaseContextMenu.Portal>
-      {withBackdrop && (
-        <BaseContextMenu.Backdrop className={overlayBackdropClassName} />
-      )}
       <BaseContextMenu.Positioner
         side={side}
         align={align}
@@ -80,11 +92,7 @@ function renderContextMenuPopup({
         {...positionerProps}
       >
         <BaseContextMenu.Popup
-          className={cn(
-            overlayPopupBaseClassName,
-            overlayPopupAnimationClassName,
-            popupClassName,
-          )}
+          className={cn(menuPopupClassName, floatingPopupAnimationClassName, popupClassName)}
           {...popupProps}
         >
           {children}
@@ -94,7 +102,7 @@ function renderContextMenuPopup({
   )
 }
 
-export function ContextMenuContent({
+function ContextMenuContent({
   children,
   placement = 'bottom-start',
   sideOffset = 0,
@@ -113,33 +121,30 @@ export function ContextMenuContent({
     popupClassName,
     positionerProps,
     popupProps,
-    withBackdrop: true,
   })
 }
 
-type ContextMenuItemProps = BaseContextMenu.Item.Props & {
-  variant?: OverlayItemVariant
+type ContextMenuItemProps = Omit<BaseContextMenu.Item.Props, 'className'> & {
+  variant?: ContextMenuItemVariant
+  className?: string
 }
 
-export function ContextMenuItem({
-  className,
-  variant = 'default',
-  ...props
-}: ContextMenuItemProps) {
+function ContextMenuItem({ className, variant = 'default', ...props }: ContextMenuItemProps) {
   return (
     <BaseContextMenu.Item
       data-variant={variant}
-      className={cn(overlayRowClassName, overlayDestructiveClassName, className)}
+      className={cn(menuItemClassName, menuItemDestructiveClassName, className)}
       {...props}
     />
   )
 }
 
-type ContextMenuLinkItemProps = BaseContextMenu.LinkItem.Props & {
-  variant?: OverlayItemVariant
+type ContextMenuLinkItemProps = Omit<BaseContextMenu.LinkItem.Props, 'className'> & {
+  variant?: ContextMenuItemVariant
+  className?: string
 }
 
-export function ContextMenuLinkItem({
+function ContextMenuLinkItem({
   className,
   variant = 'default',
   closeOnClick = true,
@@ -148,44 +153,43 @@ export function ContextMenuLinkItem({
   return (
     <BaseContextMenu.LinkItem
       data-variant={variant}
-      className={cn(overlayRowClassName, overlayDestructiveClassName, className)}
+      className={cn(menuItemClassName, menuItemDestructiveClassName, className)}
       closeOnClick={closeOnClick}
       {...props}
     />
   )
 }
 
-export function ContextMenuRadioItem({
-  className,
-  ...props
-}: BaseContextMenu.RadioItem.Props) {
-  return (
-    <BaseContextMenu.RadioItem
-      className={cn(overlayRowClassName, className)}
-      {...props}
-    />
-  )
+type ContextMenuRadioItemProps<Value = unknown> = Omit<
+  BaseContextMenu.RadioItem.Props,
+  'className' | 'value'
+> & {
+  className?: string
+  value: Value
 }
 
-export function ContextMenuCheckboxItem({
+function ContextMenuRadioItem<Value = unknown>({
   className,
   ...props
-}: BaseContextMenu.CheckboxItem.Props) {
-  return (
-    <BaseContextMenu.CheckboxItem
-      className={cn(overlayRowClassName, className)}
-      {...props}
-    />
-  )
+}: ContextMenuRadioItemProps<Value>) {
+  return <BaseContextMenu.RadioItem className={cn(menuItemClassName, className)} {...props} />
 }
 
-export function ContextMenuCheckboxItemIndicator({
+function ContextMenuCheckboxItem({ className, ...props }: ContextMenuCheckboxItemProps) {
+  return <BaseContextMenu.CheckboxItem className={cn(menuItemClassName, className)} {...props} />
+}
+
+type ContextMenuCheckboxItemProps = Omit<BaseContextMenu.CheckboxItem.Props, 'className'> & {
+  className?: string
+}
+
+function ContextMenuCheckboxItemIndicator({
   className,
   ...props
-}: Omit<BaseContextMenu.CheckboxItemIndicator.Props, 'children'>) {
+}: ContextMenuCheckboxItemIndicatorProps) {
   return (
     <BaseContextMenu.CheckboxItemIndicator
-      className={cn(overlayIndicatorClassName, className)}
+      className={cn(floatingItemIndicatorClassName, className)}
       {...props}
     >
       <span aria-hidden className="i-ri-check-line h-4 w-4" />
@@ -193,13 +197,18 @@ export function ContextMenuCheckboxItemIndicator({
   )
 }
 
-export function ContextMenuRadioItemIndicator({
+type ContextMenuCheckboxItemIndicatorProps = Omit<
+  BaseContextMenu.CheckboxItemIndicator.Props,
+  'children' | 'className'
+> & { className?: string }
+
+function ContextMenuRadioItemIndicator({
   className,
   ...props
-}: Omit<BaseContextMenu.RadioItemIndicator.Props, 'children'>) {
+}: ContextMenuRadioItemIndicatorProps) {
   return (
     <BaseContextMenu.RadioItemIndicator
-      className={cn(overlayIndicatorClassName, className)}
+      className={cn(floatingItemIndicatorClassName, className)}
       {...props}
     >
       <span aria-hidden className="i-ri-check-line h-4 w-4" />
@@ -207,11 +216,17 @@ export function ContextMenuRadioItemIndicator({
   )
 }
 
-type ContextMenuSubTriggerProps = BaseContextMenu.SubmenuTrigger.Props & {
-  variant?: OverlayItemVariant
+type ContextMenuRadioItemIndicatorProps = Omit<
+  BaseContextMenu.RadioItemIndicator.Props,
+  'children' | 'className'
+> & { className?: string }
+
+type ContextMenuSubTriggerProps = Omit<BaseContextMenu.SubmenuTrigger.Props, 'className'> & {
+  variant?: ContextMenuItemVariant
+  className?: string
 }
 
-export function ContextMenuSubTrigger({
+function ContextMenuSubTrigger({
   className,
   variant = 'default',
   children,
@@ -220,17 +235,20 @@ export function ContextMenuSubTrigger({
   return (
     <BaseContextMenu.SubmenuTrigger
       data-variant={variant}
-      className={cn(overlayRowClassName, overlayDestructiveClassName, className)}
+      className={cn(menuItemClassName, menuItemDestructiveClassName, className)}
       {...props}
     >
       {children}
-      <span aria-hidden className="ml-auto i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary" />
+      <span
+        aria-hidden
+        className="ms-auto i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary"
+      />
     </BaseContextMenu.SubmenuTrigger>
   )
 }
 
 type ContextMenuSubContentProps = {
-  children: ReactNode
+  children: React.ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number
@@ -240,7 +258,7 @@ type ContextMenuSubContentProps = {
   popupProps?: ContextMenuContentProps['popupProps']
 }
 
-export function ContextMenuSubContent({
+function ContextMenuSubContent({
   children,
   placement = 'right-start',
   sideOffset = 4,
@@ -262,26 +280,61 @@ export function ContextMenuSubContent({
   })
 }
 
-export function ContextMenuLabel({
-  className,
-  ...props
-}: BaseContextMenu.GroupLabel.Props) {
+type ContextMenuLabelProps = Omit<BaseContextMenu.GroupLabel.Props, 'className'> & {
+  className?: string
+}
+
+function ContextMenuLabel({ className, ...props }: ContextMenuLabelProps) {
   return (
-    <BaseContextMenu.GroupLabel
-      className={cn(overlayLabelClassName, className)}
-      {...props}
-    />
+    <BaseContextMenu.GroupLabel className={cn(floatingGroupLabelClassName, className)} {...props} />
   )
 }
 
-export function ContextMenuSeparator({
-  className,
-  ...props
-}: BaseContextMenu.Separator.Props) {
+type ContextMenuSeparatorProps = Omit<BaseContextMenu.Separator.Props, 'className'> & {
+  className?: string
+}
+
+function ContextMenuSeparator({ className, ...props }: ContextMenuSeparatorProps) {
   return (
-    <BaseContextMenu.Separator
-      className={cn(overlaySeparatorClassName, className)}
-      {...props}
-    />
+    <BaseContextMenu.Separator className={cn(floatingSeparatorClassName, className)} {...props} />
   )
+}
+
+export {
+  ContextMenu,
+  ContextMenuCheckboxItem,
+  ContextMenuCheckboxItemIndicator,
+  ContextMenuContent,
+  ContextMenuGroup,
+  ContextMenuItem,
+  ContextMenuLabel,
+  ContextMenuLinkItem,
+  ContextMenuRadioGroup,
+  ContextMenuRadioItem,
+  ContextMenuRadioItemIndicator,
+  ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuTrigger,
+}
+
+export type {
+  ContextMenuActions,
+  ContextMenuCheckboxItemIndicatorProps,
+  ContextMenuCheckboxItemProps,
+  ContextMenuContentProps,
+  ContextMenuGroupProps,
+  ContextMenuItemProps,
+  ContextMenuLabelProps,
+  ContextMenuLinkItemProps,
+  ContextMenuProps,
+  ContextMenuRadioGroupProps,
+  ContextMenuRadioItemIndicatorProps,
+  ContextMenuRadioItemProps,
+  ContextMenuSeparatorProps,
+  ContextMenuSubContentProps,
+  ContextMenuSubProps,
+  ContextMenuSubTriggerProps,
+  ContextMenuTriggerProps,
 }

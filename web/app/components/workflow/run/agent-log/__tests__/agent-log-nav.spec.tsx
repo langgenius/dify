@@ -1,9 +1,11 @@
 import type { AgentLogItemWithChildren } from '@/types/workflow'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import AgentLogNav from '../agent-log-nav'
+import { AgentLogNav } from '../agent-log-nav'
 
-const createLogItem = (overrides: Partial<AgentLogItemWithChildren> = {}): AgentLogItemWithChildren => ({
+const createLogItem = (
+  overrides: Partial<AgentLogItemWithChildren> = {},
+): AgentLogItemWithChildren => ({
   message_id: 'message-1',
   label: 'Planner',
   children: [],
@@ -29,14 +31,13 @@ describe('AgentLogNav', () => {
     ]
 
     render(
-      <AgentLogNav
-        agentOrToolLogItemStack={stack}
-        onShowAgentOrToolLog={onShowAgentOrToolLog}
-      />,
+      <AgentLogNav agentOrToolLogItemStack={stack} onShowAgentOrToolLog={onShowAgentOrToolLog} />,
     )
 
     await user.click(screen.getByRole('button', { name: /^AGENT$/i }))
-    await user.click(screen.getByRole('button', { name: /^workflow\.nodes\.agent\.strategy\.label$/ }))
+    await user.click(
+      screen.getByRole('button', { name: /^workflow\.nodes\.agent\.strategy\.label$/ }),
+    )
     await user.click(screen.getAllByRole('button')[2]!)
     await user.click(screen.getByText('Tool A'))
 

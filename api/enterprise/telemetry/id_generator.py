@@ -1,3 +1,5 @@
+from typing import override
+
 """Custom OTEL ID Generator for correlation-based trace/span ID derivation.
 
 Uses contextvars for thread-safe correlation_id -> trace_id mapping.
@@ -52,6 +54,7 @@ class CorrelationIdGenerator(IdGenerator):
       parent-child linking), otherwise random
     """
 
+    @override
     def generate_trace_id(self) -> int:
         correlation_id = _correlation_id_context.get()
         if correlation_id:
@@ -61,6 +64,7 @@ class CorrelationIdGenerator(IdGenerator):
                 pass
         return random.getrandbits(128)
 
+    @override
     def generate_span_id(self) -> int:
         source = _span_id_source_context.get()
         if source:

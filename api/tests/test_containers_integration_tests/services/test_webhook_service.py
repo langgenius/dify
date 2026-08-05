@@ -41,7 +41,7 @@ class TestWebhookService:
 
             # Mock feature service
             mock_feature_service.get_system_features.return_value.is_allow_register = True
-            mock_feature_service.get_system_features.return_value.is_allow_create_workspace = True
+            mock_feature_service.is_workspace_creation_allowed.return_value = True
 
             yield {
                 "async_service": mock_async_service,
@@ -63,8 +63,9 @@ class TestWebhookService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
         assert tenant is not None
 
@@ -124,6 +125,9 @@ class TestWebhookService:
             version="1.0",
         )
         db_session_with_containers.add(workflow)
+        db_session_with_containers.flush()
+
+        app.workflow_id = workflow.id
         db_session_with_containers.flush()
 
         # Create webhook trigger

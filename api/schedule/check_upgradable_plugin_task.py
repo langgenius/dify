@@ -8,7 +8,7 @@ from sqlalchemy import select
 import app
 from core.helper.marketplace import fetch_global_plugin_manifest
 from extensions.ext_database import db
-from models.account import TenantPluginAutoUpgradeStrategy
+from models.account import TenantPluginAutoUpgradeStrategy, TenantPluginAutoUpgradeStrategySetting
 from tasks import process_tenant_plugin_autoupgrade_check_task as check_task
 
 logger = logging.getLogger(__name__)
@@ -34,8 +34,7 @@ def check_upgradable_plugin_task():
             TenantPluginAutoUpgradeStrategy.upgrade_time_of_day >= now_seconds_of_day,
             TenantPluginAutoUpgradeStrategy.upgrade_time_of_day
             < now_seconds_of_day + AUTO_UPGRADE_MINIMAL_CHECKING_INTERVAL,
-            TenantPluginAutoUpgradeStrategy.strategy_setting
-            != TenantPluginAutoUpgradeStrategy.StrategySetting.DISABLED,
+            TenantPluginAutoUpgradeStrategy.strategy_setting != TenantPluginAutoUpgradeStrategySetting.DISABLED,
         )
     ).all()
 
@@ -73,6 +72,7 @@ def check_upgradable_plugin_task():
                 strategy.upgrade_mode,
                 strategy.exclude_plugins,
                 strategy.include_plugins,
+                strategy.category,
             )
 
         # Only sleep if batch_interval_time > 0.0001 AND current batch is not the last one

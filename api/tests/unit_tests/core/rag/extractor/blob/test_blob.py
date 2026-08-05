@@ -1,4 +1,5 @@
 from io import BytesIO
+from pathlib import Path
 
 import pytest
 
@@ -10,7 +11,7 @@ class TestBlob:
         with pytest.raises(ValueError, match="Either data or path must be provided"):
             Blob()
 
-    def test_source_property_and_repr_include_path(self, tmp_path):
+    def test_source_property_and_repr_include_path(self, tmp_path: Path):
         file_path = tmp_path / "sample.txt"
         file_path.write_text("hello", encoding="utf-8")
 
@@ -23,7 +24,7 @@ class TestBlob:
         assert Blob.from_data(b"abc").as_string() == "abc"
         assert Blob.from_data("plain-text").as_string() == "plain-text"
 
-    def test_as_string_from_path(self, tmp_path):
+    def test_as_string_from_path(self, tmp_path: Path):
         file_path = tmp_path / "sample.txt"
         file_path.write_text("from-file", encoding="utf-8")
 
@@ -37,7 +38,7 @@ class TestBlob:
         with pytest.raises(ValueError, match="Unable to get string for blob"):
             blob.as_string()
 
-    def test_as_bytes_from_bytes_str_and_path(self, tmp_path):
+    def test_as_bytes_from_bytes_str_and_path(self, tmp_path: Path):
         from_bytes = Blob.from_data(b"abc")
         from_str = Blob.from_data("abc", encoding="utf-8")
 
@@ -55,7 +56,7 @@ class TestBlob:
         with pytest.raises(ValueError, match="Unable to get bytes for blob"):
             blob.as_bytes()
 
-    def test_as_bytes_io_for_bytes_and_path(self, tmp_path):
+    def test_as_bytes_io_for_bytes_and_path(self, tmp_path: Path):
         data_blob = Blob.from_data(b"bytes-io")
         with data_blob.as_bytes_io() as stream:
             assert isinstance(stream, BytesIO)
@@ -74,7 +75,7 @@ class TestBlob:
             with blob.as_bytes_io():
                 pass
 
-    def test_from_path_respects_guessing_and_explicit_mime(self, tmp_path):
+    def test_from_path_respects_guessing_and_explicit_mime(self, tmp_path: Path):
         file_path = tmp_path / "example.txt"
         file_path.write_text("x", encoding="utf-8")
 

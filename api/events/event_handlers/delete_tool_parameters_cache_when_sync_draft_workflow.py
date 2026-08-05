@@ -1,6 +1,7 @@
 import logging
 
 from core.tools.entities.tool_entities import ToolProviderType
+from core.tools.errors import ToolProviderNotFoundError
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
@@ -38,6 +39,14 @@ def handle(sender, **kwargs):
                     identity_id=f"WORKFLOW.{app.id}.{node_data.get('id')}",
                 )
                 manager.delete_tool_parameters_cache()
+            except ToolProviderNotFoundError as exc:
+                logger.info(
+                    "Skipped deleting tool parameters cache for workflow %s node %s "
+                    "because tool provider is missing: %s",
+                    app.id,
+                    node_data.get("id"),
+                    exc,
+                )
             except Exception:
                 # tool dose not exist
                 logger.exception(

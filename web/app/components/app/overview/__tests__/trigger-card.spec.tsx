@@ -1,23 +1,9 @@
 import type { AppDetailResponse } from '@/models/app'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import { AppModeEnum } from '@/types/app'
+import { AppACLPermission } from '@/utils/permission'
 import TriggerCard from '../trigger-card'
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { count?: number }) => {
-      if (options?.count !== undefined)
-        return `${key} (${options.count})`
-      return key
-    },
-  }),
-}))
-
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceEditor: true,
-  }),
-}))
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.com${path}`,
@@ -57,32 +43,33 @@ vi.mock('@/service/use-tools', () => ({
 
 vi.mock('@/service/use-triggers', () => ({
   useAllTriggerPlugins: () => ({
-    data: [
-      { id: 'plugin-1', name: 'Test Plugin', icon: 'test-icon' },
-    ],
+    data: [{ id: 'plugin-1', name: 'Test Plugin', icon: 'test-icon' }],
   }),
 }))
 
 vi.mock('@/utils', () => ({
+  asyncRunSafe: async <T,>(promise: Promise<T>) => {
+    try {
+      return [null, await promise]
+    } catch (error) {
+      return [error]
+    }
+  },
   canFindTool: () => false,
 }))
 
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: ['app.create_and_management'],
+  }))
+})
+
 vi.mock('@/app/components/workflow/block-icon', () => ({
   default: ({ type }: { type: string }) => (
-    <div data-testid="block-icon" data-type={type}>BlockIcon</div>
-  ),
-}))
-
-vi.mock('@langgenius/dify-ui/switch', () => ({
-  Switch: ({ checked, onCheckedChange, disabled }: { checked: boolean, onCheckedChange: (v: boolean) => void, disabled: boolean }) => (
-    <button
-      data-testid="switch"
-      data-checked={checked ? 'true' : 'false'}
-      data-disabled={disabled ? 'true' : 'false'}
-      onClick={() => onCheckedChange(!checked)}
-    >
-      Switch
-    </button>
+    <div data-testid="block-icon" data-type={type}>
+      BlockIcon
+    </div>
   ),
 }))
 
@@ -99,6 +86,7 @@ describe('TriggerCard', () => {
     updated_at: Date.now(),
     enable_site: true,
     enable_api: true,
+    permission_keys: [AppACLPermission.Edit],
   } as AppDetailResponse
 
   const mockOnToggleResult = vi.fn()
@@ -128,7 +116,9 @@ describe('TriggerCard', () => {
 
       render(<TriggerCard appInfo={mockAppInfo} onToggleResult={mockOnToggleResult} />)
 
-      expect(screen.getByText('overview.triggerInfo.noTriggerAdded')).toBeInTheDocument()
+      expect(
+        screen.getByText(/(?:^|\.)overview\.triggerInfo\.noTriggerAdded(?=$|:)/),
+      ).toBeInTheDocument()
     })
 
     it('should show trigger status description when no triggers', () => {
@@ -136,7 +126,9 @@ describe('TriggerCard', () => {
 
       render(<TriggerCard appInfo={mockAppInfo} onToggleResult={mockOnToggleResult} />)
 
-      expect(screen.getByText('overview.triggerInfo.triggerStatusDescription')).toBeInTheDocument()
+      expect(
+        screen.getByText(/(?:^|\.)overview\.triggerInfo\.triggerStatusDescription(?=$|:)/),
+      ).toBeInTheDocument()
     })
 
     it('should show learn more link when no triggers', () => {
@@ -144,9 +136,14 @@ describe('TriggerCard', () => {
 
       render(<TriggerCard appInfo={mockAppInfo} onToggleResult={mockOnToggleResult} />)
 
-      const learnMoreLink = screen.getByText('overview.triggerInfo.learnAboutTriggers')
+      const learnMoreLink = screen.getByText(
+        /(?:^|\.)overview\.triggerInfo\.learnAboutTriggers(?=$|:)/,
+      )
       expect(learnMoreLink).toBeInTheDocument()
-      expect(learnMoreLink).toHaveAttribute('href', 'https://docs.example.com/use-dify/nodes/trigger/overview')
+      expect(learnMoreLink).toHaveAttribute(
+        'href',
+        'https://docs.example.com/use-dify/nodes/trigger/overview',
+      )
     })
   })
 
@@ -173,7 +170,7 @@ describe('TriggerCard', () => {
     it('should show triggers count message', () => {
       render(<TriggerCard appInfo={mockAppInfo} onToggleResult={mockOnToggleResult} />)
 
-      expect(screen.getByText('overview.triggerInfo.triggersAdded (2)')).toBeInTheDocument()
+      expect(screen.getByText(/overview\.triggerInfo\.triggersAdded.*2/)).toBeInTheDocument()
     })
 
     it('should render trigger titles', () => {
@@ -186,13 +183,13 @@ describe('TriggerCard', () => {
     it('should show running status for enabled triggers', () => {
       render(<TriggerCard appInfo={mockAppInfo} onToggleResult={mockOnToggleResult} />)
 
-      expect(screen.getByText('overview.status.running')).toBeInTheDocument()
+      expect(screen.getByText(/(?:^|\.)overview\.status\.running(?=$|:)/)).toBeInTheDocument()
     })
 
     it('should show disable status for disabled triggers', () => {
       render(<TriggerCard appInfo={mockAppInfo} onToggleResult={mockOnToggleResult} />)
 
-      expect(screen.getByText('overview.status.disable')).toBeInTheDocument()
+      expect(screen.getByText(/(?:^|\.)overview\.status\.disable(?=$|:)/)).toBeInTheDocument()
     })
 
     it('should render block icons for each trigger', () => {
@@ -205,7 +202,7 @@ describe('TriggerCard', () => {
     it('should render switches for each trigger', () => {
       render(<TriggerCard appInfo={mockAppInfo} onToggleResult={mockOnToggleResult} />)
 
-      const switches = screen.getAllByTestId('switch')
+      const switches = screen.getAllByRole('switch')
       expect(switches.length).toBe(2)
     })
   })
@@ -226,7 +223,7 @@ describe('TriggerCard', () => {
     it('should call updateTriggerStatus when toggle is clicked', async () => {
       render(<TriggerCard appInfo={mockAppInfo} onToggleResult={mockOnToggleResult} />)
 
-      const switchBtn = screen.getByTestId('switch')
+      const switchBtn = screen.getByRole('switch')
       fireEvent.click(switchBtn)
 
       await waitFor(() => {
@@ -241,7 +238,7 @@ describe('TriggerCard', () => {
     it('should update trigger status in store optimistically', async () => {
       render(<TriggerCard appInfo={mockAppInfo} onToggleResult={mockOnToggleResult} />)
 
-      const switchBtn = screen.getByTestId('switch')
+      const switchBtn = screen.getByRole('switch')
       fireEvent.click(switchBtn)
 
       await waitFor(() => {
@@ -252,7 +249,7 @@ describe('TriggerCard', () => {
     it('should invalidate app triggers after successful update', async () => {
       render(<TriggerCard appInfo={mockAppInfo} onToggleResult={mockOnToggleResult} />)
 
-      const switchBtn = screen.getByTestId('switch')
+      const switchBtn = screen.getByRole('switch')
       fireEvent.click(switchBtn)
 
       await waitFor(() => {
@@ -263,7 +260,7 @@ describe('TriggerCard', () => {
     it('should call onToggleResult with null on success', async () => {
       render(<TriggerCard appInfo={mockAppInfo} onToggleResult={mockOnToggleResult} />)
 
-      const switchBtn = screen.getByTestId('switch')
+      const switchBtn = screen.getByRole('switch')
       fireEvent.click(switchBtn)
 
       await waitFor(() => {
@@ -277,7 +274,7 @@ describe('TriggerCard', () => {
 
       render(<TriggerCard appInfo={mockAppInfo} onToggleResult={mockOnToggleResult} />)
 
-      const switchBtn = screen.getByTestId('switch')
+      const switchBtn = screen.getByRole('switch')
       fireEvent.click(switchBtn)
 
       await waitFor(() => {
@@ -341,7 +338,7 @@ describe('TriggerCard', () => {
     })
   })
 
-  describe('Editor Permissions', () => {
+  describe('App ACL Permissions', () => {
     it('should render switches for triggers', () => {
       mockTriggers = [
         {
@@ -355,8 +352,36 @@ describe('TriggerCard', () => {
 
       render(<TriggerCard appInfo={mockAppInfo} onToggleResult={mockOnToggleResult} />)
 
-      const switchBtn = screen.getByTestId('switch')
+      const switchBtn = screen.getByRole('switch')
       expect(switchBtn).toBeInTheDocument()
+    })
+
+    it('should disable switches and skip updates without app edit permission', () => {
+      mockTriggers = [
+        {
+          id: 'trigger-1',
+          node_id: 'node-1',
+          title: 'Test Trigger',
+          trigger_type: 'trigger-webhook',
+          status: 'enabled',
+        },
+      ]
+      const appInfoWithoutEditPermission = {
+        ...mockAppInfo,
+        permission_keys: [],
+      } as AppDetailResponse
+
+      render(
+        <TriggerCard appInfo={appInfoWithoutEditPermission} onToggleResult={mockOnToggleResult} />,
+      )
+
+      const switchBtn = screen.getByRole('switch')
+      expect(switchBtn).toHaveAttribute('aria-disabled', 'true')
+
+      fireEvent.click(switchBtn)
+
+      expect(mockUpdateTriggerStatus).not.toHaveBeenCalled()
+      expect(mockSetTriggerStatus).not.toHaveBeenCalled()
     })
   })
 

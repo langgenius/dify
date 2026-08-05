@@ -23,7 +23,10 @@ vi.mock('@/app/components/base/amplitude', () => ({
 describe('useDatasourceActions', () => {
   let store: ReturnType<typeof createDataSourceStore>
   const defaultParams = () => ({
-    datasource: { nodeId: 'node-1', nodeData: { provider_type: DatasourceType.localFile } } as unknown as Datasource,
+    datasource: {
+      nodeId: 'node-1',
+      nodeData: { provider_type: DatasourceType.localFile },
+    } as unknown as Datasource,
     datasourceType: DatasourceType.localFile,
     pipelineId: 'pipeline-1',
     dataSourceStore: store,
@@ -125,7 +128,10 @@ describe('useDatasourceActions', () => {
     const { result } = renderHook(() => useDatasourceActions(params))
     result.current.formRef.current = { submit: vi.fn() }
 
-    const website = { title: 'Page', source_url: 'https://example.com' } as unknown as CrawlResultItem
+    const website = {
+      title: 'Page',
+      source_url: 'https://example.com',
+    } as unknown as CrawlResultItem
     act(() => {
       result.current.handlePreviewWebsiteChange(website)
     })
@@ -146,13 +152,13 @@ describe('useDatasourceActions', () => {
 
     // First call: select all
     act(() => {
-      result.current.handleSelectAll()
+      result.current.handleSelectAll(true)
     })
     expect(store.getState().onlineDocuments).toHaveLength(2)
 
     // Second call: deselect all
     act(() => {
-      result.current.handleSelectAll()
+      result.current.handleSelectAll(false)
     })
     expect(store.getState().onlineDocuments).toEqual([])
   })
@@ -170,7 +176,7 @@ describe('useDatasourceActions', () => {
     const { result } = renderHook(() => useDatasourceActions(params))
 
     act(() => {
-      result.current.handleSelectAll()
+      result.current.handleSelectAll(true)
     })
     // Should select f1, f2 but not b1 (bucket)
     expect(store.getState().selectedFileIds).toEqual(['f1', 'f2'])
@@ -178,8 +184,13 @@ describe('useDatasourceActions', () => {
 
   it('should handle submit with preview mode', async () => {
     const params = defaultParams()
-    store.getState().setLocalFileList([{ file: { id: 'f1', name: 'test.pdf' } }] as unknown as FileItem[])
-    store.getState().previewLocalFileRef.current = { id: 'f1', name: 'test.pdf' } as unknown as DocumentItem
+    store
+      .getState()
+      .setLocalFileList([{ file: { id: 'f1', name: 'test.pdf' } }] as unknown as FileItem[])
+    store.getState().previewLocalFileRef.current = {
+      id: 'f1',
+      name: 'test.pdf',
+    } as unknown as DocumentItem
 
     mockRunPublishedPipeline.mockResolvedValue({ data: { outputs: { tokens: 100 } } })
 
@@ -200,5 +211,36 @@ describe('useDatasourceActions', () => {
       }),
       expect.anything(),
     )
+  })
+
+  it('should not submit process form when processing is not allowed', () => {
+    const params = {
+      ...defaultParams(),
+      canProcess: false,
+    }
+    const submit = vi.fn()
+    const { result } = renderHook(() => useDatasourceActions(params))
+    result.current.formRef.current = { submit }
+
+    act(() => {
+      result.current.onClickProcess()
+    })
+
+    expect(submit).not.toHaveBeenCalled()
+  })
+
+  it('should not run published pipeline when processing is not allowed', () => {
+    const params = {
+      ...defaultParams(),
+      canProcess: false,
+    }
+    const { result } = renderHook(() => useDatasourceActions(params))
+
+    act(() => {
+      result.current.handleSubmit({ query: 'test' })
+    })
+
+    expect(mockRunPublishedPipeline).not.toHaveBeenCalled()
+    expect(params.handleNextStep).not.toHaveBeenCalled()
   })
 })

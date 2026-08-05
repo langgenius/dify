@@ -9,7 +9,7 @@ import { isToolSettingShowOnSatisfied } from '@/app/components/plugins/plugin-de
 import { resetToolSettingFieldValue } from '@/app/components/tools/utils/to-form-schema'
 import ToolFormItem from './item'
 
-type Props = {
+type Props = Readonly<{
   readOnly: boolean
   nodeId: string
   schema: CredentialFormSchema[]
@@ -22,7 +22,7 @@ type Props = {
   showManageInputField?: boolean
   onManageInputField?: () => void
   extraParams?: Record<string, any>
-}
+}>
 
 const ToolForm: FC<Props> = ({
   readOnly,
@@ -69,10 +69,9 @@ const ToolForm: FC<Props> = ({
       onChange({ ...value, ...patch } as ToolVarInputs)
   }, [visibleSchemas, schema, schemaVarsKey, value, onChange])
 
-  return (
-    <div className="space-y-1">
-      {
-        visibleSchemas.map(formSchema => (
+    return (
+      <div className="space-y-1">
+        {visibleSchemas.map(formSchema => (
           <ToolFormItem
             key={formSchema.variable}
             readOnly={readOnly}
@@ -88,9 +87,8 @@ const ToolForm: FC<Props> = ({
             extraParams={extraParams}
             providerType="tool"
           />
-        ))
-      }
-    </div>
+        ))}
+      </div>
   )
 }
 export default ToolForm

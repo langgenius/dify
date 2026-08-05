@@ -13,6 +13,7 @@ from core.helper.name_generator import generate_incremental_name
 from core.helper.position_helper import is_filtered
 from core.helper.provider_cache import NoOpProviderCredentialCache, ToolProviderCredentialsCache
 from core.plugin.entities.plugin_daemon import CredentialType
+from core.plugin.plugin_service import PluginService
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
 from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
 from core.tools.entities.api_entities import (
@@ -29,9 +30,9 @@ from core.tools.utils.encryption import create_provider_encrypter
 from core.tools.utils.system_encryption import decrypt_system_params
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from models.account import Account
 from models.provider_ids import ToolProviderID
 from models.tools import BuiltinToolProvider, ToolOAuthSystemClient, ToolOAuthTenantClient
-from services.plugin.plugin_service import PluginService
 from services.tools.tools_transform_service import ToolTransformService
 
 logger = logging.getLogger(__name__)
@@ -206,6 +207,9 @@ class BuiltinToolManageService:
 
                     db_provider.name = name
 
+                # Visibility is immutable after creation — no update path. To change scope,
+                # create a new credential. partial-member access is handled by RBAC.
+
             except Exception as e:
                 raise ValueError(str(e))
         return {"result": "success"}
@@ -219,6 +223,7 @@ class BuiltinToolManageService:
         credentials: dict[str, Any],
         expires_at: int = -1,
         name: str | None = None,
+        visibility: str | None = None,
     ):
         """
         add builtin tool provider
@@ -277,6 +282,14 @@ class BuiltinToolManageService:
                         cache=NoOpProviderCredentialCache(),
                     )
 
+                    from models.enums import PermissionEnum
+
+                    visibility_enum = PermissionEnum(visibility) if visibility else PermissionEnum.ALL_TEAM
+                    # Plugin credentials only expose only_me / all_team_members at creation;
+                    # partial-member access is handled by workspace RBAC, not per-credential.
+                    if visibility_enum == PermissionEnum.PARTIAL_TEAM:
+                        raise ValueError("partial_members visibility is no longer supported for plugin credentials")
+
                     db_provider = BuiltinToolProvider(
                         tenant_id=tenant_id,
                         user_id=user_id,
@@ -285,9 +298,11 @@ class BuiltinToolManageService:
                         credential_type=api_type,
                         name=name,
                         expires_at=expires_at if expires_at is not None else -1,
+                        visibility=visibility_enum,
                     )
 
                     session.add(db_provider)
+                    session.flush()
             except Exception as e:
                 raise ValueError(str(e))
 
@@ -312,7 +327,7 @@ class BuiltinToolManageService:
 
     @staticmethod
     def generate_builtin_tool_provider_name(
-        session: Session, tenant_id: str, provider: str, credential_type: CredentialType
+        tenant_id: str, provider: str, credential_type: CredentialType, *, session: Session
     ) -> str:
         db_providers = session.scalars(
             select(BuiltinToolProvider)
@@ -330,24 +345,70 @@ class BuiltinToolManageService:
 
     @staticmethod
     def get_builtin_tool_provider_credentials(
-        tenant_id: str, provider_name: str
+        tenant_id: str,
+        provider_name: str,
+        session: Session,
+        user: Account | None = None,
+        include_credential_ids: list[str] | None = None,
     ) -> list[ToolProviderCredentialApiEntity]:
         """
-        get builtin tool provider credentials
-        """
-        with db.session.no_autoflush:
-            providers = db.session.scalars(
-                select(BuiltinToolProvider)
-                .where(BuiltinToolProvider.tenant_id == tenant_id, BuiltinToolProvider.provider == provider_name)
-                .order_by(BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
-            ).all()
+        get builtin tool provider credentials, filtered by visibility.
 
-            if len(providers) == 0:
+        ``user`` is used to filter the result list by per-credential visibility
+        (only_me / all_team_members / legacy partial_members). When ``None`` the
+        query returns every credential for the tenant — meant for internal /
+        background callers that don't act on behalf of a specific user.
+
+        ``include_credential_ids`` lets callers request specific credential IDs that should be
+        returned even if the visibility filter would normally hide them (e.g. an only_me credential
+        owned by another member which the current workflow/agent node still references). Those
+        rows are marked with ``from_other_member=True`` so the UI can render them as
+        borrowed-from-teammate (selectable but not editable).
+        """
+        from models.credential_permission import CredentialType as CredPermType
+        from services.credential_permission_service import CredentialPermissionService
+
+        with session.no_autoflush:
+            base_filter = (
+                BuiltinToolProvider.tenant_id == tenant_id,
+                BuiltinToolProvider.provider == provider_name,
+            )
+            order = (BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
+            visible_query = select(BuiltinToolProvider).where(*base_filter).order_by(*order)
+            if user is not None:
+                visible_query = CredentialPermissionService.apply_visibility_filter(
+                    visible_query,
+                    model_id_column=BuiltinToolProvider.id,
+                    model_user_id_column=BuiltinToolProvider.user_id,
+                    model_visibility_column=BuiltinToolProvider.visibility,
+                    credential_type=CredPermType.BUILTIN_TOOL_PROVIDER,
+                    user=user,
+                )
+            visible_providers = list(session.scalars(visible_query).all())
+
+            # Fetch any explicitly-included IDs that the visibility filter excluded.
+            borrowed_ids: set[str] = set()
+            borrowed_providers: list[BuiltinToolProvider] = []
+            if include_credential_ids:
+                visible_id_set = {p.id for p in visible_providers}
+                wanted_ids = [cid for cid in include_credential_ids if cid and cid not in visible_id_set]
+                if wanted_ids:
+                    borrowed_query = (
+                        select(BuiltinToolProvider)
+                        .where(*base_filter, BuiltinToolProvider.id.in_(wanted_ids))
+                        .order_by(*order)
+                    )
+                    borrowed_providers = list(session.scalars(borrowed_query).all())
+                    borrowed_ids = {p.id for p in borrowed_providers}
+
+            providers = visible_providers + borrowed_providers
+            if not providers:
                 return []
 
-            default_provider = providers[0]
-            default_provider.is_default = True
-            provider_controller = ToolManager.get_builtin_provider(default_provider.provider, tenant_id)
+            # Only the first visible row should be flagged is_default in the response.
+            if visible_providers:
+                visible_providers[0].is_default = True
+            provider_controller = ToolManager.get_builtin_provider(providers[0].provider, tenant_id)
 
             credentials: list[ToolProviderCredentialApiEntity] = []
             for provider in providers:
@@ -359,17 +420,42 @@ class BuiltinToolManageService:
                     provider=provider,
                     credentials=dict(decrypt_credential),
                 )
+                # Attach visibility, creator, and partial member list to the response entity
+                vis = getattr(provider, "visibility", "all_team_members")
+                vis_str = vis.value if hasattr(vis, "value") else str(vis)
+                credential_entity.visibility = vis_str
+                credential_entity.created_by = getattr(provider, "user_id", "") or ""
+                if vis_str == "partial_members":
+                    credential_entity.partial_member_list = list(
+                        CredentialPermissionService.get_partial_member_list(
+                            provider.id, CredPermType.BUILTIN_TOOL_PROVIDER, session=session
+                        )
+                    )
+                if provider.id in borrowed_ids:
+                    credential_entity.from_other_member = True
                 credentials.append(credential_entity)
             return credentials
 
     @staticmethod
-    def get_builtin_tool_provider_credential_info(tenant_id: str, provider: str) -> ToolProviderCredentialInfoApiEntity:
+    def get_builtin_tool_provider_credential_info(
+        tenant_id: str,
+        provider: str,
+        session: Session,
+        user: Account | None = None,
+        include_credential_ids: list[str] | None = None,
+    ) -> ToolProviderCredentialInfoApiEntity:
         """
         get builtin tool provider credential info
         """
         provider_controller = ToolManager.get_builtin_provider(provider, tenant_id)
         supported_credential_types = provider_controller.get_supported_credential_types()
-        credentials = BuiltinToolManageService.get_builtin_tool_provider_credentials(tenant_id, provider)
+        credentials = BuiltinToolManageService.get_builtin_tool_provider_credentials(
+            tenant_id,
+            provider,
+            session=session,
+            user=user,
+            include_credential_ids=include_credential_ids,
+        )
         credential_info = ToolProviderCredentialInfoApiEntity(
             supported_credential_types=supported_credential_types,
             is_oauth_custom_client_enabled=BuiltinToolManageService.is_oauth_custom_client_enabled(tenant_id, provider),

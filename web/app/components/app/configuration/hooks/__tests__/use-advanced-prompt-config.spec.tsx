@@ -1,6 +1,11 @@
-/* eslint-disable ts/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { CONTEXT_PLACEHOLDER_TEXT, HISTORY_PLACEHOLDER_TEXT, PRE_PROMPT_PLACEHOLDER_TEXT, QUERY_PLACEHOLDER_TEXT } from '@/app/components/base/prompt-editor/constants'
+import {
+  CONTEXT_PLACEHOLDER_TEXT,
+  HISTORY_PLACEHOLDER_TEXT,
+  PRE_PROMPT_PLACEHOLDER_TEXT,
+  QUERY_PLACEHOLDER_TEXT,
+} from '@/app/components/base/prompt-editor/constants'
 import { PromptMode, PromptRole } from '@/models/debug'
 import { fetchPromptTemplate } from '@/service/debug'
 import { AppModeEnum, ModelModeType } from '@/types/app'
@@ -19,41 +24,50 @@ describe('useAdvancedPromptConfig', () => {
 
   it('should update the advanced chat prompt and mark user changes', () => {
     const handleUserChangedPrompt = vi.fn()
-    const { result } = renderHook(() => useAdvancedPromptConfig({
-      appMode: AppModeEnum.CHAT,
-      modelModeType: ModelModeType.chat,
-      modelName: 'gpt-4o',
-      promptMode: PromptMode.advanced,
-      prePrompt: '',
-      onUserChangedPrompt: handleUserChangedPrompt,
-      hasSetDataSet: false,
-      completionParams: {},
-      setCompletionParams: vi.fn(),
-      setStop: vi.fn(),
-    }))
+    const { result } = renderHook(() =>
+      useAdvancedPromptConfig({
+        appMode: AppModeEnum.CHAT,
+        modelModeType: ModelModeType.chat,
+        modelName: 'gpt-4o',
+        promptMode: PromptMode.advanced,
+        prePrompt: '',
+        onUserChangedPrompt: handleUserChangedPrompt,
+        hasSetDataSet: false,
+        completionParams: {},
+        setCompletionParams: vi.fn(),
+        setStop: vi.fn(),
+      }),
+    )
 
     act(() => {
-      result.current.setCurrentAdvancedPrompt([{ role: PromptRole.system, text: `hello ${QUERY_PLACEHOLDER_TEXT}` }], true)
+      result.current.setCurrentAdvancedPrompt(
+        [{ role: PromptRole.system, text: `hello ${QUERY_PLACEHOLDER_TEXT}` }],
+        true,
+      )
     })
 
-    expect(result.current.currentAdvancedPrompt).toEqual([{ role: PromptRole.system, text: `hello ${QUERY_PLACEHOLDER_TEXT}` }])
+    expect(result.current.currentAdvancedPrompt).toEqual([
+      { role: PromptRole.system, text: `hello ${QUERY_PLACEHOLDER_TEXT}` },
+    ])
     expect(result.current.hasSetBlockStatus.query).toBe(true)
     expect(handleUserChangedPrompt).toHaveBeenCalledTimes(1)
   })
 
   it('should derive simple prompt block status from the pre-prompt', () => {
-    const { result } = renderHook(() => useAdvancedPromptConfig({
-      appMode: AppModeEnum.COMPLETION,
-      modelModeType: ModelModeType.completion,
-      modelName: 'gpt-4o',
-      promptMode: PromptMode.simple,
-      prePrompt: `${CONTEXT_PLACEHOLDER_TEXT} ${QUERY_PLACEHOLDER_TEXT}`,
-      onUserChangedPrompt: vi.fn(),
-      hasSetDataSet: false,
-      completionParams: {},
-      setCompletionParams: vi.fn(),
-      setStop: vi.fn(),
-    }))
+    const { result } = renderHook(() =>
+      useAdvancedPromptConfig({
+        appMode: AppModeEnum.COMPLETION,
+        modelModeType: ModelModeType.completion,
+        modelName: 'gpt-4o',
+        promptMode: PromptMode.simple,
+        prePrompt: `${CONTEXT_PLACEHOLDER_TEXT} ${QUERY_PLACEHOLDER_TEXT}`,
+        onUserChangedPrompt: vi.fn(),
+        hasSetDataSet: false,
+        completionParams: {},
+        setCompletionParams: vi.fn(),
+        setStop: vi.fn(),
+      }),
+    )
 
     expect(result.current.hasSetBlockStatus).toEqual({
       context: true,
@@ -64,18 +78,20 @@ describe('useAdvancedPromptConfig', () => {
 
   it('should ignore advanced prompt mutations when the prompt mode is simple', () => {
     const handleUserChangedPrompt = vi.fn()
-    const { result } = renderHook(() => useAdvancedPromptConfig({
-      appMode: AppModeEnum.CHAT,
-      modelModeType: ModelModeType.chat,
-      modelName: 'gpt-4o',
-      promptMode: PromptMode.simple,
-      prePrompt: '',
-      onUserChangedPrompt: handleUserChangedPrompt,
-      hasSetDataSet: false,
-      completionParams: {},
-      setCompletionParams: vi.fn(),
-      setStop: vi.fn(),
-    }))
+    const { result } = renderHook(() =>
+      useAdvancedPromptConfig({
+        appMode: AppModeEnum.CHAT,
+        modelModeType: ModelModeType.chat,
+        modelName: 'gpt-4o',
+        promptMode: PromptMode.simple,
+        prePrompt: '',
+        onUserChangedPrompt: handleUserChangedPrompt,
+        hasSetDataSet: false,
+        completionParams: {},
+        setCompletionParams: vi.fn(),
+        setStop: vi.fn(),
+      }),
+    )
 
     act(() => {
       result.current.setCurrentAdvancedPrompt([{ role: PromptRole.system, text: 'ignored' }], true)
@@ -101,18 +117,20 @@ describe('useAdvancedPromptConfig', () => {
       stop: ['END'],
     } as any)
 
-    const { result } = renderHook(() => useAdvancedPromptConfig({
-      appMode: AppModeEnum.COMPLETION,
-      modelModeType: ModelModeType.completion,
-      modelName: 'gpt-4o',
-      promptMode: PromptMode.simple,
-      prePrompt: 'custom prompt',
-      onUserChangedPrompt: vi.fn(),
-      hasSetDataSet: true,
-      completionParams: { temperature: 0.7 },
-      setCompletionParams,
-      setStop: vi.fn(),
-    }))
+    const { result } = renderHook(() =>
+      useAdvancedPromptConfig({
+        appMode: AppModeEnum.COMPLETION,
+        modelModeType: ModelModeType.completion,
+        modelName: 'gpt-4o',
+        promptMode: PromptMode.simple,
+        prePrompt: 'custom prompt',
+        onUserChangedPrompt: vi.fn(),
+        hasSetDataSet: true,
+        completionParams: { temperature: 0.7 },
+        setCompletionParams,
+        setStop: vi.fn(),
+      }),
+    )
 
     await act(async () => {
       await result.current.migrateToDefaultPrompt()
@@ -149,18 +167,20 @@ describe('useAdvancedPromptConfig', () => {
       stop: [],
     } as any)
 
-    const { result } = renderHook(() => useAdvancedPromptConfig({
-      appMode: AppModeEnum.CHAT,
-      modelModeType: ModelModeType.chat,
-      modelName: 'gpt-4o',
-      promptMode: PromptMode.simple,
-      prePrompt: 'system prompt',
-      onUserChangedPrompt: vi.fn(),
-      hasSetDataSet: false,
-      completionParams: {},
-      setCompletionParams: vi.fn(),
-      setStop: vi.fn(),
-    }))
+    const { result } = renderHook(() =>
+      useAdvancedPromptConfig({
+        appMode: AppModeEnum.CHAT,
+        modelModeType: ModelModeType.chat,
+        modelName: 'gpt-4o',
+        promptMode: PromptMode.simple,
+        prePrompt: 'system prompt',
+        onUserChangedPrompt: vi.fn(),
+        hasSetDataSet: false,
+        completionParams: {},
+        setCompletionParams: vi.fn(),
+        setStop: vi.fn(),
+      }),
+    )
 
     await act(async () => {
       await result.current.migrateToDefaultPrompt()
@@ -190,18 +210,20 @@ describe('useAdvancedPromptConfig', () => {
       stop: ['DONE'],
     } as any)
 
-    const { result } = renderHook(() => useAdvancedPromptConfig({
-      appMode: AppModeEnum.CHAT,
-      modelModeType: ModelModeType.completion,
-      modelName: 'gpt-4o',
-      promptMode: PromptMode.advanced,
-      prePrompt: `${HISTORY_PLACEHOLDER_TEXT} prompt`,
-      onUserChangedPrompt: vi.fn(),
-      hasSetDataSet: false,
-      completionParams: {},
-      setCompletionParams,
-      setStop,
-    }))
+    const { result } = renderHook(() =>
+      useAdvancedPromptConfig({
+        appMode: AppModeEnum.CHAT,
+        modelModeType: ModelModeType.completion,
+        modelName: 'gpt-4o',
+        promptMode: PromptMode.advanced,
+        prePrompt: `${HISTORY_PLACEHOLDER_TEXT} prompt`,
+        onUserChangedPrompt: vi.fn(),
+        hasSetDataSet: false,
+        completionParams: {},
+        setCompletionParams,
+        setStop,
+      }),
+    )
 
     act(() => {
       result.current.setCurrentAdvancedPrompt({
@@ -217,7 +239,9 @@ describe('useAdvancedPromptConfig', () => {
       await result.current.migrateToDefaultPrompt(true, ModelModeType.completion)
     })
 
-    expect(result.current.completionPromptConfig.prompt.text).toBe(`history ${HISTORY_PLACEHOLDER_TEXT} prompt`)
+    expect(result.current.completionPromptConfig.prompt.text).toBe(
+      `history ${HISTORY_PLACEHOLDER_TEXT} prompt`,
+    )
     expect(result.current.completionPromptConfig.conversation_histories_role).toEqual({
       user_prefix: 'me:',
       assistant_prefix: 'bot:',
@@ -243,18 +267,20 @@ describe('useAdvancedPromptConfig', () => {
       stop: [],
     } as any)
 
-    const { result } = renderHook(() => useAdvancedPromptConfig({
-      appMode: AppModeEnum.COMPLETION,
-      modelModeType: ModelModeType.completion,
-      modelName: 'gpt-4o',
-      promptMode: PromptMode.advanced,
-      prePrompt: 'converted prompt',
-      onUserChangedPrompt: vi.fn(),
-      hasSetDataSet: false,
-      completionParams: { stop: ['KEEP'] },
-      setCompletionParams: vi.fn(),
-      setStop: vi.fn(),
-    }))
+    const { result } = renderHook(() =>
+      useAdvancedPromptConfig({
+        appMode: AppModeEnum.COMPLETION,
+        modelModeType: ModelModeType.completion,
+        modelName: 'gpt-4o',
+        promptMode: PromptMode.advanced,
+        prePrompt: 'converted prompt',
+        onUserChangedPrompt: vi.fn(),
+        hasSetDataSet: false,
+        completionParams: { stop: ['KEEP'] },
+        setCompletionParams: vi.fn(),
+        setStop: vi.fn(),
+      }),
+    )
 
     await act(async () => {
       await result.current.migrateToDefaultPrompt(true, ModelModeType.chat)
@@ -266,18 +292,20 @@ describe('useAdvancedPromptConfig', () => {
   })
 
   it('should exit early when no app mode is provided', async () => {
-    const { result } = renderHook(() => useAdvancedPromptConfig({
-      appMode: undefined,
-      modelModeType: ModelModeType.chat,
-      modelName: 'gpt-4o',
-      promptMode: PromptMode.simple,
-      prePrompt: '',
-      onUserChangedPrompt: vi.fn(),
-      hasSetDataSet: false,
-      completionParams: {},
-      setCompletionParams: vi.fn(),
-      setStop: vi.fn(),
-    }))
+    const { result } = renderHook(() =>
+      useAdvancedPromptConfig({
+        appMode: undefined,
+        modelModeType: ModelModeType.chat,
+        modelName: 'gpt-4o',
+        promptMode: PromptMode.simple,
+        prePrompt: '',
+        onUserChangedPrompt: vi.fn(),
+        hasSetDataSet: false,
+        completionParams: {},
+        setCompletionParams: vi.fn(),
+        setStop: vi.fn(),
+      }),
+    )
 
     await act(async () => {
       await result.current.migrateToDefaultPrompt()

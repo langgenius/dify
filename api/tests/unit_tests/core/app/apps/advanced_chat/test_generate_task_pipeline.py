@@ -17,7 +17,7 @@ from core.app.entities.queue_entities import (
     QueueWorkflowSucceededEvent,
 )
 from core.app.entities.task_entities import StreamEvent
-from graphon.entities.pause_reason import HumanInputRequired
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from graphon.enums import WorkflowExecutionStatus
 from models.enums import MessageStatus
 from models.execution_extra_content import HumanInputContent

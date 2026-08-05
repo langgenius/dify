@@ -157,7 +157,7 @@ def dispatch_human_input_email_task(form_id: str, node_title: str | None = None,
             if form is None:
                 logger.warning("Human input form not found, form_id=%s", form_id)
                 return
-            features = FeatureService.get_features(form.tenant_id)
+            features = FeatureService.get_features(form.tenant_id, exclude_vector_space=True)
             if not features.human_input_email_delivery_enabled:
                 logger.info(
                     "Human input email delivery is not available for tenant=%s, form_id=%s",

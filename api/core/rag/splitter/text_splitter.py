@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable, Sequence
 from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Literal, override
 
 from core.rag.models.document import BaseDocumentTransformer, Document
 
@@ -148,10 +148,12 @@ class TextSplitter(BaseDocumentTransformer, ABC):
             )
         return cls(length_function=lambda x: [_huggingface_tokenizer_length(text) for text in x], **kwargs)
 
+    @override
     def transform_documents(self, documents: Sequence[Document], **kwargs: Any) -> Sequence[Document]:
         """Transform sequence of documents by splitting them."""
         return self.split_documents(list(documents))
 
+    @override
     async def atransform_documents(self, documents: Sequence[Document], **kwargs: Any) -> Sequence[Document]:
         """Asynchronously transform a sequence of documents by splitting them."""
         raise NotImplementedError
@@ -211,6 +213,7 @@ class TokenTextSplitter(TextSplitter):
         self._allowed_special: Literal["all"] | AbstractSet[str] = allowed_special
         self._disallowed_special: Literal["all"] | AbstractSet[str] = disallowed_special
 
+    @override
     def split_text(self, text: str) -> list[str]:
         def _encode(_text: str) -> list[int]:
             return self._tokenizer.encode(
@@ -287,5 +290,6 @@ class RecursiveCharacterTextSplitter(TextSplitter):
 
         return final_chunks
 
+    @override
     def split_text(self, text: str) -> list[str]:
         return self._split_text(text, self._separators)

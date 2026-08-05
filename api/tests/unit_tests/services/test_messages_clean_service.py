@@ -403,7 +403,7 @@ class TestBillingDisabledPolicyFilterMessageIds:
 class TestCreateMessageCleanPolicy:
     """Unit tests for create_message_clean_policy factory function."""
 
-    @patch("services.retention.conversation.messages_clean_policy.dify_config", autospec=True)
+    @patch("services.retention.conversation.messages_clean_policy.dify_config")
     def test_billing_disabled_returns_billing_disabled_policy(self, mock_config):
         """Test that BILLING_ENABLED=False returns BillingDisabledPolicy."""
         # Arrange
@@ -416,7 +416,7 @@ class TestCreateMessageCleanPolicy:
         assert isinstance(policy, BillingDisabledPolicy)
 
     @patch("services.retention.conversation.messages_clean_policy.BillingService", autospec=True)
-    @patch("services.retention.conversation.messages_clean_policy.dify_config", autospec=True)
+    @patch("services.retention.conversation.messages_clean_policy.dify_config")
     def test_billing_enabled_policy_has_correct_internals(self, mock_config, mock_billing_service):
         """Test that BillingSandboxPolicy is created with correct internal values."""
         # Arrange

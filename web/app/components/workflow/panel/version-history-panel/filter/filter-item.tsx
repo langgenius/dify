@@ -12,11 +12,7 @@ type FilterItemProps = {
   onClick: (value: WorkflowVersionFilterOptions) => void
 }
 
-const FilterItem: FC<FilterItemProps> = ({
-  item,
-  isSelected = false,
-  onClick,
-}) => {
+const FilterItem: FC<FilterItemProps> = ({ item, isSelected = false, onClick }) => {
   return (
     <div
       className="flex cursor-pointer items-center justify-between gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover"
@@ -25,7 +21,7 @@ const FilterItem: FC<FilterItemProps> = ({
       }}
     >
       <div className="flex-1 system-md-regular text-text-primary">{item.name}</div>
-      {isSelected && <RiCheckLine className="h-4 w-4 shrink-0 text-text-accent" />}
+      {isSelected && <RiCheckLine className="size-4 shrink-0 text-text-accent" />}
     </div>
   )
 }

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import abc
 from collections.abc import Mapping
-from typing import Any, Protocol
+from typing import Any, Protocol, override
 
 from graphon.enums import NodeType
 
@@ -29,5 +29,6 @@ class DraftVariableSaverFactory(Protocol):
 
 
 class NoopDraftVariableSaver(DraftVariableSaver):
+    @override
     def save(self, process_data: Mapping[str, Any] | None, outputs: Mapping[str, Any] | None) -> None:
         return None

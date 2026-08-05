@@ -10,10 +10,7 @@ type AppTriggerProps = {
   appDetail?: App
 }
 
-export function AppTrigger({
-  open,
-  appDetail,
-}: AppTriggerProps) {
+export function AppTrigger({ open, appDetail }: AppTriggerProps) {
   const { t } = useTranslation()
 
   return (
@@ -34,17 +31,15 @@ export function AppTrigger({
           imageUrl={appDetail.icon_url}
         />
       )}
-      {appDetail
-        ? (
-            <span title={appDetail.name} className="min-w-0 grow truncate system-sm-medium text-components-input-text-filled">
-              {appDetail.name}
-            </span>
-          )
-        : (
-            <span className="min-w-0 grow truncate system-sm-regular text-components-input-text-placeholder">
-              {t('appSelector.placeholder', { ns: 'app' })}
-            </span>
-          )}
+      {appDetail ? (
+        <span className="min-w-0 grow truncate system-sm-medium text-components-input-text-filled">
+          {appDetail.name}
+        </span>
+      ) : (
+        <span className="min-w-0 grow truncate system-sm-regular text-components-input-text-placeholder">
+          {t(($) => $['appSelector.placeholder'], { ns: 'app' })}
+        </span>
+      )}
       <span
         className={cn(
           'ml-0.5 i-ri-arrow-down-s-line size-4 shrink-0 text-text-quaternary group-hover:text-text-secondary',

@@ -12,9 +12,17 @@ export const zLoginPayload = z.object({
   remember_me: z.boolean().optional().default(false),
 })
 
+/**
+ * SimpleResultOptionalDataResponse
+ */
+export const zSimpleResultOptionalDataResponse = z.object({
+  data: z.string().nullish(),
+  result: z.string(),
+})
+
 export const zPostLoginBody = zLoginPayload
 
 /**
  * Success
  */
-export const zPostLoginResponse = z.record(z.string(), z.unknown())
+export const zPostLoginResponse = zSimpleResultOptionalDataResponse

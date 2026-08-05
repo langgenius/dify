@@ -1,11 +1,12 @@
 import type { Edge, Node } from '../types'
+import { ContextMenu } from '@langgenius/dify-ui/context-menu'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useEffect } from 'react'
 import { useEdges, useNodes, useStoreApi } from 'reactflow'
 import { createEdge, createNode } from '../__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '../__tests__/workflow-test-env'
-import EdgeContextmenu from '../edge-contextmenu'
+import { EdgeContextmenu } from '../edge-contextmenu'
 import { useEdgesInteractions } from '../hooks/use-edges-interactions'
 
 const mockSaveStateToHistory = vi.fn()
@@ -34,16 +35,6 @@ vi.mock('../utils', async (importOriginal) => {
   }
 })
 
-vi.mock('../hooks', async () => {
-  const { useEdgesInteractions } = await import('../hooks/use-edges-interactions')
-  const { usePanelInteractions } = await import('../hooks/use-panel-interactions')
-
-  return {
-    useEdgesInteractions,
-    usePanelInteractions,
-  }
-})
-
 type EdgeRuntimeState = {
   _hovering?: boolean
   _isBundled?: boolean
@@ -61,10 +52,7 @@ const getNodeRuntimeState = (node?: Node): NodeRuntimeState =>
   (node?.data ?? {}) as NodeRuntimeState
 
 function createFlowNodes() {
-  return [
-    createNode({ id: 'n1' }),
-    createNode({ id: 'n2', position: { x: 100, y: 0 } }),
-  ]
+  return [createNode({ id: 'n1' }), createNode({ id: 'n2', position: { x: 100, y: 0 } })]
 }
 
 function createFlowEdges() {
@@ -108,8 +96,7 @@ const EdgeMenuHarness = () => {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'Delete' && e.key !== 'Backspace')
-        return
+      if (e.key !== 'Delete' && e.key !== 'Backspace') return
 
       e.preventDefault()
       handleEdgeDelete()
@@ -127,14 +114,18 @@ const EdgeMenuHarness = () => {
       <button
         type="button"
         aria-label="Right-click edge e1"
-        onContextMenu={e => handleEdgeContextMenu(e as never, edges.find(edge => edge.id === 'e1') as never)}
+        onContextMenu={(e) =>
+          handleEdgeContextMenu(e as never, edges.find((edge) => edge.id === 'e1') as never)
+        }
       >
         edge-e1
       </button>
       <button
         type="button"
         aria-label="Right-click edge e2"
-        onContextMenu={e => handleEdgeContextMenu(e as never, edges.find(edge => edge.id === 'e2') as never)}
+        onContextMenu={(e) =>
+          handleEdgeContextMenu(e as never, edges.find((edge) => edge.id === 'e2') as never)
+        }
       >
         edge-e2
       </button>
@@ -143,12 +134,14 @@ const EdgeMenuHarness = () => {
         aria-label="Remove edge e1"
         onClick={() => {
           const { edges, setEdges } = reactFlowStore.getState()
-          setEdges(edges.filter(edge => edge.id !== 'e1'))
+          setEdges(edges.filter((edge) => edge.id !== 'e1'))
         }}
       >
         remove-e1
       </button>
-      <EdgeContextmenu />
+      <ContextMenu open>
+        <EdgeContextmenu onClose={vi.fn()} />
+      </ContextMenu>
     </div>
   )
 }
@@ -176,13 +169,18 @@ describe('EdgeContextmenu', () => {
     latestEdges = []
   })
 
-  it('should not render when edgeMenu is absent', () => {
-    renderWorkflowFlowComponent(<EdgeContextmenu />, {
-      nodes: createFlowNodes(),
-      edges: createFlowEdges(),
-      hooksStoreProps,
-      reactFlowProps: { fitView: false },
-    })
+  it('should not render when edge context menu target is absent', () => {
+    renderWorkflowFlowComponent(
+      <ContextMenu open>
+        <EdgeContextmenu onClose={vi.fn()} />
+      </ContextMenu>,
+      {
+        nodes: createFlowNodes(),
+        edges: createFlowEdges(),
+        hooksStoreProps,
+        reactFlowProps: { fitView: false },
+      },
+    )
 
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
@@ -209,15 +207,11 @@ describe('EdgeContextmenu', () => {
         }),
       ],
       initialStoreState: {
-        edgeMenu: {
-          clientX: 320,
-          clientY: 180,
-          edgeId: 'e2',
-        },
+        contextMenuTarget: { type: 'edge', edgeId: 'e2' },
       },
     })
 
-    const deleteAction = await screen.findByRole('menuitem', { name: /common:operation\.delete/i })
+    const deleteAction = await screen.findByRole('menuitem', { name: /common\.operation\.delete/i })
 
     await user.click(deleteAction)
 
@@ -225,33 +219,32 @@ describe('EdgeContextmenu', () => {
       expect(latestEdges).toHaveLength(1)
       expect(latestEdges[0]!.id).toBe('e1')
       expect(latestEdges[0]!.selected).toBe(true)
-      expect(store.getState().edgeMenu).toBeUndefined()
+      expect(store.getState().contextMenuTarget).toBeUndefined()
       expect(screen.queryByRole('menu')).not.toBeInTheDocument()
     })
     expect(mockSaveStateToHistory).toHaveBeenCalledWith('EdgeDelete')
   })
 
   it('should not render the menu when the referenced edge no longer exists', () => {
-    renderWorkflowFlowComponent(<EdgeContextmenu />, {
-      nodes: createFlowNodes(),
-      edges: createFlowEdges(),
-      initialStoreState: {
-        edgeMenu: {
-          clientX: 320,
-          clientY: 180,
-          edgeId: 'missing-edge',
+    renderWorkflowFlowComponent(
+      <ContextMenu open>
+        <EdgeContextmenu onClose={vi.fn()} />
+      </ContextMenu>,
+      {
+        nodes: createFlowNodes(),
+        edges: createFlowEdges(),
+        initialStoreState: {
+          contextMenuTarget: { type: 'edge', edgeId: 'missing-edge' },
         },
+        hooksStoreProps,
+        reactFlowProps: { fitView: false },
       },
-      hooksStoreProps,
-      reactFlowProps: { fitView: false },
-    })
+    )
 
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 
-  it('should open the edge menu at the right-click position', async () => {
-    const fromRectSpy = vi.spyOn(DOMRect, 'fromRect')
-
+  it('should open the edge menu for the right-clicked edge', async () => {
     renderEdgeMenu()
 
     fireEvent.contextMenu(screen.getByRole('button', { name: 'Right-click edge e2' }), {
@@ -260,13 +253,9 @@ describe('EdgeContextmenu', () => {
     })
 
     expect(await screen.findByRole('menu'))!.toBeInTheDocument()
-    expect(screen.getByRole('menuitem', { name: /common:operation\.delete/i }))!.toBeInTheDocument()
-    expect(fromRectSpy).toHaveBeenLastCalledWith(expect.objectContaining({
-      x: 320,
-      y: 180,
-      width: 0,
-      height: 0,
-    }))
+    expect(
+      screen.getByRole('menuitem', { name: /common\.operation\.delete/i }),
+    )!.toBeInTheDocument()
   })
 
   it('should delete the right-clicked edge and close the menu when delete is clicked', async () => {
@@ -279,11 +268,11 @@ describe('EdgeContextmenu', () => {
       clientY: 180,
     })
 
-    await user.click(await screen.findByRole('menuitem', { name: /common:operation\.delete/i }))
+    await user.click(await screen.findByRole('menuitem', { name: /common\.operation\.delete/i }))
 
     await waitFor(() => {
       expect(screen.queryByRole('menu')).not.toBeInTheDocument()
-      expect(latestEdges.map(edge => edge.id)).toEqual(['e1'])
+      expect(latestEdges.map((edge) => edge.id)).toEqual(['e1'])
     })
     expect(mockSaveStateToHistory).toHaveBeenCalledWith('EdgeDelete')
   })
@@ -291,37 +280,42 @@ describe('EdgeContextmenu', () => {
   it.each([
     ['Delete', 'Delete'],
     ['Backspace', 'Backspace'],
-  ])('should delete the right-clicked edge with %s after switching from a selected node', async (_, key) => {
-    renderEdgeMenu({
-      nodes: [
-        createNode({
-          id: 'n1',
-          selected: true,
-          data: { selected: true, _isBundled: true },
-        }),
-        createNode({
-          id: 'n2',
-          position: { x: 100, y: 0 },
-        }),
-      ],
-    })
+  ])(
+    'should delete the right-clicked edge with %s after switching from a selected node',
+    async (_, key) => {
+      renderEdgeMenu({
+        nodes: [
+          createNode({
+            id: 'n1',
+            selected: true,
+            data: { selected: true, _isBundled: true },
+          }),
+          createNode({
+            id: 'n2',
+            position: { x: 100, y: 0 },
+          }),
+        ],
+      })
 
-    fireEvent.contextMenu(screen.getByRole('button', { name: 'Right-click edge e2' }), {
-      clientX: 240,
-      clientY: 120,
-    })
+      fireEvent.contextMenu(screen.getByRole('button', { name: 'Right-click edge e2' }), {
+        clientX: 240,
+        clientY: 120,
+      })
 
-    expect(await screen.findByRole('menu'))!.toBeInTheDocument()
+      expect(await screen.findByRole('menu'))!.toBeInTheDocument()
 
-    fireEvent.keyDown(document.body, { key })
+      fireEvent.keyDown(document.body, { key })
 
-    await waitFor(() => {
-      expect(screen.queryByRole('menu')).not.toBeInTheDocument()
-      expect(latestEdges.map(edge => edge.id)).toEqual(['e1'])
-      expect(latestNodes.map(node => node.id)).toEqual(['n1', 'n2'])
-      expect(latestNodes.every(node => !node.selected && !getNodeRuntimeState(node).selected)).toBe(true)
-    })
-  })
+      await waitFor(() => {
+        expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+        expect(latestEdges.map((edge) => edge.id)).toEqual(['e1'])
+        expect(latestNodes.map((node) => node.id)).toEqual(['n1', 'n2'])
+        expect(
+          latestNodes.every((node) => !node.selected && !getNodeRuntimeState(node).selected),
+        ).toBe(true)
+      })
+    },
+  )
 
   it('should keep bundled multi-selection nodes intact when delete runs after right-clicking an edge', async () => {
     renderEdgeMenu({
@@ -351,19 +345,20 @@ describe('EdgeContextmenu', () => {
 
     await waitFor(() => {
       expect(screen.queryByRole('menu')).not.toBeInTheDocument()
-      expect(latestEdges.map(edge => edge.id)).toEqual(['e2'])
+      expect(latestEdges.map((edge) => edge.id)).toEqual(['e2'])
       expect(latestNodes).toHaveLength(2)
-      expect(latestNodes.every(node =>
-        !node.selected
-        && !getNodeRuntimeState(node).selected
-        && !getNodeRuntimeState(node)._isBundled,
-      )).toBe(true)
+      expect(
+        latestNodes.every(
+          (node) =>
+            !node.selected &&
+            !getNodeRuntimeState(node).selected &&
+            !getNodeRuntimeState(node)._isBundled,
+        ),
+      ).toBe(true)
     })
   })
 
   it('should retarget the menu and selected edge when right-clicking a different edge', async () => {
-    const fromRectSpy = vi.spyOn(DOMRect, 'fromRect')
-
     renderEdgeMenu()
     const edgeOneButton = screen.getByLabelText('Right-click edge e1')
     const edgeTwoButton = screen.getByLabelText('Right-click edge e2')
@@ -381,13 +376,9 @@ describe('EdgeContextmenu', () => {
 
     await waitFor(() => {
       expect(screen.getAllByRole('menu')).toHaveLength(1)
-      expect(fromRectSpy).toHaveBeenLastCalledWith(expect.objectContaining({
-        x: 360,
-        y: 240,
-      }))
-      expect(latestEdges.find(edge => edge.id === 'e1')?.selected).toBe(false)
-      expect(latestEdges.find(edge => edge.id === 'e2')?.selected).toBe(true)
-      expect(latestEdges.every(edge => !getEdgeRuntimeState(edge)._isBundled)).toBe(true)
+      expect(latestEdges.find((edge) => edge.id === 'e1')?.selected).toBe(false)
+      expect(latestEdges.find((edge) => edge.id === 'e2')?.selected).toBe(true)
+      expect(latestEdges.every((edge) => !getEdgeRuntimeState(edge)._isBundled)).toBe(true)
     })
   })
 
@@ -400,7 +391,9 @@ describe('EdgeContextmenu', () => {
     })
     expect(await screen.findByRole('menu'))!.toBeInTheDocument()
 
-    fireEvent.click(container.querySelector('button[aria-label="Remove edge e1"]') as HTMLButtonElement)
+    fireEvent.click(
+      container.querySelector('button[aria-label="Remove edge e1"]') as HTMLButtonElement,
+    )
 
     await waitFor(() => {
       expect(screen.queryByRole('menu')).not.toBeInTheDocument()

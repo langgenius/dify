@@ -1,0 +1,37 @@
+*
+
+!api/
+!api/**
+!dify-agent/
+!dify-agent/pyproject.toml
+!dify-agent/README.md
+!dify-agent/src/
+!dify-agent/src/**
+
+# Environment configuration and example
+.env
+*.env.*
+
+# Python related files
+**/__pycache__
+**/*.pyc
+**/.venv/
+**/.mypy_cache/
+**/.ruff_cache/
+**/.import_linter_cache/
+**/.pytest_cache/
+**/.hypothesis/
+
+
+# Upload files and logs
+api/storage/**
+api/logs/
+api/*.log*
+
+# Tests
+api/tests
+
+
+# Editor configuration
+**/.vscode/
+**/.idea/

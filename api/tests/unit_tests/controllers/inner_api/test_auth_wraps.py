@@ -2,10 +2,12 @@
 Unit tests for inner_api auth decorators
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
+from uuid import NAMESPACE_URL, uuid5
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import HTTPException
 
 from configs import dify_config
@@ -13,8 +15,15 @@ from controllers.inner_api.wraps import (
     billing_inner_api_only,
     enterprise_inner_api_only,
     enterprise_inner_api_user_auth,
+    inner_api_only,
     plugin_inner_api_only,
 )
+from models.enums import EndUserType
+from models.model import EndUser
+
+
+def _stable_uuid(value: str) -> str:
+    return str(uuid5(NAMESPACE_URL, value))
 
 
 class TestBillingInnerApiOnly:
@@ -153,6 +162,57 @@ class TestEnterpriseInnerApiOnly:
                     assert exc_info.value.code == 401
 
 
+class TestInnerApiOnly:
+    """Test inner_api_only decorator."""
+
+    def test_should_allow_when_inner_api_enabled_and_valid_key(self, app: Flask):
+        @inner_api_only
+        def protected_view():
+            return "success"
+
+        with app.test_request_context(headers={"X-Inner-Api-Key": "valid_key"}):
+            with patch.object(dify_config, "INNER_API", True):
+                with patch.object(dify_config, "INNER_API_KEY", "valid_key"):
+                    result = protected_view()
+
+        assert result == "success"
+
+    def test_should_return_404_when_inner_api_disabled(self, app: Flask):
+        @inner_api_only
+        def protected_view():
+            return "success"
+
+        with app.test_request_context():
+            with patch.object(dify_config, "INNER_API", False):
+                with pytest.raises(HTTPException) as exc_info:
+                    protected_view()
+                assert exc_info.value.code == 404
+
+    def test_should_return_401_when_api_key_missing(self, app: Flask):
+        @inner_api_only
+        def protected_view():
+            return "success"
+
+        with app.test_request_context(headers={}):
+            with patch.object(dify_config, "INNER_API", True):
+                with patch.object(dify_config, "INNER_API_KEY", "valid_key"):
+                    with pytest.raises(HTTPException) as exc_info:
+                        protected_view()
+                    assert exc_info.value.code == 401
+
+    def test_should_return_401_when_api_key_invalid(self, app: Flask):
+        @inner_api_only
+        def protected_view():
+            return "success"
+
+        with app.test_request_context(headers={"X-Inner-Api-Key": "invalid_key"}):
+            with patch.object(dify_config, "INNER_API", True):
+                with patch.object(dify_config, "INNER_API_KEY", "valid_key"):
+                    with pytest.raises(HTTPException) as exc_info:
+                        protected_view()
+                    assert exc_info.value.code == 401
+
+
 class TestEnterpriseInnerApiUserAuth:
     """Test enterprise_inner_api_user_auth decorator for HMAC-based user authentication"""
 
@@ -205,7 +265,7 @@ class TestEnterpriseInnerApiUserAuth:
         assert result == "no_user"
 
     def test_should_pass_through_when_hmac_signature_invalid(self, app: Flask):
-        """Test that request passes through when HMAC signature is invalid"""
+        """Invalid HMAC auth passes through without opening a database session."""
 
         # Arrange
         @enterprise_inner_api_user_auth
@@ -217,12 +277,15 @@ class TestEnterpriseInnerApiUserAuth:
             headers={"Authorization": "Bearer user123:wrong_signature", "X-Inner-Api-Key": "valid_key"}
         ):
             with patch.object(dify_config, "INNER_API", True):
-                result = protected_view()
+                with patch("controllers.inner_api.wraps.session_factory.create_session") as mock_create_session:
+                    result = protected_view()
 
         # Assert
         assert result == "no_user"
+        mock_create_session.assert_not_called()
 
-    def test_should_inject_user_when_hmac_signature_valid(self, app: Flask):
+    @pytest.mark.parametrize("sqlite_session", [(EndUser,)], indirect=True)
+    def test_should_inject_user_when_hmac_signature_valid(self, app: Flask, sqlite_session: Session):
         """Test that user is injected when HMAC signature is valid"""
         # Arrange
         from base64 import b64encode
@@ -234,27 +297,42 @@ class TestEnterpriseInnerApiUserAuth:
             return kwargs.get("user")
 
         # Calculate valid HMAC signature
-        user_id = "user123"
+        user_id = _stable_uuid("end-user:user123")
         inner_api_key = "valid_key"
         data_to_sign = f"DIFY {user_id}"
         signature = hmac_new(inner_api_key.encode("utf-8"), data_to_sign.encode("utf-8"), sha1)
         valid_signature = b64encode(signature.digest()).decode("utf-8")
 
-        # Create mock user
-        mock_user = MagicMock()
-        mock_user.id = user_id
+        end_user = EndUser(
+            id=user_id,
+            tenant_id=_stable_uuid("tenant:inner-api"),
+            type=EndUserType.BROWSER,
+            name="Inner API User",
+            session_id="inner-api-session",
+        )
+        sqlite_session.add(end_user)
+        sqlite_session.commit()
+        database_session_factory = sessionmaker(
+            bind=sqlite_session.get_bind(),
+            expire_on_commit=False,
+        )
 
         # Act
         with app.test_request_context(
             headers={"Authorization": f"Bearer {user_id}:{valid_signature}", "X-Inner-Api-Key": inner_api_key}
         ):
             with patch.object(dify_config, "INNER_API", True):
-                with patch("controllers.inner_api.wraps.db.session.get") as mock_get:
-                    mock_get.return_value = mock_user
+                with patch(
+                    "controllers.inner_api.wraps.session_factory.create_session",
+                    database_session_factory,
+                ):
                     result = protected_view()
 
         # Assert
-        assert result == mock_user
+        assert isinstance(result, EndUser)
+        assert result.id == end_user.id
+        assert result.tenant_id == end_user.tenant_id
+        assert result.session_id == "inner-api-session"
 
 
 class TestPluginInnerApiOnly:

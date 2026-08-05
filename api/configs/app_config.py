@@ -1,10 +1,11 @@
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, override
 
 from pydantic.fields import FieldInfo
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict, TomlConfigSettingsSource
 
+from enums.deployment_edition import DeploymentEdition
 from libs.file_utils import search_file_upwards
 
 from .deploy import DeploymentConfig
@@ -25,9 +26,11 @@ class RemoteSettingsSourceFactory(PydanticBaseSettingsSource):
     def __init__(self, settings_cls: type[BaseSettings]):
         super().__init__(settings_cls)
 
+    @override
     def get_field_value(self, field: FieldInfo, field_name: str) -> tuple[Any, str, bool]:
         raise NotImplementedError
 
+    @override
     def __call__(self) -> dict[str, Any]:
         current_state = self.current_state
         remote_source_name = current_state.get("REMOTE_SETTINGS_SOURCE_NAME")
@@ -90,6 +93,7 @@ class DifyConfig(
     # Thanks for your concentration and consideration.
 
     @classmethod
+    @override
     def settings_customise_sources(
         cls,
         settings_cls: type[BaseSettings],
@@ -113,3 +117,11 @@ class DifyConfig(
                 ),
             ),
         )
+
+    @property
+    def DEPLOYMENT_EDITION(self) -> DeploymentEdition:
+        if self.EDITION == "CLOUD":
+            return DeploymentEdition.CLOUD
+        if self.ENTERPRISE_ENABLED:
+            return DeploymentEdition.ENTERPRISE
+        return DeploymentEdition.COMMUNITY

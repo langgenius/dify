@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any
+from typing import Any, override
 
 import sqlalchemy
 from pydantic import BaseModel, model_validator
@@ -46,6 +46,7 @@ class TiDBVectorConfig(BaseModel):
 
 
 class TiDBVector(BaseVector):
+    @override
     def get_type(self) -> str:
         return VectorType.TIDB_VECTOR
 
@@ -82,6 +83,7 @@ class TiDBVector(BaseVector):
         self._orm_base = declarative_base()
         self._dimension = 1536
 
+    @override
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         logger.info("create collection and add texts, collection_name: %s", self._collection_name)
         self._create_collection(len(embeddings[0]))
@@ -116,6 +118,7 @@ class TiDBVector(BaseVector):
                 session.execute(create_statement)
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
+    @override
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         table = self._table(len(embeddings[0]))
         ids = self._get_uuids(documents)
@@ -138,10 +141,12 @@ class TiDBVector(BaseVector):
                 conn.execute(insert(table).values(chunks_table_data))
         return ids
 
+    @override
     def text_exists(self, id: str) -> bool:
         result = self.get_ids_by_metadata_field("doc_id", id)
         return bool(result)
 
+    @override
     def delete_by_ids(self, ids: list[str]):
         with Session(self._engine) as session:
             ids_str = ",".join(f"'{doc_id}'" for doc_id in ids)
@@ -166,6 +171,7 @@ class TiDBVector(BaseVector):
             logger.exception("Delete operation failed for collection %s", self._collection_name)
             return False
 
+    @override
     def get_ids_by_metadata_field(self, key: str, value: str):
         with Session(self._engine) as session:
             select_statement = sql_text(
@@ -177,11 +183,13 @@ class TiDBVector(BaseVector):
         else:
             return None
 
+    @override
     def delete_by_metadata_field(self, key: str, value: str):
         ids = self.get_ids_by_metadata_field(key, value)
         if ids:
             self._delete_by_ids(ids)
 
+    @override
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 4)
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
@@ -231,10 +239,12 @@ class TiDBVector(BaseVector):
                 docs.append(Document(page_content=text, metadata=metadata))
         return docs
 
+    @override
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         # tidb doesn't support bm25 search
         return []
 
+    @override
     def delete(self):
         with sessionmaker(bind=self._engine).begin() as session:
             session.execute(sql_text(f"""DROP TABLE IF EXISTS {self._collection_name};"""))
@@ -251,6 +261,7 @@ class TiDBVector(BaseVector):
 
 
 class TiDBVectorFactory(AbstractVectorFactory):
+    @override
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> TiDBVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]

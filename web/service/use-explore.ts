@@ -1,25 +1,24 @@
 import type { App, AppCategory } from '@/models/explore'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useLocale } from '@/context/i18n'
-import { AccessMode } from '@/models/access-control'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { consoleQuery } from './client'
-import { fetchAppList, fetchBanners, fetchInstalledAppList, fetchInstalledAppMeta, fetchInstalledAppParams, getAppAccessModeByAppId, uninstallApp, updatePinStatus } from './explore'
+import { fetchAppList, fetchLearnDifyAppList } from './explore'
 
 type ExploreAppListData = {
   categories: AppCategory[]
   allList: App[]
 }
 
-export const useExploreAppList = () => {
+export const useExploreAppList = (options: { enabled?: boolean } = {}) => {
   const locale = useLocale()
-  const exploreAppsInput = locale
-    ? { query: { language: locale } }
-    : {}
+  const exploreAppsInput = locale ? { query: { language: locale } } : {}
   const exploreAppsLanguage = exploreAppsInput?.query?.language
 
   return useQuery<ExploreAppListData>({
-    queryKey: [...consoleQuery.explore.apps.queryKey({ input: exploreAppsInput }), exploreAppsLanguage],
+    queryKey: [
+      ...consoleQuery.explore.apps.get.queryKey({ input: exploreAppsInput }),
+      exploreAppsLanguage,
+    ],
     queryFn: async () => {
       const { categories, recommended_apps } = await fetchAppList(exploreAppsLanguage)
       return {
@@ -27,114 +26,23 @@ export const useExploreAppList = () => {
         allList: [...recommended_apps].sort((a, b) => a.position - b.position),
       }
     },
+    enabled: options.enabled,
   })
 }
 
-export const useGetInstalledApps = () => {
-  return useQuery({
-    queryKey: consoleQuery.explore.installedApps.queryKey({ input: {} }),
-    queryFn: () => {
-      return fetchInstalledAppList()
-    },
-  })
-}
-
-export const useUninstallApp = () => {
-  const client = useQueryClient()
-  return useMutation({
-    mutationKey: consoleQuery.explore.uninstallInstalledApp.mutationKey(),
-    mutationFn: (appId: string) => uninstallApp(appId),
-    onSuccess: () => {
-      client.invalidateQueries({
-        queryKey: consoleQuery.explore.installedApps.queryKey({ input: {} }),
-      })
-    },
-  })
-}
-
-export const useUpdateAppPinStatus = () => {
-  const client = useQueryClient()
-  return useMutation({
-    mutationKey: consoleQuery.explore.updateInstalledApp.mutationKey(),
-    mutationFn: ({ appId, isPinned }: { appId: string, isPinned: boolean }) => updatePinStatus(appId, isPinned),
-    onSuccess: () => {
-      client.invalidateQueries({
-        queryKey: consoleQuery.explore.installedApps.queryKey({ input: {} }),
-      })
-    },
-  })
-}
-
-export const useGetInstalledAppAccessModeByAppId = (appId: string | null) => {
-  // useQuery (not useSuspenseQuery) to keep this service hook's call contract
-  // unchanged from the zustand era: callers should not need a Suspense boundary.
-  // First-fetch undefined is bridged via `?? false` so the inner queryKey is stable.
-  const { data: systemFeatures } = useQuery(systemFeaturesQueryOptions())
-  const webappAuthEnabled = systemFeatures?.webapp_auth.enabled ?? false
-  const appAccessModeInput = { query: { appId: appId ?? '' } }
-  const installedAppId = appAccessModeInput.query.appId
+export const useLearnDifyAppList = () => {
+  const locale = useLocale()
+  const learnDifyAppsInput = locale ? { query: { language: locale } } : {}
+  const learnDifyAppsLanguage = learnDifyAppsInput?.query?.language
 
   return useQuery({
     queryKey: [
-      ...consoleQuery.explore.appAccessMode.queryKey({ input: appAccessModeInput }),
-      webappAuthEnabled,
-      installedAppId,
+      ...consoleQuery.explore.apps.learnDify.get.queryKey({ input: learnDifyAppsInput }),
+      learnDifyAppsLanguage,
     ],
-    queryFn: () => {
-      if (webappAuthEnabled === false) {
-        return {
-          accessMode: AccessMode.PUBLIC,
-        }
-      }
-      if (!installedAppId)
-        return Promise.reject(new Error('App ID is required to get access mode'))
-
-      return getAppAccessModeByAppId(installedAppId)
-    },
-    enabled: !!installedAppId,
-  })
-}
-
-export const useGetInstalledAppParams = (appId: string | null) => {
-  const installedAppParamsInput = { params: { appId: appId ?? '' } }
-  const installedAppId = installedAppParamsInput.params.appId
-
-  return useQuery({
-    queryKey: [...consoleQuery.explore.installedAppParameters.queryKey({ input: installedAppParamsInput }), installedAppId],
-    queryFn: () => {
-      if (!installedAppId)
-        return Promise.reject(new Error('App ID is required to get app params'))
-      return fetchInstalledAppParams(installedAppId)
-    },
-    enabled: !!installedAppId,
-  })
-}
-
-export const useGetInstalledAppMeta = (appId: string | null) => {
-  const installedAppMetaInput = { params: { appId: appId ?? '' } }
-  const installedAppId = installedAppMetaInput.params.appId
-
-  return useQuery({
-    queryKey: [...consoleQuery.explore.installedAppMeta.queryKey({ input: installedAppMetaInput }), installedAppId],
-    queryFn: () => {
-      if (!installedAppId)
-        return Promise.reject(new Error('App ID is required to get app meta'))
-      return fetchInstalledAppMeta(installedAppId)
-    },
-    enabled: !!installedAppId,
-  })
-}
-
-export const useGetBanners = (locale?: string) => {
-  const bannersInput = locale
-    ? { query: { language: locale } }
-    : {}
-  const bannersLanguage = bannersInput?.query?.language
-
-  return useQuery({
-    queryKey: [...consoleQuery.explore.banners.queryKey({ input: bannersInput }), bannersLanguage],
-    queryFn: () => {
-      return fetchBanners(bannersLanguage)
+    queryFn: async () => {
+      const { recommended_apps } = await fetchLearnDifyAppList(learnDifyAppsLanguage)
+      return [...recommended_apps].sort((a, b) => a.position - b.position)
     },
   })
 }

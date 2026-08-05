@@ -2,25 +2,30 @@
 
 import { Slider as BaseSlider } from '@base-ui/react/slider'
 import { cn } from '../cn'
+import { formLabelClassName } from '../form-control-shared'
 
-export const SliderRoot = BaseSlider.Root
+const SliderRoot = BaseSlider.Root
 
-type SliderRootProps = BaseSlider.Root.Props<number>
+type SliderValue = number
+type SliderRangeValue = readonly number[]
+type SliderRootValue = SliderValue | SliderRangeValue
+type SliderRootProps<Value extends SliderRootValue = SliderRootValue> = BaseSlider.Root.Props<Value>
+
+type SliderLabelProps = Omit<BaseSlider.Label.Props, 'className'> & { className?: string }
+
+function SliderLabel({ className, ...props }: SliderLabelProps) {
+  return <BaseSlider.Label className={cn(formLabelClassName, className)} {...props} />
+}
 
 const sliderControlClassName = cn(
   'relative flex h-5 w-full touch-none items-center select-none',
   'data-disabled:cursor-not-allowed',
 )
 
-type SliderControlProps = BaseSlider.Control.Props
+type SliderControlProps = Omit<BaseSlider.Control.Props, 'className'> & { className?: string }
 
-export function SliderControl({ className, ...props }: SliderControlProps) {
-  return (
-    <BaseSlider.Control
-      className={cn(sliderControlClassName, className)}
-      {...props}
-    />
-  )
+function SliderControl({ className, ...props }: SliderControlProps) {
+  return <BaseSlider.Control className={cn(sliderControlClassName, className)} {...props} />
 }
 
 const sliderTrackClassName = cn(
@@ -28,31 +33,20 @@ const sliderTrackClassName = cn(
   'bg-components-slider-track',
 )
 
-type SliderTrackProps = BaseSlider.Track.Props
+type SliderTrackProps = Omit<BaseSlider.Track.Props, 'className'> & { className?: string }
 
-export function SliderTrack({ className, ...props }: SliderTrackProps) {
-  return (
-    <BaseSlider.Track
-      className={cn(sliderTrackClassName, className)}
-      {...props}
-    />
-  )
+function SliderTrack({ className, ...props }: SliderTrackProps) {
+  return <BaseSlider.Track className={cn(sliderTrackClassName, className)} {...props} />
 }
 
-const sliderIndicatorClassName = cn(
-  'h-full rounded-full',
-  'bg-components-slider-range',
-)
+const sliderIndicatorClassName = cn('h-full rounded-full', 'bg-components-slider-range')
 
-type SliderIndicatorProps = BaseSlider.Indicator.Props
+type SliderIndicatorProps = Omit<BaseSlider.Indicator.Props, 'className'> & {
+  className?: string
+}
 
-export function SliderIndicator({ className, ...props }: SliderIndicatorProps) {
-  return (
-    <BaseSlider.Indicator
-      className={cn(sliderIndicatorClassName, className)}
-      {...props}
-    />
-  )
+function SliderIndicator({ className, ...props }: SliderIndicatorProps) {
+  return <BaseSlider.Indicator className={cn(sliderIndicatorClassName, className)} {...props} />
 }
 
 const sliderThumbClassName = cn(
@@ -60,20 +54,15 @@ const sliderThumbClassName = cn(
   'border-components-slider-knob-border bg-components-slider-knob shadow-sm',
   'transition-[background-color,border-color,box-shadow,opacity] motion-reduce:transition-none',
   'hover:bg-components-slider-knob-hover',
-  'focus-visible:ring-2 focus-visible:ring-components-slider-knob-border-hover focus-visible:ring-offset-0 focus-visible:outline-hidden',
+  'has-focus-visible:ring-2 has-focus-visible:ring-state-accent-solid has-focus-visible:ring-offset-0',
   'active:shadow-md',
   'group-data-disabled/slider:border-components-slider-knob-border group-data-disabled/slider:bg-components-slider-knob-disabled group-data-disabled/slider:shadow-none',
 )
 
-type SliderThumbProps = BaseSlider.Thumb.Props
+type SliderThumbProps = Omit<BaseSlider.Thumb.Props, 'className'> & { className?: string }
 
-export function SliderThumb({ className, ...props }: SliderThumbProps) {
-  return (
-    <BaseSlider.Thumb
-      className={cn(sliderThumbClassName, className)}
-      {...props}
-    />
-  )
+function SliderThumb({ className, ...props }: SliderThumbProps) {
+  return <BaseSlider.Thumb className={cn(sliderThumbClassName, className)} {...props} />
 }
 
 type SliderSlotClassNames = {
@@ -84,21 +73,22 @@ type SliderSlotClassNames = {
 }
 
 type SliderBaseProps = Pick<
-  SliderRootProps,
+  SliderRootProps<SliderValue>,
   'onValueChange' | 'min' | 'max' | 'step' | 'disabled' | 'name'
-> & Pick<SliderThumbProps, 'aria-label' | 'aria-labelledby'> & {
-  className?: string
-  slotClassNames?: SliderSlotClassNames
-}
+> &
+  Pick<SliderThumbProps, 'aria-label' | 'aria-labelledby'> & {
+    className?: string
+    slotClassNames?: SliderSlotClassNames
+  }
 
 type ControlledSliderProps = SliderBaseProps & {
-  value: number
+  value: SliderValue
   defaultValue?: never
 }
 
 type UncontrolledSliderProps = SliderBaseProps & {
   value?: never
-  defaultValue?: number
+  defaultValue?: SliderValue
 }
 
 type SliderProps = ControlledSliderProps | UncontrolledSliderProps
@@ -106,13 +96,12 @@ type SliderProps = ControlledSliderProps | UncontrolledSliderProps
 const sliderRootClassName = 'group/slider relative inline-flex w-full data-disabled:opacity-30'
 
 const getSafeValue = (value: number | undefined, min: number) => {
-  if (value === undefined)
-    return undefined
+  if (value === undefined) return undefined
 
   return Number.isFinite(value) ? value : min
 }
 
-export function Slider({
+function Slider({
   value,
   defaultValue,
   onValueChange,
@@ -136,7 +125,7 @@ export function Slider({
       step={step}
       disabled={disabled}
       name={name}
-      thumbAlignment="edge-client-only"
+      thumbAlignment="center"
       className={cn(sliderRootClassName, className)}
     >
       <SliderControl className={slotClassNames?.control}>
@@ -151,4 +140,16 @@ export function Slider({
       </SliderControl>
     </SliderRoot>
   )
+}
+
+export { Slider, SliderControl, SliderIndicator, SliderLabel, SliderRoot, SliderThumb, SliderTrack }
+
+export type {
+  SliderControlProps,
+  SliderIndicatorProps,
+  SliderLabelProps,
+  SliderProps,
+  SliderRootProps,
+  SliderThumbProps,
+  SliderTrackProps,
 }

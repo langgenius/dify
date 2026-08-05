@@ -8,11 +8,11 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 
-type Props = {
+type Props = Readonly<{
   handleResetChat: () => void
   handleViewChatSettings: () => void
   hideViewChatSettings?: boolean
-}
+}>
 
 const MobileOperationDropdown = ({
   handleResetChat,
@@ -27,43 +27,36 @@ const MobileOperationDropdown = ({
   }, [])
 
   return (
-    <DropdownMenu
-      open={open}
-      onOpenChange={setOpen}
-    >
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
-        render={(
+        render={(props, state) => (
           <ActionButton
-            aria-label={t('operation.more', { ns: 'common' })}
+            {...props}
+            aria-label={t(($) => $['operation.more'], { ns: 'common' })}
             size="l"
-            state={open ? ActionButtonState.Hover : ActionButtonState.Default}
+            state={state.open ? ActionButtonState.Hover : ActionButtonState.Default}
           >
-            <div className="i-ri-more-fill h-[18px] w-[18px]" aria-hidden="true" />
+            <div className="i-ri-more-fill h-4.5 w-4.5" aria-hidden="true" />
           </ActionButton>
         )}
       />
-      <DropdownMenuContent
-        placement="bottom-end"
-        sideOffset={4}
-        popupClassName="min-w-[160px]"
-      >
+      <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-[160px]">
         <DropdownMenuItem
           className="system-md-regular"
           onClick={() => handleMenuAction(handleResetChat)}
         >
-          <span className="grow">{t('chat.resetChat', { ns: 'share' })}</span>
+          <span className="grow">{t(($) => $['chat.resetChat'], { ns: 'share' })}</span>
         </DropdownMenuItem>
         {!hideViewChatSettings && (
           <DropdownMenuItem
             className="system-md-regular"
             onClick={() => handleMenuAction(handleViewChatSettings)}
           >
-            <span className="grow">{t('chat.viewChatSettings', { ns: 'share' })}</span>
+            <span className="grow">{t(($) => $['chat.viewChatSettings'], { ns: 'share' })}</span>
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>
     </DropdownMenu>
-
   )
 }
 

@@ -2,7 +2,7 @@
 
 import asyncio
 import inspect
-from typing import Any
+from typing import Any, override
 
 import pytest
 
@@ -12,15 +12,19 @@ from core.rag.embedding.embedding_base import Embeddings
 class ConcreteEmbeddings(Embeddings):
     """Concrete implementation of Embeddings for testing."""
 
+    @override
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         return [[1.0] * 10 for _ in texts]
 
+    @override
     def embed_multimodal_documents(self, multimodel_documents: list[dict[str, Any]]) -> list[list[float]]:
         return [[1.0] * 10 for _ in multimodel_documents]
 
+    @override
     def embed_query(self, text: str) -> list[float]:
         return [1.0] * 10
 
+    @override
     def embed_multimodal_query(self, multimodel_document: dict[str, Any]) -> list[float]:
         return [1.0] * 10
 

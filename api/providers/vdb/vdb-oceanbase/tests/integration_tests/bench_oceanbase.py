@@ -204,7 +204,9 @@ def main():
     # Re-query doc_id from one of the rows we inserted
     with client.engine.connect() as conn:
         res = conn.execute(text(f"SELECT metadata->>'$.document_id' FROM `{tbl_meta}` LIMIT 1"))
-        doc_id_1000 = res.fetchone()[0]
+        res1 = res.fetchone()
+        assert res1 is not None
+        doc_id_1000 = res1[0]
 
     logger.info("\n[Metadata filter query — 1000 rows, by document_id]")
     times_no_idx = bench_metadata_query(client, tbl_meta, doc_id_1000, with_index=False)

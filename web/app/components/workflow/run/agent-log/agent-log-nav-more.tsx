@@ -13,26 +13,13 @@ type AgentLogNavMoreProps = {
   options: AgentLogItemWithChildren[]
   onShowAgentOrToolLog: (detail?: AgentLogItemWithChildren) => void
 }
-const AgentLogNavMore = ({
-  options,
-  onShowAgentOrToolLog,
-}: AgentLogNavMoreProps) => {
+const AgentLogNavMore = ({ options, onShowAgentOrToolLog }: AgentLogNavMoreProps) => {
   const [open, setOpen] = useState(false)
 
   return (
-    <DropdownMenu
-      open={open}
-      onOpenChange={setOpen}
-    >
-      <DropdownMenuTrigger
-        render={(
-          <Button
-            className="h-6 w-6"
-            variant="ghost-accent"
-          />
-        )}
-      >
-        <RiMoreLine className="h-4 w-4" />
+    <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenuTrigger render={<Button className="size-6" variant="ghost-accent" />}>
+        <RiMoreLine className="size-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         placement="bottom-start"
@@ -40,17 +27,15 @@ const AgentLogNavMore = ({
         alignOffset={-54}
         popupClassName="w-[136px] p-1"
       >
-        {
-          options.map(option => (
-            <DropdownMenuItem
-              key={option.message_id}
-              className="system-md-regular"
-              onClick={() => onShowAgentOrToolLog(option)}
-            >
-              {option.label}
-            </DropdownMenuItem>
-          ))
-        }
+        {options.map((option) => (
+          <DropdownMenuItem
+            key={option.message_id}
+            className="system-md-regular"
+            onClick={() => onShowAgentOrToolLog(option)}
+          >
+            {option.label}
+          </DropdownMenuItem>
+        ))}
       </DropdownMenuContent>
     </DropdownMenu>
   )

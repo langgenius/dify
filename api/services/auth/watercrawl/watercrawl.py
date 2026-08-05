@@ -1,9 +1,14 @@
 import json
+from typing import override
 from urllib.parse import urljoin
 
 import httpx
 
 from services.auth.api_key_auth_base import ApiKeyAuthBase, AuthCredentials
+
+# Explicit bounded timeout for credential-validation requests so a slow or
+# hanging WaterCrawl endpoint cannot block the worker indefinitely.
+_CREDENTIAL_TIMEOUT = httpx.Timeout(10.0)
 
 
 class WatercrawlAuth(ApiKeyAuthBase):
@@ -18,6 +23,7 @@ class WatercrawlAuth(ApiKeyAuthBase):
         if not self.api_key:
             raise ValueError("No API key provided")
 
+    @override
     def validate_credentials(self):
         headers = self._prepare_headers()
         url = urljoin(self.base_url, "/api/v1/core/crawl-requests/")
@@ -31,14 +37,20 @@ class WatercrawlAuth(ApiKeyAuthBase):
         return {"Content-Type": "application/json", "X-API-KEY": self.api_key}
 
     def _get_request(self, url, headers):
-        return httpx.get(url, headers=headers)
+        return httpx.get(url, headers=headers, timeout=_CREDENTIAL_TIMEOUT)
 
     def _handle_error(self, response):
         if response.status_code in {402, 409, 500}:
-            error_message = response.json().get("error", "Unknown error occurred")
+            try:
+                error_message = response.json().get("error", "Unknown error occurred")
+            except ValueError:
+                error_message = response.text or "Unknown error occurred"
             raise Exception(f"Failed to authorize. Status code: {response.status_code}. Error: {error_message}")
         else:
             if response.text:
-                error_message = json.loads(response.text).get("error", "Unknown error occurred")
+                try:
+                    error_message = json.loads(response.text).get("error", "Unknown error occurred")
+                except ValueError:
+                    error_message = response.text
                 raise Exception(f"Failed to authorize. Status code: {response.status_code}. Error: {error_message}")
             raise Exception(f"Unexpected error occurred while trying to authorize. Status code: {response.status_code}")

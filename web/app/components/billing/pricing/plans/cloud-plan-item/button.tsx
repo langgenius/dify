@@ -5,16 +5,22 @@ import { Plan } from '../../../type'
 
 const BUTTON_CLASSNAME = {
   [Plan.sandbox]: {
-    btnClassname: 'bg-components-button-tertiary-bg hover:bg-components-button-tertiary-bg-hover text-text-primary',
-    btnDisabledClassname: 'bg-components-button-tertiary-bg-disabled hover:bg-components-button-tertiary-bg-disabled text-text-disabled',
+    btnClassname:
+      'bg-components-button-tertiary-bg hover:bg-components-button-tertiary-bg-hover text-text-primary',
+    btnDisabledClassname:
+      'bg-components-button-tertiary-bg-disabled hover:bg-components-button-tertiary-bg-disabled text-text-disabled',
   },
   [Plan.professional]: {
-    btnClassname: 'bg-saas-dify-blue-static hover:bg-saas-dify-blue-static-hover text-text-primary-on-surface',
-    btnDisabledClassname: 'bg-components-button-tertiary-bg-disabled hover:bg-components-button-tertiary-bg-disabled text-text-disabled',
+    btnClassname:
+      'bg-saas-dify-blue-static hover:bg-saas-dify-blue-static-hover text-text-primary-on-surface',
+    btnDisabledClassname:
+      'bg-components-button-tertiary-bg-disabled hover:bg-components-button-tertiary-bg-disabled text-text-disabled',
   },
   [Plan.team]: {
-    btnClassname: 'bg-saas-background-inverted hover:bg-saas-background-inverted-hover text-background-default',
-    btnDisabledClassname: 'bg-components-button-tertiary-bg-disabled hover:bg-components-button-tertiary-bg-disabled text-text-disabled',
+    btnClassname:
+      'bg-saas-background-inverted hover:bg-saas-background-inverted-hover text-background-default',
+    btnDisabledClassname:
+      'bg-components-button-tertiary-bg-disabled hover:bg-components-button-tertiary-bg-disabled text-text-disabled',
   },
 }
 
@@ -26,13 +32,7 @@ type ButtonProps = {
   warningText?: string
 }
 
-const Button = ({
-  plan,
-  isPlanDisabled,
-  btnText,
-  handleGetPayUrl,
-  warningText,
-}: ButtonProps) => {
+const Button = ({ plan, isPlanDisabled, btnText, handleGetPayUrl, warningText }: ButtonProps) => {
   return (
     <div className="relative">
       <button
@@ -50,7 +50,7 @@ const Button = ({
         {!isPlanDisabled && <span className="i-ri-arrow-right-line size-5 shrink-0" />}
       </button>
       {warningText && (
-        <div className="absolute top-full right-0 left-0 mt-1.5 text-left system-2xs-medium text-text-tertiary">
+        <div className="absolute inset-x-0 top-full mt-1.5 text-left system-2xs-medium text-text-tertiary">
           {warningText}
         </div>
       )}

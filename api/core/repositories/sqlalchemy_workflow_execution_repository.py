@@ -4,6 +4,7 @@ SQLAlchemy implementation of the WorkflowExecutionRepository.
 
 import json
 import logging
+from typing import override
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
@@ -12,7 +13,6 @@ from core.repositories.factory import WorkflowExecutionRepository
 from graphon.entities import WorkflowExecution
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
-from libs.helper import extract_tenant_id
 from models import (
     Account,
     CreatorUserRole,
@@ -39,6 +39,7 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
     def __init__(
         self,
         session_factory: sessionmaker | Engine,
+        tenant_id: str,
         user: Account | EndUser,
         app_id: str | None,
         triggered_from: WorkflowRunTriggeredFrom | None,
@@ -48,24 +49,24 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
 
         Args:
             session_factory: SQLAlchemy sessionmaker or engine for creating sessions
-            user: Account or EndUser object containing tenant_id, user ID, and role information
+            tenant_id: Tenant that owns the workflow execution
+            user: Account or EndUser used for creator attribution
             app_id: App ID for filtering by application (can be None)
             triggered_from: Source of the execution trigger (DEBUGGING or APP_RUN)
         """
         # If an engine is provided, create a sessionmaker from it
-        if isinstance(session_factory, Engine):
-            self._session_factory = sessionmaker(bind=session_factory, expire_on_commit=False)
-        elif isinstance(session_factory, sessionmaker):
-            self._session_factory = session_factory
-        else:
-            raise ValueError(
-                f"Invalid session_factory type {type(session_factory).__name__}; expected sessionmaker or Engine"
-            )
+        match session_factory:
+            case Engine():
+                self._session_factory = sessionmaker(bind=session_factory, expire_on_commit=False)
+            case sessionmaker():
+                self._session_factory = session_factory
+            case _:
+                raise ValueError(
+                    f"Invalid session_factory type {type(session_factory).__name__}; expected sessionmaker or Engine"
+                )
 
-        # Extract tenant_id from user
-        tenant_id = extract_tenant_id(user)
         if not tenant_id:
-            raise ValueError("User must have a tenant_id or current_tenant_id")
+            raise ValueError("tenant_id is required")
         self._tenant_id = tenant_id
 
         # Store app context
@@ -174,6 +175,7 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
 
         return db_model
 
+    @override
     def save(self, execution: WorkflowExecution):
         """
         Save or update a WorkflowExecution domain entity to the database.

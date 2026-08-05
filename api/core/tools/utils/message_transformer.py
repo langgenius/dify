@@ -3,7 +3,6 @@ import re
 from collections.abc import Generator
 from datetime import date, datetime
 from decimal import Decimal
-from mimetypes import guess_extension
 from typing import Any
 from uuid import UUID
 
@@ -11,7 +10,7 @@ import numpy as np
 import pytz
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
-from core.tools.tool_file_manager import ToolFileManager
+from core.tools.tool_file_manager import ToolFileManager, resolve_extension
 from core.workflow.file_reference import parse_file_reference
 from graphon.file import File, FileTransferMethod, FileType
 from libs.login import current_user
@@ -91,7 +90,8 @@ class ToolFileMessageTransformer:
                         conversation_id=conversation_id,
                     )
 
-                    url = f"/files/tools/{tool_file.id}{guess_extension(tool_file.mimetype) or '.png'}"
+                    extension = resolve_extension(filename=tool_file.name, mimetype=tool_file.mimetype)
+                    url = cls.get_tool_file_url(tool_file_id=tool_file.id, extension=extension)
                     meta = cls._with_tool_file_meta(
                         message.meta,
                         tool_file_id=str(tool_file.id),
@@ -136,7 +136,8 @@ class ToolFileMessageTransformer:
                     filename=filename,
                 )
 
-                url = cls.get_tool_file_url(tool_file_id=tool_file.id, extension=guess_extension(tool_file.mimetype))
+                extension = resolve_extension(filename=tool_file.name, mimetype=tool_file.mimetype)
+                url = cls.get_tool_file_url(tool_file_id=tool_file.id, extension=extension)
                 meta = cls._with_tool_file_meta(meta, tool_file_id=str(tool_file.id))
 
                 # check if file is image
@@ -172,6 +173,8 @@ class ToolFileMessageTransformer:
                                 meta=tool_file_meta,
                             )
                         else:
+                            if file.mime_type and "mime_type" not in tool_file_meta:
+                                tool_file_meta["mime_type"] = file.mime_type
                             yield ToolInvokeMessage(
                                 type=ToolInvokeMessage.MessageType.LINK,
                                 message=ToolInvokeMessage.TextMessage(text=url),

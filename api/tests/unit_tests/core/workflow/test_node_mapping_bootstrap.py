@@ -24,6 +24,7 @@ def test_moved_core_nodes_resolve_after_importing_production_entrypoints():
         from core.workflow import workflow_entry
         from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
         from core.workflow.node_factory import DifyNodeFactory, NODE_TYPE_CLASSES_MAPPING
+        from core.workflow.nodes.agent_v2 import DifyAgentNode
         from graphon.enums import BuiltinNodeTypes
         from services import workflow_service
         from services.rag_pipeline import rag_pipeline
@@ -40,6 +41,11 @@ def test_moved_core_nodes_resolve_after_importing_production_entrypoints():
             assert node_type in NODE_TYPE_CLASSES_MAPPING, node_type
             resolved = DifyNodeFactory._resolve_node_class(node_type=node_type, node_version="1")
             assert resolved.__module__.startswith("core.workflow.nodes."), resolved.__module__
+
+        assert DifyNodeFactory._resolve_node_class(
+            node_type=BuiltinNodeTypes.AGENT,
+            node_version="2",
+        ) is DifyAgentNode
         """
     )
     completed = subprocess.run(

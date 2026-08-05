@@ -2,7 +2,6 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import {
   zGetWorkflowByWorkflowRunIdEventsPath,
   zGetWorkflowByWorkflowRunIdEventsResponse,
@@ -38,6 +37,7 @@ export const events = {
 /**
  * Get workflow pause details
  *
+ * Get workflow pause details
  * GET /console/api/workflow/<workflow_run_id>/pause-details
  *
  * Returns information about why and where the workflow is paused.
@@ -45,7 +45,7 @@ export const events = {
 export const get2 = oc
   .route({
     description:
-      'GET /console/api/workflow/<workflow_run_id>/pause-details\n\nReturns information about why and where the workflow is paused.',
+      'Get workflow pause details\nGET /console/api/workflow/<workflow_run_id>/pause-details\n\nReturns information about why and where the workflow is paused.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkflowByWorkflowRunIdPauseDetails',

@@ -2,7 +2,6 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import {
   zDeleteApiKeyAuthDataSourceByBindingIdPath,
   zDeleteApiKeyAuthDataSourceByBindingIdResponse,
@@ -32,6 +31,7 @@ export const delete_ = oc
     method: 'DELETE',
     operationId: 'deleteApiKeyAuthDataSourceByBindingId',
     path: '/api-key-auth/data-source/{binding_id}',
+    successStatus: 204,
     tags: ['console'],
   })
   .input(z.object({ params: zDeleteApiKeyAuthDataSourceByBindingIdPath }))

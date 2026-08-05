@@ -4,6 +4,10 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type ComplianceDownloadResponse = {
+  [key: string]: unknown
+}
+
 export type GetComplianceDownloadData = {
   body?: never
   path?: never
@@ -14,10 +18,8 @@ export type GetComplianceDownloadData = {
 }
 
 export type GetComplianceDownloadResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ComplianceDownloadResponse
 }
 
-export type GetComplianceDownloadResponse
-  = GetComplianceDownloadResponses[keyof GetComplianceDownloadResponses]
+export type GetComplianceDownloadResponse =
+  GetComplianceDownloadResponses[keyof GetComplianceDownloadResponses]

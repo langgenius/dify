@@ -7,13 +7,13 @@ import os
 import time
 import urllib.parse
 from collections.abc import Generator
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, override
 
 from configs import dify_config
 from core.app.file_access import DatabaseFileAccessController, FileAccessControllerProtocol
 from core.db.session_factory import session_factory
-from core.helper.ssrf_proxy import graphon_ssrf_proxy
-from core.tools.signature import sign_tool_file
+from core.file import remote_fetcher
+from core.tools.signature import bind_file_uri, sign_tool_file_uri
 from core.workflow.file_reference import parse_file_reference
 from extensions.ext_storage import storage
 from graphon.file import FileTransferMethod
@@ -40,15 +40,19 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
         self._file_access_controller = file_access_controller
 
     @property
+    @override
     def multimodal_send_format(self) -> str:
         return dify_config.MULTIMODAL_SEND_FORMAT
 
+    @override
     def http_get(self, url: str, *, follow_redirects: bool = True) -> HttpResponseProtocol:
-        return graphon_ssrf_proxy.get(url, follow_redirects=follow_redirects)
+        return remote_fetcher.graphon_remote_file_fetcher.get(url, follow_redirects=follow_redirects)
 
+    @override
     def storage_load(self, path: str, *, stream: bool = False) -> bytes | Generator:
         return storage.load(path, stream=stream)
 
+    @override
     def load_file_bytes(self, *, file: File) -> bytes:
         storage_key = self._resolve_storage_key(file=file)
         data = storage.load(storage_key, stream=False)
@@ -56,36 +60,48 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
             raise ValueError(f"file {storage_key} is not a bytes object")
         return data
 
+    @override
     def resolve_file_url(self, *, file: File, for_external: bool = True) -> str | None:
+        uri = self.resolve_file_uri(file=file)
+        if uri is None or file.transfer_method == FileTransferMethod.REMOTE_URL:
+            return uri
+        return bind_file_uri(uri, self._base_url(for_external=for_external))
+
+    def resolve_file_uri(self, *, file: File) -> str | None:
+        """Resolve a signed file URI without binding Dify-owned files to an origin.
+
+        Remote URLs retain their external absolute URL. Dify-owned files return
+        a signed ``/files/...`` URI that callers can bind to their own network
+        audience without exposing ``FILES_URL`` or ``INTERNAL_FILES_URL``.
+        """
+
         if file.transfer_method == FileTransferMethod.REMOTE_URL:
             return file.remote_url
         parsed_reference = parse_file_reference(file.reference)
         if parsed_reference is None:
             raise ValueError("Missing file reference")
         if file.transfer_method == FileTransferMethod.LOCAL_FILE:
-            return self.resolve_upload_file_url(
+            return self.resolve_upload_file_uri(
                 upload_file_id=parsed_reference.record_id,
-                for_external=for_external,
             )
         if file.transfer_method == FileTransferMethod.DATASOURCE_FILE:
             if file.extension is None:
                 raise ValueError("Missing file extension")
             self._assert_upload_file_access(upload_file_id=parsed_reference.record_id)
-            return sign_tool_file(
+            return sign_tool_file_uri(
                 tool_file_id=parsed_reference.record_id,
                 extension=file.extension,
-                for_external=for_external,
             )
         if file.transfer_method == FileTransferMethod.TOOL_FILE:
             if file.extension is None:
                 raise ValueError("Missing file extension")
-            return self.resolve_tool_file_url(
+            return self.resolve_tool_file_uri(
                 tool_file_id=parsed_reference.record_id,
                 extension=file.extension,
-                for_external=for_external,
             )
         return None
 
+    @override
     def resolve_upload_file_url(
         self,
         *,
@@ -93,18 +109,36 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
         as_attachment: bool = False,
         for_external: bool = True,
     ) -> str:
+        uri = self.resolve_upload_file_uri(upload_file_id=upload_file_id, as_attachment=as_attachment)
+        return bind_file_uri(uri, self._base_url(for_external=for_external))
+
+    def resolve_upload_file_uri(
+        self,
+        *,
+        upload_file_id: str,
+        as_attachment: bool = False,
+    ) -> str:
+        """Resolve a signed UploadFile URI without selecting an origin."""
+
         self._assert_upload_file_access(upload_file_id=upload_file_id)
-        base_url = self._base_url(for_external=for_external)
-        url = f"{base_url}/files/{upload_file_id}/file-preview"
+        uri = f"/files/{upload_file_id}/file-preview"
         query = self._sign_query(payload=f"file-preview|{upload_file_id}")
         if as_attachment:
             query["as_attachment"] = "true"
-        return f"{url}?{urllib.parse.urlencode(query)}"
+        return f"{uri}?{urllib.parse.urlencode(query)}"
 
+    @override
     def resolve_tool_file_url(self, *, tool_file_id: str, extension: str, for_external: bool = True) -> str:
-        self._assert_tool_file_access(tool_file_id=tool_file_id)
-        return sign_tool_file(tool_file_id=tool_file_id, extension=extension, for_external=for_external)
+        uri = self.resolve_tool_file_uri(tool_file_id=tool_file_id, extension=extension)
+        return bind_file_uri(uri, self._base_url(for_external=for_external))
 
+    def resolve_tool_file_uri(self, *, tool_file_id: str, extension: str) -> str:
+        """Resolve a signed ToolFile URI without selecting an origin."""
+
+        self._assert_tool_file_access(tool_file_id=tool_file_id)
+        return sign_tool_file_uri(tool_file_id=tool_file_id, extension=extension)
+
+    @override
     def verify_preview_signature(
         self,
         *,

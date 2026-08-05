@@ -99,7 +99,7 @@ The scripts resolve paths relative to their location, so you can run them from a
    ./dev/reformat               # Run all formatters and linters
    uv run ruff check --fix ./   # Fix linting issues
    uv run ruff format ./        # Format code
-   uv run basedpyright .        # Type checking
+   uv run pyrefly check         # Type checking
    ```
 
 ## Generate TS stub

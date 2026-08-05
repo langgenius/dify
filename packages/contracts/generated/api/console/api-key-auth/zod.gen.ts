@@ -12,22 +12,48 @@ export const zApiKeyAuthBindingPayload = z.object({
 })
 
 /**
+ * SimpleResultResponse
+ */
+export const zSimpleResultResponse = z.object({
+  result: z.string(),
+})
+
+/**
+ * ApiKeyAuthDataSourceItem
+ */
+export const zApiKeyAuthDataSourceItem = z.object({
+  category: z.string(),
+  created_at: z.int(),
+  disabled: z.boolean(),
+  id: z.string(),
+  provider: z.string(),
+  updated_at: z.int(),
+})
+
+/**
+ * ApiKeyAuthDataSourceListResponse
+ */
+export const zApiKeyAuthDataSourceListResponse = z.object({
+  sources: z.array(zApiKeyAuthDataSourceItem),
+})
+
+/**
  * Success
  */
-export const zGetApiKeyAuthDataSourceResponse = z.record(z.string(), z.unknown())
+export const zGetApiKeyAuthDataSourceResponse = zApiKeyAuthDataSourceListResponse
 
 export const zPostApiKeyAuthDataSourceBindingBody = zApiKeyAuthBindingPayload
 
 /**
  * Success
  */
-export const zPostApiKeyAuthDataSourceBindingResponse = z.record(z.string(), z.unknown())
+export const zPostApiKeyAuthDataSourceBindingResponse = zSimpleResultResponse
 
 export const zDeleteApiKeyAuthDataSourceByBindingIdPath = z.object({
-  binding_id: z.string(),
+  binding_id: z.uuid(),
 })
 
 /**
- * Success
+ * Binding deleted successfully
  */
-export const zDeleteApiKeyAuthDataSourceByBindingIdResponse = z.record(z.string(), z.unknown())
+export const zDeleteApiKeyAuthDataSourceByBindingIdResponse = z.void()

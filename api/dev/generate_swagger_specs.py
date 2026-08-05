@@ -1,9 +1,9 @@
-"""Generate Flask-RESTX Swagger 2.0 specs without booting the full backend.
+"""Generate Flask-RESTX OpenAPI 3 specs without booting the full backend.
 
 This helper intentionally avoids `app_factory.create_app()`. The normal backend
 startup eagerly initializes database, Redis, Celery, and storage extensions,
 which is unnecessary when the goal is only to serialize the Flask-RESTX
-`/swagger.json` documents.
+`/openapi.json` documents.
 """
 
 from __future__ import annotations
@@ -42,9 +42,10 @@ class RestxApi(Protocol):
 
 
 SPEC_TARGETS: tuple[SpecTarget, ...] = (
-    SpecTarget(route="/console/api/swagger.json", filename="console-swagger.json", namespace="console"),
-    SpecTarget(route="/api/swagger.json", filename="web-swagger.json", namespace="web"),
-    SpecTarget(route="/v1/swagger.json", filename="service-swagger.json", namespace="service"),
+    SpecTarget(route="/console/api/openapi.json", filename="console-openapi.json", namespace="console"),
+    SpecTarget(route="/api/openapi.json", filename="web-openapi.json", namespace="web"),
+    SpecTarget(route="/v1/openapi.json", filename="service-openapi.json", namespace="service"),
+    SpecTarget(route="/openapi/v1/openapi.json", filename="openapi-openapi.json", namespace="openapi"),
 )
 
 
@@ -103,11 +104,14 @@ def _field_signature(field: object) -> object:
         "description",
         "example",
         "max",
+        "max_items",
         "min",
+        "min_items",
         "nullable",
         "readonly",
         "required",
         "title",
+        "unique",
     ):
         if hasattr(field_instance, attr_name):
             signature[attr_name] = _jsonable_schema_value(getattr(field_instance, attr_name))
@@ -125,7 +129,7 @@ def _inline_model_signature(nested_fields: dict[object, object]) -> object:
 
 
 def _inline_model_name(nested_fields: dict[object, object]) -> str:
-    """Return a stable Swagger model name for an anonymous inline field map."""
+    """Return a stable OpenAPI model name for an anonymous inline field map."""
 
     signature = json.dumps(_inline_model_signature(nested_fields), sort_keys=True, separators=(",", ":"))
     digest = hashlib.sha1(signature.encode("utf-8")).hexdigest()[:12]
@@ -133,7 +137,7 @@ def _inline_model_name(nested_fields: dict[object, object]) -> str:
 
 
 def apply_runtime_defaults() -> None:
-    """Force the small config surface required for Swagger generation."""
+    """Force the small config surface required for OpenAPI generation."""
 
     os.environ.setdefault("SECRET_KEY", "spec-export")
     os.environ.setdefault("STORAGE_TYPE", "local")
@@ -149,18 +153,20 @@ def apply_runtime_defaults() -> None:
 
 
 def create_spec_app() -> Flask:
-    """Build a minimal Flask app that only mounts the Swagger-producing blueprints."""
+    """Build a minimal Flask app that only mounts the OpenAPI-producing blueprints."""
 
     apply_runtime_defaults()
 
-    from libs.flask_restx_compat import patch_swagger_for_inline_nested_dicts
+    from libs.flask_restx_compat import install_swagger_compatibility
 
-    patch_swagger_for_inline_nested_dicts()
+    install_swagger_compatibility()
 
     app = Flask(__name__)
 
     from controllers.console import bp as console_bp
     from controllers.console import console_ns
+    from controllers.openapi import bp as openapi_bp
+    from controllers.openapi import openapi_ns
     from controllers.service_api import bp as service_api_bp
     from controllers.service_api import service_api_ns
     from controllers.web import bp as web_bp
@@ -169,8 +175,9 @@ def create_spec_app() -> Flask:
     app.register_blueprint(console_bp)
     app.register_blueprint(web_bp)
     app.register_blueprint(service_api_bp)
+    app.register_blueprint(openapi_bp)
 
-    for namespace in (console_ns, web_ns, service_api_ns):
+    for namespace in (console_ns, web_ns, service_api_ns, openapi_ns):
         for api in namespace.apis:
             _materialize_inline_model_definitions(api)
 
@@ -178,7 +185,7 @@ def create_spec_app() -> Flask:
 
 
 def _registered_models(namespace: str) -> dict[str, object]:
-    """Return the Flask-RESTX models registered for a Swagger namespace."""
+    """Return the Flask-RESTX models registered for an OpenAPI namespace."""
 
     if namespace == "console":
         from controllers.console import console_ns
@@ -201,8 +208,15 @@ def _registered_models(namespace: str) -> dict[str, object]:
         for api in service_api_ns.apis:
             models.update(api.models)
         return models
+    if namespace == "openapi":
+        from controllers.openapi import openapi_ns
 
-    raise ValueError(f"unknown Swagger namespace: {namespace}")
+        models = dict(openapi_ns.models)
+        for api in openapi_ns.apis:
+            models.update(api.models)
+        return models
+
+    raise ValueError(f"unknown OpenAPI namespace: {namespace}")
 
 
 def _materialize_inline_model_definitions(api: RestxApi) -> None:
@@ -278,7 +292,7 @@ def drop_null_values(value: object) -> object:
 
 
 def sort_openapi_arrays(value: object, *, parent_key: str | None = None) -> object:
-    """Sort order-insensitive Swagger arrays so generated Markdown is stable."""
+    """Sort order-insensitive OpenAPI arrays so generated Markdown is stable."""
 
     if isinstance(value, dict):
         return {key: sort_openapi_arrays(item, parent_key=key) for key, item in value.items()}
@@ -302,23 +316,81 @@ def sort_openapi_arrays(value: object, *, parent_key: str | None = None) -> obje
     return sorted_items
 
 
-def _merge_registered_definitions(payload: dict[str, object], namespace: str) -> dict[str, object]:
-    """Include registered but route-indirect models in the exported Swagger definitions."""
+def _replace_legacy_refs(value: object) -> object:
+    if isinstance(value, dict):
+        replaced: dict[object, object] = {}
+        for key, item in value.items():
+            if key == "$ref" and isinstance(item, str) and item.startswith("#/definitions/"):
+                replaced[key] = item.replace("#/definitions/", "#/components/schemas/", 1)
+            else:
+                replaced[key] = _replace_legacy_refs(item)
+        return replaced
+    if isinstance(value, list):
+        return [_replace_legacy_refs(item) for item in value]
+    return value
 
-    definitions = payload.setdefault("definitions", {})
-    if not isinstance(definitions, dict):
-        raise RuntimeError("unexpected Swagger definitions payload")
+
+HTTP_METHODS = {"delete", "get", "head", "options", "patch", "post", "put", "trace"}
+
+
+def _deduplicate_operation_ids(payload: dict[str, object]) -> dict[str, object]:
+    """Make operationId values unique while preserving already-unique IDs."""
+
+    paths = payload.get("paths")
+    if not isinstance(paths, dict):
+        return payload
+
+    operations_by_id: dict[str, list[tuple[str, str, dict[str, object]]]] = {}
+    for path, path_item in paths.items():
+        if not isinstance(path, str) or not isinstance(path_item, dict):
+            continue
+        for method, operation in path_item.items():
+            if method not in HTTP_METHODS or not isinstance(operation, dict):
+                continue
+            operation_id = operation.get("operationId")
+            if isinstance(operation_id, str):
+                operations_by_id.setdefault(operation_id, []).append((method, path, operation))
+
+    for operation_id, operations in operations_by_id.items():
+        if len(operations) < 2:
+            continue
+        for method, path, operation in operations:
+            digest = hashlib.sha1(f"{method}:{path}".encode()).hexdigest()[:8]
+            operation["operationId"] = f"{operation_id}_{digest}"
+
+    return payload
+
+
+def _component_schemas(payload: dict[str, object]) -> dict[str, object]:
+    components = payload.setdefault("components", {})
+    if not isinstance(components, dict):
+        raise RuntimeError("unexpected OpenAPI components payload")
+
+    schemas = components.setdefault("schemas", {})
+    if not isinstance(schemas, dict):
+        raise RuntimeError("unexpected OpenAPI component schemas payload")
+
+    return schemas
+
+
+def _merge_registered_schemas(payload: dict[str, object], namespace: str) -> dict[str, object]:
+    """Include registered but route-indirect models in exported OpenAPI schemas."""
+
+    schemas = _component_schemas(payload)
 
     for name, model in _registered_models(namespace).items():
         schema = getattr(model, "__schema__", None)
         if isinstance(schema, dict):
-            definitions.setdefault(name, schema)
+            schemas.setdefault(name, _replace_legacy_refs(schema))
+
+    payload.pop("definitions", None)
+    payload = _replace_legacy_refs(payload)  # type: ignore[assignment]
 
     return payload
 
 
 def generate_specs(output_dir: Path) -> list[Path]:
-    """Write all Swagger specs to `output_dir` and return the written paths."""
+    """Write all OpenAPI specs to `output_dir` and return the written paths."""
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -334,7 +406,8 @@ def generate_specs(output_dir: Path) -> list[Path]:
         payload = response.get_json()
         if not isinstance(payload, dict):
             raise RuntimeError(f"unexpected response payload for {target.route}")
-        payload = _merge_registered_definitions(payload, target.namespace)
+        payload = _merge_registered_schemas(payload, target.namespace)
+        payload = _deduplicate_operation_ids(payload)
         payload = drop_null_values(payload)
         payload = sort_openapi_arrays(payload)
 
@@ -352,7 +425,7 @@ def parse_args() -> argparse.Namespace:
         "--output-dir",
         type=Path,
         default=Path("openapi"),
-        help="Directory where the Swagger JSON files will be written.",
+        help="Directory where the OpenAPI JSON files will be written.",
     )
     return parser.parse_args()
 

@@ -7,6 +7,7 @@ providing improved performance by offloading database operations to background w
 
 import logging
 from collections.abc import Sequence
+from typing import override
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
@@ -15,8 +16,10 @@ from core.repositories.factory import (
     OrderConfig,
     WorkflowNodeExecutionRepository,
 )
+from core.repositories.sqlalchemy_workflow_node_execution_repository import (
+    SQLAlchemyWorkflowNodeExecutionRepository,
+)
 from graphon.entities import WorkflowNodeExecution
-from libs.helper import extract_tenant_id
 from models import Account, CreatorUserRole, EndUser
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
 from tasks.workflow_node_execution_tasks import (
@@ -36,7 +39,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
 
     Key features:
     - Asynchronous save operations using Celery tasks
-    - In-memory cache for immediate reads
+    - In-memory cache for immediate reads with database backfill across Celery tasks
     - Support for multi-tenancy through tenant/app filtering
     - Automatic retry and error handling through Celery
     """
@@ -49,10 +52,13 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
     _creator_user_role: CreatorUserRole
     _execution_cache: dict[str, WorkflowNodeExecution]
     _workflow_execution_mapping: dict[str, list[str]]
+    _database_loaded_workflow_executions: set[str]
+    _sql_repository: SQLAlchemyWorkflowNodeExecutionRepository
 
     def __init__(
         self,
         session_factory: sessionmaker | Engine,
+        tenant_id: str,
         user: Account | EndUser,
         app_id: str | None,
         triggered_from: WorkflowNodeExecutionTriggeredFrom | None,
@@ -62,24 +68,24 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
 
         Args:
             session_factory: SQLAlchemy sessionmaker or engine for fallback operations
-            user: Account or EndUser object containing tenant_id, user ID, and role information
+            tenant_id: Tenant that owns the workflow node execution
+            user: Account or EndUser used for creator attribution
             app_id: App ID for filtering by application (can be None)
             triggered_from: Source of the execution trigger (SINGLE_STEP or WORKFLOW_RUN)
         """
         # Store session factory for fallback operations
-        if isinstance(session_factory, Engine):
-            self._session_factory = sessionmaker(bind=session_factory, expire_on_commit=False)
-        elif isinstance(session_factory, sessionmaker):
-            self._session_factory = session_factory
-        else:
-            raise ValueError(
-                f"Invalid session_factory type {type(session_factory).__name__}; expected sessionmaker or Engine"
-            )
+        match session_factory:
+            case Engine():
+                self._session_factory = sessionmaker(bind=session_factory, expire_on_commit=False)
+            case sessionmaker():
+                self._session_factory = session_factory
+            case _:
+                raise ValueError(
+                    f"Invalid session_factory type {type(session_factory).__name__}; expected sessionmaker or Engine"
+                )
 
-        # Extract tenant_id from user
-        tenant_id = extract_tenant_id(user)
         if not tenant_id:
-            raise ValueError("User must have a tenant_id or current_tenant_id")
+            raise ValueError("tenant_id is required")
         self._tenant_id = tenant_id
 
         # Store app context
@@ -97,6 +103,14 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
 
         # Cache for mapping workflow_execution_ids to execution IDs for efficient retrieval
         self._workflow_execution_mapping = {}
+        self._database_loaded_workflow_executions = set()
+        self._sql_repository = SQLAlchemyWorkflowNodeExecutionRepository(
+            session_factory=self._session_factory,
+            tenant_id=tenant_id,
+            user=user,
+            app_id=app_id,
+            triggered_from=triggered_from,
+        )
 
         logger.info(
             "Initialized CeleryWorkflowNodeExecutionRepository for tenant %s, app %s, triggered_from %s",
@@ -105,6 +119,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             self._triggered_from,
         )
 
+    @override
     def save(self, execution: WorkflowNodeExecution):
         """
         Save or update a WorkflowNodeExecution instance to cache and asynchronously to database.
@@ -147,13 +162,25 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             # For now, we'll re-raise the exception
             raise
 
+    @override
+    def save_synchronously(self, execution: WorkflowNodeExecution) -> None:
+        """Create the Agent v2 caller row before runtime participant allocation."""
+
+        self._sql_repository.save_synchronously(execution)
+        self._execution_cache[execution.id] = execution
+        if execution.workflow_execution_id:
+            execution_ids = self._workflow_execution_mapping.setdefault(execution.workflow_execution_id, [])
+            if execution.id not in execution_ids:
+                execution_ids.append(execution.id)
+
+    @override
     def get_by_workflow_execution(
         self,
         workflow_execution_id: str,
         order_config: OrderConfig | None = None,
     ) -> Sequence[WorkflowNodeExecution]:
         """
-        Retrieve all workflow node executions for a workflow execution from cache.
+        Retrieve workflow node executions from cache after loading persisted history once.
 
         Args:
             workflow_execution_id: The workflow execution identifier
@@ -163,6 +190,25 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             A sequence of WorkflowNodeExecution instances
         """
         try:
+            if workflow_execution_id not in self._database_loaded_workflow_executions:
+                try:
+                    persisted_executions = self._sql_repository.get_by_workflow_execution(
+                        workflow_execution_id,
+                        order_config,
+                    )
+                except Exception:
+                    logger.exception(
+                        "Failed to load persisted workflow node executions for execution %s",
+                        workflow_execution_id,
+                    )
+                else:
+                    execution_ids = self._workflow_execution_mapping.setdefault(workflow_execution_id, [])
+                    for execution in persisted_executions:
+                        self._execution_cache.setdefault(execution.id, execution)
+                        if execution.id not in execution_ids:
+                            execution_ids.append(execution.id)
+                    self._database_loaded_workflow_executions.add(workflow_execution_id)
+
             # Get execution IDs for this workflow execution from cache
             execution_ids = self._workflow_execution_mapping.get(workflow_execution_id, [])
 

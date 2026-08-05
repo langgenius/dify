@@ -18,7 +18,9 @@ describe('VersionHistory Filter Components', () => {
 
       render(<FilterSwitch enabled={false} handleSwitch={handleSwitch} />)
 
-      expect(screen.getByText('workflow.versionHistory.filter.onlyShowNamedVersions')).toBeInTheDocument()
+      expect(
+        screen.getByText('workflow.versionHistory.filter.onlyShowNamedVersions'),
+      ).toBeInTheDocument()
       expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'false')
 
       await user.click(screen.getByRole('switch'))
@@ -69,9 +71,8 @@ describe('VersionHistory Filter Components', () => {
         />,
       )
 
-      const trigger = container.querySelector('.h-6.w-6')
-      if (!trigger)
-        throw new Error('Expected filter trigger to exist')
+      const trigger = container.querySelector('.size-6')
+      if (!trigger) throw new Error('Expected filter trigger to exist')
 
       await user.click(trigger)
 

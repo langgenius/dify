@@ -76,8 +76,7 @@ const optionMatchesValue = (
 ) => toolSettingShowOnConditionMet(values, showOnItem)
 
 const getOptionLabel = (option: SelectableOption, language: string) => {
-  if (typeof option.label === 'string')
-    return option.label
+  if (typeof option.label === 'string') return option.label
 
   return option.label[language] || option.label.en_US || option.value
 }
@@ -142,46 +141,48 @@ export const getFormInputState = (
 }
 
 export const getTargetVarType = (state: FormInputState) => {
-  if (state.isString)
-    return VarType.string
-  if (state.isNumber)
-    return VarType.number
-  if (state.isFile)
-    return state.isFiles ? VarType.arrayFile : VarType.file
-  if (state.isSelect)
-    return VarType.string
-  if (state.isBoolean)
-    return VarType.boolean
-  if (state.isObject)
-    return VarType.object
-  if (state.isArray)
-    return VarType.arrayObject
+  if (state.isString) return VarType.string
+  if (state.isNumber) return VarType.number
+  if (state.isFile) return state.isFiles ? VarType.arrayFile : VarType.file
+  if (state.isSelect && state.isMultipleSelect) return VarType.arrayString
+  if (state.isSelect) return VarType.string
+  if (state.isBoolean) return VarType.boolean
+  if (state.isObject) return VarType.object
+  if (state.isArray) return VarType.arrayObject
   return VarType.string
 }
 
 export const getFilterVar = (state: FormInputState) => {
-  if (state.isNumber)
-    return (varPayload: Var) => varPayload.type === VarType.number
+  if (state.isNumber) return (varPayload: Var) => varPayload.type === VarType.number
+  if (state.isSelect && state.isMultipleSelect)
+    return (varPayload: Var) => [VarType.array, VarType.arrayString].includes(varPayload.type)
   if (state.isString)
-    return (varPayload: Var) => [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
+    return (varPayload: Var) =>
+      [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
   if (state.isFile)
     return (varPayload: Var) => [VarType.file, VarType.arrayFile].includes(varPayload.type)
-  if (state.isBoolean)
-    return (varPayload: Var) => varPayload.type === VarType.boolean
-  if (state.isObject)
-    return (varPayload: Var) => varPayload.type === VarType.object
+  if (state.isBoolean) return (varPayload: Var) => varPayload.type === VarType.boolean
+  if (state.isObject) return (varPayload: Var) => varPayload.type === VarType.object
   if (state.isArray)
-    return (varPayload: Var) => [VarType.array, VarType.arrayString, VarType.arrayNumber, VarType.arrayObject].includes(varPayload.type)
+    return (varPayload: Var) =>
+      [VarType.array, VarType.arrayString, VarType.arrayNumber, VarType.arrayObject].includes(
+        varPayload.type,
+      )
   return undefined
 }
 
 export const getVarKindType = (state: FormInputState) => {
-  if (state.isFile)
-    return VarKindType.variable
-  if (state.isSelect || state.isDynamicSelect || state.isBoolean || state.isNumber || state.isArray || state.isObject)
+  if (state.isFile) return VarKindType.variable
+  if (
+    state.isSelect ||
+    state.isDynamicSelect ||
+    state.isBoolean ||
+    state.isNumber ||
+    state.isArray ||
+    state.isObject
+  )
     return VarKindType.constant
-  if (state.isString)
-    return VarKindType.mixed
+  if (state.isString) return VarKindType.mixed
   return undefined
 }
 
@@ -226,26 +227,21 @@ export const getSelectedLabels = (
   options: SelectableOption[],
   language: string,
 ) => {
-  if (!selectedValues?.length)
-    return ''
+  if (!selectedValues?.length) return ''
 
-  const selectedOptions = options.filter(option => selectedValues.includes(option.value))
+  const selectedOptions = options.filter((option) => selectedValues.includes(option.value))
   if (selectedOptions.length <= 2) {
-    return selectedOptions
-      .map(option => getOptionLabel(option, language))
-      .join(', ')
+    return selectedOptions.map((option) => getOptionLabel(option, language)).join(', ')
   }
 
   return `${selectedOptions.length} selected`
 }
 
-export const getCheckboxListOptions = (
-  options: SelectableOption[],
-  language: string,
-) => options.map(option => ({
-  label: getOptionLabel(option, language),
-  value: option.value,
-}))
+export const getCheckboxListOptions = (options: SelectableOption[], language: string) =>
+  options.map((option) => ({
+    label: getOptionLabel(option, language),
+    value: option.value,
+  }))
 
 export const getCheckboxListValue = (
   currentValue: unknown,
@@ -254,26 +250,20 @@ export const getCheckboxListValue = (
 ) => {
   let current: string[] = []
 
-  if (Array.isArray(currentValue))
-    current = currentValue as string[]
-  else if (typeof currentValue === 'string')
-    current = [currentValue]
-  else if (Array.isArray(defaultValue))
-    current = defaultValue as string[]
+  if (Array.isArray(currentValue)) current = currentValue as string[]
+  else if (typeof currentValue === 'string') current = [currentValue]
+  else if (Array.isArray(defaultValue)) current = defaultValue as string[]
 
-  const allowedValues = new Set(availableOptions.map(option => option.value))
-  return current.filter(item => allowedValues.has(item))
+  const allowedValues = new Set(availableOptions.map((option) => option.value))
+  return current.filter((item) => allowedValues.has(item))
 }
 
 export const getNumberInputValue = (currentValue: unknown): number | string => {
-  if (typeof currentValue === 'number')
-    return Number.isNaN(currentValue) ? '' : currentValue
+  if (typeof currentValue === 'number') return Number.isNaN(currentValue) ? '' : currentValue
 
-  if (typeof currentValue === 'string')
-    return currentValue
+  if (typeof currentValue === 'string') return currentValue
 
   return ''
 }
 
-export const normalizeVariableSelectorValue = (value: ValueSelector | string) =>
-  value || ''
+export const normalizeVariableSelectorValue = (value: ValueSelector | string) => value || ''

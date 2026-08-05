@@ -1,11 +1,19 @@
-import type { WorkflowCommentList } from '@/contract/console/workflow-comment'
-import { fireEvent, render, screen } from '@testing-library/react'
+import type { WorkflowCommentList } from '@/app/components/workflow/comment/types'
+import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { render } from '@/test/console/render'
 import { CommentIcon } from './comment-icon'
 
-type Position = { x: number, y: number }
+type Position = { x: number; y: number }
 
 let mockUserId = 'user-1'
+const mockConsoleState = vi.hoisted(() => ({
+  userProfile: {
+    id: 'user-1',
+    name: 'User',
+    avatar_url: 'avatar',
+  },
+}))
 
 const mockFlowToScreenPosition = vi.fn((position: Position) => position)
 const mockScreenToFlowPosition = vi.fn((position: Position) => position)
@@ -22,19 +30,20 @@ vi.mock('reactflow', () => ({
   }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => ({
+    ...mockConsoleState,
     userProfile: {
+      ...mockConsoleState.userProfile,
       id: mockUserId,
-      name: 'User',
-      avatar_url: 'avatar',
     },
-  }),
-}))
+  }))
+})
 
 vi.mock('@/app/components/base/user-avatar-list', () => ({
   UserAvatarList: ({ users }: { users: Array<{ id: string }> }) => (
-    <div data-testid="avatar-list">{users.map(user => user.id).join(',')}</div>
+    <div data-testid="avatar-list">{users.map((user) => user.id).join(',')}</div>
   ),
 }))
 
@@ -56,6 +65,7 @@ const createComment = (overrides: Partial<WorkflowCommentList> = {}): WorkflowCo
     id: 'user-1',
     name: 'Alice',
     email: 'alice@example.com',
+    avatar_url: null,
   },
   created_at: 1,
   updated_at: 2,
@@ -92,11 +102,7 @@ describe('CommentIcon', () => {
     const onClick = vi.fn()
     const onPositionUpdate = vi.fn()
     const { container } = render(
-      <CommentIcon
-        comment={comment}
-        onClick={onClick}
-        onPositionUpdate={onPositionUpdate}
-      />,
+      <CommentIcon comment={comment} onClick={onClick} onPositionUpdate={onPositionUpdate} />,
     )
     const marker = container.querySelector('[data-role="comment-marker"]') as HTMLElement
 

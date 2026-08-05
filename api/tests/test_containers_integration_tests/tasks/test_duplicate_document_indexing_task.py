@@ -62,6 +62,19 @@ class TestDuplicateDocumentIndexingTasks:
                 "index_processor": mock_processor,
             }
 
+    def _runner_documents_arg(self, mock_external_service_dependencies) -> list[Document]:
+        """Return the document batch passed to the runner."""
+        return mock_external_service_dependencies["indexing_runner_instance"].run.call_args.args[0]
+
+    def _assert_documents_parsing(self, db_session_with_containers: Session, document_ids: list[str]) -> None:
+        """Assert the short status transaction remains committed when the runner exits early."""
+        db_session_with_containers.expire_all()
+        for doc_id in document_ids:
+            updated_document = db_session_with_containers.scalar(select(Document).where(Document.id == doc_id).limit(1))
+            assert updated_document is not None
+            assert updated_document.indexing_status == IndexingStatus.PARSING
+            assert updated_document.processing_started_at is not None
+
     def _create_test_dataset_and_documents(
         self, db_session_with_containers: Session, mock_external_service_dependencies, document_count=3
     ):
@@ -329,7 +342,7 @@ class TestDuplicateDocumentIndexingTasks:
         # Verify the run method was called with correct documents
         call_args = mock_external_service_dependencies["indexing_runner_instance"].run.call_args
         assert call_args is not None
-        processed_documents = call_args[0][0]  # First argument should be documents list
+        processed_documents = self._runner_documents_arg(mock_external_service_dependencies)
         assert len(processed_documents) == 3
 
     def _test_duplicate_document_indexing_task_with_segment_cleanup(
@@ -450,7 +463,7 @@ class TestDuplicateDocumentIndexingTasks:
         # Verify the run method was called with only existing documents
         call_args = mock_external_service_dependencies["indexing_runner_instance"].run.call_args
         assert call_args is not None
-        processed_documents = call_args[0][0]  # First argument should be documents list
+        processed_documents = self._runner_documents_arg(mock_external_service_dependencies)
         assert len(processed_documents) == 2  # Only existing documents
 
     def _test_duplicate_document_indexing_task_indexing_runner_exception(
@@ -487,12 +500,8 @@ class TestDuplicateDocumentIndexingTasks:
         mock_external_service_dependencies["indexing_runner"].assert_called_once()
         mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
 
-        # Verify documents were still updated to parsing status before the exception
-        # Re-query documents from database since _duplicate_document_indexing_task close the session
-        for doc_id in document_ids:
-            updated_document = db_session_with_containers.scalar(select(Document).where(Document.id == doc_id).limit(1))
-            assert updated_document.indexing_status == IndexingStatus.PARSING
-            assert updated_document.processing_started_at is not None
+        # Parsing status is committed before the runner starts, so runner failure cannot roll it back.
+        self._assert_documents_parsing(db_session_with_containers, document_ids)
 
     def _test_duplicate_document_indexing_task_billing_sandbox_plan_batch_limit(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -621,9 +630,10 @@ class TestDuplicateDocumentIndexingTasks:
         _duplicate_document_indexing_task(dataset.id, document_ids)
 
         # Assert: Verify IndexingRunner was called with empty list
-        # Note: The actual implementation does call run([]) with empty list
+        # Note: The actual implementation does call run([]) with an empty list.
         mock_external_service_dependencies["indexing_runner"].assert_called_once()
-        mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once_with([])
+        mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
+        assert mock_external_service_dependencies["indexing_runner_instance"].run.call_args.args[0] == []
 
     def test_deprecated_duplicate_document_indexing_task_delegates_to_core(
         self, db_session_with_containers: Session, mock_external_service_dependencies

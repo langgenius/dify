@@ -31,7 +31,7 @@ const ParagraphInput: FC<ParagraphInputProps> = ({
           {Array.from({ length: lineCount }, (_, index) => (
             <span
               key={index}
-              className="flex h-[20px] items-center font-mono text-xs leading-[20px] text-text-quaternary select-none"
+              className="flex h-5 items-center font-mono text-xs leading-5 text-text-quaternary select-none"
             >
               {String(index + 1).padStart(2, '0')}
             </span>
@@ -40,10 +40,10 @@ const ParagraphInput: FC<ParagraphInputProps> = ({
         <textarea
           ref={textareaRef}
           value={value}
-          onChange={e => onChange(e.target.value)}
+          onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           disabled={disabled}
-          className="w-full resize-none border-0 bg-transparent pl-6 font-mono text-xs leading-[20px] text-text-secondary outline-hidden placeholder:text-text-quaternary"
+          className="w-full resize-none border-0 bg-transparent pl-6 font-mono text-xs leading-5 text-text-secondary outline-hidden placeholder:text-text-quaternary"
           style={{
             minHeight: `${Math.max(3, lineCount) * 20}px`,
             lineHeight: '20px',
