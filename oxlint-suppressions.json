@@ -710,13 +710,7 @@
     }
   },
   "web/app/components/apps/app-card.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
     "jsx_a11y/no-noninteractive-element-to-interactive-role": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
       "count": 1
     }
   },
@@ -2718,14 +2712,6 @@
   },
   "web/app/components/datasets/hit-testing/components/score.tsx": {
     "unicorn/prefer-number-properties": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/list/dataset-card/__tests__/index.spec.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
       "count": 1
     }
   },
@@ -5862,14 +5848,6 @@
   },
   "web/context/web-app-context.tsx": {
     "react/only-export-components": {
-      "count": 1
-    }
-  },
-  "web/features/tag-management/components/dataset-card-tags.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
       "count": 1
     }
   },

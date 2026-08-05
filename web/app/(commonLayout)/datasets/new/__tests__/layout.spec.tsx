@@ -9,20 +9,11 @@ const mocks = vi.hoisted(() => ({
   systemFeaturesQueryOptions: { queryKey: ['console', 'system-features'] },
 }))
 
-vi.mock('@/context/query-client-server', () => ({
-  getQueryClientServer: () => ({
+vi.mock('@/features/system-features/server', () => ({
+  getSystemFeaturesQueryClient: () => ({
     ensureQueryData: mocks.ensureQueryData,
   }),
-}))
-
-vi.mock('@/service/server', () => ({
-  serverConsoleQuery: {
-    systemFeatures: {
-      get: {
-        queryOptions: () => mocks.systemFeaturesQueryOptions,
-      },
-    },
-  },
+  systemFeaturesServerQueryOptions: () => mocks.systemFeaturesQueryOptions,
 }))
 
 vi.mock('@/next/navigation', () => ({

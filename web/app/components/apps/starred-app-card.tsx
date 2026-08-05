@@ -106,7 +106,6 @@ export function StarredAppCard({
         <div
           role="button"
           tabIndex={0}
-          aria-disabled="true"
           aria-label={app.name}
           data-step-by-step-tour-target={stepByStepTourCardTarget}
           data-step-by-step-tour-highlight-part={stepByStepTourCardHighlightPart}
