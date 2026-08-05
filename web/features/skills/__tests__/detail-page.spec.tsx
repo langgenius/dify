@@ -437,11 +437,14 @@ function renderSkillDetailPage() {
     },
   })
 
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <SkillDetailPage />
-    </QueryClientProvider>,
-  )
+  return {
+    ...render(
+      <QueryClientProvider client={queryClient}>
+        <SkillDetailPage />
+      </QueryClientProvider>,
+    ),
+    queryClient,
+  }
 }
 
 function getBuilderAttachmentInput(container: HTMLElement) {
@@ -1847,7 +1850,8 @@ describe('SkillDetailPage', () => {
 
   it('marks changes as published and enables publish update after new edits', async () => {
     const user = userEvent.setup()
-    renderSkillDetailPage()
+    const { queryClient } = renderSkillDetailPage()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
 
     const publishButton = await screen.findByRole('button', {
       name: 'skill.skillManagement.detail.publishUpdate',
@@ -1858,6 +1862,11 @@ describe('SkillDetailPage', () => {
 
     await waitFor(() => {
       expect(mocks.publishSkillMutationFn).toHaveBeenCalled()
+    })
+    await waitFor(() => {
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: ['skills', { type: 'infinite' }],
+      })
     })
     await waitFor(() => {
       expect(document.body).toHaveTextContent('skill.skillManagement.detail.upToDate')
@@ -2932,7 +2941,8 @@ describe('SkillDetailPage', () => {
       }),
     }))
 
-    renderSkillDetailPage()
+    const { queryClient } = renderSkillDetailPage()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
 
     await user.click(
       await screen.findByRole('button', { name: 'skill.skillManagement.detail.versionHistory' }),
@@ -2955,6 +2965,11 @@ describe('SkillDetailPage', () => {
         }),
         expect.anything(),
       )
+    })
+    await waitFor(() => {
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: ['skills', { type: 'infinite' }],
+      })
     })
   })
 
