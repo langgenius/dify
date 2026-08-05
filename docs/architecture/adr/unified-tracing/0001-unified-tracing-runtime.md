@@ -56,6 +56,16 @@ Persisted workflow and node execution identifiers are canonical identities. Synt
 
 Workflow-owned Human Input forms may use the owning node execution identifier as their form identifier. When a human-wait identifier matches a canonical node execution span, Core uses that exact execution as the wait parent. Static graph node identifiers and timestamp proximity are only a compatibility fallback for older records without execution-scoped form identity. This prevents repeated executions of one Human Input node inside a supported Loop or Iteration container from being associated with the wrong container run.
 
+### Pause, resume, and human-wait lifecycle
+
+A Workflow or Chatflow execution remains one logical trace across any number of Human Input pauses and resumptions. A pause is non-terminal: Core persists the workflow execution and its private, provider-neutral tracing state, but does not enqueue a final trace. Resume restores that state and the existing workflow execution identity. A later pause replaces the private pause snapshot with the accumulated state, and only workflow success, partial success, failure, stop, or global Human Input timeout enqueues the final trace.
+
+The private pause state retains Agent fragments and their owning node executions, plus completed human-wait records. Records are accumulated by stable run or wait identity so replayed resume delivery replaces the same logical record instead of duplicating it. This state is part of the versioned workflow resumption context; an external cache and its TTL are cleanup mechanisms, not the lifecycle authority.
+
+`HumanInputForm` is the lifecycle authority for a human wait. Core normalizes its request and completion timestamps and one of `waiting`, `submitted`, `timed_out`, `expired`, or `canceled` into a bounded, provider-neutral record. A terminal workflow-owned wait becomes a direct child of its exact owning node execution and spans the actual waiting interval. A node timeout resumes normal workflow execution with a terminal wait record; a global timeout stops the workflow and attempts to enqueue the final trace from retained pause state before that state is deleted. Tracing normalization and export remain fail-soft and must not prevent submission, timeout handling, or workflow resumption.
+
+Agent App Human Input intentionally follows the Message boundary instead. The requesting and resuming Messages are separate traces in the same conversation session. They contain `requested` and `resumed` human-wait phases correlated by stable wait identity and a span link, never by a cross-trace parent-child edge. The first Message may therefore export when it pauses, and no Agent App fragment needs to survive the wait.
+
 ### Runtime selection and legacy isolation
 
 Unified tracing is controlled by a global feature switch that defaults to disabled. `OpsTraceManager` is the runtime selection point:
@@ -105,6 +115,9 @@ Maintainers and provider adapters may rely on these invariants:
 - spans are supplied parent-first with deterministic, non-causal sibling ordering;
 - ambiguous and cyclic persisted relationships are handled conservatively and deterministically;
 - workflow-owned human waits prefer exact node execution identity and only fall back to static-node matching for legacy records;
+- a Workflow or Chatflow pause never exports a partial final trace; restored tracing state accumulates until one terminal workflow outcome;
+- a workflow-owned human wait records its real lifecycle interval and cannot make pause, resume, or timeout processing fail;
+- Agent App waits correlate two Message traces without creating a parent-child relationship across trace roots;
 - registered unified providers receive the same logical topology and normalized Dify semantics;
 - one dispatch attempt uses either the unified or legacy runtime, never both;
 - unified dispatch does not fall back to legacy after failure;
@@ -119,6 +132,8 @@ Maintainers and provider adapters may rely on these invariants:
 - Adding a unified provider requires a protocol adapter rather than another workflow hierarchy implementation.
 - Nested workflow export may wait while parent context becomes available.
 - Context-store availability and retention affect reliable cross-task assembly.
+- Workflow and Chatflow traces are delayed while Human Input is pending and require tracing state to remain compatible with persisted pause snapshots.
+- Agent App Human Input appears as two correlated wait phases rather than one cross-Message span.
 - During migration, registered providers retain separate legacy and unified implementations.
 - Some provider capabilities have no canonical equivalent and remain adapter-local.
 - Changes to canonical semantics must be evaluated against every registered unified adapter.
@@ -156,3 +171,11 @@ Rejected because provider context may not exist when a child workflow starts and
 ### Emit a new root whenever compatible parent context is missing
 
 Rejected because transient task ordering would silently and permanently corrupt hierarchy.
+
+### Export a Workflow or Chatflow trace at every Human Input pause
+
+Rejected because every pause would expose an incomplete root and repeated pauses would produce duplicate traces for one workflow execution. Retaining provider-neutral state until a terminal outcome preserves one trace without keeping provider SDK objects alive.
+
+### Keep paused tracing state only in a temporary cache
+
+Rejected because a cache TTL may expire during a legitimate human wait. The workflow pause snapshot is the lifecycle-aligned persistence boundary; cache retention remains suitable only for recoverable coordination and cleanup.
