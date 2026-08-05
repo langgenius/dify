@@ -5,7 +5,7 @@ These tests verify the Celery-based asynchronous storage functionality
 for workflow execution data.
 """
 
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -14,7 +14,7 @@ from core.repositories.celery_workflow_execution_repository import CeleryWorkflo
 from graphon.entities import WorkflowExecution
 from graphon.enums import WorkflowType
 from libs.datetime_utils import naive_utc_now
-from models import Account, EndUser
+from models import Account, EndUser, Tenant
 from models.enums import WorkflowRunTriggeredFrom
 
 RESOURCE_TENANT_ID = "resource-tenant-id"
@@ -34,18 +34,20 @@ def mock_session_factory():
 @pytest.fixture
 def mock_account():
     """Mock Account user."""
-    account = Mock(spec=Account)
+    account = Account(name="Test Account", email="test@example.com")
     account.id = str(uuid4())
-    account.current_tenant_id = str(uuid4())
+    account._current_tenant = Tenant(name="Test Tenant")
+    account._current_tenant.id = str(uuid4())
     return account
 
 
 @pytest.fixture
 def mock_end_user():
     """Mock EndUser."""
-    user = Mock(spec=EndUser)
-    user.id = str(uuid4())
-    user.tenant_id = str(uuid4())
+    user = EndUser(
+        id=str(uuid4()),
+        tenant_id=str(uuid4()),
+    )
     return user
 
 
@@ -114,9 +116,8 @@ class TestCeleryWorkflowExecutionRepository:
 
     def test_init_without_tenant_id_raises_error(self, mock_session_factory):
         """Test that initialization fails without tenant_id."""
-        # Create a mock Account with no tenant_id
-        user = Mock(spec=Account)
-        user.current_tenant_id = None
+        # Create an Account with no tenant_id.
+        user = Account(name="Test Account", email="test@example.com")
         user.id = str(uuid4())
 
         with pytest.raises(ValueError, match="tenant_id is required"):
@@ -129,8 +130,7 @@ class TestCeleryWorkflowExecutionRepository:
             )
 
     def test_init_uses_resource_tenant_when_account_has_no_current_tenant(self, mock_session_factory):
-        user = Mock(spec=Account)
-        user.current_tenant_id = None
+        user = Account(name="Test Account", email="test@example.com")
         user.id = str(uuid4())
 
         repo = CeleryWorkflowExecutionRepository(

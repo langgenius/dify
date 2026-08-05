@@ -21,7 +21,7 @@ from core.trigger.constants import (
 )
 from extensions.ext_redis import redis_client
 from graphon.enums import BuiltinNodeTypes
-from models import Account, App, AppMode
+from models import Account, App, AppMode, Tenant
 from models.agent import (
     Agent,
     AgentConfigDraft,
@@ -61,10 +61,11 @@ _DEFAULT_TENANT_ID = "00000000-0000-0000-0000-000000000001"
 _DEFAULT_ACCOUNT_ID = "00000000-0000-0000-0000-000000000002"
 
 
-def _account_mock(*, tenant_id: str = _DEFAULT_TENANT_ID, account_id: str = _DEFAULT_ACCOUNT_ID) -> MagicMock:
-    account = MagicMock(spec=Account)
-    account.current_tenant_id = tenant_id
+def _account_mock(*, tenant_id: str = _DEFAULT_TENANT_ID, account_id: str = _DEFAULT_ACCOUNT_ID) -> Account:
+    account = Account(name="Test Account", email="test@example.com")
     account.id = account_id
+    account._current_tenant = Tenant(name="Test Tenant")
+    account._current_tenant.id = tenant_id
     return account
 
 
@@ -89,6 +90,7 @@ def _pending_yaml_content(version: str = "99.0.0") -> bytes:
 
 def _app_stub(**overrides: Any) -> App:
     """Create a stub App object for testing without hitting the database."""
+    overrides.pop("app_model_config", None)
     defaults = {
         "id": str(uuid4()),
         "tenant_id": _DEFAULT_TENANT_ID,
@@ -99,12 +101,8 @@ def _app_stub(**overrides: Any) -> App:
         "icon": "i",
         "icon_background": "#fff",
         "use_icon_as_answer_icon": False,
-        "app_model_config": None,
     }
-    app = MagicMock(spec=App)
-    for key, value in (defaults | overrides).items():
-        object.__setattr__(app, key, value)
-    return app
+    return App(**(defaults | overrides))
 
 
 class TestAppDslService:
