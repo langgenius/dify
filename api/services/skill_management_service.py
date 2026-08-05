@@ -34,6 +34,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import object_session
 from yaml.error import MarkedYAMLError
 
+from configs import dify_config
 from core.db.session_factory import session_factory
 from core.errors.error import ProviderTokenNotInitError
 from core.model_manager import ModelManager
@@ -1924,6 +1925,10 @@ class SkillManagementService:
             }
 
     def import_skill(self, *, tenant_id: str, user_id: str, payload: SkillImportPayload) -> dict[str, Any]:
+        max_archive_bytes = dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT * 1024 * 1024
+        if len(payload.content) > max_archive_bytes:
+            raise SkillManagementServiceError("archive_too_large", "skill archive exceeds size limit")
+
         draft_payload, metadata, skill_md_content = self._draft_payload_from_zip(
             tenant_id=tenant_id,
             user_id=user_id,
