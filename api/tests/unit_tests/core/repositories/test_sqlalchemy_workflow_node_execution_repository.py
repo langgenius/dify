@@ -29,7 +29,7 @@ from graphon.enums import (
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
-from models import Account, EndUser
+from models import Account, EndUser, Tenant
 from models.enums import ExecutionOffLoadType
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload, WorkflowNodeExecutionTriggeredFrom
 
@@ -37,16 +37,18 @@ RESOURCE_TENANT_ID = "tenant"
 
 
 def _mock_account(*, tenant_id: str = "tenant", user_id: str = "user") -> Account:
-    user = Mock(spec=Account)
+    user = Account(name="Test Account", email="test@example.com")
     user.id = user_id
-    user.current_tenant_id = tenant_id
+    user._current_tenant = Tenant(name="Test Tenant")
+    user._current_tenant.id = tenant_id
     return user
 
 
 def _mock_end_user(*, tenant_id: str = "tenant", user_id: str = "user") -> EndUser:
-    user = Mock(spec=EndUser)
-    user.id = user_id
-    user.tenant_id = tenant_id
+    user = EndUser(
+        id=user_id,
+        tenant_id=tenant_id,
+    )
     return user
 
 
@@ -148,7 +150,7 @@ def test_init_requires_tenant_id(monkeypatch: pytest.MonkeyPatch) -> None:
         lambda *_: SimpleNamespace(upload_file=Mock()),
     )
     user = _mock_account()
-    user.current_tenant_id = None
+    user._current_tenant = None
     with pytest.raises(ValueError, match="tenant_id is required"):
         SQLAlchemyWorkflowNodeExecutionRepository(
             session_factory=Mock(spec=sessionmaker),
@@ -165,7 +167,7 @@ def test_init_uses_resource_tenant_when_account_has_no_current_tenant(monkeypatc
         lambda *_: SimpleNamespace(upload_file=Mock()),
     )
     user = _mock_account()
-    user.current_tenant_id = None
+    user._current_tenant = None
 
     repo = SQLAlchemyWorkflowNodeExecutionRepository(
         session_factory=Mock(spec=sessionmaker),
@@ -305,8 +307,9 @@ def test_is_duplicate_key_error_and_regenerate_id(
     assert repo._is_duplicate_key_error(IntegrityError("other", params=None, orig=None)) is False
 
     execution = _execution(execution_id="old-id")
-    db_model = WorkflowNodeExecutionModel()
-    db_model.id = "old-id"
+    db_model = WorkflowNodeExecutionModel(
+        id="old-id",
+    )
     monkeypatch.setattr("core.repositories.sqlalchemy_workflow_node_execution_repository.uuidv7", lambda: "new-id")
     caplog.set_level(logging.WARNING)
     repo._regenerate_id_on_duplicate(execution, db_model)
@@ -329,9 +332,10 @@ def test_persist_to_database_updates_existing_and_inserts_new(monkeypatch: pytes
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
     )
 
-    db_model = WorkflowNodeExecutionModel()
-    db_model.id = "id1"
-    db_model.node_execution_id = "node1"
+    db_model = WorkflowNodeExecutionModel(
+        id="id1",
+        node_execution_id="node1",
+    )
     db_model.foo = "bar"  # type: ignore[attr-defined]
     db_model.__dict__["_private"] = "x"
 
@@ -424,25 +428,26 @@ def test_to_domain_model_loads_offloaded_files(monkeypatch: pytest.MonkeyPatch) 
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
     )
 
-    db_model = WorkflowNodeExecutionModel()
-    db_model.id = "id"
-    db_model.node_execution_id = "node-exec"
-    db_model.workflow_id = "wf"
-    db_model.workflow_run_id = "run"
-    db_model.index = 1
-    db_model.predecessor_node_id = None
-    db_model.node_id = "node"
-    db_model.node_type = BuiltinNodeTypes.LLM
-    db_model.title = "t"
-    db_model.inputs = json.dumps({"trunc": "i"})
-    db_model.process_data = json.dumps({"trunc": "p"})
-    db_model.outputs = json.dumps({"trunc": "o"})
-    db_model.status = WorkflowNodeExecutionStatus.SUCCEEDED
-    db_model.error = None
-    db_model.elapsed_time = 0.1
-    db_model.execution_metadata = json.dumps({"total_tokens": 3})
-    db_model.created_at = datetime.now(UTC)
-    db_model.finished_at = None
+    db_model = WorkflowNodeExecutionModel(
+        id="id",
+        node_execution_id="node-exec",
+        workflow_id="wf",
+        workflow_run_id="run",
+        index=1,
+        predecessor_node_id=None,
+        node_id="node",
+        node_type=BuiltinNodeTypes.LLM,
+        title="t",
+        inputs=json.dumps({"trunc": "i"}),
+        process_data=json.dumps({"trunc": "p"}),
+        outputs=json.dumps({"trunc": "o"}),
+        status=WorkflowNodeExecutionStatus.SUCCEEDED,
+        error=None,
+        elapsed_time=0.1,
+        execution_metadata=json.dumps({"total_tokens": 3}),
+        created_at=datetime.now(UTC),
+        finished_at=None,
+    )
 
     off_in = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.INPUTS)
     off_out = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.OUTPUTS)
@@ -479,26 +484,27 @@ def test_to_domain_model_returns_early_when_no_offload_data(monkeypatch: pytest.
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
     )
 
-    db_model = WorkflowNodeExecutionModel()
-    db_model.id = "id"
-    db_model.node_execution_id = "node-exec"
-    db_model.workflow_id = "wf"
-    db_model.workflow_run_id = "run"
-    db_model.index = 1
-    db_model.predecessor_node_id = None
-    db_model.node_id = "node"
-    db_model.node_type = BuiltinNodeTypes.LLM
-    db_model.title = "t"
-    db_model.inputs = json.dumps({"i": 1})
-    db_model.process_data = json.dumps({"p": 2})
-    db_model.outputs = json.dumps({"o": 3})
-    db_model.status = WorkflowNodeExecutionStatus.SUCCEEDED
-    db_model.error = None
-    db_model.elapsed_time = 0.1
-    db_model.execution_metadata = "{}"
-    db_model.created_at = datetime.now(UTC)
-    db_model.finished_at = None
-    db_model.offload_data = []
+    db_model = WorkflowNodeExecutionModel(
+        id="id",
+        node_execution_id="node-exec",
+        workflow_id="wf",
+        workflow_run_id="run",
+        index=1,
+        predecessor_node_id=None,
+        node_id="node",
+        node_type=BuiltinNodeTypes.LLM,
+        title="t",
+        inputs=json.dumps({"i": 1}),
+        process_data=json.dumps({"p": 2}),
+        outputs=json.dumps({"o": 3}),
+        status=WorkflowNodeExecutionStatus.SUCCEEDED,
+        error=None,
+        elapsed_time=0.1,
+        execution_metadata="{}",
+        created_at=datetime.now(UTC),
+        finished_at=None,
+        offload_data=[],
+    )
 
     domain = repo._to_domain_model(db_model)
     assert domain.inputs == {"i": 1}
