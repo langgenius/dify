@@ -2,7 +2,6 @@
 
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -10,6 +9,7 @@ import {
   documentUploadFileExtension,
   documentUploadIssue,
 } from './document-upload-policy'
+import { canPreviewLocalFile, openLocalFilePreview } from './local-file-preview'
 
 function fileSize(size: number) {
   if (size < 1024) return `${size} B`
@@ -117,7 +117,7 @@ export function DocumentUploadForm({
             {files.map((file, index) => {
               const issue = documentUploadIssue(file)
               const extension = documentUploadFileExtension(file.name).toLocaleUpperCase()
-              const previewAvailable = !issue && (extension === 'DOC' || extension === 'DOCX')
+              const previewAvailable = !issue && canPreviewLocalFile(file)
               return (
                 <li
                   key={`${file.name}:${file.size}:${file.lastModified}`}
@@ -151,11 +151,7 @@ export function DocumentUploadForm({
                   </span>
                   <span className="flex shrink-0 items-center gap-1 py-2 pr-3">
                     {previewAvailable && (
-                      <Button
-                        size="small"
-                        type="button"
-                        onClick={() => toast.info(t(($) => $['newKnowledge.previewUnavailable']))}
-                      >
+                      <Button size="small" type="button" onClick={() => openLocalFilePreview(file)}>
                         {t(($) => $['newKnowledge.preview'])}
                       </Button>
                     )}

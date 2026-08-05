@@ -1713,6 +1713,52 @@ describe('DocumentsPage', () => {
     ).toBe(false)
   })
 
+  it('previews a browser-supported staged document from its local file', () => {
+    const file = new File(['local content'], 'handbook.pdf', { type: 'application/pdf' })
+    const createObjectUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:handbook')
+    const revokeObjectUrl = vi.spyOn(URL, 'revokeObjectURL')
+    const open = vi.spyOn(globalThis, 'open').mockReturnValue(null)
+    vi.useFakeTimers()
+
+    try {
+      render(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+      fireEvent.change(screen.getByLabelText('dataset.newKnowledge.uploadDocuments'), {
+        target: { files: [file] },
+      })
+      fireEvent.click(screen.getByRole('button', { name: 'dataset.newKnowledge.preview' }))
+
+      expect(createObjectUrl).toHaveBeenCalledWith(expect.any(Blob))
+      expect((createObjectUrl.mock.calls[0]?.[0] as Blob).type).toBe('application/pdf')
+      expect(open).toHaveBeenCalledWith('blob:handbook', '_blank', 'noopener,noreferrer')
+      expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
+
+      vi.advanceTimersByTime(60_000)
+      expect(revokeObjectUrl).toHaveBeenCalledWith('blob:handbook')
+    } finally {
+      vi.useRealTimers()
+      createObjectUrl.mockRestore()
+      revokeObjectUrl.mockRestore()
+      open.mockRestore()
+    }
+  })
+
+  it('does not offer a local preview for an Office document', () => {
+    const file = new File(['local content'], 'handbook.docx', {
+      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    })
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+    fireEvent.change(screen.getByLabelText('dataset.newKnowledge.uploadDocuments'), {
+      target: { files: [file] },
+    })
+
+    expect(screen.queryByRole('button', { name: 'dataset.newKnowledge.preview' })).toBeNull()
+  })
+
   it('prompts for model setup before uploading staged documents', async () => {
     const user = userEvent.setup()
     settingsState.configurationState = 'setup-required'
