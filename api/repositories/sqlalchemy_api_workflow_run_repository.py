@@ -33,6 +33,7 @@ from sqlalchemy import and_, delete, func, null, or_, select, tuple_
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
+from core.ops.entities.config_entity import ops_trace_payload_path, workflow_final_trace_file_id
 from core.workflow.nodes.human_input.entities import FormDefinition
 from core.workflow.nodes.human_input.pause_reason import (
     HumanInputRequired,
@@ -57,7 +58,14 @@ from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.time_parser import get_time_threshold
 from models.enums import WorkflowRunTriggeredFrom
 from models.human_input import HumanInputForm, HumanInputFormRecipient
-from models.workflow import WorkflowAppLog, WorkflowArchiveLog, WorkflowPause, WorkflowPauseReason, WorkflowRun
+from models.workflow import (
+    FinalTraceHandoffStatus,
+    WorkflowAppLog,
+    WorkflowArchiveLog,
+    WorkflowPause,
+    WorkflowPauseReason,
+    WorkflowRun,
+)
 from repositories.api_workflow_run_repository import (
     APIWorkflowRunRepository,
     RunsWithRelatedCountsDict,
@@ -1287,29 +1295,41 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         """
         _limit: int = limit or 1000
         pruned_record_ids: list[str] = []
-        cond = or_(
-            WorkflowPause.created_at < expiration,
-            and_(
-                WorkflowPause.resumed_at.is_not(null()),
-                WorkflowPause.resumed_at < resumption_expiration,
+        cond = and_(
+            WorkflowPause.final_trace_status.is_distinct_from(FinalTraceHandoffStatus.PENDING),
+            or_(
+                WorkflowPause.created_at < expiration,
+                and_(
+                    WorkflowPause.resumed_at.is_not(null()),
+                    WorkflowPause.resumed_at < resumption_expiration,
+                ),
             ),
         )
         # First, collect pause records to delete with their state files
         # Expired pauses (created before expiration time)
-        stmt = select(WorkflowPause).where(cond).limit(_limit)
+        stmt = (
+            select(WorkflowPause, WorkflowRun.app_id)
+            .outerjoin(WorkflowRun, WorkflowRun.id == WorkflowPause.workflow_run_id)
+            .where(cond)
+            .limit(_limit)
+        )
 
         with self._session_maker(expire_on_commit=False) as session:
             # Old resumed pauses (resumed more than resumption_duration ago)
 
             # Get all records to delete
-            pauses_to_delete = session.scalars(stmt).all()
+            pauses_to_delete = session.execute(stmt).all()
 
         # Delete state files from storage
-        for pause in pauses_to_delete:
+        for pause, app_id in pauses_to_delete:
             with self._session_maker(expire_on_commit=False) as session, session.begin():
                 # todo: this issues a separate query for each WorkflowPause record.
                 # consider batching this lookup.
                 try:
+                    if pause.final_trace_status == FinalTraceHandoffStatus.FAILED and app_id is not None:
+                        storage.delete(
+                            ops_trace_payload_path(app_id, workflow_final_trace_file_id(pause.workflow_run_id))
+                        )
                     storage.delete(pause.state_object_key)
                     logger.info(
                         "Deleted state object for pause, pause_id=%s, object_key=%s",
