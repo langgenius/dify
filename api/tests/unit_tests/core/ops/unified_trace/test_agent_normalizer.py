@@ -51,20 +51,6 @@ def test_normalizer_emits_tool_call_for_tool_part() -> None:
     }
 
 
-def test_normalizer_emits_tool_result_for_return_part() -> None:
-    event = PydanticAIStreamRunEvent(
-        id="event-2",
-        run_id="run-1",
-        created_at=datetime(2026, 7, 29, tzinfo=UTC),
-        data=PartStartEvent(index=2, part=ToolReturnPart(tool_name="weather", content="sunny", tool_call_id="call-1")),
-    )
-
-    events = PydanticAIAgentEventNormalizer().normalize(event)
-
-    assert events[0].kind is AgentSemanticEventKind.TOOL_RESULT
-    assert events[0].payload == {"tool_call_id": "call-1", "result": "sunny"}
-
-
 def test_normalizer_emits_tool_events_from_function_tool_lifecycle() -> None:
     created_at = datetime(2026, 7, 29, tzinfo=UTC)
     call = PydanticAIStreamRunEvent(

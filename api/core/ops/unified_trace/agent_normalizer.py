@@ -93,6 +93,4 @@ def _tool_call_part(event: object) -> ToolCallPart | None:
 def _tool_result_part(event: object) -> ToolReturnPart | None:
     if isinstance(event, ToolResultEvent) and isinstance(event.part, ToolReturnPart):
         return event.part
-    if isinstance(event, PartStartEvent) and isinstance(event.part, ToolReturnPart):
-        return event.part
     return None

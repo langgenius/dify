@@ -1,3 +1,5 @@
+import pytest
+
 from core.ops.ops_trace_manager import OpsTraceManager
 from core.ops.unified_trace.agent_events import (
     REDACTED_VALUE,
@@ -7,7 +9,7 @@ from core.ops.unified_trace.agent_events import (
 )
 
 
-def test_collection_gate_disables_tracing_when_no_provider_is_configured(monkeypatch) -> None:
+def test_collection_gate_disables_tracing_when_no_provider_is_configured(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(OpsTraceManager, "get_ops_trace_instance", lambda _app_id: None)
 
     assert AgentTraceCollectionGate.for_app("app-1").enabled is False
