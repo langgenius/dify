@@ -2,14 +2,15 @@ import logging
 from datetime import timedelta
 
 from celery import shared_task
-from sqlalchemy import or_, select
+from sqlalchemy import or_, select, update
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
+from core.ops.entities.config_entity import workflow_final_trace_file_id
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
-from core.ops.unified_trace.human_wait import HumanWaitRecord, try_build_human_wait_record
+from core.ops.unified_trace.human_wait import try_build_human_wait_record
 from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from extensions.ext_database import db
@@ -17,7 +18,7 @@ from extensions.ext_storage import storage
 from graphon.enums import WorkflowExecutionStatus
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from models.human_input import HumanInputForm
-from models.workflow import WorkflowPause, WorkflowRun
+from models.workflow import FinalTraceHandoffStatus, WorkflowPause, WorkflowPauseReason, WorkflowRun
 from services.human_input_service import HumanInputService
 
 logger = logging.getLogger(__name__)
@@ -33,23 +34,62 @@ def _is_global_timeout(form_model: HumanInputForm, global_timeout_seconds: int, 
     return global_deadline <= now
 
 
-def _enqueue_global_timeout_trace(
-    *,
-    workflow_run: WorkflowRun,
-    serialized_pause_state: bytes,
-    human_wait: HumanWaitRecord | None,
-) -> None:
+def _attempt_pending_final_trace_handoff(pause_id: str, session_factory: sessionmaker) -> None:
+    max_attempts = dify_config.OPS_TRACE_FINAL_TRACE_HANDOFF_MAX_RETRIES
+    with session_factory() as session, session.begin():
+        claimed = session.execute(
+            update(WorkflowPause)
+            .where(
+                WorkflowPause.id == pause_id,
+                WorkflowPause.final_trace_status == FinalTraceHandoffStatus.PENDING,
+                WorkflowPause.final_trace_attempts < max_attempts,
+            )
+            .values(final_trace_attempts=WorkflowPause.final_trace_attempts + 1)
+            .returning(
+                WorkflowPause.workflow_run_id,
+                WorkflowPause.state_object_key,
+                WorkflowPause.final_trace_attempts,
+            )
+        ).one_or_none()
+
+    if claimed is None:
+        return
+
+    workflow_run_id, state_object_key, attempt = claimed
+    stage = "persist"
     try:
+        serialized_pause_state = storage.load(state_object_key)
         resumption_context = WorkflowResumptionContext.loads(serialized_pause_state.decode())
+        with session_factory() as session:
+            workflow_run = session.get(WorkflowRun, workflow_run_id)
+            if workflow_run is None:
+                raise LookupError(f"workflow run {workflow_run_id} does not exist")
+            expired_forms = session.execute(
+                select(HumanInputForm, WorkflowPauseReason.node_id)
+                .join(WorkflowPauseReason, WorkflowPauseReason.form_id == HumanInputForm.id)
+                .where(
+                    WorkflowPauseReason.pause_id == pause_id,
+                    HumanInputForm.status == HumanInputFormStatus.EXPIRED,
+                )
+                .order_by(WorkflowPauseReason.id.asc())
+            ).all()
+
         generate_entity = resumption_context.get_generate_entity()
         trace_state = generate_entity.workflow_trace_state
-        if human_wait is not None:
-            trace_state.human_waits = [wait for wait in trace_state.human_waits if wait.wait_id != human_wait.wait_id]
-            trace_state.human_waits.append(human_wait)
+        human_waits_by_id = {wait.wait_id: wait for wait in trace_state.human_waits}
+        for form, node_id in expired_forms:
+            human_wait = try_build_human_wait_record(
+                form,
+                owner_kind="workflow_node",
+                owner_id=node_id,
+            )
+            if human_wait is not None:
+                human_waits_by_id[human_wait.wait_id] = human_wait
+        trace_state.human_waits = list(human_waits_by_id.values())
 
         extras = generate_entity.extras
         trace_manager = TraceQueueManager(app_id=workflow_run.app_id, user_id=generate_entity.user_id)
-        trace_manager.add_trace_task(
+        file_info = trace_manager.persist_trace_task(
             TraceTask(
                 TraceTaskName.WORKFLOW_TRACE,
                 workflow_run_id=workflow_run.id,
@@ -61,13 +101,65 @@ def _enqueue_global_timeout_trace(
                 parent_trace_context=extras.get("parent_trace_context"),
                 agent_fragments=trace_state.agent_fragments_by_parent(),
                 human_waits=[wait.model_dump(mode="json") for wait in trace_state.human_waits],
-            )
+            ),
+            file_id=workflow_final_trace_file_id(workflow_run.id),
         )
-    except Exception:
+        if file_info is not None:
+            stage = "enqueue"
+            trace_manager.enqueue_persisted_trace(file_info)
+    except Exception as exc:
         logger.warning(
-            "Failed to publish global-timeout trace for workflow_run_id=%s",
-            workflow_run.id,
-            exc_info=True,
+            "Final trace handoff failed workflow_run_id=%s pause_id=%s attempt=%s stage=%s exception_type=%s",
+            workflow_run_id,
+            pause_id,
+            attempt,
+            stage,
+            type(exc).__name__,
+        )
+        if attempt >= max_attempts:
+            with session_factory() as session, session.begin():
+                exhausted = session.execute(
+                    update(WorkflowPause)
+                    .where(
+                        WorkflowPause.id == pause_id,
+                        WorkflowPause.final_trace_status == FinalTraceHandoffStatus.PENDING,
+                        WorkflowPause.final_trace_attempts == attempt,
+                    )
+                    .values(final_trace_status=FinalTraceHandoffStatus.FAILED)
+                )
+            if exhausted.rowcount:
+                logger.log(
+                    logging.ERROR,
+                    "Final trace handoff exhausted workflow_run_id=%s pause_id=%s attempts=%s "
+                    "stage=%s exception_type=%s",
+                    workflow_run_id,
+                    pause_id,
+                    attempt,
+                    stage,
+                    type(exc).__name__,
+                )
+        return
+
+    with session_factory() as session, session.begin():
+        cleared = session.execute(
+            update(WorkflowPause)
+            .where(
+                WorkflowPause.id == pause_id,
+                WorkflowPause.final_trace_status == FinalTraceHandoffStatus.PENDING,
+            )
+            .values(final_trace_status=None)
+        )
+    if not cleared.rowcount:
+        return
+
+    try:
+        storage.delete(state_object_key)
+    except Exception as exc:
+        logger.warning(
+            "Final trace snapshot cleanup failed workflow_run_id=%s pause_id=%s exception_type=%s",
+            workflow_run_id,
+            pause_id,
+            type(exc).__name__,
         )
 
 
@@ -77,9 +169,9 @@ def _handle_global_timeout(
     workflow_run_id: str,
     node_id: str,
     session_factory: sessionmaker,
-    human_wait: HumanWaitRecord | None = None,
 ) -> None:
     now = naive_utc_now()
+    pending_pause_id: str | None = None
     with session_factory() as session, session.begin():
         workflow_run = session.get(WorkflowRun, workflow_run_id)
         if workflow_run is not None:
@@ -90,31 +182,14 @@ def _handle_global_timeout(
 
         pause_model = session.scalar(select(WorkflowPause).where(WorkflowPause.workflow_run_id == workflow_run_id))
         if pause_model is not None:
-            try:
-                serialized_pause_state = storage.load(pause_model.state_object_key)
-                if workflow_run is not None:
-                    _enqueue_global_timeout_trace(
-                        workflow_run=workflow_run,
-                        serialized_pause_state=serialized_pause_state,
-                        human_wait=human_wait,
-                    )
-            except Exception:
-                logger.warning(
-                    "Failed to restore pause state for global-timeout trace, form_id=%s, workflow_run_id=%s",
-                    form_id,
-                    workflow_run_id,
-                    exc_info=True,
-                )
-            try:
-                storage.delete(pause_model.state_object_key)
-            except Exception:
-                logger.exception(
-                    "Failed to delete pause state object for workflow_run_id=%s, pause_id=%s",
-                    workflow_run_id,
-                    pause_model.id,
-                )
             pause_model.resumed_at = now
+            pause_model.final_trace_status = FinalTraceHandoffStatus.PENDING
+            pause_model.final_trace_attempts = 0
             session.add(pause_model)
+            pending_pause_id = pause_model.id
+
+    if pending_pause_id is not None:
+        _attempt_pending_final_trace_handoff(pending_pause_id, session_factory)
 
 
 @shared_task(name="human_input_form_timeout.check_and_resume", queue="schedule_executor")
@@ -128,6 +203,12 @@ def check_and_handle_human_input_timeouts(limit: int = 100) -> None:
     global_timeout_seconds = dify_config.HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS
 
     with session_factory() as session:
+        pending_pause_ids = session.scalars(
+            select(WorkflowPause.id)
+            .where(WorkflowPause.final_trace_status == FinalTraceHandoffStatus.PENDING)
+            .order_by(WorkflowPause.updated_at.asc(), WorkflowPause.id.asc())
+            .limit(limit)
+        ).all()
         global_deadline = now - timedelta(seconds=global_timeout_seconds) if global_timeout_seconds > 0 else None
         timeout_filter = HumanInputForm.expiration_time <= now
         if global_deadline is not None:
@@ -142,6 +223,9 @@ def check_and_handle_human_input_timeouts(limit: int = 100) -> None:
             .limit(limit)
         )
         expired_forms = session.scalars(stmt).all()
+
+    for pause_id in pending_pause_ids:
+        _attempt_pending_final_trace_handoff(pause_id, session_factory)
 
     for form_model in expired_forms:
         try:
@@ -163,17 +247,11 @@ def check_and_handle_human_input_timeouts(limit: int = 100) -> None:
                 # Global timeout applies only to workflow-owned forms
                 # (_is_global_timeout requires a workflow_run_id): end the run.
                 assert record.workflow_run_id is not None, "global timeout requires a workflow_run_id"
-                human_wait = try_build_human_wait_record(
-                    record,
-                    owner_kind="workflow_node",
-                    owner_id=record.node_id,
-                )
                 _handle_global_timeout(
                     form_id=record.form_id,
                     workflow_run_id=record.workflow_run_id,
                     node_id=record.node_id,
                     session_factory=session_factory,
-                    human_wait=human_wait,
                 )
             elif record.workflow_run_id is not None:
                 # Workflow Agent node / Human Input node form: resume the workflow.
