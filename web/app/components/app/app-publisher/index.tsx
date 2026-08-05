@@ -41,9 +41,8 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { AccessMode } from '@/models/access-control'
-import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/access-control'
-import { fetchAppDetail, publishToCreatorsPlatform } from '@/service/apps'
-import { appDetailQueryKeyPrefix } from '@/service/use-apps'
+import { useGetUserCanAccessApp } from '@/service/access-control'
+import { publishToCreatorsPlatform } from '@/service/apps'
 import {
   appWorkflowQueryOptions,
   useAppWorkflow,
@@ -52,15 +51,10 @@ import {
 } from '@/service/use-workflow'
 import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
-import AccessControl from '../app-access-control'
 import { PublisherEnvironmentFlow } from './environment-deployment-flow'
 import { PublisherEnvironmentTabs } from './environment-tabs'
 import { APP_PUBLISH_HOTKEY } from './hotkeys'
-import {
-  PublisherAccessSection,
-  PublisherActionsSection,
-  PublisherSummarySection,
-} from './sections'
+import { PublisherActionsSection, PublisherSummarySection } from './sections'
 import {
   addPublisherEnvironmentAtom,
   appPublisherEnvironmentsAtom,
@@ -75,11 +69,7 @@ import {
   selectedPublisherEnvironmentIdAtom,
 } from './state'
 import { useRefreshAppEnvironmentsAfterPublisherDeploymentPolling } from './use-refresh-app-environments-after-deployment-polling'
-import {
-  getDisabledFunctionTooltip,
-  getPublisherAppUrl,
-  isPublisherAccessConfigured,
-} from './utils'
+import { getDisabledFunctionTooltip, getPublisherAppUrl } from './utils'
 import VersionInfoModal from './version-info-modal'
 
 export type AppPublisherProps = {
@@ -189,7 +179,6 @@ function AppPublisherContent({
 }) {
   const { t } = useTranslation()
 
-  const [showAppAccessControl, setShowAppAccessControl] = useState(false)
   const [workflowToolDrawerOpen, setWorkflowToolDrawerOpen] = useState(false)
   const [workflowLaunchDialogOpen, setWorkflowLaunchDialogOpen] = useState(false)
   const [workflowLaunchTargetUrl, setWorkflowLaunchTargetUrl] = useState('')
@@ -202,7 +191,6 @@ function AppPublisherContent({
   const workflowStore = use(WorkflowContext)
   const appDetail = useAppStore((state) => state.appDetail)
   useRefreshAppEnvironmentsAfterPublisherDeploymentPolling(appDetail?.id)
-  const setAppDetail = useAppStore((state) => state.setAppDetail)
   const canManageTools = useCanManageTools()
   const environments = useAtomValue(appPublisherEnvironmentsAtom)
   const joinedEnvironmentIds = useAtomValue(joinedPublisherEnvironmentIdsAtom)
@@ -258,20 +246,11 @@ function AppPublisherContent({
   const shouldLoadUserCanAccessApp = Boolean(
     appDetail?.id && open && systemFeatures.webapp_auth.enabled,
   )
-  const { data: userCanAccessApp, isLoading: isGettingUserCanAccessApp } = useGetUserCanAccessApp({
+  const { data: userCanAccessApp } = useGetUserCanAccessApp({
     appId: appDetail?.id,
     enabled: shouldLoadUserCanAccessApp,
   })
-  const { data: appAccessSubjects, isLoading: isGettingAppWhiteListSubjects } =
-    useAppWhiteListSubjects(
-      appDetail?.id,
-      open &&
-        systemFeatures.webapp_auth.enabled &&
-        appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS,
-    )
   const invalidateAppWorkflow = useInvalidateAppWorkflow()
-
-  const isAppAccessSet = isPublisherAccessConfigured(appDetail, appAccessSubjects)
 
   const noAccessPermission = Boolean(
     systemFeatures.webapp_auth.enabled &&
@@ -336,17 +315,6 @@ function AppPublisherContent({
 
     onToggle?.(nextOpen)
     onOpenStateChange(nextOpen)
-  }
-
-  async function handleAccessControlUpdate() {
-    if (!appDetail) return
-    try {
-      const res = await fetchAppDetail({ url: '/apps', id: appDetail.id })
-      queryClient.setQueryData([...appDetailQueryKeyPrefix, appDetail.id], res)
-      setAppDetail({ ...res })
-    } finally {
-      setShowAppAccessControl(false)
-    }
   }
 
   function handleOpenWorkflowLaunchDialog(targetUrl: string) {
@@ -569,19 +537,6 @@ function AppPublisherContent({
                   upgradeHighlightStyle={upgradeHighlightStyle}
                   versionInfo={publishedWorkflow}
                 />
-                <PublisherAccessSection
-                  enabled={systemFeatures.webapp_auth.enabled}
-                  isAppAccessSet={isAppAccessSet}
-                  isLoading={Boolean(
-                    systemFeatures.webapp_auth.enabled &&
-                    (isGettingUserCanAccessApp || isGettingAppWhiteListSubjects),
-                  )}
-                  accessMode={appDetail?.access_mode}
-                  onClick={() => {
-                    handleOpenChange(false)
-                    setShowAppAccessControl(true)
-                  }}
-                />
                 <PublisherActionsSection
                   appDetail={appDetail}
                   appURL={appURL}
@@ -632,15 +587,6 @@ function AppPublisherContent({
             )}
           </div>
         </PopoverContent>
-        {showAppAccessControl && (
-          <AccessControl
-            app={appDetail!}
-            onConfirm={handleAccessControlUpdate}
-            onClose={() => {
-              setShowAppAccessControl(false)
-            }}
-          />
-        )}
         <WorkflowLaunchDialog
           t={t}
           open={workflowLaunchDialogOpen}

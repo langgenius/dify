@@ -26,11 +26,9 @@ const render = (ui: React.ReactElement) =>
 
 const mockOnPublish = vi.fn()
 const mockOnToggle = vi.fn()
-const mockSetAppDetail = vi.fn()
 const mockTrackEvent = vi.fn()
 const mockRefetch = vi.fn()
 const mockUseGetUserCanAccessApp = vi.fn()
-const mockFetchAppDetail = vi.fn()
 const mockToastError = vi.fn()
 const mockToastSuccess = vi.fn()
 const mockWindowOpen = vi.fn()
@@ -46,7 +44,6 @@ let mockPublishedWorkflowQueryState = {
 
 const sectionProps = vi.hoisted(() => ({
   summary: null as null | Record<string, any>,
-  access: null as null | Record<string, any>,
   actions: null as null | Record<string, any>,
 }))
 const hotkeyMocks = vi.hoisted(() => ({
@@ -75,16 +72,8 @@ vi.mock('@tanstack/react-hotkeys', () => ({
 }))
 
 vi.mock('@/app/components/app/store', () => ({
-  useStore: (
-    selector: (state: {
-      appDetail: Record<string, any> | null
-      setAppDetail: typeof mockSetAppDetail
-    }) => unknown,
-  ) =>
-    selector({
-      appDetail: mockAppDetail,
-      setAppDetail: mockSetAppDetail,
-    }),
+  useStore: (selector: (state: { appDetail: Record<string, any> | null }) => unknown) =>
+    selector({ appDetail: mockAppDetail }),
 }))
 
 vi.mock('@/hooks/use-format-time-from-now', () => ({
@@ -111,7 +100,6 @@ vi.mock('@/service/access-control/use-app-access-control', () => ({
 const mockPublishToCreatorsPlatform = vi.fn()
 
 vi.mock('@/service/apps', () => ({
-  fetchAppDetail: (...args: unknown[]) => mockFetchAppDetail(...args),
   publishToCreatorsPlatform: (...args: unknown[]) => mockPublishToCreatorsPlatform(...args),
 }))
 
@@ -179,26 +167,6 @@ vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: (...args: unknown[]) => mockTrackEvent(...args),
 }))
 
-vi.mock('../../app-access-control', () => {
-  const MockAccessControl = ({
-    onConfirm,
-    onClose,
-  }: {
-    onConfirm: () => Promise<void>
-    onClose: () => void
-  }) => (
-    <div data-testid="access-control">
-      <button onClick={() => void onConfirm()}>confirm-access-control</button>
-      <button onClick={onClose}>close-access-control</button>
-    </div>
-  )
-
-  return {
-    default: MockAccessControl,
-    AccessControl: MockAccessControl,
-  }
-})
-
 vi.mock('@/app/components/tools/workflow-tool', () => ({
   WorkflowToolDrawer: ({ onHide }: { onHide: () => void }) => (
     <div data-testid="workflow-tool-drawer">
@@ -221,10 +189,7 @@ vi.mock('../sections', () => ({
       </div>
     )
   },
-  PublisherAccessSection: (props: Record<string, any>) => {
-    sectionProps.access = props
-    return <button onClick={props.onClick}>publisher-access-control</button>
-  },
+  PublisherAccessSection: () => <div>publisher-access-control</div>,
   PublisherActionsSection: (props: Record<string, any>) => {
     sectionProps.actions = props
     return (
@@ -254,7 +219,6 @@ describe('AppPublisher', () => {
     hotkeyMocks.handlers.length = 0
     collaborationMocks.handler = undefined
     sectionProps.summary = null
-    sectionProps.access = null
     sectionProps.actions = null
     mockPublishedWorkflow = null
     mockPublishedWorkflowQueryState = {
@@ -276,10 +240,6 @@ describe('AppPublisher', () => {
         access_token: 'token-1',
       },
     }
-    mockFetchAppDetail.mockResolvedValue({
-      id: 'app-1',
-      access_mode: AccessMode.PUBLIC,
-    })
     Object.defineProperty(window, 'open', {
       configurable: true,
       writable: true,
@@ -302,6 +262,14 @@ describe('AppPublisher', () => {
       })
     })
     expect(mockRefetch).not.toHaveBeenCalled()
+  })
+
+  it('should not render Web app access control in the publish popover', () => {
+    render(<AppPublisher publishedAt={Date.now()} />)
+
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
+
+    expect(screen.queryByText('publisher-access-control')).not.toBeInTheDocument()
   })
 
   it('should publish and track the publish event', async () => {
@@ -829,43 +797,6 @@ describe('AppPublisher', () => {
     expect(sectionProps.actions?.workflowToolAvailable).toBe(false)
   })
 
-  it('should close access control through its child callback', async () => {
-    render(<AppPublisher publishedAt={Date.now()} />)
-
-    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
-    fireEvent.click(screen.getByText('publisher-access-control'))
-    expect(screen.getByTestId('access-control'))!.toBeInTheDocument()
-    fireEvent.click(screen.getByText('close-access-control'))
-    expect(screen.queryByTestId('access-control')).not.toBeInTheDocument()
-  })
-
-  it('should refresh app detail after access control confirmation', async () => {
-    const { queryClient } = render(<AppPublisher publishedAt={Date.now()} />)
-    const setQueryDataSpy = vi.spyOn(queryClient, 'setQueryData')
-
-    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
-    fireEvent.click(screen.getByText('publisher-access-control'))
-
-    expect(screen.getByTestId('access-control'))!.toBeInTheDocument()
-
-    fireEvent.click(screen.getByText('confirm-access-control'))
-
-    await waitFor(() => {
-      expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
-    })
-    expect(setQueryDataSpy).toHaveBeenCalledWith(
-      ['apps', 'detail', 'app-1'],
-      expect.objectContaining({
-        access_mode: AccessMode.PUBLIC,
-      }),
-    )
-    expect(mockSetAppDetail).toHaveBeenCalledWith(
-      expect.objectContaining({
-        access_mode: AccessMode.PUBLIC,
-      }),
-    )
-  })
-
   it('should ignore the trigger when the publish button is disabled', () => {
     render(<AppPublisher disabled publishedAt={Date.now()} onToggle={mockOnToggle} />)
 
@@ -1066,21 +997,6 @@ describe('AppPublisher', () => {
     expect(
       screen.queryByText(/(?:^|\.)common\.publishToMarketplace(?=$|:)/),
     ).not.toBeInTheDocument()
-  })
-
-  it('should keep access control open when app detail is unavailable during confirmation', async () => {
-    mockAppDetail = null
-
-    render(<AppPublisher publishedAt={Date.now()} />)
-
-    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
-    fireEvent.click(screen.getByText('publisher-access-control'))
-    fireEvent.click(screen.getByText('confirm-access-control'))
-
-    await waitFor(() => {
-      expect(mockFetchAppDetail).not.toHaveBeenCalled()
-    })
-    expect(screen.getByTestId('access-control'))!.toBeInTheDocument()
   })
 
   it('should not infer an app mode when app detail is unavailable', async () => {

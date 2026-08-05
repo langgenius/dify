@@ -2,15 +2,9 @@
 import type { VersionHistory } from '@/types/workflow'
 import { fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { AccessMode } from '@/models/access-control'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
-import {
-  AccessModeDisplay,
-  PublisherAccessSection,
-  PublisherActionsSection,
-  PublisherSummarySection,
-} from '../sections'
+import { PublisherActionsSection, PublisherSummarySection } from '../sections'
 
 vi.mock('../publish-with-multiple-model', () => ({
   default: ({
@@ -113,21 +107,6 @@ describe('app-publisher sections', () => {
     expect(restoreButton).toBeDisabled()
     await user.click(restoreButton)
     expect(handleRestore).not.toHaveBeenCalled()
-  })
-
-  it('should expose the access control warning when subjects are missing', () => {
-    render(
-      <PublisherAccessSection
-        enabled
-        isAppAccessSet={false}
-        isLoading={false}
-        accessMode={AccessMode.SPECIFIC_GROUPS_MEMBERS}
-        onClick={vi.fn()}
-      />,
-    )
-
-    expect(screen.getByText(/(?:^|\.)publishApp\.notSet(?=$|:)/)).toBeInTheDocument()
-    expect(screen.getByText(/(?:^|\.)publishApp\.notSetDesc(?=$|:)/)).toBeInTheDocument()
   })
 
   it('should render the initial publish action when the draft has not been published yet', () => {
@@ -318,52 +297,6 @@ describe('app-publisher sections', () => {
     )
 
     expect(screen.getByText(/(?:^|\.)publishLimit\.startNodeDesc(?=$|:)/)).toBeInTheDocument()
-  })
-
-  it('should render loading access state and access mode labels when enabled', () => {
-    const { rerender } = render(
-      <PublisherAccessSection
-        enabled
-        isAppAccessSet
-        isLoading
-        accessMode={AccessMode.PUBLIC}
-        onClick={vi.fn()}
-      />,
-    )
-
-    expect(document.querySelector('.spin-animation')).toBeInTheDocument()
-
-    rerender(
-      <PublisherAccessSection
-        enabled
-        isAppAccessSet
-        isLoading={false}
-        accessMode={AccessMode.PUBLIC}
-        onClick={vi.fn()}
-      />,
-    )
-
-    expect(
-      screen.getByText(/(?:^|\.)accessControlDialog\.accessItems\.anyone(?=$|:)/),
-    ).toBeInTheDocument()
-    expect(render(<AccessModeDisplay />).container).toBeEmptyDOMElement()
-  })
-
-  it('should hide access control content when enabled is false', () => {
-    render(
-      <PublisherAccessSection
-        enabled={false}
-        isAppAccessSet
-        isLoading={false}
-        accessMode={AccessMode.PUBLIC}
-        onClick={vi.fn()}
-      />,
-    )
-
-    expect(screen.queryByText(/(?:^|\.)publishApp\.title(?=$|:)/)).not.toBeInTheDocument()
-    expect(
-      screen.queryByText(/(?:^|\.)accessControlDialog\.accessItems\.anyone(?=$|:)/),
-    ).not.toBeInTheDocument()
   })
 
   it('should render the published workflow actions with Workflow as Tool after Marketplace', async () => {

@@ -31,6 +31,7 @@ import {
   normalizeEnvironmentAccessMode,
 } from './environment-web-app-utils'
 import { useBuiltInAccessPointActions } from './use-built-in-actions'
+import { WebAppAccessControlEntry } from './web-app-access-control'
 
 const ACCESS_MODE_ICON_MAP: Record<EnvironmentAccessMode, string> = {
   [AccessMode.ORGANIZATION]: 'i-ri-building-line',
@@ -221,44 +222,14 @@ export function EnvironmentWebAppCard({
           onRegenerate={() => setShowRegenerate(true)}
         />
         {systemFeatures.webapp_auth.enabled && (
-          <div className="px-4 pb-3">
-            {siteQuery.isSuccess ? (
-              <button
-                type="button"
-                className="flex h-9 w-full items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal py-1 pr-2 pl-2.5 text-left outline-hidden hover:bg-components-input-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:hover:bg-components-input-bg-normal"
-                disabled={!canManage}
-                onClick={() => setShowAccess(true)}
-              >
-                <span className="flex min-w-0 flex-1 items-center gap-x-1.5 pr-1">
-                  <span
-                    aria-hidden
-                    className={`${ACCESS_MODE_ICON_MAP[accessMode]} size-4 shrink-0 text-text-tertiary`}
-                  />
-                  <span className="truncate system-xs-regular text-text-tertiary">
-                    {accessLabel}
-                  </span>
-                </span>
-                {!accessConfigured && (
-                  <span className="shrink-0 system-xs-regular text-text-tertiary">
-                    {t(($) => $['publishApp.notSet'], { ns: 'app' })}
-                  </span>
-                )}
-                <span
-                  aria-hidden
-                  className="i-ri-arrow-right-s-line size-4 shrink-0 text-text-quaternary"
-                />
-              </button>
-            ) : (
-              <div className="flex h-9 w-full items-center gap-2 rounded-lg border-[0.5px] border-divider-subtle bg-components-input-bg-normal px-2.5">
-                <span aria-hidden className="i-ri-global-line size-4 shrink-0 text-text-disabled" />
-                <span className="h-2 w-[42%] rounded-full bg-text-quaternary opacity-10" />
-                <span
-                  aria-hidden
-                  className="ml-auto i-ri-arrow-right-s-line size-4 shrink-0 text-text-disabled"
-                />
-              </div>
-            )}
-          </div>
+          <WebAppAccessControlEntry
+            accessConfigured={accessConfigured}
+            accessIcon={ACCESS_MODE_ICON_MAP[accessMode]}
+            accessLabel={accessLabel}
+            available={siteQuery.isSuccess}
+            disabled={!canManage}
+            onClick={() => setShowAccess(true)}
+          />
         )}
       </AccessPointCard>
 
