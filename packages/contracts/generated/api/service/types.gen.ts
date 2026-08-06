@@ -1740,6 +1740,7 @@ export type KnowledgeFsTraceProfileResponse = {
 export type KnowledgeFsTraceResponse = {
   completed: boolean
   created_at: string
+  duration_ms?: number | null
   evidence_bundle_id?: string | null
   evidence_state?: string | null
   final_score?: number | null
@@ -1747,6 +1748,7 @@ export type KnowledgeFsTraceResponse = {
   mode: 'auto' | 'deep' | 'fast' | 'research'
   profile: KnowledgeFsTraceProfileResponse
   query: string
+  result_count: number
   scores: KnowledgeFsTraceScoresResponse
   stages: Array<KnowledgeFsTraceStageResponse>
 }

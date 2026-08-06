@@ -48,6 +48,7 @@ export interface FrozenQualityRuntimeSnapshot {
 export interface QualityAnswerTraceSummary {
   readonly completed: boolean;
   readonly createdAt: string;
+  readonly durationMs?: number | undefined;
   readonly evidenceBundleId?: string | undefined;
   readonly evidenceState?: string | undefined;
   readonly finalScore?: number | undefined;
@@ -63,6 +64,7 @@ export interface QualityAnswerTraceSummary {
     readonly retrievalProfileRevision?: number | undefined;
   };
   readonly query: string;
+  readonly resultCount: number;
   readonly scores: {
     readonly final?: number | undefined;
     readonly rerank?: number | undefined;

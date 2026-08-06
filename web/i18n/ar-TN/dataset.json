@@ -560,6 +560,7 @@
   "newKnowledge.retrievalTest.processLog": "سجل العملية",
   "newKnowledge.retrievalTest.quality": "الجودة",
   "newKnowledge.retrievalTest.queryPlaceholder": "أدخل استعلاماً لاختبار الاسترجاع…",
+  "newKnowledge.retrievalTest.recordSummary": "{{count}} مقاطع في {{duration}}",
   "newKnowledge.retrievalTest.records": "السجلات",
   "newKnowledge.retrievalTest.researchResult": "نتيجة البحث",
   "newKnowledge.retrievalTest.result": "نتيجة الاسترجاع",

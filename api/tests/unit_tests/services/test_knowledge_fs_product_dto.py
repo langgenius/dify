@@ -41,11 +41,32 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSSourceWorkflowImportPayload,
     KnowledgeFSSpaceListItemResponse,
     KnowledgeFSStatResponse,
+    KnowledgeFSTraceResponse,
     KnowledgeFSTreeResponse,
     KnowledgeFSUploadPartPresignPayload,
     KnowledgeFSUploadSessionCompletePayload,
     KnowledgeFSUploadSessionCreatePayload,
 )
+
+
+def test_trace_response_translates_historical_retrieval_statistics() -> None:
+    trace = KnowledgeFSTraceResponse.model_validate(
+        {
+            "completed": True,
+            "createdAt": "2026-08-06T08:00:00.000Z",
+            "durationMs": 1250,
+            "id": "trace-1",
+            "mode": "fast",
+            "profile": {},
+            "query": "How does retrieval work?",
+            "resultCount": 4,
+            "scores": {},
+            "stages": [],
+        }
+    )
+
+    assert trace.duration_ms == 1250
+    assert trace.result_count == 4
 
 
 def test_knowledge_fs_queries_validate_independent_command_contracts() -> None:

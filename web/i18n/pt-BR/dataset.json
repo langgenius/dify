@@ -560,6 +560,7 @@
   "newKnowledge.retrievalTest.processLog": "Log do processo",
   "newKnowledge.retrievalTest.quality": "Qualidade",
   "newKnowledge.retrievalTest.queryPlaceholder": "Digite uma consulta para testar a recuperação…",
+  "newKnowledge.retrievalTest.recordSummary": "{{count}} trechos em {{duration}}",
   "newKnowledge.retrievalTest.records": "Histórico",
   "newKnowledge.retrievalTest.researchResult": "Resultado da pesquisa",
   "newKnowledge.retrievalTest.result": "Resultado da recuperação",

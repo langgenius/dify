@@ -560,6 +560,7 @@
   "newKnowledge.retrievalTest.processLog": "گزارش فرایند",
   "newKnowledge.retrievalTest.quality": "کیفیت",
   "newKnowledge.retrievalTest.queryPlaceholder": "برای آزمایش بازیابی، یک پرس‌وجو وارد کنید…",
+  "newKnowledge.retrievalTest.recordSummary": "{{count}} قطعه در {{duration}}",
   "newKnowledge.retrievalTest.records": "سوابق",
   "newKnowledge.retrievalTest.researchResult": "نتیجه پژوهش",
   "newKnowledge.retrievalTest.result": "نتیجه بازیابی",

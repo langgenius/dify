@@ -560,6 +560,7 @@
   "newKnowledge.retrievalTest.processLog": "Dziennik procesu",
   "newKnowledge.retrievalTest.quality": "Jakość",
   "newKnowledge.retrievalTest.queryPlaceholder": "Wprowadź zapytanie, aby przetestować wyszukiwanie…",
+  "newKnowledge.retrievalTest.recordSummary": "{{count}} fragmentów w {{duration}}",
   "newKnowledge.retrievalTest.records": "Historia",
   "newKnowledge.retrievalTest.researchResult": "Wynik badania",
   "newKnowledge.retrievalTest.result": "Wynik wyszukiwania",

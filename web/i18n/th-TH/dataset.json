@@ -560,6 +560,7 @@
   "newKnowledge.retrievalTest.processLog": "บันทึกกระบวนการ",
   "newKnowledge.retrievalTest.quality": "คุณภาพ",
   "newKnowledge.retrievalTest.queryPlaceholder": "ป้อนคำค้นเพื่อทดสอบการค้นคืน…",
+  "newKnowledge.retrievalTest.recordSummary": "{{count}} ส่วนใน {{duration}}",
   "newKnowledge.retrievalTest.records": "ประวัติ",
   "newKnowledge.retrievalTest.researchResult": "ผลการวิจัย",
   "newKnowledge.retrievalTest.result": "ผลลัพธ์การดึงข้อมูล",

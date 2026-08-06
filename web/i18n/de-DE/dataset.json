@@ -560,6 +560,7 @@
   "newKnowledge.retrievalTest.processLog": "Prozessprotokoll",
   "newKnowledge.retrievalTest.quality": "Qualität",
   "newKnowledge.retrievalTest.queryPlaceholder": "Abfrage eingeben, um den Abruf zu testen…",
+  "newKnowledge.retrievalTest.recordSummary": "{{count}} Abschnitte in {{duration}}",
   "newKnowledge.retrievalTest.records": "Verlauf",
   "newKnowledge.retrievalTest.researchResult": "Rechercheergebnis",
   "newKnowledge.retrievalTest.result": "Suchergebnis",

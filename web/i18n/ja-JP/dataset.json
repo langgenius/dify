@@ -560,6 +560,7 @@
   "newKnowledge.retrievalTest.processLog": "プロセスログ",
   "newKnowledge.retrievalTest.quality": "品質",
   "newKnowledge.retrievalTest.queryPlaceholder": "検索をテストするクエリを入力…",
+  "newKnowledge.retrievalTest.recordSummary": "{{duration}}で{{count}}チャンク",
   "newKnowledge.retrievalTest.records": "履歴",
   "newKnowledge.retrievalTest.researchResult": "調査結果",
   "newKnowledge.retrievalTest.result": "検索結果",

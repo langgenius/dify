@@ -31,6 +31,7 @@ import {
   extractStreamError,
   extractTraceId,
   formatDuration,
+  formatRetrievalDuration,
   researchTaskIsActive,
   retrievalTestRecords,
   shouldRefreshResearchPartials,
@@ -1010,10 +1011,13 @@ function RecordButton({
               t(($) => $['newKnowledge.retrievalTest.failedAfter'], {
                 duration: formatDuration(record.durationMs),
               })
-            ) : record.kind === 'local' &&
+            ) : record.kind !== 'research' &&
               record.resultCount !== undefined &&
               record.durationMs !== undefined ? (
-              `${record.resultCount} ${t(($) => $['newKnowledge.chunkCount']).toLocaleLowerCase()} · ${formatDuration(record.durationMs)}`
+              t(($) => $['newKnowledge.retrievalTest.recordSummary'], {
+                count: record.resultCount,
+                duration: formatRetrievalDuration(record.durationMs),
+              })
             ) : (
               t(($) => $[`newKnowledge.settings.retrievalMode.${record.mode}`])
             )}
@@ -1088,26 +1092,24 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     () => retrievalTestRecords(tracesQuery.data?.data ?? [], researchTasksQuery.data?.data ?? []),
     [researchTasksQuery.data?.data, tracesQuery.data?.data],
   )
-  const displayRecords = useMemo<RetrievalTestRecord[]>(() => {
-    if (!localRun || localRun.status === 'running') return records
-    const traceAlreadyListed =
-      localRun.traceId &&
-      records.some((record) => record.kind === 'trace' && record.id === localRun.traceId)
-    if (traceAlreadyListed) return records
-    return [
-      {
-        createdAt: localRun.startedAt,
-        id: localRun.id,
-        kind: 'local',
-        mode: localRun.mode,
-        query: localRun.query,
-        durationMs: localRun.endedAt ? localRun.endedAt - localRun.startedAt : undefined,
-        resultCount: localRun.evidence.length,
-        status: localRun.status === 'no-results' ? 'completed' : localRun.status,
-      },
-      ...records,
-    ]
-  }, [localRun, records])
+  const localRecord: RetrievalTestRecord | undefined =
+    localRun && localRun.status !== 'running'
+      ? {
+          createdAt: localRun.startedAt,
+          id: localRun.id,
+          kind: 'local',
+          mode: localRun.mode,
+          query: localRun.query,
+          durationMs: localRun.endedAt ? localRun.endedAt - localRun.startedAt : undefined,
+          resultCount: localRun.evidence.length,
+          status: localRun.status === 'no-results' ? 'completed' : localRun.status,
+        }
+      : undefined
+  const traceAlreadyListed = Boolean(
+    localRun?.traceId &&
+    records.some((record) => record.kind === 'trace' && record.id === localRun.traceId),
+  )
+  const displayRecords = localRecord && !traceAlreadyListed ? [localRecord, ...records] : records
   const selectedRecord = records.find(
     (record) => record.id === selected?.id && record.kind === selected.kind,
   )
@@ -1443,18 +1445,21 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
           })
         evidence = extractRetrievalEvidence(traceEvidence)
       }
+      const endedAt = Date.now()
       setLocalRun((current) =>
         current?.id === id
           ? {
               ...current,
-              endedAt: Date.now(),
+              endedAt,
               evidence,
               status: 'completed',
               traceId,
             }
           : current,
       )
-      await tracesQuery.refetch()
+      const refreshedTraces = await tracesQuery.refetch()
+      if (traceId && refreshedTraces.data?.data.some((trace) => trace.id === traceId))
+        setLocalSelected({ id: traceId, kind: 'trace' })
     } catch (error) {
       if (controller.signal.aborted) return
       const failure = await queryFailure(error)

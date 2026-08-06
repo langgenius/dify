@@ -560,6 +560,7 @@
   "newKnowledge.retrievalTest.processLog": "Log proses",
   "newKnowledge.retrievalTest.quality": "Kualitas",
   "newKnowledge.retrievalTest.queryPlaceholder": "Masukkan kueri untuk menguji pengambilan…",
+  "newKnowledge.retrievalTest.recordSummary": "{{count}} potongan dalam {{duration}}",
   "newKnowledge.retrievalTest.records": "Riwayat",
   "newKnowledge.retrievalTest.researchResult": "Hasil riset",
   "newKnowledge.retrievalTest.result": "Hasil pengambilan",

@@ -27,6 +27,7 @@ export const QualityTraceSummarySchema = z
   .object({
     completed: z.boolean(),
     createdAt: DateTime,
+    durationMs: z.number().int().nonnegative().optional(),
     evidenceBundleId: z.string().uuid().optional(),
     evidenceState: z.string().optional(),
     finalScore: ScoreSchema,
@@ -42,6 +43,7 @@ export const QualityTraceSummarySchema = z
       retrievalProfileRevision: z.number().int().positive().optional(),
     }),
     query: z.string(),
+    resultCount: z.number().int().nonnegative(),
     scores: z.object({ final: ScoreSchema, rerank: ScoreSchema, retrieval: ScoreSchema }),
     stages: z.array(
       z.object({
