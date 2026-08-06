@@ -3,12 +3,15 @@
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { ReactNode } from 'react'
 import type { DeploymentVersion } from '@/app/components/app/deploy/version'
+import { DeploymentStatus } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
 import SuggestedAction from '@/app/components/app/app-publisher/suggested-action'
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import { PublisherDeployingMarker } from './publisher-deploying-marker'
 import { PublisherTimelineMarker } from './sections'
 
 type PublisherEnvironmentSummarySectionProps = {
@@ -34,11 +37,15 @@ function environmentHref(path: string, appId: string, environmentId: string) {
 }
 
 function PublisherLatestVersionRow({
+  deployingVersionName,
   disabled,
+  isDeploying,
   latestVersion,
   onShowAllVersions,
 }: {
+  deployingVersionName?: string
   disabled: boolean
+  isDeploying: boolean
   latestVersion?: DeploymentVersion | null
   onShowAllVersions: () => void
 }) {
@@ -46,12 +53,33 @@ function PublisherLatestVersionRow({
 
   return (
     <div className="flex items-center gap-1 py-0.5 pr-0.5 pl-1">
-      <PublisherTimelineMarker position="bottom" />
-      <p className="min-w-0 flex-1 truncate system-xs-regular text-text-tertiary">
-        <span className="capitalize">
-          {t(($) => $['overview.chip.latest'], { ns: 'deployments' })}
-        </span>
-        {latestVersion ? `: ${latestVersion.name}` : ''}
+      {isDeploying ? <PublisherDeployingMarker /> : <PublisherTimelineMarker position="bottom" />}
+      <p
+        role={isDeploying ? 'status' : undefined}
+        className={cn(
+          'min-w-0 flex-1 truncate',
+          isDeploying
+            ? 'system-xs-medium text-text-accent'
+            : 'system-xs-regular text-text-tertiary',
+        )}
+      >
+        {isDeploying ? (
+          deployingVersionName ? (
+            t(($) => $['studio.publisher.deployingVersion'], {
+              ns: 'deployments',
+              version: deployingVersionName,
+            })
+          ) : (
+            t(($) => $['deployDrawer.deploying'], { ns: 'deployments' })
+          )
+        ) : (
+          <>
+            <span className="capitalize">
+              {t(($) => $['overview.chip.latest'], { ns: 'deployments' })}
+            </span>
+            {latestVersion ? `: ${latestVersion.name}` : ''}
+          </>
+        )}
       </p>
       <button
         type="button"
@@ -81,6 +109,14 @@ export function PublisherEnvironmentSummarySection({
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const deploymentState = deployment?.deployment
   const deployedVersion = deploymentState?.current_version
+  const isDeploying = deploymentState?.status === DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING
+  const deployingVersion = deploymentState?.latest_operation?.target_version
+  const deployingVersionName = deployingVersion
+    ? getWorkflowVersionName(
+        deployingVersion,
+        t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
+      )
+    : undefined
   const versionsBehind = deploymentState?.versions_behind
   const versionsBehindLabel =
     versionsBehind === undefined
@@ -146,10 +182,14 @@ export function PublisherEnvironmentSummarySection({
               disabled={deploymentActionsDisabled || !latestVersion}
               onClick={onDeployLatest}
             >
-              {t(($) => $['studio.deployLatest'], { ns: 'deployments' })}
+              {isDeploying
+                ? t(($) => $['deployDrawer.deploying'], { ns: 'deployments' })
+                : t(($) => $['studio.deployLatest'], { ns: 'deployments' })}
             </Button>
             <PublisherLatestVersionRow
+              deployingVersionName={deployingVersionName}
               disabled={deploymentActionsDisabled}
+              isDeploying={isDeploying}
               latestVersion={latestVersion}
               onShowAllVersions={onShowAllVersions}
             />
@@ -214,9 +254,11 @@ export function PublisherEnvironmentSummarySection({
           disabled={deploymentActionsDisabled || isLatestVersion || !latestVersion}
           onClick={onDeployLatest}
         >
-          {t(($) => $['studio.deployLatest'], { ns: 'deployments' })}
+          {isDeploying
+            ? t(($) => $['deployDrawer.deploying'], { ns: 'deployments' })
+            : t(($) => $['studio.deployLatest'], { ns: 'deployments' })}
         </Button>
-        {isLatestVersion && (
+        {isLatestVersion && !isDeploying && (
           <Button
             type="button"
             variant="tertiary"
@@ -229,9 +271,11 @@ export function PublisherEnvironmentSummarySection({
           </Button>
         )}
       </div>
-      {!isLatestVersion && (
+      {(isDeploying || !isLatestVersion) && (
         <PublisherLatestVersionRow
+          deployingVersionName={deployingVersionName}
           disabled={deploymentActionsDisabled}
+          isDeploying={isDeploying}
           latestVersion={latestVersion}
           onShowAllVersions={onShowAllVersions}
         />

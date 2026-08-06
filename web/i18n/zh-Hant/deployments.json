@@ -358,6 +358,7 @@
   "studio.lastActivity": "最近活動",
   "studio.liveVersion": "線上版本",
   "studio.moreEnvironments": "更多環境",
+  "studio.publisher.deployingVersion": "部署中：{{version}}",
   "studio.publisher.noPublishedDescription": "發佈草稿後即可在此部署。",
   "studio.publisher.notDeployedYet": "尚未部署",
   "studio.retryVersion": "重試 {{version}}",

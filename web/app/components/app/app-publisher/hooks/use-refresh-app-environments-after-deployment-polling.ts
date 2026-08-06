@@ -13,7 +13,7 @@ import {
   publisherEnvironmentDeploymentPollingAtom,
   selectedEnvironmentDeploymentAtom,
   selectedPublisherEnvironmentAtom,
-} from './state'
+} from '../state'
 
 export function useRefreshAppEnvironmentsAfterPublisherDeploymentPolling(appId?: string) {
   const queryClient = useQueryClient()

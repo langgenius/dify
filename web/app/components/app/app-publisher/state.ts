@@ -312,6 +312,8 @@ const selectedEnvironmentDeploymentQueryAtom = atomWithQuery((get) => {
         : skipToken,
     enabled: shouldFetch,
     refetchInterval: (query) => {
+      if (query.state.status === 'error' || query.state.fetchFailureCount > 0) return false
+
       const deployment = query.state.data?.environment_deployment
       if (polling?.environmentId !== environmentId)
         return isEnvironmentDeploymentInProgress(deployment)

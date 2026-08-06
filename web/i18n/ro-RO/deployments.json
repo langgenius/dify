@@ -359,6 +359,7 @@
   "studio.liveVersion": "Versiune activă",
   "studio.moreEnvironments": "Mai multe medii",
   "studio.publisher.noPublishedDescription": "Publică schița pentru a o implementa aici.",
+  "studio.publisher.deployingVersion": "Se implementează: {{version}}",
   "studio.publisher.notDeployedYet": "Nu a fost implementat încă",
   "studio.retryVersion": "Reîncearcă {{version}}",
   "studio.updatedAtBy": "Actualizat la {{time}} de {{name}}",

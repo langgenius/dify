@@ -44,7 +44,7 @@ export function PublisherEnvironmentFlow({
   const deploymentPolling = useAtomValue(publisherEnvironmentDeploymentPollingAtom)
   const startDeploymentPolling = useSetAtom(startPublisherEnvironmentDeploymentPollingAtom)
 
-  if (isDeploymentLoading || isDeploymentError) {
+  if (isDeploymentLoading || (isDeploymentError && !deployment)) {
     return (
       <div aria-busy={isDeploymentLoading} className="flex min-h-40 flex-col gap-3 p-4">
         {environmentTabs}

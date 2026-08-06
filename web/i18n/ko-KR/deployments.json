@@ -359,6 +359,7 @@
   "studio.liveVersion": "라이브 버전",
   "studio.moreEnvironments": "더 많은 환경",
   "studio.publisher.noPublishedDescription": "초안을 게시하여 여기에 배포하세요.",
+  "studio.publisher.deployingVersion": "배포 중: {{version}}",
   "studio.publisher.notDeployedYet": "아직 배포되지 않음",
   "studio.retryVersion": "{{version}} 다시 시도",
   "studio.updatedAtBy": "{{name}} 님이 {{time}}에 업데이트",

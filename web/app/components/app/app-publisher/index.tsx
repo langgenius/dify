@@ -53,6 +53,7 @@ import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { PublisherEnvironmentFlow } from './environment-deployment-flow'
 import { PublisherEnvironmentTabs } from './environment-tabs'
+import { useRefreshAppEnvironmentsAfterPublisherDeploymentPolling } from './hooks/use-refresh-app-environments-after-deployment-polling'
 import { APP_PUBLISH_HOTKEY } from './hotkeys'
 import { PublisherActionsSection, PublisherSummarySection } from './sections'
 import {
@@ -68,7 +69,6 @@ import {
   selectedPublisherEnvironmentAtom,
   selectedPublisherEnvironmentIdAtom,
 } from './state'
-import { useRefreshAppEnvironmentsAfterPublisherDeploymentPolling } from './use-refresh-app-environments-after-deployment-polling'
 import { getDisabledFunctionTooltip, getPublisherAppUrl } from './utils'
 import VersionInfoModal from './version-info-modal'
 

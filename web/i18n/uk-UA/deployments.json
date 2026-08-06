@@ -359,6 +359,7 @@
   "studio.liveVersion": "Активна версія",
   "studio.moreEnvironments": "Інші середовища",
   "studio.publisher.noPublishedDescription": "Опублікуйте чернетку, щоб розгорнути її тут.",
+  "studio.publisher.deployingVersion": "Розгортання: {{version}}",
   "studio.publisher.notDeployedYet": "Ще не розгорнуто",
   "studio.retryVersion": "Повторити {{version}}",
   "studio.updatedAtBy": "Оновлено {{time}}, {{name}}",

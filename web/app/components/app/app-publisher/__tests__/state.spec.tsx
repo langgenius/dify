@@ -7,6 +7,7 @@ import { screen, render as testingLibraryRender, waitFor } from '@testing-librar
 import userEvent from '@testing-library/user-event'
 import { Provider, useAtomValue, useSetAtom } from 'jotai'
 import { createQueryAtomTestStore } from '@/test/query-atom'
+import { useRefreshAppEnvironmentsAfterPublisherDeploymentPolling } from '../hooks/use-refresh-app-environments-after-deployment-polling'
 import {
   addPublisherEnvironmentAtom,
   appPublisherEnvironmentsAtom,
@@ -18,7 +19,6 @@ import {
   selectedPublisherEnvironmentIdAtom,
   startPublisherEnvironmentDeploymentPollingAtom,
 } from '../state'
-import { useRefreshAppEnvironmentsAfterPublisherDeploymentPolling } from '../use-refresh-app-environments-after-deployment-polling'
 
 type QueryOptions = {
   enabled?: boolean
@@ -36,6 +36,8 @@ type QueryOptions = {
           }
         }
       }
+      fetchFailureCount?: number
+      status?: 'error' | 'pending' | 'success'
     }
   }) => false | number
 }
@@ -387,6 +389,39 @@ describe('app publisher environment state', () => {
         },
       }),
     ).toBe(3000)
+  })
+
+  it('stops automatic status polling while the deployment query is failing', async () => {
+    const user = userEvent.setup()
+    const response = environmentDeploymentResponse({
+      deploymentStatus: DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING,
+      operationId: 'operation-staging',
+      operationStatus: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS,
+    })
+    renderState()
+
+    await screen.findByText('Joined: staging')
+    await user.click(screen.getByRole('button', { name: 'Select staging' }))
+
+    const refetchInterval = getDeploymentQueryOptions('staging')?.refetchInterval
+    expect(refetchInterval).toBeTypeOf('function')
+    expect(
+      refetchInterval?.({
+        state: {
+          data: response,
+          fetchFailureCount: 1,
+          status: 'success',
+        },
+      }),
+    ).toBe(false)
+    expect(
+      refetchInterval?.({
+        state: {
+          data: response,
+          status: 'error',
+        },
+      }),
+    ).toBe(false)
   })
 
   it('queries deployment details only after selecting an in-use non-built-in environment', async () => {

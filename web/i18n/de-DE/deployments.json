@@ -358,6 +358,7 @@
   "studio.lastActivity": "Letzte Aktivität",
   "studio.liveVersion": "Live-Version",
   "studio.moreEnvironments": "Weitere Umgebungen",
+  "studio.publisher.deployingVersion": "Wird bereitgestellt: {{version}}",
   "studio.publisher.noPublishedDescription": "Veröffentlichen Sie Ihren Entwurf, um ihn hier bereitzustellen.",
   "studio.publisher.notDeployedYet": "Noch nicht bereitgestellt",
   "studio.retryVersion": "{{version}} erneut versuchen",
