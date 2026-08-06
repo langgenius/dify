@@ -16,7 +16,7 @@ Contract v1 ships the provider-neutral unified tracing runtime for the topology,
 
 The following are **out of scope for v1** and intentionally deferred, because their implementation required changes to `api/core/` outside the ops module or a new database migration, and were reverted to reduce conflict surface with the upcoming subgraph expansion:
 
-- **Agent execution (Agent v2) trace fragments** — collecting Agent run / tool-call / tool-result sub-spans from the Agent backend event stream, and the Agent App `requested`/`resumed` two-phase correlation. Agent nodes emit only node-level spans in v1.
+- **Agent execution (Agent v2) trace fragments** — collecting Agent run / tool-call / tool-result sub-spans from the Agent backend event stream, the Agent App `requested`/`resumed` two-phase correlation, and parent-context propagation through the Agent backend's tool-inner call path (`AgentToolInvokeCaller.parent_workflow_run_id` / `tool_call_span_id` and the surrounding `set_parent_trace_context`/`clear_parent_trace_context` in `AgentToolInnerService`). Agent nodes emit only node-level spans in v1.
 - **Human Input wait lifecycle tracing** — workflow-owned and Agent-App-owned human-wait spans, pause/resume private tracing-state retention across pauses, and the global-timeout reliable final-trace handoff.
 - **Global-timeout final-trace handoff persistence** — the `workflow_pauses.final_trace_status` / `final_trace_attempts` columns and the bounded handoff recovery process. General durable provider-export retry remains in scope.
 - The `WorkflowTraceState` private pause container, `HumanInputForm.updated_at` tracing consumption, and the `HumanInputFormSubmissionRepository.list_by_workflow_run_id` wait-construction helper.

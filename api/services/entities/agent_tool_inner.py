@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import ClassVar, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
 type AgentToolProviderType = Literal["plugin", "builtin", "api", "workflow", "mcp"]
 
@@ -22,14 +22,6 @@ class AgentToolInvokeCaller(BaseModel):
     node_execution_id: str | None = None
     agent_id: str | None = None
     agent_config_version_id: str | None = None
-    parent_workflow_run_id: str | None = None
-    tool_call_span_id: str | None = None
-
-    @model_validator(mode="after")
-    def validate_tool_call_context(self) -> AgentToolInvokeCaller:
-        if bool(self.parent_workflow_run_id) != bool(self.tool_call_span_id):
-            raise ValueError("parent_workflow_run_id and tool_call_span_id must be provided together")
-        return self
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
