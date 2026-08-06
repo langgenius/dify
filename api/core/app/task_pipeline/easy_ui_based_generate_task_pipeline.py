@@ -438,8 +438,6 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     conversation_id=self._conversation_id,
                     message_id=self._message_id,
                     trace_session_id=self._application_generate_entity.extras.get("trace_session_id"),
-                    agent_fragments=self._application_generate_entity.extras.get("agent_fragments", []),
-                    human_waits=self._application_generate_entity.extras.get("human_waits", []),
                 )
             )
 

@@ -1,4 +1,9 @@
-"""Fail-open collection of provider-neutral Agent trace fragments."""
+"""Fail-open collection of provider-neutral Agent trace fragments.
+
+Deferred from unified tracing v1: no core producer path wires this collector
+(see ADR-0001 "Out of scope (v1)"). Retained so a future contract revision can
+re-adopt Agent execution sub-spans without re-deriving the design.
+"""
 
 from __future__ import annotations
 

@@ -1,4 +1,9 @@
-"""Provider-neutral Agent tracing contracts and bounded capture helpers."""
+"""Provider-neutral Agent tracing contracts and bounded capture helpers.
+
+Deferred from unified tracing v1: not registered in any v1 producer path
+(see ADR-0001 "Out of scope (v1)"). Retained for re-adoption in a future
+contract revision.
+"""
 
 from __future__ import annotations
 

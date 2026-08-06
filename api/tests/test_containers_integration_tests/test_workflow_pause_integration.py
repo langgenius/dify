@@ -27,7 +27,6 @@ import pytest
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
-from core.ops.entities.config_entity import ops_trace_payload_path, workflow_final_trace_file_id
 from extensions.ext_storage import storage
 from graphon.entities import WorkflowExecution
 from graphon.enums import WorkflowExecutionStatus
@@ -36,7 +35,7 @@ from models import Account
 from models import WorkflowPause as WorkflowPauseModel
 from models.account import AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.model import UploadFile
-from models.workflow import FinalTraceHandoffStatus, Workflow, WorkflowRun
+from models.workflow import Workflow, WorkflowRun
 from repositories.sqlalchemy_api_workflow_run_repository import (
     DifyAPISQLAlchemyWorkflowRunRepository,
     _WorkflowRunError,
@@ -688,60 +687,6 @@ class TestWorkflowPauseIntegration:
             or 0
         )
         assert remaining_count == 2
-
-    def test_prune_pauses_keeps_pending_final_trace(self):
-        now = naive_utc_now()
-        workflow_run = self._create_test_workflow_run()
-        repository = self._get_workflow_run_repository()
-        pause_entity = repository.create_workflow_pause(
-            workflow_run_id=workflow_run.id,
-            state_owner_user_id=self.test_user_id,
-            state=self._create_test_state(),
-            pause_reasons=[],
-        )
-        pause_model = self.session.get(WorkflowPauseModel, pause_entity.id)
-        pause_model.created_at = now - timedelta(days=7)
-        pause_model.resumed_at = now - timedelta(days=2)
-        pause_model.final_trace_status = FinalTraceHandoffStatus.PENDING
-        self.session.commit()
-
-        pruned_ids = repository.prune_pauses(
-            expiration=now - timedelta(days=1),
-            resumption_expiration=now - timedelta(days=1),
-        )
-
-        assert pause_entity.id not in pruned_ids
-        assert self.session.get(WorkflowPauseModel, pause_entity.id) is not None
-        assert storage.exists(pause_model.state_object_key)
-
-    def test_prune_pauses_cleans_failed_final_trace_payload(self):
-        now = naive_utc_now()
-        workflow_run = self._create_test_workflow_run()
-        repository = self._get_workflow_run_repository()
-        pause_entity = repository.create_workflow_pause(
-            workflow_run_id=workflow_run.id,
-            state_owner_user_id=self.test_user_id,
-            state=self._create_test_state(),
-            pause_reasons=[],
-        )
-        pause_model = self.session.get(WorkflowPauseModel, pause_entity.id)
-        pause_model.created_at = now - timedelta(days=7)
-        pause_model.resumed_at = now - timedelta(days=2)
-        pause_model.final_trace_status = FinalTraceHandoffStatus.FAILED
-        self.session.commit()
-        final_trace_path = ops_trace_payload_path(
-            workflow_run.app_id,
-            workflow_final_trace_file_id(workflow_run.id),
-        )
-        storage.save(final_trace_path, b"final-trace")
-
-        pruned_ids = repository.prune_pauses(
-            expiration=now - timedelta(days=1),
-            resumption_expiration=now - timedelta(days=1),
-        )
-
-        assert pause_entity.id in pruned_ids
-        assert not storage.exists(final_trace_path)
 
     # ==================== Multi-tenant Isolation Tests ====================
 

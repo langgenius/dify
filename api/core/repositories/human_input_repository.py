@@ -233,7 +233,6 @@ class HumanInputFormRecord:
     # ENG-635: Agent v2 chat owner (NULL for workflow-owned forms). Trailing +
     # defaulted so existing record constructions stay source-compatible.
     conversation_id: str | None = None
-    updated_at: datetime | None = None
 
     @property
     def submitted(self) -> bool:
@@ -268,7 +267,6 @@ class HumanInputFormRecord:
             recipient_id=recipient_model.id if recipient_model else None,
             recipient_type=recipient_model.recipient_type if recipient_model else None,
             access_token=recipient_model.access_token if recipient_model else None,
-            updated_at=form_model.updated_at,
         )
 
 
@@ -572,12 +570,6 @@ class HumanInputFormRepositoryImpl:
 class HumanInputFormSubmissionRepository:
     """Repository for fetching and submitting human input forms."""
 
-    def list_by_workflow_run_id(self, workflow_run_id: str) -> list[HumanInputFormRecord]:
-        query = select(HumanInputForm).where(HumanInputForm.workflow_run_id == workflow_run_id)
-        with session_factory.create_session() as session:
-            form_models = session.scalars(query).all()
-            return [HumanInputFormRecord.from_models(form_model, None) for form_model in form_models]
-
     def get_by_token(self, form_token: str) -> HumanInputFormRecord | None:
         query = (
             select(HumanInputFormRecipient)
@@ -635,9 +627,7 @@ class HumanInputFormSubmissionRepository:
 
             form_model.selected_action_id = selected_action_id
             form_model.submitted_data = json.dumps(form_data)
-            submitted_at = naive_utc_now()
-            form_model.submitted_at = submitted_at
-            form_model.updated_at = submitted_at
+            form_model.submitted_at = naive_utc_now()
             form_model.status = HumanInputFormStatus.SUBMITTED
             form_model.submission_user_id = submission_user_id
             form_model.submission_end_user_id = submission_end_user_id
@@ -674,7 +664,6 @@ class HumanInputFormSubmissionRepository:
                 raise FormNotFoundError(f"form already submitted, id={form_id}")
 
             form_model.status = timeout_status
-            form_model.updated_at = naive_utc_now()
             form_model.selected_action_id = None
             form_model.submitted_data = None
             form_model.submission_user_id = None

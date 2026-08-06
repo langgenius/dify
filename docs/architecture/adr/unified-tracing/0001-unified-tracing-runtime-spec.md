@@ -9,11 +9,20 @@ The terms **MUST**, **MUST NOT**, **SHOULD**, and **MAY** are normative.
 Contract v1 covers:
 
 - canonical trace fragments constructed by Core;
-- non-nested Loop and Iteration containment supported by the Dify product;
-- provider-neutral parent resolution and provider emission;
-- durable asynchronous delivery and whole-fragment retry;
-- cross-task parent-context coordination;
-- workflow and Agent App Human Input tracing.
+- non-nested Loop and Iteration container topology (synthetic wrapper spans) implemented inside `api/core/ops/`;
+- provider-neutral cross-task parent resolution and provider emission;
+- durable asynchronous at-least-once delivery and whole-fragment provider-export retry;
+- runtime selection and legacy isolation;
+- conversation-name trace association by `message_id`.
+
+The following are **out of scope for v1** and MUST NOT be relied upon by v1 adapters:
+
+- Agent execution (Agent v2) sub-span fragments (run / tool-call / tool-result) and Agent App two-phase correlation;
+- Human Input wait spans (`dify.span.kind=human_wait`) and their provider mappings;
+- pause/resume private tracing-state retention across Human Input pauses;
+- the global-timeout reliable final-trace handoff and any database migration to support it (`workflow_pauses.final_trace_*`).
+
+These deferred items are described in ADR-0001 under "Out of scope (v1): deferred designs" and are not normative for v1.
 
 Contract v1 accepts only the non-nested Loop and Iteration topology produced by supported Dify product paths. The tracing runtime does not detect, flatten, or warn about nested-container state that the product contract cannot produce. Before any supported producer may emit nested containers, Dify MUST revise Core topology semantics and conformance tests. Adapters MUST NOT infer nested containment.
 
@@ -67,20 +76,20 @@ For the non-nested Loop and Iteration topology supported by v1:
 - parallel metadata MUST NOT introduce an additional parent edge;
 - Core MUST remove cyclic parent edges deterministically.
 
-Human Input waits inside a supported Loop or Iteration container SHOULD use their owning node execution identifier. Static node identifier and time proximity MAY be used only as compatibility fallback for older records.
+Human Input wait-span identity (owning node execution vs static node fallback) is deferred from v1; the wrapper topology above does not depend on it.
 
 ## Snapshot and identity
 
 Canonical identity, delivery identity, and provider-native identity are distinct:
 
-- workflow runs, Messages, node executions, Agent runs and operations, Human Input waits, and synthetic wrappers use stable Core identifiers;
+- workflow runs, Messages, node executions, and synthetic wrappers use stable Core identifiers;
 - a persisted standalone `operation_id`, when present, MUST be reused by every delivery attempt for that payload;
 - a trace payload without `operation_id` MUST remain readable and MAY use the legacy generated-identifier fallback;
 - a stored trace file identifier identifies one delivery payload and MUST NOT be treated as the canonical operation identifier;
 - an adapter MUST map canonical identifiers deterministically when its provider accepts caller-controlled identifiers;
 - provider-native deduplication MAY strengthen one adapter's behavior but MUST NOT be represented as a runtime-wide exactly-once guarantee.
 
-Workflow root completion data and retained pause state form the terminal workflow snapshot. Persisted node executions are loaded through tenant-scoped Core persistence when the canonical fragment is built.
+Workflow root completion data forms the terminal workflow snapshot. Persisted node executions are loaded through tenant-scoped Core persistence when the canonical fragment is built. Pause-state retention across Human Input pauses is deferred from v1.
 
 ## Message child parent resolution
 
@@ -146,10 +155,12 @@ Logical links do not contain provider-native trace and span context. A v1 adapte
 
 For the v1 adapters:
 
-| Adapter | Human Wait mapping | Logical links | Provider identity and replay | Synchronous acceptance boundary |
-|---|---|---|---|---|
-| Phoenix | OpenInference `CHAIN` | `dify.span.links` metadata | OpenTelemetry identifiers may change on replay; `dify.span.id` preserves canonical identity | exporter returns `SpanExportResult.SUCCESS` |
-| LangSmith | `run_type="chain"` | `dify.span.links` metadata | run ID is derived deterministically from canonical identity, without an exactly-once guarantee | synchronous `create_run` returns normally |
+| Adapter | Logical links | Provider identity and replay | Synchronous acceptance boundary |
+|---|---|---|---|
+| Phoenix | `dify.span.links` metadata | OpenTelemetry identifiers may change on replay; `dify.span.id` preserves canonical identity | exporter returns `SpanExportResult.SUCCESS` |
+| LangSmith | `dify.span.links` metadata | run ID is derived deterministically from canonical identity, without an exactly-once guarantee | synchronous `create_run` returns normally |
+
+The `human_wait` -> provider mapping row is deferred from v1 with the `human_wait` canonical kind.
 
 An adapter backed only by a local asynchronous SDK queue MUST provide a synchronous flush or acknowledgement boundary before it can conform to v1.
 
@@ -161,9 +172,9 @@ Durable delivery is at least once, not exactly once.
 - A retry MAY duplicate provider effects after ambiguous or partial external success.
 - Recoverable provider failures MUST retain the durable payload only after Celery accepts the retry request.
 - Successful dispatch, terminal failure, retry scheduling failure, and retry exhaustion MUST clean up the provider-owned durable payload.
-- Final workflow handoff recovery and provider dispatch MUST use separate bounded retry budgets.
-- A global-timeout pause snapshot MUST remain authoritative until the deterministic final payload is persisted and accepted by the asynchronous dispatcher.
 - Tracing failure MUST NOT change the workflow or Message business outcome.
+
+The global-timeout pause-snapshot handoff (authoritative snapshot retained until the deterministic final payload is persisted and accepted, with separate handoff-recovery and provider-export retry budgets) is deferred from v1. ADR-0001 preserves its design under "Out of scope (v1): deferred designs".
 
 ## Configuration and destination
 

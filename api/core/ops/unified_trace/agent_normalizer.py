@@ -1,4 +1,9 @@
-"""Normalize Pydantic AI events into provider-neutral Agent tracing events."""
+"""Normalize Pydantic AI events into provider-neutral Agent tracing events.
+
+Deferred from unified tracing v1: no core producer path feeds this normalizer
+(see ADR-0001 "Out of scope (v1)"). Retained for re-adoption in a future
+contract revision.
+"""
 
 from __future__ import annotations
 

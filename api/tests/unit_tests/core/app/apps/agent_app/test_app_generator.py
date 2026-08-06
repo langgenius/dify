@@ -296,26 +296,23 @@ class TestGenerateWorker:
         session_scope_config_version_id="s",
         prompt_file_mappings=(),
     ):
-        generate_entity = mocker.MagicMock(
-            agent_id="a",
-            agent_config_snapshot_id="s",
-            agent_session_scope_config_version_id=session_scope_config_version_id,
-            model_conf=mocker.MagicMock(model="m"),
-            query=query,
-            prompt_file_mappings=prompt_file_mappings,
-            extras={},
-        )
         generator._generate_worker(
             flask_app=mocker.MagicMock(),
             context=mocker.MagicMock(),
-            application_generate_entity=generate_entity,
+            application_generate_entity=mocker.MagicMock(
+                agent_id="a",
+                agent_config_snapshot_id="s",
+                agent_session_scope_config_version_id=session_scope_config_version_id,
+                model_conf=mocker.MagicMock(model="m"),
+                query=query,
+                prompt_file_mappings=prompt_file_mappings,
+            ),
             queue_manager=queue_manager,
             conversation_id="conv",
             message_id="msg",
             user_from=UserFrom.END_USER,
             is_resume=is_resume,
         )
-        return generate_entity
 
     def test_happy_path_runs_backend(self, generator: AgentAppGenerator, mocker: MockerFixture):
         runner, resolver_session = self._wire(generator, mocker)
@@ -326,16 +323,6 @@ class TestGenerateWorker:
         assert runner.run.call_args.kwargs["home_snapshot_id"] == "home-1"
         assert "home_snapshot_ref" not in runner.run.call_args.kwargs
         queue_manager.publish_error.assert_not_called()
-
-    def test_worker_collects_private_human_waits(self, generator: AgentAppGenerator, mocker: MockerFixture):
-        runner, _ = self._wire(generator, mocker)
-        generate_entity = self._call(generator, mocker, mocker.MagicMock())
-        wait = mocker.MagicMock()
-        wait.model_dump.return_value = {"wait_id": "form-1"}
-
-        runner.run.call_args.kwargs["on_human_wait"](wait)
-
-        assert generate_entity.extras["human_waits"] == [{"wait_id": "form-1"}]
 
     def test_worker_passes_session_scope_config_version_to_runner(self, generator, mocker: MockerFixture):
         runner, _ = self._wire(generator, mocker)

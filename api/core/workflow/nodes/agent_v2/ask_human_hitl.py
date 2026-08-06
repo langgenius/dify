@@ -40,7 +40,7 @@ from dify_agent.layers.ask_human import (
 from dify_agent.protocol import DeferredToolCallPayload
 from pydantic import ValidationError
 
-from core.repositories.human_input_repository import FormCreateParams, HumanInputFormEntity, HumanInputFormRepository
+from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepository
 from core.workflow.human_input_adapter import (
     DeliveryChannelConfig,
     EmailDeliveryConfig,
@@ -241,7 +241,6 @@ class AskHumanFormCreated:
     node_data: HumanInputNodeData
     node_title: str
     resolved_default_values: dict[str, Any]
-    form: HumanInputFormEntity
 
 
 def create_ask_human_form(
@@ -293,7 +292,6 @@ def create_ask_human_form(
         node_data=node_data,
         node_title=node_title,
         resolved_default_values=resolved_default_values,
-        form=form,
     )
 
 

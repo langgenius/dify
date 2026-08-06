@@ -55,13 +55,8 @@ from core.app.entities.queue_entities import (
     QueueLLMChunkEvent,
     QueueMessageEndEvent,
 )
-from core.ops.unified_trace.agent_events import AgentRunTraceFragment
-from core.ops.unified_trace.human_wait import HumanWaitRecord
-from core.repositories.human_input_repository import HumanInputFormRecord
 from core.workflow.nodes.agent_v2.ask_human_resume import AskHumanResumeOutcome
 from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentToolLayers
-from core.workflow.nodes.human_input.entities import FormDefinition
-from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from graphon.model_runtime.entities.llm_entities import LLMResult
 from graphon.model_runtime.errors.invoke import InvokeRateLimitError
 from models.agent_config_entities import AgentSoulConfig
@@ -476,7 +471,7 @@ def _runner(
     )
 
 
-def _run(runner: AgentAppRunner, qm: _FakeQueueManager, **callbacks) -> None:
+def _run(runner: AgentAppRunner, qm: _FakeQueueManager) -> None:
     runner.run(
         dify_context=_dify_ctx(),
         agent_id="agent-1",
@@ -488,7 +483,6 @@ def _run(runner: AgentAppRunner, qm: _FakeQueueManager, **callbacks) -> None:
         message_id="msg-1",
         model_name="gpt-4o-mini",
         queue_manager=qm,  # type: ignore[arg-type]
-        **callbacks,
     )
 
 
@@ -711,20 +705,13 @@ def test_agent_message_deltas_are_debounced_to_agent_message(
 
 
 def test_successful_turn_persists_thinking_and_tool_process_events(
-    monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
 ) -> None:
-    monkeypatch.setattr(
-        app_runner_module.AgentTraceCollectionGate,
-        "for_app",
-        MagicMock(return_value=app_runner_module.AgentTraceCollectionGate(enabled=True)),
-    )
     client = _ProcessStreamingFakeAgentBackendRunClient()
     store = _FakeSessionStore()
     qm = _FakeQueueManager()
-    trace_fragments: list[AgentRunTraceFragment] = []
 
-    _run(_runner(client, store), qm, on_trace_fragment=trace_fragments.append)
+    _run(_runner(client, store), qm)
 
     chunk_events = [e for e in qm.events if isinstance(e, QueueLLMChunkEvent)]
     agent_message_events = [e for e in qm.events if isinstance(e, QueueAgentMessageEvent)]
@@ -740,14 +727,6 @@ def test_successful_turn_persists_thinking_and_tool_process_events(
     assert rows[1].tool_input == '{"cmd": "ls"}'
     assert rows[1].observation == "ok"
     assert len(rows) == 2
-
-    assert len(trace_fragments) == 1
-    operations = trace_fragments[0].operations
-    assert [operation.kind for operation in operations] == ["llm", "tool", "llm"]
-    assert operations[0].outputs == {"thinking": "I need to inspect the file."}
-    assert operations[1].outputs == "ok"
-    assert operations[1].error is None
-    assert operations[2].outputs == {"text": "final answer"}
 
 
 def test_streaming_turn_cancels_after_persisting_seen_agent_answer(
@@ -1227,19 +1206,10 @@ def test_ask_human_pauses_turn_creates_form_and_persists_correlation() -> None:
     runner = _runner(client, store)
 
     fake_repo = MagicMock()
-    created_at = datetime(2026, 7, 29)
-    fake_repo.create_form.return_value = MagicMock(
-        id="form-1",
-        created_at=created_at,
-        submitted_at=None,
-        status=HumanInputFormStatus.WAITING,
-        rendered_content="Need approval",
-        submitted_data=None,
-    )
+    fake_repo.create_form.return_value = MagicMock(id="form-1")
     runner._build_form_repository = lambda dify_context: fake_repo  # type: ignore[assignment]
-    waits: list[HumanWaitRecord] = []
 
-    _run(runner, qm, on_human_wait=waits.append)
+    _run(runner, qm)
 
     # The conversation-owned form was created and the agent's question surfaced.
     fake_repo.create_form.assert_called_once()
@@ -1252,9 +1222,6 @@ def test_ask_human_pauses_turn_creates_form_and_persists_correlation() -> None:
     assert store.saved
     assert store.saved[0][3] == "form-1"
     assert store.saved[0][4] == "fake-ask-human-1"
-    assert waits[0].phase == "requested"
-    assert waits[0].owner_id == "msg-1"
-    assert waits[0].tool_call_id == "fake-ask-human-1"
 
 
 def test_submitted_form_resumes_turn_with_deferred_tool_results(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1283,42 +1250,10 @@ def test_submitted_form_resumes_turn_with_deferred_tool_results(monkeypatch: pyt
         "core.app.apps.agent_app.app_runner.resolve_ask_human_form",
         lambda **_kwargs: submitted,
     )
-    terminal_at = datetime(2026, 7, 29, 0, 1)
-    form_record = HumanInputFormRecord(
-        form_id="form-1",
-        workflow_run_id=None,
-        conversation_id="conv-1",
-        node_id="message-1",
-        tenant_id="tenant-1",
-        app_id="app-1",
-        form_kind=HumanInputFormKind.RUNTIME,
-        definition=FormDefinition(form_content="", rendered_content="Need approval", expiration_time=terminal_at),
-        expiration_time=terminal_at,
-        created_at=datetime(2026, 7, 29),
-        submitted_at=terminal_at,
-        updated_at=terminal_at,
-        status=HumanInputFormStatus.SUBMITTED,
-        rendered_content="Need approval",
-        submitted_data={"ok": True},
-        selected_action_id=None,
-        submission_user_id=None,
-        submission_end_user_id=None,
-        completed_by_recipient_id=None,
-        recipient_id=None,
-        recipient_type=None,
-        access_token=None,
-    )
-    form_repo = MagicMock()
-    form_repo.get_by_form_id.return_value = form_record
-    monkeypatch.setattr(
-        "core.app.apps.agent_app.app_runner.HumanInputFormSubmissionRepository",
-        lambda: form_repo,
-    )
 
     client = FakeAgentBackendRunClient()  # SUCCESS -> the resumed run completes
     qm = _FakeQueueManager()
-    waits: list[HumanWaitRecord] = []
-    _run(_runner(client, store), qm, on_human_wait=waits.append)
+    _run(_runner(client, store), qm)
 
     assert client.request is not None
     assert client.request.deferred_tool_results is not None
@@ -1328,7 +1263,3 @@ def test_submitted_form_resumes_turn_with_deferred_tool_results(monkeypatch: pyt
     # mismatch). A resume therefore re-sends a non-blank query, never blank.
     layer_names = [layer.name for layer in client.request.composition.layers]
     assert "agent_app_user_prompt" in layer_names
-    assert waits[0].phase == "resumed"
-    assert waits[0].owner_id == "msg-1"
-    assert waits[0].linked_message_id == "message-1"
-    assert waits[0].wait_duration_ms == 60_000

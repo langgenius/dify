@@ -16,20 +16,8 @@ from models.workflow import (
     Workflow,
     WorkflowDraftVariable,
     WorkflowNodeExecutionModel,
-    WorkflowPause,
     is_system_variable_editable,
 )
-
-
-def test_workflow_pause_final_trace_defaults() -> None:
-    pause = WorkflowPause(
-        workflow_id=str(uuid4()),
-        workflow_run_id=str(uuid4()),
-        state_object_key="workflow-state.json",
-    )
-
-    assert pause.final_trace_status is None
-    assert pause.final_trace_attempts == 0
 
 
 def test_environment_variables():

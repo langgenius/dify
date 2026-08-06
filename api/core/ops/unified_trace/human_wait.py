@@ -1,4 +1,9 @@
-"""Provider-neutral Human Input lifecycle records for unified tracing."""
+"""Provider-neutral Human Input lifecycle records for unified tracing.
+
+Deferred from unified tracing v1: no v1 producer populates the ``human_waits``
+metadata consumed here (see ADR-0001 "Out of scope (v1)"). The construction
+helpers are retained for re-adoption in a future contract revision.
+"""
 
 from __future__ import annotations
 
@@ -46,7 +51,10 @@ class HumanWaitRecord(BaseModel):
         if isinstance(form, HumanInputFormRecord):
             wait_id = form.form_id
             submitted_at = form.submitted_at
-            updated_at = form.updated_at
+            # ``updated_at`` is added to HumanInputFormRecord only when human-wait
+            # tracing is in scope; it is deferred from v1 (ADR-0001), so read it
+            # defensively to avoid coupling v1 to the not-yet-restored field.
+            updated_at = getattr(form, "updated_at", None)
         elif isinstance(form, HumanInputForm):
             wait_id = form.id
             submitted_at = form.submitted_at

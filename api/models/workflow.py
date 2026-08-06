@@ -2084,11 +2084,6 @@ def is_system_variable_editable(name: str) -> bool:
     return name in _EDITABLE_SYSTEM_VARIABLE
 
 
-class FinalTraceHandoffStatus(StrEnum):
-    PENDING = "pending"
-    FAILED = "failed"
-
-
 class WorkflowPause(DefaultFieldsDCMixin, TypeBase):
     """
     WorkflowPause records the paused state and related metadata for a specific workflow run.
@@ -2142,18 +2137,6 @@ class WorkflowPause(DefaultFieldsDCMixin, TypeBase):
         sa.DateTime,
         nullable=True,
         default=None,
-    )
-
-    final_trace_status: Mapped[FinalTraceHandoffStatus | None] = mapped_column(
-        EnumText(FinalTraceHandoffStatus, length=16),
-        nullable=True,
-        default=None,
-    )
-    final_trace_attempts: Mapped[int] = mapped_column(
-        sa.Integer,
-        nullable=False,
-        default=0,
-        server_default=sa.text("0"),
     )
 
     # Relationship to WorkflowRun (uses lambda to resolve across Base/TypeBase registries)

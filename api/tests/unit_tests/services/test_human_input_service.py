@@ -13,7 +13,6 @@ import services.human_input_service as human_input_service_module
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
-from core.ops.unified_trace.human_wait import HumanWaitRecord
 from core.repositories.human_input_repository import (
     HumanInputFormRecord,
     HumanInputFormSubmissionRepository,
@@ -277,15 +276,7 @@ def test_submit_form_by_token_calls_repository_and_enqueue(
 ) -> None:
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     repo.get_by_token.return_value = sample_form_record
-    submitted_at = naive_utc_now()
-    submitted_record = dataclasses.replace(
-        sample_form_record,
-        status=HumanInputFormStatus.SUBMITTED,
-        submitted_at=submitted_at,
-        submitted_data={"field": "value"},
-        updated_at=submitted_at,
-    )
-    repo.mark_submitted.return_value = submitted_record
+    repo.mark_submitted.return_value = sample_form_record
     service = HumanInputService(unbound_session_factory, form_repository=repo)
     enqueue_spy = mocker.patch.object(service, "enqueue_resume")
 
@@ -305,14 +296,7 @@ def test_submit_form_by_token_calls_repository_and_enqueue(
     assert call_kwargs["selected_action_id"] == "submit"
     assert call_kwargs["form_data"] == {"field": "value"}
     assert call_kwargs["submission_end_user_id"] == "end-user-id"
-    enqueue_spy.assert_called_once()
-    (workflow_run_id,) = enqueue_spy.call_args.args
-    wait = enqueue_spy.call_args.kwargs["human_wait"]
-    assert workflow_run_id == sample_form_record.workflow_run_id
-    assert isinstance(wait, HumanWaitRecord)
-    assert wait.wait_id == sample_form_record.form_id
-    assert wait.owner_id == sample_form_record.node_id
-    assert wait.outcome == "submitted"
+    enqueue_spy.assert_called_once_with(sample_form_record.workflow_run_id)
 
 
 def test_submit_form_by_token_enqueues_agent_app_resume_for_conversation_form(
@@ -394,9 +378,7 @@ def test_submit_form_by_token_passes_submission_user_id(
     call_kwargs = repo.mark_submitted.call_args.kwargs
     assert call_kwargs["submission_user_id"] == "account-id"
     assert call_kwargs["submission_end_user_id"] is None
-    enqueue_spy.assert_called_once()
-    assert enqueue_spy.call_args.args == (sample_form_record.workflow_run_id,)
-    assert isinstance(enqueue_spy.call_args.kwargs["human_wait"], HumanWaitRecord)
+    enqueue_spy.assert_called_once_with(sample_form_record.workflow_run_id)
 
 
 def test_submit_form_by_token_invalid_action(
@@ -803,9 +785,7 @@ def test_submit_form_by_token_normalizes_select_and_files(
     assert submitted_data["attachment"]["transfer_method"] == "local_file"
     assert submitted_data["attachments"][0]["filename"] == "a.pdf"
     assert submitted_data["attachments"][1]["filename"] == "b.pdf"
-    enqueue_spy.assert_called_once()
-    assert enqueue_spy.call_args.args == (sample_form_record.workflow_run_id,)
-    assert isinstance(enqueue_spy.call_args.kwargs["human_wait"], HumanWaitRecord)
+    enqueue_spy.assert_called_once_with(sample_form_record.workflow_run_id)
 
 
 def test_submit_form_by_token_invalid_select_value(

@@ -903,10 +903,6 @@ class TraceTask:
         trace_session_id = _get_trace_session_id(self.kwargs)
         if trace_session_id:
             metadata["trace_session_id"] = trace_session_id
-        if agent_fragments := self.kwargs.get("agent_fragments"):
-            metadata["agent_fragments"] = agent_fragments
-        if human_waits := self.kwargs.get("human_waits"):
-            metadata["human_waits"] = human_waits
 
         workflow_trace_info = WorkflowTraceInfo(
             trace_id=self.trace_id,
@@ -994,10 +990,6 @@ class TraceTask:
         trace_session_id = _get_trace_session_id(kwargs)
         if trace_session_id:
             metadata["trace_session_id"] = trace_session_id
-        if agent_fragments := kwargs.get("agent_fragments"):
-            metadata["agent_fragments"] = agent_fragments
-        if human_waits := kwargs.get("human_waits"):
-            metadata["human_waits"] = human_waits
 
         message_tokens = message_data.message_tokens
 

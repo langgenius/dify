@@ -2,7 +2,28 @@
 
 - Status: Revised
 - Date: 2026-07-23
-- Revised: 2026-08-05
+- Revised: 2026-08-05 (v1 scope narrowed: Agent execution and Human Input tracing deferred)
+
+## Scope (v1)
+
+Contract v1 ships the provider-neutral unified tracing runtime for the topology, routing, and delivery concerns whose implementation lives entirely inside `api/core/ops/` and requires no database migration:
+
+- canonical workflow and Chatflow fragments, node spans, and synthetic Loop/Iteration wrapper spans;
+- cross-task parent-context coordination (nested-workflow `external_parent` and standalone Message-child `required_parent_context_id`);
+- provider-neutral retry classification and durable at-least-once delivery;
+- runtime selection and legacy isolation;
+- conversation-name trace association by `message_id`.
+
+The following are **out of scope for v1** and intentionally deferred, because their implementation required changes to `api/core/` outside the ops module or a new database migration, and were reverted to reduce conflict surface with the upcoming subgraph expansion:
+
+- **Agent execution (Agent v2) trace fragments** — collecting Agent run / tool-call / tool-result sub-spans from the Agent backend event stream, and the Agent App `requested`/`resumed` two-phase correlation. Agent nodes emit only node-level spans in v1.
+- **Human Input wait lifecycle tracing** — workflow-owned and Agent-App-owned human-wait spans, pause/resume private tracing-state retention across pauses, and the global-timeout reliable final-trace handoff.
+- **Global-timeout final-trace handoff persistence** — the `workflow_pauses.final_trace_status` / `final_trace_attempts` columns and the bounded handoff recovery process. General durable provider-export retry remains in scope.
+- The `WorkflowTraceState` private pause container, `HumanInputForm.updated_at` tracing consumption, and the `HumanInputFormSubmissionRepository.list_by_workflow_run_id` wait-construction helper.
+
+The deferred designs are preserved verbatim in [Out of scope (v1): deferred designs](#out-of-scope-v1-deferred-designs) so the contract can be re-expanded without re-deriving them. v1 introduces **no `api/core/` change outside `api/core/ops/` and no database migration**.
+
+The Loop/Iteration synthetic-wrapper topology itself **remains in scope**: it is implemented entirely inside `api/core/ops/unified_trace/` from existing node-execution metadata and does not depend on the deferred human-wait tracing.
 
 ## Context
 
@@ -59,25 +80,13 @@ Contract v1 accepts only the non-nested Loop and Iteration topology produced by 
 
 Standalone operations without a persisted execution identifier receive an additive operation identifier when their trace payload is first stored. New payloads reuse that canonical identity across delivery attempts. Older payloads without the field remain readable and retain the generated-identity fallback. Canonical, delivery-file, and provider-native identities remain distinct.
 
-Workflow-owned Human Input forms may use the owning node execution identifier as their form identifier. When a human-wait identifier matches a canonical node execution span, Core uses that exact execution as the wait parent. Static graph node identifiers and timestamp proximity are only a compatibility fallback for older records without execution-scoped form identity. This prevents repeated executions of one Human Input node inside a supported Loop or Iteration container from being associated with the wrong container run.
-
-### Pause, resume, and human-wait lifecycle
-
-A Workflow or Chatflow execution remains one logical trace across any number of Human Input pauses and resumptions. A pause is non-terminal: Core persists the workflow execution and its private, provider-neutral tracing state, but does not enqueue a final trace. Resume restores that state and the existing workflow execution identity. A later pause replaces the private pause snapshot with the accumulated state, and only workflow success, partial success, failure, stop, or global Human Input timeout enqueues the final trace.
-
-The private pause state retains Agent fragments and their owning node executions, plus completed human-wait records. Records are accumulated by stable run or wait identity so replayed resume delivery replaces the same logical record instead of duplicating it. This state is part of the versioned workflow resumption context; an external cache and its TTL are cleanup mechanisms, not the lifecycle authority.
-
-`HumanInputForm` is the lifecycle authority for a human wait. Core normalizes its request and completion timestamps and one of `waiting`, `submitted`, `timed_out`, `expired`, or `canceled` into a bounded, provider-neutral record. A terminal workflow-owned wait becomes a direct child of its exact owning node execution and spans the actual waiting interval. A node timeout resumes normal workflow execution with a terminal wait record; a global timeout stops the workflow and marks the retained pause state for final-trace handoff. Tracing normalization and export remain fail-soft and must not prevent submission, timeout handling, workflow resumption, or the workflow's terminal business outcome.
-
-Agent App Human Input intentionally follows the Message boundary instead. The requesting and resuming Messages are separate traces in the same conversation session. They contain `requested` and `resumed` human-wait phases correlated by stable wait identity and a span link, never by a cross-trace parent-child edge. The first Message may therefore export when it pauses, and no Agent App fragment needs to survive the wait.
+Human Input wait tracing and the Agent execution fragment collection are deferred from v1 (see [Scope (v1)](#scope-v1)). In-scope Loop/Iteration wrapper topology does not depend on wait-span identity; the deferred human-wait parent-resolution by owning node execution is preserved in [Out of scope (v1): deferred designs](#out-of-scope-v1-deferred-designs).
 
 ### Reliable final delivery
 
-A global-timeout pause snapshot remains authoritative until Core has persisted a deterministic final canonical payload and the asynchronous dispatcher has accepted it. A failed handoff retains the snapshot for a bounded recovery process. Once the dispatcher accepts the payload, ownership transfers to asynchronous provider dispatch and the pause snapshot can be removed.
+Durable delivery is at least once. Retries replay the whole canonical fragment and may duplicate provider effects after an ambiguous or partially successful attempt. This at-least-once behavior is preferred to silently losing the terminal trace; provider adapters must therefore preserve deterministic identities where their protocol permits. Provider retries retain the durable payload only for recoverable transport failures; terminal failures and provider retry exhaustion clean up that payload.
 
-Handoff recovery and provider export have separate bounded retry budgets. Handoff retries rebuild the final fragment from the authoritative snapshot and terminal Human Input records. Provider retries retain the durable payload only for recoverable transport failures. Terminal failures and provider retry exhaustion clean up that payload.
-
-Retries replay the whole canonical fragment and may duplicate provider effects after an ambiguous or partially successful attempt. This at-least-once behavior is preferred to silently losing the terminal trace; provider adapters must therefore preserve deterministic identities where their protocol permits.
+The global-timeout pause-snapshot handoff (which retained an authoritative snapshot until the deterministic final payload was persisted and accepted) is deferred from v1; its design is preserved in [Out of scope (v1): deferred designs](#out-of-scope-v1-deferred-designs). General durable provider-export retry, above, remains in scope.
 
 ### Runtime selection and legacy isolation
 
@@ -127,13 +136,12 @@ Parent-context envelopes are versioned and strictly validated. An unsupported en
 
 A registered unified adapter implements the complete current runtime contract. Its emission call returns only after its provider-specific synchronous acceptance step succeeds. Recoverable provider or transport failures use the Core retryable error contract; other failures are terminal. Parent context is published only after the corresponding provider parent span is accepted.
 
-Complete support includes every current canonical span kind. Human Input waits map to each provider's generic chain concept while retaining `dify.span.kind=human_wait`. Every canonical kind is preserved in `dify.span.kind`; non-empty logical links are preserved in `dify.span.links`. These reserved canonical values override conflicting caller metadata.
+Complete support includes every current in-scope canonical span kind. Every canonical kind is preserved in `dify.span.kind`; non-empty logical links are preserved in `dify.span.links`. These reserved canonical values override conflicting caller metadata. The `human_wait` span kind and its provider mapping are deferred from v1 (see [Out of scope (v1): deferred designs](#out-of-scope-v1-deferred-designs)).
 
 Logical links contain stable Dify identifiers, not provider-native span context. Contract v1 therefore does not fabricate native provider links. Native links may be added later when Core can provide real provider-resolvable link context, while the logical metadata remains the cross-provider baseline.
 
 | Capability | Phoenix | LangSmith |
 |---|---|---|
-| Human Wait provider type | OpenInference `CHAIN` | `run_type="chain"` |
 | Canonical kind | `dify.span.kind` | `dify.span.kind` |
 | Logical links | `dify.span.links` metadata | `dify.span.links` metadata |
 | Provider identity | OpenTelemetry identifiers are not stable across replay; canonical ID is an attribute | provider run ID is derived deterministically from canonical ID |
@@ -155,14 +163,9 @@ Maintainers and provider adapters may rely on these invariants:
 - every fragment has exactly one local root, and its two trace-level external-parent modes are mutually exclusive;
 - every registered adapter preserves all canonical kinds and logical links through the contract's reserved metadata;
 - standalone operation identity remains stable across retries when the additive persisted identifier is present, while older payloads remain readable;
-- a Workflow or Chatflow pause never exports a partial final trace; restored tracing state accumulates until one terminal workflow outcome;
-- a global-timeout pause snapshot remains authoritative until its durable final payload is accepted for asynchronous dispatch;
-- final-payload handoff recovery and provider export use separate bounded retry budgets;
 - retry replays a whole canonical fragment and may duplicate provider effects;
 - recoverable provider transport failures retain the durable payload, while terminal failures and retry exhaustion remove it;
 - tracing delivery failure never changes the workflow's terminal business outcome;
-- a workflow-owned human wait records its real lifecycle interval and cannot make pause, resume, or timeout processing fail;
-- Agent App waits correlate two Message traces without creating a parent-child relationship across trace roots;
 - registered unified providers receive the same logical topology and normalized Dify semantics;
 - one dispatch attempt uses either the unified or legacy runtime, never both;
 - each attempt uses the latest configuration but fixes one runtime and destination for that attempt;
@@ -179,12 +182,45 @@ Maintainers and provider adapters may rely on these invariants:
 - Adding a unified provider requires a protocol adapter rather than another workflow hierarchy implementation.
 - Nested workflow export may wait while parent context becomes available.
 - Context-store availability and retention affect reliable cross-task assembly.
-- Workflow and Chatflow traces are delayed while Human Input is pending and require tracing state to remain compatible with persisted pause snapshots.
-- Global-timeout final delivery is at least once: bounded retries reduce loss but can duplicate provider-side effects.
-- Agent App Human Input appears as two correlated wait phases rather than one cross-Message span.
 - During migration, registered providers retain separate legacy and unified implementations.
 - Some provider capabilities have no canonical equivalent and remain adapter-local.
 - Changes to canonical semantics must be evaluated against every registered unified adapter.
+
+## Out of scope (v1): deferred designs
+
+The following designs were implemented and then deferred from v1 to avoid `api/core/` changes outside `api/core/ops/` and a database migration. They are preserved verbatim so a future contract revision can re-adopt them without re-deriving the rationale. They are **not normative for v1 adapters or Core**.
+
+### Human-wait parent resolution by owning node execution (deferred)
+
+Workflow-owned Human Input forms may use the owning node execution identifier as their form identifier. When a human-wait identifier matches a canonical node execution span, Core uses that exact execution as the wait parent. Static graph node identifiers and timestamp proximity are only a compatibility fallback for older records without execution-scoped form identity. This prevents repeated executions of one Human Input node inside a supported Loop or Iteration container from being associated with the wrong container run.
+
+### Pause, resume, and human-wait lifecycle (deferred)
+
+A Workflow or Chatflow execution remains one logical trace across any number of Human Input pauses and resumptions. A pause is non-terminal: Core persists the workflow execution and its private, provider-neutral tracing state, but does not enqueue a final trace. Resume restores that state and the existing workflow execution identity. A later pause replaces the private pause snapshot with the accumulated state, and only workflow success, partial success, failure, stop, or global Human Input timeout enqueues the final trace.
+
+The private pause state retains Agent fragments and their owning node executions, plus completed human-wait records. Records are accumulated by stable run or wait identity so replayed resume delivery replaces the same logical record instead of duplicating it. This state is part of the versioned workflow resumption context; an external cache and its TTL are cleanup mechanisms, not the lifecycle authority.
+
+`HumanInputForm` is the lifecycle authority for a human wait. Core normalizes its request and completion timestamps and one of `waiting`, `submitted`, `timed_out`, `expired`, or `canceled` into a bounded, provider-neutral record. A terminal workflow-owned wait becomes a direct child of its exact owning node execution and spans the actual waiting interval. A node timeout resumes normal workflow execution with a terminal wait record; a global timeout stops the workflow and marks the retained pause state for final-trace handoff. Tracing normalization and export remain fail-soft and must not prevent submission, timeout handling, workflow resumption, or the workflow's terminal business outcome.
+
+Agent App Human Input intentionally follows the Message boundary instead. The requesting and resuming Messages are separate traces in the same conversation session. They contain `requested` and `resumed` human-wait phases correlated by stable wait identity and a span link, never by a cross-trace parent-child edge. The first Message may therefore export when it pauses, and no Agent App fragment needs to survive the wait.
+
+### Global-timeout reliable final handoff (deferred)
+
+A global-timeout pause snapshot remains authoritative until Core has persisted a deterministic final canonical payload and the asynchronous dispatcher has accepted it. A failed handoff retains the snapshot for a bounded recovery process. Once the dispatcher accepts the payload, ownership transfers to asynchronous provider dispatch and the pause snapshot can be removed.
+
+Handoff recovery and provider export have separate bounded retry budgets. Handoff retries rebuild the final fragment from the authoritative snapshot and terminal Human Input records. This requires the `workflow_pauses.final_trace_status` / `final_trace_attempts` columns introduced by a database migration, which is not part of v1.
+
+### Human-wait provider mapping (deferred)
+
+Human Input waits map to each provider's generic chain concept while retaining `dify.span.kind=human_wait`. The v1 adapter table drops this row; it will be re-added when the `human_wait` canonical kind is reintroduced.
+
+### Deferred semantics (normative when reintroduced)
+
+- A Workflow or Chatflow pause never exports a partial final trace; restored tracing state accumulates until one terminal workflow outcome.
+- A global-timeout pause snapshot remains authoritative until its durable final payload is accepted for asynchronous dispatch.
+- Final-payload handoff recovery and provider export use separate bounded retry budgets.
+- A workflow-owned human wait records its real lifecycle interval and cannot make pause, resume, or timeout processing fail.
+- Agent App waits correlate two Message traces without creating a parent-child relationship across trace roots.
 
 ## Alternatives Considered
 

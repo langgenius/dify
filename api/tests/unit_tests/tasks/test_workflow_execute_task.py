@@ -16,7 +16,6 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
-from core.ops.unified_trace.human_wait import HumanWaitRecord
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus
 from models.base import TypeBase
@@ -793,27 +792,12 @@ def test_resume_app_execution_queries_message_by_conversation_and_workflow_run(
     monkeypatch.setattr("tasks.app_generate.workflow_execute_task._resume_advanced_chat", resume_advanced_chat)
     monkeypatch.setattr("tasks.app_generate.workflow_execute_task._resume_workflow", MagicMock())
 
-    human_wait = HumanWaitRecord(
-        wait_id="form-1",
-        owner_id="node-1",
-        owner_kind="workflow_node",
-        start_time=datetime(2026, 7, 29),
-        end_time=datetime(2026, 7, 29, 0, 1),
-        outcome="submitted",
-    )
-
-    _resume_app_execution(
-        {
-            "workflow_run_id": workflow_run_id,
-            "human_wait": human_wait.model_dump(mode="json"),
-        }
-    )
+    _resume_app_execution({"workflow_run_id": workflow_run_id})
 
     workflow_run_repo.resume_workflow_pause.assert_called_once_with(workflow_run_id, pause_entity)
     resume_advanced_chat.assert_called_once()
     assert resume_advanced_chat.call_args.kwargs["conversation"].id == conversation_id
     assert resume_advanced_chat.call_args.kwargs["message"].id == "expected-message-id"
-    assert generate_entity.workflow_trace_state.human_waits == [human_wait]
 
 
 def test_resume_app_execution_returns_early_when_advanced_chat_missing_conversation_id(

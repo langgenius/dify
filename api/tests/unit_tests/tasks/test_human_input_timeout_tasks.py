@@ -9,35 +9,21 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 import core.db.session_factory as session_factory_module
-from core.ops.unified_trace.human_wait import HumanWaitRecord
-from core.ops.unified_trace.workflow_trace_state import WorkflowTraceState
 from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 from core.workflow.nodes.human_input.entities import FormDefinition
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
-from graphon.enums import WorkflowExecutionStatus
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input import HumanInputForm
-from models.workflow import (
-    FinalTraceHandoffStatus,
-    PauseReasonType,
-    WorkflowPause,
-    WorkflowPauseReason,
-    WorkflowRun,
-    WorkflowType,
-)
 from tasks import human_input_timeout_tasks as task_module
 
 
 class _FakeService:
     def __init__(self):
         self.enqueued: list[str] = []
-        self.enqueued_waits: list[HumanWaitRecord | None] = []
         self.agent_app_resumed: list[tuple[str, str]] = []
 
-    def enqueue_resume(self, workflow_run_id: str | None, *, human_wait: HumanWaitRecord | None = None) -> None:
+    def enqueue_resume(self, workflow_run_id: str | None) -> None:
         if workflow_run_id is not None:
             self.enqueued.append(workflow_run_id)
-            self.enqueued_waits.append(human_wait)
 
     def enqueue_agent_app_resume(self, *, conversation_id: str, form_id: str) -> None:
         self.agent_app_resumed.append((conversation_id, form_id))
@@ -74,31 +60,6 @@ def _build_form(
     )
 
 
-def _build_workflow_run(*, run_id: str, created_at: datetime) -> WorkflowRun:
-    return WorkflowRun(
-        id=run_id,
-        tenant_id="tenant-1",
-        app_id="app-1",
-        workflow_id="workflow-1",
-        type=WorkflowType.WORKFLOW,
-        triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
-        version="draft",
-        graph="{}",
-        inputs="{}",
-        status=WorkflowExecutionStatus.PAUSED,
-        outputs="{}",
-        error=None,
-        elapsed_time=0,
-        total_tokens=13,
-        total_steps=1,
-        created_by_role=CreatorUserRole.ACCOUNT,
-        created_by="creator-1",
-        created_at=created_at,
-        finished_at=None,
-        exceptions_count=0,
-    )
-
-
 @pytest.fixture
 def sqlite_task_database(
     sqlite_engine: Engine,
@@ -131,245 +92,6 @@ def test_is_global_timeout_uses_created_at():
     assert task_module._is_global_timeout(form, 60, now=now) is False
 
     assert task_module._is_global_timeout(form, 0, now=now) is False
-
-
-def test_handle_global_timeout_marks_final_trace_pending_without_deleting_snapshot(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    timed_out_at = datetime(2025, 1, 1, 12, 0, 0)
-    workflow_run = SimpleNamespace(
-        id="run-global",
-        app_id="app-id",
-        created_by="creator-id",
-        total_tokens=13,
-        status=HumanInputFormStatus.WAITING,
-        error=None,
-        finished_at=None,
-    )
-    pause = SimpleNamespace(
-        id="pause-id",
-        state_object_key="pause-state",
-        resumed_at=None,
-        final_trace_status=None,
-        final_trace_attempts=9,
-    )
-
-    session = MagicMock()
-    session.get.return_value = workflow_run
-    session.scalar.return_value = pause
-    session_factory = MagicMock()
-    session_factory.return_value.__enter__.return_value = session
-    session.begin.return_value.__enter__.return_value = None
-
-    monkeypatch.setattr(task_module, "naive_utc_now", lambda: timed_out_at)
-    attempt = MagicMock()
-    monkeypatch.setattr(task_module, "_attempt_pending_final_trace_handoff", attempt)
-    delete = MagicMock()
-    monkeypatch.setattr(task_module.storage, "delete", delete)
-
-    task_module._handle_global_timeout(
-        form_id="form-global",
-        workflow_run_id="run-global",
-        node_id="node-global",
-        session_factory=session_factory,
-    )
-
-    assert workflow_run.status == WorkflowExecutionStatus.STOPPED
-    assert pause.resumed_at == timed_out_at
-    assert pause.final_trace_status is FinalTraceHandoffStatus.PENDING
-    assert pause.final_trace_attempts == 0
-    delete.assert_not_called()
-    attempt.assert_called_once_with("pause-id", session_factory)
-
-
-def _add_pending_handoff(
-    session: Session,
-    *,
-    attempts: int = 0,
-) -> tuple[WorkflowPause, WorkflowRun, HumanInputForm]:
-    started_at = datetime(2025, 1, 1, 10, 0, 0)
-    finished_at = started_at + timedelta(hours=2)
-    workflow_run = _build_workflow_run(run_id="run-global", created_at=started_at)
-    workflow_run.status = WorkflowExecutionStatus.STOPPED
-    workflow_run.finished_at = finished_at
-    pause = WorkflowPause(
-        workflow_id=workflow_run.workflow_id,
-        workflow_run_id=workflow_run.id,
-        state_object_key="pause-state",
-        resumed_at=finished_at,
-        final_trace_status=FinalTraceHandoffStatus.PENDING,
-        final_trace_attempts=attempts,
-    )
-    form = _build_form(
-        form_id="form-global",
-        form_kind=HumanInputFormKind.RUNTIME,
-        created_at=started_at,
-        expiration_time=finished_at,
-        workflow_run_id=workflow_run.id,
-        node_id="node-global",
-    )
-    form.status = HumanInputFormStatus.EXPIRED
-    reason = WorkflowPauseReason(
-        pause_id=pause.id,
-        type_=PauseReasonType.HITL_REQUIRED,
-        form_id=form.id,
-        node_id=form.node_id,
-    )
-    session.add_all([workflow_run, pause, form, reason])
-    session.commit()
-    return pause, workflow_run, form
-
-
-def _mock_resumption_context(monkeypatch: pytest.MonkeyPatch) -> None:
-    generate_entity = SimpleNamespace(
-        user_id="end-user-id",
-        conversation_id="conversation-id",
-        extras={"trace_session_id": "trace-session"},
-        workflow_trace_state=WorkflowTraceState(),
-    )
-    resumption_context = SimpleNamespace(get_generate_entity=lambda: generate_entity)
-    monkeypatch.setattr(task_module.WorkflowResumptionContext, "loads", lambda _value: resumption_context)
-
-
-def test_pending_handoff_storage_failure_retains_snapshot(
-    monkeypatch: pytest.MonkeyPatch,
-    sqlite_task_database: None,
-    sqlite_engine: Engine,
-    sqlite_session: Session,
-) -> None:
-    pause, _, _ = _add_pending_handoff(sqlite_session)
-    monkeypatch.setattr(task_module.dify_config, "OPS_TRACE_FINAL_TRACE_HANDOFF_MAX_RETRIES", 60)
-    monkeypatch.setattr(task_module.storage, "load", MagicMock(side_effect=OSError("storage unavailable")))
-    delete = MagicMock()
-    monkeypatch.setattr(task_module.storage, "delete", delete)
-
-    task_module._attempt_pending_final_trace_handoff(
-        pause.id,
-        sessionmaker(bind=sqlite_engine, expire_on_commit=False),
-    )
-
-    sqlite_session.expire_all()
-    refreshed = sqlite_session.get(WorkflowPause, pause.id)
-    assert refreshed is not None
-    assert refreshed.final_trace_status is FinalTraceHandoffStatus.PENDING
-    assert refreshed.final_trace_attempts == 1
-    delete.assert_not_called()
-
-
-def test_pending_handoff_success_rebuilds_expired_wait_and_deletes_snapshot(
-    monkeypatch: pytest.MonkeyPatch,
-    sqlite_task_database: None,
-    sqlite_engine: Engine,
-    sqlite_session: Session,
-) -> None:
-    pause, _, form = _add_pending_handoff(sqlite_session)
-    monkeypatch.setattr(task_module.dify_config, "OPS_TRACE_FINAL_TRACE_HANDOFF_MAX_RETRIES", 60)
-    monkeypatch.setattr(task_module.storage, "load", lambda _key: b"serialized-pause-state")
-    delete = MagicMock()
-    monkeypatch.setattr(task_module.storage, "delete", delete)
-    _mock_resumption_context(monkeypatch)
-    manager = MagicMock()
-    manager.persist_trace_task.return_value = {
-        "file_id": "workflow-final-run-global",
-        "app_id": "app-1",
-    }
-    monkeypatch.setattr(task_module, "TraceQueueManager", MagicMock(return_value=manager))
-
-    task_module._attempt_pending_final_trace_handoff(
-        pause.id,
-        sessionmaker(bind=sqlite_engine, expire_on_commit=False),
-    )
-
-    sqlite_session.expire_all()
-    refreshed = sqlite_session.get(WorkflowPause, pause.id)
-    assert refreshed is not None
-    assert refreshed.final_trace_status is None
-    assert refreshed.final_trace_attempts == 1
-    persisted_task = manager.persist_trace_task.call_args.args[0]
-    assert manager.persist_trace_task.call_args.kwargs["file_id"] == "workflow-final-run-global"
-    assert persisted_task.kwargs["human_waits"][0]["wait_id"] == form.id
-    assert persisted_task.kwargs["human_waits"][0]["outcome"] == "expired"
-    manager.enqueue_persisted_trace.assert_called_once_with(manager.persist_trace_task.return_value)
-    delete.assert_called_once_with(pause.state_object_key)
-
-
-def test_pending_handoff_broker_failure_retains_snapshot(
-    monkeypatch: pytest.MonkeyPatch,
-    sqlite_task_database: None,
-    sqlite_engine: Engine,
-    sqlite_session: Session,
-) -> None:
-    pause, _, _ = _add_pending_handoff(sqlite_session)
-    monkeypatch.setattr(task_module.dify_config, "OPS_TRACE_FINAL_TRACE_HANDOFF_MAX_RETRIES", 60)
-    monkeypatch.setattr(task_module.storage, "load", lambda _key: b"serialized-pause-state")
-    delete = MagicMock()
-    monkeypatch.setattr(task_module.storage, "delete", delete)
-    _mock_resumption_context(monkeypatch)
-    manager = MagicMock()
-    manager.persist_trace_task.return_value = {
-        "file_id": "workflow-final-run-global",
-        "app_id": "app-1",
-    }
-    manager.enqueue_persisted_trace.side_effect = ConnectionError("broker unavailable")
-    monkeypatch.setattr(task_module, "TraceQueueManager", MagicMock(return_value=manager))
-
-    task_module._attempt_pending_final_trace_handoff(
-        pause.id,
-        sessionmaker(bind=sqlite_engine, expire_on_commit=False),
-    )
-
-    sqlite_session.expire_all()
-    refreshed = sqlite_session.get(WorkflowPause, pause.id)
-    assert refreshed is not None
-    assert refreshed.final_trace_status is FinalTraceHandoffStatus.PENDING
-    assert refreshed.final_trace_attempts == 1
-    delete.assert_not_called()
-
-
-def test_pending_handoff_exhaustion_marks_failed_and_logs(
-    monkeypatch: pytest.MonkeyPatch,
-    sqlite_task_database: None,
-    sqlite_engine: Engine,
-    sqlite_session: Session,
-) -> None:
-    pause, _, _ = _add_pending_handoff(sqlite_session)
-    monkeypatch.setattr(task_module.dify_config, "OPS_TRACE_FINAL_TRACE_HANDOFF_MAX_RETRIES", 1)
-    monkeypatch.setattr(task_module.storage, "load", MagicMock(side_effect=OSError("storage unavailable")))
-    error_log = MagicMock()
-    monkeypatch.setattr(task_module.logger, "log", error_log)
-
-    task_module._attempt_pending_final_trace_handoff(
-        pause.id,
-        sessionmaker(bind=sqlite_engine, expire_on_commit=False),
-    )
-
-    sqlite_session.expire_all()
-    refreshed = sqlite_session.get(WorkflowPause, pause.id)
-    assert refreshed is not None
-    assert refreshed.final_trace_status is FinalTraceHandoffStatus.FAILED
-    assert refreshed.final_trace_attempts == 1
-    error_log.assert_called_once()
-
-
-def test_timeout_scan_retries_pending_final_trace_without_new_expired_forms(
-    monkeypatch: pytest.MonkeyPatch,
-    sqlite_task_database: None,
-    sqlite_engine: Engine,
-    sqlite_session: Session,
-) -> None:
-    pause, _, _ = _add_pending_handoff(sqlite_session)
-    monkeypatch.setattr(task_module.dify_config, "HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS", 0)
-    monkeypatch.setattr(task_module, "HumanInputService", MagicMock(return_value=_FakeService()))
-    attempt = MagicMock()
-    monkeypatch.setattr(task_module, "_attempt_pending_final_trace_handoff", attempt)
-
-    task_module.check_and_handle_human_input_timeouts(limit=100)
-
-    attempt.assert_called_once()
-    assert attempt.call_args.args[0] == pause.id
-    retry_session_maker = attempt.call_args.args[1]
-    assert isinstance(retry_session_maker, sessionmaker)
-    assert retry_session_maker.kw["bind"] is sqlite_engine
 
 
 @pytest.mark.parametrize("sqlite_session", [(HumanInputForm,)], indirect=True)
@@ -434,9 +156,6 @@ def test_check_and_handle_human_input_timeouts_marks_and_routes(
         ("form-delivery", HumanInputFormStatus.TIMEOUT, "delivery_test_timeout"),
     }
     assert service.enqueued == ["run-node"]
-    assert service.enqueued_waits[0] is not None
-    assert service.enqueued_waits[0].wait_id == "form-node"
-    assert service.enqueued_waits[0].outcome == "timed_out"
     global_timeout_handler.assert_called_once()
     global_timeout_call = global_timeout_handler.call_args.kwargs
     assert global_timeout_call["form_id"] == "form-global"

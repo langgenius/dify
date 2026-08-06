@@ -1,4 +1,9 @@
-"""Private unified-tracing state retained across workflow pauses."""
+"""Private unified-tracing state retained across workflow pauses.
+
+Deferred from unified tracing v1: no v1 ``AppGenerateEntity`` carries this
+state (see ADR-0001 "Out of scope (v1)"). Retained for re-adoption when
+human-wait pause/resume tracing is reintroduced.
+"""
 
 from __future__ import annotations
 
