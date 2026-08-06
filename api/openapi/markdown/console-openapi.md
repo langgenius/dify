@@ -13248,6 +13248,7 @@ Model class for AI model.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| access_ready | boolean |  | Yes |
 | api_key_count | integer |  | Yes |
 | api_rph | integer |  | Yes |
 | api_rpm | integer |  | Yes |
@@ -13313,6 +13314,7 @@ Model class for AI model.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | access_mode | string |  | No |
+| access_ready | boolean |  | No |
 | api_base_url | string |  | No |
 | app_id | string |  | No |
 | backing_app_id | string |  | No |
