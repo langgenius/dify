@@ -10,7 +10,7 @@ dependencies = [
     "beautifulsoup4==4.15.0",
     "boto3==1.42.73",
     "bs4~=0.0.1",
-    "cachetools~=7.1.6",
+    "cachetools~=7.1.7",
     "celery~=5.6.3",
     "charset-normalizer>=3.4.9",
     "flask~=3.1.2",
@@ -204,7 +204,7 @@ storage = [
 ############################################################
 # [ Tools ] dependency group
 ############################################################
-tools = ["cloudscraper~=1.2.71", "nltk>=3.9.1,<4.0.0"]
+tools = ["cloudscraper~=1.2.71", "nltk>=3.10.1,<4.0.0"]
 
 ############################################################
 # [ VDB ] dependency group
