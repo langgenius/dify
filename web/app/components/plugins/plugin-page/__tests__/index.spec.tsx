@@ -56,9 +56,7 @@ vi.mock('@/context/workspace-state', async () => {
       current_version: '1.0.0',
       latest_version: '1.0.0',
       version: '1.0.0',
-      release_date: '',
       release_notes: '',
-      can_auto_update: false,
     },
     workspacePermissionKeys: [
       'plugin.install',
@@ -78,9 +76,7 @@ vi.mock('@/context/permission-state', async () => {
       current_version: '1.0.0',
       latest_version: '1.0.0',
       version: '1.0.0',
-      release_date: '',
       release_notes: '',
-      can_auto_update: false,
     },
     workspacePermissionKeys: [
       'plugin.install',
@@ -100,9 +96,7 @@ vi.mock('@/context/version-state', async () => {
       current_version: '1.0.0',
       latest_version: '1.0.0',
       version: '1.0.0',
-      release_date: '',
       release_notes: '',
-      can_auto_update: false,
     },
     workspacePermissionKeys: [
       'plugin.install',

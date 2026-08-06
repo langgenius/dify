@@ -58,20 +58,16 @@ const mockLangGeniusVersionInfo = vi.fn(() => ({
   current_env: '',
   current_version: '1.0.0',
   latest_version: '',
-  release_date: '',
   release_notes: '',
   version: '',
-  can_auto_update: false,
 }))
 
 const createLangGeniusVersionInfo = (currentVersion: string) => ({
   current_env: '',
   current_version: currentVersion,
   latest_version: '',
-  release_date: '',
   release_notes: '',
   version: '',
-  can_auto_update: false,
 })
 
 vi.mock('@/context/version-state', async () => {
