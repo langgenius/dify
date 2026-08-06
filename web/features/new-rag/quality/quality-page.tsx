@@ -769,9 +769,9 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
             )}
           </div>
         ) : (
-          <div className="flex min-h-[calc(100vh-22rem)] flex-col items-center justify-center text-center">
-            <span aria-hidden className="i-ri-check-line size-8 text-text-tertiary" />
-            <h2 className="mt-4 system-md-semibold text-text-primary">
+          <div className="mt-2.5 flex h-140 flex-col items-center justify-center text-center">
+            <span aria-hidden className="i-ri-check-line size-7 text-text-tertiary" />
+            <h2 className="mt-3 system-md-semibold text-text-primary">
               {t(($) => $['newKnowledge.qualityPage.badCasesEmptyTitle'])}
             </h2>
             <p className="mt-1 max-w-136 system-xs-regular text-text-tertiary">
