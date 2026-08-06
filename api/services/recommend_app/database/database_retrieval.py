@@ -75,7 +75,7 @@ class DatabaseRecommendAppRetrieval(RecommendAppRetrievalBase):
         if len(recommended_apps) == 0:
             recommended_apps = cls._fetch_listed_recommended_apps(languages[0], session=session)
 
-        return cls._format_recommended_apps(recommended_apps, language)
+        return cls._format_recommended_apps(recommended_apps, language, session=session)
 
     @classmethod
     def fetch_learn_dify_apps_from_db(cls, language: str, *, session: Session) -> RecommendedAppsResultDict:
@@ -89,7 +89,7 @@ class DatabaseRecommendAppRetrieval(RecommendAppRetrievalBase):
         if len(recommended_apps) == 0 and language != languages[0]:
             recommended_apps = cls._fetch_listed_recommended_apps(languages[0], session=session, is_learn_dify=True)
 
-        return cls._format_recommended_apps(recommended_apps, language)
+        return cls._format_recommended_apps(recommended_apps, language, session=session)
 
     @classmethod
     def _fetch_listed_recommended_apps(
@@ -103,7 +103,11 @@ class DatabaseRecommendAppRetrieval(RecommendAppRetrievalBase):
 
     @classmethod
     def _format_recommended_apps(
-        cls, recommended_apps: list[RecommendedApp], language: str
+        cls,
+        recommended_apps: list[RecommendedApp],
+        language: str,
+        *,
+        session: Session,
     ) -> RecommendedAppsResultDict:
         """
         Serialize DB recommended app rows into the Explore list response shape.
@@ -115,18 +119,18 @@ class DatabaseRecommendAppRetrieval(RecommendAppRetrievalBase):
         categories = set()
         recommended_apps_result: list[RecommendedAppItemDict] = []
         for recommended_app in recommended_apps:
-            app = recommended_app.app
+            app = session.get(App, recommended_app.app_id)
             if not app or not app.is_public:
                 continue
 
-            site = app.site
+            site = app.site_with_session(session=session)
             if not site:
                 continue
 
             app_categories = recommended_app.categories or []
             recommended_app_result: RecommendedAppItemDict = {
                 "id": recommended_app.id,
-                "app": recommended_app.app,
+                "app": app,
                 "app_id": recommended_app.app_id,
                 "description": site.description,
                 "copyright": site.copyright,
