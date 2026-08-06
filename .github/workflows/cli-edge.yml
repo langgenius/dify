@@ -2,7 +2,7 @@ name: CLI Edge Publish
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
     paths:
       - 'cli/**'
       - 'packages/contracts/generated/api/openapi/**'
@@ -15,7 +15,8 @@ concurrency:
 jobs:
   publish:
     name: build + publish edge to R2
-    runs-on: ${{ github.repository == 'langgenius/dify' && 'depot-ubuntu-24.04' || 'ubuntu-24.04' }}
+    runs-on: ${{ github.repository == 'langgenius/dify' && 'depot-ubuntu-24.04' ||
+      'ubuntu-24.04' }}
     if: vars.DIFYCTL_R2_BUCKET != ''
     defaults:
       run:
@@ -36,13 +37,14 @@ jobs:
         uses: ./.github/actions/setup-web
 
       - name: Setup Bun
-        uses: oven-sh/setup-bun@4bc047ad259df6fc24a6c9b0f9a0cb08cf17fbe5 # v2.0.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: cli/.bun-version
 
       - name: Compute edge version
         id: ver
-        run: echo "version=$(node scripts/release-naming.mjs edge-version "$(git rev-parse --short HEAD)")" >> "$GITHUB_OUTPUT"
+        run: echo "version=$(node scripts/release-naming.mjs edge-version "$(git
+          rev-parse --short HEAD)")" >> "$GITHUB_OUTPUT"
 
       - name: Compile standalone binaries (all targets, all-or-nothing)
         run: |
@@ -53,7 +55,8 @@ jobs:
             pnpm build:bin
 
       - name: Generate sha256 checksums
-        run: CLI_VERSION="${{ steps.ver.outputs.version }}" scripts/release-write-checksums.sh
+        run: CLI_VERSION="${{ steps.ver.outputs.version }}"
+          scripts/release-write-checksums.sh
 
       - name: Smoke the runner-arch binary
         run: ./dist/bin/difyctl-v${{ steps.ver.outputs.version }}-linux-x64 version
