@@ -25,16 +25,12 @@ export const stopChatMessageResponding = async (appId: string, taskId: string) =
 export const sendCompletionMessage = async (
   appId: string,
   body: Record<string, any>,
-  {
-    onData,
-    onCompleted,
-    onError,
-    onMessageReplace,
-  }: {
+  handlers: {
     onData: IOnData
     onCompleted: IOnCompleted
     onError: IOnError
     onMessageReplace: IOnMessageReplace
+    onNotifyError?: IOnError
   },
 ) => {
   return ssePost(
@@ -45,7 +41,7 @@ export const sendCompletionMessage = async (
         response_mode: 'streaming',
       },
     },
-    { onData, onCompleted, onError, onMessageReplace },
+    handlers,
   )
 }
 
