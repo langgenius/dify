@@ -291,6 +291,31 @@ describe('WebsiteCrawlPreview', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('starts the existing crawl workflow automatically for a creation handoff', async () => {
+    const onAutoStart = vi.fn()
+    render(
+      <WebsiteCrawlPreview
+        autoStart
+        connection={connection}
+        initialDraft={{
+          includeSubpages: true,
+          maxPages: 100,
+          provider: 'Firecrawl',
+          rootUrl: 'https://docs.dify.ai',
+          sourceName: 'Dify docs',
+          sourceType: 'websiteCrawl',
+          syncPolicy: 'provider',
+        }}
+        knowledgeSpaceId="space-1"
+        onAutoStart={onAutoStart}
+      />,
+    )
+
+    await waitFor(() => expect(clientMock.startPreview).toHaveBeenCalledOnce())
+    expect(onAutoStart).toHaveBeenCalledOnce()
+    expect(clientMock.createSource).toHaveBeenCalledOnce()
+  })
+
   it('cancels a preview-ready workflow and starts a fresh run when re-crawling', async () => {
     clientMock.cancel.mockResolvedValue(run('canceled'))
 

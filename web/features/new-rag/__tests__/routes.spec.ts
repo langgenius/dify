@@ -22,6 +22,12 @@ describe('New RAG routes', () => {
     )
   })
 
+  it('marks a creation handoff that should start the crawl preview', () => {
+    expect(newKnowledgeAddSourcePath('space-1', 'websiteCrawl', 'opaque-draft-key', true)).toBe(
+      '/datasets/new/space-1/sources/new?type=websiteCrawl&draft=opaque-draft-key&preview=1',
+    )
+  })
+
   it('rejects repeated search parameters instead of selecting an ambiguous value', () => {
     expect(singleSearchParam(['websiteCrawl', 'onlineDrive'])).toBeUndefined()
     expect(singleSearchParam('websiteCrawl')).toBe('websiteCrawl')

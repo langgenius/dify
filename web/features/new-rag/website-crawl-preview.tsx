@@ -356,15 +356,19 @@ function EmptyPreview() {
 }
 
 export function WebsiteCrawlPreview({
+  autoStart = false,
   connection,
   initialDraft,
   knowledgeSpaceId,
+  onAutoStart,
   onDraftFinished,
   providerName = 'Firecrawl',
 }: {
+  autoStart?: boolean
   connection: ConnectionReference
   initialDraft?: NewKnowledgeWebsiteSourceDraft
   knowledgeSpaceId: string
+  onAutoStart?: () => void
   onDraftFinished?: () => void
   providerName?: string
 }) {
@@ -388,6 +392,7 @@ export function WebsiteCrawlPreview({
   const [pages, setPages] = useState<PreviewPage[]>([])
   const [selectedPageIds, setSelectedPageIds] = useState<Set<string>>(() => new Set())
   const [pagesLoaded, setPagesLoaded] = useState(false)
+  const autoStartAttemptedRef = useRef(false)
   const [starting, setStarting] = useState(false)
   const [stopping, setStopping] = useState(false)
   const [pollPaused, setPollPaused] = useState(false)
@@ -1004,6 +1009,13 @@ export function WebsiteCrawlPreview({
     }
     void startPreview(configuration)
   }
+
+  useEffect(() => {
+    if (!autoStart || autoStartAttemptedRef.current || !configuration) return
+    autoStartAttemptedRef.current = true
+    onAutoStart?.()
+    void startPreview(configuration)
+  }, [autoStart, configuration, onAutoStart, startPreview])
 
   const handleSubmit = () => handlePrimaryAction()
 

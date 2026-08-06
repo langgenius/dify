@@ -138,13 +138,17 @@ function ConnectedSourceConfiguration({
 }
 
 export function CreateSourceSetup({
+  crawlPreviewDisabled,
   disabled,
   draft,
+  onCrawlPreview,
   onDraftChange,
   onSourceTypeChange,
 }: {
+  crawlPreviewDisabled: boolean
   disabled: boolean
   draft: NewKnowledgeSourceDraft
+  onCrawlPreview: () => void
   onDraftChange: (draft: NewKnowledgeSourceDraft) => void
   onSourceTypeChange: (sourceType: NewKnowledgeSourceDraft['sourceType']) => void
 }) {
@@ -380,8 +384,8 @@ export function CreateSourceSetup({
             type="button"
             variant="primary"
             className="w-full"
-            disabled={disabled || !previewReady}
-            onClick={showBackendBoundary}
+            disabled={disabled || crawlPreviewDisabled || !previewReady}
+            onClick={onCrawlPreview}
           >
             {t(($) => $['newKnowledge.crawlAndPreview'])}
           </Button>

@@ -33,6 +33,7 @@ import { AddSourceExitDialog } from './components/add-source-exit-dialog'
 import { ConnectedSourceSetup } from './connected-source-setup'
 import {
   createNewKnowledgeSourceDraft,
+  newKnowledgeAddSourcePath,
   newKnowledgeDetailPath,
   newKnowledgeSourceDraftStorageKey,
   parseNewKnowledgeSourceDraft,
@@ -775,11 +776,13 @@ function ProvisioningConnection({
 }
 
 export function AddSourcePage({
+  autoPreview = false,
   initialSourceDraft,
   initialSourceType,
   knowledgeSpaceId,
   sourceDraftKey,
 }: {
+  autoPreview?: boolean
   initialSourceDraft?: NewKnowledgeSourceDraft
   initialSourceType?: string
   knowledgeSpaceId: string
@@ -793,6 +796,7 @@ export function AddSourcePage({
       createNewKnowledgeSourceDraft(normalizeSourceType(initialSourceType ?? null)),
   )
   const [sourceDraft, setSourceDraft] = useState<NewKnowledgeSourceDraft>(initialDraftRef.current)
+  const [autoPreviewPending, setAutoPreviewPending] = useState(autoPreview)
   const sourceDraftBaselineRef = useRef(
     JSON.stringify(createNewKnowledgeSourceDraft(initialDraftRef.current.sourceType)),
   )
@@ -852,6 +856,12 @@ export function AddSourcePage({
       // The draft remains scoped to this browser session when storage cleanup is unavailable.
     }
   }, [sourceDraftKey])
+  const consumeAutoPreview = useCallback(() => {
+    setAutoPreviewPending(false)
+    router.replace(
+      newKnowledgeAddSourcePath(knowledgeSpaceId, sourceDraft.sourceType, sourceDraftKey),
+    )
+  }, [knowledgeSpaceId, router, sourceDraft.sourceType, sourceDraftKey])
   const providersQuery = useQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceProviders.get.queryOptions({
       input: { params: { control_space_id: knowledgeSpaceId } },
@@ -986,7 +996,10 @@ export function AddSourcePage({
     connection?.status === 'active',
   )
   const websitePreviewReady =
-    websiteReady && !historyGuardArmedRef.current && !historyGuardReleaseRef.current
+    sourceDraftResolved &&
+    websiteReady &&
+    !historyGuardArmedRef.current &&
+    !historyGuardReleaseRef.current
   const hasUnsavedChanges =
     sourceDraftResolved &&
     !websiteReady &&
@@ -1227,10 +1240,12 @@ export function AddSourcePage({
                 </div>
               ) : connection?.status === 'active' && websitePreviewReady ? (
                 <WebsiteCrawlPreview
+                  autoStart={autoPreviewPending}
                   key={historyGuardReleaseVersion}
                   connection={connection}
                   initialDraft={sourceDraft}
                   knowledgeSpaceId={knowledgeSpaceId}
+                  onAutoStart={consumeAutoPreview}
                   onDraftFinished={clearStoredSourceDraft}
                   providerName={FIRECRAWL_CONNECTION_NAME}
                 />

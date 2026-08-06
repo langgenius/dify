@@ -114,6 +114,7 @@ export function CreateKnowledgePage() {
   const historyGuardArmedRef = useRef(false)
   const browserBackExitRef = useRef(false)
   const pendingNavigationRef = useRef<string | undefined>(undefined)
+  const navigationFallbackRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const createMutation = useMutation({ mutationFn: createKnowledge })
   const submissionPending = createMutation.isPending || uploading
   const createErrorMessage = t(($) => $['newKnowledge.createFailed'])
@@ -156,6 +157,13 @@ export function CreateKnowledgePage() {
 
       pendingNavigationRef.current = path
       globalThis.history.back()
+      globalThis.clearTimeout(navigationFallbackRef.current)
+      navigationFallbackRef.current = globalThis.setTimeout(() => {
+        if (pendingNavigationRef.current !== path) return
+        pendingNavigationRef.current = undefined
+        historyGuardArmedRef.current = false
+        router.replace(path)
+      }, 1000)
     },
     [router],
   )
@@ -179,6 +187,8 @@ export function CreateKnowledgePage() {
       historyGuardArmedRef.current = false
       const pendingNavigation = pendingNavigationRef.current
       if (pendingNavigation) {
+        globalThis.clearTimeout(navigationFallbackRef.current)
+        navigationFallbackRef.current = undefined
         pendingNavigationRef.current = undefined
         router.replace(pendingNavigation)
         return
@@ -195,6 +205,13 @@ export function CreateKnowledgePage() {
     globalThis.addEventListener('popstate', handlePopState)
     return () => globalThis.removeEventListener('popstate', handlePopState)
   }, [createdKnowledge, hasUnsavedChanges, router])
+
+  useEffect(
+    () => () => {
+      globalThis.clearTimeout(navigationFallbackRef.current)
+    },
+    [],
+  )
 
   useEffect(() => {
     if (!hasUnsavedChanges) return
@@ -246,7 +263,7 @@ export function CreateKnowledgePage() {
     armHistoryGuard()
   }
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (autoPreview = false) => {
     if (submissionPending || uploadSubmissionBlocked || sourceSubmissionBlocked) return
 
     const normalizedName = name.trim()
@@ -303,6 +320,7 @@ export function CreateKnowledgePage() {
               created.control_space_id,
               sourceDraft.sourceType,
               sourceDraftKey,
+              autoPreview,
             ),
           )
         } catch {
@@ -356,7 +374,11 @@ export function CreateKnowledgePage() {
             <div className="min-h-6 w-full max-w-190 flex-1 [@media(max-height:850px)]:h-6 [@media(max-height:850px)]:flex-none" />
             <Form
               className="flex max-h-full min-h-0 w-full max-w-190 flex-col"
-              onFormSubmit={handleSubmit}
+              onFormSubmit={() =>
+                void handleSubmit(
+                  startMode === 'source' && sourceDraft.sourceType === 'websiteCrawl',
+                )
+              }
             >
               <header className="shrink-0 px-6 pt-2 pb-6 sm:px-10">
                 <DialogTitle id={dialogTitleId} className="title-2xl-semi-bold text-text-primary">
@@ -498,8 +520,10 @@ export function CreateKnowledgePage() {
                       description={t(($) => $['newKnowledge.connectSourceDescription'])}
                     >
                       <CreateSourceSetup
+                        crawlPreviewDisabled={!name.trim()}
                         disabled={submissionLocked}
                         draft={sourceDraft}
+                        onCrawlPreview={() => void handleSubmit(true)}
                         onDraftChange={(value) => {
                           sourceDraftsRef.current[value.sourceType] = value
                           setSourceDraft(value)

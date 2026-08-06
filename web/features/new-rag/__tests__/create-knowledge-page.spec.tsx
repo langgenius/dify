@@ -582,11 +582,8 @@ describe('CreateKnowledgePage', () => {
     const crawlAndPreview = screen.getByRole('button', {
       name: 'dataset.newKnowledge.crawlAndPreview',
     })
-    expect(crawlAndPreview).toBeEnabled()
-    await user.click(crawlAndPreview)
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'dataset.newKnowledge.sourceSetupBackendDependency',
-    )
+    expect(crawlAndPreview).toBeDisabled()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(screen.queryByText(/^dataset\.newKnowledge\.crawlingPages/)).not.toBeInTheDocument()
     expect(screen.queryByText(/^dataset\.newKnowledge\.pagesCrawled/)).not.toBeInTheDocument()
     const onlineDocuments = screen.getByRole('radio', {
@@ -692,7 +689,7 @@ describe('CreateKnowledgePage', () => {
     }
   })
 
-  it('hands the configured website draft to the real add-source workflow', async () => {
+  it('hands the configured website draft to the real add-source workflow and starts preview', async () => {
     const user = userEvent.setup()
     navigationMock.startMode = 'source'
     renderPage()
@@ -718,11 +715,11 @@ describe('CreateKnowledgePage', () => {
         'dataset.newKnowledge.includeSubpages: dataset.newKnowledge.booleanFalse · dataset.newKnowledge.maxPages: 25',
       ),
     ).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
 
     await waitFor(() =>
       expect(routerMock.replace).toHaveBeenCalledWith(
-        '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/sources/new?type=websiteCrawl&draft=a9c36c57-2d84-44d6-a36d-841f0d92a179',
+        '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/sources/new?type=websiteCrawl&draft=a9c36c57-2d84-44d6-a36d-841f0d92a179&preview=1',
       ),
     )
     expect(
@@ -740,6 +737,33 @@ describe('CreateKnowledgePage', () => {
       sourceType: 'websiteCrawl',
       syncPolicy: 'provider',
     })
+  })
+
+  it('falls back to direct navigation when releasing the history guard does not emit popstate', async () => {
+    const user = userEvent.setup()
+    const historyBack = vi.spyOn(window.history, 'back').mockImplementation(() => undefined)
+    navigationMock.startMode = 'source'
+    renderPage()
+    await fillRequiredFields(user)
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.rootUrlPlaceholder'),
+      'https://docs.dify.ai',
+    )
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
+      'Dify docs',
+    )
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+
+    expect(historyBack).toHaveBeenCalledOnce()
+    await waitFor(
+      () =>
+        expect(routerMock.replace).toHaveBeenCalledWith(
+          '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/sources/new?type=websiteCrawl&draft=a9c36c57-2d84-44d6-a36d-841f0d92a179&preview=1',
+        ),
+      { timeout: 2000 },
+    )
   })
 
   it('preserves online document configuration across the real navigation boundary', async () => {
@@ -947,7 +971,7 @@ describe('CreateKnowledgePage', () => {
 
     await waitFor(() =>
       expect(routerMock.replace).toHaveBeenCalledWith(
-        '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/sources/new?type=websiteCrawl&draft=a9c36c57-2d84-44d6-a36d-841f0d92a179',
+        '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/sources/new?type=websiteCrawl&draft=a9c36c57-2d84-44d6-a36d-841f0d92a179&preview=1',
       ),
     )
     expect(
