@@ -12,6 +12,7 @@ export const ACTIVE_TASK_STATES = new Set<DocumentProcessingTask['state']>([
 const ATTENTION_TASK_STATES = new Set<DocumentProcessingTask['state']>([
   ...ACTIVE_TASK_STATES,
   'failed',
+  'canceled',
 ])
 
 function rfc3339Parts(value: string) {
@@ -101,5 +102,5 @@ export function taskCanCancel(task: BackgroundTask) {
 }
 
 export function taskCanRetry(task: BackgroundTask) {
-  return task.canRetry ?? task.state === 'failed'
+  return task.canRetry ?? (task.state === 'failed' || task.state === 'canceled')
 }

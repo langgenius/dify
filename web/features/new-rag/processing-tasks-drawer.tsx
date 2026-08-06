@@ -36,6 +36,17 @@ function taskLifecycle(task: BackgroundTask) {
   return `${task.updatedAt}:${task.state}`
 }
 
+function taskProgress(task: BackgroundTask) {
+  if (!task.progressTotal) return
+  return {
+    completed: Math.min(
+      (task.progressCompleted ?? 0) + (task.progressFailed ?? 0),
+      task.progressTotal,
+    ),
+    total: task.progressTotal,
+  }
+}
+
 function responseStatus(error: unknown): number | undefined {
   if (error instanceof Response) return error.status
   if (error && typeof error === 'object' && 'status' in error)
@@ -104,6 +115,7 @@ export function ProcessingTasksDrawer({
   taskQueryPending,
   tasks,
   taskProgressStore,
+  sourceNames,
   onRetryTaskQuery,
   onRetryDocumentQuery,
 }: {
@@ -136,6 +148,7 @@ export function ProcessingTasksDrawer({
   taskQueryPending: boolean
   tasks: BackgroundTask[]
   taskProgressStore: TaskProgressStore
+  sourceNames?: Map<string, string>
   onRetryDocumentQuery: () => void
   onRetryTaskQuery: () => void
 }) {
@@ -402,17 +415,15 @@ export function ProcessingTasksDrawer({
         <DrawerViewport>
           <DrawerPopup className="data-[swipe-direction=right]:w-110 data-[swipe-direction=right]:max-w-[calc(100vw-1rem)]">
             <DrawerContent className="flex min-h-0 flex-1 flex-col bg-components-panel-bg p-0 pb-0">
-              <header className="shrink-0 pt-[calc(1.25rem+env(safe-area-inset-top,0px))] pr-[calc(1.5rem+env(safe-area-inset-right,0px))] pb-4 pl-[calc(1.5rem+env(safe-area-inset-left,0px))]">
-                <div className="flex items-center justify-between gap-3">
-                  <DrawerTitle className="system-md-semibold text-text-primary">
-                    {t(($) => $['newKnowledge.backgroundTasks'])}
-                  </DrawerTitle>
-                  <DrawerCloseButton
-                    ref={drawerCloseButtonRef}
-                    aria-label={tCommon(($) => $['operation.close'])}
-                    className="size-6.5 rounded-md"
-                  />
-                </div>
+              <header className="relative shrink-0 pt-[calc(1.5rem+env(safe-area-inset-top,0px))] pr-[calc(1.5rem+env(safe-area-inset-right,0px))] pb-3.5 pl-[calc(1.5rem+env(safe-area-inset-left,0px))]">
+                <DrawerTitle className="pr-9 system-md-semibold text-text-primary">
+                  {t(($) => $['newKnowledge.backgroundTasks'])}
+                </DrawerTitle>
+                <DrawerCloseButton
+                  ref={drawerCloseButtonRef}
+                  aria-label={tCommon(($) => $['operation.close'])}
+                  className="absolute top-[calc(1.25rem+env(safe-area-inset-top,0px))] right-[calc(1.5rem+env(safe-area-inset-right,0px))] size-6.5 rounded-md"
+                />
                 <DrawerDescription className="mt-1 system-xs-regular text-text-tertiary">
                   {t(($) => $['newKnowledge.backgroundTasksDescription'])}
                 </DrawerDescription>
@@ -513,15 +524,58 @@ export function ProcessingTasksDrawer({
                 ) : orderedTasks.length ? (
                   <ul>
                     {orderedTasks.map((task) => {
-                      const title = task.documentId
+                      const documentTitle = task.documentId
                         ? (documentTitles.get(task.documentId) ??
                           (documentsPending
                             ? t(($) => $['newKnowledge.documentColumn'])
                             : task.documentId))
-                        : t(($) => $[`newKnowledge.overview.operation.${task.operation}`])
+                        : undefined
+                      const operationTitle = t(
+                        ($) => $[`newKnowledge.overview.operation.${task.operation}`],
+                      )
+                      const progress = taskProgress(task)
+                      const sourceTitle = task.sourceId
+                        ? sourceNames?.get(task.sourceId)
+                        : undefined
+                      const title =
+                        task.operation === 'document_processing' && documentTitle
+                          ? `${t(($) => $['newKnowledge.addDocument'])} · ${documentTitle}`
+                          : task.operation === 'document_upload'
+                            ? `${t(($) => $['newKnowledge.addDocument'])}${progress ? ` · ${progress.total}` : ''}`
+                            : task.operation === 'document_reindex'
+                              ? `${t(($) => $['newKnowledge.reindexDocuments'])}${progress ? ` · ${progress.total}` : documentTitle ? ` · ${documentTitle}` : ''}`
+                              : sourceTitle
+                                ? `${operationTitle} · ${sourceTitle}`
+                                : progress
+                                  ? `${operationTitle} · ${progress.total}`
+                                  : operationTitle
                       const timestamp = Date.parse(
                         taskIsActive(task) ? task.createdAt : taskTime(task),
                       )
+                      const relativeTime = Number.isNaN(timestamp)
+                        ? undefined
+                        : formatTimeFromNow(timestamp)
+                      const progressLabel = progress
+                        ? progress.total > 1
+                          ? `${progress.completed}/${progress.total}`
+                          : `${task.progressPercent}%`
+                        : undefined
+                      const stateLabel = t(
+                        ($) => $[`newKnowledge.processingTaskState.${task.state}`],
+                        { progress: task.progressPercent },
+                      )
+                      const status =
+                        task.state === 'queued' || task.state === 'dispatch_pending'
+                          ? stateLabel
+                          : task.state === 'running' && progressLabel
+                            ? `${progressLabel}${relativeTime ? ` — ${relativeTime}` : ''}`
+                            : task.state === 'failed' && progressLabel
+                              ? `${progressLabel} — ${stateLabel}${relativeTime ? ` ${relativeTime}` : ''}`
+                              : task.state === 'canceled' && progressLabel
+                                ? `${stateLabel} — ${progressLabel}`
+                                : task.state === 'succeeded'
+                                  ? `${stateLabel}${relativeTime ? ` ${relativeTime}` : ''}`
+                                  : `${stateLabel}${relativeTime ? ` · ${relativeTime}` : ''}`
                       const taskError = task.errorMessage ?? task.errorCode
                       const actionTarget = `${title} · ${task.id}`
                       return (
@@ -543,21 +597,9 @@ export function ProcessingTasksDrawer({
                             }
                           />
                           <div className="min-w-0 flex-1">
-                            <p className="truncate system-sm-medium text-text-primary">
-                              {task.documentId
-                                ? t(($) => $['newKnowledge.processDocument'], { name: title })
-                                : title}
-                            </p>
+                            <p className="truncate system-sm-medium text-text-primary">{title}</p>
                             <p className="mt-0.75 truncate system-xs-regular text-text-tertiary">
-                              {t(($) => $[`newKnowledge.processingTaskState.${task.state}`], {
-                                progress: task.progressPercent,
-                              })}
-                              {!Number.isNaN(timestamp) && (
-                                <>
-                                  <span aria-hidden> · </span>
-                                  {formatTimeFromNow(timestamp)}
-                                </>
-                              )}
+                              {status}
                             </p>
                             {taskError && (
                               <p className="mt-1 system-2xs-regular wrap-break-word whitespace-pre-wrap text-text-destructive">

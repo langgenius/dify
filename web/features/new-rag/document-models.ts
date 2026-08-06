@@ -81,7 +81,10 @@ export type BackgroundTask = {
   id: string
   knowledgeSpaceId: string
   operation: KnowledgeFsBackgroundTaskResponse['operation']
+  progressCompleted?: number
+  progressFailed?: number
   progressPercent: number
+  progressTotal?: number
   retryAt?: string
   stage:
     | 'queued'
@@ -239,7 +242,10 @@ export function backgroundTaskFromApi(task: KnowledgeFsBackgroundTaskResponse): 
     id: task.id,
     knowledgeSpaceId: task.knowledge_space_id,
     operation: task.operation,
+    progressCompleted: task.progress_completed,
+    progressFailed: task.progress_failed,
     progressPercent: task.progress_percent,
+    progressTotal: task.progress_total,
     stage: taskStage(task),
     state:
       task.state === 'completed'

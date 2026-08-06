@@ -2642,6 +2642,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             ? t(($) => $['newKnowledge.documentPermissionRestricted'])
             : undefined
         }
+        sourceNames={sourceNames}
         taskQueryPending={tasksQuery.isPending}
         taskQueryError={Boolean(tasksQuery.error || tasksQuery.isFetchNextPageError)}
         taskQueryFetching={tasksQuery.isFetching}
