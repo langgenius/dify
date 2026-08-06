@@ -124,6 +124,8 @@ class TestSystemFeatureApi:
         assert result["is_allow_register"] is True
         assert result["enable_learn_app"] is True
         assert result["license"] == {"status": LicenseStatus.NONE}
+        assert result["sso_enforced_for_signin_protocol"] is None
+        assert result["webapp_auth"]["sso_config"]["protocol"] is None
         get_system_features.assert_called_once_with()
 
 

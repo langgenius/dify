@@ -106,14 +106,20 @@ class BrandingModel(FeatureResponseModel):
     favicon: str = ""
 
 
+class SSOProtocol(StrEnum):
+    SAML = "saml"
+    OIDC = "oidc"
+    OAUTH2 = "oauth2"
+
+
 class WebAppAuthSSOModel(FeatureResponseModel):
-    protocol: str = ""
+    protocol: SSOProtocol | None = None
 
 
 class WebAppAuthModel(FeatureResponseModel):
     enabled: bool = False
     allow_sso: bool = False
-    sso_config: WebAppAuthSSOModel = WebAppAuthSSOModel()
+    sso_config: WebAppAuthSSOModel = Field(default_factory=WebAppAuthSSOModel)
     allow_email_code_login: bool = False
     allow_email_password_login: bool = False
     allow_public_access: bool = True
@@ -186,7 +192,7 @@ class SystemFeatureModel(FeatureResponseModel):
     deployment_edition: DeploymentEdition
     enable_app_deploy: bool = False
     sso_enforced_for_signin: bool = False
-    sso_enforced_for_signin_protocol: str = ""
+    sso_enforced_for_signin_protocol: SSOProtocol | None = None
     enable_marketplace: bool = False
     enable_email_code_login: bool = False
     enable_email_password_login: bool = True
@@ -196,7 +202,7 @@ class SystemFeatureModel(FeatureResponseModel):
     is_email_setup: bool = False
     license: LicenseStatusModel = LicenseStatusModel()
     branding: BrandingModel = BrandingModel()
-    webapp_auth: WebAppAuthModel = WebAppAuthModel()
+    webapp_auth: WebAppAuthModel = Field(default_factory=WebAppAuthModel)
     plugin_installation_permission: PluginInstallationPermissionModel = PluginInstallationPermissionModel()
     enable_change_email: bool = True
     enable_creators_platform: bool = False
@@ -526,6 +532,23 @@ class FeatureService:
             restrict_to_marketplace_only=permission.restrict_to_marketplace_only,
         )
 
+    @staticmethod
+    def _resolve_sso_protocol(value: object, *, field_name: str) -> SSOProtocol | None:
+        if value is None or (isinstance(value, str) and not value.strip()):
+            return None
+
+        if not isinstance(value, str):
+            logger.error("Invalid Enterprise SSO protocol for %s; disabling the protocol", field_name)
+            return None
+
+        try:
+            return SSOProtocol(value)
+        except ValueError:
+            logger.error(  # noqa: TRY400
+                "Invalid Enterprise SSO protocol for %s; disabling the protocol", field_name
+            )
+            return None
+
     @classmethod
     def _fulfill_params_from_enterprise(cls, features: SystemFeatureModel):
         enterprise_info = EnterpriseService.get_info()
@@ -533,8 +556,10 @@ class FeatureService:
         if "SSOEnforcedForSignin" in enterprise_info:
             features.sso_enforced_for_signin = enterprise_info["SSOEnforcedForSignin"]
 
-        if "SSOEnforcedForSigninProtocol" in enterprise_info:
-            features.sso_enforced_for_signin_protocol = enterprise_info["SSOEnforcedForSigninProtocol"]
+        features.sso_enforced_for_signin_protocol = cls._resolve_sso_protocol(
+            enterprise_info.get("SSOEnforcedForSigninProtocol"),
+            field_name="SSOEnforcedForSigninProtocol",
+        )
 
         if "EnableEmailCodeLogin" in enterprise_info:
             features.enable_email_code_login = enterprise_info["EnableEmailCodeLogin"]
@@ -562,7 +587,10 @@ class FeatureService:
             features.webapp_auth.allow_email_password_login = enterprise_info["WebAppAuth"].get(
                 "allowEmailPasswordLogin", False
             )
-            features.webapp_auth.sso_config.protocol = enterprise_info.get("SSOEnforcedForWebProtocol", "")
+            features.webapp_auth.sso_config.protocol = cls._resolve_sso_protocol(
+                enterprise_info.get("SSOEnforcedForWebProtocol"),
+                field_name="SSOEnforcedForWebProtocol",
+            )
 
         # SECURITY NOTE: system-features is unauthenticated, so it exposes only license
         # *status* — enough for the login page to detect an expired/inactive license after
