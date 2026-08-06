@@ -22,6 +22,13 @@ import { consoleQuery } from '@/service/client'
 
 type DialogMode = 'create' | 'edit' | 'promote'
 
+function parseTags(value: string) {
+  return value
+    .split(',')
+    .map((tag) => tag.trim())
+    .filter(Boolean)
+}
+
 export function GoldenQuestionDialog({
   error,
   initialValue,
@@ -48,13 +55,12 @@ export function GoldenQuestionDialog({
   const [expectedEvidenceIds, setExpectedEvidenceIds] = useState(initialValue.expectedEvidenceIds)
   const [matchPolicy, setMatchPolicy] = useState(initialValue.matchPolicy)
   const [tags, setTags] = useState(initialValue.tags.join(', '))
-  const [submitted, setSubmitted] = useState(false)
+  const [questionInvalid, setQuestionInvalid] = useState(false)
+  const [annotationInvalid, setAnnotationInvalid] = useState(false)
   const [matchError, setMatchError] = useState(false)
   const matchMutation = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.evidenceMatches.post.mutationOptions(),
   )
-  const questionInvalid = submitted && !question.trim()
-  const annotationInvalid = submitted && !annotation.trim()
   const title =
     mode === 'create'
       ? t(($) => $['newKnowledge.qualityPage.createTitle'])
@@ -68,18 +74,18 @@ export function GoldenQuestionDialog({
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    setSubmitted(true)
-    if (!question.trim() || !annotation.trim()) return
+    const nextQuestionInvalid = !question.trim()
+    const nextAnnotationInvalid = !annotation.trim()
+    setQuestionInvalid(nextQuestionInvalid)
+    setAnnotationInvalid(nextAnnotationInvalid)
+    if (nextQuestionInvalid || nextAnnotationInvalid) return
     await onSubmit({
       annotation: annotation.trim(),
       evidenceText: evidenceText.trim(),
       expectedEvidenceIds,
       matchPolicy,
       question: question.trim(),
-      tags: tags
-        .split(',')
-        .map((tag) => tag.trim())
-        .filter(Boolean),
+      tags: [...new Set(parseTags(tags))],
     })
   }
 
@@ -106,7 +112,7 @@ export function GoldenQuestionDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogPortal>
         <DialogBackdrop className="bg-[rgba(16,24,40,0.2)]" />
-        <DialogPopup className="fixed top-1/2 left-1/2 max-h-[calc(100vh-2rem)] w-160 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border-0 p-6 shadow-xl">
+        <DialogPopup className="fixed top-1/2 left-1/2 max-h-[calc(100vh-2rem)] w-140 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border-0 p-6 shadow-xl">
           <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
             <div className="flex items-center justify-between">
               <DialogTitle className="system-md-semibold text-text-primary">{title}</DialogTitle>
