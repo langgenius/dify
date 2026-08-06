@@ -846,7 +846,7 @@ describe('DocumentsPage', () => {
     expect(rowMenuItems).toHaveLength(6)
     expect(rowMenuItems.map((item) => item.textContent)).toEqual([
       'common.operation.rename',
-      'dataset.newKnowledge.reindexDocument',
+      'dataset.newKnowledge.retryTask',
       'dataset.newKnowledge.disableSource',
       'dataset.batchAction.archive',
       'dataset.newKnowledge.downloadDocuments',
@@ -1260,6 +1260,52 @@ describe('DocumentsPage', () => {
         'dataset.newKnowledge.documentsReindexStarted',
       ),
     )
+  })
+
+  it('retries a failed document from its row action', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [{ items: [document({ id: 'one', status: 'failed', title: 'One.pdf' })] }],
+    }
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [task({ documentId: 'one', id: 'failed-task', state: 'failed' })],
+        },
+      ],
+    }
+    retryMutation.mutateAsync.mockResolvedValueOnce(
+      task({ documentId: 'one', id: 'failed-task', state: 'queued' }),
+    )
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: /dataset\.newKnowledge\.documentActions/,
+      }),
+    )
+    expect(
+      screen.queryByRole('menuitem', { name: 'dataset.newKnowledge.reindexDocument' }),
+    ).not.toBeInTheDocument()
+    const retry = await screen.findByRole('menuitem', {
+      name: 'dataset.newKnowledge.retryTask',
+    })
+    expect(retry).toBeEnabled()
+    expect(retry).not.toHaveAttribute('aria-disabled', 'true')
+    await user.click(retry)
+
+    await waitFor(() =>
+      expect(retryMutation.mutateAsync).toHaveBeenCalledWith({
+        params: {
+          control_space_id: 'space-1',
+          task_id: 'failed-task',
+          task_kind: 'document',
+        },
+      }),
+    )
+    expect(
+      await screen.findByText('dataset.newKnowledge.documentStatus.queued'),
+    ).toBeInTheDocument()
   })
 
   it('renames a document through its user-facing display metadata', async () => {
@@ -2782,7 +2828,11 @@ describe('DocumentsPage', () => {
     expect(reindex).toBeEnabled()
     const orderedActions = within(actions).getAllByRole('button')
     expect(orderedActions[0]).toHaveAccessibleName('dataset.newKnowledge.reindexDocuments')
-    expect(orderedActions[1]).toHaveAccessibleName('dataset.newKnowledge.clearDocumentSelection')
+    expect(orderedActions[1]).toHaveAccessibleName('dataset.newKnowledge.downloadDocuments')
+    expect(orderedActions[1]).toBeDisabled()
+    expect(orderedActions[2]).toHaveAccessibleName('dataset.newKnowledge.deleteDocuments')
+    expect(orderedActions[2]).toBeDisabled()
+    expect(orderedActions[3]).toHaveAccessibleName('dataset.newKnowledge.clearDocumentSelection')
     expect(actions.firstElementChild).toHaveTextContent(
       'dataset.newKnowledge.documentsSelected:{"count":1}',
     )
@@ -2795,6 +2845,41 @@ describe('DocumentsPage', () => {
     await waitFor(() =>
       expect(screen.getByRole('heading', { name: 'dataset.newKnowledge.documents' })).toHaveFocus(),
     )
+  })
+
+  it('keeps unsupported bulk document actions disabled', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [
+        {
+          items: [
+            document({ id: 'one', rowVersion: 2, title: 'One.pdf' }),
+            document({ id: 'two', rowVersion: 4, title: 'Two.pdf' }),
+          ],
+        },
+      ],
+    }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('checkbox', { name: 'One.pdf' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Two.pdf' }))
+
+    const actions = screen.getByRole('group', {
+      name: 'dataset.newKnowledge.bulkDocumentActions',
+    })
+    expect(
+      within(actions).getByRole('button', { name: 'dataset.newKnowledge.downloadDocuments' }),
+    ).toBeDisabled()
+    expect(
+      within(actions).getByRole('button', { name: 'dataset.newKnowledge.deleteDocuments' }),
+    ).toBeDisabled()
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(removeDocumentMutation).not.toHaveBeenCalled()
+    expect(screen.getByRole('checkbox', { name: 'One.pdf' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Two.pdf' })).toBeChecked()
+    expect(
+      screen.getByRole('group', { name: 'dataset.newKnowledge.bulkDocumentActions' }),
+    ).toBeInTheDocument()
   })
 
   it('prompts for model setup before re-indexing selected documents', async () => {

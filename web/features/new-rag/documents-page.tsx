@@ -42,11 +42,13 @@ import {
   documentTitle,
   newestTaskByDocument,
   sourceName,
+  taskCanRetry,
   taskIsActive,
   taskNeedsAttention,
   taskVersionIsAfter,
 } from './document-model'
 import {
+  backgroundTaskFromApi,
   backgroundTaskListFromApi,
   documentTaskFromApi,
   documentTaskListFromApi,
@@ -627,6 +629,15 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   }, [tasks])
 
   const taskByDocument = useMemo(() => newestTaskByDocument(tasks), [tasks])
+  const retryableDocumentIds = useMemo(
+    () =>
+      new Set(
+        [...taskByDocument].flatMap(([documentId, task]) =>
+          taskCanRetry(task) ? [documentId] : [],
+        ),
+      ),
+    [taskByDocument],
+  )
   const documentStatuses = useMemo(
     () =>
       new Map(
@@ -1972,6 +1983,49 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     [auxiliaryTaskReadGuard, taskProgressStore],
   )
 
+  const handleRetryDocument = useCallback(
+    async (documentId: string) => {
+      if (!canWrite || documentActionPendingRef.current) return false
+      const task = taskByDocument.get(documentId)
+      if (!task || !taskCanRetry(task)) return false
+      documentActionPendingRef.current = true
+      setPendingDocumentAction({ action: 'retry', documentId })
+      try {
+        const updated = backgroundTaskFromApi(
+          await consoleClient.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.retry.post(
+            {
+              params: {
+                control_space_id: knowledgeSpaceId,
+                task_id: task.id,
+                task_kind: task.taskKind,
+              },
+            },
+          ),
+        )
+        if (updated.documentId && updated.documentRevision)
+          handleTaskUpdated(updated as DocumentProcessingTask)
+        refreshDocumentsAndTasks()
+        return true
+      } catch (error) {
+        if (responseStatus(error) === 403) handleWritePermissionDenied()
+        else toast.error(t(($) => $['newKnowledge.taskActionFailed']))
+        return false
+      } finally {
+        documentActionPendingRef.current = false
+        setPendingDocumentAction(undefined)
+      }
+    },
+    [
+      canWrite,
+      handleTaskUpdated,
+      handleWritePermissionDenied,
+      knowledgeSpaceId,
+      refreshDocumentsAndTasks,
+      t,
+      taskByDocument,
+    ],
+  )
+
   useEffect(() => {
     if (permissionDenied) return
     for (const task of baseTasks) {
@@ -2501,6 +2555,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             onRemoveDocument={handleRemoveDocument}
             onRenameDocument={handleRenameDocument}
             onReindexDocument={(documentId) => void handleReindexDocument(documentId)}
+            onRetryDocument={handleRetryDocument}
             onSearchChange={setSearch}
             onSelectAll={toggleAllFiltered}
             onSelectDocument={toggleDocument}
@@ -2508,6 +2563,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             pendingDocumentAction={pendingDocumentAction}
             readOnlyReasonId={documentWriteRestrictionReasonId}
             resultsIncomplete={filteredResultsIncomplete}
+            retryableDocumentIds={retryableDocumentIds}
             search={search}
             selectionDisabled={selectionDisabled}
             selectedDocumentIds={validSelectedDocumentIds}
