@@ -52,9 +52,7 @@ def _persist_app(session: Session, *, tenant_id: str, name: str = "Visible App")
     return app
 
 
-def _persist_agent_app(
-    session: Session, *, app_name: str = "Old", agent_name: str = "Old"
-) -> tuple[App, Agent]:
+def _persist_agent_app(session: Session, *, app_name: str = "Old", agent_name: str = "Old") -> tuple[App, Agent]:
     tenant_id = str(uuid4())
     creator_id = str(uuid4())
     app = App(
@@ -168,9 +166,7 @@ class TestCreateAppTransactionBoundary:
     "update_status",
     [AppService.update_app_site_status, AppService.update_app_api_status],
 )
-def test_app_status_updates_commit_before_signal(
-    update_status: Callable[..., App], sqlite_session: Session
-) -> None:
+def test_app_status_updates_commit_before_signal(update_status: Callable[..., App], sqlite_session: Session) -> None:
     account = _persist_account(sqlite_session)
     app = _persist_app(sqlite_session, tenant_id=account.current_tenant_id or "")
     phase_events: list[str] = []
@@ -256,9 +252,7 @@ class TestOpenapiVisibilityHelpers:
 
     def test_find_visible_apps_by_name_returns_empty_list_on_no_match(self, sqlite_session: Session):
         with patch("services.app_service.apply_openapi_gate", side_effect=lambda q: q):
-            out = AppService.find_visible_apps_by_name(
-                name="nope", tenant_id=str(uuid4()), session=sqlite_session
-            )
+            out = AppService.find_visible_apps_by_name(name="nope", tenant_id=str(uuid4()), session=sqlite_session)
 
         assert out == []
 

@@ -150,9 +150,7 @@ class ConversationServiceTestDataFactory:
         return conversation
 
 
-def test_delete_retires_then_commits_before_enqueue(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-) -> None:
+def test_delete_retires_then_commits_before_enqueue(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
     app = ConversationServiceTestDataFactory.create_app()
     conversation = ConversationServiceTestDataFactory.create_conversation()
     conversation.agent_workspace_binding_id = "conversation-binding-1"
@@ -179,9 +177,7 @@ def test_delete_retires_then_commits_before_enqueue(
     assert retire_binding.call_args.kwargs["binding_id"] == "conversation-binding-1"
 
 
-def test_delete_commit_failure_does_not_enqueue(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-) -> None:
+def test_delete_commit_failure_does_not_enqueue(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
     app = ConversationServiceTestDataFactory.create_app()
     conversation = ConversationServiceTestDataFactory.create_conversation()
     conversation.agent_workspace_binding_id = "binding-1"
