@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock
@@ -51,7 +51,7 @@ def test_backfill_iteration_output_writes_recorded_value_into_variable_pool() ->
         parent_invocation_id="invocation-1",
         root_node_id="iteration_start",
         index=0,
-        started_at=datetime.now(timezone.utc),
+        started_at=datetime.now(UTC),
         runtime_data=FrameRuntimeData(
             variable_pool="parent",
             outputs={},
@@ -67,7 +67,7 @@ def test_backfill_iteration_output_writes_recorded_value_into_variable_pool() ->
             invocation_id="invocation-1",
             frame_id="parent-frame",
             node_id="iteration",
-            started_at=datetime.now(timezone.utc),
+            started_at=datetime.now(UTC),
             root_node_id="iteration_start",
             items=(),
             output_selector=("http", "body"),
