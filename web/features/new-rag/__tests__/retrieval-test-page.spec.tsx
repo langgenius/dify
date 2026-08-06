@@ -347,6 +347,9 @@ describe('RetrievalTestPage', () => {
       name: 'dataset.newKnowledge.retrievalTest.processLog',
     })
     expect(processLog).toHaveAttribute('aria-pressed', 'false')
+    expect(
+      screen.getByRole('link', { name: 'dataset.newKnowledge.retrievalTest.quality' }),
+    ).toHaveAttribute('href', '/datasets/new/space-1/quality')
     await user.click(processLog)
 
     await waitFor(() =>
@@ -784,6 +787,9 @@ describe('RetrievalTestPage', () => {
     const user = userEvent.setup()
     renderPage({ searchParams: '?trace=trace-1' })
 
+    expect(
+      screen.queryByRole('link', { name: 'dataset.newKnowledge.retrievalTest.quality' }),
+    ).not.toBeInTheDocument()
     await user.click(
       screen.getByRole('button', {
         name: 'dataset.newKnowledge.retrievalTest.makeBadCase',
@@ -952,12 +958,10 @@ describe('RetrievalTestPage', () => {
     expect(screen.getByText('provider timed out')).toBeInTheDocument()
   })
 
-  it('cancels a stalled fast run and restores the composer', async () => {
-    let streamSignal: AbortSignal | undefined
+  it('locks the composer and announces a stalled fast run', async () => {
     apiMock.streamQuery.mockImplementationOnce(
       ({ signal }: { signal?: AbortSignal }) =>
         new Promise<void>((_resolve, reject) => {
-          streamSignal = signal
           signal?.addEventListener('abort', () => {
             reject(new DOMException('Aborted', 'AbortError'))
           })
@@ -971,18 +975,19 @@ describe('RetrievalTestPage', () => {
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retrievalTest.run' }))
 
     expect(queryInput).toBeDisabled()
-    await user.click(
-      await screen.findByRole('button', {
-        name: 'dataset.newKnowledge.retrievalTest.cancel',
-      }),
-    )
-
-    expect(streamSignal?.aborted).toBe(true)
-    expect(queryInput).toBeEnabled()
     expect(
       screen.getByRole('button', { name: 'dataset.newKnowledge.retrievalTest.run' }),
-    ).toBeEnabled()
-    expect(screen.getByText('dataset.newKnowledge.retrievalTest.emptyTitle')).toBeInTheDocument()
+    ).toBeDisabled()
+    expect(
+      screen.queryByRole('button', { name: 'dataset.newKnowledge.retrievalTest.cancel' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('status', { name: 'common.loading' })).toHaveAttribute(
+      'aria-live',
+      'polite',
+    )
+    expect(
+      screen.queryByRole('link', { name: 'dataset.newKnowledge.retrievalTest.quality' }),
+    ).not.toBeInTheDocument()
   })
 
   it('maps an empty unpublished knowledge space to the designed no-results state', async () => {

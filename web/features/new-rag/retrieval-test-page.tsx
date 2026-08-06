@@ -478,17 +478,29 @@ function EvidenceCard({
 }
 
 function ResultSkeleton() {
+  const { t } = useTranslation('common')
+
   return (
-    <div aria-label="Loading retrieval results" className="space-y-3">
+    <div role="status" aria-live="polite" aria-label={t(($) => $.loading)} className="space-y-3">
       {[0, 1, 2].map((item) => (
         <div
           key={item}
-          className="animate-pulse rounded-xl border border-components-panel-border bg-components-panel-bg p-4 motion-reduce:animate-none"
+          className={cn(
+            'flex animate-pulse flex-col gap-2.5 overflow-hidden rounded-xl bg-components-panel-bg px-3 py-3.5 motion-reduce:animate-none',
+            item === 2 && 'opacity-60',
+          )}
         >
-          <div className="h-4 w-1/3 rounded bg-background-section-burn" />
-          <div className="mt-4 h-3 w-full rounded bg-background-section-burn" />
-          <div className="mt-2 h-3 w-5/6 rounded bg-background-section-burn" />
-          <div className="mt-2 h-3 w-2/3 rounded bg-background-section-burn" />
+          <div className="flex items-center justify-between overflow-hidden">
+            <div className="h-3 w-30 shrink-0 rounded-xs bg-divider-regular" />
+            <div className="h-4 w-14 shrink-0 rounded-md bg-divider-subtle" />
+          </div>
+          <div className="h-3 w-full shrink-0 rounded-xs bg-divider-subtle" />
+          <div className="h-3 w-110 max-w-full shrink-0 rounded-xs bg-divider-subtle" />
+          <div className="h-px w-full shrink-0 bg-divider-subtle" />
+          <div className="flex items-start justify-between overflow-hidden">
+            <div className="h-3 w-50 shrink-0 rounded-xs bg-divider-subtle" />
+            <div className="h-3 w-10 shrink-0 rounded-xs bg-divider-subtle" />
+          </div>
         </div>
       ))}
     </div>
@@ -1426,15 +1438,6 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     }
   }
 
-  const cancelFastQuery = () => {
-    if (localRun?.status !== 'running') return
-    queryAbortControllerRef.current?.abort()
-    queryAbortControllerRef.current = undefined
-    setLocalRun(undefined)
-    setLocalSelected(undefined)
-    setShowAll(false)
-  }
-
   const startResearch = async () => {
     const cleanQuery = query.trim()
     if (!cleanQuery) return
@@ -1529,7 +1532,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                       disabled={selectedResearchActive || localRun?.status === 'running'}
                       aria-pressed={mode === item}
                       className={cn(
-                        'rounded-md px-2.5 py-1 system-sm-regular text-text-tertiary capitalize outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled',
+                        'rounded-md px-2.5 py-1 system-sm-regular text-text-tertiary capitalize outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed',
                         mode === item &&
                           'bg-components-panel-bg font-medium text-text-primary shadow-xs',
                       )}
@@ -1539,25 +1542,21 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                     </button>
                   ))}
                 </div>
-                {localRun?.status === 'running' ? (
-                  <Button onClick={cancelFastQuery}>
-                    {t(($) => $['newKnowledge.retrievalTest.cancel'])}
-                  </Button>
-                ) : (
-                  <Button
-                    variant="primary"
-                    className="px-3.25"
-                    disabled={!query.trim() || selectedResearchActive}
-                    onClick={run}
-                  >
-                    <span aria-hidden className="i-ri-play-circle-line size-4" />
-                    {t(($) =>
-                      mode === 'research'
-                        ? $['newKnowledge.retrievalTest.startResearch']
-                        : $['newKnowledge.retrievalTest.run'],
-                    )}
-                  </Button>
-                )}
+                <Button
+                  variant="primary"
+                  className="px-3.25"
+                  disabled={
+                    !query.trim() || selectedResearchActive || localRun?.status === 'running'
+                  }
+                  onClick={run}
+                >
+                  <span aria-hidden className="i-ri-play-circle-line size-4" />
+                  {t(($) =>
+                    mode === 'research'
+                      ? $['newKnowledge.retrievalTest.startResearch']
+                      : $['newKnowledge.retrievalTest.run'],
+                  )}
+                </Button>
               </div>
             </div>
           </div>
@@ -1610,7 +1609,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                     ? t(($) => $[`newKnowledge.settings.retrievalMode.${selectedMode}`])
                     : ''}
                 </span>
-                {selectedCreatedAt && (
+                {!selectedIsLoading && selectedCreatedAt && (
                   <span className="shrink-0 text-[11px] leading-4 text-text-tertiary">
                     <RecordTime key={selectedCreatedAt} value={selectedCreatedAt} />
                   </span>
@@ -1634,13 +1633,15 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                     {t(($) => $['newKnowledge.retrievalTest.processLog'])}
                   </button>
                 )}
-                <Link
-                  href={newKnowledgeQualityPath(knowledgeSpaceId)}
-                  className="flex h-6 shrink-0 items-center gap-1 rounded-md px-1.5 system-xs-medium text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                >
-                  <span aria-hidden className="i-ri-equalizer-2-line size-3.5" />
-                  {t(($) => $['newKnowledge.retrievalTest.quality'])}
-                </Link>
+                {selectedResearchTask?.stage === 'completed' && (
+                  <Link
+                    href={newKnowledgeQualityPath(knowledgeSpaceId)}
+                    className="flex h-6 shrink-0 items-center gap-1 rounded-md px-1.5 system-xs-medium text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                  >
+                    <span aria-hidden className="i-ri-equalizer-2-line size-3.5" />
+                    {t(($) => $['newKnowledge.retrievalTest.quality'])}
+                  </Link>
+                )}
               </div>
 
               <div className="min-h-0 flex-1 scrollbar-none overflow-y-auto">
