@@ -50,9 +50,7 @@ class DifyIterationContainerHandler:
     ) -> None:
         self._delegate.prepare_frame_event(frame=frame, event=event)
         if isinstance(event, NodeRunSucceededEvent):
-            self._frame_node_outputs.setdefault(frame.frame_id, {})[event.node_id] = dict(
-                event.node_run_result.outputs
-            )
+            self._frame_node_outputs.setdefault(frame.frame_id, {})[event.node_id] = dict(event.node_run_result.outputs)
 
     def should_collect(
         self,
