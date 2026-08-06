@@ -32,7 +32,7 @@ type InstallFromGitHubProps = {
   updatePayload?: UpdateFromGitHubPayload
   installContextCategory?: PluginCategoryEnum
   onClose: () => void
-  onSuccess: () => void
+  onSuccess: () => void | Promise<void>
 }
 
 const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({
@@ -138,11 +138,11 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({
   }, [])
 
   const handleInstalled = useCallback(
-    (notRefresh?: boolean) => {
-      setState((prevState) => ({ ...prevState, step: InstallStepFromGitHub.installed }))
+    async (notRefresh?: boolean) => {
       if (!notRefresh) refreshPluginList(manifest)
+      await onSuccess()
+      setState((prevState) => ({ ...prevState, step: InstallStepFromGitHub.installed }))
       setIsInstalling(false)
-      onSuccess()
     },
     [manifest, onSuccess, refreshPluginList, setIsInstalling],
   )

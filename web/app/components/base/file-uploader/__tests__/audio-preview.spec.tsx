@@ -14,6 +14,7 @@ describe('AudioPreview', () => {
     const audio = document.querySelector('audio')
     expect(audio).toBeInTheDocument()
     expect(audio).toHaveAttribute('title', 'Test Audio')
+    expect(audio?.parentElement).not.toHaveAttribute('aria-label')
   })
 
   it('should render source element with correct src and type', () => {

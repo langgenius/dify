@@ -4,6 +4,7 @@ import type { ToolParameter } from '@/app/components/tools/types'
 import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
 import { useCallback, useMemo, useState } from 'react'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
 import {
   generateFormValue,
@@ -245,7 +246,7 @@ export function useToolSelector({ value, onSelect, onSelectMultiple }: UseToolSe
       console.error('Failed to invalidate built-in tools cache', error)
     }
     try {
-      await invalidateInstalledPluginList()
+      await invalidateInstalledPluginList(PluginCategoryEnum.tool)
     } catch (error) {
       console.error('Failed to invalidate installed plugin list cache', error)
     }

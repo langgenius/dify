@@ -99,6 +99,7 @@ describe('ImagePreview', () => {
 
       const overlay = getOverlay()
       expect(overlay).toBeInTheDocument()
+      expect(screen.getByTestId('image-preview-container')).not.toHaveAttribute('aria-label')
       expect(overlay.closest('[data-base-ui-portal]')?.parentElement).toBe(document.body)
       expect(screen.getByRole('img', { name: 'Preview Image' })).toHaveAttribute(
         'src',

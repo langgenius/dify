@@ -1,8 +1,10 @@
 import logging
 from collections.abc import Iterator
+from datetime import timedelta
 from http import HTTPStatus
 from inspect import unwrap
 from io import BytesIO
+from types import SimpleNamespace
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
@@ -35,19 +37,55 @@ from controllers.console.workspace.workspace import (
     WorkspacePermissionResponse,
 )
 from enums.cloud_plan import CloudPlan
+from enums.deployment_edition import DeploymentEdition
 from libs.datetime_utils import naive_utc_now
-from models.account import Account, Tenant, TenantCustomConfigDict, TenantStatus
+from machinery.context import RequestContext
+from models.account import Account, Tenant, TenantAccountJoin, TenantCustomConfigDict, TenantStatus
+from repositories.workspace_query_repository import WorkspaceQueryRepository
+from services import workspace_query_compat
+from services.workspace_query_service import WorkspaceQueryService, WorkspaceRecord
 
 
 @pytest.fixture
 def workspace_session(sqlite_engine: Engine) -> Iterator[scoped_session[Session]]:
     """Provide the callable scoped session expected by Flask-SQLAlchemy controllers."""
-    Tenant.metadata.create_all(sqlite_engine, tables=[Tenant.__table__])
+    Tenant.metadata.create_all(sqlite_engine, tables=[Tenant.__table__, TenantAccountJoin.__table__])
     session = scoped_session(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
     try:
         yield session
     finally:
         session.remove()
+
+
+@pytest.fixture
+def workspace_plan_dependencies(monkeypatch: pytest.MonkeyPatch) -> tuple[MagicMock, MagicMock]:
+    get_plan_bulk = MagicMock()
+    get_features = MagicMock()
+    monkeypatch.setattr(workspace_query_compat.BillingService, "get_plan_bulk", get_plan_bulk)
+    monkeypatch.setattr(workspace_query_compat.FeatureService, "get_features", get_features)
+    return get_plan_bulk, get_features
+
+
+def configure_workspace_plans(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    enterprise_enabled: bool = False,
+    billing_enabled: bool = True,
+    edition: DeploymentEdition = DeploymentEdition.CLOUD,
+) -> None:
+    monkeypatch.setattr(
+        workspace_query_compat,
+        "dify_config",
+        SimpleNamespace(
+            ENTERPRISE_ENABLED=enterprise_enabled,
+            BILLING_ENABLED=billing_enabled,
+            DEPLOYMENT_EDITION=edition,
+        ),
+    )
+
+
+def features_with_plan(plan: str) -> SimpleNamespace:
+    return SimpleNamespace(billing=SimpleNamespace(subscription=SimpleNamespace(plan=plan)))
 
 
 def make_account(account_id: str = "u1") -> Account:
@@ -71,12 +109,6 @@ def make_tenant(
     return tenant
 
 
-def make_membership(*, last_opened_at=None) -> MagicMock:
-    membership = MagicMock()
-    membership.last_opened_at = last_opened_at
-    return membership
-
-
 def make_account_with_tenant(tenant: Tenant) -> Account:
     account = make_account()
     account._current_tenant = tenant
@@ -84,188 +116,191 @@ def make_account_with_tenant(tenant: Tenant) -> Account:
 
 
 class TestTenantListApi:
-    def test_get_success_saas_path(self, app: Flask):
+    def test_get_passes_context_and_serializes_workspaces(self):
         api = TenantListApi()
         method = unwrap(api.get)
-        tenant1 = make_tenant("t1", name="Tenant 1")
-        tenant2 = make_tenant("t2", name="Tenant 2")
+        request_context = RequestContext(
+            request_id="request-1",
+            trace_id="trace-1",
+            account_id="account-1",
+            active_workspace_id="workspace-1",
+        )
+        created_at = naive_utc_now()
         last_opened_at = naive_utc_now()
-        user = make_account()
-        with (
-            app.test_request_context("/workspaces"),
-            patch(
-                "controllers.console.workspace.workspace.TenantService.get_workspaces_for_account",
-                return_value=[(tenant1, make_membership(last_opened_at=last_opened_at)), (tenant2, make_membership())],
+        workspaces = MagicMock()
+        workspaces.list_for_account.return_value = (
+            WorkspaceRecord(
+                id="workspace-1",
+                name="Workspace 1",
+                status=TenantStatus.NORMAL.value,
+                created_at=created_at,
+                last_opened_at=last_opened_at,
             ),
-            patch("controllers.console.workspace.workspace.dify_config.ENTERPRISE_ENABLED", False),
-            patch("controllers.console.workspace.workspace.dify_config.BILLING_ENABLED", True),
-            patch("controllers.console.workspace.workspace.dify_config.EDITION", "CLOUD"),
-            patch(
-                "controllers.console.workspace.workspace.BillingService.get_plan_bulk",
-                return_value={
-                    "t1": {"plan": CloudPlan.TEAM, "expiration_date": 0},
-                    "t2": {"plan": CloudPlan.PROFESSIONAL, "expiration_date": 0},
+            WorkspaceRecord(
+                id="workspace-2",
+                name=None,
+                status=TenantStatus.NORMAL.value,
+                created_at=created_at,
+                last_opened_at=None,
+            ),
+        )
+        plans = MagicMock()
+        plans.resolve_many.return_value = {"workspace-1": CloudPlan.TEAM}
+        workspace_queries = WorkspaceQueryService(workspaces=workspaces, plans=plans)
+        application_services_mock = SimpleNamespace(workspace_queries=workspace_queries)
+
+        with patch(
+            "controllers.console.workspace.workspace.application_services", return_value=application_services_mock
+        ):
+            result, status = method(api, request_context=request_context)
+
+        assert status == HTTPStatus.OK
+        assert result == {
+            "workspaces": [
+                {
+                    "id": "workspace-1",
+                    "name": "Workspace 1",
+                    "plan": "team",
+                    "status": "normal",
+                    "created_at": int(created_at.timestamp()),
+                    "last_opened_at": int(last_opened_at.timestamp()),
+                    "current": True,
                 },
-            ) as get_plan_bulk_mock,
-            patch("controllers.console.workspace.workspace.FeatureService.get_features") as get_features_mock,
-        ):
-            result, status = method(api, MagicMock(), "t1", user)
-        assert status == HTTPStatus.OK
-        assert len(result["workspaces"]) == 2
-        assert result["workspaces"][0]["current"] is True
-        assert result["workspaces"][0]["plan"] == CloudPlan.TEAM
-        assert result["workspaces"][0]["last_opened_at"] == int(last_opened_at.timestamp())
-        assert result["workspaces"][1]["plan"] == CloudPlan.PROFESSIONAL
-        assert result["workspaces"][1]["last_opened_at"] is None
-        get_plan_bulk_mock.assert_called_once_with(["t1", "t2"])
-        get_features_mock.assert_not_called()
+                {
+                    "id": "workspace-2",
+                    "name": None,
+                    "plan": "sandbox",
+                    "status": "normal",
+                    "created_at": int(created_at.timestamp()),
+                    "last_opened_at": None,
+                    "current": False,
+                },
+            ]
+        }
+        workspaces.list_for_account.assert_called_once_with("account-1")
+        plans.resolve_many.assert_called_once_with(["workspace-1", "workspace-2"])
 
-    def test_get_saas_path_partial_fallback_does_not_gate_plan_on_billing_enabled(self, app: Flask):
-        """Bulk omits a tenant: resolve plan via subscription.plan only; billing.enabled is not used.
 
-        billing.enabled is mocked False to prove the endpoint does not gate on it for this path
-        (SaaS contract treats enabled as on; display follows subscription.plan).
-        """
-        api = TenantListApi()
-        method = unwrap(api.get)
-        tenant1 = make_tenant("t1", name="Tenant 1")
-        tenant2 = make_tenant("t2", name="Tenant 2")
-        features_t2 = MagicMock()
-        features_t2.billing.enabled = False
-        features_t2.billing.subscription.plan = CloudPlan.PROFESSIONAL
-        user = make_account()
-        with (
-            app.test_request_context("/workspaces"),
-            patch(
-                "controllers.console.workspace.workspace.TenantService.get_workspaces_for_account",
-                return_value=[(tenant1, make_membership()), (tenant2, make_membership())],
+class TestWorkspaceQueryRepository:
+    def test_list_for_account_filters_orders_and_maps(self, workspace_session: scoped_session[Session]):
+        now = naive_utc_now()
+        earlier = make_tenant("workspace-1")
+        earlier.created_at = now - timedelta(days=1)
+        later = make_tenant("workspace-2")
+        later.created_at = now
+        archived = make_tenant("workspace-3", status=TenantStatus.ARCHIVE)
+        other_account = make_tenant("workspace-4")
+        last_opened_at = now - timedelta(hours=1)
+        workspace_session.add_all(
+            [
+                earlier,
+                later,
+                archived,
+                other_account,
+                TenantAccountJoin(
+                    tenant_id=earlier.id,
+                    account_id="account-1",
+                    last_opened_at=last_opened_at,
+                ),
+                TenantAccountJoin(tenant_id=later.id, account_id="account-1"),
+                TenantAccountJoin(tenant_id=archived.id, account_id="account-1"),
+                TenantAccountJoin(tenant_id=other_account.id, account_id="account-2"),
+            ]
+        )
+        workspace_session.commit()
+
+        result = WorkspaceQueryRepository(workspace_session.session_factory).list_for_account("account-1")
+
+        assert result == (
+            WorkspaceRecord(
+                id=earlier.id,
+                name=earlier.name,
+                status=TenantStatus.NORMAL.value,
+                created_at=earlier.created_at,
+                last_opened_at=last_opened_at,
             ),
-            patch("controllers.console.workspace.workspace.dify_config.ENTERPRISE_ENABLED", False),
-            patch("controllers.console.workspace.workspace.dify_config.BILLING_ENABLED", True),
-            patch("controllers.console.workspace.workspace.dify_config.EDITION", "CLOUD"),
-            patch(
-                "controllers.console.workspace.workspace.BillingService.get_plan_bulk",
-                return_value={"t1": {"plan": CloudPlan.TEAM, "expiration_date": 0}},
-            ) as get_plan_bulk_mock,
-            patch(
-                "controllers.console.workspace.workspace.FeatureService.get_features", return_value=features_t2
-            ) as get_features_mock,
-        ):
-            result, status = method(api, MagicMock(), "t1", user)
-        assert status == HTTPStatus.OK
-        assert result["workspaces"][0]["plan"] == CloudPlan.TEAM
-        assert result["workspaces"][1]["plan"] == CloudPlan.PROFESSIONAL
-        get_plan_bulk_mock.assert_called_once_with(["t1", "t2"])
-        get_features_mock.assert_called_once_with("t2", exclude_vector_space=True)
-
-    def test_get_saas_path_falls_back_to_legacy_feature_path_on_bulk_error(
-        self, app: Flask, caplog: pytest.LogCaptureFixture
-    ):
-        """Test fallback to FeatureService when bulk billing returns empty result.
-
-        BillingService.get_plan_bulk catches exceptions internally and returns empty dict,
-        so we simulate the real failure mode by returning empty dict for non-empty input.
-        """
-        api = TenantListApi()
-        method = unwrap(api.get)
-        tenant1 = make_tenant("t1", name="Tenant 1")
-        tenant2 = make_tenant("t2", name="Tenant 2")
-        features = MagicMock()
-        features.billing.enabled = False
-        features.billing.subscription.plan = CloudPlan.TEAM
-        user = make_account()
-        with (
-            app.test_request_context("/workspaces"),
-            caplog.at_level(logging.WARNING, logger="controllers.console.workspace.workspace"),
-            patch(
-                "controllers.console.workspace.workspace.TenantService.get_workspaces_for_account",
-                return_value=[(tenant1, make_membership()), (tenant2, make_membership())],
+            WorkspaceRecord(
+                id=later.id,
+                name=later.name,
+                status=TenantStatus.NORMAL.value,
+                created_at=later.created_at,
+                last_opened_at=None,
             ),
-            patch("controllers.console.workspace.workspace.dify_config.ENTERPRISE_ENABLED", False),
-            patch("controllers.console.workspace.workspace.dify_config.BILLING_ENABLED", True),
-            patch("controllers.console.workspace.workspace.dify_config.EDITION", "CLOUD"),
-            patch(
-                "controllers.console.workspace.workspace.BillingService.get_plan_bulk", return_value={}
-            ) as get_plan_bulk_mock,
-            patch(
-                "controllers.console.workspace.workspace.FeatureService.get_features", return_value=features
-            ) as get_features_mock,
-        ):
-            result, status = method(api, MagicMock(), "t2", user)
-        assert status == HTTPStatus.OK
-        assert result["workspaces"][0]["plan"] == CloudPlan.TEAM
-        assert result["workspaces"][1]["plan"] == CloudPlan.TEAM
-        get_plan_bulk_mock.assert_called_once_with(["t1", "t2"])
-        assert get_features_mock.call_count == 2
+        )
+
+
+class TestLegacyWorkspacePlanGateway:
+    def test_saas_uses_bulk_plans_and_feature_fallback(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        workspace_plan_dependencies: tuple[MagicMock, MagicMock],
+    ) -> None:
+        configure_workspace_plans(monkeypatch)
+        get_plan_bulk, get_features = workspace_plan_dependencies
+        get_plan_bulk.return_value = {"workspace-1": {"plan": CloudPlan.TEAM, "expiration_date": 0}}
+        get_features.return_value = features_with_plan(CloudPlan.PROFESSIONAL)
+
+        result = workspace_query_compat.LegacyWorkspacePlanGateway().resolve_many(["workspace-1", "workspace-2"])
+
+        assert result == {"workspace-1": CloudPlan.TEAM, "workspace-2": CloudPlan.PROFESSIONAL}
+        get_plan_bulk.assert_called_once()
+        assert list(get_plan_bulk.call_args.args[0]) == ["workspace-1", "workspace-2"]
+        get_features.assert_called_once_with("workspace-2", exclude_vector_space=True)
+
+    def test_saas_empty_bulk_result_falls_back_to_features(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        workspace_plan_dependencies: tuple[MagicMock, MagicMock],
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        configure_workspace_plans(monkeypatch)
+        get_plan_bulk, get_features = workspace_plan_dependencies
+        get_plan_bulk.return_value = {}
+        get_features.return_value = features_with_plan(CloudPlan.TEAM)
+
+        with caplog.at_level(logging.WARNING, logger=workspace_query_compat.__name__):
+            result = workspace_query_compat.LegacyWorkspacePlanGateway().resolve_many(["workspace-1", "workspace-2"])
+
+        assert result == {"workspace-1": CloudPlan.TEAM, "workspace-2": CloudPlan.TEAM}
         assert "get_plan_bulk returned empty result, falling back to legacy feature path" in caplog.messages
 
-    def test_get_billing_disabled_community_path(self, app: Flask):
-        api = TenantListApi()
-        method = unwrap(api.get)
-        tenant = make_tenant("t1", name="Tenant")
-        features = MagicMock()
-        features.billing.enabled = False
-        features.billing.subscription.plan = CloudPlan.SANDBOX
-        user = make_account()
-        with (
-            app.test_request_context("/workspaces"),
-            patch(
-                "controllers.console.workspace.workspace.TenantService.get_workspaces_for_account",
-                return_value=[(tenant, make_membership())],
-            ),
-            patch("controllers.console.workspace.workspace.dify_config.ENTERPRISE_ENABLED", False),
-            patch("controllers.console.workspace.workspace.dify_config.BILLING_ENABLED", False),
-            patch("controllers.console.workspace.workspace.dify_config.EDITION", "SELF_HOSTED"),
-            patch(
-                "controllers.console.workspace.workspace.FeatureService.get_features", return_value=features
-            ) as get_features_mock,
-        ):
-            result, status = method(api, MagicMock(), "t1", user)
-        assert status == HTTPStatus.OK
-        assert result["workspaces"][0]["plan"] == CloudPlan.SANDBOX
-        get_features_mock.assert_called_once_with("t1", exclude_vector_space=True)
+    def test_non_saas_uses_features(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        workspace_plan_dependencies: tuple[MagicMock, MagicMock],
+    ) -> None:
+        configure_workspace_plans(
+            monkeypatch,
+            billing_enabled=False,
+            edition=DeploymentEdition.COMMUNITY,
+        )
+        get_plan_bulk, get_features = workspace_plan_dependencies
+        get_features.return_value = features_with_plan(CloudPlan.SANDBOX)
 
-    def test_get_enterprise_only_skips_feature_service(self, app: Flask):
-        api = TenantListApi()
-        method = unwrap(api.get)
-        tenant1 = make_tenant("t1", name="Tenant 1")
-        tenant2 = make_tenant("t2", name="Tenant 2")
-        user = make_account()
-        with (
-            app.test_request_context("/workspaces"),
-            patch(
-                "controllers.console.workspace.workspace.TenantService.get_workspaces_for_account",
-                return_value=[(tenant1, make_membership()), (tenant2, make_membership())],
-            ),
-            patch("controllers.console.workspace.workspace.dify_config.ENTERPRISE_ENABLED", True),
-            patch("controllers.console.workspace.workspace.dify_config.BILLING_ENABLED", False),
-            patch("controllers.console.workspace.workspace.dify_config.EDITION", "SELF_HOSTED"),
-            patch("controllers.console.workspace.workspace.FeatureService.get_features") as get_features_mock,
-        ):
-            result, status = method(api, MagicMock(), "t2", user)
-        assert status == HTTPStatus.OK
-        assert result["workspaces"][0]["plan"] == CloudPlan.SANDBOX
-        assert result["workspaces"][1]["plan"] == CloudPlan.SANDBOX
-        assert result["workspaces"][0]["current"] is False
-        assert result["workspaces"][1]["current"] is True
-        get_features_mock.assert_not_called()
+        result = workspace_query_compat.LegacyWorkspacePlanGateway().resolve_many(["workspace-1"])
 
-    def test_get_enterprise_only_with_empty_tenants(self, app: Flask):
-        api = TenantListApi()
-        method = unwrap(api.get)
-        user = make_account()
-        with (
-            app.test_request_context("/workspaces"),
-            patch("controllers.console.workspace.workspace.TenantService.get_workspaces_for_account", return_value=[]),
-            patch("controllers.console.workspace.workspace.dify_config.ENTERPRISE_ENABLED", True),
-            patch("controllers.console.workspace.workspace.dify_config.BILLING_ENABLED", False),
-            patch("controllers.console.workspace.workspace.dify_config.EDITION", "SELF_HOSTED"),
-            patch("controllers.console.workspace.workspace.FeatureService.get_features") as get_features_mock,
-        ):
-            result, status = method(api, MagicMock(), None, user)
-        assert status == HTTPStatus.OK
-        assert result["workspaces"] == []
-        get_features_mock.assert_not_called()
+        assert result == {"workspace-1": CloudPlan.SANDBOX}
+        get_plan_bulk.assert_not_called()
+        get_features.assert_called_once_with("workspace-1", exclude_vector_space=True)
+
+    def test_enterprise_only_skips_external_lookups(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        workspace_plan_dependencies: tuple[MagicMock, MagicMock],
+    ) -> None:
+        configure_workspace_plans(
+            monkeypatch,
+            enterprise_enabled=True,
+            billing_enabled=False,
+            edition=DeploymentEdition.ENTERPRISE,
+        )
+        get_plan_bulk, get_features = workspace_plan_dependencies
+
+        result = workspace_query_compat.LegacyWorkspacePlanGateway().resolve_many(["workspace-1", "workspace-2"])
+
+        assert result == {"workspace-1": CloudPlan.SANDBOX, "workspace-2": CloudPlan.SANDBOX}
+        get_plan_bulk.assert_not_called()
+        get_features.assert_not_called()
 
 
 class TestWorkspaceListApi:

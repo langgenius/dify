@@ -1,8 +1,8 @@
 'use client'
 
 import { atom } from 'jotai'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { atomWithResolvedSuspenseQuery } from '@/utils/query-atoms'
+import { systemFeaturesQueryOptions } from './client'
 
 const systemFeaturesQueryAtom = atomWithResolvedSuspenseQuery(() => systemFeaturesQueryOptions())
 
