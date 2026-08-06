@@ -6899,7 +6899,7 @@ Check if dataset is in use
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [LimitationModel](#limitationmodel)<br> |
+| 200 | Success | **application/json**: [VectorSpaceLimitationModel](#vectorspacelimitationmodel)<br> |
 
 ### [GET] /files/support-type
 #### Responses
@@ -23093,6 +23093,14 @@ in form definition, or a variable while the workflow is running.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ValueSourceType | string | ValueSourceType records whether the value comes from a static setting in form definition, or a variable while the workflow is running. |  |
+
+#### VectorSpaceLimitationModel
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limit | integer |  | Yes |
+| size | integer |  | Yes |
+| usage_unknown | boolean |  | No |
 
 #### VerificationTokenResponse
 
