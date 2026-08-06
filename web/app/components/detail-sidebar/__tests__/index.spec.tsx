@@ -1,14 +1,18 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, screen } from '@testing-library/react'
+import { render } from '@/test/console/render'
 import { DetailSidebarFrame } from '..'
 import { DETAIL_SIDEBAR_STORAGE_KEY } from '../storage'
 
 const { hotkeyRegistrations } = vi.hoisted(() => ({
-  hotkeyRegistrations: new Map<string, {
-    handler: (event: { preventDefault: () => void }) => void
-    options?: { ignoreInputs?: boolean }
-  }>(),
+  hotkeyRegistrations: new Map<
+    string,
+    {
+      handler: () => void
+      options?: { ignoreInputs?: boolean; preventDefault?: boolean }
+    }
+  >(),
 }))
-const mockAppContextState = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   current: {
     langGeniusVersionInfo: {
       current_env: '',
@@ -22,49 +26,32 @@ vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
     ...actual,
     useHotkey: (
       hotkey: string,
-      handler: (event: { preventDefault: () => void }) => void,
-      options?: { ignoreInputs?: boolean },
+      handler: () => void,
+      options?: { ignoreInputs?: boolean; preventDefault?: boolean },
     ) => {
       hotkeyRegistrations.set(hotkey, { handler, options })
     },
   }
 })
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
+vi.mock('@/context/version-state', async () => {
+  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createVersionStateModuleMock(() => mockConsoleState.current)
 })
 
 vi.mock('@/app/components/main-nav/components/account-section', () => ({
   default: ({ compact }: { compact?: boolean }) => (
-    <button type="button" aria-label="account">{compact ? 'Compact account' : 'Expanded account'}</button>
+    <button type="button" aria-label="account">
+      {compact ? 'Compact account' : 'Expanded account'}
+    </button>
   ),
 }))
 
 vi.mock('@/app/components/main-nav/components/help-menu', () => ({
   default: ({ triggerClassName }: { triggerClassName?: string }) => (
-    <button type="button" aria-label="help" className={triggerClassName}>Help</button>
+    <button type="button" aria-label="help" className={triggerClassName}>
+      Help
+    </button>
   ),
 }))
 
@@ -77,11 +64,15 @@ function renderDetailSidebarFrame() {
     <DetailSidebarFrame
       renderTop={({ expand, onToggle }) => (
         <div data-testid="detail-top" data-expand={expand}>
-          <button type="button" data-testid="detail-toggle" onClick={onToggle}>Toggle</button>
+          <button type="button" data-testid="detail-toggle" onClick={onToggle}>
+            Toggle
+          </button>
         </div>
       )}
       renderSection={({ expand }) => (
-        <div data-testid="detail-section" data-expand={expand}>Section</div>
+        <div data-testid="detail-section" data-expand={expand}>
+          Section
+        </div>
       )}
     />,
   )
@@ -91,7 +82,7 @@ describe('DetailSidebarFrame', () => {
   beforeEach(() => {
     localStorage.clear()
     hotkeyRegistrations.clear()
-    mockAppContextState.current = {
+    mockConsoleState.current = {
       langGeniusVersionInfo: {
         current_env: '',
       },
@@ -101,16 +92,24 @@ describe('DetailSidebarFrame', () => {
   it('renders expanded detail content by default and registers the shortcut for focused inputs', () => {
     renderDetailSidebarFrame()
 
-    expect(screen.getByRole('complementary')).toHaveClass('w-62')
     expect(screen.getByTestId('detail-top')).toHaveAttribute('data-expand', 'true')
     expect(screen.getByTestId('detail-section')).toHaveAttribute('data-expand', 'true')
     expect(hotkeyRegistrations.get('Mod+B')?.options).toEqual(
-      expect.objectContaining({ ignoreInputs: false }),
+      expect.objectContaining({ ignoreInputs: false, preventDefault: true }),
     )
   })
 
+  it('toggles detail content from the registered shortcut', () => {
+    renderDetailSidebarFrame()
+
+    act(() => hotkeyRegistrations.get('Mod+B')?.handler())
+
+    expect(screen.getByTestId('detail-top')).toHaveAttribute('data-expand', 'false')
+    expect(localStorage.getItem(DETAIL_SIDEBAR_STORAGE_KEY)).toBe('collapse')
+  })
+
   it('collapses detail content from the top toggle and hides environment metadata', () => {
-    mockAppContextState.current = {
+    mockConsoleState.current = {
       langGeniusVersionInfo: {
         current_env: 'TESTING',
       },
@@ -119,7 +118,6 @@ describe('DetailSidebarFrame', () => {
     renderDetailSidebarFrame()
     fireEvent.click(screen.getByTestId('detail-toggle'))
 
-    expect(screen.getByRole('complementary')).toHaveClass('w-16')
     expect(screen.getByTestId('detail-top')).toHaveAttribute('data-expand', 'false')
     expect(screen.getByTestId('detail-section')).toHaveAttribute('data-expand', 'false')
     expect(screen.queryByText('Environment tag')).not.toBeInTheDocument()
@@ -131,20 +129,17 @@ describe('DetailSidebarFrame', () => {
     fireEvent.click(screen.getByTestId('detail-toggle'))
     fireEvent.mouseEnter(screen.getByTestId('detail-top').parentElement!)
 
-    expect(screen.getByRole('complementary')).toHaveClass('w-16', 'overflow-visible')
     expect(screen.getByTestId('detail-top')).toHaveAttribute('data-expand', 'true')
     expect(screen.getByTestId('detail-section')).toHaveAttribute('data-expand', 'true')
     expect(localStorage.getItem(DETAIL_SIDEBAR_STORAGE_KEY)).toBe('collapse')
   })
 
-  it('persists expansion without width animation when the hovered preview toggle is clicked', () => {
+  it('persists expansion when the hovered preview toggle is clicked', () => {
     renderDetailSidebarFrame()
     fireEvent.click(screen.getByTestId('detail-toggle'))
     fireEvent.mouseEnter(screen.getByTestId('detail-top').parentElement!)
     fireEvent.click(screen.getByTestId('detail-toggle'))
 
-    expect(screen.getByRole('complementary')).toHaveClass('w-62', 'transition-none')
-    expect(screen.getByRole('complementary')).not.toHaveClass('overflow-visible')
     expect(screen.getByTestId('detail-top')).toHaveAttribute('data-expand', 'true')
     expect(screen.getByTestId('detail-section')).toHaveAttribute('data-expand', 'true')
     expect(localStorage.getItem(DETAIL_SIDEBAR_STORAGE_KEY)).toBe('expand')

@@ -4,14 +4,13 @@ import { findTopic, TOPICS } from './topics'
 
 function render(name: string): string {
   const topic = findTopic(name)
-  if (!topic)
-    throw new Error(`topic not found: ${name}`)
+  if (!topic) throw new Error(`topic not found: ${name}`)
   return topic.render()
 }
 
 describe('topic registry', () => {
   it('registers account, agent, environment and external', () => {
-    expect(TOPICS.map(t => t.name)).toEqual(['account', 'agent', 'environment', 'external'])
+    expect(TOPICS.map((t) => t.name)).toEqual(['account', 'agent', 'environment', 'external'])
   })
 
   it('findTopic returns undefined for unknown names', () => {
@@ -78,7 +77,7 @@ describe('environment topic', () => {
   it('marks sensitive vars with a never-echoed notice', () => {
     const out = render('environment')
     expect(out).toContain('(treat as secret; never echoed)')
-    const sensitiveCount = ENV_REGISTRY.filter(v => v.sensitive).length
+    const sensitiveCount = ENV_REGISTRY.filter((v) => v.sensitive).length
     const noticeCount = (out.match(/treat as secret/g) ?? []).length
     expect(noticeCount).toBe(sensitiveCount)
   })

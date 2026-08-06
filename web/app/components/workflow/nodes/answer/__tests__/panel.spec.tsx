@@ -33,9 +33,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/prompt/editor', () => 
     mockEditorRender(props)
     return (
       <button type="button" onClick={() => props.onChange('Updated answer')}>
-        {props.title}
-        :
-        {props.value}
+        {props.title}:{props.value}
       </button>
     )
   },
@@ -70,22 +68,28 @@ describe('AnswerPanel', () => {
   it('should pass editor state and available variables through to the prompt editor', () => {
     render(<Panel id="answer-node" data={createData()} panelProps={{} as PanelProps} />)
 
-    expect(screen.getByRole('button', { name: 'workflow.nodes.answer.answer:Initial answer' })).toBeInTheDocument()
-    expect(mockEditorRender).toHaveBeenCalledWith(expect.objectContaining({
-      readOnly: false,
-      title: 'workflow.nodes.answer.answer',
-      value: 'Initial answer',
-      nodesOutputVars: [{ variable: 'context', type: 'string' }],
-      availableNodes: [{ value: 'node-1', label: 'Node 1' }],
-      isSupportFileVar: true,
-      justVar: true,
-    }))
+    expect(
+      screen.getByRole('button', { name: 'workflow.nodes.answer.answer:Initial answer' }),
+    ).toBeInTheDocument()
+    expect(mockEditorRender).toHaveBeenCalledWith(
+      expect.objectContaining({
+        readOnly: false,
+        title: 'workflow.nodes.answer.answer',
+        value: 'Initial answer',
+        nodesOutputVars: [{ variable: 'context', type: 'string' }],
+        availableNodes: [{ value: 'node-1', label: 'Node 1' }],
+        isSupportFileVar: true,
+        justVar: true,
+      }),
+    )
   })
 
   it('should delegate answer edits to use-config', () => {
     render(<Panel id="answer-node" data={createData()} panelProps={{} as PanelProps} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.answer.answer:Initial answer' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'workflow.nodes.answer.answer:Initial answer' }),
+    )
 
     expect(handleAnswerChange).toHaveBeenCalledWith('Updated answer')
   })

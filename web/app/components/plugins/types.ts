@@ -225,7 +225,15 @@ export type PluginDetail = {
 }
 
 export type Plugin = {
-  type: 'plugin' | 'bundle' | 'model' | 'extension' | 'tool' | 'agent_strategy' | 'datasource' | 'trigger'
+  type:
+    | 'plugin'
+    | 'bundle'
+    | 'model'
+    | 'extension'
+    | 'tool'
+    | 'agent_strategy'
+    | 'datasource'
+    | 'trigger'
   org: string
   author?: string
   name: string
@@ -302,7 +310,7 @@ export type UpdatePluginPayload = {
 
 export type UpdatePluginModalType = UpdatePluginPayload & {
   onCancel: () => void
-  onSave: () => void
+  onSave: () => void | Promise<void>
 }
 
 export enum InstallStepFromGitHub {
@@ -444,10 +452,6 @@ export type InstalledPluginCategoryListResponse = {
   has_more: boolean
 }
 
-export type UninstallPluginResponse = {
-  success: boolean
-}
-
 export type GitHubItemAndMarketPlaceDependency = {
   type: 'github' | 'marketplace' | 'package'
   value: {
@@ -536,7 +540,7 @@ const AgentFeature = {
   HISTORY_MESSAGES: 'history-messages',
 } as const
 
-type AgentFeature = typeof AgentFeature[keyof typeof AgentFeature]
+type AgentFeature = (typeof AgentFeature)[keyof typeof AgentFeature]
 
 type Identity = {
   author: string

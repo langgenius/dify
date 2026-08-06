@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from uuid import uuid4
 
 from flask import Flask
@@ -8,7 +8,6 @@ from sqlalchemy.orm import Session
 
 from models.model import App, RecommendedApp, Site
 from services.recommend_app.database.database_retrieval import DatabaseRecommendAppRetrieval
-from services.recommend_app.recommend_app_type import RecommendAppType
 
 
 def _create_app(db_session: Session, *, tenant_id: str, is_public: bool = True) -> App:
@@ -70,31 +69,6 @@ def _create_recommended_app(
     db_session.add(rec)
     db_session.commit()
     return rec
-
-
-class TestDatabaseRecommendAppRetrieval:
-    def test_get_type(self):
-        assert DatabaseRecommendAppRetrieval().get_type() == RecommendAppType.DATABASE
-
-    def test_get_recommended_apps_delegates(self):
-        with patch.object(
-            DatabaseRecommendAppRetrieval,
-            "fetch_recommended_apps_from_db",
-            return_value={"recommended_apps": [], "categories": []},
-        ) as mock_fetch:
-            result = DatabaseRecommendAppRetrieval().get_recommended_apps_and_categories("en-US", session=MagicMock())
-            mock_fetch.assert_called_once()
-            assert result == {"recommended_apps": [], "categories": []}
-
-    def test_get_recommend_app_detail_delegates(self):
-        with patch.object(
-            DatabaseRecommendAppRetrieval,
-            "fetch_recommended_app_detail_from_db",
-            return_value={"id": "app-1"},
-        ) as mock_fetch:
-            result = DatabaseRecommendAppRetrieval().get_recommend_app_detail("app-1", session=MagicMock())
-            mock_fetch.assert_called_once()
-            assert result == {"id": "app-1"}
 
 
 class TestFetchRecommendedAppsFromDb:

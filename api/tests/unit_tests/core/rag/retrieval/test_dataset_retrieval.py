@@ -252,24 +252,25 @@ class TestRetrievalService:
     @pytest.fixture
     def mock_dataset(self) -> Dataset:
         """
-        Create a mock Dataset object for testing.
+        Create a Dataset object for testing.
 
         Returns:
-            Dataset: Mock dataset with standard configuration
+            Dataset with standard configuration.
         """
-        dataset = Mock(spec=Dataset)
-        dataset.id = str(uuid4())
-        dataset.tenant_id = str(uuid4())
-        dataset.name = "test_dataset"
-        dataset.indexing_technique = "high_quality"
-        dataset.embedding_model = "text-embedding-ada-002"
-        dataset.embedding_model_provider = "openai"
-        dataset.retrieval_model = {
-            "search_method": RetrievalMethod.SEMANTIC_SEARCH,
-            "reranking_enable": False,
-            "top_k": 4,
-            "score_threshold_enabled": False,
-        }
+        dataset = Dataset(
+            id=str(uuid4()),
+            tenant_id=str(uuid4()),
+            name="test_dataset",
+            indexing_technique="high_quality",
+            embedding_model="text-embedding-ada-002",
+            embedding_model_provider="openai",
+            retrieval_model={
+                "search_method": RetrievalMethod.SEMANTIC_SEARCH,
+                "reranking_enable": False,
+                "top_k": 4,
+                "score_threshold_enabled": False,
+            },
+        )
         return dataset
 
     @pytest.fixture
@@ -325,6 +326,18 @@ class TestRetrievalService:
         app.app_context.return_value.__enter__ = Mock()
         app.app_context.return_value.__exit__ = Mock()
         return app
+
+    @pytest.fixture
+    def retrieval_session(self):
+        session = MagicMock()
+        session_context = MagicMock()
+        session_context.__enter__.return_value = session
+        session_context.__exit__.return_value = None
+        with (
+            patch("core.rag.datasource.retrieval_service.db", SimpleNamespace(engine=Mock())),
+            patch("core.rag.datasource.retrieval_service.Session", return_value=session_context),
+        ):
+            yield session
 
     @pytest.fixture(autouse=True)
     def mock_thread_pool(self):
@@ -709,6 +722,7 @@ class TestRetrievalService:
         mock_data_processor_class,
         mock_dataset,
         sample_documents,
+        retrieval_session,
     ):
         """
         Test basic hybrid search combining vector and full-text search.
@@ -774,13 +788,20 @@ class TestRetrievalService:
         mock_embedding_search.assert_called_once()
         mock_fulltext_search.assert_called_once()
         mock_processor_instance.invoke.assert_called_once()
+        assert mock_data_processor_class.call_args.kwargs["session"] is retrieval_session
 
     @patch("core.rag.datasource.retrieval_service.DataPostProcessor")
     @patch("core.rag.datasource.retrieval_service.RetrievalService.full_text_index_search")
     @patch("core.rag.datasource.retrieval_service.RetrievalService.embedding_search")
     @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
     def test_hybrid_search_deduplication(
-        self, mock_get_dataset, mock_embedding_search, mock_fulltext_search, mock_data_processor_class, mock_dataset
+        self,
+        mock_get_dataset,
+        mock_embedding_search,
+        mock_fulltext_search,
+        mock_data_processor_class,
+        mock_dataset,
+        retrieval_session,
     ):
         """
         Test that hybrid search properly deduplicates documents.
@@ -905,6 +926,7 @@ class TestRetrievalService:
         doc_ids = [doc.metadata["doc_id"] for doc in results]
         assert "duplicate_doc" in doc_ids, "Duplicate doc should be present (higher score version)"
         assert "unique_doc" in doc_ids, "Unique doc should be present"
+        assert mock_data_processor_class.call_args.kwargs["session"] is retrieval_session
 
         # Implicitly verifies that doc1_low (score 0.6) was discarded
         # in favor of doc1_high (score 0.9)
@@ -921,6 +943,7 @@ class TestRetrievalService:
         mock_data_processor_class,
         mock_dataset,
         sample_documents,
+        retrieval_session,
     ):
         """
         Test hybrid search with custom weights for score merging.
@@ -991,13 +1014,9 @@ class TestRetrievalService:
         assert len(results) == 3
         # Verify DataPostProcessor was created with weights
         mock_data_processor_class.assert_called_once()
-        # Check that weights were passed (may be in args or kwargs)
         call_args = mock_data_processor_class.call_args
-        if call_args.kwargs:
-            assert call_args.kwargs.get("weights") == weights
-        else:
-            # Weights might be in positional args (position 3)
-            assert len(call_args.args) >= 4
+        assert call_args.args[3] == weights
+        assert call_args.kwargs["session"] is retrieval_session
 
     @pytest.mark.parametrize("empty_query", ["", None])
     @patch("core.rag.datasource.retrieval_service.DataPostProcessor")
@@ -1011,6 +1030,7 @@ class TestRetrievalService:
         mock_dataset,
         sample_documents,
         empty_query,
+        retrieval_session,
     ):
         """
         Regression test for GH #37116: attachment-only hybrid retrieval must use IMAGE_QUERY.
@@ -1064,6 +1084,7 @@ class TestRetrievalService:
         assert invoke_kwargs["query"] == attachment_id, (
             "The rerank query must be the attachment_id, not the empty text query"
         )
+        assert mock_data_processor_class.call_args.kwargs["session"] is retrieval_session
 
     # ==================== Full-Text Search Tests ====================
 
@@ -1814,13 +1835,14 @@ class TestRetrievalService:
         all_documents = []
 
         # Create second dataset
-        mock_dataset2 = Mock(spec=Dataset)
-        mock_dataset2.id = str(uuid4())
-        mock_dataset2.indexing_technique = "high_quality"
-        mock_dataset2.provider = "dify"
+        mock_dataset2 = Dataset(
+            id=str(uuid4()),
+            indexing_technique="high_quality",
+            provider="dify",
+        )
 
         # Act - Call with dataset_count = 2
-        with _patched_retriever_session():
+        with _patched_retriever_session() as rerank_session:
             dataset_retrieval._multiple_retrieve_thread(
                 flask_app=mock_flask_app,
                 available_datasets=[mock_dataset, mock_dataset2],
@@ -1847,6 +1869,7 @@ class TestRetrievalService:
             {"reranking_provider_name": "cohere", "reranking_model_name": "rerank-v2"},
             None,
             False,
+            session=rerank_session,
         )
 
         # Verify invoke was called with correct parameters
@@ -2186,36 +2209,33 @@ def create_mock_dataset_methods(
     tenant_id: str | None = None,
     provider: str = "dify",
     indexing_technique: str = "high_quality",
-    available_document_count: int = 10,
-) -> Mock:
+) -> Dataset:
     """
-    Create a mock Dataset object for testing.
+    Create a Dataset object for testing.
 
     Args:
         dataset_id: Unique identifier for the dataset
         tenant_id: Tenant ID for the dataset
         provider: Provider type ("dify" or "external")
         indexing_technique: Indexing technique ("high_quality" or "economy")
-        available_document_count: Number of available documents
-
     Returns:
-        Mock: A properly configured Dataset mock
+        A configured Dataset model.
     """
-    dataset = Mock(spec=Dataset)
-    dataset.id = dataset_id or str(uuid4())
-    dataset.tenant_id = tenant_id or str(uuid4())
-    dataset.name = "test_dataset"
-    dataset.provider = provider
-    dataset.indexing_technique = indexing_technique
-    dataset.available_document_count = available_document_count
-    dataset.embedding_model = "text-embedding-ada-002"
-    dataset.embedding_model_provider = "openai"
-    dataset.retrieval_model = {
-        "search_method": "semantic_search",
-        "reranking_enable": False,
-        "top_k": 4,
-        "score_threshold_enabled": False,
-    }
+    dataset = Dataset(
+        id=dataset_id or str(uuid4()),
+        tenant_id=tenant_id or str(uuid4()),
+        name="test_dataset",
+        provider=provider,
+        indexing_technique=indexing_technique,
+        embedding_model="text-embedding-ada-002",
+        embedding_model_provider="openai",
+        retrieval_model={
+            "search_method": "semantic_search",
+            "reranking_enable": False,
+            "top_k": 4,
+            "score_threshold_enabled": False,
+        },
+    )
     return dataset
 
 
@@ -3719,30 +3739,32 @@ class TestProcessMetadataFilterFunc:
 class TestKnowledgeRetrievalRegression:
     @pytest.fixture
     def mock_dataset(self) -> Dataset:
-        dataset = Mock(spec=Dataset)
-        dataset.id = str(uuid4())
-        dataset.tenant_id = str(uuid4())
-        dataset.name = "test_dataset"
-        dataset.indexing_technique = "high_quality"
-        dataset.provider = "dify"
+        dataset = Dataset(
+            id=str(uuid4()),
+            tenant_id=str(uuid4()),
+            name="test_dataset",
+            indexing_technique="high_quality",
+            provider="dify",
+        )
         return dataset
 
     def test_multiple_retrieve_reranking_with_app_context(self, mock_dataset):
         """
         Repro test for current bug:
         reranking runs after `with flask_app.app_context():` exits.
-        `_multiple_retrieve_thread` catches exceptions and stores them into `thread_exceptions`,
-        so we must assert from that list (not from an outer try/except).
+        The outer thread entry point catches exceptions from the traced retrieval method
+        and stores them in `thread_exceptions`.
         """
         dataset_retrieval = DatasetRetrieval()
         flask_app = Flask(__name__)
         tenant_id = str(uuid4())
 
         # second dataset to ensure dataset_count > 1 reranking branch
-        secondary_dataset = Mock(spec=Dataset)
-        secondary_dataset.id = str(uuid4())
-        secondary_dataset.provider = "dify"
-        secondary_dataset.indexing_technique = "high_quality"
+        secondary_dataset = Dataset(
+            id=str(uuid4()),
+            provider="dify",
+            indexing_technique="high_quality",
+        )
 
         # retriever returns 1 doc into internal list (all_documents_item)
         document = Document(
@@ -3785,7 +3807,6 @@ class TestKnowledgeRetrievalRegression:
         # output list from _multiple_retrieve_thread
         all_documents: list[Document] = []
 
-        # IMPORTANT: _multiple_retrieve_thread swallows exceptions and appends them here
         thread_exceptions: list[Exception] = []
 
         def target():
@@ -3797,7 +3818,7 @@ class TestKnowledgeRetrievalRegression:
                 ),
                 _patched_retriever_session(),
             ):
-                dataset_retrieval._multiple_retrieve_thread(
+                dataset_retrieval._multiple_retrieve_thread_safely(
                     flask_app=flask_app,
                     available_datasets=[mock_dataset, secondary_dataset],
                     metadata_condition=None,
@@ -3826,7 +3847,6 @@ class TestKnowledgeRetrievalRegression:
         # Ensure reranking branch was actually executed
         assert called["init"] >= 1, "DataPostProcessor was never constructed; reranking branch may not have run."
 
-        # Current buggy code should record an exception (not raise it)
         assert not thread_exceptions, thread_exceptions
 
     def test_run_retriever_thread_provides_session_to_retriever(self):
@@ -3844,14 +3864,12 @@ class TestKnowledgeRetrievalRegression:
                     document_ids_filter=None,
                     metadata_condition=None,
                     attachment_ids=None,
-                    cancel_event=None,
-                    thread_exceptions=[],
                 )
 
         mock_retriever.assert_called_once()
         assert mock_retriever.call_args.kwargs["session"] is session
 
-    def test_run_retriever_thread_records_retriever_exception(self):
+    def test_run_retriever_thread_safely_records_retriever_exception(self):
         dataset_retrieval = DatasetRetrieval()
         all_documents: list[Document] = []
         cancel_event = threading.Event()
@@ -3860,7 +3878,7 @@ class TestKnowledgeRetrievalRegression:
 
         with _patched_retriever_session():
             with patch.object(dataset_retrieval, "_retriever", side_effect=expected_error):
-                dataset_retrieval._run_retriever_thread(
+                dataset_retrieval._run_retriever_thread_safely(
                     flask_app=_FakeFlaskApp(),
                     dataset_id="dataset-1",
                     query="test query",
@@ -5118,7 +5136,7 @@ class TestSingleAndMultipleRetrieveCoverage:
         app = Flask(__name__)
 
         def failing_thread(**kwargs):
-            kwargs["thread_exceptions"].append(RuntimeError("thread boom"))
+            raise RuntimeError("thread boom")
 
         with app.app_context():
             with (
@@ -5305,11 +5323,15 @@ class TestInternalHooksCoverage:
         assert len(all_documents) >= 3
 
     def test_to_dataset_retriever_tool_paths(self, retrieval: DatasetRetrieval) -> None:
-        dataset_skip_zero = SimpleNamespace(id="d1", provider="dify", available_document_count=0)
+        dataset_skip_zero = SimpleNamespace(
+            id="d1",
+            provider="dify",
+            get_total_available_documents=Mock(return_value=0),
+        )
         dataset_ok_single = SimpleNamespace(
             id="d2",
             provider="dify",
-            available_document_count=2,
+            get_total_available_documents=Mock(return_value=2),
             retrieval_model={"top_k": 2, "score_threshold_enabled": True, "score_threshold": 0.1},
         )
         single_config = DatasetRetrieveConfigEntity(

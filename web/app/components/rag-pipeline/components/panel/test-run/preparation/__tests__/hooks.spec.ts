@@ -3,9 +3,15 @@ import { renderHook } from '@testing-library/react'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useDatasourceOptions, useOnlineDocument, useOnlineDrive, useTestRunSteps, useWebsiteCrawl } from '../hooks'
+import {
+  useDatasourceOptions,
+  useOnlineDocument,
+  useOnlineDrive,
+  useTestRunSteps,
+  useWebsiteCrawl,
+} from '../hooks'
 
-const mockNodes: Array<{ id: string, data: Partial<DataSourceNodeType> & { type: string } }> = []
+const mockNodes: Array<{ id: string; data: Partial<DataSourceNodeType> & { type: string } }> = []
 vi.mock('reactflow', () => ({
   useNodes: () => mockNodes,
 }))
@@ -18,7 +24,9 @@ vi.mock('@/app/components/datasets/documents/create-from-pipeline/data-source/st
 }))
 
 vi.mock('@/app/components/workflow/types', async () => {
-  const actual = await vi.importActual<typeof import('@/app/components/workflow/types')>('@/app/components/workflow/types')
+  const actual = await vi.importActual<typeof import('@/app/components/workflow/types')>(
+    '@/app/components/workflow/types',
+  )
   return {
     ...actual,
     BlockEnum: {

@@ -17,9 +17,11 @@ from unittest.mock import ANY, MagicMock, patch, sentinel
 
 import pytest
 from sqlalchemy import select
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from graphon.enums import (
     BuiltinNodeTypes,
     ErrorStrategy,
@@ -449,6 +451,204 @@ class TestWorkflowService:
         assert workflow.features_dict == features
         assert workflow.updated_by == account.id
 
+    def test_sync_draft_workflow_collaborative_save_preserves_environment_variables_and_locks_row(
+        self, workflow_service: WorkflowService
+    ) -> None:
+        """A collaborative graph-only save locks the draft and keeps server environment values."""
+        app = TestWorkflowAssociatedDataFactory.create_app()
+        account = TestWorkflowAssociatedDataFactory.create_account()
+        workflow = TestWorkflowAssociatedDataFactory.create_workflow()
+        remote_variable = StringVariable(
+            id="env-shared",
+            name="shared",
+            value="remote-value",
+            selector=["env", "shared"],
+        )
+        stale_variable = remote_variable.model_copy(update={"value": "stale-client-value"})
+        workflow.environment_variables = [remote_variable]
+        unique_hash = workflow.unique_hash
+        session = MagicMock(spec=Session)
+        session.scalar.return_value = workflow
+
+        result = workflow_service.sync_draft_workflow(
+            app_model=app,
+            graph=TestWorkflowAssociatedDataFactory.create_valid_workflow_graph(),
+            features={},
+            unique_hash=unique_hash,
+            account=account,
+            environment_variables=[stale_variable],
+            conversation_variables=[],
+            session=session,
+            preserve_environment_variables=True,
+            commit=False,
+            sync_agent_bindings=False,
+        )
+
+        statement = session.scalar.call_args.args[0]
+        assert "FOR UPDATE" in str(statement.compile(dialect=postgresql.dialect()))
+        assert result.environment_variables == [remote_variable]
+        session.commit.assert_not_called()
+
+    def test_sync_draft_workflow_merges_environment_patch_with_graph_update(
+        self, workflow_service: WorkflowService, sqlite_session: Session
+    ) -> None:
+        """Graph changes and a per-ID environment patch commit without replacing untouched aliases."""
+        app = TestWorkflowAssociatedDataFactory.create_app()
+        account = TestWorkflowAssociatedDataFactory.create_account()
+        workflow = TestWorkflowAssociatedDataFactory.create_workflow()
+        remote_variable = StringVariable(id="env-a", name="a", value="remote-a", selector=["env", "a"])
+        replaced_variable = StringVariable(id="env-b", name="b", value="old-b", selector=["env", "b"])
+        workflow.environment_variables = [remote_variable, replaced_variable]
+        sqlite_session.add(workflow)
+        sqlite_session.commit()
+        unique_hash = workflow.unique_hash
+        next_graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
+        next_graph["viewport"] = {"x": 10, "y": 20, "zoom": 1}
+
+        with patch("services.workflow_service.app_draft_workflow_was_synced"):
+            result = workflow_service.sync_draft_workflow(
+                app_model=app,
+                graph=next_graph,
+                features={},
+                unique_hash=unique_hash,
+                account=account,
+                environment_variables=[
+                    remote_variable.model_copy(update={"value": "stale-a"}),
+                    replaced_variable,
+                ],
+                conversation_variables=[],
+                session=sqlite_session,
+                environment_variable_upserts=[replaced_variable.model_copy(update={"value": "new-b"})],
+                deleted_environment_variable_ids=[],
+                preserve_environment_variables=True,
+            )
+
+        assert result.graph_dict == next_graph
+        assert [(variable.id, variable.value) for variable in result.environment_variables] == [
+            ("env-a", "remote-a"),
+            ("env-b", "new-b"),
+        ]
+
+    def test_sync_draft_workflow_noncollaborative_save_replaces_environment_variables(
+        self, workflow_service: WorkflowService, sqlite_session: Session
+    ) -> None:
+        """Legacy full-draft saves retain their full environment replacement contract."""
+        app = TestWorkflowAssociatedDataFactory.create_app()
+        account = TestWorkflowAssociatedDataFactory.create_account()
+        workflow = TestWorkflowAssociatedDataFactory.create_workflow()
+        workflow.environment_variables = [
+            StringVariable(id="env-old", name="old", value="old", selector=["env", "old"])
+        ]
+        sqlite_session.add(workflow)
+        sqlite_session.commit()
+        replacement = StringVariable(id="env-new", name="new", value="new", selector=["env", "new"])
+
+        with patch("services.workflow_service.app_draft_workflow_was_synced"):
+            result = workflow_service.sync_draft_workflow(
+                app_model=app,
+                graph=TestWorkflowAssociatedDataFactory.create_valid_workflow_graph(),
+                features={},
+                unique_hash=workflow.unique_hash,
+                account=account,
+                environment_variables=[replacement],
+                conversation_variables=[],
+                session=sqlite_session,
+            )
+
+        assert result.environment_variables == [replacement]
+
+    def test_sync_draft_workflow_graph_only_preserves_independently_updated_draft_fields(
+        self, workflow_service: WorkflowService, sqlite_session: Session
+    ):
+        app = TestWorkflowAssociatedDataFactory.create_app()
+        account = TestWorkflowAssociatedDataFactory.create_account()
+        existing_features = {"file_upload": {"enabled": True}}
+        existing_environment_variables = [
+            StringVariable(id="env-new", name="region", value="new", selector=["env", "region"])
+        ]
+        existing_conversation_variables = [
+            StringVariable(
+                id="conversation-new",
+                name="topic",
+                value="new",
+                selector=["conversation", "topic"],
+            )
+        ]
+        workflow = TestWorkflowAssociatedDataFactory.create_workflow(
+            features=existing_features,
+            environment_variables=existing_environment_variables,
+            conversation_variables=existing_conversation_variables,
+        )
+        sqlite_session.add(workflow)
+        sqlite_session.commit()
+        unique_hash = workflow.unique_hash
+        updated_graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
+        updated_graph["nodes"][0]["data"]["title"] = "Updated graph"
+
+        with patch("services.workflow_service.app_draft_workflow_was_synced"):
+            result = workflow_service.sync_draft_workflow(
+                app_model=app,
+                graph=updated_graph,
+                features={"file_upload": {"enabled": False}},
+                unique_hash=unique_hash,
+                account=account,
+                environment_variables=[
+                    StringVariable(id="env-old", name="region", value="old", selector=["env", "region"])
+                ],
+                conversation_variables=[
+                    StringVariable(
+                        id="conversation-old",
+                        name="topic",
+                        value="old",
+                        selector=["conversation", "topic"],
+                    )
+                ],
+                session=sqlite_session,
+                graph_only=True,
+            )
+
+        sqlite_session.refresh(workflow)
+        assert result is workflow
+        assert workflow.graph_dict == updated_graph
+        assert workflow.features_dict == existing_features
+        assert workflow.environment_variables == existing_environment_variables
+        assert workflow.conversation_variables == existing_conversation_variables
+
+    def test_sync_draft_workflow_graph_only_creates_complete_initial_draft(
+        self, workflow_service: WorkflowService, sqlite_session: Session
+    ):
+        app = TestWorkflowAssociatedDataFactory.create_app()
+        account = TestWorkflowAssociatedDataFactory.create_account()
+        graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
+        features = {"file_upload": {"enabled": True}}
+        environment_variables = [StringVariable(id="env-id", name="region", value="new", selector=["env", "region"])]
+        conversation_variables = [
+            StringVariable(
+                id="conversation-id",
+                name="topic",
+                value="new",
+                selector=["conversation", "topic"],
+            )
+        ]
+
+        with patch("services.workflow_service.app_draft_workflow_was_synced"):
+            workflow = workflow_service.sync_draft_workflow(
+                app_model=app,
+                graph=graph,
+                features=features,
+                unique_hash=None,
+                account=account,
+                environment_variables=environment_variables,
+                conversation_variables=conversation_variables,
+                session=sqlite_session,
+                graph_only=True,
+            )
+
+        assert workflow.graph_dict == graph
+        assert workflow.features_dict == features
+        assert workflow.environment_variables == environment_variables
+        assert workflow.conversation_variables == conversation_variables
+
     def test_sync_draft_workflow_raises_hash_not_equal_error(
         self, workflow_service: WorkflowService, sqlite_session: Session
     ):
@@ -673,6 +873,100 @@ class TestWorkflowService:
                 session=sqlite_session,
             )
 
+    def test_patch_draft_workflow_environment_variables_merges_by_id(
+        self, workflow_service: WorkflowService, sqlite_session: Session
+    ) -> None:
+        """A patch preserves untouched variables while applying ordered upserts and deletions."""
+        app = TestWorkflowAssociatedDataFactory.create_app()
+        account = TestWorkflowAssociatedDataFactory.create_account()
+        workflow = TestWorkflowAssociatedDataFactory.create_workflow()
+        workflow.environment_variables = [
+            StringVariable(id="env-a", name="a", value="remote-a", selector=["env", "a"]),
+            StringVariable(id="env-b", name="b", value="old-b", selector=["env", "b"]),
+            StringVariable(id="env-c", name="c", value="remote-c", selector=["env", "c"]),
+        ]
+        sqlite_session.add(workflow)
+        sqlite_session.commit()
+
+        workflow_service.patch_draft_workflow_environment_variables(
+            app_model=app,
+            environment_variables=[
+                StringVariable(id="env-b", name="b", value="new-b", selector=["env", "b"]),
+                StringVariable(id="env-d", name="d", value="new-d", selector=["env", "d"]),
+            ],
+            deleted_environment_variable_ids=["env-a"],
+            account=account,
+            session=sqlite_session,
+        )
+
+        sqlite_session.expire_all()
+        persisted_workflow = sqlite_session.get(Workflow, workflow.id)
+        assert persisted_workflow is not None
+        assert [(variable.id, variable.value) for variable in persisted_workflow.environment_variables] == [
+            ("env-b", "new-b"),
+            ("env-c", "remote-c"),
+            ("env-d", "new-d"),
+        ]
+        assert persisted_workflow.updated_by == account.id
+
+    def test_patch_draft_workflow_environment_variables_locks_draft_row(
+        self, workflow_service: WorkflowService
+    ) -> None:
+        """The merge reads the draft with a row lock before applying a partial update."""
+        app = TestWorkflowAssociatedDataFactory.create_app()
+        account = TestWorkflowAssociatedDataFactory.create_account()
+        workflow = TestWorkflowAssociatedDataFactory.create_workflow()
+        session = MagicMock(spec=Session)
+        session.scalar.return_value = workflow
+
+        workflow_service.patch_draft_workflow_environment_variables(
+            app_model=app,
+            environment_variables=[],
+            deleted_environment_variable_ids=[],
+            account=account,
+            session=session,
+        )
+
+        statement = session.scalar.call_args.args[0]
+        compiled_statement = str(statement.compile(dialect=postgresql.dialect()))
+        assert "FOR UPDATE" in compiled_statement
+        session.commit.assert_called_once_with()
+
+    def test_patch_draft_workflow_environment_variables_rejects_conflicting_ids(
+        self, workflow_service: WorkflowService, sqlite_session: Session
+    ) -> None:
+        """A patch cannot both upsert and delete the same variable ID."""
+        app = TestWorkflowAssociatedDataFactory.create_app()
+        account = TestWorkflowAssociatedDataFactory.create_account()
+        variable = StringVariable(id="env-a", name="a", value="a", selector=["env", "a"])
+        sqlite_session.add(TestWorkflowAssociatedDataFactory.create_workflow())
+        sqlite_session.commit()
+
+        with pytest.raises(ValueError, match="cannot be upserted and deleted"):
+            workflow_service.patch_draft_workflow_environment_variables(
+                app_model=app,
+                environment_variables=[variable],
+                deleted_environment_variable_ids=["env-a"],
+                account=account,
+                session=sqlite_session,
+            )
+
+    def test_patch_draft_workflow_environment_variables_raises_when_missing(
+        self, workflow_service: WorkflowService, sqlite_session: Session
+    ) -> None:
+        """A patch fails when the app has no draft workflow to lock."""
+        app = TestWorkflowAssociatedDataFactory.create_app()
+        account = TestWorkflowAssociatedDataFactory.create_account()
+
+        with pytest.raises(ValueError, match="No draft workflow found."):
+            workflow_service.patch_draft_workflow_environment_variables(
+                app_model=app,
+                environment_variables=[],
+                deleted_environment_variable_ids=[],
+                account=account,
+                session=sqlite_session,
+            )
+
     def test_update_draft_workflow_conversation_variables_updates_workflow(
         self, workflow_service: WorkflowService, sqlite_session: Session
     ):
@@ -740,7 +1034,7 @@ class TestWorkflowService:
             patch("services.workflow_service.app_published_workflow_was_updated"),
             patch("services.workflow_service.dify_config.BILLING_ENABLED", False),
         ):
-            result = workflow_service.publish_workflow(
+            result, retirement_candidates = workflow_service.publish_workflow(
                 session=sqlite_session,
                 app_model=app,
                 account=account,
@@ -753,6 +1047,7 @@ class TestWorkflowService:
         assert result.version != Workflow.VERSION_DRAFT
         assert result.marked_name == "Version 1"
         assert result.marked_comment == "Initial release"
+        assert retirement_candidates == set()
 
     def test_publish_workflow_no_draft_raises_error(self, workflow_service: WorkflowService, sqlite_session: Session):
         """
@@ -765,6 +1060,53 @@ class TestWorkflowService:
         account = TestWorkflowAssociatedDataFactory.create_account()
 
         with pytest.raises(ValueError, match="No valid workflow found"):
+            workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
+
+    @pytest.mark.parametrize(
+        ("environment_variables", "error"),
+        [
+            ([], "was not found or is not an LLM variable"),
+            (
+                [
+                    LLMEnvironmentVariable(
+                        name="shared_model",
+                        value={"provider": "provider", "name": "model", "mode": "completion"},
+                    )
+                ],
+                "uses mode 'completion'.*uses mode 'chat'",
+            ),
+        ],
+    )
+    def test_publish_workflow_rejects_invalid_llm_environment_reference_without_credential_validation(
+        self,
+        workflow_service: WorkflowService,
+        sqlite_session: Session,
+        environment_variables: list[LLMEnvironmentVariable],
+        error: str,
+    ) -> None:
+        app = TestWorkflowAssociatedDataFactory.create_app()
+        account = TestWorkflowAssociatedDataFactory.create_account()
+        graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
+        llm_node = next(node for node in graph["nodes"] if node["data"]["type"] == BuiltinNodeTypes.LLM)
+        llm_node["data"]["model"] = {
+            "provider": "provider",
+            "name": "model",
+            "mode": "chat",
+            "completion_params": {},
+        }
+        llm_node["data"]["model_selector"] = ["env", "shared_model"]
+        draft = TestWorkflowAssociatedDataFactory.create_workflow(graph=graph)
+        draft.environment_variables = environment_variables
+        sqlite_session.add(draft)
+        sqlite_session.commit()
+
+        with (
+            patch(
+                "services.feature_service.FeatureService.get_system_features",
+                return_value=SimpleNamespace(plugin_manager=SimpleNamespace(enabled=False)),
+            ),
+            pytest.raises(ValueError, match=error),
+        ):
             workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
 
     def test_publish_workflow_trigger_limit_exceeded(self, workflow_service: WorkflowService, sqlite_session: Session):
@@ -1327,6 +1669,8 @@ class TestWorkflowService:
 # ===========================================================================
 
 
+@pytest.mark.usefixtures("sqlite_session")
+@pytest.mark.parametrize("sqlite_session", [(BuiltinToolProvider,)], indirect=True)
 class TestWorkflowServiceCredentialValidation:
     """
     Tests for the private credential-validation helpers on WorkflowService.
@@ -1352,7 +1696,7 @@ class TestWorkflowServiceCredentialValidation:
     # --- _validate_workflow_credentials: tool node (with credential_id) ---
 
     def test_validate_workflow_credentials_should_check_tool_credential_when_credential_id_present(
-        self, service: WorkflowService
+        self, service: WorkflowService, sqlite_session: Session
     ) -> None:
         # Arrange
         nodes = [
@@ -1370,11 +1714,11 @@ class TestWorkflowServiceCredentialValidation:
         # Act + Assert
         with patch("core.helper.credential_utils.check_credential_policy_compliance") as mock_check:
             # Should not raise; mock allows the call
-            service._validate_workflow_credentials(workflow, session=MagicMock())
+            service._validate_workflow_credentials(workflow, session=sqlite_session)
             mock_check.assert_called_once()
 
     def test_validate_workflow_credentials_should_check_default_credential_when_no_credential_id(
-        self, service: WorkflowService
+        self, service: WorkflowService, sqlite_session: Session
     ) -> None:
         # Arrange
         nodes = [
@@ -1391,14 +1735,13 @@ class TestWorkflowServiceCredentialValidation:
 
         # Act
         with patch.object(service, "_check_default_tool_credential") as mock_default:
-            session = MagicMock()
-            service._validate_workflow_credentials(workflow, session=session)
+            service._validate_workflow_credentials(workflow, session=sqlite_session)
 
         # Assert
-        mock_default.assert_called_once_with("tenant-1", "my-provider", session=session)
+        mock_default.assert_called_once_with("tenant-1", "my-provider", session=sqlite_session)
 
     def test_validate_workflow_credentials_should_skip_tool_node_without_provider(
-        self, service: WorkflowService
+        self, service: WorkflowService, sqlite_session: Session
     ) -> None:
         """Tool nodes without a provider_id should be silently skipped."""
         # Arrange
@@ -1407,11 +1750,11 @@ class TestWorkflowServiceCredentialValidation:
 
         # Act + Assert (no error raised)
         with patch.object(service, "_check_default_tool_credential") as mock_default:
-            service._validate_workflow_credentials(workflow, session=MagicMock())
+            service._validate_workflow_credentials(workflow, session=sqlite_session)
             mock_default.assert_not_called()
 
     def test_validate_workflow_credentials_should_validate_llm_node_with_model_config(
-        self, service: WorkflowService
+        self, service: WorkflowService, sqlite_session: Session
     ) -> None:
         # Arrange
         nodes = [
@@ -1430,13 +1773,85 @@ class TestWorkflowServiceCredentialValidation:
             patch.object(service, "_validate_llm_model_config") as mock_llm,
             patch.object(service, "_validate_load_balancing_credentials"),
         ):
-            service._validate_workflow_credentials(workflow, session=MagicMock())
+            service._validate_workflow_credentials(workflow, session=sqlite_session)
 
         # Assert
         mock_llm.assert_called_once_with("tenant-1", "openai", "gpt-4")
 
-    def test_validate_workflow_credentials_should_raise_for_llm_node_missing_model(
+    def test_validate_workflow_credentials_should_use_llm_environment_variable_model(
         self, service: WorkflowService
+    ) -> None:
+        workflow = self._make_workflow(
+            [
+                {
+                    "id": "llm-node",
+                    "data": {
+                        "type": "llm",
+                        "model": {
+                            "provider": "old-provider",
+                            "name": "old-model",
+                            "mode": "chat",
+                            "completion_params": {"temperature": 0.2},
+                        },
+                        "model_selector": ["env", "shared_model"],
+                    },
+                }
+            ]
+        )
+        workflow.environment_variables = [
+            LLMEnvironmentVariable(
+                name="shared_model",
+                value={
+                    "provider": "new-provider",
+                    "name": "new-model",
+                    "mode": "chat",
+                    "completion_params": {"temperature": 0.8},
+                },
+            )
+        ]
+
+        with (
+            patch.object(service, "_validate_llm_model_config") as validate_model,
+            patch.object(service, "_validate_load_balancing_credentials") as validate_load_balancing,
+        ):
+            service._validate_workflow_credentials(workflow, session=MagicMock())
+
+        validate_model.assert_called_once_with("tenant-1", "new-provider", "new-model")
+        validated_node_data = validate_load_balancing.call_args.args[1]
+        assert validated_node_data["model"] == {
+            "provider": "new-provider",
+            "name": "new-model",
+            "mode": "chat",
+            "completion_params": {"temperature": 0.8},
+        }
+
+    def test_validate_workflow_credentials_should_reject_llm_environment_variable_mode_mismatch(
+        self, service: WorkflowService
+    ) -> None:
+        workflow = self._make_workflow(
+            [
+                {
+                    "id": "llm-node",
+                    "data": {
+                        "type": "llm",
+                        "model": {"provider": "provider", "name": "model", "mode": "chat"},
+                        "model_selector": ["env", "shared_model"],
+                    },
+                }
+            ]
+        )
+        workflow.environment_variables = [
+            LLMEnvironmentVariable(
+                name="shared_model",
+                value={"provider": "provider", "name": "model", "mode": "completion"},
+            )
+        ]
+
+        with pytest.raises(ValueError, match="uses mode 'completion'.*uses mode 'chat'"):
+            service._validate_workflow_credentials(workflow, session=MagicMock())
+
+    def test_validate_workflow_credentials_should_raise_for_llm_node_missing_model(
+        self, service: WorkflowService, sqlite_session: Session
     ) -> None:
         """LLM nodes without provider AND name should raise ValueError."""
         # Arrange
@@ -1450,10 +1865,10 @@ class TestWorkflowServiceCredentialValidation:
 
         # Act + Assert
         with pytest.raises(ValueError, match="Missing provider or model configuration"):
-            service._validate_workflow_credentials(workflow, session=MagicMock())
+            service._validate_workflow_credentials(workflow, session=sqlite_session)
 
     def test_validate_workflow_credentials_should_wrap_unexpected_exception_in_value_error(
-        self, service: WorkflowService
+        self, service: WorkflowService, sqlite_session: Session
     ) -> None:
         """Non-ValueError exceptions from validation must be re-raised as ValueError."""
         # Arrange
@@ -1471,9 +1886,11 @@ class TestWorkflowServiceCredentialValidation:
         # Act + Assert
         with patch.object(service, "_validate_llm_model_config", side_effect=RuntimeError("boom")):
             with pytest.raises(ValueError, match="boom"):
-                service._validate_workflow_credentials(workflow, session=MagicMock())
+                service._validate_workflow_credentials(workflow, session=sqlite_session)
 
-    def test_validate_workflow_credentials_should_validate_agent_node_model(self, service: WorkflowService) -> None:
+    def test_validate_workflow_credentials_should_validate_agent_node_model(
+        self, service: WorkflowService, sqlite_session: Session
+    ) -> None:
         # Arrange
         nodes = [
             {
@@ -1494,12 +1911,14 @@ class TestWorkflowServiceCredentialValidation:
             patch.object(service, "_validate_llm_model_config") as mock_llm,
             patch.object(service, "_validate_load_balancing_credentials"),
         ):
-            service._validate_workflow_credentials(workflow, session=MagicMock())
+            service._validate_workflow_credentials(workflow, session=sqlite_session)
 
         # Assert
         mock_llm.assert_called_once_with("tenant-1", "openai", "gpt-4")
 
-    def test_validate_workflow_credentials_should_validate_agent_tools(self, service: WorkflowService) -> None:
+    def test_validate_workflow_credentials_should_validate_agent_tools(
+        self, service: WorkflowService, sqlite_session: Session
+    ) -> None:
         """Each agent tool with a provider should be checked for credential compliance."""
         # Arrange
         nodes = [
@@ -1526,12 +1945,11 @@ class TestWorkflowServiceCredentialValidation:
             patch("core.helper.credential_utils.check_credential_policy_compliance") as mock_check,
             patch.object(service, "_check_default_tool_credential") as mock_default,
         ):
-            session = MagicMock()
-            service._validate_workflow_credentials(workflow, session=session)
+            service._validate_workflow_credentials(workflow, session=sqlite_session)
 
         # Assert
         mock_check.assert_called_once()  # provider-a has credential_id
-        mock_default.assert_called_once_with("tenant-1", "provider-b", session=session)
+        mock_default.assert_called_once_with("tenant-1", "provider-b", session=sqlite_session)
 
     # --- _validate_llm_model_config ---
 
@@ -1584,14 +2002,12 @@ class TestWorkflowServiceCredentialValidation:
 
     # --- _check_default_tool_credential ---
 
-    @pytest.mark.parametrize("sqlite_session", [(BuiltinToolProvider,)], indirect=True)
     def test_check_default_tool_credential_should_silently_pass_when_no_provider_found(
         self, service: WorkflowService, sqlite_session: Session
     ) -> None:
         """Missing BuiltinToolProvider → plugin requires no credentials → no error."""
         service._check_default_tool_credential("tenant-1", "some-provider", session=sqlite_session)
 
-    @pytest.mark.parametrize("sqlite_session", [(BuiltinToolProvider,)], indirect=True)
     def test_check_default_tool_credential_should_raise_when_compliance_fails(
         self, service: WorkflowService, sqlite_session: Session
     ) -> None:
@@ -1654,7 +2070,9 @@ class TestWorkflowServiceCredentialValidation:
 
     # --- _get_load_balancing_configs ---
 
-    def test_get_load_balancing_configs_should_return_empty_list_on_exception(self, service: WorkflowService) -> None:
+    def test_get_load_balancing_configs_should_return_empty_list_on_exception(
+        self, service: WorkflowService, sqlite_session: Session
+    ) -> None:
         """Any exception during LB config retrieval should return an empty list."""
         # Arrange
         with patch(
@@ -1662,12 +2080,14 @@ class TestWorkflowServiceCredentialValidation:
             side_effect=RuntimeError("fail"),
         ):
             # Act
-            result = service._get_load_balancing_configs("tenant-1", "openai", "gpt-4", session=MagicMock())
+            result = service._get_load_balancing_configs("tenant-1", "openai", "gpt-4", session=sqlite_session)
 
         # Assert
         assert result == []
 
-    def test_get_load_balancing_configs_should_merge_predefined_and_custom(self, service: WorkflowService) -> None:
+    def test_get_load_balancing_configs_should_merge_predefined_and_custom(
+        self, service: WorkflowService, sqlite_session: Session
+    ) -> None:
         # Arrange
         predefined = [{"credential_id": "cred-a"}, {"credential_id": None}]
         custom = [{"credential_id": "cred-b"}]
@@ -1679,7 +2099,7 @@ class TestWorkflowServiceCredentialValidation:
             ],
         ):
             # Act
-            result = service._get_load_balancing_configs("tenant-1", "openai", "gpt-4", session=MagicMock())
+            result = service._get_load_balancing_configs("tenant-1", "openai", "gpt-4", session=sqlite_session)
 
         # Assert — only entries with a credential_id should be returned
         assert len(result) == 2
@@ -1688,7 +2108,7 @@ class TestWorkflowServiceCredentialValidation:
     # --- _validate_load_balancing_credentials ---
 
     def test_validate_load_balancing_credentials_should_skip_when_no_model_config(
-        self, service: WorkflowService
+        self, service: WorkflowService, sqlite_session: Session
     ) -> None:
         """Missing provider or model in node_data should be a no-op."""
         # Arrange
@@ -1696,10 +2116,10 @@ class TestWorkflowServiceCredentialValidation:
         node_data: dict[str, Any] = {}  # no model key
 
         # Act + Assert (no error expected)
-        service._validate_load_balancing_credentials(workflow, node_data, "node-1", session=MagicMock())
+        service._validate_load_balancing_credentials(workflow, node_data, "node-1", session=sqlite_session)
 
     def test_validate_load_balancing_credentials_should_skip_when_lb_not_enabled(
-        self, service: WorkflowService
+        self, service: WorkflowService, sqlite_session: Session
     ) -> None:
         # Arrange
         workflow = self._make_workflow([])
@@ -1707,10 +2127,10 @@ class TestWorkflowServiceCredentialValidation:
 
         # Act + Assert (no error expected)
         with patch.object(service, "_is_load_balancing_enabled", return_value=False):
-            service._validate_load_balancing_credentials(workflow, node_data, "node-1", session=MagicMock())
+            service._validate_load_balancing_credentials(workflow, node_data, "node-1", session=sqlite_session)
 
     def test_validate_load_balancing_credentials_should_raise_when_compliance_fails(
-        self, service: WorkflowService
+        self, service: WorkflowService, sqlite_session: Session
     ) -> None:
         # Arrange
         workflow = self._make_workflow([])
@@ -1727,7 +2147,7 @@ class TestWorkflowServiceCredentialValidation:
             ),
         ):
             with pytest.raises(ValueError, match="Invalid load balancing credentials"):
-                service._validate_load_balancing_credentials(workflow, node_data, "node-1", session=MagicMock())
+                service._validate_load_balancing_credentials(workflow, node_data, "node-1", session=sqlite_session)
 
 
 # ===========================================================================

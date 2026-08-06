@@ -1,12 +1,11 @@
 // Testing the SSE helper requires importing the module under test directly.
-// eslint-disable-next-line no-restricted-imports
+// oxlint-disable-next-line no-restricted-imports
 import { sseGeneratorPost } from '../base'
 
 vi.mock('@/utils/var', () => ({
   basePath: '/app',
   API_PREFIX: '/console/api',
   PUBLIC_API_PREFIX: '/api',
-  IS_CE_EDITION: false,
 }))
 
 // Minimal streaming Response: a body whose reader yields the given chunks in
@@ -45,13 +44,19 @@ describe('sseGeneratorPost', () => {
     const onError = vi.fn()
     let controller: AbortController | undefined
 
-    sseGeneratorPost('/workflow-generate/stream', { mode: 'workflow' }, {
-      onPlan,
-      onResult,
-      onCompleted,
-      onError,
-      getAbortController: (c) => { controller = c },
-    })
+    sseGeneratorPost(
+      '/workflow-generate/stream',
+      { mode: 'workflow' },
+      {
+        onPlan,
+        onResult,
+        onCompleted,
+        onError,
+        getAbortController: (c) => {
+          controller = c
+        },
+      },
+    )
 
     await vi.waitFor(() => expect(onCompleted).toHaveBeenCalledTimes(1))
 

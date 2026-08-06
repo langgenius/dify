@@ -1,19 +1,12 @@
 import type { Environment } from '@dify/contracts/enterprise/types.gen'
+import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { createStore, Provider as JotaiProvider } from 'jotai'
 import { describe, expect, it, vi } from 'vitest'
-import { deploymentRouteAppInstanceIdAtom } from '../../../../route-state'
+import { setNextRouteStateAtom } from '@/app/components/next-route-state/atoms'
 import { ApiKeyGenerateMenu } from '../api-key-generate-menu'
 
 const mockMutate = vi.hoisted(() => vi.fn())
-const mockUseAtomValue = vi.hoisted(() => vi.fn())
-
-vi.mock('jotai', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('jotai')>()
-  return {
-    ...actual,
-    useAtomValue: mockUseAtomValue,
-  }
-})
 
 vi.mock('@tanstack/react-query', () => ({
   useMutation: () => ({
@@ -41,23 +34,30 @@ function createEnvironment(): Environment {
   } as Environment
 }
 
+function renderMenu(appInstanceId?: string) {
+  const store = createStore()
+  store.set(setNextRouteStateAtom, {
+    pathname: '/deployments/app-instance-1/api-tokens',
+    params: appInstanceId ? { appInstanceId } : {},
+  })
+
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <JotaiProvider store={store}>{children}</JotaiProvider>
+  )
+
+  return render(
+    <ApiKeyGenerateMenu environments={[createEnvironment()]} onCreatedToken={vi.fn()} />,
+    { wrapper },
+  )
+}
+
 describe('ApiKeyGenerateMenu', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseAtomValue.mockImplementation((atom) => {
-      if (atom === deploymentRouteAppInstanceIdAtom)
-        return 'app-instance-1'
-      return undefined
-    })
   })
 
   it('should show the required name error when submitting an empty name', () => {
-    render(
-      <ApiKeyGenerateMenu
-        environments={[createEnvironment()]}
-        onCreatedToken={vi.fn()}
-      />,
-    )
+    renderMenu('app-instance-1')
 
     fireEvent.click(screen.getByRole('button', { name: 'deployments.access.api.newKey' }))
     fireEvent.change(screen.getByLabelText('deployments.access.api.nameLabel'), {
@@ -70,12 +70,7 @@ describe('ApiKeyGenerateMenu', () => {
   })
 
   it('should clear the required name error when typing a valid name', () => {
-    render(
-      <ApiKeyGenerateMenu
-        environments={[createEnvironment()]}
-        onCreatedToken={vi.fn()}
-      />,
-    )
+    renderMenu('app-instance-1')
 
     fireEvent.click(screen.getByRole('button', { name: 'deployments.access.api.newKey' }))
     const nameInput = screen.getByLabelText('deployments.access.api.nameLabel')
@@ -94,14 +89,7 @@ describe('ApiKeyGenerateMenu', () => {
   })
 
   it('should disable the trigger when route app instance is missing', () => {
-    mockUseAtomValue.mockReturnValue(undefined)
-
-    render(
-      <ApiKeyGenerateMenu
-        environments={[createEnvironment()]}
-        onCreatedToken={vi.fn()}
-      />,
-    )
+    renderMenu(undefined)
 
     expect(screen.getByRole('button', { name: 'deployments.access.api.newKey' })).toBeDisabled()
   })

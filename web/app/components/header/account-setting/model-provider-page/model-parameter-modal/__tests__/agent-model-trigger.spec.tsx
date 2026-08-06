@@ -2,6 +2,7 @@ import type { MouseEvent } from 'react'
 import type { ModelProvider } from '../../declarations'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { vi } from 'vitest'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import {
   CurrentSystemQuotaTypeEnum,
   CustomConfigurationStatusEnum,
@@ -50,7 +51,13 @@ vi.mock('../status-indicators', () => ({
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/install-plugin-button', () => ({
-  InstallPluginButton: ({ onClick, onSuccess }: { onClick: (event: MouseEvent<HTMLButtonElement>) => void, onSuccess: () => void }) => (
+  InstallPluginButton: ({
+    onClick,
+    onSuccess,
+  }: {
+    onClick: (event: MouseEvent<HTMLButtonElement>) => void
+    onSuccess: () => void
+  }) => (
     <button
       onClick={(event) => {
         onClick(event)
@@ -73,38 +80,32 @@ describe('AgentModelTrigger', () => {
 
   it('should render loading state when plugin info is still fetching', () => {
     pluginLoading = true
-    render(
-      <AgentModelTrigger
-        modelId="gpt-4"
-        providerName="openai"
-      />,
-    )
+    render(<AgentModelTrigger modelId="gpt-4" providerName="openai" />)
     expect(screen.getByRole('status')).toBeInTheDocument()
   })
 
   it('should render model actions for configured provider', () => {
-    modelProviders = [{
-      provider: 'openai',
-      custom_configuration: { status: CustomConfigurationStatusEnum.noConfigure },
-      system_configuration: {
-        enabled: true,
-        current_quota_type: CurrentSystemQuotaTypeEnum.paid,
-        quota_configurations: [{
-          quota_type: CurrentSystemQuotaTypeEnum.paid,
-          quota_unit: QuotaUnitEnum.times,
-          quota_limit: 10,
-          quota_used: 1,
-          last_used: 1,
-          is_valid: true,
-        }],
+    modelProviders = [
+      {
+        provider: 'openai',
+        custom_configuration: { status: CustomConfigurationStatusEnum.noConfigure },
+        system_configuration: {
+          enabled: true,
+          current_quota_type: CurrentSystemQuotaTypeEnum.paid,
+          quota_configurations: [
+            {
+              quota_type: CurrentSystemQuotaTypeEnum.paid,
+              quota_unit: QuotaUnitEnum.times,
+              quota_limit: 10,
+              quota_used: 1,
+              last_used: 1,
+              is_valid: true,
+            },
+          ],
+        },
       },
-    }] as unknown as ModelProvider[]
-    render(
-      <AgentModelTrigger
-        modelId="gpt-4"
-        providerName="openai"
-      />,
-    )
+    ] as unknown as ModelProvider[]
+    render(<AgentModelTrigger modelId="gpt-4" providerName="openai" />)
     expect(screen.getByText('ModelDisplay')).toBeInTheDocument()
     expect(screen.getByText('StatusIndicators')).toBeInTheDocument()
   })
@@ -123,26 +124,23 @@ describe('AgentModelTrigger', () => {
     expect(updateModelList).toHaveBeenCalledWith(ModelTypeEnum.textGeneration)
     expect(updateModelList).toHaveBeenCalledWith(ModelTypeEnum.tts)
     expect(updateModelProviders).toHaveBeenCalledTimes(1)
-    expect(invalidateInstalledPluginList).toHaveBeenCalledTimes(1)
+    expect(invalidateInstalledPluginList).toHaveBeenCalledWith(PluginCategoryEnum.model)
   })
 
   it('should show configuration action when provider requires setup', () => {
-    modelProviders = [{
-      provider: 'openai',
-      custom_configuration: { status: CustomConfigurationStatusEnum.noConfigure },
-      system_configuration: {
-        enabled: false,
-        current_quota_type: CurrentSystemQuotaTypeEnum.paid,
-        quota_configurations: [],
+    modelProviders = [
+      {
+        provider: 'openai',
+        custom_configuration: { status: CustomConfigurationStatusEnum.noConfigure },
+        system_configuration: {
+          enabled: false,
+          current_quota_type: CurrentSystemQuotaTypeEnum.paid,
+          quota_configurations: [],
+        },
       },
-    }] as unknown as ModelProvider[]
+    ] as unknown as ModelProvider[]
 
-    render(
-      <AgentModelTrigger
-        modelId="gpt-4"
-        providerName="openai"
-      />,
-    )
+    render(<AgentModelTrigger modelId="gpt-4" providerName="openai" />)
 
     expect(screen.getByText('workflow.nodes.agent.notAuthorized')).toBeInTheDocument()
   })

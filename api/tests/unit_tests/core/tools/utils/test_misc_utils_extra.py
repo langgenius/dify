@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from contextlib import nullcontext
 from types import SimpleNamespace
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from yaml import YAMLError
@@ -135,8 +135,8 @@ def test_single_dataset_retriever_external_run_returns_content_and_resources():
         {"dataset-1": ["doc-a"]},
         {"logical_operator": "and"},
     )
-    db_session = Mock()
-    db_session.scalar.return_value = dataset
+    session = Mock()
+    session.scalar.return_value = dataset
     external_documents = [
         {"content": "first", "metadata": {"document_id": "doc-a"}, "score": 0.9, "title": "Doc A"},
         {"content": "second", "metadata": {"document_id": "doc-b"}, "score": 0.8, "title": "Doc B"},
@@ -152,14 +152,13 @@ def test_single_dataset_retriever_external_run_returns_content_and_resources():
         inputs={"x": 1},
     )
 
-    with patch.object(single_retriever_module, "db", SimpleNamespace(session=db_session)):
-        with patch.object(single_retriever_module, "DatasetRetrieval", return_value=dataset_retrieval):
-            with patch.object(
-                single_retriever_module.ExternalDatasetService,
-                "fetch_external_knowledge_retrieval",
-                return_value=external_documents,
-            ) as fetch_mock:
-                result = tool.run(session=MagicMock(), query="hello")
+    with patch.object(single_retriever_module, "DatasetRetrieval", return_value=dataset_retrieval):
+        with patch.object(
+            single_retriever_module.ExternalDatasetService,
+            "fetch_external_knowledge_retrieval",
+            return_value=external_documents,
+        ) as fetch_mock:
+            result = tool.run(session=session, query="hello")
 
     assert result == "first\nsecond"
     assert callback.queries == [("hello", "dataset-1")]
@@ -168,6 +167,7 @@ def test_single_dataset_retriever_external_run_returns_content_and_resources():
     assert [item.position for item in resource_info] == [1, 2]
     assert resource_info[0].dataset_id == "dataset-1"
     fetch_mock.assert_called_once()
+    assert fetch_mock.call_args.kwargs["session"] is session
 
 
 def test_single_dataset_retriever_returns_empty_when_metadata_filter_finds_no_documents():
@@ -181,8 +181,8 @@ def test_single_dataset_retriever_returns_empty_when_metadata_filter_finds_no_do
     )
     dataset_retrieval = Mock()
     dataset_retrieval.get_metadata_filter_condition.return_value = ({"dataset-1": []}, {"logical_operator": "and"})
-    db_session = Mock()
-    db_session.scalar.return_value = dataset
+    session = Mock()
+    session.scalar.return_value = dataset
 
     tool = SingleDatasetRetrieverTool(
         tenant_id="tenant-1",
@@ -194,10 +194,9 @@ def test_single_dataset_retriever_returns_empty_when_metadata_filter_finds_no_do
         inputs={},
     )
 
-    with patch.object(single_retriever_module, "db", SimpleNamespace(session=db_session)):
-        with patch.object(single_retriever_module, "DatasetRetrieval", return_value=dataset_retrieval):
-            with patch.object(single_retriever_module.RetrievalService, "retrieve") as retrieve_mock:
-                result = tool.run(session=MagicMock(), query="hello")
+    with patch.object(single_retriever_module, "DatasetRetrieval", return_value=dataset_retrieval):
+        with patch.object(single_retriever_module.RetrievalService, "retrieve") as retrieve_mock:
+            result = tool.run(session=session, query="hello")
 
     assert result == ""
     retrieve_mock.assert_not_called()
@@ -261,9 +260,9 @@ def test_single_dataset_retriever_non_economy_run_sorts_context_and_resources():
     lookup_doc_high = SimpleNamespace(
         id="doc-high", name="Document High", data_source_type="notion", doc_metadata={"lang": "fr"}
     )
-    db_session = Mock()
-    db_session.scalar.side_effect = [dataset, lookup_doc_low, lookup_doc_high]
-    db_session.get.return_value = dataset
+    session = Mock()
+    session.scalar.side_effect = [dataset, lookup_doc_low, lookup_doc_high]
+    session.get.return_value = dataset
 
     tool = SingleDatasetRetrieverTool(
         tenant_id="tenant-1",
@@ -276,15 +275,14 @@ def test_single_dataset_retriever_non_economy_run_sorts_context_and_resources():
         top_k=2,
     )
 
-    with patch.object(single_retriever_module, "db", SimpleNamespace(session=db_session)):
-        with patch.object(single_retriever_module, "DatasetRetrieval", return_value=dataset_retrieval):
-            with patch.object(single_retriever_module.RetrievalService, "retrieve", return_value=documents):
-                with patch.object(
-                    single_retriever_module.RetrievalService,
-                    "format_retrieval_documents",
-                    return_value=records,
-                ):
-                    result = tool.run(session=MagicMock(), query="hello")
+    with patch.object(single_retriever_module, "DatasetRetrieval", return_value=dataset_retrieval):
+        with patch.object(single_retriever_module.RetrievalService, "retrieve", return_value=documents):
+            with patch.object(
+                single_retriever_module.RetrievalService,
+                "format_retrieval_documents",
+                return_value=records,
+            ):
+                result = tool.run(session=session, query="hello")
 
     assert result == "signed high\nsummary low\nquestion:signed low answer:low answer"
     assert callback.documents == documents
@@ -461,12 +459,14 @@ def test_multi_dataset_retriever_run_orders_segments_and_returns_resources():
     with patch.object(tool, "_retriever", side_effect=fake_retriever) as retriever_mock:
         with patch.object(multi_retriever_module, "current_app", fake_current_app):
             with patch.object(multi_retriever_module.threading, "Thread", _ImmediateThread):
-                with patch.object(multi_retriever_module, "ModelManager", return_value=model_manager):
-                    with patch.object(multi_retriever_module, "RerankModelRunner", return_value=rerank_runner):
-                        with patch.object(multi_retriever_module, "db", SimpleNamespace(session=db_session)):
-                            result = tool.run(session=MagicMock(), query="hello")
+                with patch.object(multi_retriever_module.ModelManager, "for_tenant", return_value=model_manager):
+                    with patch.object(
+                        multi_retriever_module, "RerankModelRunner", return_value=rerank_runner
+                    ) as rerank_runner_class:
+                        result = tool.run(session=db_session, query="hello")
 
     assert result == "signed one\nquestion:signed two answer:answer two"
+    rerank_runner_class.assert_called_once_with(model_manager.get_model_instance.return_value, session=db_session)
     assert retriever_mock.call_count == 2
     assert callback.documents == [second_doc, first_doc]
     assert callback.resources is not None

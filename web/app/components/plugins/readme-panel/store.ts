@@ -21,14 +21,15 @@ type Shape = {
   closeReadmePanel: () => void
 }
 
-export const useReadmePanelStore = create<Shape>(set => ({
+export const useReadmePanelStore = create<Shape>((set) => ({
   currentPanel: undefined,
-  openReadmePanel: ({ detail, presentation = 'drawer', triggerId }) => set({
-    currentPanel: {
-      detail,
-      presentation,
-      triggerId,
-    },
-  }),
+  openReadmePanel: ({ detail, presentation = 'drawer', triggerId }) =>
+    set({
+      currentPanel: {
+        detail,
+        presentation,
+        triggerId,
+      },
+    }),
   closeReadmePanel: () => set({ currentPanel: undefined }),
 }))

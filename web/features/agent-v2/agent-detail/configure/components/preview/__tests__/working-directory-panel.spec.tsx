@@ -111,7 +111,9 @@ vi.mock('@/service/client', () => ({
                     },
                     upload: {
                       post: {
-                        mutationOptions: () => ({ mutationFn: mocks.workflowSandboxFileUploadMutationFn }),
+                        mutationOptions: () => ({
+                          mutationFn: mocks.workflowSandboxFileUploadMutationFn,
+                        }),
                       },
                     },
                   },
@@ -158,11 +160,36 @@ function renderWorkingDirectoryPanel() {
         source={{
           type: 'agent',
           agentId: 'agent-1',
-          conversationId: 'conversation-1',
+          callerType: 'conversation',
+          callerId: 'conversation-1',
         }}
       />
     </QueryClientProvider>,
   )
+}
+
+function renderWorkflowWorkingDirectoryPanel() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+    },
+  })
+  const rendered = render(
+    <QueryClientProvider client={queryClient}>
+      <AgentWorkingDirectoryPanel
+        open
+        onOpenChange={vi.fn()}
+        source={{
+          type: 'workflow-node',
+          appId: 'app-1',
+          workflowRunId: 'run-1',
+          nodeId: 'node-1',
+          nodeExecutionId: 'execution-1',
+        }}
+      />
+    </QueryClientProvider>,
+  )
+  return { ...rendered, queryClient }
 }
 
 describe('AgentWorkingDirectoryPanel', () => {
@@ -195,6 +222,24 @@ describe('AgentWorkingDirectoryPanel', () => {
         truncated: false,
       }),
     }))
+    mocks.workflowSandboxFilesQueryOptions.mockImplementation(({ input }: QueryOptionsInput) => ({
+      queryKey: ['workflow-sandbox-files', input],
+      queryFn: async () => ({
+        path: input.query?.path ?? '.',
+        entries: [{ name: 'chart.png', type: 'file' }],
+      }),
+    }))
+    mocks.workflowSandboxFileReadQueryOptions.mockImplementation(
+      ({ input }: QueryOptionsInput) => ({
+        queryKey: ['workflow-sandbox-file-read', input],
+        queryFn: async () => ({
+          binary: false,
+          path: input.query?.path ?? '',
+          text: null,
+          truncated: false,
+        }),
+      }),
+    )
   })
 
   it('should download the selected working directory file from the preview header download action', async () => {
@@ -204,9 +249,11 @@ describe('AgentWorkingDirectoryPanel', () => {
     renderWorkingDirectoryPanel()
 
     await user.click(await screen.findByText('notes.md'))
-    await user.click(await screen.findByRole('button', {
-      name: /common\.operation\.download.*notes\.md/i,
-    }))
+    await user.click(
+      await screen.findByRole('button', {
+        name: /common\.operation\.download.*notes\.md/i,
+      }),
+    )
 
     const downloadingButton = await screen.findByRole('button', {
       name: /common\.operation\.downloading.*notes\.md/i,
@@ -222,7 +269,8 @@ describe('AgentWorkingDirectoryPanel', () => {
           agent_id: 'agent-1',
         },
         body: {
-          conversation_id: 'conversation-1',
+          caller_type: 'conversation',
+          caller_id: 'conversation-1',
           path: '~/workspace/notes.md',
         },
       })
@@ -242,10 +290,14 @@ describe('AgentWorkingDirectoryPanel', () => {
 
     await user.click(await screen.findByText('model.bin'))
 
-    expect(await screen.findByText('agentV2.agentDetail.configure.files.preview.unsupported')).toBeInTheDocument()
+    expect(
+      await screen.findByText('agentV2.agentDetail.configure.files.preview.unsupported'),
+    ).toBeInTheDocument()
     await user.click(screen.getByRole('link', { name: /common\.operation\.download/i }))
 
-    const downloadingLink = await screen.findByRole('link', { name: /common\.operation\.downloading/i })
+    const downloadingLink = await screen.findByRole('link', {
+      name: /common\.operation\.downloading/i,
+    })
     expect(downloadingLink.querySelector('.animate-spin')).toBeInTheDocument()
     const headerDownloadButton = screen.getByRole('button', {
       name: /common\.operation\.download.*model\.bin/i,
@@ -261,7 +313,8 @@ describe('AgentWorkingDirectoryPanel', () => {
           agent_id: 'agent-1',
         },
         body: {
-          conversation_id: 'conversation-1',
+          caller_type: 'conversation',
+          caller_id: 'conversation-1',
           path: '~/workspace/model.bin',
         },
       })
@@ -275,6 +328,8 @@ describe('AgentWorkingDirectoryPanel', () => {
 
   it('should preview sandbox images with the uploaded file url', async () => {
     const user = userEvent.setup()
+    const upload = createDeferred<{ url: string }>()
+    mocks.sandboxFileUploadClientPost.mockReturnValueOnce(upload.promise)
     renderWorkingDirectoryPanel()
 
     await user.click(await screen.findByText('chart.png'))
@@ -282,6 +337,8 @@ describe('AgentWorkingDirectoryPanel', () => {
     await waitFor(() => {
       expect(mocks.sandboxFileUploadClientPost).toHaveBeenCalled()
     })
+    upload.resolve({ url: 'https://example.com/chart.png' })
+
     const image = await screen.findByAltText('chart.png')
     expect(image).toHaveAttribute('src', 'https://example.com/chart.png')
     expect(mocks.sandboxFileUploadClientPost).toHaveBeenCalledWith({
@@ -289,11 +346,38 @@ describe('AgentWorkingDirectoryPanel', () => {
         agent_id: 'agent-1',
       },
       body: {
-        conversation_id: 'conversation-1',
+        caller_type: 'conversation',
+        caller_id: 'conversation-1',
         path: '~/workspace/chart.png',
       },
     })
-    expect(screen.queryByText('agentV2.agentDetail.configure.files.preview.unsupported')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('agentV2.agentDetail.configure.files.preview.unsupported'),
+    ).not.toBeInTheDocument()
     expect(mocks.downloadUrl).not.toHaveBeenCalled()
+  })
+
+  it('should scope workflow image previews to the exact node execution', async () => {
+    const { queryClient } = renderWorkflowWorkingDirectoryPanel()
+
+    await waitFor(() => {
+      expect(mocks.workflowSandboxFileUploadClientPost).toHaveBeenCalled()
+    })
+
+    expect(
+      queryClient.getQueryCache().find({
+        queryKey: [
+          'agent-v2',
+          'working-directory',
+          'image-preview',
+          'workflow-node',
+          'app-1',
+          'run-1',
+          'node-1',
+          'execution-1',
+          'chart.png',
+        ],
+      }),
+    ).toBeDefined()
   })
 })

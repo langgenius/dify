@@ -1,7 +1,13 @@
-import type { AgentLogListResponse, AgentLogMessageListResponse, AgentLogSourceListResponse } from '@dify/contracts/api/console/agent/types.gen'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import type {
+  AgentLogListResponse,
+  AgentLogMessageListResponse,
+  AgentLogSourceListResponse,
+} from '@dify/contracts/api/console/agent/types.gen'
+import { QueryClient } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { AgentLogsPage } from '../page'
 
 type AgentLogsQueryInput = {
@@ -17,6 +23,7 @@ const mocks = vi.hoisted(() => ({
   logsQueryFn: vi.fn(),
   logSourcesQueryFn: vi.fn(),
   messagesQueryFn: vi.fn(),
+  feedbackMutationFn: vi.fn(),
   logsQueryOptions: vi.fn((input: AgentLogsQueryInput) => ({
     queryKey: ['agent-logs', input],
     queryFn: () => mocks.logsQueryFn(input),
@@ -29,10 +36,9 @@ const mocks = vi.hoisted(() => ({
     queryKey: ['agent-log-messages', input],
     queryFn: () => mocks.messagesQueryFn(input),
   })),
-}))
-
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
+  feedbackMutationOptions: vi.fn(() => ({
+    mutationFn: mocks.feedbackMutationFn,
+  })),
 }))
 
 vi.mock('@/hooks/use-timestamp', () => ({
@@ -43,8 +49,23 @@ vi.mock('@/hooks/use-timestamp', () => ({
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
+    systemFeatures: {
+      get: {
+        queryKey: () => ['console', 'systemFeatures', 'get'],
+        queryOptions: (options?: Record<string, unknown>) => ({
+          queryKey: ['console', 'systemFeatures', 'get'],
+          queryFn: () => new Promise(() => {}),
+          ...options,
+        }),
+      },
+    },
     agent: {
       byAgentId: {
+        feedbacks: {
+          post: {
+            mutationOptions: mocks.feedbackMutationOptions,
+          },
+        },
         logSources: {
           get: {
             queryOptions: mocks.logSourcesQueryOptions,
@@ -52,11 +73,13 @@ vi.mock('@/service/client', () => ({
         },
         logs: {
           get: {
+            key: () => ['agent-logs'],
             queryOptions: mocks.logsQueryOptions,
           },
           byConversationId: {
             messages: {
               get: {
+                key: () => ['agent-log-messages'],
                 queryOptions: mocks.messagesQueryOptions,
               },
             },
@@ -95,6 +118,40 @@ const populatedLogsResponse: AgentLogListResponse = {
       },
       status: 'success',
       title: 'Previous conversation',
+      unread: false,
+      updated_at: 1781661000,
+      user_rate: null,
+    },
+  ],
+  has_more: false,
+  limit: 25,
+  page: 1,
+  total: 1,
+}
+
+const workflowLogsResponse: AgentLogListResponse = {
+  data: [
+    {
+      conversation_id: 'execution-1',
+      created_at: 1781660000,
+      end_user_id: 'end-user-1',
+      id: 'execution-1',
+      message_count: 1,
+      operation_rate: null,
+      source: {
+        app_icon: '🖌',
+        app_icon_background: '#EEF4FF',
+        app_icon_type: 'emoji',
+        app_id: 'workflow-app-id',
+        app_name: 'SVG Logo Design',
+        id: 'workflow:workflow-app-id:workflow-id:v3:agent-node-id',
+        node_id: 'agent-node-id',
+        type: 'workflow',
+        workflow_id: 'workflow-id',
+        workflow_version: 'v3',
+      },
+      status: 'success',
+      title: 'Workflow agent execution',
       unread: false,
       updated_at: 1781661000,
       user_rate: null,
@@ -156,6 +213,8 @@ const messagesResponse: AgentLogMessageListResponse = {
       error: null,
       from_account_id: null,
       from_end_user_id: 'end-user-1',
+      feedback_enabled: true,
+      feedbacks: [],
       id: 'message-1',
       latency: 1.234,
       message_id: 'message-1',
@@ -181,11 +240,15 @@ const renderPage = () => {
       },
     },
   })
+  queryClient.setQueryData(
+    ['console', 'systemFeatures', 'get'],
+    createSystemFeaturesFixture({ deployment_edition: 'COMMUNITY' }),
+  )
 
   render(
-    <QueryClientProvider client={queryClient}>
+    <QueryClientTestProvider queryClient={queryClient}>
       <AgentLogsPage agentId="agent-1" />
-    </QueryClientProvider>,
+    </QueryClientTestProvider>,
   )
 
   return queryClient
@@ -194,8 +257,7 @@ const renderPage = () => {
 const getLatestLogsQueryInput = () => {
   const latestCall = mocks.logsQueryOptions.mock.calls.at(-1)
 
-  if (!latestCall)
-    throw new Error('Expected logs query options to be called')
+  if (!latestCall) throw new Error('Expected logs query options to be called')
 
   return latestCall[0]
 }
@@ -206,6 +268,7 @@ describe('AgentLogsPage', () => {
     mocks.logsQueryFn.mockResolvedValue(emptyLogsResponse)
     mocks.logSourcesQueryFn.mockResolvedValue(logSourcesResponse)
     mocks.messagesQueryFn.mockResolvedValue(messagesResponse)
+    mocks.feedbackMutationFn.mockResolvedValue({ result: 'success' })
   })
 
   describe('Query contract', () => {
@@ -239,17 +302,23 @@ describe('AgentLogsPage', () => {
 
       renderPage()
 
-      await user.click(await screen.findByRole('combobox', { name: 'agentV2.agentDetail.logs.filters.source.label' }))
+      await user.click(
+        await screen.findByRole('combobox', {
+          name: 'agentV2.agentDetail.logs.filters.source.label',
+        }),
+      )
       await user.click(await screen.findByRole('option', { name: /Book Translation/ }))
       await user.click(await screen.findByRole('option', { name: /SVG Logo Design/ }))
 
       await waitFor(() => {
-        expect(getLatestLogsQueryInput().input.query).toEqual(expect.objectContaining({
-          sources: [
-            'webapp:webapp-app-id',
-            'workflow:workflow-app-id:workflow-id:v3:agent-node-id',
-          ],
-        }))
+        expect(getLatestLogsQueryInput().input.query).toEqual(
+          expect.objectContaining({
+            sources: [
+              'webapp:webapp-app-id',
+              'workflow:workflow-app-id:workflow-id:v3:agent-node-id',
+            ],
+          }),
+        )
       })
 
       expect(getLatestLogsQueryInput().input.query).not.toHaveProperty('source')
@@ -261,22 +330,30 @@ describe('AgentLogsPage', () => {
       renderPage()
 
       await user.click(screen.getByRole('button', { name: /appLog\.filter\.sortBy/ }))
-      await user.click(await screen.findByRole('menuitemradio', { name: 'agentV2.agentDetail.logs.filters.sort.lastUpdatedTime' }))
+      await user.click(
+        await screen.findByRole('menuitemradio', {
+          name: 'agentV2.agentDetail.logs.filters.sort.lastUpdatedTime',
+        }),
+      )
 
       await waitFor(() => {
-        expect(getLatestLogsQueryInput().input.query).toEqual(expect.objectContaining({
-          sort_by: 'updated_at',
-          sort_order: 'desc',
-        }))
+        expect(getLatestLogsQueryInput().input.query).toEqual(
+          expect.objectContaining({
+            sort_by: 'updated_at',
+            sort_order: 'desc',
+          }),
+        )
       })
 
       await user.click(screen.getByRole('button', { name: 'appLog.filter.ascending' }))
 
       await waitFor(() => {
-        expect(getLatestLogsQueryInput().input.query).toEqual(expect.objectContaining({
-          sort_by: 'updated_at',
-          sort_order: 'asc',
-        }))
+        expect(getLatestLogsQueryInput().input.query).toEqual(
+          expect.objectContaining({
+            sort_by: 'updated_at',
+            sort_order: 'asc',
+          }),
+        )
       })
     })
 
@@ -294,13 +371,19 @@ describe('AgentLogsPage', () => {
 
       expect(await screen.findByText('Previous conversation')).toBeInTheDocument()
 
-      await user.click(await screen.findByRole('combobox', { name: 'agentV2.agentDetail.logs.filters.source.label' }))
+      await user.click(
+        await screen.findByRole('combobox', {
+          name: 'agentV2.agentDetail.logs.filters.source.label',
+        }),
+      )
       await user.click(await screen.findByRole('option', { name: /Book Translation/ }))
 
       await waitFor(() => {
-        expect(getLatestLogsQueryInput().input.query).toEqual(expect.objectContaining({
-          sources: ['webapp:webapp-app-id'],
-        }))
+        expect(getLatestLogsQueryInput().input.query).toEqual(
+          expect.objectContaining({
+            sources: ['webapp:webapp-app-id'],
+          }),
+        )
         expect(mocks.logsQueryFn).toHaveBeenCalledTimes(2)
       })
 
@@ -338,7 +421,37 @@ describe('AgentLogsPage', () => {
           },
         })
       })
+      expect(screen.getByText('appLog.detail.conversationId')).toBeInTheDocument()
       expect(await screen.findByText('Translated chapter summary')).toBeInTheDocument()
+    })
+
+    it('should identify workflow log details by execution id', async () => {
+      const user = userEvent.setup()
+      mocks.logsQueryFn.mockResolvedValue(workflowLogsResponse)
+
+      renderPage()
+
+      await user.click(await screen.findByRole('button', { name: 'Workflow agent execution' }))
+
+      await waitFor(() => {
+        expect(mocks.messagesQueryOptions).toHaveBeenCalledWith({
+          input: {
+            params: {
+              agent_id: 'agent-1',
+              conversation_id: 'execution-1',
+            },
+            query: {
+              limit: 100,
+              page: 1,
+              sort_by: 'created_at',
+              sort_order: 'asc',
+              sources: ['workflow:workflow-app-id:workflow-id:v3:agent-node-id'],
+            },
+          },
+        })
+      })
+      expect(screen.getByText('agentV2.agentDetail.logs.executionId')).toBeInTheDocument()
+      expect(screen.queryByText('appLog.detail.conversationId')).not.toBeInTheDocument()
     })
   })
 })

@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
 import { expect, waitFor, within } from 'storybook/test'
 import {
+  createDialogHandle,
   Dialog,
   DialogBackdrop,
   DialogCloseButton,
@@ -14,12 +15,12 @@ import {
   DialogViewport,
 } from '.'
 import { Button } from '../button'
-import { FieldControl, FieldDescription, FieldError, FieldLabel, FieldRoot } from '../field'
+import { Field, FieldControl, FieldDescription, FieldError, FieldLabel } from '../field'
 import { Form } from '../form'
 import { Input } from '../input'
 import {
+  ScrollArea,
   ScrollAreaContent,
-  ScrollAreaRoot,
   ScrollAreaScrollbar,
   ScrollAreaThumb,
   ScrollAreaViewport,
@@ -32,7 +33,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Compound modal dialog built on Base UI Dialog. Use it for focused flows that interrupt the user, such as editing settings, confirming non-destructive actions, or collecting short-form input. Compose `DialogTitle`, `DialogDescription`, and optional `DialogCloseButton` inside `DialogContent`.',
+        component:
+          'Compound modal dialog built on Base UI Dialog. Use it for focused flows that interrupt the user, such as editing settings, confirming non-destructive actions, or collecting short-form input. Compose `DialogTitle`, `DialogDescription`, and optional `DialogCloseButton` inside `DialogContent`.',
       },
     },
   },
@@ -48,13 +50,7 @@ const releaseNoteItems = Array.from({ length: 24 }, (_, index) => ({
   body: 'Refined a workflow behavior so long content naturally overflows and scrolls inside the dialog.',
 }))
 
-function ReleaseNoteHeader({
-  title,
-  description,
-}: {
-  title: string
-  description: string
-}) {
+function ReleaseNoteHeader({ title, description }: { title: string; description: string }) {
   return (
     <div className="flex shrink-0 flex-col gap-2 p-6 pr-12 pb-4">
       <DialogTitle className="text-lg leading-7 font-semibold text-text-primary">
@@ -70,11 +66,9 @@ function ReleaseNoteHeader({
 function ReleaseNoteSections() {
   return (
     <div className="flex flex-col gap-3 px-6 py-2 text-sm leading-5 text-text-secondary">
-      {releaseNoteItems.map(item => (
+      {releaseNoteItems.map((item) => (
         <section key={item.id} className="rounded-lg bg-background-default-subtle px-3 py-2">
-          <h3 className="font-medium text-text-primary">
-            {item.title}
-          </h3>
+          <h3 className="font-medium text-text-primary">{item.title}</h3>
           <p>{item.body}</p>
         </section>
       ))}
@@ -82,16 +76,10 @@ function ReleaseNoteSections() {
   )
 }
 
-function ReleaseNoteFooter({
-  onClose,
-}: {
-  onClose: () => void
-}) {
+function ReleaseNoteFooter({ onClose }: { onClose: () => void }) {
   return (
     <div className="flex shrink-0 justify-end border-t border-divider-subtle p-4">
-      <Button onClick={onClose}>
-        Close
-      </Button>
+      <Button onClick={onClose}>Close</Button>
     </div>
   )
 }
@@ -99,11 +87,7 @@ function ReleaseNoteFooter({
 export const Default: Story = {
   render: () => (
     <Dialog>
-      <DialogTrigger
-        render={<Button />}
-      >
-        Open dialog
-      </DialogTrigger>
+      <DialogTrigger render={<Button />}>Open dialog</DialogTrigger>
       <DialogContent>
         <DialogCloseButton />
         <div className="flex flex-col gap-2 pr-8">
@@ -118,11 +102,7 @@ export const Default: Story = {
           <label className="text-xs font-medium text-text-tertiary" htmlFor="invite-email">
             Email address
           </label>
-          <Input
-            id="invite-email"
-            type="email"
-            placeholder="teammate@example.com"
-          />
+          <Input id="invite-email" type="email" placeholder="teammate@example.com" />
         </div>
         <div className="mt-6 flex items-center justify-end">
           <Button variant="primary">Send invite</Button>
@@ -143,7 +123,9 @@ export const Default: Story = {
 
     await userEvent.click(body.getByRole('button', { name: 'Close' }))
     await waitFor(async () => {
-      await expect(body.queryByRole('dialog', { name: 'Invite collaborators' })).not.toBeInTheDocument()
+      await expect(
+        body.queryByRole('dialog', { name: 'Invite collaborators' }),
+      ).not.toBeInTheDocument()
     })
   },
 }
@@ -151,18 +133,15 @@ export const Default: Story = {
 export const WithoutCloseButton: Story = {
   render: () => (
     <Dialog>
-      <DialogTrigger
-        render={<Button />}
-      >
-        Start onboarding
-      </DialogTrigger>
+      <DialogTrigger render={<Button />}>Start onboarding</DialogTrigger>
       <DialogContent>
         <div className="flex flex-col gap-2">
           <DialogTitle className="text-lg leading-7 font-semibold text-text-primary">
             Welcome to Dify
           </DialogTitle>
           <DialogDescription className="text-sm leading-5 text-text-secondary">
-            Let's get your workspace ready. This takes about a minute and sets up your default models, datasets, and API keys.
+            Let's get your workspace ready. This takes about a minute and sets up your default
+            models, datasets, and API keys.
           </DialogDescription>
         </div>
         <div className="mt-6 flex items-center justify-end gap-2">
@@ -182,11 +161,7 @@ const ControlledDemo = () => {
       <Button variant="secondary" onClick={() => setOpen(true)}>
         Open controlled dialog
       </Button>
-      <span className="text-xs text-text-tertiary">
-        State:
-        {' '}
-        {open ? 'open' : 'closed'}
-      </span>
+      <span className="text-xs text-text-tertiary">State: {open ? 'open' : 'closed'}</span>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogCloseButton />
@@ -198,11 +173,7 @@ const ControlledDemo = () => {
               The workspace URL will stay the same, but the display name updates everywhere.
             </DialogDescription>
           </div>
-          <Input
-            type="text"
-            defaultValue="Acme Workspace"
-            className="mt-4"
-          />
+          <Input type="text" defaultValue="Acme Workspace" className="mt-4" />
           <div className="mt-6 flex items-center justify-end gap-2">
             <Button variant="secondary" onClick={() => setOpen(false)}>
               Cancel
@@ -221,6 +192,59 @@ export const Controlled: Story = {
   render: () => <ControlledDemo />,
 }
 
+type WorkspaceDialogPayload = {
+  name: string
+  memberCount: number
+}
+
+const workspaceDialogPayloads = [
+  { name: 'Design', memberCount: 8 },
+  { name: 'Engineering', memberCount: 24 },
+] as const satisfies readonly WorkspaceDialogPayload[]
+
+function DetachedTriggersDemo() {
+  const [dialogHandle] = React.useState(() => createDialogHandle<WorkspaceDialogPayload>())
+
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <div className="flex gap-2">
+        {workspaceDialogPayloads.map((payload) => (
+          <DialogTrigger
+            key={payload.name}
+            handle={dialogHandle}
+            payload={payload}
+            render={<Button variant="secondary" />}
+          >
+            Edit {payload.name}
+          </DialogTrigger>
+        ))}
+      </div>
+
+      <Dialog handle={dialogHandle}>
+        {({ payload }) => (
+          <DialogContent>
+            <DialogCloseButton />
+            <div className="grid gap-2 pr-8">
+              <DialogTitle className="text-lg leading-7 font-semibold text-text-primary">
+                {payload ? `Edit ${payload.name}` : 'Edit workspace'}
+              </DialogTitle>
+              <DialogDescription className="text-sm leading-5 text-text-secondary">
+                {payload
+                  ? `${payload.memberCount} members currently have access to this workspace.`
+                  : 'Choose a workspace to edit.'}
+              </DialogDescription>
+            </div>
+          </DialogContent>
+        )}
+      </Dialog>
+    </div>
+  )
+}
+
+export const DetachedTriggers: Story = {
+  render: () => <DetachedTriggersDemo />,
+}
+
 type ApiExtensionFormValues = {
   name: string
   endpoint: string
@@ -232,11 +256,7 @@ const FormDialogDemo = () => {
 
   return (
     <Dialog open={open} onOpenChange={setOpen} disablePointerDismissal>
-      <DialogTrigger
-        render={<Button />}
-      >
-        Configure API extension
-      </DialogTrigger>
+      <DialogTrigger render={<Button />}>Configure API extension</DialogTrigger>
       <DialogContent backdropProps={{ forceRender: true }} className="w-160">
         <DialogCloseButton />
         <div className="grid gap-2 pr-8">
@@ -251,12 +271,12 @@ const FormDialogDemo = () => {
           className="grid gap-4 pt-5"
           onFormSubmit={() => setOpen(false)}
         >
-          <FieldRoot name="name">
+          <Field name="name">
             <FieldLabel>Name</FieldLabel>
             <FieldControl required placeholder="Production API" />
             <FieldError match="valueMissing">Name is required.</FieldError>
-          </FieldRoot>
-          <FieldRoot name="endpoint">
+          </Field>
+          <Field name="endpoint">
             <FieldLabel>Endpoint</FieldLabel>
             <FieldControl type="url" required placeholder="https://api.example.com" />
             <FieldDescription>
@@ -271,8 +291,8 @@ const FormDialogDemo = () => {
             </FieldDescription>
             <FieldError match="valueMissing">Endpoint is required.</FieldError>
             <FieldError match="typeMismatch">Enter a valid URL.</FieldError>
-          </FieldRoot>
-          <FieldRoot
+          </Field>
+          <Field
             name="apiKey"
             validate={(value) => {
               if (typeof value === 'string' && value.length > 0 && value.length < 5)
@@ -285,7 +305,7 @@ const FormDialogDemo = () => {
             <FieldControl required placeholder="sk-..." />
             <FieldError match="valueMissing">API key is required.</FieldError>
             <FieldError match="customError" />
-          </FieldRoot>
+          </Field>
           <div className="mt-2 flex items-center justify-end gap-2">
             <Button type="button" onClick={() => setOpen(false)}>
               Cancel
@@ -310,21 +330,21 @@ const OutsideScrollingContentDemo = () => {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger
-        render={<Button />}
-      >
-        Review long release notes
-      </DialogTrigger>
+      <DialogTrigger render={<Button />}>Review long release notes</DialogTrigger>
       <DialogPortal>
-        <DialogBackdrop className="duration-[600ms] ease-[cubic-bezier(0.22,1,0.36,1)] data-ending-style:duration-[350ms] data-ending-style:ease-[cubic-bezier(0.375,0.015,0.545,0.455)]" />
+        <DialogBackdrop className="duration-600 ease-[cubic-bezier(0.22,1,0.36,1)] data-ending-style:duration-350 data-ending-style:ease-[cubic-bezier(0.375,0.015,0.545,0.455)]" />
         <DialogViewport className="group/dialog">
-          <ScrollAreaRoot className="h-full overscroll-contain group-data-ending-style/dialog:pointer-events-none">
-            <ScrollAreaViewport aria-label="Scrollable dialog viewport" role="region" className="h-full max-h-full max-w-full overscroll-contain group-data-ending-style/dialog:pointer-events-none">
+          <ScrollArea className="h-full group-data-ending-style/dialog:pointer-events-none">
+            <ScrollAreaViewport
+              aria-label="Scrollable dialog viewport"
+              role="region"
+              className="h-full max-h-full max-w-full overscroll-contain group-data-ending-style/dialog:pointer-events-none"
+            >
               <ScrollAreaContent className="flex min-h-full items-center justify-center px-4 py-16">
                 <DialogPopup
                   ref={popupRef}
                   initialFocus={popupRef}
-                  className="relative mx-auto flex w-120 max-w-[calc(100vw-2rem)] flex-col overflow-hidden outline-hidden transition-[translate] duration-[700ms] ease-[cubic-bezier(0.45,1.005,0,1.005)] data-starting-style:translate-y-[100dvh] data-starting-style:scale-100 data-starting-style:opacity-100 data-ending-style:translate-y-[max(100dvh,100%)] data-ending-style:scale-100 data-ending-style:opacity-100 data-ending-style:duration-[350ms] data-ending-style:ease-[cubic-bezier(0.375,0.015,0.545,0.455)]"
+                  className="relative mx-auto flex w-120 max-w-[calc(100vw-2rem)] flex-col overflow-hidden outline-hidden transition-[translate] duration-700 ease-[cubic-bezier(0.45,1.005,0,1.005)] data-ending-style:translate-y-[max(100dvh,100%)] data-ending-style:scale-100 data-ending-style:opacity-100 data-ending-style:duration-350 data-ending-style:ease-[cubic-bezier(0.375,0.015,0.545,0.455)] data-starting-style:translate-y-[100dvh] data-starting-style:scale-100 data-starting-style:opacity-100"
                 >
                   <DialogCloseButton />
                   <ReleaseNoteHeader
@@ -339,7 +359,7 @@ const OutsideScrollingContentDemo = () => {
             <ScrollAreaScrollbar>
               <ScrollAreaThumb />
             </ScrollAreaScrollbar>
-          </ScrollAreaRoot>
+          </ScrollArea>
         </DialogViewport>
       </DialogPortal>
     </Dialog>
@@ -353,27 +373,23 @@ export const OutsideScrollingContent: Story = {
 export const OutsidePopupElements: Story = {
   render: () => (
     <Dialog>
-      <DialogTrigger
-        render={<Button />}
-      >
-        Open uncontained dialog
-      </DialogTrigger>
+      <DialogTrigger render={<Button />}>Open uncontained dialog</DialogTrigger>
       <DialogPortal>
         <DialogBackdrop className="min-h-dvh" />
         <DialogViewport className="grid place-items-center px-4 py-12 xl:py-6">
-          <DialogPopup className="group/popup relative flex h-full w-full max-w-[70rem] justify-center border-0 bg-transparent shadow-none pointer-events-none transition-opacity data-starting-style:scale-100 data-starting-style:opacity-0 data-ending-style:scale-100 data-ending-style:opacity-0">
+          <DialogPopup className="group/popup pointer-events-none relative flex h-full w-full max-w-280 justify-center border-0 bg-transparent shadow-none transition-opacity data-ending-style:scale-100 data-ending-style:opacity-0 data-starting-style:scale-100 data-starting-style:opacity-0">
             <DialogCloseButton
               aria-label="Close"
-              className="pointer-events-auto absolute right-0 -top-10 z-10 flex size-8 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg text-text-tertiary shadow-xs outline-hidden hover:bg-components-button-secondary-bg-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid xl:top-0"
-            >
-            </DialogCloseButton>
-            <div className="pointer-events-auto flex h-full w-full max-w-[70rem] flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-6 shadow-xl transition-[scale] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-data-starting-style/popup:scale-105">
+              className="pointer-events-auto absolute -top-10 right-0 z-10 flex size-8 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg text-text-tertiary shadow-xs outline-hidden hover:bg-components-button-secondary-bg-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid xl:top-0"
+            ></DialogCloseButton>
+            <div className="pointer-events-auto flex h-full w-full max-w-280 flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-6 shadow-xl transition-[scale] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-data-starting-style/popup:scale-105">
               <div className="grid gap-2">
                 <DialogTitle className="text-lg leading-7 font-semibold text-text-primary">
                   Knowledge review
                 </DialogTitle>
                 <DialogDescription className="text-sm leading-5 text-text-secondary">
-                  The close button is visually outside this panel but remains inside the popup for focus order and screen reader context.
+                  The close button is visually outside this panel but remains inside the popup for
+                  focus order and screen reader context.
                 </DialogDescription>
               </div>
               <div className="mt-6 grid flex-1 place-items-center rounded-xl bg-background-default-subtle text-sm text-text-tertiary">
@@ -392,24 +408,22 @@ const InsideScrollingContentDemo = () => {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger
-        render={<Button />}
-      >
-        Review release notes
-      </DialogTrigger>
+      <DialogTrigger render={<Button />}>Review release notes</DialogTrigger>
       <DialogPortal>
         <DialogBackdrop />
         <DialogViewport className="flex items-center justify-center overflow-hidden p-4">
-          <DialogPopup
-            className="relative flex h-[min(44rem,calc(100dvh-2rem))] w-120 max-w-[calc(100vw-2rem)] min-h-0 flex-col overflow-hidden"
-          >
+          <DialogPopup className="relative flex h-[min(44rem,calc(100dvh-2rem))] min-h-0 w-120 max-w-[calc(100vw-2rem)] flex-col overflow-hidden">
             <DialogCloseButton />
             <ReleaseNoteHeader
               title="Release notes"
               description="Highlights from the latest workspace update."
             />
-            <ScrollAreaRoot className="relative flex min-h-0 flex-auto overflow-hidden">
-              <ScrollAreaViewport aria-label="Release note improvements" role="region" className="h-full max-h-full max-w-full overflow-y-auto overscroll-contain">
+            <ScrollArea className="relative flex min-h-0 flex-auto overflow-hidden">
+              <ScrollAreaViewport
+                aria-label="Release note improvements"
+                role="region"
+                className="h-full max-h-full max-w-full overscroll-contain"
+              >
                 <ScrollAreaContent>
                   <ReleaseNoteSections />
                 </ScrollAreaContent>
@@ -417,7 +431,7 @@ const InsideScrollingContentDemo = () => {
               <ScrollAreaScrollbar>
                 <ScrollAreaThumb />
               </ScrollAreaScrollbar>
-            </ScrollAreaRoot>
+            </ScrollArea>
             <ReleaseNoteFooter onClose={() => setOpen(false)} />
           </DialogPopup>
         </DialogViewport>

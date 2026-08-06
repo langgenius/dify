@@ -8,23 +8,22 @@ import { ChunkingMode } from '@/models/datasets'
 
 type IContentProps = ComponentProps<'textarea'>
 
-const Textarea: FC<IContentProps> = React.memo(({
-  value,
-  placeholder,
-  className,
-  disabled,
-  ...rest
-}) => {
-  return (
-    <textarea
-      className={cn('inset-0 w-full resize-none appearance-none overflow-y-auto border-none bg-transparent outline-hidden', className)}
-      placeholder={placeholder}
-      value={value}
-      disabled={disabled}
-      {...rest}
-    />
-  )
-})
+const Textarea: FC<IContentProps> = React.memo(
+  ({ value, placeholder, className, disabled, ...rest }) => {
+    return (
+      <textarea
+        className={cn(
+          'inset-0 w-full resize-none appearance-none overflow-y-auto border-none bg-transparent outline-hidden',
+          className,
+        )}
+        placeholder={placeholder}
+        value={value}
+        disabled={disabled}
+        {...rest}
+      />
+    )
+  },
+)
 
 Textarea.displayName = 'Textarea'
 
@@ -33,64 +32,59 @@ type IAutoResizeTextAreaProps = ComponentProps<'textarea'> & {
   labelRef: React.RefObject<HTMLDivElement | null>
 }
 
-const AutoResizeTextArea: FC<IAutoResizeTextAreaProps> = React.memo(({
-  className,
-  placeholder,
-  value,
-  disabled,
-  containerRef,
-  labelRef,
-  ...rest
-}) => {
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const observerRef = useRef<ResizeObserver>(null)
-  const [maxHeight, setMaxHeight] = useState(0)
+const AutoResizeTextArea: FC<IAutoResizeTextAreaProps> = React.memo(
+  ({ className, placeholder, value, disabled, containerRef, labelRef, ...rest }) => {
+    const textareaRef = useRef<HTMLTextAreaElement>(null)
+    const observerRef = useRef<ResizeObserver>(null)
+    const [maxHeight, setMaxHeight] = useState(0)
 
-  useEffect(() => {
-    const textarea = textareaRef.current
-    if (!textarea)
-      return
-    textarea.style.height = 'auto'
-    const lineHeight = Number.parseInt(getComputedStyle(textarea).lineHeight)
-    const textareaHeight = Math.max(textarea.scrollHeight, lineHeight)
-    textarea.style.height = `${textareaHeight}px`
-  }, [value])
+    useEffect(() => {
+      const textarea = textareaRef.current
+      if (!textarea) return
+      textarea.style.height = 'auto'
+      const lineHeight = Number.parseInt(getComputedStyle(textarea).lineHeight)
+      const textareaHeight = Math.max(textarea.scrollHeight, lineHeight)
+      textarea.style.height = `${textareaHeight}px`
+    }, [value])
 
-  useEffect(() => {
-    const container = containerRef.current
-    const label = labelRef.current
-    if (!container || !label)
-      return
-    const updateMaxHeight = () => {
-      const containerHeight = container.clientHeight
-      const labelHeight = label.clientHeight
-      const padding = 32
-      const space = 12
-      const maxHeight = Math.floor((containerHeight - 2 * labelHeight - padding - space) / 2)
-      setMaxHeight(maxHeight)
-    }
-    updateMaxHeight()
-    observerRef.current = new ResizeObserver(updateMaxHeight)
-    observerRef.current.observe(container)
-    return () => {
-      observerRef.current?.disconnect()
-    }
-  }, [])
+    useEffect(() => {
+      const container = containerRef.current
+      const label = labelRef.current
+      if (!container || !label) return
+      const updateMaxHeight = () => {
+        const containerHeight = container.clientHeight
+        const labelHeight = label.clientHeight
+        const padding = 32
+        const space = 12
+        const maxHeight = Math.floor((containerHeight - 2 * labelHeight - padding - space) / 2)
+        setMaxHeight(maxHeight)
+      }
+      updateMaxHeight()
+      observerRef.current = new ResizeObserver(updateMaxHeight)
+      observerRef.current.observe(container)
+      return () => {
+        observerRef.current?.disconnect()
+      }
+    }, [])
 
-  return (
-    <textarea
-      ref={textareaRef}
-      className={cn('inset-0 w-full resize-none appearance-none border-none bg-transparent outline-hidden', className)}
-      style={{
-        maxHeight,
-      }}
-      placeholder={placeholder}
-      value={value}
-      disabled={disabled}
-      {...rest}
-    />
-  )
-})
+    return (
+      <textarea
+        ref={textareaRef}
+        className={cn(
+          'inset-0 w-full resize-none appearance-none border-none bg-transparent outline-hidden',
+          className,
+        )}
+        style={{
+          maxHeight,
+        }}
+        placeholder={placeholder}
+        value={value}
+        disabled={disabled}
+        {...rest}
+      />
+    )
+  },
+)
 
 AutoResizeTextArea.displayName = 'AutoResizeTextArea'
 
@@ -102,43 +96,41 @@ type IQATextAreaProps = {
   isEditMode?: boolean
 }
 
-const QATextArea: FC<IQATextAreaProps> = React.memo(({
-  question,
-  answer,
-  onQuestionChange,
-  onAnswerChange,
-  isEditMode = true,
-}) => {
-  const { t } = useTranslation()
-  const containerRef = useRef<HTMLDivElement>(null)
-  const labelRef = useRef<HTMLDivElement>(null)
+const QATextArea: FC<IQATextAreaProps> = React.memo(
+  ({ question, answer, onQuestionChange, onAnswerChange, isEditMode = true }) => {
+    const { t } = useTranslation()
+    const containerRef = useRef<HTMLDivElement>(null)
+    const labelRef = useRef<HTMLDivElement>(null)
 
-  return (
-    <div ref={containerRef} className="h-full overflow-hidden">
-      <div ref={labelRef} className="mb-1 text-xs font-medium text-text-tertiary">QUESTION</div>
-      <AutoResizeTextArea
-        className="text-sm tracking-[-0.07px] text-text-secondary caret-[#295EFF]"
-        value={question}
-        placeholder={t($ => $['segment.questionPlaceholder'], { ns: 'datasetDocuments' }) || ''}
-        onChange={e => onQuestionChange(e.target.value)}
-        disabled={!isEditMode}
-        containerRef={containerRef}
-        labelRef={labelRef}
-      />
-      <div className="mt-6 mb-1 text-xs font-medium text-text-tertiary">ANSWER</div>
-      <AutoResizeTextArea
-        className="text-sm tracking-[-0.07px] text-text-secondary caret-[#295EFF]"
-        value={answer}
-        placeholder={t($ => $['segment.answerPlaceholder'], { ns: 'datasetDocuments' }) || ''}
-        onChange={e => onAnswerChange?.(e.target.value)}
-        disabled={!isEditMode}
-        autoFocus
-        containerRef={containerRef}
-        labelRef={labelRef}
-      />
-    </div>
-  )
-})
+    return (
+      <div ref={containerRef} className="h-full overflow-hidden">
+        <div ref={labelRef} className="mb-1 text-xs font-medium text-text-tertiary">
+          QUESTION
+        </div>
+        <AutoResizeTextArea
+          className="text-sm tracking-[-0.07px] text-text-secondary caret-[#295EFF]"
+          value={question}
+          placeholder={t(($) => $['segment.questionPlaceholder'], { ns: 'datasetDocuments' }) || ''}
+          onChange={(e) => onQuestionChange(e.target.value)}
+          disabled={!isEditMode}
+          containerRef={containerRef}
+          labelRef={labelRef}
+        />
+        <div className="mt-6 mb-1 text-xs font-medium text-text-tertiary">ANSWER</div>
+        <AutoResizeTextArea
+          className="text-sm tracking-[-0.07px] text-text-secondary caret-[#295EFF]"
+          value={answer}
+          placeholder={t(($) => $['segment.answerPlaceholder'], { ns: 'datasetDocuments' }) || ''}
+          onChange={(e) => onAnswerChange?.(e.target.value)}
+          disabled={!isEditMode}
+          autoFocus
+          containerRef={containerRef}
+          labelRef={labelRef}
+        />
+      </div>
+    )
+  },
+)
 
 QATextArea.displayName = 'QATextArea'
 
@@ -187,8 +179,8 @@ const ChunkContent: FC<IChunkContentProps> = ({
     <Textarea
       className="h-full w-full pb-6 body-md-regular tracking-[-0.07px] text-text-secondary caret-[#295EFF]"
       value={question}
-      placeholder={t($ => $['segment.contentPlaceholder'], { ns: 'datasetDocuments' }) || ''}
-      onChange={e => onQuestionChange(e.target.value)}
+      placeholder={t(($) => $['segment.contentPlaceholder'], { ns: 'datasetDocuments' }) || ''}
+      onChange={(e) => onQuestionChange(e.target.value)}
       disabled={!isEditMode}
       autoFocus
     />

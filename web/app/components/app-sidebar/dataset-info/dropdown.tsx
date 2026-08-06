@@ -45,24 +45,22 @@ type JsonErrorResponse = {
 }
 
 const isJsonErrorResponse = (error: unknown): error is JsonErrorResponse => {
-  return typeof error === 'object'
-    && error !== null
-    && 'json' in error
-    && typeof error.json === 'function'
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'json' in error &&
+    typeof error.json === 'function'
+  )
 }
 
 const getErrorMessage = async (error: unknown) => {
-  if (!isJsonErrorResponse(error))
-    return 'Unknown error'
+  if (!isJsonErrorResponse(error)) return 'Unknown error'
 
   const res = await error.json()
   return res?.message || 'Unknown error'
 }
 
-const DropDown = ({
-  expand,
-  triggerClassName,
-}: DropDownProps) => {
+const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
   const { t } = useTranslation()
   const { push, replace } = useRouter()
   const [open, setOpen] = useState(false)
@@ -70,21 +68,32 @@ const DropDown = ({
   const [confirmMessage, setConfirmMessage] = useState<string>('')
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
 
-  const dataset = useDatasetDetailContextWithSelector(state => state.dataset) as DataSet
+  const dataset = useDatasetDetailContextWithSelector((state) => state.dataset) as DataSet
   const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isRbacEnabled = systemFeatures.rbac_enabled
-  const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(dataset?.permission_keys, {
-    currentUserId,
-    resourceMaintainer: dataset?.maintainer,
-    workspacePermissionKeys,
-    isRbacEnabled,
-  }), [dataset?.maintainer, dataset?.permission_keys, currentUserId, isRbacEnabled, workspacePermissionKeys])
-  const canShowOperations = datasetACLCapabilities.canEdit
-    || datasetACLCapabilities.canImportExportDSL
-    || datasetACLCapabilities.canAccessConfig
-    || datasetACLCapabilities.canDelete
+  const datasetACLCapabilities = React.useMemo(
+    () =>
+      getDatasetACLCapabilities(dataset?.permission_keys, {
+        currentUserId,
+        resourceMaintainer: dataset?.maintainer,
+        workspacePermissionKeys,
+        isRbacEnabled,
+      }),
+    [
+      dataset?.maintainer,
+      dataset?.permission_keys,
+      currentUserId,
+      isRbacEnabled,
+      workspacePermissionKeys,
+    ],
+  )
+  const canShowOperations =
+    datasetACLCapabilities.canEdit ||
+    datasetACLCapabilities.canImportExportDSL ||
+    datasetACLCapabilities.canAccessConfig ||
+    datasetACLCapabilities.canDelete
 
   const invalidDatasetList = useInvalidDatasetList()
   const invalidDatasetDetail = useInvalid([...datasetDetailQueryKeyPrefix, dataset.id])
@@ -103,32 +112,36 @@ const DropDown = ({
 
   const { mutateAsync: exportPipelineConfig } = useExportPipelineDSL()
 
-  const handleExportPipeline = useCallback(async (include = false) => {
-    const { pipeline_id, name } = dataset
-    if (!pipeline_id)
-      return
-    setOpen(false)
-    try {
-      const { data } = await exportPipelineConfig({
-        pipelineId: pipeline_id,
-        include,
-      })
-      const file = new Blob([data], { type: 'application/yaml' })
-      downloadBlob({ data: file, fileName: `${name}.pipeline` })
-    }
-    catch {
-      toast.error(t($ => $.exportFailed, { ns: 'app' }))
-    }
-  }, [dataset, exportPipelineConfig, t])
+  const handleExportPipeline = useCallback(
+    async (include = false) => {
+      const { pipeline_id, name } = dataset
+      if (!pipeline_id) return
+      setOpen(false)
+      try {
+        const { data } = await exportPipelineConfig({
+          pipelineId: pipeline_id,
+          include,
+        })
+        const file = new Blob([data], { type: 'application/yaml' })
+        downloadBlob({ data: file, fileName: `${name}.pipeline` })
+      } catch {
+        toast.error(t(($) => $.exportFailed, { ns: 'app' }))
+      }
+    },
+    [dataset, exportPipelineConfig, t],
+  )
 
   const detectIsUsedByApp = useCallback(async () => {
     setOpen(false)
     try {
       const { is_using: isUsedByApp } = await checkIsUsedInApp(dataset.id)
-      setConfirmMessage(isUsedByApp ? t($ => $.datasetUsedByApp, { ns: 'dataset' })! : t($ => $.deleteDatasetConfirmContent, { ns: 'dataset' })!)
+      setConfirmMessage(
+        isUsedByApp
+          ? t(($) => $.datasetUsedByApp, { ns: 'dataset' })!
+          : t(($) => $.deleteDatasetConfirmContent, { ns: 'dataset' })!,
+      )
       setShowConfirmDelete(true)
-    }
-    catch (e: unknown) {
+    } catch (e: unknown) {
       toast.error(await getErrorMessage(e))
     }
   }, [dataset.id, t])
@@ -141,31 +154,29 @@ const DropDown = ({
   const onConfirmDelete = useCallback(async () => {
     try {
       await deleteDataset(dataset.id)
-      toast(t($ => $.datasetDeleted, { ns: 'dataset' }), { type: 'success' })
+      toast(
+        t(($) => $.datasetDeleted, { ns: 'dataset' }),
+        { type: 'success' },
+      )
       invalidDatasetList()
       replace('/datasets')
-    }
-    finally {
+    } finally {
       setShowConfirmDelete(false)
     }
   }, [dataset.id, replace, invalidDatasetList, t])
 
-  if (!canShowOperations)
-    return null
+  if (!canShowOperations) return null
 
   return (
-    <DropdownMenu
-      open={open}
-      onOpenChange={setOpen}
-    >
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
-        render={(
+        render={
           <ActionButton
-            aria-label={t($ => $['operation.more'], { ns: 'common' })}
+            aria-label={t(($) => $['operation.more'], { ns: 'common' })}
             size={expand ? 'l' : 'm'}
             className={cn('data-popup-open:bg-state-base-hover', triggerClassName)}
           />
-        )}
+        }
       >
         <span aria-hidden className="i-ri-more-fill size-4" />
       </DropdownMenuTrigger>
@@ -193,11 +204,14 @@ const DropDown = ({
           onSuccess={refreshDataset}
         />
       )}
-      <AlertDialog open={showConfirmDelete} onOpenChange={open => !open && setShowConfirmDelete(false)}>
+      <AlertDialog
+        open={showConfirmDelete}
+        onOpenChange={(open) => !open && setShowConfirmDelete(false)}
+      >
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t($ => $.deleteDatasetConfirmTitle, { ns: 'dataset' })}
+              {t(($) => $.deleteDatasetConfirmTitle, { ns: 'dataset' })}
             </AlertDialogTitle>
             <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
               {confirmMessage}
@@ -205,10 +219,10 @@ const DropDown = ({
           </div>
           <AlertDialogActions>
             <AlertDialogCancelButton>
-              {t($ => $['operation.cancel'], { ns: 'common' })}
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton onClick={onConfirmDelete}>
-              {t($ => $['operation.confirm'], { ns: 'common' })}
+              {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

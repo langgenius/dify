@@ -15,7 +15,13 @@ export type TileConfig = {
   releaseId?: string
 }
 
-export function resolveConfig({ drift, status, hasAnyRelease, latestId, currentReleaseId }: {
+export function resolveConfig({
+  drift,
+  status,
+  hasAnyRelease,
+  latestId,
+  currentReleaseId,
+}: {
   drift: ReturnType<typeof computeDrift>
   status: RuntimeInstanceStatusValue
   hasAnyRelease: boolean
@@ -97,15 +103,15 @@ export function renderActionLabel(
     case 'empty':
     case 'older':
     case 'behind':
-      return t($ => $['overview.cardAction.deployLatest'])
+      return t(($) => $['overview.cardAction.deployLatest'])
     case 'latest':
-      return t($ => $['overview.cardAction.redeploy'])
+      return t(($) => $['overview.cardAction.redeploy'])
     case 'deploying':
-      return t($ => $['overview.cardAction.viewProgress'])
+      return t(($) => $['overview.cardAction.viewProgress'])
     case 'failed':
       return hasCurrentRelease
-        ? t($ => $['overview.cardAction.redeploy'])
-        : t($ => $['overview.cardAction.deployLatest'])
+        ? t(($) => $['overview.cardAction.redeploy'])
+        : t(($) => $['overview.cardAction.deployLatest'])
   }
 }
 
@@ -116,17 +122,19 @@ export function renderStatus(
 ): string {
   switch (kind) {
     case 'empty':
-      return t($ => $['overview.chip.empty'])
+      return t(($) => $['overview.chip.empty'])
     case 'latest':
-      return t($ => $['overview.chip.latest'])
+      return t(($) => $['overview.chip.latest'])
     case 'behind':
-      return t($ => $['overview.chip.behind'], { count: drift.kind === 'behind' ? drift.steps : 0 })
+      return t(($) => $['overview.chip.behind'], {
+        count: drift.kind === 'behind' ? drift.steps : 0,
+      })
     case 'older':
-      return t($ => $['overview.chip.olderRelease'])
+      return t(($) => $['overview.chip.olderRelease'])
     case 'deploying':
-      return t($ => $['overview.chip.deploying'])
+      return t(($) => $['overview.chip.deploying'])
     case 'failed':
-      return t($ => $['overview.chip.failed'])
+      return t(($) => $['overview.chip.failed'])
   }
 }
 
@@ -137,16 +145,18 @@ export function renderDriftTitle(
 ): string {
   switch (kind) {
     case 'latest':
-      return t($ => $['overview.chip.latestTooltip'])
+      return t(($) => $['overview.chip.latestTooltip'])
     case 'behind':
-      return t($ => $['overview.chip.behindTooltip'], { count: drift.kind === 'behind' ? drift.steps : 0 })
+      return t(($) => $['overview.chip.behindTooltip'], {
+        count: drift.kind === 'behind' ? drift.steps : 0,
+      })
     case 'older':
-      return t($ => $['overview.chip.olderReleaseTooltip'])
+      return t(($) => $['overview.chip.olderReleaseTooltip'])
     case 'empty':
-      return t($ => $['overview.chip.emptyTooltip'])
+      return t(($) => $['overview.chip.emptyTooltip'])
     case 'deploying':
-      return t($ => $['overview.chip.deployingTooltip'])
+      return t(($) => $['overview.chip.deployingTooltip'])
     case 'failed':
-      return t($ => $['overview.chip.failedTooltip'])
+      return t(($) => $['overview.chip.failedTooltip'])
   }
 }

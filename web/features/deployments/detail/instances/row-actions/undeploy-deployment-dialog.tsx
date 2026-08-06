@@ -30,8 +30,7 @@ export function UndeployDeploymentDialog({
   const { t } = useTranslation('deployments')
 
   function handleOpenChange(nextOpen: boolean) {
-    if (isRequesting)
-      return
+    if (isRequesting) return
 
     onOpenChange(nextOpen)
   }
@@ -41,22 +40,18 @@ export function UndeployDeploymentDialog({
       <AlertDialogContent className="w-120">
         <div className="flex flex-col gap-3 px-6 pt-6 pb-2">
           <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-            {t($ => $['deployTab.undeployConfirmTitle'], { name: row.environment.displayName })}
+            {t(($) => $['deployTab.undeployConfirmTitle'], { name: row.environment.displayName })}
           </AlertDialogTitle>
           <AlertDialogDescription className="system-sm-regular text-text-tertiary">
-            {t($ => $['deployTab.undeployConfirmDesc'])}
+            {t(($) => $['deployTab.undeployConfirmDesc'])}
           </AlertDialogDescription>
         </div>
         <AlertDialogActions className="pt-3">
           <AlertDialogCancelButton variant="secondary" disabled={isRequesting}>
-            {t($ => $['deployDrawer.cancel'])}
+            {t(($) => $['deployDrawer.cancel'])}
           </AlertDialogCancelButton>
-          <AlertDialogConfirmButton
-            loading={isRequesting}
-            disabled={disabled}
-            onClick={onConfirm}
-          >
-            {t($ => $['deployTab.confirmUndeploy'])}
+          <AlertDialogConfirmButton loading={isRequesting} disabled={disabled} onClick={onConfirm}>
+            {t(($) => $['deployTab.confirmUndeploy'])}
           </AlertDialogConfirmButton>
         </AlertDialogActions>
       </AlertDialogContent>

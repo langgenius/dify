@@ -10,7 +10,7 @@ from controllers.web import web_ns
 from controllers.web.error import NotCompletionAppError
 from controllers.web.wraps import WebApiResource
 from extensions.ext_database import db
-from fields.conversation_fields import ResultResponse
+from fields.conversation_fields import MessageResponseSource, ResultResponse
 from fields.message_fields import SavedMessageInfiniteScrollPagination, SavedMessageItem
 from models.model import App, EndUser
 from services.errors.message import MessageNotExistsError
@@ -43,11 +43,15 @@ class SavedMessageListApi(WebApiResource):
         raw_args = request.args.to_dict()
         query = SavedMessageListQuery.model_validate(raw_args)
 
+        session = db.session()
         pagination = SavedMessageService.pagination_by_last_id(
-            app_model, end_user, query.last_id, query.limit, session=db.session()
+            app_model, end_user, query.last_id, query.limit, session=session
         )
         adapter = TypeAdapter(SavedMessageItem)
-        items = [adapter.validate_python(message, from_attributes=True) for message in pagination.data]
+        items = [
+            adapter.validate_python(MessageResponseSource(message, session=session), from_attributes=True)
+            for message in pagination.data
+        ]
         return SavedMessageInfiniteScrollPagination(
             limit=pagination.limit, has_more=pagination.has_more, data=items
         ).model_dump(mode="json")

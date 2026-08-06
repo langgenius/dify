@@ -334,7 +334,9 @@ vi.mock('#i18n', () => ({
 
       // Assert
       expect(result.output).toContain(`vi.mock('#i18n', async () => {`)
-      expect(result.output).toContain(`const { withSelectorKey } = await import('@/test/i18n-mock')`)
+      expect(result.output).toContain(
+        `const { withSelectorKey } = await import('@/test/i18n-mock')`,
+      )
       expect(result.output).toContain('t: withSelectorKey((key: string) => key)')
       expect(transformSource(result.output, 'example.spec.ts')).toEqual({
         changes: 0,
@@ -359,7 +361,9 @@ vi.mock('#i18n', () => ({
       const result = transformSource(source, 'example.spec.ts')
 
       // Assert
-      expect(result.output).toContain('t: withSelectorKey((...args: Parameters<typeof mockTranslation>) => mockTranslation(...args))')
+      expect(result.output).toContain(
+        't: withSelectorKey((...args: Parameters<typeof mockTranslation>) => mockTranslation(...args))',
+      )
       expect(transformSource(result.output, 'example.spec.ts')).toEqual({
         changes: 0,
         output: result.output,
@@ -418,14 +422,17 @@ vi.mock('react-i18next', () => ({
 
       // Act
       const result = transformSource(source, 'example.spec.tsx')
-      const diagnostics = ts.transpileModule(result.output, {
-        compilerOptions: { jsx: ts.JsxEmit.ReactJSX },
-        fileName: 'example.spec.tsx',
-        reportDiagnostics: true,
-      }).diagnostics ?? []
+      const diagnostics =
+        ts.transpileModule(result.output, {
+          compilerOptions: { jsx: ts.JsxEmit.ReactJSX },
+          fileName: 'example.spec.tsx',
+          reportDiagnostics: true,
+        }).diagnostics ?? []
 
       // Assert
-      expect(diagnostics.filter(diagnostic => diagnostic.category === ts.DiagnosticCategory.Error)).toEqual([])
+      expect(
+        diagnostics.filter((diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error),
+      ).toEqual([])
       expect(result.output).toContain('{components?.Key}')
       expect(result.output).not.toMatch(/[ \t]+$/m)
       expect(transformSource(result.output, 'example.spec.tsx')).toEqual({

@@ -19,6 +19,15 @@ export const developerApiSettingsQueryAtom = atomWithQuery((get) => {
   })
 })
 
-export const developerApiSettingsAtom = selectAtom(developerApiSettingsQueryAtom, query => query.data)
-export const developerApiSettingsIsLoadingAtom = selectAtom(developerApiSettingsQueryAtom, query => query.isLoading)
-export const developerApiSettingsIsErrorAtom = selectAtom(developerApiSettingsQueryAtom, query => query.isError)
+export const developerApiSettingsAtom = selectAtom(
+  developerApiSettingsQueryAtom,
+  (query) => query.data,
+)
+export const developerApiSettingsIsLoadingAtom = selectAtom(
+  developerApiSettingsQueryAtom,
+  (query) => query.isLoading,
+)
+export const developerApiSettingsIsErrorAtom = selectAtom(
+  developerApiSettingsQueryAtom,
+  (query) => query.isError,
+)

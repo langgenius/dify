@@ -1556,11 +1556,11 @@ export const zGetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdPath = z.ob
 /**
  * External API template retrieved successfully
  */
-export const zGetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse
-  = zExternalKnowledgeApiResponse
+export const zGetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse =
+  zExternalKnowledgeApiResponse
 
-export const zPatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdBody
-  = zExternalKnowledgeApiPayload
+export const zPatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdBody =
+  zExternalKnowledgeApiPayload
 
 export const zPatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdPath = z.object({
   external_knowledge_api_id: z.uuid(),
@@ -1569,8 +1569,8 @@ export const zPatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdPath = z.
 /**
  * External API template updated successfully
  */
-export const zPatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse
-  = zExternalKnowledgeApiResponse
+export const zPatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse =
+  zExternalKnowledgeApiResponse
 
 export const zGetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckPath = z.object({
   external_knowledge_api_id: z.uuid(),
@@ -1579,8 +1579,8 @@ export const zGetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckPat
 /**
  * Usage check completed successfully
  */
-export const zGetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckResponse
-  = zUsageCountResponse
+export const zGetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckResponse =
+  zUsageCountResponse
 
 export const zPostDatasetsIndexingEstimateBody = zIndexingEstimatePayload
 
@@ -1825,8 +1825,8 @@ export const zGetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimatePath = 
 /**
  * Indexing estimate calculated successfully
  */
-export const zGetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateResponse
-  = zIndexingEstimateResponse
+export const zGetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateResponse =
+  zIndexingEstimateResponse
 
 export const zGetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusPath = z.object({
   dataset_id: z.uuid(),
@@ -1836,11 +1836,11 @@ export const zGetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusPath = z.
 /**
  * Indexing status retrieved successfully
  */
-export const zGetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusResponse
-  = zDocumentStatusResponse
+export const zGetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusResponse =
+  zDocumentStatusResponse
 
-export const zPutDatasetsByDatasetIdDocumentsByDocumentIdMetadataBody
-  = zDocumentMetadataUpdatePayload
+export const zPutDatasetsByDatasetIdDocumentsByDocumentIdMetadataBody =
+  zDocumentMetadataUpdatePayload
 
 export const zPutDatasetsByDatasetIdDocumentsByDocumentIdMetadataPath = z.object({
   dataset_id: z.uuid(),
@@ -1850,8 +1850,8 @@ export const zPutDatasetsByDatasetIdDocumentsByDocumentIdMetadataPath = z.object
 /**
  * Document metadata updated successfully
  */
-export const zPutDatasetsByDatasetIdDocumentsByDocumentIdMetadataResponse
-  = zSimpleResultMessageResponse
+export const zPutDatasetsByDatasetIdDocumentsByDocumentIdMetadataResponse =
+  zSimpleResultMessageResponse
 
 export const zGetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncPath = z.object({
   dataset_id: z.uuid(),
@@ -1871,8 +1871,8 @@ export const zGetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogPat
 /**
  * Pipeline execution log retrieved successfully
  */
-export const zGetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogResponse
-  = zDocumentPipelineExecutionLogResponse
+export const zGetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogResponse =
+  zDocumentPipelineExecutionLogResponse
 
 export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPausePath = z.object({
   dataset_id: z.uuid(),
@@ -1903,8 +1903,8 @@ export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionPat
 /**
  * Processing status updated successfully
  */
-export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionResponse
-  = zSimpleResultResponse
+export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionResponse =
+  zSimpleResultResponse
 
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdRenameBody = zDocumentRenamePayload
 
@@ -1943,8 +1943,8 @@ export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionQuery 
 /**
  * Success
  */
-export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionResponse
-  = zSimpleResultResponse
+export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionResponse =
+  zSimpleResultResponse
 
 export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath = z.object({
   dataset_id: z.uuid(),
@@ -1977,8 +1977,8 @@ export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsQuery = z.objec
 /**
  * Segments retrieved successfully
  */
-export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse
-  = zConsoleSegmentListResponse
+export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse =
+  zConsoleSegmentListResponse
 
 export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportPath = z.object({
   dataset_id: z.uuid(),
@@ -1988,11 +1988,11 @@ export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportPath
 /**
  * Batch import status
  */
-export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse
-  = zSegmentBatchImportStatusResponse
+export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse =
+  zSegmentBatchImportStatusResponse
 
-export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportBody
-  = zBatchImportPayload
+export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportBody =
+  zBatchImportPayload
 
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportPath = z.object({
   dataset_id: z.uuid(),
@@ -2002,8 +2002,8 @@ export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportPat
 /**
  * Batch import started
  */
-export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse
-  = zSegmentBatchImportStatusResponse
+export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse =
+  zSegmentBatchImportStatusResponse
 
 export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath = z.object({
   dataset_id: z.uuid(),
@@ -2016,8 +2016,8 @@ export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdP
  */
 export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse = z.void()
 
-export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdBody
-  = zSegmentUpdatePayload
+export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdBody =
+  zSegmentUpdatePayload
 
 export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath = z.object({
   dataset_id: z.uuid(),
@@ -2028,18 +2028,18 @@ export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPa
 /**
  * Segment updated successfully
  */
-export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse
-  = zSegmentDetailResponse
+export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse =
+  zSegmentDetailResponse
 
-export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksPath
-  = z.object({
+export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksPath =
+  z.object({
     dataset_id: z.uuid(),
     document_id: z.uuid(),
     segment_id: z.uuid(),
   })
 
-export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksQuery
-  = z.object({
+export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksQuery =
+  z.object({
     keyword: z.string().optional(),
     limit: z.int().gte(1).lte(100).optional().default(20),
     page: z.int().gte(1).optional().default(1),
@@ -2048,14 +2048,14 @@ export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChil
 /**
  * Child chunks retrieved successfully
  */
-export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse
-  = zChildChunkListResponse
+export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse =
+  zChildChunkListResponse
 
-export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksBody
-  = zChildChunkBatchUpdatePayload
+export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksBody =
+  zChildChunkBatchUpdatePayload
 
-export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksPath
-  = z.object({
+export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksPath =
+  z.object({
     dataset_id: z.uuid(),
     document_id: z.uuid(),
     segment_id: z.uuid(),
@@ -2064,14 +2064,14 @@ export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdCh
 /**
  * Child chunks updated successfully
  */
-export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse
-  = zChildChunkBatchUpdateResponse
+export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse =
+  zChildChunkBatchUpdateResponse
 
-export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksBody
-  = zChildChunkCreatePayload
+export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksBody =
+  zChildChunkCreatePayload
 
-export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksPath
-  = z.object({
+export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksPath =
+  z.object({
     dataset_id: z.uuid(),
     document_id: z.uuid(),
     segment_id: z.uuid(),
@@ -2080,11 +2080,11 @@ export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChi
 /**
  * Child chunk created successfully
  */
-export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse
-  = zChildChunkDetailResponse
+export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse =
+  zChildChunkDetailResponse
 
-export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdPath
-  = z.object({
+export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdPath =
+  z.object({
     child_chunk_id: z.uuid(),
     dataset_id: z.uuid(),
     document_id: z.uuid(),
@@ -2094,14 +2094,14 @@ export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdC
 /**
  * Child chunk deleted successfully
  */
-export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse
-  = z.void()
+export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse =
+  z.void()
 
-export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdBody
-  = zChildChunkUpdatePayload
+export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdBody =
+  zChildChunkUpdatePayload
 
-export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdPath
-  = z.object({
+export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdPath =
+  z.object({
     child_chunk_id: z.uuid(),
     dataset_id: z.uuid(),
     document_id: z.uuid(),
@@ -2111,8 +2111,8 @@ export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdCh
 /**
  * Child chunk updated successfully
  */
-export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse
-  = zChildChunkDetailResponse
+export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse =
+  zChildChunkDetailResponse
 
 export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusPath = z.object({
   dataset_id: z.uuid(),
@@ -2122,8 +2122,8 @@ export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusPath = z.o
 /**
  * Summary status retrieved successfully
  */
-export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusResponse
-  = zDocumentSummaryStatusResponse
+export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusResponse =
+  zDocumentSummaryStatusResponse
 
 export const zGetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncPath = z.object({
   dataset_id: z.uuid(),

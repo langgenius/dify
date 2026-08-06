@@ -1,7 +1,4 @@
-import type {
-  EnvironmentDeployment,
-  Release,
-} from '@dify/contracts/enterprise/types.gen'
+import type { EnvironmentDeployment, Release } from '@dify/contracts/enterprise/types.gen'
 import type { InstanceDetailTabKey } from '../../detail/tabs'
 import { isUndeployedDeploymentRow } from '../../shared/domain/runtime-status'
 
@@ -14,8 +11,7 @@ export function isActiveDeployment(row: EnvironmentDeployment) {
 }
 
 export function isReleaseDeployed(release: Release | undefined, rows: EnvironmentDeployment[]) {
-  if (!release)
-    return false
+  if (!release) return false
 
-  return rows.some(row => row.currentRelease?.id === release.id)
+  return rows.some((row) => row.currentRelease?.id === release.id)
 }

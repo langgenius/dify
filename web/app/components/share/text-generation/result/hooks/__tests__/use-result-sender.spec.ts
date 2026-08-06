@@ -12,6 +12,8 @@ import { useResultSender } from '../use-result-sender'
 const {
   buildResultRequestDataMock,
   createWorkflowStreamHandlersMock,
+  mockTrackEvent,
+  mockWebAppState,
   sendCompletionMessageMock,
   sendWorkflowMessageMock,
   sleepMock,
@@ -19,18 +21,35 @@ const {
 } = vi.hoisted(() => ({
   buildResultRequestDataMock: vi.fn(),
   createWorkflowStreamHandlersMock: vi.fn(),
+  mockTrackEvent: vi.fn(),
+  mockWebAppState: {
+    appInfo: {
+      mode: 'completion',
+    },
+  },
   sendCompletionMessageMock: vi.fn(),
   sendWorkflowMessageMock: vi.fn(),
   sleepMock: vi.fn(),
   validateResultRequestMock: vi.fn(),
 }))
 
+vi.mock('@/app/components/base/amplitude', () => ({
+  trackEvent: mockTrackEvent,
+}))
+
+vi.mock('@/context/web-app-context', () => ({
+  useWebAppStore: (selector: (state: typeof mockWebAppState) => unknown) =>
+    selector(mockWebAppState),
+}))
+
 vi.mock('@/service/share', async () => {
   const actual = await vi.importActual<typeof import('@/service/share')>('@/service/share')
   return {
     ...actual,
-    sendCompletionMessage: (...args: Parameters<typeof actual.sendCompletionMessage>) => sendCompletionMessageMock(...args),
-    sendWorkflowMessage: (...args: Parameters<typeof actual.sendWorkflowMessage>) => sendWorkflowMessageMock(...args),
+    sendCompletionMessage: (...args: Parameters<typeof actual.sendCompletionMessage>) =>
+      sendCompletionMessageMock(...args),
+    sendWorkflowMessage: (...args: Parameters<typeof actual.sendWorkflowMessage>) =>
+      sendWorkflowMessageMock(...args),
   }
 })
 
@@ -64,7 +83,11 @@ type RunStateHarness = {
 type CompletionHandlers = {
   getAbortController: (abortController: AbortController) => void
   onCompleted: () => void
-  onData: (chunk: string, isFirstMessage: boolean, info: { messageId: string, taskId?: string }) => void
+  onData: (
+    chunk: string,
+    isFirstMessage: boolean,
+    info: { messageId: string; taskId?: string },
+  ) => void
   onError: () => void
   onMessageReplace: (messageReplace: { answer: string }) => void
 }
@@ -142,9 +165,7 @@ const createRunStateHarness = (): RunStateHarness => {
 
 const promptConfig: PromptConfig = {
   prompt_template: 'template',
-  prompt_variables: [
-    { key: 'name', name: 'Name', type: 'string', required: true },
-  ],
+  prompt_variables: [{ key: 'name', name: 'Name', type: 'string', required: true }],
 }
 
 const visionConfig: VisionSettings = {
@@ -180,31 +201,35 @@ const renderSender = ({
   const onRunStart = vi.fn()
   const onShowRes = vi.fn()
 
-  const hook = renderHook((props: { controlRetry: number, controlSend: number }) => useResultSender({
-    appId: 'app-1',
-    appSourceType,
-    completionFiles: [],
-    controlRetry: props.controlRetry,
-    controlSend: props.controlSend,
-    inputs,
-    isCallBatchAPI: false,
-    isPC,
-    isWorkflow,
-    notify,
-    onCompleted,
-    onRunStart,
-    onShowRes,
-    promptConfig,
-    runState: runState || createRunStateHarness().runState,
-    t: withSelectorKey((key: string) => key),
-    taskId,
-    visionConfig,
-  }), {
-    initialProps: {
-      controlRetry,
-      controlSend,
+  const hook = renderHook(
+    (props: { controlRetry: number; controlSend: number }) =>
+      useResultSender({
+        appId: 'app-1',
+        appSourceType,
+        completionFiles: [],
+        controlRetry: props.controlRetry,
+        controlSend: props.controlSend,
+        inputs,
+        isCallBatchAPI: false,
+        isPC,
+        isWorkflow,
+        notify,
+        onCompleted,
+        onRunStart,
+        onShowRes,
+        promptConfig,
+        runState: runState || createRunStateHarness().runState,
+        t: withSelectorKey((key: string) => key),
+        taskId,
+        visionConfig,
+      }),
+    {
+      initialProps: {
+        controlRetry,
+        controlSend,
+      },
     },
-  })
+  )
 
   return {
     ...hook,
@@ -218,6 +243,7 @@ const renderSender = ({
 describe('useResultSender', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockWebAppState.appInfo.mode = 'completion'
     validateResultRequestMock.mockReturnValue({ canSend: true })
     buildResultRequestDataMock.mockReturnValue({ inputs: { name: 'Alice' } })
     createWorkflowStreamHandlersMock.mockReturnValue({ onWorkflowFinished: vi.fn() })
@@ -265,6 +291,7 @@ describe('useResultSender', () => {
     })
     expect(buildResultRequestDataMock).not.toHaveBeenCalled()
     expect(sendCompletionMessageMock).not.toHaveBeenCalled()
+    expect(mockTrackEvent).not.toHaveBeenCalled()
   })
 
   it('should send completion requests when controlSend changes and process callbacks', async () => {
@@ -287,16 +314,21 @@ describe('useResultSender', () => {
       controlSend: 1,
     })
 
-    expect(validateResultRequestMock).toHaveBeenCalledWith(expect.objectContaining({
-      inputs: { name: 'Alice' },
-      isCallBatchAPI: false,
-    }))
+    expect(validateResultRequestMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        inputs: { name: 'Alice' },
+        isCallBatchAPI: false,
+      }),
+    )
     expect(buildResultRequestDataMock).toHaveBeenCalled()
     expect(harness.runState.prepareForNewRun).toHaveBeenCalledTimes(1)
     expect(harness.runState.setRespondingTrue).toHaveBeenCalledTimes(1)
     expect(harness.runState.clearMoreLikeThis).toHaveBeenCalledTimes(1)
     expect(onShowRes).toHaveBeenCalledTimes(1)
     expect(onRunStart).toHaveBeenCalledTimes(1)
+    expect(mockTrackEvent).toHaveBeenCalledWith('webapp_run', {
+      app_mode: 'completion',
+    })
     expect(sendCompletionMessageMock).toHaveBeenCalledWith(
       { inputs: { name: 'Alice' } },
       expect.objectContaining({
@@ -336,6 +368,7 @@ describe('useResultSender', () => {
 
   it('should trigger workflow sends on retry and report workflow request failures', async () => {
     const harness = createRunStateHarness()
+    mockWebAppState.appInfo.mode = 'workflow'
     sendWorkflowMessageMock.mockRejectedValue(new Error('workflow failed'))
 
     const { rerender, notify } = renderSender({
@@ -350,12 +383,14 @@ describe('useResultSender', () => {
     })
 
     await waitFor(() => {
-      expect(createWorkflowStreamHandlersMock).toHaveBeenCalledWith(expect.objectContaining({
-        getCompletionRes: harness.runState.getCompletionRes,
-        isPublicAPI: true,
-        resetRunState: harness.runState.resetRunState,
-        setWorkflowProcessData: harness.runState.setWorkflowProcessData,
-      }))
+      expect(createWorkflowStreamHandlersMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          getCompletionRes: harness.runState.getCompletionRes,
+          isPublicAPI: true,
+          resetRunState: harness.runState.resetRunState,
+          setWorkflowProcessData: harness.runState.setWorkflowProcessData,
+        }),
+      )
       expect(sendWorkflowMessageMock).toHaveBeenCalledWith(
         { inputs: { name: 'Alice' } },
         expect.any(Object),
@@ -373,6 +408,9 @@ describe('useResultSender', () => {
       })
     })
     expect(harness.runState.clearMoreLikeThis).not.toHaveBeenCalled()
+    expect(mockTrackEvent).toHaveBeenCalledWith('webapp_run', {
+      app_mode: 'workflow',
+    })
   })
 
   it('should configure workflow handlers for installed apps as non-public', async () => {
@@ -388,15 +426,18 @@ describe('useResultSender', () => {
       expect(await result.current.handleSend()).toBe(true)
     })
 
-    expect(createWorkflowStreamHandlersMock).toHaveBeenCalledWith(expect.objectContaining({
-      isPublicAPI: false,
-    }))
+    expect(createWorkflowStreamHandlersMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        isPublicAPI: false,
+      }),
+    )
     expect(sendWorkflowMessageMock).toHaveBeenCalledWith(
       { inputs: { name: 'Alice' } },
       expect.any(Object),
       AppSourceTypeEnum.installedApp,
       'app-1',
     )
+    expect(mockTrackEvent).not.toHaveBeenCalled()
   })
 
   it('should stringify non-Error workflow failures', async () => {
@@ -484,9 +525,12 @@ describe('useResultSender', () => {
     let resolveSleep!: () => void
     let completionHandlers: CompletionHandlers | undefined
 
-    sleepMock.mockImplementation(() => new Promise<void>((resolve) => {
-      resolveSleep = resolve
-    }))
+    sleepMock.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveSleep = resolve
+        }),
+    )
     sendCompletionMessageMock.mockImplementation(async (_data, handlers) => {
       completionHandlers = handlers as CompletionHandlers
     })

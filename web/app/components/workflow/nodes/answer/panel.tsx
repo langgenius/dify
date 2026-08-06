@@ -9,18 +9,10 @@ import useConfig from './use-config'
 
 const i18nPrefix = 'nodes.answer'
 
-const Panel: FC<NodePanelProps<AnswerNodeType>> = ({
-  id,
-  data,
-}) => {
+const Panel: FC<NodePanelProps<AnswerNodeType>> = ({ id, data }) => {
   const { t } = useTranslation()
 
-  const {
-    readOnly,
-    inputs,
-    handleAnswerChange,
-    filterVar,
-  } = useConfig(id, data)
+  const { readOnly, inputs, handleAnswerChange, filterVar } = useConfig(id, data)
 
   const { availableVars, availableNodesWithParent } = useAvailableVarList(id, {
     onlyLeafNodeVar: false,
@@ -34,7 +26,7 @@ const Panel: FC<NodePanelProps<AnswerNodeType>> = ({
       <Editor
         readOnly={readOnly}
         justVar
-        title={t($ => $[`${i18nPrefix}.answer`], { ns: 'workflow' })!}
+        title={t(($) => $[`${i18nPrefix}.answer`], { ns: 'workflow' })!}
         value={inputs.answer}
         onChange={handleAnswerChange}
         nodesOutputVars={availableVars}

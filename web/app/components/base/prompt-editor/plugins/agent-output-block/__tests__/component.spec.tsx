@@ -1,54 +1,29 @@
 import type { DeclaredOutputConfig } from '@dify/contracts/api/console/apps/types.gen'
-import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { $getNodeByKey } from 'lexical'
 import AgentOutputBlockComponent from '../component'
 
-const { mockEditorFocus, mockEditorUpdate, mockGetRootText, mockSelectNext, mockSetOutput } = vi.hoisted(() => ({
+const {
+  mockEditorFocus,
+  mockEditorUpdate,
+  mockGetRootText,
+  mockSelectNext,
+  mockSetOpenTypeSelectOnEdit,
+  mockSetOutput,
+} = vi.hoisted(() => ({
   mockEditorFocus: vi.fn(),
   mockEditorUpdate: vi.fn((callback: () => void) => callback()),
   mockGetRootText: {
     value: '[§output:summary:summary§]',
   },
   mockSelectNext: vi.fn(),
+  mockSetOpenTypeSelectOnEdit: vi.fn(),
   mockSetOutput: vi.fn(),
 }))
 
 vi.mock('@lexical/react/LexicalComposerContext')
-vi.mock('@langgenius/dify-ui/select', () => ({
-  Select: ({
-    children,
-    onValueChange,
-    open,
-  }: {
-    children: ReactNode
-    onValueChange: (value: string) => void
-    open?: boolean
-  }) => (
-    <div>
-      <span data-testid="type-select-state">{open ? 'open' : 'closed'}</span>
-      {children}
-      <button type="button" onClick={() => onValueChange('file')}>Select file</button>
-    </div>
-  ),
-  SelectContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  SelectItem: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  SelectItemIndicator: () => <span />,
-  SelectItemText: ({ children }: { children: ReactNode }) => <span>{children}</span>,
-  SelectLabel: ({ children }: { children: ReactNode }) => <span>{children}</span>,
-  SelectTrigger: ({
-    children,
-    onClick,
-    onMouseDown,
-    ...props
-  }: ButtonHTMLAttributes<HTMLButtonElement>) => (
-    <button type="button" onClick={onClick} onMouseDown={onMouseDown} {...props}>
-      {children}
-    </button>
-  ),
-}))
 vi.mock('lexical', async (importOriginal) => {
   const actual = await importOriginal<typeof import('lexical')>()
 
@@ -56,15 +31,17 @@ vi.mock('lexical', async (importOriginal) => {
     ...actual,
     $getNodeByKey: vi.fn(),
     $getRoot: vi.fn(() => ({
-      getChildren: () => [{
-        getTextContent: () => mockGetRootText.value,
-      }],
+      getChildren: () => [
+        {
+          getTextContent: () => mockGetRootText.value,
+        },
+      ],
     })),
   }
 })
 
 vi.mock('../node', () => ({
-  $isAgentOutputBlockNode: () => true,
+  $isAgentOutputBlockNode: (node: unknown) => Boolean(node),
 }))
 
 const outputs: DeclaredOutputConfig[] = [
@@ -88,6 +65,7 @@ describe('AgentOutputBlockComponent', () => {
     ] as unknown as ReturnType<typeof useLexicalComposerContext>)
     vi.mocked($getNodeByKey).mockReturnValue({
       selectNext: mockSelectNext,
+      setOpenTypeSelectOnEdit: mockSetOpenTypeSelectOnEdit,
       setOutput: mockSetOutput,
     } as never)
   })
@@ -103,7 +81,9 @@ describe('AgentOutputBlockComponent', () => {
       />,
     )
 
-    const input = screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' }) as HTMLInputElement
+    const input = screen.getByRole('textbox', {
+      name: 'workflow.nodes.agent.outputVars.nameLabel',
+    }) as HTMLInputElement
 
     expect(input).toHaveFocus()
     expect(input.selectionStart).toBe(0)
@@ -122,7 +102,9 @@ describe('AgentOutputBlockComponent', () => {
       />,
     )
 
-    const input = screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' }) as HTMLInputElement
+    const input = screen.getByRole('textbox', {
+      name: 'workflow.nodes.agent.outputVars.nameLabel',
+    }) as HTMLInputElement
 
     expect(input).toHaveFocus()
     expect(input.selectionStart).toBe('summary'.length)
@@ -142,7 +124,9 @@ describe('AgentOutputBlockComponent', () => {
       />,
     )
 
-    expect(screen.getByTestId('type-select-state')).toHaveTextContent('open')
+    expect(
+      screen.getByRole('combobox', { name: 'workflow.nodes.agent.outputVars.typeLabel' }),
+    ).toHaveAttribute('aria-expanded', 'true')
   })
 
   it('does not update the Lexical node while typing an output name and commits on blur', async () => {
@@ -189,13 +173,16 @@ describe('AgentOutputBlockComponent', () => {
     )
     expect(mockSetOutput).toHaveBeenCalledTimes(1)
     expect(mockEditorFocus).not.toHaveBeenCalled()
-    expect(onChange).toHaveBeenCalledWith(expect.arrayContaining([
-      expect.objectContaining({
-        name: 'summary',
-        type: 'string',
-        required: false,
-      }),
-    ]), '[§output:summary:summary§]')
+    expect(onChange).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'summary',
+          type: 'string',
+          required: false,
+        }),
+      ]),
+      '[§output:summary:summary§]',
+    )
   })
 
   it('syncs the output name and moves the editor selection after the output block when committing with Enter', async () => {
@@ -236,12 +223,17 @@ describe('AgentOutputBlockComponent', () => {
       false,
     )
     expect(mockSelectNext).toHaveBeenCalledTimes(1)
-    expect(screen.getByTestId('type-select-state')).toHaveTextContent('closed')
-    expect(onChange).toHaveBeenCalledWith(expect.arrayContaining([
-      expect.objectContaining({
-        name: 'summary',
-      }),
-    ]), 'Generate [§output:summary:summary§]')
+    expect(
+      screen.getByRole('combobox', { name: 'workflow.nodes.agent.outputVars.typeLabel' }),
+    ).toHaveAttribute('aria-expanded', 'false')
+    expect(onChange).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'summary',
+        }),
+      ]),
+      'Generate [§output:summary:summary§]',
+    )
     await waitFor(() => {
       expect(mockEditorFocus).toHaveBeenCalledTimes(1)
     })
@@ -285,15 +277,20 @@ describe('AgentOutputBlockComponent', () => {
       true,
     )
     expect(mockSelectNext).not.toHaveBeenCalled()
-    expect(screen.getByTestId('type-select-state')).toHaveTextContent('open')
+    expect(
+      screen.getByRole('combobox', { name: 'workflow.nodes.agent.outputVars.typeLabel' }),
+    ).toHaveAttribute('aria-expanded', 'true')
     expect(input).not.toHaveFocus()
     expect((input as HTMLInputElement).selectionStart).toBe('summary'.length)
     expect((input as HTMLInputElement).selectionEnd).toBe('summary'.length)
-    expect(onChange).toHaveBeenCalledWith(expect.arrayContaining([
-      expect.objectContaining({
-        name: 'summary',
-      }),
-    ]), 'Generate [§output:summary:summary§]')
+    expect(onChange).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'summary',
+        }),
+      ]),
+      'Generate [§output:summary:summary§]',
+    )
   })
 
   it('commits the input DOM value on Enter even before React state rerenders', () => {
@@ -356,7 +353,8 @@ describe('AgentOutputBlockComponent', () => {
     expect(onChange).not.toHaveBeenCalled()
   })
 
-  it('does not commit the name blur before selecting an output type', () => {
+  it('does not commit the name blur before selecting an output type', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
     mockGetRootText.value = '[§output:summary:summary§]'
 
@@ -372,15 +370,16 @@ describe('AgentOutputBlockComponent', () => {
     )
 
     const input = screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' })
-    const typeTrigger = screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.typeLabel' })
+    const typeTrigger = screen.getByRole('combobox', {
+      name: 'workflow.nodes.agent.outputVars.typeLabel',
+    })
 
     fireEvent.change(input, { target: { value: 'summary' } })
-    fireEvent.mouseDown(typeTrigger)
-    fireEvent.blur(input)
+    await user.click(typeTrigger)
 
     expect(onChange).not.toHaveBeenCalled()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Select file' }))
+    await user.click(await screen.findByRole('option', { name: 'file' }))
 
     expect(mockSetOutput).toHaveBeenCalledWith(
       'summary',
@@ -437,8 +436,12 @@ describe('AgentOutputBlockComponent', () => {
       />,
     )
 
-    expect(screen.queryByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'workflow.nodes.agent.outputVars.typeLabel' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('combobox', { name: 'workflow.nodes.agent.outputVars.typeLabel' }),
+    ).not.toBeInTheDocument()
     expect(screen.getByText('qna_report_pdf')).toBeInTheDocument()
     expect(screen.getByText('file')).toBeInTheDocument()
   })

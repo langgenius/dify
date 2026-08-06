@@ -26,8 +26,7 @@ function bodyCode(raw: string): string | undefined {
       const code = (parsed as Record<string, unknown>).code
       return typeof code === 'string' ? code : undefined
     }
-  }
-  catch {
+  } catch {
     // not JSON
   }
   return undefined
@@ -39,8 +38,7 @@ export async function classifyRateLimit(response: Response): Promise<RateLimitDe
   let raw = ''
   try {
     raw = await response.clone().text()
-  }
-  catch {
+  } catch {
     // ignore read errors; raw stays ''
   }
   const retryable = bodyCode(raw) === 'too_many_requests'
