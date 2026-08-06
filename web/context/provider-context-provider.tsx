@@ -95,9 +95,8 @@ export const ProviderContextProvider = ({ children }: ProviderContextProviderPro
   ] = useState(false)
   const [humanInputEmailDeliveryEnabled, setHumanInputEmailDeliveryEnabled] = useState(false)
 
-  const refreshModelProviders = () => {
+  const refreshModelProviders = () =>
     queryClient.invalidateQueries({ queryKey: ['common', 'model-providers'] })
-  }
 
   const fetchPlan = async () => {
     try {

@@ -213,7 +213,7 @@ class TestRagPipelineImportCheckDependenciesApi:
         api = RagPipelineImportCheckDependenciesApi()
         method = unwrap(api.get)
 
-        pipeline = MagicMock(spec=Pipeline)
+        pipeline = Pipeline(tenant_id="tenant-id", name="Test Pipeline")
         result = CheckDependenciesResult()
 
         service = MagicMock()
@@ -235,7 +235,7 @@ class TestRagPipelineImportCheckDependenciesApi:
         api = RagPipelineImportCheckDependenciesApi()
         method = unwrap(api.get)
 
-        pipeline = MagicMock(spec=Pipeline)
+        pipeline = Pipeline(tenant_id="tenant-id", name="Test Pipeline")
         dependency = PluginDependency(
             type=PluginDependencyType.Marketplace,
             value=PluginDependency.Marketplace(
@@ -276,7 +276,7 @@ class TestRagPipelineExportApi:
         api = RagPipelineExportApi()
         method = unwrap(api.get)
 
-        pipeline = MagicMock(spec=Pipeline)
+        pipeline = Pipeline(tenant_id="tenant-id", name="Test Pipeline")
         service = MagicMock()
         service.export_rag_pipeline_dsl.return_value = "yaml: data"
 

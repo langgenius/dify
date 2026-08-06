@@ -3,6 +3,7 @@
 from unittest.mock import Mock
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.mcp.types import Tool as MCPTool
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
@@ -21,33 +22,55 @@ def mock_user():
 
 
 @pytest.fixture
-def mock_provider(mock_user):
+def mock_provider(mock_user, mocker: MockerFixture):
     """Provides a mock MCPToolProvider with a loaded user."""
-    provider = Mock(spec=MCPToolProvider)
-    provider.load_user.return_value = mock_user
+    provider = MCPToolProvider(
+        name="Test Provider",
+        server_identifier="test-provider",
+        server_url="https://example.com",
+        server_url_hash="hash",
+        icon="icon",
+        tenant_id="tenant-id",
+        user_id="user-id",
+    )
+    mocker.patch.object(provider, "load_user", return_value=mock_user)
     return provider
 
 
 @pytest.fixture
-def mock_provider_no_user():
+def mock_provider_no_user(mocker: MockerFixture):
     """Provides a mock MCPToolProvider with no user."""
-    provider = Mock(spec=MCPToolProvider)
-    provider.load_user.return_value = None
+    provider = MCPToolProvider(
+        name="Test Provider",
+        server_identifier="test-provider",
+        server_url="https://example.com",
+        server_url_hash="hash",
+        icon="icon",
+        tenant_id="tenant-id",
+        user_id="user-id",
+    )
+    mocker.patch.object(provider, "load_user", return_value=None)
     return provider
 
 
 @pytest.fixture
-def mock_provider_full(mock_user):
+def mock_provider_full(mock_user, mocker: MockerFixture):
     """Provides a fully configured mock MCPToolProvider for detailed tests."""
-    provider = Mock(spec=MCPToolProvider)
+    provider = MCPToolProvider(
+        name="Test MCP Provider",
+        server_identifier="server-identifier-456",
+        server_url="https://example.com",
+        server_url_hash="hash",
+        icon="icon",
+        tenant_id="tenant-id",
+        user_id="user-id",
+        authed=True,
+        timeout=30,
+        sse_read_timeout=300,
+    )
     provider.id = "provider-id-123"
-    provider.server_identifier = "server-identifier-456"
-    provider.name = "Test MCP Provider"
     provider.provider_icon = "icon.png"
-    provider.authed = True
     provider.masked_server_url = "https://*****.com/mcp"
-    provider.timeout = 30
-    provider.sse_read_timeout = 300
     provider.masked_headers = {"Authorization": "Bearer *****"}
     provider.decrypted_headers = {"Authorization": "Bearer secret-token"}
 
@@ -56,7 +79,7 @@ def mock_provider_full(mock_user):
     mock_updated_at.timestamp.return_value = 1234567890
     provider.updated_at = mock_updated_at
 
-    provider.load_user.return_value = mock_user
+    mocker.patch.object(provider, "load_user", return_value=mock_user)
     return provider
 
 
@@ -306,7 +329,7 @@ class TestMCPToolTransform:
         assert result[0].type == ToolParameter.ToolParameterType.STRING
         assert result[0].input_schema is None
 
-    def test_mcp_provider_to_user_provider_for_list(self, mock_provider_full):
+    def test_mcp_provider_to_user_provider_for_list(self, mock_provider_full, mocker: MockerFixture):
         """Test mcp_provider_to_user_provider with for_list=True."""
         # Set tools data with null description
         mock_provider_full.tools = '[{"name": "tool1", "description": null, "inputSchema": {}}]'
@@ -328,7 +351,7 @@ class TestMCPToolTransform:
             "label": I18nObject(en_US="Test MCP Provider", zh_Hans="Test MCP Provider"),
             "masked_credentials": {},
         }
-        mock_provider_full.to_entity.return_value = mock_entity
+        mocker.patch.object(mock_provider_full, "to_entity", return_value=mock_entity)
 
         # Call the method with for_list=True
         result = ToolTransformService.mcp_provider_to_user_provider(mock_provider_full, for_list=True)
@@ -343,7 +366,7 @@ class TestMCPToolTransform:
         assert len(result.tools) == 1
         assert result.tools[0].description.en_US == ""  # Should handle None description
 
-    def test_mcp_provider_to_user_provider_not_for_list(self, mock_provider_full):
+    def test_mcp_provider_to_user_provider_not_for_list(self, mock_provider_full, mocker: MockerFixture):
         """Test mcp_provider_to_user_provider with for_list=False."""
         # Set tools data with description
         mock_provider_full.tools = '[{"name": "tool1", "description": "Tool description", "inputSchema": {}}]'
@@ -367,7 +390,7 @@ class TestMCPToolTransform:
             "label": I18nObject(en_US="Test MCP Provider", zh_Hans="Test MCP Provider"),
             "masked_credentials": {},
         }
-        mock_provider_full.to_entity.return_value = mock_entity
+        mocker.patch.object(mock_provider_full, "to_entity", return_value=mock_entity)
 
         # Call the method with for_list=False
         result = ToolTransformService.mcp_provider_to_user_provider(mock_provider_full, for_list=False)

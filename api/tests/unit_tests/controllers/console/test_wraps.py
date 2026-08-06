@@ -735,6 +735,17 @@ class TestBillingResourceLimits:
                     result = upload_document()
                     assert result == "document_uploaded"
 
+        # Test 3: Form source must enforce the same quota as query source
+        with app.test_request_context("/", method="POST", data={"source": "datasets"}):
+            with patch(
+                "controllers.console.wraps.current_account_with_tenant",
+                return_value=(MockUser("test_user"), "tenant123"),
+            ):
+                with patch("controllers.console.wraps.FeatureService.get_features", return_value=mock_features):
+                    with pytest.raises(HTTPException) as exc_info:
+                        upload_document()
+                    assert exc_info.value.code == 403
+
 
 class TestRateLimiting:
     """Test rate limiting decorator"""
