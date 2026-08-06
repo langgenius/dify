@@ -94,7 +94,9 @@ class Storage:
             case _:
                 raise ValueError(f"unsupported storage type {storage_type}")
 
-    def save(self, filename: str, data: bytes):
+    def save(self, filename: str, data: bytes, *, content_type: str | None = None) -> None:
+        if content_type is not None:
+            raise NotImplementedError("This storage backend doesn't support explicit content types")
         self.storage_runner.save(filename, data)
 
     @overload
@@ -154,6 +156,14 @@ class PublicStorage(Storage):
         super().__init__(storage_type)
         self.policy_config = policy_config
         self.enabled = False
+
+    @override
+    def save(self, filename: str, data: bytes, *, content_type: str | None = None) -> None:
+        from extensions.storage.aws_s3_storage import AwsS3Storage
+
+        if not isinstance(self.storage_runner, AwsS3Storage):
+            raise RuntimeError("Public storage must use the S3 storage backend")
+        self.storage_runner.save(filename, data, content_type=content_type)
 
     @override
     def init_app(self, app: Flask):

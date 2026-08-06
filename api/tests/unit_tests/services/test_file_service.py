@@ -174,7 +174,7 @@ class TestFileService:
             result = file_service.upload_file(
                 filename="icon.png",
                 content=b"test",
-                mimetype="image/png",
+                mimetype="text/html",
                 user=user,
                 purpose=UploadFilePurpose.ICON,
             )
@@ -182,8 +182,19 @@ class TestFileService:
         assert result.purpose == UploadFilePurpose.ICON
         assert result.storage_type == StorageType.S3
         assert result.key.startswith("public/upload_files/tenant-id/")
-        public_storage.save.assert_called_once_with(result.key, b"test")
+        assert result.mime_type == "image/png"
+        public_storage.save.assert_called_once_with(result.key, b"test", content_type="image/png")
         private_storage.save.assert_not_called()
+
+    def test_upload_file_rejects_unsupported_icon_extension(self, file_service: FileService):
+        with pytest.raises(UnsupportedFileTypeError):
+            file_service.upload_file(
+                filename="icon.svg",
+                content=b"<svg></svg>",
+                mimetype="image/svg+xml",
+                user=MagicMock(spec=Account),
+                purpose=UploadFilePurpose.ICON,
+            )
 
     def test_resolve_upload_file_storage(self):
         with (

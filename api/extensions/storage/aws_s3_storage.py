@@ -76,8 +76,11 @@ class AwsS3Storage(BaseStorage):
                 raise
 
     @override
-    def save(self, filename, data):
-        self.client.put_object(Bucket=self.bucket_name, Key=filename, Body=data)
+    def save(self, filename: str, data: bytes, *, content_type: str | None = None) -> None:
+        params = {"Bucket": self.bucket_name, "Key": filename, "Body": data}
+        if content_type is not None:
+            params["ContentType"] = content_type
+        self.client.put_object(**params)
 
     @override
     def load_once(self, filename: str) -> bytes:

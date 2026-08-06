@@ -36,6 +36,13 @@ from .errors.file import BlockedFileExtensionError, FileTooLargeError, Unsupport
 
 PREVIEW_WORDS_LIMIT = 3000
 PRIVATE_UPLOAD_FILE_KEY_PREFIX = "upload_files/"
+ICON_MIME_TYPES = {
+    "gif": "image/gif",
+    "jpeg": "image/jpeg",
+    "jpg": "image/jpeg",
+    "png": "image/png",
+    "webp": "image/webp",
+}
 
 
 def resolve_upload_file_storage(
@@ -108,6 +115,12 @@ class FileService:
         if source == "datasets" and extension not in DOCUMENT_EXTENSIONS:
             raise UnsupportedFileTypeError()
 
+        if purpose == UploadFilePurpose.ICON:
+            try:
+                mimetype = ICON_MIME_TYPES[extension]
+            except KeyError:
+                raise UnsupportedFileTypeError() from None
+
         # get file size
         file_size = len(content)
 
@@ -129,7 +142,10 @@ class FileService:
         upload_storage = upload_policy.require_storage() if upload_policy is not None else storage
         key_prefix = upload_policy.key_prefix if upload_policy is not None else PRIVATE_UPLOAD_FILE_KEY_PREFIX
         file_key = key_prefix + (resource_tenant_id or "") + "/" + file_uuid + "." + extension
-        upload_storage.save(file_key, content)
+        if upload_policy is None:
+            upload_storage.save(file_key, content)
+        else:
+            upload_storage.save(file_key, content, content_type=mimetype)
 
         # save file to db
         upload_file = UploadFile(

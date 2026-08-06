@@ -1,12 +1,12 @@
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
 
 from configs import dify_config
 from configs.extra.public_storage_config import PublicStoragePolicyConfig
-from extensions.ext_storage import PublicStorageRegistry
-from extensions.storage.aws_s3_storage import AwsS3StorageSettings
+from extensions.ext_storage import PublicStorage, PublicStorageRegistry
+from extensions.storage.aws_s3_storage import AwsS3Storage, AwsS3StorageSettings
 from extensions.storage.storage_type import StorageType
 
 
@@ -15,6 +15,17 @@ def _policies(
     bucket: str | None = "public-files",
 ) -> dict[str, dict[StorageType, PublicStoragePolicyConfig]]:
     return {"ICON": {StorageType.S3: PublicStoragePolicyConfig(bucket=bucket)}}
+
+
+def test_public_storage_forwards_content_type_to_s3() -> None:
+    storage_runner = AwsS3Storage.__new__(AwsS3Storage)
+    storage_runner.save = MagicMock()
+    public_storage = PublicStorage.__new__(PublicStorage)
+    public_storage.storage_runner = storage_runner
+
+    public_storage.save("public/icon.png", b"image", content_type="image/png")
+
+    storage_runner.save.assert_called_once_with("public/icon.png", b"image", content_type="image/png")
 
 
 def test_public_storage_registry_stays_disabled_without_initializing_backend() -> None:

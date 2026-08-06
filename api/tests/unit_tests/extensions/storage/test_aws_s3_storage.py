@@ -51,3 +51,18 @@ def test_generate_presigned_url() -> None:
         },
         ExpiresIn=300,
     )
+
+
+def test_save_sets_content_type_when_provided() -> None:
+    storage = AwsS3Storage.__new__(AwsS3Storage)
+    storage.bucket_name = "test-bucket"
+    storage.client = MagicMock()
+
+    storage.save("public/icon.png", b"image", content_type="image/png")
+
+    storage.client.put_object.assert_called_once_with(
+        Bucket="test-bucket",
+        Key="public/icon.png",
+        Body=b"image",
+        ContentType="image/png",
+    )
