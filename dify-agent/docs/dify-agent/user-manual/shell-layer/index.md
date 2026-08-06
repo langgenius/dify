@@ -80,16 +80,40 @@ DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN=replace-with-shellctl-token
 The auth token may be empty when shellctl authentication is disabled. E2B uses
 `DIFY_AGENT_E2B_API_KEY`, the prepared template, and its shellctl settings.
 
-To let shell jobs call the Agent Stub with `dify-agent ...`, configure a public
-Agent Stub URL and a unique production secret:
+To let shell jobs call the Agent Stub with `dify-agent ...`, configure a
+Sandbox-reachable Agent Stub URL and a unique production secret. Remote
+deployments normally use a public Agent ingress. Local Compose uses
+`http://agent_backend:5050/agent-stub`, reached through the existing
+`agent_ssrf_proxy`; this configuration does not change the Compose network
+topology.
 
 ```env
 DIFY_AGENT_STUB_API_BASE_URL=https://agent.example.com/agent-stub
+DIFY_AGENT_SANDBOX_FILES_BASE_URL=https://dify.example.com
 DIFY_AGENT_SERVER_SECRET_KEY=replace-with-unpadded-base64url-for-32-random-bytes
 ```
 
 HTTP URLs may be either the service root or the explicit `/agent-stub` root.
-The server normalizes a service root and rejects unrelated paths.
+The server normalizes a service root and rejects unrelated paths. The separate
+Sandbox file base must point to the Dify API ingress serving `/files/*`; it is
+used for CLI upload/download bytes even when Agent Stub control calls use gRPC.
+
+After `dify-agent file upload <path>` succeeds, the CLI prints JSON such as:
+
+```json
+{
+  "transfer_method": "tool_file",
+  "reference": "dify-file-ref:...",
+  "public_download_url": "https://dify.example.com/files/tools/..."
+}
+```
+
+`reference` is the persistent canonical file identity and should be stored in
+structured output. `public_download_url` is a short-lived frontend presentation
+address: it is an absolute URL when Dify API `FILES_URL` has a public origin,
+or a same-origin `/files/...` relative URI when `FILES_URL` is empty. The CLI
+does not access this field. The former ambiguous `download_url` upload-output
+key is now named `public_download_url`.
 
 ## Request graph
 

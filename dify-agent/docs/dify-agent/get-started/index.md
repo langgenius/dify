@@ -99,7 +99,8 @@ the request's product context;
 `DifyRuntimeLayerConfig.backend_binding_ref` carries only that opaque ref and
 opens a new operation-scoped `RuntimeLease` for the run. When shell jobs need to
 call back with the `dify-agent` command, also set
-`DIFY_AGENT_STUB_API_BASE_URL`. The supplied default configs include a
+`DIFY_AGENT_STUB_API_BASE_URL` and the Sandbox-reachable Dify API base
+`DIFY_AGENT_SANDBOX_FILES_BASE_URL`. The supplied default configs include a
 development `DIFY_AGENT_SERVER_SECRET_KEY`, but production deployments should
 override it with a unique 32-byte base64url value as documented in
 `.example.env`.

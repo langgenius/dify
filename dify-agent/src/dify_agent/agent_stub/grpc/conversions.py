@@ -101,7 +101,7 @@ def file_download_request_from_proto(message: agent_stub_pb2.FileDownloadRequest
     return AgentStubFileDownloadRequest.model_validate(
         {
             "file": file_mapping_kwargs,
-            "for_external": message.for_external if message.HasField("for_external") else True,
+            "for_frontend": message.for_frontend if message.HasField("for_frontend") else True,
         }
     )
 
@@ -110,7 +110,7 @@ def proto_file_download_request(
     pb2_module,
     *,
     file: AgentStubFileMapping,
-    for_external: bool = True,
+    for_frontend: bool = True,
 ) -> agent_stub_pb2.FileDownloadRequest:
     """Build one protobuf file-download request from the public DTO."""
     mapping = pb2_module.FileMapping(transfer_method=file.transfer_method)
@@ -119,7 +119,7 @@ def proto_file_download_request(
     if file.url is not None:
         mapping.url = file.url
     request = pb2_module.FileDownloadRequest(file=mapping)
-    request.for_external = for_external
+    request.for_frontend = for_frontend
     return request
 
 

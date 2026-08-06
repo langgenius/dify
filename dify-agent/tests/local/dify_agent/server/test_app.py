@@ -192,6 +192,7 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         plugin_daemon_api_key="daemon-secret",
         inner_api_url="http://dify-api",
         inner_api_key="inner-secret",
+        sandbox_files_base_url="http://api:5001",
         local_sandbox_endpoint="http://shellctl",
         local_sandbox_auth_token="shell-secret",
         agent_stub_api_base_url="https://agent.example.com/agent-stub",
@@ -230,7 +231,9 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         assert execution_context_layer.daemon_api_key == "daemon-secret"
         assert shell_layer.agent_stub_token_factory is not None
         token = shell_layer.agent_stub_token_factory(_execution_context(), session_id="abc12ff")
-        decoded = settings.create_agent_stub_token_codec().decode_token(token)
+        token_codec = settings.create_agent_stub_token_codec()
+        assert token_codec is not None
+        decoded = token_codec.decode_token(token)
         assert decoded.execution_context == _execution_context()
         assert decoded.session_id == "abc12ff"
         knowledge_provider = next(provider for provider in layer_providers if provider.type_id == "dify.knowledge_base")
@@ -318,6 +321,7 @@ def test_create_app_wires_authenticated_agent_stub_file_upload_route(monkeypatch
         server_secret_key=_base64url_secret(b"1" * 32),
         inner_api_url="https://api.example.com",
         inner_api_key="inner-secret",
+        sandbox_files_base_url="https://files.example.com",
     )
     token_codec = settings.create_agent_stub_token_codec()
     assert token_codec is not None
@@ -326,9 +330,9 @@ def test_create_app_wires_authenticated_agent_stub_file_upload_route(monkeypatch
     original_async_client = httpx.AsyncClient
 
     def handler(request: httpx.Request) -> httpx.Response:
-        assert str(request.url) == "https://api.example.com/inner/api/upload/file/request"
+        assert str(request.url) == "https://api.example.com/inner/api/agent/files/upload-request"
         assert request.headers["X-Inner-Api-Key"] == "inner-secret"
-        return httpx.Response(200, json={"data": {"url": "https://files.example.com/upload"}})
+        return httpx.Response(200, json={"upload_uri": "/files/upload/for-plugin?sign=1"})
 
     monkeypatch.setattr(
         "dify_agent.agent_stub.server.agent_stub_files.httpx.AsyncClient",
@@ -343,7 +347,7 @@ def test_create_app_wires_authenticated_agent_stub_file_upload_route(monkeypatch
         )
 
     assert response.status_code == 200
-    assert response.json() == {"upload_url": "https://files.example.com/upload"}
+    assert response.json() == {"upload_url": "https://files.example.com/files/upload/for-plugin?sign=1"}
     assert FakeRunScheduler.created[0].shutdown_called is True
     assert fake_http_client.is_closed is True
     assert fake_redis.closed is True
@@ -357,6 +361,7 @@ def test_create_app_wires_authenticated_agent_stub_drive_manifest_route(monkeypa
         server_secret_key=_base64url_secret(b"1" * 32),
         inner_api_url="https://api.example.com",
         inner_api_key="inner-secret",
+        sandbox_files_base_url="https://files.example.com",
     )
     token_codec = settings.create_agent_stub_token_codec()
     assert token_codec is not None

@@ -60,14 +60,6 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: mockToast,
 }))
 
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children, onClick, ...props }: Record<string, unknown>) => (
-    <button onClick={onClick as () => void} {...props}>
-      {children as string}
-    </button>
-  ),
-}))
-
 vi.mock('../screenshot', () => ({
   default: () => <div data-testid="screenshot" />,
 }))

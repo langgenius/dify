@@ -48,36 +48,28 @@ vi.mock('@/service/use-triggers', () => ({
 }))
 
 vi.mock('@/utils', () => ({
+  asyncRunSafe: async <T,>(promise: Promise<T>) => {
+    try {
+      return [null, await promise]
+    } catch (error) {
+      return [error]
+    }
+  },
   canFindTool: () => false,
 }))
+
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: ['app.create_and_management'],
+  }))
+})
 
 vi.mock('@/app/components/workflow/block-icon', () => ({
   default: ({ type }: { type: string }) => (
     <div data-testid="block-icon" data-type={type}>
       BlockIcon
     </div>
-  ),
-}))
-
-vi.mock('@langgenius/dify-ui/switch', () => ({
-  Switch: ({
-    checked,
-    onCheckedChange,
-    disabled,
-  }: {
-    checked: boolean
-    onCheckedChange: (v: boolean) => void
-    disabled: boolean
-  }) => (
-    <button
-      data-testid="switch"
-      data-checked={checked ? 'true' : 'false'}
-      data-disabled={disabled ? 'true' : 'false'}
-      disabled={disabled}
-      onClick={() => !disabled && onCheckedChange(!checked)}
-    >
-      Switch
-    </button>
   ),
 }))
 
@@ -210,7 +202,7 @@ describe('TriggerCard', () => {
     it('should render switches for each trigger', () => {
       render(<TriggerCard appInfo={mockAppInfo} onToggleResult={mockOnToggleResult} />)
 
-      const switches = screen.getAllByTestId('switch')
+      const switches = screen.getAllByRole('switch')
       expect(switches.length).toBe(2)
     })
   })
@@ -231,7 +223,7 @@ describe('TriggerCard', () => {
     it('should call updateTriggerStatus when toggle is clicked', async () => {
       render(<TriggerCard appInfo={mockAppInfo} onToggleResult={mockOnToggleResult} />)
 
-      const switchBtn = screen.getByTestId('switch')
+      const switchBtn = screen.getByRole('switch')
       fireEvent.click(switchBtn)
 
       await waitFor(() => {
@@ -246,7 +238,7 @@ describe('TriggerCard', () => {
     it('should update trigger status in store optimistically', async () => {
       render(<TriggerCard appInfo={mockAppInfo} onToggleResult={mockOnToggleResult} />)
 
-      const switchBtn = screen.getByTestId('switch')
+      const switchBtn = screen.getByRole('switch')
       fireEvent.click(switchBtn)
 
       await waitFor(() => {
@@ -257,7 +249,7 @@ describe('TriggerCard', () => {
     it('should invalidate app triggers after successful update', async () => {
       render(<TriggerCard appInfo={mockAppInfo} onToggleResult={mockOnToggleResult} />)
 
-      const switchBtn = screen.getByTestId('switch')
+      const switchBtn = screen.getByRole('switch')
       fireEvent.click(switchBtn)
 
       await waitFor(() => {
@@ -268,7 +260,7 @@ describe('TriggerCard', () => {
     it('should call onToggleResult with null on success', async () => {
       render(<TriggerCard appInfo={mockAppInfo} onToggleResult={mockOnToggleResult} />)
 
-      const switchBtn = screen.getByTestId('switch')
+      const switchBtn = screen.getByRole('switch')
       fireEvent.click(switchBtn)
 
       await waitFor(() => {
@@ -282,7 +274,7 @@ describe('TriggerCard', () => {
 
       render(<TriggerCard appInfo={mockAppInfo} onToggleResult={mockOnToggleResult} />)
 
-      const switchBtn = screen.getByTestId('switch')
+      const switchBtn = screen.getByRole('switch')
       fireEvent.click(switchBtn)
 
       await waitFor(() => {
@@ -360,7 +352,7 @@ describe('TriggerCard', () => {
 
       render(<TriggerCard appInfo={mockAppInfo} onToggleResult={mockOnToggleResult} />)
 
-      const switchBtn = screen.getByTestId('switch')
+      const switchBtn = screen.getByRole('switch')
       expect(switchBtn).toBeInTheDocument()
     })
 
@@ -383,8 +375,8 @@ describe('TriggerCard', () => {
         <TriggerCard appInfo={appInfoWithoutEditPermission} onToggleResult={mockOnToggleResult} />,
       )
 
-      const switchBtn = screen.getByTestId('switch')
-      expect(switchBtn).toHaveAttribute('data-disabled', 'true')
+      const switchBtn = screen.getByRole('switch')
+      expect(switchBtn).toHaveAttribute('aria-disabled', 'true')
 
       fireEvent.click(switchBtn)
 

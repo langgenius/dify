@@ -68,13 +68,8 @@ const Actions = ({
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </Button>
         </Link>
-        <Button
-          disabled={disabled}
-          variant="primary"
-          onClick={handleNextStep}
-          className="gap-x-0.5"
-        >
-          <span className="px-0.5">{t(($) => $['stepOne.button'], { ns: 'datasetCreation' })}</span>
+        <Button disabled={disabled} variant="primary" onClick={handleNextStep}>
+          <span>{t(($) => $['stepOne.button'], { ns: 'datasetCreation' })}</span>
           <RiArrowRightLine className="size-4" />
         </Button>
       </div>

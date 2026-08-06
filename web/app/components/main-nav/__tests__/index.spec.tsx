@@ -715,22 +715,6 @@ describe('MainNav', () => {
     expect(accountButton).not.toHaveClass('justify-center', 'p-1')
   })
 
-  it('renders the desktop environment tag from the old header contract', () => {
-    mockConsoleState.current = {
-      ...consoleState,
-      langGeniusVersionInfo: {
-        ...consoleState.langGeniusVersionInfo,
-        current_env: 'TESTING',
-      },
-    }
-
-    renderMainNav()
-
-    const environmentTag = screen.getByText('common.environment.testing')
-    expect(environmentTag).toBeInTheDocument()
-    expect(environmentTag.closest('.relative.z-30')).toHaveClass('mt-auto', 'shrink-0')
-  })
-
   it('does not reserve environment tag space when the environment is not shown', () => {
     const { container } = renderMainNav()
 
@@ -977,7 +961,12 @@ describe('MainNav', () => {
 
     renderMainNav({ enable_learn_app: true })
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
+    const helpTrigger = screen.getByRole('button', { name: 'common.mainNav.help.openMenu' })
+    expect(helpTrigger).not.toHaveAttribute('data-popup-open')
+
+    fireEvent.click(helpTrigger)
+
+    expect(helpTrigger).toHaveAttribute('data-popup-open', '')
     const learnDifyItem = await screen.findByRole('menuitemcheckbox', {
       name: 'common.mainNav.help.learnDify',
     })
@@ -988,6 +977,7 @@ describe('MainNav', () => {
     await waitFor(() => {
       expect(localStorage.getItem(LEARN_DIFY_HIDDEN_STORAGE_KEY)).toBe('false')
     })
+    expect(screen.getByRole('menu')).toBeInTheDocument()
     expect(mockPush).not.toHaveBeenCalled()
   })
 
@@ -1031,7 +1021,7 @@ describe('MainNav', () => {
     ).toHaveAttribute('aria-checked', 'false')
   })
 
-  it('lets existing accounts enable Step-by-step Tour from the help menu', async () => {
+  it('closes the help menu and opens Step-by-step Tour when enabling it', async () => {
     const user = userEvent.setup()
     localStorage.setItem(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY, 'collapsed')
     mockStepByStepTour.setState({
@@ -1057,6 +1047,10 @@ describe('MainNav', () => {
       expect(localStorage.getItem(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY)).toBe('expanded')
     })
     expect(mockTrackEvent).toHaveBeenCalledWith('step_tour', { action: 'tour_enabled' })
+    await waitFor(() => {
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    })
+    expect(await screen.findByRole('dialog', { name: 'Get to know Dify' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
     expect(
@@ -1330,15 +1324,14 @@ describe('MainNav', () => {
     ).toHaveAttribute('href', '/installed/installed-2')
   })
 
-  it('renders web app skeleton rows while installed apps are loading', () => {
+  it('hides the installed web apps section while installed apps are loading', () => {
     mockInstalledAppsPending = true
 
     renderMainNav()
 
-    expect(screen.getByRole('region', { name: 'explore.sidebar.webApps' })).toHaveAttribute(
-      'aria-busy',
-      'true',
-    )
+    expect(
+      screen.queryByRole('region', { name: 'explore.sidebar.webApps' }),
+    ).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'explore.sidebar.webApps' }),
     ).not.toBeInTheDocument()

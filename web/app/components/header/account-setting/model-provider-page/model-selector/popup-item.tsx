@@ -225,7 +225,7 @@ function PopupItem({
           )
           const itemRender =
             modelItem.status === ModelStatusEnum.noConfigure ? (
-              <div className={rowClassName} aria-disabled="true" onPointerDown={onPreviewCardClose}>
+              <div className={rowClassName} onPointerDown={onPreviewCardClose}>
                 {rowContent}
                 {canCreateCredential && (
                   <button

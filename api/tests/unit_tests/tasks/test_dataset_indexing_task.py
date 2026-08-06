@@ -192,31 +192,33 @@ def mock_db_session():
 
 @pytest.fixture
 def mock_dataset(dataset_id, tenant_id):
-    """Create a mock Dataset object."""
-    dataset = Mock(spec=Dataset)
-    dataset.id = dataset_id
-    dataset.tenant_id = tenant_id
-    dataset.indexing_technique = IndexTechniqueType.HIGH_QUALITY
-    dataset.embedding_model_provider = "openai"
-    dataset.embedding_model = "text-embedding-ada-002"
+    """Create a Dataset model object."""
+    dataset = Dataset(
+        id=dataset_id,
+        tenant_id=tenant_id,
+        indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+        embedding_model_provider="openai",
+        embedding_model="text-embedding-ada-002",
+    )
     return dataset
 
 
 @pytest.fixture
 def mock_documents(document_ids, dataset_id):
-    """Create mock Document objects."""
+    """Create Document model objects."""
     documents = []
     for doc_id in document_ids:
-        doc = Mock(spec=Document)
-        doc.id = doc_id
-        doc.dataset_id = dataset_id
-        doc.indexing_status = "waiting"
-        doc.error = None
-        doc.stopped_at = None
-        doc.processing_started_at = None
-        # optional attribute used in some code paths
-        doc.doc_form = IndexStructureType.PARAGRAPH_INDEX
-        documents.append(doc)
+        documents.append(
+            Document(
+                id=doc_id,
+                dataset_id=dataset_id,
+                indexing_status="waiting",
+                error=None,
+                stopped_at=None,
+                processing_started_at=None,
+                doc_form=IndexStructureType.PARAGRAPH_INDEX,
+            )
+        )
     return documents
 
 
@@ -398,7 +400,7 @@ class TestBatchProcessing:
         # Arrange - Create actual document objects that can be modified
         mock_documents = []
         for doc_id in document_ids:
-            doc = MagicMock(spec=Document)
+            doc = Document()
             doc.id = doc_id
             doc.dataset_id = dataset_id
             doc.indexing_status = "waiting"
@@ -441,7 +443,7 @@ class TestBatchProcessing:
 
         mock_documents = []
         for doc_id in document_ids:
-            doc = MagicMock(spec=Document)
+            doc = Document()
             doc.id = doc_id
             doc.dataset_id = dataset_id
             doc.indexing_status = "waiting"
@@ -481,7 +483,7 @@ class TestBatchProcessing:
 
         mock_documents = []
         for doc_id in document_ids:
-            doc = MagicMock(spec=Document)
+            doc = Document()
             doc.id = doc_id
             doc.dataset_id = dataset_id
             doc.indexing_status = "waiting"
@@ -550,7 +552,7 @@ class TestProgressTracking:
         # Arrange - Create actual document objects
         mock_documents = []
         for doc_id in document_ids:
-            doc = MagicMock(spec=Document)
+            doc = Document()
             doc.id = doc_id
             doc.dataset_id = dataset_id
             doc.indexing_status = "waiting"
@@ -586,7 +588,7 @@ class TestProgressTracking:
         # Arrange - Create actual document objects
         mock_documents = []
         for doc_id in document_ids:
-            doc = MagicMock(spec=Document)
+            doc = Document()
             doc.id = doc_id
             doc.dataset_id = dataset_id
             doc.indexing_status = "waiting"
@@ -684,7 +686,7 @@ class TestErrorHandling:
         # Arrange - Create actual document objects
         mock_documents = []
         for doc_id in document_ids:
-            doc = MagicMock(spec=Document)
+            doc = Document()
             doc.id = doc_id
             doc.dataset_id = dataset_id
             doc.indexing_status = "waiting"
@@ -918,7 +920,7 @@ class TestAdvancedScenarios:
         # The new code uses .all() which will only return existing documents
         mock_documents = []
         for i, doc_id in enumerate([document_ids[0], document_ids[2]]):  # Skip middle one
-            doc = MagicMock(spec=Document)
+            doc = Document()
             doc.id = doc_id
             doc.dataset_id = dataset_id
             doc.indexing_status = "waiting"
@@ -1014,7 +1016,7 @@ class TestAdvancedScenarios:
         # Arrange
         mock_documents = []
         for doc_id in document_ids:
-            doc = MagicMock(spec=Document)
+            doc = Document()
             doc.id = doc_id
             doc.dataset_id = dataset_id
             doc.indexing_status = "waiting"
@@ -1153,7 +1155,7 @@ class TestAdvancedScenarios:
 
         mock_documents = []
         for doc_id in large_batch_ids:
-            doc = MagicMock(spec=Document)
+            doc = Document()
             doc.id = doc_id
             doc.dataset_id = dataset_id
             doc.indexing_status = "waiting"
@@ -1195,7 +1197,7 @@ class TestIntegration:
         # Arrange - Create actual document objects
         mock_documents = []
         for doc_id in document_ids:
-            doc = MagicMock(spec=Document)
+            doc = Document()
             doc.id = doc_id
             doc.dataset_id = dataset_id
             doc.indexing_status = "waiting"
@@ -1233,7 +1235,7 @@ class TestIntegration:
         # Arrange - Create actual document objects
         mock_documents = []
         for doc_id in document_ids:
-            doc = MagicMock(spec=Document)
+            doc = Document()
             doc.id = doc_id
             doc.dataset_id = dataset_id
             doc.indexing_status = "waiting"
@@ -1374,7 +1376,7 @@ class TestPerformanceScenarios:
 
         mock_documents = []
         for doc_id in document_ids:
-            doc = MagicMock(spec=Document)
+            doc = Document()
             doc.id = doc_id
             doc.dataset_id = dataset_id
             doc.indexing_status = "waiting"

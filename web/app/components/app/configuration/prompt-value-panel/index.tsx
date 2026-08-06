@@ -293,7 +293,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                       onClick={() => onSend?.()}
                       className="w-24"
                     >
-                      <RiPlayLargeFill className="mr-0.5 size-4 shrink-0" aria-hidden="true" />
+                      <RiPlayLargeFill className="size-4 shrink-0" aria-hidden="true" />
                       {t(($) => $['inputs.run'], { ns: 'appDebug' })}
                     </Button>
                   }
@@ -310,7 +310,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                 onClick={() => onSend?.()}
                 className="w-24"
               >
-                <RiPlayLargeFill className="mr-0.5 size-4 shrink-0" aria-hidden="true" />
+                <RiPlayLargeFill className="size-4 shrink-0" aria-hidden="true" />
                 {t(($) => $['inputs.run'], { ns: 'appDebug' })}
               </Button>
             )}

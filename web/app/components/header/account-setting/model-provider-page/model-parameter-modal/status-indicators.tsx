@@ -2,6 +2,7 @@ import type { SelectorParam } from 'i18next'
 import type { ReactNode } from 'react'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RiErrorWarningFill } from '@remixicon/react'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { SwitchPluginVersion } from '@/app/components/workflow/nodes/_base/components/switch-plugin-version'
 import Link from '@/next/link'
 import { useInstalledPluginList } from '@/service/use-plugins'
@@ -53,7 +54,9 @@ const StatusIndicators = ({
   pluginInfo,
   t,
 }: StatusIndicatorsProps) => {
-  const { data: pluginList } = useInstalledPluginList()
+  const { data: pluginList } = useInstalledPluginList(false, 100, {
+    category: PluginCategoryEnum.model,
+  })
   const renderTooltipContent = (
     title: string,
     description?: string,

@@ -24,7 +24,7 @@ export function AgentLogNav({ agentOrToolLogItemStack, onShowAgentOrToolLog }: A
           onShowAgentOrToolLog()
         }}
       >
-        <span aria-hidden className="mr-1 i-ri-arrow-left-line size-3.5" />
+        <span aria-hidden className="i-ri-arrow-left-line size-3.5" />
         AGENT
       </Button>
       <div className="mx-0.5 shrink-0 system-xs-regular text-divider-deep">/</div>
