@@ -12,7 +12,7 @@ This test suite covers:
 import base64
 import secrets
 from datetime import UTC, datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -335,34 +335,41 @@ class TestTenantRelationshipIntegrity:
         # Assert
         assert tenant_id_none is None
 
-    def test_set_current_tenant_with_session_uses_caller_session(self):
+    def test_set_current_tenant_with_session_uses_caller_session(self, sqlite_session: Session):
         account = Account(name="Test User", email="test@example.com")
         account.id = str(uuid4())
         tenant = Tenant(name="Test Tenant")
         tenant.id = str(uuid4())
-        join = MagicMock(role=TenantAccountRole.OWNER)
-        session = MagicMock(spec=Session)
-        session.scalar.return_value = join
-        session.scalars.return_value.one.return_value = tenant
+        join = TenantAccountJoin(
+            tenant_id=tenant.id,
+            account_id=account.id,
+            role=TenantAccountRole.OWNER,
+        )
+        sqlite_session.add_all([account, tenant, join])
+        sqlite_session.commit()
 
         with patch("models.account.Session") as session_class:
-            account.set_current_tenant_with_session(tenant, session=session)
+            account.set_current_tenant_with_session(tenant, session=sqlite_session)
 
         session_class.assert_not_called()
         assert account.current_tenant is tenant
         assert account.role == TenantAccountRole.OWNER
 
-    def test_set_tenant_id_with_session_uses_caller_session(self):
+    def test_set_tenant_id_with_session_uses_caller_session(self, sqlite_session: Session):
         account = Account(name="Test User", email="test@example.com")
         account.id = str(uuid4())
         tenant = Tenant(name="Test Tenant")
         tenant.id = str(uuid4())
-        join = MagicMock(role=TenantAccountRole.ADMIN)
-        session = MagicMock(spec=Session)
-        session.execute.return_value.first.return_value = (tenant, join)
+        join = TenantAccountJoin(
+            tenant_id=tenant.id,
+            account_id=account.id,
+            role=TenantAccountRole.ADMIN,
+        )
+        sqlite_session.add_all([account, tenant, join])
+        sqlite_session.commit()
 
         with patch("models.account.Session") as session_class:
-            account.set_tenant_id_with_session(tenant.id, session=session)
+            account.set_tenant_id_with_session(tenant.id, session=sqlite_session)
 
         session_class.assert_not_called()
         assert account.current_tenant is tenant

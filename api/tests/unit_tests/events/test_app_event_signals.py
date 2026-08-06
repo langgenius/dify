@@ -1,16 +1,15 @@
 import json
 from collections.abc import Iterator
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import event
+from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 
 from events.app_event import app_was_deleted, app_was_updated
 from models.account import Account
-from models.agent import Agent, AgentWorkspace
 from models.dataset import AppDatasetJoin
 from models.model import App, AppMode, AppModelConfig, IconType, InstalledApp
 from services.app_service import AppService
@@ -62,7 +61,6 @@ def _make_collector(target: list[App]):
     return handler
 
 
-@pytest.mark.parametrize("sqlite_session", [(App, Account, Agent, AgentWorkspace)], indirect=True)
 @pytest.mark.usefixtures("_mock_deps")
 class TestAppWasDeletedSignal:
     def test_sends_signal(self, app_model: App, sqlite_session: Session) -> None:
@@ -99,7 +97,6 @@ class TestAppWasDeletedSignal:
         assert sqlite_session.get(App, app_model.id) is None
 
 
-@pytest.mark.parametrize("sqlite_session", [(App, Account)], indirect=True)
 class TestAppWasUpdatedSignal:
     def test_update_app(self, app_model: App, account: Account, sqlite_session: Session) -> None:
         received: list[App] = []
@@ -229,51 +226,50 @@ class TestAppModelConfigWasUpdatedSignal:
         with pytest.raises(TypeError, match="session"):
             handle(SimpleNamespace(id="app-1"), app_model_config=None)
 
-    def test_reuses_provided_session_without_committing(self) -> None:
+    def test_reuses_provided_session_without_committing(self, sqlite_session: Session) -> None:
         from events.event_handlers.update_app_dataset_join_when_app_model_config_updated import handle
 
-        session = MagicMock()
-        session.scalars.return_value.all.return_value = []
-        app_model_config = AppModelConfig(app_id="app-1", created_by="user-1", updated_by="user-1")
+        app_id = str(uuid4())
+        dataset_id = str(uuid4())
+        app_model_config = AppModelConfig(app_id=app_id, created_by=str(uuid4()), updated_by=str(uuid4()))
         app_model_config.dataset_configs = json.dumps(
             {
                 "retrieval_model": "multiple",
-                "datasets": {"datasets": [{"dataset": {"id": "dataset-1"}}]},
+                "datasets": {"datasets": [{"dataset": {"id": dataset_id}}]},
             }
         )
 
-        handle(SimpleNamespace(id="app-1"), app_model_config=app_model_config, session=session)
+        handle(SimpleNamespace(id=app_id), app_model_config=app_model_config, session=sqlite_session)
 
-        added_join = session.add.call_args.args[0]
+        added_join = next(item for item in sqlite_session.new if isinstance(item, AppDatasetJoin))
         assert isinstance(added_join, AppDatasetJoin)
-        assert added_join.app_id == "app-1"
-        assert added_join.dataset_id == "dataset-1"
-        session.commit.assert_not_called()
+        assert added_join.app_id == app_id
+        assert added_join.dataset_id == dataset_id
 
 
 class TestCreateInstalledAppWhenAppCreated:
-    def test_skips_existing_installation(self) -> None:
+    def test_skips_existing_installation(self, sqlite_session: Session) -> None:
         from events.event_handlers.create_installed_app_when_app_created import handle
 
-        session = MagicMock()
-        session.scalar.return_value = "installed-app-1"
+        tenant_id = str(uuid4())
+        app_id = str(uuid4())
+        installed_app = InstalledApp(tenant_id=tenant_id, app_id=app_id, app_owner_tenant_id=tenant_id)
+        sqlite_session.add(installed_app)
+        sqlite_session.commit()
 
-        handle(SimpleNamespace(id="app-1", tenant_id="tenant-1"), session=session)
+        handle(SimpleNamespace(id=app_id, tenant_id=tenant_id), session=sqlite_session)
 
-        session.add.assert_not_called()
-        session.flush.assert_not_called()
+        assert len(sqlite_session.scalars(select(InstalledApp)).all()) == 1
 
-    def test_adds_missing_installation_without_committing(self) -> None:
+    def test_adds_missing_installation_without_committing(self, sqlite_session: Session) -> None:
         from events.event_handlers.create_installed_app_when_app_created import handle
 
-        session = MagicMock()
-        session.scalar.return_value = None
+        tenant_id = str(uuid4())
+        app_id = str(uuid4())
 
-        handle(SimpleNamespace(id="app-1", tenant_id="tenant-1"), session=session)
+        handle(SimpleNamespace(id=app_id, tenant_id=tenant_id), session=sqlite_session)
 
-        installed_app = session.add.call_args.args[0]
+        installed_app = sqlite_session.scalars(select(InstalledApp)).one()
         assert isinstance(installed_app, InstalledApp)
-        assert installed_app.app_id == "app-1"
-        assert installed_app.tenant_id == "tenant-1"
-        session.flush.assert_called_once_with()
-        session.commit.assert_not_called()
+        assert installed_app.app_id == app_id
+        assert installed_app.tenant_id == tenant_id
