@@ -16,8 +16,9 @@ import {
   useRestoreWorkflow,
 } from '@/service/use-workflow'
 import { FlowType } from '@/types/common'
-import { useWorkflowRefreshDraft, useWorkflowRun } from '../hooks'
 import { useHooksStore } from '../hooks-store'
+import { useWorkflowRefreshDraft } from '../hooks/use-workflow-refresh-draft'
+import { useWorkflowRun } from '../hooks/use-workflow-run'
 import { useStore, useWorkflowStore } from '../store'
 import { WorkflowVersion } from '../types'
 import RestoringTitle from './restoring-title'
@@ -165,8 +166,8 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
           disabled={!canRestore}
           variant="primary"
           className={cn(
-            'rounded-lg border border-transparent',
-            theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-xs',
+            'rounded-lg inset-ring-1 inset-ring-transparent',
+            theme === 'dark' && 'bg-white/10 inset-ring-black/5 backdrop-blur-xs',
           )}
         >
           {t(($) => $['common.restore'], { ns: 'workflow' })}
@@ -174,8 +175,8 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
         <Button
           onClick={handleCancelRestore}
           className={cn(
-            'rounded-lg border border-transparent text-components-button-secondary-accent-text',
-            theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-xs',
+            'rounded-lg text-components-button-secondary-accent-text inset-ring-1 inset-ring-transparent',
+            theme === 'dark' && 'bg-white/10 inset-ring-black/5 backdrop-blur-xs',
           )}
         >
           <div className="flex items-center gap-x-0.5">

@@ -61,9 +61,7 @@ const ChunkDetailModal = ({ payload, onHide }: ChunkDetailModalProps) => {
       <DialogContent
         className={cn(
           'max-h-[calc(100dvh-2rem)] overflow-y-auto! border-none p-6 text-left align-middle',
-          isParentChildRetrieval
-            ? 'w-[1200px] max-w-none! min-w-[1200px]!'
-            : 'w-[800px] max-w-none! min-w-[800px]!',
+          isParentChildRetrieval ? 'w-300 max-w-none! min-w-300!' : 'w-200 max-w-none! min-w-200!',
         )}
       >
         <DialogCloseButton
@@ -108,7 +106,7 @@ const ChunkDetailModal = ({ payload, onHide }: ChunkDetailModalProps) => {
               {answer && (
                 <div className="break-all">
                   <div className="flex gap-x-1">
-                    <div className="w-4 shrink-0 text-[13px] leading-[20px] font-medium text-text-tertiary">
+                    <div className="w-4 shrink-0 text-[13px] leading-5 font-medium text-text-tertiary">
                       Q
                     </div>
                     <div className={cn('line-clamp-20 body-md-regular text-text-secondary')}>
@@ -116,7 +114,7 @@ const ChunkDetailModal = ({ payload, onHide }: ChunkDetailModalProps) => {
                     </div>
                   </div>
                   <div className="flex gap-x-1">
-                    <div className="w-4 shrink-0 text-[13px] leading-[20px] font-medium text-text-tertiary">
+                    <div className="w-4 shrink-0 text-[13px] leading-5 font-medium text-text-tertiary">
                       A
                     </div>
                     <div className={cn('line-clamp-20 body-md-regular text-text-secondary')}>

@@ -675,11 +675,23 @@ export const useInstalledPluginList = (
 export const useInvalidateInstalledPluginList = () => {
   const queryClient = useQueryClient()
   const invalidateAllBuiltInTools = useInvalidateAllBuiltInTools()
-  return () => {
-    queryClient.invalidateQueries({
-      queryKey: useInstalledPluginListKey,
-    })
-    invalidateAllBuiltInTools()
+  return (category?: PluginCategoryEnum) => {
+    if (category) {
+      const invalidateCategoryPluginList = queryClient.invalidateQueries({
+        queryKey: [...useInstalledPluginListKey, category],
+        exact: true,
+      })
+
+      if (category === PluginCategoryEnum.tool)
+        return Promise.all([invalidateCategoryPluginList, invalidateAllBuiltInTools()])
+
+      return invalidateCategoryPluginList
+    }
+
+    return Promise.all([
+      queryClient.invalidateQueries({ queryKey: useInstalledPluginListKey }),
+      invalidateAllBuiltInTools(),
+    ])
   }
 }
 
@@ -919,7 +931,7 @@ export const useInstallOrUpdate = ({
             }
             if (isInstalled) {
               if (item.type === 'package') {
-                await uninstallPlugin(installedPayload.installedId)
+                await uninstallPlugin(installedPayload.installedId, { preserveCredentials: true })
                 const response = await post<InstallPackageResponse>(
                   '/workspaces/current/plugin/install/pkg',
                   {
@@ -1286,7 +1298,7 @@ export const useFetchPluginsInMarketPlaceByInfo = (infos: MarketplacePluginInfoR
   })
 }
 
-export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
+export const usePluginTaskList = (category?: PluginCategoryEnum) => {
   const initializedRef = useRef(false)
   const queryClient = useQueryClient()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)

@@ -69,9 +69,19 @@ describe('getDataSourceCheckParams', () => {
     ])
   })
 
-  it('should mark an unauthorized datasource as not authed', () => {
+  it('should not require authorization for a local file datasource', () => {
     const result = getDataSourceCheckParams(
       createDataSourceData(),
+      [createDataSourceCollection()],
+      'en_US',
+    )
+
+    expect(result.notAuthed).toBe(false)
+  })
+
+  it('should mark an unauthorized online datasource as not authed', () => {
+    const result = getDataSourceCheckParams(
+      createDataSourceData({ provider_type: 'online_document' }),
       [createDataSourceCollection()],
       'en_US',
     )
@@ -81,7 +91,7 @@ describe('getDataSourceCheckParams', () => {
 
   it('should mark as authed when is_authorized is true', () => {
     const result = getDataSourceCheckParams(
-      createDataSourceData(),
+      createDataSourceData({ provider_type: 'online_document' }),
       [createDataSourceCollection({ is_authorized: true })],
       'en_US',
     )

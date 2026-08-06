@@ -28,7 +28,6 @@ import {
   useDefaultModel,
   useTextGenerationCurrentProviderAndModelAndModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { IS_CE_EDITION } from '@/config'
 import {
   agentSoulConfigToFormState,
   formStateToAgentSoulConfig,
@@ -68,7 +67,6 @@ import {
 import { useAgentConfigureSessionController } from '@/features/agent-v2/agent-detail/configure/use-agent-configure-session-controller'
 import { useCanManageAgents } from '@/features/agent-v2/permissions'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { LicenseStatus } from '@/features/system-features/constants'
 import { consoleQuery } from '@/service/client'
 import { FlowType } from '@/types/common'
 import { useWorkflowInlineAgentConfigureSync } from '../agent-soul-config'
@@ -132,10 +130,8 @@ export function WorkflowRosterAgentOrchestratePanelContent(
     <AgentComposerProvider
       key={composerSessionKey}
       initialDraft={agentSoulConfigToFormState(initialAgentSoulConfig)}
-      initialOriginalConfig={initialAgentSoulConfig}
     >
       <WorkflowRosterAgentOrchestratePanelContentInner
-        activeConfigSnapshot={activeConfigSnapshot}
         agentId={agentId}
         agentSoulConfig={initialAgentSoulConfig}
         composerState={composerState}
@@ -145,12 +141,10 @@ export function WorkflowRosterAgentOrchestratePanelContent(
 }
 
 function WorkflowRosterAgentOrchestratePanelContentInner({
-  activeConfigSnapshot,
   agentId,
   agentSoulConfig,
   composerState,
 }: {
-  activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
   agentId: string
   agentSoulConfig: AgentSoulConfig
   composerState?: {
@@ -165,7 +159,6 @@ function WorkflowRosterAgentOrchestratePanelContentInner({
   return (
     <AgentOrchestratePanel
       agentId={agentId}
-      activeConfigSnapshot={activeConfigSnapshot}
       agentSoulConfig={agentSoulConfig}
       agentName={composerState?.agent?.name}
       currentModel={currentModel}
@@ -270,11 +263,9 @@ function WorkflowInlineAgentConfigureWorkspaceComposerScope({
       <AgentComposerProvider
         key={composerSessionKey}
         initialDraft={agentSoulConfigToFormState(buildDraft.agentSoulConfig)}
-        initialOriginalConfig={buildDraft.agentSoulConfig}
       >
         <WorkflowInlineAgentConfigureWorkspaceContent
           {...props}
-          activeConfigSnapshot={activeConfigSnapshot}
           agentId={agentId}
           agentSoulConfig={agentSoulConfig}
           buildDraft={buildDraft}
@@ -285,7 +276,6 @@ function WorkflowInlineAgentConfigureWorkspaceComposerScope({
 }
 
 function WorkflowInlineAgentConfigureWorkspaceContent({
-  activeConfigSnapshot,
   agentId,
   agentSoulConfig,
   buildDraft,
@@ -298,7 +288,6 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   onSaveInlineToRoster,
   open,
 }: Omit<WorkflowInlineAgentConfigureWorkspaceProps, 'agentId'> & {
-  activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
   agentId: string
   agentSoulConfig: AgentSoulConfig
   buildDraft: ReturnType<typeof useAgentConfigureBuildDraftData>
@@ -314,21 +303,18 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   const [completedBuildConversationId, setCompletedBuildConversationId] = useState<string | null>(
     null,
   )
-  const [workflowRunId, setWorkflowRunId] = useState<string | null>(null)
   const rightPanelChatControllerRef = useRef<AgentPreviewChatController>(null)
   const appId = flowType === FlowType.appFlow ? flowId : undefined
   const conversationIds = useAtomValue(agentConfigureConversationIdsAtom)
   const [rightPanelMode, setRightPanelMode] = useAtom(agentConfigureRightPanelModeAtom)
-  const previewEnabled =
-    !IS_CE_EDITION ||
-    systemFeatures?.license.status === LicenseStatus.ACTIVE ||
-    systemFeatures?.license.status === LicenseStatus.EXPIRING
+  const previewEnabled = systemFeatures?.deployment_edition !== 'COMMUNITY'
   const workingDirectoryPanel = useAgentWorkingDirectoryPanel({
+    type: 'agent',
     agentId,
-    appId,
-    conversationId: conversationIds[rightPanelMode],
-    nodeId,
-    workflowRunId,
+    caller: {
+      type: 'build_draft',
+      id: buildDraft.id,
+    },
   })
   const resetConversation = useSetAtom(resetAgentConfigureConversationAtom)
   const setConversationId = useSetAtom(setAgentConfigureConversationIdAtom)
@@ -336,7 +322,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   const { currentModel, setConfigureModel, textGenerationModelList } =
     useAgentOrchestrateModelOptions()
   const [isApplyingInlineBuildDraft, setIsApplyingInlineBuildDraft] = useState(false)
-  const { draftSavedAt, saveAgentSoulConfig, saveDraft } = useWorkflowInlineAgentConfigureSync({
+  const { saveAgentSoulConfig, saveDraft } = useWorkflowInlineAgentConfigureSync({
     nodeId,
     baseConfig: agentSoulConfig,
     currentModel,
@@ -460,14 +446,12 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     await refreshDebugConversationAsync().catch(() => undefined)
     setCompletedBuildConversationId(null)
     setConversationId({ mode: 'build', conversationId: null })
-    setWorkflowRunId(null)
     setClearPreviewChat(true)
-  }, [refreshDebugConversationAsync, setClearPreviewChat, setConversationId, setWorkflowRunId])
+  }, [refreshDebugConversationAsync, setClearPreviewChat, setConversationId])
   const rebaseComposerDraftFromSoulConfig = useCallback(
     (agentSoulConfig?: AgentSoulConfig) => {
       rebaseComposerDraft({
         draft: agentSoulConfigToFormState(agentSoulConfig),
-        originalConfig: agentSoulConfig,
       })
     },
     [rebaseComposerDraft],
@@ -670,7 +654,8 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     (conversationIds.build === completedBuildConversationId ||
       (conversationIds.build === inlineComposerState?.debug_conversation_id &&
         (inlineComposerState?.debug_conversation_has_messages ?? false)))
-  const showWorkingDirectoryAction = rightPanelMode === 'build' && buildConversationHasAgentResponse
+  const showWorkingDirectoryAction =
+    rightPanelMode === 'build' && !!buildDraft.id && buildConversationHasAgentResponse
   const restartCurrentChat = () => {
     if (isRestartCurrentChatDisabled) return
 
@@ -693,12 +678,10 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
           agentId={agentId}
           appId={appId}
           nodeId={nodeId}
-          activeConfigSnapshot={activeConfigSnapshot}
           agentSoulConfig={buildDraft.agentSoulConfig}
           agentName={composerState?.agent?.name}
           currentModel={currentModel}
           textGenerationModelList={textGenerationModelList}
-          draftSavedAt={draftSavedAt}
           readOnly={buildDraft.isActive}
           isBuildDraftActive={buildDraft.isActive}
           buildDraftChangedKeys={buildDraft.changedKeys}
@@ -777,18 +760,13 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
               conversationIds={conversationIds}
               mode={rightPanelMode}
               onClearChatListChange={setClearPreviewChat}
-              onConversationComplete={(mode, completedConversationId, completedWorkflowRunId) => {
+              onConversationComplete={(mode, completedConversationId) => {
                 if (mode !== 'build' || !isBuildCallbackCurrent(buildCallbackGeneration)) return
 
                 setCompletedBuildConversationId(completedConversationId)
-                setWorkflowRunId(completedWorkflowRunId ?? completedConversationId)
                 invalidateAgentWorkingDirectoryFiles({
-                  agentId,
-                  appId,
                   conversationId: completedConversationId,
-                  nodeId,
                   queryClient,
-                  workflowRunId: completedWorkflowRunId ?? completedConversationId,
                 })
                 buildDraftActions.refreshBuildDraftAfterBuildChat(() =>
                   finishBuildAction(buildCallbackGeneration),
@@ -798,14 +776,9 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
                 if (mode === 'build' && !isBuildCallbackCurrent(buildCallbackGeneration)) return
                 setConversationId({ mode, conversationId })
               }}
-              onWorkflowRunIdChange={(nextWorkflowRunId) => {
-                if (!isBuildCallbackCurrent(buildCallbackGeneration)) return
-                if (nextWorkflowRunId) setWorkflowRunId(nextWorkflowRunId)
-              }}
               onSaveDraftBeforeRun={
                 rightPanelMode === 'build'
                   ? () => {
-                      setWorkflowRunId(null)
                       return runBuildPreparation({
                         generation: buildCallbackGeneration,
                         markBuildChatStarted: true,

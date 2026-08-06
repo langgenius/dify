@@ -3,23 +3,55 @@ from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import PropertyMock, patch
 
+import pytest
 from flask import Flask
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+from werkzeug.exceptions import NotFound
 
 from controllers.console import console_ns
-from controllers.console.app.mcp_server import AppMCPServerController, AppMCPServerResponse
+from controllers.console.app.mcp_server import (
+    AppMCPServerController,
+    AppMCPServerRefreshController,
+    AppMCPServerResponse,
+)
+from controllers.console.wraps import RBACPermission, RBACResourceScope
+from models.enums import AppMCPServerStatus
+from models.model import AppMCPServer
 
 
 class _ValidatedResponse:
-    def __init__(self, payload):
+    def __init__(self, payload: dict[str, str]) -> None:
         self._payload = payload
 
-    def model_dump(self, mode="json"):
+    def model_dump(self, mode: str = "json") -> dict[str, str]:
         return self._payload
 
 
+def _server(
+    *,
+    tenant_id: str = "tenant-1",
+    app_id: str = "app-1",
+    name: str = "Demo App",
+    description: str = "Description",
+    parameters: str = "{}",
+    status: AppMCPServerStatus = AppMCPServerStatus.ACTIVE,
+    server_code: str = "server-code",
+) -> AppMCPServer:
+    return AppMCPServer(
+        tenant_id=tenant_id,
+        app_id=app_id,
+        name=name,
+        description=description,
+        parameters=parameters,
+        status=status,
+        server_code=server_code,
+    )
+
+
 class TestAppMCPServerResponse:
-    def test_parameters_json_string_parsed(self):
-        data = {
+    def test_parameters_json_string_parsed(self) -> None:
+        data: dict[str, object] = {
             "id": "s1",
             "name": "test",
             "server_code": "code",
@@ -30,8 +62,8 @@ class TestAppMCPServerResponse:
         resp = AppMCPServerResponse.model_validate(data)
         assert resp.parameters == {"key": "value"}
 
-    def test_parameters_invalid_json_returns_original(self):
-        data = {
+    def test_parameters_invalid_json_returns_original(self) -> None:
+        data: dict[str, object] = {
             "id": "s1",
             "name": "test",
             "server_code": "code",
@@ -42,8 +74,8 @@ class TestAppMCPServerResponse:
         resp = AppMCPServerResponse.model_validate(data)
         assert resp.parameters == "not-valid-json"
 
-    def test_parameters_dict_passthrough(self):
-        data = {
+    def test_parameters_dict_passthrough(self) -> None:
+        data: dict[str, object] = {
             "id": "s1",
             "name": "test",
             "server_code": "code",
@@ -54,8 +86,8 @@ class TestAppMCPServerResponse:
         resp = AppMCPServerResponse.model_validate(data)
         assert resp.parameters == {"already": "parsed"}
 
-    def test_parameters_json_array_parsed(self):
-        data = {
+    def test_parameters_json_array_parsed(self) -> None:
+        data: dict[str, object] = {
             "id": "s1",
             "name": "test",
             "server_code": "code",
@@ -66,9 +98,9 @@ class TestAppMCPServerResponse:
         resp = AppMCPServerResponse.model_validate(data)
         assert resp.parameters == ["a", "b"]
 
-    def test_timestamps_normalized(self):
+    def test_timestamps_normalized(self) -> None:
         dt = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.UTC)
-        data = {
+        data: dict[str, object] = {
             "id": "s1",
             "name": "test",
             "server_code": "code",
@@ -82,8 +114,8 @@ class TestAppMCPServerResponse:
         assert resp.created_at == int(dt.timestamp())
         assert resp.updated_at == int(dt.timestamp())
 
-    def test_timestamps_none(self):
-        data = {
+    def test_timestamps_none(self) -> None:
+        data: dict[str, object] = {
             "id": "s1",
             "name": "test",
             "server_code": "code",
@@ -97,16 +129,18 @@ class TestAppMCPServerResponse:
 
 
 class TestAppMCPServerController:
-    def test_get_returns_empty_dict_when_server_missing(self):
+    @pytest.mark.parametrize("sqlite_session", [(AppMCPServer,)], indirect=True)
+    def test_get_returns_empty_dict_when_server_missing(self, sqlite_session: Session) -> None:
         api = AppMCPServerController()
         method = unwrap(api.get)
 
-        with patch("controllers.console.app.mcp_server.db.session.scalar", return_value=None):
+        with patch("controllers.console.app.mcp_server.db.session", sqlite_session):
             response = method(api, app_model=SimpleNamespace(id="app-1"))
 
         assert response == {}
 
-    def test_post_returns_201(self):
+    @pytest.mark.parametrize("sqlite_session", [(AppMCPServer,)], indirect=True)
+    def test_post_returns_201(self, sqlite_session: Session) -> None:
         api = AppMCPServerController()
         method = unwrap(api.post)
         payload = {"parameters": {"timeout": 30}}
@@ -116,47 +150,35 @@ class TestAppMCPServerController:
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
-            patch("controllers.console.app.mcp_server.db.session.add"),
-            patch("controllers.console.app.mcp_server.db.session.commit"),
+            patch("controllers.console.app.mcp_server.db.session", sqlite_session),
             patch("controllers.console.app.mcp_server.AppMCPServer.generate_server_code", return_value="server-code"),
-            patch(
-                "controllers.console.app.mcp_server.AppMCPServerResponse.model_validate",
-                return_value=_ValidatedResponse({"id": "server-1"}),
-            ),
         ):
             response, status_code = method(
                 api, "tenant-1", app_model=SimpleNamespace(id="app-1", name="Demo App", description="App description")
             )
 
-        assert response == {"id": "server-1"}
+        server = sqlite_session.scalar(select(AppMCPServer))
+        assert server is not None
+        assert response["server_code"] == "server-code"
+        assert response["parameters"] == {"timeout": 30}
         assert status_code == 201
 
-    def test_put_binds_server_lookup_to_app_ref(self):
+    @pytest.mark.parametrize("sqlite_session", [(AppMCPServer,)], indirect=True)
+    def test_put_updates_server_for_app(self, sqlite_session: Session) -> None:
         api = AppMCPServerController()
         method = unwrap(api.put)
         payload = {"id": "server-1", "description": "Updated", "parameters": {"timeout": 30}, "status": "active"}
         app = Flask(__name__)
         app.config["TESTING"] = True
-        server = SimpleNamespace(
-            id="server-1",
-            tenant_id="tenant-1",
-            app_id="app-1",
-            name="Old",
-            description="Old",
-            parameters="{}",
-            status="active",
-        )
+        server = _server(name="Old", description="Old")
+        server.id = "server-1"
+        sqlite_session.add(server)
+        sqlite_session.commit()
 
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
-            patch("controllers.console.app.mcp_server.db.session.scalar", return_value=server) as scalar,
-            patch("controllers.console.app.mcp_server.db.session.get") as get_mock,
-            patch("controllers.console.app.mcp_server.db.session.commit") as commit,
-            patch(
-                "controllers.console.app.mcp_server.AppMCPServerResponse.model_validate",
-                return_value=_ValidatedResponse({"id": "server-1"}),
-            ),
+            patch("controllers.console.app.mcp_server.db.session", sqlite_session),
         ):
             response = method(
                 api,
@@ -165,15 +187,127 @@ class TestAppMCPServerController:
                 ),
             )
 
+        sqlite_session.expire_all()
+        updated_server = sqlite_session.get(AppMCPServer, "server-1")
+        assert updated_server is not None
+        assert response["id"] == "server-1"
+        assert updated_server.description == "Updated"
+
+    @pytest.mark.parametrize("sqlite_session", [(AppMCPServer,)], indirect=True)
+    @pytest.mark.parametrize(
+        ("foreign_tenant_id", "foreign_app_id"),
+        [
+            ("tenant-2", "app-1"),
+            ("tenant-1", "app-2"),
+        ],
+    )
+    def test_put_scopes_server_lookup_to_complete_app_ref(
+        self,
+        sqlite_session: Session,
+        foreign_tenant_id: str,
+        foreign_app_id: str,
+    ) -> None:
+        api = AppMCPServerController()
+        method = unwrap(api.put)
+        payload = {"id": "server-1", "description": "Updated", "parameters": {"timeout": 30}, "status": "active"}
+        app = Flask(__name__)
+        app.config["TESTING"] = True
+        foreign_server = _server(
+            tenant_id=foreign_tenant_id,
+            app_id=foreign_app_id,
+            name="Other",
+            server_code="other-code",
+        )
+        foreign_server.id = "server-1"
+        sqlite_session.add(foreign_server)
+        sqlite_session.commit()
+
+        with (
+            app.test_request_context("/", json=payload),
+            patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
+            patch("controllers.console.app.mcp_server.db.session", sqlite_session),
+            pytest.raises(NotFound),
+        ):
+            method(
+                api,
+                app_model=SimpleNamespace(
+                    id="app-1", tenant_id="tenant-1", name="Demo App", description="App description"
+                ),
+            )
+
+        sqlite_session.expire_all()
+        unchanged_server = sqlite_session.get(AppMCPServer, "server-1")
+        assert unchanged_server is not None
+        assert unchanged_server.description == "Description"
+
+
+class TestAppMCPServerRefreshController:
+    def test_post_refreshes_server_bound_to_app_and_tenant(self):
+        api = AppMCPServerRefreshController()
+        method = unwrap(api.post)
+        server = SimpleNamespace(server_code="old-code")
+
+        with (
+            patch("controllers.console.app.mcp_server.db.session.scalar", return_value=server) as scalar,
+            patch("controllers.console.app.mcp_server.db.session.commit") as commit,
+            patch("controllers.console.app.mcp_server.AppMCPServer.generate_server_code", return_value="new-code"),
+            patch(
+                "controllers.console.app.mcp_server.AppMCPServerResponse.model_validate",
+                return_value=_ValidatedResponse({"id": "server-1", "server_code": "new-code"}),
+            ),
+        ):
+            response = method(api, "tenant-1", app_model=SimpleNamespace(id="app-1"))
+
         stmt = scalar.call_args.args[0]
         compiled = stmt.compile()
         statement = str(compiled)
-        assert "app_mcp_servers.id" in statement
         assert "app_mcp_servers.tenant_id" in statement
         assert "app_mcp_servers.app_id" in statement
-        assert payload["id"] in compiled.params.values()
         assert "tenant-1" in compiled.params.values()
         assert "app-1" in compiled.params.values()
-        get_mock.assert_not_called()
+        assert server.server_code == "new-code"
         commit.assert_called_once()
-        assert response == {"id": "server-1"}
+        assert response == {"id": "server-1", "server_code": "new-code"}
+
+    def test_route_is_app_scoped_post(self):
+        route_map = {
+            resource.__name__: urls
+            for resource, urls, _route_doc, _kwargs in console_ns.resources
+            if resource.__name__ == "AppMCPServerRefreshController"
+        }
+
+        assert route_map["AppMCPServerRefreshController"] == ("/apps/<uuid:app_id>/server/refresh",)
+        assert hasattr(AppMCPServerRefreshController, "post")
+        assert not hasattr(AppMCPServerRefreshController, "get")
+
+    def test_post_requires_app_view_layout_permission(self):
+        method = AppMCPServerRefreshController.post
+        while "rbac_permission_required" not in method.__code__.co_qualname:
+            method = method.__wrapped__
+
+        class PermissionCheckedError(Exception):
+            pass
+
+        current_user = SimpleNamespace(id="account-1")
+        with (
+            patch("controllers.common.wraps.dify_config.RBAC_ENABLED", True),
+            patch(
+                "controllers.common.wraps.current_account_with_tenant",
+                return_value=(current_user, "tenant-1"),
+            ),
+            patch(
+                "controllers.common.wraps.enforce_rbac_access",
+                side_effect=PermissionCheckedError,
+            ) as enforce_rbac_access,
+            pytest.raises(PermissionCheckedError),
+        ):
+            method(AppMCPServerRefreshController(), app_id="app-1")
+
+        enforce_rbac_access.assert_called_once_with(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            resource_type=RBACResourceScope.APP,
+            scene=RBACPermission.APP_VIEW_LAYOUT,
+            resource_required=True,
+            path_args={"app_id": "app-1"},
+        )

@@ -1,10 +1,8 @@
 import * as amplitude from '@amplitude/analytics-browser'
 import { getAnalyticsConsent } from '@/app/components/base/analytics-consent/consent-store'
-import { isAmplitudeEnabled } from '@/config'
 import { getIsAmplitudeInitialized } from './init'
 
-const canUseAmplitude = () =>
-  isAmplitudeEnabled && getAnalyticsConsent() === 'granted' && getIsAmplitudeInitialized()
+const canUseAmplitude = () => getAnalyticsConsent() === 'granted' && getIsAmplitudeInitialized()
 
 /**
  * Track custom event

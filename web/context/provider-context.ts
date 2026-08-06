@@ -5,7 +5,6 @@ import type {
   Model,
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { RETRIEVE_METHOD } from '@/types/app'
 import { noop } from 'es-toolkit/function'
 import { createContext, useContext, useContextSelector } from 'use-context-selector'
 import { defaultPlan } from '@/app/components/billing/config'
@@ -13,9 +12,8 @@ import { defaultPlan } from '@/app/components/billing/config'
 export type ProviderContextState = {
   modelProviders: ModelProvider[]
   isLoadingModelProviders: boolean
-  refreshModelProviders: () => void
+  refreshModelProviders: () => Promise<void>
   textGenerationModelList: Model[]
-  supportRetrievalMethods: RETRIEVE_METHOD[]
   isAPIKeySet: boolean
   plan: {
     type: Plan
@@ -29,7 +27,6 @@ export type ProviderContextState = {
   onPlanInfoChanged: () => void
   enableReplaceWebAppLogo: boolean
   modelLoadBalancingEnabled: boolean
-  datasetOperatorEnabled: boolean
   enableEducationPlan: boolean
   isEducationWorkspace: boolean
   isEducationAccount: boolean
@@ -53,9 +50,8 @@ export type ProviderContextState = {
 export const baseProviderContextValue: ProviderContextState = {
   modelProviders: [],
   isLoadingModelProviders: false,
-  refreshModelProviders: noop,
+  refreshModelProviders: async () => {},
   textGenerationModelList: [],
-  supportRetrievalMethods: [],
   isAPIKeySet: true,
   plan: defaultPlan,
   isFetchedPlan: false,
@@ -64,7 +60,6 @@ export const baseProviderContextValue: ProviderContextState = {
   onPlanInfoChanged: noop,
   enableReplaceWebAppLogo: false,
   modelLoadBalancingEnabled: false,
-  datasetOperatorEnabled: false,
   enableEducationPlan: false,
   isEducationWorkspace: false,
   isEducationAccount: false,

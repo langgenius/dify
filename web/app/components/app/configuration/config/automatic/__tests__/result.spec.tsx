@@ -1,5 +1,5 @@
-import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { toast } from '@/app/components/app/configuration/toast'
 import Result from '../result'
 import { GeneratorType } from '../types'
 
@@ -12,7 +12,7 @@ vi.mock('copy-to-clipboard', () => ({
   default: (...args: unknown[]) => mockCopy(...args),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/components/app/configuration/toast', () => ({
   toast: {
     success: vi.fn(),
   },

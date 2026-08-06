@@ -16,9 +16,10 @@ import { useAtomValue } from 'jotai'
 import { useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ChatInputArea from '@/app/components/base/chat/chat/chat-input-area'
-import { IS_CE_EDITION } from '@/config'
+import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
+import { deploymentEditionAtom } from '@/features/system-features/state'
 import { buildChatConfig, getAgentSoulInputs, getAgentSoulInputsForm } from './chat-config'
 import { AgentPreviewChatConversation } from './chat-conversation'
 
@@ -34,6 +35,7 @@ export function AgentPreviewChatSession({
   clearChatList,
   controllerRef,
   conversationId,
+  disabled,
   draftType,
   speechToTextDraftType,
   initialChatTree,
@@ -61,6 +63,7 @@ export function AgentPreviewChatSession({
   clearChatList: boolean
   controllerRef?: Ref<AgentPreviewChatController>
   conversationId?: string | null
+  disabled?: boolean
   draftType?: 'debug_build'
   speechToTextDraftType?: 'draft' | 'debug_build'
   initialChatTree: ChatItemInTree[]
@@ -80,6 +83,7 @@ export function AgentPreviewChatSession({
   const { t } = useTranslation('agentV2')
   const prompt = useAtomValue(agentComposerPromptAtom)
   const currentModel = useAtomValue(agentComposerModelAtom)
+  const composerDraft = useAtomValue(agentComposerDraftAtom)
   const config = useMemo(
     () =>
       buildChatConfig({
@@ -115,8 +119,11 @@ export function AgentPreviewChatSession({
       files?: FileEntity[],
       isRegenerate: boolean = false,
       parentAnswer: ChatItem | null = null,
-    ) => conversationRef.current?.send(message, files, isRegenerate, parentAnswer),
-    [],
+    ) => {
+      if (disabled) return
+      return conversationRef.current?.send(message, files, isRegenerate, parentAnswer)
+    },
+    [disabled],
   )
   useImperativeHandle(
     controllerRef,
@@ -127,11 +134,21 @@ export function AgentPreviewChatSession({
     [handleInputSend],
   )
   const { isEmptyChat, isResponding, isSendPending } = runtimeState
-  const hasInstructions = !!config.pre_prompt.trim()
+  const hasAgentConfiguration = !!(
+    composerDraft.prompt.trim() ||
+    composerDraft.skills.length ||
+    composerDraft.files.length ||
+    composerDraft.tools.length ||
+    composerDraft.knowledgeRetrievals.length ||
+    composerDraft.envVariables.length
+  )
+  const hasBuildNote = !!composerDraft.configNote.trim()
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const sendButtonLoading = isEmptyChat && !!sendButtonLabel && (isSendPending || isResponding)
   const sandboxNotice = t(($) => $['agentDetail.configure.preview.sandboxNotice'])
   const sandboxNoticeTooltip = t(($) => $['agentDetail.configure.preview.sandboxNoticeTooltip'])
   const showSandboxNotice = isEmptyChat && !isSendPending && !isResponding
+  const showUnconfiguredNotice = showSandboxNotice && !hasAgentConfiguration && !hasBuildNote
   const speechToTextTarget: SpeechToTextTarget = {
     type: 'agent',
     agentId,
@@ -141,7 +158,7 @@ export function AgentPreviewChatSession({
     <ChatInputArea
       botName={agentName || 'Agent'}
       customPlaceholder={inputPlaceholder}
-      disabled={isEmptyChat && isResponding}
+      disabled={disabled || (isEmptyChat && isResponding)}
       // Build chat opts out so it does not steal focus from the configure editor.
       // oxlint-disable-next-line jsx-a11y/no-autofocus
       autoFocus={isEmptyChat ? inputAutoFocus : undefined}
@@ -157,12 +174,14 @@ export function AgentPreviewChatSession({
       isResponding={isEmptyChat ? undefined : isResponding}
       sendButtonLabel={isEmptyChat ? sendButtonLabel : undefined}
       footerNotice={showSandboxNotice ? sandboxNotice : undefined}
-      footerNoticeTooltip={showSandboxNotice && IS_CE_EDITION ? sandboxNoticeTooltip : undefined}
+      footerNoticeTooltip={
+        showSandboxNotice && deploymentEdition === 'COMMUNITY' ? sandboxNoticeTooltip : undefined
+      }
     />
   )
 
   return (
-    <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
+    <div className="relative mx-auto flex h-full min-h-0 w-full max-w-150 flex-col overflow-hidden">
       <div className="min-h-0 flex-1">
         <AgentPreviewChatConversation
           key={conversationSessionKey}
@@ -201,18 +220,21 @@ export function AgentPreviewChatSession({
         <div
           className={cn(
             isEmptyChat
-              ? 'flex w-full max-w-150 flex-col items-start p-3 text-left'
+              ? 'flex w-full max-w-150 flex-col items-start text-left'
               : 'pointer-events-none relative w-full',
           )}
         >
-          {isEmptyChat &&
-            renderEmptyState({
-              agentIcon,
-              agentIconBackground,
-              agentIconType,
-              agentName,
-              hasInstructions,
-            })}
+          {isEmptyChat && (
+            <div className="w-full p-3 pb-0">
+              {renderEmptyState({
+                agentIcon,
+                agentIconBackground,
+                agentIconType,
+                agentName,
+                showUnconfiguredNotice,
+              })}
+            </div>
+          )}
           <div className={cn(isEmptyChat && 'pointer-events-auto mt-5 w-full')}>
             {chatInputNode}
           </div>

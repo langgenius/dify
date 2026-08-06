@@ -252,24 +252,25 @@ class TestRetrievalService:
     @pytest.fixture
     def mock_dataset(self) -> Dataset:
         """
-        Create a mock Dataset object for testing.
+        Create a Dataset object for testing.
 
         Returns:
-            Dataset: Mock dataset with standard configuration
+            Dataset with standard configuration.
         """
-        dataset = Mock(spec=Dataset)
-        dataset.id = str(uuid4())
-        dataset.tenant_id = str(uuid4())
-        dataset.name = "test_dataset"
-        dataset.indexing_technique = "high_quality"
-        dataset.embedding_model = "text-embedding-ada-002"
-        dataset.embedding_model_provider = "openai"
-        dataset.retrieval_model = {
-            "search_method": RetrievalMethod.SEMANTIC_SEARCH,
-            "reranking_enable": False,
-            "top_k": 4,
-            "score_threshold_enabled": False,
-        }
+        dataset = Dataset(
+            id=str(uuid4()),
+            tenant_id=str(uuid4()),
+            name="test_dataset",
+            indexing_technique="high_quality",
+            embedding_model="text-embedding-ada-002",
+            embedding_model_provider="openai",
+            retrieval_model={
+                "search_method": RetrievalMethod.SEMANTIC_SEARCH,
+                "reranking_enable": False,
+                "top_k": 4,
+                "score_threshold_enabled": False,
+            },
+        )
         return dataset
 
     @pytest.fixture
@@ -1834,10 +1835,11 @@ class TestRetrievalService:
         all_documents = []
 
         # Create second dataset
-        mock_dataset2 = Mock(spec=Dataset)
-        mock_dataset2.id = str(uuid4())
-        mock_dataset2.indexing_technique = "high_quality"
-        mock_dataset2.provider = "dify"
+        mock_dataset2 = Dataset(
+            id=str(uuid4()),
+            indexing_technique="high_quality",
+            provider="dify",
+        )
 
         # Act - Call with dataset_count = 2
         with _patched_retriever_session() as rerank_session:
@@ -2207,36 +2209,33 @@ def create_mock_dataset_methods(
     tenant_id: str | None = None,
     provider: str = "dify",
     indexing_technique: str = "high_quality",
-    available_document_count: int = 10,
-) -> Mock:
+) -> Dataset:
     """
-    Create a mock Dataset object for testing.
+    Create a Dataset object for testing.
 
     Args:
         dataset_id: Unique identifier for the dataset
         tenant_id: Tenant ID for the dataset
         provider: Provider type ("dify" or "external")
         indexing_technique: Indexing technique ("high_quality" or "economy")
-        available_document_count: Number of available documents
-
     Returns:
-        Mock: A properly configured Dataset mock
+        A configured Dataset model.
     """
-    dataset = Mock(spec=Dataset)
-    dataset.id = dataset_id or str(uuid4())
-    dataset.tenant_id = tenant_id or str(uuid4())
-    dataset.name = "test_dataset"
-    dataset.provider = provider
-    dataset.indexing_technique = indexing_technique
-    dataset.available_document_count = available_document_count
-    dataset.embedding_model = "text-embedding-ada-002"
-    dataset.embedding_model_provider = "openai"
-    dataset.retrieval_model = {
-        "search_method": "semantic_search",
-        "reranking_enable": False,
-        "top_k": 4,
-        "score_threshold_enabled": False,
-    }
+    dataset = Dataset(
+        id=dataset_id or str(uuid4()),
+        tenant_id=tenant_id or str(uuid4()),
+        name="test_dataset",
+        provider=provider,
+        indexing_technique=indexing_technique,
+        embedding_model="text-embedding-ada-002",
+        embedding_model_provider="openai",
+        retrieval_model={
+            "search_method": "semantic_search",
+            "reranking_enable": False,
+            "top_k": 4,
+            "score_threshold_enabled": False,
+        },
+    )
     return dataset
 
 
@@ -3740,12 +3739,13 @@ class TestProcessMetadataFilterFunc:
 class TestKnowledgeRetrievalRegression:
     @pytest.fixture
     def mock_dataset(self) -> Dataset:
-        dataset = Mock(spec=Dataset)
-        dataset.id = str(uuid4())
-        dataset.tenant_id = str(uuid4())
-        dataset.name = "test_dataset"
-        dataset.indexing_technique = "high_quality"
-        dataset.provider = "dify"
+        dataset = Dataset(
+            id=str(uuid4()),
+            tenant_id=str(uuid4()),
+            name="test_dataset",
+            indexing_technique="high_quality",
+            provider="dify",
+        )
         return dataset
 
     def test_multiple_retrieve_reranking_with_app_context(self, mock_dataset):
@@ -3760,10 +3760,11 @@ class TestKnowledgeRetrievalRegression:
         tenant_id = str(uuid4())
 
         # second dataset to ensure dataset_count > 1 reranking branch
-        secondary_dataset = Mock(spec=Dataset)
-        secondary_dataset.id = str(uuid4())
-        secondary_dataset.provider = "dify"
-        secondary_dataset.indexing_technique = "high_quality"
+        secondary_dataset = Dataset(
+            id=str(uuid4()),
+            provider="dify",
+            indexing_technique="high_quality",
+        )
 
         # retriever returns 1 doc into internal list (all_documents_item)
         document = Document(

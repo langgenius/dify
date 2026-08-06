@@ -34,7 +34,6 @@ import {
   API_PREFIX,
   CSRF_COOKIE_NAME,
   CSRF_HEADER_NAME,
-  IS_CE_EDITION,
   PASSPORT_HEADER_NAME,
   PUBLIC_API_PREFIX,
   WEB_APP_SHARE_CODE_HEADER_NAME,
@@ -76,6 +75,25 @@ type IOnMessageEnd = (messageEnd: MessageEnd) => void
 export type IOnMessageReplace = (messageReplace: MessageReplace) => void
 export type IOnCompleted = (hasError?: boolean, errorMessage?: string) => void
 export type IOnError = (msg: string, code?: string) => void
+
+const reportStreamResponseError = async (
+  response: Response,
+  onError: IOnError | undefined,
+  onNotifyError: IOnError,
+) => {
+  let errorMessage = 'Server Error'
+  try {
+    const data: unknown = await response.json()
+    if (typeof data === 'object' && data !== null && 'message' in data) {
+      const message = data.message
+      if (typeof message === 'string' && message) errorMessage = message
+    }
+  } catch {}
+
+  onError?.(errorMessage)
+  onNotifyError(errorMessage)
+}
+
 type UnhandledEventError = {
   conversationId?: string
   errorCode?: string
@@ -133,6 +151,8 @@ export type IOtherOptions = {
   onMessageEnd?: IOnMessageEnd
   onMessageReplace?: IOnMessageReplace
   onError?: IOnError
+  /** Replaces the default global error notification for this request. */
+  onNotifyError?: IOnError
   onUnhandledEvent?: IOnUnhandledEvent
   onCompleted?: IOnCompleted // for stream
   getAbortController?: (abortController: AbortController) => void
@@ -545,6 +565,7 @@ export const ssePost = async (
     onTextReplace,
     onAgentLog,
     onError,
+    onNotifyError,
     getAbortController,
     onLoopStart,
     onLoopNext,
@@ -617,10 +638,14 @@ export const ssePost = async (
               })
           }
         } else {
-          res.json().then((data) => {
-            toast.error(data.message || 'Server Error')
-          })
-          onError?.('Server Error')
+          if (onNotifyError) {
+            void reportStreamResponseError(res, onError, onNotifyError)
+          } else {
+            res.json().then((data) => {
+              toast.error(data.message || 'Server Error')
+            })
+            onError?.('Server Error')
+          }
         }
         return
       }
@@ -630,7 +655,10 @@ export const ssePost = async (
           if (moreInfo.errorMessage) {
             onError?.(moreInfo.errorMessage, moreInfo.errorCode)
             // These errors can happen when a stream is intentionally stopped or its page is left.
-            if (shouldNotifyStreamError(moreInfo.errorMessage)) toast.error(moreInfo.errorMessage)
+            if (shouldNotifyStreamError(moreInfo.errorMessage)) {
+              if (onNotifyError) onNotifyError(moreInfo.errorMessage, moreInfo.errorCode)
+              else toast.error(moreInfo.errorMessage)
+            }
             return
           }
           onData?.(str, isFirstMessage, moreInfo)
@@ -671,7 +699,10 @@ export const ssePost = async (
     })
     .catch((e) => {
       const errorMessage = String(e)
-      if (shouldNotifyStreamError(e)) toast.error(errorMessage)
+      if (shouldNotifyStreamError(e)) {
+        if (onNotifyError) onNotifyError(errorMessage)
+        else toast.error(errorMessage)
+      }
       onError?.(errorMessage)
     })
 }
@@ -706,6 +737,7 @@ export const sseGet = async (
     onTextReplace,
     onAgentLog,
     onError,
+    onNotifyError,
     getAbortController,
     onLoopStart,
     onLoopNext,
@@ -772,10 +804,14 @@ export const sseGet = async (
               })
           }
         } else {
-          res.json().then((data) => {
-            toast.error(data.message || 'Server Error')
-          })
-          onError?.('Server Error')
+          if (onNotifyError) {
+            void reportStreamResponseError(res, onError, onNotifyError)
+          } else {
+            res.json().then((data) => {
+              toast.error(data.message || 'Server Error')
+            })
+            onError?.('Server Error')
+          }
         }
         return
       }
@@ -785,7 +821,10 @@ export const sseGet = async (
           if (moreInfo.errorMessage) {
             onError?.(moreInfo.errorMessage, moreInfo.errorCode)
             // These errors can happen when a stream is intentionally stopped or its page is left.
-            if (shouldNotifyStreamError(moreInfo.errorMessage)) toast.error(moreInfo.errorMessage)
+            if (shouldNotifyStreamError(moreInfo.errorMessage)) {
+              if (onNotifyError) onNotifyError(moreInfo.errorMessage, moreInfo.errorCode)
+              else toast.error(moreInfo.errorMessage)
+            }
             return
           }
           onData?.(str, isFirstMessage, moreInfo)
@@ -826,7 +865,10 @@ export const sseGet = async (
     })
     .catch((e) => {
       const errorMessage = String(e)
-      if (shouldNotifyStreamError(e)) toast.error(errorMessage)
+      if (shouldNotifyStreamError(e)) {
+        if (onNotifyError) onNotifyError(errorMessage)
+        else toast.error(errorMessage)
+      }
       onError?.(errorMessage)
     })
 }
@@ -975,15 +1017,15 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
         requiredWebSSOLogin()
         return Promise.reject(err)
       }
-      if (code === 'init_validate_failed' && IS_CE_EDITION && !silent) {
+      if (code === 'init_validate_failed' && !silent) {
         toast.error(message, { timeout: 4000 })
         return Promise.reject(err)
       }
-      if (code === 'not_init_validated' && IS_CE_EDITION) {
+      if (code === 'not_init_validated') {
         jumpTo(`${window.location.origin}${basePath}/init`)
         return Promise.reject(err)
       }
-      if (code === 'not_setup' && IS_CE_EDITION) {
+      if (code === 'not_setup') {
         jumpTo(`${window.location.origin}${basePath}/install`)
         return Promise.reject(err)
       }
@@ -995,7 +1037,7 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
       // there. Redirecting to /signin loses the user_code context and
       // the post-login flow lands on /apps instead of returning here.
       if (window.location.pathname === `${basePath}/device`) return Promise.reject(err)
-      if (window.location.pathname !== `${basePath}/signin` || !IS_CE_EDITION) {
+      if (window.location.pathname !== `${basePath}/signin`) {
         jumpTo(buildSigninUrlWithRedirect())
         return Promise.reject(err)
       }

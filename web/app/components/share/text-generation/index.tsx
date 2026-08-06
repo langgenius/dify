@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import type { InputValueTypes, TextGenerationRunControl, TextGenerationTranslate } from './types'
-import type { InstalledApp } from '@/models/explore'
 import type { VisionFile } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -18,7 +17,6 @@ import TextGenerationSidebar from './text-generation-sidebar'
 
 type IMainProps = {
   isInstalledApp?: boolean
-  installedAppInfo?: InstalledApp
   isWorkflow?: boolean
 }
 const TextGeneration: FC<IMainProps> = ({ isInstalledApp = false, isWorkflow = false }) => {

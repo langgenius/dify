@@ -107,7 +107,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
   }
   return (
     <Dialog open={show}>
-      <DialogContent className="w-[420px]">
+      <DialogContent className="w-105">
         <button
           type="button"
           className="absolute top-5 right-5 cursor-pointer border-none bg-transparent p-1.5 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"

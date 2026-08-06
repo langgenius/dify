@@ -47,7 +47,7 @@ const Button = ({ plan, handleGetPayUrl }: ButtonProps) => {
       <div className="flex grow items-center gap-x-2">
         <span>{t(($) => $[`${i18nPrefix}.btnText`], { ns: 'billing' })}</span>
         {isPremiumPlan && (
-          <span className="pt-[7px] pb-px">
+          <span className="pt-1.75 pb-px">
             <AwsMarketplace className="h-6" />
           </span>
         )}

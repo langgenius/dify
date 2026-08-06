@@ -49,7 +49,7 @@ const PanelOutputSection: FC<Props> = ({
                     </div>
                   }
                 />
-                <TooltipContent className="w-[232px] rounded-xl border-[0.5px] border-components-panel-border bg-components-tooltip-bg px-4 py-3.5 shadow-lg backdrop-blur-[5px]">
+                <TooltipContent className="w-58 rounded-xl border-[0.5px] border-components-panel-border bg-components-tooltip-bg px-4 py-3.5 shadow-lg backdrop-blur-[5px]">
                   <div className="title-xs-semi-bold text-text-primary">
                     {t(($) => $['structOutput.modelNotSupported'], { ns: 'app' })}
                   </div>

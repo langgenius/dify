@@ -325,7 +325,7 @@ describe('AccessRulesEditor', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
+    await user.click(screen.getByRole('button', { name: 'permission.accessRule.addException' }))
 
     const dialog = screen.getByRole('dialog', { name: 'permission.accessRule.addMembersTitle' })
     expect(within(dialog).getByText('Evan')).toBeInTheDocument()

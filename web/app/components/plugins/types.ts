@@ -310,7 +310,7 @@ export type UpdatePluginPayload = {
 
 export type UpdatePluginModalType = UpdatePluginPayload & {
   onCancel: () => void
-  onSave: () => void
+  onSave: () => void | Promise<void>
 }
 
 export enum InstallStepFromGitHub {
@@ -450,10 +450,6 @@ export type InstalledPluginCategoryListResponse = {
   plugins: PluginDetail[]
   builtin_tools: Collection[]
   has_more: boolean
-}
-
-export type UninstallPluginResponse = {
-  success: boolean
 }
 
 export type GitHubItemAndMarketPlaceDependency = {

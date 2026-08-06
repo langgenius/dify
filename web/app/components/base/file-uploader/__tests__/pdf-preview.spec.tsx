@@ -64,6 +64,7 @@ describe('PdfPreview', () => {
     render(<PdfPreview url="https://example.com/doc.pdf" onCancel={mockOnCancel} />)
 
     expect(document.querySelector('[tabindex="-1"]')).toBeInTheDocument()
+    expect(getScaleContainer()).not.toHaveAttribute('aria-label')
     expect(screen.getByTestId('pdf-loader')).toBeInTheDocument()
     expect(screen.getByTestId('pdf-highlighter')).toBeInTheDocument()
     expect(screen.getByRole('status')).toBeInTheDocument()

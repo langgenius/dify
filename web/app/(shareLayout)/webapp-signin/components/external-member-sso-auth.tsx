@@ -1,4 +1,5 @@
 'use client'
+import { zSsoProtocol } from '@dify/contracts/api/console/system-features/zod.gen'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
@@ -7,7 +8,6 @@ import { resolveWebAppLoginRedirect } from '@/app/(shareLayout)/webapp-signin/lo
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import Loading from '@/app/components/base/loading'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { SSOProtocol } from '@/features/system-features/constants'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { fetchWebOAuth2SSOUrl, fetchWebOIDCSSOUrl, fetchWebSAMLSSOUrl } from '@/service/share'
 import { getClientLoginFallback } from '@/utils/login-redirect'
@@ -20,30 +20,29 @@ const ExternalMemberSSOAuth = () => {
   const router = useRouter()
 
   const redirectUrl = searchParams.get('redirect_url')
-
-  const showErrorToast = (message: string) => {
-    toast.error(message)
-  }
+  const protocol = systemFeatures.webapp_auth.sso_config.protocol
 
   const handleSSOLogin = useCallback(async () => {
+    if (protocol === null) return
+
     const loginRedirect = resolveWebAppLoginRedirect(redirectUrl, window.location.origin)
     if (!loginRedirect) {
       replaceLoginRedirect(getClientLoginFallback(), router.replace, basePath)
       return
     }
 
-    switch (systemFeatures.webapp_auth.sso_config.protocol) {
-      case SSOProtocol.SAML: {
+    switch (protocol) {
+      case zSsoProtocol.enum.saml: {
         const samlRes = await fetchWebSAMLSSOUrl(loginRedirect.appCode, loginRedirect.target.href)
         router.push(samlRes.url)
         break
       }
-      case SSOProtocol.OIDC: {
+      case zSsoProtocol.enum.oidc: {
         const oidcRes = await fetchWebOIDCSSOUrl(loginRedirect.appCode, loginRedirect.target.href)
         router.push(oidcRes.url)
         break
       }
-      case SSOProtocol.OAuth2: {
+      case zSsoProtocol.enum.oauth2: {
         const oauth2Res = await fetchWebOAuth2SSOUrl(
           loginRedirect.appCode,
           loginRedirect.target.href,
@@ -51,18 +50,16 @@ const ExternalMemberSSOAuth = () => {
         router.push(oauth2Res.url)
         break
       }
-      case '':
-        break
       default:
-        showErrorToast('SSO protocol is not supported.')
+        toast.error('SSO protocol is not supported.')
     }
-  }, [redirectUrl, router, systemFeatures.webapp_auth.sso_config.protocol])
+  }, [protocol, redirectUrl, router])
 
   useEffect(() => {
     handleSSOLogin()
   }, [handleSSOLogin])
 
-  if (!systemFeatures.webapp_auth.sso_config.protocol) {
+  if (protocol === null) {
     return (
       <div className="flex h-full items-center justify-center">
         <AppUnavailable code={403} unknownReason="sso protocol is invalid." />

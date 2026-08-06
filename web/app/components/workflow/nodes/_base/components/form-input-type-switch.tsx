@@ -8,9 +8,10 @@ import { VarType } from '@/app/components/workflow/nodes/tool/types'
 type Props = Readonly<{
   value: VarType
   onChange: (value: VarType) => void
+  readonly?: boolean
 }>
 
-const FormInputTypeSwitch: FC<Props> = ({ value, onChange }) => {
+const FormInputTypeSwitch: FC<Props> = ({ value, onChange, readonly = false }) => {
   const { t } = useTranslation()
   const variableLabel = t(($) => $['nodes.common.typeSwitch.variable'], { ns: 'workflow' })
   const inputLabel = t(($) => $['nodes.common.typeSwitch.input'], { ns: 'workflow' })
@@ -21,7 +22,9 @@ const FormInputTypeSwitch: FC<Props> = ({ value, onChange }) => {
         <button
           type="button"
           aria-label={variableLabel}
-          className="cursor-pointer rounded-lg bg-components-segmented-control-item-active-bg px-2.5 py-1.5 text-text-secondary shadow-xs hover:bg-components-segmented-control-item-active-bg"
+          aria-pressed={true}
+          disabled={readonly}
+          className="cursor-pointer rounded-lg bg-components-segmented-control-item-active-bg px-2.5 py-1.5 text-text-secondary shadow-xs hover:bg-components-segmented-control-item-active-bg disabled:cursor-not-allowed"
           onClick={() => onChange(VarType.variable)}
         >
           <Variable02 className="size-4" />
@@ -33,7 +36,9 @@ const FormInputTypeSwitch: FC<Props> = ({ value, onChange }) => {
               <button
                 type="button"
                 aria-label={variableLabel}
-                className="cursor-pointer rounded-lg px-2.5 py-1.5 text-text-tertiary hover:bg-state-base-hover"
+                aria-pressed={false}
+                disabled={readonly}
+                className="cursor-pointer rounded-lg px-2.5 py-1.5 text-text-tertiary hover:bg-state-base-hover disabled:cursor-not-allowed"
                 onClick={() => onChange(VarType.variable)}
               >
                 <Variable02 className="size-4" />
@@ -47,7 +52,9 @@ const FormInputTypeSwitch: FC<Props> = ({ value, onChange }) => {
         <button
           type="button"
           aria-label={inputLabel}
-          className="cursor-pointer rounded-lg bg-components-segmented-control-item-active-bg px-2.5 py-1.5 text-text-secondary shadow-xs hover:bg-components-segmented-control-item-active-bg"
+          aria-pressed={true}
+          disabled={readonly}
+          className="cursor-pointer rounded-lg bg-components-segmented-control-item-active-bg px-2.5 py-1.5 text-text-secondary shadow-xs hover:bg-components-segmented-control-item-active-bg disabled:cursor-not-allowed"
           onClick={() => onChange(VarType.constant)}
         >
           <span aria-hidden className="i-ri-edit-line size-4" />
@@ -59,7 +66,9 @@ const FormInputTypeSwitch: FC<Props> = ({ value, onChange }) => {
               <button
                 type="button"
                 aria-label={inputLabel}
-                className="cursor-pointer rounded-lg px-2.5 py-1.5 text-text-tertiary hover:bg-state-base-hover"
+                aria-pressed={false}
+                disabled={readonly}
+                className="cursor-pointer rounded-lg px-2.5 py-1.5 text-text-tertiary hover:bg-state-base-hover disabled:cursor-not-allowed"
                 onClick={() => onChange(VarType.constant)}
               >
                 <span aria-hidden className="i-ri-edit-line size-4" />

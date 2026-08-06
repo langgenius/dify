@@ -22,7 +22,7 @@ const i18nPrefix = 'upgrade'
 type Props = Readonly<{
   payload: UpdateFromMarketPlacePayload
   pluginId?: string
-  onSave: () => void
+  onSave: () => void | Promise<void>
   onCancel: () => void
   isShowDowngradeWarningModal?: boolean
 }>
@@ -101,7 +101,7 @@ const UpdatePluginModal = ({
         const { all_installed: isInstalled, task_id: taskId } = response
 
         if (isInstalled) {
-          onSave()
+          await onSave()
           return
         }
         handleInstallTaskStart(response)
@@ -114,7 +114,7 @@ const UpdatePluginModal = ({
           setUploadStep(UploadStep.notStarted)
           return
         }
-        onSave()
+        await onSave()
       } catch {
         setUploadStep(UploadStep.notStarted)
       }
@@ -148,7 +148,7 @@ const UpdatePluginModal = ({
     <Dialog open onOpenChange={() => onCancel()}>
       <DialogContent
         backdropProps={{ forceRender: true }}
-        className={cn('min-w-[560px]', doShowDowngradeWarningModal && 'min-w-[640px]')}
+        className={cn('min-w-140', doShowDowngradeWarningModal && 'min-w-160')}
       >
         <DialogCloseButton />
         {doShowDowngradeWarningModal && (

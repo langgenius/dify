@@ -83,17 +83,31 @@ const ComponentPicker = ({
   })
   const [editor] = useLexicalComposerContext()
   const triggerMatchRef = useRef<MenuTextMatch | null>(null)
+  const slashTypedRef = useRef(false)
   const baseCheckForTriggerMatch = useBasicTypeaheadTriggerMatch(triggerString, {
     minLength: 0,
     maxLength: 75,
+    requireTriggerBoundary: triggerString === '/',
   })
   const checkForTriggerMatch = useCallback(
     (text: string, editor: LexicalEditor) => {
       const match = baseCheckForTriggerMatch(text, editor)
+      if (
+        match &&
+        triggerString === '/' &&
+        match.matchingString.length === 0 &&
+        !slashTypedRef.current
+      ) {
+        triggerMatchRef.current = null
+        return null
+      }
+      if (match && triggerString === '/' && match.matchingString.length === 0)
+        slashTypedRef.current = false
+
       triggerMatchRef.current = match
       return match
     },
-    [baseCheckForTriggerMatch],
+    [baseCheckForTriggerMatch, triggerString],
   )
 
   const [queryString, setQueryString] = useState<string | null>(null)
@@ -139,7 +153,27 @@ const ComponentPicker = ({
       if (blurTimerRef.current) clearTimeout(blurTimerRef.current)
       unregister()
     }
-  }, [editor, clearBlurTimer])
+  }, [editor, clearBlurTimer, triggerString])
+
+  useEffect(() => {
+    const rootElement = editor.getRootElement()
+    if (!rootElement || triggerString !== '/') return
+
+    const handleBeforeInput = (event: InputEvent) => {
+      if (event.inputType === 'insertText' && event.data === '/') slashTypedRef.current = true
+    }
+
+    const handlePointerDown = () => {
+      slashTypedRef.current = false
+    }
+
+    rootElement.addEventListener('beforeinput', handleBeforeInput)
+    rootElement.addEventListener('pointerdown', handlePointerDown)
+    return () => {
+      rootElement.removeEventListener('beforeinput', handleBeforeInput)
+      rootElement.removeEventListener('pointerdown', handlePointerDown)
+    }
+  }, [editor, triggerString])
 
   eventEmitter?.useSubscription((v: EventEmitterValue) => {
     if (
@@ -243,7 +277,7 @@ const ComponentPicker = ({
             // See https://github.com/facebook/lexical/blob/ac97dfa9e14a73ea2d6934ff566282d7f758e8bb/packages/lexical-react/src/shared/LexicalMenu.ts#L493
             <div className="size-0">
               <div
-                className="w-[260px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg"
+                className="w-65 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg"
                 style={{
                   ...floatingStyles,
                   visibility: isPositioned ? 'visible' : 'hidden',

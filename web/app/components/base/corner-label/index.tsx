@@ -18,7 +18,7 @@ const CornerLabel: React.FC<CornerLabelProps> = ({
 }) => {
   return (
     <div className={cn('group/corner-label inline-flex items-start', className)}>
-      <Corner className={cn('h-5 w-[13px] text-background-section-burn', cornerClassName)} />
+      <Corner className={cn('h-5 w-3.25 text-background-section-burn', cornerClassName)} />
       <div
         className={cn(
           'flex items-center gap-0.5 bg-background-section-burn py-1 pr-2',

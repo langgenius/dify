@@ -283,6 +283,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         """
         Generate App response.
 
+        :param session: caller-owned database session used for message and historical model-config reads
         :param app_model: App
         :param message_id: message ID
         :param user: account or end user

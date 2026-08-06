@@ -103,7 +103,7 @@ const Chart: React.FC<IChartProps> = ({
 
   return (
     <div
-      className={`flex h-[316px] w-full min-w-0 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg xl:min-w-[480px] ${className ?? ''}`}
+      className={`flex h-79 w-full min-w-0 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg xl:min-w-120 ${className ?? ''}`}
     >
       <div className="flex h-11 shrink-0 items-center px-6 pt-6 pb-1">
         <div className="flex min-w-0 items-center">
@@ -132,7 +132,7 @@ const Chart: React.FC<IChartProps> = ({
           </div>
         )}
       </div>
-      <div className="h-[240px] shrink-0 px-6 pb-4">
+      <div className="h-60 shrink-0 px-6 pb-4">
         <ReactECharts
           option={options}
           opts={ECHARTS_RENDER_OPTIONS}

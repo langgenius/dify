@@ -41,22 +41,34 @@ vi.mock('reactflow', () => ({
   useNodes: () => mockUseNodes(),
 }))
 
-vi.mock('../../hooks', () => ({
+vi.mock('../../hooks/use-workflow', () => ({
   useNodesReadOnly: () => ({ nodesReadOnly: mockNodesReadOnly }),
+}))
+
+vi.mock('../../hooks/use-nodes-interactions', () => ({
   useNodesInteractions: () => ({ handleNodeSelect: mockHandleNodeSelect }),
+}))
+
+vi.mock('../../hooks/use-workflow-run', () => ({
   useWorkflowRun: () => ({
     handleBackupDraft: mockHandleBackupDraft,
     handleLoadBackupDraft: mockHandleLoadBackupDraft,
   }),
+}))
+
+vi.mock('../../hooks/use-nodes-sync-draft', () => ({
   useNodesSyncDraft: () => ({
     handleSyncWorkflowDraft: vi.fn(),
   }),
+}))
+
+vi.mock('../../hooks/use-workflow-refresh-draft', () => ({
   useWorkflowRefreshDraft: () => ({
     handleRefreshWorkflowDraft: mockHandleRefreshWorkflowDraft,
   }),
 }))
 
-vi.mock('@/app/components/rag-pipeline/hooks', () => ({
+vi.mock('@/app/components/rag-pipeline/hooks/use-input-field-panel', () => ({
   useInputFieldPanel: () => ({
     closeAllInputFieldPanels: mockCloseAllInputFieldPanels,
   }),

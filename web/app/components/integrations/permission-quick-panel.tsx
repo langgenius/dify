@@ -21,7 +21,7 @@ type PermissionQuickPanelProps = {
 }
 
 const permissionOptionCardClassName = cn(
-  'flex h-8 w-[104px] shrink-0 items-center justify-center rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg p-2 text-center system-sm-regular text-text-secondary transition-colors',
+  'flex h-8 w-26 shrink-0 items-center justify-center rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg p-2 text-center system-sm-regular text-text-secondary transition-colors',
   'hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover',
   'focus-visible:ring-2 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden',
   'data-checked:border-[1.5px] data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:font-medium data-checked:text-text-primary data-checked:shadow-xs data-checked:shadow-shadow-shadow-3',

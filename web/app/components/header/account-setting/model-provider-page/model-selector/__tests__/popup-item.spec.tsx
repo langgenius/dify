@@ -1,5 +1,6 @@
 import type { ReactElement, ReactNode } from 'react'
 import type { DefaultModel, Model, ModelItem } from '../../declarations'
+import type { ModelSelectorPreviewPayload } from '../popup-item'
 import { Combobox } from '@langgenius/dify-ui/combobox'
 import { createPreviewCardHandle } from '@langgenius/dify-ui/preview-card'
 import { fireEvent, screen } from '@testing-library/react'
@@ -138,7 +139,7 @@ const makeProvider = (overrides: Record<string, unknown> = {}) => ({
 })
 
 const previewCardProps = () => ({
-  previewCardHandle: createPreviewCardHandle(),
+  previewCardHandle: createPreviewCardHandle<ModelSelectorPreviewPayload>(),
   onPreviewCardClose: vi.fn(),
 })
 
@@ -206,7 +207,7 @@ describe('PopupItem', () => {
     const onPreviewCardClose = vi.fn()
     renderWithCombobox(
       <PopupItem
-        previewCardHandle={createPreviewCardHandle()}
+        previewCardHandle={createPreviewCardHandle<ModelSelectorPreviewPayload>()}
         onPreviewCardClose={onPreviewCardClose}
         model={makeModel()}
         onHide={vi.fn()}
@@ -306,7 +307,9 @@ describe('PopupItem', () => {
     )
 
     fireEvent.click(screen.getByText('GPT-4'))
-    fireEvent.click(screen.getByText('COMMON.OPERATION.ADD'))
+    const addButton = screen.getByRole('button', { name: 'COMMON.OPERATION.ADD' })
+    expect(addButton.closest('[aria-disabled="true"]')).toBeNull()
+    fireEvent.click(addButton)
 
     expect(onValueChange).not.toHaveBeenCalled()
     expect(mockSetShowModelModal).toHaveBeenCalled()

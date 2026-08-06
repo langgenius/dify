@@ -1,6 +1,7 @@
 describe('env runtime transport', () => {
   const originalAgentV2Env = process.env.NEXT_PUBLIC_ENABLE_AGENT_V2
-  const originalRbacEnv = process.env.NEXT_PUBLIC_RBAC_ENABLED
+  const originalMarkdownFormFieldNameExtraChars =
+    process.env.NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -8,17 +9,19 @@ describe('env runtime transport', () => {
     vi.doUnmock('../utils/client')
     document.body.removeAttribute('data-enable-agent-v2')
     document.body.removeAttribute('data-enable-agent-v-2')
-    document.body.removeAttribute('data-rbac-enabled')
+    document.body.removeAttribute('data-markdown-form-field-name-extra-chars')
     delete process.env.NEXT_PUBLIC_ENABLE_AGENT_V2
-    delete process.env.NEXT_PUBLIC_RBAC_ENABLED
+    delete process.env.NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS
   })
 
   afterAll(() => {
     if (originalAgentV2Env === undefined) delete process.env.NEXT_PUBLIC_ENABLE_AGENT_V2
     else process.env.NEXT_PUBLIC_ENABLE_AGENT_V2 = originalAgentV2Env
-
-    if (originalRbacEnv === undefined) delete process.env.NEXT_PUBLIC_RBAC_ENABLED
-    else process.env.NEXT_PUBLIC_RBAC_ENABLED = originalRbacEnv
+    if (originalMarkdownFormFieldNameExtraChars === undefined)
+      delete process.env.NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS
+    else
+      process.env.NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS =
+        originalMarkdownFormFieldNameExtraChars
   })
 
   it('should read NEXT_PUBLIC_ENABLE_AGENT_V2 from the browser runtime dataset key', async () => {
@@ -27,14 +30,6 @@ describe('env runtime transport', () => {
     const { env } = await import('../env')
 
     expect(env.NEXT_PUBLIC_ENABLE_AGENT_V2).toBe(true)
-  })
-
-  it('should read NEXT_PUBLIC_RBAC_ENABLED from the browser runtime dataset key', async () => {
-    document.body.setAttribute('data-rbac-enabled', 'true')
-
-    const { env } = await import('../env')
-
-    expect(env.NEXT_PUBLIC_RBAC_ENABLED).toBe(true)
   })
 
   it('should emit the Agent v2 runtime dataset attribute from getDatasetMap on the server', async () => {
@@ -52,8 +47,16 @@ describe('env runtime transport', () => {
     expect(datasetMap['data-enable-agent-v-2']).toBeUndefined()
   })
 
-  it('should emit the RBAC runtime dataset attribute from getDatasetMap on the server', async () => {
-    process.env.NEXT_PUBLIC_RBAC_ENABLED = 'true'
+  it('should read Markdown form field name extra characters from the browser runtime dataset', async () => {
+    document.body.setAttribute('data-markdown-form-field-name-extra-chars', '()!*&（）！＊＆－')
+
+    const { env } = await import('../env')
+
+    expect(env.NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS).toBe('()!*&（）！＊＆－')
+  })
+
+  it('should emit Markdown form field name extra characters in the server runtime dataset', async () => {
+    process.env.NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS = '()!*&（）！＊＆－'
 
     vi.doMock('../utils/client', () => ({
       isClient: false,
@@ -63,6 +66,6 @@ describe('env runtime transport', () => {
     const { getDatasetMap } = await import('../env')
     const datasetMap = getDatasetMap()
 
-    expect(datasetMap['data-rbac-enabled']).toBe(true)
+    expect(datasetMap['data-markdown-form-field-name-extra-chars']).toBe('()!*&（）！＊＆－')
   })
 })

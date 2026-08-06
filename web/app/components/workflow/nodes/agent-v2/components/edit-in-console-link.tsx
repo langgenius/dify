@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { getAgentDetailPath } from '@/features/agent-v2/agent-detail/routes'
 import Link from '@/next/link'
 
-const layoutClassName = 'min-w-0 flex-1 gap-1.5 px-3'
+const layoutClassName = 'min-w-0 flex-1 px-3'
 
 export function EditInConsoleLink({
   agentId,

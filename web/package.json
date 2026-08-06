@@ -1,6 +1,6 @@
 {
   "name": "dify-web",
-  "version": "1.16.0",
+  "version": "1.16.1",
   "private": true,
   "type": "module",
   "imports": {
@@ -22,9 +22,6 @@
     "i18n:check": "tsx ./scripts/check-i18n.js",
     "i18n:migrate-selectors": "tsx ./scripts/migrate-i18n-selectors.ts",
     "i18n:prune-unused": "tsx ./scripts/prune-unused-i18n.ts",
-    "knip": "knip",
-    "knip:production": "knip --production --include files",
-    "knip:production-unused-check": "node ./scripts/check-production-unused-after-knip-fix.mjs",
     "lint:tss": "tsslint --project tsconfig.json",
     "preinstall": "npx only-allow pnpm",
     "start": "node ./scripts/copy-and-start.mjs",
@@ -191,7 +188,6 @@
     "agentation": "catalog:",
     "code-inspector-plugin": "catalog:",
     "happy-dom": "catalog:",
-    "knip": "catalog:",
     "postcss": "catalog:",
     "react-server-dom-webpack": "catalog:",
     "storybook": "catalog:",
