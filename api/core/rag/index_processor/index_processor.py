@@ -15,6 +15,7 @@ from core.rag.index_processor.index_processor_base import SummaryIndexSettingDic
 from core.workflow.nodes.knowledge_index.exc import KnowledgeIndexNodeError
 from core.workflow.nodes.knowledge_index.protocols import IndexingResultDict, Preview, PreviewItem, QaPreview
 from models.dataset import Dataset, Document, DocumentSegment
+from services.vector_space_admission_service import VectorSpaceAdmissionService
 
 from .index_processor_factory import IndexProcessorFactory
 from .processor.paragraph_index_processor import ParagraphIndexProcessor
@@ -103,7 +104,18 @@ class IndexProcessor:
         indexing_start_at = time.perf_counter()
         # The metadata reads above must not keep a transaction open across vector I/O.
         session.commit()
-        # delete from vector index
+
+        # V1 guards only first-time indexing.
+        if not original_document_id:
+            VectorSpaceAdmissionService().ensure_pipeline_can_be_indexed(
+                dataset=dataset,
+                document_id=document.id,
+                chunk_structure=dataset.chunk_structure,
+                chunks=chunks,
+                include_summaries=bool(summary_index_setting and summary_index_setting.get("enable")),
+                session=session,
+            )
+
         if index_node_ids:
             index_processor.clean(
                 dataset, index_node_ids, with_keywords=True, delete_child_chunks=True, session=session

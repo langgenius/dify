@@ -14,6 +14,7 @@ describe('VideoPreview', () => {
     const video = document.querySelector('video')
     expect(video).toBeInTheDocument()
     expect(video).toHaveAttribute('title', 'Test Video')
+    expect(video?.parentElement).not.toHaveAttribute('aria-label')
   })
 
   it('should render source element with correct src and type', () => {

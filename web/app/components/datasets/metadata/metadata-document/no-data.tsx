@@ -21,7 +21,7 @@ const NoData: FC<Props> = ({ onStart }) => {
       </div>
       <Button variant="primary" className="mt-2" onClick={onStart}>
         <div>{t(($) => $['metadata.documentMetadata.startLabeling'], { ns: 'dataset' })}</div>
-        <RiArrowRightLine className="ml-1 size-4" />
+        <RiArrowRightLine className="size-4" />
       </Button>
     </div>
   )

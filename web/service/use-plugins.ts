@@ -113,6 +113,7 @@ const normalizeI18nObject = (
     'de-DE': en,
     'ja-JP': ja,
     'ko-KR': en,
+    'lo-LA': en,
     'ru-RU': en,
     'it-IT': en,
     'th-TH': en,
@@ -675,11 +676,23 @@ export const useInstalledPluginList = (
 export const useInvalidateInstalledPluginList = () => {
   const queryClient = useQueryClient()
   const invalidateAllBuiltInTools = useInvalidateAllBuiltInTools()
-  return () => {
-    queryClient.invalidateQueries({
-      queryKey: useInstalledPluginListKey,
-    })
-    invalidateAllBuiltInTools()
+  return (category?: PluginCategoryEnum) => {
+    if (category) {
+      const invalidateCategoryPluginList = queryClient.invalidateQueries({
+        queryKey: [...useInstalledPluginListKey, category],
+        exact: true,
+      })
+
+      if (category === PluginCategoryEnum.tool)
+        return Promise.all([invalidateCategoryPluginList, invalidateAllBuiltInTools()])
+
+      return invalidateCategoryPluginList
+    }
+
+    return Promise.all([
+      queryClient.invalidateQueries({ queryKey: useInstalledPluginListKey }),
+      invalidateAllBuiltInTools(),
+    ])
   }
 }
 
@@ -1286,7 +1299,7 @@ export const useFetchPluginsInMarketPlaceByInfo = (infos: MarketplacePluginInfoR
   })
 }
 
-export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
+export const usePluginTaskList = (category?: PluginCategoryEnum) => {
   const initializedRef = useRef(false)
   const queryClient = useQueryClient()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)

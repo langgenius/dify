@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import HTTPException
 
 from controllers.common.wraps import _extract_resource_id
+from controllers.console import flask_admission
 from controllers.console.error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
 from controllers.console.workspace.error import AccountNotInitializedError
 from controllers.console.wraps import (
@@ -35,6 +36,8 @@ from controllers.console.wraps import (
     with_current_user,
     with_current_user_id,
 )
+from libs.login import AccountWithTenant
+from machinery.context import RequestContext
 from models import Account
 from models.account import AccountStatus, TenantAccountRole
 from models.dataset import RateLimitLog
@@ -123,6 +126,45 @@ class TestAccountInitialization:
 
 class TestCurrentContextInjection:
     """Test request context injection decorators."""
+
+    def test_console_account_admission_injects_request_context(self):
+        current_user = make_account()
+
+        with (
+            patch(
+                "controllers.console.flask_admission.setup_required", side_effect=lambda view: view
+            ) as setup_required,
+            patch(
+                "controllers.console.flask_admission.login_required", side_effect=lambda view: view
+            ) as login_required,
+            patch(
+                "controllers.console.flask_admission.account_initialization_required", side_effect=lambda view: view
+            ) as account_initialization_required,
+            patch(
+                "controllers.console.flask_admission.current_account_with_tenant",
+                return_value=AccountWithTenant(account=current_user, tenant_id="tenant-123"),
+            ),
+            patch("controllers.console.flask_admission.get_request_id", return_value="request-1"),
+            patch("controllers.console.flask_admission.get_trace_id", return_value="trace-1"),
+        ):
+
+            class Handler:
+                @flask_admission.console_account_admission()
+                def get(self, request_context: RequestContext):
+                    return request_context
+
+            with Flask(__name__).test_request_context():
+                result = Handler().get()
+
+        assert result == RequestContext(
+            request_id="request-1",
+            trace_id="trace-1",
+            account_id=current_user.id,
+            active_workspace_id="tenant-123",
+        )
+        setup_required.assert_called_once()
+        login_required.assert_called_once()
+        account_initialization_required.assert_called_once()
 
     def test_with_current_tenant_id_injects_tenant_id(self):
         class Handler:
@@ -692,6 +734,17 @@ class TestBillingResourceLimits:
                 with patch("controllers.console.wraps.FeatureService.get_features", return_value=mock_features):
                     result = upload_document()
                     assert result == "document_uploaded"
+
+        # Test 3: Form source must enforce the same quota as query source
+        with app.test_request_context("/", method="POST", data={"source": "datasets"}):
+            with patch(
+                "controllers.console.wraps.current_account_with_tenant",
+                return_value=(MockUser("test_user"), "tenant123"),
+            ):
+                with patch("controllers.console.wraps.FeatureService.get_features", return_value=mock_features):
+                    with pytest.raises(HTTPException) as exc_info:
+                        upload_document()
+                    assert exc_info.value.code == 403
 
 
 class TestRateLimiting:

@@ -135,7 +135,7 @@ class BaseSession[
     messages when entered.
     """
 
-    _response_streams: dict[RequestId, queue.Queue[JSONRPCResponse | JSONRPCError | HTTPStatusError]]
+    _response_streams: dict[RequestId, queue.Queue[JSONRPCResponse | JSONRPCError | HTTPStatusError | None]]
     _request_id: int
     _in_flight: dict[RequestId, RequestResponder[ReceiveRequestT, SendResultT]]
     _receive_request_type: type[ReceiveRequestT]
@@ -216,7 +216,7 @@ class BaseSession[
         request_id = self._request_id
         self._request_id = request_id + 1
 
-        response_queue: queue.Queue[JSONRPCResponse | JSONRPCError | HTTPStatusError] = queue.Queue()
+        response_queue: queue.Queue[JSONRPCResponse | JSONRPCError | HTTPStatusError | None] = queue.Queue()
         self._response_streams[request_id] = response_queue
 
         try:
@@ -241,7 +241,6 @@ class BaseSession[
                     continue
 
             match response_or_error:
-                # pyrefly: ignore [unreachable-match-case]
                 case None:
                     raise MCPConnectionError(
                         ErrorData(
