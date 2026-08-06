@@ -22,6 +22,7 @@ def _create_agent_backend_client():
         return None
     return create_agent_backend_run_client(
         base_url=dify_config.AGENT_BACKEND_BASE_URL,
+        api_token=dify_config.AGENT_BACKEND_API_TOKEN,
         use_fake=dify_config.AGENT_BACKEND_USE_FAKE,
         fake_scenario=dify_config.AGENT_BACKEND_FAKE_SCENARIO,
         stream_read_timeout_seconds=dify_config.AGENT_BACKEND_STREAM_READ_TIMEOUT_SECONDS,

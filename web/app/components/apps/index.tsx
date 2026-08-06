@@ -206,11 +206,11 @@ const Apps = () => {
           onCreateLearnDify={handleCreateLearnDify}
           onTryLearnDify={handleTryLearnDify}
         />
-        {isShowTryAppPanel && (
+        {isShowTryAppPanel && currentTryAppParams && (
           <TryApp
-            appId={currentTryAppParams?.appId || ''}
-            app={currentTryAppParams?.app}
-            categories={currentTryAppParams?.app?.categories}
+            appId={currentTryAppParams.appId}
+            app={currentTryAppParams.app}
+            categories={currentTryAppParams.app.categories}
             onClose={hideTryAppPanel}
             onCreate={handleShowFromTryApp}
           />

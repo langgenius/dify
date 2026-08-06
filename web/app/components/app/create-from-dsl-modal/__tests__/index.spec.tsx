@@ -1,5 +1,6 @@
 /* oxlint-disable typescript/no-explicit-any */
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/app/components/apps/storage'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
@@ -62,10 +63,40 @@ vi.mock('@/utils/create-app-tracking', () => ({
   trackCreateApp: (...args: unknown[]) => mockTrackCreateApp(...args),
 }))
 
-vi.mock('@/service/apps', () => ({
-  importDSL: (...args: unknown[]) => mockImportDSL(...args),
-  importDSLConfirm: (...args: unknown[]) => mockImportDSLConfirm(...args),
-}))
+vi.mock('@/service/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/client')>()
+  return {
+    ...actual,
+    consoleClient: {
+      ...actual.consoleClient,
+      apps: {
+        ...actual.consoleClient.apps,
+        imports: {
+          post: ({ body }: { body: Record<string, unknown> }) => mockImportDSL(body),
+        },
+      },
+    },
+    consoleQuery: {
+      ...actual.consoleQuery,
+      systemFeatures: actual.consoleQuery.systemFeatures,
+      apps: {
+        ...actual.consoleQuery.apps,
+        imports: {
+          byImportId: {
+            confirm: {
+              post: {
+                mutationOptions: () => ({
+                  mutationFn: ({ params }: { params: { import_id: string } }) =>
+                    mockImportDSLConfirm({ import_id: params.import_id }),
+                }),
+              },
+            },
+          },
+        },
+      },
+    },
+  }
+})
 vi.mock('@/service/use-apps', () => ({
   useInvalidateAppList: () => mockInvalidateAppList,
 }))
@@ -135,20 +166,10 @@ describe('CreateFromDSLModal', () => {
     mockWorkspacePermissionKeys = ['app.create_and_management']
     localStorage.clear()
 
-    class MockFileReader {
-      result = 'app: demo'
-      onload: ((event: { target: { result: string } }) => void) | null = null
-      readAsText() {
-        this.onload?.({ target: { result: this.result } })
-      }
-    }
-
-    // @ts-expect-error test-only file reader shim
-    globalThis.FileReader = MockFileReader
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
+    Object.defineProperty(File.prototype, 'text', {
+      configurable: true,
+      value: vi.fn().mockResolvedValue('app: demo'),
+    })
   })
 
   const getCreateButton = () => screen.getByRole('button', { name: /newApp\.Create/i })
@@ -188,6 +209,55 @@ describe('CreateFromDSLModal', () => {
       .parentElement?.querySelector('.cursor-pointer.items-center') as HTMLElement
     fireEvent.click(closeTrigger)
     expect(handleClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('should expose the URL as a named form field', () => {
+    render(<CreateFromDSLModal show onClose={vi.fn()} activeTab={CreateFromDSLModalTab.FROM_URL} />)
+
+    const urlInput = screen.getByRole('textbox', {
+      name: /(?:^|\.)importFromDSLUrl(?=$|:)/,
+    })
+
+    expect(urlInput).toHaveAttribute('name', 'dslUrl')
+    expect(urlInput).toHaveAttribute('type', 'url')
+    expect(urlInput.closest('form')).toBeInTheDocument()
+  })
+
+  it('should initially focus Browse when the file import dialog opens', async () => {
+    render(<CreateFromDSLModal show onClose={vi.fn()} />)
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: /(?:^|\.)dslUploader\.browse(?=$|:)/ }),
+      ).toHaveFocus()
+    })
+  })
+
+  it('should move focus from each active tab directly to its first panel control', async () => {
+    const user = userEvent.setup()
+    render(<CreateFromDSLModal show onClose={vi.fn()} />)
+
+    const fileTab = screen.getByRole('tab', {
+      name: /(?:^|\.)importFromDSLFile(?=$|:)/,
+    })
+    const browseButton = screen.getByRole('button', {
+      name: /(?:^|\.)dslUploader\.browse(?=$|:)/,
+    })
+
+    await user.click(fileTab)
+    await user.tab()
+    expect(browseButton).toHaveFocus()
+
+    const urlTab = screen.getByRole('tab', {
+      name: /(?:^|\.)importFromDSLUrl(?=$|:)/,
+    })
+    await user.click(urlTab)
+    const urlInput = screen.getByRole('textbox', {
+      name: /(?:^|\.)importFromDSLUrl(?=$|:)/,
+    })
+
+    await user.tab()
+    expect(urlInput).toHaveFocus()
   })
 
   it('should render the import shortcut with kbd primitives', () => {
@@ -367,7 +437,6 @@ describe('CreateFromDSLModal', () => {
   })
 
   it('should show the DSL mismatch modal and confirm a pending import', async () => {
-    vi.useFakeTimers()
     mockImportDSL.mockResolvedValue({
       id: 'import-3',
       status: DSLImportStatus.PENDING,
@@ -393,10 +462,6 @@ describe('CreateFromDSLModal', () => {
 
     await act(async () => {
       fireEvent.click(getCreateButton())
-    })
-
-    await act(async () => {
-      vi.advanceTimersByTime(300)
     })
 
     expect(
@@ -428,7 +493,6 @@ describe('CreateFromDSLModal', () => {
   })
 
   it('should surface Agent warnings after confirming a pending import', async () => {
-    vi.useFakeTimers()
     mockImportDSL.mockResolvedValue({
       id: 'agent-import-pending',
       status: DSLImportStatus.PENDING,
@@ -468,9 +532,6 @@ describe('CreateFromDSLModal', () => {
       fireEvent.click(getCreateButton())
     })
     await act(async () => {
-      vi.advanceTimersByTime(300)
-    })
-    await act(async () => {
       fireEvent.click(screen.getAllByRole('button', { name: /newApp\.Confirm/ })[0]!)
     })
 
@@ -495,7 +556,6 @@ describe('CreateFromDSLModal', () => {
   })
 
   it('should close the DSL mismatch modal when dialog requests close', async () => {
-    vi.useFakeTimers()
     mockImportDSL.mockResolvedValue({
       id: 'import-close',
       status: DSLImportStatus.PENDING,
@@ -516,13 +576,8 @@ describe('CreateFromDSLModal', () => {
       fireEvent.click(getCreateButton())
     })
 
-    await act(async () => {
-      vi.advanceTimersByTime(300)
-    })
-
     expect(screen.getByText(/(?:^|\.)newApp\.appCreateDSLErrorTitle(?=$|:)/))!.toBeInTheDocument()
 
-    vi.useRealTimers()
     fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
 
     await waitFor(() => {
@@ -533,7 +588,6 @@ describe('CreateFromDSLModal', () => {
   })
 
   it('should close the DSL mismatch modal when cancel is clicked', async () => {
-    vi.useFakeTimers()
     mockImportDSL.mockResolvedValue({
       id: 'import-cancel',
       status: DSLImportStatus.PENDING,
@@ -554,13 +608,8 @@ describe('CreateFromDSLModal', () => {
       fireEvent.click(getCreateButton())
     })
 
-    await act(async () => {
-      vi.advanceTimersByTime(300)
-    })
-
     expect(screen.getByText(/(?:^|\.)newApp\.appCreateDSLErrorTitle(?=$|:)/))!.toBeInTheDocument()
 
-    vi.useRealTimers()
     fireEvent.click(
       screen.getAllByRole('button', { name: /(?:^|\.)newApp\.Cancel(?=$|:)/ }).at(-1)!,
     )
@@ -572,7 +621,7 @@ describe('CreateFromDSLModal', () => {
     })
   })
 
-  it('should ignore empty import responses and prevent duplicate submissions while a request is in flight', async () => {
+  it('should show import progress and lock dialog interactions while a request is in flight', async () => {
     let resolveImport!: (value: {
       id: string
       status: DSLImportStatus
@@ -586,20 +635,32 @@ describe('CreateFromDSLModal', () => {
           resolveImport = resolve as typeof resolveImport
         }),
     )
+    const handleClose = vi.fn()
 
     render(
       <CreateFromDSLModal
         show
-        onClose={vi.fn()}
+        onClose={handleClose}
         activeTab={CreateFromDSLModalTab.FROM_URL}
         dslUrl="https://example.com/app.yml"
       />,
     )
 
     fireEvent.click(getCreateButton())
+    await waitFor(() => {
+      expect(mockImportDSL).toHaveBeenCalledTimes(1)
+      expect(getCreateButton()).toHaveAttribute('aria-disabled', 'true')
+    })
     fireEvent.click(getCreateButton())
-
     expect(mockImportDSL).toHaveBeenCalledTimes(1)
+    expect(screen.getByText(/(?:^|\.)importFromDSLFile(?=$|:)/).closest('button')).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+
+    fireEvent.click(screen.getAllByRole('button', { name: /(?:^|\.)newApp\.Cancel(?=$|:)/ })[0]!)
+    fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
+    expect(handleClose).not.toHaveBeenCalled()
 
     await act(async () => {
       resolveImport({
@@ -610,15 +671,68 @@ describe('CreateFromDSLModal', () => {
         permission_keys: ['app.acl.view_layout'],
       })
     })
+  })
 
-    mockImportDSL.mockResolvedValueOnce(undefined)
+  it('should show confirmation progress and prevent cancellation while confirming', async () => {
+    let resolveConfirm!: (value: {
+      id: string
+      status: DSLImportStatus
+      app_id: string
+      app_mode: string
+    }) => void
+    mockImportDSL.mockResolvedValue({
+      id: 'import-confirming',
+      status: DSLImportStatus.PENDING,
+      imported_dsl_version: '1.0.0',
+      current_dsl_version: '2.0.0',
+    })
+    mockImportDSLConfirm.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveConfirm = resolve as typeof resolveConfirm
+        }),
+    )
+
+    render(
+      <CreateFromDSLModal
+        show
+        onClose={vi.fn()}
+        activeTab={CreateFromDSLModalTab.FROM_URL}
+        dslUrl="https://example.com/app.yml"
+      />,
+    )
 
     await act(async () => {
       fireEvent.click(getCreateButton())
     })
 
-    expect(mockImportDSL).toHaveBeenCalledTimes(2)
-    expect(toastMocks.error).not.toHaveBeenCalled()
+    const confirmButton = screen.getByRole('button', {
+      name: /(?:^|\.)newApp\.Confirm(?=$|:)/,
+    })
+    fireEvent.click(confirmButton)
+
+    await waitFor(() => {
+      expect(mockImportDSLConfirm).toHaveBeenCalledTimes(1)
+      expect(confirmButton).toHaveAttribute('aria-disabled', 'true')
+    })
+    fireEvent.click(confirmButton)
+    expect(mockImportDSLConfirm).toHaveBeenCalledTimes(1)
+
+    const cancelButton = screen
+      .getAllByRole('button', { name: /(?:^|\.)newApp\.Cancel(?=$|:)/ })
+      .at(-1)!
+    expect(cancelButton).toBeDisabled()
+    fireEvent.click(cancelButton)
+    expect(screen.getByText(/(?:^|\.)newApp\.appCreateDSLErrorTitle(?=$|:)/)).toBeInTheDocument()
+
+    await act(async () => {
+      resolveConfirm({
+        id: 'import-confirming',
+        status: DSLImportStatus.COMPLETED,
+        app_id: 'app-confirming',
+        app_mode: AppModeEnum.WORKFLOW,
+      })
+    })
   })
 
   it('should handle keyboard shortcut and quota guard', async () => {
@@ -706,7 +820,6 @@ describe('CreateFromDSLModal', () => {
   })
 
   it('should handle pending import confirmation failures and cancellation', async () => {
-    vi.useFakeTimers()
     mockImportDSL.mockResolvedValue({
       id: 'import-4',
       status: DSLImportStatus.PENDING,
@@ -731,7 +844,6 @@ describe('CreateFromDSLModal', () => {
 
     await act(async () => {
       fireEvent.click(getCreateButton())
-      vi.advanceTimersByTime(300)
     })
 
     fireEvent.click(
@@ -743,7 +855,6 @@ describe('CreateFromDSLModal', () => {
 
     await act(async () => {
       fireEvent.click(getCreateButton())
-      vi.advanceTimersByTime(300)
     })
     await act(async () => {
       fireEvent.click(screen.getAllByRole('button', { name: /(?:^|\.)newApp\.Confirm(?=$|:)/ })[0]!)

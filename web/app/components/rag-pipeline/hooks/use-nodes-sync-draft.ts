@@ -11,7 +11,7 @@ import { useWorkflowStore } from '@/app/components/workflow/store'
 import { API_PREFIX } from '@/config'
 import { postWithKeepalive } from '@/service/fetch'
 import { syncWorkflowDraft } from '@/service/workflow'
-import { usePipelineRefreshDraft } from '.'
+import { usePipelineRefreshDraft } from './use-pipeline-refresh-draft'
 
 const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
   const store = useStoreApi()

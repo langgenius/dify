@@ -1,13 +1,13 @@
-import type { DataSourceNodeType } from '../../workflow/nodes/data-source/types'
-import type { Node, ValueSelector } from '../../workflow/types'
+import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
+import type { Node, ValueSelector } from '@/app/components/workflow/types'
 import { uniqBy } from 'es-toolkit/compat'
 import { useCallback } from 'react'
 import { getOutgoers, useStoreApi } from 'reactflow'
 import {
   findUsedVarNodes,
   updateNodeVars,
-} from '../../workflow/nodes/_base/components/variable/utils'
-import { BlockEnum } from '../../workflow/types'
+} from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { BlockEnum } from '@/app/components/workflow/types'
 
 export const usePipeline = () => {
   const store = useStoreApi()

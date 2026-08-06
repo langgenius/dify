@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from typing import Any, cast
 from unittest.mock import MagicMock
 
+import pytest
+
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -33,6 +35,7 @@ class DummyParameter:
     options: list[Any] | None = None
     llm_description: str | None = None
     input_schema: dict[str, Any] | None = None
+    multiple: bool = False
 
 
 class DummyTool(Tool):
@@ -129,6 +132,26 @@ def test_invoke_supports_single_message_and_parameter_casting():
     }
 
 
+def test_invoke_preserves_multiple_select_values():
+    tool = _build_tool()
+    parameter = ToolParameter.get_simple_instance(
+        name="choice",
+        llm_description="Choice",
+        typ=ToolParameter.ToolParameterType.SELECT,
+        required=True,
+        options=["a", "b"],
+    )
+    parameter.multiple = True
+    tool.entity.parameters = [parameter]
+
+    list(tool.invoke(session=MagicMock(), user_id="user-1", tool_parameters={"choice": ["a", "b"]}))
+
+    assert tool.last_invocation is not None
+    assert tool.last_invocation["tool_parameters"] == {"choice": ["a", "b"]}
+    with pytest.raises(ValueError, match="must be a list"):
+        tool.invoke(session=MagicMock(), user_id="user-1", tool_parameters={"choice": "a"})
+
+
 def test_invoke_supports_list_and_generator_results():
     tool = _build_tool()
     tool.result = [tool.create_text_message("a"), tool.create_text_message("b")]
@@ -214,6 +237,21 @@ def test_get_llm_parameters_json_schema_uses_effective_runtime_parameters():
         required=False,
         options=["global", "cn"],
     )
+    regions_parameter = ToolParameter.get_simple_instance(
+        name="regions",
+        llm_description="Search regions",
+        typ=ToolParameter.ToolParameterType.SELECT,
+        required=False,
+        options=["global", "cn"],
+    )
+    regions_parameter.multiple = True
+    tags_parameter = ToolParameter.get_simple_instance(
+        name="tags",
+        llm_description="Search tags",
+        typ=ToolParameter.ToolParameterType.DYNAMIC_SELECT,
+        required=False,
+    )
+    tags_parameter.multiple = True
     hidden_parameter = ToolParameter.get_simple_instance(
         name="api_key",
         llm_description="Hidden api key",
@@ -241,7 +279,15 @@ def test_get_llm_parameters_json_schema_uses_effective_runtime_parameters():
             "properties": {"nested": {"type": "string"}},
         },
     )
-    tool.entity.parameters = [query_parameter, region_parameter, hidden_parameter, file_parameter, payload_parameter]
+    tool.entity.parameters = [
+        query_parameter,
+        region_parameter,
+        regions_parameter,
+        tags_parameter,
+        hidden_parameter,
+        file_parameter,
+        payload_parameter,
+    ]
 
     query_override = ToolParameter.get_simple_instance(
         name="query",
@@ -261,6 +307,16 @@ def test_get_llm_parameters_json_schema_uses_effective_runtime_parameters():
                 "type": "string",
                 "description": "Search region",
                 "enum": ["global", "cn"],
+            },
+            "regions": {
+                "type": "array",
+                "items": {"type": "string", "enum": ["global", "cn"]},
+                "description": "Search regions",
+            },
+            "tags": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Search tags",
             },
             "payload": {
                 "type": "object",

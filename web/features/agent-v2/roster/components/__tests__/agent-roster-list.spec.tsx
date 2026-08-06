@@ -9,15 +9,14 @@ import { AgentRosterList } from '../agent-roster-list'
 const { duplicateAgentMutationFn } = vi.hoisted(() => ({
   duplicateAgentMutationFn: vi.fn(),
 }))
-const exportAppConfigMock = vi.hoisted(() => vi.fn())
-const downloadBlobMock = vi.hoisted(() => vi.fn())
+const exportAppDslMock = vi.hoisted(() => vi.fn())
+const exportAppDslState = vi.hoisted(() => ({ isExporting: false }))
 
-vi.mock('@/service/apps', () => ({
-  exportAppConfig: exportAppConfigMock,
-}))
-
-vi.mock('@/utils/download', () => ({
-  downloadBlob: downloadBlobMock,
+vi.mock('@/app/components/app/use-export-app-dsl', () => ({
+  useExportAppDsl: () => ({
+    exportAppDsl: exportAppDslMock,
+    isExporting: exportAppDslState.isExporting,
+  }),
 }))
 
 vi.mock('@/hooks/use-timestamp', () => ({
@@ -115,7 +114,8 @@ describe('AgentRosterList', () => {
         name: 'Research Agent copy',
       }),
     )
-    exportAppConfigMock.mockResolvedValue({ data: 'kind: app\napp:\n  mode: agent\n' })
+    exportAppDslMock.mockResolvedValue(undefined)
+    exportAppDslState.isExporting = false
   })
 
   afterEach(() => {
@@ -279,18 +279,23 @@ describe('AgentRosterList', () => {
     await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
     await user.click(screen.getByRole('menuitem', { name: 'app.export' }))
 
-    await waitFor(() => {
-      expect(exportAppConfigMock).toHaveBeenCalledWith({
-        appID: 'app-1',
-        include: false,
-      })
+    expect(exportAppDslMock).toHaveBeenCalledWith({
+      appId: 'app-1',
+      appName: 'Research Agent',
     })
-    expect(downloadBlobMock).toHaveBeenCalledWith({
-      data: expect.any(Blob),
-      fileName: 'Research Agent.yml',
-    })
-    const [{ data }] = downloadBlobMock.mock.calls[0] as [{ data: Blob }]
-    expect(await data.text()).toBe('kind: app\napp:\n  mode: agent\n')
+  })
+
+  it('disables export while an Agent App DSL export is pending', async () => {
+    const user = userEvent.setup()
+    exportAppDslState.isExporting = true
+    renderList([createAgent()])
+
+    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
+
+    expect(screen.getByRole('menuitem', { name: 'app.export' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
   })
 
   it('uses the latest cached agent detail when opening the duplicate dialog', async () => {

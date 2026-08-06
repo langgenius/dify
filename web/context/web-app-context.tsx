@@ -3,7 +3,7 @@
 import type { FC, PropsWithChildren } from 'react'
 import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { AppData, AppMeta } from '@/models/share'
-import { useQuery } from '@tanstack/react-query'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { create } from 'zustand'
 import {
@@ -67,7 +67,7 @@ const getShareCodeFromPathname = (pathname: string): string | null => {
 }
 
 const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
-  const { isPending: isGlobalPending } = useQuery(systemFeaturesQueryOptions())
+  useSuspenseQuery(systemFeaturesQueryOptions())
   const updateWebAppAccessMode = useWebAppStore((state) => state.updateWebAppAccessMode)
   const updateShareCode = useWebAppStore((state) => state.updateShareCode)
   const updateEmbeddedUserId = useWebAppStore((state) => state.updateEmbeddedUserId)
@@ -113,7 +113,7 @@ const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
     if (accessModeResult?.accessMode) updateWebAppAccessMode(accessModeResult.accessMode)
   }, [accessModeResult, updateWebAppAccessMode, shareCode])
 
-  if (isGlobalPending || isLoading) {
+  if (isLoading) {
     return (
       <div className="flex size-full items-center justify-center">
         <Loading />

@@ -97,6 +97,7 @@
   "categorySingle.model": "แบบ",
   "categorySingle.tool": "เครื่องมือ",
   "categorySingle.trigger": "ทริกเกอร์",
+  "clearSearch": "ล้าง {{label}}",
   "debugInfo.title": "การแก้จุดบกพร่อง",
   "debugInfo.viewDocs": "ดูเอกสาร",
   "deprecated": "เลิกใช้",

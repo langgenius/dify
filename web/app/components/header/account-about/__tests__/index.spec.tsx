@@ -3,17 +3,6 @@ import { fireEvent, screen } from '@testing-library/react'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import AccountAbout from '../index'
 
-let mockIsCEEdition = false
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    get IS_CE_EDITION() {
-      return mockIsCEEdition
-    },
-  }
-})
-
 describe('AccountAbout', () => {
   const mockVersionInfo: LangGeniusVersionInfo = {
     current_version: '0.6.0',
@@ -33,7 +22,6 @@ describe('AccountAbout', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsCEEdition = false
   })
 
   describe('Rendering', () => {
@@ -41,7 +29,7 @@ describe('AccountAbout', () => {
       renderWithConsoleQuery(
         <AccountAbout langGeniusVersionInfo={mockVersionInfo} onCancel={mockOnCancel} />,
         {
-          systemFeatures: { branding: { enabled: false } },
+          systemFeatures: { deployment_edition: 'CLOUD', branding: { enabled: false } },
         },
       )
 
@@ -53,7 +41,10 @@ describe('AccountAbout', () => {
       renderWithConsoleQuery(
         <AccountAbout langGeniusVersionInfo={mockVersionInfo} onCancel={mockOnCancel} />,
         {
-          systemFeatures: { branding: { enabled: true, workspace_logo: 'custom-logo.png' } },
+          systemFeatures: {
+            deployment_edition: 'CLOUD',
+            branding: { enabled: true, workspace_logo: 'custom-logo.png' },
+          },
         },
       )
 
@@ -67,6 +58,7 @@ describe('AccountAbout', () => {
     it('should show "Latest Available" when current version equals latest', () => {
       renderWithConsoleQuery(
         <AccountAbout langGeniusVersionInfo={mockVersionInfo} onCancel={mockOnCancel} />,
+        { systemFeatures: { deployment_edition: 'CLOUD' } },
       )
 
       expect(screen.getByText(/about.latestAvailable/)).toBeInTheDocument()
@@ -77,6 +69,7 @@ describe('AccountAbout', () => {
 
       renderWithConsoleQuery(
         <AccountAbout langGeniusVersionInfo={behindVersionInfo} onCancel={mockOnCancel} />,
+        { systemFeatures: { deployment_edition: 'CLOUD' } },
       )
 
       expect(screen.getByText(/about.nowAvailable/)).toBeInTheDocument()
@@ -86,21 +79,20 @@ describe('AccountAbout', () => {
 
   describe('Community Edition', () => {
     it('should render correctly in Community Edition', () => {
-      mockIsCEEdition = true
-
       renderWithConsoleQuery(
         <AccountAbout langGeniusVersionInfo={mockVersionInfo} onCancel={mockOnCancel} />,
+        { systemFeatures: { deployment_edition: 'COMMUNITY' } },
       )
 
       expect(screen.getByText(/Open Source License/)).toBeInTheDocument()
     })
 
     it('should hide update button in Community Edition when behind version', () => {
-      mockIsCEEdition = true
       const behindVersionInfo = { ...mockVersionInfo, latest_version: '0.7.0' }
 
       renderWithConsoleQuery(
         <AccountAbout langGeniusVersionInfo={behindVersionInfo} onCancel={mockOnCancel} />,
+        { systemFeatures: { deployment_edition: 'COMMUNITY' } },
       )
 
       expect(screen.queryByText(/about.updateNow/)).not.toBeInTheDocument()
@@ -111,6 +103,7 @@ describe('AccountAbout', () => {
     it('should call onCancel when close button is clicked', () => {
       renderWithConsoleQuery(
         <AccountAbout langGeniusVersionInfo={mockVersionInfo} onCancel={mockOnCancel} />,
+        { systemFeatures: { deployment_edition: 'CLOUD' } },
       )
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))

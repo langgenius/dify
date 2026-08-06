@@ -3,7 +3,6 @@ import type { BlockEnum, NodeDefault, OnNodeAdd, OnSelectBlock, ToolWithProvider
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useDebounce } from 'ahooks'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
@@ -22,7 +21,7 @@ type TabConfig = {
   disabledTip?: ReactNode
 }
 
-type SelectorContentProps = {
+type BlockSelectorPanelsProps = {
   defaultTab: TabType
   standalonePanel?: TabType
   tabs: TabConfig[]
@@ -37,6 +36,22 @@ type SelectorContentProps = {
   hasTriggerNode?: boolean
   snippetInsertPayload?: Parameters<OnNodeAdd>[1]
 }
+
+type TabFilterState = Record<
+  TabType,
+  {
+    searchText: string
+    tags: string[]
+  }
+>
+
+const createTabFilterState = (): TabFilterState => ({
+  [TabType.Blocks]: { searchText: '', tags: [] },
+  [TabType.Tools]: { searchText: '', tags: [] },
+  [TabType.Sources]: { searchText: '', tags: [] },
+  [TabType.Start]: { searchText: '', tags: [] },
+  [TabType.Snippets]: { searchText: '', tags: [] },
+})
 
 function TabHeaderItem({
   tab,
@@ -64,14 +79,14 @@ function TabHeaderItem({
   return (
     <Tooltip>
       <TooltipTrigger render={tabElement} />
-      <TooltipContent placement="top" className="max-w-[230px] rounded-xl px-4 py-3.5">
+      <TooltipContent placement="top" className="max-w-57.5 rounded-xl px-4 py-3.5">
         {tab.disabledTip || fallbackDisabledTip}
       </TooltipContent>
     </Tooltip>
   )
 }
 
-function SelectorContent({
+function BlockSelectorPanels({
   defaultTab,
   standalonePanel,
   tabs,
@@ -85,15 +100,28 @@ function SelectorContent({
   hasUserInputNode = false,
   hasTriggerNode = false,
   snippetInsertPayload,
-}: SelectorContentProps) {
+}: BlockSelectorPanelsProps) {
   const { t } = useTranslation()
-  const [searchText, setSearchText] = useState('')
-  const debouncedSearchText = useDebounce(searchText, { wait: 500 })
-  const [tags, setTags] = useState<string[]>([])
+  const [filters, setFilters] = useState(createTabFilterState)
   const fallbackDisabledTip = t(($) => $['tabs.startDisabledTip'], { ns: 'workflow' })
+
+  const setSearchText = (tab: TabType, searchText: string) => {
+    setFilters((currentFilters) => ({
+      ...currentFilters,
+      [tab]: { ...currentFilters[tab], searchText },
+    }))
+  }
+
+  const setTags = (tab: TabType, tags: string[]) => {
+    setFilters((currentFilters) => ({
+      ...currentFilters,
+      [tab]: { ...currentFilters[tab], tags },
+    }))
+  }
 
   const renderSearchFilter = (tab: TabType, inputRef?: Ref<HTMLInputElement>) => {
     if (tab === TabType.Snippets) return null
+    const { searchText, tags } = filters[tab]
 
     const filter = (() => {
       if (tab === TabType.Start) {
@@ -101,9 +129,9 @@ function SelectorContent({
           <SearchBox
             ref={inputRef}
             search={searchText}
-            onSearchChange={setSearchText}
+            onSearchChange={(value) => setSearchText(tab, value)}
             tags={tags}
-            onTagsChange={setTags}
+            onTagsChange={(value) => setTags(tab, value)}
             placeholder={t(($) => $['tabs.searchTrigger'], { ns: 'workflow' })}
             inputClassName="grow"
           />
@@ -115,9 +143,9 @@ function SelectorContent({
           <SearchBox
             ref={inputRef}
             search={searchText}
-            onSearchChange={setSearchText}
+            onSearchChange={(value) => setSearchText(tab, value)}
             tags={tags}
-            onTagsChange={setTags}
+            onTagsChange={(value) => setTags(tab, value)}
             placeholder={t(($) => $.searchTools, { ns: 'plugin' })!}
             inputClassName="grow"
           />
@@ -138,7 +166,7 @@ function SelectorContent({
               ? t(($) => $['tabs.searchBlock'], { ns: 'workflow' })
               : t(($) => $['tabs.searchDataSource'], { ns: 'workflow' })
           }
-          onValueChange={setSearchText}
+          onValueChange={(value) => setSearchText(tab, value)}
         />
       )
     })()
@@ -158,10 +186,10 @@ function SelectorContent({
               allowUserInputSelection={allowStartNodeSelection}
               hasUserInputNode={hasUserInputNode}
               hasTriggerNode={hasTriggerNode}
-              searchText={debouncedSearchText}
+              searchText={filters[TabType.Start].searchText}
               onSelect={onSelect}
               availableBlocksTypes={availableBlocksTypes}
-              tags={tags}
+              tags={filters[TabType.Start].tags}
             />
           </div>
         </>
@@ -174,7 +202,7 @@ function SelectorContent({
           {searchFilter}
           <div className="border-t border-divider-subtle">
             <Blocks
-              searchText={searchText}
+              searchText={filters[TabType.Blocks].searchText}
               onSelect={onSelect}
               availableBlocksTypes={availableBlocksTypes}
               blocks={blocks}
@@ -189,7 +217,11 @@ function SelectorContent({
         <>
           {searchFilter}
           <div className="border-t border-divider-subtle">
-            <DataSources searchText={searchText} onSelect={onSelect} dataSources={dataSources} />
+            <DataSources
+              searchText={filters[TabType.Sources].searchText}
+              onSelect={onSelect}
+              dataSources={dataSources}
+            />
           </div>
         </>
       )
@@ -200,10 +232,10 @@ function SelectorContent({
         <>
           {searchFilter}
           <ToolPanel
-            searchText={debouncedSearchText}
+            searchText={filters[TabType.Tools].searchText}
             onSelect={onSelect}
-            tags={tags}
-            onTagsChange={setTags}
+            tags={filters[TabType.Tools].tags}
+            onTagsChange={(value) => setTags(TabType.Tools, value)}
             dataSources={dataSources}
           />
         </>
@@ -212,8 +244,8 @@ function SelectorContent({
 
     return (
       <Snippets
-        searchText={searchText}
-        onSearchTextChange={setSearchText}
+        searchText={filters[TabType.Snippets].searchText}
+        onSearchTextChange={(value) => setSearchText(TabType.Snippets, value)}
         insertPayload={snippetInsertPayload}
         onInserted={onRequestClose}
       />
@@ -233,7 +265,10 @@ function SelectorContent({
 
   return (
     <Tabs defaultValue={defaultTab} className="w-full min-w-0">
-      <TabsList className="relative w-full min-w-0 gap-0 bg-background-section-burn pt-1 pl-1">
+      <TabsList
+        aria-label={t(($) => $['common.addBlock'], { ns: 'workflow' })}
+        className="relative w-full min-w-0 gap-0 bg-background-section-burn pt-1 pl-1"
+      >
         {tabs.map((tab) => (
           <TabHeaderItem key={tab.key} tab={tab} fallbackDisabledTip={fallbackDisabledTip} />
         ))}
@@ -248,11 +283,7 @@ function SelectorContent({
         />
       </TabsList>
       {tabs.map((tab) => (
-        <TabsPanel
-          key={tab.key}
-          value={tab.key}
-          className="focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset"
-        >
+        <TabsPanel key={tab.key} value={tab.key} tabIndex={-1}>
           {renderPanel(
             tab.key,
             tab.key === defaultTab && tab.key !== TabType.Snippets ? searchInputRef : undefined,
@@ -263,4 +294,4 @@ function SelectorContent({
   )
 }
 
-export { SelectorContent }
+export { BlockSelectorPanels }

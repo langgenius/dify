@@ -1,9 +1,39 @@
 /**
  * @vitest-environment node
  */
+import { Buffer } from 'node:buffer'
+import http from 'node:http'
+import net from 'node:net'
+import { PassThrough } from 'node:stream'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { resolveCookieRewriteLocalScopeKey, toScopedLocalCookieName } from './cookies'
-import { buildUpstreamUrl, createDevProxyApp, isAllowedDevOrigin } from './server'
+import {
+  buildUpstreamUrl,
+  createDevProxyApp,
+  createWebSocketUpgradeHandler,
+  isAllowedDevOrigin,
+} from './server'
+
+const listen = (server: http.Server) =>
+  new Promise<number>((resolve, reject) => {
+    server.once('error', reject)
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address()
+      if (!address || typeof address === 'string') {
+        reject(new Error('Failed to start test server.'))
+        return
+      }
+      resolve(address.port)
+    })
+  })
+
+const close = (server: http.Server) =>
+  new Promise<void>((resolve, reject) => {
+    server.close((error) => {
+      if (error) reject(error)
+      else resolve()
+    })
+  })
 
 describe('dev proxy server', () => {
   beforeEach(() => {
@@ -257,6 +287,252 @@ describe('dev proxy server', () => {
       'https://api.example.com/api/messages',
       'https://files.example.com/assets/files/logo.png?size=small',
     ])
+  })
+
+  // Scenario: Socket.IO collaboration must reuse the auth cookies stored by the local dev proxy.
+  it('should proxy WebSocket upgrades with the configured cookie rewriting', async () => {
+    // Arrange
+    const sockets = new Set<net.Socket>()
+    let upstreamRequest:
+      | {
+          connection: string | undefined
+          cookie: string | undefined
+          keepAlive: string | string[] | undefined
+          origin: string | undefined
+          proxyAuthorization: string | undefined
+          te: string | string[] | undefined
+          upgrade: string | undefined
+          url: string | undefined
+          xHop: string | string[] | undefined
+        }
+      | undefined
+    const upstreamServer = http.createServer()
+    upstreamServer.on('connection', (socket) => sockets.add(socket))
+    upstreamServer.on('upgrade', (request, socket) => {
+      upstreamRequest = {
+        connection: request.headers.connection,
+        cookie: request.headers.cookie,
+        keepAlive: request.headers['keep-alive'],
+        origin: request.headers.origin,
+        proxyAuthorization: request.headers['proxy-authorization'],
+        te: request.headers.te,
+        upgrade: request.headers.upgrade,
+        url: request.url,
+        xHop: request.headers['x-hop'],
+      }
+      socket.write(
+        [
+          'HTTP/1.1 101 Switching Protocols',
+          'Connection: Upgrade, X-Upstream-Hop',
+          'Upgrade: websocket',
+          'X-Upstream-Hop: upstream-only',
+          'Keep-Alive: timeout=5',
+          'Proxy-Authenticate: Basic realm="proxy"',
+          'Set-Cookie: __Host-access_token=next; Path=/socket.io; Domain=cloud.example.com; Secure; SameSite=None',
+          'Set-Cookie: __Secure-refresh_token=renewed; Path=/socket.io; Domain=cloud.example.com; Secure; HttpOnly',
+          '',
+          'proxied websocket',
+        ].join('\r\n'),
+      )
+    })
+    const upstreamPort = await listen(upstreamServer)
+    const upstreamOrigin = `http://127.0.0.1:${upstreamPort}`
+    const cookieRewrite = {
+      hostPrefixCookies: ['access_token', 'refresh_token'],
+      localCookieScope: 'target-origin' as const,
+    }
+    const localScopeKey = resolveCookieRewriteLocalScopeKey(cookieRewrite, new URL(upstreamOrigin))!
+    const accessTokenCookieName = toScopedLocalCookieName('access_token', localScopeKey)
+    const refreshTokenCookieName = toScopedLocalCookieName('refresh_token', localScopeKey)
+
+    const proxyServer = http.createServer()
+    proxyServer.on(
+      'upgrade',
+      createWebSocketUpgradeHandler({
+        routes: [{ paths: '/socket.io', target: upstreamOrigin, cookieRewrite }],
+      }),
+    )
+    const proxyPort = await listen(proxyServer)
+    const client = net.connect(proxyPort, '127.0.0.1')
+    sockets.add(client)
+
+    try {
+      // Act
+      const response = await new Promise<string>((resolve, reject) => {
+        let value = ''
+        const timeout = setTimeout(
+          () => reject(new Error('Timed out waiting for WebSocket upgrade response.')),
+          3000,
+        )
+
+        client.setEncoding('utf8')
+        client.on('connect', () => {
+          client.write(
+            [
+              'GET /socket.io/?EIO=4&transport=websocket HTTP/1.1',
+              `Host: 127.0.0.1:${proxyPort}`,
+              'Connection: Upgrade, X-Hop',
+              'Upgrade: websocket',
+              'X-Hop: client-only',
+              'Keep-Alive: timeout=5',
+              'Proxy-Authorization: Basic secret',
+              'TE: trailers',
+              'Origin: http://localhost:3000',
+              `Cookie: ${accessTokenCookieName}=secret`,
+              '',
+              '',
+            ].join('\r\n'),
+          )
+        })
+        client.on('data', (chunk) => {
+          value += chunk
+          if (!value.includes('proxied websocket')) return
+
+          clearTimeout(timeout)
+          resolve(value)
+        })
+        client.on('error', (error) => {
+          clearTimeout(timeout)
+          reject(error)
+        })
+      })
+
+      // Assert
+      expect(response).toContain('101 Switching Protocols')
+      expect(response).toContain('proxied websocket')
+      expect(response).toContain('Connection: Upgrade\r\n')
+      expect(response).toContain('Upgrade: websocket\r\n')
+      expect(response).not.toMatch(/X-Upstream-Hop:/i)
+      expect(response).not.toMatch(/Keep-Alive:/i)
+      expect(response).not.toMatch(/Proxy-Authenticate:/i)
+      expect(response).toContain(`Set-Cookie: ${accessTokenCookieName}=next; Path=/; SameSite=Lax`)
+      expect(response).toContain(`Set-Cookie: ${refreshTokenCookieName}=renewed; Path=/; HttpOnly`)
+      expect(response).not.toContain('__Host-access_token')
+      expect(response).not.toContain('__Secure-refresh_token')
+      expect(upstreamRequest).toEqual({
+        connection: 'Upgrade',
+        cookie: 'access_token=secret',
+        keepAlive: undefined,
+        origin: upstreamOrigin,
+        proxyAuthorization: undefined,
+        te: undefined,
+        upgrade: 'websocket',
+        url: '/socket.io/?EIO=4&transport=websocket',
+        xHop: undefined,
+      })
+    } finally {
+      sockets.forEach((socket) => socket.destroy())
+      await Promise.all([close(proxyServer), close(upstreamServer)])
+    }
+  })
+
+  // Scenario: invalid route targets should fail the individual Upgrade request, not the proxy process.
+  it('should return a bad gateway response when a WebSocket target is invalid', async () => {
+    // Arrange
+    const logger = { error: vi.fn() }
+    const clientSocket = new PassThrough()
+    const request = {
+      headers: {},
+      method: 'GET',
+      url: '/socket.io/?EIO=4&transport=websocket',
+    } as http.IncomingMessage
+    let response = ''
+    clientSocket.setEncoding('utf8')
+    clientSocket.on('data', (chunk) => {
+      response += chunk
+    })
+    const handleUpgrade = createWebSocketUpgradeHandler({
+      routes: [{ paths: '/socket.io', target: 'not a URL' }],
+      logger,
+    })
+
+    // Act
+    expect(() => handleUpgrade(request, clientSocket, Buffer.alloc(0))).not.toThrow()
+    await new Promise<void>((resolve) => clientSocket.once('finish', resolve))
+
+    // Assert
+    expect(response).toContain('502 Bad Gateway')
+    expect(logger.error).toHaveBeenCalledOnce()
+  })
+
+  // Scenario: parsed chunked bodies need close-delimited framing when an Upgrade is rejected upstream.
+  it('should safely forward chunked non-upgrade responses', async () => {
+    // Arrange
+    const sockets = new Set<net.Socket>()
+    const upstreamServer = http.createServer()
+    upstreamServer.on('connection', (socket) => sockets.add(socket))
+    upstreamServer.on('upgrade', (_request, socket) => {
+      socket.end(
+        [
+          'HTTP/1.1 401 Unauthorized',
+          'Connection: keep-alive',
+          'Transfer-Encoding: chunked',
+          'Content-Type: text/plain',
+          '',
+          '6',
+          'denied',
+          '0',
+          '',
+          '',
+        ].join('\r\n'),
+      )
+    })
+    const upstreamPort = await listen(upstreamServer)
+    const proxyServer = http.createServer()
+    proxyServer.on(
+      'upgrade',
+      createWebSocketUpgradeHandler({
+        routes: [{ paths: '/socket.io', target: `http://127.0.0.1:${upstreamPort}` }],
+      }),
+    )
+    const proxyPort = await listen(proxyServer)
+    const client = net.connect(proxyPort, '127.0.0.1')
+    sockets.add(client)
+
+    try {
+      // Act
+      const response = await new Promise<string>((resolve, reject) => {
+        let value = ''
+        const timeout = setTimeout(
+          () => reject(new Error('Timed out waiting for rejected Upgrade response.')),
+          3000,
+        )
+
+        client.setEncoding('utf8')
+        client.on('connect', () => {
+          client.write(
+            [
+              'GET /socket.io/?EIO=4&transport=websocket HTTP/1.1',
+              `Host: 127.0.0.1:${proxyPort}`,
+              'Connection: Upgrade',
+              'Upgrade: websocket',
+              '',
+              '',
+            ].join('\r\n'),
+          )
+        })
+        client.on('data', (chunk) => {
+          value += chunk
+        })
+        client.on('end', () => {
+          clearTimeout(timeout)
+          resolve(value)
+        })
+        client.on('error', (error) => {
+          clearTimeout(timeout)
+          reject(error)
+        })
+      })
+
+      // Assert
+      expect(response).toContain('401 Unauthorized')
+      expect(response).toContain('Connection: close')
+      expect(response).not.toMatch(/Transfer-Encoding:/i)
+      expect(response.endsWith('\r\n\r\ndenied')).toBe(true)
+    } finally {
+      sockets.forEach((socket) => socket.destroy())
+      await Promise.all([close(proxyServer), close(upstreamServer)])
+    }
   })
 
   // Scenario: routes are matched in config order so callers can put specific routes first.

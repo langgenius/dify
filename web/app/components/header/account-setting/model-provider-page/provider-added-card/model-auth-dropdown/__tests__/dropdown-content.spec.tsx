@@ -1,7 +1,7 @@
 import type { ModelProvider } from '../../../declarations'
 import type { CredentialPanelState } from '../../use-credential-panel-state'
 import { fireEvent, screen } from '@testing-library/react'
-import { render } from '@/test/console/render'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { CustomConfigurationStatusEnum, PreferredProviderTypeEnum } from '../../../declarations'
 import DropdownContent from '../dropdown-content'
 

@@ -542,7 +542,7 @@ class WorkflowService:
         # Validate credentials before publishing, for credential policy check
         from services.feature_service import FeatureService
 
-        if FeatureService.get_system_features().plugin_manager.enabled:
+        if FeatureService.is_plugin_manager_enabled():
             self._validate_workflow_credentials(draft_workflow, session=session)
 
         # validate graph structure
@@ -1060,6 +1060,7 @@ class WorkflowService:
         with sessionmaker(bind=db.engine).begin() as session:
             draft_var_saver = DraftVariableSaver(
                 session=session,
+                tenant_id=app_model.tenant_id,
                 app_id=app_model.id,
                 node_id=workflow_node_execution.node_id,
                 node_type=workflow_node_execution.node_type,
@@ -1210,6 +1211,7 @@ class WorkflowService:
         with sessionmaker(bind=db.engine).begin() as session:
             draft_var_saver = DraftVariableSaver(
                 session=session,
+                tenant_id=app_model.tenant_id,
                 app_id=app_model.id,
                 node_id=node_id,
                 node_type=BuiltinNodeTypes.HUMAN_INPUT,

@@ -1,18 +1,16 @@
 import type {
-  ConsoleSegmentListResponse,
   DatasetListItemResponse,
-  DocumentStatusListResponse,
   DocumentWithSegmentsListResponse,
 } from '@dify/contracts/api/console/datasets/types.gen'
+import type { ConsoleClient } from '../../../../support/api/console-client'
 import type { DifyWorld } from '../../../support/world'
 import type { PreseededResource } from './common'
-import { createApiContext, expectApiResponseOK } from '../../../../support/api'
 import {
   agentBuilderExpectedTokens,
   agentBuilderFixedInputs,
   agentBuilderPreseededResources,
 } from '../agent-builder-resources'
-import { buildQuery, failFixturePrerequisite, findConsoleResourceByName } from './common'
+import { failFixturePrerequisite, findResourceByName } from './common'
 
 type DocumentIndexingStatus =
   | 'cleaning'
@@ -23,90 +21,58 @@ type DocumentIndexingStatus =
   | 'waiting'
 
 const completedDocumentIndexingStatus: DocumentIndexingStatus = 'completed'
-export const getPreseededDataset = async (resourceName: string) => {
-  const query = buildQuery({ keyword: resourceName, limit: '20', page: '1' })
-
-  return findConsoleResourceByName<DatasetListItemResponse>({
-    action: `Check preseeded dataset ${resourceName}`,
-    path: `/console/api/datasets?${query}`,
-    resourceName,
-  })
-}
-
-const getDatasetIndexingStatuses = async (datasetId: string, resourceName: string) => {
-  const ctx = await createApiContext()
-  try {
-    const response = await ctx.get(`/console/api/datasets/${datasetId}/indexing-status`)
-    await expectApiResponseOK(response, `Check preseeded dataset indexing status ${resourceName}`)
-    const body = (await response.json()) as DocumentStatusListResponse
-
-    return body.data
-  } finally {
-    await ctx.dispose()
-  }
-}
-
-const getDatasetDocuments = async (datasetId: string, resourceName: string) => {
+const getDatasetDocuments = async (client: ConsoleClient, datasetId: string) => {
   const documents: DocumentWithSegmentsListResponse['data'] = []
-  const ctx = await createApiContext()
-  try {
-    let page = 1
-    let hasMore = true
+  let page = 1
+  let hasMore = true
 
-    while (hasMore) {
-      const query = buildQuery({ limit: '100', page: String(page) })
-      const response = await ctx.get(`/console/api/datasets/${datasetId}/documents?${query}`)
-      await expectApiResponseOK(response, `List preseeded dataset documents ${resourceName}`)
-      const body = (await response.json()) as DocumentWithSegmentsListResponse
+  while (hasMore) {
+    const response = await client.datasets.byDatasetId.documents.get({
+      params: { dataset_id: datasetId },
+      query: { limit: '100', page: String(page) },
+    })
 
-      documents.push(...body.data)
-      hasMore = body.has_more
-      page += 1
-    }
-
-    return documents
-  } finally {
-    await ctx.dispose()
+    documents.push(...response.data)
+    hasMore = response.has_more
+    page += 1
   }
+
+  return documents
 }
 
 const datasetHasEnabledSegmentContainingTokens = async (
+  client: ConsoleClient,
   datasetId: string,
-  resourceName: string,
   expectedTokens: string[],
 ) => {
-  const documents = await getDatasetDocuments(datasetId, resourceName)
-  const ctx = await createApiContext()
-  try {
-    for (const document of documents) {
-      const query = buildQuery({
+  const documents = await getDatasetDocuments(client, datasetId)
+  for (const document of documents) {
+    const response = await client.datasets.byDatasetId.documents.byDocumentId.segments.get({
+      params: {
+        dataset_id: datasetId,
+        document_id: document.id,
+      },
+      query: {
         enabled: 'true',
         keyword: agentBuilderExpectedTokens.knowledgeReply,
-        limit: '20',
-        page: '1',
-      })
-      const response = await ctx.get(
-        `/console/api/datasets/${datasetId}/documents/${document.id}/segments?${query}`,
-      )
-      await expectApiResponseOK(response, `Check preseeded dataset segment content ${resourceName}`)
-      const body = (await response.json()) as ConsoleSegmentListResponse
-      const matchingSegment = body.data.find(
-        (segment) =>
-          segment.enabled &&
-          expectedTokens.every(
-            (expectedToken) =>
-              segment.content.includes(expectedToken) ||
-              segment.keywords?.some((keyword) => keyword.includes(expectedToken)),
-          ),
-      )
+        limit: 20,
+        page: 1,
+      },
+    })
+    const matchingSegment = response.data.find(
+      (segment) =>
+        segment.enabled &&
+        expectedTokens.every(
+          (expectedToken) =>
+            segment.content.includes(expectedToken) ||
+            segment.keywords?.some((keyword) => keyword.includes(expectedToken)),
+        ),
+    )
 
-      if (matchingSegment) return true
-    }
-
-    return false
-  } finally {
-    await ctx.dispose()
+    if (matchingSegment) return true
   }
+
+  return false
 }
 
 const toDatasetResource = (resource: DatasetListItemResponse): PreseededResource => ({
@@ -117,9 +83,13 @@ const toDatasetResource = (resource: DatasetListItemResponse): PreseededResource
 
 export async function requireReadyPreseededDataset(
   world: DifyWorld,
+  client: ConsoleClient,
   resourceName: string,
 ): Promise<PreseededResource> {
-  const resource = await getPreseededDataset(resourceName)
+  const response = await client.datasets.get({
+    query: { keyword: resourceName, limit: 20, page: 1 },
+  })
+  const resource = findResourceByName(response.data, resourceName)
 
   if (!resource)
     return failFixturePrerequisite(world, `Preseeded dataset "${resourceName}" was not found.`)
@@ -135,7 +105,10 @@ export async function requireReadyPreseededDataset(
     )
   }
 
-  const statuses = await getDatasetIndexingStatuses(resource.id, resourceName)
+  const indexingStatus = await client.datasets.byDatasetId.indexingStatus.get({
+    params: { dataset_id: resource.id },
+  })
+  const statuses = indexingStatus.data
   if (statuses.length < 1) {
     return failFixturePrerequisite(
       world,
@@ -160,8 +133,8 @@ export async function requireReadyPreseededDataset(
       agentBuilderExpectedTokens.knowledgeReply,
     ]
     const hasExpectedToken = await datasetHasEnabledSegmentContainingTokens(
+      client,
       resource.id,
-      resourceName,
       requiredTokens,
     )
 

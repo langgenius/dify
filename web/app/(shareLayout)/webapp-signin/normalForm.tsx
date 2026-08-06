@@ -6,7 +6,6 @@ import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import { IS_CE_EDITION } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { LicenseStatus } from '@/features/system-features/constants'
 import Link from '@/next/link'
@@ -19,6 +18,9 @@ const NormalForm = () => {
 
   const [isLoading, setIsLoading] = useState(true)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const isNonCloudEdition =
+    systemFeatures.deployment_edition === 'COMMUNITY' ||
+    systemFeatures.deployment_edition === 'ENTERPRISE'
   const [authType, updateAuthType] = useState<'code' | 'password'>('password')
   const [showORLine, setShowORLine] = useState(false)
   const [allMethodsAreDisabled, setAllMethodsAreDisabled] = useState(false)
@@ -236,7 +238,7 @@ const NormalForm = () => {
                   {t(($) => $.pp, { ns: 'login' })}
                 </Link>
               </div>
-              {IS_CE_EDITION && (
+              {isNonCloudEdition && (
                 <div className="w-hull mt-2 block system-xs-regular text-text-tertiary">
                   {t(($) => $.goToInit, { ns: 'login' })}
                   &nbsp;

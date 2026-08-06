@@ -1,9 +1,9 @@
 'use client'
 
 import type { InSiteMessageActionItem } from './index'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { IS_CLOUD_EDITION } from '@/config'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/client'
 import InSiteMessage from './index'
 
@@ -56,20 +56,25 @@ function parseNotificationBody(body: string): NotificationBodyPayload | null {
 
 function InSiteMessageNotification() {
   const { t } = useTranslation()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
+  const isCloudEdition = deploymentEdition === 'CLOUD'
   const dismissNotificationMutation = useMutation(
     consoleQuery.notification.dismiss.post.mutationOptions(),
   )
 
   const { data } = useQuery(
     consoleQuery.notification.get.queryOptions({
-      enabled: IS_CLOUD_EDITION,
+      enabled: isCloudEdition,
     }),
   )
 
   const notification = data?.notifications?.[0]
   const parsedBody = notification ? parseNotificationBody(notification.body) : null
 
-  if (!IS_CLOUD_EDITION || !notification || !notification.notification_id) return null
+  if (!isCloudEdition || !notification || !notification.notification_id) return null
 
   const notificationId = notification.notification_id
   const fallbackActions: InSiteMessageActionItem[] = [

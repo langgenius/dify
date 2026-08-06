@@ -1,5 +1,7 @@
+import type { RenderOptions } from '@testing-library/react'
+import type { ReactElement } from 'react'
 import type { UsagePlanInfo, UsageResetInfo } from '@/app/components/billing/type'
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import AnnotationFull from '@/app/components/billing/annotation-full'
@@ -14,20 +16,32 @@ import TriggerEventsLimitModal from '@/app/components/billing/trigger-events-lim
 import { Plan } from '@/app/components/billing/type'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
-import { render } from '@/test/console/render'
+import { consoleQuery } from '@/service/client'
+import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
 
 let mockProviderCtx: Record<string, unknown> = {}
 let mockConsoleState: Record<string, unknown> = {}
+
+const render = (ui: ReactElement, options: RenderOptions = {}) => {
+  const queryClient = createConsoleQueryClient()
+  const plan = mockProviderCtx.plan as {
+    usage: { vectorSpace: number }
+    total: { vectorSpace: number }
+  }
+  queryClient.setQueryData(consoleQuery.features.vectorSpace.get.queryOptions().queryKey, {
+    size: plan.usage.vectorSpace,
+    limit: plan.total.vectorSpace,
+  })
+  const { wrapper } = createConsoleQueryWrapper({
+    systemFeatures: { deployment_edition: 'CLOUD' },
+    queryClient,
+  })
+  return renderWithConsoleState(ui, { ...options, wrapper })
+}
+
 const mockSetShowPricingModal = vi.fn()
 const mockSetShowAccountSettingModal = vi.fn()
-
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    IS_CLOUD_EDITION: true,
-  }
-})
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => mockProviderCtx,
@@ -40,10 +54,6 @@ vi.mock('@/context/account-state', async () => {
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState)
-})
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => mockConsoleState)
 })
 vi.mock('@/context/version-state', async () => {
   const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
@@ -74,9 +84,6 @@ vi.mock('@/service/use-billing', () => ({
     refetch: mockRefetch,
   }),
   useBindPartnerStackInfo: () => ({ mutateAsync: vi.fn() }),
-  useCurrentPlanVectorSpace: () => ({
-    data: undefined,
-  }),
 }))
 
 vi.mock('@/service/use-education', () => ({
@@ -143,7 +150,7 @@ const setupProviderContext = (
 const setupConsoleState = (overrides: Record<string, unknown> = {}) => {
   mockConsoleState = {
     isCurrentWorkspaceManager: true,
-    workspacePermissionKeys: ['billing.view', 'billing.manage', 'billing.subscription.manage'],
+    workspacePermissionKeys: [],
     userProfile: { email: 'test@example.com' },
     langGeniusVersionInfo: { current_version: '1.0.0' },
     ...overrides,
@@ -202,20 +209,22 @@ describe('Billing Page + Plan Integration', () => {
       expect(screen.getByText(/plansCommon\.apiRateLimit/i)).toBeInTheDocument()
     })
 
-    it('should display usage values as "usage / total" format', () => {
+    it('should expose each quota card and its value through stable semantics', () => {
       setupProviderContext({
         type: Plan.sandbox,
-        usage: { buildApps: 3, teamMembers: 1 },
-        total: { buildApps: 5, teamMembers: 1 },
+        usage: { teamMembers: 3 },
+        total: { teamMembers: 5 },
       })
 
       render(<PlanComp loc="test" />)
 
-      // Check that the buildApps usage fraction "3 / 5" is rendered
-      const usageContainers = screen.getAllByText('3')
-      expect(usageContainers.length).toBeGreaterThan(0)
-      const totalContainers = screen.getAllByText('5')
-      expect(totalContainers.length).toBeGreaterThan(0)
+      const quotaCard = screen.getByRole('group', { name: /usagePage\.teamMembers/i })
+      const quotaLabel = within(quotaCard).getByText(/usagePage\.teamMembers/i)
+      const quotaValue = within(quotaCard).getByTestId('billing-quota-value')
+
+      expect(quotaLabel.tagName).toBe('DT')
+      expect(quotaValue.tagName).toBe('DD')
+      expect(quotaValue).toHaveTextContent(/3\s*\/\s*5/)
     })
 
     it('should show "unlimited" for infinite quotas (professional API rate limit)', () => {
@@ -245,11 +254,11 @@ describe('Billing Page + Plan Integration', () => {
 
   // Verify billing URL button visibility and behavior
   describe('Billing URL button', () => {
-    it('should show billing button when manager has subscription management permission', () => {
+    it('should show billing button to managers without billing permission keys', () => {
       setupProviderContext({ type: Plan.sandbox })
       setupConsoleState({
         isCurrentWorkspaceManager: true,
-        workspacePermissionKeys: ['billing.subscription.manage'],
+        workspacePermissionKeys: [],
       })
 
       render(<Billing />)
@@ -258,11 +267,10 @@ describe('Billing Page + Plan Integration', () => {
       expect(screen.getByText(/viewBillingAction/i)).toBeInTheDocument()
     })
 
-    it('should hide billing button when subscription management permission is granted without manager role', () => {
+    it('should hide billing button from non-manager members', () => {
       setupProviderContext({ type: Plan.sandbox })
       setupConsoleState({
         isCurrentWorkspaceManager: false,
-        workspacePermissionKeys: ['billing.subscription.manage'],
       })
 
       render(<Billing />)
@@ -270,31 +278,20 @@ describe('Billing Page + Plan Integration', () => {
       expect(screen.queryByText(/viewBillingTitle/i)).not.toBeInTheDocument()
     })
 
-    it('should hide billing button when subscription management permission is missing', () => {
+    it('should show billing button when a manager has no billing permission keys', () => {
       setupProviderContext({ type: Plan.sandbox })
       setupConsoleState({
         isCurrentWorkspaceManager: true,
-        workspacePermissionKeys: ['billing.view', 'billing.manage'],
+        workspacePermissionKeys: [],
       })
 
       render(<Billing />)
 
-      expect(screen.queryByText(/viewBillingTitle/i)).not.toBeInTheDocument()
+      expect(screen.getByText(/viewBillingTitle/i)).toBeInTheDocument()
     })
 
     it('should hide billing button when billing is disabled', () => {
       setupProviderContext({ type: Plan.sandbox }, { enableBilling: false })
-
-      render(<Billing />)
-
-      expect(screen.queryByText(/viewBillingTitle/i)).not.toBeInTheDocument()
-    })
-
-    it('should hide billing button when no billing permissions are granted', () => {
-      setupProviderContext({ type: Plan.sandbox })
-      setupConsoleState({
-        workspacePermissionKeys: [],
-      })
 
       render(<Billing />)
 
@@ -365,6 +362,39 @@ describe('Plan Type Display Integration', () => {
     render(<PlanComp loc="test" />)
 
     expect(screen.getByText(/toVerified/i)).toBeInTheDocument()
+  })
+
+  it('should show education discount to managers without billing permission keys', () => {
+    setupProviderContext(
+      { type: Plan.sandbox },
+      {
+        enableEducationPlan: true,
+        isEducationAccount: true,
+      },
+    )
+    setupConsoleState({ isCurrentWorkspaceManager: true, workspacePermissionKeys: [] })
+
+    render(<PlanComp loc="test" />)
+
+    expect(screen.getByText(/useEducationDiscount/i)).toBeInTheDocument()
+  })
+
+  it('should hide education discount from non-manager members', () => {
+    setupProviderContext(
+      { type: Plan.sandbox },
+      {
+        enableEducationPlan: true,
+        isEducationAccount: true,
+      },
+    )
+    setupConsoleState({
+      isCurrentWorkspaceManager: false,
+      workspacePermissionKeys: ['billing.manage'],
+    })
+
+    render(<PlanComp loc="test" />)
+
+    expect(screen.queryByText(/useEducationDiscount/i)).not.toBeInTheDocument()
   })
 })
 

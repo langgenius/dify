@@ -3,8 +3,6 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLine } from '@remixicon/react'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
-import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import RemoveEffectVarConfirm from '@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm'
 import {
   findUsedVarNodes,
@@ -13,6 +11,8 @@ import {
 import EnvItem from '@/app/components/workflow/panel/env-panel/env-item'
 import VariableTrigger from '@/app/components/workflow/panel/env-panel/variable-trigger'
 import { useStore } from '@/app/components/workflow/store'
+import { useCollaborativeWorkflow } from '../../hooks/use-collaborative-workflow'
+import { useNodesSyncDraft } from '../../hooks/use-nodes-sync-draft'
 
 const HIDDEN_SECRET_VALUE = '[__HIDDEN__]'
 type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']

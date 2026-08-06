@@ -13,7 +13,7 @@ vi.mock('@/hooks/use-theme', () => ({
   default: vi.fn(),
 }))
 
-vi.mock('@/app/components/workflow/block-selector/market-place-plugin/action', () => ({
+vi.mock('@/app/components/workflow/block-selector/marketplace-plugin/action', () => ({
   default: () => <button type="button" aria-label="common.operation.more" />,
 }))
 
@@ -116,7 +116,8 @@ describe('FeaturedTriggers', () => {
       const trigger = screen.getByRole('button', { name: /workflow\.tabs\.featuredTools/ })
       expect(trigger).toHaveAttribute('aria-expanded', 'true')
 
-      await user.click(trigger)
+      trigger.focus()
+      await user.keyboard(' ')
 
       expect(trigger).toHaveAttribute('aria-expanded', 'false')
 
@@ -153,17 +154,21 @@ describe('FeaturedTriggers', () => {
       const showMoreButton = screen.getByRole('button', {
         name: 'workflow.tabs.showMoreFeatured',
       })
-      expect(showMoreButton).not.toHaveAttribute('aria-expanded')
-
       await user.click(showMoreButton)
       expect(screen.getByText('Provider 9')).toBeInTheDocument()
       expect(screen.queryByText('Provider 10')).not.toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'workflow.tabs.showMoreFeatured' }))
       expect(screen.getByText('Provider 10')).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'workflow.tabs.showLessFeatured' }),
+      ).toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'workflow.tabs.showLessFeatured' }))
       expect(screen.queryByText('Provider 5')).not.toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'workflow.tabs.showMoreFeatured' }),
+      ).toBeInTheDocument()
     })
   })
 
@@ -225,6 +230,8 @@ describe('FeaturedTriggers', () => {
         'href',
         'https://marketplace.test/plugins/org/trigger-plugin',
       )
+      expect(detailsLink).not.toContainElement(installButton)
+      expect(detailsLink).not.toContainElement(moreButton)
 
       detailsLink.focus()
       await user.tab()

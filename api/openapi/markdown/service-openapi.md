@@ -4052,11 +4052,11 @@ User action configuration.
 #### ValueSourceType
 
 ValueSourceType records whether the value comes from a static setting
-in form definiton, or a variable while the workflow is running.
+in form definition, or a variable while the workflow is running.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| ValueSourceType | string | ValueSourceType records whether the value comes from a static setting in form definiton, or a variable while the workflow is running. |  |
+| ValueSourceType | string | ValueSourceType records whether the value comes from a static setting in form definition, or a variable while the workflow is running. |  |
 
 #### WeightKeywordSetting
 

@@ -11,13 +11,15 @@ import BillingPage from '@/app/components/billing/billing-page'
 import CustomPage from '@/app/components/custom/custom-page'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
-import { IS_CLOUD_EDITION } from '@/config'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
-import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
+import {
+  isCurrentWorkspaceDatasetOperatorAtom,
+  isCurrentWorkspaceManagerAtom,
+} from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { BillingPermission, hasPermission } from '@/utils/permission'
+import { hasPermission } from '@/utils/permission'
 import AccessRulesPage from './access-rules-page'
 import { ApiBasedExtensionPage } from './api-based-extension-page'
 import DataSourcePage from './data-source-page-new'
@@ -58,12 +60,13 @@ export default function AccountSetting({
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
+  const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
   const canManageWorkspaceRoles =
     isRbacEnabled && hasPermission(workspacePermissionKeys, 'workspace.role.manage')
-  const canViewBilling =
-    enableBilling && hasPermission(workspacePermissionKeys, BillingPermission.View)
-  const canViewWorkflowLogArchives = IS_CLOUD_EDITION && isCurrentWorkspaceManager
+  const canViewBilling = enableBilling && !isCurrentWorkspaceDatasetOperator
+  const canViewWorkflowLogArchives =
+    systemFeatures.deployment_edition === 'CLOUD' && isCurrentWorkspaceManager
   // Keep legacy `language` deep links opening Preferences during the tab rename migration.
   const normalizedActiveTab =
     activeTab === ACCOUNT_SETTING_TAB.LANGUAGE ? ACCOUNT_SETTING_TAB.PREFERENCES : activeTab
@@ -208,6 +211,18 @@ export default function AccountSetting({
 
   return (
     <MenuDialog show onClose={handleClose}>
+      <div className="fixed top-6 right-6 z-20 flex shrink-0 flex-col items-center">
+        <Button
+          variant="tertiary"
+          size="large"
+          className="px-2"
+          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+          onClick={handleClose}
+        >
+          <span className="i-ri-close-line size-5" />
+        </Button>
+        <div className="mt-1 system-2xs-medium-uppercase text-text-tertiary">ESC</div>
+      </div>
       <div className="flex h-screen w-full max-w-full pl-0 sm:pl-[232px]">
         <div className="flex w-[44px] shrink-0 flex-col pr-6 pl-4 sm:w-[224px]">
           <div className="mt-6 mb-8 flex h-[38px] items-center px-3 title-2xl-semi-bold whitespace-nowrap text-text-primary">
@@ -254,13 +269,13 @@ export default function AccountSetting({
             ))}
           </div>
         </div>
-        <div className="relative flex min-h-0 w-[824px]">
+        <div className="relative flex min-h-0 w-[824px] min-w-0">
           <ScrollArea
             ref={scrollContainerRef}
-            className="h-full min-h-0 flex-1 bg-components-panel-bg"
+            className="h-full min-h-0 min-w-0 flex-1 bg-components-panel-bg"
             slotClassNames={{
-              viewport: 'overscroll-contain',
-              content: 'min-h-full pb-4',
+              viewport: 'overscroll-contain overflow-x-hidden',
+              content: 'min-h-full min-w-0 w-full max-w-full pb-4',
             }}
           >
             <div className="sticky top-0 z-20 mx-8 flex min-h-[60px] items-end bg-components-panel-bg pt-8 pb-2">
@@ -272,20 +287,8 @@ export default function AccountSetting({
                   </div>
                 )}
               </div>
-              <div className="fixed top-6 right-6 flex shrink-0 flex-col items-center">
-                <Button
-                  variant="tertiary"
-                  size="large"
-                  className="px-2"
-                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                  onClick={handleClose}
-                >
-                  <span className="i-ri-close-line size-5" />
-                </Button>
-                <div className="mt-1 system-2xs-medium-uppercase text-text-tertiary">ESC</div>
-              </div>
             </div>
-            <div className="px-4 pt-6 sm:px-8">
+            <div className="max-w-full min-w-0 px-4 pt-6 sm:px-8">
               {activeMenu === ACCOUNT_SETTING_TAB.PROVIDER && (
                 <ModelProviderPage searchText={searchValue} onSearchTextChange={setSearchValue} />
               )}

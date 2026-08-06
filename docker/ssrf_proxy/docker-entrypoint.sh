@@ -74,16 +74,22 @@ if [ -n "${SSRF_SANDBOX_PROXY_PORT:-}" ]; then
     } >> "$SANDBOX_PROXY_CONF"
 fi
 
-# Replace environment variables in the template and output to the squid.conf
-echo "[ENTRYPOINT] replacing environment variables in the template"
-awk '{
-    while(match($0, /\${[A-Za-z_][A-Za-z_0-9]*}/)) {
-        var = substr($0, RSTART+2, RLENGTH-3)
-        val = ENVIRON[var]
-        $0 = substr($0, 1, RSTART-1) val substr($0, RSTART+RLENGTH)
-    }
-    print
-}' /etc/squid/squid.conf.template > /etc/squid/squid.conf
+# Replace environment variables in a template file.
+expand_env() {
+    awk '{
+        while(match($0, /\${[A-Za-z_][A-Za-z_0-9]*}/)) {
+            var = substr($0, RSTART+2, RLENGTH-3)
+            val = ENVIRON[var]
+            $0 = substr($0, 1, RSTART-1) val substr($0, RSTART+RLENGTH)
+        }
+        print
+    }' "$1"
+}
+
+# Replace environment variables in the templates and output to squid.conf
+echo "[ENTRYPOINT] replacing environment variables in the templates"
+expand_env /etc/squid/squid.conf.template > /etc/squid/squid.conf
+expand_env /etc/squid/dify_common.conf.template > /etc/squid/dify_common.conf
 
 /usr/sbin/squid -Nz
 echo "[ENTRYPOINT] starting squid"

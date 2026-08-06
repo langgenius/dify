@@ -1,21 +1,26 @@
 'use client'
 import type { FC } from 'react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
-import { IS_CLOUD_EDITION } from '@/config'
 import { useModalContext } from '@/context/modal-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 
 const UpgradeCard: FC = () => {
   const { t } = useTranslation()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
   const { setShowPricingModal } = useModalContext()
 
   const handleUpgrade = useCallback(() => {
     setShowPricingModal()
   }, [setShowPricingModal])
 
-  if (!IS_CLOUD_EDITION) return null
+  if (deploymentEdition !== 'CLOUD') return null
 
   return (
     <div className="flex items-center justify-between rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg py-3 pr-3.5 pl-4 shadow-xs backdrop-blur-[5px]">

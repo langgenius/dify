@@ -8,7 +8,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNodesInteractions } from '@/app/components/workflow/hooks'
+import { useNodesInteractions } from '../../../hooks/use-nodes-interactions'
 import { parseCurl } from './curl-parser'
 
 type Props = Readonly<{

@@ -34,9 +34,15 @@ vi.mock('@/app/components/workflow/block-selector/all-start-blocks', () => ({
   ),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useAutoGenerateWebhookUrl: () => mocks.autoGenerateWebhookUrl,
-}))
+vi.mock('../../../hooks/use-auto-generate-webhook-url', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../../../hooks/use-auto-generate-webhook-url')>()
+
+  return {
+    ...actual,
+    useAutoGenerateWebhookUrl: () => mocks.autoGenerateWebhookUrl,
+  }
+})
 
 vi.mock('@/app/components/workflow/hooks-store', () => ({
   useHooksStore: (selector: (state: unknown) => unknown) =>
@@ -55,7 +61,7 @@ vi.mock('@/app/components/workflow/hooks-store', () => ({
     }),
 }))
 
-vi.mock('@/app/components/workflow/hooks/use-nodes-sync-draft', () => ({
+vi.mock('../../../hooks/use-nodes-sync-draft', () => ({
   useNodesSyncDraft: () => ({
     handleSyncWorkflowDraft: mocks.handleSyncWorkflowDraft,
   }),
