@@ -109,6 +109,7 @@ def _adapter(mocker: MockerFixture, client: WebClient) -> SlackIMProviderAdapter
 def _signed_request(
     body: bytes,
     *,
+    content_type: str | None = "application/json",
     received_at: datetime | None = None,
     timestamp_seconds: int | None = None,
     signing_secret: str = _SIGNING_SECRET,
@@ -127,12 +128,15 @@ def _signed_request(
         body=body if signature_body is None else signature_body,
     )
     assert signature is not None
+    headers = [
+        ("X-Slack-Request-Timestamp", timestamp),
+        ("X-Slack-Signature", signature),
+    ]
+    if content_type is not None:
+        headers.append(("Content-Type", content_type))
     return WebhookRequest(
         method="POST",
-        headers=(
-            ("X-Slack-Request-Timestamp", timestamp),
-            ("X-Slack-Signature", signature),
-        ),
+        headers=tuple(headers),
         body=body,
         received_at=received_at,
     )
@@ -192,6 +196,7 @@ def test_webhook_authentication_delegates_exact_body_to_official_sdk_verifier(mo
         headers=(
             ("X-Slack-Request-Timestamp", "1"),
             ("X-Slack-Signature", "invalid-without-sdk-delegation"),
+            ("Content-Type", "application/json"),
         ),
         body=body,
         received_at=datetime.now(tz=UTC).replace(tzinfo=None),
@@ -1163,14 +1168,19 @@ def test_webhook_rejects_authenticated_non_post_requests_before_parsing(mocker: 
 
 
 @pytest.mark.parametrize(
-    ("body", "expected_status", "expected_events"),
+    ("body", "content_type", "expected_status", "expected_events"),
     [
-        (b"not-json", 400, 0),
-        (b"payload=not-json", 400, 0),
-        (b"payload=%7B%7D&payload=%7B%7D", 400, 0),
-        (b"payload=%5B%5D", 400, 0),
-        (json.dumps({"type": "url_verification", "challenge": 1}).encode(), 400, 0),
-        (json.dumps({"type": "event_callback", "event": {"type": "message"}}).encode(), 400, 0),
+        (b"not-json", "application/json", 400, 0),
+        (b"payload=not-json", "application/x-www-form-urlencoded", 400, 0),
+        (b"payload=%7B%7D&payload=%7B%7D", "application/x-www-form-urlencoded", 400, 0),
+        (b"payload=%5B%5D", "application/x-www-form-urlencoded", 400, 0),
+        (json.dumps({"type": "url_verification", "challenge": 1}).encode(), "application/json", 400, 0),
+        (
+            json.dumps({"type": "event_callback", "event": {"type": "message"}}).encode(),
+            "application/json",
+            400,
+            0,
+        ),
         (
             urlencode(
                 {
@@ -1183,12 +1193,13 @@ def test_webhook_rejects_authenticated_non_post_requests_before_parsing(mocker: 
                     )
                 }
             ).encode(),
+            "application/x-www-form-urlencoded; charset=utf-8",
             200,
             1,
         ),
     ],
     ids=(
-        "malformed-form",
+        "malformed-json",
         "malformed-payload-json",
         "duplicate-form-payload",
         "non-object-payload",
@@ -1200,16 +1211,72 @@ def test_webhook_rejects_authenticated_non_post_requests_before_parsing(mocker: 
 def test_webhook_parsing_fails_closed_without_partial_consumption(
     mocker: MockerFixture,
     body: bytes,
+    content_type: str,
     expected_status: int,
     expected_events: int,
 ) -> None:
     consumer = _RecordingConsumer()
     handler = _adapter(mocker, mocker.Mock(spec=WebClient)).create_webhook_handler(consumer)
 
-    response = handler.handle(_signed_request(body))
+    response = handler.handle(_signed_request(body, content_type=content_type))
 
     assert response.status_code == expected_status
     assert len(consumer.events) == expected_events
+
+
+@pytest.mark.parametrize(
+    ("body", "content_type"),
+    [
+        (
+            json.dumps({"type": "event_callback", "team_id": "sanitized-team", "event": {"type": "message"}}).encode(),
+            "application/x-www-form-urlencoded",
+        ),
+        (
+            urlencode(
+                {"payload": json.dumps({"type": "block_actions", "team": {"id": "sanitized-team"}, "actions": []})}
+            ).encode(),
+            "application/json",
+        ),
+        (
+            json.dumps({"type": "event_callback", "team_id": "sanitized-team", "event": {"type": "message"}}).encode(),
+            "text/plain",
+        ),
+    ],
+    ids=("json-as-form", "form-as-json", "unsupported-media-type"),
+)
+def test_webhook_dispatches_body_parser_only_by_content_type(
+    mocker: MockerFixture,
+    body: bytes,
+    content_type: str,
+) -> None:
+    consumer = _RecordingConsumer()
+    handler = _adapter(mocker, mocker.Mock(spec=WebClient)).create_webhook_handler(consumer)
+
+    response = handler.handle(_signed_request(body, content_type=content_type))
+
+    assert response.status_code == 400
+    assert consumer.events == []
+
+
+def test_webhook_rejects_missing_or_duplicate_content_type(mocker: MockerFixture) -> None:
+    consumer = _RecordingConsumer()
+    handler = _adapter(mocker, mocker.Mock(spec=WebClient)).create_webhook_handler(consumer)
+    body = json.dumps({"type": "event_callback", "team_id": "sanitized-team", "event": {"type": "message"}}).encode()
+    missing = _signed_request(body, content_type=None)
+    duplicate = _signed_request(body)
+    duplicate = WebhookRequest(
+        method=duplicate.method,
+        headers=(*duplicate.headers, ("content-type", "application/json")),
+        body=duplicate.body,
+        received_at=duplicate.received_at,
+    )
+
+    missing_response = handler.handle(missing)
+    duplicate_response = handler.handle(duplicate)
+
+    assert missing_response.status_code == 400
+    assert duplicate_response.status_code == 400
+    assert consumer.events == []
 
 
 @pytest.mark.parametrize(

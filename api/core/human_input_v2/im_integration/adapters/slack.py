@@ -14,6 +14,7 @@ import threading
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from email.message import Message
 from typing import Literal, override
 from urllib.parse import parse_qs
 
@@ -84,6 +85,8 @@ _MAX_RADIO_OPTION_COUNT = 10
 _MAX_RADIO_OPTION_TEXT_LENGTH = 75
 _MAX_RADIO_OPTION_VALUE_LENGTH = 150
 _SLACK_MESSAGE_TIMESTAMP = re.compile(r"^[0-9]+\.[0-9]+$")
+_JSON_CONTENT_TYPE = "application/json"
+_FORM_CONTENT_TYPE = "application/x-www-form-urlencoded"
 _BASELINE_BOT_SCOPES = frozenset(("chat:write", "users:read", "users:read.email"))
 _AUTHENTICATION_ERROR_CODES = frozenset(
     (
@@ -355,9 +358,13 @@ class _SlackWebhookHandler(IMWebhookHandler):
 
     @staticmethod
     def _decoded_body(request: WebhookRequest) -> dict[str, object] | None:
-        try:
-            decoded = json.loads(request.body)
-        except (UnicodeDecodeError, json.JSONDecodeError):
+        content_type = _parse_content_type(request.headers)
+        if content_type == _JSON_CONTENT_TYPE:
+            try:
+                decoded = json.loads(request.body)
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                return None
+        elif content_type == _FORM_CONTENT_TYPE:
             try:
                 form_values = parse_qs(request.body.decode("utf-8"), strict_parsing=True)
             except (UnicodeDecodeError, ValueError):
@@ -369,6 +376,8 @@ class _SlackWebhookHandler(IMWebhookHandler):
                 decoded = json.loads(payload_values[0])
             except json.JSONDecodeError:
                 return None
+        else:
+            return None
         if not isinstance(decoded, dict) or any(not isinstance(key, str) for key in decoded):
             return None
         return decoded
@@ -916,6 +925,15 @@ def _render_card_blocks(
 
 def _header_values(headers: tuple[tuple[str, str], ...], target_name: str) -> tuple[str, ...]:
     return tuple(value for name, value in headers if name.casefold() == target_name)
+
+
+def _parse_content_type(headers: tuple[tuple[str, str], ...]) -> str | None:
+    values = _header_values(headers, "content-type")
+    if len(values) != 1:
+        return None
+    message = Message()
+    message["Content-Type"] = values[0]
+    return message.get_content_type()
 
 
 def _webhook_response(status_code: int, body: bytes) -> WebhookResponse:

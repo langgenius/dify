@@ -185,6 +185,7 @@ def _signed_request(body: bytes, *, signature: str | None = None) -> WebhookRequ
         headers=(
             ("X-Slack-Request-Timestamp", _REQUEST_TIMESTAMP),
             ("X-Slack-Signature", signature or calculated),
+            ("Content-Type", "application/json"),
         ),
         body=body,
         received_at=_RECEIVED_AT,

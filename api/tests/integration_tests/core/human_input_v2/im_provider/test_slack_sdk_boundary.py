@@ -268,7 +268,13 @@ def _adapter(monkeypatch: pytest.MonkeyPatch, server: _SlackApiServer) -> tuple[
     return SlackIMProviderAdapter(_credentials()), client
 
 
-def _signed_request(body: bytes, *, method: str = "POST", valid_signature: bool = True) -> WebhookRequest:
+def _signed_request(
+    body: bytes,
+    *,
+    method: str = "POST",
+    valid_signature: bool = True,
+    content_type: str = "application/json",
+) -> WebhookRequest:
     timestamp = str(int(_RECEIVED_AT.replace(tzinfo=UTC).timestamp()))
     signature = SignatureVerifier(_SIGNING_SECRET).generate_signature(timestamp=timestamp, body=body)
     assert signature is not None
@@ -276,7 +282,11 @@ def _signed_request(body: bytes, *, method: str = "POST", valid_signature: bool 
         signature = "v0=invalid"
     return WebhookRequest(
         method=method,
-        headers=(("X-Slack-Request-Timestamp", timestamp), ("X-Slack-Signature", signature)),
+        headers=(
+            ("X-Slack-Request-Timestamp", timestamp),
+            ("X-Slack-Signature", signature),
+            ("Content-Type", content_type),
+        ),
         body=body,
         received_at=_RECEIVED_AT,
     )
@@ -996,8 +1006,10 @@ def test_real_signature_verifier_authenticates_json_and_form_webhooks(
     ).encode()
 
     challenge_response = handler.handle(_signed_request(challenge_body))
-    event_response = handler.handle(_signed_request(event_body))
-    form_response = handler.handle(_signed_request(form_body))
+    event_response = handler.handle(_signed_request(event_body, content_type="Application/JSON; charset=utf-8"))
+    form_response = handler.handle(
+        _signed_request(form_body, content_type="application/x-www-form-urlencoded; charset=utf-8")
+    )
 
     assert challenge_response.status_code == 200
     assert json.loads(challenge_response.body) == {"challenge": "sanitized-challenge"}
@@ -1012,6 +1024,15 @@ def test_real_signature_verifier_authenticates_json_and_form_webhooks(
     ("webhook_request", "expected_status"),
     [
         (_signed_request(b"not-json"), 400),
+        (
+            _signed_request(
+                json.dumps(
+                    {"type": "event_callback", "team_id": "sanitized-team", "event": {"type": "message"}}
+                ).encode(),
+                content_type="text/plain",
+            ),
+            400,
+        ),
         (_signed_request(json.dumps({"type": "url_verification", "challenge": 1}).encode()), 400),
         (_signed_request(json.dumps({"type": "event_callback", "event": {"type": "message"}}).encode()), 400),
         (
@@ -1033,7 +1054,7 @@ def test_real_signature_verifier_authenticates_json_and_form_webhooks(
             401,
         ),
     ],
-    ids=("malformed", "challenge", "tenant", "method", "signature"),
+    ids=("malformed", "media-type", "challenge", "tenant", "method", "signature"),
 )
 def test_webhook_rejects_invalid_transport_and_payload_boundaries(
     monkeypatch: pytest.MonkeyPatch,
