@@ -560,6 +560,7 @@
   "newKnowledge.retrievalTest.processLog": "Registro del proceso",
   "newKnowledge.retrievalTest.quality": "Calidad",
   "newKnowledge.retrievalTest.queryPlaceholder": "Introduce una consulta para probar la recuperación…",
+  "newKnowledge.retrievalTest.recordSummary": "{{count}} fragmentos en {{duration}}",
   "newKnowledge.retrievalTest.records": "Registros",
   "newKnowledge.retrievalTest.researchResult": "Resultado de la investigación",
   "newKnowledge.retrievalTest.result": "Resultado de recuperación",

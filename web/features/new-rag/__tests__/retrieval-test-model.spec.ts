@@ -5,6 +5,7 @@ import type {
 import {
   extractRetrievalEvidence,
   formatDuration,
+  formatRetrievalDuration,
   researchTaskIsActive,
   retrievalTestRecords,
   shouldRefreshResearchPartials,
@@ -131,9 +132,11 @@ describe('retrieval test model', () => {
         {
           completed: true,
           created_at: '2026-07-28T10:00:00.000Z',
+          duration_ms: 1250,
           id: 'trace-1',
           mode: 'fast',
           query: 'Fast question',
+          result_count: 4,
         } as KnowledgeFsTraceResponse,
       ],
       [
@@ -152,14 +155,50 @@ describe('retrieval test model', () => {
 
     expect(records.map((record) => record.id)).toEqual(['research-1', 'trace-1'])
     expect(records[0]).toEqual(expect.objectContaining({ status: 'running' }))
+    expect(records[1]).toEqual(expect.objectContaining({ durationMs: 1250, resultCount: 4 }))
     expect(researchTaskIsActive({ stage: 'retrieving' } as KnowledgeFsResearchTaskResponse)).toBe(
       true,
+    )
+  })
+
+  it('maps an unsuccessful historical trace to a failed retrieval record', () => {
+    const [record] = retrievalTestRecords(
+      [
+        {
+          completed: false,
+          created_at: '2026-07-28T10:00:00.000Z',
+          duration_ms: 30_000,
+          id: 'trace-failed',
+          mode: 'fast',
+          profile: {},
+          query: 'Why did retrieval fail?',
+          result_count: 0,
+          scores: {},
+          stages: [{ name: 'query.generate', status: 'error' }],
+        },
+      ],
+      [],
+    )
+
+    expect(record).toEqual(
+      expect.objectContaining({
+        durationMs: 30_000,
+        id: 'trace-failed',
+        status: 'failed',
+      }),
     )
   })
 
   it('formats research durations in seconds and minutes', () => {
     expect(formatDuration(12_000)).toBe('12s')
     expect(formatDuration(303_000)).toBe('5min 3s')
+  })
+
+  it('formats retrieval latency with millisecond precision below one second', () => {
+    expect(formatRetrievalDuration(320)).toBe('320 ms')
+    expect(formatRetrievalDuration(800)).toBe('800 ms')
+    expect(formatRetrievalDuration(1_200)).toBe('1.2 s')
+    expect(formatRetrievalDuration(2_100)).toBe('2.1 s')
   })
 
   it('refreshes partials when an active research task becomes completed', () => {

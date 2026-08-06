@@ -2002,6 +2002,7 @@ class KnowledgeFSTraceResponse(ResponseModel):
     id: str
     completed: bool
     created_at: datetime = Field(validation_alias=AliasChoices("created_at", "createdAt"))
+    duration_ms: int | None = Field(default=None, ge=0, validation_alias=AliasChoices("duration_ms", "durationMs"))
     evidence_bundle_id: str | None = Field(
         default=None, validation_alias=AliasChoices("evidence_bundle_id", "evidenceBundleId")
     )
@@ -2012,6 +2013,7 @@ class KnowledgeFSTraceResponse(ResponseModel):
     mode: Literal["auto", "deep", "fast", "research"]
     profile: KnowledgeFSTraceProfileResponse
     query: str
+    result_count: int = Field(ge=0, validation_alias=AliasChoices("result_count", "resultCount"))
     scores: KnowledgeFSTraceScoresResponse
     stages: list[KnowledgeFSTraceStageResponse]
 

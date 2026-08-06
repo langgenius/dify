@@ -560,6 +560,7 @@
   "newKnowledge.retrievalTest.processLog": "执行日志",
   "newKnowledge.retrievalTest.quality": "质量",
   "newKnowledge.retrievalTest.queryPlaceholder": "输入问题，测试检索效果…",
+  "newKnowledge.retrievalTest.recordSummary": "{{duration}} 内召回 {{count}} 个分段",
   "newKnowledge.retrievalTest.records": "记录",
   "newKnowledge.retrievalTest.researchResult": "研究结果",
   "newKnowledge.retrievalTest.result": "检索结果",

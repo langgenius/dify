@@ -560,6 +560,7 @@
   "newKnowledge.retrievalTest.processLog": "प्रक्रिया लॉग",
   "newKnowledge.retrievalTest.quality": "गुणवत्ता",
   "newKnowledge.retrievalTest.queryPlaceholder": "रिट्रीवल जाँचने के लिए क्वेरी दर्ज करें…",
+  "newKnowledge.retrievalTest.recordSummary": "{{duration}} में {{count}} खंड",
   "newKnowledge.retrievalTest.records": "रिकॉर्ड",
   "newKnowledge.retrievalTest.researchResult": "रिसर्च परिणाम",
   "newKnowledge.retrievalTest.result": "पुनर्प्राप्ति परिणाम",

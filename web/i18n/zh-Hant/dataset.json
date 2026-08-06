@@ -560,6 +560,7 @@
   "newKnowledge.retrievalTest.processLog": "流程記錄",
   "newKnowledge.retrievalTest.quality": "品質",
   "newKnowledge.retrievalTest.queryPlaceholder": "輸入查詢以測試檢索…",
+  "newKnowledge.retrievalTest.recordSummary": "{{duration}} 內取回 {{count}} 個片段",
   "newKnowledge.retrievalTest.records": "記錄",
   "newKnowledge.retrievalTest.researchResult": "研究結果",
   "newKnowledge.retrievalTest.result": "檢索結果",

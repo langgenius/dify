@@ -560,6 +560,7 @@
   "newKnowledge.retrievalTest.processLog": "Journal du processus",
   "newKnowledge.retrievalTest.quality": "Qualité",
   "newKnowledge.retrievalTest.queryPlaceholder": "Saisissez une requête pour tester la récupération…",
+  "newKnowledge.retrievalTest.recordSummary": "{{count}} segments en {{duration}}",
   "newKnowledge.retrievalTest.records": "Historique",
   "newKnowledge.retrievalTest.researchResult": "Résultat de la recherche",
   "newKnowledge.retrievalTest.result": "Résultat de la récupération",

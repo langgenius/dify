@@ -560,6 +560,7 @@
   "newKnowledge.retrievalTest.processLog": "Process log",
   "newKnowledge.retrievalTest.quality": "Quality",
   "newKnowledge.retrievalTest.queryPlaceholder": "Enter a query to test retrieval…",
+  "newKnowledge.retrievalTest.recordSummary": "{{count}} chunks in {{duration}}",
   "newKnowledge.retrievalTest.records": "Records",
   "newKnowledge.retrievalTest.researchResult": "Research result",
   "newKnowledge.retrievalTest.result": "Retrieval result",

@@ -31,6 +31,7 @@ import {
   extractStreamError,
   extractTraceId,
   formatDuration,
+  formatRetrievalDuration,
   researchTaskIsActive,
   retrievalTestRecords,
   shouldRefreshResearchPartials,
@@ -57,6 +58,12 @@ type LocalQueryRun = {
 type SelectedRun = {
   id: string
   kind: 'local' | RetrievalTestRecord['kind']
+}
+
+type ComposerDraft = {
+  mode: RetrievalTestMode
+  query: string
+  selectionKey?: string
 }
 
 type QualityDecision = 'bad-case' | 'golden'
@@ -971,6 +978,7 @@ function RecordButton({
   record: RetrievalTestRecord
 }) {
   const { t } = useTranslation('dataset')
+  const failed = record.kind !== 'research' && record.status === 'failed'
   const activeResearchStage =
     record.kind === 'research' && record.status === 'running'
       ? researchStageOrder[
@@ -992,28 +1000,28 @@ function RecordButton({
       <span className="min-w-0 flex-1">
         <span className="line-clamp-1 system-sm-semibold text-text-secondary">{record.query}</span>
         <span className="mt-1.5 flex items-center gap-1 system-xs-regular text-text-tertiary">
-          <span
-            className={cn(
-              'min-w-0 flex-1 truncate',
-              record.kind === 'local' && record.status === 'failed' && 'text-text-destructive',
-            )}
-          >
+          <span className={cn('min-w-0 flex-1 truncate', failed && 'text-text-destructive')}>
             {activeResearchStage ? (
               <>
                 {t(($) => $[`newKnowledge.retrievalTest.${activeResearchStage}Active`])}
                 {' · '}
                 {researchStageOrder.indexOf(activeResearchStage) + 1}/{researchStageOrder.length}
               </>
-            ) : record.kind === 'local' &&
-              record.status === 'failed' &&
+            ) : failed ? (
               record.durationMs !== undefined ? (
-              t(($) => $['newKnowledge.retrievalTest.failedAfter'], {
-                duration: formatDuration(record.durationMs),
-              })
-            ) : record.kind === 'local' &&
+                t(($) => $['newKnowledge.retrievalTest.failedAfter'], {
+                  duration: formatDuration(record.durationMs),
+                })
+              ) : (
+                t(($) => $['newKnowledge.retrievalTest.failedTitle'])
+              )
+            ) : record.kind !== 'research' &&
               record.resultCount !== undefined &&
               record.durationMs !== undefined ? (
-              `${record.resultCount} ${t(($) => $['newKnowledge.chunkCount']).toLocaleLowerCase()} · ${formatDuration(record.durationMs)}`
+              t(($) => $['newKnowledge.retrievalTest.recordSummary'], {
+                count: record.resultCount,
+                duration: formatRetrievalDuration(record.durationMs),
+              })
             ) : (
               t(($) => $[`newKnowledge.settings.retrievalMode.${record.mode}`])
             )}
@@ -1035,8 +1043,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     trace: parseAsString,
   })
   const { research: linkedResearchId, trace: linkedTraceId } = linkedSelection
-  const [query, setQuery] = useState('')
-  const [mode, setMode] = useState<RetrievalTestMode>('fast')
+  const [composerDraft, setComposerDraft] = useState<ComposerDraft>({ mode: 'fast', query: '' })
   const [localRun, setLocalRun] = useState<LocalQueryRun>()
   const [localSelected, setLocalSelected] = useState<SelectedRun>()
   const selected: SelectedRun | undefined = linkedResearchId
@@ -1044,6 +1051,8 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     : linkedTraceId
       ? { id: linkedTraceId, kind: 'trace' }
       : localSelected
+  const selectedHistoryKey =
+    selected && selected.kind !== 'local' ? `${selected.kind}:${selected.id}` : undefined
   const [researchPlans, setResearchPlans] = useState<
     Record<string, KnowledgeFsResearchTaskPlanResponse>
   >({})
@@ -1072,10 +1081,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.traces.get.queryOptions({
       input: { params: { control_space_id: knowledgeSpaceId } },
     }),
-    refetchInterval: (current) =>
-      localRun?.status === 'running' || current.state.data?.data.some((trace) => !trace.completed)
-        ? 1000
-        : false,
+    refetchInterval: localRun?.status === 'running' ? 1000 : false,
   })
   const researchTasksQuery = useQuery({
     ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.researchTasks.get.queryOptions({
@@ -1088,29 +1094,39 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     () => retrievalTestRecords(tracesQuery.data?.data ?? [], researchTasksQuery.data?.data ?? []),
     [researchTasksQuery.data?.data, tracesQuery.data?.data],
   )
-  const displayRecords = useMemo<RetrievalTestRecord[]>(() => {
-    if (!localRun || localRun.status === 'running') return records
-    const traceAlreadyListed =
-      localRun.traceId &&
-      records.some((record) => record.kind === 'trace' && record.id === localRun.traceId)
-    if (traceAlreadyListed) return records
-    return [
-      {
-        createdAt: localRun.startedAt,
-        id: localRun.id,
-        kind: 'local',
-        mode: localRun.mode,
-        query: localRun.query,
-        durationMs: localRun.endedAt ? localRun.endedAt - localRun.startedAt : undefined,
-        resultCount: localRun.evidence.length,
-        status: localRun.status === 'no-results' ? 'completed' : localRun.status,
-      },
-      ...records,
-    ]
-  }, [localRun, records])
+  const localRecord: RetrievalTestRecord | undefined =
+    localRun && localRun.status !== 'running'
+      ? {
+          createdAt: localRun.startedAt,
+          id: localRun.id,
+          kind: 'local',
+          mode: localRun.mode,
+          query: localRun.query,
+          durationMs: localRun.endedAt ? localRun.endedAt - localRun.startedAt : undefined,
+          resultCount: localRun.evidence.length,
+          status: localRun.status === 'no-results' ? 'completed' : localRun.status,
+        }
+      : undefined
+  const traceAlreadyListed = Boolean(
+    localRun?.traceId &&
+    records.some((record) => record.kind === 'trace' && record.id === localRun.traceId),
+  )
+  const displayRecords = localRecord && !traceAlreadyListed ? [localRecord, ...records] : records
   const selectedRecord = records.find(
     (record) => record.id === selected?.id && record.kind === selected.kind,
   )
+  const selectedFailed =
+    (selected?.kind === 'local' && localRun?.status === 'failed') ||
+    (selected?.kind === 'trace' && selectedRecord?.status === 'failed')
+  const selectedHistoryRecord = selected?.kind === 'local' ? undefined : selectedRecord
+  const query =
+    composerDraft.selectionKey === selectedHistoryKey
+      ? composerDraft.query
+      : (selectedHistoryRecord?.query ?? '')
+  const mode =
+    composerDraft.selectionKey === selectedHistoryKey
+      ? composerDraft.mode
+      : (selectedHistoryRecord?.mode ?? 'fast')
   const selectedResearchTask =
     selected?.kind === 'research'
       ? researchTasksQuery.data?.data.find((task) => task.id === selected.id)
@@ -1140,7 +1156,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
         },
       },
     }),
-    enabled: Boolean(selectedTraceId),
+    enabled: Boolean(selectedTraceId) && !selectedFailed,
   })
   const traceEvidenceQuery = useQuery({
     ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.traces.byTraceId.evidence.get.queryOptions({
@@ -1152,7 +1168,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
         query: { limit: 100 },
       },
     }),
-    enabled: Boolean(selectedTraceId),
+    enabled: Boolean(selectedTraceId) && !selectedFailed,
   })
   const researchPartialsQuery = useQuery({
     ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.researchTasks.byTaskId.partials.get.queryOptions(
@@ -1238,8 +1254,9 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
   const researchAnswer = selectedResearchTask
     ? (persistedResearchAnswer ?? streamedResearchAnswer)
     : ''
-  const currentEvidence =
-    selected?.kind === 'local' && localRun
+  const currentEvidence = selectedFailed
+    ? []
+    : selected?.kind === 'local' && localRun
       ? localRun.evidence.length
         ? localRun.evidence
         : historicalEvidence
@@ -1295,10 +1312,8 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
         (selectedResearchTask ? timeValue(selectedResearchTask.created_at) : undefined))
   const selectedIsLoading =
     (selected?.kind === 'local' && localRun?.status === 'running') ||
-    (selected?.kind === 'trace' && selectedRecord?.status === 'running') ||
     (selected?.kind === 'trace' && !selectedRecord && traceDetailQuery.isPending) ||
-    (selected?.kind === 'trace' && traceEvidenceQuery.isPending)
-  const selectedFailed = selected?.kind === 'local' && localRun?.status === 'failed'
+    (selected?.kind === 'trace' && !selectedFailed && traceEvidenceQuery.isPending)
   const selectedHasNoResults = selected?.kind === 'local' && localRun?.status === 'no-results'
   const initialEvidenceCount = selectedMode === 'research' ? 5 : 3
   const visibleEvidence = showAll ? currentEvidence : currentEvidence.slice(0, initialEvidenceCount)
@@ -1342,8 +1357,11 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
         { history: 'push', shallow: false },
       )
     }
-    setQuery(record.query)
-    setMode(record.mode)
+    setComposerDraft({
+      mode: record.mode,
+      query: record.query,
+      ...(record.kind === 'local' ? {} : { selectionKey: `${record.kind}:${record.id}` }),
+    })
     setShowAll(false)
   }
 
@@ -1397,6 +1415,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     const id = crypto.randomUUID()
     const startedAt = Date.now()
     const runMode = mode === 'deep' ? 'deep' : 'fast'
+    setComposerDraft({ mode: runMode, query: cleanQuery })
     setLocalRun({
       evidence: [],
       id,
@@ -1443,18 +1462,21 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
           })
         evidence = extractRetrievalEvidence(traceEvidence)
       }
+      const endedAt = Date.now()
       setLocalRun((current) =>
         current?.id === id
           ? {
               ...current,
-              endedAt: Date.now(),
+              endedAt,
               evidence,
               status: 'completed',
               traceId,
             }
           : current,
       )
-      await tracesQuery.refetch()
+      const refreshedTraces = await tracesQuery.refetch()
+      if (traceId && refreshedTraces.data?.data.some((trace) => trace.id === traceId))
+        setLocalSelected({ id: traceId, kind: 'trace' })
     } catch (error) {
       if (controller.signal.aborted) return
       const failure = await queryFailure(error)
@@ -1493,6 +1515,11 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
       })
       setResearchPlans((current) => ({ ...current, [task.id]: plan }))
       setResearchExpanded((current) => ({ ...current, [task.id]: true }))
+      setComposerDraft({
+        mode: 'research',
+        query: cleanQuery,
+        selectionKey: `research:${task.id}`,
+      })
       setLocalSelected(undefined)
       void setLinkedSelection(
         { research: task.id, trace: null },
@@ -1547,7 +1574,13 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                 disabled={selectedResearchActive || localRun?.status === 'running'}
                 placeholder={t(($) => $['newKnowledge.retrievalTest.queryPlaceholder'])}
                 className="block h-36 w-full resize-none bg-transparent p-3.5 body-md-regular text-text-primary outline-hidden placeholder:text-text-quaternary"
-                onChange={(event) => setQuery(event.target.value)}
+                onChange={(event) =>
+                  setComposerDraft({
+                    mode,
+                    query: event.target.value,
+                    ...(selectedHistoryKey ? { selectionKey: selectedHistoryKey } : {}),
+                  })
+                }
                 onKeyDown={(event) => {
                   if (matchesKeyboardEvent(event.nativeEvent, runRetrievalHotkey)) {
                     event.preventDefault()
@@ -1572,7 +1605,13 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                         mode === item &&
                           'bg-components-panel-bg font-medium text-text-primary shadow-xs',
                       )}
-                      onClick={() => setMode(item)}
+                      onClick={() =>
+                        setComposerDraft({
+                          mode: item,
+                          query,
+                          ...(selectedHistoryKey ? { selectionKey: selectedHistoryKey } : {}),
+                        })
+                      }
                     >
                       {t(($) => $[`newKnowledge.settings.retrievalMode.${item}`])}
                     </button>
@@ -1719,7 +1758,8 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                 {selectedFailed && (
                   <FailedResult
                     description={
-                      localRun?.error || t(($) => $['newKnowledge.retrievalTest.failedDescription'])
+                      (selected?.kind === 'local' ? localRun?.error : undefined) ||
+                      t(($) => $['newKnowledge.retrievalTest.failedDescription'])
                     }
                     onRetry={() => void runFastQuery()}
                   />

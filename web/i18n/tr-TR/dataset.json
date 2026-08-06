@@ -560,6 +560,7 @@
   "newKnowledge.retrievalTest.processLog": "İşlem günlüğü",
   "newKnowledge.retrievalTest.quality": "Kalite",
   "newKnowledge.retrievalTest.queryPlaceholder": "Getirmeyi test etmek için bir sorgu girin…",
+  "newKnowledge.retrievalTest.recordSummary": "{{duration}} içinde {{count}} parça",
   "newKnowledge.retrievalTest.records": "Geçmiş",
   "newKnowledge.retrievalTest.researchResult": "Araştırma sonucu",
   "newKnowledge.retrievalTest.result": "Getirme sonucu",

@@ -560,6 +560,7 @@
   "newKnowledge.retrievalTest.processLog": "Dnevnik postopka",
   "newKnowledge.retrievalTest.quality": "Kakovost",
   "newKnowledge.retrievalTest.queryPlaceholder": "Vnesite poizvedbo za preskus pridobivanja…",
+  "newKnowledge.retrievalTest.recordSummary": "{{count}} odsekov v {{duration}}",
   "newKnowledge.retrievalTest.records": "Zgodovina",
   "newKnowledge.retrievalTest.researchResult": "Rezultat raziskave",
   "newKnowledge.retrievalTest.result": "Rezultat iskanja",

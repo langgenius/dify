@@ -560,6 +560,7 @@
   "newKnowledge.retrievalTest.processLog": "Журнал процесса",
   "newKnowledge.retrievalTest.quality": "Качество",
   "newKnowledge.retrievalTest.queryPlaceholder": "Введите запрос для проверки поиска…",
+  "newKnowledge.retrievalTest.recordSummary": "{{count}} фрагм. за {{duration}}",
   "newKnowledge.retrievalTest.records": "История",
   "newKnowledge.retrievalTest.researchResult": "Результат исследования",
   "newKnowledge.retrievalTest.result": "Результат поиска",

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { render } from '@/test/console/render'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
@@ -23,6 +23,7 @@ const apiMock = vi.hoisted(() => ({
   streamResearchEvents: vi.fn(),
   documentReferences: {} as Record<string, { id: string; title: string }>,
   evidence: undefined as Record<string, unknown> | undefined,
+  getTraceEvidence: vi.fn(),
   traceDetail: undefined as Record<string, unknown> | undefined,
   traces: [] as Array<Record<string, unknown>>,
 }))
@@ -96,6 +97,9 @@ vi.mock('@/service/client', () => ({
             byTaskId: { delete: apiMock.cancelResearch },
             plan: { post: apiMock.planResearch },
             post: apiMock.createResearch,
+          },
+          traces: {
+            byTraceId: { evidence: { get: apiMock.getTraceEvidence } },
           },
         },
       },
@@ -204,6 +208,7 @@ describe('RetrievalTestPage', () => {
     apiMock.createGolden.mockResolvedValue({ id: 'golden-1' })
     apiMock.documentReferences = {}
     apiMock.evidence = undefined
+    apiMock.getTraceEvidence.mockResolvedValue({ data: [] })
     apiMock.partials = []
     apiMock.traceDetail = undefined
     apiMock.traces = []
@@ -642,7 +647,7 @@ describe('RetrievalTestPage', () => {
 
     renderPage({ searchParams: '?research=research-completed' })
 
-    expect(screen.getByText('What is the warranty?').closest('button')).toHaveAttribute(
+    expect(screen.getByRole('button', { name: /What is the warranty\?/ })).toHaveAttribute(
       'aria-pressed',
       'true',
     )
@@ -960,6 +965,89 @@ describe('RetrievalTestPage', () => {
     )
     expect(screen.getAllByText('Why did this fail?')).toHaveLength(2)
     expect(screen.getByText('provider timed out')).toBeInTheDocument()
+  })
+
+  it('restores a historical failed trace with its query and retry action', async () => {
+    apiMock.traces = [
+      {
+        completed: false,
+        created_at: '2026-07-29T00:00:00.000Z',
+        duration_ms: 30_000,
+        id: 'trace-failed',
+        mode: 'fast',
+        profile: {},
+        query: 'Why did historical retrieval fail?',
+        result_count: 0,
+        scores: {},
+        stages: [{ name: 'query.generate', status: 'error' }],
+      },
+    ]
+    const user = userEvent.setup()
+    renderPage({ searchParams: '?trace=trace-failed' })
+
+    expect(
+      await screen.findByDisplayValue('Why did historical retrieval fail?'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('dataset.newKnowledge.retrievalTest.failedAfter:{"duration":"30s"}'),
+    ).toBeInTheDocument()
+    const alert = screen.getByRole('alert')
+    expect(alert).toHaveTextContent('dataset.newKnowledge.retrievalTest.failedTitle')
+    expect(alert).toHaveTextContent('dataset.newKnowledge.retrievalTest.failedDescription')
+
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.retrievalTest.retry' }),
+    )
+
+    expect(apiMock.queryAdmission).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: { mode: 'fast', query: 'Why did historical retrieval fail?' },
+      }),
+    )
+    expect(apiMock.streamQuery).toHaveBeenCalledOnce()
+  })
+
+  it('keeps a completed trace selected with its persisted chunk and duration summary', async () => {
+    apiMock.streamQuery.mockImplementationOnce(
+      async ({ onEvent }: { onEvent: (event: Record<string, unknown>) => void }) => {
+        onEvent({ data: { trace_id: 'trace-1' }, event: 'completed' })
+      },
+    )
+    apiMock.refetchTraces.mockImplementationOnce(async () => {
+      apiMock.traces = [
+        {
+          completed: true,
+          created_at: new Date().toISOString(),
+          duration_ms: 1250,
+          id: 'trace-1',
+          mode: 'fast',
+          profile: {},
+          query: 'What is the retention window?',
+          result_count: 4,
+          scores: {},
+          stages: [],
+        },
+      ]
+      return { data: { data: apiMock.traces } }
+    })
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.type(
+      screen.getByLabelText('dataset.newKnowledge.retrievalTest.queryPlaceholder'),
+      'What is the retention window?',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retrievalTest.run' }))
+
+    const record = await screen.findByRole('button', {
+      name: /What is the retention window\?/,
+    })
+    expect(record).toHaveAttribute('aria-pressed', 'true')
+    expect(
+      within(record).getByText(
+        'dataset.newKnowledge.retrievalTest.recordSummary:{"count":4,"duration":"1.3 s"}',
+      ),
+    ).toBeInTheDocument()
   })
 
   it('renders the readable message from a structured retrieval error', async () => {

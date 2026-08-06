@@ -560,6 +560,7 @@
   "newKnowledge.retrievalTest.processLog": "Proceslogboek",
   "newKnowledge.retrievalTest.quality": "Kwaliteit",
   "newKnowledge.retrievalTest.queryPlaceholder": "Voer een zoekvraag in om het ophalen te testen…",
+  "newKnowledge.retrievalTest.recordSummary": "{{count}} fragmenten in {{duration}}",
   "newKnowledge.retrievalTest.records": "Geschiedenis",
   "newKnowledge.retrievalTest.researchResult": "Onderzoeksresultaat",
   "newKnowledge.retrievalTest.result": "Zoekresultaat",

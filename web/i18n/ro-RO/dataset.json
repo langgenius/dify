@@ -560,6 +560,7 @@
   "newKnowledge.retrievalTest.processLog": "Jurnalul procesului",
   "newKnowledge.retrievalTest.quality": "Calitate",
   "newKnowledge.retrievalTest.queryPlaceholder": "Introduceți o interogare pentru a testa recuperarea…",
+  "newKnowledge.retrievalTest.recordSummary": "{{count}} fragmente în {{duration}}",
   "newKnowledge.retrievalTest.records": "Istoric",
   "newKnowledge.retrievalTest.researchResult": "Rezultatul cercetării",
   "newKnowledge.retrievalTest.result": "Rezultatul regăsirii",

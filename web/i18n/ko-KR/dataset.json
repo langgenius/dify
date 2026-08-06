@@ -560,6 +560,7 @@
   "newKnowledge.retrievalTest.processLog": "프로세스 로그",
   "newKnowledge.retrievalTest.quality": "품질",
   "newKnowledge.retrievalTest.queryPlaceholder": "검색을 테스트할 쿼리를 입력하세요…",
+  "newKnowledge.retrievalTest.recordSummary": "{{duration}} 동안 {{count}}개 청크",
   "newKnowledge.retrievalTest.records": "기록",
   "newKnowledge.retrievalTest.researchResult": "리서치 결과",
   "newKnowledge.retrievalTest.result": "검색 결과",

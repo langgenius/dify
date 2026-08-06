@@ -560,6 +560,7 @@
   "newKnowledge.retrievalTest.processLog": "Журнал процесу",
   "newKnowledge.retrievalTest.quality": "Якість",
   "newKnowledge.retrievalTest.queryPlaceholder": "Введіть запит, щоб перевірити пошук…",
+  "newKnowledge.retrievalTest.recordSummary": "{{count}} фрагм. за {{duration}}",
   "newKnowledge.retrievalTest.records": "Історія",
   "newKnowledge.retrievalTest.researchResult": "Результат дослідження",
   "newKnowledge.retrievalTest.result": "Результат пошуку",

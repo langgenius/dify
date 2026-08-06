@@ -2067,6 +2067,7 @@ export const zKnowledgeFsTraceStageResponse = z.object({
 export const zKnowledgeFsTraceResponse = z.object({
   completed: z.boolean(),
   created_at: z.iso.datetime(),
+  duration_ms: z.int().gte(0).nullish(),
   evidence_bundle_id: z.string().nullish(),
   evidence_state: z.string().nullish(),
   final_score: z.number().gte(0).lte(1).nullish(),
@@ -2074,6 +2075,7 @@ export const zKnowledgeFsTraceResponse = z.object({
   mode: z.enum(['auto', 'deep', 'fast', 'research']),
   profile: zKnowledgeFsTraceProfileResponse,
   query: z.string(),
+  result_count: z.int().gte(0),
   scores: zKnowledgeFsTraceScoresResponse,
   stages: z.array(zKnowledgeFsTraceStageResponse),
 })

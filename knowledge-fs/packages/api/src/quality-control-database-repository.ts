@@ -1137,6 +1137,12 @@ function mapTraceSummary(
   steps: readonly DatabaseRow[],
 ): QualityAnswerTraceSummary {
   const evidenceItems = row.evidence_items == null ? [] : jsonArrayColumn(row, "evidence_items");
+  const startedAtValues = steps.flatMap((step) => parseDateTimeColumn(step, "started_at"));
+  const endedAtValues = steps.flatMap((step) => parseDateTimeColumn(step, "ended_at"));
+  const durationMs =
+    startedAtValues.length > 0 && endedAtValues.length > 0
+      ? Math.max(0, Math.max(...endedAtValues) - Math.min(...startedAtValues))
+      : undefined;
   const allScores = evidenceItems.flatMap((item) => {
     if (!isObject(item) || !isObject(item.scores)) return [];
     return [item.scores];
@@ -1164,6 +1170,7 @@ function mapTraceSummary(
   return {
     completed: databaseBoolean(row.completed),
     createdAt: stringColumn(row, "created_at"),
+    ...(durationMs !== undefined ? { durationMs } : {}),
     ...(optionalStringColumn(row, "evidence_bundle_id")
       ? { evidenceBundleId: optionalStringColumn(row, "evidence_bundle_id") }
       : {}),
@@ -1199,6 +1206,7 @@ function mapTraceSummary(
         : {}),
     },
     query: stringColumn(row, "query"),
+    resultCount: evidenceItems.length,
     scores: {
       ...(score("final") !== undefined ? { final: score("final") } : {}),
       ...(score("rerank") !== undefined ? { rerank: score("rerank") } : {}),
@@ -1215,6 +1223,13 @@ function mapTraceSummary(
       };
     }),
   };
+}
+
+function parseDateTimeColumn(row: DatabaseRow, name: string): number[] {
+  const value = optionalStringColumn(row, name);
+  if (!value) return [];
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? [parsed] : [];
 }
 
 async function trends(

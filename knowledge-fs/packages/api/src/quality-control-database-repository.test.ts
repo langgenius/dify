@@ -1596,6 +1596,7 @@ describe("database quality-control repository", () => {
           return {
             rows: [
               {
+                ended_at: "2026-07-14T12:00:00.400Z",
                 id: "step-1",
                 metadata: {
                   candidateCount: 12,
@@ -1610,11 +1611,12 @@ describe("database quality-control repository", () => {
                   },
                 },
                 name: "retrieval",
-                started_at: NOW,
+                started_at: "2026-07-14T12:00:00.000Z",
                 status: "ok",
                 trace_id: TRACE_ID,
               },
               {
+                ended_at: "2026-07-14T12:00:01.200Z",
                 id: "step-2",
                 metadata: {
                   dimension: 1536,
@@ -1622,7 +1624,7 @@ describe("database quality-control repository", () => {
                   vectorSpaceId: "embedding-space-4",
                 },
                 name: "embedding",
-                started_at: NOW,
+                started_at: "2026-07-14T12:00:00.500Z",
                 status: "ok",
                 trace_id: TRACE_ID,
               },
@@ -1652,6 +1654,7 @@ describe("database quality-control repository", () => {
         items: [
           {
             completed: true,
+            durationMs: 1200,
             evidenceState: "complete",
             finalScore: 0.9,
             id: TRACE_ID,
@@ -1664,6 +1667,7 @@ describe("database quality-control repository", () => {
               rerankModel: "rerank-4",
               retrievalProfileRevision: 4,
             },
+            resultCount: 3,
             scores: { final: 0.9, rerank: 0.8, retrieval: 0.7 },
             stages: [
               { candidateCount: 12, name: "retrieval", status: "ok" },

@@ -560,6 +560,7 @@
   "newKnowledge.retrievalTest.processLog": "Nhật ký quy trình",
   "newKnowledge.retrievalTest.quality": "Chất lượng",
   "newKnowledge.retrievalTest.queryPlaceholder": "Nhập truy vấn để kiểm thử truy xuất…",
+  "newKnowledge.retrievalTest.recordSummary": "{{count}} đoạn trong {{duration}}",
   "newKnowledge.retrievalTest.records": "Lịch sử",
   "newKnowledge.retrievalTest.researchResult": "Kết quả nghiên cứu",
   "newKnowledge.retrievalTest.result": "Kết quả truy xuất",

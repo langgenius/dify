@@ -30,11 +30,13 @@ export type RetrievalTestRecord =
     }
   | {
       createdAt: number
+      durationMs?: number
       id: string
       kind: 'trace'
       mode: RetrievalTestMode
       query: string
-      status: 'completed' | 'running'
+      resultCount?: number
+      status: 'completed' | 'failed'
     }
   | {
       createdAt: number
@@ -309,11 +311,17 @@ export function retrievalTestRecords(
       .map(
         (trace): RetrievalTestRecord => ({
           createdAt: new Date(trace.created_at).getTime(),
+          ...(trace.duration_ms !== null && trace.duration_ms !== undefined
+            ? { durationMs: trace.duration_ms }
+            : {}),
           id: trace.id,
           kind: 'trace',
           mode: trace.mode === 'research' || trace.mode === 'deep' ? trace.mode : 'fast',
           query: trace.query,
-          status: trace.completed ? 'completed' : 'running',
+          ...(trace.result_count !== null && trace.result_count !== undefined
+            ? { resultCount: trace.result_count }
+            : {}),
+          status: trace.completed ? 'completed' : 'failed',
         }),
       ),
     ...researchTasks.map(
@@ -352,4 +360,12 @@ export function formatDuration(milliseconds: number) {
   const minutes = Math.floor(seconds / 60)
   const remainingSeconds = seconds % 60
   return remainingSeconds ? `${minutes}min ${remainingSeconds}s` : `${minutes}min`
+}
+
+export function formatRetrievalDuration(milliseconds: number) {
+  const duration = Math.max(0, milliseconds)
+  if (duration < 1_000) return `${Math.round(duration)} ms`
+  const seconds = duration / 1_000
+  const roundedSeconds = seconds < 10 ? Math.round(seconds * 10) / 10 : Math.round(seconds)
+  return `${roundedSeconds} s`
 }
