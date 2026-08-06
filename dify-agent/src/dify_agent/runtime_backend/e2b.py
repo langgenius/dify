@@ -40,6 +40,7 @@ from dify_agent.runtime_backend.shellctl import ShellctlRuntimeLease, create_own
 if TYPE_CHECKING:
     from e2b.connection_config import ApiParams
 
+# One RuntimeLease spans the complete Agent run, not one Shell tool call.
 E2B_MAX_ACTIVE_TIMEOUT_SECONDS = 60 * 60
 _SHELLCTL_READY_MAX_ATTEMPTS = 3
 _SHELLCTL_READY_RETRY_INTERVAL_SECONDS = 0.5
