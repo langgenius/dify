@@ -22,10 +22,9 @@ from core.workflow.file_reference import parse_file_reference
 from extensions.ext_storage import storage
 from graphon.file import FileTransferMethod
 from graphon.file.protocols import WorkflowFileRuntimeProtocol
-from graphon.file.runtime import get_workflow_file_runtime, set_workflow_file_runtime
+from graphon.file.runtime import set_workflow_file_runtime
 from graphon.http.protocols import HttpResponseProtocol
 from models import UploadFile
-from models.enums import UploadFilePurpose
 
 if TYPE_CHECKING:
     from graphon.file import File
@@ -124,39 +123,26 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
         as_attachment: bool = False,
         for_external: bool = True,
     ) -> str:
-        uri = self.resolve_upload_file_uri(upload_file_id=upload_file_id, as_attachment=as_attachment)
-        return bind_file_uri(uri, self._base_url(for_external=for_external))
-
-    def resolve_upload_file_url_for_purpose(
-        self,
-        *,
-        upload_file_id: str,
-        purpose: UploadFilePurpose,
-        as_attachment: bool = False,
-        for_external: bool = True,
-    ) -> str:
-        if as_attachment or not has_direct_upload_file_download_policy(purpose):
-            return self.resolve_upload_file_url(
-                upload_file_id=upload_file_id,
-                as_attachment=as_attachment,
-                for_external=for_external,
+        upload_file: UploadFile | None = None
+        if has_direct_upload_file_download_policy() and not as_attachment:
+            upload_file = self._get_upload_file(upload_file_id=upload_file_id)
+            policy = resolve_upload_file_storage_policy(
+                upload_file.purpose,
+                storage_type=upload_file.storage_type,
+                key=upload_file.key,
             )
+            if policy is not None:
+                direct_url = policy.generate_download_url(
+                    upload_file.key,
+                    content_type=upload_file.mime_type,
+                )
+                if direct_url is not None:
+                    return direct_url
 
-        upload_file = self._get_upload_file(upload_file_id=upload_file_id)
-        policy = resolve_upload_file_storage_policy(
-            upload_file.purpose,
-            storage_type=upload_file.storage_type,
-            key=upload_file.key,
-        )
-        if upload_file.purpose == purpose and policy is not None:
-            direct_url = policy.generate_download_url(
-                upload_file.key,
-                content_type=upload_file.mime_type,
-            )
-            if direct_url is not None:
-                return direct_url
-
-        uri = self._sign_upload_file_uri(upload_file_id=upload_file_id, as_attachment=as_attachment)
+        if upload_file is None:
+            uri = self.resolve_upload_file_uri(upload_file_id=upload_file_id, as_attachment=as_attachment)
+        else:
+            uri = self._sign_upload_file_uri(upload_file_id=upload_file_id, as_attachment=as_attachment)
         return bind_file_uri(uri, self._base_url(for_external=for_external))
 
     def resolve_upload_file_uri(
@@ -271,25 +257,3 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
 
 def bind_dify_workflow_file_runtime() -> None:
     set_workflow_file_runtime(DifyWorkflowFileRuntime(file_access_controller=DatabaseFileAccessController()))
-
-
-def resolve_upload_file_url_for_purpose(
-    *,
-    upload_file_id: str,
-    purpose: UploadFilePurpose,
-    as_attachment: bool = False,
-    for_external: bool = True,
-) -> str:
-    runtime = get_workflow_file_runtime()
-    if isinstance(runtime, DifyWorkflowFileRuntime):
-        return runtime.resolve_upload_file_url_for_purpose(
-            upload_file_id=upload_file_id,
-            purpose=purpose,
-            as_attachment=as_attachment,
-            for_external=for_external,
-        )
-    return runtime.resolve_upload_file_url(
-        upload_file_id=upload_file_id,
-        as_attachment=as_attachment,
-        for_external=for_external,
-    )

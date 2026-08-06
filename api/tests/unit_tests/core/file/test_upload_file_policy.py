@@ -139,8 +139,6 @@ def test_upload_file_storage_policy_generates_cloudflare_waf_hmac_url() -> None:
 def test_has_direct_upload_file_download_policy(monkeypatch: pytest.MonkeyPatch) -> None:
     _configure_icon_s3_policy(monkeypatch, download_mode="proxy")
     assert upload_file_policy.has_direct_upload_file_download_policy() is False
-    assert upload_file_policy.has_direct_upload_file_download_policy(UploadFilePurpose.ICON) is False
 
     dify_config.PUBLIC_STORAGE_POLICIES["ICON"][StorageType.S3].download_mode = "presigned"
     assert upload_file_policy.has_direct_upload_file_download_policy() is True
-    assert upload_file_policy.has_direct_upload_file_download_policy(UploadFilePurpose.ICON) is True
