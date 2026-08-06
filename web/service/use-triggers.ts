@@ -655,7 +655,7 @@ export const useVerifyAndUpdateTriggerSubscriptionBuilder = () => {
       return consoleClient.workspaces.current.triggerProvider.byProvider.subscriptions.builder.verifyAndUpdate.bySubscriptionBuilderId.post(
         {
           params: { provider, subscription_builder_id: subscriptionBuilderId },
-          body: { credentials: credentials ?? {} },
+          body: credentials === undefined ? {} : { credentials },
         },
         {
           context: { silent: true },

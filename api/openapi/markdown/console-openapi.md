@@ -12755,7 +12755,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [TriggerSubscriptionBuilderVerifyPayload](#triggersubscriptionbuilderverifypayload)<br> |
+|  Yes | **application/json**: [TriggerSubscriptionVerifyPayload](#triggersubscriptionverifypayload)<br> |
 
 #### Responses
 
@@ -22968,6 +22968,12 @@ The identity of the trigger provider
 | properties | object |  | No |
 
 #### TriggerSubscriptionBuilderVerifyPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials | object |  | No |
+
+#### TriggerSubscriptionVerifyPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |

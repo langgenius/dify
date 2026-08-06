@@ -53,6 +53,10 @@ class TriggerSubscriptionBuilderCreatePayload(BaseModel):
 
 
 class TriggerSubscriptionBuilderVerifyPayload(BaseModel):
+    credentials: dict[str, Any] | None = None
+
+
+class TriggerSubscriptionVerifyPayload(BaseModel):
     credentials: dict[str, Any]
 
 
@@ -119,6 +123,7 @@ register_schema_models(
     TriggerSubscriptionBuilderCreatePayload,
     TriggerSubscriptionBuilderVerifyPayload,
     TriggerSubscriptionBuilderUpdatePayload,
+    TriggerSubscriptionVerifyPayload,
     TriggerOAuthClientPayload,
 )
 register_response_schema_models(
@@ -775,7 +780,7 @@ class TriggerOAuthClientManageApi(Resource):
     "/workspaces/current/trigger-provider/<path:provider>/subscriptions/verify/<path:subscription_id>",
 )
 class TriggerSubscriptionVerifyApi(Resource):
-    @console_ns.expect(console_ns.models[TriggerSubscriptionBuilderVerifyPayload.__name__])
+    @console_ns.expect(console_ns.models[TriggerSubscriptionVerifyPayload.__name__])
     @console_ns.response(
         200,
         "Trigger subscription verified successfully",
@@ -791,7 +796,7 @@ class TriggerSubscriptionVerifyApi(Resource):
     def post(self, tenant_id: str, user: Account, provider: str, subscription_id: str):
         """Verify credentials for an existing subscription (edit mode only)"""
 
-        verify_request = TriggerSubscriptionBuilderVerifyPayload.model_validate(console_ns.payload or {})
+        verify_request = TriggerSubscriptionVerifyPayload.model_validate(console_ns.payload or {})
 
         try:
             result = TriggerProviderService.verify_subscription_credentials(
