@@ -58,7 +58,6 @@ class DifyExecutionContextLayerConfig(LayerConfig):
     agent_mode: DifyExecutionContextAgentMode
     invoke_from: DifyExecutionContextInvokeFrom
     trace_id: str | None = None
-    agent_run_id: str | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
 

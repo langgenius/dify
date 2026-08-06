@@ -1,8 +1,6 @@
 import asyncio
-import json
 import sys
 import types
-from types import SimpleNamespace
 
 import httpx
 import pytest
@@ -143,60 +141,6 @@ def test_core_tools_layer_exposes_pydantic_ai_tool_and_returns_inner_api_observa
                 assert result == "done"
 
     asyncio.run(scenario())
-
-
-def test_workflow_tool_request_carries_agent_run_parent_context() -> None:
-    captured_payloads: list[dict[str, object]] = []
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        captured_payloads.append(json.loads(request.content))
-        return httpx.Response(
-            200,
-            json={
-                "messages": [{"type": "text", "message": {"text": "done"}}],
-                "observation": "done",
-                "metadata": {"provider_type": "workflow"},
-            },
-        )
-
-    async def scenario() -> None:
-        compositor = Compositor(
-            [
-                LayerNode("execution_context", _execution_context_provider()),
-                LayerNode("core_tools", _core_tools_provider(), deps={"execution_context": "execution_context"}),
-            ]
-        )
-        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http_client:
-            async with compositor.enter(
-                configs={
-                    "execution_context": _execution_context_config().model_copy(update={"agent_run_id": "agent-run-1"}),
-                    "core_tools": DifyCoreToolsLayerConfig(
-                        tools=[
-                            DifyCoreToolConfig(
-                                provider_type="workflow",
-                                provider_id="workflow-provider-1",
-                                tool_name="child_workflow",
-                                parameters=[],
-                                parameters_json_schema={"type": "object", "properties": {}, "required": []},
-                            )
-                        ]
-                    ),
-                }
-            ) as run:
-                layer = run.get_layer("core_tools", DifyCoreToolsLayer)
-                tool = (await layer.get_tools(http_client=http_client))[0]
-                result = await tool.function_schema.call(
-                    {},
-                    SimpleNamespace(tool_call_id="tool-call-1"),  # pyright: ignore[reportArgumentType]
-                )
-                assert result == "done"
-
-    asyncio.run(scenario())
-
-    caller = captured_payloads[0]["caller"]
-    assert isinstance(caller, dict)
-    assert caller["tool_call_span_id"] == "agent-run-1:tool:tool-call-1"
-    assert caller["parent_workflow_run_id"] == "workflow-run-1"
 
 
 @pytest.mark.parametrize(

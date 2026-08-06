@@ -467,65 +467,17 @@ class FakeAgentRunResult:
         return list(self._new_messages)
 
 
-@pytest.mark.parametrize("execution_context_layer_name", ["execution_context", "custom_execution_context"])
-def test_runner_injects_run_id_into_execution_context_config(
-    monkeypatch: pytest.MonkeyPatch,
-    execution_context_layer_name: str,
-) -> None:
-    request = _request(execution_context_layer_name=execution_context_layer_name)
-    request = CreateRunRequest.model_validate_json(request.model_dump_json())
-    captured_layer_configs: dict[str, object] = {}
-    expected_outcome = RunSuccessOutcome(
-        result_kind="output",
-        output="done",
-        deferred_tool_call=None,
-        session_snapshot=CompositorSessionSnapshot(layers=[]),
-        usage=None,
-    )
-
-    async def scenario() -> None:
-        async with httpx.AsyncClient() as client:
-            runner = AgentRunRunner(
-                sink=InMemoryRunEventSink(),
-                request=request,
-                run_id="run-1",
-                plugin_daemon_http_client=client,
-                dify_api_http_client=client,
-            )
-
-            async def capture_layer_configs(
-                *, compositor: object, layer_configs: dict[str, object]
-            ) -> RunSuccessOutcome:
-                del compositor
-                captured_layer_configs.update(layer_configs)
-                return expected_outcome
-
-            monkeypatch.setattr(runner, "_run_model", capture_layer_configs)
-            assert await runner._run_agent() is expected_outcome
-
-    asyncio.run(scenario())
-
-    execution_context = captured_layer_configs[execution_context_layer_name]
-    assert isinstance(execution_context, DifyExecutionContextLayerConfig)
-    assert execution_context.agent_run_id == "run-1"
-
-
-@pytest.mark.parametrize("execution_context_layer_name", ["execution_context", "renamed-execution-context"])
-def test_runner_injects_agent_run_id_and_emits_terminal_success(
-    monkeypatch: pytest.MonkeyPatch,
-    execution_context_layer_name: str,
-) -> None:
+def test_runner_emits_terminal_success_and_snapshot(monkeypatch: pytest.MonkeyPatch) -> None:
     seen_clients: list[httpx.AsyncClient] = []
 
     def fake_get_model(self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
         assert self.config.model == "demo-model"
         assert self.config.plugin_id == "langgenius/openai"
-        assert self.deps.execution_context.config.agent_run_id == "run-1"
         seen_clients.append(http_client)
         return TestModel(custom_output_text="done")  # pyright: ignore[reportReturnType]
 
     monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
-    request = _request(execution_context_layer_name=execution_context_layer_name)
+    request = _request(execution_context_layer_name="renamed-execution-context")
     sink = InMemoryRunEventSink()
 
     async def scenario() -> None:
@@ -557,7 +509,7 @@ def test_runner_injects_agent_run_id_and_emits_terminal_success(
     assert terminal.data.usage.total_tokens > 0
     assert [layer.name for layer in terminal.data.session_snapshot.layers] == [
         "prompt",
-        execution_context_layer_name,
+        "renamed-execution-context",
         DIFY_AGENT_MODEL_LAYER_ID,
     ]
     assert [layer.lifecycle_state for layer in terminal.data.session_snapshot.layers] == [

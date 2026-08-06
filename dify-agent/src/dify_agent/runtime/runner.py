@@ -46,10 +46,6 @@ from agenton.compositor import CompositorSessionSnapshot, LayerConfigInput, Laye
 from agenton.layers.types import PydanticAITool
 from dify_agent.layers.ask_human.layer import get_ask_human_layer, validate_ask_human_layer_composition
 from dify_agent.layers.dify_core_tools.layer import DifyCoreToolsLayer
-from dify_agent.layers.execution_context.configs import (
-    DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
-    DifyExecutionContextLayerConfig,
-)
 from dify_agent.layers.dify_plugin.llm_layer import DifyPluginLLMLayer
 from dify_agent.layers.dify_plugin.tools_layer import DifyPluginToolsLayer
 from dify_agent.layers.knowledge.client import DifyKnowledgeBaseClientError
@@ -255,22 +251,6 @@ class AgentRunRunner:
             validate_history_layer_composition(self.request.composition)
             validate_ask_human_layer_composition(self.request.composition)
             graph_config, layer_configs = normalize_composition(self.request.composition)
-            execution_context_layer = next(
-                (
-                    layer
-                    for layer in self.request.composition.layers
-                    if layer.type == DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID
-                ),
-                None,
-            )
-            if execution_context_layer is not None:
-                execution_context = layer_configs.get(execution_context_layer.name)
-                if isinstance(execution_context, Mapping):
-                    execution_context = DifyExecutionContextLayerConfig.model_validate(execution_context)
-                if isinstance(execution_context, DifyExecutionContextLayerConfig):
-                    layer_configs[execution_context_layer.name] = execution_context.model_copy(
-                        update={"agent_run_id": self.run_id}
-                    )
             compositor = build_pydantic_ai_compositor(graph_config, providers=self.layer_providers)
             validate_layer_exit_signals(compositor, self.request.on_exit)
         except (KeyError, TypeError, ValueError) as exc:
