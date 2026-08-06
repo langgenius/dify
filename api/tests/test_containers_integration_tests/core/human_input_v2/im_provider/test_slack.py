@@ -17,7 +17,6 @@ from core.human_input_v2.im_provider import (
     SlackIMIntegrationCredentials,
 )
 
-_SLACKBOT_USER_ID = "USLACKBOT"
 _SLACK_DIRECTORY_REFERENCE_PAGE_SIZE = 1
 _MINIMUM_EXPECTED_SLACK_DIRECTORY_USERS = 2
 
@@ -98,8 +97,8 @@ def _profile_field(profile: Mapping[object, object], name: str) -> str | None:
     return value
 
 
-def _paginated_slack_directory_user_ids(client: WebClient) -> tuple[frozenset[str], int]:
-    user_ids: set[str] = set()
+def _paginated_slack_directory_entries(client: WebClient) -> tuple[dict[str, tuple[str, str]], int]:
+    directory_entries: dict[str, tuple[str, str]] = {}
     seen_cursors: set[str] = set()
     cursor: str | None = None
     page_count = 0
@@ -117,12 +116,7 @@ def _paginated_slack_directory_user_ids(client: WebClient) -> tuple[frozenset[st
         for member in members:
             assert isinstance(member, Mapping)
             provider_user_id = member.get("id")
-            if (
-                member.get("deleted") is True
-                or member.get("is_bot") is True
-                or member.get("is_app_user") is True
-                or provider_user_id == _SLACKBOT_USER_ID
-            ):
+            if member.get("deleted") is True or member.get("is_bot") is True or member.get("is_app_user") is True:
                 continue
             assert isinstance(provider_user_id, str)
             assert provider_user_id.strip()
@@ -132,16 +126,15 @@ def _paginated_slack_directory_user_ids(client: WebClient) -> tuple[frozenset[st
                 profile, "real_name_normalized"
             )
             email = _profile_field(profile, "email")
-            assert display_name is not None
-            assert email is not None
-            user_ids.add(provider_user_id)
+            if display_name is not None and email is not None:
+                directory_entries[provider_user_id] = (display_name, email)
 
         response_metadata = response.get("response_metadata")
         assert isinstance(response_metadata, Mapping)
         next_cursor = response_metadata.get("next_cursor")
         assert isinstance(next_cursor, str)
         if not next_cursor:
-            return frozenset(user_ids), page_count
+            return directory_entries, page_count
         assert next_cursor not in seen_cursors
         seen_cursors.add(next_cursor)
         cursor = next_cursor
@@ -151,20 +144,23 @@ def test_slack_directory_matches_real_paginated_directory(
     slack_adapter: SlackIMProviderAdapter,
     slack_web_client: WebClient,
 ) -> None:
-    expected_user_ids, page_count = _paginated_slack_directory_user_ids(slack_web_client)
+    expected_entries, page_count = _paginated_slack_directory_entries(slack_web_client)
 
     directory_result = slack_adapter.directory.read_directory()
 
     assert page_count >= 2
     assert isinstance(directory_result, Directory)
     assert len(directory_result.entries) >= _MINIMUM_EXPECTED_SLACK_DIRECTORY_USERS
-    assert {str(entry.provider_user_id) for entry in directory_result.entries} == expected_user_ids
+    actual_entries: dict[str, tuple[str, str]] = {}
     for entry in directory_result.entries:
-        assert str(entry.provider_user_id).strip()
+        provider_user_id = str(entry.provider_user_id)
+        assert provider_user_id.strip()
         assert entry.display_name is not None
         assert entry.display_name.strip()
         assert entry.email is not None
         assert entry.email.strip()
+        actual_entries[provider_user_id] = (entry.display_name, entry.email)
+    assert actual_entries == expected_entries
 
 
 def test_slack_messaging_sends_and_reads_exact_text(
