@@ -1,6 +1,7 @@
 import type { Theme } from '../../embedded-chatbot/theme/theme-context'
 import type { ChatConfig, ChatItem, OnRegenerate } from '../../types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import type { MarkdownProps } from '@/app/components/base/markdown'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
@@ -9,6 +10,10 @@ import Toast from '../../../toast'
 import { ThemeBuilder } from '../../embedded-chatbot/theme/theme-context'
 import { ChatContextProvider } from '../context-provider'
 import Question from '../question'
+
+const { mockMarkdown } = vi.hoisted(() => ({
+  mockMarkdown: vi.fn(),
+}))
 
 // Global Mocks
 vi.mock('@react-aria/interactions', () => ({
@@ -49,7 +54,10 @@ vi.mock('../content-switch', () => ({
 }))
 vi.mock('copy-to-clipboard', () => ({ default: vi.fn() }))
 vi.mock('@/app/components/base/markdown', () => ({
-  Markdown: ({ content }: { content: string }) => <div className="markdown-body">{content}</div>,
+  Markdown: (props: MarkdownProps) => {
+    mockMarkdown(props)
+    return <div className="markdown-body">{props.content}</div>
+  },
 }))
 
 // Mock ResizeObserver and capture lifecycle for targeted coverage
@@ -137,6 +145,17 @@ describe('Question component', () => {
 
     const avatar = container.querySelector('.h-10.w-10') || container.querySelector('.h-10.w-10.shrink-0')
     expect(avatar).toBeTruthy()
+  })
+
+  it('should render user message content in static Markdown mode', () => {
+    const content = '{"field()!*&-":"half-width"}'
+
+    renderWithProvider(makeItem({ content }))
+
+    expect(mockMarkdown).toHaveBeenCalledWith(expect.objectContaining({
+      content,
+      mode: 'static',
+    }))
   })
 
   it('should hide avatar when hideAvatar is true', () => {

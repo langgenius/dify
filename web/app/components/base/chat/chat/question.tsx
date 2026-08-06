@@ -204,7 +204,7 @@ const Question: FC<QuestionProps> = ({
             )
           }
           {!isEditing
-            ? <Markdown content={content} />
+            ? <Markdown content={content} mode="static" />
             : (
                 <div className="flex flex-col gap-4">
                   <div className="max-h-[158px] overflow-y-auto overflow-x-hidden pr-1">
