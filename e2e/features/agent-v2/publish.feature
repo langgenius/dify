@@ -61,10 +61,10 @@ Feature: Agent v2 publish
     And the Agent Builder stable chat model is available
     And the Agent v2 runtime backend is available
     And a runnable Agent v2 test agent has been created via API
-    And Agent v2 Web app access has been enabled via API
     When I open the Agent v2 configure page
     And I publish the Agent v2 draft
     Then the Agent v2 draft should be published and up to date
+    And Agent v2 Web app access has been enabled via API
     When I open the Agent v2 Web app URL
     And I send an E2E message in the Agent v2 Web app
     Then the Agent v2 Web app response should include the normal E2E marker
@@ -76,10 +76,10 @@ Feature: Agent v2 publish
     And the Agent Builder stable chat model is available
     And the Agent v2 runtime backend is available
     And a runnable Agent v2 test agent has been created via API
-    And Agent v2 Web app access has been enabled via API
     When I open the Agent v2 configure page
     And I publish the Agent v2 draft
     Then the Agent v2 draft should be published and up to date
+    And Agent v2 Web app access has been enabled via API
     When I fill the Agent v2 prompt editor with the updated E2E prompt
     Then the Agent v2 configuration should be saved automatically
     And the normal Agent v2 draft should use the updated E2E prompt
@@ -95,10 +95,10 @@ Feature: Agent v2 publish
     And the Agent Builder stable chat model is available
     And the Agent v2 runtime backend is available
     And a runnable Agent v2 test agent has been created via API
-    And Agent v2 Web app access has been enabled via API
     When I open the Agent v2 configure page
     And I publish the Agent v2 draft
     Then the Agent v2 draft should be published and up to date
+    And Agent v2 Web app access has been enabled via API
     When I fill the Agent v2 prompt editor with the updated E2E prompt
     Then the Agent v2 configuration should be saved automatically
     And the normal Agent v2 draft should use the updated E2E prompt
