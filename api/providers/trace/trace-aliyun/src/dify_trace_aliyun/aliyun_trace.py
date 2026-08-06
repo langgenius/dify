@@ -507,7 +507,7 @@ class AliyunDataTrace(BaseTraceInstance):
             GEN_AI_OUTPUT_MESSAGE: gen_ai_output_message,
         }
         time_to_first_token = usage_data.get("time_to_first_token")
-        if time_to_first_token is not None:
+        if isinstance(time_to_first_token, (int, float)):
             attributes[GEN_AI_RESPONSE_TIME_TO_FIRST_TOKEN] = convert_seconds_to_nanoseconds(float(time_to_first_token))
 
         return SpanData(
@@ -527,8 +527,10 @@ class AliyunDataTrace(BaseTraceInstance):
     ) -> SpanData:
         """Build an AGENT-kind span for an agent-strategy node (instead of a generic TASK span)."""
         inputs_json = serialize_json_data(node_execution.inputs)
-        outputs = node_execution.outputs or {}
-        usage_data = outputs.get("usage", {}) or {}
+        outputs = node_execution.outputs if isinstance(node_execution.outputs, Mapping) else {}
+        usage_data = outputs.get("usage", {})
+        if not isinstance(usage_data, Mapping):
+            usage_data = {}
         text_output = str(outputs.get("text", ""))
 
         attributes: dict[str, Any] = {
@@ -546,7 +548,7 @@ class AliyunDataTrace(BaseTraceInstance):
             GEN_AI_USAGE_TOTAL_TOKENS: str(usage_data.get("total_tokens", 0)),
         }
         time_to_first_token = usage_data.get("time_to_first_token")
-        if time_to_first_token is not None:
+        if isinstance(time_to_first_token, (int, float)):
             attributes[GEN_AI_RESPONSE_TIME_TO_FIRST_TOKEN] = convert_seconds_to_nanoseconds(float(time_to_first_token))
 
         return SpanData(

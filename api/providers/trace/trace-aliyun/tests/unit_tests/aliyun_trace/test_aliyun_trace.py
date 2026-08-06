@@ -791,6 +791,12 @@ def test_build_workflow_agent_span(trace_instance: AliyunDataTrace, monkeypatch:
     span2 = trace_instance.build_workflow_agent_span(_make_workflow_trace_info(), node_execution, trace_metadata)
     assert GEN_AI_RESPONSE_TIME_TO_FIRST_TOKEN not in span2.attributes
 
+    # Malformed usage payloads must not break agent span building
+    node_execution.outputs = {"text": "t", "usage": "not-a-mapping"}
+    span3 = trace_instance.build_workflow_agent_span(_make_workflow_trace_info(), node_execution, trace_metadata)
+    assert span3.attributes[GEN_AI_USAGE_TOTAL_TOKENS] == "0"
+    assert GEN_AI_RESPONSE_TIME_TO_FIRST_TOKEN not in span3.attributes
+
 
 def test_build_agent_react_spans(trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch):
     node_start_ns = 1_000_000_000
@@ -910,6 +916,11 @@ def test_build_workflow_llm_span_records_time_to_first_token(
     node_execution.outputs = {"text": "t", "usage": {"total_tokens": 1, "time_to_first_token": None}}
     span2 = trace_instance.build_workflow_llm_span(_make_workflow_trace_info(), node_execution, trace_metadata)
     assert GEN_AI_RESPONSE_TIME_TO_FIRST_TOKEN not in span2.attributes
+
+    # Non-numeric TTFT must not raise and must be omitted, so the span is still built
+    node_execution.outputs = {"text": "t", "usage": {"total_tokens": 1, "time_to_first_token": "n/a"}}
+    span3 = trace_instance.build_workflow_llm_span(_make_workflow_trace_info(), node_execution, trace_metadata)
+    assert GEN_AI_RESPONSE_TIME_TO_FIRST_TOKEN not in span3.attributes
 
 
 def test_message_trace_records_time_to_first_token(trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch):
