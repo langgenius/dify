@@ -170,9 +170,10 @@ class FileService:
         # user uuid as file name
         file_uuid = str(uuid.uuid4())
         file_key = "upload_files/" + tenant_id + "/" + file_uuid + ".txt"
+        content = text.encode("utf-8")
 
         # save file to storage
-        storage.save(file_key, text.encode("utf-8"))
+        storage.save(file_key, content)
 
         # save file to db
         upload_file = UploadFile(
@@ -180,7 +181,7 @@ class FileService:
             storage_type=StorageType(dify_config.STORAGE_TYPE),
             key=file_key,
             name=text_name,
-            size=len(text),
+            size=len(content),
             extension="txt",
             mime_type="text/plain",
             created_by=user_id,
