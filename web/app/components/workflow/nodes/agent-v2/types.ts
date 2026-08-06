@@ -3,11 +3,16 @@ import type { AgentBinding } from '@/app/components/workflow/block-selector/type
 import type { CommonNodeType } from '@/app/components/workflow/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 
+export const AGENT_V2_DEFAULT_REQUEST_LIMIT = 50
+export const AGENT_V2_MIN_REQUEST_LIMIT = 1
+export const AGENT_V2_MAX_REQUEST_LIMIT = 500
+
 export type AgentV2NodeType = CommonNodeType & {
   agent_binding?: AgentBinding
   agent_declared_outputs?: DeclaredOutputConfig[]
   agent_node_kind: 'dify_agent'
   agent_task?: string
+  request_limit?: number
   version: '2'
 }
 

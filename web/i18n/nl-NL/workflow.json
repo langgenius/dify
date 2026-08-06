@@ -444,6 +444,8 @@
   "nodes.agent.pluginNotFoundDesc": "This integratie is installed from GitHub. Please go to Integraties to reinstall",
   "nodes.agent.pluginNotInstalled": "This integratie is not installed",
   "nodes.agent.pluginNotInstalledDesc": "This integratie is installed from GitHub. Please go to Integraties to reinstall",
+  "nodes.agent.requestLimit.label": "Maximumaantal modelaanvragen",
+  "nodes.agent.requestLimit.tooltip": "Het maximale aantal modelaanvragen dat in één agentuitvoering is toegestaan.",
   "nodes.agent.roster.change": "Wijzigen",
   "nodes.agent.roster.editInConsole": "Bewerken in Agent Console",
   "nodes.agent.roster.editInConsoleDisabled": "Je hebt geen toestemming om Agents te beheren",

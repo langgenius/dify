@@ -239,7 +239,10 @@ def _uploaded_workflow_files_prompt_payload(result) -> object:
 
 
 def test_builds_create_run_request_from_agent_soul_and_node_job():
-    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(_context())
+    context = _context()
+    context.binding.node_job_config = context.binding.node_job_config.model_copy(update={"request_limit": 125})
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
 
     dumped = result.request.model_dump(mode="json")
     layers = {layer["name"]: layer for layer in dumped["composition"]["layers"]}
@@ -249,6 +252,7 @@ def test_builds_create_run_request_from_agent_soul_and_node_job():
     assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID]["config"]["agent_mode"] == "single_step"
     assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID]["config"]["invoke_from"] == "debugger"
     assert dumped["idempotency_key"] == "run-1:node-exec-1"
+    assert dumped["request_limit"] == 125
     assert dumped["composition"]["layers"][0]["config"]["prefix"] == "You are careful."
     assert dumped["composition"]["layers"][1]["config"]["user"] == "Use the previous output."
     assert "Agent task for this workflow run:" not in dumped["composition"]["layers"][2]["config"]["user"]

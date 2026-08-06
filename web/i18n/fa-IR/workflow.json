@@ -444,6 +444,8 @@
   "nodes.agent.pluginNotFoundDesc": "این یکپارچه‌سازی از GitHub نصب شده. برای نصب مجدد به بخش یکپارچه‌سازی‌ها بروید.",
   "nodes.agent.pluginNotInstalled": "این یکپارچه‌سازی نصب نشده است",
   "nodes.agent.pluginNotInstalledDesc": "این یکپارچه‌سازی از GitHub نصب شده. برای نصب مجدد به بخش یکپارچه‌سازی‌ها بروید.",
+  "nodes.agent.requestLimit.label": "حداکثر درخواست‌های مدل",
+  "nodes.agent.requestLimit.tooltip": "حداکثر تعداد درخواست‌های مدل مجاز در یک اجرای عامل.",
   "nodes.agent.roster.change": "تغییر",
   "nodes.agent.roster.editInConsole": "ویرایش در Agent Console",
   "nodes.agent.roster.editInConsoleDisabled": "شما مجوز مدیریت Agents را ندارید",

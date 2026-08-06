@@ -444,6 +444,8 @@
   "nodes.agent.pluginNotFoundDesc": "이 통합은 GitHub 에서 설치됩니다. 통합으로 이동하여 다시 설치하십시오.",
   "nodes.agent.pluginNotInstalled": "이 통합은 설치되어 있지 않습니다.",
   "nodes.agent.pluginNotInstalledDesc": "이 통합은 GitHub 에서 설치됩니다. 통합으로 이동하여 다시 설치하십시오.",
+  "nodes.agent.requestLimit.label": "최대 모델 요청 수",
+  "nodes.agent.requestLimit.tooltip": "한 번의 에이전트 실행에서 허용되는 최대 모델 요청 수입니다.",
   "nodes.agent.roster.change": "변경",
   "nodes.agent.roster.editInConsole": "Agent Console에서 편집",
   "nodes.agent.roster.editInConsoleDisabled": "Agents를 관리할 권한이 없습니다",

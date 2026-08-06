@@ -444,6 +444,8 @@
   "nodes.agent.pluginNotFoundDesc": "Tích hợp này được cài đặt từ GitHub. Vui lòng vào Tích hợp để cài đặt lại",
   "nodes.agent.pluginNotInstalled": "Tích hợp này chưa được cài đặt",
   "nodes.agent.pluginNotInstalledDesc": "Tích hợp này được cài đặt từ GitHub. Vui lòng vào Tích hợp để cài đặt lại",
+  "nodes.agent.requestLimit.label": "Số yêu cầu mô hình tối đa",
+  "nodes.agent.requestLimit.tooltip": "Số yêu cầu mô hình tối đa được phép trong một lần chạy tác nhân.",
   "nodes.agent.roster.change": "Thay đổi",
   "nodes.agent.roster.editInConsole": "Chỉnh sửa trong Agent Console",
   "nodes.agent.roster.editInConsoleDisabled": "Bạn không có quyền quản lý Agents",

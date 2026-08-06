@@ -444,6 +444,8 @@
   "nodes.agent.pluginNotFoundDesc": "このインテグレーションは GitHub からインストールされています。再インストールするにはインテグレーションに移動してください。",
   "nodes.agent.pluginNotInstalled": "このインテグレーションはインストールされていません",
   "nodes.agent.pluginNotInstalledDesc": "このインテグレーションは GitHub からインストールされています。再インストールするにはインテグレーションに移動してください。",
+  "nodes.agent.requestLimit.label": "モデルリクエストの上限",
+  "nodes.agent.requestLimit.tooltip": "1 回のエージェント実行で許可するモデルリクエストの最大数。",
   "nodes.agent.roster.change": "変更",
   "nodes.agent.roster.editInConsole": "Agent Console で編集",
   "nodes.agent.roster.editInConsoleDisabled": "Agents を管理する権限がありません",

@@ -3,7 +3,7 @@ import type { NodeDefault } from '../../types'
 import type { AgentV2NodeType } from './types'
 import { BlockEnum } from '../../types'
 import { genNodeMetaData } from '../../utils'
-import { hasValidAgentBinding } from './types'
+import { AGENT_V2_DEFAULT_REQUEST_LIMIT, hasValidAgentBinding } from './types'
 
 const metaData = genNodeMetaData({
   sort: 3,
@@ -18,6 +18,7 @@ const nodeDefault: NodeDefault<AgentV2NodeType> = {
       binding_type: 'inline_agent',
     },
     agent_node_kind: 'dify_agent',
+    request_limit: AGENT_V2_DEFAULT_REQUEST_LIMIT,
     version: '2',
   },
   checkValid(payload, t: TFunction<'workflow'>) {

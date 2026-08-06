@@ -23822,6 +23822,7 @@ tenant's default model. The underlying generator never raises — an empty
 | metadata | [WorkflowNodeJobMetadata](#workflownodejobmetadata) |  | No |
 | mode | [WorkflowNodeJobMode](#workflownodejobmode) |  | No |
 | previous_node_output_refs | [ [WorkflowPreviousNodeOutputRef](#workflowpreviousnodeoutputref) ] |  | No |
+| request_limit | integer, <br>**Default:** 50 |  | No |
 | schema_version | integer, <br>**Default:** 1 |  | No |
 | workflow_prompt | string |  | No |
 

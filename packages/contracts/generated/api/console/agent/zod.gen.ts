@@ -2239,6 +2239,7 @@ export const zWorkflowNodeJobConfig = z.object({
   metadata: zWorkflowNodeJobMetadata.optional(),
   mode: zWorkflowNodeJobMode.optional().default('tell_agent_what_to_do'),
   previous_node_output_refs: z.array(zWorkflowPreviousNodeOutputRef).optional(),
+  request_limit: z.int().gte(1).lte(500).optional().default(50),
   schema_version: z.int().optional().default(1),
   workflow_prompt: z.string().optional().default(''),
 })

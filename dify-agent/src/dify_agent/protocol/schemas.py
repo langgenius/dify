@@ -49,6 +49,9 @@ from agenton.layers import ExitIntent
 DIFY_AGENT_MODEL_LAYER_ID: Final[str] = "llm"
 DIFY_AGENT_HISTORY_LAYER_ID: Final[str] = "history"
 DIFY_AGENT_OUTPUT_LAYER_ID: Final[str] = "output"
+DEFAULT_AGENT_REQUEST_LIMIT: Final[int] = 50
+MIN_AGENT_REQUEST_LIMIT: Final[int] = 1
+MAX_AGENT_REQUEST_LIMIT: Final[int] = 500
 RunStatus = Literal["running", "succeeded", "failed", "cancelled"]
 RunEventType = Literal[
     "run_started",
@@ -132,9 +135,16 @@ class CreateRunRequest(BaseModel):
     in prior history state; callers should keep the history layer active across
     runs so deferred tool results can be matched against the original model
     response instead of starting a fresh user-prompt turn.
+    ``request_limit`` bounds the number of model requests allowed during the
+    run, including retries and tool-driven follow-up turns.
     """
 
     composition: RunComposition
+    request_limit: int = Field(
+        default=DEFAULT_AGENT_REQUEST_LIMIT,
+        ge=MIN_AGENT_REQUEST_LIMIT,
+        le=MAX_AGENT_REQUEST_LIMIT,
+    )
     idempotency_key: str | None = None
     metadata: dict[str, JsonValue] = Field(default_factory=dict)
     session_snapshot: CompositorSessionSnapshot | None = None
@@ -401,11 +411,14 @@ __all__ = [
     "CreateRunResponse",
     "DeferredToolCallPayload",
     "DeferredToolResultsPayload",
+    "DEFAULT_AGENT_REQUEST_LIMIT",
     "DIFY_AGENT_HISTORY_LAYER_ID",
     "DIFY_AGENT_MODEL_LAYER_ID",
     "DIFY_AGENT_OUTPUT_LAYER_ID",
     "EmptyRunEventData",
     "LayerExitSignals",
+    "MAX_AGENT_REQUEST_LIMIT",
+    "MIN_AGENT_REQUEST_LIMIT",
     "PydanticAIStreamRunEvent",
     "RUN_EVENT_ADAPTER",
     "RunCancelledEvent",

@@ -444,6 +444,8 @@
   "nodes.agent.pluginNotFoundDesc": "Bu entegrasyon GitHub'dan yüklenmiştir. Lütfen şuraya gidin: Entegrasyonlar yeniden yüklemek için",
   "nodes.agent.pluginNotInstalled": "Bu entegrasyon yüklü değil",
   "nodes.agent.pluginNotInstalledDesc": "Bu entegrasyon GitHub'dan yüklenmiştir. Lütfen şuraya gidin: Entegrasyonlar yeniden yüklemek için",
+  "nodes.agent.requestLimit.label": "Maksimum model isteği",
+  "nodes.agent.requestLimit.tooltip": "Tek bir ajan çalıştırmasında izin verilen en yüksek model isteği sayısı.",
   "nodes.agent.roster.change": "Değiştir",
   "nodes.agent.roster.editInConsole": "Agent Console'da düzenle",
   "nodes.agent.roster.editInConsoleDisabled": "Agents'ları yönetme izniniz yok",

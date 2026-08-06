@@ -105,6 +105,23 @@ def test_create_run_request_rejects_old_compositor_payload_and_model_layer_id_is
         )
 
 
+@pytest.mark.parametrize("request_limit", [0, 501])
+def test_create_run_request_rejects_request_limit_outside_supported_range(request_limit: int) -> None:
+    with pytest.raises(ValidationError):
+        _ = CreateRunRequest.model_validate(
+            {
+                "composition": {"layers": []},
+                "request_limit": request_limit,
+            }
+        )
+
+
+def test_create_run_request_defaults_request_limit_to_pydantic_ai_default() -> None:
+    request = CreateRunRequest.model_validate({"composition": {"layers": []}})
+
+    assert request.request_limit == 50
+
+
 def test_protocol_package_no_longer_exports_execution_context_dto() -> None:
     assert not hasattr(protocol_exports, "ExecutionContext")
     assert not hasattr(protocol_exports, "RunPurpose")

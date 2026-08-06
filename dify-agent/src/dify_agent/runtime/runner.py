@@ -40,6 +40,7 @@ from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.messages import AgentStreamEvent, PartDeltaEvent, PartStartEvent, TextPart, TextPartDelta
 from pydantic_ai.output import OutputSpec
 from pydantic_ai.tools import DeferredToolRequests, DeferredToolResults
+from pydantic_ai.usage import UsageLimits
 
 from agenton.compositor import CompositorSessionSnapshot, LayerConfigInput, LayerProviderInput
 from agenton.layers.types import PydanticAITool
@@ -324,6 +325,7 @@ class AgentRunRunner:
                     message_history=message_history,
                     deferred_tool_results=deferred_tool_results,
                     event_stream_handler=handle_events,
+                    usage_limits=UsageLimits(request_limit=self.request.request_limit),
                 )
                 complete_usage = model.accumulated_usage if isinstance(model, _HasAccumulatedUsage) else None
                 usage = _serialize_agent_usage(complete_usage if complete_usage is not None else _result_usage(result))

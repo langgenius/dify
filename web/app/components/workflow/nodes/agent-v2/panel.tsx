@@ -30,6 +30,7 @@ import {
 import { AgentOutputVariables } from './components/agent-output-variables'
 import { OutputEditCard } from './components/agent-output-variables/edit-card'
 import { createDraft, isDefaultOutput } from './components/agent-output-variables/utils'
+import { AgentRequestLimitField } from './components/agent-request-limit-field'
 import { AgentRosterField } from './components/agent-roster-field'
 import { AgentTaskField } from './components/agent-task-field'
 import { SaveInlineAgentToRosterDialog } from './components/save-inline-agent-to-roster-dialog'
@@ -272,6 +273,17 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
       )
     },
     [handleNodeDataUpdateWithSyncDraft, id, inputs, setOpenInlineAgentPanelNodeId],
+  )
+
+  const handleRequestLimitChange = useCallback(
+    (value: number) => {
+      const newInputs = produce(inputsRef.current, (draft) => {
+        draft.request_limit = value
+      })
+      inputsRef.current = newInputs
+      setInputs(newInputs)
+    },
+    [setInputs],
   )
 
   const handleRosterCopySuccess = useCallback(
@@ -708,6 +720,12 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
             outputs={declaredOutputs}
             onCollapse={setIsOutputVariablesCollapsed}
             onChange={handleDeclaredOutputsChange}
+          />
+        </div>
+        <div className="border-t border-divider-subtle">
+          <AgentRequestLimitField
+            value={inputs.request_limit}
+            onChange={handleRequestLimitChange}
           />
         </div>
       </div>

@@ -6,6 +6,7 @@ from models.agent_config_entities import (
     DeclaredOutputChildConfig,
     DeclaredOutputConfig,
     DeclaredOutputType,
+    WorkflowNodeJobConfig,
 )
 
 
@@ -27,6 +28,17 @@ def test_file_default_value_accepts_canonical_reference_mapping() -> None:
     )
 
     assert config.type == DeclaredOutputType.FILE
+
+
+def test_workflow_node_job_request_limit_defaults_and_validates_range() -> None:
+    assert WorkflowNodeJobConfig().request_limit == 50
+    assert WorkflowNodeJobConfig(request_limit=500).request_limit == 500
+
+    with pytest.raises(ValueError):
+        _ = WorkflowNodeJobConfig(request_limit=0)
+
+    with pytest.raises(ValueError):
+        _ = WorkflowNodeJobConfig(request_limit=501)
 
 
 def test_file_default_value_rejects_legacy_file_id_shape() -> None:

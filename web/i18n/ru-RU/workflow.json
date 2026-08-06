@@ -444,6 +444,8 @@
   "nodes.agent.pluginNotFoundDesc": "Этот интеграция устанавливается с GitHub. Пожалуйста, перейдите в раздел Интеграции для переустановки",
   "nodes.agent.pluginNotInstalled": "Этот интеграция не установлен",
   "nodes.agent.pluginNotInstalledDesc": "Этот интеграция устанавливается с GitHub. Пожалуйста, перейдите в раздел Интеграции для переустановки",
+  "nodes.agent.requestLimit.label": "Максимум запросов к модели",
+  "nodes.agent.requestLimit.tooltip": "Максимальное число запросов к модели за один запуск агента.",
   "nodes.agent.roster.change": "Сменить",
   "nodes.agent.roster.editInConsole": "Редактировать в Agent Console",
   "nodes.agent.roster.editInConsoleDisabled": "У вас нет прав на управление Agents",

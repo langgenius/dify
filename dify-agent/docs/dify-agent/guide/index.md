@@ -293,6 +293,7 @@ whose Agenton layers provide user input. With the MVP provider set, use
 
 ```json
 {
+  "request_limit": 100,
   "composition": {
     "schema_version": 1,
     "layers": [
@@ -308,6 +309,9 @@ whose Agenton layers provide user input. With the MVP provider set, use
   }
 }
 ```
+
+`request_limit` sets the maximum number of model requests for one run. It
+defaults to `50` and accepts values from `1` through `500`.
 
 `config.user` can be a string or a list of strings. Empty or whitespace-only
 effective prompts are rejected during create-run validation before the run is

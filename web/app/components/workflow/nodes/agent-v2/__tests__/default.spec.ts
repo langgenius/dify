@@ -108,6 +108,7 @@ describe('agent/default', () => {
         binding_type: 'inline_agent',
       },
       agent_node_kind: 'dify_agent',
+      request_limit: 50,
       version: '2',
     })
   })
