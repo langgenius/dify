@@ -10,6 +10,7 @@ from types import MappingProxyType
 from typing import override
 
 import pytest
+from pytest_mock import MockerFixture
 from slack_sdk.errors import SlackApiError, SlackClientError
 from slack_sdk.socket_mode.request import SocketModeRequest
 from slack_sdk.web import WebClient
@@ -332,6 +333,43 @@ def test_directory_returns_one_ordered_complete_snapshot(mocker) -> None:
     assert result.entries[1].display_name == "Second"
     assert result.entries[1].email is None
     assert client.directory_calls == [{"limit": 200}, {"limit": 200, "cursor": "cursor-2"}]
+
+
+def test_directory_excludes_slackbot_system_user(mocker: MockerFixture) -> None:
+    client = FakeWebClient()
+    client.directory_responses.append(
+        SlackResponse(
+            {
+                "ok": True,
+                "members": [
+                    {
+                        "id": "USLACKBOT",
+                        "deleted": False,
+                        "is_bot": False,
+                        "is_app_user": False,
+                        "profile": {"real_name_normalized": "Slackbot"},
+                    },
+                    {
+                        "id": "user-1",
+                        "deleted": False,
+                        "is_bot": False,
+                        "is_app_user": False,
+                        "profile": {
+                            "display_name_normalized": "First",
+                            "email": "first@example.com",
+                        },
+                    },
+                ],
+                "response_metadata": {"next_cursor": ""},
+            }
+        )
+    )
+    adapter = _adapter(mocker, client)
+
+    result = adapter.directory.read_directory()
+
+    assert isinstance(result, Directory)
+    assert [entry.provider_user_id for entry in result.entries] == ["user-1"]
 
 
 def test_directory_page_failure_discards_entries(mocker) -> None:

@@ -1,3 +1,5 @@
+"""Slack SDK boundary tests backed by local test doubles rather than Slack."""
+
 from __future__ import annotations
 
 import json
@@ -11,6 +13,7 @@ from typing import override
 from urllib.parse import parse_qs, urlencode
 
 import pytest
+from pydantic import JsonValue
 from slack_sdk.errors import SlackClientError
 from slack_sdk.signature import SignatureVerifier
 from slack_sdk.socket_mode.request import SocketModeRequest
@@ -209,7 +212,7 @@ def _candidate(*, preserve_app_token: bool = False) -> SlackIMCandidate:
 
 
 def _intent(*, input_type: str = "select") -> NormalizedCardIntent:
-    input_definition: dict[str, object] = {
+    input_definition: dict[str, JsonValue] = {
         "type": input_type,
         "output_variable_name": "decision",
     }
@@ -234,9 +237,9 @@ def _intent(*, input_type: str = "select") -> NormalizedCardIntent:
 def _custom_intent(
     *,
     rendered_content: str = "Sanitized rendered content",
-    inputs: tuple[Mapping[str, object], ...] = (),
+    inputs: tuple[Mapping[str, JsonValue], ...] = (),
     actions: tuple[FrozenFormAction, ...] | None = None,
-    defaults: Mapping[str, object] | None = None,
+    defaults: Mapping[str, JsonValue] | None = None,
     node_title: str | None = "Sanitized title",
 ) -> NormalizedCardIntent:
     if actions is None:
@@ -828,7 +831,7 @@ def test_invalid_paragraph_default_sources_fail_before_sdk_io(
     slack_api_server: _SlackApiServer,
 ) -> None:
     adapter, _ = _adapter(monkeypatch, slack_api_server)
-    cases: tuple[tuple[object, Mapping[str, object]], ...] = (
+    cases: tuple[tuple[JsonValue, Mapping[str, JsonValue]], ...] = (
         ("not-a-source", {}),
         ({"type": "constant", "selector": []}, {}),
         ({"type": "constant", "selector": [], "value": 1}, {}),

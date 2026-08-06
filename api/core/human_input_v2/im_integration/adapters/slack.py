@@ -69,6 +69,7 @@ _SLACK_SOCKET_SDK_LOGGER.addHandler(logging.NullHandler())
 _SLACK_SOCKET_SDK_LOGGER.propagate = False
 
 _SLACK_DIRECTORY_PAGE_SIZE = 200
+_SLACKBOT_USER_ID = "USLACKBOT"
 _SOCKET_WEB_API_TIMEOUT_SECONDS = 5
 _MAX_MARKDOWN_TEXT_LENGTH = MarkdownBlock.text_max_length
 _MAX_HEADER_TEXT_LENGTH = 150
@@ -180,9 +181,14 @@ class _SlackDirectory(IMDirectory):
         for member in members:
             if not isinstance(member, Mapping):
                 return None
-            if member.get("deleted") is True or member.get("is_bot") is True or member.get("is_app_user") is True:
-                continue
             provider_user_id = member.get("id")
+            if (
+                member.get("deleted") is True
+                or member.get("is_bot") is True
+                or member.get("is_app_user") is True
+                or provider_user_id == _SLACKBOT_USER_ID
+            ):
+                continue
             if not isinstance(provider_user_id, str) or not provider_user_id:
                 return None
             profile = member.get("profile")
