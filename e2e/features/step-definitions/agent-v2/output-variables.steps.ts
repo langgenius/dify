@@ -86,9 +86,11 @@ When(
 
     await expect(taskEditor).toBeVisible()
     await taskEditor.click()
-    await page.keyboard.type('/')
+    await taskEditor.pressSequentially('/new')
+    const newOutputButton = page.getByRole('button', { name: 'New output' })
+    await expect(newOutputButton).toBeVisible()
     const insertResponse = waitForWorkflowDraftSave(this, appId)
-    await page.getByRole('button', { name: 'New output' }).click()
+    await newOutputButton.click()
     expect((await insertResponse).ok()).toBe(true)
     const nameInput = page.getByRole('textbox', { name: 'Field name' })
     await expect(nameInput).toBeVisible()
