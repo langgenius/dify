@@ -19,6 +19,7 @@ from core.human_input_v2.im_provider import (
 
 _SLACKBOT_USER_ID = "USLACKBOT"
 _SLACK_DIRECTORY_REFERENCE_PAGE_SIZE = 1
+_MINIMUM_EXPECTED_SLACK_DIRECTORY_USERS = 2
 
 
 def _non_empty_environment_value(name: str) -> str | None:
@@ -156,7 +157,7 @@ def test_slack_directory_matches_real_paginated_directory(
 
     assert page_count >= 2
     assert isinstance(directory_result, Directory)
-    assert directory_result.entries
+    assert len(directory_result.entries) >= _MINIMUM_EXPECTED_SLACK_DIRECTORY_USERS
     assert {str(entry.provider_user_id) for entry in directory_result.entries} == expected_user_ids
     for entry in directory_result.entries:
         assert str(entry.provider_user_id).strip()
