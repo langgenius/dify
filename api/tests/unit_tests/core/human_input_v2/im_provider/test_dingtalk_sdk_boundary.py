@@ -1,3 +1,5 @@
+"""Unit tests for DingTalk SDK and HTTP boundaries using test doubles."""
+
 from __future__ import annotations
 
 import json
