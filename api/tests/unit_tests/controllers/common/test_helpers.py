@@ -21,6 +21,22 @@ def make_response(
 
 
 class TestGuessFileInfoFromResponse:
+    def test_filename_from_content_disposition_when_url_has_no_extension(self):
+        headers = {
+            "Content-Disposition": 'attachment; filename="report.docx"',
+            "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        }
+        response = make_response(
+            url="https://test.domain.com/weaver/FileDownload?fileid=sdfsdfsfds",
+            headers=headers,
+            content=b"doc",
+        )
+
+        info = guess_file_info_from_response(response)
+
+        assert info.filename == "report.docx"
+        assert info.extension == ".docx"
+
     def test_filename_from_url(self):
         response = make_response(
             url="https://example.com/test.pdf",

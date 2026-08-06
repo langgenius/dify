@@ -2,7 +2,6 @@ import contextlib
 import mimetypes
 import os
 import platform
-import re
 import urllib.parse
 import warnings
 from uuid import uuid4
@@ -27,6 +26,8 @@ except ImportError:
     magic = None  # type: ignore[assignment]
 
 from pydantic import BaseModel
+
+from factories.file_factory.remote import extract_filename
 
 
 class FileInfo(BaseModel):
@@ -56,19 +57,7 @@ def decode_remote_url(url: str, query_string: bytes | str = b"") -> str:
 
 def guess_file_info_from_response(response: httpx.Response):
     url = str(response.url)
-    # Try to extract filename from URL
-    parsed_url = urllib.parse.urlparse(url)
-    url_path = parsed_url.path
-    # Decode percent-encoded characters in the path segment
-    filename = urllib.parse.unquote(os.path.basename(url_path))
-
-    # If filename couldn't be extracted, use Content-Disposition header
-    if not filename:
-        content_disposition = response.headers.get("Content-Disposition")
-        if content_disposition:
-            filename_match = re.search(r'filename="?(.+)"?', content_disposition)
-            if filename_match:
-                filename = filename_match.group(1)
+    filename = extract_filename(url, response.headers.get("Content-Disposition"))
 
     # If still no filename, generate a unique one
     if not filename:
