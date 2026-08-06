@@ -50,6 +50,7 @@ from core.human_input_v2.im_provider import (
 
 _DEPARTMENT_LIST_URL = "https://oapi.dingtalk.com/topapi/v2/department/listsub"
 _USER_LIST_URL = "https://oapi.dingtalk.com/topapi/v2/user/list"
+_AUTHORIZATION_SCOPE_URL = "https://oapi.dingtalk.com/auth/scopes"
 _ROOT_DEPARTMENT_ID = 1
 _DIRECTORY_PAGE_SIZE = 100
 _HTTP_TIMEOUT_SECONDS = 5.0
@@ -59,6 +60,7 @@ _HTTP_SUCCESS_STATUS_MAX_EXCLUSIVE = 300
 
 _CREDENTIAL_TEST_FAILED = "DingTalk credential testing could not be completed."
 _CREDENTIAL_REJECTED = "DingTalk rejected the credential test."
+_AUTHORIZATION_SCOPE_UNVERIFIED = "DingTalk could not verify complete member authorization."
 _TENANT_BOUNDARY_UNAVAILABLE = "DingTalk could not verify the configured corporation directory boundary."
 _DIRECTORY_READ_FAILED = "DingTalk directory could not be read completely."
 _MESSAGE_ACCEPTANCE_UNCONFIRMED = "DingTalk message acceptance could not be confirmed."
@@ -86,6 +88,8 @@ class _RobotClient(Protocol):
 
 
 class _DirectoryHTTPClient(Protocol):
+    def get(self, url: str, *, access_token: str) -> bytes: ...
+
     def post(self, url: str, *, access_token: str, body: dict[str, int]) -> bytes: ...
 
     def close(self) -> None: ...
@@ -130,6 +134,17 @@ class _DepartmentListResponse(_ProviderResponse):
     result: tuple[_Department, ...] | None = None
 
 
+class _AuthorizationOrganizationScope(BaseModel):
+    model_config = ConfigDict(extra="ignore", strict=True)
+
+    authed_dept: tuple[int, ...]
+    authed_user: tuple[str, ...]
+
+
+class _AuthorizationScopeResponse(_ProviderResponse):
+    auth_org_scopes: _AuthorizationOrganizationScope
+
+
 class _DirectoryUser(BaseModel):
     model_config = ConfigDict(extra="ignore", strict=True)
 
@@ -166,6 +181,16 @@ class _SDKAccessTokenProvider(AccessTokenProvider):
 
 
 class _UrllibDirectoryHTTPClient(_DirectoryHTTPClient):
+    @override
+    def get(self, url: str, *, access_token: str) -> bytes:
+        target = f"{url}?{urllib_parse.urlencode({'access_token': access_token})}"
+        request = urllib_request.Request(target, method="GET")
+        try:
+            with urllib_request.urlopen(request, timeout=_HTTP_TIMEOUT_SECONDS) as response:
+                return response.read()
+        except (OSError, ValueError, urllib_error.URLError):
+            raise _DirectoryHTTPError from None
+
     @override
     def post(self, url: str, *, access_token: str, body: dict[str, int]) -> bytes:
         target = f"{url}?{urllib_parse.urlencode({'access_token': access_token})}"
@@ -315,6 +340,11 @@ class DingTalkIMProviderAdapter:
         except Exception:
             return CredentialTestFailure(CredentialTestFailureKind.UNKNOWN, _CREDENTIAL_TEST_FAILED)
 
+        if not _has_complete_member_authorization(self._http_client, access_token):
+            return CredentialTestFailure(
+                CredentialTestFailureKind.UNKNOWN,
+                _AUTHORIZATION_SCOPE_UNVERIFIED,
+            )
         baseline = _verify_root_boundary(self._http_client, access_token)
         if baseline is _BaselineVerification.REJECTED:
             return CredentialTestFailure(
@@ -416,6 +446,18 @@ def _verify_root_boundary(http_client: _DirectoryHTTPClient, access_token: str) 
     except Exception:
         return _BaselineVerification.UNKNOWN
     return _BaselineVerification.VERIFIED
+
+
+def _has_complete_member_authorization(
+    http_client: _DirectoryHTTPClient,
+    access_token: str,
+) -> bool:
+    try:
+        response_body = http_client.get(_AUTHORIZATION_SCOPE_URL, access_token=access_token)
+        scope = _parse_response(response_body, _AuthorizationScopeResponse).auth_org_scopes
+    except _DirectoryHTTPError:
+        return False
+    return _ROOT_DEPARTMENT_ID in scope.authed_dept
 
 
 def _department_children(

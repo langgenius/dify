@@ -93,6 +93,14 @@ class _FixtureHTTPClient:
         self.calls: list[tuple[str, str, dict[str, int]]] = []
         self.close_calls = 0
 
+    def get(self, url: str, *, access_token: str) -> bytes:
+        path = urlparse(url).path
+        self.calls.append((path, access_token, {}))
+        status_code, response = self._route(path, {})
+        if not 200 <= status_code < 300:
+            raise OSError("fake HTTP failure detail")
+        return json.dumps(response, separators=(",", ":")).encode()
+
     def post(self, url: str, *, access_token: str, body: dict[str, int]) -> bytes:
         path = urlparse(url).path
         self.calls.append((path, access_token, dict(body)))
@@ -170,9 +178,12 @@ def _message_response_without_locator() -> BatchSendOTOResponse:
 
 def _fixture_route() -> Callable[[str, dict[str, int]], tuple[int, dict[str, object]]]:
     fixture = json.loads(_FIXTURE_PATH.read_text())
+    scope_exchange = fixture["authorization_scope"]
     exchanges = fixture["directory"]
 
     def route(path: str, body: dict[str, int]) -> tuple[int, dict[str, object]]:
+        if scope_exchange["request"] == {"method": "GET", "path": path} and body == {}:
+            return 200, scope_exchange["response"]
         for exchange in exchanges:
             request = exchange["request"]
             if request == {"path": path, "body": body}:
@@ -297,6 +308,23 @@ def test_public_credential_test_normalizes_token_failures(
     assert http.calls == []
 
 
+def test_public_credential_test_reads_scope_fixture_before_root_baseline(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    adapter, _provider, _robot, http = _adapter(
+        monkeypatch,
+        direct=_OAuthSequence(_token_response("fake-access-token-direct-scope-001")),
+    )
+
+    result = adapter.test_credentials()
+
+    assert result == CredentialTestSuccess(IMProvider.DING_TALK, "fake-corp-001")
+    assert http.calls[:2] == [
+        ("/auth/scopes", "fake-access-token-direct-scope-001", {}),
+        ("/topapi/v2/department/listsub", "fake-access-token-direct-scope-001", {"dept_id": 1}),
+    ]
+
+
 @pytest.mark.parametrize(
     ("root_response", "expected_kind"),
     [
@@ -310,7 +338,16 @@ def test_public_credential_test_requires_a_valid_root_baseline(
     root_response: dict[str, object],
     expected_kind: CredentialTestFailureKind,
 ) -> None:
-    http = _FixtureHTTPClient(lambda _path, _body: (200, root_response))
+    def route(path: str, _body: dict[str, int]) -> tuple[int, dict[str, object]]:
+        if path.endswith("/auth/scopes"):
+            return 200, {
+                "errcode": 0,
+                "errmsg": "ok",
+                "auth_org_scopes": {"authed_dept": [1], "authed_user": []},
+            }
+        return 200, root_response
+
+    http = _FixtureHTTPClient(route)
     adapter, _provider, _robot, _http = _adapter(
         monkeypatch,
         direct=_OAuthSequence(_token_response("fake-access-token-direct-001")),
@@ -322,7 +359,7 @@ def test_public_credential_test_requires_a_valid_root_baseline(
     assert isinstance(result, CredentialTestFailure)
     assert result.kind is expected_kind
     assert "fake" not in result.reason.casefold()
-    assert len(http.calls) == 1
+    assert len(http.calls) == 2
 
 
 def test_public_directory_discards_late_partial_state_and_detects_bad_cursor(

@@ -10,6 +10,20 @@
       "expires_in": 7200
     }
   },
+  "authorization_scope": {
+    "request": {
+      "method": "GET",
+      "path": "/auth/scopes"
+    },
+    "response": {
+      "errcode": 0,
+      "errmsg": "ok",
+      "auth_org_scopes": {
+        "authed_dept": [1],
+        "authed_user": []
+      }
+    }
+  },
   "directory": [
     {
       "request": {

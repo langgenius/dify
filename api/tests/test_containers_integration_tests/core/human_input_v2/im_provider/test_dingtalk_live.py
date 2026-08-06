@@ -24,6 +24,7 @@ from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import dingtalk as dingtalk_module
 from core.human_input_v2.im_integration.adapters.dingtalk import DingTalkIMProviderAdapter
 from core.human_input_v2.im_provider import (
+    CredentialTestSuccess,
     DingTalkIMIntegrationCredentials,
     Directory,
     MessageAccepted,
@@ -114,6 +115,22 @@ def dingtalk_test_recipient_id() -> ProviderUserId:
     if not recipient_id:
         pytest.skip("DINGTALK_TEST_RECIPIENT_ID is not configured")
     return ProviderUserId(recipient_id)
+
+
+def test_live_credentials_verify_complete_member_authorization(
+    dingtalk_credentials: DingTalkIMIntegrationCredentials,
+) -> None:
+    adapter = DingTalkIMProviderAdapter(dingtalk_credentials)
+    try:
+        result = adapter.test_credentials()
+    finally:
+        adapter.close()
+        adapter.close()
+
+    if not isinstance(result, CredentialTestSuccess):
+        _fail("DingTalk live credential testing did not verify complete member authorization")
+    if result.provider_tenant_id != dingtalk_credentials.corp_id:
+        _fail("DingTalk live credential testing returned an unexpected tenant boundary")
 
 
 def test_live_directory_reads_complete_non_empty_entries_across_real_pages(

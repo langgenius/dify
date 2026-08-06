@@ -108,6 +108,7 @@ class _RecordedRequest:
     path: str
     token: str | None
     body: dict[str, object]
+    method: str = "POST"
 
 
 class _FakeDirectoryHTTPClient:
@@ -131,6 +132,23 @@ class _FakeDirectoryHTTPClient:
         status_code, payload = self._route(parsed)
         if not 200 <= status_code < 300:
             raise OSError
+        return json.dumps(payload, separators=(",", ":")).encode()
+
+    def get(self, url: str, *, access_token: str) -> bytes:
+        parsed = _RecordedRequest(
+            path=urlparse(url).path,
+            token=access_token,
+            body={},
+            method="GET",
+        )
+        if self._recorded is not None:
+            self._recorded.append(parsed)
+        try:
+            status_code, payload = self._route(parsed)
+        except OSError:
+            raise dingtalk_module._DirectoryHTTPError from None
+        if not 200 <= status_code < 300:
+            raise dingtalk_module._DirectoryHTTPError
         return json.dumps(payload, separators=(",", ":")).encode()
 
     def close(self) -> None:
@@ -188,6 +206,15 @@ def _http_client(
 
 
 def _successful_directory_route(request: _RecordedRequest) -> tuple[int, dict[str, object]]:
+    if request.path.endswith("/auth/scopes"):
+        return 200, {
+            "errcode": 0,
+            "errmsg": "ok",
+            "auth_org_scopes": {
+                "authed_dept": [1, 2],
+                "authed_user": ["sanitized-redundant-user"],
+            },
+        }
     if request.path.endswith("/department/listsub"):
         department_id = request.body["dept_id"]
         children: list[dict[str, int]] = [{"dept_id": 2}] if department_id == 1 else []
@@ -311,8 +338,242 @@ def test_credential_test_always_calls_sdk_directly_and_bypasses_provider_cache(
     ]
     assert [corp_id for corp_id, _ in direct_client.calls] == ["sanitized-corp-id", "sanitized-corp-id"]
     baseline_tokens = [request.token for request in recorded if request.path.endswith("/department/listsub")]
+    scope_tokens = [request.token for request in recorded if request.path.endswith("/auth/scopes")]
+    assert scope_tokens == ["direct-1", "direct-2"]
     assert "direct-1" in baseline_tokens
     assert "direct-2" in baseline_tokens
+
+
+def test_credential_test_verifies_complete_member_scope_before_root_baseline(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    clients = iter((_FakeOAuthClient(_token_response("direct-scope-token")), _FakeOAuthClient()))
+    recorded: list[_RecordedRequest] = []
+    monkeypatch.setattr(dingtalk_module, "_new_oauth_client", lambda: next(clients))
+    monkeypatch.setattr(dingtalk_module, "_new_robot_client", _FakeRobotClient)
+    monkeypatch.setattr(
+        dingtalk_module, "_new_http_client", lambda: _http_client(_successful_directory_route, recorded)
+    )
+
+    result = DingTalkIMProviderAdapter(_credentials()).test_credentials()
+
+    assert result == CredentialTestSuccess(IMProvider.DING_TALK, "sanitized-corp-id")
+    assert [(request.method, request.path) for request in recorded] == [
+        ("GET", "/auth/scopes"),
+        ("POST", "/topapi/v2/department/listsub"),
+    ]
+    assert {request.token for request in recorded} == {"direct-scope-token"}
+
+
+@pytest.mark.parametrize(
+    "organization_scope",
+    [
+        {"authed_dept": [2, 3], "authed_user": []},
+        {"authed_dept": [], "authed_user": ["sanitized-direct-user"]},
+        {"authed_dept": [], "authed_user": []},
+    ],
+)
+def test_credential_test_rejects_partial_member_scope_without_root_baseline(
+    monkeypatch: pytest.MonkeyPatch,
+    organization_scope: dict[str, object],
+) -> None:
+    clients = iter((_FakeOAuthClient(_token_response("direct-partial-scope-token")), _FakeOAuthClient()))
+    recorded: list[_RecordedRequest] = []
+
+    def route(request: _RecordedRequest) -> tuple[int, dict[str, object]]:
+        if request.path.endswith("/auth/scopes"):
+            return 200, {
+                "errcode": 0,
+                "errmsg": "ok",
+                "auth_org_scopes": organization_scope,
+            }
+        pytest.fail("partial authorization must not proceed to the root baseline")
+
+    monkeypatch.setattr(dingtalk_module, "_new_oauth_client", lambda: next(clients))
+    monkeypatch.setattr(dingtalk_module, "_new_robot_client", _FakeRobotClient)
+    monkeypatch.setattr(dingtalk_module, "_new_http_client", lambda: _http_client(route, recorded))
+
+    result = DingTalkIMProviderAdapter(_credentials()).test_credentials()
+
+    assert result == CredentialTestFailure(
+        CredentialTestFailureKind.UNKNOWN,
+        "DingTalk could not verify complete member authorization.",
+    )
+    assert [(request.method, request.path) for request in recorded] == [("GET", "/auth/scopes")]
+
+
+@pytest.mark.parametrize(
+    "scope_result",
+    [
+        pytest.param({"errcode": 0, "errmsg": "ok"}, id="missing-scope"),
+        pytest.param(
+            {
+                "errcode": 0,
+                "errmsg": "ok",
+                "auth_org_scopes": {"authed_user": []},
+            },
+            id="missing-departments",
+        ),
+        pytest.param(
+            {
+                "errcode": 0,
+                "errmsg": "ok",
+                "auth_org_scopes": {"authed_dept": [1]},
+            },
+            id="missing-users",
+        ),
+        pytest.param(
+            {
+                "errcode": 0,
+                "errmsg": "ok",
+                "auth_org_scopes": {"authed_dept": ["1"], "authed_user": []},
+            },
+            id="string-root-department",
+        ),
+        pytest.param(
+            {
+                "errcode": 0,
+                "errmsg": "ok",
+                "auth_org_scopes": {"authed_dept": None, "authed_user": []},
+            },
+            id="null-departments",
+        ),
+        pytest.param(
+            {
+                "errcode": 0,
+                "errmsg": "ok",
+                "auth_org_scopes": {"authed_dept": {"root": 1}, "authed_user": []},
+            },
+            id="wrong-department-container",
+        ),
+        pytest.param(
+            {
+                "errcode": 0,
+                "errmsg": "ok",
+                "auth_org_scopes": {"authed_dept": [True], "authed_user": []},
+            },
+            id="boolean-root-department",
+        ),
+        pytest.param(
+            {
+                "errcode": 0,
+                "errmsg": "ok",
+                "auth_org_scopes": {"authed_dept": [1, "2"], "authed_user": []},
+            },
+            id="invalid-department-element-with-root",
+        ),
+        pytest.param(
+            {
+                "errcode": 0,
+                "errmsg": "ok",
+                "auth_org_scopes": {"authed_dept": [1], "authed_user": None},
+            },
+            id="null-users",
+        ),
+        pytest.param(
+            {
+                "errcode": 0,
+                "errmsg": "ok",
+                "auth_org_scopes": {"authed_dept": [1], "authed_user": "sanitized-user"},
+            },
+            id="wrong-user-container",
+        ),
+        pytest.param(
+            {
+                "errcode": 0,
+                "errmsg": "ok",
+                "auth_org_scopes": {"authed_dept": [1], "authed_user": [123]},
+            },
+            id="invalid-user-element-with-root",
+        ),
+        pytest.param(
+            {"errcode": 60011, "errmsg": "sanitized provider detail"},
+            id="provider-rejected",
+        ),
+        pytest.param(OSError("sanitized transport detail"), id="transport-failure"),
+    ],
+)
+def test_credential_test_fails_closed_when_member_scope_is_unverifiable(
+    monkeypatch: pytest.MonkeyPatch,
+    scope_result: dict[str, object] | Exception,
+) -> None:
+    clients = iter((_FakeOAuthClient(_token_response("direct-unverifiable-scope-token")), _FakeOAuthClient()))
+    recorded: list[_RecordedRequest] = []
+
+    def route(request: _RecordedRequest) -> tuple[int, dict[str, object]]:
+        if not request.path.endswith("/auth/scopes"):
+            pytest.fail("unverifiable authorization must not proceed to the root baseline")
+        if isinstance(scope_result, Exception):
+            raise scope_result
+        return 200, scope_result
+
+    monkeypatch.setattr(dingtalk_module, "_new_oauth_client", lambda: next(clients))
+    monkeypatch.setattr(dingtalk_module, "_new_robot_client", _FakeRobotClient)
+    monkeypatch.setattr(dingtalk_module, "_new_http_client", lambda: _http_client(route, recorded))
+
+    result = DingTalkIMProviderAdapter(_credentials()).test_credentials()
+
+    assert result == CredentialTestFailure(
+        CredentialTestFailureKind.UNKNOWN,
+        "DingTalk could not verify complete member authorization.",
+    )
+    assert [(request.method, request.path) for request in recorded] == [("GET", "/auth/scopes")]
+    assert isinstance(result, CredentialTestFailure)
+    assert "sanitized" not in result.reason
+
+
+def test_credential_test_fails_closed_on_invalid_scope_json_without_leaking_body(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class InvalidJSONHTTPClient:
+        def get(self, url: str, *, access_token: str) -> bytes:
+            del url, access_token
+            return b'{"secret":"sanitized-sensitive-value"'
+
+        def post(self, url: str, *, access_token: str, body: dict[str, int]) -> bytes:
+            del url, access_token, body
+            pytest.fail("invalid scope JSON must not proceed to the root baseline")
+
+        def close(self) -> None:
+            return None
+
+    clients = iter((_FakeOAuthClient(_token_response("direct-invalid-json-token")), _FakeOAuthClient()))
+    monkeypatch.setattr(dingtalk_module, "_new_oauth_client", lambda: next(clients))
+    monkeypatch.setattr(dingtalk_module, "_new_robot_client", _FakeRobotClient)
+    monkeypatch.setattr(dingtalk_module, "_new_http_client", InvalidJSONHTTPClient)
+
+    result = DingTalkIMProviderAdapter(_credentials()).test_credentials()
+
+    assert result == CredentialTestFailure(
+        CredentialTestFailureKind.UNKNOWN,
+        "DingTalk could not verify complete member authorization.",
+    )
+    assert isinstance(result, CredentialTestFailure)
+    assert "sanitized-sensitive-value" not in result.reason
+
+
+def test_credential_test_fails_closed_on_scope_http_error_without_root_baseline(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    clients = iter((_FakeOAuthClient(_token_response("direct-http-error-token")), _FakeOAuthClient()))
+    recorded: list[_RecordedRequest] = []
+
+    def route(request: _RecordedRequest) -> tuple[int, dict[str, object]]:
+        if not request.path.endswith("/auth/scopes"):
+            pytest.fail("scope HTTP failure must not proceed to the root baseline")
+        return 503, {"errcode": 0, "errmsg": "sanitized unexpected body"}
+
+    monkeypatch.setattr(dingtalk_module, "_new_oauth_client", lambda: next(clients))
+    monkeypatch.setattr(dingtalk_module, "_new_robot_client", _FakeRobotClient)
+    monkeypatch.setattr(dingtalk_module, "_new_http_client", lambda: _http_client(route, recorded))
+
+    result = DingTalkIMProviderAdapter(_credentials()).test_credentials()
+
+    assert result == CredentialTestFailure(
+        CredentialTestFailureKind.UNKNOWN,
+        "DingTalk could not verify complete member authorization.",
+    )
+    assert [(request.method, request.path) for request in recorded] == [("GET", "/auth/scopes")]
 
 
 def test_changed_credentials_use_a_new_adapter_direct_sdk_call(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -374,11 +635,17 @@ def test_credential_test_requires_root_baseline_permission(monkeypatch: pytest.M
     clients = iter((_FakeOAuthClient(_token_response()), _FakeOAuthClient()))
     monkeypatch.setattr(dingtalk_module, "_new_oauth_client", lambda: next(clients))
     monkeypatch.setattr(dingtalk_module, "_new_robot_client", _FakeRobotClient)
-    monkeypatch.setattr(
-        dingtalk_module,
-        "_new_http_client",
-        lambda: _http_client(lambda _request: (200, {"errcode": 60011, "errmsg": "sanitized raw detail"})),
-    )
+
+    def route(request: _RecordedRequest) -> tuple[int, dict[str, object]]:
+        if request.path.endswith("/auth/scopes"):
+            return 200, {
+                "errcode": 0,
+                "errmsg": "ok",
+                "auth_org_scopes": {"authed_dept": [1], "authed_user": []},
+            }
+        return 200, {"errcode": 60011, "errmsg": "sanitized raw detail"}
+
+    monkeypatch.setattr(dingtalk_module, "_new_http_client", lambda: _http_client(route))
 
     result = DingTalkIMProviderAdapter(_credentials()).test_credentials()
 
@@ -521,11 +788,15 @@ def test_sanitized_protocol_fixture_is_complete_and_rejects_sensitive_values() -
     fixture = _load_sanitized_protocol_fixture()
 
     _assert_sanitized_fixture(fixture)
-    assert set(fixture) == {"credential_test", "directory", "message"}
+    assert set(fixture) == {"authorization_scope", "credential_test", "directory", "message"}
     credential_test = fixture["credential_test"]
+    authorization_scope = fixture["authorization_scope"]
     message = fixture["message"]
     assert isinstance(credential_test, dict)
     assert set(credential_test) == {"headers", "statusCode", "body"}
+    assert isinstance(authorization_scope, dict)
+    assert authorization_scope["request"] == {"method": "GET", "path": "/auth/scopes"}
+    assert isinstance(authorization_scope["response"], dict)
     assert isinstance(message, dict)
     assert set(message) == {"headers", "statusCode", "body"}
     directory = fixture["directory"]
@@ -597,7 +868,13 @@ def test_credential_test_normalizes_unknown_root_boundary_failures(monkeypatch: 
     monkeypatch.setattr(dingtalk_module, "_new_oauth_client", lambda: next(clients))
     monkeypatch.setattr(dingtalk_module, "_new_robot_client", _FakeRobotClient)
 
-    def fail_root(_request: _RecordedRequest) -> tuple[int, dict[str, object]]:
+    def fail_root(request: _RecordedRequest) -> tuple[int, dict[str, object]]:
+        if request.path.endswith("/auth/scopes"):
+            return 200, {
+                "errcode": 0,
+                "errmsg": "ok",
+                "auth_org_scopes": {"authed_dept": [1], "authed_user": []},
+            }
         raise OSError("fake raw transport detail")
 
     monkeypatch.setattr(dingtalk_module, "_new_http_client", lambda: _http_client(fail_root))
@@ -777,6 +1054,52 @@ def test_urllib_directory_client_uses_fixed_post_shape(monkeypatch: pytest.Monke
     assert request.data == b'{"dept_id":1}'
     assert timeout == dingtalk_module._HTTP_TIMEOUT_SECONDS
     assert client.close() is None
+
+
+def test_urllib_client_uses_fixed_authorization_scope_get_shape(monkeypatch: pytest.MonkeyPatch) -> None:
+    recorded: list[tuple[urllib_request.Request, float]] = []
+
+    def urlopen(request: urllib_request.Request, *, timeout: float) -> _URLResponse:
+        recorded.append((request, timeout))
+        return _URLResponse(b'{"errcode":0,"errmsg":"ok","auth_org_scopes":{"authed_dept":[1],"authed_user":[]}}')
+
+    monkeypatch.setattr(dingtalk_module.urllib_request, "urlopen", urlopen)
+    client = dingtalk_module._UrllibDirectoryHTTPClient()
+
+    response = client.get(
+        "https://oapi.dingtalk.com/auth/scopes",
+        access_token="fake-access-token-scope-001",
+    )
+
+    assert response.startswith(b'{"errcode":0')
+    request, timeout = recorded[0]
+    assert request.method == "GET"
+    assert request.full_url.startswith("https://oapi.dingtalk.com/auth/scopes")
+    assert "access_token=fake-access-token-scope-001" in request.full_url
+    assert request.data is None
+    assert timeout == dingtalk_module._HTTP_TIMEOUT_SECONDS
+
+
+@pytest.mark.parametrize(
+    "error",
+    [OSError("fake os error"), ValueError("fake value error"), urllib_error.URLError("fake URL error")],
+)
+def test_urllib_client_normalizes_authorization_scope_transport_errors(
+    monkeypatch: pytest.MonkeyPatch,
+    error: Exception,
+) -> None:
+    def fail_urlopen(*args: object, **kwargs: object) -> object:
+        del args, kwargs
+        raise error
+
+    monkeypatch.setattr(dingtalk_module.urllib_request, "urlopen", fail_urlopen)
+
+    with pytest.raises(dingtalk_module._DirectoryHTTPError) as caught:
+        dingtalk_module._UrllibDirectoryHTTPClient().get(
+            "https://oapi.dingtalk.com/auth/scopes",
+            access_token="fake-access-token-scope-001",
+        )
+    assert str(caught.value) == ""
 
 
 @pytest.mark.parametrize(
