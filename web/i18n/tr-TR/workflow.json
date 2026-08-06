@@ -472,7 +472,7 @@
   "nodes.agent.task.mention": "Bahset",
   "nodes.agent.task.placeholder": "Bu ajanın ne yapması gerektiğini açıklayın...",
   "nodes.agent.task.tooltip": "Ajanın tam olarak bu düğümü ele almasına yardımcı olacak ek prompt. Değişkenlere açıkça referans vermek için / kullanın.\nDoğru yapılandırılırsa, ajanın işleri kendi başına çözmesine güvenebilirsiniz.",
-  "nodes.agent.toolNotAuthorizedTooltip": "{{tool}} Yetkili Değil",
+  "nodes.agent.toolNotAuthorizedTooltip": "{{tool}} yetkilendirilmemiş",
   "nodes.agent.toolNotInstallTooltip": "{{tool}} yüklü değil",
   "nodes.agent.toolbox": "Araç",
   "nodes.agent.tools": "Araçları",
