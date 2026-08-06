@@ -43,7 +43,7 @@ type SyncMode = SyncPolicy['mode']
 
 const MIN_CUSTOM_INTERVAL_HOURS = 1
 const MAX_CUSTOM_INTERVAL_HOURS = 720
-const MAX_SELECTED_PAGES = 200
+export const MAX_SELECTED_PAGES = 200
 const IMPORT_POLL_INTERVAL_MS = 1_000
 const IMPORT_POLL_ATTEMPTS = 120
 const SUCCESSFUL_IMPORT_STATES = new Set(['complete', 'completed', 'success', 'succeeded'])
@@ -177,6 +177,167 @@ function PolicyLoading() {
   )
 }
 
+export function CrawlPreviewPageSelection({
+  busy = false,
+  disabled = false,
+  onRecrawl,
+  onSelectionChange,
+  pages,
+  progressFailed = 0,
+  recrawlDisabled,
+  rootUrl,
+  selectedPageIds,
+}: {
+  busy?: boolean
+  disabled?: boolean
+  onRecrawl?: () => void
+  onSelectionChange: (pageIds: Set<string>) => void
+  pages: PreviewPage[]
+  progressFailed?: number
+  recrawlDisabled?: boolean
+  rootUrl: string
+  selectedPageIds: Set<string>
+}) {
+  const { t } = useTranslation('dataset')
+  const pageDescriptionPrefixId = useId()
+  const pageSkipReasons = useMemo(
+    () => new Map(pages.map((page) => [page.pageId, pageSkipReason(page, rootUrl)])),
+    [pages, rootUrl],
+  )
+  const selectablePages = useMemo(
+    () => pages.filter((page) => !pageSkipReasons.get(page.pageId)),
+    [pageSkipReasons, pages],
+  )
+  const selectablePageIds = useMemo(
+    () => new Set(selectablePages.map((page) => page.pageId)),
+    [selectablePages],
+  )
+  const bulkSelectablePages = selectablePages.slice(0, MAX_SELECTED_PAGES)
+  const allSelected =
+    bulkSelectablePages.length > 0 &&
+    bulkSelectablePages.every((page) => selectedPageIds.has(page.pageId))
+  const someSelected = selectedPageIds.size > 0
+  const selectionAtLimit = selectedPageIds.size >= MAX_SELECTED_PAGES
+  const selectionLocked = disabled || busy
+
+  const togglePage = (pageId: string) => {
+    if (!selectablePageIds.has(pageId) || selectionLocked) return
+    onSelectionChange(
+      new Set(
+        selectedPageIds.has(pageId)
+          ? [...selectedPageIds].filter((selectedPageId) => selectedPageId !== pageId)
+          : selectedPageIds.size < MAX_SELECTED_PAGES
+            ? [...selectedPageIds, pageId]
+            : selectedPageIds,
+      ),
+    )
+  }
+
+  const toggleAll = () => {
+    if (selectionLocked) return
+    onSelectionChange(
+      allSelected ? new Set() : new Set(bulkSelectablePages.map((page) => page.pageId)),
+    )
+  }
+
+  return (
+    <section aria-labelledby="crawl-selection-summary">
+      <div className="flex flex-wrap items-center gap-2">
+        <h3
+          id="crawl-selection-summary"
+          role="status"
+          aria-live="polite"
+          className="min-w-0 flex-1 truncate system-xs-semibold text-text-primary"
+        >
+          {t(($) => $['newKnowledge.pagesCrawled'], {
+            count: pages.length,
+            host: new URL(rootUrl).host,
+          })}
+        </h3>
+        <span className="system-xs-regular text-text-tertiary">
+          {t(($) => $['newKnowledge.pagesSelected'], { count: selectedPageIds.size })}
+        </span>
+        {progressFailed > 0 && (
+          <span className="system-xs-regular text-text-destructive">
+            {progressFailed} {t(($) => $['newKnowledge.skippedFailed'])}
+          </span>
+        )}
+        {onRecrawl && (
+          <Button
+            type="button"
+            variant="ghost-accent"
+            size="small"
+            disabled={recrawlDisabled ?? selectionLocked}
+            loading={busy}
+            className="px-0"
+            onClick={onRecrawl}
+          >
+            {t(($) => $['newKnowledge.reCrawl'])}
+          </Button>
+        )}
+      </div>
+      <div className="mt-3 overflow-hidden rounded-xl border border-divider-regular">
+        <label className="flex cursor-pointer items-center gap-2.5 border-b border-divider-subtle bg-background-section px-3 py-2.5 system-xs-medium text-text-secondary">
+          <Checkbox
+            checked={allSelected}
+            indeterminate={someSelected && !allSelected}
+            onCheckedChange={toggleAll}
+            disabled={!selectablePages.length || selectionLocked}
+          />
+          {t(($) => $['newKnowledge.selectAll'])}
+        </label>
+        <ul className="max-h-70 divide-y divide-divider-subtle overflow-y-auto">
+          {pages.map((page, index) => {
+            const skipReason = pageSkipReasons.get(page.pageId)
+            const selectable = !skipReason
+            const selectionLimitReached =
+              selectable && selectionAtLimit && !selectedPageIds.has(page.pageId)
+            const titleId = `${pageDescriptionPrefixId}-title-${index}`
+            const urlId = `${pageDescriptionPrefixId}-url-${index}`
+            const reasonId = `${pageDescriptionPrefixId}-reason-${index}`
+            return (
+              <li key={page.pageId}>
+                <label className="flex cursor-pointer items-center gap-2.5 px-3 py-2.5">
+                  <Checkbox
+                    checked={selectedPageIds.has(page.pageId)}
+                    disabled={!selectable || selectionLimitReached || selectionLocked}
+                    aria-labelledby={titleId}
+                    aria-describedby={`${urlId}${skipReason || selectionLimitReached ? ` ${reasonId}` : ''}`}
+                    onCheckedChange={() => togglePage(page.pageId)}
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span
+                      id={titleId}
+                      className="block truncate system-xs-medium text-text-primary"
+                    >
+                      {page.title || page.sourceUrl}
+                    </span>
+                    <span
+                      id={urlId}
+                      className="block truncate system-2xs-regular text-text-tertiary"
+                    >
+                      {page.sourceUrl.replace(/^https?:\/\//, '')}
+                    </span>
+                  </span>
+                  {(!selectable || selectionLimitReached) && (
+                    <span id={reasonId} className="shrink-0 system-xs-medium text-text-tertiary">
+                      {selectionLimitReached
+                        ? `${t(($) => $['newKnowledge.maxPages'])}: ${MAX_SELECTED_PAGES}`
+                        : skipReason === 'off-domain'
+                          ? t(($) => $['newKnowledge.skippedOffDomain'])
+                          : t(($) => $['newKnowledge.skippedFailed'])}
+                    </span>
+                  )}
+                </label>
+              </li>
+            )
+          })}
+        </ul>
+      </div>
+    </section>
+  )
+}
+
 function ReadyCrawlSelectionForm({
   busy,
   discardRequested,
@@ -224,7 +385,6 @@ function ReadyCrawlSelectionForm({
     setModelSetupDialogOpen,
   } = useKnowledgeModelSetupGuard(knowledgeSpaceId)
   const customIntervalErrorId = 'crawl-custom-interval-error'
-  const pageDescriptionPrefixId = useId()
   const pageSkipReasons = useMemo(
     () => new Map(pages.map((page) => [page.pageId, pageSkipReason(page, rootUrl)])),
     [pages, rootUrl],
@@ -237,7 +397,6 @@ function ReadyCrawlSelectionForm({
     () => new Set(selectablePages.map((page) => page.pageId)),
     [selectablePages],
   )
-  const bulkSelectablePages = selectablePages.slice(0, MAX_SELECTED_PAGES)
   const [selectedPageIds, setSelectedPageIds] = useState<Set<string>>(
     () =>
       new Set(
@@ -290,11 +449,6 @@ function ReadyCrawlSelectionForm({
         ),
       ),
   })
-  const allSelected =
-    bulkSelectablePages.length > 0 &&
-    bulkSelectablePages.every((page) => selectedPageIds.has(page.pageId))
-  const someSelected = selectedPageIds.size > 0
-  const selectionAtLimit = selectedPageIds.size >= MAX_SELECTED_PAGES
   const customIntervalValid =
     typeof customIntervalHours === 'number' &&
     Number.isInteger(customIntervalHours) &&
@@ -309,28 +463,9 @@ function ReadyCrawlSelectionForm({
     onSubmissionUncertainChange(uncertain)
   }
 
-  const togglePage = (pageId: string) => {
-    if (
-      !selectablePageIds.has(pageId) ||
-      submissionPendingRef.current ||
-      policyUncertain ||
-      selectionUncertain
-    )
-      return
-    setSelectedPageIds((current) => {
-      const next = new Set(current)
-      if (next.has(pageId)) next.delete(pageId)
-      else if (next.size < MAX_SELECTED_PAGES) next.add(pageId)
-      return next
-    })
-    setSubmitError(false)
-  }
-
-  const toggleAll = () => {
+  const updateSelectedPageIds = (pageIds: Set<string>) => {
     if (submissionPendingRef.current || policyUncertain || selectionUncertain) return
-    setSelectedPageIds(
-      allSelected ? new Set() : new Set(bulkSelectablePages.map((page) => page.pageId)),
-    )
+    setSelectedPageIds(pageIds)
     setSubmitError(false)
   }
 
@@ -462,98 +597,17 @@ function ReadyCrawlSelectionForm({
 
   return (
     <Form className="flex flex-col gap-4" onFormSubmit={() => void submit()}>
-      <section aria-labelledby="crawl-selection-summary">
-        <div className="flex flex-wrap items-center gap-2">
-          <h3
-            id="crawl-selection-summary"
-            role="status"
-            aria-live="polite"
-            className="min-w-0 flex-1 truncate system-xs-semibold text-text-primary"
-          >
-            {t(($) => $['newKnowledge.pagesCrawled'], {
-              count: pages.length,
-              host: new URL(rootUrl).host,
-            })}
-          </h3>
-          <span className="system-xs-regular text-text-tertiary">
-            {t(($) => $['newKnowledge.pagesSelected'], { count: selectedPageIds.size })}
-          </span>
-          {run.progressFailed > 0 && (
-            <span className="system-xs-regular text-text-destructive">
-              {run.progressFailed} {t(($) => $['newKnowledge.skippedFailed'])}
-            </span>
-          )}
-          <Button
-            type="button"
-            variant="ghost-accent"
-            size="small"
-            disabled={submissionLocked}
-            loading={busy}
-            className="px-0"
-            onClick={onRecrawl}
-          >
-            {t(($) => $['newKnowledge.reCrawl'])}
-          </Button>
-        </div>
-        <div className="mt-3 overflow-hidden rounded-xl border border-divider-regular">
-          <label className="flex cursor-pointer items-center gap-2.5 border-b border-divider-subtle bg-background-section px-3 py-2.5 system-xs-medium text-text-secondary">
-            <Checkbox
-              checked={allSelected}
-              indeterminate={someSelected && !allSelected}
-              onCheckedChange={toggleAll}
-              disabled={!selectablePages.length || selectionLocked}
-            />
-            {t(($) => $['newKnowledge.selectAll'])}
-          </label>
-          <ul className="max-h-70 divide-y divide-divider-subtle overflow-y-auto">
-            {pages.map((page, index) => {
-              const skipReason = pageSkipReasons.get(page.pageId)
-              const selectable = !skipReason
-              const selectionLimitReached =
-                selectable && selectionAtLimit && !selectedPageIds.has(page.pageId)
-              const titleId = `${pageDescriptionPrefixId}-title-${index}`
-              const urlId = `${pageDescriptionPrefixId}-url-${index}`
-              const reasonId = `${pageDescriptionPrefixId}-reason-${index}`
-              return (
-                <li key={page.pageId}>
-                  <label className="flex cursor-pointer items-center gap-2.5 px-3 py-2.5">
-                    <Checkbox
-                      checked={selectedPageIds.has(page.pageId)}
-                      disabled={!selectable || selectionLimitReached || selectionLocked}
-                      aria-labelledby={titleId}
-                      aria-describedby={`${urlId}${skipReason || selectionLimitReached ? ` ${reasonId}` : ''}`}
-                      onCheckedChange={() => togglePage(page.pageId)}
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span
-                        id={titleId}
-                        className="block truncate system-xs-medium text-text-primary"
-                      >
-                        {page.title || page.sourceUrl}
-                      </span>
-                      <span
-                        id={urlId}
-                        className="block truncate system-2xs-regular text-text-tertiary"
-                      >
-                        {page.sourceUrl.replace(/^https?:\/\//, '')}
-                      </span>
-                    </span>
-                    {(!selectable || selectionLimitReached) && (
-                      <span id={reasonId} className="shrink-0 system-xs-medium text-text-tertiary">
-                        {selectionLimitReached
-                          ? `${t(($) => $['newKnowledge.maxPages'])}: ${MAX_SELECTED_PAGES}`
-                          : skipReason === 'off-domain'
-                            ? t(($) => $['newKnowledge.skippedOffDomain'])
-                            : t(($) => $['newKnowledge.skippedFailed'])}
-                      </span>
-                    )}
-                  </label>
-                </li>
-              )
-            })}
-          </ul>
-        </div>
-      </section>
+      <CrawlPreviewPageSelection
+        busy={busy}
+        disabled={selectionLocked}
+        onRecrawl={onRecrawl}
+        onSelectionChange={updateSelectedPageIds}
+        pages={pages}
+        progressFailed={run.progressFailed}
+        recrawlDisabled={submissionLocked}
+        rootUrl={rootUrl}
+        selectedPageIds={selectedPageIds}
+      />
 
       <div>
         <Select<SyncMode>
