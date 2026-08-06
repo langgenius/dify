@@ -48,8 +48,13 @@ describe("research task dry-run planner", () => {
           p95: expect.any(Number),
         },
         retrievalSteps: 3,
-        scannedResources: 30,
-        toolCalls: 6,
+        scannedResources: 75,
+        toolCalls: 22,
+        workBounds: {
+          modelCalls: { estimated: 17, max: 41, min: 1 },
+          openedResources: { estimated: 15, max: 60, min: 0 },
+          retrievalSteps: { estimated: 3, max: 20, min: 1 },
+        },
       },
       knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
       retrievalPlan: {
@@ -70,10 +75,10 @@ describe("research task dry-run planner", () => {
       "generate",
     ]);
     expect(plan.steps.find((step) => step.name === "inspect")).toMatchObject({
-      estimatedToolCalls: 2,
+      estimatedToolCalls: 16,
     });
     expect(plan.steps.find((step) => step.name === "retrieve")).toMatchObject({
-      estimatedToolCalls: 1,
+      estimatedToolCalls: 3,
     });
   });
 

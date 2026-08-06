@@ -100,7 +100,6 @@ import {
   createKnowledgeSpaceRetentionCleanupWorker,
   createParseArtifactRetentionCleanupWorker,
   createQueryNormalizationCache,
-  createResearchTaskDryRunPlanner,
   createResearchTaskJobStateMachine,
   createResearchTaskProgressPublisher,
   createRetrievalEvaluationRunner,
@@ -462,7 +461,10 @@ function createFakeGoldenQuestionExecutor(
       };
       rows.set(updated.id, updated);
 
-      return { rows: returnRowsForWrites ? [{ ...updated }] : [], rowsAffected: 1 };
+      return {
+        rows: returnRowsForWrites ? [{ ...updated }] : [],
+        rowsAffected: 1,
+      };
     }
 
     if (input.operation === "delete") {
@@ -1579,7 +1581,9 @@ describe("createKnowledgeGateway", () => {
   });
 
   it("exposes an OpenAPI document", async () => {
-    const app = createKnowledgeGateway({ adapter: createNodePlatformAdapter({ env: {} }) });
+    const app = createKnowledgeGateway({
+      adapter: createNodePlatformAdapter({ env: {} }),
+    });
     const response = await app.request("/openapi.json");
 
     expect(response.headers.get("x-trace-id")).toMatch(
@@ -1965,7 +1969,9 @@ describe("createKnowledgeGateway", () => {
     if (!stored?.previousQueries[0]) {
       throw new Error("Expected stored previous query");
     }
-    const mutableStored = stored as unknown as { previousQueries: Array<{ query: string }> };
+    const mutableStored = stored as unknown as {
+      previousQueries: Array<{ query: string }>;
+    };
     const mutablePreviousQuery = mutableStored.previousQueries[0];
     if (!mutablePreviousQuery) {
       throw new Error("Expected mutable previous query");
@@ -2146,7 +2152,9 @@ describe("createKnowledgeGateway", () => {
     expect(unauthorized.status).toBe(401);
     expect(forbidden.status).toBe(403);
     expect(crossTenant.status).toBe(404);
-    expect(await crossTenant.json()).toEqual({ error: "Knowledge space not found" });
+    expect(await crossTenant.json()).toEqual({
+      error: "Knowledge space not found",
+    });
     expect(invalid.status).toBe(400);
   });
 
@@ -2245,7 +2253,9 @@ describe("createKnowledgeGateway", () => {
       headers: bearer(otherTenantToken),
     });
     expect(crossTenant.status).toBe(404);
-    await expect(crossTenant.json()).resolves.toEqual({ error: "Answer trace not found" });
+    await expect(crossTenant.json()).resolves.toEqual({
+      error: "Answer trace not found",
+    });
 
     await answerTraces.create({
       createdAt: "2026-05-11T13:52:00.000Z",
@@ -2453,7 +2463,11 @@ describe("createKnowledgeGateway", () => {
         metadata: {},
         parseArtifactId: "018f0d60-7a49-7cc2-9c1b-5b36f18f8c01",
         permissionScope: [],
-        sourceLocation: { endOffset: 26, sectionPath: ["Policy"], startOffset: 0 },
+        sourceLocation: {
+          endOffset: 26,
+          sectionPath: ["Policy"],
+          startOffset: 0,
+        },
         startOffset: 0,
         text: "Renewals require approval.",
       }),
@@ -2467,7 +2481,11 @@ describe("createKnowledgeGateway", () => {
         metadata: {},
         parseArtifactId: "018f0d60-7a49-7cc2-9c1b-5b36f18f8c02",
         permissionScope: [],
-        sourceLocation: { endOffset: 23, sectionPath: ["Fallback"], startOffset: 0 },
+        sourceLocation: {
+          endOffset: 23,
+          sectionPath: ["Fallback"],
+          startOffset: 0,
+        },
         startOffset: 0,
         text: "Fallback renewal note.",
       }),
@@ -2764,9 +2782,21 @@ describe("createKnowledgeGateway", () => {
       now: () => "2026-05-08T10:00:00.000Z",
     });
 
-    await repository.create({ name: "Gamma", slug: "gamma", tenantId: "tenant-1" });
-    await repository.create({ name: "Alpha", slug: "alpha", tenantId: "tenant-1" });
-    await repository.create({ name: "Other", slug: "alpha", tenantId: "tenant-2" });
+    await repository.create({
+      name: "Gamma",
+      slug: "gamma",
+      tenantId: "tenant-1",
+    });
+    await repository.create({
+      name: "Alpha",
+      slug: "alpha",
+      tenantId: "tenant-1",
+    });
+    await repository.create({
+      name: "Other",
+      slug: "alpha",
+      tenantId: "tenant-2",
+    });
 
     const firstPage = await repository.list({ limit: 1, tenantId: "tenant-1" });
     expect(firstPage).toMatchObject({
@@ -2790,7 +2820,10 @@ describe("createKnowledgeGateway", () => {
 
     expect(secondPage.items.map((space) => space.slug)).toEqual(["gamma"]);
     await expect(
-      repository.get({ id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c43", tenantId: "tenant-1" }),
+      repository.get({
+        id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c43",
+        tenantId: "tenant-1",
+      }),
     ).resolves.toMatchObject({ name: "Alpha" });
     await expect(repository.list({ limit: 0, tenantId: "tenant-1" })).rejects.toThrow(
       "Knowledge space list limit must be at least 1",
@@ -2926,10 +2959,16 @@ describe("createKnowledgeGateway", () => {
     firstItem.name = "Caller Mutation";
 
     await expect(
-      repository.get({ id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42", tenantId: "tenant-1" }),
+      repository.get({
+        id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
+        tenantId: "tenant-1",
+      }),
     ).resolves.toMatchObject({ name: "Alpha" });
     await expect(
-      repository.get({ id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42", tenantId: "tenant-2" }),
+      repository.get({
+        id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
+        tenantId: "tenant-2",
+      }),
     ).resolves.toBeNull();
 
     const updated = await repository.update({
@@ -2986,7 +3025,9 @@ describe("createKnowledgeGateway", () => {
   });
 
   it("supports non-returning database executors and dialect-specific SQL", async () => {
-    const fake = createFakeKnowledgeSpaceExecutor([], { returnRowsForWrites: false });
+    const fake = createFakeKnowledgeSpaceExecutor([], {
+      returnRowsForWrites: false,
+    });
     const repository = createDatabaseKnowledgeSpaceRepository({
       database: createSchemaDatabaseAdapter({
         executor: fake.executor,
@@ -2999,7 +3040,11 @@ describe("createKnowledgeGateway", () => {
     });
 
     await expect(
-      repository.create({ name: "TiDB Space", slug: "tidb-space", tenantId: "tenant-1" }),
+      repository.create({
+        name: "TiDB Space",
+        slug: "tidb-space",
+        tenantId: "tenant-1",
+      }),
     ).resolves.toMatchObject({
       id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
       slug: "tidb-space",
@@ -3133,7 +3178,9 @@ describe("createKnowledgeGateway", () => {
         knowledgeSpaceId: created.knowledgeSpaceId,
         tenantId: testGoldenQuestionPermission().tenantId,
       }),
-    ).resolves.toMatchObject({ question: "What changed in Phase 1 after review?" });
+    ).resolves.toMatchObject({
+      question: "What changed in Phase 1 after review?",
+    });
     await expect(
       repository.get({
         candidateGrants: testGoldenQuestionPermission().candidateGrants,
@@ -3151,7 +3198,10 @@ describe("createKnowledgeGateway", () => {
       }),
     ).resolves.toBeNull();
     await expect(
-      repository.listTrusted({ knowledgeSpaceId: created.knowledgeSpaceId, limit: 3 }),
+      repository.listTrusted({
+        knowledgeSpaceId: created.knowledgeSpaceId,
+        limit: 3,
+      }),
     ).rejects.toThrow("Golden question list limit exceeds maxListLimit=2");
     await expect(
       repository.delete({
@@ -3168,7 +3218,9 @@ describe("createKnowledgeGateway", () => {
       }),
     ).resolves.toBe(true);
 
-    const tidbFake = createFakeGoldenQuestionExecutor([], { returnRowsForWrites: false });
+    const tidbFake = createFakeGoldenQuestionExecutor([], {
+      returnRowsForWrites: false,
+    });
     const tidbRepository = createDatabaseGoldenQuestionRepository({
       database: createSchemaDatabaseAdapter({
         executor: tidbFake.executor,
@@ -3419,7 +3471,11 @@ describe("createKnowledgeGateway", () => {
       expectedEvidenceIds: ["018f0d60-7a49-7cc2-9c1b-5b36f18f2d10"],
       id: "018f0d60-7a49-7cc2-9c1b-5b36f18f3a01",
       knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
-      metadata: { lifecycleStatus: "active", matchPolicy: "all", owner: "eval" },
+      metadata: {
+        lifecycleStatus: "active",
+        matchPolicy: "all",
+        owner: "eval",
+      },
       question: "What changed in the roadmap?",
       tags: ["phase-1"],
       updatedAt: "2026-05-11T10:00:00.000Z",
@@ -3569,7 +3625,10 @@ describe("createKnowledgeGateway", () => {
     expect(
       (
         await app.request(basePath, {
-          body: JSON.stringify({ question: "Read only?", expectedEvidenceIds: [] }),
+          body: JSON.stringify({
+            question: "Read only?",
+            expectedEvidenceIds: [],
+          }),
           headers: { ...bearer(readToken), "content-type": "application/json" },
           method: "POST",
         })
@@ -3582,7 +3641,11 @@ describe("createKnowledgeGateway", () => {
       400,
     );
     expect(
-      (await app.request(`${basePath}?limit=1&cursor=bad`, { headers: bearer(readToken) })).status,
+      (
+        await app.request(`${basePath}?limit=1&cursor=bad`, {
+          headers: bearer(readToken),
+        })
+      ).status,
     ).toBe(400);
     expect(
       (
@@ -3593,7 +3656,11 @@ describe("createKnowledgeGateway", () => {
       ).status,
     ).toBe(404);
     expect(
-      (await app.request(`${basePath}?limit=1`, { headers: bearer(otherTenantToken) })).status,
+      (
+        await app.request(`${basePath}?limit=1`, {
+          headers: bearer(otherTenantToken),
+        })
+      ).status,
     ).toBe(404);
     expect(
       (
@@ -3607,7 +3674,10 @@ describe("createKnowledgeGateway", () => {
       (
         await app.request(`${basePath}/018f0d60-7a49-7cc2-9c1b-5b36f18f3a99`, {
           body: JSON.stringify({ question: "Missing update" }),
-          headers: { ...bearer(writeToken), "content-type": "application/json" },
+          headers: {
+            ...bearer(writeToken),
+            "content-type": "application/json",
+          },
           method: "PATCH",
         })
       ).status,
@@ -3618,7 +3688,10 @@ describe("createKnowledgeGateway", () => {
           "/knowledge-spaces/018f0d60-7a49-7cc2-9c1b-5b36f18f2c99/golden-questions/018f0d60-7a49-7cc2-9c1b-5b36f18f3a99",
           {
             body: JSON.stringify({ question: "Missing space update" }),
-            headers: { ...bearer(writeToken), "content-type": "application/json" },
+            headers: {
+              ...bearer(writeToken),
+              "content-type": "application/json",
+            },
             method: "PATCH",
           },
         )
@@ -3713,7 +3786,10 @@ describe("createKnowledgeGateway", () => {
     const unauthorized = await app.request(
       `/knowledge-spaces/${knowledgeSpaceId}/golden-questions/${questionId}/annotations`,
       {
-        body: JSON.stringify({ answerCorrectness: "incorrect", evidenceRelevance: [] }),
+        body: JSON.stringify({
+          answerCorrectness: "incorrect",
+          evidenceRelevance: [],
+        }),
         headers: { "content-type": "application/json" },
         method: "POST",
       },
@@ -3723,7 +3799,10 @@ describe("createKnowledgeGateway", () => {
     const forbidden = await app.request(
       `/knowledge-spaces/${knowledgeSpaceId}/golden-questions/${questionId}/annotations`,
       {
-        body: JSON.stringify({ answerCorrectness: "incorrect", evidenceRelevance: [] }),
+        body: JSON.stringify({
+          answerCorrectness: "incorrect",
+          evidenceRelevance: [],
+        }),
         headers: { ...bearer(readToken), "content-type": "application/json" },
         method: "POST",
       },
@@ -3785,8 +3864,14 @@ describe("createKnowledgeGateway", () => {
     const crossTenant = await app.request(
       `/knowledge-spaces/${knowledgeSpaceId}/golden-questions/${questionId}/annotations`,
       {
-        body: JSON.stringify({ answerCorrectness: "correct", evidenceRelevance: [] }),
-        headers: { ...bearer(otherTenantToken), "content-type": "application/json" },
+        body: JSON.stringify({
+          answerCorrectness: "correct",
+          evidenceRelevance: [],
+        }),
+        headers: {
+          ...bearer(otherTenantToken),
+          "content-type": "application/json",
+        },
         method: "POST",
       },
     );
@@ -3795,7 +3880,10 @@ describe("createKnowledgeGateway", () => {
     const missingQuestion = await app.request(
       `/knowledge-spaces/${knowledgeSpaceId}/golden-questions/018f0d60-7a49-7cc2-9c1b-5b36f18f3a99/annotations`,
       {
-        body: JSON.stringify({ answerCorrectness: "correct", evidenceRelevance: [] }),
+        body: JSON.stringify({
+          answerCorrectness: "correct",
+          evidenceRelevance: [],
+        }),
         headers: { ...bearer(writeToken), "content-type": "application/json" },
         method: "POST",
       },
@@ -3862,7 +3950,11 @@ describe("createKnowledgeGateway", () => {
         metadata: {},
         parseArtifactId: "018f0d60-7a49-7cc2-9c1b-5b36f18f8c02",
         permissionScope: [],
-        sourceLocation: { endOffset: 62, sectionPath: ["Release notes"], startOffset: 0 },
+        sourceLocation: {
+          endOffset: 62,
+          sectionPath: ["Release notes"],
+          startOffset: 0,
+        },
         startOffset: 0,
         text: "The answer missed the production incident rollback note.",
       }),
@@ -4066,7 +4158,11 @@ describe("createKnowledgeGateway", () => {
         metadata: {},
         parseArtifactId: "018f0d60-7a49-7cc2-9c1b-5b36f18f8c04",
         permissionScope: ["classification:restricted"],
-        sourceLocation: { endOffset: 50, sectionPath: ["Restricted"], startOffset: 0 },
+        sourceLocation: {
+          endOffset: 50,
+          sectionPath: ["Restricted"],
+          startOffset: 0,
+        },
         startOffset: 0,
         text: "Restricted evidence must not enter a golden question.",
       }),
@@ -4085,7 +4181,10 @@ describe("createKnowledgeGateway", () => {
       `/knowledge-spaces/${knowledgeSpaceId}/production-bad-cases`,
       {
         body: JSON.stringify({ traceId }),
-        headers: { ...bearer(otherTenantToken), "content-type": "application/json" },
+        headers: {
+          ...bearer(otherTenantToken),
+          "content-type": "application/json",
+        },
         method: "POST",
       },
     );
@@ -4094,7 +4193,9 @@ describe("createKnowledgeGateway", () => {
     const missingTrace = await app.request(
       `/knowledge-spaces/${knowledgeSpaceId}/production-bad-cases`,
       {
-        body: JSON.stringify({ traceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f8a02" }),
+        body: JSON.stringify({
+          traceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f8a02",
+        }),
         headers: { ...bearer(writeToken), "content-type": "application/json" },
         method: "POST",
       },
@@ -4295,7 +4396,10 @@ describe("createKnowledgeGateway", () => {
       maxPolicies: 10,
       now: () => "2026-05-12T19:00:00.000Z",
     });
-    const answerTraces = createInMemoryAnswerTraceRepository({ maxSteps: 4, maxTraces: 4 });
+    const answerTraces = createInMemoryAnswerTraceRepository({
+      maxSteps: 4,
+      maxTraces: 4,
+    });
     const indexProjections = createInMemoryIndexProjectionRepository({
       maxBatchSize: 10,
       maxListLimit: 10,
@@ -4494,304 +4598,6 @@ describe("createKnowledgeGateway", () => {
     ).toThrow("Retention cleanup projectionRetainVersions must be at least 1");
   });
 
-  it("creates, reads, and cancels tenant-scoped research tasks", async () => {
-    const adapter = createNodePlatformAdapter({ env: {} });
-    const spaces = createInMemoryKnowledgeSpaceRepository({
-      generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
-      maxListLimit: 10,
-      maxSpaces: 10,
-      now: () => "2026-05-12T14:00:00.000Z",
-    });
-    const researchTasks = createResearchTaskJobStateMachine({
-      generateId: () => "research-task-job-1",
-      jobs: adapter.jobs,
-      now: () => 1_000,
-      repository: createInMemoryResearchTaskJobRepository({ maxJobs: 10 }),
-    });
-    const app = createKnowledgeGateway({
-      adapter,
-      allowLegacyResearchTaskProfileFallback: true,
-      auth: createTestAuthVerifier(),
-      knowledgeSpaces: spaces,
-      researchTasks,
-    });
-
-    const unauthorized = await app.request("/research-tasks", {
-      body: JSON.stringify({
-        knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
-        query: "Research semantic retrieval regressions",
-      }),
-      headers: { "content-type": "application/json" },
-      method: "POST",
-    });
-    expect(unauthorized.status).toBe(401);
-
-    await app.request("/knowledge-spaces", {
-      body: JSON.stringify({ name: "Research", slug: "research" }),
-      headers: { ...bearer(writeToken), "content-type": "application/json" },
-      method: "POST",
-    });
-
-    const readOnlyCreate = await app.request("/research-tasks", {
-      body: JSON.stringify({
-        knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
-        query: "Research semantic retrieval regressions",
-      }),
-      headers: { ...bearer(readToken), "content-type": "application/json" },
-      method: "POST",
-    });
-    expect(readOnlyCreate.status).toBe(403);
-
-    const created = await app.request("/research-tasks", {
-      body: JSON.stringify({
-        knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
-        metadata: { mode: "deep" },
-        budgetUsd: 0.5,
-        query: "Research semantic retrieval regressions",
-      }),
-      headers: { ...bearer(writeToken), "content-type": "application/json" },
-      method: "POST",
-    });
-    expect(created.status).toBe(201);
-    const createdResearchTask = (await created.json()) as Record<string, unknown>;
-    expect(createdResearchTask).toMatchObject({
-      id: "research-task-job-1",
-      budgetUsd: 0.5,
-      cost: { budgetUsd: 0.5, entries: [], totalUsd: 0 },
-      knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
-      metadata: { mode: "deep" },
-      query: "Research semantic retrieval regressions",
-      stage: "queued",
-    });
-    expect(createdResearchTask).not.toHaveProperty("permissionSnapshot");
-    expect(createdResearchTask).not.toHaveProperty("subjectId");
-    expect(createdResearchTask).not.toHaveProperty("tenantId");
-
-    await expect(adapter.jobs.status("job-1")).resolves.toMatchObject({
-      payload: { researchTaskJobId: "research-task-job-1" },
-      status: "queued",
-      type: "research.task",
-    });
-
-    const status = await app.request("/research-tasks/research-task-job-1", {
-      headers: bearer(readToken),
-    });
-    expect(status.status).toBe(200);
-    await expect(status.json()).resolves.toMatchObject({
-      id: "research-task-job-1",
-      stage: "queued",
-    });
-
-    const writeOnlyStatus = await app.request("/research-tasks/research-task-job-1", {
-      headers: bearer(writeOnlyToken),
-    });
-    expect(writeOnlyStatus.status).toBe(403);
-
-    const crossTenantStatus = await app.request("/research-tasks/research-task-job-1", {
-      headers: bearer(otherTenantToken),
-    });
-    expect(crossTenantStatus.status).toBe(404);
-
-    const readOnlyCancel = await app.request("/research-tasks/research-task-job-1", {
-      headers: bearer(readToken),
-      method: "DELETE",
-    });
-    expect(readOnlyCancel.status).toBe(403);
-
-    const cancel = await app.request("/research-tasks/research-task-job-1", {
-      headers: bearer(writeToken),
-      method: "DELETE",
-    });
-    expect(cancel.status).toBe(200);
-    await expect(cancel.json()).resolves.toMatchObject({
-      id: "research-task-job-1",
-      stage: "canceled",
-    });
-    await expect(adapter.jobs.status("job-1")).resolves.toMatchObject({
-      status: "canceled",
-    });
-
-    const cancelAgain = await app.request("/research-tasks/research-task-job-1", {
-      headers: bearer(writeToken),
-      method: "DELETE",
-    });
-    expect(cancelAgain.status).toBe(409);
-
-    const openapi = await app.request("/openapi.json");
-    const spec = (await openapi.json()) as { paths: Record<string, Record<string, unknown>> };
-    expect(spec.paths["/research-tasks"]?.post).toBeDefined();
-    expect(spec.paths["/research-tasks/{id}"]?.get).toBeDefined();
-    expect(spec.paths["/research-tasks/{id}"]?.delete).toBeDefined();
-  });
-
-  it("enforces research task launch limits before queue enqueue", async () => {
-    const adapter = createNodePlatformAdapter({ env: {} });
-    const spaces = createInMemoryKnowledgeSpaceRepository({
-      generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
-      maxListLimit: 10,
-      maxSpaces: 10,
-      now: () => "2026-05-12T15:15:00.000Z",
-    });
-    const app = createKnowledgeGateway({
-      adapter,
-      allowLegacyResearchTaskProfileFallback: true,
-      auth: createTestAuthVerifier(),
-      knowledgeSpaces: spaces,
-      researchTaskPlanner: createResearchTaskDryRunPlanner({
-        retrievalPlanner: createRetrievalPlanner({ maxTopK: 100 }),
-      }),
-    });
-
-    await app.request("/knowledge-spaces", {
-      body: JSON.stringify({ name: "Research limits", slug: "research-limits" }),
-      headers: { ...bearer(writeToken), "content-type": "application/json" },
-      method: "POST",
-    });
-
-    const rejected = await app.request("/research-tasks", {
-      body: JSON.stringify({
-        knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
-        limits: {
-          maxRetrievalSteps: 1,
-          maxScannedResources: 1,
-          maxToolCalls: 1,
-          timeoutMs: 1,
-        },
-        mode: "research",
-        query: "Research semantic retrieval regressions",
-        topK: 5,
-      }),
-      headers: { ...bearer(writeToken), "content-type": "application/json" },
-      method: "POST",
-    });
-    expect(rejected.status).toBe(422);
-    await expect(rejected.json()).resolves.toMatchObject({
-      error: "Research task limits exceeded",
-      violations: [
-        { limit: "timeoutMs" },
-        { limit: "maxRetrievalSteps" },
-        { limit: "maxScannedResources" },
-        { limit: "maxToolCalls" },
-      ],
-    });
-    await expect(adapter.jobs.stats()).resolves.toMatchObject({ queued: 0 });
-
-    const accepted = await app.request("/research-tasks", {
-      body: JSON.stringify({
-        knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
-        limits: {
-          maxRetrievalSteps: 10,
-          maxScannedResources: 100,
-          maxToolCalls: 10,
-          timeoutMs: 10_000,
-        },
-        mode: "research",
-        query: "Research semantic retrieval regressions",
-        topK: 5,
-      }),
-      headers: { ...bearer(writeToken), "content-type": "application/json" },
-      method: "POST",
-    });
-    expect(accepted.status).toBe(201);
-    await expect(accepted.json()).resolves.toMatchObject({
-      limits: {
-        maxRetrievalSteps: 10,
-        maxScannedResources: 100,
-        maxToolCalls: 10,
-        timeoutMs: 10_000,
-      },
-      stage: "queued",
-    });
-  });
-
-  it("plans research tasks without enqueueing durable work", async () => {
-    const adapter = createNodePlatformAdapter({ env: {} });
-    const spaces = createInMemoryKnowledgeSpaceRepository({
-      generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
-      maxListLimit: 10,
-      maxSpaces: 10,
-      now: () => "2026-05-12T15:00:00.000Z",
-    });
-    const app = createKnowledgeGateway({
-      adapter,
-      allowLegacyResearchTaskProfileFallback: true,
-      auth: createTestAuthVerifier(),
-      knowledgeSpaces: spaces,
-      researchTaskPlanner: createResearchTaskDryRunPlanner({
-        retrievalPlanner: createRetrievalPlanner({ maxTopK: 100 }),
-      }),
-    });
-
-    await app.request("/knowledge-spaces", {
-      body: JSON.stringify({ name: "Research planning", slug: "research-planning" }),
-      headers: { ...bearer(writeToken), "content-type": "application/json" },
-      method: "POST",
-    });
-
-    const unauthorized = await app.request("/research-tasks/plan", {
-      body: JSON.stringify({
-        knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
-        query: "Plan a research comparison",
-      }),
-      headers: { "content-type": "application/json" },
-      method: "POST",
-    });
-    expect(unauthorized.status).toBe(401);
-
-    const writeOnly = await app.request("/research-tasks/plan", {
-      body: JSON.stringify({
-        knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
-        query: "Plan a research comparison",
-      }),
-      headers: { ...bearer(writeOnlyToken), "content-type": "application/json" },
-      method: "POST",
-    });
-    expect(writeOnly.status).toBe(403);
-
-    const planned = await app.request("/research-tasks/plan", {
-      body: JSON.stringify({
-        budgetUsd: 0.25,
-        knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
-        mode: "research",
-        query: "Plan a research comparison",
-        topK: 5,
-      }),
-      headers: { ...bearer(readToken), "content-type": "application/json" },
-      method: "POST",
-    });
-    expect(planned.status).toBe(200);
-    await expect(planned.json()).resolves.toMatchObject({
-      budget: { budgetUsd: 0.25, exceedsBudget: false },
-      estimates: {
-        cacheHitProbability: expect.any(Number),
-        scannedResources: expect.any(Number),
-        toolCalls: expect.any(Number),
-      },
-      knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
-      retrievalPlan: {
-        requestedMode: "research",
-        resolvedMode: "research",
-        topK: 5,
-      },
-      strategyVersion: "research-dry-run-planner-v1",
-    });
-    await expect(adapter.jobs.stats()).resolves.toMatchObject({ queued: 0 });
-
-    const crossTenant = await app.request("/research-tasks/plan", {
-      body: JSON.stringify({
-        knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
-        query: "Plan a research comparison",
-      }),
-      headers: { ...bearer(otherTenantToken), "content-type": "application/json" },
-      method: "POST",
-    });
-    expect(crossTenant.status).toBe(404);
-
-    const openapi = await app.request("/openapi.json");
-    const spec = (await openapi.json()) as { paths: Record<string, Record<string, unknown>> };
-    expect(spec.paths["/research-tasks/plan"]?.post).toBeDefined();
-  });
-
   it("serves research task partial evidence during and after cancellation", async () => {
     const adapter = createNodePlatformAdapter({ env: {} });
     const spaces = createInMemoryKnowledgeSpaceRepository({
@@ -4825,7 +4631,10 @@ describe("createKnowledgeGateway", () => {
     });
 
     await app.request("/knowledge-spaces", {
-      body: JSON.stringify({ name: "Research partials", slug: "research-partials" }),
+      body: JSON.stringify({
+        name: "Research partials",
+        slug: "research-partials",
+      }),
       headers: { ...bearer(writeToken), "content-type": "application/json" },
       method: "POST",
     });
@@ -4922,7 +4731,9 @@ describe("createKnowledgeGateway", () => {
     expect(missing.status).toBe(404);
 
     const openapi = await app.request("/openapi.json");
-    const spec = (await openapi.json()) as { paths: Record<string, Record<string, unknown>> };
+    const spec = (await openapi.json()) as {
+      paths: Record<string, Record<string, unknown>>;
+    };
     expect(spec.paths["/research-tasks/{id}/partials"]?.get).toBeDefined();
   });
 
@@ -4944,7 +4755,9 @@ describe("createKnowledgeGateway", () => {
       generateId: () => "research-task-job-1",
       jobs: adapter.jobs,
       now: () => 2_000,
-      progress: createResearchTaskProgressPublisher({ repository: researchTaskProgress }),
+      progress: createResearchTaskProgressPublisher({
+        repository: researchTaskProgress,
+      }),
       repository: createInMemoryResearchTaskJobRepository({ maxJobs: 10 }),
     });
     const app = createKnowledgeGateway({
@@ -4957,7 +4770,10 @@ describe("createKnowledgeGateway", () => {
     });
 
     await app.request("/knowledge-spaces", {
-      body: JSON.stringify({ name: "Research progress", slug: "research-progress" }),
+      body: JSON.stringify({
+        name: "Research progress",
+        slug: "research-progress",
+      }),
       headers: { ...bearer(writeToken), "content-type": "application/json" },
       method: "POST",
     });
@@ -5027,7 +4843,9 @@ describe("createKnowledgeGateway", () => {
     expect(missing.status).toBe(404);
 
     const openapi = await app.request("/openapi.json");
-    const spec = (await openapi.json()) as { paths: Record<string, Record<string, unknown>> };
+    const spec = (await openapi.json()) as {
+      paths: Record<string, Record<string, unknown>>;
+    };
     expect(spec.paths["/research-tasks/{id}/events"]?.get).toBeDefined();
   });
 
@@ -5060,7 +4878,10 @@ describe("createKnowledgeGateway", () => {
     });
 
     await app.request("/knowledge-spaces", {
-      body: JSON.stringify({ name: "Workspace Snapshots", slug: "workspace-snapshots" }),
+      body: JSON.stringify({
+        name: "Workspace Snapshots",
+        slug: "workspace-snapshots",
+      }),
       headers: { ...bearer(writeToken), "content-type": "application/json" },
       method: "POST",
     });
@@ -5097,7 +4918,11 @@ describe("createKnowledgeGateway", () => {
     const rejectedTenantOverride = await app.request("/agent-workspace-snapshots", {
       body: JSON.stringify({
         ...workspaceSnapshotRequestBody(),
-        permissionSnapshot: { scopes: ["malicious"], subjectId: "evil", tenantId: "evil" },
+        permissionSnapshot: {
+          scopes: ["malicious"],
+          subjectId: "evil",
+          tenantId: "evil",
+        },
         tenantId: "malicious-tenant",
       }),
       headers: { ...bearer(writeToken), "content-type": "application/json" },
@@ -5166,7 +4991,9 @@ describe("createKnowledgeGateway", () => {
     expect(missingSpace.status).toBe(404);
 
     const openapi = await app.request("/openapi.json");
-    const spec = (await openapi.json()) as { paths: Record<string, Record<string, unknown>> };
+    const spec = (await openapi.json()) as {
+      paths: Record<string, Record<string, unknown>>;
+    };
     expect(spec.paths["/agent-workspace-snapshots"]?.post).toBeDefined();
     expect(spec.paths["/agent-workspace-snapshots/{id}"]?.get).toBeDefined();
   });
@@ -5216,7 +5043,10 @@ describe("createKnowledgeGateway", () => {
     });
 
     await app.request("/knowledge-spaces", {
-      body: JSON.stringify({ name: "Workspace Replay", slug: "workspace-replay" }),
+      body: JSON.stringify({
+        name: "Workspace Replay",
+        slug: "workspace-replay",
+      }),
       headers: { ...bearer(writeToken), "content-type": "application/json" },
       method: "POST",
     });
@@ -5252,7 +5082,10 @@ describe("createKnowledgeGateway", () => {
     const replayed = await app.request(
       "/agent-workspace-snapshots/agent-workspace-snapshot-1/replay",
       {
-        headers: { ...bearer(readToken), "x-trace-id": "018f0d60-7a49-7cc2-9c1b-5b36f18f6e22" },
+        headers: {
+          ...bearer(readToken),
+          "x-trace-id": "018f0d60-7a49-7cc2-9c1b-5b36f18f6e22",
+        },
         method: "POST",
       },
     );
@@ -5293,7 +5126,9 @@ describe("createKnowledgeGateway", () => {
     expect(hiddenReplay.status).toBe(404);
 
     const openapi = await app.request("/openapi.json");
-    const spec = (await openapi.json()) as { paths: Record<string, Record<string, unknown>> };
+    const spec = (await openapi.json()) as {
+      paths: Record<string, Record<string, unknown>>;
+    };
     expect(spec.paths["/agent-workspace-snapshots/{id}/replay"]?.post).toBeDefined();
   });
 
@@ -5331,7 +5166,9 @@ describe("createKnowledgeGateway", () => {
           return tick;
         };
       })(),
-      repository: createInMemoryDocumentCompilationJobRepository({ maxJobs: 4 }),
+      repository: createInMemoryDocumentCompilationJobRepository({
+        maxJobs: 4,
+      }),
     });
     const compilationJob = await compilationJobs.start({
       documentAssetId: asset.id,
@@ -5441,7 +5278,10 @@ describe("createKnowledgeGateway", () => {
       }),
     ).rejects.toThrow("parser failed");
     await expect(
-      assets.get({ id: failingAsset.id, knowledgeSpaceId: failingAsset.knowledgeSpaceId }),
+      assets.get({
+        id: failingAsset.id,
+        knowledgeSpaceId: failingAsset.knowledgeSpaceId,
+      }),
     ).resolves.toMatchObject({ parserStatus: "failed" });
     await expect(compilationJobs.get(failingJob.id)).resolves.toMatchObject({
       error: "parser failed",
@@ -5468,7 +5308,9 @@ describe("createKnowledgeGateway", () => {
           return tick;
         };
       })(),
-      repository: createInMemoryDocumentCompilationJobRepository({ maxJobs: 4 }),
+      repository: createInMemoryDocumentCompilationJobRepository({
+        maxJobs: 4,
+      }),
     });
     const createAsset = async (id: string, filename: string) => {
       const asset = await assets.create({
@@ -5610,7 +5452,10 @@ describe("createKnowledgeGateway", () => {
       "Document compilation smoke evaluation failed: recallAtK 0.6 < 0.8; citationHitRate 0.7 < 0.8; noAnswerRate 0.2 > 0.1",
     );
     await expect(
-      assets.get({ id: failingAsset.id, knowledgeSpaceId: failingAsset.knowledgeSpaceId }),
+      assets.get({
+        id: failingAsset.id,
+        knowledgeSpaceId: failingAsset.knowledgeSpaceId,
+      }),
     ).resolves.toMatchObject({ parserStatus: "failed" });
     await expect(compilationJobs.get(failingJob.id)).resolves.toMatchObject({
       error:
@@ -5752,7 +5597,11 @@ describe("createKnowledgeGateway", () => {
       }),
     });
     expect(
-      (await forbiddenApp.request(documentPath, { headers: bearer("write-only-token") })).status,
+      (
+        await forbiddenApp.request(documentPath, {
+          headers: bearer("write-only-token"),
+        })
+      ).status,
     ).toBe(403);
   });
 
@@ -5813,7 +5662,10 @@ describe("createKnowledgeGateway", () => {
       "/knowledge-spaces/018f0d60-7a49-7cc2-9c1b-5b36f18f2c42/documents",
       {
         body: "not multipart",
-        headers: { ...bearer(writeToken), "content-type": "multipart/form-data; boundary=bad" },
+        headers: {
+          ...bearer(writeToken),
+          "content-type": "multipart/form-data; boundary=bad",
+        },
         method: "POST",
       },
     );
@@ -5890,7 +5742,9 @@ describe("createKnowledgeGateway", () => {
         maxSpaces: 10,
         now: () => "2026-05-09T10:00:00.000Z",
       }),
-      storageQuotas: createStaticStorageQuotaRepository({ maxRawDocumentBytes: 3 }),
+      storageQuotas: createStaticStorageQuotaRepository({
+        maxRawDocumentBytes: 3,
+      }),
     });
 
     await app.request("/knowledge-spaces", {
@@ -5911,7 +5765,9 @@ describe("createKnowledgeGateway", () => {
     );
 
     expect(response.status).toBe(413);
-    await expect(response.json()).resolves.toEqual({ error: "Storage quota exceeded" });
+    await expect(response.json()).resolves.toEqual({
+      error: "Storage quota exceeded",
+    });
     await expect(
       adapter.objectStorage.listObjects({
         limit: 10,
@@ -6001,7 +5857,10 @@ describe("createKnowledgeGateway", () => {
       adapter,
       auth: createTestAuthVerifier(),
       documentAssets: createDatabaseDocumentAssetRepository({
-        database: createSchemaDatabaseAdapter({ executor: fake.executor, kind: "postgres" }),
+        database: createSchemaDatabaseAdapter({
+          executor: fake.executor,
+          kind: "postgres",
+        }),
         now: () => "2026-05-09T11:00:00.000Z",
       }),
       generateDocumentAssetId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2c43",
@@ -6071,7 +5930,9 @@ describe("createKnowledgeGateway", () => {
       maxAssets: 10,
       now: () => "2026-05-09T11:00:00.000Z",
     });
-    const parseArtifacts = createInMemoryParseArtifactRepository({ maxArtifacts: 10 });
+    const parseArtifacts = createInMemoryParseArtifactRepository({
+      maxArtifacts: 10,
+    });
     const parser = createRecordingParser({ fail: true });
     const app = createKnowledgeGateway({
       adapter,
@@ -6096,7 +5957,12 @@ describe("createKnowledgeGateway", () => {
     });
 
     const form = new FormData();
-    form.set("file", new File([new Uint8Array([1, 2])], "Failure.md", { type: "text/markdown" }));
+    form.set(
+      "file",
+      new File([new Uint8Array([1, 2])], "Failure.md", {
+        type: "text/markdown",
+      }),
+    );
     const response = await app.request(
       "/knowledge-spaces/018f0d60-7a49-7cc2-9c1b-5b36f18f2c42/documents",
       {
@@ -6119,7 +5985,9 @@ describe("createKnowledgeGateway", () => {
         }),
       ]),
     );
-    await expect(response.json()).resolves.toEqual({ error: "Document parsing failed" });
+    await expect(response.json()).resolves.toEqual({
+      error: "Document parsing failed",
+    });
     expect(deletedKeys).toEqual([]);
     await expect(
       assets.get({
@@ -6165,7 +6033,12 @@ describe("createKnowledgeGateway", () => {
     });
 
     const form = new FormData();
-    form.set("file", new File([new Uint8Array([1, 2])], "Report.pdf", { type: "application/pdf" }));
+    form.set(
+      "file",
+      new File([new Uint8Array([1, 2])], "Report.pdf", {
+        type: "application/pdf",
+      }),
+    );
     const response = await app.request(
       "/knowledge-spaces/018f0d60-7a49-7cc2-9c1b-5b36f18f2c42/documents",
       {
@@ -6176,7 +6049,9 @@ describe("createKnowledgeGateway", () => {
     );
 
     expect(response.status).toBe(500);
-    await expect(response.json()).resolves.toEqual({ error: "Document parsing failed" });
+    await expect(response.json()).resolves.toEqual({
+      error: "Document parsing failed",
+    });
     await expect(
       assets.get({
         id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c43",
@@ -6233,13 +6108,18 @@ describe("createKnowledgeGateway", () => {
     );
 
     expect(response.status).toBe(500);
-    await expect(response.json()).resolves.toEqual({ error: "Document upload failed" });
+    await expect(response.json()).resolves.toEqual({
+      error: "Document upload failed",
+    });
   });
 
   it("backs document asset creation with a parameterized database repository", async () => {
     const fake = createFakeDocumentAssetExecutor();
     const repository = createDatabaseDocumentAssetRepository({
-      database: createSchemaDatabaseAdapter({ executor: fake.executor, kind: "postgres" }),
+      database: createSchemaDatabaseAdapter({
+        executor: fake.executor,
+        kind: "postgres",
+      }),
       generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2c43",
       now: () => "2026-05-09T11:00:00.000Z",
     });
@@ -6356,7 +6236,10 @@ describe("createKnowledgeGateway", () => {
 
     const tidbFake = createFakeDocumentAssetExecutor();
     const tidbRepository = createDatabaseDocumentAssetRepository({
-      database: createSchemaDatabaseAdapter({ executor: tidbFake.executor, kind: "tidb" }),
+      database: createSchemaDatabaseAdapter({
+        executor: tidbFake.executor,
+        kind: "tidb",
+      }),
       generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2c45",
       now: () => "2026-05-09T11:00:00.000Z",
     });
@@ -6423,7 +6306,9 @@ describe("createKnowledgeGateway", () => {
       parser: "native-markdown",
       version: 1,
     }) satisfies ParseArtifact;
-    const memoryRepository = createInMemoryParseArtifactRepository({ maxArtifacts: 1 });
+    const memoryRepository = createInMemoryParseArtifactRepository({
+      maxArtifacts: 1,
+    });
 
     await expect(memoryRepository.create(artifact)).resolves.toEqual(artifact);
     const stored = await memoryRepository.getByDocumentVersion({
@@ -6462,7 +6347,10 @@ describe("createKnowledgeGateway", () => {
 
     const fake = createFakeParseArtifactExecutor();
     const databaseRepository = createDatabaseParseArtifactRepository({
-      database: createSchemaDatabaseAdapter({ executor: fake.executor, kind: "postgres" }),
+      database: createSchemaDatabaseAdapter({
+        executor: fake.executor,
+        kind: "postgres",
+      }),
     });
 
     await expect(databaseRepository.create(artifact)).resolves.toEqual(artifact);
@@ -6493,14 +6381,19 @@ describe("createKnowledgeGateway", () => {
 
     const tidbFake = createFakeParseArtifactExecutor();
     const tidbRepository = createDatabaseParseArtifactRepository({
-      database: createSchemaDatabaseAdapter({ executor: tidbFake.executor, kind: "tidb" }),
+      database: createSchemaDatabaseAdapter({
+        executor: tidbFake.executor,
+        kind: "tidb",
+      }),
     });
     await expect(tidbRepository.create(artifact)).resolves.toEqual(artifact);
     expect(tidbFake.calls[0]?.sql).toContain("INSERT INTO `parse_artifacts`");
     expect(tidbFake.calls[0]?.sql).toContain("CAST(? AS JSON)");
     expect(tidbFake.calls[0]?.sql).not.toContain("RETURNING");
 
-    const cleanupRepository = createInMemoryParseArtifactRepository({ maxArtifacts: 4 });
+    const cleanupRepository = createInMemoryParseArtifactRepository({
+      maxArtifacts: 4,
+    });
     await cleanupRepository.create({
       ...artifact,
       id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2d01",
@@ -6546,7 +6439,10 @@ describe("createKnowledgeGateway", () => {
 
     const cleanupFake = createFakeParseArtifactExecutor();
     const cleanupDatabaseRepository = createDatabaseParseArtifactRepository({
-      database: createSchemaDatabaseAdapter({ executor: cleanupFake.executor, kind: "postgres" }),
+      database: createSchemaDatabaseAdapter({
+        executor: cleanupFake.executor,
+        kind: "postgres",
+      }),
     });
     await expect(
       cleanupDatabaseRepository.pruneDocumentVersions({
@@ -6573,7 +6469,9 @@ describe("createKnowledgeGateway", () => {
       maxAssets: 4,
       now: () => "2026-05-09T11:00:00.000Z",
     });
-    const parseArtifacts = createInMemoryParseArtifactRepository({ maxArtifacts: 8 });
+    const parseArtifacts = createInMemoryParseArtifactRepository({
+      maxArtifacts: 8,
+    });
     const retentionPolicies = createInMemoryRetentionPolicyRepository({
       maxPolicies: 4,
       now: () => "2026-05-12T19:00:00.000Z",
@@ -6674,10 +6572,16 @@ describe("createKnowledgeGateway", () => {
       tenantId: "tenant-1",
     });
     await expect(
-      parseArtifacts.getByDocumentVersion({ documentAssetId: firstAsset.id, version: 1 }),
+      parseArtifacts.getByDocumentVersion({
+        documentAssetId: firstAsset.id,
+        version: 1,
+      }),
     ).resolves.toBeNull();
     await expect(
-      parseArtifacts.getByDocumentVersion({ documentAssetId: firstAsset.id, version: 3 }),
+      parseArtifacts.getByDocumentVersion({
+        documentAssetId: firstAsset.id,
+        version: 3,
+      }),
     ).resolves.toMatchObject({ version: 3 });
     await expect(
       worker.process({
@@ -6696,7 +6600,10 @@ describe("createKnowledgeGateway", () => {
       tenantId: "tenant-1",
     });
     await expect(
-      parseArtifacts.getByDocumentVersion({ documentAssetId: secondAsset.id, version: 1 }),
+      parseArtifacts.getByDocumentVersion({
+        documentAssetId: secondAsset.id,
+        version: 1,
+      }),
     ).resolves.toMatchObject({ version: 1 });
     await expect(
       worker.process({
@@ -6884,7 +6791,10 @@ describe("createKnowledgeGateway", () => {
 
     const fake = createFakeKnowledgePathExecutor();
     const databaseRepository = createDatabaseKnowledgePathRepository({
-      database: createSchemaDatabaseAdapter({ executor: fake.executor, kind: "postgres" }),
+      database: createSchemaDatabaseAdapter({
+        executor: fake.executor,
+        kind: "postgres",
+      }),
       maxListLimit: 2,
     });
     await expect(databaseRepository.create(path)).resolves.toEqual(path);
@@ -6972,7 +6882,10 @@ describe("createKnowledgeGateway", () => {
     ).resolves.toEqual({ items: [semanticPath] });
     const semanticFake = createFakeKnowledgePathExecutor();
     const semanticDatabaseRepository = createDatabaseKnowledgePathRepository({
-      database: createSchemaDatabaseAdapter({ executor: semanticFake.executor, kind: "postgres" }),
+      database: createSchemaDatabaseAdapter({
+        executor: semanticFake.executor,
+        kind: "postgres",
+      }),
       maxListLimit: 2,
     });
     await semanticDatabaseRepository.create(path);
@@ -6996,7 +6909,10 @@ describe("createKnowledgeGateway", () => {
 
     const tidbFake = createFakeKnowledgePathExecutor();
     const tidbRepository = createDatabaseKnowledgePathRepository({
-      database: createSchemaDatabaseAdapter({ executor: tidbFake.executor, kind: "tidb" }),
+      database: createSchemaDatabaseAdapter({
+        executor: tidbFake.executor,
+        kind: "tidb",
+      }),
       maxListLimit: 2,
     });
     await expect(tidbRepository.create(path)).resolves.toEqual(path);
@@ -7762,7 +7678,9 @@ describe("createKnowledgeGateway", () => {
       maxSpaces: 1,
     });
     const assets = createInMemoryDocumentAssetRepository({ maxAssets: 3 });
-    const parseArtifacts = createInMemoryParseArtifactRepository({ maxArtifacts: 3 });
+    const parseArtifacts = createInMemoryParseArtifactRepository({
+      maxArtifacts: 3,
+    });
     const nodes = createInMemoryKnowledgeNodeRepository({
       maxBatchSize: 6,
       maxListLimit: 1,
@@ -7810,7 +7728,13 @@ describe("createKnowledgeGateway", () => {
         createdAt: "2026-05-21T00:00:00.000Z",
         documentAssetId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c44",
         elements: [
-          { id: "title-1", metadata: {}, sectionPath: [], text: "Recovered title", type: "title" },
+          {
+            id: "title-1",
+            metadata: {},
+            sectionPath: [],
+            text: "Recovered title",
+            type: "title",
+          },
           {
             id: "paragraph-1",
             metadata: {},
@@ -8382,7 +8306,10 @@ describe("createKnowledgeGateway", () => {
     ).rejects.toThrow("Knowledge node repository maxNodes=2 exceeded");
     const fake = createFakeKnowledgeNodeExecutor();
     const databaseRepository = createDatabaseKnowledgeNodeRepository({
-      database: createSchemaDatabaseAdapter({ executor: fake.executor, kind: "postgres" }),
+      database: createSchemaDatabaseAdapter({
+        executor: fake.executor,
+        kind: "postgres",
+      }),
       maxBatchSize: 10,
       maxListLimit: 10,
     });
@@ -8455,7 +8382,10 @@ describe("createKnowledgeGateway", () => {
 
     const tidbFake = createFakeKnowledgeNodeExecutor();
     const tidbRepository = createDatabaseKnowledgeNodeRepository({
-      database: createSchemaDatabaseAdapter({ executor: tidbFake.executor, kind: "tidb" }),
+      database: createSchemaDatabaseAdapter({
+        executor: tidbFake.executor,
+        kind: "tidb",
+      }),
       maxBatchSize: 10,
       maxListLimit: 10,
     });
@@ -8504,7 +8434,10 @@ describe("createKnowledgeGateway", () => {
     ).resolves.toMatchObject({ metadata: { release: "v2" } });
     await expect(
       memoryRegistry.register(
-        EmbeddingModelSchema.parse({ ...model, metadata: { release: "stable" } }),
+        EmbeddingModelSchema.parse({
+          ...model,
+          metadata: { release: "stable" },
+        }),
       ),
     ).resolves.toEqual(model);
     await expect(memoryRegistry.list({ limit: 1, status: "active" })).resolves.toEqual({
@@ -8521,7 +8454,10 @@ describe("createKnowledgeGateway", () => {
 
     loaded.metadata.release = "mutated";
     await expect(
-      memoryRegistry.get({ modelId: "text-embedding-3-small", version: "2026-05-01" }),
+      memoryRegistry.get({
+        modelId: "text-embedding-3-small",
+        version: "2026-05-01",
+      }),
     ).resolves.toMatchObject({ metadata: { release: "stable" } });
     await expect(memoryRegistry.list({ limit: 2, status: "active" })).rejects.toThrow(
       "Embedding model registry list limit exceeds maxListLimit=1",
@@ -8563,7 +8499,11 @@ describe("createKnowledgeGateway", () => {
         modelId: "text-embedding-3-tiny",
       }),
     );
-    const firstPage = await pagedRegistry.list({ limit: 1, provider: "openai", status: "active" });
+    const firstPage = await pagedRegistry.list({
+      limit: 1,
+      provider: "openai",
+      status: "active",
+    });
 
     expect(firstPage.nextCursor).toEqual({
       id: model.id,
@@ -8582,7 +8522,10 @@ describe("createKnowledgeGateway", () => {
 
     const fake = createFakeEmbeddingModelExecutor();
     const databaseRegistry = createDatabaseEmbeddingModelRegistry({
-      database: createSchemaDatabaseAdapter({ executor: fake.executor, kind: "postgres" }),
+      database: createSchemaDatabaseAdapter({
+        executor: fake.executor,
+        kind: "postgres",
+      }),
       maxListLimit: 10,
     });
     const databaseSecondModel = EmbeddingModelSchema.parse({
@@ -8649,7 +8592,10 @@ describe("createKnowledgeGateway", () => {
       }),
     );
     await expect(
-      databaseRegistry.get({ modelId: "missing-model", version: model.version }),
+      databaseRegistry.get({
+        modelId: "missing-model",
+        version: model.version,
+      }),
     ).resolves.toBeNull();
     const databaseFirstPage = await databaseRegistry.list({
       limit: 1,
@@ -8739,7 +8685,10 @@ describe("createKnowledgeGateway", () => {
       version: "2026-06-01",
     });
     const queue = new RecordingUpgradeQueue();
-    const models = createInMemoryEmbeddingModelRegistry({ maxListLimit: 10, maxModels: 4 });
+    const models = createInMemoryEmbeddingModelRegistry({
+      maxListLimit: 10,
+      maxModels: 4,
+    });
     const projections = createInMemoryIndexProjectionRepository({
       maxBatchSize: 2,
       maxListLimit: 10,
@@ -8968,7 +8917,10 @@ describe("createKnowledgeGateway", () => {
       rollback: { failed: 1 },
     });
     await expect(
-      models.get({ modelId: rejectedCandidate.modelId, version: rejectedCandidate.version }),
+      models.get({
+        modelId: rejectedCandidate.modelId,
+        version: rejectedCandidate.version,
+      }),
     ).resolves.toMatchObject({ status: "disabled" });
     await expect(
       workflow.run({
@@ -9393,7 +9345,11 @@ describe("createKnowledgeGateway", () => {
       }),
     ).rejects.toThrow("Dense vector projection batch size exceeds maxBatchSize=2");
     await expect(
-      builder.build({ model: "static-dense", nodes: [firstNode], projectionVersion: 0 }),
+      builder.build({
+        model: "static-dense",
+        nodes: [firstNode],
+        projectionVersion: 0,
+      }),
     ).rejects.toThrow("Dense vector projection version must be a positive integer");
     const mismatch = createDenseVectorProjectionBuilder({
       embeddings: createRecordingEmbeddingProvider({ mismatch: true }).provider,
@@ -9410,7 +9366,10 @@ describe("createKnowledgeGateway", () => {
 
     const fake = createFakeIndexProjectionExecutor();
     const databaseRepository = createDatabaseIndexProjectionRepository({
-      database: createSchemaDatabaseAdapter({ executor: fake.executor, kind: "postgres" }),
+      database: createSchemaDatabaseAdapter({
+        executor: fake.executor,
+        kind: "postgres",
+      }),
       maxBatchSize: 10,
       maxListLimit: 10,
     });
@@ -9468,7 +9427,10 @@ describe("createKnowledgeGateway", () => {
     });
     const ftsFake = createFakeIndexProjectionExecutor();
     const ftsRepository = createDatabaseIndexProjectionRepository({
-      database: createSchemaDatabaseAdapter({ executor: ftsFake.executor, kind: "postgres" }),
+      database: createSchemaDatabaseAdapter({
+        executor: ftsFake.executor,
+        kind: "postgres",
+      }),
       maxBatchSize: 10,
       maxListLimit: 10,
     });
@@ -9477,7 +9439,10 @@ describe("createKnowledgeGateway", () => {
 
     const tidbFake = createFakeIndexProjectionExecutor();
     const tidbRepository = createDatabaseIndexProjectionRepository({
-      database: createSchemaDatabaseAdapter({ executor: tidbFake.executor, kind: "tidb" }),
+      database: createSchemaDatabaseAdapter({
+        executor: tidbFake.executor,
+        kind: "tidb",
+      }),
       maxBatchSize: 10,
       maxListLimit: 10,
     });
@@ -9584,7 +9549,10 @@ describe("createKnowledgeGateway", () => {
 
     const cleanupFake = createFakeIndexProjectionExecutor();
     const cleanupDatabaseRepository = createDatabaseIndexProjectionRepository({
-      database: createSchemaDatabaseAdapter({ executor: cleanupFake.executor, kind: "postgres" }),
+      database: createSchemaDatabaseAdapter({
+        executor: cleanupFake.executor,
+        kind: "postgres",
+      }),
       maxBatchSize: 10,
       maxListLimit: 10,
     });
@@ -9666,7 +9634,9 @@ describe("createKnowledgeGateway", () => {
         type: "fts",
       }),
       expect.objectContaining({
-        metadata: expect.objectContaining({ ftsText: "error code e 42 remediation" }),
+        metadata: expect.objectContaining({
+          ftsText: "error code e 42 remediation",
+        }),
         nodeId: secondNode.id,
       }),
     ]);
@@ -9674,12 +9644,18 @@ describe("createKnowledgeGateway", () => {
       "FTS projection batch must contain at least 1 node",
     );
     await expect(
-      builder.build({ nodes: [firstNode, secondNode, firstNode], projectionVersion: 1 }),
+      builder.build({
+        nodes: [firstNode, secondNode, firstNode],
+        projectionVersion: 1,
+      }),
     ).rejects.toThrow("FTS projection batch size exceeds maxBatchSize=2");
 
     const fake = createFakeIndexProjectionExecutor();
     const databaseRepository = createDatabaseIndexProjectionRepository({
-      database: createSchemaDatabaseAdapter({ executor: fake.executor, kind: "postgres" }),
+      database: createSchemaDatabaseAdapter({
+        executor: fake.executor,
+        kind: "postgres",
+      }),
       maxBatchSize: 10,
       maxListLimit: 10,
     });
@@ -9736,7 +9712,9 @@ describe("createKnowledgeGateway", () => {
       });
     const existingArtifact = parseArtifact("018f0d60-7a49-7cc2-9c1b-5b36f18f2e10", "a".repeat(64));
     const changedArtifact = parseArtifact("018f0d60-7a49-7cc2-9c1b-5b36f18f2e11", "b".repeat(64));
-    const artifacts = createInMemoryParseArtifactRepository({ maxArtifacts: 4 });
+    const artifacts = createInMemoryParseArtifactRepository({
+      maxArtifacts: 4,
+    });
     const nodes = createInMemoryKnowledgeNodeRepository({
       maxBatchSize: 4,
       maxListLimit: 4,
@@ -9767,7 +9745,10 @@ describe("createKnowledgeGateway", () => {
       },
       countApproxTokens: () => 1,
       countTokens: () => 1,
-      diffText: () => ({ operations: [], stats: { delete: 0, equal: 0, insert: 0 } }),
+      diffText: () => ({
+        operations: [],
+        stats: { delete: 0, equal: 0, insert: 0 },
+      }),
       packEvidence: () => ({
         context: "",
         items: [],
@@ -9876,7 +9857,11 @@ describe("createKnowledgeGateway", () => {
         nodes,
       }),
     ).toThrow("Incremental reindexer maxNodes must be at least 1");
-    await nodes.deleteByDocumentAsset({ documentAssetId, knowledgeSpaceId, maxNodes: 4 });
+    await nodes.deleteByDocumentAsset({
+      documentAssetId,
+      knowledgeSpaceId,
+      maxNodes: 4,
+    });
     const denseBuilds: unknown[] = [];
     await expect(
       createIncrementalReindexer({
@@ -9911,7 +9896,11 @@ describe("createKnowledgeGateway", () => {
         }),
         projectionVersion: 3,
       }),
-    ).resolves.toMatchObject({ nodesCreated: 1, projectionsCreated: 1, status: "rebuilt" });
+    ).resolves.toMatchObject({
+      nodesCreated: 1,
+      projectionsCreated: 1,
+      status: "rebuilt",
+    });
     expect(denseBuilds).toEqual([
       expect.objectContaining({
         model: "static-embedding@1",
@@ -9988,7 +9977,10 @@ describe("createKnowledgeGateway", () => {
   it("runs bounded dense and FTS retrieval then fuses normalized candidate scores", async () => {
     const fake = createFakeRetrievalExecutor();
     const repository = createDatabaseHybridRetrievalRepository({
-      database: createSchemaDatabaseAdapter({ executor: fake.executor, kind: "postgres" }),
+      database: createSchemaDatabaseAdapter({
+        executor: fake.executor,
+        kind: "postgres",
+      }),
       maxTopK: 10,
     });
     const retriever = createBasicHybridRetriever({ repository });
@@ -10083,7 +10075,10 @@ describe("createKnowledgeGateway", () => {
     ).rejects.toThrow("Hybrid retrieval queryVector must contain at least 1 number");
     const tidbFake = createFakeRetrievalExecutor();
     const tidbRepository = createDatabaseHybridRetrievalRepository({
-      database: createSchemaDatabaseAdapter({ executor: tidbFake.executor, kind: "tidb" }),
+      database: createSchemaDatabaseAdapter({
+        executor: tidbFake.executor,
+        kind: "tidb",
+      }),
       maxTopK: 10,
     });
     await tidbRepository.searchDense({
@@ -10315,7 +10310,10 @@ describe("createKnowledgeGateway", () => {
 
     const fake = createFakeRetrievalExecutor();
     const databaseRepository = createDatabaseHybridRetrievalRepository({
-      database: createSchemaDatabaseAdapter({ executor: fake.executor, kind: "postgres" }),
+      database: createSchemaDatabaseAdapter({
+        executor: fake.executor,
+        kind: "postgres",
+      }),
       maxTopK: 10,
     });
     await databaseRepository.searchDense({
@@ -10365,7 +10363,10 @@ describe("createKnowledgeGateway", () => {
   it("uses retrieval plans and normalized fusion for optimized hybrid recall metrics", async () => {
     const fake = createFakeRetrievalExecutor();
     const repository = createDatabaseHybridRetrievalRepository({
-      database: createSchemaDatabaseAdapter({ executor: fake.executor, kind: "postgres" }),
+      database: createSchemaDatabaseAdapter({
+        executor: fake.executor,
+        kind: "postgres",
+      }),
       maxTopK: 10,
     });
     const retriever = createBasicHybridRetriever({
@@ -10421,7 +10422,10 @@ describe("createKnowledgeGateway", () => {
   it("reranks planned hybrid recall candidates before returning final evidence", async () => {
     const fake = createFakeRetrievalExecutor();
     const repository = createDatabaseHybridRetrievalRepository({
-      database: createSchemaDatabaseAdapter({ executor: fake.executor, kind: "postgres" }),
+      database: createSchemaDatabaseAdapter({
+        executor: fake.executor,
+        kind: "postgres",
+      }),
       maxTopK: 10,
     });
     const rerankCalls: RerankDocumentsInput[] = [];
@@ -10667,7 +10671,9 @@ describe("createKnowledgeGateway", () => {
       "Query normalization query is required",
     );
     await expect(
-      createQueryNormalizationCache({ cache, maxQueryBytes: 4 }).normalize({ query: "abcde" }),
+      createQueryNormalizationCache({ cache, maxQueryBytes: 4 }).normalize({
+        query: "abcde",
+      }),
     ).rejects.toThrow("Query normalization query exceeds maxQueryBytes=4");
     expect(() => createQueryNormalizationCache({ cache, ttlMs: 0 })).toThrow(
       "Query normalization ttlMs must be at least 1",
@@ -11254,13 +11260,22 @@ describe("createKnowledgeGateway", () => {
       maxTopK: 4,
       retriever: { retrieve: async () => ({ items: [] }) },
     });
-    const firstPage = await pagedRunner.run({ knowledgeSpaceId, limit: 1, topK: 1 });
+    const firstPage = await pagedRunner.run({
+      knowledgeSpaceId,
+      limit: 1,
+      topK: 1,
+    });
     expect(firstPage.nextCursor).toEqual({
       createdAt: "2026-05-13T13:30:00.000Z",
       id: "018f0d60-7a49-7cc2-9c1b-5b36f18f3f51",
     });
     await expect(
-      pagedRunner.run({ cursor: firstPage.nextCursor, knowledgeSpaceId, limit: 1, topK: 1 }),
+      pagedRunner.run({
+        cursor: firstPage.nextCursor,
+        knowledgeSpaceId,
+        limit: 1,
+        topK: 1,
+      }),
     ).resolves.toMatchObject({
       items: [{ question: "Second paged question?" }],
     });
@@ -11547,8 +11562,10 @@ describe("createKnowledgeGateway", () => {
       },
       models: async () => [],
     };
-    const repositoryCalls: Array<{ readonly strategy: "dense" | "fts"; readonly topK: number }> =
-      [];
+    const repositoryCalls: Array<{
+      readonly strategy: "dense" | "fts";
+      readonly topK: number;
+    }> = [];
     const candidate = (
       nodeId: string,
       source: "dense" | "fts",
@@ -11672,15 +11689,30 @@ describe("createKnowledgeGateway", () => {
       strategies: {
         "dense-only": {
           items: [],
-          metrics: { citationHitRate: 0, noAnswerRate: 0, recallAtK: 0, totalQuestions: 0 },
+          metrics: {
+            citationHitRate: 0,
+            noAnswerRate: 0,
+            recallAtK: 0,
+            totalQuestions: 0,
+          },
         },
         "fts-only": {
           items: [],
-          metrics: { citationHitRate: 0, noAnswerRate: 0, recallAtK: 0, totalQuestions: 0 },
+          metrics: {
+            citationHitRate: 0,
+            noAnswerRate: 0,
+            recallAtK: 0,
+            totalQuestions: 0,
+          },
         },
         hybrid: {
           items: [],
-          metrics: { citationHitRate: 0, noAnswerRate: 0, recallAtK: 0, totalQuestions: 0 },
+          metrics: {
+            citationHitRate: 0,
+            noAnswerRate: 0,
+            recallAtK: 0,
+            totalQuestions: 0,
+          },
         },
       },
     });
@@ -11757,7 +11789,10 @@ describe("createKnowledgeGateway", () => {
       },
       models: async () => [],
     };
-    const strategyCalls: Array<{ readonly name: string; readonly query: string }> = [];
+    const strategyCalls: Array<{
+      readonly name: string;
+      readonly query: string;
+    }> = [];
     const item = (nodeId: string): HybridRetrievalItem => ({
       citation: {
         artifactHash: "b".repeat(64),
@@ -11829,7 +11864,11 @@ describe("createKnowledgeGateway", () => {
     expect(report.strategies.baseline?.metrics.recallAtK).toBe(0.5);
     expect(report.strategies.challenger?.metrics.recallAtK).toBe(1);
 
-    const pagedReport = await runner.run({ knowledgeSpaceId, limit: 1, topK: 1 });
+    const pagedReport = await runner.run({
+      knowledgeSpaceId,
+      limit: 1,
+      topK: 1,
+    });
     expect(pagedReport.nextCursor).toEqual({
       createdAt: "2026-05-13T12:50:00.000Z",
       id: "018f0d60-7a49-7cc2-9c1b-5b36f18f4e01",
@@ -11887,7 +11926,10 @@ describe("createKnowledgeGateway", () => {
         maxTopK: 4,
         strategies: [
           { name: " ", retriever: createStrategy("empty-name", {}) },
-          { name: "challenger", retriever: createStrategy("challenger-empty-name", {}) },
+          {
+            name: "challenger",
+            retriever: createStrategy("challenger-empty-name", {}),
+          },
         ],
       }),
     ).toThrow("A/B retrieval strategy comparison strategy name is required");
@@ -11900,7 +11942,10 @@ describe("createKnowledgeGateway", () => {
         maxTopK: 4,
         strategies: [
           { name: "b".repeat(81), retriever: createStrategy("long-name", {}) },
-          { name: "challenger", retriever: createStrategy("challenger-long-name", {}) },
+          {
+            name: "challenger",
+            retriever: createStrategy("challenger-long-name", {}),
+          },
         ],
       }),
     ).toThrow("A/B retrieval strategy comparison strategy name must be at most 80 chars");
@@ -11946,8 +11991,14 @@ describe("createKnowledgeGateway", () => {
         maxQuestions: 5,
         maxTopK: 4,
         strategies: [
-          { name: "baseline", retriever: createStrategy("baseline-mismatch", {}) },
-          { name: "challenger", retriever: createStrategy("challenger-mismatch", {}) },
+          {
+            name: "baseline",
+            retriever: createStrategy("baseline-mismatch", {}),
+          },
+          {
+            name: "challenger",
+            retriever: createStrategy("challenger-mismatch", {}),
+          },
         ],
       }).run({ knowledgeSpaceId, limit: 2, topK: 1 }),
     ).rejects.toThrow(
@@ -12004,8 +12055,10 @@ describe("createKnowledgeGateway", () => {
       },
       models: async () => [],
     };
-    const retrievalCalls: Array<{ readonly name: string; readonly input: RetrieveHybridInput }> =
-      [];
+    const retrievalCalls: Array<{
+      readonly name: string;
+      readonly input: RetrieveHybridInput;
+    }> = [];
     const item = (nodeId: string): HybridRetrievalItem => ({
       citation: {
         artifactHash: "a".repeat(64),
@@ -12024,7 +12077,10 @@ describe("createKnowledgeGateway", () => {
       byQuery: Record<string, readonly HybridRetrievalItem[]>,
     ): BasicHybridRetriever => ({
       retrieve: async (input) => {
-        retrievalCalls.push({ name, input: { ...input, queryVector: [...input.queryVector] } });
+        retrievalCalls.push({
+          name,
+          input: { ...input, queryVector: [...input.queryVector] },
+        });
         return { items: [...(byQuery[input.query] ?? [])] };
       },
     });
@@ -12098,22 +12154,49 @@ describe("createKnowledgeGateway", () => {
       }),
     ).resolves.toMatchObject({
       impact: {
-        enrichedVsBaseline: { citationHitRate: 0, noAnswerRate: 0, recallAtK: 0 },
-        summaryTreeVsBaseline: { citationHitRate: 0, noAnswerRate: 0, recallAtK: 0 },
-        summaryTreeVsEnriched: { citationHitRate: 0, noAnswerRate: 0, recallAtK: 0 },
+        enrichedVsBaseline: {
+          citationHitRate: 0,
+          noAnswerRate: 0,
+          recallAtK: 0,
+        },
+        summaryTreeVsBaseline: {
+          citationHitRate: 0,
+          noAnswerRate: 0,
+          recallAtK: 0,
+        },
+        summaryTreeVsEnriched: {
+          citationHitRate: 0,
+          noAnswerRate: 0,
+          recallAtK: 0,
+        },
       },
       variants: {
         baseline: {
           items: [],
-          metrics: { citationHitRate: 0, noAnswerRate: 0, recallAtK: 0, totalQuestions: 0 },
+          metrics: {
+            citationHitRate: 0,
+            noAnswerRate: 0,
+            recallAtK: 0,
+            totalQuestions: 0,
+          },
         },
         enriched: {
           items: [],
-          metrics: { citationHitRate: 0, noAnswerRate: 0, recallAtK: 0, totalQuestions: 0 },
+          metrics: {
+            citationHitRate: 0,
+            noAnswerRate: 0,
+            recallAtK: 0,
+            totalQuestions: 0,
+          },
         },
         "summary-tree": {
           items: [],
-          metrics: { citationHitRate: 0, noAnswerRate: 0, recallAtK: 0, totalQuestions: 0 },
+          metrics: {
+            citationHitRate: 0,
+            noAnswerRate: 0,
+            recallAtK: 0,
+            totalQuestions: 0,
+          },
         },
       },
     });
@@ -12544,8 +12627,16 @@ describe("createKnowledgeGateway", () => {
       steps: [
         { metadata: { cacheHit: false }, name: "normalize", status: "ok" },
         { metadata: { resolvedMode: "research" }, name: "route", status: "ok" },
-        { metadata: { denseCandidates: 4, ftsCandidates: 3 }, name: "recall", status: "ok" },
-        { metadata: { permissionFilteredCandidates: 1 }, name: "filter", status: "ok" },
+        {
+          metadata: { denseCandidates: 4, ftsCandidates: 3 },
+          name: "recall",
+          status: "ok",
+        },
+        {
+          metadata: { permissionFilteredCandidates: 1 },
+          name: "filter",
+          status: "ok",
+        },
         { metadata: { rerankCandidates: 5 }, name: "rerank", status: "ok" },
         { metadata: { state: "answerable" }, name: "evidence", status: "ok" },
       ],
@@ -12565,15 +12656,31 @@ describe("createKnowledgeGateway", () => {
       query: "How was the answer produced?",
       subjectId: "user-1",
       steps: [
-        expect.objectContaining({ metadata: { cacheHit: false }, name: "normalize", status: "ok" }),
-        expect.objectContaining({ metadata: { resolvedMode: "research" }, name: "route" }),
+        expect.objectContaining({
+          metadata: { cacheHit: false },
+          name: "normalize",
+          status: "ok",
+        }),
+        expect.objectContaining({
+          metadata: { resolvedMode: "research" },
+          name: "route",
+        }),
         expect.objectContaining({
           metadata: { denseCandidates: 4, ftsCandidates: 3 },
           name: "recall",
         }),
-        expect.objectContaining({ metadata: { permissionFilteredCandidates: 1 }, name: "filter" }),
-        expect.objectContaining({ metadata: { rerankCandidates: 5 }, name: "rerank" }),
-        expect.objectContaining({ metadata: { state: "answerable" }, name: "evidence" }),
+        expect.objectContaining({
+          metadata: { permissionFilteredCandidates: 1 },
+          name: "filter",
+        }),
+        expect.objectContaining({
+          metadata: { rerankCandidates: 5 },
+          name: "rerank",
+        }),
+        expect.objectContaining({
+          metadata: { state: "answerable" },
+          name: "evidence",
+        }),
       ],
     });
     const firstTraceStep = trace.steps[0];
@@ -12589,7 +12696,10 @@ describe("createKnowledgeGateway", () => {
     ).resolves.toEqual(
       expect.objectContaining({
         steps: expect.arrayContaining([
-          expect.objectContaining({ metadata: { cacheHit: false }, name: "normalize" }),
+          expect.objectContaining({
+            metadata: { cacheHit: false },
+            name: "normalize",
+          }),
         ]),
       }),
     );
@@ -12719,7 +12829,10 @@ describe("createKnowledgeGateway", () => {
         repository,
       }),
     ).toThrow("AnswerTrace recorder maxSteps must be at least 1");
-    const smallRepository = createInMemoryAnswerTraceRepository({ maxSteps: 1, maxTraces: 1 });
+    const smallRepository = createInMemoryAnswerTraceRepository({
+      maxSteps: 1,
+      maxTraces: 1,
+    });
     await smallRepository.create({
       createdAt: "2026-05-11T13:42:00.000Z",
       id: "018f0d60-7a49-7cc2-9c1b-5b36f18f7a04",
@@ -12891,7 +13004,10 @@ describe("createKnowledgeGateway", () => {
 
     const cleanupFake = createFakeAnswerTraceExecutor();
     const cleanupDatabaseRepository = createDatabaseAnswerTraceRepository({
-      database: createSchemaDatabaseAdapter({ executor: cleanupFake.executor, kind: "postgres" }),
+      database: createSchemaDatabaseAdapter({
+        executor: cleanupFake.executor,
+        kind: "postgres",
+      }),
     });
     await expect(
       cleanupDatabaseRepository.deleteOlderThan({
@@ -12987,12 +13103,42 @@ describe("createKnowledgeGateway", () => {
     expect(evaluator.evaluate({ items: [], missingEvidence: [] })).toBe("not-enough-evidence");
     expect(
       evaluator.evaluate({
-        items: [{ ...evidenceItem, score: 0.4, scores: { final: 0.4, retrieval: 0.4 } }],
+        items: [
+          {
+            ...evidenceItem,
+            score: 0.4,
+            scores: { final: 0.4, retrieval: 0.4 },
+          },
+        ],
         missingEvidence: [],
       }),
     ).toBe("not-enough-evidence");
     expect(
-      evaluator.evaluate({ items: [evidenceItem], missingEvidence: [], permissionLimited: true }),
+      evaluator.evaluate({
+        budgetExhausted: true,
+        items: [
+          {
+            ...evidenceItem,
+            score: 0.4,
+            scores: { final: 0.4, retrieval: 0.4 },
+          },
+        ],
+        missingEvidence: [],
+      }),
+    ).toBe("partial");
+    expect(
+      evaluator.evaluate({
+        budgetExhausted: true,
+        items: [],
+        missingEvidence: [],
+      }),
+    ).toBe("not-enough-evidence");
+    expect(
+      evaluator.evaluate({
+        items: [evidenceItem],
+        missingEvidence: [],
+        permissionLimited: true,
+      }),
     ).toBe("permission-limited");
     expect(() => createAnswerabilityEvaluator({ minFinalScore: 1.2 })).toThrow(
       "Answerability minFinalScore must be between 0 and 1",
@@ -13013,7 +13159,9 @@ describe("createKnowledgeGateway", () => {
 
     const missingToken = await app.request("/knowledge-spaces?limit=1");
     expect(missingToken.status).toBe(401);
-    await expect(missingToken.json()).resolves.toEqual({ error: "Unauthorized" });
+    await expect(missingToken.json()).resolves.toEqual({
+      error: "Unauthorized",
+    });
 
     const badToken = await app.request("/knowledge-spaces?limit=1", {
       headers: bearer("bad-token"),
@@ -13030,7 +13178,9 @@ describe("createKnowledgeGateway", () => {
   });
 
   it("returns unauthorized for protected routes when no auth verifier is configured", async () => {
-    const app = createKnowledgeGateway({ adapter: createNodePlatformAdapter({ env: {} }) });
+    const app = createKnowledgeGateway({
+      adapter: createNodePlatformAdapter({ env: {} }),
+    });
 
     const response = await app.request("/knowledge-spaces?limit=1", {
       headers: bearer(readToken),
@@ -13066,7 +13216,9 @@ describe("createKnowledgeGateway", () => {
       method: "POST",
     });
     expect(unexpected.status).toBe(500);
-    await expect(unexpected.json()).resolves.toEqual({ error: "Internal server error" });
+    await expect(unexpected.json()).resolves.toEqual({
+      error: "Internal server error",
+    });
   });
 
   it("rate limits protected routes by tenant, agent, and tool with structured metadata", async () => {
@@ -13143,7 +13295,11 @@ describe("createKnowledgeGateway", () => {
     expect((await app.request("/health")).status).toBe(200);
     expect((await app.request("/openapi.json")).status).toBe(200);
     expect(
-      (await app.request("/knowledge-spaces?limit=1", { headers: bearer(readToken) })).status,
+      (
+        await app.request("/knowledge-spaces?limit=1", {
+          headers: bearer(readToken),
+        })
+      ).status,
     ).toBe(200);
     await expect(
       rateLimiter.check({
@@ -13154,10 +13310,18 @@ describe("createKnowledgeGateway", () => {
     ).rejects.toThrow(InMemoryRateLimitCapacityExceededError);
 
     expect(() =>
-      createInMemoryRateLimiter({ defaultLimit: 0, maxKeys: 1, windowMs: 1_000 }),
+      createInMemoryRateLimiter({
+        defaultLimit: 0,
+        maxKeys: 1,
+        windowMs: 1_000,
+      }),
     ).toThrow("Rate limiter defaultLimit must be at least 1");
     expect(() =>
-      createInMemoryRateLimiter({ defaultLimit: 1, maxKeys: 0, windowMs: 1_000 }),
+      createInMemoryRateLimiter({
+        defaultLimit: 1,
+        maxKeys: 0,
+        windowMs: 1_000,
+      }),
     ).toThrow("Rate limiter maxKeys must be at least 1");
     expect(() => createInMemoryRateLimiter({ defaultLimit: 1, maxKeys: 1, windowMs: 0 })).toThrow(
       "Rate limiter windowMs must be at least 1",
@@ -13194,7 +13358,10 @@ describe("createKnowledgeGateway", () => {
       "/knowledge-spaces/018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
       {
         body: JSON.stringify({ expectedRevision: 1, name: "Leaked" }),
-        headers: { ...bearer(otherTenantToken), "content-type": "application/json" },
+        headers: {
+          ...bearer(otherTenantToken),
+          "content-type": "application/json",
+        },
         method: "PATCH",
       },
     );
@@ -13218,6 +13385,8 @@ describe("createKnowledgeGateway", () => {
       headers: bearer(readToken),
     });
     expect(ownerRead.status).toBe(200);
-    await expect(ownerRead.json()).resolves.toMatchObject({ name: "Tenant One" });
+    await expect(ownerRead.json()).resolves.toMatchObject({
+      name: "Tenant One",
+    });
   });
 });

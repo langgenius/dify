@@ -1,6 +1,7 @@
 import {
   DeepGraphCapabilityUnavailableError,
   type GraphIndexRepository,
+  type PageIndexWholeTreeSelector,
   type PublishedGraphIndexRepository,
   type PublishedPageIndexRepository,
   createRetrievalPlanner,
@@ -66,7 +67,10 @@ describe("production published Deep stage order", () => {
         );
         return {
           items: ranked.map((document, rank) => ({
-            document: { ...document, metadata: { ...(document.metadata ?? {}) } },
+            document: {
+              ...document,
+              metadata: { ...(document.metadata ?? {}) },
+            },
             index: input.documents.findIndex((candidate) => candidate.id === document.id),
             score: 1 - rank / 10,
           })),
@@ -86,6 +90,7 @@ describe("production published Deep stage order", () => {
       graph: { traverse: legacyTraverse } as unknown as GraphIndexRepository,
       pageIndex,
       pageIndexSemanticTreeSearch: { score: async () => [] },
+      pageIndexWholeTreeSelector: wholeTreeSelectorStub(),
       planner: createRetrievalPlanner({ maxTopK: 100 }),
       publishedGraph,
       repository: {
@@ -164,17 +169,7 @@ describe("production published Deep stage order", () => {
   it("fails only Deep when the published Graph capability is disabled", async () => {
     const dense = vi.fn(async () => [candidate(BASE_NODE_ID, "base-projection", "dense")]);
     const fts = vi.fn(async () => []);
-    const pageIndex = {
-      listOutlines: vi.fn(async () => ({ items: [] })),
-      searchSections: vi.fn(async () => ({
-        items: [],
-        tokenizerVersion: "pageindex-nfkc-exact-v1" as const,
-        truncated: false,
-      })),
-      openLeafEvidence: vi.fn(async () => {
-        throw new Error("unused");
-      }),
-    } as unknown as PublishedPageIndexRepository;
+    const pageIndex = publishedResearchPageIndex();
     const retriever = createApiRetriever({
       embeddingEnabled: true,
       pageIndex,
@@ -186,6 +181,7 @@ describe("production published Deep stage order", () => {
             score: 0.8,
           })),
       },
+      pageIndexWholeTreeSelector: wholeTreeSelectorStub(),
       planner: createRetrievalPlanner({ maxTopK: 100 }),
       repository: {
         publishedMembershipEnforced: true,
@@ -204,10 +200,17 @@ describe("production published Deep stage order", () => {
       queryVector: [0.1, 0.2],
       retrievalProfile: {
         defaultMode: "fast" as const,
-        reasoningModel: { model: "chat", pluginId: "vendor/chat", provider: "vendor" },
+        reasoningModel: {
+          model: "chat",
+          pluginId: "vendor/chat",
+          provider: "vendor",
+        },
         rerank: { enabled: false as const },
         revision: 1,
-        scoreThreshold: { enabled: false as const, stage: "mode-final" as const },
+        scoreThreshold: {
+          enabled: false as const,
+          stage: "mode-final" as const,
+        },
         topK: 2,
       },
       tenantId: TENANT_ID,
@@ -226,9 +229,122 @@ describe("production published Deep stage order", () => {
     );
     expect(dense.mock.calls.length + fts.mock.calls.length).toBe(callsBeforeDeep);
     expect(pageIndex.searchSections).not.toHaveBeenCalled();
-    expect(pageIndex.listOutlines).not.toHaveBeenCalled();
+    expect(pageIndex.listOutlines).toHaveBeenCalledOnce();
   });
 });
+
+function wholeTreeSelectorStub(): PageIndexWholeTreeSelector {
+  return {
+    select: async (input) => ({
+      estimatedPromptTokens: 100,
+      nodeCount: input.outline.nodes.length,
+      selections: input.outline.nodes[0]
+        ? [
+            {
+              nodeId: input.outline.nodes[0].id,
+              reason: "semantic match",
+              score: 0.8,
+            },
+          ]
+        : [],
+      strategy: "whole-tree",
+      summaryCoverage: 1,
+    }),
+  };
+}
+
+function publishedResearchPageIndex() {
+  const documentAssetId = "80000000-0000-4000-8000-000000000001";
+  const outlineNode = {
+    childNodeIds: [],
+    children: [],
+    endOffset: 100,
+    id: "outline-policy",
+    level: 1,
+    metadata: {},
+    sectionPath: ["Policy"],
+    sourceElementIds: [],
+    sourceNodeIds: [],
+    startOffset: 0,
+    summary: "Camera warranty policy",
+    title: "Policy",
+    tocSource: "parser-heading" as const,
+  };
+  const outline = {
+    artifactHash: "b".repeat(64),
+    createdAt: "2026-08-05T00:00:00.000Z",
+    documentAssetId,
+    id: "81000000-0000-4000-8000-000000000001",
+    knowledgeSpaceId: SPACE_ID,
+    metadata: {},
+    nodes: [outlineNode],
+    outlineVersion: "outline-v1",
+    parseArtifactId: "82000000-0000-4000-8000-000000000001",
+    publicationGenerationId: GENERATION_ID,
+    version: 1,
+  };
+  const listOutlines = vi.fn(
+    async (input: Parameters<PublishedPageIndexRepository["listOutlines"]>[0]) => ({
+      items: input.documentAssetIds?.includes(documentAssetId)
+        ? [
+            {
+              documentAssetId,
+              generationId: GENERATION_ID,
+              outline,
+              publicationId: input.publicationId,
+            },
+          ]
+        : [],
+    }),
+  );
+  const searchSections = vi.fn(async () => ({
+    items: [],
+    tokenizerVersion: "pageindex-nfkc-exact-v1" as const,
+    truncated: false,
+  }));
+  const openLeafEvidence = vi.fn(
+    async (input: Parameters<PublishedPageIndexRepository["openLeafEvidence"]>[0]) => ({
+      items: [
+        {
+          citation: {
+            artifactHash: outline.artifactHash,
+            documentAssetId,
+            documentVersion: 1,
+            sectionPath: ["Policy"],
+          },
+          node: {
+            artifactHash: outline.artifactHash,
+            documentAssetId,
+            endOffset: 100,
+            id: BASE_NODE_ID,
+            kind: "chunk" as const,
+            knowledgeSpaceId: SPACE_ID,
+            metadata: { text: BASE_NODE_ID },
+            parseArtifactId: outline.parseArtifactId,
+            permissionScope: ["team:camera"],
+            publicationGenerationId: GENERATION_ID,
+            sourceLocation: { sectionPath: ["Policy"] },
+            startOffset: 0,
+            text: BASE_NODE_ID,
+          },
+          outlineId: outline.id,
+          outlineNodeId: input.outlineNodeId,
+          projections: [
+            {
+              id: "83000000-0000-4000-8000-000000000001",
+              type: "dense-vector" as const,
+            },
+          ],
+        },
+      ],
+      openedRange: { endOffset: 100, startOffset: 0 },
+      outline,
+      selectedNode: outlineNode,
+      truncated: false,
+    }),
+  );
+  return { listOutlines, openLeafEvidence, searchSections };
+}
 
 function graphEntity(id: string, sourceNodeId: string, depth: number) {
   return {

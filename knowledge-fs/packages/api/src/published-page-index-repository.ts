@@ -71,6 +71,8 @@ export interface PublishedPageIndexOutlineItem {
 
 export interface ListPublishedPageIndexOutlinesInput extends PublishedPageIndexScope {
   readonly cursor?: PublishedPageIndexOutlineCursor | undefined;
+  /** Optional bounded document shortlist. An explicit empty list never falls back to a full scan. */
+  readonly documentAssetIds?: readonly string[] | undefined;
   readonly limit: number;
   /** Required caller grants; omission is intentionally not representable. */
   readonly permissionScope: readonly string[];
@@ -230,7 +232,11 @@ export function createInMemoryPublishedPageIndexRepository({
   outlines,
   publications,
 }: InMemoryPublishedPageIndexRepositoryOptions): PublishedPageIndexRepository {
-  validateBounds({ maxLeafLimit, maxOutlinePageSize, maxProjectionRows: maxProjectionMembers });
+  validateBounds({
+    maxLeafLimit,
+    maxOutlinePageSize,
+    maxProjectionRows: maxProjectionMembers,
+  });
 
   const loadSnapshot = async (scope: PublishedPageIndexScope) => {
     const normalized = normalizeScope(scope);
@@ -284,7 +290,12 @@ export function createInMemoryPublishedPageIndexRepository({
       persistedProjections.map((projection) => [projection.id, projection]),
     );
 
-    return { normalized, projectionMembers, projectionsById, publicationMembers };
+    return {
+      normalized,
+      projectionMembers,
+      projectionsById,
+      publicationMembers,
+    };
   };
 
   const loadOwnedNode = async ({
@@ -299,7 +310,10 @@ export function createInMemoryPublishedPageIndexRepository({
     readonly member: ProjectionSetPublicationMember;
     readonly normalized: NormalizedPublishedPageIndexScope;
     readonly projectionsById: ReadonlyMap<string, IndexProjection>;
-  }): Promise<{ readonly node: KnowledgeNode; readonly projection: IndexProjection } | null> => {
+  }): Promise<{
+    readonly node: KnowledgeNode;
+    readonly projection: IndexProjection;
+  } | null> => {
     const projection = projectionsById.get(member.componentKey);
 
     if (
@@ -329,8 +343,13 @@ export function createInMemoryPublishedPageIndexRepository({
   };
 
   const loadReadableNode = async (
-    input: Parameters<typeof loadOwnedNode>[0] & { readonly allowed: ReadonlySet<string> },
-  ): Promise<{ readonly node: KnowledgeNode; readonly projection: IndexProjection } | null> => {
+    input: Parameters<typeof loadOwnedNode>[0] & {
+      readonly allowed: ReadonlySet<string>;
+    },
+  ): Promise<{
+    readonly node: KnowledgeNode;
+    readonly projection: IndexProjection;
+  } | null> => {
     const owned = await loadOwnedNode(input);
     return owned && canReadNode(owned.node, input.allowed) ? owned : null;
   };
@@ -364,7 +383,10 @@ export function createInMemoryPublishedPageIndexRepository({
 
     const [outline, asset] = await Promise.all([
       outlines.getById({ id: outlineId }),
-      documentAssets.get({ id: documentAssetId, knowledgeSpaceId: normalized.knowledgeSpaceId }),
+      documentAssets.get({
+        id: documentAssetId,
+        knowledgeSpaceId: normalized.knowledgeSpaceId,
+      }),
     ]);
 
     if (
@@ -502,9 +524,20 @@ export function createInMemoryPublishedPageIndexRepository({
       const allowed = normalizePermissionScope(input.permissionScope);
       const snapshot = await loadSnapshot(input);
       const cursor = input.cursor ? normalizeUuid(input.cursor.componentKey) : undefined;
+      const documentAssetIds = normalizeDocumentAssetIds(
+        input.documentAssetIds,
+        maxOutlinePageSize,
+      );
+      const selectedDocuments =
+        documentAssetIds === undefined ? undefined : new Set(documentAssetIds);
       const candidates = snapshot.publicationMembers
         .filter((member) => member.componentType === "document-outline")
         .filter((member) => member.documentAssetId !== undefined)
+        .filter(
+          (member) =>
+            selectedDocuments === undefined ||
+            selectedDocuments.has(member.documentAssetId as string),
+        )
         .filter((member) => cursor === undefined || member.componentKey > cursor)
         .sort((left, right) => left.componentKey.localeCompare(right.componentKey));
       const readable: PublishedPageIndexOutlineItem[] = [];
@@ -569,7 +602,10 @@ export function createInMemoryPublishedPageIndexRepository({
       const range = outlineNodeRange(selectedNode);
       const grouped = new Map<
         string,
-        { readonly node: KnowledgeNode; readonly projections: IndexProjection[] }
+        {
+          readonly node: KnowledgeNode;
+          readonly projections: IndexProjection[];
+        }
       >();
 
       for (const member of snapshot.projectionMembers) {
@@ -655,6 +691,13 @@ export function createDatabasePublishedPageIndexRepository({
       const allowed = normalizePermissionScope(input.permissionScope);
       await databaseRequirePublishedSnapshot(database, scope);
       const cursor = input.cursor ? normalizeUuid(input.cursor.componentKey) : undefined;
+      const documentAssetIds = normalizeDocumentAssetIds(
+        input.documentAssetIds,
+        maxOutlinePageSize,
+      );
+      if (documentAssetIds?.length === 0) {
+        return { items: [] };
+      }
       const params: DatabaseQueryValue[] = [
         scope.tenantId,
         scope.knowledgeSpaceId,
@@ -662,6 +705,17 @@ export function createDatabasePublishedPageIndexRepository({
         scope.fingerprint,
         JSON.stringify([...allowed]),
       ];
+      const documentFilterSql = documentAssetIds
+        ? (() => {
+            const placeholders = documentAssetIds.map((documentAssetId) => {
+              params.push(documentAssetId);
+              return databasePlaceholder(database, params.length);
+            });
+            return ` AND om.${quoted(database, "document_asset_id")} IN (${placeholders.join(
+              ", ",
+            )})`;
+          })()
+        : "";
       const cursorSql = cursor
         ? (() => {
             params.push(cursor);
@@ -679,7 +733,7 @@ export function createDatabasePublishedPageIndexRepository({
         params,
         sql: `${publishedOutlineSelectSql(database)}${publishedOutlineFromSql(
           database,
-        )}${publishedOutlineWhereSql(database, 5)}${cursorSql} ORDER BY om.${quoted(
+        )}${publishedOutlineWhereSql(database, 5)}${documentFilterSql}${cursorSql} ORDER BY om.${quoted(
           database,
           "component_key",
         )} ASC LIMIT ${databasePlaceholder(database, params.length)};`,
@@ -764,7 +818,10 @@ export function createDatabasePublishedPageIndexRepository({
 
       return {
         items: selectedNodes
-          .map((node) => ({ node, projections: projectionsByNode.get(node.id) ?? [] }))
+          .map((node) => ({
+            node,
+            projections: projectionsByNode.get(node.id) ?? [],
+          }))
           .filter((item) => item.projections.length > 0)
           .map(({ node, projections: nodeProjections }) =>
             leafEvidence({
@@ -837,6 +894,24 @@ function normalizePermissionScope(permissionScope: readonly string[]): ReadonlyS
 
   const normalized = permissionScope.map((scope) => normalizeNonEmpty(scope, "permissionScope"));
   return new Set([...new Set(normalized)].sort());
+}
+
+function normalizeDocumentAssetIds(
+  documentAssetIds: readonly string[] | undefined,
+  maximum: number,
+): readonly string[] | undefined {
+  if (documentAssetIds === undefined) {
+    return undefined;
+  }
+  if (!Array.isArray(documentAssetIds)) {
+    throw new Error("Published PageIndex documentAssetIds must be an array");
+  }
+
+  const normalized = [...new Set(documentAssetIds.map(normalizeUuid))].sort();
+  if (normalized.length > maximum) {
+    throw new Error(`Published PageIndex documentAssetIds exceeds maximum=${maximum}`);
+  }
+  return normalized;
 }
 
 function normalizeSearchTerms(terms: readonly string[]): readonly string[] {

@@ -23,9 +23,24 @@ import {
   multimodalEvidenceFromCitations,
 } from "./multimodal-evidence";
 import { ReasoningCapabilityUnavailableError } from "./profile-aware-query-generator";
+import {
+  ResearchModelCallObserverError,
+  estimateResearchModelPromptTokens,
+  notifyResearchModelCallAfter,
+  notifyResearchModelCallBefore,
+} from "./research-model-usage";
+import {
+  retrievalResultFromResearchCheckpoint,
+  validateResearchRetrievalCheckpointScope,
+  validateResearchRetrievalDurableCheckpoint,
+} from "./research-retrieval-checkpoint";
+import {
+  DurableResearchRetrievalPolicy,
+  InteractiveResearchRetrievalPolicy,
+} from "./research-retrieval-policy";
 import type { HybridRetrievalItem } from "./retrieval-fusion";
 import { evidenceTextFromHybridItem } from "./retrieval-rerank";
-import type { BasicHybridRetriever } from "./retrieval-types";
+import type { BasicHybridRetriever, HybridRetrievalResult } from "./retrieval-types";
 
 /**
  * Structural LLM provider contract. Mirrors `@knowledge/generation`'s `LlmProvider`
@@ -132,7 +147,12 @@ export function createLlmAnswerQueryGenerator({
     );
   }
 
-  validateLlmAnswerQueryGeneratorBounds({ limit, maxAnswerChars, maxEvidenceCharsPerItem, topK });
+  validateLlmAnswerQueryGeneratorBounds({
+    limit,
+    maxAnswerChars,
+    maxEvidenceCharsPerItem,
+    topK,
+  });
   const evidenceBundleAssembler = createEvidenceBundleAssembler();
 
   return {
@@ -147,84 +167,159 @@ export function createLlmAnswerQueryGenerator({
         reasoningProviderFactory,
         reasoningSelection,
       });
-      const embedStartedAt = Date.now();
-      const resolvedEmbedding = embeddingResolver
-        ? await embeddingResolver.resolve({
-            ...(input.embeddingProfile ? { profile: input.embeddingProfile } : {}),
-            knowledgeSpaceId: input.knowledgeSpaceId,
-            tenantId,
-          })
-        : null;
-      const effectiveProvider = resolvedEmbedding?.providerInstance ?? embeddings;
-      const queryEmbedding: {
-        readonly embeddingModel?: string | undefined;
-        readonly vector: readonly number[];
-        readonly vectorSpaceId?: string | undefined;
-      } = effectiveProvider
-        ? await embedLlmAnswerQuery({
-            model: resolvedEmbedding?.model ?? embeddingModel ?? "",
-            profile: resolvedEmbedding,
-            provider: effectiveProvider,
-            query: input.query,
-            tenantId,
-          })
-        : { vector: [0] as readonly number[] };
-      if (resolvedEmbedding) {
-        if (input.embeddingProfile) {
-          assertObservedEmbeddingDimension({
-            observedDimension: queryEmbedding.vector.length,
-            profile: input.embeddingProfile,
-          });
-        } else {
-          await embeddingResolver?.observeDimension?.({
-            dimension: queryEmbedding.vector.length,
-            knowledgeSpaceId: input.knowledgeSpaceId,
-            revision: resolvedEmbedding.revision,
-            tenantId,
-            vectorSpaceId: resolvedEmbedding.vectorSpaceId,
-          });
-        }
-      }
-
-      if (effectiveProvider) {
-        yield traceStepEvent("query.embed", embedStartedAt, "ok", {
-          ...(queryEmbedding.embeddingModel ? { model: queryEmbedding.embeddingModel } : {}),
-          dimension: queryEmbedding.vector.length,
-          ...(queryEmbedding.vectorSpaceId ? { vectorSpaceId: queryEmbedding.vectorSpaceId } : {}),
-        });
-      }
-
       const retrieveStartedAt = Date.now();
       const retrievalTopK = input.topK ?? input.retrievalProfile?.topK ?? topK;
-      const retrieval = await retriever.retrieve({
-        ...(queryEmbedding.vectorSpaceId
-          ? { denseProjectionModel: queryEmbedding.vectorSpaceId }
-          : {}),
-        knowledgeSpaceId: input.knowledgeSpaceId,
-        limit: input.topK !== undefined || input.retrievalProfile ? retrievalTopK : limit,
-        mode: input.mode,
-        permissionScope: input.permissionScope,
-        ...(input.projectionSnapshot ? { projectionSnapshot: input.projectionSnapshot } : {}),
-        query: input.query,
-        queryVector: queryEmbedding.vector,
-        ...(input.requestedMode ? { requestedMode: input.requestedMode } : {}),
-        ...(input.retrievalProfile ? { retrievalProfile: input.retrievalProfile } : {}),
-        tenantId,
-        topK: retrievalTopK,
-        traceId: input.traceId,
-      });
+      const restoredCheckpoint = input.researchRetrievalCheckpoint
+        ? validateResearchRetrievalCheckpointScope({
+            checkpoint: input.researchRetrievalCheckpoint,
+            query: input.query,
+            traceId: input.traceId,
+          })
+        : undefined;
+      const restoredDurableCheckpoint = input.researchDurableCheckpoint
+        ? validateResearchRetrievalDurableCheckpoint(input.researchDurableCheckpoint)
+        : undefined;
+      if (restoredCheckpoint && restoredDurableCheckpoint) {
+        throw new Error("Research query cannot restore legacy and durable checkpoints together");
+      }
+      let checkpointWritten = false;
+      let evidenceBundle = restoredCheckpoint;
+      let retrieval: HybridRetrievalResult;
+      if (restoredCheckpoint) {
+        retrieval = retrievalResultFromResearchCheckpoint(restoredCheckpoint);
+      } else {
+        const embedStartedAt = Date.now();
+        const resolvedEmbedding = embeddingResolver
+          ? await embeddingResolver.resolve({
+              ...(input.embeddingProfile ? { profile: input.embeddingProfile } : {}),
+              knowledgeSpaceId: input.knowledgeSpaceId,
+              tenantId,
+            })
+          : null;
+        const effectiveProvider = resolvedEmbedding?.providerInstance ?? embeddings;
+        const queryEmbedding: {
+          readonly embeddingModel?: string | undefined;
+          readonly vector: readonly number[];
+          readonly vectorSpaceId?: string | undefined;
+        } = effectiveProvider
+          ? await embedLlmAnswerQuery({
+              model: resolvedEmbedding?.model ?? embeddingModel ?? "",
+              profile: resolvedEmbedding,
+              provider: effectiveProvider,
+              query: input.query,
+              tenantId,
+            })
+          : { vector: [0] as readonly number[] };
+        if (resolvedEmbedding) {
+          if (input.embeddingProfile) {
+            assertObservedEmbeddingDimension({
+              observedDimension: queryEmbedding.vector.length,
+              profile: input.embeddingProfile,
+            });
+          } else {
+            await embeddingResolver?.observeDimension?.({
+              dimension: queryEmbedding.vector.length,
+              knowledgeSpaceId: input.knowledgeSpaceId,
+              revision: resolvedEmbedding.revision,
+              tenantId,
+              vectorSpaceId: resolvedEmbedding.vectorSpaceId,
+            });
+          }
+        }
+        if (effectiveProvider) {
+          yield traceStepEvent("query.embed", embedStartedAt, "ok", {
+            ...(queryEmbedding.embeddingModel ? { model: queryEmbedding.embeddingModel } : {}),
+            dimension: queryEmbedding.vector.length,
+            ...(queryEmbedding.vectorSpaceId
+              ? { vectorSpaceId: queryEmbedding.vectorSpaceId }
+              : {}),
+          });
+        }
+        retrieval = await retriever.retrieve({
+          ...(queryEmbedding.vectorSpaceId
+            ? { denseProjectionModel: queryEmbedding.vectorSpaceId }
+            : {}),
+          knowledgeSpaceId: input.knowledgeSpaceId,
+          limit: input.topK !== undefined || input.retrievalProfile ? retrievalTopK : limit,
+          mode: input.mode,
+          ...(input.onResearchRetrievalCheckpoint
+            ? {
+                onResearchRound: async (checkpoint) => {
+                  const bundle = evidenceBundleAssembler.assemble({
+                    query: input.query,
+                    retrieval: checkpoint.result,
+                    ...(checkpoint.terminal ? {} : { state: "partial" as const }),
+                    traceId: input.traceId,
+                  });
+                  await input.onResearchRetrievalCheckpoint?.(bundle);
+                  checkpointWritten = checkpoint.terminal;
+                },
+              }
+            : {}),
+          ...(input.onResearchDurableCheckpoint
+            ? {
+                onResearchSearchCheckpoint: async (boundary) => {
+                  const bundle = evidenceBundleAssembler.assemble({
+                    query: input.query,
+                    retrieval: boundary.result,
+                    ...(boundary.checkpoint.phase === "complete"
+                      ? {}
+                      : { state: "partial" as const }),
+                    traceId: input.traceId,
+                  });
+                  await input.onResearchDurableCheckpoint?.({
+                    evidenceBundle: bundle,
+                    searchState: boundary.checkpoint,
+                  });
+                },
+              }
+            : {}),
+          permissionScope: input.permissionScope,
+          ...(input.projectionSnapshot ? { projectionSnapshot: input.projectionSnapshot } : {}),
+          query: input.query,
+          queryVector: queryEmbedding.vector,
+          ...(input.requestedMode ? { requestedMode: input.requestedMode } : {}),
+          ...(input.researchModelCallObserver
+            ? { researchModelCallObserver: input.researchModelCallObserver }
+            : {}),
+          ...(input.mode === "research"
+            ? {
+                researchExecutionPolicy:
+                  input.researchExecutionKind === "durable"
+                    ? DurableResearchRetrievalPolicy
+                    : InteractiveResearchRetrievalPolicy,
+              }
+            : {}),
+          ...(restoredDurableCheckpoint
+            ? {
+                researchSearchCheckpoint: restoredDurableCheckpoint.searchState,
+                researchSearchCheckpointResult: retrievalResultFromResearchCheckpoint(
+                  restoredDurableCheckpoint.evidenceBundle,
+                ),
+              }
+            : {}),
+          ...(input.retrievalProfile ? { retrievalProfile: input.retrievalProfile } : {}),
+          tenantId,
+          topK: retrievalTopK,
+          traceId: input.traceId,
+        });
+      }
       yield traceStepEvent("query.retrieve", retrieveStartedAt, "ok", {
+        ...(restoredCheckpoint || restoredDurableCheckpoint ? { checkpointed: true } : {}),
         itemCount: retrieval.items.length,
         ...(projectionSnapshotMetadata ? { projectionSnapshot: projectionSnapshotMetadata } : {}),
         ...(retrievalProfileMetadata ? { retrievalProfile: retrievalProfileMetadata } : {}),
         ...(retrieval.plan ? { plan: retrieval.plan } : {}),
         ...(retrieval.metrics ? { metrics: retrieval.metrics } : {}),
       });
-      const evidenceBundle = evidenceBundleAssembler.assemble({
+      evidenceBundle ??= evidenceBundleAssembler.assemble({
         query: input.query,
         retrieval,
         traceId: input.traceId,
       });
+      if (!restoredCheckpoint && !checkpointWritten) {
+        await input.onResearchRetrievalCheckpoint?.(evidenceBundle);
+      }
 
       if (retrieval.items.length === 0) {
         yield {
@@ -276,7 +371,19 @@ export function createLlmAnswerQueryGenerator({
       let multimodalAnswerFailure: string | undefined;
       const answerStartedAt = Date.now();
       if (multimodalAnswerProvider && multimodalEvidence.length > 0) {
+        const multimodalCall = {
+          callId: `query-answer:${input.traceId}:${input.researchExecutionAttempt ?? 0}:multimodal`,
+          estimatedPromptTokens: estimateResearchModelPromptTokens({
+            evidence: retrieval.items.map((item) => evidenceTextFromHybridItem(item)),
+            query: input.query,
+          }),
+          maxOutputTokens: maxOutputTokens ?? 1_024,
+          model: answerModel,
+          provider: "configured-multimodal-provider",
+          step: "query.answer" as const,
+        };
         try {
+          await notifyResearchModelCallBefore(input.researchModelCallObserver, multimodalCall);
           const generated = await multimodalAnswerProvider.generate({
             evidence: retrieval.items.map((item) => ({
               citation: item.citation,
@@ -287,6 +394,11 @@ export function createLlmAnswerQueryGenerator({
             query: input.query,
             ...(tenantId ? { tenantId } : {}),
             ...(input.traceId ? { traceId: input.traceId } : {}),
+          });
+          await notifyResearchModelCallAfter(input.researchModelCallObserver, {
+            ...multimodalCall,
+            ...(generated.metadata === undefined ? {} : { metadata: generated.metadata }),
+            status: "succeeded",
           });
 
           if (generated.text.trim()) {
@@ -325,6 +437,11 @@ export function createLlmAnswerQueryGenerator({
 
           multimodalAnswerFailure = "empty-multimodal-answer";
         } catch (error) {
+          if (error instanceof ResearchModelCallObserverError) throw error;
+          await notifyResearchModelCallAfter(input.researchModelCallObserver, {
+            ...multimodalCall,
+            status: "failed",
+          });
           multimodalAnswerFailure =
             error instanceof Error ? error.message : "multimodal-answer-failed";
         }
@@ -344,40 +461,66 @@ export function createLlmAnswerQueryGenerator({
       ].join("\n");
       const messages: readonly LlmAnswerMessage[] = [
         { content: ANSWER_SYSTEM_PROMPT, role: "system" },
-        { content: `Question: ${input.query}\n\nEvidence:\n${evidenceSection}`, role: "user" },
+        {
+          content: `Question: ${input.query}\n\nEvidence:\n${evidenceSection}`,
+          role: "user",
+        },
       ];
 
       let emittedChars = 0;
       let providerFinishReason: string | undefined;
       let providerMetadata: unknown;
       const llmStartedAt = Date.now();
-
-      for await (const event of answerProvider.stream({
-        messages,
+      const answerCall = {
+        callId: `query-answer:${input.traceId}:${input.researchExecutionAttempt ?? 0}:text`,
+        estimatedPromptTokens: estimateResearchModelPromptTokens(messages),
+        maxOutputTokens: maxOutputTokens ?? 1_024,
         model: answerModel,
-        ...(maxOutputTokens === undefined ? {} : { maxOutputTokens }),
-        ...(temperature === undefined ? {} : { temperature }),
-        ...(tenantId ? { tenantId } : {}),
-      })) {
-        if (event.type === "delta" && event.delta) {
-          const remaining = maxAnswerChars - emittedChars;
-          if (remaining <= 0) {
+        provider: answerProvider.kind ?? reasoningSelection?.provider ?? "configured",
+        step: "query.answer" as const,
+      };
+      await notifyResearchModelCallBefore(input.researchModelCallObserver, answerCall);
+      try {
+        for await (const event of answerProvider.stream({
+          messages,
+          model: answerModel,
+          ...(maxOutputTokens === undefined ? {} : { maxOutputTokens }),
+          ...(temperature === undefined ? {} : { temperature }),
+          ...(tenantId ? { tenantId } : {}),
+        })) {
+          if (event.type === "delta" && event.delta) {
+            const remaining = maxAnswerChars - emittedChars;
+            if (remaining <= 0) {
+              continue;
+            }
+            const chars = Array.from(event.delta);
+            const slice =
+              chars.length > remaining ? chars.slice(0, remaining).join("") : event.delta;
+            if (slice) {
+              emittedChars += Array.from(slice).length;
+              yield { delta: slice, type: "delta" };
+            }
             continue;
           }
-          const chars = Array.from(event.delta);
-          const slice = chars.length > remaining ? chars.slice(0, remaining).join("") : event.delta;
-          if (slice) {
-            emittedChars += Array.from(slice).length;
-            yield { delta: slice, type: "delta" };
-          }
-          continue;
-        }
 
-        if (event.type === "done") {
-          providerFinishReason = event.finishReason;
-          providerMetadata = event.metadata;
+          if (event.type === "done") {
+            providerFinishReason = event.finishReason;
+            providerMetadata = event.metadata;
+          }
         }
+      } catch (error) {
+        await notifyResearchModelCallAfter(input.researchModelCallObserver, {
+          ...answerCall,
+          ...(providerMetadata === undefined ? {} : { metadata: providerMetadata }),
+          status: "failed",
+        });
+        throw error;
       }
+      await notifyResearchModelCallAfter(input.researchModelCallObserver, {
+        ...answerCall,
+        ...(providerMetadata === undefined ? {} : { metadata: providerMetadata }),
+        status: "succeeded",
+      });
 
       yield traceStepEvent("query.answer", llmStartedAt, "ok", {
         answerChars: emittedChars,
@@ -424,7 +567,10 @@ function resolveAnswerCapability({
     | ((selection: KnowledgeSpaceModelSelection) => LlmAnswerProvider)
     | undefined;
   readonly reasoningSelection?: KnowledgeSpaceModelSelection | undefined;
-}): { readonly answerModel: string; readonly answerProvider: LlmAnswerProvider } {
+}): {
+  readonly answerModel: string;
+  readonly answerProvider: LlmAnswerProvider;
+} {
   if (reasoningSelection) {
     if (!reasoningProviderFactory) {
       throw new ReasoningCapabilityUnavailableError(
@@ -504,7 +650,10 @@ async function embedLlmAnswerQuery({
   }
 
   if (profile) {
-    assertEmbeddingModelMatchesProfile({ observedModel: resolvedModel, profile });
+    assertEmbeddingModelMatchesProfile({
+      observedModel: resolvedModel,
+      profile,
+    });
     assertObservedEmbeddingDimension({
       observedDimension: vector.length,
       profile,

@@ -1,5 +1,11 @@
 import type { KnowledgeSpaceModelSelection } from "@knowledge/core";
 import { z } from "zod";
+import {
+  type ResearchModelCallObserver,
+  estimateResearchModelPromptTokens,
+  notifyResearchModelCallAfter,
+  notifyResearchModelCallBefore,
+} from "./research-model-usage";
 
 export const PageIndexSemanticScoreVersion = "pageindex-semantic-llm-v1" as const;
 export const PageIndexSemanticPromptVersion = "pageindex-semantic-tree-search-v1" as const;
@@ -79,6 +85,7 @@ export interface ScorePageIndexSemanticCandidatesInput {
   readonly candidates: readonly PageIndexSemanticCandidate[];
   readonly query: string;
   readonly reasoningModel: KnowledgeSpaceModelSelection;
+  readonly researchModelCallObserver?: ResearchModelCallObserver | undefined;
   readonly tenantId: string;
 }
 
@@ -88,10 +95,18 @@ export interface PageIndexSemanticTreeSearch {
 
 export class PageIndexSemanticScoreContractError extends Error {
   readonly code = "PAGE_INDEX_SEMANTIC_SCORE_INVALID";
+  readonly failureKind: "integrity" | "recoverable";
 
-  constructor(message: string, options: { readonly cause?: unknown } = {}) {
+  constructor(
+    message: string,
+    options: {
+      readonly cause?: unknown;
+      readonly failureKind?: "integrity" | "recoverable";
+    } = {},
+  ) {
     super(message, options.cause === undefined ? undefined : { cause: options.cause });
     this.name = "PageIndexSemanticScoreContractError";
+    this.failureKind = options.failureKind ?? "recoverable";
   }
 }
 
@@ -137,59 +152,89 @@ export function createPageIndexSemanticTreeSearch({
       }
 
       const batches = chunk(input.candidates, batchSize);
-      const scored = await mapWithConcurrency(batches, maxConcurrentBatches, async (candidates) => {
-        const controller = new AbortController();
-        const timeout = setTimeout(
-          () =>
-            controller.abort(
-              new PageIndexSemanticScoreContractError(
-                "PageIndex semantic tree search scoring timed out",
+      const scored = await mapWithConcurrency(
+        batches,
+        maxConcurrentBatches,
+        async (candidates, batchIndex) => {
+          const controller = new AbortController();
+          const timeout = setTimeout(
+            () =>
+              controller.abort(
+                new PageIndexSemanticScoreContractError(
+                  "PageIndex semantic tree search scoring timed out",
+                ),
               ),
-            ),
-          timeoutMs,
-        );
-        try {
-          const provider = providerFactory(input.reasoningModel);
-          const result = await raceWithAbort(
-            provider.generate({
-              maxOutputTokens,
-              messages: semanticScoreMessages({
-                candidates,
-                maxTextCharsPerCandidate,
-                query,
-              }),
-              model: input.reasoningModel.model,
-              signal: controller.signal,
-              structuredOutputSchema: semanticScoreOutputSchema(candidates),
-              temperature: 0,
-              tenantId,
-            }),
-            controller.signal,
+            timeoutMs,
           );
+          const messages = semanticScoreMessages({
+            candidates,
+            maxTextCharsPerCandidate,
+            query,
+          });
+          const structuredOutputSchema = semanticScoreOutputSchema(candidates);
+          const modelCall = {
+            callId: `pageindex-semantic:${batchIndex + 1}:${candidates.map((candidate) => candidate.candidateId).join(",")}`,
+            estimatedPromptTokens: estimateResearchModelPromptTokens({
+              messages,
+              structuredOutputSchema,
+            }),
+            maxOutputTokens,
+            model: input.reasoningModel.model,
+            provider: input.reasoningModel.provider,
+            step: "pageindex.semantic" as const,
+          };
+          await notifyResearchModelCallBefore(input.researchModelCallObserver, modelCall);
+          let result: GeneratePageIndexSemanticScoreResult;
+          try {
+            const provider = providerFactory(input.reasoningModel);
+            result = await raceWithAbort(
+              provider.generate({
+                maxOutputTokens,
+                messages,
+                model: input.reasoningModel.model,
+                signal: controller.signal,
+                structuredOutputSchema,
+                temperature: 0,
+                tenantId,
+              }),
+              controller.signal,
+            );
+          } catch (error) {
+            await notifyResearchModelCallAfter(input.researchModelCallObserver, {
+              ...modelCall,
+              status: "failed",
+            });
+            if (error instanceof PageIndexSemanticScoreContractError) {
+              throw error;
+            }
+            throw new PageIndexSemanticScoreContractError(
+              "PageIndex semantic tree search scoring failed",
+              { cause: error },
+            );
+          } finally {
+            clearTimeout(timeout);
+          }
+          await notifyResearchModelCallAfter(input.researchModelCallObserver, {
+            ...modelCall,
+            ...(result.metadata === undefined ? {} : { metadata: result.metadata }),
+            status: "succeeded",
+          });
           if (result.model?.trim() && result.model.trim() !== input.reasoningModel.model) {
             throw new PageIndexSemanticScoreContractError(
               "PageIndex semantic score response model did not match the selected reasoning model",
+              { failureKind: "integrity" },
             );
           }
           const metadataModel = generationMetadataModel(result.metadata);
           if (metadataModel && metadataModel !== input.reasoningModel.model) {
             throw new PageIndexSemanticScoreContractError(
               "PageIndex semantic score metadata model did not match the selected reasoning model",
+              { failureKind: "integrity" },
             );
           }
           return parseSemanticScoreOutput(result.text, candidates, maxResponseChars);
-        } catch (error) {
-          if (error instanceof PageIndexSemanticScoreContractError) {
-            throw error;
-          }
-          throw new PageIndexSemanticScoreContractError(
-            "PageIndex semantic tree search scoring failed",
-            { cause: error },
-          );
-        } finally {
-          clearTimeout(timeout);
-        }
-      });
+        },
+      );
 
       return scored.flat();
     },

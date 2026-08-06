@@ -19,6 +19,7 @@ export interface AnswerabilityEvaluatorOptions {
 }
 
 export interface EvaluateAnswerabilityInput {
+  readonly budgetExhausted?: boolean | undefined;
   readonly items: readonly EvidenceBundle["items"][number][];
   readonly missingEvidence: readonly EvidenceBundle["missingEvidence"][number][];
   readonly permissionLimited?: boolean | undefined;
@@ -54,7 +55,7 @@ export function createAnswerabilityEvaluator({
   }
 
   return {
-    evaluate({ items, missingEvidence, permissionLimited }) {
+    evaluate({ budgetExhausted, items, missingEvidence, permissionLimited }) {
       if (
         permissionLimited ||
         missingEvidence.some((missing) => missing.reason === "permission-filtered")
@@ -63,7 +64,7 @@ export function createAnswerabilityEvaluator({
       }
 
       if (items.length < minItems || items.every((item) => item.scores.final < minFinalScore)) {
-        return "not-enough-evidence";
+        return budgetExhausted && items.length > 0 ? "partial" : "not-enough-evidence";
       }
 
       if (
@@ -139,6 +140,8 @@ export function createEvidenceBundleAssembler({
         state:
           input.state ??
           answerability.evaluate({
+            budgetExhausted:
+              (input.retrieval.metrics?.researchBudgetExhaustedReasons?.length ?? 0) > 0,
             items,
             missingEvidence,
             permissionLimited: input.permissionLimited,

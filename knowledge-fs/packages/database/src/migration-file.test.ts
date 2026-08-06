@@ -130,6 +130,8 @@ describe("migration file rendering", () => {
       "packages/database/migrations/0034_knowledge_space_emoji_icons.tidb.sql",
       "packages/database/migrations/0035_research_task_answer_streaming.postgres.sql",
       "packages/database/migrations/0035_research_task_answer_streaming.tidb.sql",
+      "packages/database/migrations/0036_page_index_findability.postgres.sql",
+      "packages/database/migrations/0036_page_index_findability.tidb.sql",
     ]);
     expect(artifacts[2]?.content).toContain('ALTER COLUMN "dense_vector" TYPE vector');
     expect(artifacts[2]?.content).not.toContain("vector(1536)");
@@ -814,6 +816,7 @@ describe("migration file rendering", () => {
       "packages/database/migrations/0033_research_task_final_answers.postgres.sql",
       "packages/database/migrations/0034_knowledge_space_emoji_icons.postgres.sql",
       "packages/database/migrations/0035_research_task_answer_streaming.postgres.sql",
+      "packages/database/migrations/0036_page_index_findability.postgres.sql",
     ]);
     expect(
       getPendingMigrationArtifacts({
@@ -853,6 +856,7 @@ describe("migration file rendering", () => {
           "0033_research_task_final_answers",
           "0034_knowledge_space_emoji_icons",
           "0035_research_task_answer_streaming",
+          "0036_page_index_findability",
         ],
         dialect: "postgres",
       }),

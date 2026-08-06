@@ -74,12 +74,45 @@ describe("in-memory published PageIndex repository", () => {
     expect(publicOnly.items.map((item) => item.outline.id)).toEqual([second.outline.id]);
   });
 
+  it("loads a bounded selected-document outline batch without scanning unrelated outlines", async () => {
+    const first = documentFixture(1, ["team:camera"]);
+    const hidden = documentFixture(2, ["team:secret"]);
+    const selected = documentFixture(3, []);
+    const harness = memoryHarness([first, hidden, selected]);
+
+    const page = await harness.repository.listOutlines({
+      documentAssetIds: [selected.asset.id, selected.asset.id],
+      fingerprint: FINGERPRINT,
+      knowledgeSpaceId: SPACE_ID,
+      limit: 3,
+      permissionScope: ["team:camera"],
+      publicationId: PUBLICATION_ID,
+      tenantId: TENANT_ID,
+    });
+
+    expect(page.items.map((item) => item.documentAssetId)).toEqual([selected.asset.id]);
+    expect(page.filteredCount).toBe(0);
+    expect(page.nextCursor).toBeUndefined();
+  });
+
   it("opens half-open leaf ranges after the caller can read the complete Outline lineage", async () => {
     const fixture = documentFixture(1, ["team:camera"]);
-    const before = knowledgeNode(20, fixture, { endOffset: 10, startOffset: 0 });
-    const leftOverlap = knowledgeNode(21, fixture, { endOffset: 11, startOffset: 5 });
-    const rightOverlap = knowledgeNode(22, fixture, { endOffset: 25, startOffset: 19 });
-    const after = knowledgeNode(23, fixture, { endOffset: 30, startOffset: 20 });
+    const before = knowledgeNode(20, fixture, {
+      endOffset: 10,
+      startOffset: 0,
+    });
+    const leftOverlap = knowledgeNode(21, fixture, {
+      endOffset: 11,
+      startOffset: 5,
+    });
+    const rightOverlap = knowledgeNode(22, fixture, {
+      endOffset: 25,
+      startOffset: 19,
+    });
+    const after = knowledgeNode(23, fixture, {
+      endOffset: 30,
+      startOffset: 20,
+    });
     const denied = knowledgeNode(24, fixture, {
       endOffset: 15,
       permissionScope: ["team:camera", "classification:restricted"],
@@ -120,7 +153,10 @@ describe("in-memory published PageIndex repository", () => {
 
   it("does not expose a whole Outline when any eligible published sibling node is unreadable", async () => {
     const fixture = documentFixture(1, ["team:camera"]);
-    const readable = knowledgeNode(31, fixture, { endOffset: 15, startOffset: 10 });
+    const readable = knowledgeNode(31, fixture, {
+      endOffset: 15,
+      startOffset: 10,
+    });
     const secret = knowledgeNode(32, fixture, {
       endOffset: 20,
       permissionScope: ["team:camera", "classification:restricted"],
@@ -135,7 +171,11 @@ describe("in-memory published PageIndex repository", () => {
     } as const;
 
     await expect(
-      repository.listOutlines({ ...scope, limit: 10, permissionScope: ["team:camera"] }),
+      repository.listOutlines({
+        ...scope,
+        limit: 10,
+        permissionScope: ["team:camera"],
+      }),
     ).resolves.toMatchObject({ items: [] });
     await expect(
       repository.openLeafEvidence({
@@ -155,7 +195,9 @@ describe("in-memory published PageIndex repository", () => {
         limit: 10,
         permissionScope: ["team:camera", "classification:restricted"],
       }),
-    ).resolves.toMatchObject({ items: [{ outline: { id: fixture.outline.id } }] });
+    ).resolves.toMatchObject({
+      items: [{ outline: { id: fixture.outline.id } }],
+    });
   });
 
   it("fails closed for a stale publication id, missing permissions, and cross-publication members", async () => {
@@ -375,7 +417,10 @@ describe("published PageIndex repository branch boundaries", () => {
     const repositories = [
       memoryHarness([fixture], { publicationOverride: () => null }).repository,
       memoryHarness([fixture], {
-        publicationOverride: (publication) => ({ ...publication, id: OTHER_PUBLICATION_ID }),
+        publicationOverride: (publication) => ({
+          ...publication,
+          id: OTHER_PUBLICATION_ID,
+        }),
       }).repository,
       memoryHarness([fixture], {
         publicationOverride: (publication) => ({
@@ -390,10 +435,16 @@ describe("published PageIndex repository branch boundaries", () => {
         }),
       }).repository,
       memoryHarness([fixture], {
-        publicationOverride: (publication) => ({ ...publication, tenantId: "tenant-2" }),
+        publicationOverride: (publication) => ({
+          ...publication,
+          tenantId: "tenant-2",
+        }),
       }).repository,
       memoryHarness([fixture], {
-        publicationOverride: (publication) => ({ ...publication, status: "candidate" }),
+        publicationOverride: (publication) => ({
+          ...publication,
+          status: "candidate",
+        }),
       }).repository,
     ];
 
@@ -464,7 +515,10 @@ describe("published PageIndex repository branch boundaries", () => {
       }).repository,
       memoryHarness([fixture], {
         projectionsOverride: (projections) =>
-          projections.map((projection) => ({ ...projection, status: "failed" })),
+          projections.map((projection) => ({
+            ...projection,
+            status: "failed",
+          })),
       }).repository,
       memoryHarness([fixture], {
         membersOverride: (members) =>
@@ -635,7 +689,10 @@ describe("published PageIndex repository branch boundaries", () => {
       { ...template, id: "no-start", startOffset: undefined },
       { ...template, endOffset: 10, id: "empty", startOffset: 10 },
     ]) {
-      const outline = DocumentOutlineSchema.parse({ ...fixture.outline, nodes: [node] });
+      const outline = DocumentOutlineSchema.parse({
+        ...fixture.outline,
+        nodes: [node],
+      });
       const rangeRepository = memoryHarness([{ ...fixture, outline }]).repository;
       await expect(
         rangeRepository.openLeafEvidence({
@@ -879,9 +936,18 @@ describe.each(["postgres", "tidb"] as const)(
           }
           return {
             rows: [
-              pageIndexScoredNodeDatabaseRow(fixture, { nodeId: "section-1", score: 1 }),
-              pageIndexScoredNodeDatabaseRow(fixture, { nodeId: "section-2", score: 0.9 }),
-              pageIndexScoredNodeDatabaseRow(fixture, { nodeId: "section-3", score: 0.8 }),
+              pageIndexScoredNodeDatabaseRow(fixture, {
+                nodeId: "section-1",
+                score: 1,
+              }),
+              pageIndexScoredNodeDatabaseRow(fixture, {
+                nodeId: "section-2",
+                score: 0.9,
+              }),
+              pageIndexScoredNodeDatabaseRow(fixture, {
+                nodeId: "section-3",
+                score: 0.8,
+              }),
             ],
             rowsAffected: 3,
           };
@@ -1149,9 +1215,63 @@ describe.each(["postgres", "tidb"] as const)(
       expect(sql).not.toContain("projection_set_publication_heads");
     });
 
+    it("pushes selected document ids into the bounded outline query", async () => {
+      const first = documentFixture(1, ["team:camera"]);
+      const second = documentFixture(2, []);
+      const calls: DatabaseExecuteInput[] = [];
+      const database = createSchemaDatabaseAdapter({
+        executor: async (input) => {
+          calls.push(input);
+          if (calls.length === 1) {
+            return { rows: [{ snapshot_exists: 1 }], rowsAffected: 1 };
+          }
+          return { rows: [outlineDatabaseRow(second)], rowsAffected: 1 };
+        },
+        kind: dialect,
+      });
+      const repository = createDatabasePublishedPageIndexRepository({
+        database,
+        maxLeafLimit: 10,
+        maxOutlinePageSize: 10,
+        maxProjectionRows: 20,
+      });
+
+      const page = await repository.listOutlines({
+        documentAssetIds: [second.asset.id, first.asset.id, second.asset.id],
+        fingerprint: FINGERPRINT,
+        knowledgeSpaceId: SPACE_ID,
+        limit: 2,
+        permissionScope: ["team:camera"],
+        publicationId: PUBLICATION_ID,
+        tenantId: TENANT_ID,
+      });
+
+      expect(page.items.map((item) => item.documentAssetId)).toEqual([second.asset.id]);
+      expect(calls).toHaveLength(2);
+      expect(calls[1]?.params).toEqual([
+        TENANT_ID,
+        SPACE_ID,
+        PUBLICATION_ID,
+        FINGERPRINT,
+        JSON.stringify(["team:camera"]),
+        first.asset.id,
+        second.asset.id,
+        3,
+      ]);
+      const sql = calls[1]?.sql ?? "";
+      expect(sql).toContain(
+        dialect === "postgres"
+          ? 'om."document_asset_id" IN ($6, $7)'
+          : "om.`document_asset_id` IN (?, ?)",
+      );
+    });
+
     it("opens a bounded half-open range and reloads only exact published projections", async () => {
       const fixture = documentFixture(1, ["team:camera"]);
-      const node = knowledgeNode(21, fixture, { endOffset: 11, startOffset: 5 });
+      const node = knowledgeNode(21, fixture, {
+        endOffset: 11,
+        startOffset: 5,
+      });
       const projection = projectionForNode(31, node);
       const calls: DatabaseExecuteInput[] = [];
       const database = createSchemaDatabaseAdapter({
@@ -1163,9 +1283,15 @@ describe.each(["postgres", "tidb"] as const)(
             case 2:
               return { rows: [outlineDatabaseRow(fixture)], rowsAffected: 1 };
             case 3:
-              return { rows: [knowledgeNodeDatabaseRow(node)], rowsAffected: 1 };
+              return {
+                rows: [knowledgeNodeDatabaseRow(node)],
+                rowsAffected: 1,
+              };
             default:
-              return { rows: [indexProjectionDatabaseRow(projection)], rowsAffected: 1 };
+              return {
+                rows: [indexProjectionDatabaseRow(projection)],
+                rowsAffected: 1,
+              };
           }
         },
         kind: dialect,
@@ -1256,7 +1382,11 @@ function documentFixture(index: number, permissionScope: readonly string[]): Fix
     parseArtifactId,
     permissionScope,
     publicationGenerationId: GENERATION_ID,
-    sourceLocation: { endOffset: 20, sectionPath: ["Support"], startOffset: 10 },
+    sourceLocation: {
+      endOffset: 20,
+      sectionPath: ["Support"],
+      startOffset: 10,
+    },
     startOffset: 10,
     text: `evidence ${index}`,
   });

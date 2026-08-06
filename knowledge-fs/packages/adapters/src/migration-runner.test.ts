@@ -42,6 +42,7 @@ const capabilitySourceSyncPoliciesMigrationId = "0032_capability_source_sync_pol
 const researchTaskFinalAnswersMigrationId = "0033_research_task_final_answers";
 const knowledgeSpaceEmojiIconsMigrationId = "0034_knowledge_space_emoji_icons";
 const researchTaskAnswerStreamingMigrationId = "0035_research_task_answer_streaming";
+const pageIndexFindabilityMigrationId = "0036_page_index_findability";
 const migrationsAfterDurableDeletion = [
   versionedSpaceProfilesMigrationId,
   profilePublicationBindingsMigrationId,
@@ -61,6 +62,7 @@ const migrationsAfterDurableDeletion = [
   researchTaskFinalAnswersMigrationId,
   knowledgeSpaceEmojiIconsMigrationId,
   researchTaskAnswerStreamingMigrationId,
+  pageIndexFindabilityMigrationId,
 ] as const;
 const migrationsAfterTidbBaselineRepair = [
   spaceAccessControlMigrationId,
@@ -112,13 +114,19 @@ describe("runDatabaseMigrations", () => {
     });
 
     await expect(
-      runDatabaseMigrations({ database, now: () => "2026-05-13T00:00:00.000Z" }),
+      runDatabaseMigrations({
+        database,
+        now: () => "2026-05-13T00:00:00.000Z",
+      }),
     ).resolves.toEqual({
       appliedMigrationIds: allMigrationIds,
       pendingBeforeRun: allMigrationIds.length,
     });
     await expect(
-      runDatabaseMigrations({ database, now: () => "2026-05-13T00:00:00.000Z" }),
+      runDatabaseMigrations({
+        database,
+        now: () => "2026-05-13T00:00:00.000Z",
+      }),
     ).resolves.toEqual({
       appliedMigrationIds: [],
       pendingBeforeRun: 0,
@@ -552,7 +560,9 @@ describe("runDatabaseMigrations", () => {
 
         if (input.operation === "select") {
           return {
-            rows: migrationsBeforeCheckConstraints.map((migration_id) => ({ migration_id })),
+            rows: migrationsBeforeCheckConstraints.map((migration_id) => ({
+              migration_id,
+            })),
             rowsAffected: 0,
           };
         }
@@ -589,7 +599,9 @@ describe("runDatabaseMigrations", () => {
 
         if (input.operation === "select") {
           return {
-            rows: migrationsBeforeCheckConstraints.map((migration_id) => ({ migration_id })),
+            rows: migrationsBeforeCheckConstraints.map((migration_id) => ({
+              migration_id,
+            })),
             rowsAffected: 0,
           };
         }
@@ -966,7 +978,9 @@ describe("runDatabaseMigrations", () => {
 
           if (input.operation === "select") {
             return {
-              rows: migrationsBeforeCheckConstraints.map((migration_id) => ({ migration_id })),
+              rows: migrationsBeforeCheckConstraints.map((migration_id) => ({
+                migration_id,
+              })),
               rowsAffected: 0,
             };
           }

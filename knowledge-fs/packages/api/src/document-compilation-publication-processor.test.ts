@@ -33,7 +33,8 @@ const timestamp = Date.parse("2026-07-14T12:00:00.000Z");
 
 describe("document compilation publication processor", () => {
   it("publishes the candidate before the runtime completes and acknowledges the attempt/job", async () => {
-    const fixture = await createFixture();
+    const afterPublished = vi.fn(async () => undefined);
+    const fixture = await createFixture({ afterPublished });
 
     await expect(fixture.runtime.tick()).resolves.toMatchObject({
       failed: 0,
@@ -43,7 +44,9 @@ describe("document compilation publication processor", () => {
       checkpoint: "published",
       runState: "succeeded",
     });
-    await expect(fixture.queue.status("job-1")).resolves.toMatchObject({ status: "completed" });
+    await expect(fixture.queue.status("job-1")).resolves.toMatchObject({
+      status: "completed",
+    });
     await expect(
       fixture.publications.getPublished({ knowledgeSpaceId, tenantId }),
     ).resolves.toMatchObject({
@@ -52,9 +55,21 @@ describe("document compilation publication processor", () => {
       status: "published",
     });
     expect(fixture.evaluate).toHaveBeenCalledOnce();
+    expect(afterPublished).toHaveBeenCalledWith(
+      expect.objectContaining({
+        attempt: expect.objectContaining({
+          documentAssetId,
+          publicationGenerationId: generationId,
+        }),
+        publication: expect.objectContaining({ headRevision: 1 }),
+      }),
+    );
     expect(fixture.asset().parserStatus).toBe("parsed");
 
-    const published = await fixture.publications.getPublished({ knowledgeSpaceId, tenantId });
+    const published = await fixture.publications.getPublished({
+      knowledgeSpaceId,
+      tenantId,
+    });
     if (!published) {
       throw new Error("candidate publication was not published");
     }
@@ -81,13 +96,20 @@ describe("document compilation publication processor", () => {
         tenantId,
       }),
     ).resolves.toMatchObject({
-      items: [expect.objectContaining({ node: expect.objectContaining({ id: nodeId }) })],
+      items: [
+        expect.objectContaining({
+          node: expect.objectContaining({ id: nodeId }),
+        }),
+      ],
     });
   });
 
   it("terminally fails a rejected candidate, keeps no head, and still acknowledges the job", async () => {
     const fixture = await createFixture({
-      evaluation: { decision: "failed", reason: "candidate recall below threshold" },
+      evaluation: {
+        decision: "failed",
+        reason: "candidate recall below threshold",
+      },
     });
 
     await expect(fixture.runtime.tick()).resolves.toMatchObject({
@@ -100,7 +122,9 @@ describe("document compilation publication processor", () => {
       lastErrorMessage: expect.stringContaining("candidate recall below threshold"),
       runState: "failed",
     });
-    await expect(fixture.queue.status("job-1")).resolves.toMatchObject({ status: "completed" });
+    await expect(fixture.queue.status("job-1")).resolves.toMatchObject({
+      status: "completed",
+    });
     await expect(
       fixture.publications.getPublished({ knowledgeSpaceId, tenantId }),
     ).resolves.toBeNull();
@@ -118,6 +142,9 @@ describe("document compilation publication processor", () => {
 
 async function createFixture(
   options: {
+    readonly afterPublished?: Parameters<
+      typeof createDocumentCompilationPublicationProcessor
+    >[0]["afterPublished"];
     readonly evaluation?:
       | { readonly decision: "passed" }
       | { readonly decision: "failed"; readonly reason: string };
@@ -144,7 +171,9 @@ async function createFixture(
   });
   await dispatch(attempts, queue);
 
-  const publications = createInMemoryProjectionSetPublicationRepository({ maxPublications: 10 });
+  const publications = createInMemoryProjectionSetPublicationRepository({
+    maxPublications: 10,
+  });
   const members = createInMemoryProjectionSetPublicationMemberRepository({
     attempts,
     maxListLimit: 10,
@@ -256,10 +285,13 @@ async function createFixture(
           ? node
           : null,
     },
-    outlines: { getById: async ({ id }) => (id === outline.id ? outline : null) },
+    outlines: {
+      getById: async ({ id }) => (id === outline.id ? outline : null),
+    },
     publications,
   });
   const processor = createDocumentCompilationPublicationProcessor({
+    ...(options.afterPublished ? { afterPublished: options.afterPublished } : {}),
     assets,
     compileCandidate: async (execution) => {
       await execution.advance({ checkpoint: "parsed" });
@@ -322,7 +354,15 @@ async function createFixture(
     workerId: "publication-runtime-1",
   });
 
-  return { asset: () => asset, attempts, evaluate, pageIndex, publications, queue, runtime };
+  return {
+    asset: () => asset,
+    attempts,
+    evaluate,
+    pageIndex,
+    publications,
+    queue,
+    runtime,
+  };
 }
 
 async function dispatch(

@@ -1,5 +1,6 @@
 import type {
   AuthSubject,
+  EvidenceBundle,
   KnowledgeSpaceEmbeddingProfile,
   KnowledgeSpaceRetrievalProfile,
 } from "@knowledge/core";
@@ -11,6 +12,8 @@ import {
   readTopScore,
 } from "./failed-query-recorder";
 import type { PublishedProjectionReadSnapshot } from "./published-projection-read-snapshot";
+import type { ResearchModelCallObserver } from "./research-model-usage";
+import type { ResearchRetrievalDurableCheckpoint } from "./research-retrieval-checkpoint";
 import type {
   ResearchTaskProgressEvent,
   ResearchTaskProgressRepository,
@@ -45,6 +48,23 @@ export interface QueryGenerationInput {
   readonly projectionSnapshot?: PublishedProjectionReadSnapshot | undefined;
   readonly query: string;
   readonly requestedMode?: QueryGenerationMode | "auto" | undefined;
+  /** Durable-only replay boundary writer. Interactive callers never supply this callback. */
+  readonly onResearchRetrievalCheckpoint?:
+    | ((checkpoint: EvidenceBundle) => Promise<void>)
+    | undefined;
+  /** Durable V2 writer for the full tree frontier, evidence queue, and opened evidence boundary. */
+  readonly onResearchDurableCheckpoint?:
+    | ((checkpoint: ResearchRetrievalDurableCheckpoint) => Promise<void>)
+    | undefined;
+  /** Durable-only evidence restored after a post-retrieval failure. */
+  readonly researchRetrievalCheckpoint?: EvidenceBundle | undefined;
+  /** Durable V2 checkpoint; unlike the legacy evidence-only boundary it resumes remaining work. */
+  readonly researchDurableCheckpoint?: ResearchRetrievalDurableCheckpoint | undefined;
+  /** Internal caller class; durable workers opt into replay/checkpoint-capable retrieval limits. */
+  readonly researchExecutionKind?: "durable" | "interactive" | undefined;
+  /** Internal durable accounting hook; never supplied by public interactive requests. */
+  readonly researchModelCallObserver?: ResearchModelCallObserver | undefined;
+  readonly researchExecutionAttempt?: number | undefined;
   readonly retrievalProfile?: KnowledgeSpaceRetrievalProfile | undefined;
   readonly sessionContext?: QuerySessionContext | undefined;
   readonly subject: AuthSubject;
@@ -130,7 +150,10 @@ export function traceStepEvent(
   return {
     step: {
       endedAt: new Date(endedAtMs).toISOString(),
-      metadata: { durationMs: Math.max(0, endedAtMs - startedAtMs), ...metadata },
+      metadata: {
+        durationMs: Math.max(0, endedAtMs - startedAtMs),
+        ...metadata,
+      },
       name,
       startedAt: new Date(startedAtMs).toISOString(),
       status,

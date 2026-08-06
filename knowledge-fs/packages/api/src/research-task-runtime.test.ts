@@ -13,6 +13,11 @@ import {
 } from "./knowledge-space-access-control";
 import { createInMemoryKnowledgeSpaceManifestRepository } from "./knowledge-space-manifest-repository";
 import type { PublishedKnowledgeSpaceRuntimeSnapshot } from "./published-knowledge-space-runtime-snapshot";
+import {
+  RESEARCH_RETRIEVAL_DURABLE_CHECKPOINT_METADATA_KEY,
+  ResearchRetrievalCheckpointVersion,
+  type ResearchRetrievalDurableCheckpoint,
+} from "./research-retrieval-checkpoint";
 import type {
   ResearchTaskDurableRepository,
   ResearchTaskExecutionFence,
@@ -137,7 +142,11 @@ describe("research task production runtime", () => {
       "reasoning plugin mismatch",
       (decision: Record<string, unknown>) =>
         Object.assign(decision, {
-          reasoningModel: { model: "reason-v5", pluginId: "wrong", provider: "provider-a" },
+          reasoningModel: {
+            model: "reason-v5",
+            pluginId: "wrong",
+            provider: "provider-a",
+          },
         }),
     ],
     [
@@ -193,7 +202,10 @@ describe("research task production runtime", () => {
         },
       });
 
-      await expect(runtime.tick()).resolves.toMatchObject({ failed: 1, succeeded: 0 });
+      await expect(runtime.tick()).resolves.toMatchObject({
+        failed: 1,
+        succeeded: 0,
+      });
       expect(repository.job).toMatchObject({
         error: RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID,
         stage: "failed",
@@ -317,7 +329,10 @@ describe("research task production runtime", () => {
 
     // The state lives in the repository rather than this runtime instance. A newly constructed
     // consumer can therefore resume after the previous process disappeared.
-    await expect(runtime.tick()).resolves.toMatchObject({ leased: 1, succeeded: 1 });
+    await expect(runtime.tick()).resolves.toMatchObject({
+      leased: 1,
+      succeeded: 1,
+    });
 
     expect(repository.job).toMatchObject({
       executionAttempts: 1,
@@ -340,12 +355,20 @@ describe("research task production runtime", () => {
       { lifecycle: "terminal", outcome: "completed", taskKind: "research" },
     ]);
     await expect(
-      partials.list({ limit: 10, researchTaskJobId: JOB_ID, tenantId: "tenant-1" }),
+      partials.list({
+        limit: 10,
+        researchTaskJobId: JOB_ID,
+        tenantId: "tenant-1",
+      }),
     ).resolves.toMatchObject({
       items: [{ answer: "The warranty is two years.", sequence: 1 }],
     });
     await expect(
-      progress.list({ limit: 20, researchTaskJobId: JOB_ID, tenantId: "tenant-1" }),
+      progress.list({
+        limit: 20,
+        researchTaskJobId: JOB_ID,
+        tenantId: "tenant-1",
+      }),
     ).resolves.toMatchObject({
       items: [
         { stage: "queued", type: "research_task.stage_changed" },
@@ -383,7 +406,11 @@ describe("research task production runtime", () => {
           type: "research_task.answer_delta",
         },
         {
-          payload: { delta: "he warranty is two years.", executionAttempt: 1, offset: 1 },
+          payload: {
+            delta: "he warranty is two years.",
+            executionAttempt: 1,
+            offset: 1,
+          },
           stage: "generating",
           type: "research_task.answer_delta",
         },
@@ -554,7 +581,9 @@ describe("research task production runtime", () => {
     let now = 1_000;
     const record = vi.fn();
     const runtime = createResearchTaskRuntime({
-      access: { revalidatePermissionSnapshot: async () => permissionSnapshot() },
+      access: {
+        revalidatePermissionSnapshot: async () => permissionSnapshot(),
+      },
       generator: {
         stream: async function* (input) {
           generationInputs.push(input);
@@ -626,6 +655,199 @@ describe("research task production runtime", () => {
         topK: 37,
       });
     }
+  });
+
+  it("persists the complete layered-search checkpoint and resumes without repeating completed work", async () => {
+    const frozenRuntime = publishedRuntimeSnapshot(SPACE_ID);
+    const repository = new MemoryDurableRepository({
+      ...baseJob(),
+      metadata: {
+        [RESEARCH_TASK_RUNTIME_SNAPSHOT_METADATA_KEY]:
+          toResearchTaskRuntimeSnapshotPayload(frozenRuntime),
+      },
+      mode: "research",
+    });
+    const partials = createInMemoryResearchTaskPartialResultRepository({
+      maxListLimit: 10,
+      maxResults: 10,
+    });
+    const generationInputs: Array<Record<string, unknown>> = [];
+    let generationAttempt = 0;
+    let now = 1_000;
+    const runtime = createResearchTaskRuntime({
+      ...runtimeOptions(repository),
+      generator: {
+        stream: async function* (input) {
+          generationInputs.push(input as unknown as Record<string, unknown>);
+          generationAttempt += 1;
+          if (generationAttempt === 1) {
+            await input.onResearchDurableCheckpoint?.(durableRetrievalCheckpoint(frozenRuntime));
+            throw new Error("answer provider timed out after retrieval");
+          }
+          expect(input.researchDurableCheckpoint).toEqual(
+            durableRetrievalCheckpoint(frozenRuntime),
+          );
+          yield traceStep("query.retrieve", {
+            checkpointed: true,
+            itemCount: 1,
+          });
+          yield traceStep("query.answer");
+          yield { delta: "Recovered answer", type: "delta" as const };
+          yield {
+            finishReason: "retrieval-evidence",
+            metadata: {
+              evidenceBundle: input.researchDurableCheckpoint?.evidenceBundle,
+            },
+            type: "done" as const,
+          };
+        },
+      },
+      maxRetryDelayMs: 1,
+      now: () => now,
+      partials,
+      retryDelayMs: 1,
+    });
+
+    await expect(runtime.tick()).resolves.toMatchObject({
+      retryScheduled: 1,
+      succeeded: 0,
+    });
+    now = 1_002;
+    await expect(runtime.tick()).resolves.toMatchObject({
+      retryScheduled: 0,
+      succeeded: 1,
+    });
+
+    expect(generationInputs).toHaveLength(2);
+    expect(generationInputs[0]).not.toHaveProperty("researchDurableCheckpoint");
+    expect(generationInputs[1]).toHaveProperty("researchDurableCheckpoint");
+    expect(repository.job.metadata).toHaveProperty(
+      RESEARCH_RETRIEVAL_DURABLE_CHECKPOINT_METADATA_KEY,
+    );
+    await expect(
+      partials.list({
+        limit: 10,
+        researchTaskJobId: JOB_ID,
+        tenantId: "tenant-1",
+      }),
+    ).resolves.toMatchObject({
+      items: [
+        {
+          answer: "Recovered answer",
+          evidenceBundle: durableRetrievalCheckpoint(frozenRuntime).evidenceBundle,
+          sequence: 1,
+        },
+      ],
+    });
+  });
+
+  it("reserves each Research model call and reconciles it with Dify token usage", async () => {
+    const frozenRuntime = publishedRuntimeSnapshot(SPACE_ID);
+    const repository = new MemoryDurableRepository({
+      ...baseJob(),
+      budgetUsd: 0.01,
+      cost: { budgetUsd: 0.01, entries: [], totalUsd: 0 },
+      metadata: {
+        [RESEARCH_TASK_RUNTIME_SNAPSHOT_METADATA_KEY]:
+          toResearchTaskRuntimeSnapshotPayload(frozenRuntime),
+      },
+      mode: "research",
+    });
+    const runtime = createResearchTaskRuntime({
+      ...runtimeOptions(repository),
+      generator: {
+        stream: async function* (input) {
+          const call = {
+            callId: "outline:chapter:depth:1",
+            estimatedPromptTokens: 100,
+            maxOutputTokens: 20,
+            model: "reason-v5",
+            provider: "provider-a",
+            step: "pageindex.layer" as const,
+          };
+          await input.researchModelCallObserver?.before(call);
+          await input.researchModelCallObserver?.after({
+            ...call,
+            metadata: {
+              usage: { completionTokens: 5, promptTokens: 10, totalTokens: 15 },
+            },
+            status: "succeeded",
+          });
+          yield traceStep("query.retrieve", { itemCount: 0 });
+          yield {
+            finishReason: "no-retrieval-evidence",
+            metadata: {
+              evidenceBundle: { ...evidenceBundle(), traceId: JOB_ID },
+            },
+            type: "done" as const,
+          };
+        },
+      },
+    });
+
+    await expect(runtime.tick()).resolves.toMatchObject({ succeeded: 1 });
+    expect(repository.job.cost).toMatchObject({
+      budgetUsd: 0.01,
+      entries: [
+        {
+          costUsd: 0.00009,
+          provider: "provider-a",
+          step: "pageindex.layer",
+          usage: {
+            completionTokens: 5,
+            estimated: false,
+            promptTokens: 10,
+            reserved: false,
+            status: "succeeded",
+            totalTokens: 15,
+          },
+        },
+      ],
+      totalUsd: 0.00009,
+    });
+  });
+
+  it("cancels before invoking a model when its conservative reservation exceeds budget", async () => {
+    const frozenRuntime = publishedRuntimeSnapshot(SPACE_ID);
+    const repository = new MemoryDurableRepository({
+      ...baseJob(),
+      budgetUsd: 0.00001,
+      cost: { budgetUsd: 0.00001, entries: [], totalUsd: 0 },
+      metadata: {
+        [RESEARCH_TASK_RUNTIME_SNAPSHOT_METADATA_KEY]:
+          toResearchTaskRuntimeSnapshotPayload(frozenRuntime),
+      },
+      mode: "research",
+    });
+    let providerInvoked = false;
+    const runtime = createResearchTaskRuntime({
+      ...runtimeOptions(repository),
+      generator: {
+        stream: async function* (input) {
+          await input.researchModelCallObserver?.before({
+            callId: "outline:chapter:depth:1",
+            estimatedPromptTokens: 100,
+            maxOutputTokens: 20,
+            model: "reason-v5",
+            provider: "provider-a",
+            step: "pageindex.layer",
+          });
+          providerInvoked = true;
+          yield traceStep("query.retrieve", { itemCount: 0 });
+        },
+      },
+    });
+
+    await expect(runtime.tick()).resolves.toMatchObject({
+      acknowledgedTerminal: 1,
+      retryScheduled: 0,
+    });
+    expect(providerInvoked).toBe(false);
+    expect(repository.job).toMatchObject({
+      error: "RESEARCH_TASK_BUDGET_EXHAUSTED",
+      stage: "canceled",
+    });
+    expect(repository.job.cost.entries).toEqual([]);
   });
 
   it.each([
@@ -726,7 +948,9 @@ describe("research task production runtime", () => {
     const repository = new MemoryDurableRepository(job);
     const generator = vi.fn();
     const runtime = createResearchTaskRuntime({
-      access: { revalidatePermissionSnapshot: async () => permissionSnapshot() },
+      access: {
+        revalidatePermissionSnapshot: async () => permissionSnapshot(),
+      },
       generator: {
         stream: async function* (input) {
           generator(input);
@@ -749,7 +973,10 @@ describe("research task production runtime", () => {
       workerId: "research-worker-1",
     });
 
-    await expect(runtime.tick()).resolves.toMatchObject({ failed: 1, succeeded: 0 });
+    await expect(runtime.tick()).resolves.toMatchObject({
+      failed: 1,
+      succeeded: 0,
+    });
     expect(repository.job).toMatchObject({
       error: RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID,
       stage: "failed",
@@ -766,7 +993,9 @@ describe("research task production runtime", () => {
     const manifestRead = vi.spyOn(manifests, "get");
     const generator = vi.fn();
     const runtime = createResearchTaskRuntime({
-      access: { revalidatePermissionSnapshot: async () => permissionSnapshot() },
+      access: {
+        revalidatePermissionSnapshot: async () => permissionSnapshot(),
+      },
       generator: {
         stream: async function* (input) {
           generator(input);
@@ -786,7 +1015,11 @@ describe("research task production runtime", () => {
       workerId: "research-worker-1",
     });
 
-    await expect(runtime.tick()).resolves.toMatchObject({ failed: 1, leased: 1, succeeded: 0 });
+    await expect(runtime.tick()).resolves.toMatchObject({
+      failed: 1,
+      leased: 1,
+      succeeded: 0,
+    });
     expect(repository.job).toMatchObject({
       error: RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID,
       stage: "failed",
@@ -815,7 +1048,9 @@ describe("research task production runtime", () => {
     const generator = vi.fn();
     const errors: unknown[] = [];
     const runtime = createResearchTaskRuntime({
-      access: { revalidatePermissionSnapshot: async () => permissionSnapshot() },
+      access: {
+        revalidatePermissionSnapshot: async () => permissionSnapshot(),
+      },
       generator: {
         stream: async function* (input) {
           generator(input);
@@ -848,7 +1083,9 @@ describe("research task production runtime", () => {
       stage: "failed",
     });
     expect(errors).toEqual([
-      expect.objectContaining({ message: "Research task runtime snapshot scope mismatch" }),
+      expect.objectContaining({
+        message: "Research task runtime snapshot scope mismatch",
+      }),
     ]);
     expect(manifestRead).not.toHaveBeenCalled();
     expect(projectionResolve).not.toHaveBeenCalled();
@@ -1036,7 +1273,10 @@ describe("research task production runtime", () => {
     scenario.configure(repository);
     const runtime = createResearchTaskRuntime(scenario.options(repository));
 
-    await expect(runtime.tick()).resolves.toMatchObject({ leased: 1, ...scenario.expected });
+    await expect(runtime.tick()).resolves.toMatchObject({
+      leased: 1,
+      ...scenario.expected,
+    });
   });
 
   it("fails an exhausted execution and normalizes a non-Error retry reason", async () => {
@@ -1054,7 +1294,10 @@ describe("research task production runtime", () => {
         },
       },
     });
-    await expect(exhausted.tick()).resolves.toMatchObject({ failed: 1, retryScheduled: 0 });
+    await expect(exhausted.tick()).resolves.toMatchObject({
+      failed: 1,
+      retryScheduled: 0,
+    });
     expect(exhaustedRepository.job).toMatchObject({
       error: "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
       stage: "failed",
@@ -1114,7 +1357,10 @@ describe("research task production runtime", () => {
       deletionFence: createDeletionLifecycleFenceGuard(fences),
     });
 
-    await expect(runtime.tick()).resolves.toMatchObject({ acknowledgedStale: 1, leased: 1 });
+    await expect(runtime.tick()).resolves.toMatchObject({
+      acknowledgedStale: 1,
+      leased: 1,
+    });
     expect(repository.job).toMatchObject({
       error: "RESEARCH_TASK_DELETION_FENCE_ACTIVE",
       stage: "canceled",
@@ -1144,9 +1390,13 @@ describe("research task production runtime", () => {
   });
 
   it("rejects a malformed durable claim without a database lease token", async () => {
-    const repository = new MemoryDurableRepository(baseJob(), { omitLeaseToken: true });
+    const repository = new MemoryDurableRepository(baseJob(), {
+      omitLeaseToken: true,
+    });
     const runtime = createResearchTaskRuntime({
-      access: { revalidatePermissionSnapshot: async () => permissionSnapshot() },
+      access: {
+        revalidatePermissionSnapshot: async () => permissionSnapshot(),
+      },
       allowLegacyProfileFallback: true,
       generator: { stream: async function* () {} },
       heartbeatIntervalMs: 5_000,
@@ -1165,7 +1415,10 @@ describe("research task production runtime", () => {
       workerId: "research-worker-1",
     });
 
-    await expect(runtime.tick()).resolves.toMatchObject({ leased: 1, rejected: 1 });
+    await expect(runtime.tick()).resolves.toMatchObject({
+      leased: 1,
+      rejected: 1,
+    });
     expect(repository.job.stage).toBe("queued");
   });
 
@@ -1178,7 +1431,9 @@ describe("research task production runtime", () => {
       workerId: "killed-worker",
     });
     const runtime = createResearchTaskRuntime({
-      access: { revalidatePermissionSnapshot: async () => permissionSnapshot() },
+      access: {
+        revalidatePermissionSnapshot: async () => permissionSnapshot(),
+      },
       allowLegacyProfileFallback: true,
       generator: {
         stream: async function* () {
@@ -1203,7 +1458,10 @@ describe("research task production runtime", () => {
       workerId: "replacement-worker",
     });
 
-    await expect(runtime.tick()).resolves.toMatchObject({ leased: 1, succeeded: 1 });
+    await expect(runtime.tick()).resolves.toMatchObject({
+      leased: 1,
+      succeeded: 1,
+    });
     expect(repository.job).toMatchObject({
       executionAttempts: 2,
       stage: "completed",
@@ -1219,7 +1477,9 @@ describe("research task production runtime", () => {
     });
     const fences = createInMemoryDeletionLifecycleFenceReader();
     const runtime = createResearchTaskRuntime({
-      access: { revalidatePermissionSnapshot: async () => permissionSnapshot() },
+      access: {
+        revalidatePermissionSnapshot: async () => permissionSnapshot(),
+      },
       allowLegacyProfileFallback: true,
       deletionFence: createDeletionLifecycleFenceGuard(fences),
       generator: {
@@ -1261,7 +1521,11 @@ describe("research task production runtime", () => {
     });
     await expect(runtime.tick()).resolves.toMatchObject({ leased: 0 });
     await expect(
-      partials.list({ limit: 10, researchTaskJobId: JOB_ID, tenantId: "tenant-1" }),
+      partials.list({
+        limit: 10,
+        researchTaskJobId: JOB_ID,
+        tenantId: "tenant-1",
+      }),
     ).resolves.toMatchObject({ items: [] });
   });
 });
@@ -1378,7 +1642,9 @@ class MemoryDurableRepository implements ResearchTaskDurableRepository {
   }
 
   async advanceExecution(
-    input: ResearchTaskExecutionFence & { readonly nextStage: ResearchTaskJobStage },
+    input: ResearchTaskExecutionFence & {
+      readonly nextStage: ResearchTaskJobStage;
+    },
   ): Promise<ResearchTaskJob | null> {
     if (!this.matchesFence(input)) {
       return null;
@@ -1492,7 +1758,11 @@ function baseJob(): ResearchTaskJob {
     maxExecutionAttempts: 3,
     metadata: {},
     mode: "deep",
-    permissionSnapshot: { accessChannel: "interactive", id: SNAPSHOT_ID, revision: 1 },
+    permissionSnapshot: {
+      accessChannel: "interactive",
+      id: SNAPSHOT_ID,
+      revision: 1,
+    },
     query: "Compare reliability findings",
     queueJobId: "queue-1",
     rowVersion: 1,
@@ -1566,8 +1836,61 @@ function evidenceBundle() {
     createdAt: "2026-07-14T00:00:00.000Z",
     id: EVIDENCE_ID,
     items: [],
+    missingEvidence: [],
     query: "Compare reliability findings",
     state: "not-enough-evidence" as const,
+  };
+}
+
+function durableRetrievalCheckpoint(
+  runtime: PublishedKnowledgeSpaceRuntimeSnapshot,
+): ResearchRetrievalDurableCheckpoint {
+  return {
+    evidenceBundle: { ...evidenceBundle(), traceId: JOB_ID },
+    searchState: {
+      budget: {
+        elapsedMs: 50,
+        exhaustedReasons: [],
+        modelCalls: 3,
+        openedResources: 1,
+        retrievalSteps: 4,
+        rounds: 1,
+        supplementalSearches: 0,
+      },
+      fingerprint: runtime.projectionSnapshot.fingerprint,
+      knowledgeSpaceId: SPACE_ID,
+      metrics: {
+        candidateTruncated: false,
+        degradationFlags: [],
+        denseCandidates: 1,
+        fallbackDocuments: 0,
+        flattenedLevels: 0,
+        layeredDocuments: 1,
+        layeredSteps: 3,
+        metadataFilteredCandidates: 0,
+        openedRanges: 1,
+        permissionFilteredCandidates: 0,
+        scannedNodes: 3,
+        selectedDocuments: 1,
+        serializedTreeTokens: 100,
+        valueMs: 2,
+        wholeTreeDocuments: 0,
+      },
+      missingAspects: [],
+      navigation: [],
+      openedRangeCount: 1,
+      openedTruncated: false,
+      phase: "complete",
+      publicationId: runtime.projectionSnapshot.publicationId,
+      query: "Compare reliability findings",
+      queue: [],
+      queueOffset: 0,
+      researchSufficiencyReached: true,
+      sequence: 5,
+      tenantId: "tenant-1",
+      traceId: JOB_ID,
+      version: ResearchRetrievalCheckpointVersion,
+    },
   };
 }
 

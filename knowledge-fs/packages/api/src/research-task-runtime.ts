@@ -1,6 +1,7 @@
 import {
   type EvidenceBundle,
   EvidenceBundleSchema,
+  type JobPayload,
   validateKnowledgeSpaceRetrievalProfileForMode,
 } from "@knowledge/core";
 
@@ -19,6 +20,7 @@ import {
 } from "./deletion-lifecycle-fence";
 import type {
   QueryGenerationEvent,
+  QueryGenerationInput,
   QueryGenerationMode,
   QueryGenerator,
 } from "./gateway-sse-responses";
@@ -33,7 +35,24 @@ import {
   type DurableTaskOperationalMetrics,
   recordDurableTaskOperationalMetric,
 } from "./operational-metrics";
-import type { PublishedProjectionReadSnapshotResolver } from "./published-projection-read-snapshot";
+import type {
+  PublishedProjectionReadSnapshot,
+  PublishedProjectionReadSnapshotResolver,
+} from "./published-projection-read-snapshot";
+import {
+  type ResearchModelCallObserver,
+  ResearchModelCallObserverError,
+  type ResearchModelPricing,
+  calculateResearchModelCallCost,
+} from "./research-model-usage";
+import {
+  RESEARCH_RETRIEVAL_DURABLE_CHECKPOINT_METADATA_KEY,
+  type ResearchRetrievalDurableCheckpoint,
+  researchRetrievalDurableCheckpointFromMetadata,
+  toResearchRetrievalDurableCheckpointPayload,
+  validateResearchRetrievalDurableCheckpoint,
+  validateResearchRetrievalSearchCheckpointScope,
+} from "./research-retrieval-checkpoint";
 import type {
   ResearchTaskDurableRepository,
   ResearchTaskExecutionFence,
@@ -44,6 +63,7 @@ import {
   type ResearchTaskJobStage,
   type ResearchTaskPartialResultRepository,
 } from "./research-task-job";
+import { DefaultResearchTaskLlmPricing } from "./research-task-planning";
 import type {
   ResearchTaskProgressEventType,
   ResearchTaskProgressPublishOptions,
@@ -70,12 +90,16 @@ export interface ResearchTaskRuntimeOptions {
   readonly intervalMs: number;
   readonly leaseMs: number;
   readonly manifests: KnowledgeSpaceManifestRepository;
+  readonly llmPricing?: ResearchModelPricing | undefined;
   readonly maxBatchSize: number;
   readonly maxRetryDelayMs?: number | undefined;
   readonly metrics?: DurableTaskOperationalMetrics | undefined;
   readonly now?: (() => number) | undefined;
   readonly onError?:
-    | ((input: { readonly error: unknown; readonly researchTaskJob?: ResearchTaskJob }) => void)
+    | ((input: {
+        readonly error: unknown;
+        readonly researchTaskJob?: ResearchTaskJob;
+      }) => void)
     | undefined;
   readonly partials: ResearchTaskPartialResultRepository;
   readonly projectionSnapshotResolver?: PublishedProjectionReadSnapshotResolver | undefined;
@@ -107,6 +131,16 @@ type ResearchTaskRuntimeOutcome = Exclude<keyof ResearchTaskRuntimeTickResult, "
 const terminalStages = new Set<ResearchTaskJobStage>(["completed", "failed", "canceled"]);
 const modePlanner = createRetrievalPlanner({ maxTopK: 100 });
 const RESEARCH_TASK_ANSWER_DELTA_BATCH_CHARS = 128;
+const RESEARCH_TASK_MAX_COST_ENTRIES = 1_000;
+
+export class ResearchTaskBudgetExceededError extends Error {
+  readonly code = "RESEARCH_TASK_BUDGET_EXHAUSTED";
+
+  constructor(message = "Research task budget exhausted") {
+    super(message);
+    this.name = "ResearchTaskBudgetExceededError";
+  }
+}
 
 export function createResearchTaskRuntime({
   access,
@@ -118,6 +152,7 @@ export function createResearchTaskRuntime({
   intervalMs,
   leaseMs,
   manifests,
+  llmPricing = DefaultResearchTaskLlmPricing,
   maxBatchSize,
   maxRetryDelayMs = 5 * 60_000,
   metrics,
@@ -274,6 +309,7 @@ export function createResearchTaskRuntime({
         generator,
         getCurrent: () => current,
         manifests,
+        llmPricing,
         now,
         partials,
         projectionSnapshotResolver,
@@ -382,6 +418,27 @@ export function createResearchTaskRuntime({
             error: RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID,
           });
           return "failed";
+        }
+        return "deferred";
+      }
+      if (researchTaskBudgetExceededError(error)) {
+        const canceled = await serialize(() =>
+          repository.cancelExecution({
+            ...fence(current, now()),
+            reason: "RESEARCH_TASK_BUDGET_EXHAUSTED",
+          }),
+        );
+        if (canceled) {
+          current = canceled;
+          recordDurableTaskOperationalMetric(metrics, {
+            lifecycle: "terminal",
+            outcome: "canceled",
+            taskKind: "research",
+          });
+          await publishProgress(canceled, "research_task.canceled", {
+            reason: "RESEARCH_TASK_BUDGET_EXHAUSTED",
+          });
+          return "acknowledgedTerminal";
         }
         return "deferred";
       }
@@ -494,6 +551,7 @@ async function runResearchTask({
   generator,
   getCurrent,
   manifests,
+  llmPricing,
   now,
   partials,
   projectionSnapshotResolver,
@@ -514,6 +572,7 @@ async function runResearchTask({
   readonly generator: QueryGenerator;
   readonly getCurrent: () => ResearchTaskJob;
   readonly manifests: KnowledgeSpaceManifestRepository;
+  readonly llmPricing: ResearchModelPricing;
   readonly now: () => number;
   readonly partials: ResearchTaskPartialResultRepository;
   readonly projectionSnapshotResolver?: PublishedProjectionReadSnapshotResolver | undefined;
@@ -553,7 +612,10 @@ async function runResearchTask({
     const transition = await serialize(async () => {
       current = getCurrent();
       const previousStage = current.stage;
-      const updated = await repository.advanceExecution({ ...fence(current, now()), nextStage });
+      const updated = await repository.advanceExecution({
+        ...fence(current, now()),
+        nextStage,
+      });
       return { previousStage, updated };
     });
     const { previousStage, updated } = transition;
@@ -612,7 +674,10 @@ async function runResearchTask({
   }
   await revalidate();
   if (current.stage === "planning") {
-    await advance("retrieving", { questions: [current.query], topK: plan.topK });
+    await advance("retrieving", {
+      questions: [current.query],
+      topK: plan.topK,
+    });
   }
 
   const projectionSnapshot =
@@ -624,6 +689,58 @@ async function runResearchTask({
           tenantId: current.tenantId,
         })
       : undefined);
+
+  const researchDurableCheckpoint =
+    mode === "research"
+      ? loadResearchDurableCheckpoint({ job: current, projectionSnapshot })
+      : undefined;
+  const persistResearchDurableCheckpoint = async (
+    checkpoint: Parameters<NonNullable<QueryGenerationInput["onResearchDurableCheckpoint"]>>[0],
+  ): Promise<void> => {
+    await revalidate();
+    await assertWritable();
+    if (!projectionSnapshot) {
+      throw new Error("Research retrieval durable checkpoint requires a projection snapshot");
+    }
+    const durable = validateResearchRetrievalDurableCheckpoint(checkpoint);
+    const searchState = validateResearchRetrievalSearchCheckpointScope({
+      checkpoint: durable.searchState,
+      fingerprint: projectionSnapshot.fingerprint,
+      knowledgeSpaceId: current.knowledgeSpaceId,
+      publicationId: projectionSnapshot.publicationId,
+      query: current.query,
+      tenantId: current.tenantId,
+      traceId: current.id,
+    });
+    const payload = toResearchRetrievalDurableCheckpointPayload({
+      evidenceBundle: durable.evidenceBundle,
+      searchState,
+    });
+    const updated = await serialize(async () => {
+      current = getCurrent();
+      return repository.update({
+        ...current,
+        metadata: {
+          ...current.metadata,
+          [RESEARCH_RETRIEVAL_DURABLE_CHECKPOINT_METADATA_KEY]: payload,
+        },
+        updatedAt: now(),
+      });
+    });
+    current = updated;
+    updateCurrent(updated);
+  };
+  const researchModelCallObserver = createResearchTaskModelCallObserver({
+    assertWritable,
+    executionAttempt: current.executionAttempts,
+    getCurrent,
+    now,
+    pricing: llmPricing,
+    repository,
+    revalidate,
+    serialize,
+    updateCurrent,
+  });
 
   let answer = "";
   let pendingAnswerDelta = "";
@@ -663,6 +780,13 @@ async function runResearchTask({
       permissionScope: [...authorizationContext.permissionScopes],
       ...(projectionSnapshot ? { projectionSnapshot } : {}),
       query: current.query,
+      researchExecutionKind: "durable",
+      researchExecutionAttempt: current.executionAttempts,
+      researchModelCallObserver,
+      ...(mode === "research"
+        ? { onResearchDurableCheckpoint: persistResearchDurableCheckpoint }
+        : {}),
+      ...(researchDurableCheckpoint ? { researchDurableCheckpoint } : {}),
       requestedMode: durableRequestedMode(current, mode),
       ...(retrievalProfile ? { retrievalProfile } : {}),
       subject: {
@@ -800,6 +924,216 @@ async function runResearchTask({
     },
     job: getCurrent(),
   };
+}
+
+function loadResearchDurableCheckpoint({
+  job,
+  projectionSnapshot,
+}: {
+  readonly job: ResearchTaskJob;
+  readonly projectionSnapshot: PublishedProjectionReadSnapshot | undefined;
+}): ResearchRetrievalDurableCheckpoint | undefined {
+  const checkpoint = researchRetrievalDurableCheckpointFromMetadata(job.metadata);
+  if (!checkpoint) return undefined;
+  if (!projectionSnapshot) {
+    throw new Error("Research retrieval durable checkpoint requires a projection snapshot");
+  }
+  return {
+    evidenceBundle: checkpoint.evidenceBundle,
+    searchState: validateResearchRetrievalSearchCheckpointScope({
+      checkpoint: checkpoint.searchState,
+      fingerprint: projectionSnapshot.fingerprint,
+      knowledgeSpaceId: job.knowledgeSpaceId,
+      publicationId: projectionSnapshot.publicationId,
+      query: job.query,
+      tenantId: job.tenantId,
+      traceId: job.id,
+    }),
+  };
+}
+
+function createResearchTaskModelCallObserver({
+  assertWritable,
+  executionAttempt,
+  getCurrent,
+  now,
+  pricing,
+  repository,
+  revalidate,
+  serialize,
+  updateCurrent,
+}: {
+  readonly assertWritable: () => Promise<void>;
+  readonly executionAttempt: number;
+  readonly getCurrent: () => ResearchTaskJob;
+  readonly now: () => number;
+  readonly pricing: ResearchModelPricing;
+  readonly repository: ResearchTaskDurableRepository;
+  readonly revalidate: () => Promise<void>;
+  readonly serialize: <T>(operation: () => Promise<T>) => Promise<T>;
+  readonly updateCurrent: (current: ResearchTaskJob) => void;
+}): ResearchModelCallObserver {
+  const durableCallId = (callId: string) => `attempt:${executionAttempt}:${callId}`;
+
+  return {
+    before: async (input) => {
+      await revalidate();
+      await assertWritable();
+      const reservation = calculateResearchModelCallCost({
+        fallback: {
+          completionTokens: input.maxOutputTokens,
+          promptTokens: input.estimatedPromptTokens,
+        },
+        metadata: undefined,
+        pricing,
+      });
+      const callId = durableCallId(input.callId);
+      const updated = await serialize(async () => {
+        const job = getCurrent();
+        if (findResearchModelCostEntryIndex(job, callId) !== -1) return job;
+        if (job.cost.entries.length >= RESEARCH_TASK_MAX_COST_ENTRIES) {
+          throw new Error(
+            `Research task cost entries exceed maxCostEntries=${RESEARCH_TASK_MAX_COST_ENTRIES}`,
+          );
+        }
+        const projectedTotal = roundCurrency(job.cost.totalUsd + reservation.costUsd);
+        if (job.budgetUsd !== undefined && projectedTotal > job.budgetUsd) {
+          throw new ResearchTaskBudgetExceededError();
+        }
+        return repository.update({
+          ...job,
+          cost: {
+            ...(job.budgetUsd === undefined ? {} : { budgetUsd: job.budgetUsd }),
+            entries: [
+              ...job.cost.entries,
+              {
+                costUsd: reservation.costUsd,
+                provider: boundedCostLabel(input.provider, "provider"),
+                recordedAt: now(),
+                step: boundedCostLabel(input.step, "step"),
+                usage: modelCallUsagePayload({
+                  callId,
+                  estimated: true,
+                  reserved: true,
+                  status: "reserved",
+                  usage: reservation.usage,
+                }),
+              },
+            ],
+            totalUsd: projectedTotal,
+          },
+          updatedAt: now(),
+        });
+      });
+      updateCurrent(updated);
+    },
+    after: async (input) => {
+      await revalidate();
+      await assertWritable();
+      const callId = durableCallId(input.callId);
+      const actual = calculateResearchModelCallCost({
+        fallback: {
+          completionTokens: input.maxOutputTokens,
+          promptTokens: input.estimatedPromptTokens,
+        },
+        metadata: input.metadata,
+        pricing,
+      });
+      const updated = await serialize(async () => {
+        const job = getCurrent();
+        const index = findResearchModelCostEntryIndex(job, callId);
+        if (index === -1) {
+          throw new Error(`Research task model call reservation ${callId} was not found`);
+        }
+        const entries = [...job.cost.entries];
+        const reserved = entries[index];
+        if (!reserved) {
+          throw new Error(`Research task model call reservation ${callId} was not found`);
+        }
+        entries[index] = {
+          costUsd: actual.costUsd,
+          provider: boundedCostLabel(input.provider, "provider"),
+          recordedAt: reserved.recordedAt,
+          step: boundedCostLabel(input.step, "step"),
+          usage: modelCallUsagePayload({
+            callId,
+            estimated: actual.estimated,
+            reserved: false,
+            status: input.status,
+            usage: actual.usage,
+          }),
+        };
+        const totalUsd = roundCurrency(entries.reduce((total, entry) => total + entry.costUsd, 0));
+        const budgetExceeded = job.budgetUsd !== undefined && totalUsd > job.budgetUsd;
+        return repository.update({
+          ...job,
+          cost: {
+            ...(job.budgetUsd === undefined ? {} : { budgetUsd: job.budgetUsd }),
+            ...(budgetExceeded ? { budgetExceeded: true } : {}),
+            entries,
+            totalUsd,
+          },
+          updatedAt: now(),
+        });
+      });
+      updateCurrent(updated);
+      if (updated.cost.budgetExceeded) {
+        throw new ResearchTaskBudgetExceededError();
+      }
+    },
+  };
+}
+
+function findResearchModelCostEntryIndex(job: ResearchTaskJob, callId: string): number {
+  return job.cost.entries.findIndex((entry) => entry.usage.researchModelCallId === callId);
+}
+
+function modelCallUsagePayload({
+  callId,
+  estimated,
+  reserved,
+  status,
+  usage,
+}: {
+  readonly callId: string;
+  readonly estimated: boolean;
+  readonly reserved: boolean;
+  readonly status: "failed" | "reserved" | "succeeded";
+  readonly usage: {
+    readonly completionTokens: number;
+    readonly promptTokens: number;
+    readonly totalTokens: number;
+  };
+}): Record<string, JobPayload> {
+  return {
+    completionTokens: usage.completionTokens,
+    estimated,
+    promptTokens: usage.promptTokens,
+    researchModelCallId: callId,
+    reserved,
+    status,
+    totalTokens: usage.totalTokens,
+  };
+}
+
+function boundedCostLabel(value: string, label: string): string {
+  const normalized = value.trim();
+  if (!normalized) throw new Error(`Research task model call ${label} is required`);
+  return normalized.slice(0, 200);
+}
+
+function roundCurrency(value: number): number {
+  return Math.round(value * 1_000_000) / 1_000_000;
+}
+
+function researchTaskBudgetExceededError(error: unknown): boolean {
+  let candidate: unknown = error;
+  for (let depth = 0; depth < 4; depth += 1) {
+    if (candidate instanceof ResearchTaskBudgetExceededError) return true;
+    if (!(candidate instanceof ResearchModelCallObserverError)) return false;
+    candidate = candidate.cause;
+  }
+  return false;
 }
 
 function nonNegativeInteger(value: unknown): number | undefined {

@@ -109,6 +109,7 @@ describe("database schema catalog", () => {
       "dify_integration_states",
       "dify_integration_freezes",
       "upload_sessions",
+      "page_index_findability_evaluations",
       "bulk_operations",
     ]);
   });

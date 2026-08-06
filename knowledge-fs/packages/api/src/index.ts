@@ -280,6 +280,14 @@ export * from "./parse-artifact-repository";
 export * from "./page-index-scoring";
 export * from "./page-index-semantic-tree-search";
 export * from "./page-index-build-repository";
+export * from "./page-index-document-selection";
+export * from "./page-index-findability-evaluation";
+export * from "./page-index-findability-publication";
+export * from "./page-index-findability-repository";
+export * from "./page-index-summary-repair-runtime";
+export * from "./page-index-layered-tree-search";
+export * from "./page-index-node-queue";
+export * from "./page-index-node-values";
 export * from "./page-index-upgrade-backfill";
 export * from "./page-index-upgrade-backfill-runtime";
 export * from "./page-index-upgrade-backfill-handlers";
@@ -290,6 +298,7 @@ export * from "./projection-publication-repository";
 export * from "./projection-publication-workflow";
 export * from "./published-page-index-repository";
 export * from "./published-page-index-retrieval";
+export * from "./page-index-whole-tree-selection";
 export * from "./published-projection-read-snapshot";
 export * from "./published-knowledge-space-runtime-snapshot";
 export * from "./query-handlers";
@@ -314,6 +323,9 @@ export * from "./research-task-progress-database-repository";
 export * from "./research-task-planning";
 export * from "./research-task-request-schemas";
 export * from "./research-task-response-schemas";
+export * from "./research-retrieval-policy";
+export * from "./research-model-usage";
+export * from "./research-retrieval-checkpoint";
 export * from "./retrieval-test";
 export * from "./retrieval-test-handlers";
 export * from "./retrieval-test-routes";
@@ -1055,7 +1067,9 @@ export function createKnowledgeGateway({
         now,
       }),
     });
-  const spaceAuthorization = createKnowledgeSpaceAuthorizationGuard({ access: accessService });
+  const spaceAuthorization = createKnowledgeSpaceAuthorizationGuard({
+    access: accessService,
+  });
   if (knowledgeSpaceProfileMigrations && knowledgeSpaceProfileMigrationRepository) {
     throw new Error(
       "Configure either knowledgeSpaceProfileMigrations or knowledgeSpaceProfileMigrationRepository, not both",
@@ -1142,7 +1156,9 @@ export function createKnowledgeGateway({
     createResearchTaskJobStateMachine({
       generateId: generateResearchTaskJobId,
       jobs: adapter.jobs,
-      progress: createResearchTaskProgressPublisher({ repository: researchTaskProgressEvents }),
+      progress: createResearchTaskProgressPublisher({
+        repository: researchTaskProgressEvents,
+      }),
       repository: createInMemoryResearchTaskJobRepository({
         ...(capabilityGrantProvenance ? { capabilityGrants: capabilityGrantProvenance } : {}),
         maxJobs: maxResearchTaskJobs,
@@ -1176,7 +1192,9 @@ export function createKnowledgeGateway({
     documentMutationLeaseNow: now,
     graph: graphRepository,
     ...(effectiveDocumentMultimodalManifestEnhancer
-      ? { multimodalManifestEnhancer: effectiveDocumentMultimodalManifestEnhancer }
+      ? {
+          multimodalManifestEnhancer: effectiveDocumentMultimodalManifestEnhancer,
+        }
       : {}),
     nodes,
     ...(deletionObjectWriteAdmission ? { objectWriteAdmission: deletionObjectWriteAdmission } : {}),
@@ -1522,7 +1540,10 @@ export function createKnowledgeGateway({
   });
 
   if (difyIntegrationFreezes && difyCapabilityV2Auth) {
-    registerDifyIntegrationFreezeHandlers({ app, repository: difyIntegrationFreezes });
+    registerDifyIntegrationFreezeHandlers({
+      app,
+      repository: difyIntegrationFreezes,
+    });
   }
   if (difyIntegrationStates && difyIntegrationFreezes && difyCapabilityV2Auth) {
     registerDifyIntegrationActivationHandlers({
@@ -1539,7 +1560,10 @@ export function createKnowledgeGateway({
     });
   }
   if (capabilityGrantProvenance && difyCapabilityV2Auth) {
-    registerCapabilityRevocationHandlers({ app, grants: capabilityGrantProvenance });
+    registerCapabilityRevocationHandlers({
+      app,
+      grants: capabilityGrantProvenance,
+    });
   }
   if (
     capabilityGrantProvenance &&
@@ -1574,7 +1598,9 @@ export function createKnowledgeGateway({
     ...(knowledgeSpaceProfiles ? { profiles: knowledgeSpaceProfiles } : {}),
     ...(knowledgeSpaceProvisioning ? { provisioning: knowledgeSpaceProvisioning } : {}),
     ...(knowledgeSpaceUnpublishedProfileActivations
-      ? { unpublishedProfileActivations: knowledgeSpaceUnpublishedProfileActivations }
+      ? {
+          unpublishedProfileActivations: knowledgeSpaceUnpublishedProfileActivations,
+        }
       : {}),
     ...(profileMigrationService ? { profileMigrations: profileMigrationService } : {}),
     ...(knowledgeSpaceProfilePublications
@@ -1592,7 +1618,12 @@ export function createKnowledgeGateway({
     spaces,
     stagedCommits: stagedCommitRepository,
   });
-  registerKnowledgeSpaceProductSummaryHandlers({ app, assets, manifests, spaces });
+  registerKnowledgeSpaceProductSummaryHandlers({
+    app,
+    assets,
+    manifests,
+    spaces,
+  });
 
   registerKnowledgeSpaceOverviewHandlers({
     access: accessService,
@@ -1690,7 +1721,9 @@ export function createKnowledgeGateway({
     artifacts,
     assets,
     ...(effectiveDocumentMultimodalManifestEnhancer
-      ? { multimodalManifestEnhancer: effectiveDocumentMultimodalManifestEnhancer }
+      ? {
+          multimodalManifestEnhancer: effectiveDocumentMultimodalManifestEnhancer,
+        }
       : {}),
     multimodalManifestBuilder,
     multimodalManifests: multimodalManifestRepository,
