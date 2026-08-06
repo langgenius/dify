@@ -1204,7 +1204,6 @@ export function AppCard({
           <article
             role="button"
             tabIndex={0}
-            aria-disabled="true"
             aria-labelledby={appNameId}
             aria-describedby={app.description ? appDescriptionId : undefined}
             data-step-by-step-tour-target={stepByStepTourCardTarget}

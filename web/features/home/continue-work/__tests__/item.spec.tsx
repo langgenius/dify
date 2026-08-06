@@ -138,14 +138,14 @@ describe('ContinueWorkItem', () => {
     )
   })
 
-  it('should render preview-only apps as disabled buttons and warn on click', async () => {
+  it('should render preview-only apps as action buttons that explain the access restriction', async () => {
     const user = userEvent.setup()
     renderItem(createApp({ permission_keys: [AppACLPermission.Preview] }))
 
     const card = screen.getByRole('button', { name: /Continue App.*app\.types\.chatbot/i })
 
     expect(card).toHaveAttribute('type', 'button')
-    expect(card).toHaveAttribute('aria-disabled', 'true')
+    expect(card).not.toHaveAttribute('aria-disabled')
     expect(card).toHaveAccessibleDescription(/Alice.*5 minutes ago/)
     expect(screen.queryByRole('link', { name: /Continue App/ })).not.toBeInTheDocument()
 
