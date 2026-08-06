@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
-from collections.abc import Generator, Mapping
+from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from types import SimpleNamespace
@@ -222,10 +222,19 @@ def test_to_db_model_uses_context_and_deterministic_json(
     monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
 ) -> None:
     repo = _repository(monkeypatch, sqlite_session_factory)
-    db_model = repo._to_db_model(_execution(inputs={"b": 1, "a": 2}))
+    db_model = repo._to_db_model(
+        _execution(
+            inputs={"b": 1, "a": 2},
+            process_data={"agent_workspace_binding_id": "participant-1"},
+        )
+    )
     assert json.loads(db_model.inputs or "{}") == {"a": 2, "b": 1}
     assert db_model.tenant_id == "tenant-1"
     assert db_model.app_id == "app-1"
+    assert db_model.created_by == "user-1"
+    assert db_model.created_by_role == CreatorUserRole.ACCOUNT
+    assert json.loads(db_model.execution_metadata or "{}") == {"total_tokens": 1}
+    assert db_model.agent_workspace_binding_id is None
     assert _repository(monkeypatch, sqlite_session_factory, app_id=None)._to_db_model(_execution()).app_id is None
     repo._triggered_from = None
     with pytest.raises(ValueError, match="triggered_from is required"):
@@ -328,22 +337,38 @@ def test_save_execution_data_updates_existing_and_creates_missing(
 
 
 @pytest.mark.parametrize(
-    ("field_name", "offload_type"),
+    ("execution_factory", "offload_type", "read_persisted", "read_truncated"),
     [
-        ("inputs", ExecutionOffLoadType.INPUTS),
-        ("outputs", ExecutionOffLoadType.OUTPUTS),
-        ("process_data", ExecutionOffLoadType.PROCESS_DATA),
+        (
+            lambda: _execution(inputs={"large": "value"}),
+            ExecutionOffLoadType.INPUTS,
+            lambda model: model.inputs_dict,
+            lambda execution: execution.get_truncated_inputs(),
+        ),
+        (
+            lambda: _execution(outputs={"large": "value"}),
+            ExecutionOffLoadType.OUTPUTS,
+            lambda model: model.outputs_dict,
+            lambda execution: execution.get_truncated_outputs(),
+        ),
+        (
+            lambda: _execution(process_data={"large": "value"}),
+            ExecutionOffLoadType.PROCESS_DATA,
+            lambda model: model.process_data_dict,
+            lambda execution: execution.get_truncated_process_data(),
+        ),
     ],
 )
 def test_save_execution_data_persists_each_truncation_offload(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session_factory: sessionmaker[Session],
-    field_name: str,
+    execution_factory: Callable[[], WorkflowNodeExecution],
     offload_type: ExecutionOffLoadType,
+    read_persisted: Callable[[WorkflowNodeExecutionModel], Mapping[str, Any] | None],
+    read_truncated: Callable[[WorkflowNodeExecution], Mapping[str, Any] | None],
 ) -> None:
     repo = _repository(monkeypatch, sqlite_session_factory)
-    execution = _execution()
-    setattr(execution, field_name, {"large": "value"})
+    execution = execution_factory()
     repo.save(execution)
     offload = WorkflowNodeExecutionOffload(
         tenant_id="tenant-1",
@@ -358,12 +383,12 @@ def test_save_execution_data_persists_each_truncation_offload(
     with sqlite_session_factory() as session:
         persisted = session.get(WorkflowNodeExecutionModel, execution.id)
         assert persisted is not None
-        assert getattr(persisted, f"{field_name}_dict") == {"large": "truncated"}
+        assert read_persisted(persisted) == {"large": "truncated"}
         offloads = session.scalars(
             select(WorkflowNodeExecutionOffload).where(WorkflowNodeExecutionOffload.node_execution_id == execution.id)
         ).all()
         assert [item.type_ for item in offloads] == [offload_type]
-    assert getattr(execution, f"get_truncated_{field_name}")() == {"large": "truncated"}
+    assert read_truncated(execution) == {"large": "truncated"}
 
 
 def test_get_by_workflow_run_filters_tenant_app_trigger_and_paused_and_orders(
@@ -456,7 +481,8 @@ def test_truncate_and_upload_keeps_file_boundary_mocked(
     uploaded = _upload_file(key="file-key")
     uploaded.id = "file-1"
     repo = _repository(monkeypatch, sqlite_session_factory)
-    monkeypatch.setattr(repo._file_service, "upload_file", Mock(return_value=uploaded))
+    upload_file = Mock(return_value=uploaded)
+    monkeypatch.setattr(repo._file_service, "upload_file", upload_file)
 
     class Truncator:
         def truncate_variable_mapping(self, _value: Any) -> tuple[dict[str, bool], bool]:
@@ -466,7 +492,18 @@ def test_truncate_and_upload_keeps_file_boundary_mocked(
     result = repo._truncate_and_upload({"value": 1}, "execution-1", ExecutionOffLoadType.INPUTS)
     assert result is not None
     assert result.truncated_value == {"truncated": True}
+    upload_file.assert_called_once_with(
+        filename="node_execution_execution-1_inputs.json",
+        content=b'{"value": 1}',
+        mimetype="application/json",
+        user=repo._user,
+        tenant_id="tenant-1",
+    )
     assert result.offload.file_id == "file-1"
+    assert result.offload.type_ == ExecutionOffLoadType.INPUTS
+    assert result.offload.tenant_id == "tenant-1"
+    assert result.offload.app_id == "app-1"
+    assert result.offload.node_execution_id == "execution-1"
 
 
 def test_truncate_and_upload_returns_none_for_missing_or_small_values(
