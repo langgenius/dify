@@ -7,8 +7,8 @@ import { RiArrowDownSLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNodesSyncDraft } from '@/app/components/workflow/hooks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import { useStore } from '@/app/components/workflow/store'
 import { useDocLink } from '@/context/i18n'
 import Link from '@/next/link'
@@ -104,7 +104,7 @@ const Publisher = () => {
           nativeButton
           render={
             <Button className="px-2" variant="primary" disabled={!canPipelineRelease}>
-              <span className="pl-1">{t(($) => $['common.publish'], { ns: 'workflow' })}</span>
+              <span>{t(($) => $['common.publish'], { ns: 'workflow' })}</span>
               <RiArrowDownSLine className="size-4" />
             </Button>
           }

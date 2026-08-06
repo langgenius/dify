@@ -155,4 +155,17 @@ describe('SourceAppPicker', () => {
       screen.queryByRole('button', { name: /createModal\.loadMoreApps/ }),
     ).not.toBeInTheDocument()
   })
+
+  it('should restore the selected app by business identity', async () => {
+    const user = userEvent.setup()
+
+    renderSourceAppPicker(false)
+
+    await user.click(screen.getByRole('combobox', { name: 'deployments.versions.sourceAppOption' }))
+
+    expect(screen.getByRole('option', { name: /Workflow App/ })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+  })
 })

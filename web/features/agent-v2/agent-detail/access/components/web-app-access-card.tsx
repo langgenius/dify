@@ -232,7 +232,7 @@ export function WebAppAccessCard({
           {t(($) => $['agentDetail.access.webApp.actions.launch'])}
         </a>
       ) : (
-        <Button variant="secondary" size="medium" className="gap-1.5 px-3" disabled>
+        <Button variant="secondary" size="medium" className="px-3" disabled>
           <span aria-hidden className="i-ri-external-link-line size-4" />
           {t(($) => $['agentDetail.access.webApp.actions.launch'])}
         </Button>
@@ -240,7 +240,7 @@ export function WebAppAccessCard({
       <Button
         variant="secondary"
         size="medium"
-        className="gap-1.5 px-3"
+        className="px-3"
         disabled={!embeddedConfig}
         onClick={() => setShowEmbeddedModal(true)}
       >
@@ -250,7 +250,7 @@ export function WebAppAccessCard({
       <Button
         variant="secondary"
         size="medium"
-        className="gap-1.5 px-3"
+        className="px-3"
         disabled={!customizeConfig}
         onClick={() => setShowCustomizeModal(true)}
       >
@@ -260,7 +260,7 @@ export function WebAppAccessCard({
       <Button
         variant="secondary"
         size="medium"
-        className="gap-1.5 px-3"
+        className="px-3"
         disabled={!settingsAppInfo || updateSiteMutation.isPending}
         onClick={() => setShowSettingsModal(true)}
       >

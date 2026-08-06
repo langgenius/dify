@@ -218,7 +218,7 @@ class _DatasetQueryResponseSource:
         return self.query.get_queries(session=self.session)
 
     def __getattr__(self, name: str) -> Any:
-        return getattr(self.query, name)  # noqa: no-new-getattr response adapter delegates model fields
+        return getattr(self.query, name)  # guard-ignore: no-new-getattr -- delegates model fields
 
 
 class DatasetQueryListResponse(ResponseModel):
@@ -257,7 +257,7 @@ class _RelatedAppResponseSource:
         return self.app.mode_compatible_with_agent_with_session(session=self.session)
 
     def __getattr__(self, name: str) -> Any:
-        return getattr(self.app, name)  # noqa: no-new-getattr response adapter delegates model fields
+        return getattr(self.app, name)  # guard-ignore: no-new-getattr -- delegates model fields
 
 
 class RelatedAppListResponse(ResponseModel):
@@ -360,7 +360,6 @@ def _get_retrieval_methods_by_vector_type(vector_type: str | None, is_mock: bool
     # Define vector database types that only support semantic search
     semantic_only_types = {
         VectorType.RELYT,
-        VectorType.TIDB_VECTOR,
         VectorType.CHROMA,
         VectorType.PGVECTO_RS,
         VectorType.VIKINGDB,
@@ -407,6 +406,9 @@ def _get_retrieval_methods_by_vector_type(vector_type: str | None, is_mock: bool
 
     if vector_type == VectorType.MILVUS:
         return semantic_methods if is_mock else full_methods
+
+    if vector_type == VectorType.TIDB_VECTOR:
+        return full_methods if dify_config.TIDB_VECTOR_ENABLE_FULLTEXT_SEARCH else semantic_methods
 
     if vector_type in semantic_only_types:
         return semantic_methods

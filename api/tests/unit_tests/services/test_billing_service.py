@@ -462,6 +462,37 @@ class TestBillingServiceSubscriptionInfo:
             params={"tenant_id": tenant_id},
         )
 
+    def test_get_vector_space_preserves_unknown_usage(self, mock_send_request):
+        tenant_id = "tenant-123"
+        expected_response = {"size": 0.0, "limit": 50, "usage_unknown": True}
+        mock_send_request.return_value = expected_response
+
+        result = BillingService.get_vector_space(tenant_id)
+
+        assert result == expected_response
+
+    def test_get_info_preserves_unknown_vector_space_usage(self, mock_send_request):
+        tenant_id = "tenant-123"
+        expected_response = {
+            "enabled": True,
+            "subscription": {"plan": "sandbox", "interval": "", "education": False},
+            "members": {"size": 1, "limit": 1},
+            "apps": {"size": 1, "limit": 10},
+            "vector_space": {"size": 0.0, "limit": 50, "usage_unknown": True},
+            "knowledge_rate_limit": {"limit": 10},
+            "documents_upload_quota": {"size": 1, "limit": 50},
+            "annotation_quota_limit": {"size": 0, "limit": 10},
+            "docs_processing": "standard",
+            "can_replace_logo": False,
+            "model_load_balancing_enabled": False,
+            "knowledge_pipeline_publish_enabled": False,
+        }
+        mock_send_request.return_value = expected_response
+
+        result = BillingService.get_info(tenant_id)
+
+        assert result["vector_space"]["usage_unknown"] is True
+
     def test_get_vector_space_bypasses_cache(self, mock_send_request):
         tenant_id = "tenant-123"
         mock_send_request.return_value = {"size": 4096, "limit": 20480}
@@ -1989,6 +2020,8 @@ class TestBillingServiceSubscriptionInfoDataType:
         if "vector_space" in result:
             assert isinstance(result["vector_space"]["size"], float)
             assert isinstance(result["vector_space"]["limit"], int)
+            if "usage_unknown" in result["vector_space"]:
+                assert isinstance(result["vector_space"]["usage_unknown"], bool)
 
         assert isinstance(result["knowledge_rate_limit"]["limit"], int)
 
@@ -2055,3 +2088,17 @@ class TestBillingServiceSubscriptionInfoDataType:
 
         with pytest.raises(ValidationError):
             BillingService.get_info("tenant-type-test")
+
+
+def test_pooled_billing_client_carries_bounded_timeout() -> None:
+    """Regression for #39874: the pooled billing client must carry a
+    read/connect timeout so a stalled Stripe / cloud-billing proxy
+    fails fast instead of pinning a worker. Same shape as the
+    JinaReader / WaterCrawl hardening that landed in PR #39860 and #39824.
+    """
+    import services.billing_service as billing_service_module
+
+    client = billing_service_module._http_client
+    assert client.timeout is not None
+    assert client.timeout.read == 30.0
+    assert client.timeout.connect == 5.0

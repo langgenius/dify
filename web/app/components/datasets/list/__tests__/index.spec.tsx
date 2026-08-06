@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider } from 'jotai'
@@ -6,12 +6,14 @@ import { hydrateRoot } from 'react-dom/client'
 import { renderToString } from 'react-dom/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useNewKnowledgeGuideDismissedValue } from '@/features/new-rag/storage'
-import { render } from '@/test/console/render'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
-import { createNuqsTestWrapper, renderWithNuqs } from '@/test/nuqs-testing'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import List from '../index'
 
 const knowledgeFsInfiniteOptionsMock = vi.hoisted(() => vi.fn(() => ({})))
+const systemFeaturesQueryKey = ['console', 'systemFeatures', 'get'] as const
 const useInfiniteQueryMock = vi.hoisted(() =>
   vi.fn(() => ({
     data: { pageParams: [null], pages: [{ items: [] }] },
@@ -33,15 +35,31 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   }
 })
 
-vi.mock('@/service/client', () => ({
-  consoleQuery: {
-    knowledgeFs: {
-      listKnowledgeSpaces: {
-        infiniteOptions: knowledgeFsInfiniteOptionsMock,
+vi.mock('@/service/client', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@/service/client')>()
+  return {
+    ...original,
+    consoleQuery: {
+      ...original.consoleQuery,
+      systemFeatures: {
+        get: {
+          queryKey: () => systemFeaturesQueryKey,
+          queryOptions: (options: Record<string, unknown> = {}) => ({
+            queryKey: systemFeaturesQueryKey,
+            queryFn: () => new Promise(() => {}),
+            ...options,
+          }),
+        },
+      },
+      knowledgeFs: {
+        ...original.consoleQuery.knowledgeFs,
+        listKnowledgeSpaces: {
+          infiniteOptions: knowledgeFsInfiniteOptionsMock,
+        },
       },
     },
-  },
-}))
+  }
+})
 
 function NewKnowledgeGuideDismissedProbe() {
   const dismissed = useNewKnowledgeGuideDismissedValue()
@@ -82,20 +100,31 @@ vi.mock('@/context/permission-state', async () => {
 
   return createPermissionStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/system-features-state', async () => {
-  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createSystemFeaturesStateModuleMock(() => mockConsoleState)
-})
+const renderList = (
+  ui: ReactElement,
+  options: Parameters<typeof createNuqsTestWrapper>[0] = {},
+) => {
+  const { wrapper: QueryWrapper } = createConsoleQueryWrapper({
+    systemFeatures: {
+      knowledge_fs_enabled: mockConsoleState.knowledgeFsEnabled,
+    },
+  })
+  const { wrapper: NuqsWrapper, onUrlUpdate } = createNuqsTestWrapper(options)
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryWrapper>
+      <NuqsWrapper>{children}</NuqsWrapper>
+    </QueryWrapper>
+  )
 
-// Mock external api panel context
-const mockSetShowExternalApiPanel = vi.fn()
-vi.mock('@/context/external-api-panel-context', () => ({
-  useExternalApiPanel: () => ({
-    showExternalApiPanel: false,
-    setShowExternalApiPanel: mockSetShowExternalApiPanel,
-  }),
-}))
+  return {
+    ...renderWithConsoleState(ui, { wrapper }),
+    onUrlUpdate,
+  }
+}
+
+const render = (ui: ReactElement) => renderList(ui)
+const renderWithNuqs = renderList
 
 // Mock useDocumentTitle hook
 vi.mock('@/hooks/use-document-title', () => ({
@@ -298,6 +327,24 @@ describe('List', () => {
       expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('view')).toBe('new')
     })
 
+    it('should reset each view panel when its owning list unmounts', async () => {
+      const user = userEvent.setup()
+      mockConsoleState.knowledgeFsEnabled = true
+      renderWithNuqs(<List />)
+
+      await user.click(screen.getByRole('button', { name: 'dataset.externalAPIPanelTitle' }))
+      expect(screen.getByTestId('external-api-panel')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.new' }))
+      expect(screen.queryByTestId('external-api-panel')).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'dataset.externalAPIPanelTitle' }))
+      expect(screen.getByTestId('external-api-panel')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.legacy' }))
+      expect(screen.queryByTestId('external-api-panel')).not.toBeInTheDocument()
+    })
+
     it('should restore the New Knowledge view from the URL', () => {
       mockConsoleState.knowledgeFsEnabled = true
 
@@ -346,15 +393,22 @@ describe('List', () => {
       const store = createStore()
       seedRegisteredConsoleStateFixture(store)
       const { wrapper: NuqsWrapper } = createNuqsTestWrapper()
+      const { wrapper: QueryWrapper } = createConsoleQueryWrapper({
+        systemFeatures: {
+          knowledge_fs_enabled: mockConsoleState.knowledgeFsEnabled,
+        },
+      })
       const app = (
-        <Provider store={store}>
-          <NuqsWrapper>
-            <>
-              <List />
-              <NewKnowledgeGuideDismissedProbe />
-            </>
-          </NuqsWrapper>
-        </Provider>
+        <QueryWrapper>
+          <Provider store={store}>
+            <NuqsWrapper>
+              <>
+                <List />
+                <NewKnowledgeGuideDismissedProbe />
+              </>
+            </NuqsWrapper>
+          </Provider>
+        </QueryWrapper>
       )
       const container = document.createElement('div')
       document.body.append(container)
@@ -390,6 +444,7 @@ describe('List', () => {
       render(<List />)
 
       expect(screen.queryByText(/externalAPIPanelTitle/)).not.toBeInTheDocument()
+      expect(screen.queryByTestId('external-api-panel')).not.toBeInTheDocument()
     })
   })
 
@@ -438,7 +493,7 @@ describe('List', () => {
       const button = screen.getByText(/externalAPIPanelTitle/)
       fireEvent.click(button)
 
-      expect(mockSetShowExternalApiPanel).toHaveBeenCalledWith(true)
+      expect(screen.getByTestId('external-api-panel')).toBeInTheDocument()
     })
 
     it('should update search input value', () => {
@@ -609,67 +664,13 @@ describe('List', () => {
       }
     })
 
-    it('should show ExternalAPIPanel when showExternalApiPanel is true', async () => {
-      // Re-mock to show external API panel
-      vi.doMock('@/context/external-api-panel-context', () => ({
-        useExternalApiPanel: () => ({
-          showExternalApiPanel: true,
-          setShowExternalApiPanel: mockSetShowExternalApiPanel,
-        }),
-      }))
+    it('should close ExternalAPIPanel when onClose is called', () => {
+      render(<List />)
 
-      vi.resetModules()
-      const { default: ListComponent } = await import('../index')
-
-      render(<ListComponent />)
-
-      expect(screen.getByTestId('external-api-panel')).toBeInTheDocument()
-      expect(screen.getByTestId('external-api-panel')).toHaveAttribute(
-        'data-can-manage-external-knowledge-api',
-        'true',
-      )
-    })
-
-    it('should not show ExternalAPIPanel without dataset.external.connect even when panel state is open', async () => {
-      mockConsoleState = {
-        isCurrentWorkspaceEditor: true,
-        isCurrentWorkspaceManager: true,
-        isCurrentWorkspaceOwner: true,
-        knowledgeFsEnabled: false,
-        workspacePermissionKeys: ['dataset.create_and_management'],
-      }
-      vi.doMock('@/context/external-api-panel-context', () => ({
-        useExternalApiPanel: () => ({
-          showExternalApiPanel: true,
-          setShowExternalApiPanel: mockSetShowExternalApiPanel,
-        }),
-      }))
-
-      vi.resetModules()
-      const { default: ListComponent } = await import('../index')
-
-      render(<ListComponent />)
+      fireEvent.click(screen.getByText(/externalAPIPanelTitle/))
+      fireEvent.click(screen.getByText('Close Panel'))
 
       expect(screen.queryByTestId('external-api-panel')).not.toBeInTheDocument()
-    })
-
-    it('should close ExternalAPIPanel when onClose is called', async () => {
-      vi.doMock('@/context/external-api-panel-context', () => ({
-        useExternalApiPanel: () => ({
-          showExternalApiPanel: true,
-          setShowExternalApiPanel: mockSetShowExternalApiPanel,
-        }),
-      }))
-
-      vi.resetModules()
-      const { default: ListComponent } = await import('../index')
-
-      render(<ListComponent />)
-
-      const closeButton = screen.getByText('Close Panel')
-      fireEvent.click(closeButton)
-
-      expect(mockSetShowExternalApiPanel).toHaveBeenCalledWith(false)
     })
 
     it('should show TagManagementModal when tag management is opened', () => {

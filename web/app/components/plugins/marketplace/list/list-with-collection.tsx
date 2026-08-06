@@ -157,7 +157,7 @@ const ListWithCollection = ({
                     >
                       <div className={cn(GRID_CLASS, cardContainerClassName)}>
                         {pageItems.map((plugin) => (
-                          <div key={plugin.plugin_id} className="min-w-0 [&>*]:w-full">
+                          <div key={plugin.plugin_id} className="min-w-0 *:w-full">
                             <PluginCard
                               plugin={plugin}
                               showInstallButton={showInstallButton}

@@ -1,8 +1,7 @@
-import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentConfigApiContext } from '../../config-context'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { toast } from '@langgenius/dify-ui/toast'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue } from 'jotai'
@@ -11,6 +10,8 @@ import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/c
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
+import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { AgentConfigApiContextProvider } from '../../config-context'
 import { AgentOrchestrateReadOnlyContext } from '../../read-only-context'
 import { AgentFiles } from '../index'
@@ -44,6 +45,13 @@ const mocks = vi.hoisted(() => ({
   downloadQueryOptions: vi.fn((_options: ConfigFileQueryOptionsInput) => ({})),
   downloadBlob: vi.fn(),
   downloadUrl: vi.fn(),
+  fileUploadConfig: {
+    file_size_limit: 15,
+    image_file_size_limit: 10,
+    audio_file_size_limit: 50,
+    video_file_size_limit: 100,
+    workflow_file_upload_limit: 10,
+  },
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -58,8 +66,22 @@ vi.mock('@/utils/download', () => ({
   downloadUrl: mocks.downloadUrl,
 }))
 
+vi.mock('@/service/use-common', () => ({
+  useFileUploadConfig: () => ({ data: mocks.fileUploadConfig }),
+}))
+
 vi.mock('@/service/client', () => ({
   consoleQuery: {
+    systemFeatures: {
+      get: {
+        queryKey: () => ['console', 'systemFeatures', 'get'],
+        queryOptions: (options?: Record<string, unknown>) => ({
+          queryKey: ['console', 'systemFeatures', 'get'],
+          queryFn: () => new Promise(() => {}),
+          ...options,
+        }),
+      },
+    },
     agent: {
       byAgentId: {
         config: {
@@ -158,12 +180,10 @@ function createInitialDraft(
 
 function renderAgentFiles({
   initialDraft = createInitialDraft(),
-  initialOriginalConfig,
   apiContext = { agentId: 'agent-1', draftType: 'draft' } satisfies AgentConfigApiContext,
   readOnly = false,
 }: {
   initialDraft?: AgentSoulConfigFormState
-  initialOriginalConfig?: AgentSoulConfig
   apiContext?: AgentConfigApiContext
   readOnly?: boolean
 } = {}) {
@@ -173,27 +193,35 @@ function renderAgentFiles({
       mutations: { retry: false },
     },
   })
+  queryClient.setQueryData(
+    ['console', 'systemFeatures', 'get'],
+    createSystemFeaturesFixture({ deployment_edition: 'COMMUNITY' }),
+  )
 
   return render(
-    <QueryClientProvider client={queryClient}>
+    <QueryClientTestProvider queryClient={queryClient}>
       <AgentConfigApiContextProvider value={apiContext}>
-        <AgentComposerProvider
-          initialDraft={initialDraft}
-          initialOriginalConfig={initialOriginalConfig}
-        >
+        <AgentComposerProvider initialDraft={initialDraft}>
           <AgentOrchestrateReadOnlyContext value={readOnly}>
             <AgentFiles />
             <ConfigSnapshotProbe />
           </AgentOrchestrateReadOnlyContext>
         </AgentComposerProvider>
       </AgentConfigApiContextProvider>
-    </QueryClientProvider>,
+    </QueryClientTestProvider>,
   )
 }
 
 describe('AgentFiles', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    Object.assign(mocks.fileUploadConfig, {
+      file_size_limit: 15,
+      image_file_size_limit: 10,
+      audio_file_size_limit: 50,
+      video_file_size_limit: 100,
+      workflow_file_upload_limit: 10,
+    })
     mocks.previewQueryOptions.mockImplementation(({ input }) => ({
       queryKey: ['preview-config-file', input],
       queryFn: async () => ({
@@ -339,6 +367,59 @@ describe('AgentFiles', () => {
       }),
     ])
     expect(toast.success).toHaveBeenCalled()
+  })
+
+  it('should show the configured size limit for every supported file type', async () => {
+    const user = userEvent.setup()
+    renderAgentFiles({ initialDraft: defaultAgentSoulConfigFormState })
+
+    await user.click(
+      screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.files\.add/i }),
+    )
+
+    const sizeLimitCopy = await screen.findByText(/appDebug\.variableConfig\.maxNumberTip/)
+    expect(sizeLimitCopy).toHaveTextContent('"docLimit":"15.00 MB"')
+    expect(sizeLimitCopy).toHaveTextContent('"imgLimit":"10.00 MB"')
+    expect(sizeLimitCopy).toHaveTextContent('"audioLimit":"50.00 MB"')
+    expect(sizeLimitCopy).toHaveTextContent('"videoLimit":"100.00 MB"')
+  })
+
+  it.each([
+    ['document', 'oversized.pdf', 'application/pdf'],
+    ['image', 'oversized.png', 'image/png'],
+    ['audio', 'oversized.mp3', 'audio/mpeg'],
+    ['video', 'oversized.mp4', 'video/mp4'],
+  ])('should reject an oversized %s file before upload', async (fileType, fileName, mimeType) => {
+    Object.assign(mocks.fileUploadConfig, {
+      file_size_limit: 1,
+      image_file_size_limit: 1,
+      audio_file_size_limit: 1,
+      video_file_size_limit: 1,
+    })
+    const user = userEvent.setup()
+    renderAgentFiles({ initialDraft: defaultAgentSoulConfigFormState })
+
+    await user.click(
+      screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.files\.add/i }),
+    )
+
+    const input = await waitFor(() => {
+      const element = document.querySelector('input[type="file"]')
+      expect(element).not.toBeNull()
+      return element as HTMLInputElement
+    })
+    const file = new File([new Uint8Array(1024 * 1024 + 1)], fileName, { type: mimeType })
+    await user.upload(input, file)
+
+    expect(toast.error).toHaveBeenCalledWith(
+      `common.fileUploader.uploadFromComputerLimit:{"type":"${fileType}","size":"1.00 MB"}`,
+    )
+    expect(mocks.uploadFileMutationFn).not.toHaveBeenCalled()
+    expect(
+      screen.getByRole('button', {
+        name: /agentDetail\.configure\.files\.upload\.action/i,
+      }),
+    ).toBeDisabled()
   })
 
   it('should use workflow config file endpoints with node_id for preview and upload', async () => {

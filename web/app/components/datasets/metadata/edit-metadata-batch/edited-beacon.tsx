@@ -29,7 +29,7 @@ const EditedBeacon: FC<Props> = ({ onReset }) => {
                 onClick={onReset}
               >
                 <RiResetLeftLine
-                  className="size-[10px] text-text-primary-on-surface"
+                  className="size-2.5 text-text-primary-on-surface"
                   aria-hidden="true"
                 />
               </button>

@@ -22,7 +22,7 @@ const ConfigModel = ({
   if (loadBalancingInvalid) {
     return (
       <div
-        className="relative flex h-[18px] cursor-pointer items-center rounded-[5px] border border-text-warning bg-components-badge-bg-dimm px-1.5 system-2xs-medium-uppercase text-text-warning"
+        className="relative flex h-4.5 cursor-pointer items-center rounded-[5px] border border-text-warning bg-components-badge-bg-dimm px-1.5 system-2xs-medium-uppercase text-text-warning"
         onClick={onClick}
       >
         <RiScales3Line className="mr-0.5 size-3" />
@@ -42,18 +42,18 @@ const ConfigModel = ({
       {credentialRemoved && (
         <>
           {t(($) => $['modelProvider.auth.credentialRemoved'], { ns: 'common' })}
-          <StatusDot status="error" className="ml-2" />
+          <StatusDot status="error" />
         </>
       )}
       {!loadBalancingEnabled && !credentialRemoved && !loadBalancingInvalid && (
         <>
-          <RiEqualizer2Line className="mr-1 size-4" />
+          <RiEqualizer2Line className="size-4" />
           {t(($) => $['operation.config'], { ns: 'common' })}
         </>
       )}
       {loadBalancingEnabled && !credentialRemoved && !loadBalancingInvalid && (
         <>
-          <RiScales3Line className="mr-1 size-4" />
+          <RiScales3Line className="size-4" />
           {t(($) => $['modelProvider.auth.configLoadBalancing'], { ns: 'common' })}
         </>
       )}

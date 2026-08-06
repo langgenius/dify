@@ -45,7 +45,7 @@ export function AgentMonitoringChart({
   const isEmptySummary = Number.parseFloat(summaryValue.replace(/,/g, '')) === 0
 
   return (
-    <article className="flex h-[316px] w-full min-w-0 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg">
+    <article className="flex h-79 w-full min-w-0 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg">
       <div className="flex h-11 shrink-0 items-center px-6 pt-6 pb-1">
         <div className="flex min-w-0 items-center gap-1">
           <h3 className="truncate system-md-semibold text-text-secondary">

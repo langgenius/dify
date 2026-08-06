@@ -1324,4 +1324,5 @@ class AgentConfigFileApi(Resource):
         )
 
 
+# pyrefly: ignore [unresolvable-dunder-all]
 __all__ = [name for name, value in globals().items() if inspect.isclass(value) and issubclass(value, Resource)]

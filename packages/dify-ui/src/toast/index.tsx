@@ -1,6 +1,7 @@
 'use client'
 
 import type {
+  ToastManager as BaseToastManager,
   ToastManagerAddOptions,
   ToastManagerUpdateOptions,
   ToastObject,
@@ -80,7 +81,11 @@ type ToastPromiseOptions<Value> = {
 type ToastHostProps = {
   timeout?: number
   limit?: number
+  manager?: ToastManager
+  offset?: ToastHostOffset
 }
+
+type ToastHostOffset = Pick<React.CSSProperties, 'top' | 'right'>
 
 type ToastDismiss = (toastId?: string) => void
 type ToastCall = (title: React.ReactNode, options?: ToastOptions) => string
@@ -100,7 +105,7 @@ type ToastApi = {
   ) => Promise<Value>
 }
 
-const toastManager = BaseToast.createToastManager<ToastData>()
+type ToastManager = BaseToastManager<ToastData>
 
 function isToastRenderType(type: string): type is ToastRenderType {
   return Object.prototype.hasOwnProperty.call(TOAST_TONE_STYLES, type)
@@ -110,46 +115,53 @@ function getToastRenderType(type?: string): ToastRenderType | undefined {
   return type && isToastRenderType(type) ? type : undefined
 }
 
-function addToast(options: ToastAddOptions) {
-  return toastManager.add(options)
-}
-
-const showToast: ToastCall = (title, options) =>
-  addToast({
-    ...options,
-    title,
-  })
-
-const dismissToast: ToastDismiss = (toastId) => {
-  toastManager.close(toastId)
-}
-
-function createTypedToast(type: ToastType): TypedToastCall {
-  return (title, options) =>
+function createToast(manager: ToastManager): ToastApi {
+  const addToast = (options: ToastAddOptions) => manager.add(options)
+  const showToast: ToastCall = (title, options) =>
     addToast({
       ...options,
       title,
-      type,
     })
+
+  const dismissToast: ToastDismiss = (toastId) => {
+    manager.close(toastId)
+  }
+
+  const createTypedToast = (type: ToastType): TypedToastCall => {
+    return (title, options) =>
+      addToast({
+        ...options,
+        title,
+        type,
+      })
+  }
+
+  const updateToast = (toastId: string, options: ToastUpdateOptions) => {
+    manager.update(toastId, options)
+  }
+
+  const promiseToast = <Value,>(
+    promiseValue: Promise<Value>,
+    options: ToastPromiseOptions<Value>,
+  ) => manager.promise(promiseValue, options)
+
+  return Object.assign(showToast, {
+    success: createTypedToast('success'),
+    error: createTypedToast('error'),
+    warning: createTypedToast('warning'),
+    info: createTypedToast('info'),
+    dismiss: dismissToast,
+    update: updateToast,
+    promise: promiseToast,
+  })
 }
 
-function updateToast(toastId: string, options: ToastUpdateOptions) {
-  toastManager.update(toastId, options)
+function createToastManager(): ToastManager {
+  return BaseToast.createToastManager<ToastData>()
 }
 
-function promiseToast<Value>(promiseValue: Promise<Value>, options: ToastPromiseOptions<Value>) {
-  return toastManager.promise(promiseValue, options)
-}
-
-export const toast: ToastApi = Object.assign(showToast, {
-  success: createTypedToast('success'),
-  error: createTypedToast('error'),
-  warning: createTypedToast('warning'),
-  info: createTypedToast('info'),
-  dismiss: dismissToast,
-  update: updateToast,
-  promise: promiseToast,
-})
+const defaultToastManager = createToastManager()
+const toast = createToast(defaultToastManager)
 
 function ToastIcon({ type }: { type?: ToastRenderType }) {
   return type ? (
@@ -234,15 +246,14 @@ function ToastCard({ toast: toastItem }: { toast: ToastObject<ToastData> }) {
   )
 }
 
-function ToastViewport() {
+function ToastViewport({ offset }: { offset?: ToastHostOffset }) {
   const { toasts } = BaseToast.useToastManager<ToastData>()
 
   return (
     <BaseToast.Viewport
       aria-label={toastViewportLabel}
-      className={cn(
-        'group/toast-viewport pointer-events-none fixed top-4 right-4 z-60 w-90 max-w-[calc(100vw-2rem)] overflow-visible sm:right-8',
-      )}
+      className="group/toast-viewport pointer-events-none fixed top-4 right-4 z-60 w-90 max-w-[calc(100vw-2rem)] overflow-visible sm:right-8"
+      style={offset}
     >
       {toasts.map((toastItem) => (
         <ToastCard key={toastItem.id} toast={toastItem} />
@@ -251,12 +262,16 @@ function ToastViewport() {
   )
 }
 
-export function ToastHost({ timeout, limit }: ToastHostProps) {
+function ToastHost({ timeout, limit, manager = defaultToastManager, offset }: ToastHostProps) {
   return (
-    <BaseToast.Provider toastManager={toastManager} timeout={timeout} limit={limit}>
+    <BaseToast.Provider toastManager={manager} timeout={timeout} limit={limit}>
       <BaseToast.Portal>
-        <ToastViewport />
+        <ToastViewport offset={offset} />
       </BaseToast.Portal>
     </BaseToast.Provider>
   )
 }
+
+export { createToast, createToastManager, toast, ToastHost }
+
+export type { ToastHostProps }

@@ -14,6 +14,7 @@ from controllers.web.forgot_password import (
     ForgotPasswordResetApi,
     ForgotPasswordSendEmailApi,
 )
+from enums.deployment_edition import DeploymentEdition
 from models.account import Account
 from models.engine import db
 from services.feature_service import SystemFeatureModel
@@ -32,7 +33,10 @@ def database_app() -> Iterator[Flask]:
 
 @pytest.fixture(autouse=True)
 def _patch_wraps():
-    wraps_features = SystemFeatureModel(enable_email_password_login=True)
+    wraps_features = SystemFeatureModel(
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        enable_email_password_login=True,
+    )
     with (
         patch("controllers.console.wraps.db") as mock_db,
         patch("controllers.console.wraps.dify_config.ENTERPRISE_ENABLED", True),

@@ -125,8 +125,10 @@ export type FileUploadConfigResponse = {
   single_chunk_attachment_limit: number // default is 10, for dataset attachment upload only
   attachment_image_file_size_limit: number // default is 2MB, for dataset attachment upload only
   file_size_limit: number // default is 15MB
+  knowledge_file_size_limit?: number // current workspace's knowledge upload limit in MB
   audio_file_size_limit?: number // default is 50MB
   video_file_size_limit?: number // default is 100MB
+  skill_file_size_limit?: number // default is 50MB
   workflow_file_upload_limit?: number // default is 10
   file_upload_limit: number // default is 5
 }

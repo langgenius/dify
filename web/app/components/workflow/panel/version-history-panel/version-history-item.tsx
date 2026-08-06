@@ -87,7 +87,7 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
       {!isLast && (
         <div className="absolute top-6 left-4 h-[calc(100%-0.75rem)] w-0.5 bg-divider-subtle" />
       )}
-      <div className="flex h-5 w-[18px] shrink-0 items-center justify-center">
+      <div className="flex h-5 w-4.5 shrink-0 items-center justify-center">
         <div
           className={cn(
             'size-2 rounded-lg border-2',
@@ -108,7 +108,7 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
               : item.marked_name || t(($) => $['versionHistory.defaultName'], { ns: 'workflow' })}
           </div>
           {isLatest && (
-            <div className="flex h-5 shrink-0 items-center rounded-md border border-text-accent-secondary bg-components-badge-bg-dimm px-[5px] system-2xs-medium-uppercase text-text-accent-secondary">
+            <div className="flex h-5 shrink-0 items-center rounded-md border border-text-accent-secondary bg-components-badge-bg-dimm px-1.25 system-2xs-medium-uppercase text-text-accent-secondary">
               {t(($) => $['versionHistory.latest'], { ns: 'workflow' })}
             </div>
           )}

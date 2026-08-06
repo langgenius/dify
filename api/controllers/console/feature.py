@@ -3,12 +3,14 @@ from flask_restx import Resource
 from controllers.common.schema import register_response_schema_models
 from fields.base import ResponseModel
 from libs.helper import dump_response
-from libs.login import current_account_with_tenant_optional, login_required
+from libs.login import login_required
 from services.feature_service import (
     FeatureModel,
     FeatureService,
+    LicenseModel,
     LimitationModel,
     SystemFeatureModel,
+    VectorSpaceLimitationModel,
 )
 
 from . import console_ns
@@ -32,9 +34,11 @@ register_response_schema_models(
     console_ns,
     AppDslVersionResponse,
     FeatureModel,
+    LicenseModel,
     LimitationModel,
     SystemFeatureModel,
     TrialModelsResponse,
+    VectorSpaceLimitationModel,
 )
 
 
@@ -69,7 +73,7 @@ class FeatureVectorSpaceApi(Resource):
     @console_ns.response(
         200,
         "Success",
-        console_ns.models[LimitationModel.__name__],
+        console_ns.models[VectorSpaceLimitationModel.__name__],
     )
     @setup_required
     @login_required
@@ -121,22 +125,40 @@ class AppDslVersionApi(Resource):
 @console_ns.route("/system-features")
 class SystemFeatureApi(Resource):
     @console_ns.doc("get_system_features")
-    @console_ns.doc(description="Get system-wide feature configuration")
+    @console_ns.doc(
+        description="Get the non-sensitive bootstrap snapshot exposed before Console or Web authentication. "
+        "This is not a general feature registry."
+    )
     @console_ns.response(
         200,
         "Success",
         console_ns.models[SystemFeatureModel.__name__],
     )
     def get(self):
-        """Get system-wide feature configuration
+        """Get the non-sensitive bootstrap snapshot exposed before authentication.
 
-        NOTE: This endpoint is unauthenticated by design, as it provides system features
-        data required for dashboard initialization.
-
-        Authentication would create circular dependency (can't login without dashboard loading).
-
-        Only non-sensitive configuration data should be returned by this endpoint.
+        Authentication configuration must be available before the authentication flow can be selected.
+        Authenticated license detail is served separately by SystemFeatureLicenseApi.
         """
-        current_user, _ = current_account_with_tenant_optional()
-        is_authenticated = current_user is not None
-        return FeatureService.get_system_features(is_authenticated=is_authenticated).model_dump()
+        return dump_response(SystemFeatureModel, FeatureService.get_system_features())
+
+
+@console_ns.route("/system-features/license")
+class SystemFeatureLicenseApi(Resource):
+    @console_ns.doc("get_system_license")
+    @console_ns.doc(description="Get license status and usage detail")
+    @console_ns.response(
+        200,
+        "Success",
+        console_ns.models[LicenseModel.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        """Get full license detail (status, expiry, workspace/seat usage).
+
+        Authenticated counterpart to the license *status* exposed on the public
+        system-features endpoint.
+        """
+        return FeatureService.get_license().model_dump()

@@ -74,7 +74,7 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
         if (!open) onClose()
       }}
     >
-      <DialogContent className="w-full max-w-[480px] overflow-hidden! border-none p-0 text-left align-middle">
+      <DialogContent className="w-full max-w-120 overflow-hidden! border-none p-0 text-left align-middle">
         <div className="relative w-full p-6 pr-14 pb-4">
           <div className="title-2xl-semi-bold text-text-primary first-letter:capitalize">
             {versionInfo?.marked_name
@@ -87,7 +87,7 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
             aria-label={t(($) => $['operation.close'], { ns: 'common' })}
             onClick={onClose}
           >
-            <RiCloseLine className="h-[18px] w-[18px] text-text-tertiary" aria-hidden="true" />
+            <RiCloseLine className="h-4.5 w-4.5 text-text-tertiary" aria-hidden="true" />
           </button>
         </div>
         <div className="flex flex-col gap-y-4 px-6 py-3">

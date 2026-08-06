@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import { screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render } from '@/test/console/render'
@@ -7,7 +6,6 @@ import DatasetsLayout from './layout'
 const mockReplace = vi.fn()
 const mockConsoleStateReader = vi.fn()
 let mockPathname = '/datasets'
-let mockExternalKnowledgeApiProviderEnabled: boolean | undefined
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
@@ -26,23 +24,6 @@ vi.mock('@/context/permission-state', async () => {
 
   return createPermissionStateModuleMock(() => mockConsoleStateReader())
 })
-
-vi.mock('@/context/external-api-panel-context', () => ({
-  ExternalApiPanelProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
-}))
-
-vi.mock('@/context/external-knowledge-api-context', () => ({
-  ExternalKnowledgeApiProvider: ({
-    children,
-    enabled,
-  }: {
-    children: ReactNode
-    enabled?: boolean
-  }) => {
-    mockExternalKnowledgeApiProviderEnabled = enabled
-    return <>{children}</>
-  },
-}))
 
 type ConsoleStateFixture = {
   isCurrentWorkspaceEditor: boolean
@@ -77,7 +58,6 @@ describe('DatasetsLayout', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPathname = '/datasets'
-    mockExternalKnowledgeApiProviderEnabled = undefined
     setConsoleState()
   })
 
@@ -202,65 +182,43 @@ describe('DatasetsLayout', () => {
     expect(mockReplace).not.toHaveBeenCalled()
   })
 
-  it('should redirect direct external dataset connection route to /datasets without dataset.external.connect', async () => {
-    mockPathname = '/datasets/connect'
-    setConsoleState({
-      workspacePermissionKeys: [],
-    })
+  it.each(['/datasets/connect', '/datasets/new/space-1/sources/new'])(
+    'should redirect direct external source route to /datasets without dataset.external.connect: %s',
+    async (pathname) => {
+      mockPathname = pathname
+      setConsoleState({
+        workspacePermissionKeys: [],
+      })
 
-    render(
-      <DatasetsLayout>
-        <div>datasets</div>
-      </DatasetsLayout>,
-    )
+      render(
+        <DatasetsLayout>
+          <div>datasets</div>
+        </DatasetsLayout>,
+      )
 
-    expect(screen.queryByText('datasets')).not.toBeInTheDocument()
-    await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/datasets')
-    })
-  })
+      expect(screen.queryByText('datasets')).not.toBeInTheDocument()
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith('/datasets')
+      })
+    },
+  )
 
-  it('should render direct external dataset connection route when workspace has dataset.external.connect', () => {
-    mockPathname = '/datasets/connect'
-    setConsoleState({
-      workspacePermissionKeys: ['dataset.external.connect'],
-    })
+  it.each(['/datasets/connect', '/datasets/new/space-1/sources/new'])(
+    'should render direct external source route with dataset.external.connect: %s',
+    (pathname) => {
+      mockPathname = pathname
+      setConsoleState({
+        workspacePermissionKeys: ['dataset.external.connect'],
+      })
 
-    render(
-      <DatasetsLayout>
-        <div>datasets</div>
-      </DatasetsLayout>,
-    )
+      render(
+        <DatasetsLayout>
+          <div>datasets</div>
+        </DatasetsLayout>,
+      )
 
-    expect(screen.getByText('datasets')).toBeInTheDocument()
-    expect(mockReplace).not.toHaveBeenCalled()
-  })
-
-  it('should disable external knowledge API queries without dataset.external.connect', () => {
-    setConsoleState({
-      workspacePermissionKeys: [],
-    })
-
-    render(
-      <DatasetsLayout>
-        <div>datasets</div>
-      </DatasetsLayout>,
-    )
-
-    expect(mockExternalKnowledgeApiProviderEnabled).toBe(false)
-  })
-
-  it('should enable external knowledge API queries with dataset.external.connect', () => {
-    setConsoleState({
-      workspacePermissionKeys: ['dataset.external.connect'],
-    })
-
-    render(
-      <DatasetsLayout>
-        <div>datasets</div>
-      </DatasetsLayout>,
-    )
-
-    expect(mockExternalKnowledgeApiProviderEnabled).toBe(true)
-  })
+      expect(screen.getByText('datasets')).toBeInTheDocument()
+      expect(mockReplace).not.toHaveBeenCalled()
+    },
+  )
 })

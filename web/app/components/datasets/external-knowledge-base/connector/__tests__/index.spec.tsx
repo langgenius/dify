@@ -79,12 +79,27 @@ const createDefaultMockApiList = (): ExternalAPIItem[] => [
 
 let mockExternalKnowledgeApiList: ExternalAPIItem[] = createDefaultMockApiList()
 
-vi.mock('@/context/external-knowledge-api-context', () => ({
-  useExternalKnowledgeApi: () => ({
-    externalKnowledgeApiList: mockExternalKnowledgeApiList,
-    mutateExternalKnowledgeApis: vi.fn(),
-    isLoading: false,
-  }),
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...original,
+    useQuery: () => ({ data: { data: mockExternalKnowledgeApiList } }),
+    useQueryClient: () => ({ invalidateQueries: vi.fn() }),
+  }
+})
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    datasets: {
+      externalKnowledgeApi: {
+        get: {
+          queryOptions: () => ({
+            queryKey: ['console', 'datasets', 'externalKnowledgeApi', 'get'],
+          }),
+        },
+      },
+    },
+  },
 }))
 
 // Suppress console.error helper

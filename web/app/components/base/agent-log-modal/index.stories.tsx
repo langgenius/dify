@@ -105,7 +105,7 @@ const AgentLogModalDemo = ({ width = 960 }: { width?: number }) => {
   return (
     <>
       <ToastHost />
-      <div className="relative min-h-[540px] w-full bg-background-default-subtle p-6">
+      <div className="relative min-h-135 w-full bg-background-default-subtle p-6">
         <AgentLogModal
           currentLogItem={MOCK_CHAT_ITEM}
           width={width}

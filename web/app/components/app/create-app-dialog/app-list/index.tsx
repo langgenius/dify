@@ -186,14 +186,14 @@ const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-divider-burn py-3">
-        <div className="min-w-[180px] pl-5">
+        <div className="min-w-45 pl-5">
           <span className="title-xl-semi-bold text-text-primary">
             {t(($) => $['newApp.startFromTemplate'], { ns: 'app' })}
           </span>
         </div>
-        <div className="flex max-w-[548px] flex-1 items-center rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-1.5 shadow-md">
+        <div className="flex max-w-137 flex-1 items-center rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-1.5 shadow-md">
           <AppTypeSelector value={currentType} onChange={setCurrentType} />
-          <div className="h-[14px]">
+          <div className="h-3.5">
             <Divider type="vertical" />
           </div>
           <Input
@@ -208,11 +208,11 @@ const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
             onClear={() => handleKeywordsChange('')}
           />
         </div>
-        <div className="h-8 w-[180px]"></div>
+        <div className="h-8 w-45"></div>
       </div>
       <div className="relative flex flex-1 overflow-y-auto">
         {!searchKeywords && (
-          <div className="h-full w-[200px] p-4">
+          <div className="h-full w-50 p-4">
             <Sidebar
               current={activeCategory as AppCategories}
               categories={visibleCategories}
@@ -240,7 +240,7 @@ const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
                         })}
                   </p>
                 ) : (
-                  <div className="flex h-[22px] items-center">
+                  <div className="flex h-5.5 items-center">
                     <AppCategoryLabel
                       category={activeCategory as AppCategories}
                       className="title-md-semi-bold text-text-primary"

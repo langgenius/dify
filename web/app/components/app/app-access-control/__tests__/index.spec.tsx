@@ -35,7 +35,15 @@ vi.mock('@/service/access-control', () => ({
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
-    systemFeatures: { get: { queryKey: () => ['system-features'] } },
+    systemFeatures: {
+      get: {
+        queryKey: () => ['system-features'],
+        queryOptions: (options: Record<string, unknown> = {}) => ({
+          queryKey: ['system-features'],
+          ...options,
+        }),
+      },
+    },
     enterprise: {
       webAppAuth: {
         updateWebAppWhitelistSubjects: {

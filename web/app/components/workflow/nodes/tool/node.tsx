@@ -4,8 +4,8 @@ import type { NodeProps } from '@/app/components/workflow/types'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useNodePluginInstallation } from '@/app/components/workflow/hooks/use-node-plugin-installation'
 import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
+import { useNodePluginInstallation } from '../../hooks/use-node-plugin-installation'
 import { isToolAuthorizationRequired } from './auth'
 import useCurrentToolCollection from './hooks/use-current-tool-collection'
 
@@ -48,7 +48,7 @@ const Node: FC<NodeProps<ToolNodeType>> = ({ data }) => {
               >
                 <div
                   title={key}
-                  className="max-w-[100px] shrink-0 truncate text-xs font-medium text-text-tertiary uppercase"
+                  className="max-w-25 shrink-0 truncate text-xs font-medium text-text-tertiary uppercase"
                 >
                   {key}
                 </div>
@@ -97,7 +97,7 @@ const Node: FC<NodeProps<ToolNodeType>> = ({ data }) => {
             ))}
           {showAuthorizationWarning && (
             <div className="flex h-6 items-center rounded-md border-[0.5px] border-state-warning-active bg-state-warning-hover px-1.5">
-              <span className="mr-1 size-[4px] shrink-0 rounded-xs bg-text-warning-secondary" />
+              <span className="mr-1 size-1 shrink-0 rounded-xs bg-text-warning-secondary" />
               <div
                 className="grow truncate system-xs-medium text-text-warning"
                 title={t(($) => $['nodes.tool.authorizationRequired'], { ns: 'workflow' })}

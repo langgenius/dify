@@ -17,7 +17,7 @@ type Props = Readonly<{
   onShowChange: (isShow: boolean) => void
   pluginID: string
   currentVersion: string
-  trigger: React.ReactNode
+  trigger: (open: boolean) => React.ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number
@@ -76,10 +76,19 @@ const PluginVersionPicker: FC<Props> = ({
     >
       <PopoverTrigger
         disabled={disabled}
-        className={cn('inline-flex cursor-pointer items-center', disabled && 'cursor-default')}
-      >
-        {trigger}
-      </PopoverTrigger>
+        render={(props, state) => (
+          <button
+            {...props}
+            type="button"
+            className={cn(
+              'inline-flex cursor-pointer items-center data-disabled:cursor-default',
+              props.className,
+            )}
+          >
+            {trigger(state.open)}
+          </button>
+        )}
+      />
 
       <PopoverContent
         placement={placement}
@@ -90,7 +99,7 @@ const PluginVersionPicker: FC<Props> = ({
         <div className="px-3 pt-1 pb-0.5 system-xs-medium-uppercase text-text-tertiary">
           {t(($) => $['detailPanel.switchVersion'], { ns: 'plugin' })}
         </div>
-        <div className="relative max-h-[224px] overflow-y-auto">
+        <div className="relative max-h-56 overflow-y-auto">
           {res?.data.versions.map((version) => (
             <div
               key={version.unique_identifier}

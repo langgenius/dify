@@ -127,11 +127,11 @@ vi.mock('@/service/use-tools', () => ({
   useAppTriggers: () => appTriggersState,
 }))
 
-vi.mock('@/app/components/workflow-app/hooks/use-workflow-init', () => ({
+vi.mock('../hooks/use-workflow-init', () => ({
   useWorkflowInit: () => workflowInitState,
 }))
 
-vi.mock('@/app/components/workflow-app/hooks/use-get-run-and-trace-url', () => ({
+vi.mock('../hooks/use-get-run-and-trace-url', () => ({
   useGetRunAndTraceUrl: () => ({
     getWorkflowRunAndTraceUrl: mockGetWorkflowRunAndTraceUrl,
   }),

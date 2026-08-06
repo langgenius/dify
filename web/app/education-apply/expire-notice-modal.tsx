@@ -2,22 +2,23 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { RiExternalLinkLine } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { IS_CLOUD_EDITION } from '@/config'
 import { useDocLink } from '@/context/i18n'
 import { useModalContextSelector } from '@/context/modal-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { useEducationVerify } from '@/service/use-education'
 import { SparklesSoftAccent } from '../components/base/icons/src/public/common'
 
-export type ExpireNoticeModalPayloadProps = {
+type ExpireNoticeModalPayloadProps = {
   expireAt: number
   expired: boolean
 }
-export type Props = {
+type Props = {
   onClose: () => void
 } & ExpireNoticeModalPayloadProps
 
@@ -25,6 +26,10 @@ const i18nPrefix = 'notice'
 
 const ExpireNoticeModal: React.FC<Props> = ({ expireAt, expired, onClose }) => {
   const { t } = useTranslation()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
   const docLink = useDocLink()
   const eduDocLink = docLink('/use-dify/workspace/subscription-management#dify-for-education')
   const { formatTime } = useTimestamp()
@@ -47,7 +52,7 @@ const ExpireNoticeModal: React.FC<Props> = ({ expireAt, expired, onClose }) => {
         if (!open) onClose()
       }}
     >
-      <DialogContent className="w-full max-w-[600px] overflow-hidden! border-none text-left align-middle">
+      <DialogContent className="w-full max-w-150 overflow-hidden! border-none text-left align-middle">
         <DialogCloseButton />
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {expired
@@ -103,13 +108,13 @@ const ExpireNoticeModal: React.FC<Props> = ({ expireAt, expired, onClose }) => {
             <RiExternalLinkLine className="size-3" />
           </Link>
           <div className="flex space-x-2">
-            {expired && IS_CLOUD_EDITION ? (
+            {expired && deploymentEdition === 'CLOUD' ? (
               <Button
                 onClick={() => {
                   onClose()
                   setShowPricingModal()
                 }}
-                className="flex items-center space-x-1"
+                className="flex items-center"
               >
                 <SparklesSoftAccent className="size-4" />
                 <div className="text-components-button-secondary-accent-text">

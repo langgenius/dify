@@ -4,7 +4,7 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
 import Divider from '../../base/divider'
-import { useWorkflowRun } from '../hooks'
+import { useWorkflowRun } from '../hooks/use-workflow-run'
 import { useWorkflowStore } from '../store'
 import RunningTitle from './running-title'
 import ViewHistory from './view-history'
@@ -32,7 +32,7 @@ const HeaderInHistory = ({ viewHistoryProps }: HeaderInHistoryProps) => {
         <ViewHistory {...viewHistoryProps} withText />
         <Divider type="vertical" className="mx-auto h-3.5" />
         <Button variant="primary" onClick={handleGoBackToEdit}>
-          <ArrowNarrowLeft className="mr-1 size-4" />
+          <ArrowNarrowLeft className="size-4" />
           {t(($) => $['common.goBackToEdit'], { ns: 'workflow' })}
         </Button>
       </div>

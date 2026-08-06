@@ -1,20 +1,13 @@
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
+import type { ReactElement } from 'react'
 import type { Mock } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { vi } from 'vitest'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
 import { useProviderContext } from '@/context/provider-context'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { Plan } from '../../../billing/type'
 import { PlanBadge } from '../index'
-
-const mockConfig = vi.hoisted(() => ({
-  isCloudEdition: true,
-}))
-
-vi.mock('@/config', () => ({
-  get IS_CLOUD_EDITION() {
-    return mockConfig.isCloudEdition
-  },
-}))
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
@@ -23,10 +16,13 @@ vi.mock('@/context/provider-context', () => ({
 
 describe('PlanBadge', () => {
   const mockUseProviderContext = useProviderContext as Mock
+  let deploymentEdition: DeploymentEdition = 'CLOUD'
+  const render = (ui: ReactElement) =>
+    renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: deploymentEdition } })
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockConfig.isCloudEdition = true
+    deploymentEdition = 'CLOUD'
   })
 
   it('should return null if isFetchedPlan is false', () => {
@@ -47,7 +43,7 @@ describe('PlanBadge', () => {
   })
 
   it('should render sandbox badge instead of upgrade badge in self-hosted edition', () => {
-    mockConfig.isCloudEdition = false
+    deploymentEdition = 'COMMUNITY'
     mockUseProviderContext.mockReturnValue(createMockProviderContextValue({ isFetchedPlan: true }))
 
     render(<PlanBadge plan={Plan.sandbox} sandboxAsUpgrade={true} />)

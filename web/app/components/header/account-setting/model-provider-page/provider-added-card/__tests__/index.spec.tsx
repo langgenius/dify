@@ -1,10 +1,12 @@
-import type { ReactNode } from 'react'
+import type { ReactElement } from 'react'
 import type { ModelProvider } from '../../declarations'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import type { PluginDetail } from '@/app/components/plugins/types'
+import { QueryClient } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
-import { createStore, Provider as JotaiProvider } from 'jotai'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { createQueryClientWrapper } from '@/test/console/query-client'
+import { seedSystemFeatures } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
-import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { useExpandModelProviderList } from '../../atoms'
 import { ConfigurationMethodEnum } from '../../declarations'
 import ProviderAddedCard from '../index'
@@ -16,6 +18,12 @@ let mockWorkspacePermissionKeys: string[] = [
   'credential.create',
   'credential.manage',
 ]
+const { mockInvalidateInstalledPluginList, mockProviderCardActions, mockRefreshModelProviders } =
+  vi.hoisted(() => ({
+    mockInvalidateInstalledPluginList: vi.fn(),
+    mockProviderCardActions: vi.fn(),
+    mockRefreshModelProviders: vi.fn(),
+  }))
 const mockFetchModelProviderModels = vi.fn()
 const mockQueryOptions = vi.fn(
   ({ input, ...options }: { input: { params: { provider: string } }; enabled?: boolean }) => ({
@@ -27,6 +35,15 @@ const mockQueryOptions = vi.fn(
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
+    systemFeatures: {
+      get: {
+        queryKey: () => ['system-features'],
+        queryOptions: (options: Record<string, unknown> = {}) => ({
+          queryKey: ['system-features'],
+          ...options,
+        }),
+      },
+    },
     workspaces: {
       current: {
         modelProviders: {
@@ -61,6 +78,15 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
+vi.mock('@/context/provider-context', () => ({
+  useProviderContextSelector: (selector: (state: object) => unknown) =>
+    selector({ refreshModelProviders: mockRefreshModelProviders }),
+}))
+
+vi.mock('@/service/use-plugins', () => ({
+  useInvalidateInstalledPluginList: () => mockInvalidateInstalledPluginList,
+}))
+
 // Mock internal components to simplify testing of the index file
 vi.mock('../credential-panel', () => ({
   default: () => <div data-testid="credential-panel" />,
@@ -93,6 +119,13 @@ vi.mock('../../model-badge', () => ({
   default: ({ children }: { children: string }) => <div data-testid="model-badge">{children}</div>,
 }))
 
+vi.mock('../provider-card-actions', () => ({
+  default: (props: { onUpdate?: () => Promise<void> }) => {
+    mockProviderCardActions(props)
+    return <div data-testid="provider-card-actions" />
+  },
+}))
+
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-auth', () => ({
   AddCustomModel: () => <div data-testid="add-custom-model" />,
   ManageCustomModelCredentials: () => <div data-testid="manage-custom-model" />,
@@ -105,15 +138,10 @@ const createConsoleQueryClient = () =>
     },
   })
 
-const renderWithQueryClient = (node: ReactNode) => {
+const renderWithQueryClient = (node: ReactElement) => {
   const queryClient = createConsoleQueryClient()
-  const store = createStore()
-  seedRegisteredConsoleStateFixture(store)
-  return render(
-    <JotaiProvider store={store}>
-      <QueryClientProvider client={queryClient}>{node}</QueryClientProvider>
-    </JotaiProvider>,
-  )
+  seedSystemFeatures(queryClient)
+  return render(node, { wrapper: createQueryClientWrapper(queryClient) })
 }
 
 const ExternalExpandControls = () => {
@@ -182,6 +210,55 @@ describe('ProviderAddedCard', () => {
     renderWithQueryClient(<ProviderAddedCard provider={mockProvider} />)
     expect(screen.getByTestId('provider-added-card')).toBeInTheDocument()
     expect(screen.getByTestId('provider-icon')).toBeInTheDocument()
+  })
+
+  it('refreshes provider data and installed plugin details after an update', async () => {
+    let resolveProviderRefresh: (() => void) | undefined
+    let resolveInstalledPluginRefresh: (() => void) | undefined
+    mockRefreshModelProviders.mockReturnValue(
+      new Promise<void>((resolve) => {
+        resolveProviderRefresh = resolve
+      }),
+    )
+    mockInvalidateInstalledPluginList.mockReturnValue(
+      new Promise<void>((resolve) => {
+        resolveInstalledPluginRefresh = resolve
+      }),
+    )
+
+    renderWithQueryClient(
+      <ProviderAddedCard
+        provider={mockProvider}
+        pluginDetail={
+          {
+            plugin_id: 'provider-plugin',
+            plugin_unique_identifier: 'provider-plugin@1.0.0',
+            declaration: {
+              author: 'langgenius',
+              description: { en_US: 'Provider plugin' },
+            },
+          } as PluginDetail
+        }
+      />,
+    )
+
+    const onUpdate = mockProviderCardActions.mock.calls[0]?.[0].onUpdate as () => Promise<void>
+    let isRefreshComplete = false
+    const refreshPromise = onUpdate().then(() => {
+      isRefreshComplete = true
+    })
+
+    expect(mockInvalidateInstalledPluginList).toHaveBeenCalledWith(PluginCategoryEnum.model)
+    expect(mockRefreshModelProviders).toHaveBeenCalledOnce()
+    expect(mockInvalidateInstalledPluginList).toHaveBeenCalledTimes(1)
+
+    resolveProviderRefresh?.()
+    await Promise.resolve()
+    expect(isRefreshComplete).toBe(false)
+
+    resolveInstalledPluginRefresh?.()
+    await refreshPromise
+    expect(isRefreshComplete).toBe(true)
   })
 
   it('should open, refresh and collapse model list', async () => {

@@ -7,7 +7,7 @@ import { initialEdges, initialNodes } from '@/app/components/workflow/utils'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import Conversion from './components/conversion'
 import RagPipelineMain from './components/rag-pipeline-main'
-import { usePipelineInit } from './hooks'
+import { usePipelineInit } from './hooks/use-pipeline-init'
 import { createRagPipelineSliceSlice } from './store'
 import { processNodesWithoutDataSource } from './utils'
 

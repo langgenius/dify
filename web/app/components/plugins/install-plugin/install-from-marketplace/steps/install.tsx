@@ -136,7 +136,7 @@ const Installed: FC<Props> = ({
     )
   }, [langGeniusVersionInfo.current_version, pluginDeclaration])
 
-  const { canInstall, isLoading: isInstallLimitLoading } = useInstallPluginLimit({
+  const { canInstall } = useInstallPluginLimit({
     ...payload,
     from: 'marketplace',
   })
@@ -167,21 +167,21 @@ const Installed: FC<Props> = ({
                 />
               )
             }
-            limitedInstall={!isInstallLimitLoading && !canInstall}
+            limitedInstall={!canInstall}
           />
         </div>
       </div>
       {/* Action Buttons */}
       <div className="flex items-center justify-end gap-2 self-stretch p-6 pt-5">
         {!isInstalling && (
-          <Button variant="secondary" className="min-w-[72px]" onClick={handleCancel}>
+          <Button variant="secondary" className="min-w-18" onClick={handleCancel}>
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </Button>
         )}
         <Button
           variant="primary"
-          className="flex min-w-[72px] space-x-0.5"
-          disabled={isInstalling || isLoading || isInstallLimitLoading || !canInstall}
+          className="flex min-w-18"
+          disabled={isInstalling || isLoading || !canInstall}
           onClick={handleInstall}
         >
           {isInstalling && <RiLoader2Line className="size-4 animate-spin-slow" />}

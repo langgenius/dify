@@ -1,5 +1,6 @@
 'use client'
-import type { ComponentProps, FC } from 'react'
+import type { PreviewCardHandle } from '@langgenius/dify-ui/preview-card'
+import type { FC } from 'react'
 import type { ToolWithProvider } from '../../types'
 import type { ToolDefaultValue } from '../types'
 import type { Tool } from '@/app/components/tools/types'
@@ -30,23 +31,22 @@ const normalizeProviderIcon = (icon?: ToolWithProvider['icon']) => {
   return icon
 }
 
-type Props = Readonly<{
-  provider: ToolWithProvider
-  payload: Tool
-  previewCardHandle: PreviewCardHandle
-  disabled?: boolean
-  isAdded?: boolean
-  onSelect: (type: BlockEnum, tool: ToolDefaultValue) => void
-}>
-
 export type ToolActionPreviewPayload = {
   providerIcon: ToolWithProvider['icon']
   payload: Tool
   language: ReturnType<typeof useGetLanguage>
 }
 
-type PreviewCardHandle = NonNullable<ComponentProps<typeof PreviewCardTrigger>['handle']>
-export type ToolActionPreviewCardHandle = PreviewCardHandle
+export type ToolActionPreviewCardHandle = PreviewCardHandle<ToolActionPreviewPayload>
+
+type Props = Readonly<{
+  provider: ToolWithProvider
+  payload: Tool
+  previewCardHandle: ToolActionPreviewCardHandle
+  disabled?: boolean
+  isAdded?: boolean
+  onSelect: (type: BlockEnum, tool: ToolDefaultValue) => void
+}>
 
 const ToolItem: FC<Props> = ({
   provider,
@@ -80,7 +80,7 @@ const ToolItem: FC<Props> = ({
       size="medium"
       aria-describedby={previewDescription ? previewDescriptionId : undefined}
       disabled={disabled}
-      className="w-full justify-between pr-1 pl-[21px] text-left focus-visible:ring-inset disabled:cursor-default"
+      className="w-full justify-between pr-1 pl-5.25 text-left focus-visible:ring-inset disabled:cursor-default"
       onClick={() => {
         if (disabled) return
         const params: Record<string, string> = {}
@@ -159,7 +159,7 @@ export function ToolActionPreviewCard({ payload }: ToolActionPreviewCardProps) {
       <div className="mb-1 text-sm/5 wrap-break-word text-text-primary">
         {payload.payload.label[payload.language]}
       </div>
-      <div className="text-xs leading-[18px] wrap-break-word text-text-secondary">
+      <div className="text-xs leading-4.5 wrap-break-word text-text-secondary">
         {payload.payload.description[payload.language]}
       </div>
     </BlockSelectorPreviewCardContent>
