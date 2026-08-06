@@ -328,6 +328,12 @@ describe('KnowledgeOverviewPage', () => {
     queryData.stats.source_count = 3
     queryData.stats.documents = 5
     queryData.outcomes.buckets = []
+    queryData.inventory.source_categories = {
+      crawl: 1,
+      online_documents: 1,
+      online_drives: 0,
+      uploads: 1,
+    }
     queryData.inventory.index_coverage.indexed = 4
     queryData.tasks[0]!.operation = 'source_sync'
     queryData.tasks[0]!.can_retry = false
@@ -398,6 +404,21 @@ describe('KnowledgeOverviewPage', () => {
     expect(screen.getByText('84%')).toBeInTheDocument()
     expect(screen.getByText('+100%')).toBeInTheDocument()
     expect(screen.getByText('+4pp')).toBeInTheDocument()
+  })
+
+  it('omits zero-value source segments from the inventory bar', () => {
+    queryData.inventory.source_categories = {
+      crawl: 0,
+      online_documents: 0,
+      online_drives: 0,
+      uploads: 1,
+    }
+
+    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+
+    const inventoryBar = screen.getByLabelText('dataset.newKnowledge.overview.sources')
+    expect(inventoryBar.children).toHaveLength(1)
+    expect(inventoryBar.firstElementChild).toHaveStyle({ width: '100%' })
   })
 
   it('keeps existing overview data visible during a background refresh', () => {

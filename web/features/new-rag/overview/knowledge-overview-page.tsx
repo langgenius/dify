@@ -356,7 +356,7 @@ function QueryOutcomesChart({
     )
 
   return (
-    <section className="flex h-91 min-w-0 flex-col gap-2 pt-6">
+    <section className="flex h-93.25 min-w-0 flex-col gap-2 pt-6">
       <div className="flex h-6 items-center">
         <h2 className="system-sm-semibold-uppercase text-text-secondary">
           {t(($) => $['newKnowledge.overview.queryOutcomes'])}
@@ -369,7 +369,7 @@ function QueryOutcomesChart({
           </Infotip>
         </h2>
       </div>
-      <Panel className="flex h-77 flex-col overflow-hidden border border-divider-subtle p-4 shadow-none">
+      <Panel className="flex h-79.25 flex-col overflow-hidden border border-divider-subtle p-4 shadow-none">
         {loading ? (
           <div className="space-y-6 pt-2">
             {[
@@ -390,7 +390,7 @@ function QueryOutcomesChart({
             <ReactECharts
               option={chartOptions}
               opts={{ renderer: 'svg' }}
-              style={{ height: 276, width: '100%' }}
+              style={{ height: 285, width: '100%' }}
             />
           </>
         ) : (
@@ -525,13 +525,13 @@ function AttentionPanel({
     )
 
   return (
-    <section className="flex h-91 min-w-0 flex-col gap-2 pt-6">
+    <section className="flex h-93.25 min-w-0 flex-col gap-2 pt-6">
       <div className="flex h-6 items-center">
         <h2 className="text-[15px] leading-6 font-medium text-text-secondary">
           {t(($) => $['newKnowledge.overview.needsAttention'])}
         </h2>
       </div>
-      <Panel className="flex h-77 flex-col overflow-hidden border border-divider-subtle px-4 pt-3 pb-1 shadow-none">
+      <Panel className="flex h-79.25 flex-col overflow-hidden border border-divider-subtle px-4 pt-3 pb-1 shadow-none">
         {loading ? (
           <div>
             {[
@@ -1315,6 +1315,7 @@ function InventoryPanel({
       ]
     : []
   const categoryTotal = categories.reduce((total, category) => total + category.value, 0)
+  const visibleCategories = categories.filter((category) => category.value > 0)
 
   if (error)
     return (
@@ -1384,7 +1385,7 @@ function InventoryPanel({
               className="flex h-6 gap-0.5 overflow-hidden"
               aria-label={t(($) => $['newKnowledge.overview.sources'])}
             >
-              {categories.map((category) => (
+              {visibleCategories.map((category) => (
                 <span
                   key={category.label}
                   className={cn('border-l-4', category.segment)}
@@ -1877,8 +1878,8 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
   return (
     <main className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-components-panel-bg">
       <div className="mx-auto w-full max-w-332 px-5 py-6 sm:px-8">
-        <header className="flex flex-wrap items-center gap-3">
-          <h1 className="text-[18px] leading-[1.2] font-bold text-text-primary">
+        <header className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="title-3xl-bold text-text-primary">
             {t(($) => $['newKnowledge.overviewTitle'])}
           </h1>
           {!empty && !showIndexing && (
