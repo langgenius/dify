@@ -14,7 +14,7 @@ from controllers.common.schema import register_response_schema_models
 from controllers.common.session import with_session
 from controllers.console.app.wraps import agent_manage_required_for_agent_app
 from fields.base import ResponseModel
-from libs.helper import dump_response, to_timestamp
+from libs.helper import dump_response, to_timestamp, uuid_value
 from libs.login import login_required
 from models import Account
 from models.dataset import Dataset
@@ -56,9 +56,10 @@ class ApiKeyList(ResponseModel):
 register_response_schema_models(console_ns, ApiKeyItem, ApiKeyList)
 
 
-def _get_resource(resource_id, tenant_id, resource_model, *, session: Session):
+def _get_resource(resource_id: str | UUID, tenant_id: str, resource_model, *, session: Session):
+    resource_id_str = uuid_value(resource_id)
     resource = session.execute(
-        select(resource_model).filter_by(id=resource_id, tenant_id=tenant_id)
+        select(resource_model).filter_by(id=resource_id_str, tenant_id=tenant_id)
     ).scalar_one_or_none()
 
     if resource is None:
@@ -83,13 +84,14 @@ class BaseApiKeyListResource(Resource):
             self._get_api_key_list(resource_id, current_tenant_id, session=session),
         )
 
-    def _get_api_key_list(self, resource_id: str, current_tenant_id: str, *, session: Session) -> ApiKeyList:
+    def _get_api_key_list(self, resource_id: str | UUID, current_tenant_id: str, *, session: Session) -> ApiKeyList:
         assert self.resource_id_field is not None, "resource_id_field must be set"
+        resource_id_str = uuid_value(resource_id)
 
-        _get_resource(resource_id, current_tenant_id, self.resource_model, session=session)
+        _get_resource(resource_id_str, current_tenant_id, self.resource_model, session=session)
         keys = session.scalars(
             select(ApiToken).where(
-                ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id
+                ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id_str
             )
         ).all()
         return ApiKeyList.model_validate({"data": keys}, from_attributes=True)
@@ -102,15 +104,16 @@ class BaseApiKeyListResource(Resource):
             self._create_api_key(resource_id, current_tenant_id, session=session),
         ), 201
 
-    def _create_api_key(self, resource_id: str, current_tenant_id: str, *, session: Session) -> ApiToken:
+    def _create_api_key(self, resource_id: str | UUID, current_tenant_id: str, *, session: Session) -> ApiToken:
         assert self.resource_id_field is not None, "resource_id_field must be set"
-        resource = _get_resource(resource_id, current_tenant_id, self.resource_model, session=session)
+        resource_id_str = uuid_value(resource_id)
+        resource = _get_resource(resource_id_str, current_tenant_id, self.resource_model, session=session)
         if isinstance(resource, App):
             AppService.ensure_agent_app_access_ready(resource, session=session)
         current_key_count: int = (
             session.scalar(
                 select(func.count(ApiToken.id)).where(
-                    ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id
+                    ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id_str
                 )
             )
             or 0
@@ -126,7 +129,7 @@ class BaseApiKeyListResource(Resource):
         key = ApiToken.generate_api_key(self.token_prefix or "", 24, session=session)
         assert self.resource_type is not None, "resource_type must be set"
         api_token = ApiToken()
-        setattr(api_token, self.resource_id_field, resource_id)
+        setattr(api_token, self.resource_id_field, resource_id_str)
         api_token.tenant_id = current_tenant_id
         api_token.token = key
         api_token.type = self.resource_type
@@ -156,15 +159,17 @@ class BaseApiKeyResource(Resource):
 
     def _delete_api_key(
         self,
-        resource_id: str,
-        api_key_id: str,
+        resource_id: str | UUID,
+        api_key_id: str | UUID,
         current_tenant_id: str,
         current_user: Account,
         *,
         session: Session,
     ) -> None:
         assert self.resource_id_field is not None, "resource_id_field must be set"
-        _get_resource(resource_id, current_tenant_id, self.resource_model, session=session)
+        resource_id_str = uuid_value(resource_id)
+        api_key_id_str = uuid_value(api_key_id)
+        _get_resource(resource_id_str, current_tenant_id, self.resource_model, session=session)
 
         if not dify_config.RBAC_ENABLED and not current_user.is_admin_or_owner:
             raise Forbidden()
@@ -172,9 +177,9 @@ class BaseApiKeyResource(Resource):
         key = session.scalar(
             select(ApiToken)
             .where(
-                getattr(ApiToken, self.resource_id_field) == resource_id,
+                getattr(ApiToken, self.resource_id_field) == resource_id_str,
                 ApiToken.type == self.resource_type,
-                ApiToken.id == api_key_id,
+                ApiToken.id == api_key_id_str,
             )
             .limit(1)
         )
@@ -187,7 +192,7 @@ class BaseApiKeyResource(Resource):
         assert key is not None  # nosec - for type checker only
         ApiTokenCache.delete(key.token, key.type)
 
-        session.execute(delete(ApiToken).where(ApiToken.id == api_key_id))
+        session.execute(delete(ApiToken).where(ApiToken.id == api_key_id_str))
         session.commit()
 
 
@@ -204,7 +209,7 @@ class AppApiKeyListResource(BaseApiKeyListResource):
         """Get all API keys for an app"""
         return dump_response(
             ApiKeyList,
-            self._get_api_key_list(str(resource_id), current_tenant_id, session=session),
+            self._get_api_key_list(resource_id, current_tenant_id, session=session),
         )
 
     @console_ns.doc("create_app_api_key")
@@ -221,7 +226,7 @@ class AppApiKeyListResource(BaseApiKeyListResource):
         """Create a new API key for an app"""
         return dump_response(
             ApiKeyItem,
-            self._create_api_key(str(resource_id), current_tenant_id, session=session),
+            self._create_api_key(resource_id, current_tenant_id, session=session),
         ), 201
 
     resource_type = ApiTokenType.APP
@@ -251,8 +256,8 @@ class AppApiKeyResource(BaseApiKeyResource):
     ) -> tuple[str, int]:
         """Delete an API key for an app"""
         self._delete_api_key(
-            str(resource_id),
-            str(api_key_id),
+            resource_id,
+            api_key_id,
             current_tenant_id,
             current_user,
             session=session,
@@ -276,7 +281,7 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
         """Get all API keys for a dataset"""
         return dump_response(
             ApiKeyList,
-            self._get_api_key_list(str(resource_id), current_tenant_id, session=session),
+            self._get_api_key_list(resource_id, current_tenant_id, session=session),
         )
 
     @console_ns.doc("create_dataset_api_key")
@@ -292,7 +297,7 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
         """Create a new API key for a dataset"""
         return dump_response(
             ApiKeyItem,
-            self._create_api_key(str(resource_id), current_tenant_id, session=session),
+            self._create_api_key(resource_id, current_tenant_id, session=session),
         ), 201
 
     resource_type = ApiTokenType.DATASET
@@ -321,8 +326,8 @@ class DatasetApiKeyResource(BaseApiKeyResource):
     ) -> tuple[str, int]:
         """Delete an API key for a dataset"""
         self._delete_api_key(
-            str(resource_id),
-            str(api_key_id),
+            resource_id,
+            api_key_id,
             current_tenant_id,
             current_user,
             session=session,

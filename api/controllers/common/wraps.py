@@ -7,6 +7,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 from configs import dify_config
 from core.rbac import RBACPermission, RBACResourceScope
 from extensions.ext_database import db
+from libs.helper import as_route_arg_str
 from libs.login import current_account_with_tenant
 from models.dataset import Dataset
 from models.model import App
@@ -152,28 +153,33 @@ def _extract_resource_id(
     if resource_type == RBACResourceScope.APP:
         app_id = matched_args.get("app_id")
         if app_id:
-            return str(app_id)
+            return as_route_arg_str(app_id)
 
         agent_id = matched_args.get("agent_id")
         if agent_id:
-            authz_app_id = AgentRosterService(db.session).peek_authz_app_id(tenant_id=tenant_id, agent_id=str(agent_id))
-            return authz_app_id or str(agent_id)
+            agent_id_str = as_route_arg_str(agent_id)
+            authz_app_id = AgentRosterService(db.session).peek_authz_app_id(
+                tenant_id=tenant_id, agent_id=agent_id_str
+            )
+            return authz_app_id or agent_id_str
 
         resource_id = matched_args.get("resource_id")
         if resource_id:
-            return str(resource_id)
+            return as_route_arg_str(resource_id)
         raise ValueError("Missing app_id in request path")
 
     if resource_type == RBACResourceScope.DATASET:
         dataset_id = matched_args.get("dataset_id") or matched_args.get("resource_id")
         if dataset_id:
-            return str(dataset_id)
+            return as_route_arg_str(dataset_id)
 
         pipeline_id = matched_args.get("pipeline_id")
         if pipeline_id:
-            dataset = db.session.scalar(select(Dataset).where(Dataset.pipeline_id == str(pipeline_id)))
+            dataset = db.session.scalar(
+                select(Dataset).where(Dataset.pipeline_id == as_route_arg_str(pipeline_id))
+            )
             if not dataset:
                 raise NotFound("Dataset not found for pipeline")
-            return str(dataset.id)
+            return dataset.id
         raise ValueError("Missing dataset_id or pipeline_id in request path")
     raise ValueError(f"Unknown resource_type: {resource_type}")
