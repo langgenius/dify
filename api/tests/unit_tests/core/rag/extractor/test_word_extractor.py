@@ -115,9 +115,7 @@ def test_init_downloads_via_remote_fetcher(monkeypatch: pytest.MonkeyPatch):
 
 
 @pytest.mark.parametrize("inject_session", [False, True])
-def test_extract_images_from_docx(
-    monkeypatch: pytest.MonkeyPatch, inject_session: bool, sqlite_session: Session
-):
+def test_extract_images_from_docx(monkeypatch: pytest.MonkeyPatch, inject_session: bool, sqlite_session: Session):
     external_bytes = b"ext-bytes"
     internal_bytes = b"int-bytes"
 
