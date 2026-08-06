@@ -1279,7 +1279,7 @@ describe('useNodesInteractions', () => {
       },
     )
 
-    it.each([BlockEnum.Iteration, BlockEnum.Loop])(
+    it.each([BlockEnum.Iteration, BlockEnum.Loop] as const)(
       'should paste human-input into a %s container',
       async (containerType) => {
         const { containerId, pastedNodes } = await pasteNodeIntoContainer(
