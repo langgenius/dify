@@ -27,7 +27,7 @@ from extensions.ext_storage import Storage, storage
 from extensions.storage.storage_type import StorageType
 from graphon.file import helpers as file_helpers
 from libs.datetime_utils import naive_utc_now
-from libs.helper import extract_tenant_id
+from libs.helper import build_icon_url, extract_tenant_id
 from models import Account
 from models.enums import CreatorUserRole, UploadFilePurpose
 from models.model import EndUser, UploadFile
@@ -181,8 +181,8 @@ class FileService:
         blob = upload_storage.load_once(upload_file_key)
         return base64.b64encode(blob).decode()
 
-    def get_file_presigned_url(self, *, file_id: str, tenant_id: str) -> str:
-        """Generate a direct storage URL for a tenant-owned upload file."""
+    def get_icon_url_with_presigned_fallback(self, *, file_id: str, tenant_id: str) -> str:
+        """Use the icon purpose policy when configured, otherwise preserve the legacy presigned URL."""
         with self._session_maker(expire_on_commit=False) as session:
             upload_file = session.scalar(
                 select(UploadFile)
@@ -197,12 +197,23 @@ class FileService:
 
             file_key = upload_file.key
             content_type = upload_file.mime_type
-            upload_storage = resolve_upload_file_storage(
+            upload_policy = resolve_upload_file_storage_policy(
                 upload_file.purpose,
                 storage_type=upload_file.storage_type,
                 key=file_key,
             )
 
+        if upload_policy is not None:
+            icon_url = build_icon_url("image", file_id)
+            if icon_url is None:
+                raise AssertionError("image icon URL must not be None")
+            return icon_url
+
+        upload_storage = resolve_upload_file_storage(
+            upload_file.purpose,
+            storage_type=upload_file.storage_type,
+            key=file_key,
+        )
         return upload_storage.generate_presigned_url(
             file_key,
             expires_in=dify_config.FILES_ACCESS_TIMEOUT,

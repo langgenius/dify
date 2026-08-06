@@ -99,12 +99,12 @@ class TestAppSiteApi:
         assert result["enable_site"] is True
         assert result["mode"] == AppMode.CHAT
 
-    @patch("controllers.web.site.FileService.get_file_presigned_url")
+    @patch("controllers.web.site.FileService.get_icon_url_with_presigned_fallback")
     @patch("controllers.web.site.FeatureService.get_features")
     def test_image_icon_uses_s3_presigned_url(
         self,
         mock_features: MagicMock,
-        mock_get_file_presigned_url: MagicMock,
+        mock_get_icon_url: MagicMock,
         app: Flask,
         db_session_with_containers: Session,
     ) -> None:
@@ -117,7 +117,7 @@ class TestAppSiteApi:
         db_session_with_containers.commit()
         end_user = _end_user(tenant.id, app_model.id)
         mock_features.return_value = FeatureModel(can_replace_logo=False)
-        mock_get_file_presigned_url.return_value = "https://s3.example.com/icon.png?signature=test"
+        mock_get_icon_url.return_value = "https://s3.example.com/icon.png?signature=test"
 
         with (
             patch.object(dify_config, "EDITION", "CLOUD"),
@@ -127,7 +127,7 @@ class TestAppSiteApi:
             result = AppSiteApi().get(app_model, end_user)
 
         assert result["site"]["icon_url"] == "https://s3.example.com/icon.png?signature=test"
-        mock_get_file_presigned_url.assert_called_once_with(
+        mock_get_icon_url.assert_called_once_with(
             file_id="11111111-1111-4111-8111-111111111111",
             tenant_id=tenant.id,
         )

@@ -334,7 +334,9 @@ class TestFileService:
         with pytest.raises(NotFound, match="File not found"):
             file_service.get_file_base64("non_existent")
 
-    def test_get_file_presigned_url_success(self, file_service: FileService, db_session: Session):
+    def test_get_icon_url_with_presigned_fallback_preserves_legacy_behavior(
+        self, file_service: FileService, db_session: Session
+    ):
         self._persist_upload_file(
             db_session,
             extension="png",
@@ -348,7 +350,10 @@ class TestFileService:
         ):
             mock_storage.generate_presigned_url.return_value = "https://s3.example.com/icon.png?signature=test"
 
-            result = file_service.get_file_presigned_url(file_id="file_id", tenant_id="tenant_id")
+            result = file_service.get_icon_url_with_presigned_fallback(
+                file_id="file_id",
+                tenant_id="tenant_id",
+            )
 
         assert result == "https://s3.example.com/icon.png?signature=test"
         mock_storage.generate_presigned_url.assert_called_once_with(
@@ -357,9 +362,71 @@ class TestFileService:
             content_type="image/png",
         )
 
-    def test_get_file_presigned_url_not_found(self, file_service: FileService):
+    def test_get_icon_url_with_presigned_fallback_uses_build_icon_url_for_proxy_policy(
+        self, file_service: FileService, db_session: Session
+    ):
+        self._persist_upload_file(
+            db_session,
+            extension="png",
+            mime_type="image/png",
+            key="public/upload_files/tenant_id/icon.png",
+            purpose=UploadFilePurpose.ICON,
+            storage_type=StorageType.S3,
+        )
+
+        with (
+            patch("services.file_service.storage") as private_storage,
+            patch("core.file.upload_file_policy.public_storage") as public_storage_registry,
+            patch.object(dify_config, "PUBLIC_STORAGE_POLICIES", _icon_s3_policies()),
+            patch("services.file_service.build_icon_url", return_value="https://api.example.com/icon") as build_url,
+        ):
+            public_storage = MagicMock()
+            public_storage_registry.get.return_value = public_storage
+
+            result = file_service.get_icon_url_with_presigned_fallback(file_id="file_id", tenant_id="tenant_id")
+
+        assert result == "https://api.example.com/icon"
+        build_url.assert_called_once_with("image", "file_id")
+        public_storage.generate_presigned_url.assert_not_called()
+        private_storage.generate_presigned_url.assert_not_called()
+
+    def test_get_icon_url_with_presigned_fallback_uses_build_icon_url_for_presigned_policy(
+        self, file_service: FileService, db_session: Session
+    ):
+        self._persist_upload_file(
+            db_session,
+            extension="png",
+            mime_type="image/png",
+            key="public/upload_files/tenant_id/icon.png",
+            purpose=UploadFilePurpose.ICON,
+            storage_type=StorageType.S3,
+        )
+        policies = {
+            "ICON": {StorageType.S3: PublicStoragePolicyConfig(download_mode="presigned")},
+        }
+
+        with (
+            patch("services.file_service.storage") as private_storage,
+            patch("core.file.upload_file_policy.public_storage") as public_storage_registry,
+            patch.object(dify_config, "PUBLIC_STORAGE_POLICIES", policies),
+            patch(
+                "services.file_service.build_icon_url",
+                return_value="https://s3.example.com/icon.png?signature=test",
+            ) as build_url,
+        ):
+            public_storage = MagicMock()
+            public_storage_registry.get.return_value = public_storage
+
+            result = file_service.get_icon_url_with_presigned_fallback(file_id="file_id", tenant_id="tenant_id")
+
+        assert result == "https://s3.example.com/icon.png?signature=test"
+        build_url.assert_called_once_with("image", "file_id")
+        public_storage.generate_presigned_url.assert_not_called()
+        private_storage.generate_presigned_url.assert_not_called()
+
+    def test_get_icon_url_with_presigned_fallback_not_found(self, file_service: FileService):
         with pytest.raises(NotFound, match="File not found"):
-            file_service.get_file_presigned_url(file_id="file_id", tenant_id="tenant_id")
+            file_service.get_icon_url_with_presigned_fallback(file_id="file_id", tenant_id="tenant_id")
 
     def test_upload_text_success(self, file_service: FileService, db_session: Session):
         # Setup

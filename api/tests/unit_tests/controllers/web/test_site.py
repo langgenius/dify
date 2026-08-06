@@ -53,7 +53,7 @@ def test_build_site_icon_url_uses_s3_presigned_url() -> None:
         patch.object(site_module, "FileService") as mock_file_service,
         patch.object(site_module, "build_icon_url") as mock_build_icon_url,
     ):
-        mock_file_service.return_value.get_file_presigned_url.return_value = (
+        mock_file_service.return_value.get_icon_url_with_presigned_fallback.return_value = (
             "https://s3.example.com/icon.png?signature=test"
         )
 
@@ -61,7 +61,7 @@ def test_build_site_icon_url_uses_s3_presigned_url() -> None:
 
     assert result == "https://s3.example.com/icon.png?signature=test"
     mock_file_service.assert_called_once_with(mock_db.engine)
-    mock_file_service.return_value.get_file_presigned_url.assert_called_once_with(
+    mock_file_service.return_value.get_icon_url_with_presigned_fallback.assert_called_once_with(
         file_id="11111111-1111-4111-8111-111111111111",
         tenant_id="tenant-id",
     )

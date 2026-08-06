@@ -128,13 +128,17 @@ register_response_schema_models(
 
 
 def _build_site_icon_url(*, site: Site, tenant_id: str) -> str | None:
-    """Use direct S3 URLs only in Cloud Mode and preserve preview URLs elsewhere."""
+    """Honor purpose policies while preserving Cloud's legacy S3 presigned fallback."""
     if site.icon_type != IconType.IMAGE or not site.icon:
         return None
+    # TODO: Remove this Cloud compatibility path after public icon storage is configured and legacy icons migrate.
     if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and (
         StorageType(dify_config.STORAGE_TYPE) == StorageType.S3
     ):
-        return FileService(db.engine).get_file_presigned_url(file_id=site.icon, tenant_id=tenant_id)
+        return FileService(db.engine).get_icon_url_with_presigned_fallback(
+            file_id=site.icon,
+            tenant_id=tenant_id,
+        )
     return build_icon_url(site.icon_type, site.icon)
 
 
