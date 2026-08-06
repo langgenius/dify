@@ -830,7 +830,18 @@ class Document(TypeBase):
         return built_in_fields
 
     def to_dict(self) -> DocumentDict:
-        return asdict(self)  # type: ignore
+        result = asdict(self)
+        result.pop("need_summary")
+        result.update(
+            display_status=self.display_status,
+            data_source_info_dict=self.data_source_info_dict,
+            average_segment_length=self.average_segment_length,
+            dataset_process_rule=self.dataset_process_rule.to_dict() if self.dataset_process_rule else None,
+            dataset=None,
+            segment_count=self.segment_count,
+            hit_count=self.hit_count,
+        )
+        return cast(DocumentDict, result)
 
 
 class DocumentSegment(TypeBase):
