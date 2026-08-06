@@ -243,6 +243,23 @@ def test_a_stored_list_that_is_not_one_value_per_call_is_replayed_whole():
     assert thought.tool_outputs_per_call == [["x", "y", "z"], ["x", "y", "z"]]
 
 
+def test_a_legacy_list_of_matching_length_is_read_per_call_not_whole():
+    # the other half of the same decision. Length is the only signal the reader
+    # has, so a single stored value that is itself a list as long as the call
+    # count is indistinguishable from one value per call, and is read as one
+    # value per call. A legacy row whose one value happened to be a two-element
+    # list is therefore split across the two calls instead of replayed whole.
+    thought = _agent_thought(
+        tool="search;search",
+        tool_input=json.dumps({"search": ["a", "b"]}),
+        observation=json.dumps({"search": ["x", "y"]}),
+        tool_meta_str=json.dumps({"search": {"time_cost": 1}}),
+    )
+
+    assert thought.tool_inputs_per_call == ["a", "b"]
+    assert thought.tool_outputs_per_call == ["x", "y"]
+
+
 def test_a_tool_missing_from_the_payload_reads_empty():
     thought = _agent_thought(
         tool="search;calculator",

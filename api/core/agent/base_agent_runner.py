@@ -57,6 +57,19 @@ def _select_tool_occurrence(value: Any, occurrence: int, occurrences: int) -> An
     order. Records written before those calls were kept apart store a single
     value for the tool name, and every occurrence replays it — the behaviour
     those records were written with.
+
+    `observation` values are always `str`: `ToolEngine.agent_invoke` is typed
+    `-> tuple[str, list[str], ToolInvokeMeta]` and the runners store element 0,
+    so a list there is not a shape any writer produces and the length check is
+    defensive. `tool_input` values are `json.loads` of the model's `arguments`
+    with no shape check, so a legacy list-valued input is possible in principle;
+    on a length collision the rule reads per call, not whole —
+    `test_a_legacy_list_of_matching_length_is_read_per_call_not_whole` pins it.
+
+    The same function is defined, identically, in `models/model.py`.
+    The duplication is deliberate: `models/` importing from `core/agent/` is the
+    worse layering trade and the reverse is odd, so neither copy is in the wrong
+    place and neither should move. A change to this rule must be applied in both.
     """
     if occurrences > 1 and isinstance(value, list) and len(value) == occurrences:
         return value[occurrence]

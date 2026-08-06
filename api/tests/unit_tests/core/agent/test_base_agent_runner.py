@@ -760,3 +760,24 @@ class TestOrganizeHistoryRepeatedTools:
 
         assert [call.function.name for call in assistant.tool_calls] == ["search", "calculator"]
         assert [response.content for response in responses] == ["search result", "2"]
+
+    def test_a_legacy_list_of_matching_length_is_read_per_call_not_whole(
+        self, runner: BaseAgentRunner, mock_db_session, mocker: MockerFixture
+    ):
+        # the other half of the same decision. Length is the only signal the
+        # reader has, so a single stored value that is itself a list as long as
+        # the call count is indistinguishable from one value per call, and is
+        # read as one value per call. A legacy row whose one value happened to
+        # be a two-element list is therefore split across the two calls instead
+        # of replayed whole.
+        thought = mocker.MagicMock(
+            tool="search;search",
+            tool_input=json.dumps({"search": ["a", "b"]}),
+            observation=json.dumps({"search": ["x", "y"]}),
+            thought="thinking",
+        )
+
+        assistant, responses = self._replay(runner, mock_db_session, mocker, thought)
+
+        assert [json.loads(call.function.arguments) for call in assistant.tool_calls] == ["a", "b"]
+        assert [response.content for response in responses] == ["x", "y"]
