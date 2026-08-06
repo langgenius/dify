@@ -20,7 +20,6 @@ from core.human_input_v2.approval import (
     FormRef,
     FrozenFormAction,
     FrozenFormDefinition,
-    FrozenJSONObject,
     HumanInputForm,
     IMEndpointPlan,
     MatchedRecipientSource,
@@ -85,16 +84,14 @@ def _definition() -> FrozenFormDefinition:
     return FrozenFormDefinition(
         form_content="Approve",
         inputs=(
-            FrozenJSONObject.from_mapping(
-                {
-                    "type": "paragraph",
-                    "output_variable_name": "reason",
-                    "default": {"type": "constant", "selector": [], "value": "default"},
-                }
-            ),
+            {
+                "type": "paragraph",
+                "output_variable_name": "reason",
+                "default": {"type": "constant", "selector": [], "value": "default"},
+            },
         ),
         actions=(FrozenFormAction("approve", "Approve", "primary"),),
-        default_values=FrozenJSONObject.from_mapping({"reason": "default", "nested": {"items": [1, 2]}}),
+        default_values={"reason": "default", "nested": {"items": [1, 2]}},
         node_title="Review",
         display_in_ui=True,
     )
@@ -176,7 +173,7 @@ def _form() -> HumanInputForm:
     )
 
 
-def test_form_grant_and_endpoint_round_trip_strict_frozen_values() -> None:
+def test_form_grant_and_endpoint_round_trip() -> None:
     form = _form()
     grant = form.grants[0]
     endpoint = _endpoint()
@@ -191,7 +188,7 @@ def test_form_grant_and_endpoint_round_trip_strict_frozen_values() -> None:
     assert restored_form == form
     assert restored_grant == grant
     assert restored_endpoint == endpoint
-    assert restored_form.definition.default_values.to_mapping() == {
+    assert restored_form.definition.default_values == {
         "nested": {"items": [1, 2]},
         "reason": "default",
     }
@@ -211,7 +208,7 @@ def test_delivery_attempt_provider_and_upload_values_round_trip() -> None:
         provider_message_id=None,
         failure_code="provider_rejected",
         failure_reason="Recipient unavailable",
-        provider_response=FrozenJSONObject.from_mapping({"status": 400, "body": {"retry": False}}),
+        provider_response={"status": 400, "body": {"retry": False}},
         created_at=_NOW,
         updated_at=_NOW,
     )
@@ -221,7 +218,7 @@ def test_delivery_attempt_provider_and_upload_values_round_trip() -> None:
         provider=EmailProviderType.RESEND,
         sender_email=NormalizedEmail("Sender@Example.com"),
         sender_name="Dify",
-        encrypted_credentials=FrozenJSONObject.from_mapping({"provider": "resend", "encrypted_api_key": "ciphertext"}),
+        encrypted_credentials={"provider": "resend", "encrypted_api_key": "ciphertext"},
         configured_by_account_id=AccountId("account-1"),
         created_at=_NOW,
         updated_at=_NOW,
@@ -265,7 +262,7 @@ def test_email_provider_mapper_strictly_validates_credentials(credentials: dict[
         provider=EmailProviderType.RESEND,
         sender_email=NormalizedEmail("sender@example.com"),
         sender_name="Dify",
-        encrypted_credentials=FrozenJSONObject.from_mapping(credentials),
+        encrypted_credentials=dict(credentials),
         configured_by_account_id=None,
         created_at=_NOW,
         updated_at=_NOW,
@@ -512,7 +509,7 @@ def test_optional_mapper_values_round_trip_when_absent() -> None:
         provider=EmailProviderType.RESEND,
         sender_email=NormalizedEmail("sender@example.com"),
         sender_name="Dify",
-        encrypted_credentials=FrozenJSONObject.from_mapping({"provider": "resend", "encrypted_api_key": "ciphertext"}),
+        encrypted_credentials={"provider": "resend", "encrypted_api_key": "ciphertext"},
         configured_by_account_id=None,
         created_at=_NOW,
         updated_at=_NOW,

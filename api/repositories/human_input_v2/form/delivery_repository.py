@@ -12,11 +12,10 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.human_input_v2.approval import (
     ClaimedDeliveryAttempt,
     DeliveryAttemptData,
-    FrozenJSONObject,
     LegacyDeliveryAttemptData,
     SafeDeliveryOutcome,
 )
-from core.human_input_v2.approval.delivery import delivery_attempt_data_from_frozen
+from core.human_input_v2.approval.delivery import delivery_attempt_data_from_mapping
 from core.human_input_v2.delivery_runtime import (
     ConfigurationSnapshotIdentity,
     DeliveryOutcome,
@@ -101,7 +100,7 @@ class SQLAlchemyDeliveryAttemptRepository:
             record, endpoint = row
             if not _claim_matches(record, claim):
                 return None
-            record.provider_response = FormDeliveryProviderResponse(data.to_frozen().to_mapping())
+            record.provider_response = FormDeliveryProviderResponse.model_validate(data.to_mapping())
             record.updated_at = _next_timestamp(record.updated_at, now)
             session.flush()
             return _claimed(record, endpoint)
@@ -135,7 +134,7 @@ class SQLAlchemyDeliveryAttemptRepository:
                 return False
             record.status = HumanInputDeliveryAttemptStatus.QUEUED
             record.scheduled_at = scheduled_at.value
-            record.provider_response = FormDeliveryProviderResponse(data.to_frozen().to_mapping())
+            record.provider_response = FormDeliveryProviderResponse.model_validate(data.to_mapping())
             record.updated_at = _next_timestamp(record.updated_at, now)
             return True
 
@@ -170,7 +169,7 @@ class SQLAlchemyDeliveryAttemptRepository:
             record.provider_message_id = outcome.receipt.provider_message_id if outcome.receipt is not None else None
             record.failure_code = outcome.failure.code if outcome.failure is not None else None
             record.failure_reason = None
-            record.provider_response = FormDeliveryProviderResponse(data.to_frozen().to_mapping())
+            record.provider_response = FormDeliveryProviderResponse.model_validate(data.to_mapping())
             record.updated_at = _next_timestamp(record.updated_at, now)
             return True
 
@@ -202,9 +201,7 @@ class SQLAlchemyDeliveryAttemptRepository:
                     record.finished_at = now.value
                     record.failure_code = "delivery_outcome_unknown"
                     if record.provider_response is not None:
-                        current_data = delivery_attempt_data_from_frozen(
-                            FrozenJSONObject.from_mapping(record.provider_response.root)
-                        )
+                        current_data = delivery_attempt_data_from_mapping(record.provider_response.root)
                         if isinstance(current_data, DeliveryAttemptData):
                             current_data = replace(
                                 current_data,
@@ -213,8 +210,8 @@ class SQLAlchemyDeliveryAttemptRepository:
                                     failure_code="delivery_outcome_unknown",
                                 ),
                             )
-                            record.provider_response = FormDeliveryProviderResponse(
-                                current_data.to_frozen().to_mapping()
+                            record.provider_response = FormDeliveryProviderResponse.model_validate(
+                                current_data.to_mapping()
                             )
                 else:
                     record.status = HumanInputDeliveryAttemptStatus.QUEUED

@@ -11,16 +11,18 @@ snapshot; partial authorization or persistence steps are never retried alone.
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Protocol
+
+from pydantic import JsonValue
 
 from core.human_input_v2.approval import (
     AuthorizedSubmissionCommit,
     FormAuthorizationAuditEvent,
     FormAuthorizationAuditEventType,
     FormSubmission,
-    FrozenJSONObject,
     HumanInputForm,
     RetryableSubmissionPersistenceError,
     SubmissionAttemptScope,
@@ -68,8 +70,8 @@ class SubmitFormCommand:
     scope: SubmissionAttemptScope
     proof: object
     selected_action_id: str
-    input_snapshot: FrozenJSONObject
-    canonical_values: FrozenJSONObject
+    input_snapshot: Mapping[str, JsonValue]
+    canonical_values: Mapping[str, JsonValue]
     submission_id: SubmissionId
     authorization_audit_event_id: AuditEventId
     rejection_audit_event_id: AuditEventId
@@ -185,7 +187,7 @@ class SubmitHumanInputFormHandler:
                         reason_code=rejection,
                         reason_message=None,
                         authorization_proof=None,
-                        payload=FrozenJSONObject.from_mapping({"selected_action_id": command.selected_action_id}),
+                        payload={"selected_action_id": command.selected_action_id},
                         occurred_at=command.now,
                         created_at=command.now,
                         updated_at=command.now,

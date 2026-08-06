@@ -38,7 +38,6 @@ from .form import (
     SubmissionTransitionDecision,
     WaitingFormState,
 )
-from .frozen_values import FrozenJSONArray, FrozenJSONObject, JSONPrimitive
 from .grants import ApproverGrant, ApproverGrantRef, DeliveryEndpointRef, FormRef, OTPChallengeRef
 from .otp import (
     Clock,
@@ -184,15 +183,12 @@ __all__ = [
     "FormSubmission",
     "FrozenFormAction",
     "FrozenFormDefinition",
-    "FrozenJSONArray",
-    "FrozenJSONObject",
     "HumanInputForm",
     "IMEndpointConfiguration",
     "IMEndpointPlan",
     "InactiveFormState",
     "InvalidApproverGrantError",
     "InvalidSelectedActionError",
-    "JSONPrimitive",
     "LegacyDeliveryAttemptData",
     "MatchedRecipientSource",
     "OTPChallenge",

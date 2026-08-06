@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 
-from core.human_input_v2.approval import EmailProviderConfiguration, FrozenJSONObject
+from core.human_input_v2.approval import EmailProviderConfiguration
 from core.human_input_v2.email_channel import EmailChannelConfiguration, ProtectedAPIKey
 from core.human_input_v2.shared import (
     AccountId,
@@ -57,7 +57,7 @@ def email_provider_to_record(provider: EmailProviderConfiguration) -> HumanInput
     """Compatibility mapper for form delivery consumers during the ownership move."""
 
     credentials = ResendEmailProviderEncryptedCredentials.model_validate(
-        provider.encrypted_credentials.to_mapping(),
+        provider.encrypted_credentials,
     )
     return email_configuration_to_record(
         EmailChannelConfiguration(
@@ -84,12 +84,10 @@ def email_provider_from_record(record: HumanInputEmailProvider) -> EmailProvider
         provider=configuration.provider,
         sender_email=configuration.sender_email,
         sender_name=configuration.sender_name,
-        encrypted_credentials=FrozenJSONObject.from_mapping(
-            {
-                "provider": configuration.provider.value,
-                "encrypted_api_key": configuration.protected_api_key.value,
-            }
-        ),
+        encrypted_credentials={
+            "provider": configuration.provider.value,
+            "encrypted_api_key": configuration.protected_api_key.value,
+        },
         configured_by_account_id=configuration.configured_by_account_id,
         created_at=configuration.created_at,
         updated_at=configuration.updated_at,

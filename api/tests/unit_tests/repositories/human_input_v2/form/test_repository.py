@@ -23,7 +23,6 @@ from core.human_input_v2.approval import (
     FormSnapshotIdentifierFactory,
     FrozenFormAction,
     FrozenFormDefinition,
-    FrozenJSONObject,
     HumanInputForm,
     MatchedRecipientSource,
     ProtectedRenderedEmailRequest,
@@ -112,7 +111,7 @@ def _definition() -> FrozenFormDefinition:
         form_content="Approve",
         inputs=(),
         actions=(FrozenFormAction("approve", "Approve", "primary"),),
-        default_values=FrozenJSONObject.from_mapping({}),
+        default_values={},
         node_title="Review",
         display_in_ui=True,
     )
@@ -171,7 +170,7 @@ def _attempt(endpoint: DeliveryEndpoint, *, attempt_id: str = "attempt-1") -> De
         provider_message_id=None,
         failure_code="provider_rejected",
         failure_reason="Recipient unavailable",
-        provider_response=FrozenJSONObject.from_mapping({"status": 400}),
+        provider_response={"status": 400},
         created_at=_NOW,
         updated_at=_NOW,
     )
@@ -229,7 +228,7 @@ def test_create_form_and_delivery_attempt_lifecycle_are_atomic_and_cas_guarded(r
         provider_message_id=None,
         failure_code=None,
         failure_reason=None,
-        provider_response=data.to_frozen(),
+        provider_response=data.to_mapping(),
         created_at=_NOW,
         updated_at=_NOW,
     )
@@ -292,7 +291,7 @@ def test_stale_sending_recovery_respects_the_provider_idempotency_horizon(reposi
             provider_message_id=None,
             failure_code=None,
             failure_reason=None,
-            provider_response=data.to_frozen(),
+            provider_response=data.to_mapping(),
             created_at=started_at,
             updated_at=UtcTimestamp(_NOW.value - timedelta(minutes=10)),
         )
@@ -343,7 +342,7 @@ def test_claim_marks_a_malformed_durable_payload_as_failed(repository_context) -
         provider_message_id=None,
         failure_code=None,
         failure_reason=None,
-        provider_response=FrozenJSONObject.from_mapping({"legacy": True}),
+        provider_response={"legacy": True},
         created_at=_NOW,
         updated_at=_NOW,
     )

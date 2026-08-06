@@ -1,8 +1,8 @@
 """Explicit mapping between Form Core domain values and ORM records.
 
 Every structured JSON value is validated at this boundary. ORM records never
-escape into the form domain, and mutable primitive containers are created only
-for immediate Pydantic serialization.
+escape into the form domain, and domain mappings are converted to the persisted
+Pydantic types explicitly.
 """
 
 from __future__ import annotations
@@ -29,7 +29,6 @@ from core.human_input_v2.approval import (
     FormRef,
     FrozenFormAction,
     FrozenFormDefinition,
-    FrozenJSONObject,
     HumanInputForm,
     IMEndpointConfiguration,
     MatchedRecipientSource,
@@ -113,14 +112,14 @@ def email_provider_from_record(record: HumanInputEmailProvider) -> EmailProvider
 
 
 def _definition_to_record_value(definition: FrozenFormDefinition) -> HumanInputV2FormDefinition:
-    inputs = tuple(_FORM_INPUT_ADAPTER.validate_python(item.to_mapping()) for item in definition.inputs)
+    inputs = tuple(_FORM_INPUT_ADAPTER.validate_python(item) for item in definition.inputs)
     actions = tuple(
         UserActionConfig.model_validate(
             {"id": action.id, "title": action.title, "button_style": action.button_style},
         )
         for action in definition.actions
     )
-    default_values = _JSON_OBJECT_ADAPTER.validate_python(definition.default_values.to_mapping())
+    default_values = _JSON_OBJECT_ADAPTER.validate_python(definition.default_values)
     return HumanInputV2FormDefinition(
         form_content=definition.form_content,
         inputs=inputs,
@@ -134,10 +133,7 @@ def _definition_to_record_value(definition: FrozenFormDefinition) -> HumanInputV
 def _definition_from_record_value(definition: HumanInputV2FormDefinition) -> FrozenFormDefinition:
     return FrozenFormDefinition(
         form_content=definition.form_content,
-        inputs=tuple(
-            FrozenJSONObject.from_mapping(_JSON_OBJECT_ADAPTER.validate_python(item.model_dump(mode="json")))
-            for item in definition.inputs
-        ),
+        inputs=tuple(_JSON_OBJECT_ADAPTER.validate_python(item.model_dump(mode="json")) for item in definition.inputs),
         actions=tuple(
             FrozenFormAction(
                 id=action.id,
@@ -146,7 +142,7 @@ def _definition_from_record_value(definition: HumanInputV2FormDefinition) -> Fro
             )
             for action in definition.user_actions
         ),
-        default_values=FrozenJSONObject.from_mapping(definition.default_values),
+        default_values=definition.default_values,
         node_title=definition.node_title,
         display_in_ui=definition.display_in_ui,
     )
@@ -411,7 +407,7 @@ def endpoint_from_record(record: HumanInputV2FormDeliveryEndpoint) -> DeliveryEn
 
 def delivery_attempt_to_record(attempt: DeliveryAttempt) -> HumanInputV2FormDeliveryAttempt:
     response = (
-        FormDeliveryProviderResponse(attempt.provider_response.to_mapping())
+        FormDeliveryProviderResponse(_JSON_OBJECT_ADAPTER.validate_python(attempt.provider_response))
         if attempt.provider_response is not None
         else None
     )
@@ -457,11 +453,7 @@ def delivery_attempt_from_record(
         provider_message_id=record.provider_message_id,
         failure_code=record.failure_code,
         failure_reason=record.failure_reason,
-        provider_response=(
-            FrozenJSONObject.from_mapping(record.provider_response.root)
-            if record.provider_response is not None
-            else None
-        ),
+        provider_response=record.provider_response.root if record.provider_response is not None else None,
         created_at=_timestamp(record.created_at),
         updated_at=_timestamp(record.updated_at),
     )

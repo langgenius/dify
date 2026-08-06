@@ -14,7 +14,7 @@ from slack_sdk.errors import SlackApiError, SlackClientError
 from slack_sdk.socket_mode.request import SocketModeRequest
 from slack_sdk.web import WebClient
 
-from core.human_input_v2.approval import FrozenFormAction, FrozenFormDefinition, FrozenJSONObject
+from core.human_input_v2.approval import FrozenFormAction, FrozenFormDefinition
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAdapter
 from core.human_input_v2.im_provider import (
@@ -143,12 +143,12 @@ def _intent(*, input_type: str = "paragraph") -> NormalizedCardIntent:
         input_definition["option_source"] = {"type": "constant", "value": ["One", "Two"]}
     definition = FrozenFormDefinition(
         form_content="Please decide",
-        inputs=(FrozenJSONObject.from_mapping(input_definition),),
+        inputs=(dict(input_definition),),
         actions=(
             FrozenFormAction("approve", "Approve", "primary"),
             FrozenFormAction("reject", "Reject", "accent"),
         ),
-        default_values=FrozenJSONObject.from_mapping({"comment": "One" if input_type == "select" else "Initial"}),
+        default_values={"comment": "One" if input_type == "select" else "Initial"},
         node_title="Approval",
         display_in_ui=True,
     )
@@ -162,9 +162,9 @@ def _intent_with_input(
 ) -> NormalizedCardIntent:
     definition = FrozenFormDefinition(
         form_content="Please decide",
-        inputs=(FrozenJSONObject.from_mapping(input_definition),),
+        inputs=(dict(input_definition),),
         actions=(FrozenFormAction("approve", "Approve", "primary"),),
-        default_values=FrozenJSONObject.from_mapping(defaults or {}),
+        default_values=dict(defaults or {}),
         node_title="Approval",
         display_in_ui=True,
     )

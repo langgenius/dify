@@ -17,6 +17,7 @@ from datetime import UTC, datetime
 from typing import Literal, override
 from urllib.parse import parse_qs
 
+from pydantic import JsonValue
 from slack_sdk.errors import SlackApiError, SlackClientError
 from slack_sdk.models.blocks import MarkdownBlock
 from slack_sdk.signature import Clock, SignatureVerifier
@@ -27,7 +28,6 @@ from slack_sdk.socket_mode.response import SocketModeResponse
 from slack_sdk.web import WebClient
 from slack_sdk.web.slack_response import SlackResponse
 
-from core.human_input_v2.approval.frozen_values import JSONPrimitive
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_provider import (
     AuthenticatedIMEvent,
@@ -736,14 +736,13 @@ def _card_unrepresentable_reason(intent: NormalizedCardIntent) -> str | None:
     if len(definition.actions) > _MAX_ACTION_COUNT:
         return "Slack cannot preserve this number of card actions."
 
-    defaults = definition.default_values.to_mapping()
+    defaults = definition.default_values
     input_names: set[str] = set()
     for input_definition in definition.inputs:
-        input_mapping = input_definition.to_mapping()
-        reason = _input_unrepresentable_reason(input_mapping, defaults)
+        reason = _input_unrepresentable_reason(input_definition, defaults)
         if reason is not None:
             return reason
-        input_name = input_mapping.get("output_variable_name")
+        input_name = input_definition.get("output_variable_name")
         assert isinstance(input_name, str)
         if input_name in input_names:
             return "Slack cannot preserve duplicate card input identifiers."
@@ -759,8 +758,8 @@ def _card_unrepresentable_reason(intent: NormalizedCardIntent) -> str | None:
 
 
 def _input_unrepresentable_reason(
-    input_definition: Mapping[str, JSONPrimitive],
-    defaults: Mapping[str, JSONPrimitive],
+    input_definition: Mapping[str, JsonValue],
+    defaults: Mapping[str, JsonValue],
 ) -> str | None:
     input_type = input_definition.get("type")
     input_name = input_definition.get("output_variable_name")
@@ -802,8 +801,8 @@ def _input_unrepresentable_reason(
 
 
 def _effective_input_default(
-    input_definition: Mapping[str, JSONPrimitive],
-    defaults: Mapping[str, JSONPrimitive],
+    input_definition: Mapping[str, JsonValue],
+    defaults: Mapping[str, JsonValue],
 ) -> tuple[str | None, str | None]:
     input_name = input_definition.get("output_variable_name")
     input_type = input_definition.get("type")
@@ -854,9 +853,8 @@ def _render_card_blocks(
     if definition.node_title:
         blocks.append({"type": "header", "text": {"type": "plain_text", "text": definition.node_title}})
     blocks.append(MarkdownBlock(text=intent.rendered_content).to_dict())
-    defaults = definition.default_values.to_mapping()
-    for frozen_input in definition.inputs:
-        input_definition = frozen_input.to_mapping()
+    defaults = definition.default_values
+    for input_definition in definition.inputs:
         input_name = input_definition["output_variable_name"]
         input_type = input_definition["type"]
         if not isinstance(input_name, str) or not isinstance(input_type, str):

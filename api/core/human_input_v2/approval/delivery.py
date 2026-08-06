@@ -8,10 +8,13 @@ lifecycle and cannot mutate :class:`HumanInputForm` lifecycle state.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
 from hashlib import sha256
 from typing import assert_never
+
+from pydantic import JsonValue
 
 from core.human_input_v2.channel_identity import ChannelKind, ChannelProvider, ChannelRef
 from core.human_input_v2.delivery_runtime import ConfigurationSnapshotIdentity
@@ -37,7 +40,6 @@ from core.human_input_v2.shared import (
     WorkspaceId,
 )
 
-from .frozen_values import FrozenJSONObject
 from .grants import ApproverGrantRef, DeliveryEndpointRef
 from .recipient_resolution import (
     ConsoleEndpointPlan,
@@ -212,7 +214,7 @@ class DeliveryAttempt:
     provider_message_id: str | None
     failure_code: str | None
     failure_reason: str | None
-    provider_response: FrozenJSONObject | None
+    provider_response: Mapping[str, JsonValue] | None
     created_at: UtcTimestamp
     updated_at: UtcTimestamp
 
@@ -235,7 +237,7 @@ class DeliveryAttempt:
     def data(self) -> DeliveryAttemptData | LegacyDeliveryAttemptData | None:
         if self.provider_response is None:
             return None
-        return delivery_attempt_data_from_frozen(self.provider_response)
+        return delivery_attempt_data_from_mapping(self.provider_response)
 
 
 @dataclass(frozen=True, slots=True)
@@ -288,8 +290,8 @@ class DeliveryAttemptData:
         if self.worker_retry_count < 0:
             raise ValueError("delivery worker retry count must not be negative")
 
-    def to_frozen(self) -> FrozenJSONObject:
-        mapping: dict[str, object] = {
+    def to_mapping(self) -> Mapping[str, JsonValue]:
+        mapping: dict[str, JsonValue] = {
             "schema_version": 1,
             "protected_request": {
                 "version": self.protected_request.version,
@@ -304,46 +306,46 @@ class DeliveryAttemptData:
             "worker_retry_count": self.worker_retry_count,
         }
         if self.configuration_snapshot is not None:
-            mapping["configuration_snapshot"] = self.configuration_snapshot.to_mapping()
+            configuration_snapshot: Mapping[str, JsonValue] = self.configuration_snapshot.to_mapping()
+            mapping["configuration_snapshot"] = dict(configuration_snapshot)
         if self.outcome is not None:
             mapping["outcome"] = {
                 "status": self.outcome.status,
                 "failure_code": self.outcome.failure_code,
                 "provider_message_id": self.outcome.provider_message_id,
             }
-        return FrozenJSONObject.from_mapping(mapping)
+        return mapping
 
 
 @dataclass(frozen=True, slots=True)
 class LegacyDeliveryAttemptData:
     """Compatibility wrapper for historical provider diagnostics."""
 
-    response: FrozenJSONObject = field(repr=False)
+    response: Mapping[str, JsonValue] = field(repr=False)
 
 
-def delivery_attempt_data_from_frozen(
-    value: FrozenJSONObject,
+def delivery_attempt_data_from_mapping(
+    value: Mapping[str, JsonValue],
 ) -> DeliveryAttemptData | LegacyDeliveryAttemptData:
-    mapping = value.to_mapping()
-    if mapping.get("schema_version") != 1:
+    if value.get("schema_version") != 1:
         return LegacyDeliveryAttemptData(value)
-    protected = mapping.get("protected_request")
-    selected = mapping.get("selected_channel")
-    if not isinstance(protected, dict) or not isinstance(selected, dict):
+    protected = value.get("protected_request")
+    selected = value.get("selected_channel")
+    if not isinstance(protected, Mapping) or not isinstance(selected, Mapping):
         raise ValueError("delivery attempt data is malformed")
-    snapshot_mapping = mapping.get("configuration_snapshot")
+    snapshot_mapping = value.get("configuration_snapshot")
     snapshot = None
     if snapshot_mapping is not None:
-        if not isinstance(snapshot_mapping, dict):
+        if not isinstance(snapshot_mapping, Mapping):
             raise ValueError("delivery configuration snapshot is malformed")
         snapshot = ConfigurationSnapshotIdentity(
             EmailProviderId(str(snapshot_mapping["configuration_id"])),
             UtcTimestamp(datetime.fromisoformat(str(snapshot_mapping["updated_at"]))),
         )
-    outcome_mapping = mapping.get("outcome")
+    outcome_mapping = value.get("outcome")
     outcome = None
     if outcome_mapping is not None:
-        if not isinstance(outcome_mapping, dict):
+        if not isinstance(outcome_mapping, Mapping):
             raise ValueError("delivery outcome is malformed")
         outcome = SafeDeliveryOutcome(
             status=str(outcome_mapping["status"]),
@@ -365,11 +367,11 @@ def delivery_attempt_data_from_frozen(
             ChannelKind(str(selected["kind"])),
             ChannelProvider(str(selected["provider"])),
         ),
-        payload_fingerprint=str(mapping["payload_fingerprint"]),
-        idempotency_key=str(mapping["idempotency_key"]),
+        payload_fingerprint=str(value["payload_fingerprint"]),
+        idempotency_key=str(value["idempotency_key"]),
         configuration_snapshot=snapshot,
         outcome=outcome,
-        worker_retry_count=_json_integer(mapping.get("worker_retry_count", 0), label="worker retry count"),
+        worker_retry_count=_json_integer(value.get("worker_retry_count", 0), label="worker retry count"),
     )
 
 
@@ -388,7 +390,7 @@ class EmailProviderConfiguration:
     provider: EmailProviderType
     sender_email: NormalizedEmail
     sender_name: str
-    encrypted_credentials: FrozenJSONObject
+    encrypted_credentials: Mapping[str, JsonValue]
     configured_by_account_id: AccountId | None
     created_at: UtcTimestamp
     updated_at: UtcTimestamp

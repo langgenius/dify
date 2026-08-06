@@ -7,10 +7,13 @@ the Form lock, rejection audit append, and atomic authorized commit shape.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Protocol
+
+from pydantic import JsonValue
 
 from core.human_input_v2.shared import (
     ApproverGrantId,
@@ -20,7 +23,6 @@ from core.human_input_v2.shared import (
     UtcTimestamp,
 )
 
-from .frozen_values import FrozenJSONObject
 from .grants import FormRef
 from .submission_authorization import AuthorizationContext, AuthorizedSubmission
 from .submission_records import FormAuthorizationAuditEvent, FormSubmission
@@ -46,8 +48,8 @@ class AuthorizedSubmissionCommit:
     submission_id: SubmissionId
     authorization_audit_event_id: AuditEventId
     authorized: AuthorizedSubmission
-    input_snapshot: FrozenJSONObject
-    canonical_values: FrozenJSONObject
+    input_snapshot: Mapping[str, JsonValue]
+    canonical_values: Mapping[str, JsonValue]
 
     def to_submission(
         self,

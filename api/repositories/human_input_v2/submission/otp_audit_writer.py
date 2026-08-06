@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session
 from core.human_input_v2.approval import (
     FormAuthorizationAuditEvent,
     FormAuthorizationAuditEventType,
-    FrozenJSONObject,
 )
 from core.human_input_v2.entities import HumanInputDeliveryChannel
 from core.human_input_v2.shared import AuditEventId
@@ -35,15 +34,13 @@ class SQLAlchemyOTPChallengeAuditWriter:
             reason_code=None,
             reason_message=None,
             authorization_proof=None,
-            payload=FrozenJSONObject.from_mapping(
-                {
-                    "challenge_id": str(fact.challenge_ref.challenge_id),
-                    "previous_challenge_id": (
-                        str(fact.previous_challenge_id) if fact.previous_challenge_id is not None else None
-                    ),
-                    "send_count": fact.send_count,
-                }
-            ),
+            payload={
+                "challenge_id": str(fact.challenge_ref.challenge_id),
+                "previous_challenge_id": (
+                    str(fact.previous_challenge_id) if fact.previous_challenge_id is not None else None
+                ),
+                "send_count": fact.send_count,
+            },
             occurred_at=fact.occurred_at,
             created_at=fact.occurred_at,
             updated_at=fact.occurred_at,

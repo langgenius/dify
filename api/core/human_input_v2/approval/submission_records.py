@@ -1,4 +1,4 @@
-"""Immutable submission and shared authorization-audit persistence values.
+"""Submission and shared authorization-audit persistence values.
 
 These values preserve business identity and structured snapshots without
 exposing ORM records. Persistence mappers alone translate them to storage
@@ -7,8 +7,11 @@ columns and Pydantic JSON values.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
+
+from pydantic import JsonValue
 
 from core.human_input_v2.entities import HumanInputDeliveryChannel
 from core.human_input_v2.shared import (
@@ -19,7 +22,6 @@ from core.human_input_v2.shared import (
     UtcTimestamp,
 )
 
-from .frozen_values import FrozenJSONObject
 from .grants import FormRef
 from .submission_authorization import SubmissionActor, VerifiedEmailOTPProof, VerifiedSubmissionProof
 
@@ -45,7 +47,7 @@ class FormAuthorizationAuditEvent:
     reason_code: str | None
     reason_message: str | None
     authorization_proof: VerifiedSubmissionProof | None
-    payload: FrozenJSONObject | None
+    payload: Mapping[str, JsonValue] | None
     occurred_at: UtcTimestamp
     created_at: UtcTimestamp
     updated_at: UtcTimestamp
@@ -75,7 +77,7 @@ class FormAuthorizationAuditEvent:
 
 @dataclass(frozen=True, slots=True)
 class FormSubmission:
-    """Immutable winning submission mapped independently from ORM lifetime."""
+    """Winning submission mapped independently from ORM lifetime."""
 
     id: SubmissionId
     form_ref: FormRef
@@ -84,8 +86,8 @@ class FormSubmission:
     authorization_audit_event_id: AuditEventId
     actor: SubmissionActor
     selected_action_id: str
-    input_snapshot: FrozenJSONObject
-    canonical_values: FrozenJSONObject
+    input_snapshot: Mapping[str, JsonValue]
+    canonical_values: Mapping[str, JsonValue]
     submitted_at: UtcTimestamp
     created_at: UtcTimestamp
     updated_at: UtcTimestamp

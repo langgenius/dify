@@ -79,7 +79,7 @@ def _claim() -> ClaimedDeliveryAttempt:
         provider_message_id=None,
         failure_code=None,
         failure_reason=None,
-        provider_response=data.to_frozen(),
+        provider_response=data.to_mapping(),
         created_at=_NOW,
         updated_at=_NOW,
     )
@@ -100,7 +100,7 @@ class Repository:
     def bind_prepared(self, claim, *, snapshot, payload_fingerprint, now):
         del payload_fingerprint
         data = replace(claim.data, configuration_snapshot=snapshot)
-        return ClaimedDeliveryAttempt(replace(claim.attempt, updated_at=now, provider_response=data.to_frozen()), data)
+        return ClaimedDeliveryAttempt(replace(claim.attempt, updated_at=now, provider_response=data.to_mapping()), data)
 
     def complete(self, claim, *, outcome, now):
         del claim, now

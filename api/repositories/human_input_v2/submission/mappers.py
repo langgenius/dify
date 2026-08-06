@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import assert_never
+
+from pydantic import JsonValue, TypeAdapter
 
 from core.human_input_v2.approval import (
     AccountSubmissionActor,
@@ -17,7 +20,6 @@ from core.human_input_v2.approval import (
     FormAuthorizationAuditEventType,
     FormRef,
     FormSubmission,
-    FrozenJSONObject,
     SubmissionActor,
     VerifiedAccountSessionProof,
     VerifiedEmailOTPProof,
@@ -59,6 +61,8 @@ from models.human_input_v2 import (
     IMIdentityAuthorizationProof,
     TrustedEndUserAuthorizationProof,
 )
+
+_JSON_OBJECT_ADAPTER: TypeAdapter[dict[str, JsonValue]] = TypeAdapter(dict[str, JsonValue])
 
 
 def _timestamp(value: datetime) -> UtcTimestamp:
@@ -195,7 +199,7 @@ def _actor_from_record(record: HumanInputV2FormSubmission) -> SubmissionActor:
 
 
 def submission_to_record(submission: FormSubmission) -> HumanInputV2FormSubmission:
-    """Map one detached immutable winning submission to an ORM record."""
+    """Map one detached winning submission to an ORM record."""
 
     actor_fields = _actor_to_record_fields(submission.actor)
     record = HumanInputV2FormSubmission(
@@ -205,8 +209,8 @@ def submission_to_record(submission: FormSubmission) -> HumanInputV2FormSubmissi
         actor_type=actor_fields.actor_type,
         authorization_audit_event_id=str(submission.authorization_audit_event_id),
         selected_action_id=submission.selected_action_id,
-        input_snapshot=FormInputSnapshot(submission.input_snapshot.to_mapping()),
-        canonical_values=FormCanonicalValues(submission.canonical_values.to_mapping()),
+        input_snapshot=FormInputSnapshot(_json_object(submission.input_snapshot)),
+        canonical_values=FormCanonicalValues(_json_object(submission.canonical_values)),
         submitted_at=submission.submitted_at.value,
         actor_account_id=actor_fields.account_id,
         actor_end_user_id=actor_fields.end_user_id,
@@ -234,8 +238,8 @@ def submission_from_record(record: HumanInputV2FormSubmission) -> FormSubmission
         authorization_audit_event_id=AuditEventId(record.authorization_audit_event_id),
         actor=_actor_from_record(record),
         selected_action_id=record.selected_action_id,
-        input_snapshot=FrozenJSONObject.from_mapping(record.input_snapshot.root),
-        canonical_values=FrozenJSONObject.from_mapping(record.canonical_values.root),
+        input_snapshot=record.input_snapshot.root,
+        canonical_values=record.canonical_values.root,
         submitted_at=_timestamp(record.submitted_at),
         created_at=_timestamp(record.created_at),
         updated_at=_timestamp(record.updated_at),
@@ -243,7 +247,7 @@ def submission_from_record(record: HumanInputV2FormSubmission) -> FormSubmission
 
 
 def audit_event_to_record(event: FormAuthorizationAuditEvent) -> HumanInputV2FormAuditEvent:
-    """Map one immutable shared audit fact to its append-only record."""
+    """Map one shared audit fact to its append-only record."""
 
     event.validate_authorization_proof_owner()
     record = HumanInputV2FormAuditEvent(
@@ -259,7 +263,7 @@ def audit_event_to_record(event: FormAuthorizationAuditEvent) -> HumanInputV2For
         authorization_proof=(
             proof_to_record_value(event.authorization_proof) if event.authorization_proof is not None else None
         ),
-        event_payload=FormAuditEventPayload(event.payload.to_mapping()) if event.payload is not None else None,
+        event_payload=FormAuditEventPayload(_json_object(event.payload)) if event.payload is not None else None,
     )
     record.id = str(event.id)
     record.created_at = event.created_at.value
@@ -293,13 +297,15 @@ def audit_event_from_record(record: HumanInputV2FormAuditEvent) -> FormAuthoriza
         reason_code=record.reason_code,
         reason_message=record.reason_message,
         authorization_proof=proof,
-        payload=(
-            FrozenJSONObject.from_mapping(record.event_payload.root) if record.event_payload is not None else None
-        ),
+        payload=record.event_payload.root if record.event_payload is not None else None,
         occurred_at=_timestamp(record.occurred_at),
         created_at=_timestamp(record.created_at),
         updated_at=_timestamp(record.updated_at),
     )
+
+
+def _json_object(value: Mapping[str, JsonValue]) -> dict[str, JsonValue]:
+    return _JSON_OBJECT_ADAPTER.validate_python(value)
 
 
 __all__ = [

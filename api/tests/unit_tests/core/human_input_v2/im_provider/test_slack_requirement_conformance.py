@@ -18,7 +18,7 @@ from slack_sdk.socket_mode.request import SocketModeRequest
 from slack_sdk.web import WebClient
 
 from controllers.common.human_input_channel_management import SaveChannelRequest, save_channel_command
-from core.human_input_v2.approval import FrozenFormAction, FrozenFormDefinition, FrozenJSONObject
+from core.human_input_v2.approval import FrozenFormAction, FrozenFormDefinition
 from core.human_input_v2.channel_management import (
     ChannelKind,
     ChannelProvider,
@@ -150,9 +150,9 @@ def _card_intent(
         actions = (FrozenFormAction("approve", "Approve", "primary"),)
     definition = FrozenFormDefinition(
         form_content="Sanitized form content",
-        inputs=tuple(FrozenJSONObject.from_mapping(input_definition) for input_definition in inputs),
+        inputs=tuple(dict(input_definition) for input_definition in inputs),
         actions=actions,
-        default_values=FrozenJSONObject.from_mapping(defaults or {}),
+        default_values=dict(defaults or {}),
         node_title=node_title,
         display_in_ui=True,
     )
@@ -769,7 +769,7 @@ def test_real_paragraph_constant_default_is_preserved_and_rendered(
     )
     paragraph_values = paragraph.model_dump(mode="json")
     intent = _card_intent(inputs=(paragraph_values,), defaults=resolved_defaults)
-    preserved_input = intent.form_definition.inputs[0].to_mapping()
+    preserved_input = dict(intent.form_definition.inputs[0])
     client = mocker.Mock(spec=WebClient)
     client.auth_test.return_value = _successful_auth_response()
     client.chat_postMessage.return_value = _SlackResponse(
@@ -790,7 +790,7 @@ def test_real_paragraph_constant_default_is_preserved_and_rendered(
         block for block in client.chat_postMessage.call_args.kwargs["blocks"] if block["type"] == "input"
     )
     assert input_block["element"]["initial_value"] == "Sanitized preserved default"
-    assert intent.form_definition.inputs[0].to_mapping() == preserved_input == paragraph_values
+    assert intent.form_definition.inputs[0] == preserved_input == paragraph_values
 
 
 @pytest.mark.parametrize(
@@ -834,7 +834,7 @@ def test_paragraph_default_rejection_is_whole_intent_and_side_effect_free(
         ),
         defaults=resolved_defaults,
     )
-    preserved_input = intent.form_definition.inputs[0].to_mapping()
+    preserved_input = dict(intent.form_definition.inputs[0])
     client = mocker.Mock(spec=WebClient)
     adapter = _adapter(mocker, client)
 
@@ -847,7 +847,7 @@ def test_paragraph_default_rejection_is_whole_intent_and_side_effect_free(
             intent,
             CorrelationToken("sanitized-correlation"),
         )
-    assert intent.form_definition.inputs[0].to_mapping() == preserved_input
+    assert intent.form_definition.inputs[0] == preserved_input
     client.auth_test.assert_not_called()
     client.chat_postMessage.assert_not_called()
 

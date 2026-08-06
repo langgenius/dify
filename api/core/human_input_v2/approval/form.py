@@ -8,9 +8,12 @@ the later submission transaction boundary.
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Protocol
+
+from pydantic import JsonValue
 
 from core.human_input_v2.entities import HumanInputV2FormKind, HumanInputV2FormStatus
 from core.human_input_v2.shared import (
@@ -21,7 +24,6 @@ from core.human_input_v2.shared import (
 )
 
 from .delivery import DeliveryAttempt, DeliveryEndpoint
-from .frozen_values import FrozenJSONObject
 from .grants import ApproverGrant, FormRef
 from .recipient_resolution import ResolvedApprovalPlan
 
@@ -49,18 +51,18 @@ class FrozenFormAction:
 
 @dataclass(frozen=True, slots=True)
 class FrozenFormDefinition:
-    """Immutable render and validation definition captured at form creation."""
+    """Render and validation definition captured at form creation."""
 
     form_content: str
-    inputs: tuple[FrozenJSONObject, ...]
+    inputs: Sequence[Mapping[str, JsonValue]]
     actions: tuple[FrozenFormAction, ...]
-    default_values: FrozenJSONObject
+    default_values: Mapping[str, JsonValue]
     node_title: str | None
     display_in_ui: bool | None
 
     def __post_init__(self) -> None:
-        if not isinstance(self.inputs, tuple) or not isinstance(self.actions, tuple):
-            raise TypeError("frozen form definition collections must be immutable tuples")
+        if not isinstance(self.actions, tuple):
+            raise TypeError("frozen form definition actions must be an immutable tuple")
         action_ids = [action.id for action in self.actions]
         if len(action_ids) != len(set(action_ids)):
             raise ValueError("frozen form action identifiers must be unique")

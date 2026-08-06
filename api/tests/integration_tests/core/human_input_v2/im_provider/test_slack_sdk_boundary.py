@@ -16,7 +16,7 @@ from slack_sdk.signature import SignatureVerifier
 from slack_sdk.socket_mode.request import SocketModeRequest
 from slack_sdk.web import WebClient
 
-from core.human_input_v2.approval import FrozenFormAction, FrozenFormDefinition, FrozenJSONObject
+from core.human_input_v2.approval import FrozenFormAction, FrozenFormDefinition
 from core.human_input_v2.channel_management import (
     FeishuIMCandidate,
     HumanInputChannelManagementContext,
@@ -219,12 +219,12 @@ def _intent(*, input_type: str = "select") -> NormalizedCardIntent:
         default = "Approve"
     definition = FrozenFormDefinition(
         form_content="Sanitized form content",
-        inputs=(FrozenJSONObject.from_mapping(input_definition),),
+        inputs=(dict(input_definition),),
         actions=(
             FrozenFormAction("approve", "Approve", "primary"),
             FrozenFormAction("reject", "Reject", "accent"),
         ),
-        default_values=FrozenJSONObject.from_mapping({"decision": default}),
+        default_values={"decision": default},
         node_title="Sanitized title",
         display_in_ui=True,
     )
@@ -243,9 +243,9 @@ def _custom_intent(
         actions = (FrozenFormAction("approve", "Approve", "primary"),)
     definition = FrozenFormDefinition(
         form_content="Sanitized form content",
-        inputs=tuple(FrozenJSONObject.from_mapping(input_definition) for input_definition in inputs),
+        inputs=tuple(dict(input_definition) for input_definition in inputs),
         actions=actions,
-        default_values=FrozenJSONObject.from_mapping(defaults or {}),
+        default_values=dict(defaults or {}),
         node_title=node_title,
         display_in_ui=True,
     )
@@ -810,7 +810,7 @@ def test_real_paragraph_constant_default_survives_sdk_serialization(
     assert isinstance(blocks, list)
     input_element = next(block["element"] for block in blocks if block["type"] == "input")
     assert input_element["initial_value"] == "Sanitized preserved default"
-    assert intent.form_definition.inputs[0].to_mapping() == paragraph_values
+    assert intent.form_definition.inputs[0] == paragraph_values
 
 
 def test_invalid_paragraph_default_sources_fail_before_sdk_io(

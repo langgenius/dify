@@ -31,7 +31,6 @@ from core.human_input_v2.approval import (
     FormRef,
     FrozenFormAction,
     FrozenFormDefinition,
-    FrozenJSONObject,
     HumanInputForm,
     IMEndpointConfiguration,
     SubjectSnapshot,
@@ -281,7 +280,7 @@ def _seed_scenario(session_maker: sessionmaker[Session]) -> _SeededScenario:
             form_content="Approve",
             inputs=(),
             actions=(FrozenFormAction("approve", "Approve", "primary"),),
-            default_values=FrozenJSONObject.from_mapping({}),
+            default_values={},
             node_title="Review",
             display_in_ui=True,
         ),
@@ -475,8 +474,8 @@ def _command(scenario: _SeededScenario, *, proof: object, endpoint_id: DeliveryE
         scope=SubmissionAttemptScope(scenario.form_ref, scenario.grant_id, endpoint_id),
         proof=proof,
         selected_action_id="approve",
-        input_snapshot=FrozenJSONObject.from_mapping({"comment": "approved"}),
-        canonical_values=FrozenJSONObject.from_mapping({"comment": "approved"}),
+        input_snapshot={"comment": "approved"},
+        canonical_values={"comment": "approved"},
         submission_id=SubmissionId(str(uuidv7())),
         authorization_audit_event_id=AuditEventId(str(uuidv7())),
         rejection_audit_event_id=AuditEventId(str(uuidv7())),
@@ -682,8 +681,8 @@ def test_loaded_context_remains_authoritative_after_identity_change(flask_req_ct
                     submission_id=SubmissionId(str(uuidv7())),
                     authorization_audit_event_id=AuditEventId(str(uuidv7())),
                     authorized=decision.authorized,
-                    input_snapshot=FrozenJSONObject.from_mapping({"comment": "approved"}),
-                    canonical_values=FrozenJSONObject.from_mapping({"comment": "approved"}),
+                    input_snapshot={"comment": "approved"},
+                    canonical_values={"comment": "approved"},
                 )
             )
 

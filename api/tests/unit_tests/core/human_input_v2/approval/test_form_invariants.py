@@ -1,9 +1,10 @@
 """Boundary and failure-path tests for Form Core immutable domain values."""
 
+from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
-from math import nan
 
 import pytest
+from pydantic import JsonValue
 
 from core.human_input_v2.approval import (
     ApproverGrant,
@@ -22,8 +23,6 @@ from core.human_input_v2.approval import (
     FormRef,
     FrozenFormAction,
     FrozenFormDefinition,
-    FrozenJSONArray,
-    FrozenJSONObject,
     HumanInputForm,
     IMEndpointConfiguration,
     IMEndpointPlan,
@@ -95,7 +94,7 @@ def _definition() -> FrozenFormDefinition:
         form_content="Approve",
         inputs=(),
         actions=(FrozenFormAction("approve", "Approve", "primary"),),
-        default_values=FrozenJSONObject.from_mapping({}),
+        default_values={},
         node_title=None,
         display_in_ui=None,
     )
@@ -135,53 +134,13 @@ def test_frozen_form_action_rejects_each_blank_component(action_id: str, title: 
         FrozenFormAction(action_id, title, button_style)
 
 
-def test_frozen_definition_rejects_mutable_collections_and_duplicate_actions() -> None:
+def test_frozen_definition_rejects_mutable_actions_and_duplicate_actions() -> None:
     action = FrozenFormAction("approve", "Approve", "primary")
 
-    with pytest.raises(TypeError, match="immutable tuples"):
-        FrozenFormDefinition("Approve", [], (action,), FrozenJSONObject.from_mapping({}), None, None)
-    with pytest.raises(TypeError, match="immutable tuples"):
-        FrozenFormDefinition("Approve", (), [action], FrozenJSONObject.from_mapping({}), None, None)
+    with pytest.raises(TypeError, match="immutable tuple"):
+        FrozenFormDefinition("Approve", (), [action], {}, None, None)
     with pytest.raises(ValueError, match="unique"):
-        FrozenFormDefinition("Approve", (), (action, action), FrozenJSONObject.from_mapping({}), None, None)
-
-
-def test_recursive_frozen_json_accepts_all_json_shapes_and_rejects_invalid_values() -> None:
-    frozen = FrozenJSONObject.from_mapping(
-        {
-            "none": None,
-            "text": "value",
-            "boolean": True,
-            "integer": 1,
-            "float": 1.5,
-            "array": [False, {"nested": "value"}],
-        }
-    )
-
-    assert frozen.to_mapping()["array"] == [False, {"nested": "value"}]
-    with pytest.raises(ValueError, match="finite"):
-        FrozenJSONObject.from_mapping({"invalid": nan})
-    with pytest.raises(TypeError, match="unsupported"):
-        FrozenJSONObject.from_mapping({"invalid": object()})
-    with pytest.raises(TypeError, match="immutable tuple"):
-        FrozenJSONArray([])
-    with pytest.raises(TypeError, match="immutable tuple"):
-        FrozenJSONObject([])
-    with pytest.raises(ValueError, match="duplicate"):
-        FrozenJSONObject((("key", 1), ("key", 2)))
-
-
-def test_direct_frozen_json_construction_rejects_mutable_and_non_finite_nested_values() -> None:
-    nested_array = FrozenJSONArray((1, FrozenJSONObject((("nested", True),))))
-    nested_object = FrozenJSONObject((("array", nested_array),))
-
-    assert nested_object.to_mapping() == {"array": [1, {"nested": True}]}
-    with pytest.raises(TypeError, match="frozen JSON"):
-        FrozenJSONArray(([1],))
-    with pytest.raises(TypeError, match="frozen JSON"):
-        FrozenJSONObject((("nested", {"value": 1}),))
-    with pytest.raises(ValueError, match="finite"):
-        FrozenJSONArray((nan,))
+        FrozenFormDefinition("Approve", (), (action, action), {}, None, None)
 
 
 def test_grant_rejects_mutable_sources_and_mismatched_subject_key() -> None:
@@ -378,7 +337,7 @@ def test_delivery_attempt_validates_sequence_terminal_time_and_failure_diagnosti
 def test_failed_delivery_attempt_requires_at_least_one_diagnostic(
     failure_code: str | None,
     failure_reason: str | None,
-    provider_response: FrozenJSONObject | None,
+    provider_response: Mapping[str, JsonValue] | None,
 ) -> None:
     endpoint_ref = _FORM_REF.grant(ApproverGrantId("grant-1")).endpoint(DeliveryEndpointId("endpoint-1"))
 
@@ -405,13 +364,13 @@ def test_failed_delivery_attempt_requires_at_least_one_diagnostic(
     [
         ("provider_rejected", None, None),
         (None, "Recipient unavailable", None),
-        (None, None, FrozenJSONObject.from_mapping({"status": 400})),
+        (None, None, {"status": 400}),
     ],
 )
 def test_failed_delivery_attempt_accepts_each_supported_diagnostic(
     failure_code: str | None,
     failure_reason: str | None,
-    provider_response: FrozenJSONObject | None,
+    provider_response: Mapping[str, JsonValue] | None,
 ) -> None:
     endpoint_ref = _FORM_REF.grant(ApproverGrantId("grant-1")).endpoint(DeliveryEndpointId("endpoint-1"))
 

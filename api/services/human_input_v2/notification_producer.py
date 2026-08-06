@@ -18,7 +18,6 @@ from core.human_input_v2.approval import (
     EndpointAccessCapability,
     FormCreation,
     FormRepository,
-    FrozenJSONObject,
     HumanInputForm,
     ProtectedRenderedEmailRequest,
     RenderedEmailRequestProtector,
@@ -147,7 +146,7 @@ class HumanInputV2NotificationProducer:
                         provider_message_id=None,
                         failure_code=None,
                         failure_reason=None,
-                        provider_response=data.to_frozen(),
+                        provider_response=data.to_mapping(),
                         created_at=now,
                         updated_at=now,
                     )
@@ -165,12 +164,10 @@ class HumanInputV2NotificationProducer:
                         provider_message_id=None,
                         failure_code="delivery_materialization_failed",
                         failure_reason=None,
-                        provider_response=FrozenJSONObject.from_mapping(
-                            {
-                                "schema_version": 0,
-                                "failure_code": "delivery_materialization_failed",
-                            }
-                        ),
+                        provider_response={
+                            "schema_version": 0,
+                            "failure_code": "delivery_materialization_failed",
+                        },
                         created_at=now,
                         updated_at=now,
                     )

@@ -27,7 +27,6 @@ from core.human_input_v2.approval import (
     EndUserApprovalSubject,
     FormAuthorizationAuditEvent,
     FormAuthorizationAuditEventType,
-    FrozenJSONObject,
     RetryableSubmissionPersistenceError,
     SubmissionAttemptScope,
     SubmissionCommitResult,
@@ -207,9 +206,7 @@ class SQLAlchemySubmissionTransaction:
             reason_code=None,
             reason_message=None,
             authorization_proof=commit.authorized.proof,
-            payload=FrozenJSONObject.from_mapping(
-                {"selected_action_id": commit.authorized.transition.selected_action_id}
-            ),
+            payload={"selected_action_id": commit.authorized.transition.selected_action_id},
             occurred_at=occurred_at,
             created_at=occurred_at,
             updated_at=occurred_at,

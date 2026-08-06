@@ -18,7 +18,6 @@ from core.human_input_v2.approval import (
     FormSnapshotIdentifierFactory,
     FrozenFormAction,
     FrozenFormDefinition,
-    FrozenJSONObject,
     HumanInputForm,
     InvalidApproverGrantError,
     InvalidSelectedActionError,
@@ -70,19 +69,17 @@ def _definition() -> FrozenFormDefinition:
     return FrozenFormDefinition(
         form_content="Please approve {{ request }}",
         inputs=(
-            FrozenJSONObject.from_mapping(
-                {
-                    "type": "paragraph",
-                    "output_variable_name": "reason",
-                    "default": {"type": "constant", "selector": [], "value": "ok"},
-                }
-            ),
+            {
+                "type": "paragraph",
+                "output_variable_name": "reason",
+                "default": {"type": "constant", "selector": [], "value": "ok"},
+            },
         ),
         actions=(
             FrozenFormAction(id="approve", title="Approve", button_style="primary"),
             FrozenFormAction(id="reject", title="Reject", button_style="default"),
         ),
-        default_values=FrozenJSONObject.from_mapping({"reason": "ok", "metadata": {"labels": ["finance", "urgent"]}}),
+        default_values={"reason": "ok", "metadata": {"labels": ["finance", "urgent"]}},
         node_title="Review",
         display_in_ui=True,
     )
@@ -123,18 +120,12 @@ def _form(*, status: HumanInputV2FormStatus = HumanInputV2FormStatus.WAITING) ->
     )
 
 
-def test_frozen_structured_values_are_recursive_and_round_trip_without_mutable_domain_dicts() -> None:
+def test_frozen_form_definition_prevents_attribute_reassignment() -> None:
     definition = _definition()
 
-    primitive = definition.default_values.to_mapping()
-
-    assert primitive == {"metadata": {"labels": ["finance", "urgent"]}, "reason": "ok"}
-    primitive["reason"] = "changed"
-    assert definition.default_values.to_mapping()["reason"] == "ok"
+    assert definition.default_values == {"metadata": {"labels": ["finance", "urgent"]}, "reason": "ok"}
     with pytest.raises(FrozenInstanceError):
         definition.node_title = "Changed"
-    with pytest.raises(TypeError, match="unsupported JSON value"):
-        FrozenJSONObject.from_mapping({"invalid": object()})
 
 
 def test_grant_endpoint_token_upload_and_delivery_facts_remain_distinct_capabilities() -> None:
@@ -180,7 +171,7 @@ def test_grant_endpoint_token_upload_and_delivery_facts_remain_distinct_capabili
         provider_message_id=None,
         failure_code="provider_rejected",
         failure_reason="Recipient unavailable",
-        provider_response=FrozenJSONObject.from_mapping({"status": 400}),
+        provider_response={"status": 400},
         created_at=_NOW,
         updated_at=_NOW,
     )
