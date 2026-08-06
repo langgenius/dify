@@ -107,7 +107,10 @@ class PublicStorageConfig(BaseSettings):
 
     PUBLIC_STORAGE_ENABLED: bool = Field(
         default=False,
-        description="Store public upload purposes in dedicated S3-compatible buckets.",
+        description=(
+            "Store public upload purposes in dedicated S3-compatible buckets. Enabling, disabling, or changing an "
+            "active policy requires an operational data migration for affected files."
+        ),
     )
     PUBLIC_STORAGE_ENDPOINT: str | None = Field(
         default=None,
