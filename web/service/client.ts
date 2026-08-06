@@ -438,15 +438,16 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
         byAppId: {
           delete: {
             mutationOptions: {
-              onSuccess: (_data, _variables, _onMutateResult, context) => {
-                void context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
-                void context.client.invalidateQueries({
-                  queryKey: consoleQuery.apps.starred.get.key(),
-                })
-                void context.client.invalidateQueries({
-                  queryKey: consoleQuery.apps.recent.get.key(),
-                })
-              },
+              onSuccess: (_data, _variables, _onMutateResult, context) =>
+                Promise.all([
+                  context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() }),
+                  context.client.invalidateQueries({
+                    queryKey: consoleQuery.apps.starred.get.key(),
+                  }),
+                  context.client.invalidateQueries({
+                    queryKey: consoleQuery.apps.recent.get.key(),
+                  }),
+                ]),
             },
           },
           put: {

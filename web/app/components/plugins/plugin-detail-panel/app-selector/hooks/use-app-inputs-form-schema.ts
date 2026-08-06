@@ -174,9 +174,8 @@ export function useAppInputsFormSchema({
   const workflowQuery = useAppWorkflow(isBasicApp ? '' : appDetail.id)
   const { data: currentWorkflow } = workflowQuery
 
-  const isLoading =
-    fileUploadConfigQuery.isFetching || appQuery.isFetching || workflowQuery.isFetching
-  const isError = fileUploadConfigQuery.isError || appQuery.isError || workflowQuery.isError
+  const isLoading = appQuery.isFetching || workflowQuery.isFetching
+  const isError = appQuery.isError || workflowQuery.isError
 
   const inputFormSchema = useMemo(() => {
     if (!currentApp) return []

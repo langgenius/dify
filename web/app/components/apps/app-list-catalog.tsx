@@ -204,23 +204,30 @@ function AppListCatalogContent({
               />
             )}
             {hasNextPage && (
-              <div className="relative col-span-full grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] gap-2.5">
-                <AppCardSkeleton count={3} />
-                {isFetchNextPageError && !isFetchingNextPage && (
-                  <div
-                    className="absolute inset-0 flex items-center justify-center gap-2 bg-background-body system-xs-regular text-text-tertiary"
-                    role="alert"
-                  >
-                    <span>{t(($) => $['errorBoundary.title'], { ns: 'common' })}</span>
-                    <button
-                      type="button"
-                      className="text-text-accent outline-hidden hover:underline focus-visible:underline"
-                      onClick={() => void onFetchNextPage()}
+              <div className="relative col-span-full">
+                <AppListInfiniteScrollSentinel
+                  canLoadMore={!isFetching && !isFetchNextPageError}
+                  fetchNextPage={onFetchNextPage}
+                  scrollViewportRef={scrollViewportRef}
+                />
+                <div className="relative grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] gap-2.5">
+                  <AppCardSkeleton count={3} />
+                  {isFetchNextPageError && !isFetchingNextPage && (
+                    <div
+                      className="absolute inset-0 flex items-center justify-center gap-2 bg-background-body system-xs-regular text-text-tertiary"
+                      role="alert"
                     >
-                      {t(($) => $['operation.retry'], { ns: 'common' })}
-                    </button>
-                  </div>
-                )}
+                      <span>{t(($) => $['errorBoundary.title'], { ns: 'common' })}</span>
+                      <button
+                        type="button"
+                        className="text-text-accent outline-hidden hover:underline focus-visible:underline"
+                        onClick={() => void onFetchNextPage()}
+                      >
+                        {t(($) => $['operation.retry'], { ns: 'common' })}
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -239,11 +246,6 @@ function AppListCatalogContent({
           </span>
         </div>
       )}
-      <AppListInfiniteScrollSentinel
-        canLoadMore={hasNextPage && !isFetching && !isFetchNextPageError}
-        fetchNextPage={onFetchNextPage}
-        scrollViewportRef={scrollViewportRef}
-      />
     </>
   )
 }

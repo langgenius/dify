@@ -166,6 +166,7 @@ export function AppSelector({
           </div>
           {currentAppInfo && (
             <AppInputsPanel
+              key={currentAppInfo.id}
               value={formattedValue}
               appDetail={currentAppInfo}
               onFormChange={handleFormChange}

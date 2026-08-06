@@ -28,6 +28,15 @@ const apps = [
     icon_background: '#E0EAFF',
     icon_url: null,
   },
+  {
+    id: 'app-3',
+    name: 'Sales Bot',
+    mode: AppModeEnum.CHAT,
+    icon_type: 'emoji',
+    icon: '💼',
+    icon_background: '#FEE4E2',
+    icon_url: null,
+  },
 ] satisfies AppPartial[]
 
 const mockAppDetailQuery = vi.hoisted(() => vi.fn())
@@ -157,6 +166,47 @@ describe('AppSelector', () => {
       expect(mockUseAppWorkflow).toHaveBeenCalledWith('app-2')
     })
     expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+  })
+
+  it('should reset the input draft when switching apps', async () => {
+    const user = userEvent.setup()
+    const onSelect = vi.fn()
+    mockAppDetailQuery.mockImplementation((appId: string) => {
+      const app = apps.find((item) => item.id === appId)
+      if (!app) return undefined
+
+      const isFirstApp = app.id === 'app-1'
+      return {
+        ...app,
+        model_config: {
+          user_input_form: [
+            {
+              'text-input': {
+                label: isFirstApp ? 'First question' : 'Second question',
+                variable: isFirstApp ? 'first_question' : 'second_question',
+              },
+            },
+          ],
+        },
+      }
+    })
+
+    renderWithQueryClient(<StatefulAppSelector onSelect={onSelect} />)
+
+    await user.click(screen.getByRole('button', { name: 'app.appSelector.label' }))
+    await user.click(screen.getByRole('combobox', { name: 'app.appSelector.label' }))
+    await user.click(await screen.findByRole('option', { name: /Support Bot/ }))
+    await user.type(await screen.findByPlaceholderText('First question'), 'alpha')
+
+    await user.click(screen.getByRole('combobox', { name: 'app.appSelector.label' }))
+    await user.click(await screen.findByRole('option', { name: /Sales Bot/ }))
+    await user.type(await screen.findByPlaceholderText('Second question'), 'beta')
+
+    expect(onSelect).toHaveBeenLastCalledWith({
+      app_id: 'app-3',
+      inputs: { second_question: 'beta' },
+      files: [],
+    })
   })
 
   it('should keep the main interaction: outer panel, inner app list, then inputs panel', async () => {
