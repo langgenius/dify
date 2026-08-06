@@ -10,11 +10,10 @@ from typing import Union
 from uuid import uuid4
 
 import httpx
-from sqlalchemy.orm import Session
 
 from configs import dify_config
+from core.db.session_factory import session_factory
 from core.file import remote_fetcher
-from extensions.ext_database import db
 from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType
 from models.enums import CreatorUserRole
@@ -54,10 +53,8 @@ class DatasourceFileManager:
         file_binary: bytes,
         mimetype: str,
         filename: str | None = None,
-        session: Session | None = None,
     ) -> UploadFile:
         """Persist an uploaded datasource file and its storage payload."""
-        session = session or db.session()
         extension = guess_extension(mimetype) or ".bin"
         unique_name = uuid4().hex
         unique_filename = f"{unique_name}{extension}"
@@ -86,9 +83,10 @@ class DatasourceFileManager:
             created_at=datetime.now(),
         )
 
-        session.add(upload_file)
-        session.commit()
-        session.refresh(upload_file)
+        with session_factory.create_session() as session:
+            session.add(upload_file)
+            session.commit()
+            session.refresh(upload_file)
 
         return upload_file
 
@@ -98,11 +96,8 @@ class DatasourceFileManager:
         tenant_id: str,
         file_url: str,
         conversation_id: str | None = None,
-        *,
-        session: Session | None = None,
     ) -> ToolFile:
         """Download a remote file and persist its tool-file metadata."""
-        session = session or db.session()
         # try to download image
         try:
             response = remote_fetcher.make_request("GET", file_url)
@@ -133,13 +128,14 @@ class DatasourceFileManager:
             size=len(blob),
         )
 
-        session.add(tool_file)
-        session.commit()
+        with session_factory.create_session() as session:
+            session.add(tool_file)
+            session.commit()
 
         return tool_file
 
     @staticmethod
-    def get_file_binary(id: str, *, session: Session | None = None) -> Union[tuple[bytes, str], None]:
+    def get_file_binary(id: str) -> Union[tuple[bytes, str], None]:
         """
         get file binary
 
@@ -147,8 +143,8 @@ class DatasourceFileManager:
 
         :return: the binary of the file, mime type
         """
-        session = session or db.session()
-        upload_file: UploadFile | None = session.get(UploadFile, id)
+        with session_factory.create_session() as session:
+            upload_file: UploadFile | None = session.get(UploadFile, id)
 
         if not upload_file:
             return None
@@ -158,9 +154,7 @@ class DatasourceFileManager:
         return blob, upload_file.mime_type
 
     @staticmethod
-    def get_file_binary_by_message_file_id(
-        id: str, *, session: Session | None = None
-    ) -> Union[tuple[bytes, str], None]:
+    def get_file_binary_by_message_file_id(id: str) -> Union[tuple[bytes, str], None]:
         """
         get file binary
 
@@ -168,24 +162,24 @@ class DatasourceFileManager:
 
         :return: the binary of the file, mime type
         """
-        session = session or db.session()
-        message_file: MessageFile | None = session.get(MessageFile, id)
+        with session_factory.create_session() as session:
+            message_file: MessageFile | None = session.get(MessageFile, id)
 
-        # Check if message_file is not None
-        if message_file is not None:
-            # get tool file id
-            if message_file.url is not None:
-                tool_file_id = message_file.url.split("/")[-1]
-                # trim extension
-                tool_file_id = tool_file_id.split(".")[0]
+            # Check if message_file is not None
+            if message_file is not None:
+                # get tool file id
+                if message_file.url is not None:
+                    tool_file_id = message_file.url.split("/")[-1]
+                    # trim extension
+                    tool_file_id = tool_file_id.split(".")[0]
+                else:
+                    tool_file_id = None
             else:
                 tool_file_id = None
-        else:
-            tool_file_id = None
 
-        if not tool_file_id:
-            return None
-        tool_file: ToolFile | None = session.get(ToolFile, tool_file_id)
+            if not tool_file_id:
+                return None
+            tool_file: ToolFile | None = session.get(ToolFile, tool_file_id)
 
         if not tool_file:
             return None
@@ -195,16 +189,16 @@ class DatasourceFileManager:
         return blob, tool_file.mimetype
 
     @staticmethod
-    def get_file_generator_by_upload_file_id(upload_file_id: str, *, session: Session | None = None):
+    def get_file_generator_by_upload_file_id(upload_file_id: str):
         """
         get file binary
 
-        :param tool_file_id: the id of the tool file
+        :param upload_file_id: the id of the upload file
 
         :return: the binary of the file, mime type
         """
-        session = session or db.session()
-        upload_file: UploadFile | None = session.get(UploadFile, upload_file_id)
+        with session_factory.create_session() as session:
+            upload_file: UploadFile | None = session.get(UploadFile, upload_file_id)
 
         if not upload_file:
             return None, None

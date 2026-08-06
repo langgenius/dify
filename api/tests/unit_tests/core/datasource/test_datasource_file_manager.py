@@ -1,5 +1,4 @@
 from datetime import UTC, datetime
-from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import httpx
@@ -81,7 +80,6 @@ class TestDatasourceFileManager:
         assert f"nonce={mock_urandom.return_value.hex()}" in signed_url
         assert "sign=" in signed_url
 
-    @pytest.mark.parametrize("sqlite_session", [(UploadFile,)], indirect=True)
     @patch("core.datasource.datasource_file_manager.storage")
     @patch("core.datasource.datasource_file_manager.uuid4")
     @patch("core.datasource.datasource_file_manager.dify_config")
@@ -103,7 +101,6 @@ class TestDatasourceFileManager:
             file_binary=file_binary,
             mimetype=mimetype,
             filename="test.png",
-            session=sqlite_session,
         )
 
         # Verify
@@ -114,15 +111,14 @@ class TestDatasourceFileManager:
         assert upload_file.key == f"datasources/{tenant_id}/unique_hex.png"
 
         mock_storage.save.assert_called_once_with(upload_file.key, file_binary)
-        assert sqlite_session.get(UploadFile, upload_file.id) is upload_file
+        persisted_file = sqlite_session.get(UploadFile, upload_file.id)
+        assert persisted_file is not None
+        assert persisted_file.key == upload_file.key
 
-    @pytest.mark.parametrize("sqlite_session", [(UploadFile,)], indirect=True)
     @patch("core.datasource.datasource_file_manager.storage")
     @patch("core.datasource.datasource_file_manager.uuid4")
     @patch("core.datasource.datasource_file_manager.dify_config")
-    def test_create_file_by_raw_filename_no_extension(
-        self, mock_config, mock_uuid, mock_storage, sqlite_session: Session
-    ):
+    def test_create_file_by_raw_filename_no_extension(self, mock_config, mock_uuid, mock_storage):
         # Setup
         mock_uuid.return_value = MagicMock(hex="unique_hex")
         mock_config.STORAGE_TYPE = "local"
@@ -140,20 +136,16 @@ class TestDatasourceFileManager:
             file_binary=file_binary,
             mimetype=mimetype,
             filename="test",  # No extension
-            session=sqlite_session,
         )
 
         # Verify
         assert upload_file.name == "test.png"  # Should append extension
 
-    @pytest.mark.parametrize("sqlite_session", [(UploadFile,)], indirect=True)
     @patch("core.datasource.datasource_file_manager.storage")
     @patch("core.datasource.datasource_file_manager.uuid4")
     @patch("core.datasource.datasource_file_manager.dify_config")
     @patch("core.datasource.datasource_file_manager.guess_extension")
-    def test_create_file_by_raw_unknown_extension(
-        self, mock_guess_ext, mock_config, mock_uuid, mock_storage, sqlite_session: Session
-    ):
+    def test_create_file_by_raw_unknown_extension(self, mock_guess_ext, mock_config, mock_uuid, mock_storage):
         # Setup
         mock_guess_ext.return_value = None  # Cannot guess
         mock_uuid.return_value = MagicMock(hex="unique_hex")
@@ -166,18 +158,16 @@ class TestDatasourceFileManager:
             conversation_id=None,
             file_binary=b"data",
             mimetype="application/x-unknown",
-            session=sqlite_session,
         )
 
         # Verify
         assert upload_file.extension == ".bin"
         assert upload_file.name == "unique_hex.bin"
 
-    @pytest.mark.parametrize("sqlite_session", [(UploadFile,)], indirect=True)
     @patch("core.datasource.datasource_file_manager.storage")
     @patch("core.datasource.datasource_file_manager.uuid4")
     @patch("core.datasource.datasource_file_manager.dify_config")
-    def test_create_file_by_raw_no_filename(self, mock_config, mock_uuid, mock_storage, sqlite_session: Session):
+    def test_create_file_by_raw_no_filename(self, mock_config, mock_uuid, mock_storage):
         # Setup
         mock_uuid.return_value = MagicMock(hex="unique_hex")
         mock_config.STORAGE_TYPE = "local"
@@ -189,7 +179,6 @@ class TestDatasourceFileManager:
             conversation_id=None,
             file_binary=b"data",
             mimetype="application/pdf",
-            session=sqlite_session,
         )
 
         # Verify
@@ -197,10 +186,9 @@ class TestDatasourceFileManager:
         assert upload_file.extension == ".pdf"
 
     @patch("core.datasource.datasource_file_manager.remote_fetcher")
-    @pytest.mark.parametrize("sqlite_session", [(ToolFile,)], indirect=True)
     @patch("core.datasource.datasource_file_manager.storage")
     @patch("core.datasource.datasource_file_manager.uuid4")
-    def test_create_file_by_url_mimetype_from_guess(self, mock_uuid, mock_storage, mock_ssrf, sqlite_session: Session):
+    def test_create_file_by_url_mimetype_from_guess(self, mock_uuid, mock_storage, mock_ssrf):
         # Setup
         mock_uuid.return_value = MagicMock(hex="unique_hex")
         mock_response = MagicMock()
@@ -213,17 +201,15 @@ class TestDatasourceFileManager:
             user_id="user_123",
             tenant_id="tenant_456",
             file_url="https://example.com/photo.png",
-            session=sqlite_session,
         )
 
         # Verify
         assert tool_file.mimetype == "image/png"  # Guessed from .png in URL
 
     @patch("core.datasource.datasource_file_manager.remote_fetcher")
-    @pytest.mark.parametrize("sqlite_session", [(ToolFile,)], indirect=True)
     @patch("core.datasource.datasource_file_manager.storage")
     @patch("core.datasource.datasource_file_manager.uuid4")
-    def test_create_file_by_url_mimetype_default(self, mock_uuid, mock_storage, mock_ssrf, sqlite_session: Session):
+    def test_create_file_by_url_mimetype_default(self, mock_uuid, mock_storage, mock_ssrf):
         # Setup
         mock_uuid.return_value = MagicMock(hex="unique_hex")
         mock_response = MagicMock()
@@ -236,17 +222,15 @@ class TestDatasourceFileManager:
             user_id="user_123",
             tenant_id="tenant_456",
             file_url="https://example.com/unknown",  # No extension, no headers
-            session=sqlite_session,
         )
 
         # Verify
         assert tool_file.mimetype == "application/octet-stream"
 
     @patch("core.datasource.datasource_file_manager.remote_fetcher")
-    @pytest.mark.parametrize("sqlite_session", [(ToolFile,)], indirect=True)
     @patch("core.datasource.datasource_file_manager.storage")
     @patch("core.datasource.datasource_file_manager.uuid4")
-    def test_create_file_by_url_success(self, mock_uuid, mock_storage, mock_ssrf, sqlite_session: Session):
+    def test_create_file_by_url_success(self, mock_uuid, mock_storage, mock_ssrf):
         # Setup
         mock_uuid.return_value = MagicMock(hex="unique_hex")
         mock_response = MagicMock()
@@ -259,7 +243,6 @@ class TestDatasourceFileManager:
             user_id="user_123",
             tenant_id="tenant_456",
             file_url="https://example.com/photo.jpg",
-            session=sqlite_session,
         )
 
         # Verify
@@ -279,7 +262,6 @@ class TestDatasourceFileManager:
                 user_id="user_123", tenant_id="tenant_456", file_url="https://example.com/large.file"
             )
 
-    @pytest.mark.parametrize("sqlite_session", [(UploadFile,)], indirect=True)
     @patch("core.datasource.datasource_file_manager.storage")
     def test_get_file_binary(self, mock_storage, sqlite_session: Session):
         sqlite_session.add(_upload_file("file_id", key="some_key", mime_type="image/png"))
@@ -287,14 +269,13 @@ class TestDatasourceFileManager:
 
         mock_storage.load_once.return_value = b"file content"
 
-        result = DatasourceFileManager.get_file_binary("file_id", session=sqlite_session)
+        result = DatasourceFileManager.get_file_binary("file_id")
 
         # Verify
         assert result == (b"file content", "image/png")
 
-        assert DatasourceFileManager.get_file_binary("unknown", session=sqlite_session) is None
+        assert DatasourceFileManager.get_file_binary("unknown") is None
 
-    @pytest.mark.parametrize("sqlite_session", [(MessageFile, ToolFile)], indirect=True)
     @patch("core.datasource.datasource_file_manager.storage")
     def test_get_file_binary_by_message_file_id(self, mock_storage, sqlite_session: Session):
         sqlite_session.add_all(
@@ -306,12 +287,11 @@ class TestDatasourceFileManager:
         sqlite_session.commit()
         mock_storage.load_once.return_value = b"tool content"
 
-        result = DatasourceFileManager.get_file_binary_by_message_file_id("msg_file_id", session=sqlite_session)
+        result = DatasourceFileManager.get_file_binary_by_message_file_id("msg_file_id")
 
         # Verify
         assert result == (b"tool content", "image/png")
 
-    @pytest.mark.parametrize("sqlite_session", [(MessageFile, ToolFile)], indirect=True)
     @patch("core.datasource.datasource_file_manager.storage")
     def test_get_file_binary_by_message_file_id_with_extension(self, mock_storage, sqlite_session: Session):
         sqlite_session.add_all(
@@ -320,19 +300,17 @@ class TestDatasourceFileManager:
         sqlite_session.commit()
         mock_storage.load_once.return_value = b"bits"
 
-        result = DatasourceFileManager.get_file_binary_by_message_file_id("m", session=sqlite_session)
+        result = DatasourceFileManager.get_file_binary_by_message_file_id("m")
         assert result == (b"bits", "image/png")
 
-    @pytest.mark.parametrize("sqlite_session", [(MessageFile, ToolFile)], indirect=True)
     @patch("core.datasource.datasource_file_manager.storage")
     def test_get_file_binary_by_message_file_id_failures(self, mock_storage, sqlite_session: Session):
-        assert DatasourceFileManager.get_file_binary_by_message_file_id("none", session=sqlite_session) is None
+        assert DatasourceFileManager.get_file_binary_by_message_file_id("none") is None
 
         sqlite_session.add(_message_file("msg_id", url=None))
         sqlite_session.commit()
-        assert DatasourceFileManager.get_file_binary_by_message_file_id("msg_id", session=sqlite_session) is None
+        assert DatasourceFileManager.get_file_binary_by_message_file_id("msg_id") is None
 
-    @pytest.mark.parametrize("sqlite_session", [(UploadFile,)], indirect=True)
     @patch("core.datasource.datasource_file_manager.storage")
     def test_get_file_generator_by_upload_file_id(self, mock_storage, sqlite_session: Session):
         sqlite_session.add(_upload_file("upload_id", key="upload_key", mime_type="text/plain"))
@@ -341,14 +319,12 @@ class TestDatasourceFileManager:
         mock_storage.load_stream.return_value = iter([b"chunk1", b"chunk2"])
 
         # Execute
-        stream, mimetype = DatasourceFileManager.get_file_generator_by_upload_file_id(
-            "upload_id", session=sqlite_session
-        )
+        stream, mimetype = DatasourceFileManager.get_file_generator_by_upload_file_id("upload_id")
 
         # Verify
         assert mimetype == "text/plain"
         assert list(stream) == [b"chunk1", b"chunk2"]
 
-        stream, mimetype = DatasourceFileManager.get_file_generator_by_upload_file_id("none", session=sqlite_session)
+        stream, mimetype = DatasourceFileManager.get_file_generator_by_upload_file_id("none")
         assert stream is None
         assert mimetype is None
