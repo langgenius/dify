@@ -435,14 +435,14 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
   return (
     <main className="relative min-h-full min-w-0 flex-1 px-8 pt-8 pb-20">
       <header>
-        <h1 className="title-md-semi-bold text-text-primary">
+        <h1 className="system-xl-semibold text-text-primary">
           {t(($) => $['newKnowledge.qualityPage.title'])}
         </h1>
         <p className="mt-1 system-xs-regular text-text-tertiary">
           {t(($) => $['newKnowledge.qualityPage.description'])}
         </p>
       </header>
-      <div className="mt-6 flex items-center justify-between">
+      <div className="mt-2.5 flex h-14 items-end justify-between">
         <div
           role="tablist"
           aria-label={t(($) => $['newKnowledge.qualityPage.title'])}
@@ -626,9 +626,9 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
             )}
           </div>
         ) : (
-          <div className="flex min-h-[calc(100vh-22rem)] flex-col items-center justify-center text-center">
-            <span aria-hidden className="i-ri-thumb-up-line size-8 text-text-tertiary" />
-            <h2 className="mt-4 system-md-semibold text-text-primary">
+          <div className="mt-2.5 flex h-140 flex-col items-center justify-center text-center">
+            <span aria-hidden className="i-ri-thumb-up-line size-7 text-text-tertiary" />
+            <h2 className="mt-3 system-md-semibold text-text-primary">
               {t(($) => $['newKnowledge.qualityPage.goldenEmptyTitle'])}
             </h2>
             <p className="mt-1 max-w-lg system-xs-regular text-text-tertiary">
