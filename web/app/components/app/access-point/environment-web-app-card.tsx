@@ -118,7 +118,7 @@ export function EnvironmentWebAppCard({
       },
     ),
   )
-  const webAppUrl = getEnvironmentWebAppUrl(environmentId, site)
+  const webAppUrl = getEnvironmentWebAppUrl(site)
   const running = Boolean(siteQuery.isSuccess && site?.enabled)
   const status = siteQuery.isPending
     ? 'loading'

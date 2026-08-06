@@ -234,8 +234,8 @@ describe('environment access point cards', () => {
   it('renders the real environment Web app URL and workflow actions without Embed', async () => {
     renderCard(<EnvironmentWebAppCard appId="app-1" environmentId="staging" canEdit canManage />)
 
-    expect(await screen.findByText(/workflow\/environments\/staging\/site-code/)).toHaveTextContent(
-      'https://site.example.test/workflow/environments/staging/site-code',
+    expect(await screen.findByText(/env\/workflow\/site-code/)).toHaveTextContent(
+      'https://site.example.test/env/workflow/site-code',
     )
     expect(
       await screen.findByRole('button', {
@@ -304,7 +304,7 @@ describe('environment access point cards', () => {
     const user = userEvent.setup()
     renderCard(<EnvironmentWebAppCard appId="app-1" environmentId="staging" canEdit canManage />)
 
-    await screen.findByText(/workflow\/environments\/staging\/site-code/)
+    await screen.findByText(/env\/workflow\/site-code/)
     await user.click(screen.getByRole('button', { name: /customize\.entry/ }))
     expect(screen.getByRole('dialog', { name: 'environment customize' })).toHaveTextContent(
       'https://api.example.test/v1',

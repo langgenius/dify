@@ -38,7 +38,7 @@ describe('base', () => {
       window.history.replaceState(
         {},
         '',
-        '/webapp-signin?redirect_url=%2Fworkflow%2Fenvironments%2Fenv-1%2Fworkflow-app',
+        '/webapp-signin?redirect_url=%2Fenv%2Fworkflow%2Fworkflow-app',
       )
       const fetchSpy = vi
         .spyOn(globalThis, 'fetch')
@@ -54,7 +54,7 @@ describe('base', () => {
     it.each(['/passport', '/webapp/permission', '/workflows/run', 'parameters', 'meta'])(
       'should route %s to the environment webapp API',
       async (path) => {
-        window.history.replaceState({}, '', '/workflow/environments/env-1/workflow-app')
+        window.history.replaceState({}, '', '/env/workflow/workflow-app')
         const fetchSpy = vi
           .spyOn(globalThis, 'fetch')
           .mockResolvedValue(new Response(JSON.stringify({ result: 'ok' })))
@@ -66,7 +66,7 @@ describe('base', () => {
           throw new TypeError('Expected fetch to receive a Request')
         const expectedPath = path.startsWith('/') ? path : `/${path}`
         expect(request.url).toBe(
-          `${PUBLIC_API_PREFIX}/environments/env-1/webapps/workflow-app${expectedPath}`,
+          `${PUBLIC_API_PREFIX}/env/workflow-app${expectedPath}`,
         )
       },
     )
@@ -78,7 +78,7 @@ describe('base', () => {
       '/forgot-password/validity',
       '/enterprise/sso/members/oidc/login',
     ])('should keep environment auth path %s on Dify public API', async (path) => {
-      window.history.replaceState({}, '', '/workflow/environments/env-1/workflow-app')
+      window.history.replaceState({}, '', '/env/workflow/workflow-app')
       const fetchSpy = vi
         .spyOn(globalThis, 'fetch')
         .mockResolvedValue(new Response(JSON.stringify({ result: 'ok' })))

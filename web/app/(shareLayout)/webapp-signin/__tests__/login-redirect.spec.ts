@@ -27,14 +27,14 @@ describe('resolveWebAppLoginRedirect', () => {
 
     it('should resolve an environment workflow redirect', () => {
       const result = resolveWebAppLoginRedirect(
-        '/workflow/environments/env-1/workflow-app',
+        '/env/workflow/workflow-app',
         'https://self-hosted.example.com',
       )
 
       expect(result).toEqual({
         appCode: 'workflow-app',
-        address: { kind: 'environment', environmentId: 'env-1', code: 'workflow-app' },
-        target: { kind: 'internal', href: '/workflow/environments/env-1/workflow-app' },
+        address: { kind: 'environment', code: 'workflow-app' },
+        target: { kind: 'internal', href: '/env/workflow/workflow-app' },
       })
     })
   })

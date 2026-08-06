@@ -513,7 +513,7 @@ describe('ssePost and sseGet', () => {
   })
 
   it('uses the environment webapp API for workflow runs and stops', async () => {
-    window.history.replaceState({}, '', '/workflow/environments/env-1/workflow-app')
+    window.history.replaceState({}, '', '/env/workflow/workflow-app')
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
       .mockResolvedValue(new Response(null, { status: 204 }))
@@ -522,18 +522,18 @@ describe('ssePost and sseGet', () => {
     await postPublic('/workflows/tasks/task-1/stop')
 
     expect(fetchSpy.mock.calls[0]![0]).toBe(
-      `${PUBLIC_API_PREFIX}/environments/env-1/webapps/workflow-app/workflows/run`,
+      `${PUBLIC_API_PREFIX}/env/workflow-app/workflows/run`,
     )
     const stopRequest = fetchSpy.mock.calls[1]![0]
     expect(stopRequest).toBeInstanceOf(Request)
     if (!(stopRequest instanceof Request)) throw new TypeError('Expected a request')
     expect(stopRequest.url).toBe(
-      `${PUBLIC_API_PREFIX}/environments/env-1/webapps/workflow-app/workflows/tasks/task-1/stop`,
+      `${PUBLIC_API_PREFIX}/env/workflow-app/workflows/tasks/task-1/stop`,
     )
   })
 
   it('uses the environment webapp API for local and remote uploads', async () => {
-    window.history.replaceState({}, '', '/workflow/environments/env-1/workflow-app')
+    window.history.replaceState({}, '', '/env/workflow/workflow-app')
     const urls: string[] = []
     const createXhr = () => {
       const xhr = {
@@ -556,8 +556,8 @@ describe('ssePost and sseGet', () => {
     await upload({ xhr: createXhr(), data: new FormData() }, true, '/remote-files/upload')
 
     expect(urls).toEqual([
-      `${PUBLIC_API_PREFIX}/environments/env-1/webapps/workflow-app/files/upload`,
-      `${PUBLIC_API_PREFIX}/environments/env-1/webapps/workflow-app/remote-files/upload`,
+      `${PUBLIC_API_PREFIX}/env/workflow-app/files/upload`,
+      `${PUBLIC_API_PREFIX}/env/workflow-app/remote-files/upload`,
     ])
   })
 })

@@ -16,8 +16,8 @@ export function normalizeEnvironmentAccessMode(accessMode?: string): Environment
   return AccessMode.ORGANIZATION
 }
 
-export function getEnvironmentWebAppUrl(environmentId: string, site?: EnvironmentSite) {
+export function getEnvironmentWebAppUrl(site?: EnvironmentSite) {
   if (!site?.app_base_url || !site.code) return ''
 
-  return `${site.app_base_url.replace(/\/$/, '')}${basePath}/workflow/environments/${environmentId}/${site.code}`
+  return `${site.app_base_url.replace(/\/$/, '')}${basePath}/env/workflow/${site.code}`
 }

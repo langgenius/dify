@@ -9,17 +9,16 @@ export type WebAppAddress =
   | {
       kind: 'environment'
       code: string
-      environmentId: string
     }
 
 const normalizePath = (path: string) => (path.startsWith('/') ? path : `/${path}`)
 
 export const parseWebAppAddress = (pathname: string): WebAppAddress | null => {
   const segments = pathname.split('/').filter(Boolean)
-  if (segments[0] === 'workflow' && segments[1] === 'environments') {
-    const [_, __, environmentId, code, ...rest] = segments
-    if (!environmentId || !code || rest.length > 0) return null
-    return { kind: 'environment', environmentId, code }
+  if (segments[0] === 'env' && segments[1] === 'workflow') {
+    const [_, __, code, ...rest] = segments
+    if (!code || rest.length > 0) return null
+    return { kind: 'environment', code }
   }
 
   const [route, code, ...rest] = segments
@@ -48,12 +47,12 @@ export const resolveWebAppAddress = (): WebAppAddress | null => {
 export const getWebAppApiPath = (address: WebAppAddress | null, path: string) => {
   const normalizedPath = normalizePath(path)
   if (!address || address.kind === 'default') return normalizedPath
-  return `/environments/${address.environmentId}/webapps/${address.code}${normalizedPath}`
+  return `/env/${address.code}${normalizedPath}`
 }
 
 export const getWebAppPassportKey = (address: WebAppAddress) => {
   if (address.kind === 'default') return address.code
-  return `environment:${address.environmentId}:${address.code}`
+  return `environment:${address.code}`
 }
 
 export const isDifyWebAppAuthPath = (path: string) => {
