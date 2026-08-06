@@ -1,4 +1,5 @@
 import json
+from datetime import date
 from enum import StrEnum, auto
 from typing import Any, Union
 
@@ -106,6 +107,20 @@ def as_normal_type(typ: StrEnum):
     return typ.value
 
 
+def _validate_date(value: Any, name: str = "date") -> str:
+    if not isinstance(value, str):
+        raise ValueError(f"The {name} parameter must be a string in YYYY-MM-DD format.")
+
+    try:
+        parsed = date.fromisoformat(value)
+    except ValueError as exc:
+        raise ValueError(f"The {name} parameter must be a valid date in YYYY-MM-DD format.") from exc
+
+    if parsed.isoformat() != value:
+        raise ValueError(f"The {name} parameter must use YYYY-MM-DD format.")
+    return value
+
+
 def cast_parameter_value(typ: StrEnum, value: Any, /):
     try:
         match typ.value:
@@ -115,12 +130,15 @@ def cast_parameter_value(typ: StrEnum, value: Any, /):
                 | PluginParameterType.SELECT
                 | PluginParameterType.CHECKBOX
                 | PluginParameterType.DYNAMIC_SELECT
-                | PluginParameterType.DATE
             ):
                 if value is None:
                     return ""
                 else:
                     return value if isinstance(value, str) else str(value)
+            case PluginParameterType.DATE:
+                if value is None or value == "":
+                    return ""
+                return _validate_date(value)
             case PluginParameterType.DATE_PICKER:
                 if value is None or value == "":
                     return {}
@@ -129,20 +147,21 @@ def cast_parameter_value(typ: StrEnum, value: Any, /):
                     for key in ("start", "end"):
                         if key not in value or value[key] is None or value[key] == "":
                             continue
-                        raw = value[key]
-                        out[key] = raw if isinstance(raw, str) else str(raw)
+                        out[key] = _validate_date(value[key], f"date-picker {key}")
+                    if out.get("start") and out.get("end") and out["start"] > out["end"]:
+                        raise ValueError("The date-picker start date must not be after the end date.")
                     return out
                 if isinstance(value, str):
                     try:
                         parsed_value = json.loads(value)
                         if isinstance(parsed_value, dict):
                             return cast_parameter_value(typ, parsed_value)
-                    except (json.JSONDecodeError, ValueError):
+                    except json.JSONDecodeError:
                         pass
                     stripped = value.strip()
                     if not stripped:
                         return {}
-                    return {"start": stripped}
+                    return {"start": _validate_date(stripped, "date-picker start")}
                 raise ValueError("The date-picker parameter must be a JSON object, JSON string, or empty.")
 
             case PluginParameterType.BOOLEAN:
