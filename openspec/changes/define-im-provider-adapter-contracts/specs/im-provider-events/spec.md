@@ -104,36 +104,61 @@ For both transports, the adapter MUST NOT replace the serialized Provider payloa
 - **WHEN** a Provider sends a valid challenge request
 - **THEN** `handle()` MUST return the Provider-specific challenge response without invoking `IMEventConsumer`
 
-### Requirement: IMEventStream MUST expose a stoppable blocking run lifecycle
-`IMEventStream` MUST expose `run(signal)`. It MUST deliver authenticated business events to the `IMEventConsumer` supplied to `create_stream_handler(consumer)`. The call MUST block while the event stream is running. After `StopSignal.stop_requested` becomes true, the event stream MUST stop establishing or reconnecting Provider connections, release all resources owned by that event stream, wait for every in-flight consumer call to return and then return. No consumer call may begin after `run()` returns. Each event stream instance MUST start at most one run lifecycle. A second invocation MUST raise `IMStreamRunError`. Root adapter close MUST NOT stop or otherwise replace the lifecycle of a previously created event stream.
+### Requirement: IMEventStream MUST be an owner-managed resource
+`IMEventStream` MUST expose only `start()` and `stop()` as its lifecycle API. It MUST deliver authenticated business events to the `IMEventConsumer` supplied to `create_stream_handler(consumer)`. `start()` MUST synchronously complete initialization and start event reception. It MAY block for initialization and readiness, but MUST return while the stream remains active and MUST leave ongoing event reception in execution contexts owned by the concrete implementation. Each event stream instance MUST successfully start at most once and MUST NOT restart after it has stopped. A disallowed subsequent `start()` MUST raise an operator-safe `IMStreamStartError` without creating new resources. Root adapter close MUST NOT stop or replace the lifecycle of a previously created event stream.
 
-#### Scenario: Stop is requested
-- **WHEN** the supplied `StopSignal.stop_requested` becomes true while `run()` is active
-- **THEN** `run()` MUST finish all in-flight consumer calls and return
+#### Scenario: Event stream starts successfully
+- **WHEN** the lifecycle owner invokes `start()` on a new event stream
+- **THEN** `start()` MUST return after synchronous initialization and readiness complete
+- **AND** the stream MUST continue receiving events in its implementation-owned execution context
 
-#### Scenario: Event stream is run twice
-- **WHEN** `run()` is invoked a second time on the same event stream instance
-- **THEN** it MUST raise `IMStreamRunError` without starting another run lifecycle
+#### Scenario: Event stream is started after its one-shot lifecycle
+- **WHEN** `start()` is invoked after that event stream has already started successfully or stopped
+- **THEN** it MUST raise `IMStreamStartError` without creating another event-reception lifecycle
 
-#### Scenario: STREAM terminates with an exposed run failure
-- **WHEN** a terminal STREAM failure crosses the shared interface
-- **THEN** it MUST be represented by operator-safe `IMStreamRunError` rather than a Provider client or Provider-specific exception
-
-#### Scenario: Root adapter closes while an event stream is running
+#### Scenario: Root adapter closes while an event stream is active
 - **WHEN** root close occurs after an event stream has started
-- **THEN** the event stream MUST continue until its `StopSignal.stop_requested` becomes true or the run otherwise returns
+- **THEN** the event stream MUST continue until its lifecycle owner invokes `stop()`
 
-### Requirement: StopSignal MUST expose caller-controlled termination state
-A `StopSignal` MUST wrap a caller-owned stop source. Its `stop_requested` property MUST report whether stop has been requested, and its `wait(timeout)` operation MUST report whether stop was requested before the timeout. Once the caller-owned source requests stop, `stop_requested` MUST remain true.
+### Requirement: IMEventStream stop SHOULD provide graceful shutdown
+`stop()` MUST synchronously request stream termination and return after the implementation's stop operation completes. It SHOULD first stop accepting new events, then wait for every already accepted event to finish conversion, consumer processing and any Provider protocol response, and finally release resources owned by the event stream. The transition from accepting to not accepting SHOULD have a defined order relative to naturally concurrent internal event delivery. After `stop()` returns, the stream SHOULD NOT invoke its consumer, execute accepted event processing, establish or reconnect a Provider connection, leave a Provider protocol response pending or retain implementation-owned background tasks or resources. An implementation MAY provide a weaker shutdown boundary when it cannot provide these graceful-shutdown guarantees. Serial calls after a successful `stop()` MUST be no-ops. `stop()` MUST also be safe to place in a `finally` block after `start()` fails. If the implementation's stop operation fails, it MUST raise an operator-safe `IMStreamStopError` rather than expose a Provider client or Provider-specific exception.
 
-#### Scenario: Caller stops a running event stream
-- **WHEN** the caller requests stop through the source associated with the `StopSignal` passed to `run()`
-- **THEN** the signal's `stop_requested` property MUST become true
-- **AND** a waiting signal operation MUST observe the stop request
+#### Scenario: Stop drains an accepted event
+- **WHEN** `stop()` begins while an already accepted event is still being processed
+- **THEN** `stop()` SHOULD wait for that processing and its applicable Provider protocol response before returning
+- **AND** no event crossing the acceptance boundary after stop takes effect SHOULD invoke the consumer
 
-#### Scenario: Caller requests stop more than once
-- **WHEN** the caller requests stop repeatedly through the same source
-- **THEN** `stop_requested` MUST remain true without creating a new termination lifecycle
+#### Scenario: Graceful drain is not supported
+- **WHEN** an implementation cannot guarantee that accepted event processing and applicable Provider protocol responses finish before `stop()` returns
+- **THEN** `stop()` MAY return after its supported stop operation completes
+- **AND** callers MUST NOT infer a cross-Provider drain barrier from the shared contract
+
+#### Scenario: Stop is repeated serially
+- **WHEN** the lifecycle owner invokes `stop()` more than once without overlap
+- **THEN** later invocations MUST return without reopening or repeating the completed lifecycle
+
+#### Scenario: Start fails before finally cleanup
+- **WHEN** `start()` raises `IMStreamStartError`
+- **THEN** a subsequent serial `stop()` MUST be safe to invoke
+
+### Requirement: IMEventStream lifecycle calls MUST be externally serialized and non-reentrant
+The lifecycle owner MUST invoke `start()` and `stop()` serially. These lifecycle methods are not required to be concurrent-safe and MUST NOT be invoked re-entrantly from an `IMEventConsumer` callback. Implementations SHOULD coordinate naturally concurrent internal deliveries against the stop acceptance boundary when they provide graceful shutdown.
+
+#### Scenario: Lifecycle calls overlap
+- **WHEN** callers overlap `start()` and `stop()`, overlap multiple `stop()` calls or invoke either method from the consumer callback
+- **THEN** that use MUST be outside the event stream contract
+
+### Requirement: STREAM event failures MUST remain isolated from lifecycle ownership
+`start()` MUST report only synchronous startup failures as `IMStreamStartError`. A single event conversion, consumer or Provider protocol-response failure MUST NOT propagate to the lifecycle owner, MUST NOT automatically stop the event stream and MUST be recorded by the implementation with the applicable unsuccessful-delivery semantics. Runtime failures that are not synchronously observable during `start()` belong to implementation observability or a separate supervisor.
+
+#### Scenario: One event fails
+- **WHEN** conversion, consumer processing or the Provider protocol response fails for one event
+- **THEN** the implementation MUST record the failure and apply the Provider's unsuccessful-delivery semantics
+- **AND** the failure MUST NOT stop the stream or propagate through a lifecycle call
+
+#### Scenario: Runtime stream failure occurs after start
+- **WHEN** an unrecoverable transport failure occurs after `start()` returns
+- **THEN** the implementation MUST make it observable without adding a blocking wait or failure signal to `IMEventStream`
 
 ### Requirement: Transport implementation context MUST remain outside AuthenticatedIMEvent
 An adapter MUST NOT augment `AuthenticatedIMEvent` with transport credentials, signature headers, raw encrypted envelopes, HTTP response state, connection state, control frames, acknowledgement handles, Provider client objects or other adapter-owned transport context not explicitly defined by the shared contract. This restriction MUST NOT remove fields already present in the decoded Webhook JSON object or exposed by the Provider SDK's supported STREAM serialization.

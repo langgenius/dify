@@ -27,12 +27,12 @@
 
 ## 4. Define inbound event contracts
 
-- [ ] 4.1 Add framework-neutral `WebhookRequest`, `WebhookResponse`, immutable `AuthenticatedIMEvent`, `EventAcceptance`, thread-safe `IMEventConsumer` and `StopSignal` contracts.
+- [ ] 4.1 Add framework-neutral `WebhookRequest`, `WebhookResponse`, immutable `AuthenticatedIMEvent`, `EventAcceptance` and thread-safe `IMEventConsumer` contracts.
 - [ ] 4.2 Define thread-safe Webhook request handling, authentication-before-consumer, challenge behavior and ACK-after-`ACCEPTED` semantics without prescribing verification or resource-management implementation.
-- [ ] 4.3 Define independently created `IMEventStream` instances with a blocking single-run lifecycle, caller-controlled stop, no post-stop connection or reconnect, owned-resource release, in-flight consumer completion, no consumer call after return, repeated-run failure and root-close independence semantics.
+- [ ] 4.3 Define independently created `IMEventStream` instances as owner-managed resources with synchronous one-shot `start()`, synchronous idempotent `stop()`, normalized lifecycle failures, in-flight event and protocol-response draining, owned-resource release, event-failure isolation and root-close independence semantics.
 - [ ] 4.4 Keep transport implementation context not defined by the shared contract and consumer-specific models outside `AuthenticatedIMEvent` without removing fields from decoded Webhook JSON or supported Provider SDK serialization.
 - [ ] 4.5 Preserve only confirmed stable Provider event IDs; define Webhook payload as the complete decoded HTTP request body JSON model and STREAM payload as the complete supported SDK serialization for independent consumer decoding.
-- [ ] 4.6 Add black-box contract tests using test doubles for concurrent consumer calls, Webhook/root overlap, consumer outcomes, stoppable single-run STREAM behavior and independent lifecycles.
+- [ ] 4.6 Add black-box contract tests using test doubles for concurrent consumer calls, Webhook/root overlap, consumer outcomes, one-shot STREAM start, graceful idempotent stop, event-failure isolation and independent lifecycles.
 
 ## 5. Complete real Provider evidence
 

@@ -65,11 +65,11 @@ An `IMProviderAdapter` is not thread-safe. Capability accessors, `create_webhook
 - **THEN** that use MUST be outside the adapter contract
 
 ### Requirement: STREAM creation MUST return independent event streams
-Every supported invocation of `create_stream_handler(consumer)` MUST return a distinct `IMEventStream` bound to the adapter's immutable Provider configuration and the supplied `IMEventConsumer`. Creation MUST follow the root adapter's external-serialization contract. Each returned event stream MUST have an independent run lifecycle and MAY outlive the root adapter.
+Every supported invocation of `create_stream_handler(consumer)` MUST return a distinct `IMEventStream` bound to the adapter's immutable Provider configuration and the supplied `IMEventConsumer`. Creation MUST follow the root adapter's external-serialization contract. Each returned event stream MUST have an independent owner-managed lifecycle and MAY outlive the root adapter.
 
 #### Scenario: Multiple event streams are created
 - **WHEN** a caller invokes `create_stream_handler(consumer)` more than once on a STREAM-capable adapter without overlapping the calls
-- **THEN** every call MUST return a distinct event stream whose run lifecycle does not affect the other event streams
+- **THEN** every call MUST return a distinct event stream whose `start()`/`stop()` lifecycle does not affect the other event streams
 
 ### Requirement: IMProviderAdapter close MUST define the root lifecycle boundary
 The adapter MUST expose an idempotent `close()` operation. The caller MUST invoke it only after all adapter operations return. After close returns, the caller MUST NOT access capabilities, create new event transports or invoke root, Directory, Messaging or Dynamic Card Messaging operations other than repeated `close()`. Root close MUST NOT invalidate a previously created `IMWebhookHandler` or `IMEventStream`.

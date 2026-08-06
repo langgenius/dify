@@ -6,10 +6,9 @@ not imported by production code and deliberately contains no SDK behavior.
 
 from __future__ import annotations
 
-import threading
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Annotated, Literal, NewType, Protocol
+from typing import Literal, NewType, Protocol
 
 from core.human_input_v2.approval.form import FrozenFormDefinition
 from core.human_input_v2.entities import IMProvider
@@ -384,18 +383,6 @@ class IMEventConsumer(Protocol):
         ...
 
 
-class StopSignal:
-    def __init__(self, event: threading.Event):
-        self._event = event
-
-    @property
-    def stop_requested(self) -> bool:
-        return self._event.is_set()
-
-    def wait(self, timeout: float | None = None) -> bool:
-        return self._event.wait(timeout)
-
-
 class IMWebhookHandler(Protocol):
     """`IMWebhookHandler` abstract the provider specific webhook handling logic,
     wraps the actual event handler and expose a `handle` method to be invoked
@@ -415,8 +402,12 @@ class IMWebhookHandler(Protocol):
         ...
 
 
-class IMStreamRunError(Exception):
-    pass
+class IMStreamStartError(Exception):
+    """Operator-safe synchronous stream startup failure."""
+
+
+class IMStreamStopError(Exception):
+    """Operator-safe failure to establish the graceful-stop guarantees."""
 
 
 class IMEventStream(Protocol):
@@ -429,19 +420,12 @@ class IMEventStream(Protocol):
     invoke the `IMEventConsumer.accept` if new event arrives.
     """
 
-    def run(self, signal: StopSignal) -> None:
-        """start and execute the stream handler until the signal is requested to stop.
+    def start(self) -> None:
+        """Synchronously initialize and start this one-shot event stream."""
+        ...
 
-        This method blocks the caller until the signal is stopped.
-
-        Invoking `run` twice would raise `IMStreamRunError`.
-
-        After stop is observed, the stream must stop establishing or reconnecting
-        Provider connections, release all resources owned by this instance, and
-        wait for every in-flight consumer call to return.
-
-        No consumer call may begin after this method returns.
-        """
+    def stop(self) -> None:
+        """Synchronously drain accepted events and release all owned resources."""
         ...
 
 

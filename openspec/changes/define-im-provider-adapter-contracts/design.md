@@ -4,7 +4,7 @@ Dify 需要面向多个 IM Provider 提供 credential testing、Directory、Mess
 
 `IMProviderAdapter` 是 infrastructure-level interface composition root，不是 DDD aggregate。它把一份 Provider-specific configuration 关联到一组 capability views。共享 contract 只约束调用者能够观察到的行为，不定义 concrete adapter 的内部对象关系或资源组织方式。
 
-Webhook 与 STREAM 具有不同控制流：Webhook 由调用方提交 request 并接收 response；STREAM 由长生命周期 operation 向 application-supplied `IMEventConsumer` 推送 event。两者在 transport authentication 后通过 `AuthenticatedIMEvent` 和 `IMEventConsumer` 汇合，但不共享假的 request、connection 或 ACK interface。
+Webhook 与 STREAM 具有不同控制流：Webhook 由调用方提交 request 并接收 response；STREAM 是由 lifecycle owner 通过同步 `start()`/`stop()` 管理的 resource，并在实现内部拥有的执行上下文中向 application-supplied `IMEventConsumer` 推送 event。两者在 transport authentication 后通过 `AuthenticatedIMEvent` 和 `IMEventConsumer` 汇合，但不共享假的 request、connection 或 ACK interface。
 
 ## Goals / Non-Goals
 
@@ -86,7 +86,9 @@ Webhook framework input 与 STREAM SDK callback value 在调用 consumer 前都�
 
 `IMWebhookHandler.handle()` 使用 framework-neutral request/response values，支持同一 handler 上的 concurrent calls，也可以与 root operations 或 root close overlap。Root close 不使已经创建的 Webhook handler 失效。
 
-每个 `IMEventStream` instance 至多启动一次 blocking `run(signal)` lifecycle。`StopSignal.stop_requested` 变为 true 后，event stream 不再建立或重连 Provider connection，释放该 instance 拥有的资源，并等待所有 in-flight consumer calls 完成；`run()` 返回后不得再启动新的 consumer call。第二次调用 `run()` 必须抛出 `IMStreamRunError`。每次 `create_stream_handler(consumer)` 返回独立 instance，root close 不替代 instance 自身的 lifecycle management。Contract 不规定内部 state representation、atomic primitive、callback model 或 reconnect algorithm。
+每个 `IMEventStream` instance 是由 caller-owned lifecycle owner 管理的一次性 resource。`start()` 同步完成 initialization、connection establishment 和必要的 readiness，随后立即返回；运行期 event receiving 由 concrete implementation 的内部执行上下文负责。`stop()` 同步关闭 event acceptance，以明确的线性化顺序排空已经接纳的 consumer calls 和 Provider acknowledgement，再释放该 instance 拥有的 connection、task 与其他 resource。`stop()` 返回后不得再调用 consumer，也不得留有未完成的 protocol response 或 implementation-owned background task。
+
+Lifecycle owner 必须串行、非重入地调用 `start()` 与 `stop()`；这两个方法不承诺 concurrent-safe，也不得从 consumer callback 内调用。一个 instance 只能成功启动一次，停止后不得重启；串行重复 `stop()` 是 no-op，且 `start()` 失败后也可安全调用 `stop()`。同步启动失败统一为 `IMStreamStartError`，无法满足停止后保证统一为 `IMStreamStopError`。单个 event conversion、consumer 或 protocol response failure 不传播到 lifecycle owner，也不自动停止 stream；运行期不可恢复故障通过 implementation observability 或独立 supervisor 观察，不向核心接口加入 failure signal。每次 `create_stream_handler(consumer)` 返回独立 instance，root close 不替代 instance 自身的 lifecycle management。Contract 不规定内部 state representation、atomic primitive、callback model、thread、Greenlet、reconnect algorithm 或其他 resource-ownership mechanism。
 
 ### 7. AuthenticatedIMEvent carries Provider evidence, not business state
 
