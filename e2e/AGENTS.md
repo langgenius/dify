@@ -7,7 +7,8 @@ This package contains Dify's repository-level Cucumber scenarios with Playwright
 Run commands from the repository root. Install dependencies and browsers once with `pnpm install` and `pnpm -C e2e e2e:install`. Run only one local `pnpm -C e2e e2e*` process at a time because runners share ports, auth state, and log paths.
 
 - Existing initialized instance: `pnpm -C e2e e2e`
-- Standalone automated WCAG Level A scan: `pnpm -C e2e e2e:accessibility`
+- Standalone automated WCAG Level A scan: `pnpm -C e2e e2e:accessibility:a`
+- Standalone automated WCAG Level AA scan: `pnpm -C e2e e2e:accessibility:aa`
 - Reset, initialize, and run deterministic scenarios: `pnpm -C e2e e2e:full`
 - Prepare and run scenarios backed by shared fixtures: `E2E_START_AGENT_BACKEND=1 pnpm -C e2e e2e:prepared`
 - Tagged subset: `pnpm -C e2e e2e -- --tags @smoke`
@@ -37,7 +38,7 @@ An uninitialized instance is installed and authenticated lazily; an initialized 
 ## Tags And External Runtime
 
 - Default scenarios use shared authenticated storage state. `@unauthenticated` creates a clean context; `@authenticated` is an intent and selection tag only.
-- `@axe` identifies the standalone automated WCAG Level A scan. It is excluded from the default functional suite and normal CI commands; the accessibility feature branch runs it in a dedicated push job.
+- `@axe` identifies standalone automated WCAG scans and is excluded from the default functional suite and normal CI commands. `@wcag-a` and `@wcag-aa` select the independent level-specific scans; the accessibility feature branch runs both as dedicated push jobs.
 - `@prepared` requires the prepared fixtures; the post-merge seed profile includes them.
 - `@external-model` and `@external-tool` identify scenarios that call real external runtimes. Deterministic commands exclude these tags; external commands are opt-in.
 - `@microphone` uses the checked-in fake audio fixture and an isolated Chromium context.

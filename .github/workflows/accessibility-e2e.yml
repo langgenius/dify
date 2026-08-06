@@ -1,4 +1,4 @@
-name: WCAG Level A Accessibility E2E
+name: WCAG Accessibility E2E
 
 on:
   push:
@@ -13,9 +13,17 @@ concurrency:
 
 jobs:
   accessibility:
-    name: WCAG Level A Accessibility
+    name: WCAG Level ${{ matrix.label }} Accessibility
     runs-on: depot-ubuntu-24.04-4
     timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - level: a
+            label: A
+          - level: aa
+            label: AA
     defaults:
       run:
         shell: bash
@@ -45,7 +53,7 @@ jobs:
         working-directory: ./e2e
         run: vp run e2e:install:ci:chromium
 
-      - name: Run automated WCAG Level A checks
+      - name: Run automated WCAG Level ${{ matrix.label }} checks
         working-directory: ./e2e
         env:
           E2E_ADMIN_EMAIL: e2e-admin@example.com
@@ -53,13 +61,13 @@ jobs:
           E2E_ADMIN_PASSWORD: E2eAdmin12345
           E2E_FORCE_WEB_BUILD: "1"
           E2E_INIT_PASSWORD: E2eInit12345
-        run: vp run e2e:accessibility
+        run: vp run e2e:accessibility:${{ matrix.level }}
 
       - name: Upload accessibility Cucumber report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: cucumber-report-accessibility
+          name: cucumber-report-accessibility-${{ matrix.level }}
           path: e2e/cucumber-report
           retention-days: 7
 
@@ -67,7 +75,7 @@ jobs:
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: e2e-logs-accessibility
+          name: e2e-logs-accessibility-${{ matrix.level }}
           path: e2e/.logs/*.log
           include-hidden-files: true
           retention-days: 7

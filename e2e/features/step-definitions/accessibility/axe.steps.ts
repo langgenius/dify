@@ -3,23 +3,60 @@ import AxeBuilder from '@axe-core/playwright'
 import { Then } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
 
-const wcagLevelATags = ['wcag2a', 'wcag21a']
+type AxeResults = Awaited<ReturnType<AxeBuilder['analyze']>>
+type WcagLevel = 'A' | 'AA'
 
-const formatViolations = (violations: Awaited<ReturnType<AxeBuilder['analyze']>>['violations']) =>
+const wcagTagsByLevel = {
+  A: ['wcag2a', 'wcag21a'],
+  AA: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'],
+} satisfies Record<WcagLevel, string[]>
+
+const formatViolations = (violations: AxeResults['violations']) =>
   violations
     .map(
       (violation) =>
-        `${violation.id} (${violation.impact ?? 'unknown impact'}): ${violation.help}\n${violation.helpUrl}\n${violation.nodes.map((node) => `  - ${node.target.join(' > ')}`).join('\n')}`,
+        `${violation.id} (${violation.impact ?? 'unknown impact'}): ${violation.help}\n${violation.helpUrl}\n${violation.nodes.map((node) => `  - ${node.target.join(' > ')}${node.failureSummary ? `\n    ${node.failureSummary.replaceAll('\n', '\n    ')}` : ''}`).join('\n')}`,
     )
     .join('\n\n')
+
+const checkCurrentPage = async (world: DifyWorld, level: WcagLevel) => {
+  const results = await new AxeBuilder({ page: world.getPage() })
+    .withTags(wcagTagsByLevel[level])
+    .analyze()
+  const formattedViolations = formatViolations(results.violations)
+
+  if (results.violations.length > 0) {
+    world.attach(
+      `WCAG Level ${level} violations for ${results.url}:\n\n${formattedViolations}`,
+      'text/plain',
+    )
+    world.attach(
+      JSON.stringify(
+        {
+          level,
+          url: results.url,
+          violations: results.violations,
+        },
+        null,
+        2,
+      ),
+      'application/json',
+    )
+  }
+
+  expect(results.violations, formattedViolations).toEqual([])
+}
 
 Then(
   'the current page should have no automatically detectable WCAG Level A violations',
   async function (this: DifyWorld) {
-    const results = await new AxeBuilder({ page: this.getPage() })
-      .withTags(wcagLevelATags)
-      .analyze()
+    await checkCurrentPage(this, 'A')
+  },
+)
 
-    expect(results.violations, formatViolations(results.violations)).toEqual([])
+Then(
+  'the current page should have no automatically detectable WCAG Level AA violations',
+  async function (this: DifyWorld) {
+    await checkCurrentPage(this, 'AA')
   },
 )
