@@ -331,9 +331,7 @@ def test_skill_delete_by_agent_uses_agent_route(unbound_session: Session):
             patch(f"{_MOD}.AgentDriveService") as drive,
         ):
             drive.return_value.commit.return_value = [{"key": "tender-analyzer/SKILL.md", "removed": True}]
-            body = raw(
-                AgentSkillByAgentApi(), unbound_session, "tenant-1", _USER, "agent-1", "tender-analyzer"
-            )
+            body = raw(AgentSkillByAgentApi(), unbound_session, "tenant-1", _USER, "agent-1", "tender-analyzer")
     assert body == {"result": "success", "removed_keys": ["tender-analyzer/SKILL.md"]}
     resolve_app.assert_called_once_with(session=unbound_session, tenant_id="tenant-1", agent_id="agent-1")
 

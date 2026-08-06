@@ -331,9 +331,7 @@ def test_app_list_query_accepts_single_repeated_tag_id(app_module):
     assert query.tag_ids == [tag_id]
 
 
-def test_create_app_endpoint_rejects_agent_mode(
-    app_module, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
-):
+def test_create_app_endpoint_rejects_agent_mode(app_module, monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
     payload = {"name": "Iris", "mode": "agent", "description": "Agent app"}
     app_service = MagicMock()
     monkeypatch.setattr(app_module, "AppService", lambda: app_service)
@@ -559,9 +557,7 @@ def test_app_list_uses_injected_session_for_draft_workflows(
         app_id="app-1",
         type=WorkflowType.WORKFLOW,
         version=Workflow.VERSION_DRAFT,
-        graph=json.dumps(
-            {"nodes": [{"id": "trigger-1", "data": {"type": "trigger-webhook"}}], "edges": []}
-        ),
+        graph=json.dumps({"nodes": [{"id": "trigger-1", "data": {"type": "trigger-webhook"}}], "edges": []}),
         features=json.dumps({}),
         created_by="user-1",
         environment_variables=[],
@@ -654,9 +650,7 @@ def test_app_create_api_attaches_permission_keys(app, app_module, unbound_sessio
                 replace_whitelist,
             )
 
-            resp, status = method(
-                app_module.AppListApi(), unbound_session, "tenant-1", SimpleNamespace(id="acct-1")
-            )
+            resp, status = method(app_module.AppListApi(), unbound_session, "tenant-1", SimpleNamespace(id="acct-1"))
 
     assert status == 201
     assert resp["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
@@ -1035,9 +1029,7 @@ def test_app_detail_api_attaches_current_user_permission_keys(app, app_module, u
     assert resp["permission_keys"] == ["app.acl.view_layout", "app.acl.edit", "app.acl.monitor"]
 
 
-def test_app_copy_api_attaches_permission_keys(
-    app, app_module, sqlite_session: Session, sqlite_engine: Engine
-):
+def test_app_copy_api_attaches_permission_keys(app, app_module, sqlite_session: Session, sqlite_engine: Engine):
     method = app_module.AppCopyApi.post
     while hasattr(method, "__wrapped__"):
         method = method.__wrapped__
@@ -1079,9 +1071,7 @@ def test_app_copy_api_attaches_permission_keys(
             monkeypatch.setattr(
                 app_module.enterprise_rbac_service.RBACService.AppPermissions,
                 "batch_get",
-                lambda tenant_id, account_id, app_ids, session: {
-                    app_obj.id: ["app.acl.view_layout", "app.acl.edit"]
-                },
+                lambda tenant_id, account_id, app_ids, session: {app_obj.id: ["app.acl.view_layout", "app.acl.edit"]},
             )
 
             resp, status = method(

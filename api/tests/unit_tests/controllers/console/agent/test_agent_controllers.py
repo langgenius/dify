@@ -539,9 +539,7 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
 
         def update_app(self, app_obj: object, args: dict[str, object], *, session: object) -> object:
             captured["update"] = {"app": app_obj, "args": args}
-            return _app_detail_obj(
-                id=app_id, tenant_id=tenant_id, name=args["name"], bound_agent_id=agent_id
-            )
+            return _app_detail_obj(id=app_id, tenant_id=tenant_id, name=args["name"], bound_agent_id=agent_id)
 
         def delete_app(self, app_obj: object, *, session: object) -> None:
             captured["delete"] = app_obj
@@ -857,9 +855,7 @@ def test_agent_api_status_and_key_routes_resolve_backing_app(
         "resource_id": "app-1",
         "tenant_id": "tenant-1",
     }
-    created, status = unwrap(AgentApiKeyListApi.post)(
-        AgentApiKeyListApi(), unbound_session, "tenant-1", agent_id
-    )
+    created, status = unwrap(AgentApiKeyListApi.post)(AgentApiKeyListApi(), unbound_session, "tenant-1", agent_id)
     assert status == 201
     assert created["id"] == api_key_id
     assert created["token"] == "app-test-token"

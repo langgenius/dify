@@ -123,9 +123,7 @@ def test_update_message_feedback_commits_injected_session(app: Flask, sqlite_ses
     assert commits == ["commit"]
 
 
-def test_get_message_detail_uses_injected_session(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-) -> None:
+def test_get_message_detail_uses_injected_session(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
     message_id = "550e8400-e29b-41d4-a716-446655440000"
     message = _persist_message(sqlite_session, message_id=message_id)
     response_source = object()

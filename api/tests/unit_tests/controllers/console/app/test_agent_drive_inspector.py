@@ -188,9 +188,7 @@ def test_skill_inspect_by_agent_returns_strict_json_response(unbound_session: Se
             patch(f"{_MOD}.AgentDriveService") as drive,
         ):
             drive.return_value.inspect_skill.return_value = payload
-            response = raw(
-                AgentDriveSkillInspectByAgentApi(), unbound_session, "tenant-1", "agent-1", "pdf-toolkit"
-            )
+            response = raw(AgentDriveSkillInspectByAgentApi(), unbound_session, "tenant-1", "agent-1", "pdf-toolkit")
     assert response.status_code == 200
     assert response.get_json()["skill_md"]["text"] == "# PDF Toolkit\nUse it.\n"
     assert b"# PDF Toolkit\\nUse it.\\n" in response.get_data()

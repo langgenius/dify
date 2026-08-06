@@ -160,9 +160,7 @@ def test_handle_maps_sandbox_and_agent_backend_errors() -> None:
         module._handle(RuntimeError("boom"))
 
 
-def test_agent_app_sandbox_resources_proxy_service(
-    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
-) -> None:
+def test_agent_app_sandbox_resources_proxy_service(monkeypatch: pytest.MonkeyPatch, unbound_session: Session) -> None:
     service = _AgentAppService()
     session = unbound_session
     account = SimpleNamespace(id="account-1")
