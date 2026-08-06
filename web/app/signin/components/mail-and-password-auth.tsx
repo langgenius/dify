@@ -156,7 +156,6 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
               aria-label={t(($) => $[showPassword ? 'hidePassword' : 'showPassword'], {
                 ns: 'login',
               })}
-              aria-pressed={showPassword}
               className="mr-1 size-8 p-0 text-text-tertiary hover:text-text-secondary"
               onClick={() => setShowPassword(!showPassword)}
             >

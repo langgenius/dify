@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import cast
 
+import httpx2 as httpx
 import pytest
+from shellctl.client import ShellctlClientError
 
 from dify_agent.runtime_backend import (
+    BindingAcquireError,
     BindingCreateError,
     ExecutionBindingCreateSpec,
     ExecutionBindingDestroySpec,
@@ -13,6 +17,7 @@ from dify_agent.runtime_backend import (
     SharedWorkspaceUnsupportedError,
     WorkspacePreservationUnsupportedError,
 )
+from dify_agent.runtime_backend import e2b as e2b_module
 from dify_agent.runtime_backend.e2b import (
     E2BExecutionBindingBackend,
     E2BHomeSnapshotBackend,
@@ -99,6 +104,39 @@ class _ControlPlane:
     async def delete_snapshot(self, snapshot_ref: str) -> bool:
         self.deleted_snapshots.append(snapshot_ref)
         return True
+
+
+def _mock_http(
+    monkeypatch: pytest.MonkeyPatch,
+    handler: Callable[[httpx.Request], httpx.Response],
+) -> list[httpx.AsyncClient]:
+    original_async_client = httpx.AsyncClient
+    transport = httpx.MockTransport(handler)
+    clients: list[httpx.AsyncClient] = []
+
+    def create_client(*args: object, **kwargs: object) -> httpx.AsyncClient:
+        _ = kwargs.setdefault("transport", transport)
+        client = original_async_client(*args, **kwargs)
+        clients.append(client)
+        return client
+
+    monkeypatch.setattr(httpx, "AsyncClient", create_client)
+    return clients
+
+
+def _connected_backend(*, pause_error: Exception | None = None) -> tuple[E2BExecutionBindingBackend, _Sandbox]:
+    control = _ControlPlane()
+    sandbox = _Sandbox(sandbox_id="sandbox-1", pause_error=pause_error)
+    sandbox.files.paths.add("/home/dify/workspace")
+    control.sandboxes[sandbox.sandbox_id] = sandbox
+    return (
+        E2BExecutionBindingBackend(
+            control_plane=control,  # pyright: ignore[reportArgumentType]
+            template="prepared-template",
+            active_timeout_seconds=3600,
+        ),
+        sandbox,
+    )
 
 
 @pytest.mark.anyio
@@ -254,3 +292,140 @@ async def test_e2b_checkpoint_uses_exact_source_runtime() -> None:
 
     assert snapshot_ref == "snapshot-source-1"
     assert source_sandbox.snapshots == 1
+
+
+@pytest.mark.anyio
+async def test_e2b_acquire_retries_transient_shellctl_failures_until_ready(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    attempts = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise httpx.ReadTimeout("shellctl starting", request=request)
+        if attempts == 2:
+            raise httpx.ConnectError("shellctl starting", request=request)
+        return httpx.Response(200, json={"status": "ok"})
+
+    clients = _mock_http(monkeypatch, handler)
+    sleeps: list[float] = []
+
+    async def record_sleep(delay: float) -> None:
+        sleeps.append(delay)
+
+    monkeypatch.setattr(e2b_module.asyncio, "sleep", record_sleep)
+    backend, sandbox = _connected_backend()
+
+    lease = await backend.acquire(sandbox.sandbox_id)
+
+    assert attempts == 3
+    assert sleeps == [0.5, 0.5]
+    assert not clients[0].is_closed
+    await backend.release(lease)
+    assert clients[0].is_closed
+
+
+@pytest.mark.anyio
+async def test_e2b_acquire_closes_transport_and_pauses_after_readiness_retries_exhausted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    attempts = 0
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        return httpx.Response(503, json={"error": {"code": "starting", "message": "not ready"}})
+
+    clients = _mock_http(monkeypatch, handler)
+    sleeps: list[float] = []
+
+    async def record_sleep(delay: float) -> None:
+        sleeps.append(delay)
+
+    monkeypatch.setattr(e2b_module.asyncio, "sleep", record_sleep)
+    backend, sandbox = _connected_backend()
+
+    with pytest.raises(BindingAcquireError, match="not ready"):
+        _ = await backend.acquire(sandbox.sandbox_id)
+
+    assert attempts == 3
+    assert sleeps == [0.5, 0.5]
+    assert clients[0].is_closed
+    assert sandbox.pauses == [True]
+
+
+@pytest.mark.anyio
+async def test_e2b_acquire_does_not_retry_shellctl_4xx_and_preserves_error_when_pause_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    attempts = 0
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        return httpx.Response(401, json={"error": {"code": "unauthorized", "message": "bad token"}})
+
+    clients = _mock_http(monkeypatch, handler)
+
+    async def fail_sleep(_delay: float) -> None:
+        raise AssertionError("non-retryable health failures must not sleep")
+
+    monkeypatch.setattr(e2b_module.asyncio, "sleep", fail_sleep)
+    backend, sandbox = _connected_backend(pause_error=RuntimeError("pause failed"))
+
+    with pytest.raises(BindingAcquireError, match="bad token"):
+        _ = await backend.acquire(sandbox.sandbox_id)
+
+    assert attempts == 1
+    assert clients[0].is_closed
+    assert sandbox.pauses == [True]
+
+
+@pytest.mark.anyio
+async def test_e2b_acquire_preserves_health_failure_when_close_and_pause_fail(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    @dataclass(slots=True)
+    class _UnavailableHealthClient:
+        calls: int = 0
+
+        async def health(self) -> object:
+            self.calls += 1
+            raise ShellctlClientError(503, "starting", "primary health failure")
+
+    @dataclass(slots=True)
+    class _FailingCloseDataPlane:
+        client: _UnavailableHealthClient
+        close_calls: int = 0
+
+        async def close(self) -> None:
+            self.close_calls += 1
+            raise RuntimeError("close failed")
+
+    client = _UnavailableHealthClient()
+    data_plane = _FailingCloseDataPlane(client=client)
+
+    async def create_lease(
+        _self: E2BExecutionBindingBackend,
+        sandbox: _Sandbox,
+    ) -> E2BRuntimeLease:
+        return E2BRuntimeLease(
+            sandbox=sandbox,  # pyright: ignore[reportArgumentType]
+            data_plane=cast(ShellctlRuntimeLease, cast(object, data_plane)),
+        )
+
+    async def skip_sleep(_delay: float) -> None:
+        return None
+
+    monkeypatch.setattr(E2BExecutionBindingBackend, "_lease", create_lease)
+    monkeypatch.setattr(e2b_module.asyncio, "sleep", skip_sleep)
+    backend, sandbox = _connected_backend(pause_error=RuntimeError("pause failed"))
+
+    with pytest.raises(BindingAcquireError, match="primary health failure"):
+        _ = await backend.acquire(sandbox.sandbox_id)
+
+    assert client.calls == 3
+    assert data_plane.close_calls == 1
+    assert sandbox.pauses == [True]

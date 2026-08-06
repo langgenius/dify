@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
@@ -204,5 +204,24 @@ describe('NormalForm', () => {
         '/signup?redirect_url=%2Fapps%3Ftag%3Dworkflow&source=pricing',
       )
     })
+  })
+
+  it('should describe password visibility through its changing action name', () => {
+    mockQueryResults(
+      nonInviteQueryResult as unknown as ReturnType<typeof useQuery>,
+      nonInviteQueryResult as unknown as ReturnType<typeof useQuery>,
+    )
+
+    render(<NormalForm />)
+
+    const showPasswordButton = screen.getByRole('button', { name: 'login.showPassword' })
+    expect(showPasswordButton).not.toHaveAttribute('aria-pressed')
+
+    fireEvent.click(showPasswordButton)
+
+    expect(screen.getByRole('button', { name: 'login.hidePassword' })).not.toHaveAttribute(
+      'aria-pressed',
+    )
+    expect(screen.getByLabelText('login.password')).toHaveAttribute('type', 'text')
   })
 })
