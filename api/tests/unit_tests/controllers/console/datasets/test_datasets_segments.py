@@ -18,6 +18,7 @@ from controllers.console.datasets.datasets_segments import (
     DatasetDocumentSegmentAddApi,
     DatasetDocumentSegmentApi,
     DatasetDocumentSegmentBatchImportApi,
+    DatasetDocumentSegmentBatchImportStatusApi,
     DatasetDocumentSegmentListApi,
     DatasetDocumentSegmentUpdateApi,
 )
@@ -670,14 +671,14 @@ class TestDatasetDocumentSegmentBatchImportApi:
         assert "error" in response
 
     def test_get_job_not_found_in_redis(self, app: Flask):
-        api = DatasetDocumentSegmentBatchImportApi()
+        api = DatasetDocumentSegmentBatchImportStatusApi()
         method = unwrap(api.get)
         with (
             app.test_request_context("/"),
             patch("controllers.console.datasets.datasets_segments.redis_client.get", return_value=None),
         ):
             with pytest.raises(ValueError):
-                method(api, job_id="job-1")
+                method(api, dataset_id="ds-1", job_id="job-1")
 
 
 class TestChildChunkAddApi:
@@ -1127,11 +1128,11 @@ class TestSegmentOperationCases:
         assert "error" in response
 
     def test_batch_import_get_job_not_found(self, app: Flask):
-        api = DatasetDocumentSegmentBatchImportApi()
+        api = DatasetDocumentSegmentBatchImportStatusApi()
         method = unwrap(api.get)
         with (
             app.test_request_context("/?job_id=invalid-job"),
             patch("controllers.console.datasets.datasets_segments.redis_client.get", return_value=None),
         ):
             with pytest.raises(ValueError):
-                method(api, "invalid-job")
+                method(api, dataset_id="ds-1", job_id="invalid-job")
