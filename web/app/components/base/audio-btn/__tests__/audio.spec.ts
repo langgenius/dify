@@ -379,6 +379,19 @@ describe('AudioPlayer', () => {
   })
 
   describe('playback control', () => {
+    it('should prepare the media element and audio context during a user action', async () => {
+      const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', null)
+      const audio = testState.audios[0]
+      const audioContext = testState.audioContexts[0]
+      audioContext!.state = 'suspended'
+
+      player.preparePlayback()
+      await Promise.resolve()
+
+      expect(audioContext!.resume).toHaveBeenCalledTimes(1)
+      expect(audio!.play).toHaveBeenCalledTimes(1)
+    })
+
     it('should request streaming audio when playAudio is called before loading', async () => {
       mockTextToAudioStream.mockResolvedValue(
         makeAudioResponse(200, [

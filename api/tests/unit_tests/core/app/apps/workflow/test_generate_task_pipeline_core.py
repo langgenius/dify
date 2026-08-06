@@ -43,6 +43,7 @@ from core.app.entities.task_entities import (
     MessageAudioStreamResponse,
     PingStreamResponse,
     ReasoningChunkStreamResponse,
+    StreamEvent,
     WorkflowAppPausedBlockingResponse,
     WorkflowFinishStreamResponse,
     WorkflowStartStreamResponse,
@@ -483,6 +484,36 @@ class TestWorkflowGenerateTaskPipeline:
         assert any(isinstance(item, MessageAudioStreamResponse) for item in responses)
         assert any(isinstance(item, MessageAudioEndStreamResponse) for item in responses)
 
+    def test_wrapper_process_stream_response_emits_workflow_finished_after_audio_end(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        pipeline = _make_pipeline()
+        pipeline._base_task_pipeline.stream = True
+        pipeline._workflow_features_dict = {
+            "text_to_speech": {"enabled": True, "autoPlay": "enabled", "voice": "v", "language": "en"}
+        }
+        workflow_finished = SimpleNamespace(event=StreamEvent.WORKFLOW_FINISHED)
+        pipeline._process_stream_response = lambda **kwargs: iter([workflow_finished])
+
+        class _Publisher:
+            def __init__(self, *args, **kwargs):
+                self.audio = iter(
+                    [AudioTrunk(status="stream", audio="data"), None, AudioTrunk(status="finish", audio="")]
+                )
+
+            def check_and_get_audio(self):
+                return next(self.audio)
+
+        monkeypatch.setattr(
+            "core.app.apps.workflow.generate_task_pipeline.AppGeneratorTTSPublisher",
+            _Publisher,
+        )
+
+        responses = list(pipeline._wrapper_process_stream_response())
+
+        assert isinstance(responses[-2], MessageAudioEndStreamResponse)
+        assert responses[-1] is workflow_finished
+
     def test_init_with_end_user_sets_role_and_system_user(self):
         app_config = WorkflowUIBasedAppConfig(
             tenant_id="tenant",
@@ -638,6 +669,40 @@ class TestWorkflowGenerateTaskPipeline:
         responses = list(pipeline._wrapper_process_stream_response())
 
         assert sleep_spy
+        assert any(isinstance(item, MessageAudioEndStreamResponse) for item in responses)
+
+    def test_wrapper_process_stream_response_resets_idle_timeout_after_audio_chunk(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        pipeline = _make_pipeline()
+        pipeline._workflow_features_dict = {
+            "text_to_speech": {"enabled": True, "autoPlay": "enabled", "voice": "v", "language": "en"}
+        }
+        pipeline._process_stream_response = lambda **kwargs: iter([])
+
+        class _Publisher:
+            calls = 0
+
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def check_and_get_audio(self):
+                _Publisher.calls += 1
+                if _Publisher.calls == 1:
+                    return AudioTrunk(status="stream", audio="data")
+                return AudioTrunk(status="finish", audio="")
+
+        time_values = iter([0.0, 4.9, 4.9, 9.8])
+        monkeypatch.setattr("core.app.apps.workflow.generate_task_pipeline.time.time", lambda: next(time_values))
+        monkeypatch.setattr(
+            "core.app.apps.workflow.generate_task_pipeline.AppGeneratorTTSPublisher",
+            _Publisher,
+        )
+
+        responses = list(pipeline._wrapper_process_stream_response())
+
+        assert _Publisher.calls == 2
+        assert any(isinstance(item, MessageAudioStreamResponse) for item in responses)
         assert any(isinstance(item, MessageAudioEndStreamResponse) for item in responses)
 
     def test_wrapper_process_stream_response_handles_audio_exception(

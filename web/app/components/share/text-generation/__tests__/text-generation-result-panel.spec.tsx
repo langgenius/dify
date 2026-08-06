@@ -86,6 +86,8 @@ const baseProps = {
   showTaskList: batchTasks,
   siteInfo,
   textToSpeechEnabled: true,
+  textToSpeechAutoPlayEnabled: false,
+  autoTTSPlayerRef: { current: null },
   visionConfig,
 }
 
