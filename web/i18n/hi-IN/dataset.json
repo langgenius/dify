@@ -542,6 +542,7 @@
   "newKnowledge.retrievalTest.emptyDescription": "यह देखने के लिए अपना पहला टेस्ट चलाएँ कि कौन-से खंड लौटते हैं।",
   "newKnowledge.retrievalTest.emptyRecords": "आपके रिट्रीवल रन यहाँ दिखाई देंगे।",
   "newKnowledge.retrievalTest.emptyTitle": "अभी कोई परीक्षण रन नहीं है",
+  "newKnowledge.retrievalTest.failedAfter": "{{duration}} के बाद विफल",
   "newKnowledge.retrievalTest.failedDescription": "रिट्रीवल रन पूरा नहीं हो सका। प्रश्न को फिर से आज़माएँ।",
   "newKnowledge.retrievalTest.failedTitle": "रिट्रीवल विफल रहा",
   "newKnowledge.retrievalTest.foundSoFar": "अब तक मिले ({{count}})",

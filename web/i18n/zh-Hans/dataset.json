@@ -542,6 +542,7 @@
   "newKnowledge.retrievalTest.emptyDescription": "输入一个真实问题，查看此知识库召回的分段。",
   "newKnowledge.retrievalTest.emptyRecords": "检索测试记录将显示在这里。",
   "newKnowledge.retrievalTest.emptyTitle": "暂无测试记录",
+  "newKnowledge.retrievalTest.failedAfter": "在 {{duration}} 后失败",
   "newKnowledge.retrievalTest.failedDescription": "检索测试未能完成，请重试该问题。",
   "newKnowledge.retrievalTest.failedTitle": "检索失败",
   "newKnowledge.retrievalTest.foundSoFar": "目前已找到（{{count}}）",

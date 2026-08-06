@@ -542,6 +542,7 @@
   "newKnowledge.retrievalTest.emptyDescription": "最初のテストを実行して、返されるチャンクを確認してください。",
   "newKnowledge.retrievalTest.emptyRecords": "検索テストの実行履歴がここに表示されます。",
   "newKnowledge.retrievalTest.emptyTitle": "テスト履歴はまだありません",
+  "newKnowledge.retrievalTest.failedAfter": "{{duration}} 後に失敗",
   "newKnowledge.retrievalTest.failedDescription": "検索を完了できませんでした。もう一度質問を実行してください。",
   "newKnowledge.retrievalTest.failedTitle": "検索に失敗しました",
   "newKnowledge.retrievalTest.foundSoFar": "現在までに取得（{{count}}）",

@@ -542,6 +542,7 @@
   "newKnowledge.retrievalTest.emptyDescription": "Chạy bài kiểm tra đầu tiên để xem những đoạn nào được trả về.",
   "newKnowledge.retrievalTest.emptyRecords": "Lịch sử chạy truy xuất sẽ xuất hiện tại đây.",
   "newKnowledge.retrievalTest.emptyTitle": "Chưa có lượt kiểm thử",
+  "newKnowledge.retrievalTest.failedAfter": "Thất bại sau {{duration}}",
   "newKnowledge.retrievalTest.failedDescription": "Không thể hoàn tất lượt truy xuất. Hãy thử lại câu hỏi.",
   "newKnowledge.retrievalTest.failedTitle": "Truy xuất thất bại",
   "newKnowledge.retrievalTest.foundSoFar": "Đã tìm thấy ({{count}})",

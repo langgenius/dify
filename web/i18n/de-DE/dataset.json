@@ -542,6 +542,7 @@
   "newKnowledge.retrievalTest.emptyDescription": "Führen Sie den ersten Test aus, um die zurückgegebenen Abschnitte zu sehen.",
   "newKnowledge.retrievalTest.emptyRecords": "Ihre Abrufläufe werden hier angezeigt.",
   "newKnowledge.retrievalTest.emptyTitle": "Noch keine Testläufe",
+  "newKnowledge.retrievalTest.failedAfter": "Nach {{duration}} fehlgeschlagen",
   "newKnowledge.retrievalTest.failedDescription": "Der Abruflauf konnte nicht abgeschlossen werden. Versuchen Sie die Frage erneut.",
   "newKnowledge.retrievalTest.failedTitle": "Abruf fehlgeschlagen",
   "newKnowledge.retrievalTest.foundSoFar": "Bisher gefunden ({{count}})",

@@ -790,11 +790,11 @@ describe('RetrievalTestPage', () => {
     expect(
       screen.queryByRole('link', { name: 'dataset.newKnowledge.retrievalTest.quality' }),
     ).not.toBeInTheDocument()
-    await user.click(
-      screen.getByRole('button', {
-        name: 'dataset.newKnowledge.retrievalTest.makeBadCase',
-      }),
-    )
+    const makeBadCaseButton = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.retrievalTest.makeBadCase',
+    })
+    expect(makeBadCaseButton).toHaveClass('bg-components-button-secondary-bg')
+    await user.click(makeBadCaseButton)
 
     await waitFor(() =>
       expect(apiMock.createBadCase).toHaveBeenCalledWith({
@@ -960,6 +960,35 @@ describe('RetrievalTestPage', () => {
     )
     expect(screen.getAllByText('Why did this fail?')).toHaveLength(2)
     expect(screen.getByText('provider timed out')).toBeInTheDocument()
+  })
+
+  it('renders the readable message from a structured retrieval error', async () => {
+    apiMock.streamQuery.mockRejectedValueOnce(
+      new Response(
+        JSON.stringify({
+          code: 'RETRIEVAL_DELETION_IN_PROGRESS',
+          error: 'Knowledge space retrieval is unavailable while deletion is in progress',
+        }),
+        { status: 409 },
+      ),
+    )
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.type(
+      screen.getByLabelText('dataset.newKnowledge.retrievalTest.queryPlaceholder'),
+      'Can I search now?',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retrievalTest.run' }))
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent(
+      'Knowledge space retrieval is unavailable while deletion is in progress',
+    )
+    expect(alert).not.toHaveTextContent('RETRIEVAL_DELETION_IN_PROGRESS')
+    expect(
+      screen.getByText('dataset.newKnowledge.retrievalTest.failedAfter:{"duration":"0s"}'),
+    ).toBeInTheDocument()
   })
 
   it('locks the composer and announces a stalled fast run', async () => {

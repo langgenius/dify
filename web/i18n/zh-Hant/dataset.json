@@ -542,6 +542,7 @@
   "newKnowledge.retrievalTest.emptyDescription": "執行第一次測試，查看此知識庫召回的片段。",
   "newKnowledge.retrievalTest.emptyRecords": "檢索測試記錄會顯示在這裡。",
   "newKnowledge.retrievalTest.emptyTitle": "暫無測試記錄",
+  "newKnowledge.retrievalTest.failedAfter": "在 {{duration}} 後失敗",
   "newKnowledge.retrievalTest.failedDescription": "檢索測試未能完成，請再次嘗試此問題。",
   "newKnowledge.retrievalTest.failedTitle": "檢索失敗",
   "newKnowledge.retrievalTest.foundSoFar": "目前找到（{{count}}）",

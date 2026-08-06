@@ -542,6 +542,7 @@
   "newKnowledge.retrievalTest.emptyDescription": "Lancez votre premier test pour voir les segments renvoyés.",
   "newKnowledge.retrievalTest.emptyRecords": "Vos exécutions de récupération apparaîtront ici.",
   "newKnowledge.retrievalTest.emptyTitle": "Aucune exécution de test",
+  "newKnowledge.retrievalTest.failedAfter": "Échec après {{duration}}",
   "newKnowledge.retrievalTest.failedDescription": "L’exécution de récupération n’a pas pu aboutir. Réessayez la question.",
   "newKnowledge.retrievalTest.failedTitle": "Échec de la récupération",
   "newKnowledge.retrievalTest.foundSoFar": "Trouvés jusqu’ici ({{count}})",

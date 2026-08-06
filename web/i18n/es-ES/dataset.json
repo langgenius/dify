@@ -542,6 +542,7 @@
   "newKnowledge.retrievalTest.emptyDescription": "Ejecuta la primera prueba para ver qué fragmentos se recuperan.",
   "newKnowledge.retrievalTest.emptyRecords": "Tus ejecuciones de recuperación aparecerán aquí.",
   "newKnowledge.retrievalTest.emptyTitle": "Aún no hay ejecuciones de prueba",
+  "newKnowledge.retrievalTest.failedAfter": "Error después de {{duration}}",
   "newKnowledge.retrievalTest.failedDescription": "No se pudo completar la recuperación. Vuelve a intentar la pregunta.",
   "newKnowledge.retrievalTest.failedTitle": "Error de recuperación",
   "newKnowledge.retrievalTest.foundSoFar": "Encontrados hasta ahora ({{count}})",

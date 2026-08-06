@@ -542,6 +542,7 @@
   "newKnowledge.retrievalTest.emptyDescription": "Jalankan pengujian pertama untuk melihat potongan yang dikembalikan.",
   "newKnowledge.retrievalTest.emptyRecords": "Riwayat pengambilan Anda akan muncul di sini.",
   "newKnowledge.retrievalTest.emptyTitle": "Belum ada pengujian",
+  "newKnowledge.retrievalTest.failedAfter": "Gagal setelah {{duration}}",
   "newKnowledge.retrievalTest.failedDescription": "Proses pengambilan tidak dapat diselesaikan. Coba ajukan pertanyaan lagi.",
   "newKnowledge.retrievalTest.failedTitle": "Pengambilan gagal",
   "newKnowledge.retrievalTest.foundSoFar": "Ditemukan sejauh ini ({{count}})",

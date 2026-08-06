@@ -542,6 +542,7 @@
   "newKnowledge.retrievalTest.emptyDescription": "Hangi parçaların döndürüldüğünü görmek için ilk testinizi çalıştırın.",
   "newKnowledge.retrievalTest.emptyRecords": "Getirme çalıştırmalarınız burada görünür.",
   "newKnowledge.retrievalTest.emptyTitle": "Henüz test çalıştırması yok",
+  "newKnowledge.retrievalTest.failedAfter": "{{duration}} sonra başarısız oldu",
   "newKnowledge.retrievalTest.failedDescription": "Getirme çalıştırması tamamlanamadı. Soruyu tekrar deneyin.",
   "newKnowledge.retrievalTest.failedTitle": "Getirme başarısız",
   "newKnowledge.retrievalTest.foundSoFar": "Şimdiye kadar bulunan ({{count}})",

@@ -542,6 +542,7 @@
   "newKnowledge.retrievalTest.emptyDescription": "Uruchom pierwszy test, aby sprawdzić, które fragmenty zostaną zwrócone.",
   "newKnowledge.retrievalTest.emptyRecords": "Historia testów wyszukiwania pojawi się tutaj.",
   "newKnowledge.retrievalTest.emptyTitle": "Brak uruchomionych testów",
+  "newKnowledge.retrievalTest.failedAfter": "Niepowodzenie po {{duration}}",
   "newKnowledge.retrievalTest.failedDescription": "Nie udało się ukończyć wyszukiwania. Spróbuj ponownie zadać pytanie.",
   "newKnowledge.retrievalTest.failedTitle": "Wyszukiwanie nie powiodło się",
   "newKnowledge.retrievalTest.foundSoFar": "Znaleziono dotychczas ({{count}})",

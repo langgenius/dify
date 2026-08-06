@@ -542,6 +542,7 @@
   "newKnowledge.retrievalTest.emptyDescription": "Esegui il primo test per vedere quali segmenti vengono restituiti.",
   "newKnowledge.retrievalTest.emptyRecords": "Le esecuzioni di recupero verranno visualizzate qui.",
   "newKnowledge.retrievalTest.emptyTitle": "Nessuna esecuzione di prova",
+  "newKnowledge.retrievalTest.failedAfter": "Errore dopo {{duration}}",
   "newKnowledge.retrievalTest.failedDescription": "Impossibile completare il recupero. Riprova la domanda.",
   "newKnowledge.retrievalTest.failedTitle": "Recupero non riuscito",
   "newKnowledge.retrievalTest.foundSoFar": "Trovati finora ({{count}})",

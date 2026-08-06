@@ -542,6 +542,7 @@
   "newKnowledge.retrievalTest.emptyDescription": "첫 번째 테스트를 실행하여 반환되는 청크를 확인하세요.",
   "newKnowledge.retrievalTest.emptyRecords": "검색 테스트 실행 기록이 여기에 표시됩니다.",
   "newKnowledge.retrievalTest.emptyTitle": "아직 테스트 실행이 없습니다",
+  "newKnowledge.retrievalTest.failedAfter": "{{duration}} 후 실패",
   "newKnowledge.retrievalTest.failedDescription": "검색 실행을 완료하지 못했습니다. 질문을 다시 시도하세요.",
   "newKnowledge.retrievalTest.failedTitle": "검색 실패",
   "newKnowledge.retrievalTest.foundSoFar": "현재까지 검색됨({{count}})",

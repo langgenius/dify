@@ -542,6 +542,7 @@
   "newKnowledge.retrievalTest.emptyDescription": "Execute seu primeiro teste para ver quais trechos são retornados.",
   "newKnowledge.retrievalTest.emptyRecords": "Suas execuções de recuperação aparecerão aqui.",
   "newKnowledge.retrievalTest.emptyTitle": "Ainda não há execuções de teste",
+  "newKnowledge.retrievalTest.failedAfter": "Falha após {{duration}}",
   "newKnowledge.retrievalTest.failedDescription": "Não foi possível concluir a recuperação. Tente fazer a pergunta novamente.",
   "newKnowledge.retrievalTest.failedTitle": "Falha na recuperação",
   "newKnowledge.retrievalTest.foundSoFar": "Encontrados até agora ({{count}})",

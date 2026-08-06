@@ -542,6 +542,7 @@
   "newKnowledge.retrievalTest.emptyDescription": "Rulează primul test pentru a vedea ce fragmente sunt returnate.",
   "newKnowledge.retrievalTest.emptyRecords": "Rulările de recuperare vor apărea aici.",
   "newKnowledge.retrievalTest.emptyTitle": "Nicio rulare de test încă",
+  "newKnowledge.retrievalTest.failedAfter": "Eșuat după {{duration}}",
   "newKnowledge.retrievalTest.failedDescription": "Rularea de recuperare nu a putut fi finalizată. Încercați din nou întrebarea.",
   "newKnowledge.retrievalTest.failedTitle": "Recuperarea a eșuat",
   "newKnowledge.retrievalTest.foundSoFar": "Găsite până acum ({{count}})",

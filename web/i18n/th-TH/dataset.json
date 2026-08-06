@@ -542,6 +542,7 @@
   "newKnowledge.retrievalTest.emptyDescription": "เรียกใช้การทดสอบครั้งแรกเพื่อดูว่าส่วนเนื้อหาใดถูกส่งกลับมา",
   "newKnowledge.retrievalTest.emptyRecords": "ประวัติการทดสอบการค้นคืนจะแสดงที่นี่",
   "newKnowledge.retrievalTest.emptyTitle": "ยังไม่มีการทดสอบ",
+  "newKnowledge.retrievalTest.failedAfter": "ล้มเหลวหลังจาก {{duration}}",
   "newKnowledge.retrievalTest.failedDescription": "ไม่สามารถค้นคืนให้เสร็จสมบูรณ์ได้ โปรดลองถามอีกครั้ง",
   "newKnowledge.retrievalTest.failedTitle": "การค้นคืนล้มเหลว",
   "newKnowledge.retrievalTest.foundSoFar": "พบแล้ว ({{count}})",

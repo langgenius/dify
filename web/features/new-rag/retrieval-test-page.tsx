@@ -359,6 +359,29 @@ function ScorePill({ score }: { score: number }) {
   )
 }
 
+function structuredErrorMessage(value: unknown): string | undefined {
+  if (typeof value === 'string') return value.trim() || undefined
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined
+
+  const payload = value as Record<string, unknown>
+  return (
+    structuredErrorMessage(payload.error) ??
+    structuredErrorMessage(payload.message) ??
+    structuredErrorMessage(payload.detail)
+  )
+}
+
+function responseErrorMessage(body: string) {
+  const trimmedBody = body.trim()
+  if (!trimmedBody) return undefined
+
+  try {
+    return structuredErrorMessage(JSON.parse(trimmedBody) as unknown)
+  } catch {
+    return trimmedBody
+  }
+}
+
 async function queryFailure(error: unknown) {
   let status: number | undefined
   let message = error instanceof Error ? error.message : ''
@@ -366,7 +389,7 @@ async function queryFailure(error: unknown) {
     status = error.status
     try {
       const body = await error.clone().text()
-      if (body) message = body
+      message = responseErrorMessage(body) ?? ''
     } catch {
       // The status and default copy are still enough to render a stable failure state.
     }
@@ -539,10 +562,10 @@ function FailedResult({ description, onRetry }: { description: string; onRetry: 
   return (
     <div
       role="alert"
-      className="flex min-h-10 items-center gap-2 rounded-lg bg-util-colors-red-red-50 px-3 py-2"
+      className="flex min-h-10 items-center gap-1.5 rounded-[10px] bg-util-colors-red-red-500/5 px-3 py-2"
     >
-      <span aria-hidden className="i-ri-alert-line size-4 text-text-destructive" />
-      <span className="min-w-0 flex-1 system-xs-regular wrap-break-word text-text-destructive">
+      <span aria-hidden className="i-ri-alert-fill size-3.5 text-text-destructive" />
+      <span className="min-w-0 flex-1 truncate system-sm-regular text-text-secondary">
         {t(($) => $['newKnowledge.retrievalTest.failedTitle'])}
         {' — '}
         <span>{description}</span>
@@ -707,7 +730,7 @@ function QualityActions({
         <Button
           disabled={pending}
           loading={pending}
-          variant="ghost"
+          variant={noResults ? 'secondary' : 'ghost'}
           onClick={() => void onDecision('bad-case')}
         >
           <span aria-hidden className="i-ri-thumb-down-line size-4" />
@@ -959,26 +982,37 @@ function RecordButton({
       type="button"
       aria-pressed={active}
       className={cn(
-        'flex h-16 w-full items-center px-3 text-left outline-hidden transition-colors hover:bg-state-base-hover focus-visible:rounded-lg focus-visible:ring-1 focus-visible:ring-state-accent-solid/30 focus-visible:ring-inset',
+        'flex h-16 w-full items-center px-3 text-left outline-hidden transition-colors hover:bg-state-base-hover focus-visible:rounded-[10px] focus-visible:ring-1 focus-visible:ring-state-accent-solid/30 focus-visible:ring-inset',
         index > 1 && 'border-t border-divider-subtle',
         active &&
-          'rounded-lg bg-state-accent-hover ring-1 ring-state-accent-solid/30 ring-inset hover:bg-state-accent-hover',
+          'rounded-[10px] bg-state-accent-solid/5 ring-1 ring-state-accent-solid/30 ring-inset hover:bg-state-accent-solid/5',
       )}
       onClick={onClick}
     >
       <span className="min-w-0 flex-1">
         <span className="line-clamp-1 system-sm-semibold text-text-secondary">{record.query}</span>
         <span className="mt-1.5 flex items-center gap-1 system-xs-regular text-text-tertiary">
-          <span className="min-w-0 flex-1 truncate">
+          <span
+            className={cn(
+              'min-w-0 flex-1 truncate',
+              record.kind === 'local' && record.status === 'failed' && 'text-text-destructive',
+            )}
+          >
             {activeResearchStage ? (
               <>
                 {t(($) => $[`newKnowledge.retrievalTest.${activeResearchStage}Active`])}
                 {' · '}
                 {researchStageOrder.indexOf(activeResearchStage) + 1}/{researchStageOrder.length}
               </>
-            ) : record.kind === 'local' && record.status === 'failed' && record.durationMs ? (
-              `${t(($) => $['newKnowledge.retrievalTest.failedTitle'])} · ${formatDuration(record.durationMs)}`
-            ) : record.kind === 'local' && record.resultCount !== undefined && record.durationMs ? (
+            ) : record.kind === 'local' &&
+              record.status === 'failed' &&
+              record.durationMs !== undefined ? (
+              t(($) => $['newKnowledge.retrievalTest.failedAfter'], {
+                duration: formatDuration(record.durationMs),
+              })
+            ) : record.kind === 'local' &&
+              record.resultCount !== undefined &&
+              record.durationMs !== undefined ? (
               `${record.resultCount} ${t(($) => $['newKnowledge.chunkCount']).toLocaleLowerCase()} · ${formatDuration(record.durationMs)}`
             ) : (
               t(($) => $[`newKnowledge.settings.retrievalMode.${record.mode}`])
@@ -1502,7 +1536,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
       <div className="mt-4 flex min-h-0 min-w-0 flex-1 flex-col lg:flex-row">
         <section className="flex min-h-0 w-full shrink-0 flex-col pb-5 lg:w-117 lg:pr-6">
           <div className="shrink-0">
-            <div className="overflow-hidden rounded-xl bg-components-input-bg-active shadow-xs inset-ring-2 inset-ring-components-input-border-active-prompt-2">
+            <div className="overflow-hidden rounded-xl bg-components-panel-bg shadow-xs inset-ring-2 inset-ring-components-input-border-active-prompt-2">
               <label className="sr-only" htmlFor="retrieval-test-query">
                 {t(($) => $['newKnowledge.retrievalTest.queryPlaceholder'])}
               </label>
@@ -1525,7 +1559,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                 <div
                   role="group"
                   aria-label={t(($) => $['newKnowledge.settings.retrievalModeLabel'])}
-                  className="flex rounded-lg bg-background-section-burn p-0.5"
+                  className="flex min-w-46.5 gap-0.5 rounded-lg bg-background-section-burn p-0.5"
                 >
                   {(['fast', 'deep', 'research'] as const).map((item) => (
                     <button
@@ -1534,7 +1568,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                       disabled={selectedResearchActive || localRun?.status === 'running'}
                       aria-pressed={mode === item}
                       className={cn(
-                        'rounded-md px-2.5 py-1 system-sm-regular text-text-tertiary capitalize outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed',
+                        'grow rounded-md px-2.5 py-1.25 system-sm-regular text-text-tertiary capitalize outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed',
                         mode === item &&
                           'bg-components-panel-bg font-medium text-text-primary shadow-xs',
                       )}
@@ -1600,8 +1634,8 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
           )}
           {selected && (
             <div className="flex h-full min-h-0 flex-col gap-3">
-              <div className="flex h-6 shrink-0 items-center gap-2 overflow-hidden pl-3">
-                <h2 className="shrink-0 system-sm-semibold text-text-primary">
+              <div className="flex h-5 shrink-0 items-center gap-2 overflow-hidden pl-3">
+                <h2 className="shrink-0 system-sm-semibold leading-5 text-text-primary">
                   {selected?.kind === 'research'
                     ? t(($) => $['newKnowledge.retrievalTest.researchResult'])
                     : t(($) => $['newKnowledge.retrievalTest.result'])}

@@ -542,6 +542,7 @@
   "newKnowledge.retrievalTest.emptyDescription": "Run your first test to see which chunks come back.",
   "newKnowledge.retrievalTest.emptyRecords": "Your retrieval runs will appear here.",
   "newKnowledge.retrievalTest.emptyTitle": "No test runs yet",
+  "newKnowledge.retrievalTest.failedAfter": "Failed after {{duration}}",
   "newKnowledge.retrievalTest.failedDescription": "The retrieval run couldn't be completed. Try the question again.",
   "newKnowledge.retrievalTest.failedTitle": "Retrieval failed",
   "newKnowledge.retrievalTest.foundSoFar": "Found so far ({{count}})",

@@ -542,6 +542,7 @@
   "newKnowledge.retrievalTest.emptyDescription": "Voer je eerste test uit om te zien welke fragmenten worden opgehaald.",
   "newKnowledge.retrievalTest.emptyRecords": "Je ophaaluitvoeringen verschijnen hier.",
   "newKnowledge.retrievalTest.emptyTitle": "Nog geen testuitvoeringen",
+  "newKnowledge.retrievalTest.failedAfter": "Mislukt na {{duration}}",
   "newKnowledge.retrievalTest.failedDescription": "De ophaaluitvoering kon niet worden voltooid. Probeer de vraag opnieuw.",
   "newKnowledge.retrievalTest.failedTitle": "Ophalen mislukt",
   "newKnowledge.retrievalTest.foundSoFar": "Tot nu toe gevonden ({{count}})",

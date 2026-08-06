@@ -542,6 +542,7 @@
   "newKnowledge.retrievalTest.emptyDescription": "شغّل اختبارك الأول لمعرفة المقاطع التي يتم استرجاعها.",
   "newKnowledge.retrievalTest.emptyRecords": "ستظهر عمليات اختبار الاسترجاع هنا.",
   "newKnowledge.retrievalTest.emptyTitle": "لا توجد عمليات اختبار بعد",
+  "newKnowledge.retrievalTest.failedAfter": "فشل بعد {{duration}}",
   "newKnowledge.retrievalTest.failedDescription": "تعذر إكمال عملية الاسترجاع. حاول طرح السؤال مرة أخرى.",
   "newKnowledge.retrievalTest.failedTitle": "فشل الاسترجاع",
   "newKnowledge.retrievalTest.foundSoFar": "تم العثور حتى الآن ({{count}})",

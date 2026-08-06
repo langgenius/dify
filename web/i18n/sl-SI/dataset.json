@@ -542,6 +542,7 @@
   "newKnowledge.retrievalTest.emptyDescription": "Zaženite prvi preizkus in si oglejte, kateri odseki so vrnjeni.",
   "newKnowledge.retrievalTest.emptyRecords": "Zgodovina poizvedb bo prikazana tukaj.",
   "newKnowledge.retrievalTest.emptyTitle": "Ni še preskusnih izvajanj",
+  "newKnowledge.retrievalTest.failedAfter": "Neuspešno po {{duration}}",
   "newKnowledge.retrievalTest.failedDescription": "Pridobivanja ni bilo mogoče dokončati. Poskusite vprašanje znova.",
   "newKnowledge.retrievalTest.failedTitle": "Pridobivanje ni uspelo",
   "newKnowledge.retrievalTest.foundSoFar": "Doslej najdeno ({{count}})",

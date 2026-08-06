@@ -542,6 +542,7 @@
   "newKnowledge.retrievalTest.emptyDescription": "اولین آزمون خود را اجرا کنید تا ببینید کدام قطعه‌ها بازیابی می‌شوند.",
   "newKnowledge.retrievalTest.emptyRecords": "اجرای آزمون‌های بازیابی شما اینجا نمایش داده می‌شوند.",
   "newKnowledge.retrievalTest.emptyTitle": "هنوز آزمونی اجرا نشده است",
+  "newKnowledge.retrievalTest.failedAfter": "پس از {{duration}} ناموفق بود",
   "newKnowledge.retrievalTest.failedDescription": "اجرای بازیابی کامل نشد. پرسش را دوباره امتحان کنید.",
   "newKnowledge.retrievalTest.failedTitle": "بازیابی ناموفق بود",
   "newKnowledge.retrievalTest.foundSoFar": "یافته‌شده تا این لحظه ({{count}})",

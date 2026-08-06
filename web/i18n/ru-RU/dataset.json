@@ -542,6 +542,7 @@
   "newKnowledge.retrievalTest.emptyDescription": "Запустите первый тест, чтобы увидеть, какие фрагменты будут найдены.",
   "newKnowledge.retrievalTest.emptyRecords": "История запусков поиска появится здесь.",
   "newKnowledge.retrievalTest.emptyTitle": "Тестовых запусков пока нет",
+  "newKnowledge.retrievalTest.failedAfter": "Ошибка через {{duration}}",
   "newKnowledge.retrievalTest.failedDescription": "Не удалось завершить поиск. Попробуйте задать вопрос ещё раз.",
   "newKnowledge.retrievalTest.failedTitle": "Ошибка поиска",
   "newKnowledge.retrievalTest.foundSoFar": "Найдено на данный момент ({{count}})",
