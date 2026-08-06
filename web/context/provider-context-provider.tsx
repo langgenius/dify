@@ -13,7 +13,7 @@ import {
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ZENDESK_FIELD_IDS } from '@/config'
-import { deploymentEditionAtom } from '@/context/system-features-state'
+import { deploymentEditionAtom } from '@/features/system-features/state'
 import { fetchCurrentPlanInfo } from '@/service/billing'
 import { consoleQuery } from '@/service/client'
 import {
@@ -101,12 +101,13 @@ export const ProviderContextProvider = ({ children }: ProviderContextProviderPro
   ] = useState(false)
   const [humanInputEmailDeliveryEnabled, setHumanInputEmailDeliveryEnabled] = useState(false)
 
-  const refreshModelProviders = () => {
-    queryClient.invalidateQueries({
-      queryKey: consoleQuery.workspaces.current.modelProviders.summary.get.key(),
-    })
-    queryClient.invalidateQueries({ queryKey: commonQueryKeys.modelProviderDetails })
-  }
+  const refreshModelProviders = () =>
+    Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.modelProviders.summary.get.key(),
+      }),
+      queryClient.invalidateQueries({ queryKey: commonQueryKeys.modelProviderDetails }),
+    ]).then(() => undefined)
 
   const fetchPlan = async () => {
     try {

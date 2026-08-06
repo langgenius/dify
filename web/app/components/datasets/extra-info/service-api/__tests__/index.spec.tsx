@@ -30,7 +30,14 @@ describe('ServiceApi', () => {
     const user = userEvent.setup()
     render(<ServiceApi apiBaseUrl="https://api.example.com" />)
 
-    await user.click(screen.getByRole('button', { name: 'dataset.serviceApi.title' }))
+    const trigger = screen.getByRole('button', { name: 'dataset.serviceApi.title' })
+    expect(trigger).not.toHaveAttribute('data-popup-open')
+    expect(trigger.firstElementChild).toHaveClass('hover:bg-state-base-hover')
+
+    await user.click(trigger)
+
+    expect(trigger).toHaveAttribute('data-popup-open', '')
+    expect(trigger.firstElementChild).toHaveClass('bg-state-base-hover')
     await user.click(screen.getByRole('button', { name: 'dataset.serviceApi.card.apiKey' }))
 
     expect(screen.getByText('secret key modal')).toBeInTheDocument()

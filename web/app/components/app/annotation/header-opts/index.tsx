@@ -180,7 +180,7 @@ const HeaderOptions: FC<Props> = ({ appId, onAdd, onAdded, controlUpdateList }) 
   return (
     <div className="flex space-x-2">
       <Button variant="primary" onClick={() => setShowAddModal(true)}>
-        <span aria-hidden className="mr-0.5 i-ri-add-line size-4" />
+        <span aria-hidden className="i-ri-add-line size-4" />
         <div>{t(($) => $['table.header.addAnnotation'], { ns: 'appAnnotation' })}</div>
       </Button>
       <DropdownMenu

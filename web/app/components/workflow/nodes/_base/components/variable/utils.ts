@@ -622,13 +622,15 @@ const formatItem = (
     }
 
     case 'env': {
-      res.vars = data.envList.map((env: EnvironmentVariable) => {
-        return {
-          variable: `env.${env.name}`,
-          type: env.value_type,
-          description: env.description,
-        }
-      }) as Var[]
+      res.vars = data.envList
+        .filter((env: EnvironmentVariable) => env.value_type !== 'llm')
+        .map((env: EnvironmentVariable) => {
+          return {
+            variable: `env.${env.name}`,
+            type: env.value_type,
+            description: env.description,
+          }
+        }) as Var[]
       break
     }
 
@@ -1258,7 +1260,8 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       const contextVar = (data as LLMNodeType).context?.variable_selector
         ? [(data as LLMNodeType).context?.variable_selector]
         : []
-      res = [...inputVars, ...contextVar]
+      const modelSelector = payload.model_selector?.[0] === 'env' ? [payload.model_selector] : []
+      res = [...inputVars, ...contextVar, ...modelSelector]
       break
     }
     case BlockEnum.KnowledgeRetrieval: {
@@ -1594,6 +1597,11 @@ export const updateNodeVars = (
         if (payload.context?.variable_selector?.join('.') === oldVarSelector.join('.')) {
           payload.context.variable_selector = newVarSelector
         }
+        if (
+          payload.model_selector?.[0] === 'env' &&
+          payload.model_selector.join('.') === oldVarSelector.join('.')
+        )
+          payload.model_selector = newVarSelector
 
         break
       }

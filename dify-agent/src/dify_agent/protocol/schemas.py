@@ -362,7 +362,7 @@ class RunSucceededEvent(BaseRunEvent):
 
 
 class RunFailedEvent(BaseRunEvent):
-    """Terminal failure event emitted before the run status becomes failed."""
+    """Terminal failure event atomically committed with the failed run status."""
 
     type: Literal["run_failed"] = "run_failed"
     data: RunFailedEventData

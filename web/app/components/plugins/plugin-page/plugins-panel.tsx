@@ -317,7 +317,9 @@ const PluginsPanel = ({
       )}
       <PluginDetailPanel
         detail={currentPluginDetail}
-        onUpdate={() => invalidateInstalledPluginList()}
+        onUpdate={() => {
+          invalidateInstalledPluginList(fixedCategory)
+        }}
         onHide={handleHide}
         canDeletePlugin={canDeletePlugin}
         canUpdatePlugin={canUpdatePlugin}

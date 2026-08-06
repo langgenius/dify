@@ -132,6 +132,7 @@ const normalizeI18nObject = (
     'id-ID': en,
     'nl-NL': en,
     'ar-TN': en,
+    'lo-LA': en,
     en_US: en,
     zh_Hans: zhHans,
     ja_JP: ja,
@@ -761,17 +762,19 @@ export const useRemoveFilteredInstalledPluginPageOnUnmount = (
 export const useInvalidateInstalledPluginList = () => {
   const queryClient = useQueryClient()
   const invalidateAllBuiltInTools = useInvalidateAllBuiltInTools()
-  return () => {
-    void queryClient.invalidateQueries({
-      queryKey: consoleQuery.workspaces.current.plugin.list.get.key(),
-    })
-    void queryClient.invalidateQueries({
-      queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key(),
-    })
-    void queryClient.invalidateQueries({
-      queryKey: consoleQuery.workspaces.current.plugin.installedIds.get.key(),
-    })
-    invalidateAllBuiltInTools()
+  return (_category?: PluginCategoryEnum) => {
+    return Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.plugin.list.get.key(),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key(),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.plugin.installedIds.get.key(),
+      }),
+      invalidateAllBuiltInTools(),
+    ]).then(() => undefined)
   }
 }
 
@@ -1420,7 +1423,7 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
     )
     const taskAllFailed = lastData?.tasks.every((task) => task.status === TaskStatus.failed)
     if (taskDone && lastData?.tasks.length && !taskAllFailed)
-      refreshPluginList(category ? { category } : undefined, !category)
+      refreshPluginList(category ? { category: category as PluginCategoryEnum } : undefined, !category)
   }, [category, data, isRefetching, refreshPluginList])
 
   const handleRefetch = useCallback(() => {

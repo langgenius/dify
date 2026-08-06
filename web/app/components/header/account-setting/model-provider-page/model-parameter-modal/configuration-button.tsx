@@ -17,7 +17,7 @@ const ConfigurationButton = ({ loading, onConfigure }: ConfigurationButtonProps)
         onConfigure()
       }}
     >
-      <div className="flex items-center justify-center gap-1 px-0.75">
+      <div className="flex items-center justify-center gap-1">
         {t(($) => $['nodes.agent.notAuthorized'], { ns: 'workflow' })}
       </div>
       <div className="flex h-3.5 w-3.5 items-center justify-center">

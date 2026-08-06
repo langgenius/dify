@@ -16,7 +16,7 @@ export type ProviderContextState = {
   modelProviderPlugins: Record<string, ModelProviderPluginSummaryResponse>
   isLoadingModelProviders: boolean
   isSuccessModelProviders: boolean
-  refreshModelProviders: () => void
+  refreshModelProviders: () => Promise<void>
   textGenerationModelList: Model[]
   supportRetrievalMethods: RETRIEVE_METHOD[]
   isAPIKeySet: boolean
@@ -58,7 +58,7 @@ export const baseProviderContextValue: ProviderContextState = {
   modelProviderPlugins: {},
   isLoadingModelProviders: false,
   isSuccessModelProviders: false,
-  refreshModelProviders: noop,
+  refreshModelProviders: async () => {},
   textGenerationModelList: [],
   supportRetrievalMethods: [],
   isAPIKeySet: true,

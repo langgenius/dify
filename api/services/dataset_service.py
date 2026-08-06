@@ -2099,22 +2099,46 @@ class DocumentService:
 
     @staticmethod
     def retry_document(dataset_id: str, documents: list[Document], session: Session):
-        for document in documents:
-            # add retry flag
-            retry_indexing_cache_key = f"document_{document.id}_is_retried"
-            cache_result = redis_client.get(retry_indexing_cache_key)
-            if cache_result is not None:
-                raise ValueError("Document is being retried, please try again later")
-            # retry document indexing
-            document.indexing_status = IndexingStatus.WAITING
-            session.add(document)
-            session.commit()
+        """Reserve the whole retry batch before changing any document state.
 
-            redis_client.setex(retry_indexing_cache_key, 600, 1)
-        # trigger async task
-        document_ids = [document.id for document in documents]
+        Redis lock acquisition is intentionally coupled to this bounded status
+        transaction so a concurrent request cannot partially admit the batch.
+        """
         if not current_user or not current_user.id:
             raise ValueError("Current user or current user id not found")
+
+        unique_documents = list({document.id: document for document in documents}.values())
+        retry_indexing_cache_keys = [f"document_{document.id}_is_retried" for document in unique_documents]
+        acquired_locks: list[Any] = []
+
+        def release_acquired_locks() -> None:
+            for retry_lock in acquired_locks:
+                try:
+                    retry_lock.release()
+                except Exception:
+                    logger.warning("Failed to release document retry lock", exc_info=True)
+
+        try:
+            for retry_indexing_cache_key in retry_indexing_cache_keys:
+                retry_lock = redis_client.lock(retry_indexing_cache_key, timeout=600, thread_local=False)
+                if not retry_lock.acquire(blocking=False):
+                    raise ValueError("Document is being retried, please try again later")
+                acquired_locks.append(retry_lock)
+        except Exception:
+            release_acquired_locks()
+            raise
+
+        try:
+            for document in unique_documents:
+                document.indexing_status = IndexingStatus.WAITING
+                session.add(document)
+            session.commit()
+        except Exception:
+            session.rollback()
+            release_acquired_locks()
+            raise
+
+        document_ids = [document.id for document in unique_documents]
         retry_document_indexing_task.delay(dataset_id, document_ids, current_user.id)
 
     @staticmethod
@@ -2402,13 +2426,14 @@ class DocumentService:
                                         truncated_page_name,
                                         batch,
                                     )
+                                    document.id = str(uuid.uuid4())
                                     session.add(document)
-                                    session.flush()
                                     document_ids.append(document.id)
                                     documents.append(document)
                                     position += 1
                                 else:
                                     exist_document.pop(page.page_id)
+                        session.flush()
                         # delete not selected documents
                         if len(exist_document) > 0:
                             clean_notion_document_task.delay(list(exist_document.values()), dataset.id)
@@ -3313,6 +3338,7 @@ class DocumentService:
 
         # Only set async task and cache if document is currently enabled
         if document.enabled:
+            # pyrefly: ignore [bad-assignment]
             update_info["async_task"] = {"function": remove_document_from_index_task, "args": [document.id]}
             update_info["set_cache"] = True
 
@@ -3333,6 +3359,7 @@ class DocumentService:
 
         # Only re-index if the document is currently enabled
         if document.enabled:
+            # pyrefly: ignore [bad-assignment]
             update_info["async_task"] = {"function": add_document_to_index_task, "args": [document.id]}
             update_info["set_cache"] = True
 
@@ -3900,7 +3927,14 @@ class SegmentService:
         session.add(document)
 
         # Delete database records
-        session.execute(delete(DocumentSegment).where(DocumentSegment.id.in_(segment_ids)))
+        session.execute(
+            delete(DocumentSegment).where(
+                DocumentSegment.id.in_(segment_db_ids),
+                DocumentSegment.dataset_id == dataset.id,
+                DocumentSegment.document_id == document.id,
+                DocumentSegment.tenant_id == current_user.current_tenant_id,
+            )
+        )
         session.commit()
 
     @classmethod

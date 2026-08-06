@@ -83,6 +83,7 @@ def test_dify_config(monkeypatch: pytest.MonkeyPatch):
     assert config.AGENT_SHELL_ENABLED is True
     assert config.SENTRY_TRACES_SAMPLE_RATE == 1.0
     assert config.TEMPLATE_TRANSFORM_MAX_LENGTH == 400_000
+    assert config.GRAPH_ENGINE_SCALE_UP_THRESHOLD == 0
 
     # annotated field with custom configured value
     assert config.HTTP_REQUEST_MAX_READ_TIMEOUT == 300
@@ -199,6 +200,16 @@ def test_internal_files_url_prefers_explicit_value(monkeypatch: pytest.MonkeyPat
     config = DifyConfig(_env_file=None)
 
     assert config.INTERNAL_FILES_URL == "http://files-internal:5001"
+
+
+def test_empty_files_url_overrides_console_api_url_for_relative_browser_uris(monkeypatch: pytest.MonkeyPatch):
+    _clear_environment(monkeypatch)
+    monkeypatch.setenv("FILES_URL", "")
+    monkeypatch.setenv("CONSOLE_API_URL", "http://api:5001")
+
+    config = DifyConfig(_env_file=None)
+
+    assert config.FILES_URL == ""
 
 
 # NOTE: If there is a `.env` file in your Workspace, this test might not succeed as expected.

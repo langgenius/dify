@@ -623,7 +623,7 @@ class TestModelProviderServiceDelegation:
                 {
                     "tenant_id": "tenant-1",
                     "provider": "openai",
-                    "model_type": "text-generation",
+                    "model_type": "llm",
                     "model": "gpt-4o",
                     "credential_id": "cred-1",
                 },
@@ -635,7 +635,7 @@ class TestModelProviderServiceDelegation:
                 {
                     "tenant_id": "tenant-1",
                     "provider": "openai",
-                    "model_type": "text-generation",
+                    "model_type": "llm",
                     "model": "gpt-4o",
                     "credentials": {"api_key": "x"},
                     "credential_name": "cred-a",
@@ -653,7 +653,7 @@ class TestModelProviderServiceDelegation:
                 {
                     "tenant_id": "tenant-1",
                     "provider": "openai",
-                    "model_type": "text-generation",
+                    "model_type": "llm",
                     "model": "gpt-4o",
                 },
                 "delete_custom_model",

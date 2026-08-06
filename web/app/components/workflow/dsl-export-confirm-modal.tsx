@@ -1,5 +1,4 @@
 'use client'
-import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -14,8 +13,8 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-export type DSLExportConfirmModalProps = {
-  envList: Pick<EnvironmentVariable, 'name' | 'value'>[]
+type DSLExportConfirmModalProps = {
+  envList: Array<{ name: string; value: unknown }>
   onConfirm: (state: boolean) => void | Promise<void>
   onClose: () => void
 }
@@ -98,7 +97,9 @@ export const DSLExportConfirmContent = ({
                     )}
                   >
                     <div className="truncate system-xs-regular text-text-secondary">
-                      {env.value}
+                      {typeof env.value === 'object'
+                        ? JSON.stringify(env.value)
+                        : String(env.value)}
                     </div>
                   </td>
                 </tr>

@@ -91,12 +91,12 @@ vi.mock('@/app/components/plugins/update-plugin/plugin-version-picker', () => ({
     onSelect,
     disabled,
   }: {
-    trigger: ReactNode
+    trigger: (isOpen: boolean) => ReactNode
     onSelect: (state: { version: string; unique_identifier: string; isDowngrade?: boolean }) => void
     disabled?: boolean
   }) => (
     <div data-testid="plugin-version-picker" data-disabled={String(Boolean(disabled))}>
-      {trigger}
+      {trigger(false)}
       <button
         type="button"
         onClick={() =>

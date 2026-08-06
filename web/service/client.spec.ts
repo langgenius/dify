@@ -108,6 +108,7 @@ const getRetryFn = (queryOptions: object): RetryFn => {
 
 const createAgent = (overrides: Partial<AgentMutationResponse> = {}): AgentMutationResponse => ({
   ...overrides,
+  access_ready: overrides.access_ready ?? true,
   debug_conversation_has_messages: overrides.debug_conversation_has_messages ?? false,
   debug_conversation_message_count: overrides.debug_conversation_message_count ?? 0,
   enable_api: overrides.enable_api ?? true,

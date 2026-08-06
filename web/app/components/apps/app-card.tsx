@@ -651,8 +651,7 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
                 }
                 disabled={isExporting}
                 className={cn(
-                  'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed',
-                  isOperationsMenuOpen ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
+                  'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed data-popup-open:bg-state-base-hover',
                 )}
                 onClick={(e) => {
                   e.stopPropagation()
@@ -1205,7 +1204,6 @@ export function AppCard({
           <article
             role="button"
             tabIndex={0}
-            aria-disabled="true"
             aria-labelledby={appNameId}
             aria-describedby={app.description ? appDescriptionId : undefined}
             data-step-by-step-tour-target={stepByStepTourCardTarget}
@@ -1228,21 +1226,6 @@ export function AppCard({
             {appCardContent}
           </Link>
         )}
-        <div
-          className="absolute top-26 right-3 left-3 flex h-6.5 min-w-0 items-start"
-          onClick={(e) => {
-            e.stopPropagation()
-            e.preventDefault()
-          }}
-        >
-          <AppCardTags
-            appId={app.id}
-            tags={app.tags}
-            canBindOrUnbindTags={canBindOrUnbindTags}
-            onOpenTagManagement={onOpenTagManagement}
-            onTagsChange={onRefresh}
-          />
-        </div>
         <AppAccessModeIcon accessMode={app.access_mode} />
         {!isPreviewOnly && (
           <div
@@ -1291,10 +1274,7 @@ export function AppCard({
                         })
                   }
                   disabled={isExporting}
-                  className={cn(
-                    'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed',
-                    isOperationsMenuOpen ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
-                  )}
+                  className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed data-popup-open:bg-state-base-hover"
                   onClick={(e) => {
                     e.stopPropagation()
                     e.preventDefault()
@@ -1364,6 +1344,15 @@ export function AppCard({
             )}
           </div>
         )}
+        <div className="absolute top-26 right-3 left-3 flex h-6.5 min-w-0 items-start">
+          <AppCardTags
+            appId={app.id}
+            tags={app.tags}
+            canBindOrUnbindTags={canBindOrUnbindTags}
+            onOpenTagManagement={onOpenTagManagement}
+            onTagsChange={onRefresh}
+          />
+        </div>
       </div>
       {showEditModal && (
         <EditAppModal

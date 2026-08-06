@@ -365,7 +365,7 @@ function LoadedProviderCardActions({
             onSelect={handleVersionSelect}
             sideOffset={4}
             alignOffset={0}
-            trigger={
+            trigger={() => (
               <Badge
                 className={cn(
                   canUpdatePlugin &&
@@ -383,7 +383,7 @@ function LoadedProviderCardActions({
                 }
                 hasRedCornerMark={hasNewVersion}
               />
-            }
+            )}
           />
           {isDebuggingPlugin && (
             <Badge

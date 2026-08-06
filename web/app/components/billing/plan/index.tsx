@@ -94,9 +94,9 @@ const PlanComp: FC<Props> = ({ loc }) => {
           <div className="flex shrink-0 items-center gap-1">
             {isCloudEdition && enableEducationPlan && (!isEducationAccount || isAboutToExpire) && (
               <Button variant="ghost" onClick={handleVerify} disabled={isPending}>
-                <span className="mr-1 i-ri-graduation-cap-line size-4" />
+                <span className="i-ri-graduation-cap-line size-4" />
                 {t(($) => $.toVerified, { ns: 'education' })}
-                {isPending && <Loading className="ml-1 animate-spin-slow" />}
+                {isPending && <Loading className="animate-spin-slow" />}
               </Button>
             )}
             {isCloudEdition &&
@@ -109,9 +109,9 @@ const PlanComp: FC<Props> = ({ loc }) => {
                   onClick={handleEducationDiscount}
                   disabled={isEducationDiscountLoading}
                 >
-                  <span className="mr-1 i-ri-graduation-cap-line size-4" />
+                  <span className="i-ri-graduation-cap-line size-4" />
                   {t(($) => $.useEducationDiscount, { ns: 'education' })}
-                  {isEducationDiscountLoading && <Loading className="ml-1 animate-spin-slow" />}
+                  {isEducationDiscountLoading && <Loading className="animate-spin-slow" />}
                 </Button>
               )}
             {isCloudEdition && !isEnterprisePlan && (

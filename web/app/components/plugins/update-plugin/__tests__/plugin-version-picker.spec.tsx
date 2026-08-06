@@ -58,7 +58,7 @@ describe('PluginVersionPicker', () => {
         onShowChange={vi.fn()}
         pluginID="plugin-1"
         currentVersion="2.0.0"
-        trigger={<span>trigger</span>}
+        trigger={() => <span>trigger</span>}
         onSelect={vi.fn()}
       />,
     )
@@ -71,7 +71,7 @@ describe('PluginVersionPicker', () => {
         onShowChange={vi.fn()}
         pluginID="plugin-1"
         currentVersion="2.0.0"
-        trigger={<span>trigger</span>}
+        trigger={() => <span>trigger</span>}
         onSelect={vi.fn()}
       />,
     )
@@ -91,7 +91,7 @@ describe('PluginVersionPicker', () => {
         onShowChange={vi.fn()}
         pluginID="plugin-1"
         currentVersion="2.0.0"
-        trigger={<span>trigger</span>}
+        trigger={() => <span>trigger</span>}
         onSelect={vi.fn()}
       />,
     )
@@ -107,7 +107,7 @@ describe('PluginVersionPicker', () => {
         onShowChange={vi.fn()}
         pluginID="plugin-1"
         currentVersion="2.0.0"
-        trigger={<span>trigger</span>}
+        trigger={() => <span>trigger</span>}
         onSelect={vi.fn()}
       />,
     )
@@ -118,6 +118,23 @@ describe('PluginVersionPicker', () => {
     expect(screen.getByText('CURRENT')).toBeInTheDocument()
   })
 
+  it('passes Base trigger state and props through the preserved button root', () => {
+    render(
+      <PluginVersionPicker
+        isShow
+        onShowChange={vi.fn()}
+        pluginID="plugin-1"
+        currentVersion="2.0.0"
+        trigger={(open) => <span>{open ? 'open trigger' : 'closed trigger'}</span>}
+        onSelect={vi.fn()}
+      />,
+    )
+
+    const trigger = screen.getByRole('button', { name: 'open trigger' })
+    expect(trigger).toHaveAttribute('data-popup-open', '')
+    expect(trigger).toHaveClass('cursor-pointer')
+  })
+
   it('renders figma-aligned version rows', () => {
     render(
       <PluginVersionPicker
@@ -125,7 +142,7 @@ describe('PluginVersionPicker', () => {
         onShowChange={vi.fn()}
         pluginID="plugin-1"
         currentVersion="2.0.0"
-        trigger={<span>trigger</span>}
+        trigger={() => <span>trigger</span>}
         onSelect={vi.fn()}
       />,
     )
@@ -156,7 +173,7 @@ describe('PluginVersionPicker', () => {
         onShowChange={onShowChange}
         pluginID="plugin-1"
         currentVersion="2.0.0"
-        trigger={<span>trigger</span>}
+        trigger={() => <span>trigger</span>}
         onSelect={onSelect}
       />,
     )
@@ -181,7 +198,7 @@ describe('PluginVersionPicker', () => {
         onShowChange={vi.fn()}
         pluginID="plugin-1"
         currentVersion="2.0.0"
-        trigger={<span>trigger</span>}
+        trigger={() => <span>trigger</span>}
         onSelect={onSelect}
       />,
     )

@@ -2,6 +2,7 @@ import type { MouseEvent } from 'react'
 import type { ModelProvider } from '../../declarations'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { vi } from 'vitest'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import {
   CurrentSystemQuotaTypeEnum,
   CustomConfigurationStatusEnum,
@@ -130,7 +131,7 @@ describe('AgentModelTrigger', () => {
     expect(updateModelList).toHaveBeenCalledWith(ModelTypeEnum.textGeneration)
     expect(updateModelList).toHaveBeenCalledWith(ModelTypeEnum.tts)
     expect(updateModelProviders).toHaveBeenCalledTimes(1)
-    expect(invalidateInstalledPluginList).toHaveBeenCalledTimes(1)
+    expect(invalidateInstalledPluginList).toHaveBeenCalledWith(PluginCategoryEnum.model)
   })
 
   it('should not render the install action when the plugin has no package identifier', () => {

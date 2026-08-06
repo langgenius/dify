@@ -73,7 +73,7 @@ const AddCustomModel = ({
             disabled && 'cursor-not-allowed opacity-50',
           )}
         >
-          <span className="mr-1 i-ri-add-circle-fill size-3.5" />
+          <span className="i-ri-add-circle-fill size-3.5" />
           {t(($) => $['modelProvider.addModel'], { ns: 'common' })}
         </Button>
       )
@@ -105,7 +105,11 @@ const AddCustomModel = ({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         nativeButton={false}
-        render={<div className="inline-block">{renderTrigger(open)}</div>}
+        render={(props, state) => (
+          <div {...props} className={cn('inline-block', props.className)}>
+            {renderTrigger(state.open)}
+          </div>
+        )}
       />
       <PopoverContent
         placement="bottom-end"

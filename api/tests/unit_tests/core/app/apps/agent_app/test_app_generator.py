@@ -512,7 +512,7 @@ class TestResumeAfterFormSubmission:
         conversation = mocker.MagicMock(id="conv", invoke_from=InvokeFrom.DEBUGGER)
         mocker.patch(f"{MODULE}.ConversationService.get_conversation", return_value=conversation)
         generator._resolve_resume_draft.return_value = ("debug_build", "draft-build-1")
-        account_user = mocker.MagicMock(spec=Account)
+        account_user = Account(name="Test Account", email="test@example.com")
         account_user.id = "user"
         app_model = mocker.MagicMock(id="app1", tenant_id="tenant", mode="agent")
         app_model.app_model_config_id = "config-1"

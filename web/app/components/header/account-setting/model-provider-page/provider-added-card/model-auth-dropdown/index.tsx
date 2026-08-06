@@ -68,7 +68,7 @@ function ModelAuthDropdown({
             title={buttonConfig.text}
             loading={isLoadingProviderDetail}
           >
-            <span className="mr-1 i-ri-equalizer-2-line size-3.5 shrink-0" />
+            <span className="i-ri-equalizer-2-line size-3.5 shrink-0" />
             <span className="min-w-0 truncate">{buttonConfig.text}</span>
           </Button>
         }
