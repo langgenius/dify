@@ -218,41 +218,27 @@ def test_resolve_upload_file_url_signs_internal_urls_and_supports_attachments(
     assert query["timestamp"] == ["1700000000"]
 
 
-def test_resolve_upload_file_url_uses_matching_storage_policy(
+def test_resolve_upload_file_url_does_not_load_upload_file_without_access_scope(
     monkeypatch: pytest.MonkeyPatch,
-    file_session: Session,
 ) -> None:
-    upload_file = _persist_upload_file(
-        file_session,
-        key="public/upload_files/tenant-id/icon.png",
-        purpose=UploadFilePurpose.ICON,
-        storage_type=StorageType.S3,
-    )
-    policy = MagicMock()
-    policy.generate_download_url.return_value = "https://icons.example.com/icon.png?verify=token"
-    resolve_policy = MagicMock(return_value=policy)
-    monkeypatch.setattr(file_runtime, "has_direct_upload_file_download_policy", lambda: True)
-    monkeypatch.setattr(file_runtime, "resolve_upload_file_storage_policy", resolve_policy)
+    monkeypatch.setattr("core.app.workflow.file_runtime.time.time", lambda: 1700000000)
+    monkeypatch.setattr("core.app.workflow.file_runtime.os.urandom", lambda _: b"\x01" * 16)
+    monkeypatch.setattr("core.app.workflow.file_runtime.dify_config.SECRET_KEY", "unit-secret")
+    monkeypatch.setattr("core.app.workflow.file_runtime.dify_config.FILES_URL", "https://files.example.com")
+    controller = MagicMock()
+    controller.current_scope.return_value = None
 
-    file = _build_file(
-        transfer_method=FileTransferMethod.LOCAL_FILE,
-        reference=build_file_reference(record_id="upload-file-id"),
+    result = DifyWorkflowFileRuntime(file_access_controller=controller).resolve_upload_file_url(
+        upload_file_id="upload-file-id"
     )
-    result = _build_runtime().resolve_file_url(file=file)
 
-    assert result == "https://icons.example.com/icon.png?verify=token"
-    resolve_policy.assert_called_once_with(
-        UploadFilePurpose.ICON,
-        storage_type=StorageType.S3,
-        key="public/upload_files/tenant-id/icon.png",
-    )
-    policy.generate_download_url.assert_called_once_with(upload_file.key, content_type="image/png")
+    assert urlparse(result).path == "/files/upload-file-id/file-preview"
+    controller.get_upload_file.assert_not_called()
 
 
 def test_resolve_upload_file_url_keeps_attachment_on_proxy(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(file_runtime, "has_direct_upload_file_download_policy", lambda: True)
     monkeypatch.setattr("core.app.workflow.file_runtime.time.time", lambda: 1700000000)
     monkeypatch.setattr("core.app.workflow.file_runtime.os.urandom", lambda _: b"\x01" * 16)
     monkeypatch.setattr("core.app.workflow.file_runtime.dify_config.SECRET_KEY", "unit-secret")

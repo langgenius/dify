@@ -13,10 +13,6 @@ from configs import dify_config
 from core.app.file_access import DatabaseFileAccessController, FileAccessControllerProtocol
 from core.db.session_factory import session_factory
 from core.file import remote_fetcher
-from core.file.upload_file_policy import (
-    has_direct_upload_file_download_policy,
-    resolve_upload_file_storage_policy,
-)
 from core.tools.signature import bind_file_uri, sign_tool_file_uri
 from core.workflow.file_reference import parse_file_reference
 from extensions.ext_storage import storage
@@ -123,26 +119,7 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
         as_attachment: bool = False,
         for_external: bool = True,
     ) -> str:
-        upload_file: UploadFile | None = None
-        if has_direct_upload_file_download_policy() and not as_attachment:
-            upload_file = self._get_upload_file(upload_file_id=upload_file_id)
-            policy = resolve_upload_file_storage_policy(
-                upload_file.purpose,
-                storage_type=upload_file.storage_type,
-                key=upload_file.key,
-            )
-            if policy is not None:
-                direct_url = policy.generate_download_url(
-                    upload_file.key,
-                    content_type=upload_file.mime_type,
-                )
-                if direct_url is not None:
-                    return direct_url
-
-        if upload_file is None:
-            uri = self.resolve_upload_file_uri(upload_file_id=upload_file_id, as_attachment=as_attachment)
-        else:
-            uri = self._sign_upload_file_uri(upload_file_id=upload_file_id, as_attachment=as_attachment)
+        uri = self.resolve_upload_file_uri(upload_file_id=upload_file_id, as_attachment=as_attachment)
         return bind_file_uri(uri, self._base_url(for_external=for_external))
 
     def resolve_upload_file_uri(

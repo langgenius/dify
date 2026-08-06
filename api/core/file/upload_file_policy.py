@@ -108,7 +108,8 @@ def resolve_upload_file_storage_policy(
     return None
 
 
-def has_direct_upload_file_download_policy() -> bool:
+def has_direct_upload_file_download_policy(purpose: UploadFilePurpose) -> bool:
     return any(
-        policy.enabled and policy.download_mode != "proxy" for policy in _configured_upload_file_storage_policies()
+        policy.enabled and policy.purpose == purpose and policy.download_mode != "proxy"
+        for policy in _configured_upload_file_storage_policies()
     )
