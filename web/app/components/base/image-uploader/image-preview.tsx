@@ -185,7 +185,6 @@ const ImagePreview: FC<ImagePreviewProps> = ({ url, title, onCancel, onPrev, onN
         backdropClassName="bg-transparent!"
       >
         <div
-          aria-label={title}
           data-testid="image-preview-container"
           tabIndex={-1}
           className="flex size-full items-center justify-center"

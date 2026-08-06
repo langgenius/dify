@@ -31,7 +31,8 @@ import './env-register'
 
 const buildIdPath = path.join(webDir, '.next', 'BUILD_ID')
 const webBuildStampPath = path.join(webDir, '.next', 'e2e-web-build.sha256')
-const apiHost = '127.0.0.1'
+const apiLoopbackHost = '127.0.0.1'
+const apiBindHost = '0.0.0.0'
 const apiPort = 5001
 const agentBackendHost = '127.0.0.1'
 const agentBackendBindHost = '0.0.0.0'
@@ -42,6 +43,7 @@ const shellctlContainerName = process.env.E2E_SHELLCTL_CONTAINER_NAME || 'dify-a
 const shellctlImage = process.env.E2E_SHELLCTL_IMAGE || 'dify-agent-local-sandbox:e2e'
 const shellctlUrl = `http://${shellctlHost}:${shellctlPort}`
 const agentStubApiBaseUrl = `http://host.docker.internal:${agentBackendPort}/agent-stub`
+const sandboxFilesBaseUrl = `http://host.docker.internal:${apiPort}`
 const defaultPluginDaemonKey = 'lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi'
 const defaultInnerApiKeyForPlugin = 'QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1'
 const defaultAgentServerSecretKey = 'MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY'
@@ -104,7 +106,7 @@ function getAgentBackendBaseUrl() {
   return undefined
 }
 
-const getAgentBackendEnvironment = async () => {
+export const getAgentBackendEnvironment = async () => {
   const apiEnv = await getApiEnvironment()
   const redisPassword = process.env.REDIS_PASSWORD || apiEnv.REDIS_PASSWORD || 'difyai123456'
 
@@ -116,7 +118,9 @@ const getAgentBackendEnvironment = async () => {
       apiEnv.INNER_API_KEY_FOR_PLUGIN ||
       defaultInnerApiKeyForPlugin,
     DIFY_AGENT_INNER_API_URL:
-      process.env.DIFY_AGENT_INNER_API_URL || `http://${apiHost}:${apiPort}`,
+      process.env.DIFY_AGENT_INNER_API_URL || `http://${apiLoopbackHost}:${apiPort}`,
+    DIFY_AGENT_SANDBOX_FILES_BASE_URL:
+      process.env.DIFY_AGENT_SANDBOX_FILES_BASE_URL || sandboxFilesBaseUrl,
     DIFY_AGENT_SERVER_SECRET_KEY:
       process.env.DIFY_AGENT_SERVER_SECRET_KEY || defaultAgentServerSecretKey,
     DIFY_AGENT_STUB_API_BASE_URL: process.env.DIFY_AGENT_STUB_API_BASE_URL || agentStubApiBaseUrl,
@@ -304,12 +308,12 @@ export const startWeb = async () => {
 }
 
 export const startApi = async () => {
-  if (await isTcpPortReachable(apiHost, apiPort)) {
+  if (await isTcpPortReachable(apiLoopbackHost, apiPort)) {
     const listenerDescription = await getTcpPortListenerDescription(apiPort)
     const listenerMessage = listenerDescription ? `\n\nPort listener:\n${listenerDescription}` : ''
 
     throw new Error(
-      `Cannot start the E2E API server because ${apiHost}:${apiPort} is already in use.${listenerMessage}`,
+      `Cannot start the E2E API server because ${apiLoopbackHost}:${apiPort} is already in use.${listenerMessage}`,
     )
   }
 
@@ -332,7 +336,7 @@ export const startApi = async () => {
       'flask',
       'run',
       '--host',
-      apiHost,
+      apiBindHost,
       '--port',
       String(apiPort),
     ],
