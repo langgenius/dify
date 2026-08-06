@@ -661,6 +661,7 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
             return {"error": str(e)}, 500
         return dump_response(SegmentBatchImportStatusResponse, {"job_id": job_id, "job_status": "waiting"}), 200
 
+
 @console_ns.route("/datasets/<uuid:dataset_id>/batch_import_status/<uuid:job_id>")
 class DatasetDocumentSegmentBatchImportStatusApi(Resource):
     @console_ns.response(200, "Batch import status", console_ns.models[SegmentBatchImportStatusResponse.__name__])
