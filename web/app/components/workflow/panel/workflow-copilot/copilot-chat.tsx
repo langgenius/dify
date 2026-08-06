@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import type { CommonNodeType, Edge, Node } from '../../types'
+import type { MentionInputHandle, MentionNode } from './mention-input'
 import type { CopilotConversation, CopilotGraph, CopilotUsage } from './service'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -14,6 +15,7 @@ import { useStore as useWorkflowStore } from '@/app/components/workflow/store'
 import { useIsChatMode, useNodesInteractions, useNodesReadOnly } from '../../hooks'
 import { useNodesSyncDraft } from '../../hooks/use-nodes-sync-draft'
 import { useWorkflowUpdate } from '../../hooks/use-workflow-update'
+import MentionInput from './mention-input'
 import {
   deleteCopilotConversation,
   fetchCopilotMessages,
@@ -67,14 +69,6 @@ type CopilotMessage = {
   cancelled?: boolean
 }
 
-// The generation phases we cycle through in the live indicator. The backend is
-// a single request (not streamed), so these are an *estimated* progression —
-// timed rotation, not real stage callbacks — purely to make the wait feel alive.
-type GenPhase = 'planning' | 'building' | 'validating'
-const GEN_PHASES: GenPhase[] = ['planning', 'building', 'validating']
-// Advance to the next phase label on this cadence while a turn is in flight.
-const GEN_PHASE_INTERVAL_MS = 2500
-
 const FE_TIMEOUT_MS = 90_000
 
 const newId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
@@ -89,12 +83,24 @@ const formatDuration = (ms: number): string => {
   return `${m}m ${s}s`
 }
 
+// Conversation dropdown label. Prefer a server-set title; otherwise show the
+// last-updated time (MM-DD HH:mm) — far friendlier than the old id fragment.
+const formatConversationLabel = (title: string, updatedAt: number): string => {
+  if (title)
+    return title
+  const d = new Date(updatedAt * 1000) // backend sends seconds
+  if (Number.isNaN(d.getTime()))
+    return '—'
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 const isAbortError = (e: unknown): boolean =>
   (e instanceof DOMException || e instanceof Error) && e.name === 'AbortError'
 
-// A soft node mention is written into the draft/message as 【Title】. This
-// splits a string into alternating plain-text and mention segments so both the
-// chat bubbles and the input overlay can render the mentions with emphasis.
+// A node mention is written into the message as 【Title】. This splits a string
+// into alternating plain-text and mention segments so the chat bubbles can
+// render each mention as an inline pill (matching the input's node bubbles).
 type MentionSegment = { text: string, isMention: boolean }
 const MENTION_RE = /【[^】]+】/g
 
@@ -113,34 +119,20 @@ const splitMentions = (text: string): MentionSegment[] => {
   return segments
 }
 
-// The set of node titles currently mentioned in the draft (the text inside each
-// 【…】). Used to keep the context chips in sync when the user edits the draft.
-const mentionedTitlesIn = (text: string): Set<string> => {
-  const titles = new Set<string>()
-  for (const match of text.matchAll(MENTION_RE))
-    titles.add(match[0].slice(1, -1)) // strip the 【 】 brackets
-  return titles
-}
-
-// Remove every 【title】 occurrence for the given title from a draft string.
-const stripMention = (text: string, title: string): string =>
-  text.split(`【${title}】`).join('').replace(/ {2,}/g, ' ').trimStart()
-
-// Render a string with 【Title】 mentions highlighted as inline pills.
-//  - 'bubble-user'/'bubble-assistant': chat history; each picks a pill style
-//    that reads clearly on that bubble's background.
-//  - 'overlay': the transparent layer behind the textarea — the REAL text comes
-//    from the textarea on top, so we only paint the pill background and MUST NOT
-//    add horizontal padding/margin or the block would drift off the glyphs.
-type MentionVariant = 'bubble-user' | 'bubble-assistant' | 'overlay'
+// Render a string with 【Title】 mentions as inline node pills. The two variants
+// pick a pill style that reads clearly on each chat bubble's background.
+type MentionVariant = 'bubble-user' | 'bubble-assistant'
 
 const MENTION_PILL_CLASS: Record<MentionVariant, string> = {
-  // On the blue user bubble: translucent white pill + white text — high contrast.
-  'bubble-user': 'mx-px inline-flex items-center rounded-md bg-white/25 px-1.5 py-px font-medium text-white',
-  // On the grey assistant bubble: accent-tinted pill + accent text.
-  'bubble-assistant': 'mx-px inline-flex items-center rounded-md bg-state-accent-active px-1.5 py-px font-medium text-text-accent',
-  // Behind the textarea: just the rounded background block (text is transparent).
-  'overlay': 'rounded-[5px] bg-state-accent-hover',
+  // On the blue user bubble: translucent white bordered pill + white text.
+  'bubble-user': 'mx-0.5 inline-flex items-center gap-0.5 rounded-md border-[0.5px] border-white/40 bg-white/20 px-1 py-px align-middle font-medium text-white',
+  // On the grey assistant bubble: light bordered badge (matches the input pill).
+  'bubble-assistant': 'mx-0.5 inline-flex items-center gap-0.5 rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark px-1 py-px align-middle font-medium text-text-secondary shadow-xs',
+}
+
+const MENTION_ICON_CLASS: Record<MentionVariant, string> = {
+  'bubble-user': 'i-ri-hashtag size-3 shrink-0 text-white/80',
+  'bubble-assistant': 'i-ri-hashtag size-3 shrink-0 text-text-accent',
 }
 
 const renderMentionSegments = (text: string, variant: MentionVariant) =>
@@ -149,10 +141,12 @@ const renderMentionSegments = (text: string, variant: MentionVariant) =>
     const key = `${i}-${seg.text}`
     if (!seg.isMention)
       return <span key={key}>{seg.text}</span>
-    // Strip the 【 】 brackets for bubble pills; keep them in the overlay so its
-    // width matches the textarea's literal 【…】 glyphs exactly.
-    const label = variant === 'overlay' ? seg.text : seg.text.slice(1, -1)
-    return <span key={key} className={MENTION_PILL_CLASS[variant]}>{label}</span>
+    return (
+      <span key={key} className={MENTION_PILL_CLASS[variant]}>
+        <span aria-hidden className={MENTION_ICON_CLASS[variant]} />
+        {seg.text.slice(1, -1)}
+      </span>
+    )
   })
 
 const CopilotChat: FC = () => {
@@ -177,18 +171,23 @@ const CopilotChat: FC = () => {
   const liveNodes = useReactFlowNodes<CommonNodeType>()
 
   const [messages, setMessages] = useState<CopilotMessage[]>([])
+  // Serialized draft (plain text with 【Title】 mention tokens). The rich
+  // MentionInput owns the actual DOM/caret; we keep this mirror for send + the
+  // Generate button's enabled state.
   const [input, setInput] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [conversations, setConversations] = useState<CopilotConversation[]>([])
   const [conversationId, setConversationId] = useState<string | null>(null)
+  // Id of the assistant turn whose trash button is "armed" — discarding a turn
+  // is destructive (drops the user + assistant messages, undoes any applied
+  // graph), so the first click asks for confirmation instead of deleting.
+  const [confirmingDiscardId, setConfirmingDiscardId] = useState<string | null>(null)
 
-  // Live-generation indicator: the estimated phase label + a ticking elapsed
-  // clock so the wait feels dynamic. Both reset when a turn starts/ends.
-  const [genPhase, setGenPhase] = useState<GenPhase>('planning')
+  // Live-generation indicator: a ticking elapsed clock so the wait feels
+  // responsive. (No fake phase labels — the backend is a single request.)
   const [genElapsedMs, setGenElapsedMs] = useState(0)
   // Wall-clock start of the in-flight turn, used to stamp the message duration.
   const genStartRef = useRef<number>(0)
-  const phaseTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // `#` mention picker: open state, current filter query (text after the `#`),
@@ -196,14 +195,10 @@ const CopilotChat: FC = () => {
   const [mentionOpen, setMentionOpen] = useState(false)
   const [mentionQuery, setMentionQuery] = useState('')
   const [mentionActiveIndex, setMentionActiveIndex] = useState(0)
-  const inputRef = useRef<HTMLTextAreaElement>(null)
-  // Transparent highlight layer behind the textarea; kept scroll-synced so the
-  // 【mention】 background blocks line up with the (transparent-bg) textarea text.
-  const overlayRef = useRef<HTMLDivElement>(null)
-  // True while an IME (e.g. Chinese pinyin) is composing — Enter must NOT send.
-  const composingRef = useRef(false)
-  // Pinned node ids already inserted as a 【Title】 mention, so we don't duplicate
-  // when the same node is added again from the "..." menu.
+  // Imperative handle to the rich input (insert/remove pills, focus, clear).
+  const inputRef = useRef<MentionInputHandle>(null)
+  // Node ids currently rendered as a mention pill in the input, so the "..."
+  // menu additions don't duplicate an existing pill.
   const mentionedIdsRef = useRef<Set<string>>(new Set())
 
   // Snapshot of the canvas taken right before an Apply, keyed by message id, so
@@ -220,31 +215,22 @@ const CopilotChat: FC = () => {
     }
   }, [])
 
-  // Stop the live-generation phase/elapsed tickers (used on completion, abort,
-  // and unmount). Idempotent.
+  // Stop the elapsed-time ticker (used on completion, abort, and unmount).
+  // Idempotent.
   const stopGenTickers = useCallback(() => {
-    if (phaseTimerRef.current) {
-      clearInterval(phaseTimerRef.current)
-      phaseTimerRef.current = null
-    }
     if (elapsedTimerRef.current) {
       clearInterval(elapsedTimerRef.current)
       elapsedTimerRef.current = null
     }
   }, [])
 
-  // Start the estimated-phase rotation + elapsed clock for a fresh turn.
+  // Start the elapsed clock for a fresh turn. We show a single "generating"
+  // line plus this wall-clock timer — no fake phase labels, since the backend
+  // is one opaque request.
   const startGenTickers = useCallback(() => {
     stopGenTickers()
     genStartRef.current = Date.now()
-    setGenPhase('planning')
     setGenElapsedMs(0)
-    let phaseIndex = 0
-    phaseTimerRef.current = setInterval(() => {
-      // Rotate up to the last phase and hold there (never wrap back to planning).
-      phaseIndex = Math.min(phaseIndex + 1, GEN_PHASES.length - 1)
-      setGenPhase(GEN_PHASES[phaseIndex] ?? 'validating')
-    }, GEN_PHASE_INTERVAL_MS)
     elapsedTimerRef.current = setInterval(() => {
       setGenElapsedMs(Date.now() - genStartRef.current)
     }, 100)
@@ -287,6 +273,7 @@ const CopilotChat: FC = () => {
     setConversationId(null)
     setMessages([])
     setInput('')
+    inputRef.current?.clear()
     clearCopilotContextNodes()
     mentionedIdsRef.current.clear()
     setMentionOpen(false)
@@ -320,12 +307,19 @@ const CopilotChat: FC = () => {
   // The store (copilotContextNodes) is the source of truth for what's in
   // context; the input's 【Title】 mentions are a soft, human-readable echo.
 
-  // Append a soft 【Title】 mention to the end of the draft. Used only when a
-  // node is added from its "..." menu (there's no meaningful caret then).
-  const appendMentionText = useCallback((title: string) => {
-    const token = `【${title}】`
-    setInput(prev => prev ? `${prev} ${token}` : token)
-  }, [])
+  // Serialized draft + mention ids reported by the rich input on every edit.
+  // We mirror the text (for send / button state) and reconcile context chips
+  // against the pill set: any pinned node whose pill was deleted drops its chip
+  // (delete-pill → chip disappears), all keyed by node id.
+  const handleInputChange = useCallback((text: string, mentionIds: string[]) => {
+    setInput(text)
+    mentionedIdsRef.current = new Set(mentionIds)
+    const present = new Set(mentionIds)
+    for (const node of pinnedNodes) {
+      if (!present.has(node.id))
+        removeCopilotContextNode(node.id)
+    }
+  }, [pinnedNodes, removeCopilotContextNode])
 
   // Chip click → locate/select the node on the canvas so the user can jump to
   // it. Context membership is unaffected (removal is a separate button).
@@ -333,32 +327,16 @@ const CopilotChat: FC = () => {
     handleNodeSelect(id)
   }, [handleNodeSelect])
 
-  // Remove a context chip → also strip its 【Title】 mention(s) from the draft
-  // so the two stay in sync (delete-chip → mention disappears).
+  // Remove a context chip → also remove its pill from the input by id so the
+  // two stay in sync (delete-chip → pill disappears).
   const handleRemovePinned = useCallback((id: string) => {
-    const removed = pinnedNodes.find(n => n.id === id)
     removeCopilotContextNode(id)
     mentionedIdsRef.current.delete(id)
-    if (removed)
-      setInput(prev => stripMention(prev, removed.title))
-  }, [pinnedNodes, removeCopilotContextNode])
-
-  // Reverse sync: when the user edits the draft and a pinned node's 【Title】 is
-  // no longer present anywhere in the text, drop that context chip too
-  // (delete-mention → chip disappears).
-  const syncChipsFromDraft = useCallback((value: string) => {
-    const present = mentionedTitlesIn(value)
-    for (const node of pinnedNodes) {
-      if (!present.has(node.title)) {
-        removeCopilotContextNode(node.id)
-        mentionedIdsRef.current.delete(node.id)
-      }
-    }
-  }, [pinnedNodes, removeCopilotContextNode])
+    inputRef.current?.removeMention(id)
+  }, [removeCopilotContextNode])
 
   // Nodes added from a node's "..." menu land in the store first; mirror each
-  // new one into the draft as a 【Title】 mention. Deferred out of the effect
-  // body (rAF) so the setState isn't a synchronous cascade.
+  // new one into the input as a pill (appended at the end — no caret context).
   useEffect(() => {
     const additions = pinnedNodes.filter(n => !mentionedIdsRef.current.has(n.id))
     if (additions.length === 0)
@@ -367,10 +345,10 @@ const CopilotChat: FC = () => {
       mentionedIdsRef.current.add(n.id)
     const raf = requestAnimationFrame(() => {
       for (const n of additions)
-        appendMentionText(n.title)
+        inputRef.current?.appendMention({ id: n.id, title: n.title })
     })
     return () => cancelAnimationFrame(raf)
-  }, [pinnedNodes, appendMentionText])
+  }, [pinnedNodes])
 
   // Candidate nodes for the `#` picker, filtered by the text typed after `#`.
   const mentionCandidates = useMemo(() => {
@@ -381,42 +359,22 @@ const CopilotChat: FC = () => {
       .slice(0, 8)
   }, [liveNodes, mentionQuery])
 
-  // Detect a `#` immediately before the caret to open the picker, and keep the
-  // query in sync as the user types after it.
-  const syncMentionState = useCallback((value: string, caret: number) => {
-    const hashIdx = value.lastIndexOf('#', caret - 1)
-    if (hashIdx === -1) {
+  // The rich input reports the active `#`-query (or null when there's no live
+  // trigger); open/close the picker accordingly.
+  const handleHashQueryChange = useCallback((query: string | null) => {
+    if (query === null) {
       setMentionOpen(false)
       return
     }
-    const between = value.slice(hashIdx + 1, caret)
-    // Only an unbroken run of non-space/newline chars right after `#` counts.
-    if (/[\s【】]/.test(between)) {
-      setMentionOpen(false)
-      return
-    }
-    setMentionQuery(between)
+    setMentionQuery(query)
     setMentionOpen(true)
     setMentionActiveIndex(0)
   }, [])
 
-  // Pick a node from the `#` menu: replace the `#query` with 【Title】 + context.
-  const handlePickMention = useCallback((node: { id: string, title: string }) => {
-    const el = inputRef.current
-    setInput((prev) => {
-      const caret = el?.selectionStart ?? prev.length
-      const hashIdx = prev.lastIndexOf('#', caret - 1)
-      if (hashIdx === -1)
-        return prev
-      const token = `【${node.title}】`
-      const next = `${prev.slice(0, hashIdx)}${token}${prev.slice(caret)}`
-      requestAnimationFrame(() => {
-        const pos = hashIdx + token.length
-        el?.focus()
-        el?.setSelectionRange(pos, pos)
-      })
-      return next
-    })
+  // Pick a node from the `#` menu: the input replaces the pending `#query` with
+  // a pill; we register the node as context (keyed by id).
+  const handlePickMention = useCallback((node: MentionNode) => {
+    inputRef.current?.insertMentionAtCaret(node)
     addCopilotContextNode({ id: node.id, title: node.title })
     mentionedIdsRef.current.add(node.id)
     setMentionOpen(false)
@@ -456,6 +414,11 @@ const CopilotChat: FC = () => {
     // persisted history never shows a synthetic "[Context nodes...]" line.
     const contextNodeIds = pinnedNodes.map(n => n.id)
 
+    // Own the AbortController here so both the timeout below and the Stop button
+    // (handleStop) can cancel this turn; its signal is threaded into the request.
+    const controller = new AbortController()
+    abortRef.current = controller
+
     timeoutRef.current = setTimeout(() => {
       timedOutRef.current = true
       abortRef.current?.abort()
@@ -477,7 +440,7 @@ const CopilotChat: FC = () => {
         ...(currentGraph ? { current_graph: currentGraph } : {}),
         ...(contextNodeIds.length > 0 ? { context_node_ids: contextNodeIds } : {}),
       }, {
-        getAbortController: (c: AbortController) => { abortRef.current = c },
+        signal: controller.signal,
       })
 
       if (res.conversation_id) {
@@ -576,6 +539,8 @@ const CopilotChat: FC = () => {
       return
     setMessages(prev => [...prev, { id: newId(), role: 'user', content: instruction }])
     setInput('')
+    inputRef.current?.clear()
+    mentionedIdsRef.current.clear()
     setMentionOpen(false)
     runGeneration(instruction)
   }, [input, isGenerating, runGeneration])
@@ -641,6 +606,7 @@ const CopilotChat: FC = () => {
   const handleDiscardTurn = useCallback((message: CopilotMessage) => {
     if (isGenerating)
       return
+    setConfirmingDiscardId(null)
     if (message.applied) {
       const snapshot = undoSnapshotRef.current[message.id]
       if (snapshot && !getNodesReadOnly())
@@ -658,42 +624,36 @@ const CopilotChat: FC = () => {
     })
   }, [isGenerating, getNodesReadOnly, applyGraph])
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // While the `#` picker is open, arrows/Enter/Tab drive the list, not send.
-    if (mentionOpen && mentionCandidates.length > 0) {
-      if (e.key === 'ArrowDown') {
-        e.preventDefault()
-        setMentionActiveIndex(i => (i + 1) % mentionCandidates.length)
-        return
-      }
-      if (e.key === 'ArrowUp') {
-        e.preventDefault()
-        setMentionActiveIndex(i => (i - 1 + mentionCandidates.length) % mentionCandidates.length)
-        return
-      }
-      if (e.key === 'Enter' || e.key === 'Tab') {
-        e.preventDefault()
-        const picked = mentionCandidates[mentionActiveIndex] ?? mentionCandidates[0]
-        if (picked)
-          handlePickMention(picked)
-        return
-      }
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        setMentionOpen(false)
-        return
-      }
-    }
-    // IME (e.g. Chinese pinyin) composing: Enter commits the candidate, it must
-    // NOT send the message. `composingRef` tracks compositionstart/end and
-    // `isComposing` is the belt-and-braces guard for the terminal keystroke.
-    if (e.key === 'Enter' && !e.shiftKey) {
-      if (composingRef.current || e.nativeEvent.isComposing)
-        return
+  // Picker navigation, delegated from the rich input while the `#` menu is
+  // open. Returns true (and preventDefaults) when it consumed the key, so the
+  // input knows not to also treat Enter as "send" / insert a newline.
+  const handlePickerKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>): boolean => {
+    if (!(mentionOpen && mentionCandidates.length > 0))
+      return false
+    if (e.key === 'ArrowDown') {
       e.preventDefault()
-      handleSend()
+      setMentionActiveIndex(i => (i + 1) % mentionCandidates.length)
+      return true
     }
-  }, [mentionOpen, mentionCandidates, mentionActiveIndex, handlePickMention, handleSend])
+    if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setMentionActiveIndex(i => (i - 1 + mentionCandidates.length) % mentionCandidates.length)
+      return true
+    }
+    if (e.key === 'Enter' || e.key === 'Tab') {
+      e.preventDefault()
+      const picked = mentionCandidates[mentionActiveIndex] ?? mentionCandidates[0]
+      if (picked)
+        handlePickMention(picked)
+      return true
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      setMentionOpen(false)
+      return true
+    }
+    return false
+  }, [mentionOpen, mentionCandidates, mentionActiveIndex, handlePickMention])
 
   return (
     <div className="flex h-full flex-col">
@@ -707,7 +667,7 @@ const CopilotChat: FC = () => {
           <option value="">{t('workflow.workflowGenerator.newConversation', { defaultValue: 'New conversation' })}</option>
           {conversations.map(c => (
             <option key={c.id} value={c.id}>
-              {c.title || `${t('workflow.workflowGenerator.conversation', { defaultValue: 'Conversation' })} ${c.id.slice(0, 6)}`}
+              {formatConversationLabel(c.title, c.updated_at)}
             </option>
           ))}
         </select>
@@ -774,15 +734,42 @@ const CopilotChat: FC = () => {
                   <RiRefreshLine className="mr-1 size-3.5" />
                   {t('workflow.workflowGenerator.retry', { defaultValue: 'Retry' })}
                 </Button>
-                <Button
-                  size="small"
-                  variant="ghost"
-                  disabled={isGenerating}
-                  title={t('workflow.workflowGenerator.discardTurn', { defaultValue: 'Discard this turn' })}
-                  onClick={() => handleDiscardTurn(m)}
-                >
-                  <RiDeleteBinLine className="size-3.5" />
-                </Button>
+                {confirmingDiscardId === m.id
+                  ? (
+                      // Armed: destructive action needs an explicit confirm so a
+                      // stray click can't wipe the turn (and any applied graph).
+                      <>
+                        <Button
+                          size="small"
+                          variant="ghost"
+                          disabled={isGenerating}
+                          onClick={() => setConfirmingDiscardId(null)}
+                        >
+                          {t('common.operation.cancel', { defaultValue: 'Cancel' })}
+                        </Button>
+                        <Button
+                          size="small"
+                          variant="primary"
+                          tone="destructive"
+                          disabled={isGenerating}
+                          onClick={() => handleDiscardTurn(m)}
+                        >
+                          <RiDeleteBinLine className="mr-1 size-3.5" />
+                          {t('workflow.workflowGenerator.discardTurn', { defaultValue: 'Discard' })}
+                        </Button>
+                      </>
+                    )
+                  : (
+                      <Button
+                        size="small"
+                        variant="ghost"
+                        disabled={isGenerating}
+                        title={t('workflow.workflowGenerator.discardTurn', { defaultValue: 'Discard this turn' })}
+                        onClick={() => setConfirmingDiscardId(m.id)}
+                      >
+                        <RiDeleteBinLine className="size-3.5" />
+                      </Button>
+                    )}
               </div>
             )}
             {/* Meta line: wall-clock time + real token usage for the turn. */}
@@ -821,11 +808,7 @@ const CopilotChat: FC = () => {
             <div className="flex items-center gap-2 rounded-2xl rounded-bl-sm bg-components-panel-on-panel-item-bg px-3 py-2 system-sm-regular text-text-tertiary">
               <RiSparkling2Line className="size-4 animate-pulse text-text-accent" />
               <span>
-                {t(`workflow.workflowGenerator.phases.${genPhase}`, {
-                  defaultValue: genPhase === 'planning'
-                    ? 'Planning the workflow…'
-                    : genPhase === 'building' ? 'Building nodes…' : 'Validating the graph…',
-                })}
+                {t('workflow.workflowGenerator.generating', { defaultValue: 'Generating…' })}
               </span>
               <span className="text-text-quaternary tabular-nums">{formatDuration(genElapsedMs)}</span>
             </div>
@@ -889,41 +872,16 @@ const CopilotChat: FC = () => {
               ))}
             </div>
           )}
-          <div className="relative">
-            {/* Transparent highlight layer: same geometry as the textarea, but
-                only the 【mention】 spans paint a background. The textarea sits
-                on top with a transparent background so its real (opaque) text
-                shows while the blocks below line up glyph-for-glyph. */}
-            <div
-              ref={overlayRef}
-              aria-hidden
-              className="pointer-events-none absolute inset-0 overflow-hidden rounded-lg border border-transparent bg-components-input-bg-normal p-2 system-sm-regular break-words whitespace-pre-wrap text-transparent"
-            >
-              {renderMentionSegments(input, 'overlay')}
-              {/* trailing newline so the last line's height matches the textarea */}
-              {'\n'}
-            </div>
-            <textarea
-              ref={inputRef}
-              className="relative z-[1] min-h-[60px] w-full resize-none rounded-lg border border-divider-regular bg-transparent p-2 system-sm-regular break-words whitespace-pre-wrap text-text-primary outline-none focus:border-components-input-border-active"
-              placeholder={t('workflow.workflowGenerator.copilotPlaceholder', { defaultValue: 'e.g. Add an LLM node that summarizes the input… (type # to mention a node)' })}
-              value={input}
-              disabled={isGenerating}
-              onChange={(e) => {
-                setInput(e.target.value)
-                syncMentionState(e.target.value, e.target.selectionStart ?? e.target.value.length)
-                syncChipsFromDraft(e.target.value)
-              }}
-              onScroll={(e) => {
-                // Keep the highlight layer aligned when the textarea scrolls.
-                if (overlayRef.current)
-                  overlayRef.current.scrollTop = e.currentTarget.scrollTop
-              }}
-              onKeyDown={handleKeyDown}
-              onCompositionStart={() => { composingRef.current = true }}
-              onCompositionEnd={() => { composingRef.current = false }}
-            />
-          </div>
+          <MentionInput
+            ref={inputRef}
+            disabled={isGenerating}
+            isPickerOpen={mentionOpen}
+            placeholder={t('workflow.workflowGenerator.copilotPlaceholder', { defaultValue: 'e.g. Add an LLM node that summarizes the input… (type # to mention a node)' })}
+            onChange={handleInputChange}
+            onHashQueryChange={handleHashQueryChange}
+            onEnter={handleSend}
+            onPickerKeyDown={handlePickerKeyDown}
+          />
         </div>
         <div className="mt-2 flex justify-end">
           <Button

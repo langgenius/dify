@@ -61,13 +61,14 @@ export type CopilotMessagesResponse = {
 
 export const generateWorkflowCopilot = (
   body: CopilotGenerateBody,
-  options?: { getAbortController?: (c: AbortController) => void },
+  options?: { signal?: AbortSignal },
 ) => {
-  if (options?.getAbortController) {
-    return post<CopilotGenerateResponse>('/workflow-copilot', { body }, {
-      getAbortController: options.getAbortController,
-    })
-  }
+  // Pass the caller's AbortSignal through the request options (a first-class
+  // RequestInit field) rather than the `getAbortController` callback: the
+  // shared client wires an options-level `signal` straight into fetch, so
+  // aborting it actually cancels the in-flight turn (Stop).
+  if (options?.signal)
+    return post<CopilotGenerateResponse>('/workflow-copilot', { body, signal: options.signal })
   return post<CopilotGenerateResponse>('/workflow-copilot', { body })
 }
 
