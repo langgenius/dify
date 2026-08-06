@@ -23,6 +23,6 @@ Feature: Agent v2 tools
     Then the Agent v2 JSON Replace tool should be saved in the Agent v2 draft
     When I publish the Agent v2 draft
     Then the Agent v2 draft should be published and up to date
-    And Agent v2 Backend service API access has been enabled with a key via API
+    Given an Agent v2 Backend service API key has been created via API
     When I send the Agent v2 Backend service API JSON Replace request
     Then the Agent v2 Backend service API response should include the JSON Replace E2E marker
