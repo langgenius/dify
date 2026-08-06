@@ -197,6 +197,14 @@ vi.mock('@/service/client', () => ({
             input.params.agent_id,
           ],
         },
+        apiAccess: {
+          get: {
+            queryKey: ({ input }: { input: { params: { agent_id: string } } }) => [
+              'agent-api-access',
+              input.params.agent_id,
+            ],
+          },
+        },
         composer: {
           get: {
             queryKey: ({ input }: { input: { params: { agent_id: string } } }) => [

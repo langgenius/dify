@@ -13,6 +13,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from core.app.apps.agent_app import app_generator
 from core.app.apps.agent_app.app_generator import AgentAppGenerator, AgentAppGeneratorError, AgentAppNotPublishedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models.agent import AgentConfigDraft, AgentConfigDraftType, AgentConfigVersionKind, AgentScope, AgentSource
@@ -238,6 +239,16 @@ class TestResolveDebugDraft:
 
 
 class TestResolveAgent:
+    @pytest.fixture(autouse=True)
+    def _publish_visibility(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            app_generator,
+            "agent_has_workflow_callable_active_snapshot",
+            lambda *, agent, **_kwargs: bool(
+                getattr(agent, "publish_visible", getattr(agent, "active_config_is_published", False))
+            ),
+        )
+
     def test_success_chains_to_resolve_by_id(self):
         bound_agent = SimpleNamespace(
             id="agent-1",
@@ -270,6 +281,7 @@ class TestResolveAgent:
             source=AgentSource.AGENT_APP,
             active_config_snapshot_id="snap-1",
             active_config_is_published=False,
+            publish_visible=True,
         )
         inner_agent = SimpleNamespace(id="agent-1")
         snapshot = _snapshot()
@@ -426,6 +438,24 @@ class TestResolveAgent:
                 draft_type=None,
                 user=SimpleNamespace(id="user-1"),
                 session=session,
+            )  # type: ignore[arg-type]
+
+    def test_never_published_agent_app_is_not_available_to_public_runtime(self):
+        bound_agent = SimpleNamespace(
+            id="agent-1",
+            source=AgentSource.AGENT_APP,
+            active_config_snapshot_id="snap-1",
+            active_config_is_published=False,
+            publish_visible=False,
+        )
+
+        with pytest.raises(AgentAppNotPublishedError, match="not been published"):
+            AgentAppGenerator()._resolve_agent(
+                SimpleNamespace(id="app-1", tenant_id="t1"),
+                invoke_from=InvokeFrom.WEB_APP,
+                draft_type=None,
+                user=SimpleNamespace(id="user-1"),
+                session=_FakeScalarSession([bound_agent]),
             )  # type: ignore[arg-type]
 
     def test_unpublished_imported_agent_remains_available_to_debugger(self):
