@@ -115,9 +115,7 @@ def test_get_snippets_returns_empty_when_tag_filter_has_no_targets(
     get_target_ids.assert_called_once_with("snippet", "tenant-1", ["tag-1"], sqlite_session, match_all=True)
 
 
-def test_get_snippets_applies_filters_and_paginates(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-) -> None:
+def test_get_snippets_applies_filters_and_paginates(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
     snippets = []
     for index in range(3):
         snippet = CustomizedSnippet(

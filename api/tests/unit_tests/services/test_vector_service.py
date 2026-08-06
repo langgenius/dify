@@ -503,9 +503,7 @@ def test_create_child_chunk_vector_high_quality_adds_texts(
     vector_instance.add_texts.assert_called_once()
 
 
-def test_create_child_chunk_vector_economy_noop(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-) -> None:
+def test_create_child_chunk_vector_economy_noop(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
     dataset = _make_dataset(indexing_technique=IndexTechniqueType.ECONOMY)
     vector_cls = MagicMock()
     monkeypatch.setattr(vector_service_module, "Vector", vector_cls)
@@ -547,9 +545,7 @@ def test_update_child_chunk_vector_high_quality_updates_vector(
     vector_cls = MagicMock(return_value=vector_instance)
     monkeypatch.setattr(vector_service_module, "Vector", vector_cls)
 
-    VectorService.update_child_chunk_vector(
-        [new_chunk], [upd_chunk], [del_chunk], dataset, session=sqlite_session
-    )
+    VectorService.update_child_chunk_vector([new_chunk], [upd_chunk], [del_chunk], dataset, session=sqlite_session)
 
     vector_cls.assert_called_once_with(dataset=dataset, session=sqlite_session)
     vector_instance.delete_by_ids.assert_called_once_with(["uid", "did"])
@@ -558,9 +554,7 @@ def test_update_child_chunk_vector_high_quality_updates_vector(
     assert len(docs) == 2
 
 
-def test_update_child_chunk_vector_economy_noop(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-) -> None:
+def test_update_child_chunk_vector_economy_noop(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
     dataset = _make_dataset(indexing_technique=IndexTechniqueType.ECONOMY)
     vector_cls = MagicMock()
     monkeypatch.setattr(vector_service_module, "Vector", vector_cls)
@@ -568,9 +562,7 @@ def test_update_child_chunk_vector_economy_noop(
     vector_cls.assert_not_called()
 
 
-def test_delete_child_chunk_vector_deletes_by_id(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-) -> None:
+def test_delete_child_chunk_vector_deletes_by_id(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
     dataset = _make_dataset()
     child_chunk = MagicMock()
     child_chunk.index_node_id = "cid"
