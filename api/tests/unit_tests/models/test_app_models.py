@@ -188,7 +188,6 @@ class TestAppModelValidation:
         # Assert
         assert result is False
 
-    @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
     def test_app_is_agent_with_session_persists_mode_across_sessions(self, sqlite_session: Session):
         app = App(
             tenant_id=str(uuid4()),

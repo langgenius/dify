@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session
 
 from events.app_event import app_was_deleted, app_was_updated
 from models.account import Account
-from models.agent import Agent, AgentWorkspace
 from models.dataset import AppDatasetJoin
 from models.model import App, AppMode, AppModelConfig, IconType, InstalledApp
 from services.app_service import AppService
@@ -61,7 +60,6 @@ def _make_collector(target: list[App]):
     return handler
 
 
-@pytest.mark.parametrize("sqlite_session", [(App, Account, Agent, AgentWorkspace)], indirect=True)
 @pytest.mark.usefixtures("_mock_deps")
 class TestAppWasDeletedSignal:
     def test_sends_signal(self, app_model: App, sqlite_session: Session) -> None:
@@ -98,7 +96,6 @@ class TestAppWasDeletedSignal:
         assert sqlite_session.get(App, app_model.id) is None
 
 
-@pytest.mark.parametrize("sqlite_session", [(App, Account)], indirect=True)
 class TestAppWasUpdatedSignal:
     def test_update_app(self, app_model: App, account: Account, sqlite_session: Session) -> None:
         received: list[App] = []
@@ -236,7 +233,7 @@ class TestAppModelConfigWasUpdatedSignal:
         app_model_config.dataset_configs = json.dumps(
             {
                 "retrieval_model": "multiple",
-                "datasets": {"datasets": [{"dataset": {"id": "dataset-1"}}]},
+                "datasets": {"datasets": [{"dataset": {"id": dataset_id}}]},
             }
         )
         sqlite_session.add_all(

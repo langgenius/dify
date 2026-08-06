@@ -237,13 +237,11 @@ def _stub_download_response(monkeypatch: pytest.MonkeyPatch) -> None:
         "_download_response",
         lambda **_kwargs: AgentSandboxDownload(url="https://files.example/report.txt"),
     )
+    session.add_all([agent, draft])
+    session.commit()
+    return draft
 
 
-@pytest.mark.parametrize(
-    "sqlite_session",
-    [(AgentWorkspace, AgentWorkspaceBinding, App, Conversation)],
-    indirect=True,
-)
 def test_agent_app_file_browsing_uses_conversation_pointer(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
@@ -269,11 +267,6 @@ def test_agent_app_file_browsing_uses_conversation_pointer(
     client.list_binding_files_sync.assert_called_once_with(expected.backend_binding_ref, ".")
 
 
-@pytest.mark.parametrize(
-    "sqlite_session",
-    [(AgentWorkspace, AgentWorkspaceBinding, App, Conversation)],
-    indirect=True,
-)
 def test_agent_app_file_browsing_rejects_other_account(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
