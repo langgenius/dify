@@ -6,6 +6,7 @@ import type {
   NewKnowledgeSourceDraft,
   NewKnowledgeWebsiteProvider,
 } from './routes'
+import type { CrawlPreviewPage } from './source-models'
 import type { CrawlResultItem } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
@@ -31,9 +32,10 @@ import {
   SelectLabel,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { checkFirecrawlTaskStatus, createFirecrawlTask } from '@/service/datasets'
+import { CrawlPreviewPageSelection } from './crawl-selection-form'
 import {
   isValidWebsiteSourceDraft,
   NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH,
@@ -78,6 +80,15 @@ function crawlPages(response: Record<string, unknown>): CrawlResultItem[] {
       },
     ]
   })
+}
+
+function crawlPreviewPages(pages: CrawlResultItem[]): CrawlPreviewPage[] {
+  return pages.map((page) => ({
+    description: page.description,
+    pageId: page.source_url,
+    sourceUrl: page.source_url,
+    title: page.title,
+  }))
 }
 
 const providers = {
@@ -186,6 +197,7 @@ export function CreateSourceSetup({
   const [backendBoundaryVisible, setBackendBoundaryVisible] = useState(false)
   const [crawlState, setCrawlState] = useState<LocalCrawlState>('idle')
   const [previewPages, setPreviewPages] = useState<CrawlResultItem[]>([])
+  const [selectedPageIds, setSelectedPageIds] = useState<Set<string>>(() => new Set())
   const crawlAttemptRef = useRef(0)
   const pollResolveRef = useRef<(() => void) | undefined>(undefined)
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -195,6 +207,8 @@ export function CreateSourceSetup({
     ? draft.provider
     : availableProviders[0].label
   const previewReady = draft.sourceType === 'websiteCrawl' && isValidWebsiteSourceDraft(draft)
+  const previewRootUrl = draft.sourceType === 'websiteCrawl' ? draft.rootUrl : ''
+  const selectionPages = useMemo(() => crawlPreviewPages(previewPages), [previewPages])
   const crawlOptionsAreDefault =
     draft.sourceType !== 'websiteCrawl' ||
     (draft.includeSubpages === DEFAULT_INCLUDE_SUBPAGES && draft.maxPages === DEFAULT_MAX_PAGES)
@@ -210,6 +224,7 @@ export function CreateSourceSetup({
   const resetPreview = () => {
     stopPreview('idle')
     setPreviewPages([])
+    setSelectedPageIds(new Set())
   }
   const updateDraft = (nextDraft: NewKnowledgeSourceDraft) => {
     onDraftChange(nextDraft)
@@ -239,6 +254,7 @@ export function CreateSourceSetup({
     crawlAttemptRef.current = attempt
     globalThis.clearTimeout(pollTimerRef.current)
     setPreviewPages([])
+    setSelectedPageIds(new Set())
     setCrawlState('running')
     try {
       const created = (await createFirecrawlTask({
@@ -540,24 +556,14 @@ export function CreateSourceSetup({
               </p>
             )}
             {crawlState === 'success' && (
-              <p role="status" className="mb-3 system-xs-medium text-text-primary">
-                {t(($) => $['newKnowledge.pagesCrawled'], {
-                  count: previewPages.length,
-                  host: new URL(draft.rootUrl).host,
-                })}
-              </p>
-            )}
-            {crawlState !== 'idle' && previewPages.length > 0 && (
-              <ul className="mt-3 max-h-52 space-y-2 overflow-y-auto">
-                {previewPages.map((page) => (
-                  <li key={page.source_url} className="rounded-lg bg-background-section px-3 py-2">
-                    <p className="truncate system-xs-medium text-text-primary">{page.title}</p>
-                    <p className="truncate system-2xs-regular text-text-tertiary">
-                      {page.source_url}
-                    </p>
-                  </li>
-                ))}
-              </ul>
+              <CrawlPreviewPageSelection
+                disabled={disabled}
+                onRecrawl={() => void startPreview()}
+                onSelectionChange={setSelectedPageIds}
+                pages={selectionPages}
+                rootUrl={previewRootUrl}
+                selectedPageIds={selectedPageIds}
+              />
             )}
           </section>
         </div>

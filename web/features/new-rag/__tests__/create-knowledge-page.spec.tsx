@@ -608,6 +608,9 @@ describe('CreateKnowledgePage', () => {
     expect(await screen.findByText('Getting started')).toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(screen.getByText(/^dataset\.newKnowledge\.pagesCrawled/)).toBeInTheDocument()
+    expect(screen.getByText(/^dataset\.newKnowledge\.pagesSelected/)).toBeInTheDocument()
+    await user.click(screen.getByRole('checkbox', { name: 'Getting started' }))
+    expect(screen.getByText(/^dataset\.newKnowledge\.pagesSelected/)).toHaveTextContent('1')
     const onlineDocuments = screen.getByRole('radio', {
       name: 'dataset.newKnowledge.onlineDocuments',
     })
@@ -749,6 +752,9 @@ describe('CreateKnowledgePage', () => {
       url: 'https://docs.dify.ai',
     })
     expect(await screen.findByText('Getting started')).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'dataset.newKnowledge.selectAll' })).toBeEnabled()
+    expect(screen.getByRole('checkbox', { name: 'Getting started' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.reCrawl' })).toBeEnabled()
   })
 
   it('falls back to direct navigation when releasing the history guard does not emit popstate', async () => {
