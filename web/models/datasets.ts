@@ -251,6 +251,9 @@ export type IndexingStatusResponse = {
   completed_at: any
   paused_at: any
   error: any
+  error_code?: 'vector_space_estimate_exceeded' | null
+  estimated_vector_space_mb?: number | null
+  vector_space_limit_mb?: number | null
   stopped_at: any
   completed_segments: number
   total_segments: number

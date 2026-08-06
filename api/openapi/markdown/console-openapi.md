@@ -6899,7 +6899,7 @@ Check if dataset is in use
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [LimitationModel](#limitationmodel)<br> |
+| 200 | Success | **application/json**: [VectorSpaceLimitationModel](#vectorspacelimitationmodel)<br> |
 
 ### [GET] /files/support-type
 #### Responses
@@ -23024,6 +23024,7 @@ Payload for updating a snippet.
 | file_upload_limit | integer |  | Yes |
 | image_file_batch_limit | integer |  | Yes |
 | image_file_size_limit | integer |  | Yes |
+| knowledge_file_size_limit | integer |  | Yes |
 | single_chunk_attachment_limit | integer |  | Yes |
 | skill_file_size_limit | integer |  | Yes |
 | video_file_size_limit | integer |  | Yes |
@@ -23092,6 +23093,14 @@ in form definition, or a variable while the workflow is running.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ValueSourceType | string | ValueSourceType records whether the value comes from a static setting in form definition, or a variable while the workflow is running. |  |
+
+#### VectorSpaceLimitationModel
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limit | integer |  | Yes |
+| size | integer |  | Yes |
+| usage_unknown | boolean |  | No |
 
 #### VerificationTokenResponse
 

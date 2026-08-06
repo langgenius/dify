@@ -71,6 +71,7 @@ from models.dataset import Dataset, DatasetProcessRule, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from models.enums import SegmentStatus
 from models.model import Account
+from services.vector_space_admission_service import VectorSpaceAdmissionError
 
 # ============================================================================
 # Helper Functions
@@ -1078,6 +1079,65 @@ class TestIndexingRunnerRun:
             token_counts=[11, 22],
         )
         assert load.call_args.kwargs["total_tokens"] == 33
+        set_tenant_id.assert_called_once_with(
+            current_user,
+            dataset.tenant_id,
+            session=mock_dependencies["session"],
+        )
+
+    @patch.object(Account, "set_tenant_id_with_session", autospec=True)
+    def test_run_rejects_before_segment_or_vector_writes(
+        self, set_tenant_id, mock_dependencies, sample_dataset_documents
+    ):
+        runner = IndexingRunner(enforce_vector_space_admission=True)
+        dataset_document = sample_dataset_documents[0]
+        dataset_document.need_summary = False
+        dataset = Dataset(
+            id=dataset_document.dataset_id,
+            tenant_id=dataset_document.tenant_id,
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+        )
+        current_user = Account(name="Test Account", email="test@example.com")
+        model_dispatch = {
+            DatasetDocument: dataset_document,
+            Dataset: dataset,
+            Account: current_user,
+        }
+        mock_dependencies["session"].get.side_effect = lambda model, _: model_dispatch.get(model)
+        process_rule = DatasetProcessRule(
+            dataset_id="dataset-id", mode="automatic", rules="{}", created_by="account-id"
+        )
+        mock_dependencies["session"].scalar.return_value = process_rule
+        transformed_documents = [Document(page_content="Chunk", metadata={"doc_id": "c1", "doc_hash": "h1"})]
+        admission_error = VectorSpaceAdmissionError("estimated storage exceeds capacity")
+        admission_service = Mock()
+        admission_service.ensure_document_can_be_indexed.side_effect = admission_error
+
+        with (
+            patch("core.indexing_runner.VectorSpaceAdmissionService", return_value=admission_service),
+            patch.object(runner, "_extract", return_value=[Document(page_content="source", metadata={})]),
+            patch.object(
+                runner,
+                "_transform",
+                return_value=transformed_documents,
+            ),
+            patch.object(runner, "_load_segments") as load_segments,
+            patch.object(runner, "_load") as load,
+            patch.object(runner, "_handle_indexing_error") as handle_error,
+        ):
+            runner.run([dataset_document], mock_dependencies["session"])
+
+        load_segments.assert_not_called()
+        load.assert_not_called()
+        admission_service.ensure_document_can_be_indexed.assert_called_once_with(
+            dataset=dataset,
+            document_id=dataset_document.id,
+            doc_form=dataset_document.doc_form,
+            documents=transformed_documents,
+            include_summaries=False,
+            session=mock_dependencies["session"],
+        )
+        handle_error.assert_called_once_with(dataset_document.id, admission_error, mock_dependencies["session"])
         set_tenant_id.assert_called_once_with(
             current_user,
             dataset.tenant_id,
