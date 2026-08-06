@@ -219,6 +219,11 @@ async function deletePublicationReferences(
 ): Promise<void> {
   for (const [table, column] of [
     ["knowledge_space_profile_publication_bindings", "publication_id"],
+    // Profile migration runs freeze both ends of a publication transition. Remove either form of
+    // reference before deleting immutable historical publications; otherwise their RESTRICT FKs
+    // strand the enclosing durable-deletion job in deleting_derived_data.
+    ["knowledge_space_profile_migration_runs", "base_publication_id"],
+    ["knowledge_space_profile_migration_runs", "candidate_publication_id"],
     ["document_compilation_attempts", "candidate_publication_id"],
     ["legacy_space_publication_bootstraps", "published_publication_id"],
     ["page_index_upgrade_backfills", "publication_id"],

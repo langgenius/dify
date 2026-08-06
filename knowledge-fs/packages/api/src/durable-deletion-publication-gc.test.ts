@@ -55,12 +55,22 @@ describe("historical publication durable-deletion GC", () => {
         calls.filter((call) => call.operation === "delete").map((call) => call.tableName),
       ).toEqual([
         "knowledge_space_profile_publication_bindings",
+        "knowledge_space_profile_migration_runs",
+        "knowledge_space_profile_migration_runs",
         "document_compilation_attempts",
         "legacy_space_publication_bootstraps",
         "page_index_upgrade_backfills",
         "projection_set_publication_members",
         "projection_set_publications",
       ]);
+      const migrationRunDeletes = calls.filter(
+        (call) =>
+          call.operation === "delete" &&
+          call.tableName === "knowledge_space_profile_migration_runs",
+      );
+      expect(migrationRunDeletes).toHaveLength(2);
+      expect(migrationRunDeletes[0]?.sql).toContain("base_publication_id");
+      expect(migrationRunDeletes[1]?.sql).toContain("candidate_publication_id");
       const parentDelete = calls.at(-1);
       expect(parentDelete?.tableName).toBe("projection_set_publications");
       expect(parentDelete?.sql).toContain("projection_set_publication_heads");
