@@ -500,7 +500,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
       {activeTab === 'golden' &&
         (goldenQuestions.length ? (
           <div className="mt-3 w-full overflow-x-auto">
-            <div className="grid h-8 min-w-195 grid-cols-[16px_minmax(180px,2fr)_90px_minmax(120px,1fr)_minmax(160px,1.5fr)_minmax(100px,0.75fr)_32px] items-center gap-3 system-2xs-medium-uppercase text-text-tertiary">
+            <div className="grid h-8 min-w-195 grid-cols-[16px_minmax(180px,2fr)_90px_minmax(120px,1fr)_minmax(160px,1.5fr)_minmax(100px,0.75fr)_32px] items-center gap-3 text-[11px] leading-4 font-medium text-text-tertiary">
               <Checkbox
                 aria-label={t(($) => $['newKnowledge.qualityPage.selectAll'])}
                 checked={allSelected}
@@ -656,7 +656,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
       {activeTab === 'bad' &&
         (badCases.length ? (
           <div className="mt-3 w-full overflow-x-auto">
-            <div className="grid h-8 min-w-202 grid-cols-[minmax(240px,624px)_140px_180px_120px_80px] items-center gap-3 system-2xs-medium-uppercase text-text-tertiary">
+            <div className="grid h-8 min-w-202 grid-cols-[minmax(240px,624px)_140px_180px_120px_80px] items-center gap-3 text-[11px] leading-4 font-medium text-text-tertiary">
               <span>{t(($) => $['newKnowledge.qualityPage.question'])}</span>
               <span>{t(($) => $['newKnowledge.qualityPage.statusLabel'])}</span>
               <span>{t(($) => $['newKnowledge.qualityPage.reason'])}</span>
