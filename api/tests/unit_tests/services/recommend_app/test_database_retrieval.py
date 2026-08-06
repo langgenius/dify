@@ -1,10 +1,13 @@
 """Unit tests for database recommendation retrieval delegation."""
 
-from unittest.mock import patch
+import uuid
+from unittest.mock import MagicMock, patch
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
+from models import model as model_module
+from models.model import App, AppMode, RecommendedApp, Site
 from services.recommend_app.database.database_retrieval import DatabaseRecommendAppRetrieval
 from services.recommend_app.recommend_app_type import RecommendAppType
 
@@ -40,3 +43,50 @@ class TestDatabaseRecommendAppRetrieval:
 
         mock_fetch.assert_called_once_with("app-1", session=session)
         assert result == {"id": "app-1"}
+
+    def test_fetch_recommended_apps_uses_only_injected_session(self, sqlite_session: Session) -> None:
+        app = App(
+            id=str(uuid.uuid4()),
+            tenant_id=str(uuid.uuid4()),
+            name="Recommended App",
+            description="description",
+            mode=AppMode.CHAT,
+            icon_type=None,
+            icon=None,
+            icon_background=None,
+            enable_site=True,
+            enable_api=True,
+            is_public=True,
+            max_active_requests=None,
+        )
+        site = Site(
+            app_id=app.id,
+            title="Recommended App",
+            description="site description",
+            default_language="en-US",
+            customize_token_strategy="uuid",
+        )
+        recommended = RecommendedApp(
+            app_id=app.id,
+            description={},
+            copyright="copyright",
+            privacy_policy="privacy",
+            category="Workflow",
+            categories=["Workflow"],
+            language="en-US",
+        )
+        sqlite_session.add_all([app, site, recommended])
+        sqlite_session.commit()
+        global_session = MagicMock()
+        global_session.scalar.side_effect = AssertionError("database retrieval must use the injected session")
+
+        with patch.object(model_module.db, "session", global_session):
+            result = DatabaseRecommendAppRetrieval.fetch_recommended_apps_from_db(
+                "en-US",
+                session=sqlite_session,
+            )
+
+        assert result["recommended_apps"][0]["app"] is app
+        assert result["recommended_apps"][0]["description"] == "site description"
+        assert result["categories"] == ["Workflow"]
+        global_session.scalar.assert_not_called()

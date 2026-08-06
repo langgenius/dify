@@ -5,16 +5,14 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, RootModel, computed_field, field_validator
 
-from constants.languages import languages
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, with_current_user
-from extensions.ext_database import db
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.helper import build_icon_url, dump_response
 from libs.login import login_required
 from models import Account
-from services.recommended_app_service import RecommendedAppService
 
 
 class RecommendedAppsQuery(BaseModel):
@@ -99,14 +97,6 @@ register_response_schema_models(
 )
 
 
-def _resolve_language(language: str | None, user: Account) -> str:
-    if language and language in languages:
-        return language
-    if user.interface_language:
-        return user.interface_language
-    return languages[0]
-
-
 @console_ns.route("/explore/apps")
 class RecommendedAppListApi(Resource):
     @console_ns.doc(params=query_params_from_model(RecommendedAppsQuery))
@@ -115,13 +105,13 @@ class RecommendedAppListApi(Resource):
     @account_initialization_required
     @with_current_user
     def get(self, current_user: Account):
-        # language args
         args = RecommendedAppsQuery.model_validate(request.args.to_dict(flat=True))
-        language_prefix = _resolve_language(args.language, current_user)
-
         return dump_response(
             RecommendedAppListResponse,
-            RecommendedAppService.get_recommended_apps_and_categories(language_prefix, session=db.session()),
+            application_services().recommended_app_queries.list_recommended(
+                requested_language=args.language,
+                interface_language=current_user.interface_language,
+            ),
         )
 
 
@@ -134,11 +124,12 @@ class LearnDifyAppListApi(Resource):
     @with_current_user
     def get(self, current_user: Account):
         args = RecommendedAppsQuery.model_validate(request.args.to_dict(flat=True))
-        language_prefix = _resolve_language(args.language, current_user)
-
         return dump_response(
             LearnDifyAppListResponse,
-            RecommendedAppService.get_learn_dify_apps(language_prefix, session=db.session()),
+            application_services().recommended_app_queries.list_learn_dify(
+                requested_language=args.language,
+                interface_language=current_user.interface_language,
+            ),
         )
 
 
@@ -148,5 +139,5 @@ class RecommendedAppApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_id: UUID):
-        result = RecommendedAppService.get_recommend_app_detail(str(app_id), session=db.session())
+        result = application_services().recommended_app_queries.get_detail(str(app_id))
         return RecommendedAppDetailNullableResponse.model_validate(result).model_dump(mode="json")
