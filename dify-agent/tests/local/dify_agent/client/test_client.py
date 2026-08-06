@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from collections.abc import Iterator
+from collections.abc import AsyncIterator, Iterator
 from datetime import UTC, datetime
 from typing import cast, override
 
@@ -122,6 +122,19 @@ class DisconnectingSyncStream(httpx.SyncByteStream):
     @override
     def __iter__(self) -> Iterator[bytes]:
         yield from self.chunks
+        raise httpx.ReadError("stream disconnected")
+
+
+class DisconnectingAsyncStream(httpx.AsyncByteStream):
+    chunks: list[bytes]
+
+    def __init__(self, *chunks: str) -> None:
+        self.chunks = [chunk.encode() for chunk in chunks]
+
+    @override
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        for chunk in self.chunks:
+            yield chunk
         raise httpx.ReadError("stream disconnected")
 
 
@@ -624,6 +637,44 @@ def test_stream_events_stops_after_cancelled_terminal_event() -> None:
     assert calls == 1
 
 
+def test_stream_events_does_not_reconnect_after_terminal_when_until_terminal_is_false() -> None:
+    calls = 0
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(200, content=_event_frame(_run_succeeded_event()))
+
+    client = Client(
+        base_url="http://testserver",
+        sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    events = list(client.stream_events_sync("run-1", until_terminal=False, reconnect_delay_seconds=0))
+
+    assert [event.type for event in events] == ["run_succeeded"]
+    assert calls == 1
+
+
+def test_stream_events_does_not_reconnect_after_terminal_transport_error() -> None:
+    calls = 0
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(200, stream=DisconnectingSyncStream(_event_frame(_run_succeeded_event())))
+
+    client = Client(
+        base_url="http://testserver",
+        sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    events = list(client.stream_events_sync("run-1", until_terminal=False, reconnect_delay_seconds=0))
+
+    assert [event.type for event in events] == ["run_succeeded"]
+    assert calls == 1
+
+
 def test_stream_events_reconnects_from_latest_event_id() -> None:
     seen_after: list[str] = []
 
@@ -773,6 +824,101 @@ def test_async_stream_events_yields_terminal_event() -> None:
         events = [event async for event in client.stream_events("run-1")]
 
         assert [event.type for event in events] == ["run_succeeded"]
+        await http_client.aclose()
+
+    asyncio.run(scenario())
+
+
+def test_async_stream_events_does_not_reconnect_after_terminal_when_until_terminal_is_false() -> None:
+    calls = 0
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(200, content=_event_frame(_run_succeeded_event()))
+
+    async def scenario() -> None:
+        http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        client = Client(base_url="http://testserver", async_http_client=http_client)
+
+        events = [event async for event in client.stream_events("run-1", until_terminal=False)]
+
+        assert [event.type for event in events] == ["run_succeeded"]
+        assert calls == 1
+        await http_client.aclose()
+
+    asyncio.run(scenario())
+
+
+def test_async_stream_events_does_not_reconnect_after_terminal_transport_error() -> None:
+    calls = 0
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(200, stream=DisconnectingAsyncStream(_event_frame(_run_succeeded_event())))
+
+    async def scenario() -> None:
+        http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        client = Client(base_url="http://testserver", async_http_client=http_client)
+
+        events = [event async for event in client.stream_events("run-1", until_terminal=False)]
+
+        assert [event.type for event in events] == ["run_succeeded"]
+        assert calls == 1
+        await http_client.aclose()
+
+    asyncio.run(scenario())
+
+
+def test_async_stream_events_reconnects_from_latest_event_after_transport_error() -> None:
+    seen_after: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen_after.append(request.url.params["after"])
+        if len(seen_after) == 1:
+            return httpx.Response(
+                200,
+                stream=DisconnectingAsyncStream(_event_frame(RunStartedEvent(id="1-0", run_id="run-1"))),
+            )
+        return httpx.Response(200, content=_event_frame(_run_succeeded_event()))
+
+    async def scenario() -> None:
+        http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        client = Client(base_url="http://testserver", async_http_client=http_client)
+
+        events = [event async for event in client.stream_events("run-1", reconnect_delay_seconds=0)]
+
+        assert seen_after == ["0-0", "1-0"]
+        assert [event.type for event in events] == ["run_started", "run_succeeded"]
+        await http_client.aclose()
+
+    asyncio.run(scenario())
+
+
+def test_async_stream_events_reconnects_after_eof_before_terminal() -> None:
+    calls = 0
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(200, content="")
+
+    async def scenario() -> None:
+        http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        client = Client(base_url="http://testserver", async_http_client=http_client)
+
+        with pytest.raises(DifyAgentStreamError, match="reconnect attempts exhausted"):
+            _ = [
+                event
+                async for event in client.stream_events(
+                    "run-1",
+                    max_reconnects=1,
+                    reconnect_delay_seconds=0,
+                )
+            ]
+
+        assert calls == 2
         await http_client.aclose()
 
     asyncio.run(scenario())
