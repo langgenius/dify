@@ -456,7 +456,7 @@ describe('AppCard', () => {
 
       const card = screen.getByRole('button', { name: 'Preview Only App' })
       expect(card).toHaveClass('opacity-60')
-      expect(card).toHaveAttribute('aria-disabled', 'true')
+      expect(card).not.toHaveAttribute('aria-disabled')
       expect(screen.getByText('Only visible metadata')).toBeInTheDocument()
       expect(screen.getByText('Readonly Author')).toBeInTheDocument()
       const tagSelector = screen.getByLabelText('tag-selector')
@@ -495,7 +495,7 @@ describe('AppCard', () => {
 
       const card = screen.getByRole('button', { name: 'Preview Only Starred App' })
       expect(card).toHaveClass('opacity-60')
-      expect(card).toHaveAttribute('aria-disabled', 'true')
+      expect(card).not.toHaveAttribute('aria-disabled')
       expect(screen.getByText('Readonly Author')).toBeInTheDocument()
       expect(
         screen.queryByRole('link', { name: 'Preview Only Starred App' }),
