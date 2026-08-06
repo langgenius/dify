@@ -161,6 +161,34 @@ describe('retrieval test model', () => {
     )
   })
 
+  it('maps an unsuccessful historical trace to a failed retrieval record', () => {
+    const [record] = retrievalTestRecords(
+      [
+        {
+          completed: false,
+          created_at: '2026-07-28T10:00:00.000Z',
+          duration_ms: 30_000,
+          id: 'trace-failed',
+          mode: 'fast',
+          profile: {},
+          query: 'Why did retrieval fail?',
+          result_count: 0,
+          scores: {},
+          stages: [{ name: 'query.generate', status: 'error' }],
+        },
+      ],
+      [],
+    )
+
+    expect(record).toEqual(
+      expect.objectContaining({
+        durationMs: 30_000,
+        id: 'trace-failed',
+        status: 'failed',
+      }),
+    )
+  })
+
   it('formats research durations in seconds and minutes', () => {
     expect(formatDuration(12_000)).toBe('12s')
     expect(formatDuration(303_000)).toBe('5min 3s')

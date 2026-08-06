@@ -647,7 +647,7 @@ describe('RetrievalTestPage', () => {
 
     renderPage({ searchParams: '?research=research-completed' })
 
-    expect(screen.getByText('What is the warranty?').closest('button')).toHaveAttribute(
+    expect(screen.getByRole('button', { name: /What is the warranty\?/ })).toHaveAttribute(
       'aria-pressed',
       'true',
     )
@@ -965,6 +965,46 @@ describe('RetrievalTestPage', () => {
     )
     expect(screen.getAllByText('Why did this fail?')).toHaveLength(2)
     expect(screen.getByText('provider timed out')).toBeInTheDocument()
+  })
+
+  it('restores a historical failed trace with its query and retry action', async () => {
+    apiMock.traces = [
+      {
+        completed: false,
+        created_at: '2026-07-29T00:00:00.000Z',
+        duration_ms: 30_000,
+        id: 'trace-failed',
+        mode: 'fast',
+        profile: {},
+        query: 'Why did historical retrieval fail?',
+        result_count: 0,
+        scores: {},
+        stages: [{ name: 'query.generate', status: 'error' }],
+      },
+    ]
+    const user = userEvent.setup()
+    renderPage({ searchParams: '?trace=trace-failed' })
+
+    expect(
+      await screen.findByDisplayValue('Why did historical retrieval fail?'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('dataset.newKnowledge.retrievalTest.failedAfter:{"duration":"30s"}'),
+    ).toBeInTheDocument()
+    const alert = screen.getByRole('alert')
+    expect(alert).toHaveTextContent('dataset.newKnowledge.retrievalTest.failedTitle')
+    expect(alert).toHaveTextContent('dataset.newKnowledge.retrievalTest.failedDescription')
+
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.retrievalTest.retry' }),
+    )
+
+    expect(apiMock.queryAdmission).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: { mode: 'fast', query: 'Why did historical retrieval fail?' },
+      }),
+    )
+    expect(apiMock.streamQuery).toHaveBeenCalledOnce()
   })
 
   it('keeps a completed trace selected with its persisted chunk and duration summary', async () => {

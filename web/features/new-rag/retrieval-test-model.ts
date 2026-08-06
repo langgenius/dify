@@ -36,7 +36,7 @@ export type RetrievalTestRecord =
       mode: RetrievalTestMode
       query: string
       resultCount?: number
-      status: 'completed' | 'running'
+      status: 'completed' | 'failed'
     }
   | {
       createdAt: number
@@ -321,7 +321,7 @@ export function retrievalTestRecords(
           ...(trace.result_count !== null && trace.result_count !== undefined
             ? { resultCount: trace.result_count }
             : {}),
-          status: trace.completed ? 'completed' : 'running',
+          status: trace.completed ? 'completed' : 'failed',
         }),
       ),
     ...researchTasks.map(
