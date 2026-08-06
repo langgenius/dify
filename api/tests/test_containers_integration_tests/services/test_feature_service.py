@@ -12,6 +12,7 @@ from services.feature_service import (
     KnowledgeRateLimitModel,
     LicenseModel,
     LicenseStatus,
+    SSOProtocol,
     SystemFeatureModel,
 )
 
@@ -301,7 +302,7 @@ class TestFeatureService:
 
         # Verify SSO configuration
         assert result.sso_enforced_for_signin is True
-        assert result.sso_enforced_for_signin_protocol == "saml"
+        assert result.sso_enforced_for_signin_protocol is SSOProtocol.SAML
 
         # Verify authentication settings
         assert result.enable_email_code_login is True
@@ -383,7 +384,7 @@ class TestFeatureService:
 
         # SSO settings should be visible for login page rendering
         assert result.sso_enforced_for_signin is True
-        assert result.sso_enforced_for_signin_protocol == "saml"
+        assert result.sso_enforced_for_signin_protocol is SSOProtocol.SAML
 
         # General auth settings should be visible
         assert result.enable_email_code_login is True
@@ -900,7 +901,7 @@ class TestFeatureService:
         assert result.webapp_auth.allow_sso is False
         assert result.webapp_auth.allow_email_code_login is True
         assert result.webapp_auth.allow_email_password_login is False
-        assert result.webapp_auth.sso_config.protocol == ""
+        assert result.webapp_auth.sso_config.protocol is None
 
         # Verify enterprise features
         assert result.branding.enabled is True
@@ -909,7 +910,7 @@ class TestFeatureService:
 
         # Verify default values for missing enterprise info
         assert result.sso_enforced_for_signin is False
-        assert result.sso_enforced_for_signin_protocol == ""
+        assert result.sso_enforced_for_signin_protocol is None
         assert result.enable_email_code_login is False
         assert result.enable_email_password_login is True
         assert result.is_allow_register is False
@@ -1218,7 +1219,7 @@ class TestFeatureService:
 
         # Verify SSO configuration
         assert result.sso_enforced_for_signin is True
-        assert result.sso_enforced_for_signin_protocol == ""
+        assert result.sso_enforced_for_signin_protocol is None
 
         # Verify branding configuration (partial)
         assert result.branding.application_title == "Partial Enterprise"
@@ -1230,7 +1231,7 @@ class TestFeatureService:
         assert result.webapp_auth.allow_sso is False
         assert result.webapp_auth.allow_email_code_login is False
         assert result.webapp_auth.allow_email_password_login is False
-        assert result.webapp_auth.sso_config.protocol == ""
+        assert result.webapp_auth.sso_config.protocol is None
 
         # Verify default license status
         assert result.license.status == "none"
@@ -1342,8 +1343,8 @@ class TestFeatureService:
         assert isinstance(result, SystemFeatureModel)
 
         # Verify edge case protocols
-        assert result.sso_enforced_for_signin_protocol == ""
-        assert result.webapp_auth.sso_config.protocol == "   "
+        assert result.sso_enforced_for_signin_protocol is None
+        assert result.webapp_auth.sso_config.protocol is None
 
         # Verify webapp auth configuration
         assert result.webapp_auth.allow_sso is True
@@ -1657,7 +1658,7 @@ class TestFeatureService:
 
         # Verify default values for missing enterprise info
         assert result.sso_enforced_for_signin is False
-        assert result.sso_enforced_for_signin_protocol == ""
+        assert result.sso_enforced_for_signin_protocol is None
         assert result.enable_email_code_login is False
         assert result.enable_email_password_login is True
         assert result.is_allow_register is False
@@ -1835,7 +1836,7 @@ class TestFeatureService:
 
         # Verify default values for missing enterprise info
         assert result.sso_enforced_for_signin is False
-        assert result.sso_enforced_for_signin_protocol == ""
+        assert result.sso_enforced_for_signin_protocol is None
         assert result.enable_email_code_login is False
         assert result.enable_email_password_login is True
         assert result.is_allow_register is False

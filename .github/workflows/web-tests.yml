@@ -9,10 +9,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: web-tests-${{ github.head_ref || github.run_id }}
-  cancel-in-progress: true
-
 jobs:
   test:
     name: Web Tests (${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
@@ -91,6 +87,7 @@ jobs:
   dify-ui-test:
     name: dify-ui Tests
     runs-on: depot-ubuntu-24.04-4
+    timeout-minutes: 20
     env:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     defaults:
@@ -104,11 +101,17 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Switch Ubuntu mirror
+        run: |
+          sudo sed -i 's|http://us-east-1.ec2.archive.ubuntu.com/ubuntu|http://azure.archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources
+          sudo apt-get update
+
       - name: Setup web environment
         uses: ./.github/actions/setup-web
 
       - name: Install Chromium for Browser Mode
-        run: vp exec playwright install --with-deps chromium
+        timeout-minutes: 15
+        run: vp exec playwright install --with-deps --only-shell chromium
 
       - name: Run dify-ui tests
         run: vp test run --project unit --coverage --silent=passed-only
@@ -125,6 +128,7 @@ jobs:
   dify-ui-storybook-test:
     name: dify-ui Storybook Tests
     runs-on: depot-ubuntu-24.04-4
+    timeout-minutes: 20
     defaults:
       run:
         shell: bash
@@ -136,11 +140,17 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Switch Ubuntu mirror
+        run: |
+          sudo sed -i 's|http://us-east-1.ec2.archive.ubuntu.com/ubuntu|http://azure.archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources
+          sudo apt-get update
+
       - name: Setup web environment
         uses: ./.github/actions/setup-web
 
       - name: Install Chromium for Browser Mode
-        run: vp exec playwright install --with-deps chromium
+        timeout-minutes: 15
+        run: vp exec playwright install --with-deps --only-shell chromium
 
       - name: Run dify-ui Storybook tests
         run: vp run test:storybook

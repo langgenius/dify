@@ -433,6 +433,8 @@ export type RetrieverResource = {
   word_count?: number | null
 }
 
+export type SsoProtocol = 'oauth2' | 'oidc' | 'saml'
+
 export type SavedMessageCreatePayload = {
   message_id: string
 }
@@ -529,7 +531,7 @@ export type SystemFeatureModel = {
   plugin_installation_permission: PluginInstallationPermissionModel
   rbac_enabled: boolean
   sso_enforced_for_signin: boolean
-  sso_enforced_for_signin_protocol: string
+  sso_enforced_for_signin_protocol: SsoProtocol | null
   webapp_auth: WebAppAuthModel
 }
 
@@ -572,7 +574,7 @@ export type WebAppAuthModel = {
 }
 
 export type WebAppAuthSsoModel = {
-  protocol: string
+  protocol: SsoProtocol | null
 }
 
 export type WebAppCustomConfigResponse = {

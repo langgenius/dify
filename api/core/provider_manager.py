@@ -759,7 +759,11 @@ class ProviderManager:
             has_valid_quota = any(quota_conf.is_valid for quota_conf in system_configuration.quota_configurations)
 
             if preferred_provider_type == ProviderType.SYSTEM:
-                if not system_configuration.enabled or not has_valid_quota:
+                if not system_configuration.enabled or not system_configuration.quota_configurations:
+                    using_provider_type = ProviderType.CUSTOM
+                elif not has_valid_quota and (custom_configuration.provider or custom_configuration.models):
+                    # Only configured alternatives can serve as fallbacks; otherwise downstream checks must surface
+                    # system quota exhaustion instead of reporting missing custom credentials.
                     using_provider_type = ProviderType.CUSTOM
 
             else:
@@ -1557,16 +1561,17 @@ class ProviderManager:
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             from services.credit_pool_service import CreditPoolService
 
-            trail_pool = CreditPoolService.get_pool(
-                tenant_id=tenant_id,
-                pool_type=ProviderQuotaType.TRIAL,
-                session=db.session(),
-            )
-            paid_pool = CreditPoolService.get_pool(
-                tenant_id=tenant_id,
-                pool_type=ProviderQuotaType.PAID,
-                session=db.session(),
-            )
+            with session_factory.create_session() as session:
+                trail_pool = CreditPoolService.get_pool(
+                    tenant_id=tenant_id,
+                    pool_type=ProviderQuotaType.TRIAL,
+                    session=session,
+                )
+                paid_pool = CreditPoolService.get_pool(
+                    tenant_id=tenant_id,
+                    pool_type=ProviderQuotaType.PAID,
+                    session=session,
+                )
         else:
             trail_pool = None
             paid_pool = None

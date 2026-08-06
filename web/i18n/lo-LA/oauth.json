@@ -1,0 +1,19 @@
+{
+  "connect": "ເຊື່ອມຕໍ່ກັບ",
+  "continue": "ດຳເນີນການຕໍ່",
+  "error.authAppInfoFetchFailed": "ບໍ່ສາມາດດຶງຂໍ້ມູນແອັບຯເພື່ອການອະນຸມັດໄດ້",
+  "error.authorizeFailed": "ການອະນຸມັດລົ້ມເຫຼວ",
+  "error.invalidParams": "ພາຣາມິເຕີບໍ່ຖືກຕ້ອງ",
+  "login": "ເຂົ້າສູ່ລະບົບ",
+  "scopes.avatar": "ຮູບແທນຕົວ",
+  "scopes.email": "ອີເມວ",
+  "scopes.languagePreference": "ພາສາທີ່ຕ້ອງການ",
+  "scopes.name": "ຊື່",
+  "scopes.timezone": "ເຂດເວລາ",
+  "switchAccount": "ປ່ຽນບັນຊີ",
+  "tips.common": "ພວກເຮົາເຄົາລົບຄວາມເປັນສ່ວນຕົວຂອງທ່ານ ແລະ ຈະໃຊ້ຂໍ້ມູນນີ້ເພື່ອປັບປຸງປະສົບການຂອງທ່ານກັບເຄື່ອງມືນັກພັດທະນາຂອງພວກເຮົາເທົ່ານັ້ນ.",
+  "tips.loggedIn": "ແອັບຯນີ້ຕ້ອງການເຂົ້າເຖິງຂໍ້ມູນຕໍ່ໄປນີ້ຈາກບັນຊີ Dify Cloud ຂອງທ່ານ.",
+  "tips.needLogin": "ກະລຸນາເຂົ້າສູ່ລະບົບເພື່ອອະນຸມັດ",
+  "tips.notLoggedIn": "ແອັບຯນີ້ຕ້ອງການເຂົ້າເຖິງບັນຊີ Dify Cloud ຂອງທ່ານ",
+  "unknownApp": "ບໍ່ຮູ້ຈັກແອັບຯ"
+}

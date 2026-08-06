@@ -292,7 +292,7 @@ func (x *FileMapping) GetUrl() string {
 type FileDownloadRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	File          *FileMapping           `protobuf:"bytes,1,opt,name=file,proto3" json:"file,omitempty"`
-	ForExternal   *bool                  `protobuf:"varint,2,opt,name=for_external,json=forExternal,proto3,oneof" json:"for_external,omitempty"`
+	ForFrontend   *bool                  `protobuf:"varint,2,opt,name=for_frontend,json=forFrontend,proto3,oneof" json:"for_frontend,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -334,9 +334,9 @@ func (x *FileDownloadRequest) GetFile() *FileMapping {
 	return nil
 }
 
-func (x *FileDownloadRequest) GetForExternal() bool {
-	if x != nil && x.ForExternal != nil {
-		return *x.ForExternal
+func (x *FileDownloadRequest) GetForFrontend() bool {
+	if x != nil && x.ForFrontend != nil {
+		return *x.ForFrontend
 	}
 	return false
 }
@@ -436,8 +436,8 @@ const file_dify_agent_stub_v1_agent_stub_proto_rawDesc = "" +
 	"\x04_url\"\x83\x01\n" +
 	"\x13FileDownloadRequest\x123\n" +
 	"\x04file\x18\x01 \x01(\v2\x1f.dify.agent.stub.v1.FileMappingR\x04file\x12&\n" +
-	"\ffor_external\x18\x02 \x01(\bH\x00R\vforExternal\x88\x01\x01B\x0f\n" +
-	"\r_for_external\"\x99\x01\n" +
+	"\ffor_frontend\x18\x02 \x01(\bH\x00R\vforFrontend\x88\x01\x01B\x0f\n" +
+	"\r_for_frontend\"\x99\x01\n" +
 	"\x14FileDownloadResponse\x12\x1a\n" +
 	"\bfilename\x18\x01 \x01(\tR\bfilename\x12 \n" +
 	"\tmime_type\x18\x02 \x01(\tH\x00R\bmimeType\x88\x01\x01\x12\x12\n" +

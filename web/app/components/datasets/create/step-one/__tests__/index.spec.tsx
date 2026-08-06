@@ -14,11 +14,12 @@ let mockPlan = {
   total: { vectorSpace: 100, buildApps: 0, documentsUploadQuota: 0, vectorStorageQuota: 0 },
 }
 
-const render = (ui: React.ReactElement) => {
+const render = (ui: React.ReactElement, vectorSpaceUsageUnknown = false) => {
   const queryClient = createConsoleQueryClient()
   queryClient.setQueryData(consoleQuery.features.vectorSpace.get.queryOptions().queryKey, {
     size: mockPlan.usage.vectorSpace,
     limit: mockPlan.total.vectorSpace,
+    usage_unknown: vectorSpaceUsageUnknown,
   })
   return renderWithConsoleQuery(ui, {
     systemFeatures: { deployment_edition: 'CLOUD' },
@@ -425,12 +426,11 @@ describe('StepOne', () => {
       expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
 
-    it('should show upgrade card when in sandbox plan with files', () => {
+    it('should show upgrade card immediately when in sandbox plan', () => {
       mockEnableBilling = true
       mockPlan.type = Plan.sandbox
-      const files = [createMockFileItem()]
 
-      render(<StepOne {...defaultProps} files={files} />)
+      render(<StepOne {...defaultProps} files={[]} />)
 
       expect(screen.getByTestId('upgrade-card')).toBeInTheDocument()
     })
@@ -458,6 +458,32 @@ describe('StepOne', () => {
       render(<StepOne {...defaultProps} files={files} />)
 
       expect(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i })).toBeDisabled()
+    })
+
+    it('should require sandbox users to retry when vector space usage is unknown', () => {
+      mockEnableBilling = true
+      mockPlan.type = Plan.sandbox
+      mockPlan.usage.vectorSpace = 100
+      mockPlan.total.vectorSpace = 100
+      const files = [createMockFileItem()]
+
+      render(<StepOne {...defaultProps} files={files} />, true)
+
+      expect(screen.queryByTestId('vector-space-full')).not.toBeInTheDocument()
+      expect(screen.getByRole('alert')).toHaveTextContent('billing.plansCommon.unavailable')
+      expect(screen.getByRole('button', { name: 'common.operation.retry' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i })).toBeDisabled()
+    })
+
+    it('should allow paid users to continue when vector space usage is unknown', () => {
+      mockEnableBilling = true
+      mockPlan.type = Plan.professional
+      const files = [createMockFileItem()]
+
+      render(<StepOne {...defaultProps} files={files} />, true)
+
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i })).toBeEnabled()
     })
   })
 

@@ -114,7 +114,7 @@ class AgentStubWorkspaceFileUploader:
             mapping = AgentStubFileMapping(transfer_method="tool_file", reference=payload.reference)
             download_request = await self.file_request_handler.create_download_request(
                 principal=principal,
-                request=AgentStubFileDownloadRequest(file=mapping, for_external=False),
+                request=AgentStubFileDownloadRequest(file=mapping, for_frontend=False),
             )
             return WorkspaceUploadedFile(
                 reference=payload.reference,

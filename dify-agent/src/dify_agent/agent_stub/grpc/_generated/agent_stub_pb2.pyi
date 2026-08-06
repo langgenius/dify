@@ -49,12 +49,12 @@ class FileMapping(_message.Message):
     def __init__(self, transfer_method: _Optional[str] = ..., reference: _Optional[str] = ..., url: _Optional[str] = ...) -> None: ...
 
 class FileDownloadRequest(_message.Message):
-    __slots__ = ("file", "for_external")
+    __slots__ = ("file", "for_frontend")
     FILE_FIELD_NUMBER: _ClassVar[int]
-    FOR_EXTERNAL_FIELD_NUMBER: _ClassVar[int]
+    FOR_FRONTEND_FIELD_NUMBER: _ClassVar[int]
     file: FileMapping
-    for_external: bool
-    def __init__(self, file: _Optional[_Union[FileMapping, _Mapping]] = ..., for_external: _Optional[bool] = ...) -> None: ...
+    for_frontend: bool
+    def __init__(self, file: _Optional[_Union[FileMapping, _Mapping]] = ..., for_frontend: _Optional[bool] = ...) -> None: ...
 
 class FileDownloadResponse(_message.Message):
     __slots__ = ("filename", "mime_type", "size", "download_url")

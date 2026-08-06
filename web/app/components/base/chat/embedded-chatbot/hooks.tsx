@@ -1,4 +1,4 @@
-import type { ChatConfig, ChatItem, Feedback } from '../types'
+import type { ChatConfig, ChatItem, OnFeedback } from '../types'
 /* oxlint-disable typescript/no-explicit-any */
 import type { InputValueTypes } from '@/app/components/share/text-generation/types'
 import type { Locale } from '@/i18n-config'
@@ -434,8 +434,8 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     },
     [handleConversationIdInfoChange, invalidateShareConversations],
   )
-  const handleFeedback = useCallback(
-    async (messageId: string, feedback: Feedback) => {
+  const handleFeedback: OnFeedback = useCallback(
+    async (messageId, feedback) => {
       await updateFeedback(
         {
           url: `/messages/${messageId}/feedbacks`,

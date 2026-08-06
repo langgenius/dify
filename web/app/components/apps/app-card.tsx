@@ -1204,7 +1204,6 @@ export function AppCard({
           <article
             role="button"
             tabIndex={0}
-            aria-disabled="true"
             aria-labelledby={appNameId}
             aria-describedby={app.description ? appDescriptionId : undefined}
             data-step-by-step-tour-target={stepByStepTourCardTarget}
@@ -1227,21 +1226,6 @@ export function AppCard({
             {appCardContent}
           </Link>
         )}
-        <div
-          className="absolute top-26 right-3 left-3 flex h-6.5 min-w-0 items-start"
-          onClick={(e) => {
-            e.stopPropagation()
-            e.preventDefault()
-          }}
-        >
-          <AppCardTags
-            appId={app.id}
-            tags={app.tags}
-            canBindOrUnbindTags={canBindOrUnbindTags}
-            onOpenTagManagement={onOpenTagManagement}
-            onTagsChange={onRefresh}
-          />
-        </div>
         <AppAccessModeIcon accessMode={app.access_mode} />
         {!isPreviewOnly && (
           <div
@@ -1360,6 +1344,15 @@ export function AppCard({
             )}
           </div>
         )}
+        <div className="absolute top-26 right-3 left-3 flex h-6.5 min-w-0 items-start">
+          <AppCardTags
+            appId={app.id}
+            tags={app.tags}
+            canBindOrUnbindTags={canBindOrUnbindTags}
+            onOpenTagManagement={onOpenTagManagement}
+            onTagsChange={onRefresh}
+          />
+        </div>
       </div>
       {showEditModal && (
         <EditAppModal
