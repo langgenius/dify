@@ -158,10 +158,12 @@ class TestDocumentServiceMutations:
 
     def test_delete_documents_limits_query_and_cleanup_to_dataset_ref(self):
         session = MagicMock()
-        dataset = _make_dataset(dataset_id="dataset-1", tenant_id="tenant-1")
-        dataset.doc_form = "paragraph_index"
+        dataset = _make_dataset(
+            dataset_id="dataset-1",
+            tenant_id="tenant-1",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
+        )
         document = _make_document(document_id="doc-1", dataset_id=dataset.id, tenant_id=dataset.tenant_id)
-        document.data_source_info_dict = {}
 
         with (
             patch("services.dataset_service.batch_clean_document_task") as clean_task,
@@ -345,7 +347,6 @@ class TestDocumentServiceMutations:
             document_id="doc-1",
             data_source_info_dict={"mode": "crawl"},
         )
-        document.data_source_info = "{}"
 
         with (
             patch("services.dataset_service.redis_client") as mock_redis,
@@ -768,13 +769,14 @@ class TestDocumentServiceCreateValidation:
         ],
     )
     def test_data_source_args_validate_requires_source_specific_info(self, data_source_type, field_name, message):
-        info_list = SimpleNamespace(
-            data_source_type=data_source_type,
-            file_info_list=object(),
-            notion_info_list=object(),
-            website_info_list=object(),
-        )
-        setattr(info_list, field_name, None)
+        info_values = {
+            "data_source_type": data_source_type,
+            "file_info_list": object(),
+            "notion_info_list": object(),
+            "website_info_list": object(),
+        }
+        info_values[field_name] = None
+        info_list = SimpleNamespace(**info_values)
         knowledge_config = SimpleNamespace(data_source=SimpleNamespace(info_list=info_list))
 
         with pytest.raises(ValueError, match=message):
@@ -970,7 +972,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
                 )
 
     def test_save_document_with_dataset_id_requires_existing_process_rule_for_custom_mode(self, account_context):
-        dataset = _make_dataset(latest_process_rule=None)
+        dataset = _make_dataset()
         knowledge_config = _make_upload_knowledge_config(
             file_ids=["file-1"],
             process_rule=ProcessRule(mode="custom"),
@@ -978,6 +980,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
 
         with patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=False)):
             session = MagicMock()
+            session.scalar.return_value = None
             with pytest.raises(ValueError, match="No process rule found"):
                 DocumentService.save_document_with_dataset_id(
                     dataset,
@@ -986,7 +989,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
                     session=session,
                 )
 
-        dataset.get_latest_process_rule.assert_called_once_with(session=session)
+        session.scalar.assert_called_once()
 
     def test_save_document_with_dataset_id_rejects_invalid_indexing_technique(self, account_context):
         dataset = _make_dataset(indexing_technique=None)
@@ -1897,7 +1900,7 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
         self, account_context
     ):
         session = MagicMock()
-        dataset = _make_dataset(latest_process_rule=None)
+        dataset = _make_dataset()
         knowledge_config = _make_upload_knowledge_config(file_ids=["file-1"], process_rule=None)
         created_process_rule = SimpleNamespace(id="rule-fallback")
         created_document = _make_document(document_id="doc-created", name="file.txt")
@@ -1915,6 +1918,7 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
             mock_redis.lock.return_value = _make_lock_context()
             process_rule_cls.AUTOMATIC_RULES = DatasetProcessRule.AUTOMATIC_RULES
             process_rule_cls.return_value = created_process_rule
+            session.scalar.return_value = None
             session.scalars.return_value.all.side_effect = [[SimpleNamespace(id="file-1", name="file.txt")], []]
 
             DocumentService.save_document_with_dataset_id(
@@ -1924,7 +1928,7 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
                 session=session,
             )
 
-        dataset.get_latest_process_rule.assert_called_once_with(session=session)
+        session.scalar.assert_called_once()
         assert process_rule_cls.call_args.kwargs == {
             "dataset_id": "dataset-1",
             "mode": "automatic",
