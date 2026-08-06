@@ -840,6 +840,7 @@ export type WorkflowRunDetailResponse = {
   exceptions_count?: number | null
   finished_at?: number | null
   graph: unknown
+  handoff_duration?: number
   id: string
   inputs: unknown
   outputs: unknown
@@ -1438,6 +1439,7 @@ export type AdvancedChatWorkflowRunForListResponse = {
   elapsed_time?: number | null
   exceptions_count?: number | null
   finished_at?: number | null
+  handoff_duration?: number
   id: string
   message_id?: string | null
   retry_index?: number | null
@@ -1841,6 +1843,7 @@ export type WorkflowRunForListResponse = {
   elapsed_time?: number | null
   exceptions_count?: number | null
   finished_at?: number | null
+  handoff_duration?: number
   id: string
   retry_index?: number | null
   status?: string | null
@@ -2360,6 +2363,7 @@ export type WorkflowRunForLogResponse = {
   error?: string | null
   exceptions_count?: number | null
   finished_at?: number | null
+  handoff_duration?: number
   id: string
   status?: string | null
   total_steps?: number | null
@@ -2370,6 +2374,7 @@ export type WorkflowRunForLogResponse = {
 
 export type WorkflowRunForArchivedLogResponse = {
   elapsed_time?: number | null
+  handoff_duration?: number
   id: string
   status?: string | null
   total_tokens?: number | null

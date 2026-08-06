@@ -104,6 +104,7 @@ def trial_app_completion() -> MagicMock:
 def trial_app_workflow() -> MagicMock:
     app = MagicMock()
     app.id = "a-workflow"
+    app.tenant_id = "tenant-1"
     app.mode = AppMode.WORKFLOW
     return app
 
@@ -1133,27 +1134,34 @@ class TestTrialChatTextApi:
 
 
 class TestTrialAppWorkflowTaskStopApi:
-    def test_not_workflow_app(self, app: Flask, trial_app_chat: MagicMock) -> None:
+    def test_not_workflow_app(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialAppWorkflowTaskStopApi()
+        method = unwrap(api.post)
 
         with app.test_request_context("/"):
             with pytest.raises(NotWorkflowAppError):
-                api.post(trial_app_chat, str(uuid4()))
+                method(api, account, trial_app_chat, str(uuid4()))
 
-    def test_success(self, app: Flask, trial_app_workflow: MagicMock) -> None:
+    def test_success(self, app: Flask, trial_app_workflow: MagicMock, account: Account) -> None:
         api = module.TrialAppWorkflowTaskStopApi()
+        method = unwrap(api.post)
 
         task_id = str(uuid4())
         with (
             app.test_request_context("/"),
-            patch.object(module.AppQueueManager, "set_stop_flag_no_user_check") as mock_set_flag,
-            patch.object(module.GraphEngineManager, "send_stop_command") as mock_send_cmd,
+            patch.object(module.AppTaskService, "stop_task") as stop_task,
         ):
-            result = api.post(trial_app_workflow, task_id)
+            result = method(api, account, trial_app_workflow, task_id)
 
         assert result == {"result": "success"}
-        mock_set_flag.assert_called_once_with(task_id)
-        mock_send_cmd.assert_called_once_with(task_id)
+        stop_task.assert_called_once_with(
+            task_id,
+            module.InvokeFrom.EXPLORE,
+            "u1",
+            AppMode.WORKFLOW,
+            tenant_id="tenant-1",
+            app_id="a-workflow",
+        )
 
 
 class TestTrialSitApi:

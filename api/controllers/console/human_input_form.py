@@ -17,6 +17,7 @@ from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.common.fields import EventStreamResponse
 from controllers.common.human_input import HumanInputFormSubmitPayload
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.workflow_event_cursor import get_workflow_event_replay_cursor
 from controllers.console import console_ns
 from controllers.console.wraps import (
     account_initialization_required,
@@ -30,6 +31,7 @@ from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.apps.message_generator import MessageGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
+from core.app.entities.task_entities import StreamEvent
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
 from extensions.ext_database import db
 from libs.login import login_required
@@ -39,7 +41,7 @@ from models.model import AppMode
 from models.workflow import WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 from services.human_input_service import Form, HumanInputService
-from services.workflow_event_snapshot_service import build_workflow_event_stream
+from services.workflow_event_snapshot_service import build_workflow_event_stream, resolve_workflow_event_task_id
 
 logger = logging.getLogger(__name__)
 
@@ -187,10 +189,18 @@ class ConsoleWorkflowEventsApi(Resource):
         with Session(expire_on_commit=False, bind=db.engine) as session:
             app = _retrieve_app_for_workflow_run(session, workflow_run)
 
-        if workflow_run.finished_at is not None:
+        app_mode = AppMode.value_of(app.mode)
+        if app_mode not in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
+            raise InvalidArgumentError(f"cannot subscribe to workflow run, workflow_run_id={workflow_run.id}")
+        cursor = get_workflow_event_replay_cursor(request)
+
+        if workflow_run.finished_at is not None and cursor is None:
             # TODO(QuantumGhost): should we modify the handling for finished workflow run here?
             response = WorkflowResponseConverter.workflow_run_result_to_finish_response(
-                task_id=workflow_run.id,
+                task_id=resolve_workflow_event_task_id(
+                    workflow_run=workflow_run,
+                    session_maker=session_maker,
+                ),
                 workflow_run=workflow_run,
                 creator_user=user,
             )
@@ -206,32 +216,38 @@ class ConsoleWorkflowEventsApi(Resource):
         else:
             msg_generator = MessageGenerator()
             generator: BaseAppGenerator
-            match app.mode:
+            match app_mode:
                 case AppMode.ADVANCED_CHAT:
                     generator = AdvancedChatAppGenerator()
                 case AppMode.WORKFLOW:
                     generator = WorkflowAppGenerator()
                 case _:
-                    raise InvalidArgumentError(f"cannot subscribe to workflow run, workflow_run_id={workflow_run.id}")
+                    raise AssertionError("app mode was validated before event stream construction")
 
             include_state_snapshot = request.args.get("include_state_snapshot", "false").lower() == "true"
             continue_on_pause = request.args.get("continue_on_pause", "false").lower() == "true"
 
             def _generate_stream_events():
-                if include_state_snapshot:
+                if include_state_snapshot or cursor is not None:
                     return generator.convert_to_event_stream(
                         build_workflow_event_stream(
-                            app_mode=AppMode(app.mode),
+                            app_mode=app_mode,
                             workflow_run=workflow_run,
                             tenant_id=workflow_run.tenant_id,
                             app_id=workflow_run.app_id,
                             session_maker=session_maker,
                             human_input_surface=HumanInputSurface.CONSOLE,
                             close_on_pause=not continue_on_pause,
+                            cursor=cursor,
                         )
                     )
+                terminal_events = [StreamEvent.WORKFLOW_FINISHED] if continue_on_pause else None
                 return generator.convert_to_event_stream(
-                    msg_generator.retrieve_events(AppMode(app.mode), workflow_run.id),
+                    msg_generator.retrieve_events(
+                        app_mode,
+                        workflow_run.id,
+                        terminal_events=terminal_events,
+                    )
                 )
 
             event_generator = _generate_stream_events

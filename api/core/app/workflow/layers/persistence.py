@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Union, override
 
+from core.app.apps.workflow.command_channels import is_workflow_warm_shutdown_pause
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
 from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, WorkflowNodeRetryAttempt
 from core.helper.trace_id_helper import ParentTraceContext
@@ -213,6 +214,12 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         _inspector_publish_workflow_completed(workflow_run_id=execution.id_, status=str(execution.status.value))
 
     def _handle_graph_run_paused(self, event: GraphRunPausedEvent) -> None:
+        if is_workflow_warm_shutdown_pause(event.reasons):
+            # A maintenance pause ends only this worker's execution segment.
+            # The durable handoff resumes the same logical run on another
+            # worker, so keep its externally visible state as RUNNING.
+            return
+
         execution = self._get_workflow_execution()
         execution.status = WorkflowExecutionStatus.PAUSED
         execution.outputs = event.outputs

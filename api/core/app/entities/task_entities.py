@@ -76,6 +76,7 @@ class StreamEvent(StrEnum):
     AGENT_MESSAGE = "agent_message"
     WORKFLOW_STARTED = "workflow_started"
     WORKFLOW_PAUSED = "workflow_paused"
+    WORKFLOW_MAINTENANCE_PAUSED = "workflow_maintenance_paused"
     WORKFLOW_FINISHED = "workflow_finished"
     NODE_STARTED = "node_started"
     NODE_FINISHED = "node_finished"
@@ -247,6 +248,7 @@ class WorkflowFinishStreamResponse(StreamResponse):
         finished_at: int | None
         exceptions_count: int = 0
         files: Sequence[Mapping[str, Any]] | None = []
+        handoff_duration: float = 0.0
 
     event: StreamEvent = StreamEvent.WORKFLOW_FINISHED
     workflow_run_id: str
@@ -272,10 +274,23 @@ class WorkflowPauseStreamResponse(StreamResponse):
         elapsed_time: float
         total_tokens: int
         total_steps: int
+        handoff_duration: float = 0.0
 
     event: StreamEvent = StreamEvent.WORKFLOW_PAUSED
     workflow_run_id: str
     data: Data
+
+
+class WorkflowMaintenancePausedStreamResponse(StreamResponse):
+    """Internal control event for a completed worker-drain execution segment.
+
+    Publishers must consume this sentinel without forwarding it to public
+    streams. It is intentionally distinct from ``WorkflowPauseStreamResponse``
+    because maintenance handoff is transparent to clients.
+    """
+
+    event: StreamEvent = StreamEvent.WORKFLOW_MAINTENANCE_PAUSED
+    workflow_run_id: str
 
 
 class HumanInputRequiredResponse(StreamResponse):
@@ -820,6 +835,13 @@ class AppBlockingResponse(BaseModel):
     task_id: str
 
 
+class WorkflowMaintenancePausedBlockingResponse(AppBlockingResponse):
+    """Internal blocking-mode result for a completed worker-drain segment."""
+
+    event: StreamEvent = StreamEvent.WORKFLOW_MAINTENANCE_PAUSED
+    workflow_run_id: str
+
+
 class ChatbotAppBlockingResponse(AppBlockingResponse):
     """
     ChatbotAppBlockingResponse entity
@@ -865,6 +887,7 @@ class AdvancedChatPausedBlockingResponse(AppBlockingResponse):
         elapsed_time: float
         total_tokens: int
         total_steps: int
+        handoff_duration: float = 0.0
 
     data: Data
 
@@ -909,6 +932,7 @@ class WorkflowAppBlockingResponse(AppBlockingResponse):
         total_steps: int
         created_at: int
         finished_at: int | None
+        handoff_duration: float = 0.0
 
     workflow_run_id: str
     data: Data
@@ -936,6 +960,7 @@ class WorkflowAppPausedBlockingResponse(AppBlockingResponse):
         finished_at: int | None
         paused_nodes: Sequence[str] = Field(default_factory=list)
         reasons: Sequence[Mapping[str, Any]] = Field(default_factory=list)
+        handoff_duration: float = 0.0
 
     workflow_run_id: str
     data: Data

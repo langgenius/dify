@@ -9,16 +9,20 @@ import pytest
 from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.apps.workflow.command_channels import WORKFLOW_WARM_SHUTDOWN_PAUSE_REASON
 from core.app.layers.trigger_post_layer import TriggerPostLayer
 from core.workflow.system_variables import build_system_variables
+from graphon.entities.pause_reason import SchedulingPause
 from graphon.graph_events import (
     GraphRunAbortedEvent,
     GraphRunFailedEvent,
+    GraphRunPausedEvent,
     GraphRunSucceededEvent,
 )
 from graphon.runtime import VariablePool
-from models.enums import AppTriggerType, CreatorUserRole, WorkflowTriggerStatus
+from models.enums import AppTriggerType, CreatorUserRole, WorkflowRunTriggeredFrom, WorkflowTriggerStatus
 from models.trigger import WorkflowTriggerLog
+from models.workflow import WorkflowRun, WorkflowType
 
 
 @dataclass(frozen=True)
@@ -30,7 +34,10 @@ class TriggerDatabase:
 @pytest.fixture(autouse=True)
 def trigger_database(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> Iterator[TriggerDatabase]:
     """Create the trigger-log table and bind layer-owned sessions to SQLite."""
-    WorkflowTriggerLog.metadata.create_all(sqlite_engine, tables=[WorkflowTriggerLog.__table__])
+    WorkflowTriggerLog.metadata.create_all(
+        sqlite_engine,
+        tables=[WorkflowRun.__table__, WorkflowTriggerLog.__table__],
+    )
     sqlite_session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
     monkeypatch.setattr("core.db.session_factory._session_maker", sqlite_session_maker)
     statements: list[str] = []
@@ -71,7 +78,54 @@ def _persist_trigger_log(database: TriggerDatabase, *, trigger_log_id: str = "lo
     return trigger_log
 
 
+def _persist_workflow_run(database: TriggerDatabase, *, elapsed_time: float) -> WorkflowRun:
+    workflow_run = WorkflowRun(
+        id="run-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        type=WorkflowType.WORKFLOW,
+        triggered_from=WorkflowRunTriggeredFrom.WEBHOOK,
+        version="1",
+        status="succeeded",
+        elapsed_time=elapsed_time,
+        handoff_duration=25.0,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="account-1",
+        created_at=datetime(2026, 2, 20, tzinfo=UTC) - timedelta(seconds=elapsed_time),
+        finished_at=datetime(2026, 2, 20, tzinfo=UTC),
+    )
+    database.session.add(workflow_run)
+    database.session.commit()
+    return workflow_run
+
+
 class TestTriggerPostLayer:
+    def test_on_graph_start_persists_workflow_run_association(
+        self,
+        trigger_database: TriggerDatabase,
+    ) -> None:
+        trigger_log = _persist_trigger_log(trigger_database)
+        runtime_state = SimpleNamespace(
+            variable_pool=VariablePool.from_bootstrap(
+                system_variables=build_system_variables(workflow_execution_id="run-1")
+            )
+        )
+        layer = TriggerPostLayer(
+            cfs_plan_scheduler_entity=Mock(),
+            start_time=datetime(2026, 2, 20, tzinfo=UTC),
+            trigger_log_id=trigger_log.id,
+        )
+        layer.initialize(runtime_state, Mock())
+
+        layer.on_graph_start()
+
+        trigger_database.session.expire_all()
+        persisted_log = trigger_database.session.get(WorkflowTriggerLog, trigger_log.id)
+        assert persisted_log is not None
+        assert persisted_log.workflow_run_id == "run-1"
+        assert persisted_log.status == WorkflowTriggerStatus.RUNNING
+
     def test_on_event_updates_trigger_log(self, trigger_database: TriggerDatabase):
         trigger_log = _persist_trigger_log(trigger_database)
         runtime_state = SimpleNamespace(
@@ -141,6 +195,37 @@ class TestTriggerPostLayer:
         assert persisted_log.total_tokens == 7
         assert persisted_log.finished_at is not None
 
+    def test_on_event_uses_workflow_run_wall_clock_elapsed_after_handoff(
+        self,
+        trigger_database: TriggerDatabase,
+    ) -> None:
+        trigger_log = _persist_trigger_log(trigger_database)
+        _persist_workflow_run(trigger_database, elapsed_time=75.0)
+        runtime_state = SimpleNamespace(
+            outputs={"answer": "ok"},
+            variable_pool=VariablePool.from_bootstrap(
+                system_variables=build_system_variables(workflow_execution_id="run-1")
+            ),
+            total_tokens=12,
+        )
+
+        with patch("core.app.layers.trigger_post_layer.datetime") as mock_datetime:
+            mock_datetime.now.return_value = datetime(2026, 2, 20, tzinfo=UTC)
+            layer = TriggerPostLayer(
+                cfs_plan_scheduler_entity=Mock(),
+                start_time=datetime(2026, 2, 20, tzinfo=UTC) - timedelta(seconds=10),
+                trigger_log_id="log-1",
+            )
+            layer.initialize(runtime_state, Mock())
+            layer.on_event(GraphRunSucceededEvent())
+
+        trigger_database.session.expire_all()
+        persisted_log = trigger_database.session.get(WorkflowTriggerLog, trigger_log.id)
+        assert persisted_log is not None
+        # The resumed segment ran for ten seconds, while the logical run's
+        # public elapsed time includes its 25-second maintenance wait.
+        assert persisted_log.elapsed_time == 75.0
+
     def test_on_event_handles_missing_trigger_log(
         self,
         caplog: pytest.LogCaptureFixture,
@@ -187,3 +272,34 @@ class TestTriggerPostLayer:
         layer.on_event(Mock())
 
         assert trigger_database.statements == []
+
+    def test_on_event_keeps_trigger_running_during_maintenance_pause(self, trigger_database: TriggerDatabase):
+        trigger_log = _persist_trigger_log(trigger_database)
+        runtime_state = SimpleNamespace(
+            outputs={"partial": True},
+            variable_pool=VariablePool.from_bootstrap(
+                system_variables=build_system_variables(workflow_execution_id="run-1")
+            ),
+            total_tokens=3,
+        )
+        layer = TriggerPostLayer(
+            cfs_plan_scheduler_entity=Mock(),
+            start_time=datetime(2026, 2, 20, tzinfo=UTC),
+            trigger_log_id=trigger_log.id,
+        )
+        layer.initialize(runtime_state, Mock())
+
+        trigger_database.statements.clear()
+        layer.on_event(
+            GraphRunPausedEvent(
+                reasons=[SchedulingPause(message=WORKFLOW_WARM_SHUTDOWN_PAUSE_REASON)],
+                outputs={"partial": True},
+            )
+        )
+
+        assert trigger_database.statements == []
+        trigger_database.session.expire_all()
+        persisted_log = trigger_database.session.get(WorkflowTriggerLog, trigger_log.id)
+        assert persisted_log is not None
+        assert persisted_log.status == WorkflowTriggerStatus.RUNNING
+        assert persisted_log.finished_at is None

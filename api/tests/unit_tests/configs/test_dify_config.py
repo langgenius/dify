@@ -183,6 +183,66 @@ def test_http_timeout_defaults(monkeypatch: pytest.MonkeyPatch):
     assert config.HTTP_REQUEST_MAX_WRITE_TIMEOUT == 600
 
 
+def test_workflow_handoff_config_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    _set_basic_config_env(monkeypatch)
+
+    config = DifyConfig(_env_file=None)
+
+    assert config.WORKFLOW_HANDOFF_ENABLED is False
+    assert config.WORKFLOW_HANDOFF_DRAIN_TIMEOUT_SECONDS == 600
+    assert config.WORKFLOW_HANDOFF_SCAN_INTERVAL_SECONDS == 15
+    assert config.WORKFLOW_HANDOFF_LEASE_SECONDS == 120
+    assert config.WORKFLOW_HANDOFF_MAX_ATTEMPTS == 20
+    assert config.WORKFLOW_HANDOFF_RETENTION_DAYS == 7
+    assert config.WORKFLOW_HANDOFF_QUEUE == "workflow_handoff"
+
+
+def test_workflow_handoff_config_reads_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    _set_basic_config_env(monkeypatch)
+    monkeypatch.setenv("WORKFLOW_HANDOFF_ENABLED", "true")
+    monkeypatch.setenv("EVENT_BUS_REDIS_CHANNEL_TYPE", "streams")
+    monkeypatch.setenv("EVENT_BUS_STREAMS_RETENTION_SECONDS", "1200")
+    monkeypatch.setenv("WORKFLOW_HANDOFF_DRAIN_TIMEOUT_SECONDS", "900")
+    monkeypatch.setenv("WORKFLOW_HANDOFF_SCAN_INTERVAL_SECONDS", "30")
+    monkeypatch.setenv("WORKFLOW_HANDOFF_LEASE_SECONDS", "180")
+    monkeypatch.setenv("WORKFLOW_HANDOFF_MAX_ATTEMPTS", "25")
+    monkeypatch.setenv("WORKFLOW_HANDOFF_RETENTION_DAYS", "14")
+    monkeypatch.setenv("WORKFLOW_HANDOFF_QUEUE", "workflow_handoff_high_priority")
+
+    config = DifyConfig(_env_file=None)
+
+    assert config.WORKFLOW_HANDOFF_ENABLED is True
+    assert config.WORKFLOW_HANDOFF_DRAIN_TIMEOUT_SECONDS == 900
+    assert config.WORKFLOW_HANDOFF_SCAN_INTERVAL_SECONDS == 30
+    assert config.WORKFLOW_HANDOFF_LEASE_SECONDS == 180
+    assert config.WORKFLOW_HANDOFF_MAX_ATTEMPTS == 25
+    assert config.WORKFLOW_HANDOFF_RETENTION_DAYS == 14
+    assert config.WORKFLOW_HANDOFF_QUEUE == "workflow_handoff_high_priority"
+    assert config.PUBSUB_STREAMS_RETENTION_SECONDS == 1200
+
+
+def test_workflow_handoff_requires_redis_streams(monkeypatch: pytest.MonkeyPatch) -> None:
+    _set_basic_config_env(monkeypatch)
+    monkeypatch.setenv("WORKFLOW_HANDOFF_ENABLED", "true")
+    monkeypatch.setenv("EVENT_BUS_REDIS_CHANNEL_TYPE", "pubsub")
+
+    with pytest.raises(ValueError, match="WORKFLOW_HANDOFF_ENABLED requires EVENT_BUS_REDIS_CHANNEL_TYPE=streams"):
+        DifyConfig(_env_file=None)
+
+
+def test_workflow_handoff_requires_stream_retention_beyond_drain_window(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_basic_config_env(monkeypatch)
+    monkeypatch.setenv("WORKFLOW_HANDOFF_ENABLED", "true")
+    monkeypatch.setenv("EVENT_BUS_REDIS_CHANNEL_TYPE", "streams")
+    monkeypatch.setenv("WORKFLOW_HANDOFF_DRAIN_TIMEOUT_SECONDS", "600")
+    monkeypatch.setenv("EVENT_BUS_STREAMS_RETENTION_SECONDS", "659")
+
+    with pytest.raises(ValueError, match=r"EVENT_BUS_STREAMS_RETENTION_SECONDS.*\+ 60 seconds"):
+        DifyConfig(_env_file=None)
+
+
 def test_internal_files_url_falls_back_to_server_console_api_url(monkeypatch: pytest.MonkeyPatch):
     _clear_environment(monkeypatch)
     monkeypatch.setenv("SERVER_CONSOLE_API_URL", "http://api:5001")
@@ -340,7 +400,8 @@ def test_pubsub_redis_url_default(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("REDIS_DB", "2")
     monkeypatch.setenv("REDIS_USE_SSL", "true")
 
-    config = DifyConfig()
+    # Do not let a developer's local .env override the default under test.
+    config = DifyConfig(_env_file=None)
 
     assert config.normalized_pubsub_redis_url == "rediss://user:pass%40word@redis.example.com:6380/2"
     assert config.PUBSUB_REDIS_CHANNEL_TYPE == "pubsub"

@@ -84,4 +84,22 @@ describe('useWorkflowNodeStarted', () => {
     expect(tracing).toHaveLength(2)
     expect(tracing[1]!.status).toBe(NodeRunningStatus.Running)
   })
+
+  it('updates an existing first tracing entry instead of duplicating a replayed node start', () => {
+    const { result, store } = renderViewportHook(() => useWorkflowNodeStarted(), {
+      initialStoreState: {
+        workflowRunningData: baseRunningData({
+          tracing: [{ node_id: 'n1', status: NodeRunningStatus.Succeeded } as never],
+        }),
+      },
+    })
+
+    act(() => {
+      result.current.handleWorkflowNodeStarted(createNodeStartedResponse(), containerParams)
+    })
+
+    const tracing = store.getState().workflowRunningData!.tracing!
+    expect(tracing).toHaveLength(1)
+    expect(tracing[0]!.status).toBe(NodeRunningStatus.Running)
+  })
 })

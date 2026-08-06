@@ -127,6 +127,7 @@ export type WorkflowRunDetailResponse = {
   exceptions_count?: number | null
   finished_at?: number | null
   graph: unknown
+  handoff_duration?: number
   id: string
   inputs: unknown
   outputs: unknown
@@ -424,6 +425,7 @@ export type WorkflowRunForListResponse = {
   elapsed_time?: number | null
   exceptions_count?: number | null
   finished_at?: number | null
+  handoff_duration?: number
   id: string
   retry_index?: number | null
   status?: string | null
@@ -847,6 +849,25 @@ export type GetRagPipelinesByPipelineIdWorkflowRunsByRunIdResponses = {
 
 export type GetRagPipelinesByPipelineIdWorkflowRunsByRunIdResponse =
   GetRagPipelinesByPipelineIdWorkflowRunsByRunIdResponses[keyof GetRagPipelinesByPipelineIdWorkflowRunsByRunIdResponses]
+
+export type GetRagPipelinesByPipelineIdWorkflowRunsByRunIdEventsData = {
+  body?: never
+  path: {
+    pipeline_id: string
+    run_id: string
+  }
+  query?: never
+  url: '/rag/pipelines/{pipeline_id}/workflow-runs/{run_id}/events'
+}
+
+export type GetRagPipelinesByPipelineIdWorkflowRunsByRunIdEventsResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetRagPipelinesByPipelineIdWorkflowRunsByRunIdEventsResponse =
+  GetRagPipelinesByPipelineIdWorkflowRunsByRunIdEventsResponses[keyof GetRagPipelinesByPipelineIdWorkflowRunsByRunIdEventsResponses]
 
 export type GetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsData = {
   body?: never

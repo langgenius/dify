@@ -1,7 +1,8 @@
 import logging
 from pathlib import Path
-from typing import Any, override
+from typing import Any, Self, override
 
+from pydantic import model_validator
 from pydantic.fields import FieldInfo
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict, TomlConfigSettingsSource
 
@@ -91,6 +92,22 @@ class DifyConfig(
     # please consider to arrange it in the proper config group of existed or added
     # for better readability and maintainability.
     # Thanks for your concentration and consideration.
+
+    @model_validator(mode="after")
+    def validate_workflow_handoff_event_transport(self) -> Self:
+        if self.WORKFLOW_HANDOFF_ENABLED and self.PUBSUB_REDIS_CHANNEL_TYPE != "streams":
+            raise ValueError(
+                "WORKFLOW_HANDOFF_ENABLED requires EVENT_BUS_REDIS_CHANNEL_TYPE=streams "
+                "so workflow events remain replayable across rolling updates"
+            )
+        minimum_stream_retention = self.WORKFLOW_HANDOFF_DRAIN_TIMEOUT_SECONDS + 60
+        if self.WORKFLOW_HANDOFF_ENABLED and minimum_stream_retention > self.PUBSUB_STREAMS_RETENTION_SECONDS:
+            raise ValueError(
+                "WORKFLOW_HANDOFF_ENABLED requires EVENT_BUS_STREAMS_RETENTION_SECONDS to be at least "
+                "WORKFLOW_HANDOFF_DRAIN_TIMEOUT_SECONDS + 60 seconds "
+                f"({minimum_stream_retention} seconds for the current drain timeout)"
+            )
+        return self
 
     @classmethod
     @override

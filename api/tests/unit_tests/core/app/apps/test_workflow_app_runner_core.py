@@ -25,7 +25,7 @@ from core.app.entities.queue_entities import (
 )
 from core.workflow.nodes.agent.events import NodeRunAgentLogEvent
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
-from core.workflow.system_variables import default_system_variables
+from core.workflow.system_variables import SystemVariableKey, default_system_variables, get_system_text
 from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import BuiltinNodeTypes
 from graphon.graph_events import (
@@ -106,7 +106,12 @@ class TestWorkflowBasedAppRunner:
             "core.app.apps.workflow_app_runner.DifyNodeFactory.from_graph_init_context",
             fake_from_graph_init_context,
         )
-        monkeypatch.setattr("core.app.apps.workflow_app_runner.Graph.init", lambda **_kwargs: SimpleNamespace())
+
+        def fake_graph_init(**kwargs):
+            captured["skip_validation"] = kwargs["skip_validation"]
+            return SimpleNamespace()
+
+        monkeypatch.setattr("core.app.apps.workflow_app_runner.Graph.init", fake_graph_init)
 
         runner._init_graph(
             graph_config={"nodes": [], "edges": []},
@@ -115,9 +120,35 @@ class TestWorkflowBasedAppRunner:
             invoke_from=InvokeFrom.DEBUGGER,
             root_node_id="root",
             trace_session_id="session-1",
+            skip_validation=True,
         )
 
         assert captured["run_context"][DIFY_RUN_CONTEXT_KEY].trace_session_id == "session-1"
+        assert captured["skip_validation"] is True
+
+    def test_prepare_single_node_execution_uses_supplied_execution_id(self, monkeypatch: pytest.MonkeyPatch):
+        runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
+        workflow = SimpleNamespace(environment_variables=[], graph_dict={})
+        captured = {}
+
+        def fake_prepare_graph(**kwargs):
+            runtime_state = kwargs["graph_runtime_state"]
+            captured["workflow_execution_id"] = get_system_text(
+                runtime_state.variable_pool,
+                SystemVariableKey.WORKFLOW_EXECUTION_ID,
+            )
+            return SimpleNamespace(), {"nodes": [], "edges": []}, runtime_state.variable_pool
+
+        monkeypatch.setattr(runner, "_get_graph_and_variable_pool_for_single_node_run", fake_prepare_graph)
+
+        runner._prepare_single_node_execution(
+            workflow,
+            SimpleNamespace(node_id="iteration", inputs={}),
+            user_id="00000000-0000-0000-0000-000000000001",
+            workflow_execution_id="run-1",
+        )
+
+        assert captured["workflow_execution_id"] == "run-1"
 
     def test_prepare_single_node_execution_requires_run(self):
         runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
@@ -125,7 +156,13 @@ class TestWorkflowBasedAppRunner:
         workflow = SimpleNamespace(environment_variables=[], graph_dict={})
 
         with pytest.raises(ValueError, match="Neither single_iteration_run nor single_loop_run"):
-            runner._prepare_single_node_execution(workflow, None, None, user_id="00000000-0000-0000-0000-000000000001")
+            runner._prepare_single_node_execution(
+                workflow,
+                None,
+                None,
+                user_id="00000000-0000-0000-0000-000000000001",
+                workflow_execution_id="run-1",
+            )
 
     def test_get_graph_and_variable_pool_for_single_node_run(self, monkeypatch: pytest.MonkeyPatch):
         runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
@@ -166,7 +203,7 @@ class TestWorkflowBasedAppRunner:
             lambda **kwargs: None,
         )
 
-        graph, variable_pool = runner._get_graph_and_variable_pool_for_single_node_run(
+        graph, effective_graph_config, variable_pool = runner._get_graph_and_variable_pool_for_single_node_run(
             workflow=workflow,
             node_id="node-1",
             user_inputs={},
@@ -177,6 +214,7 @@ class TestWorkflowBasedAppRunner:
         )
 
         assert graph is not None
+        assert effective_graph_config["nodes"] == graph_config["nodes"]
         assert variable_pool is graph_runtime_state.variable_pool
 
     def test_get_graph_and_variable_pool_for_single_node_run_includes_trace_session_id(
@@ -310,7 +348,7 @@ class TestWorkflowBasedAppRunner:
             lambda **kwargs: None,
         )
 
-        graph, variable_pool = runner._get_graph_and_variable_pool_for_single_node_run(
+        graph, _, variable_pool = runner._get_graph_and_variable_pool_for_single_node_run(
             workflow=workflow,
             node_id="loop-node",
             user_inputs={},

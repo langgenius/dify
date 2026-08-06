@@ -8,6 +8,7 @@ from core.app.entities.queue_entities import (
     QueueMessageEndEvent,
     QueueStopEvent,
     QueueWorkflowFailedEvent,
+    QueueWorkflowMaintenancePausedEvent,
     QueueWorkflowPartialSuccessEvent,
     QueueWorkflowPausedEvent,
     QueueWorkflowSucceededEvent,
@@ -33,8 +34,8 @@ class WorkflowAppQueueManager(AppQueueManager):
 
         self._q.put(message)
 
-        # A pause ends only the current listener segment; the workflow stays PAUSED and
-        # resumes with the same task ID. Without this marker, listen() cleanup calls
+        # A public HITL pause ends only the current listener segment; the workflow stays
+        # PAUSED and resumes with the same task ID. Without this marker, listen() cleanup calls
         # _abort_execution(), whose stop flag and abort command can stop the resumed run.
         # This is a compatibility workaround: cancellation policy belongs to the execution
         # owner, not the response-stream listener.
@@ -49,3 +50,6 @@ class WorkflowAppQueueManager(AppQueueManager):
             | QueueWorkflowPartialSuccessEvent,
         ):
             self.stop_listen(execution_terminal=True)
+        elif isinstance(event, QueueWorkflowMaintenancePausedEvent):
+            # The response pipeline must first cross the durable flush barrier.
+            self.stop_listen(execution_terminal=False)

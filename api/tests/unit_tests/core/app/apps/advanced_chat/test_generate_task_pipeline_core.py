@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+from decimal import Decimal
 from types import SimpleNamespace
 
 import pytest
@@ -35,6 +36,7 @@ from core.app.entities.queue_entities import (
     QueueStopEvent,
     QueueTextChunkEvent,
     QueueWorkflowFailedEvent,
+    QueueWorkflowMaintenancePausedEvent,
     QueueWorkflowPartialSuccessEvent,
     QueueWorkflowPausedEvent,
     QueueWorkflowStartedEvent,
@@ -44,16 +46,22 @@ from core.app.entities.task_entities import (
     AdvancedChatPausedBlockingResponse,
     AnnotationReply,
     AnnotationReplyAccount,
+    ErrorStreamResponse,
     HumanInputRequiredResponse,
     MessageAudioStreamResponse,
     MessageEndStreamResponse,
+    MessageReplaceStreamResponse,
     PingStreamResponse,
     ReasoningChunkStreamResponse,
+    WorkflowMaintenancePausedBlockingResponse,
+    WorkflowMaintenancePausedStreamResponse,
+    WorkflowPauseStreamResponse,
 )
 from core.base.tts.app_generator_tts_publisher import AudioTrunk
 from core.workflow.nodes.human_input.entities import UserActionConfig
 from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType
 from core.workflow.system_variables import build_system_variables
+from graphon.entities import WorkflowStartReason
 from graphon.enums import BuiltinNodeTypes
 from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMUsage
@@ -101,7 +109,11 @@ def _make_pipeline():
     pipeline = AdvancedChatAppGenerateTaskPipeline(
         application_generate_entity=application_generate_entity,
         workflow=workflow,
-        queue_manager=SimpleNamespace(invoke_from=InvokeFrom.WEB_APP, graph_runtime_state=None),
+        queue_manager=SimpleNamespace(
+            invoke_from=InvokeFrom.WEB_APP,
+            graph_runtime_state=None,
+            mark_execution_terminal=lambda: None,
+        ),
         conversation=conversation,
         message=message,
         user=user,
@@ -148,6 +160,165 @@ def _persist_message(session: Session, *, message_id: str = "message-id") -> Mes
 
 
 class TestAdvancedChatGenerateTaskPipeline:
+    def test_message_snapshot_loads_and_deduplicates_local_upload_records(self, monkeypatch: pytest.MonkeyPatch):
+        local_file = SimpleNamespace(
+            id="message-file-1",
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            upload_file_id="upload-1",
+        )
+        duplicate_upload = SimpleNamespace(
+            id="message-file-2",
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            upload_file_id="upload-1",
+        )
+        remote_file = SimpleNamespace(
+            id="message-file-3",
+            transfer_method=FileTransferMethod.REMOTE_URL,
+            upload_file_id=None,
+        )
+        upload = SimpleNamespace(id="upload-1")
+
+        class _ScalarResult:
+            def __init__(self, values):
+                self._values = values
+
+            def __iter__(self):
+                return iter(self._values)
+
+            def all(self):
+                return self._values
+
+        session = SimpleNamespace(
+            scalars=lambda _statement: scalar_results.pop(0),
+        )
+        scalar_results = [
+            _ScalarResult([local_file, duplicate_upload, remote_file]),
+            _ScalarResult([upload]),
+        ]
+        prepared: list[tuple[str, dict[str, object]]] = []
+
+        def _prepare_file_dict(message_file, upload_files_map):
+            prepared.append((message_file.id, upload_files_map))
+            return {"id": message_file.id}
+
+        monkeypatch.setattr(
+            "core.app.apps.advanced_chat.generate_task_pipeline.prepare_file_dict",
+            _prepare_file_dict,
+        )
+        message = SimpleNamespace(
+            id="message-id",
+            query="hello",
+            created_at=naive_utc_now(),
+            status=MessageStatus.NORMAL,
+            answer="persisted answer",
+            message_metadata_dict={"reasoning": {"node-1": "thought"}},
+            provider_response_latency=None,
+        )
+
+        snapshot = MessageSnapshot.from_message(message, session=session)
+
+        assert snapshot.answer == "persisted answer"
+        assert snapshot.recorded_files == (
+            {"id": "message-file-1"},
+            {"id": "message-file-2"},
+            {"id": "message-file-3"},
+        )
+        assert snapshot.provider_response_latency == 0.0
+        assert len(scalar_results) == 0
+        assert all(upload_map == {"upload-1": upload} for _, upload_map in prepared)
+
+    def test_seed_task_state_restores_persisted_answer_and_metadata(self):
+        pipeline = _make_pipeline()
+        metadata = pipeline._task_state.metadata.model_dump()
+        metadata["reasoning"] = {"node-1": "persisted thought"}
+        snapshot = MessageSnapshot(
+            id="message-id",
+            query="hello",
+            created_at=naive_utc_now(),
+            status=MessageStatus.NORMAL,
+            answer="persisted answer",
+            message_metadata=metadata,
+        )
+
+        pipeline._seed_task_state_from_message(snapshot)
+
+        assert pipeline._task_state.answer == "persisted answer"
+        assert pipeline._task_state.metadata.reasoning == {"node-1": "persisted thought"}
+
+    def test_to_blocking_response_returns_internal_maintenance_sentinel(self):
+        pipeline = _make_pipeline()
+        source_closed = False
+
+        def _gen():
+            nonlocal source_closed
+            try:
+                yield WorkflowMaintenancePausedStreamResponse(task_id="task", workflow_run_id="run-id")
+            finally:
+                source_closed = True
+
+        response = pipeline._to_blocking_response(_gen())
+
+        assert response == WorkflowMaintenancePausedBlockingResponse(task_id="task", workflow_run_id="run-id")
+        assert source_closed
+
+    def test_to_blocking_response_returns_public_workflow_pause(self):
+        pipeline = _make_pipeline()
+        pipeline._task_state.answer = "partial answer"
+
+        def _gen():
+            yield WorkflowPauseStreamResponse(
+                task_id="task",
+                workflow_run_id="run-id",
+                data=WorkflowPauseStreamResponse.Data(
+                    workflow_run_id="run-id",
+                    paused_nodes=["approval-node"],
+                    reasons=[{"type": "human-input-required"}],
+                    status="paused",
+                    created_at=1,
+                    elapsed_time=1.5,
+                    total_tokens=12,
+                    total_steps=4,
+                    handoff_duration=0.75,
+                ),
+            )
+
+        response = pipeline._to_blocking_response(_gen())
+
+        assert isinstance(response, AdvancedChatPausedBlockingResponse)
+        assert response.data.answer == "partial answer"
+        assert response.data.workflow_run_id == "run-id"
+        assert response.data.paused_nodes == ["approval-node"]
+        assert response.data.total_tokens == 12
+        assert response.data.total_steps == 4
+        assert response.data.handoff_duration == 0.75
+
+    def test_to_blocking_response_raises_stream_error_and_closes_source(self):
+        pipeline = _make_pipeline()
+        source_closed = False
+        expected = RuntimeError("generation failed")
+
+        def _gen():
+            nonlocal source_closed
+            try:
+                yield ErrorStreamResponse(task_id="task", err=expected)
+            finally:
+                source_closed = True
+
+        with pytest.raises(RuntimeError, match="generation failed") as exc_info:
+            pipeline._to_blocking_response(_gen())
+
+        assert exc_info.value is expected
+        assert source_closed
+
+    def test_to_blocking_response_rejects_empty_stream(self):
+        pipeline = _make_pipeline()
+
+        def _gen():
+            yield from ()
+
+        with pytest.raises(ValueError, match="queue listening stopped unexpectedly"):
+            pipeline._to_blocking_response(_gen())
+
     def test_ensure_workflow_initialized_raises(self):
         pipeline = _make_pipeline()
 
@@ -165,6 +336,67 @@ class TestAdvancedChatGenerateTaskPipeline:
 
         assert response.data.answer == "done"
         assert response.data.metadata == {"k": "v"}
+
+    def test_to_stream_response_close_closes_source(self):
+        pipeline = _make_pipeline()
+        source_closed = False
+
+        def source():
+            nonlocal source_closed
+            try:
+                while True:
+                    yield PingStreamResponse(task_id="task")
+            finally:
+                source_closed = True
+
+        converted = pipeline._to_stream_response(source())
+        assert next(converted).stream_response == PingStreamResponse(task_id="task")
+
+        converted.close()
+
+        assert source_closed
+
+    def test_process_stream_response_close_closes_queue_listener(self):
+        pipeline = _make_pipeline()
+        queue_listener_closed = False
+
+        def queue_listener():
+            nonlocal queue_listener_closed
+            try:
+                while True:
+                    yield SimpleNamespace(event=QueuePingEvent())
+            finally:
+                queue_listener_closed = True
+
+        pipeline._base_task_pipeline.queue_manager.listen = queue_listener
+        pipeline._base_task_pipeline.ping_stream_response = lambda: PingStreamResponse(task_id="task")
+        responses = pipeline._process_stream_response()
+        assert next(responses) == PingStreamResponse(task_id="task")
+
+        responses.close()
+
+        assert queue_listener_closed
+
+    def test_process_stream_response_dispatches_maintenance_pause_and_stops(self):
+        pipeline = _make_pipeline()
+        pipeline._base_task_pipeline.queue_manager.listen = lambda: iter(
+            [
+                SimpleNamespace(event=QueueWorkflowMaintenancePausedEvent()),
+                SimpleNamespace(event=QueuePingEvent()),
+            ]
+        )
+        handled: list[QueueWorkflowMaintenancePausedEvent] = []
+
+        def _handle(event):
+            handled.append(event)
+            yield WorkflowMaintenancePausedStreamResponse(task_id="task", workflow_run_id="run-id")
+
+        pipeline._handle_workflow_maintenance_paused_event = _handle
+
+        responses = list(pipeline._process_stream_response())
+
+        assert responses == [WorkflowMaintenancePausedStreamResponse(task_id="task", workflow_run_id="run-id")]
+        assert len(handled) == 1
 
     def test_to_blocking_response_falls_back_to_human_input_required_when_pause_event_missing(self):
         pipeline = _make_pipeline()
@@ -315,6 +547,39 @@ class TestAdvancedChatGenerateTaskPipeline:
         sqlite_session.refresh(other_message)
         assert message.workflow_run_id == "run-id"
         assert other_message.workflow_run_id is None
+
+    def test_resumption_start_uses_persisted_logical_timing(self, monkeypatch: pytest.MonkeyPatch):
+        pipeline = _make_pipeline()
+        pipeline._graph_runtime_state = GraphRuntimeState(
+            variable_pool=build_test_variable_pool(variables=build_system_variables(workflow_execution_id="run-id")),
+            start_at=0.0,
+        )
+        captured: dict = {}
+        pipeline._workflow_response_converter.workflow_start_to_stream_response = lambda **kwargs: (
+            captured.update(kwargs) or "started"
+        )
+        logical_started_at = naive_utc_now()
+
+        @contextmanager
+        def _fake_session():
+            yield SimpleNamespace(execute=lambda stmt: None)
+
+        monkeypatch.setattr(pipeline, "_database_session", _fake_session)
+        monkeypatch.setattr(
+            "core.app.apps.advanced_chat.generate_task_pipeline.get_workflow_run_public_timing",
+            lambda **kwargs: SimpleNamespace(started_at=logical_started_at, handoff_duration=9.25),
+        )
+
+        responses = list(
+            pipeline._handle_workflow_started_event(
+                QueueWorkflowStartedEvent(reason=WorkflowStartReason.RESUMPTION),
+            )
+        )
+
+        assert responses == ["started"]
+        assert captured["logical_started_at"] == logical_started_at
+        assert captured["handoff_duration"] == 9.25
+        assert captured["reason"] is WorkflowStartReason.RESUMPTION
 
     def test_message_end_to_stream_response_strips_annotation_reply(self):
         pipeline = _make_pipeline()
@@ -508,13 +773,64 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert len(partial_success_responses) == 2
         assert isinstance(partial_success_responses[0], MessageEndStreamResponse)
         assert partial_success_responses[1] == "finish"
-        assert (
-            list(pipeline._handle_workflow_failed_event(QueueWorkflowFailedEvent(error="err", exceptions_count=1)))[0]
-            == "finish"
+        failed_responses = list(
+            pipeline._handle_workflow_failed_event(QueueWorkflowFailedEvent(error="err", exceptions_count=1))
         )
+        assert isinstance(failed_responses[0], MessageReplaceStreamResponse)
+        assert isinstance(failed_responses[1], MessageEndStreamResponse)
+        assert failed_responses[2] == "finish"
         assert list(pipeline._handle_workflow_paused_event(QueueWorkflowPausedEvent(reasons=[], outputs={}))) == [
             "pause"
         ]
+
+    def test_maintenance_pause_checkpoints_answer_and_usage_without_changing_status(
+        self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ):
+        pipeline = _make_pipeline()
+        pipeline._workflow_run_id = "run-id"
+        pipeline._task_state.answer = "answer before handoff"
+        usage = LLMUsage(
+            prompt_tokens=11,
+            prompt_unit_price=Decimal("0.001"),
+            prompt_price_unit=Decimal("0.001"),
+            prompt_price=Decimal("0.011"),
+            completion_tokens=7,
+            completion_unit_price=Decimal("0.002"),
+            completion_price_unit=Decimal("0.001"),
+            completion_price=Decimal("0.014"),
+            total_tokens=18,
+            total_price=Decimal("0.025"),
+            currency="USD",
+            latency=0.3,
+        )
+        pipeline._graph_runtime_state = GraphRuntimeState(
+            variable_pool=VariablePool.from_bootstrap(
+                system_variables=build_system_variables(workflow_execution_id="run-id")
+            ),
+            start_at=0.0,
+            llm_usage=usage,
+        )
+        message = _persist_message(sqlite_session)
+        message.status = MessageStatus.NORMAL
+        sqlite_session.commit()
+        lifecycle_events: list[str] = []
+        monkeypatch.setattr(
+            "core.app.apps.advanced_chat.generate_task_pipeline.activate_workflow_handoff_by_task_id",
+            lambda _task_id: lifecycle_events.append("activate"),
+        )
+        pipeline._base_task_pipeline.queue_manager.mark_execution_terminal = lambda: lifecycle_events.append("mark")
+
+        responses = list(pipeline._handle_workflow_maintenance_paused_event(QueueWorkflowMaintenancePausedEvent()))
+        sqlite_session.refresh(message)
+
+        assert responses == [WorkflowMaintenancePausedStreamResponse(task_id="task", workflow_run_id="run-id")]
+        assert message.status == MessageStatus.NORMAL
+        assert message.answer == "answer before handoff"
+        assert message.message_tokens == 11
+        assert message.answer_tokens == 7
+        assert message.total_price == Decimal("0.025")
+        assert pipeline._task_state.metadata.usage == usage
+        assert lifecycle_events == ["activate", "mark"]
 
     def test_node_failure_handlers(self):
         pipeline = _make_pipeline()
@@ -683,6 +999,18 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert message.answer == "![img](http://example.com/file.png) hello ![inline](http://llm.com/img.jpg)"
         assert message.message_metadata
         assert sqlite_session.query(MessageFile).filter_by(message_id=message.id).count() == 1
+
+    def test_save_message_can_checkpoint_without_normalizing_paused_status(self, sqlite_session: Session):
+        pipeline = _make_pipeline()
+        pipeline._task_state.answer = "checkpoint"
+        message = _persist_message(sqlite_session)
+
+        pipeline._save_message(session=sqlite_session, preserve_status=True)
+        sqlite_session.commit()
+        sqlite_session.refresh(message)
+
+        assert message.status == MessageStatus.PAUSED
+        assert message.answer == "checkpoint"
 
     def test_handle_stop_event_saves_message_for_moderation(self):
         pipeline = _make_pipeline()

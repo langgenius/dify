@@ -1,16 +1,12 @@
 from __future__ import annotations
 
-import logging
 from typing import Any, override
 
 from extensions.redis_names import serialize_redis_name
 from libs.broadcast_channel.channel import Producer, Subscriber, Subscription
-from libs.broadcast_channel.signals import SIG_CLOSE
 from redis import Redis, RedisCluster
 
 from ._subscription import RedisSubscriptionBase
-
-logger = logging.getLogger(__name__)
 
 
 class ShardedRedisBroadcastChannel:
@@ -50,7 +46,9 @@ class ShardedTopic:
     def as_subscriber(self) -> Subscriber:
         return self
 
-    def subscribe(self) -> Subscription:
+    def subscribe(self, *, cursor: str | None = None) -> Subscription:
+        if cursor is not None:
+            raise ValueError("Redis Sharded Pub/Sub does not support replay cursors")
         return _RedisShardedSubscription(
             client=self._client,
             pubsub=self._client.pubsub(),
@@ -64,13 +62,6 @@ class _RedisShardedSubscription(RedisSubscriptionBase):
     @override
     def _get_subscription_type(self) -> str:
         return "sharded"
-
-    @override
-    def _publish_close_event(self) -> None:
-        try:
-            self._client.spublish(self._topic, SIG_CLOSE)  # type: ignore[attr-defined,union-attr]
-        except Exception:
-            logger.exception("failed to publish close event")
 
     @override
     def _subscribe(self) -> None:

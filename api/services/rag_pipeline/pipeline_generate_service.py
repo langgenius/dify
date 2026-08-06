@@ -1,10 +1,12 @@
-from collections.abc import Mapping
+import uuid
+from collections.abc import Generator, Mapping
 from typing import Any
 
 from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
+from core.app.apps.streaming_utils import WorkflowRunIdentifiedStream
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models.dataset import Pipeline
 from models.enums import IndexingStatus
@@ -44,7 +46,8 @@ class PipelineGenerateService:
                 dataset_ref = DatasetRefService.create_dataset_ref(dataset)
                 document_ref = DatasetRefService.create_document_ref_from_id(dataset_ref, original_document_id)
                 cls.update_document_status(document_ref, session=session)
-            return PipelineGenerator.convert_to_event_stream(
+            workflow_run_id = str(uuid.uuid4()) if streaming and invoke_from == InvokeFrom.DEBUGGER else None
+            converted = PipelineGenerator.convert_to_event_stream(
                 PipelineGenerator().generate(
                     session=session,
                     pipeline=pipeline,
@@ -55,8 +58,12 @@ class PipelineGenerateService:
                     streaming=streaming,
                     call_depth=0,
                     workflow_thread_pool_id=None,
+                    workflow_run_id=workflow_run_id,
                 ),
             )
+            if workflow_run_id is not None and isinstance(converted, Generator):
+                return WorkflowRunIdentifiedStream(converted, workflow_run_id=workflow_run_id)
+            return converted
 
         except Exception:
             raise
@@ -74,7 +81,8 @@ class PipelineGenerateService:
         cls, pipeline: Pipeline, user: Account, node_id: str, args: Any, session: Session, streaming: bool = True
     ):
         workflow = cls._get_workflow(pipeline, InvokeFrom.DEBUGGER, session)
-        return PipelineGenerator.convert_to_event_stream(
+        workflow_run_id = str(uuid.uuid4())
+        converted = PipelineGenerator.convert_to_event_stream(
             PipelineGenerator().single_iteration_generate(
                 pipeline=pipeline,
                 workflow=workflow,
@@ -83,15 +91,20 @@ class PipelineGenerateService:
                 args=args,
                 streaming=streaming,
                 session=session,
+                workflow_run_id=workflow_run_id,
             )
         )
+        if streaming and isinstance(converted, Generator):
+            return WorkflowRunIdentifiedStream(converted, workflow_run_id=workflow_run_id)
+        return converted
 
     @classmethod
     def generate_single_loop(
         cls, pipeline: Pipeline, user: Account, node_id: str, args: Any, session: Session, streaming: bool = True
     ):
         workflow = cls._get_workflow(pipeline, InvokeFrom.DEBUGGER, session)
-        return PipelineGenerator.convert_to_event_stream(
+        workflow_run_id = str(uuid.uuid4())
+        converted = PipelineGenerator.convert_to_event_stream(
             PipelineGenerator().single_loop_generate(
                 pipeline=pipeline,
                 workflow=workflow,
@@ -100,8 +113,12 @@ class PipelineGenerateService:
                 args=args,
                 streaming=streaming,
                 session=session,
+                workflow_run_id=workflow_run_id,
             )
         )
+        if streaming and isinstance(converted, Generator):
+            return WorkflowRunIdentifiedStream(converted, workflow_run_id=workflow_run_id)
+        return converted
 
     @classmethod
     def _get_workflow(cls, pipeline: Pipeline, invoke_from: InvokeFrom, session: Session) -> Workflow:

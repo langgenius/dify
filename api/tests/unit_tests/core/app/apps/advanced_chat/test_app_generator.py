@@ -316,6 +316,7 @@ class TestAdvancedChatAppGeneratorInternals:
         assert captured["variable_loader"] is var_loader
         assert captured["session"] is session
         assert captured["application_generate_entity"].single_iteration_run.node_id == "node-1"
+        assert captured["application_generate_entity"].workflow_run_id
         assert captured["application_generate_entity"].extras["trace_session_id"] == "session-1"
 
     def test_single_loop_generate_builds_debug_task(self, monkeypatch: pytest.MonkeyPatch):
@@ -380,6 +381,7 @@ class TestAdvancedChatAppGeneratorInternals:
         assert captured["variable_loader"] is var_loader
         assert captured["session"] is session
         assert captured["application_generate_entity"].single_loop_run.node_id == "node-2"
+        assert captured["application_generate_entity"].workflow_run_id
         assert captured["application_generate_entity"].extras["trace_session_id"] == "session-1"
 
     def test_generate_internal_flow_initial_conversation_with_pause_layer(self, monkeypatch: pytest.MonkeyPatch):
@@ -409,8 +411,15 @@ class TestAdvancedChatAppGeneratorInternals:
             created_at=naive_utc_now(),
             status=MessageStatus.NORMAL,
             answer="",
+            message_metadata_dict={},
+            provider_response_latency=0.0,
         )
-        db_session = SimpleNamespace(commit=MagicMock(), refresh=MagicMock(), close=MagicMock())
+        db_session = SimpleNamespace(
+            commit=MagicMock(),
+            refresh=MagicMock(),
+            close=MagicMock(),
+            scalars=MagicMock(return_value=[]),
+        )
         captured: dict[str, object] = {}
         thread_data: dict[str, object] = {}
         init_records = MagicMock(return_value=(conversation, message))
@@ -523,8 +532,15 @@ class TestAdvancedChatAppGeneratorInternals:
             created_at=naive_utc_now(),
             status=MessageStatus.NORMAL,
             answer="",
+            message_metadata_dict={},
+            provider_response_latency=0.0,
         )
-        db_session = SimpleNamespace(close=MagicMock(), commit=MagicMock(), refresh=MagicMock())
+        db_session = SimpleNamespace(
+            close=MagicMock(),
+            commit=MagicMock(),
+            refresh=MagicMock(),
+            scalars=MagicMock(return_value=[]),
+        )
         init_records = MagicMock()
         get_thread_messages_length = MagicMock(return_value=0)
         thread_data: dict[str, object] = {}

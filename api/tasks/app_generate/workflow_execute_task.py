@@ -1,7 +1,8 @@
 import contextlib
 import logging
 import uuid
-from collections.abc import Generator, Mapping
+from collections.abc import Callable, Generator, Mapping
+from dataclasses import dataclass
 from enum import StrEnum
 from typing import Annotated, Any
 
@@ -13,6 +14,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
+from core.app.apps.streaming_utils import StreamEventWithCursor
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
@@ -39,6 +41,18 @@ from repositories.factory import DifyAPIRepositoryFactory
 logger = logging.getLogger(__name__)
 
 WORKFLOW_BASED_APP_EXECUTION_QUEUE = "workflow_based_app_execution"
+
+
+@dataclass(frozen=True)
+class WorkflowStreamTerminalFailure:
+    """Runtime state needed to durably compensate a resumed stream failure."""
+
+    error: str
+    message_answer_delta: str = ""
+    message_answer_replacement: str | None = None
+
+
+type WorkflowStreamTerminalFailureHandler = Callable[[WorkflowStreamTerminalFailure], None]
 
 
 class _UserType(StrEnum):
@@ -341,22 +355,28 @@ def _get_task_id(event: str | Mapping[str, Any] | BaseModel) -> str | None:
     return task_id if isinstance(task_id, str) and task_id else None
 
 
-def _get_error_message(event: str | Mapping[str, Any] | BaseModel) -> str | None:
+def _get_event_value(event: str | Mapping[str, Any] | BaseModel, field: str) -> Any:
     event_data = _get_event_data(event)
-    if event_data is None:
-        return None
+    return event_data.get(field) if event_data is not None else None
 
-    message = event_data.get("message")
+
+def _get_error_message(event: str | Mapping[str, Any] | BaseModel) -> str | None:
+    raw_error = _get_event_value(event, "err")
+    if raw_error is not None:
+        return str(raw_error) or type(raw_error).__name__
+
+    message = _get_event_value(event, "message")
     return message if isinstance(message, str) and message else None
 
 
 def _publish_streaming_response(
-    response_stream: Generator[str | Mapping[str, Any] | BaseModel, None, None],
+    response_stream: Generator[str | Mapping[str, Any] | BaseModel | StreamEventWithCursor, None, None],
     workflow_run_id: str | uuid.UUID,
     app_mode: AppMode,
     workflow_id: str,
     inputs: Mapping[str, Any],
     started_reason: WorkflowStartReason,
+    terminal_failure_handler: WorkflowStreamTerminalFailureHandler | None = None,
 ) -> None:
     """Publish workflow stream events and close broken streams with a failed terminal event.
 
@@ -416,15 +436,58 @@ def _publish_streaming_response(
     topic = MessageBasedAppGenerator.get_response_topic(app_mode, normalized_workflow_run_id)
     started_published = False
     terminal_published = False
+    maintenance_handoff_observed = False
     last_task_id = normalized_workflow_run_id
     stream_error_message: str | None = None
+    message_answer_delta = ""
+    message_answer_replacement: str | None = None
+
+    def _terminalize_stream_failure(error_message: str) -> None:
+        nonlocal terminal_published
+        if terminal_failure_handler is not None:
+            terminal_failure_handler(
+                WorkflowStreamTerminalFailure(
+                    error=error_message,
+                    message_answer_delta=message_answer_delta,
+                    message_answer_replacement=message_answer_replacement,
+                )
+            )
+        else:
+            _publish_failed_terminal_event(
+                error_message=error_message,
+                task_id=last_task_id,
+                publish_started=not started_published,
+            )
+        terminal_published = True
 
     try:
         for event in response_stream:
+            if isinstance(event, StreamEventWithCursor):
+                event = event.event
             event_name = _get_event_name(event)
             task_id = _get_task_id(event)
             if task_id is not None:
                 last_task_id = task_id
+
+            if event_name == "workflow_maintenance_paused":
+                # This sentinel closes only the current worker's execution
+                # segment. The logical run stays RUNNING and the next worker
+                # resumes on the same response topic, so it must never leak to
+                # public SSE or trigger a synthetic FAILED terminal.
+                maintenance_handoff_observed = True
+                continue
+
+            if event_name == "error":
+                stream_error_message = _get_error_message(event) or stream_error_message
+            elif event_name in {"message", "agent_message"}:
+                answer = _get_event_value(event, "answer")
+                if isinstance(answer, str):
+                    message_answer_delta += answer
+            elif event_name == "message_replace":
+                answer = _get_event_value(event, "answer")
+                if isinstance(answer, str):
+                    message_answer_replacement = answer
+                    message_answer_delta = ""
 
             try:
                 if isinstance(event, BaseModel):
@@ -441,31 +504,32 @@ def _publish_streaming_response(
                 started_published = True
             elif event_name in terminal_events:
                 terminal_published = True
-            elif event_name == "error":
-                stream_error_message = _get_error_message(event) or stream_error_message
     except Exception as exc:
-        if not terminal_published:
+        if not terminal_published and not maintenance_handoff_observed:
             logger.exception(
                 "Workflow stream for run %s failed before terminal event; publishing fallback terminal event",
                 normalized_workflow_run_id,
             )
-            _publish_failed_terminal_event(
-                error_message=str(exc) or exc.__class__.__name__,
-                task_id=last_task_id,
-                publish_started=not started_published,
-            )
+            # A broker/serialization failure can interrupt iteration while the
+            # graph producer is still alive. Close the response generator first
+            # so its queue-manager finally block aborts and joins the graph
+            # worker before durable state is reconciled to a terminal outcome.
+            try:
+                response_stream.close()
+            except Exception:
+                logger.exception(
+                    "Failed to close workflow stream producer before terminal reconciliation: run_id=%s",
+                    normalized_workflow_run_id,
+                )
+            _terminalize_stream_failure(str(exc) or exc.__class__.__name__)
         raise
 
-    if not terminal_published:
+    if not terminal_published and not maintenance_handoff_observed:
         logger.warning(
             "Workflow stream for run %s ended without a terminal event; publishing fallback terminal event",
             normalized_workflow_run_id,
         )
-        _publish_failed_terminal_event(
-            error_message=stream_error_message or unexpected_stream_end_message,
-            task_id=last_task_id,
-            publish_started=not started_published,
-        )
+        _terminalize_stream_failure(stream_error_message or unexpected_stream_end_message)
 
 
 @shared_task(queue=WORKFLOW_BASED_APP_EXECUTION_QUEUE)
@@ -497,6 +561,7 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
         logger.exception("Failed to load resumption context for workflow run %s", workflow_run_id)
         return
 
+    resumption_context.apply_handoff_execution_timing()
     generate_entity = resumption_context.get_generate_entity()
 
     graph_runtime_state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
@@ -583,6 +648,7 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
                     pause_state_config=pause_config,
                     workflow_run_id=workflow_run_id,
                     workflow_run=workflow_run,
+                    root_node_id=resumption_context.root_node_id,
                     session=session,
                 )
         case WorkflowAppGenerateEntity():
@@ -599,6 +665,7 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
                 workflow_run=workflow_run,
                 workflow_run_repo=workflow_run_repo,
                 pause_entity=pause_entity,
+                root_node_id=resumption_context.root_node_id,
             )
 
 
@@ -616,6 +683,7 @@ def _resume_advanced_chat(
     pause_state_config: PauseStateLayerConfig,
     workflow_run_id: str,
     workflow_run: WorkflowRun,
+    root_node_id: str | None,
     session: Session,
 ) -> None:
     resumed_generate_entity = generate_entity.model_copy(update={"stream": True})
@@ -655,6 +723,9 @@ def _resume_advanced_chat(
             graph_runtime_state=graph_runtime_state,
             pause_state_config=pause_state_config,
             response_stream_filter=response_stream_filter,
+            graph_config=workflow_run.graph_dict,
+            workflow_version=workflow_run.version,
+            root_node_id=root_node_id,
             session=session,
         )
     except Exception:
@@ -686,6 +757,7 @@ def _resume_workflow(
     workflow_run: WorkflowRun,
     workflow_run_repo,
     pause_entity,
+    root_node_id: str | None,
 ) -> None:
     resumed_generate_entity = generate_entity.model_copy(update={"stream": True})
 
@@ -722,6 +794,9 @@ def _resume_workflow(
             workflow_node_execution_repository=workflow_node_execution_repository,
             pause_state_config=pause_state_config,
             response_stream_filter=response_stream_filter,
+            graph_config=workflow_run.graph_dict,
+            workflow_version=workflow_run.version,
+            root_node_id=root_node_id,
         )
     except Exception:
         logger.exception("Failed to resume workflow execution for workflow run %s", workflow_run_id)

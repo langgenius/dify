@@ -1,8 +1,9 @@
 import logging
 import time
-from collections.abc import Sequence
-from typing import cast
+from collections.abc import Mapping, Sequence
+from typing import Any, cast
 
+from configs import dify_config
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfig
 from core.app.apps.workflow.command_channels import (
@@ -11,6 +12,7 @@ from core.app.apps.workflow.command_channels import (
 )
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, WorkflowAppGenerateEntity
+from core.app.layers.pause_state_persist_layer import get_workflow_handoff_active_execution_seconds
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.workflow.node_factory import get_default_root_node_id
@@ -21,7 +23,7 @@ from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_redis import redis_client
 from extensions.otel import WorkflowAppRunnerHandler, trace_span
-from extensions.workflow_warm_shutdown import WORKFLOW_WARM_SHUTDOWN_ABORT_REASON, celery_warm_shutdown_started
+from extensions.workflow_warm_shutdown import celery_warm_shutdown_started
 from graphon.enums import WorkflowType
 from graphon.filters import ResponseStreamFilter
 from graphon.graph_engine.command_channels import RedisChannel
@@ -53,6 +55,8 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         graph_runtime_state: GraphRuntimeState | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
+        graph_config: Mapping[str, Any] | None = None,
+        workflow_version: str | None = None,
     ):
         super().__init__(
             queue_manager=queue_manager,
@@ -68,6 +72,8 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         self._workflow_node_execution_repository = workflow_node_execution_repository
         self._resume_graph_runtime_state = graph_runtime_state
         self._response_stream_filter = response_stream_filter
+        self._execution_graph_config = graph_config
+        self._workflow_version = workflow_version
 
     @trace_span(WorkflowAppRunnerHandler)
     def run(self):
@@ -81,6 +87,10 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         if self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
             invoke_from = InvokeFrom.DEBUGGER
         user_from = self._resolve_user_from(invoke_from)
+        graph_config = (
+            self._execution_graph_config if self._execution_graph_config is not None else self._workflow.graph_dict
+        )
+        workflow_version = self._workflow_version if self._workflow_version is not None else self._workflow.version
 
         resume_state = self._resume_graph_runtime_state
 
@@ -88,7 +98,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             graph_runtime_state = resume_state
             variable_pool = graph_runtime_state.variable_pool
             graph = self._init_graph(
-                graph_config=self._workflow.graph_dict,
+                graph_config=graph_config,
                 graph_runtime_state=graph_runtime_state,
                 workflow_id=self._workflow.id,
                 tenant_id=self._workflow.tenant_id,
@@ -97,13 +107,18 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 invoke_from=invoke_from,
                 root_node_id=self._root_node_id,
                 trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
+                skip_validation=bool(
+                    self.application_generate_entity.single_iteration_run
+                    or self.application_generate_entity.single_loop_run
+                ),
             )
         elif self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
-            graph, variable_pool, graph_runtime_state = self._prepare_single_node_execution(
+            graph, graph_config, variable_pool, graph_runtime_state = self._prepare_single_node_execution(
                 workflow=self._workflow,
                 single_iteration_run=self.application_generate_entity.single_iteration_run,
                 single_loop_run=self.application_generate_entity.single_loop_run,
                 user_id=self.application_generate_entity.user_id,
+                workflow_execution_id=self.application_generate_entity.workflow_execution_id,
                 trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
             )
         else:
@@ -126,7 +141,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                     environment_variables=self._workflow.environment_variables,
                 ),
             )
-            root_node_id = self._root_node_id or get_default_root_node_id(self._workflow.graph_dict)
+            root_node_id = self._root_node_id or get_default_root_node_id(graph_config)
             add_node_inputs_to_pool(
                 variable_pool,
                 node_id=root_node_id,
@@ -139,7 +154,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
 
             graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
             graph = self._init_graph(
-                graph_config=self._workflow.graph_dict,
+                graph_config=graph_config,
                 graph_runtime_state=graph_runtime_state,
                 workflow_id=self._workflow.id,
                 tenant_id=self._workflow.tenant_id,
@@ -151,12 +166,16 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             )
 
         # RUN WORKFLOW
+        self._configure_execution_root(graph.root_node.id)
         # Create Redis command channel for this workflow execution
         task_id = self.application_generate_entity.task_id
         channel_key = f"workflow:{task_id}:commands"
         celery_signal_channel = CelerySignalCommandChannel(
             shutdown_state_getter=celery_warm_shutdown_started,
-            abort_reason=WORKFLOW_WARM_SHUTDOWN_ABORT_REASON,
+            pause_on_shutdown=(
+                dify_config.WORKFLOW_HANDOFF_ENABLED and self.application_generate_entity.call_depth == 0
+            ),
+            ignore_shutdown=(dify_config.WORKFLOW_HANDOFF_ENABLED and self.application_generate_entity.call_depth > 0),
         )
         command_channel = CombinedCommandChannel(
             (
@@ -172,7 +191,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             app_id=self._workflow.app_id,
             workflow_id=self._workflow.id,
             graph=graph,
-            graph_config=self._workflow.graph_dict,
+            graph_config=graph_config,
             user_id=self.application_generate_entity.user_id,
             user_from=user_from,
             invoke_from=invoke_from,
@@ -181,6 +200,9 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             graph_runtime_state=graph_runtime_state,
             command_channel=command_channel,
             response_stream_filter=self._response_stream_filter,
+            prior_active_execution_seconds=get_workflow_handoff_active_execution_seconds(
+                self.application_generate_entity
+            ),
         )
 
         persistence_layer = WorkflowPersistenceLayer(
@@ -188,8 +210,8 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             workflow_info=PersistenceWorkflowInfo(
                 workflow_id=self._workflow.id,
                 workflow_type=WorkflowType(self._workflow.type),
-                version=self._workflow.version,
-                graph_data=self._workflow.graph_dict,
+                version=workflow_version,
+                graph_data=graph_config,
             ),
             workflow_execution_repository=self._workflow_execution_repository,
             workflow_node_execution_repository=self._workflow_node_execution_repository,
@@ -215,4 +237,4 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         generator = workflow_entry.run()
 
         for event in generator:
-            self._handle_event(workflow_entry, event)
+            self._handle_event_with_handoff_contracts(workflow_entry, event)

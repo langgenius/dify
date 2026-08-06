@@ -171,6 +171,22 @@ class TestShardedRedisBroadcastChannelIntegration:
             assert len(msgs) == 1
             assert msgs[0] == message
 
+    def test_closing_one_subscription_does_not_close_another(self, broadcast_channel: BroadcastChannel) -> None:
+        topic = broadcast_channel.topic(self._get_test_topic_name())
+        first = topic.subscribe()
+        second = topic.subscribe()
+        try:
+            first.receive(timeout=0.05)
+            second.receive(timeout=0.05)
+            first.close()
+
+            topic.publish(b"still-live")
+
+            assert second.receive(timeout=2) == b"still-live"
+        finally:
+            first.close()
+            second.close()
+
     def test_topic_isolation(self, broadcast_channel: BroadcastChannel):
         """Test that different sharded topics are isolated from each other."""
         topic1_name = self._get_test_topic_name()

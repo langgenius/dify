@@ -139,6 +139,13 @@ export const useChat = (
     }
   }, [])
 
+  useEffect(
+    () => () => {
+      workflowEventsAbortControllerRef.current?.abort()
+    },
+    [],
+  )
+
   /** Find the target node by bfs and then operate on it */
   const produceChatTreeNode = useCallback(
     (targetId: string, operation: (node: ChatItemInTree) => void) => {
@@ -439,6 +446,9 @@ export const useChat = (
             hasSetResponseId = true
           }
 
+          taskIdRef.current = task_id
+          responseItem.workflow_run_id = workflow_run_id
+
           if (responseItem.workflowProcess && responseItem.workflowProcess.tracing.length > 0) {
             handleResponding(true)
             responseItem.workflowProcess = {
@@ -447,8 +457,6 @@ export const useChat = (
               error: undefined,
             }
           } else {
-            taskIdRef.current = task_id
-            responseItem.workflow_run_id = workflow_run_id
             responseItem.workflowProcess = {
               status: WorkflowRunningStatus.Running,
               tracing: [],
@@ -689,6 +697,7 @@ export const useChat = (
           })
         },
         onWorkflowPaused: ({ data: _data }) => {
+          handleResponding(false)
           responseItem.workflowProcess!.status = WorkflowRunningStatus.Paused
           updateCurrentQAOnTree({
             placeholderQuestionId,
@@ -813,6 +822,8 @@ export const useChat = (
           handleResponding(true)
           hasStopRespondedRef.current = false
           updateChatTreeNode(messageId, (responseItem) => {
+            taskIdRef.current = task_id
+            responseItem.workflow_run_id = workflow_run_id
             if (responseItem.workflowProcess && responseItem.workflowProcess.tracing.length > 0) {
               responseItem.workflowProcess = {
                 ...responseItem.workflowProcess,
@@ -820,8 +831,6 @@ export const useChat = (
                 error: undefined,
               }
             } else {
-              taskIdRef.current = task_id
-              responseItem.workflow_run_id = workflow_run_id
               responseItem.workflowProcess = {
                 status: WorkflowRunningStatus.Running,
                 tracing: [],
@@ -1003,6 +1012,7 @@ export const useChat = (
           })
         },
         onWorkflowPaused: () => {
+          handleResponding(false)
           updateChatTreeNode(messageId, (responseItem) => {
             responseItem.workflowProcess!.status = WorkflowRunningStatus.Paused
           })

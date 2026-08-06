@@ -49,7 +49,6 @@ from controllers.console.wraps import (
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
-from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_generator import SKIP_PREPARE_USER_INPUTS_KEY
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.file_access import DatabaseFileAccessController
@@ -77,7 +76,6 @@ from fields.workflow_run_fields import WorkflowRunNodeExecutionResponse
 from graphon.enums import NodeType
 from graphon.file import File
 from graphon.file import helpers as file_helpers
-from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from graphon.variables import SecretVariable, SegmentType, VariableBase
 from graphon.variables.exc import VariableError
@@ -91,6 +89,7 @@ from models.workflow import Workflow
 from repositories.workflow_collaboration_repository import WORKFLOW_ONLINE_USERS_PREFIX
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.app_generate_service import AppGenerateService
+from services.app_task_service import AppTaskService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_ref_service import WorkflowRefService
@@ -1184,16 +1183,19 @@ class WorkflowTaskStopApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def post(self, app_model: App, task_id: str):
+    @with_current_user
+    def post(self, current_user: Account, app_model: App, task_id: str):
         """
         Stop workflow task
         """
-        # Stop using both mechanisms for backward compatibility
-        # Legacy stop flag mechanism (without user check)
-        AppQueueManager.set_stop_flag_no_user_check(task_id)
-
-        # New graph engine command channel mechanism
-        GraphEngineManager(redis_client).send_stop_command(task_id)
+        AppTaskService.stop_task(
+            task_id,
+            InvokeFrom.DEBUGGER,
+            current_user.id,
+            AppMode.value_of(app_model.mode),
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+        )
 
         return {"result": "success"}
 

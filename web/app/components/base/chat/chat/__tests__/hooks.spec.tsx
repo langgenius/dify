@@ -70,6 +70,7 @@ type HookCallbacks = {
   onHumanInputFormFilled: (filled: Record<string, unknown>) => void
   onHumanInputFormTimeout: (timeout: Record<string, unknown>) => void
   onWorkflowPaused: (workflowPaused: Record<string, unknown>) => void
+  onWorkflowContinuationReady: () => void
   onTTSChunk: (messageId: string, audio: string) => void
   onTTSEnd: (messageId: string, audio: string) => void
   onReasoning: (chunk: {
@@ -710,6 +711,7 @@ describe('useChat', () => {
         initialCallbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1' })
         initialCallbacks.onWorkflowPaused({ data: { workflow_run_id: 'wr-1' } })
       })
+      expect(result.current.isResponding).toBe(false)
       await act(async () => {
         await initialCallbacks.onCompleted()
       })
@@ -723,7 +725,7 @@ describe('useChat', () => {
       expect(result.current.isResponding).toBe(true)
     })
 
-    it('should only allow submission after the continuation stream observes the pause', async () => {
+    it('should only allow submission after the continuation stream is established', async () => {
       let postCallbacks: HookCallbacks
       let continuationCallbacks: HookCallbacks
       vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
@@ -763,7 +765,7 @@ describe('useChat', () => {
       expect(isReady).toBeUndefined()
 
       act(() => {
-        continuationCallbacks.onWorkflowPaused({ data: { workflow_run_id: 'wr-1' } })
+        continuationCallbacks.onWorkflowContinuationReady()
       })
       await act(async () => readyPromise)
       expect(isReady).toBe(true)
@@ -779,6 +781,7 @@ describe('useChat', () => {
         continuationCallbacks = options as HookCallbacks
       })
       const onConversationComplete = vi.fn()
+      const onSendSettled = vi.fn()
       const onGetConversationMessages = vi.fn().mockResolvedValue({
         data: [
           {
@@ -801,6 +804,7 @@ describe('useChat', () => {
           { query: 'human input test' },
           {
             onConversationComplete,
+            onSendSettled,
             onGetConversationMessages,
             onGetSuggestedQuestions,
           },
@@ -818,22 +822,21 @@ describe('useChat', () => {
         postCallbacks.onWorkflowPaused({ data: { workflow_run_id: 'wr-1' } })
       })
 
-      await act(async () => {
-        await postCallbacks.onCompleted()
-      })
-
       expect(onConversationComplete).toHaveBeenCalledOnce()
       expect(onConversationComplete).toHaveBeenCalledWith('c-1', 'wr-1')
+      expect(onSendSettled).toHaveBeenCalledOnce()
+      expect(onSendSettled).toHaveBeenCalledWith(undefined)
       expect(onGetConversationMessages).not.toHaveBeenCalled()
       expect(onGetSuggestedQuestions).not.toHaveBeenCalled()
 
       await act(async () => {
-        continuationCallbacks.onWorkflowPaused({ data: { workflow_run_id: 'wr-1' } })
+        continuationCallbacks.onWorkflowContinuationReady()
         continuationCallbacks.onWorkflowFinished({ data: { status: 'succeeded' } })
         await continuationCallbacks.onCompleted()
       })
 
       expect(onConversationComplete).toHaveBeenCalledOnce()
+      expect(onSendSettled).toHaveBeenCalledOnce()
       expect(onGetConversationMessages).toHaveBeenCalledOnce()
       expect(onGetSuggestedQuestions).toHaveBeenCalledOnce()
     })
@@ -1443,6 +1446,58 @@ describe('useChat', () => {
   })
 
   describe('handleResume', () => {
+    it('should replace new-agent response parts when a resume snapshot restores the full answer', () => {
+      let callbacks: HookCallbacks
+      vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+      const prevChatTree = [
+        {
+          id: 'q-agent-resume',
+          content: 'query',
+          isAnswer: false,
+          children: [
+            {
+              id: 'm-agent-resume',
+              content: '',
+              isAnswer: true,
+              agent_response_parts: [
+                { type: 'thought', thought: { id: 'th-1', thought: 'thinking' } },
+                { type: 'message', content: 'stale partial answer' },
+              ],
+              siblingIndex: 0,
+            },
+          ],
+        },
+      ]
+      const { result } = renderHook(() =>
+        useChat(
+          undefined,
+          undefined,
+          prevChatTree as ChatItemInTree[],
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          { isNewAgent: true },
+        ),
+      )
+
+      act(() => {
+        result.current.handleResume('m-agent-resume', 'wr-agent-resume', {})
+      })
+      act(() => {
+        callbacks.onMessageReplace({ answer: 'complete restored answer' })
+      })
+
+      const response = result.current.chatList[1]!
+      expect(response.content).toBe('complete restored answer')
+      expect(response.agent_response_parts).toEqual([
+        { type: 'thought', thought: { id: 'th-1', thought: 'thinking' } },
+        { type: 'message', content: 'complete restored answer' },
+      ])
+    })
+
     it('should call sseGet to resume a node and handle complex tracing', async () => {
       let callbacks: HookCallbacks
 
@@ -1609,7 +1664,7 @@ describe('useChat', () => {
       )
 
       act(() => {
-        callbacks.onWorkflowPaused({ data: { workflow_run_id: 'wr-1' } })
+        callbacks.onWorkflowContinuationReady()
       })
       await act(async () => readyPromise)
 
@@ -1651,6 +1706,7 @@ describe('useChat', () => {
           isPublicAPI: true,
           onConversationComplete,
         })
+        callbacksList[0]!.onWorkflowContinuationReady()
         callbacksList[0]!.onWorkflowPaused({ data: { workflow_run_id: 'wr-1' } })
       })
       await act(async () => {
@@ -1667,7 +1723,7 @@ describe('useChat', () => {
       expect(isReady).toBeUndefined()
 
       act(() => {
-        callbacksList[1]!.onWorkflowPaused({ data: { workflow_run_id: 'wr-1' } })
+        callbacksList[1]!.onWorkflowContinuationReady()
       })
       await act(async () => readyPromise)
 
@@ -1705,6 +1761,7 @@ describe('useChat', () => {
 
       act(() => {
         result.current.handleResume('m-1', 'wr-1', { isPublicAPI: true })
+        callbacksList[0]!.onWorkflowContinuationReady()
         callbacksList[0]!.onWorkflowPaused({ data: { workflow_run_id: 'wr-1' } })
       })
       await act(async () => {
@@ -3021,6 +3078,46 @@ describe('useChat', () => {
           thought: expect.objectContaining({ id: 'th-2', thought: 'second thought' }),
         },
         { type: 'message', content: ' second answer' },
+      ])
+    })
+
+    it('should replace streamed new-agent message parts with the authoritative snapshot answer', () => {
+      let callbacks: HookCallbacks
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const { result } = renderHook(() =>
+        useChat(undefined, undefined, undefined, undefined, undefined, undefined, undefined, {
+          isNewAgent: true,
+        }),
+      )
+      act(() => {
+        result.current.handleSend('url', { query: 'agent snapshot' }, {})
+      })
+
+      act(() => {
+        callbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1' })
+        callbacks.onThought({ id: 'th-1', thought: 'initial thought' })
+        callbacks.onData('stale first chunk', false, {
+          event: 'agent_message',
+          messageId: 'm-thought',
+        })
+        callbacks.onThought({ id: 'th-2', thought: 'second thought' })
+        callbacks.onData(' stale second chunk', false, {
+          event: 'message',
+          messageId: 'm-thought',
+        })
+        callbacks.onMessageReplace({ answer: 'complete restored answer' })
+      })
+
+      const lastResponse = result.current.chatList[result.current.chatList.length - 1]!
+      expect(lastResponse.content).toBe('complete restored answer')
+      expect(
+        lastResponse.agent_response_parts?.filter((part) => part.type === 'thought'),
+      ).toHaveLength(2)
+      expect(lastResponse.agent_response_parts?.filter((part) => part.type === 'message')).toEqual([
+        { type: 'message', content: 'complete restored answer' },
       ])
     })
   })

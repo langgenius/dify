@@ -27,12 +27,14 @@ from pytest_mock import MockerFixture
 import core.app.apps.pipeline.pipeline_runner as module
 from core.app.apps.pipeline.pipeline_runner import PipelineRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from graphon.graph_events import GraphRunFailedEvent
+from graphon.entities.pause_reason import SchedulingPause
+from graphon.graph_events import GraphRunFailedEvent, GraphRunPausedEvent
 
 
 def _build_app_generate_entity() -> SimpleNamespace:
     app_config = SimpleNamespace(app_id="pipe", workflow_id="wf", tenant_id="tenant")
     return SimpleNamespace(
+        task_id="task",
         app_config=app_config,
         invoke_from=InvokeFrom.WEB_APP,
         user_id="user",
@@ -187,6 +189,17 @@ def test_update_document_status_skips_without_document_ref(mocker, runner):
     create_session.assert_not_called()
 
 
+def test_update_document_status_keeps_indexing_state_during_pause(mocker, runner):
+    create_session = mocker.patch.object(module, "create_session")
+
+    runner._update_document_status(
+        GraphRunPausedEvent(reasons=[SchedulingPause(message="worker drain")], outputs={}),
+        MagicMock(),
+    )
+
+    create_session.assert_not_called()
+
+
 def test_run_pipeline_not_found(mocker: MockerFixture):
     app_generate_entity = _build_app_generate_entity()
     app_generate_entity.invoke_from = InvokeFrom.WEB_APP
@@ -333,9 +346,13 @@ def test_run_workflow_not_initialized(mocker: MockerFixture):
         runner.run()
 
 
-def test_run_single_iteration_path(mocker: MockerFixture):
+@pytest.mark.parametrize("single_kind", ["iteration", "loop"])
+def test_run_single_node_path(mocker: MockerFixture, single_kind: str):
     app_generate_entity = _build_app_generate_entity()
-    app_generate_entity.single_iteration_run = MagicMock()
+    if single_kind == "iteration":
+        app_generate_entity.single_iteration_run = MagicMock()
+    else:
+        app_generate_entity.single_loop_run = MagicMock()
 
     pipeline = MagicMock(id="pipe", tenant_id="tenant")
     dataset = SimpleNamespace(id="ds", tenant_id="tenant")
@@ -365,7 +382,9 @@ def test_run_single_iteration_path(mocker: MockerFixture):
             version="v1",
         )
     )
-    runner._prepare_single_node_execution = MagicMock(return_value=("graph", "pool", "state"))
+    graph = SimpleNamespace(root_node=SimpleNamespace(id=f"{single_kind}-node"))
+    effective_graph = {"nodes": [{"id": f"{single_kind}-node"}], "edges": []}
+    runner._prepare_single_node_execution = MagicMock(return_value=(graph, effective_graph, "pool", "state"))
     runner._update_document_status = MagicMock()
     runner._handle_event = MagicMock()
 
@@ -386,7 +405,7 @@ def test_run_single_iteration_path(mocker: MockerFixture):
     workflow_entry = MagicMock()
     workflow_entry.graph_engine = MagicMock()
     workflow_entry.run.return_value = [event]
-    mocker.patch.object(module, "WorkflowEntry", return_value=workflow_entry)
+    workflow_entry_class = mocker.patch.object(module, "WorkflowEntry", return_value=workflow_entry)
 
     mocker.patch.object(module, "WorkflowPersistenceLayer", return_value=MagicMock())
 
@@ -394,7 +413,8 @@ def test_run_single_iteration_path(mocker: MockerFixture):
 
     create_dataset_ref.assert_called_once_with(dataset)
     create_document_ref_from_id.assert_called_once_with(dataset_ref, "doc")
-    runner._prepare_single_node_execution.assert_called_once()
+    assert runner._prepare_single_node_execution.call_args.kwargs["workflow_execution_id"] == "run"
+    assert workflow_entry_class.call_args.kwargs["graph_config"] is effective_graph
     runner._update_document_status.assert_called_once_with(event, document_ref)
     runner._handle_event.assert_called()
 
@@ -434,7 +454,7 @@ def test_run_normal_path_builds_graph(mocker: MockerFixture):
 
     runner._resolve_user_from = MagicMock(return_value=UserFrom.ACCOUNT)
     runner.get_workflow = MagicMock(return_value=workflow)
-    runner._init_rag_pipeline_graph = MagicMock(return_value="graph")
+    runner._init_rag_pipeline_graph = MagicMock(return_value=SimpleNamespace(root_node=SimpleNamespace(id="start")))
     runner._update_document_status = MagicMock()
     runner._handle_event = MagicMock()
 
@@ -454,10 +474,89 @@ def test_run_normal_path_builds_graph(mocker: MockerFixture):
     workflow_entry = MagicMock()
     workflow_entry.graph_engine = MagicMock()
     workflow_entry.run.side_effect = lambda: events.append("workflow_run") or []
-    mocker.patch.object(module, "WorkflowEntry", return_value=workflow_entry)
+    workflow_entry_class = mocker.patch.object(module, "WorkflowEntry", return_value=workflow_entry)
     mocker.patch.object(module, "WorkflowPersistenceLayer", return_value=MagicMock())
 
     runner.run()
 
     assert events == ["session_enter", "session_exit", "workflow_run"]
     runner._init_rag_pipeline_graph.assert_called_once()
+    assert isinstance(workflow_entry_class.call_args.kwargs["command_channel"], module.CombinedCommandChannel)
+
+
+@pytest.mark.parametrize("single_kind", ["iteration", "loop"])
+def test_run_resume_uses_checkpoint_state_filter_and_layers(mocker: MockerFixture, single_kind: str):
+    app_generate_entity = _build_app_generate_entity()
+    single_run = MagicMock()
+    app_generate_entity.single_iteration_run = single_run if single_kind == "iteration" else None
+    app_generate_entity.single_loop_run = single_run if single_kind == "loop" else None
+    pipeline = MagicMock(id="pipe", tenant_id="tenant")
+    pipeline.retrieve_dataset.return_value = SimpleNamespace(id="ds", tenant_id="tenant")
+    session = MagicMock()
+    session.get.return_value = pipeline
+    _patch_create_session(mocker, session)
+
+    edited_graph = {"nodes": [{"id": "edited-draft-root"}], "edges": []}
+    root_node_id = f"{single_kind}-node"
+    frozen_graph = {"nodes": [{"id": root_node_id}], "edges": []}
+    workflow = MagicMock(
+        id="wf",
+        tenant_id="tenant",
+        app_id="pipe",
+        graph_dict=edited_graph,
+        type="rag-pipeline",
+        version="v1",
+    )
+    variable_pool = MagicMock()
+    resume_state = SimpleNamespace(variable_pool=variable_pool)
+    response_stream_filter = MagicMock()
+    injected_layer = MagicMock()
+    runner = PipelineRunner(
+        application_generate_entity=app_generate_entity,
+        queue_manager=MagicMock(),
+        variable_loader=MagicMock(),
+        workflow=workflow,
+        system_user_id="sys",
+        workflow_execution_repository=MagicMock(),
+        workflow_node_execution_repository=MagicMock(),
+        graph_engine_layers=(injected_layer,),
+        graph_runtime_state=resume_state,
+        response_stream_filter=response_stream_filter,
+        graph_config=frozen_graph,
+        workflow_version="published-v1",
+        root_node_id=root_node_id,
+    )
+    runner._resolve_user_from = MagicMock(return_value=UserFrom.ACCOUNT)
+    runner.get_workflow = MagicMock(return_value=workflow)
+    runner._init_rag_pipeline_graph = MagicMock(
+        return_value=SimpleNamespace(root_node=SimpleNamespace(id=root_node_id))
+    )
+    runner._update_document_status = MagicMock()
+    runner._handle_event = MagicMock()
+
+    workflow_entry = MagicMock()
+    workflow_entry.run.return_value = []
+    workflow_entry_class = mocker.patch.object(module, "WorkflowEntry", return_value=workflow_entry)
+    persistence_layer = MagicMock()
+    mocker.patch.object(module, "WorkflowPersistenceLayer", return_value=persistence_layer)
+
+    runner.run()
+
+    runner._init_rag_pipeline_graph.assert_called_once_with(
+        graph_runtime_state=resume_state,
+        start_node_id=root_node_id,
+        workflow=workflow,
+        graph_config=frozen_graph,
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.DEBUGGER,
+        skip_validation=True,
+    )
+    assert workflow_entry_class.call_args.kwargs["graph_runtime_state"] is resume_state
+    assert workflow_entry_class.call_args.kwargs["variable_pool"] is variable_pool
+    assert workflow_entry_class.call_args.kwargs["response_stream_filter"] is response_stream_filter
+    assert workflow_entry_class.call_args.kwargs["graph_config"] is frozen_graph
+    workflow_info = module.WorkflowPersistenceLayer.call_args.kwargs["workflow_info"]
+    assert workflow_info.version == "published-v1"
+    assert workflow_info.graph_data is frozen_graph
+    workflow_entry.graph_engine.layer.assert_any_call(persistence_layer)
+    workflow_entry.graph_engine.layer.assert_any_call(injected_layer)

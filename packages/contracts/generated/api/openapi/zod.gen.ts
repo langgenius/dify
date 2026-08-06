@@ -628,6 +628,7 @@ export const zWorkflowRunData = z.object({
   elapsed_time: z.number().nullish(),
   error: z.string().nullish(),
   finished_at: z.int().nullish(),
+  handoff_duration: z.number().optional().default(0),
   id: z.string(),
   outputs: z.record(z.string(), z.unknown()).optional(),
   status: z.string(),
@@ -828,6 +829,7 @@ export const zGetAppsByAppIdTasksByTaskIdEventsPath = z.object({
 
 export const zGetAppsByAppIdTasksByTaskIdEventsQuery = z.object({
   continue_on_pause: z.boolean().optional().default(false),
+  cursor: z.string().optional(),
   include_state_snapshot: z.boolean().optional().default(false),
 })
 

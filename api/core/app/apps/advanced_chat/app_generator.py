@@ -39,6 +39,7 @@ from core.app.entities.task_entities import (
     AdvancedChatPausedBlockingResponse,
     ChatbotAppBlockingResponse,
     ChatbotAppStreamResponse,
+    WorkflowMaintenancePausedBlockingResponse,
 )
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, PauseStatePersistenceLayer
 from core.helper.trace_id_helper import extract_external_trace_id_from_args, extract_trace_session_id_from_args
@@ -56,12 +57,14 @@ from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, App, Conversation, EndUser, Message, Workflow, WorkflowNodeExecutionTriggeredFrom
 from models.enums import WorkflowRunTriggeredFrom
+from models.workflow_handoff import WorkflowHandoffResumeRoute
 from services.conversation_service import ConversationService
 from services.errors.conversation import ConversationNotExistsError
 from services.workflow_draft_variable_service import (
     DraftVarLoader,
     WorkflowDraftVariableService,
 )
+from services.workflow_handoff_runtime_service import build_workflow_handoff_persistence_layer
 
 logger = logging.getLogger(__name__)
 
@@ -284,6 +287,11 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         graph_runtime_state: GraphRuntimeState,
         pause_state_config: PauseStateLayerConfig | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
+        graph_engine_layers: Sequence[GraphEngineLayer] = (),
+        handoff_resume_route: WorkflowHandoffResumeRoute | None = None,
+        graph_config: Mapping[str, Any] | None = None,
+        workflow_version: str | None = None,
+        root_node_id: str | None = None,
     ):
         """
         Resume a paused advanced chat execution.
@@ -314,6 +322,11 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             pause_state_config=pause_state_config,
             graph_runtime_state=graph_runtime_state,
             response_stream_filter=response_stream_filter,
+            graph_engine_layers=graph_engine_layers,
+            handoff_resume_route=handoff_resume_route,
+            graph_config=graph_config,
+            workflow_version=workflow_version,
+            root_node_id=root_node_id,
             session=session,
         )
 
@@ -366,6 +379,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             single_iteration_run=AdvancedChatAppGenerateEntity.SingleIterationRunEntity(
                 node_id=node_id, inputs=args["inputs"]
             ),
+            workflow_run_id=str(uuid.uuid4()),
         )
         contexts.plugin_tool_providers.set({})
         contexts.plugin_tool_providers_lock.set(threading.Lock())
@@ -459,6 +473,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 **_extract_trace_session_id_from_debug_args(args),
             },
             single_loop_run=AdvancedChatAppGenerateEntity.SingleLoopRunEntity(node_id=node_id, inputs=args.inputs),
+            workflow_run_id=str(uuid.uuid4()),
         )
         contexts.plugin_tool_providers.set({})
         contexts.plugin_tool_providers_lock.set(threading.Lock())
@@ -523,6 +538,10 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         graph_runtime_state: GraphRuntimeState | None = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         response_stream_filter: ResponseStreamFilter | None = None,
+        handoff_resume_route: WorkflowHandoffResumeRoute | None = None,
+        graph_config: Mapping[str, Any] | None = None,
+        workflow_version: str | None = None,
+        root_node_id: str | None = None,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Generate App response.
@@ -576,6 +595,13 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
 
             graph_layers: list[GraphEngineLayer] = list(graph_engine_layers)
             resolved_response_stream_filter = response_stream_filter or ResponseStreamFilter()
+            handoff_layer = build_workflow_handoff_persistence_layer(
+                generate_entity=application_generate_entity,
+                response_stream_filter=resolved_response_stream_filter,
+                resume_route=handoff_resume_route,
+            )
+            if handoff_layer is not None:
+                graph_layers.append(handoff_layer)
             if pause_state_config is not None:
                 graph_layers.append(
                     PauseStatePersistenceLayer(
@@ -604,6 +630,9 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                     "graph_engine_layers": tuple(graph_layers),
                     "graph_runtime_state": graph_runtime_state,
                     "response_stream_filter": resolved_response_stream_filter,
+                    "graph_config": graph_config,
+                    "workflow_version": workflow_version,
+                    "root_node_id": root_node_id,
                 },
             )
 
@@ -613,7 +642,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             # releasing the request-scoped SQLAlchemy session.
             workflow_snapshot = WorkflowSnapshot.from_workflow(workflow)
             conversation_snapshot = ConversationSnapshot.from_conversation(conversation)
-            message_snapshot = MessageSnapshot.from_message(message)
+            message_snapshot = MessageSnapshot.from_message(message, session=session)
             session.close()
 
             try:
@@ -659,6 +688,9 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         graph_runtime_state: GraphRuntimeState | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
+        graph_config: Mapping[str, Any] | None = None,
+        workflow_version: str | None = None,
+        root_node_id: str | None = None,
     ):
         """
         Generate worker in a new thread.
@@ -725,10 +757,16 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 graph_engine_layers=graph_engine_layers,
                 graph_runtime_state=graph_runtime_state,
                 response_stream_filter=response_stream_filter,
+                graph_config=graph_config,
+                workflow_version=workflow_version,
+                root_node_id=root_node_id,
             )
 
             try:
-                with active_workflow_task(application_generate_entity.task_id):
+                with active_workflow_task(
+                    application_generate_entity.task_id,
+                    workflow_run_id=application_generate_entity.workflow_run_id,
+                ):
                     runner.run()
             except GenerateTaskStoppedError:
                 pass
@@ -763,6 +801,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
     ) -> (
         ChatbotAppBlockingResponse
         | AdvancedChatPausedBlockingResponse
+        | WorkflowMaintenancePausedBlockingResponse
         | Generator[ChatbotAppStreamResponse, None, None]
     ):
         """

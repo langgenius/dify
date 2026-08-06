@@ -150,7 +150,9 @@ class TestWorkflowEventsApi:
         monkeypatch.setattr("controllers.web.workflow_events.WorkflowAppGenerator", lambda: workflow_generator)
         monkeypatch.setattr("controllers.web.workflow_events.build_workflow_event_stream", snapshot_builder)
 
-        with app.test_request_context("/workflow/run-1/events?include_state_snapshot=true&continue_on_pause=true"):
+        with app.test_request_context(
+            "/workflow/run-1/events?include_state_snapshot=true&continue_on_pause=true&cursor=31-0"
+        ):
             response = WorkflowEventsApi().get(_workflow_app(), _end_user(), "run-1")
 
         assert response.get_data(as_text=True) == "data: snapshot\n\n"
@@ -161,4 +163,5 @@ class TestWorkflowEventsApi:
             app_id="app-1",
             session_maker=ANY,
             close_on_pause=False,
+            cursor="31-0",
         )

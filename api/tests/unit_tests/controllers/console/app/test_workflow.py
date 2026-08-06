@@ -885,3 +885,34 @@ def test_workflow_online_users_rejects_excessive_workflow_ids(app: Flask, monkey
     assert exc.value.description is not None
     assert "Maximum" in exc.value.description
     accessible_app_ids.assert_not_called()
+
+
+def test_workflow_task_stop_cancels_handoff_and_live_execution(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    stop_task = Mock()
+    monkeypatch.setattr(workflow_module.AppTaskService, "stop_task", stop_task)
+
+    api = workflow_module.WorkflowTaskStopApi()
+    handler = inspect.unwrap(api.post)
+    current_user = SimpleNamespace(id="account-1")
+    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=workflow_module.AppMode.WORKFLOW)
+
+    with app.test_request_context("/apps/app-1/workflow-runs/tasks/task-1/stop", method="POST"):
+        result = handler(
+            api,
+            current_user=current_user,
+            app_model=app_model,
+            task_id="task-1",
+        )
+
+    assert result == {"result": "success"}
+    stop_task.assert_called_once_with(
+        "task-1",
+        workflow_module.InvokeFrom.DEBUGGER,
+        "account-1",
+        workflow_module.AppMode.WORKFLOW,
+        tenant_id="tenant-1",
+        app_id="app-1",
+    )

@@ -7,7 +7,10 @@ from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.workflow.active_workflow_tasks import (
     active_workflow_task,
     get_active_workflow_task_count,
+    get_active_workflow_tasks,
     reset_active_workflow_tasks,
+    retain_active_workflow_tasks,
+    wait_for_active_workflow_tasks,
 )
 
 
@@ -25,6 +28,47 @@ def test_active_workflow_task_tracks_count_during_context() -> None:
         assert get_active_workflow_task_count() == 1
 
     assert get_active_workflow_task_count() == 0
+
+
+def test_active_workflow_task_tracks_run_and_registration_identity() -> None:
+    with active_workflow_task("task-a", workflow_run_id="run-a"):
+        registrations = get_active_workflow_tasks()
+
+        assert len(registrations) == 1
+        assert registrations[0].task_id == "task-a"
+        assert registrations[0].workflow_run_id == "run-a"
+        assert registrations[0].registration_id
+        assert wait_for_active_workflow_tasks(0) == registrations
+
+
+def test_retain_active_workflow_tasks_rejects_reused_task_registration() -> None:
+    with active_workflow_task("task-a", workflow_run_id="run-a"):
+        old_registration = get_active_workflow_tasks()
+
+    with active_workflow_task("task-a", workflow_run_id="run-a"):
+        assert retain_active_workflow_tasks(old_registration) == ()
+
+
+def test_old_context_exit_does_not_unregister_reused_task_registration() -> None:
+    old_context = active_workflow_task("task-a", workflow_run_id="run-a")
+    new_context = active_workflow_task("task-a", workflow_run_id="run-a")
+    old_context.__enter__()
+    reset_active_workflow_tasks()
+    new_context.__enter__()
+    try:
+        old_context.__exit__(None, None, None)
+
+        registrations = get_active_workflow_tasks()
+        assert len(registrations) == 1
+        assert registrations[0].task_id == "task-a"
+    finally:
+        new_context.__exit__(None, None, None)
+
+
+def test_active_workflow_task_rejects_empty_run_id() -> None:
+    with pytest.raises(ValueError, match="workflow_run_id must not be empty"):
+        with active_workflow_task("task-a", workflow_run_id=""):
+            pass
 
 
 def test_active_workflow_task_rejects_duplicate_task_id() -> None:

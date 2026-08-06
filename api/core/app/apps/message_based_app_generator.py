@@ -10,7 +10,7 @@ from core.app.app_config.entities import EasyUIBasedAppConfig, EasyUIBasedAppMod
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.exc import GenerateTaskStoppedError
-from core.app.apps.streaming_utils import stream_topic_events
+from core.app.apps.streaming_utils import StreamEventWithCursor, stream_topic_events
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
     AgentChatAppGenerateEntity,
@@ -321,10 +321,18 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         workflow_run_id: str,
         idle_timeout=300,
         on_subscribe: Callable[[], None] | None = None,
-    ) -> Generator[Mapping | str, None, None]:
+        cursor: str | None = None,
+    ) -> Generator[Mapping | StreamEventWithCursor | str, None, None]:
         topic = cls.get_response_topic(app_mode, workflow_run_id)
+        if cursor is None:
+            return stream_topic_events(
+                topic=topic,
+                idle_timeout=idle_timeout,
+                on_subscribe=on_subscribe,
+            )
         return stream_topic_events(
             topic=topic,
             idle_timeout=idle_timeout,
             on_subscribe=on_subscribe,
+            cursor=cursor,
         )

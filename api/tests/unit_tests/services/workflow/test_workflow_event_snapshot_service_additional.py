@@ -3,7 +3,6 @@ import queue
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from itertools import cycle
 from threading import Event
 from types import SimpleNamespace
 from typing import Any, cast
@@ -300,7 +299,7 @@ class TestWorkflowEventSnapshotHelpers:
         assert buffer_state.task_id_hint == "task-1"
         assert event["event"] == "node_started"
 
-    def test_start_buffering_should_drop_old_event_when_queue_is_full(
+    def test_start_buffering_should_apply_backpressure_without_dropping_old_event(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
@@ -308,17 +307,18 @@ class TestWorkflowEventSnapshotHelpers:
             def __init__(self) -> None:
                 self._first_put = True
                 self.items: list[dict[str, Any]] = [{"event": "old"}]
+                self.stored = Event()
 
-            def put_nowait(self, item: dict[str, Any]) -> None:
+            def put(self, item: dict[str, Any], timeout: int) -> None:
+                assert timeout == 1
                 if self._first_put:
                     self._first_put = False
                     raise queue.Full
                 self.items.append(item)
+                self.stored.set()
 
             def get_nowait(self) -> dict[str, Any]:
-                if not self.items:
-                    raise queue.Empty
-                return self.items.pop(0)
+                raise AssertionError("lossless buffering must not evict an older event")
 
             def empty(self) -> bool:
                 return len(self.items) == 0
@@ -340,12 +340,14 @@ class TestWorkflowEventSnapshotHelpers:
 
         buffer_state = service_module._start_buffering(subscription)
         ready = buffer_state.task_id_ready.wait(timeout=1)
+        stored = fake_queue.stored.wait(timeout=1)
         buffer_state.stop_event.set()
         finished = buffer_state.done_event.wait(timeout=1)
 
         assert ready is True
+        assert stored is True
         assert finished is True
-        assert fake_queue.items[-1]["task_id"] == "task-2"
+        assert fake_queue.items == [{"event": "old"}, {"event": "node_started", "task_id": "task-2"}]
 
     def test_start_buffering_should_set_done_event_when_subscription_raises(self) -> None:
         class Subscription:
@@ -454,8 +456,8 @@ class TestBuildWorkflowEventStream:
             task_id_hint="task-1",
         )
         monkeypatch.setattr(service_module, "_start_buffering", MagicMock(return_value=buffer_state))
-        time_values = cycle([0.0, 6.0, 21.0, 26.0])
-        monkeypatch.setattr(service_module.time, "time", lambda: next(time_values))
+        time_values = iter([0.0, 6.0, 21.0])
+        monkeypatch.setattr(service_module, "time", SimpleNamespace(time=lambda: next(time_values)))
 
         events = list(
             build_workflow_event_stream(

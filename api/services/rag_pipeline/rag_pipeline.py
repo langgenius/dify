@@ -103,16 +103,23 @@ def _build_seeded_variable_pool(variables: Sequence[Variable]) -> VariablePool:
 
 class RagPipelineService:
     _session: Session
+    _session_maker: sessionmaker[Session]
 
-    def __init__(self, session: Session, session_maker: sessionmaker | None = None):
+    def __init__(self, session: Session, session_maker: sessionmaker[Session] | None = None):
         """Initialize RagPipelineService with repository dependencies."""
         self._session = session
         if session_maker is None:
             session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+        self._session_maker = session_maker
         self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
             session_maker
         )
         self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+
+    @property
+    def session_maker(self) -> sessionmaker[Session]:
+        """Return the service-owned factory used by workflow event repositories."""
+        return self._session_maker
 
     @staticmethod
     def get_pipeline_by_id(pipeline_id: str, tenant_id: str, *, session: Session) -> Pipeline | None:

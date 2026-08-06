@@ -8,11 +8,19 @@ from core.app.entities.task_entities import (
     PingStreamResponse,
     WorkflowAppBlockingResponse,
     WorkflowAppStreamResponse,
+    WorkflowMaintenancePausedBlockingResponse,
 )
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 
 
 class TestWorkflowGenerateResponseConverter:
+    def test_blocking_maintenance_pause_stays_internal(self):
+        blocking = WorkflowMaintenancePausedBlockingResponse(task_id="t1", workflow_run_id="r1")
+
+        response = WorkflowAppGenerateResponseConverter.convert_blocking_full_response(blocking)
+
+        assert response == {"event": "workflow_maintenance_paused", "task_id": "t1", "workflow_run_id": "r1"}
+
     def test_blocking_full_response(self):
         blocking = WorkflowAppBlockingResponse(
             task_id="t1",
@@ -131,3 +139,28 @@ class TestWorkflowGenerateResponseConverter:
         chunks = list(WorkflowAppGenerateResponseConverter.convert_stream_full_response(_gen()))
 
         assert chunks[0]["event"] == "error"
+
+    def test_stream_converters_close_source_after_partial_consumption(self):
+        for convert in (
+            WorkflowAppGenerateResponseConverter.convert_stream_full_response,
+            WorkflowAppGenerateResponseConverter.convert_stream_simple_response,
+        ):
+            source_closed = False
+
+            def source():
+                nonlocal source_closed
+                try:
+                    while True:
+                        yield WorkflowAppStreamResponse(
+                            workflow_run_id="run",
+                            stream_response=PingStreamResponse(task_id="task"),
+                        )
+                finally:
+                    source_closed = True
+
+            converted = convert(source())
+            assert next(converted) == "ping"
+
+            converted.close()
+
+            assert source_closed

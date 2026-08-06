@@ -74,6 +74,21 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Document not found |  |
 
+### [GET] /datasets/{dataset_id}/pipeline/workflow-runs/{run_id}/events
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+| run_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 401 | Unauthorized - invalid API token |
+| 403 | Forbidden - dataset API access or workspace access denied |
+
 ---
 ## default
 
@@ -393,6 +408,7 @@ Resume the Server-Sent Events stream for a workflow run after a pause or a dropp
 | ---- | ---------- | ----------- | -------- | ------ |
 | task_id | path | Workflow run ID returned by the original workflow run request. | Yes | string |
 | continue_on_pause | query | Set to `true` to keep the stream open across multiple `workflow_paused` events, which is useful when the workflow has more than one Human Input node in sequence. By default, the stream closes after the first pause. | No | boolean |
+| cursor | query | Replay events strictly after this SSE event ID. Last-Event-ID header takes precedence. | No | string |
 | include_state_snapshot | query | When `true`, replay from the persisted state snapshot to include a status summary of already-executed nodes before streaming new events. | No | boolean |
 | user | query | End-user identifier that originally triggered the run. Must match the creator of the run. | Yes | string |
 
@@ -400,7 +416,7 @@ Resume the Server-Sent Events stream for a workflow run after a pause or a dropp
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Server-Sent Events stream. Each event is delivered as `data: {JSON}\\n\\n`. Event payloads follow the same schemas as the original streaming response. | **text/event-stream**: [EventStreamResponse](#eventstreamresponse)<br> |
+| 200 | Server-Sent Events stream. Durable events are delivered as `id: {cursor}\\ndata: {JSON}\\n\\n`; reconnect with Last-Event-ID. Event payloads follow the same schemas as the original streaming response. | **text/event-stream**: [EventStreamResponse](#eventstreamresponse)<br> |
 | 400 | `not_workflow_app` : Please check if your app mode matches the right API route. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
@@ -2101,6 +2117,7 @@ Resume the Server-Sent Events stream for a workflow run after a pause or a dropp
 | ---- | ---------- | ----------- | -------- | ------ |
 | task_id | path | Workflow run ID returned by the original workflow run request. | Yes | string |
 | continue_on_pause | query | Set to `true` to keep the stream open across multiple `workflow_paused` events, which is useful when the workflow has more than one Human Input node in sequence. By default, the stream closes after the first pause. | No | boolean |
+| cursor | query | Replay events strictly after this SSE event ID. Last-Event-ID header takes precedence. | No | string |
 | include_state_snapshot | query | When `true`, replay from the persisted state snapshot to include a status summary of already-executed nodes before streaming new events. | No | boolean |
 | user | query | End-user identifier that originally triggered the run. Must match the creator of the run. | Yes | string |
 
@@ -2108,7 +2125,7 @@ Resume the Server-Sent Events stream for a workflow run after a pause or a dropp
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Server-Sent Events stream. Each event is delivered as `data: {JSON}\\n\\n`. Event payloads follow the same schemas as the original streaming response. | **text/event-stream**: [EventStreamResponse](#eventstreamresponse)<br> |
+| 200 | Server-Sent Events stream. Durable events are delivered as `id: {cursor}\\ndata: {JSON}\\n\\n`; reconnect with Last-Event-ID. Event payloads follow the same schemas as the original streaming response. | **text/event-stream**: [EventStreamResponse](#eventstreamresponse)<br> |
 | 400 | `not_workflow_app` : Please check if your app mode matches the right API route. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
@@ -4108,6 +4125,7 @@ in form definition, or a variable while the workflow is running.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | continue_on_pause | boolean | Set to `true` to keep the stream open across multiple `workflow_paused` events, which is useful when the workflow has more than one Human Input node in sequence. By default, the stream closes after the first pause. | No |
+| cursor | string | Replay events strictly after this SSE event ID. Last-Event-ID header takes precedence. | No |
 | include_state_snapshot | boolean | When `true`, replay from the persisted state snapshot to include a status summary of already-executed nodes before streaming new events. | No |
 | user | string | End-user identifier that originally triggered the run. Must match the creator of the run. | Yes |
 
@@ -4133,6 +4151,7 @@ in form definition, or a variable while the workflow is running.
 | error | string |  | No |
 | exceptions_count | integer |  | No |
 | finished_at | integer |  | No |
+| handoff_duration | number |  | No |
 | id | string |  | Yes |
 | status | string |  | No |
 | total_steps | integer |  | No |
@@ -4165,6 +4184,7 @@ in form definition, or a variable while the workflow is running.
 | elapsed_time | number<br>integer |  | No |
 | error | string |  | No |
 | finished_at | integer |  | No |
+| handoff_duration | number |  | No |
 | id | string |  | Yes |
 | inputs | object<br>[ object ]<br>string<br>integer<br>number<br>boolean |  | No |
 | outputs | object |  | No |

@@ -71,6 +71,7 @@ class WorkflowRunForLogResponse(ResponseModel):
     triggered_from: str | None = None
     error: str | None = None
     elapsed_time: float | None = None
+    handoff_duration: float = 0.0
     total_tokens: int | None = None
     total_steps: int | None = None
     created_at: int | None = None
@@ -97,6 +98,7 @@ class WorkflowRunForArchivedLogResponse(ResponseModel):
     status: str | None = None
     triggered_from: str | None = None
     elapsed_time: float | None = None
+    handoff_duration: float = 0.0
     total_tokens: int | None = None
 
     @field_validator("status", mode="before")

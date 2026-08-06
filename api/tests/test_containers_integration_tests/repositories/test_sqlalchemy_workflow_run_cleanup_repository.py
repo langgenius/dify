@@ -15,6 +15,12 @@ from graphon.entities.pause_reason import PauseReasonType
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowPause, WorkflowPauseReason, WorkflowRun
+from models.workflow_handoff import (
+    WorkflowHandoffResumeRoute,
+    WorkflowHandoffSnapshotGC,
+    WorkflowHandoffState,
+    WorkflowRunHandoff,
+)
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 
 
@@ -241,6 +247,26 @@ class TestDeleteRunsWithRelatedByIds:
         _add_app_log(db_session_with_containers, scope, workflow_run)
         pause = _add_pause_with_reason(db_session_with_containers, workflow_run)
         pause_id = pause.id
+        snapshot_object_key = f"workflow-handoffs/{workflow_run.id}/checkpoint.bin"
+        handoff = WorkflowRunHandoff(
+            workflow_run_id=workflow_run.id,
+            generation=1,
+            task_id=f"task-{workflow_run.id}",
+            snapshot_object_key=snapshot_object_key,
+            snapshot_schema_version="v1",
+            snapshot_checksum="checksum",
+            snapshot_size_bytes=1,
+            resume_route=WorkflowHandoffResumeRoute.WORKFLOW,
+            source_worker_id="worker-old",
+            state=WorkflowHandoffState.RESUMED,
+            resumed_at=datetime(2024, 1, 1, 12, 1, 0),
+        )
+        snapshot_gc = WorkflowHandoffSnapshotGC(
+            snapshot_object_key=snapshot_object_key,
+            upload_completed_at=datetime(2024, 1, 1, 12, 0, 30),
+        )
+        db_session_with_containers.add_all([handoff, snapshot_gc])
+        db_session_with_containers.commit()
         deleted_node_run_ids: list[str] = []
         deleted_trigger_run_ids: list[str] = []
 
@@ -264,6 +290,10 @@ class TestDeleteRunsWithRelatedByIds:
         verification_session = Session(bind=db_session_with_containers.get_bind())
         with verification_session:
             assert verification_session.get(WorkflowRun, workflow_run.id) is None
+            # Run retention must leave both the terminal handoff fence and its
+            # independent object-GC outbox available to the scanner.
+            assert verification_session.get(WorkflowRunHandoff, handoff.id) is not None
+            assert verification_session.get(WorkflowHandoffSnapshotGC, snapshot_gc.id) is not None
             assert verification_session.get(WorkflowPause, pause_id) is None
             assert (
                 verification_session.scalar(

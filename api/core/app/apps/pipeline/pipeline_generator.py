@@ -6,7 +6,7 @@ import secrets
 import threading
 import time
 import uuid
-from collections.abc import Generator, Mapping
+from collections.abc import Generator, Mapping, Sequence
 from typing import Any, Literal, cast, overload
 
 from flask import Flask, current_app
@@ -23,6 +23,7 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.pipeline.pipeline_config_manager import PipelineConfigManager
 from core.app.apps.pipeline.pipeline_queue_manager import PipelineQueueManager
 from core.app.apps.pipeline.pipeline_runner import PipelineRunner
+from core.app.apps.workflow.active_workflow_tasks import active_workflow_task
 from core.app.apps.workflow.generate_response_converter import WorkflowAppGenerateResponseConverter
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
@@ -31,7 +32,9 @@ from core.app.entities.task_entities import (
     WorkflowAppBlockingResponse,
     WorkflowAppPausedBlockingResponse,
     WorkflowAppStreamResponse,
+    WorkflowMaintenancePausedBlockingResponse,
 )
+from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, PauseStatePersistenceLayer
 from core.datasource.entities.datasource_entities import (
     DatasourceProviderType,
     OnlineDriveBrowseFilesRequest,
@@ -45,16 +48,21 @@ from core.repositories.factory import (
     WorkflowNodeExecutionRepository,
 )
 from extensions.ext_database import db
+from graphon.filters import ResponseStreamFilter
+from graphon.graph_engine.layers import GraphEngineLayer
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
+from graphon.runtime import GraphRuntimeState
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, EndUser, Workflow, WorkflowNodeExecutionTriggeredFrom
 from models.dataset import Document, DocumentPipelineExecutionLog, Pipeline
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode
+from models.workflow_handoff import WorkflowHandoffResumeRoute
 from services.datasource_provider_service import DatasourceProviderService
 from services.rag_pipeline.rag_pipeline_task_proxy import RagPipelineTaskProxy
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
+from services.workflow_handoff_runtime_service import build_workflow_handoff_persistence_layer
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +81,7 @@ class PipelineGenerator(BaseAppGenerator):
         streaming: Literal[True],
         call_depth: int,
         workflow_thread_pool_id: str | None,
+        workflow_run_id: str | uuid.UUID | None = None,
         is_retry: bool = False,
     ) -> Generator[Mapping | str, None, None]: ...
 
@@ -89,6 +98,7 @@ class PipelineGenerator(BaseAppGenerator):
         streaming: Literal[False],
         call_depth: int,
         workflow_thread_pool_id: str | None,
+        workflow_run_id: str | uuid.UUID | None = None,
         is_retry: bool = False,
     ) -> Mapping[str, Any]: ...
 
@@ -105,6 +115,7 @@ class PipelineGenerator(BaseAppGenerator):
         streaming: bool,
         call_depth: int,
         workflow_thread_pool_id: str | None,
+        workflow_run_id: str | uuid.UUID | None = None,
         is_retry: bool = False,
     ) -> Mapping[str, Any] | Generator[Mapping | str, None, None]: ...
 
@@ -120,6 +131,7 @@ class PipelineGenerator(BaseAppGenerator):
         streaming: bool = True,
         call_depth: int = 0,
         workflow_thread_pool_id: str | None = None,
+        workflow_run_id: str | uuid.UUID | None = None,
         is_retry: bool = False,
     ) -> Mapping[str, Any] | Generator[Mapping | str, None, None] | None:
         # Add null check for dataset
@@ -167,7 +179,7 @@ class PipelineGenerator(BaseAppGenerator):
         # run in child thread
         rag_pipeline_invoke_entities = []
         for i, datasource_info in enumerate(datasource_info_list):
-            workflow_run_id = str(uuid.uuid4())
+            current_workflow_run_id = str(workflow_run_id if i == 0 and workflow_run_id else uuid.uuid4())
             document_id = args.get("original_document_id") or None
             if invoke_from == InvokeFrom.PUBLISHED_PIPELINE and not is_retry:
                 document_id = document_id or documents[i].id
@@ -203,7 +215,7 @@ class PipelineGenerator(BaseAppGenerator):
                 stream=streaming,
                 invoke_from=invoke_from,
                 call_depth=call_depth,
-                workflow_execution_id=workflow_run_id,
+                workflow_execution_id=current_workflow_run_id,
             )
 
             contexts.plugin_tool_providers.set({})
@@ -252,7 +264,7 @@ class PipelineGenerator(BaseAppGenerator):
                         tenant_id=pipeline.tenant_id,
                         workflow_id=workflow.id,
                         streaming=streaming,
-                        workflow_execution_id=workflow_run_id,
+                        workflow_execution_id=current_workflow_run_id,
                         workflow_thread_pool_id=workflow_thread_pool_id,
                         application_generate_entity=application_generate_entity.model_dump(),
                     )
@@ -286,6 +298,58 @@ class PipelineGenerator(BaseAppGenerator):
             ],
         }
 
+    def resume(
+        self,
+        *,
+        session: Session,
+        pipeline: Pipeline,
+        workflow: Workflow,
+        user: Account | EndUser,
+        application_generate_entity: RagPipelineGenerateEntity,
+        graph_runtime_state: GraphRuntimeState,
+        workflow_execution_repository: WorkflowExecutionRepository,
+        workflow_node_execution_repository: WorkflowNodeExecutionRepository,
+        graph_engine_layers: Sequence[GraphEngineLayer] = (),
+        pause_state_config: PauseStateLayerConfig | None = None,
+        variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
+        response_stream_filter: ResponseStreamFilter | None = None,
+        workflow_thread_pool_id: str | None = None,
+        handoff_resume_route: WorkflowHandoffResumeRoute | None = None,
+        graph_config: Mapping[str, Any] | None = None,
+        workflow_version: str | None = None,
+        root_node_id: str | None = None,
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
+        """Resume a RAG pipeline execution from a persisted graph checkpoint.
+
+        Reusing ``_generate`` keeps document ownership checks, queue semantics,
+        and graph layers identical to a newly dispatched pipeline execution.
+        The caller owns the durable handoff claim and must exhaust a streaming
+        result before marking the handoff resumed.
+        """
+        return self._generate(
+            session=session,
+            flask_app=current_app._get_current_object(),  # type: ignore
+            context=contextvars.copy_context(),
+            pipeline=pipeline,
+            workflow_id=workflow.id,
+            user=user,
+            application_generate_entity=application_generate_entity,
+            invoke_from=application_generate_entity.invoke_from,
+            workflow_execution_repository=workflow_execution_repository,
+            workflow_node_execution_repository=workflow_node_execution_repository,
+            streaming=application_generate_entity.stream,
+            variable_loader=variable_loader,
+            workflow_thread_pool_id=workflow_thread_pool_id,
+            graph_engine_layers=graph_engine_layers,
+            graph_runtime_state=graph_runtime_state,
+            pause_state_config=pause_state_config,
+            response_stream_filter=response_stream_filter,
+            handoff_resume_route=handoff_resume_route,
+            graph_config=graph_config,
+            workflow_version=workflow_version,
+            root_node_id=root_node_id,
+        )
+
     def _generate(
         self,
         *,
@@ -302,6 +366,14 @@ class PipelineGenerator(BaseAppGenerator):
         streaming: bool = True,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
         workflow_thread_pool_id: str | None = None,
+        graph_engine_layers: Sequence[GraphEngineLayer] = (),
+        graph_runtime_state: GraphRuntimeState | None = None,
+        pause_state_config: PauseStateLayerConfig | None = None,
+        response_stream_filter: ResponseStreamFilter | None = None,
+        handoff_resume_route: WorkflowHandoffResumeRoute | None = None,
+        graph_config: Mapping[str, Any] | None = None,
+        workflow_version: str | None = None,
+        root_node_id: str | None = None,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Generate App response.
@@ -321,12 +393,39 @@ class PipelineGenerator(BaseAppGenerator):
             workflow = session.get(Workflow, workflow_id)
             if not workflow:
                 raise ValueError(f"Workflow not found: {workflow_id}")
+            # The graph runs in a worker thread and uses repository-scoped
+            # sessions. Detach the immutable configuration snapshots and
+            # release the caller's connection before waiting on a potentially
+            # long pipeline execution.
+            if workflow in session:
+                session.expunge(workflow)
+            if pipeline in session:
+                session.expunge(pipeline)
+            session.close()
             queue_manager = PipelineQueueManager(
                 task_id=application_generate_entity.task_id,
                 user_id=application_generate_entity.user_id,
                 invoke_from=application_generate_entity.invoke_from,
                 app_mode=AppMode.RAG_PIPELINE,
             )
+            resolved_response_stream_filter = response_stream_filter or ResponseStreamFilter()
+            resolved_graph_engine_layers = list(graph_engine_layers)
+            handoff_layer = build_workflow_handoff_persistence_layer(
+                generate_entity=application_generate_entity,
+                response_stream_filter=resolved_response_stream_filter,
+                resume_route=handoff_resume_route,
+            )
+            if handoff_layer is not None:
+                resolved_graph_engine_layers.append(handoff_layer)
+            if pause_state_config is not None:
+                resolved_graph_engine_layers.append(
+                    PauseStatePersistenceLayer(
+                        session_factory=pause_state_config.session_factory,
+                        generate_entity=application_generate_entity,
+                        state_owner_user_id=pause_state_config.state_owner_user_id,
+                        response_stream_filter=resolved_response_stream_filter,
+                    )
+                )
             context = contextvars.copy_context()
 
             # new thread
@@ -341,6 +440,12 @@ class PipelineGenerator(BaseAppGenerator):
                     "variable_loader": variable_loader,
                     "workflow_execution_repository": workflow_execution_repository,
                     "workflow_node_execution_repository": workflow_node_execution_repository,
+                    "graph_engine_layers": tuple(resolved_graph_engine_layers),
+                    "graph_runtime_state": graph_runtime_state,
+                    "response_stream_filter": resolved_response_stream_filter,
+                    "graph_config": graph_config,
+                    "workflow_version": workflow_version,
+                    "root_node_id": root_node_id,
                 },
             )
 
@@ -384,6 +489,7 @@ class PipelineGenerator(BaseAppGenerator):
         streaming: bool = True,
         *,
         session: Session,
+        workflow_run_id: str | uuid.UUID | None = None,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Generate App response.
@@ -427,7 +533,7 @@ class PipelineGenerator(BaseAppGenerator):
             stream=streaming,
             invoke_from=InvokeFrom.DEBUGGER,
             call_depth=0,
-            workflow_execution_id=str(uuid.uuid4()),
+            workflow_execution_id=str(workflow_run_id or uuid.uuid4()),
             single_iteration_run=RagPipelineGenerateEntity.SingleIterationRunEntity(
                 node_id=node_id, inputs=args["inputs"]
             ),
@@ -486,6 +592,7 @@ class PipelineGenerator(BaseAppGenerator):
         streaming: bool = True,
         *,
         session: Session,
+        workflow_run_id: str | uuid.UUID | None = None,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Generate App response.
@@ -530,7 +637,7 @@ class PipelineGenerator(BaseAppGenerator):
             invoke_from=InvokeFrom.DEBUGGER,
             extras={"auto_generate_conversation_name": False},
             single_loop_run=RagPipelineGenerateEntity.SingleLoopRunEntity(node_id=node_id, inputs=args["inputs"]),
-            workflow_execution_id=str(uuid.uuid4()),
+            workflow_execution_id=str(workflow_run_id or uuid.uuid4()),
         )
         contexts.plugin_tool_providers.set({})
         contexts.plugin_tool_providers_lock.set(threading.Lock())
@@ -587,6 +694,12 @@ class PipelineGenerator(BaseAppGenerator):
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         workflow_thread_pool_id: str | None = None,
+        graph_engine_layers: Sequence[GraphEngineLayer] = (),
+        graph_runtime_state: GraphRuntimeState | None = None,
+        response_stream_filter: ResponseStreamFilter | None = None,
+        graph_config: Mapping[str, Any] | None = None,
+        workflow_version: str | None = None,
+        root_node_id: str | None = None,
     ) -> None:
         """
         Generate worker in a new thread.
@@ -635,9 +748,19 @@ class PipelineGenerator(BaseAppGenerator):
                         system_user_id=system_user_id,
                         workflow_execution_repository=workflow_execution_repository,
                         workflow_node_execution_repository=workflow_node_execution_repository,
+                        graph_engine_layers=graph_engine_layers,
+                        graph_runtime_state=graph_runtime_state,
+                        response_stream_filter=response_stream_filter,
+                        graph_config=graph_config,
+                        workflow_version=workflow_version,
+                        root_node_id=root_node_id,
                     )
 
-                    runner.run()
+                    with active_workflow_task(
+                        application_generate_entity.task_id,
+                        workflow_run_id=application_generate_entity.workflow_execution_id,
+                    ):
+                        runner.run()
             except GenerateTaskStoppedError:
                 pass
             except InvokeAuthorizationError:
@@ -668,6 +791,7 @@ class PipelineGenerator(BaseAppGenerator):
     ) -> (
         WorkflowAppBlockingResponse
         | WorkflowAppPausedBlockingResponse
+        | WorkflowMaintenancePausedBlockingResponse
         | Generator[WorkflowAppStreamResponse, None, None]
     ):
         """

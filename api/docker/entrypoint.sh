@@ -55,12 +55,27 @@ if [[ "${MODE}" == "worker" ]]; then
     echo "Using CELERY_WORKER_QUEUES: ${DEFAULT_QUEUES}"
   fi
 
+  # Recovery remains active after creation is disabled, so every upgraded
+  # worker must keep consuming the capability-isolated handoff queue. Old
+  # image revisions do not append this queue and therefore cannot steal N+1
+  # scan/resume messages during a rolling update.
+  WORKFLOW_HANDOFF_CAPABILITY_QUEUE="${WORKFLOW_HANDOFF_QUEUE:-workflow_handoff}"
+  case ",${DEFAULT_QUEUES}," in
+    *",${WORKFLOW_HANDOFF_CAPABILITY_QUEUE},"*) ;;
+    *) DEFAULT_QUEUES="${DEFAULT_QUEUES},${WORKFLOW_HANDOFF_CAPABILITY_QUEUE}" ;;
+  esac
+
   if [[ -n "${CELERY_WORKER_CONCURRENCY}" ]]; then
     CONCURRENCY_OPTION="-c ${CELERY_WORKER_CONCURRENCY}"
     echo "Using CELERY_WORKER_CONCURRENCY: ${CELERY_WORKER_CONCURRENCY}"
   fi
 
   WORKER_POOL="${CELERY_WORKER_POOL:-${CELERY_WORKER_CLASS:-gevent}}"
+  if [[ "${WORKFLOW_HANDOFF_ENABLED,,}" = "true" && "${WORKER_POOL,,}" = "prefork" ]]; then
+    echo "Error: WORKFLOW_HANDOFF_ENABLED requires a process-shared Celery pool; prefork is unsupported."
+    echo "Use gevent, eventlet, threads, or solo so shutdown state and active-run tracking remain coherent."
+    exit 1
+  fi
   echo "Starting Celery worker with queues: ${DEFAULT_QUEUES}"
 
   exec celery -A celery_entrypoint.celery worker -P ${WORKER_POOL} $CONCURRENCY_OPTION \
@@ -130,6 +145,7 @@ else
       --worker-class ${SERVER_WORKER_CLASS:-geventwebsocket.gunicorn.workers.GeventWebSocketWorker} \
       --worker-connections ${SERVER_WORKER_CONNECTIONS:-10} \
       --timeout ${GUNICORN_TIMEOUT:-200} \
+      --graceful-timeout ${GUNICORN_GRACEFUL_TIMEOUT:-660} \
       app:socketio_app
   fi
 fi

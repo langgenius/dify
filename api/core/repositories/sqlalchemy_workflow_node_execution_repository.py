@@ -485,7 +485,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         self,
         workflow_run_id: str,
         order_config: OrderConfig | None = None,
-        triggered_from: WorkflowNodeExecutionTriggeredFrom = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        triggered_from: WorkflowNodeExecutionTriggeredFrom | None = None,
     ) -> Sequence[WorkflowNodeExecutionModel]:
         """
         Retrieve all WorkflowNodeExecution database models for a specific workflow run.
@@ -502,16 +502,21 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             order_config: Optional configuration for ordering results
                 order_config.order_by: List of fields to order by (e.g., ["index", "created_at"])
                 order_config.order_direction: Direction to order ("asc" or "desc")
+            triggered_from: Optional trigger source override. Defaults to the source bound to this repository.
 
         Returns:
             A list of WorkflowNodeExecution database models
         """
+        resolved_triggered_from = (
+            triggered_from or self._triggered_from or WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
+        )
+
         with self._session_factory() as session:
             stmt = WorkflowNodeExecutionModel.preload_offload_data_and_files(select(WorkflowNodeExecutionModel))
             stmt = stmt.where(
                 WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
                 WorkflowNodeExecutionModel.tenant_id == self._tenant_id,
-                WorkflowNodeExecutionModel.triggered_from == triggered_from,
+                WorkflowNodeExecutionModel.triggered_from == resolved_triggered_from,
                 WorkflowNodeExecutionModel.status != WorkflowNodeExecutionStatus.PAUSED,
             )
 
@@ -547,7 +552,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         self,
         workflow_execution_id: str,
         order_config: OrderConfig | None = None,
-        triggered_from: WorkflowNodeExecutionTriggeredFrom = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        triggered_from: WorkflowNodeExecutionTriggeredFrom | None = None,
     ) -> Sequence[WorkflowNodeExecution]:
         """
         Retrieve all node executions for a workflow execution.
@@ -560,6 +565,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             order_config: Optional configuration for ordering results
                 order_config.order_by: List of fields to order by (e.g., ["index", "created_at"])
                 order_config.order_direction: Direction to order ("asc" or "desc")
+            triggered_from: Optional trigger source override. Defaults to the source bound to this repository.
 
         Returns:
             A list of node execution instances

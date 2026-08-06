@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
+from libs.broadcast_channel.channel import CursorMessage
 from libs.broadcast_channel.exc import SubscriptionClosedError
 from libs.broadcast_channel.redis.streams_channel import (
     StreamsBroadcastChannel,
@@ -45,6 +46,14 @@ class FakeStreamsRedis:
     def expire(self, key: str, seconds: int) -> None:
         self._expire_calls[key] = self._expire_calls.get(key, 0) + 1
 
+    def eval(self, script: str, numkeys: int, key: str, payload: bytes, retention_seconds: int) -> str:
+        assert "XADD" in script
+        assert "EXPIRE" in script
+        assert numkeys == 1
+        entry_id = self.xadd(key, {b"data": payload})
+        self.expire(key, retention_seconds)
+        return entry_id
+
     # Consumer API
     def xread(self, streams: dict[str, Any], block: int | None = None, count: int | None = None):
         # Expect a single key
@@ -70,6 +79,14 @@ class FakeStreamsRedis:
         end_idx = len(entries) if count is None else min(len(entries), start_idx + count)
         batch = entries[start_idx:end_idx]
         return [(key, batch)]
+
+    def xrange(self, key: str, *, count: int | None = None):
+        entries = self._store.get(key, [])
+        return entries if count is None else entries[:count]
+
+    def xrevrange(self, key: str, *, count: int | None = None):
+        entries = list(reversed(self._store.get(key, [])))
+        return entries if count is None else entries[:count]
 
 
 class FailExpireRedis(FakeStreamsRedis):
@@ -194,17 +211,27 @@ class TestStreamsBroadcastChannel:
         assert topic.as_producer() is topic
         assert topic.as_subscriber() is topic
 
-    def test_publish_logs_warning_when_expire_fails(self, caplog: pytest.LogCaptureFixture):
+    def test_topic_exposes_retained_cursor_window(self, streams_channel: StreamsBroadcastChannel):
+        topic = streams_channel.topic("cursor-window")
+        assert topic.earliest_cursor() is None
+        assert topic.latest_cursor() is None
+
+        topic.publish(b"first")
+        topic.publish(b"second")
+
+        assert topic.earliest_cursor() == "1-0"
+        assert topic.latest_cursor() == "2-0"
+
+    def test_publish_propagates_atomic_retention_failure(self):
         channel = StreamsBroadcastChannel(FailExpireRedis(), retention_seconds=60)
         topic = channel.topic("expire-warning")
 
-        topic.publish(b"payload")
-
-        assert "Failed to set expire for stream key" in caplog.text
+        with pytest.raises(RuntimeError, match="expire failed"):
+            topic.publish(b"payload")
 
 
 class TestStreamsSubscription:
-    def test_subscribe_only_receives_messages_published_after_subscription_starts(
+    def test_subscribe_replays_retained_messages_then_receives_live_messages(
         self,
         streams_channel: StreamsBroadcastChannel,
     ):
@@ -216,7 +243,10 @@ class TestStreamsSubscription:
 
         received: list[bytes] = []
         with sub:
-            assert sub.receive(timeout=0.05) is None
+            replayed = sub.receive_with_cursor(timeout=0.05)
+            assert replayed is not None
+            assert replayed.payload == b"before-subscribe"
+            assert replayed.cursor == "1-0"
             topic.publish(b"after-subscribe-1")
             topic.publish(b"after-subscribe-2")
             # Drain using receive() to avoid indefinite iteration in tests
@@ -227,6 +257,38 @@ class TestStreamsSubscription:
                 received.append(msg)
 
         assert received == [b"after-subscribe-1", b"after-subscribe-2"]
+
+    def test_subscribe_after_cursor_does_not_duplicate_acknowledged_event(
+        self,
+        streams_channel: StreamsBroadcastChannel,
+    ) -> None:
+        topic = streams_channel.topic("cursor-replay")
+        topic.publish(b"one")
+        topic.publish(b"two")
+        topic.publish(b"three")
+
+        with topic.subscribe(cursor="1-0") as sub:
+            assert sub.receive(timeout=0.1) == b"two"
+            cursor_message = sub.receive_with_cursor(timeout=0.1)
+            assert cursor_message is not None
+            assert cursor_message.payload == b"three"
+            assert cursor_message.cursor == "3-0"
+            assert sub.receive(timeout=0.05) is None
+
+    def test_legacy_shared_close_marker_is_skipped_without_stalling_cursor(
+        self,
+        streams_channel: StreamsBroadcastChannel,
+        fake_redis: FakeStreamsRedis,
+    ) -> None:
+        topic = streams_channel.topic("legacy-close-marker")
+        fake_redis.xadd(topic._key, {b"data": SIG_CLOSE})
+        topic.publish(b"application-event")
+
+        with topic.subscribe() as sub:
+            message = sub.receive_with_cursor(timeout=0.1)
+            assert message is not None
+            assert message.payload == b"application-event"
+            assert message.cursor == "2-0"
 
     def test_receive_timeout_returns_none(self, streams_channel: StreamsBroadcastChannel):
         topic = streams_channel.topic("delta")
@@ -279,7 +341,7 @@ class TestStreamsSubscription:
             item = subscription._queue.get_nowait()
             if item is subscription._SENTINEL:
                 break
-            received.append(bytes(item))
+            received.append(item.payload)
 
         assert received == case.expected_messages
 
@@ -307,7 +369,7 @@ class TestStreamsSubscription:
         subscription = _StreamsSubscription(OneShotRedis(), "stream:close-signal")
         subscription._listen()
 
-        assert subscription._queue.get_nowait() == b"next-event"
+        assert subscription._queue.get_nowait() == CursorMessage(payload=b"next-event", cursor="2-0")
         assert subscription._queue.get_nowait() is subscription._SENTINEL
         assert subscription._queue.empty()
 
@@ -388,10 +450,7 @@ class TestStreamsSubscription:
 
         assert next(iter(subscription)) == b"event"
 
-    def test_control_event_unblocks_listener_for_prompt_close(self):
-        """close() returns promptly because the control event (xadd) unblocks
-        the listener from its blocking xread call.
-        """
+    def test_local_close_stops_listener_without_publishing_control_event(self):
         blocking_redis = BlockingRedis()
         subscription = _StreamsSubscription(blocking_redis, "stream:prompt-close")
 
@@ -405,9 +464,8 @@ class TestStreamsSubscription:
         subscription.close()
         elapsed = time.monotonic() - started
 
-        # The control event (xadd) wakes up xread immediately, so close()
-        # should return well under 1s (the xread BLOCK timeout).
-        assert elapsed < 0.5, f"close() took {elapsed:.3f}s; expected prompt return via control event"
+        assert elapsed < 0.5, f"close() took {elapsed:.3f}s; expected bounded local close"
+        assert blocking_redis._store == {}
 
     def test_control_event_not_sent_when_listener_not_started(self):
         """close() should not fail when the listener was never started."""

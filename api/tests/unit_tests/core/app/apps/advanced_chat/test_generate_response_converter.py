@@ -12,12 +12,20 @@ from core.app.entities.task_entities import (
     NodeFinishStreamResponse,
     NodeStartStreamResponse,
     PingStreamResponse,
+    WorkflowMaintenancePausedBlockingResponse,
 )
 from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 
 
 class TestAdvancedChatGenerateResponseConverter:
+    def test_blocking_maintenance_pause_stays_internal(self):
+        blocking = WorkflowMaintenancePausedBlockingResponse(task_id="t1", workflow_run_id="r1")
+
+        response = AdvancedChatAppGenerateResponseConverter.convert_blocking_full_response(blocking)
+
+        assert response == {"event": "workflow_maintenance_paused", "task_id": "t1", "workflow_run_id": "r1"}
+
     def test_blocking_simple_response_metadata(self):
         data = ChatbotAppBlockingResponse.Data(
             id="msg-1",
@@ -129,3 +137,30 @@ class TestAdvancedChatGenerateResponseConverter:
         assert converted[1]["event"] == "node_started"
         assert converted[2]["event"] == "node_finished"
         assert converted[3]["event"] == "error"
+
+    def test_stream_converters_close_source_after_partial_consumption(self):
+        for convert in (
+            AdvancedChatAppGenerateResponseConverter.convert_stream_full_response,
+            AdvancedChatAppGenerateResponseConverter.convert_stream_simple_response,
+        ):
+            source_closed = False
+
+            def source():
+                nonlocal source_closed
+                try:
+                    while True:
+                        yield ChatbotAppStreamResponse(
+                            conversation_id="conversation",
+                            message_id="message",
+                            created_at=1,
+                            stream_response=PingStreamResponse(task_id="task"),
+                        )
+                finally:
+                    source_closed = True
+
+            converted = convert(source())
+            assert next(converted) == "ping"
+
+            converted.close()
+
+            assert source_closed

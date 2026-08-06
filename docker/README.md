@@ -38,6 +38,21 @@ Welcome to the new `docker` directory for deploying Dify using Docker Compose. T
    - Copy `envs/core-services/shared.env.example` to `envs/core-services/shared.env`.
    - Set `ENABLE_OTEL=true` and configure `OTLP_BASE_ENDPOINT`. Tune the other `OTEL_*` knobs in the same file if needed.
 
+### Enabling Workflow Handoff for Rolling Updates
+
+Workflow handoff is disabled by default. It preserves an in-progress workflow across a planned API or worker `SIGTERM`; it does not recover an ungraceful OOM or `SIGKILL`.
+
+Use this rollout order when enabling it:
+
+1. Upgrade the database schema and deploy the new API and worker version while keeping `WORKFLOW_HANDOFF_ENABLED=false`.
+2. Make sure every upgraded API and worker replica uses the same object storage (or shared RWX storage). The default Compose deployment already shares `./volumes/app/storage`.
+3. In `envs/databases/redis.env`, set `EVENT_BUS_REDIS_CHANNEL_TYPE=streams` and keep `EVENT_BUS_STREAMS_RETENTION_SECONDS` at least 60 seconds greater than `WORKFLOW_HANDOFF_DRAIN_TIMEOUT_SECONDS`.
+4. In `envs/core-services/shared.env`, keep `WORKFLOW_HANDOFF_QUEUE=workflow_handoff` as a capability-only queue and use a process-shared Celery pool such as the default `gevent`; `prefork` is rejected when handoff is enabled. During an adjacent-version rollout, old workers must not consume this queue.
+5. In the root `.env`, keep `COMPOSE_API_STOP_GRACE_PERIOD` and `COMPOSE_WORKER_STOP_GRACE_PERIOD` at least 60 seconds greater than the drain timeout. The defaults are a 600-second drain and a 660-second stop grace period.
+6. After the schema and upgraded consumers are ready, set `WORKFLOW_HANDOFF_ENABLED=true` and roll the API and workers. Keep upgraded workers running until all outstanding handoffs have reached a terminal state, even if creation is disabled again.
+
+Existing `.env` and `envs/*.env` files are deliberately not overwritten by the generator. Review the corresponding `.env.example` files and add these values manually when upgrading an existing deployment.
+
 ### How to Deploy Middleware for Developing Dify
 
 1. **Middleware Setup**:

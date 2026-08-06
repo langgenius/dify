@@ -155,6 +155,24 @@ describe('useChat – handleResume', () => {
     expect(mockAbortCtrl.signal.aborted).toBe(true)
   })
 
+  it('should abort the resumable SSE connection on unmount', () => {
+    const abortController = new AbortController()
+    mockSseGet.mockImplementation((_url: any, _opts: any, options: any) => {
+      options.getAbortController(abortController)
+    })
+
+    const { result, unmount } = renderHook(() => useChat({}))
+
+    act(() => {
+      result.current.handleResume('msg-1', 'wfr-1', {})
+    })
+    expect(abortController.signal.aborted).toBe(false)
+
+    unmount()
+
+    expect(abortController.signal.aborted).toBe(true)
+  })
+
   it('should abort previous workflowEventsAbortController before sseGet', () => {
     const mockAbort = vi.fn()
     let sendCallbacks: any
@@ -894,6 +912,14 @@ describe('useChat – handleResume', () => {
       const sseGetCallsBefore = mockSseGet.mock.calls.length
 
       act(() => {
+        capturedResumeOptions.onWorkflowStarted({
+          workflow_run_id: 'wfr-paused',
+          task_id: 'task-paused',
+        })
+      })
+      expect(result.current.isResponding).toBe(true)
+
+      act(() => {
         capturedResumeOptions.onWorkflowPaused({
           data: { workflow_run_id: 'wfr-paused' },
         })
@@ -902,6 +928,7 @@ describe('useChat – handleResume', () => {
       expect(mockSseGet.mock.calls.length).toBe(sseGetCallsBefore)
       const answer = result.current.chatList.find((item) => item.id === 'msg-resume')
       expect(answer!.workflowProcess!.status).toBe('paused')
+      expect(result.current.isResponding).toBe(false)
     })
   })
 })

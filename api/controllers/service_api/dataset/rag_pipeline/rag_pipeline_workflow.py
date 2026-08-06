@@ -1,9 +1,10 @@
-from collections.abc import Generator
+import json
+from collections.abc import Iterator
 from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from flask import request
+from flask import Response, request
 from pydantic import BaseModel, Field, RootModel, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -18,13 +19,18 @@ from controllers.common.schema import (
     register_response_schema_models,
     register_schema_model,
 )
+from controllers.common.workflow_event_cursor import get_workflow_event_replay_cursor
 from controllers.console.app.wraps import with_session
 from controllers.service_api import service_api_ns
 from controllers.service_api.dataset.error import PipelineRunError
 from controllers.service_api.schema import event_stream_response, json_or_event_stream_response, multipart_file_params
 from controllers.service_api.wraps import DatasetApiResource
+from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
+from core.app.apps.message_generator import MessageGenerator
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.task_entities import StreamEvent
+from core.workflow.human_input_policy import HumanInputSurface
 from fields.base import ResponseModel
 from libs import helper
 from libs.helper import dump_response
@@ -32,6 +38,8 @@ from libs.login import current_user
 from models import Account
 from models.dataset import Dataset, Pipeline
 from models.engine import db
+from models.enums import CreatorUserRole
+from models.model import AppMode
 from services.errors.file import FileTooLargeError, UnsupportedFileTypeError
 from services.file_service import FileService
 from services.rag_pipeline.entity.pipeline_service_api_entities import (
@@ -41,6 +49,7 @@ from services.rag_pipeline.entity.pipeline_service_api_entities import (
 )
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
 from services.rag_pipeline.rag_pipeline import RagPipelineService
+from services.workflow_event_snapshot_service import build_workflow_event_stream, resolve_workflow_event_task_id
 
 
 class DatasourceNodeRunPayload(BaseModel):
@@ -284,7 +293,7 @@ class PipelineRunApi(DatasetApiResource):
         rag_pipeline_service = RagPipelineService(session)
         pipeline = rag_pipeline_service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset_id_str)
         try:
-            response: dict[Any, Any] | Generator[str, Any, None] = PipelineGenerateService.generate(
+            response: dict[Any, Any] | Iterator[str] = PipelineGenerateService.generate(
                 session=session,
                 pipeline=pipeline,
                 user=current_user,
@@ -297,6 +306,88 @@ class PipelineRunApi(DatasetApiResource):
             return helper.compact_generate_response(response)
         except Exception as ex:
             raise PipelineRunError(description=str(ex))
+
+
+@service_api_ns.route("/datasets/<uuid:dataset_id>/pipeline/workflow-runs/<uuid:run_id>/events")
+class PipelineWorkflowRunEventsApi(DatasetApiResource):
+    """Reconnect to the durable event stream of a service-API pipeline run."""
+
+    @event_stream_response(service_api_ns)
+    def get(self, tenant_id: str, dataset_id: UUID, run_id: UUID):
+        if not isinstance(current_user, Account):
+            raise Forbidden()
+
+        rag_pipeline_service = RagPipelineService(db.session())
+        try:
+            pipeline = rag_pipeline_service.get_pipeline(
+                tenant_id=tenant_id,
+                dataset_id=str(dataset_id),
+            )
+        except ValueError as error:
+            raise NotFound(str(error)) from error
+        session_maker = rag_pipeline_service.session_maker
+        workflow_run = rag_pipeline_service.get_rag_pipeline_workflow_run(pipeline=pipeline, run_id=str(run_id))
+        if (
+            workflow_run is None
+            or workflow_run.app_id != pipeline.id
+            or workflow_run.created_by_role != CreatorUserRole.ACCOUNT
+            or workflow_run.created_by != current_user.id
+        ):
+            raise NotFound("Workflow run not found")
+
+        cursor = get_workflow_event_replay_cursor(request)
+        include_state_snapshot = request.args.get("include_state_snapshot", "false").lower() == "true"
+        continue_on_pause = request.args.get("continue_on_pause", "false").lower() == "true"
+
+        if workflow_run.finished_at is not None and cursor is None:
+            finished = WorkflowResponseConverter.workflow_run_result_to_finish_response(
+                task_id=resolve_workflow_event_task_id(
+                    workflow_run=workflow_run,
+                    session_maker=session_maker,
+                ),
+                workflow_run=workflow_run,
+                creator_user=current_user,
+            )
+            payload = finished.model_dump(mode="json")
+            payload["event"] = finished.event.value
+
+            def event_generator():
+                yield f"data: {json.dumps(payload)}\n\n"
+
+        else:
+            message_generator = MessageGenerator()
+
+            def event_generator():
+                if include_state_snapshot or cursor is not None:
+                    source = build_workflow_event_stream(
+                        app_mode=AppMode.RAG_PIPELINE,
+                        workflow_run=workflow_run,
+                        tenant_id=tenant_id,
+                        app_id=pipeline.id,
+                        session_maker=session_maker,
+                        human_input_surface=HumanInputSurface.SERVICE_API,
+                        close_on_pause=not continue_on_pause,
+                        cursor=cursor,
+                    )
+                else:
+                    terminal_events = [StreamEvent.WORKFLOW_FINISHED] if continue_on_pause else None
+                    retrieve_kwargs: dict[str, Any] = {"terminal_events": terminal_events}
+                    if cursor is not None:
+                        retrieve_kwargs["cursor"] = cursor
+                    if workflow_run.finished_at is not None:
+                        retrieve_kwargs["idle_timeout"] = 0
+                    source = message_generator.retrieve_events(
+                        AppMode.RAG_PIPELINE,
+                        workflow_run.id,
+                        **retrieve_kwargs,
+                    )
+                yield from PipelineGenerator.convert_to_event_stream(source)
+
+        return Response(
+            event_generator(),
+            mimetype="text/event-stream",
+            headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+        )
 
 
 @service_api_ns.route("/datasets/pipeline/file-upload")

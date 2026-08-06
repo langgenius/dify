@@ -11,6 +11,7 @@ from sqlalchemy.orm import sessionmaker
 from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.common.fields import EventStreamResponse
 from controllers.common.schema import register_response_schema_model
+from controllers.common.workflow_event_cursor import get_workflow_event_replay_cursor
 from controllers.web import api, web_ns
 from controllers.web.wraps import WebApiResource
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
@@ -18,11 +19,12 @@ from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.apps.message_generator import MessageGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
+from core.app.entities.task_entities import StreamEvent
 from extensions.ext_database import db
 from models.enums import CreatorUserRole
 from models.model import App, AppMode, EndUser
 from repositories.factory import DifyAPIRepositoryFactory
-from services.workflow_event_snapshot_service import build_workflow_event_stream
+from services.workflow_event_snapshot_service import build_workflow_event_stream, resolve_workflow_event_task_id
 
 register_response_schema_model(web_ns, EventStreamResponse)
 
@@ -59,9 +61,17 @@ class WorkflowEventsApi(WebApiResource):
         if workflow_run.created_by != end_user.id:
             raise NotFoundError(f"WorkflowRun not created by the current end user, id={workflow_run_id}")
 
-        if workflow_run.finished_at is not None:
+        app_mode = AppMode.value_of(app_model.mode)
+        if app_mode not in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
+            raise InvalidArgumentError(f"cannot subscribe to workflow run, workflow_run_id={workflow_run.id}")
+        cursor = get_workflow_event_replay_cursor(request)
+
+        if workflow_run.finished_at is not None and cursor is None:
             response = WorkflowResponseConverter.workflow_run_result_to_finish_response(
-                task_id=workflow_run.id,
+                task_id=resolve_workflow_event_task_id(
+                    workflow_run=workflow_run,
+                    session_maker=session_maker,
+                ),
                 workflow_run=workflow_run,
                 creator_user=end_user,
             )
@@ -74,7 +84,6 @@ class WorkflowEventsApi(WebApiResource):
 
             event_generator = _generate_finished_events
         else:
-            app_mode = AppMode.value_of(app_model.mode)
             msg_generator = MessageGenerator()
             generator: BaseAppGenerator
             match app_mode:
@@ -83,13 +92,13 @@ class WorkflowEventsApi(WebApiResource):
                 case AppMode.WORKFLOW:
                     generator = WorkflowAppGenerator()
                 case _:
-                    raise InvalidArgumentError(f"cannot subscribe to workflow run, workflow_run_id={workflow_run.id}")
+                    raise AssertionError("app mode was validated before event stream construction")
 
             include_state_snapshot = request.args.get("include_state_snapshot", "false").lower() == "true"
             continue_on_pause = request.args.get("continue_on_pause", "false").lower() == "true"
 
             def _generate_stream_events():
-                if include_state_snapshot:
+                if include_state_snapshot or cursor is not None:
                     return generator.convert_to_event_stream(
                         build_workflow_event_stream(
                             app_mode=app_mode,
@@ -98,10 +107,16 @@ class WorkflowEventsApi(WebApiResource):
                             app_id=app_model.id,
                             session_maker=session_maker,
                             close_on_pause=not continue_on_pause,
+                            cursor=cursor,
                         )
                     )
+                terminal_events = [StreamEvent.WORKFLOW_FINISHED] if continue_on_pause else None
                 return generator.convert_to_event_stream(
-                    msg_generator.retrieve_events(app_mode, workflow_run.id),
+                    msg_generator.retrieve_events(
+                        app_mode,
+                        workflow_run.id,
+                        terminal_events=terminal_events,
+                    )
                 )
 
             event_generator = _generate_stream_events

@@ -8,11 +8,13 @@ from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
     InvokeFrom,
+    RagPipelineGenerateEntity,
     WorkflowAppGenerateEntity,
 )
 from core.app.layers.pause_state_persist_layer import (
     WorkflowResumptionContext,
     _AdvancedChatAppGenerateEntityWrapper,
+    _RagPipelineGenerateEntityWrapper,
     _WorkflowGenerateEntityWrapper,
 )
 from core.ops.ops_trace_manager import TraceQueueManager
@@ -71,6 +73,30 @@ def _create_advanced_chat_generate_entity(
     )
 
 
+def _create_rag_pipeline_generate_entity(
+    trace_manager: TraceQueueManager | None = None,
+) -> RagPipelineGenerateEntity:
+    app_config = _build_workflow_app_config(AppMode.RAG_PIPELINE)
+    return RagPipelineGenerateEntity(
+        task_id="pipeline-task",
+        app_config=app_config,
+        pipeline_config=app_config,
+        datasource_type="local_file",
+        datasource_info={"name": "document.txt"},
+        dataset_id="dataset-id",
+        batch="batch-id",
+        document_id="document-id",
+        start_node_id="datasource-node",
+        inputs={"topic": "roundtrip"},
+        files=[],
+        user_id="user-pipeline",
+        stream=False,
+        invoke_from=InvokeFrom.PUBLISHED_PIPELINE,
+        trace_manager=trace_manager,
+        workflow_execution_id="pipeline-run-id",
+    )
+
+
 def test_workflow_app_generate_entity_roundtrip_excludes_trace_manager():
     entity = _create_workflow_generate_entity(trace_manager=TraceQueueManagerStub())
 
@@ -123,11 +149,21 @@ def _advanced_chat_resumption_case() -> tuple[WorkflowResumptionContext, type]:
     return context, AdvancedChatAppGenerateEntity
 
 
+def _rag_pipeline_resumption_case() -> tuple[WorkflowResumptionContext, type]:
+    entity = _create_rag_pipeline_generate_entity(trace_manager=TraceQueueManagerStub())
+    context = WorkflowResumptionContext(
+        serialized_graph_runtime_state=json.dumps({"state": "pipeline"}),
+        generate_entity=_RagPipelineGenerateEntityWrapper(entity=entity),
+    )
+    return context, RagPipelineGenerateEntity
+
+
 @pytest.mark.parametrize(
     "case",
     [
         pytest.param(ResumptionContextCase("workflow", _workflow_resumption_case), id="workflow"),
         pytest.param(ResumptionContextCase("advanced_chat", _advanced_chat_resumption_case), id="advanced_chat"),
+        pytest.param(ResumptionContextCase("rag_pipeline", _rag_pipeline_resumption_case), id="rag_pipeline"),
     ],
 )
 def test_workflow_resumption_context_roundtrip(case: ResumptionContextCase):

@@ -26,11 +26,11 @@ from graphon.model_runtime.errors.invoke import InvokeError
 
 
 def _completion_app() -> SimpleNamespace:
-    return SimpleNamespace(id="app-1", mode="completion")
+    return SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="completion")
 
 
 def _chat_app() -> SimpleNamespace:
-    return SimpleNamespace(id="app-1", mode="chat")
+    return SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="chat")
 
 
 def _end_user() -> SimpleNamespace:
@@ -111,6 +111,8 @@ class TestCompletionStopApi:
 
         assert status == 200
         assert result == {"result": "success"}
+        assert mock_stop.call_args.kwargs["tenant_id"] == "tenant-1"
+        assert mock_stop.call_args.kwargs["app_id"] == "app-1"
 
 
 # ---------------------------------------------------------------------------
@@ -194,3 +196,5 @@ class TestChatStopApi:
 
         assert status == 200
         assert result == {"result": "success"}
+        assert mock_stop.call_args.kwargs["tenant_id"] == "tenant-1"
+        assert mock_stop.call_args.kwargs["app_id"] == "app-1"

@@ -20,6 +20,7 @@ from models.enums import EndUserType
 from models.model import App, AppMode, EndUser
 from models.snippet import CustomizedSnippet
 from models.workflow import Workflow, WorkflowKind, WorkflowType
+from models.workflow_handoff import WorkflowHandoffResumeRoute
 
 TENANT_ID = "00000000-0000-0000-0000-000000000001"
 OTHER_TENANT_ID = "00000000-0000-0000-0000-000000000002"
@@ -342,9 +343,12 @@ class TestWorkflowAppGeneratorValidation:
             args={"inputs": {"foo": "bar"}, "trace_session_id": "session-1"},
             streaming=False,
             session=sqlite_session,
+            handoff_resume_route=WorkflowHandoffResumeRoute.SNIPPET,
         )
 
         assert captured["application_generate_entity"].extras["trace_session_id"] == "session-1"
+        assert captured["application_generate_entity"].workflow_execution_id
+        assert captured["handoff_resume_route"] == WorkflowHandoffResumeRoute.SNIPPET
         assert len(repository_session_makers) == 2
         assert all(factory.kw["bind"] is sqlite_session.get_bind() for factory in repository_session_makers)
         assert len(draft_sessions) == 1
@@ -402,9 +406,12 @@ class TestWorkflowAppGeneratorValidation:
             args=SimpleNamespace(inputs={"foo": "bar"}, trace_session_id="session-1"),
             streaming=False,
             session=sqlite_session,
+            handoff_resume_route=WorkflowHandoffResumeRoute.SNIPPET,
         )
 
         assert captured["application_generate_entity"].extras["trace_session_id"] == "session-1"
+        assert captured["application_generate_entity"].workflow_execution_id
+        assert captured["handoff_resume_route"] == WorkflowHandoffResumeRoute.SNIPPET
         assert len(repository_session_makers) == 2
         assert all(factory.kw["bind"] is sqlite_session.get_bind() for factory in repository_session_makers)
         assert len(draft_sessions) == 1
@@ -530,7 +537,8 @@ class TestWorkflowAppGeneratorGenerate:
         prepare_inputs = pytest.fail
         monkeypatch.setattr(generator, "_prepare_user_inputs", lambda **kwargs: prepare_inputs())
 
-        monkeypatch.setattr(generator, "_generate", lambda **kwargs: {"ok": True})
+        captured: dict[str, object] = {}
+        monkeypatch.setattr(generator, "_generate", lambda **kwargs: captured.update(kwargs) or {"ok": True})
 
         result = generator.generate(
             app_model=app,
@@ -540,9 +548,11 @@ class TestWorkflowAppGeneratorGenerate:
             invoke_from=InvokeFrom.WEB_APP,
             streaming=False,
             call_depth=0,
+            handoff_resume_route=WorkflowHandoffResumeRoute.SNIPPET,
         )
 
         assert result == {"ok": True}
+        assert captured["handoff_resume_route"] == WorkflowHandoffResumeRoute.SNIPPET
         assert len(repository_session_makers) == 2
         assert all(factory.kw["bind"] is sqlite_session.get_bind() for factory in repository_session_makers)
 

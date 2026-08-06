@@ -2,6 +2,7 @@ import ast
 import inspect
 
 from core.app.apps.workflow.app_generator import SKIP_PREPARE_USER_INPUTS_KEY
+from models.workflow_handoff import WorkflowHandoffResumeRoute
 from services.errors.app import WorkflowNotFoundError
 from services.workflow.entities import WebhookTriggerData
 from tasks import async_workflow_tasks
@@ -20,6 +21,11 @@ def test_build_generator_args_sets_skip_flag_for_webhook():
 
     assert args[SKIP_PREPARE_USER_INPUTS_KEY] is True
     assert args["inputs"]["webhook_data"]["body"]["foo"] == "bar"
+
+
+def test_human_resume_keeps_triggered_workflow_handoff_route():
+    assert async_workflow_tasks._resolve_handoff_resume_route(object()) == WorkflowHandoffResumeRoute.TRIGGERED_WORKFLOW
+    assert async_workflow_tasks._resolve_handoff_resume_route(None) == WorkflowHandoffResumeRoute.WORKFLOW
 
 
 def test_workflow_not_found_error_message_is_a_single_formatted_string():

@@ -1,7 +1,7 @@
 import logging
 import time
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, TypedDict
+from typing import Any, Protocol, TypedDict, runtime_checkable
 from uuid import uuid4
 
 from configs import dify_config
@@ -45,6 +45,12 @@ from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
 _file_access_controller = DatabaseFileAccessController()
+
+
+@runtime_checkable
+class _NodeRunStepsState(Protocol):
+    @property
+    def node_run_steps(self) -> object: ...
 
 
 def iter_dify_graph_engine_events(
@@ -106,6 +112,7 @@ class WorkflowEntry:
         graph_runtime_state: GraphRuntimeState,
         command_channel: CommandChannel | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
+        prior_active_execution_seconds: float = 0.0,
     ) -> None:
         """
         Init workflow entry
@@ -130,6 +137,8 @@ class WorkflowEntry:
         workflow_call_max_depth = dify_config.WORKFLOW_CALL_MAX_DEPTH
         if call_depth > workflow_call_max_depth:
             raise ValueError(f"Max workflow call depth {workflow_call_max_depth} reached.")
+        if prior_active_execution_seconds < 0:
+            raise ValueError("prior_active_execution_seconds must be non-negative")
 
         # Use provided command channel or default to InMemoryChannel
         if command_channel is None:
@@ -166,9 +175,18 @@ class WorkflowEntry:
             self.graph_engine.layer(debug_layer)
 
         # Add execution limits layer
-        limits_layer = ExecutionLimitsLayer(
-            max_steps=dify_config.WORKFLOW_MAX_EXECUTION_STEPS, max_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME
+        node_run_steps = 0
+        if isinstance(graph_runtime_state, _NodeRunStepsState) and isinstance(graph_runtime_state.node_run_steps, int):
+            node_run_steps = graph_runtime_state.node_run_steps
+        remaining_steps = max(
+            dify_config.WORKFLOW_MAX_EXECUTION_STEPS - node_run_steps,
+            0,
         )
+        remaining_execution_seconds = max(
+            int(dify_config.WORKFLOW_MAX_EXECUTION_TIME - prior_active_execution_seconds),
+            0,
+        )
+        limits_layer = ExecutionLimitsLayer(max_steps=remaining_steps, max_time=remaining_execution_seconds)
         self.graph_engine.layer(limits_layer)
         self.graph_engine.layer(LLMQuotaLayer(tenant_id=tenant_id))
 

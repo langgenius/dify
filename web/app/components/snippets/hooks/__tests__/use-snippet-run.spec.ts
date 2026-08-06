@@ -133,8 +133,31 @@ const createRunningData = (taskId?: string): WorkflowStoreState['workflowRunning
 describe('useSnippetRun', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    document.body.innerHTML = '<div id="workflow-container"></div>'
     mocks.workflowStoreState.workflowRunningData = undefined
     mocks.workflowStoreState.backupDraft = undefined
+  })
+
+  it('uses the snippet-scoped resumable workflow stream', async () => {
+    const { result } = renderHook(() => useSnippetRun('snippet-1'))
+
+    await act(async () => {
+      await result.current.handleRun({ inputs: {} } as never)
+    })
+
+    expect(mocks.mockSsePost).toHaveBeenCalledWith(
+      '/snippets/snippet-1/workflows/draft/run',
+      { body: { inputs: {} } },
+      expect.objectContaining({
+        workflowStreamReconnect: expect.objectContaining({
+          resolveUrl: expect.any(Function),
+        }),
+      }),
+    )
+    const callbacks = mocks.mockSsePost.mock.calls[0]![2]
+    expect(callbacks.workflowStreamReconnect.resolveUrl('snippet-run-id')).toBe(
+      '/snippets/snippet-1/workflow-runs/snippet-run-id/events',
+    )
   })
 
   it('stops a snippet workflow with the provided task id', () => {

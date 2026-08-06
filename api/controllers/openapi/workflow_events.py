@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Generator
+from typing import Any
 
 from flask import Response, request
 from flask_restx import Resource
@@ -19,6 +20,7 @@ from werkzeug.exceptions import NotFound, UnprocessableEntity
 
 from controllers.common.fields import EventStreamResponse
 from controllers.common.schema import query_params_from_model
+from controllers.common.workflow_event_cursor import get_workflow_event_replay_cursor
 from controllers.common.wraps import RBACPermission, RBACResourceScope
 from controllers.openapi import openapi_ns
 from controllers.openapi.auth.composition import auth_router
@@ -35,12 +37,16 @@ from libs.oauth_bearer import Scope
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from repositories.factory import DifyAPIRepositoryFactory
-from services.workflow_event_snapshot_service import build_workflow_event_stream
+from services.workflow_event_snapshot_service import build_workflow_event_stream, resolve_workflow_event_task_id
 
 
 class WorkflowEventsQuery(BaseModel):
     include_state_snapshot: bool = Field(default=False, description="Whether to include workflow state snapshots")
     continue_on_pause: bool = Field(default=False, description="Whether to keep the event stream open on pause")
+    cursor: str | None = Field(
+        default=None,
+        description="Replay events strictly after this SSE event ID. Last-Event-ID header takes precedence.",
+    )
 
 
 @openapi_ns.route("/apps/<string:app_id>/tasks/<string:task_id>/events")
@@ -78,10 +84,14 @@ class OpenApiWorkflowEventsApi(Resource):
                 raise NotFound("Workflow run not found")
 
         workflow_run_entity = workflow_run
+        cursor = get_workflow_event_replay_cursor(request)
 
-        if workflow_run_entity.finished_at is not None:
+        if workflow_run_entity.finished_at is not None and cursor is None:
             response = WorkflowResponseConverter.workflow_run_result_to_finish_response(
-                task_id=workflow_run_entity.id,
+                task_id=resolve_workflow_event_task_id(
+                    workflow_run=workflow_run_entity,
+                    session_maker=session_maker,
+                ),
                 workflow_run=workflow_run_entity,
                 creator_user=caller,
             )
@@ -102,10 +112,10 @@ class OpenApiWorkflowEventsApi(Resource):
 
             include_state_snapshot = request.args.get("include_state_snapshot", "false").lower() == "true"
             continue_on_pause = request.args.get("continue_on_pause", "false").lower() == "true"
-            terminal_events: list[StreamEvent] | None = [] if continue_on_pause else None
+            terminal_events: list[StreamEvent] | None = [StreamEvent.WORKFLOW_FINISHED] if continue_on_pause else None
 
             def _generate_stream_events():
-                if include_state_snapshot:
+                if include_state_snapshot or cursor is not None:
                     return generator.convert_to_event_stream(
                         build_workflow_event_stream(
                             app_mode=app_mode,
@@ -115,14 +125,16 @@ class OpenApiWorkflowEventsApi(Resource):
                             session_maker=session_maker,
                             human_input_surface=HumanInputSurface.OPENAPI,
                             close_on_pause=not continue_on_pause,
+                            cursor=cursor,
                         )
                     )
+                retrieve_kwargs: dict[str, Any] = {"terminal_events": terminal_events}
+                if cursor is not None:
+                    retrieve_kwargs["cursor"] = cursor
+                if workflow_run_entity.finished_at is not None:
+                    retrieve_kwargs["idle_timeout"] = 0
                 return generator.convert_to_event_stream(
-                    msg_generator.retrieve_events(
-                        app_mode,
-                        workflow_run_entity.id,
-                        terminal_events=terminal_events,
-                    ),
+                    msg_generator.retrieve_events(app_mode, workflow_run_entity.id, **retrieve_kwargs),
                 )
 
             event_generator = _generate_stream_events

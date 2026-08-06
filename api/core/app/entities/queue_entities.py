@@ -50,6 +50,7 @@ class QueueEvent(StrEnum):
     STOP = "stop"
     RETRY = "retry"
     PAUSE = "pause"
+    WORKFLOW_MAINTENANCE_PAUSED = "workflow_maintenance_paused"
     HUMAN_INPUT_FORM_FILLED = "human_input_form_filled"
     HUMAN_INPUT_FORM_TIMEOUT = "human_input_form_timeout"
 
@@ -585,6 +586,20 @@ class QueueWorkflowPausedEvent(AppQueueEvent):
     """
 
     event: QueueEvent = QueueEvent.PAUSE
+    reasons: Sequence[PauseReason] = Field(default_factory=list)
+    outputs: Mapping[str, object] = Field(default_factory=dict)
+    paused_nodes: Sequence[str] = Field(default_factory=list)
+
+
+class QueueWorkflowMaintenancePausedEvent(AppQueueEvent):
+    """Internal event marking a durable worker-drain checkpoint.
+
+    Unlike ``QueueWorkflowPausedEvent``, this event must never be exposed as a
+    public workflow-paused lifecycle event. It terminates only the execution
+    segment owned by the draining worker; another worker resumes the same run.
+    """
+
+    event: QueueEvent = QueueEvent.WORKFLOW_MAINTENANCE_PAUSED
     reasons: Sequence[PauseReason] = Field(default_factory=list)
     outputs: Mapping[str, object] = Field(default_factory=dict)
     paused_nodes: Sequence[str] = Field(default_factory=list)

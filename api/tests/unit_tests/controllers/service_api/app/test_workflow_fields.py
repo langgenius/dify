@@ -5,7 +5,7 @@ from models.workflow import WorkflowRun
 
 
 def _workflow_run(status: WorkflowExecutionStatus, outputs: str | None = '{"foo": "bar"}') -> WorkflowRun:
-    return WorkflowRun(
+    workflow_run = WorkflowRun(
         id="run-id",
         workflow_id="workflow-id",
         status=status,
@@ -16,6 +16,8 @@ def _workflow_run(status: WorkflowExecutionStatus, outputs: str | None = '{"foo"
         total_tokens=2,
         elapsed_time=3.5,
     )
+    workflow_run.handoff_duration = 1.25
+    return workflow_run
 
 
 def test_workflow_run_serializer_normalizes_status_enum() -> None:
@@ -34,3 +36,10 @@ def test_workflow_run_serializer_running_returns_outputs() -> None:
     response = dump_response(WorkflowRunResponse, _workflow_run(WorkflowExecutionStatus.RUNNING))
 
     assert response["outputs"] == {"foo": "bar"}
+
+
+def test_workflow_run_serializer_exposes_handoff_duration() -> None:
+    response = dump_response(WorkflowRunResponse, _workflow_run(WorkflowExecutionStatus.SUCCEEDED))
+
+    assert response["elapsed_time"] == 3.5
+    assert response["handoff_duration"] == 1.25

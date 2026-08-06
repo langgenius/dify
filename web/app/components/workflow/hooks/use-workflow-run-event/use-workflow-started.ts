@@ -18,8 +18,23 @@ export const useWorkflowStarted = () => {
       if (workflowRunningData?.result?.status === WorkflowRunningStatus.Paused) {
         setWorkflowRunningData(
           produce(workflowRunningData!, (draft) => {
+            draft.task_id = task_id
             draft.result = {
               ...draft.result,
+              ...data,
+              status: WorkflowRunningStatus.Running,
+            }
+          }),
+        )
+        return
+      }
+      if (task_id && workflowRunningData?.task_id === task_id) {
+        setWorkflowRunningData(
+          produce(workflowRunningData, (draft) => {
+            draft.task_id = task_id
+            draft.result = {
+              ...draft.result,
+              ...data,
               status: WorkflowRunningStatus.Running,
             }
           }),

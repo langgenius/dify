@@ -83,7 +83,7 @@ const mocks = vi.hoisted(() => {
     mockInvalidateRunHistory: vi.fn(),
     mockSsePost: vi.fn(),
     mockSseGet: vi.fn(),
-    mockHandleStream: vi.fn(),
+    mockHandleSseResponse: vi.fn(),
     mockPost: vi.fn(),
     mockStopWorkflowRun: vi.fn(),
     mockTrackEvent: vi.fn(),
@@ -179,7 +179,7 @@ vi.mock('@/service/base', () => ({
   ssePost: mocks.mockSsePost,
   sseGet: mocks.mockSseGet,
   post: mocks.mockPost,
-  handleStream: mocks.mockHandleStream,
+  handleSseResponse: mocks.mockHandleSseResponse,
 }))
 
 vi.mock('@/service/use-workflow', () => ({

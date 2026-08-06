@@ -1,12 +1,15 @@
 import json
+from collections.abc import Mapping
 from contextlib import nullcontext
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
 
+from core.app.apps.streaming_utils import StreamEventWithCursor
 from core.workflow.snippet_start import SNIPPET_VIRTUAL_START_NODE_ID
 from models.workflow import Workflow, WorkflowKind, WorkflowType
+from models.workflow_handoff import WorkflowHandoffResumeRoute
 from services.snippet_generate_service import SnippetGenerateService
 
 
@@ -31,6 +34,10 @@ def _session_maker(session: object | None = None) -> Mock:
     return Mock(return_value=nullcontext(session or Mock()))
 
 
+def _stream(*events):
+    yield from events
+
+
 def test_filter_virtual_start_events_keeps_blocking_response_unchanged():
     response = {"data": {"outputs": {"text": "ok"}}}
 
@@ -49,6 +56,39 @@ def test_filter_virtual_start_events_removes_virtual_start_node_events():
     filtered = SnippetGenerateService._filter_virtual_start_events(stream)
 
     assert list(filtered) == [{"event": "node_finished", "data": {"node_id": "llm-1"}}, "raw-event"]
+
+
+def test_filter_virtual_start_events_preserves_cursor_for_public_events():
+    hidden = StreamEventWithCursor(
+        event={"event": "node_started", "data": {"node_id": SNIPPET_VIRTUAL_START_NODE_ID}},
+        cursor="1-0",
+    )
+    visible = StreamEventWithCursor(
+        event={"event": "node_finished", "data": {"node_id": "llm-1"}},
+        cursor="2-0",
+    )
+
+    assert list(SnippetGenerateService.filter_virtual_start_events(_stream(hidden, visible))) == [visible]
+
+
+def test_filter_virtual_start_events_closes_source_when_consumer_disconnects():
+    closed: list[bool] = []
+
+    def source():
+        try:
+            yield {"event": "node_finished", "data": {"node_id": "llm-1"}}
+            yield {"event": "workflow_finished"}
+        finally:
+            closed.append(True)
+
+    filtered = SnippetGenerateService.filter_virtual_start_events(source())
+    event = next(filtered)
+    assert isinstance(event, Mapping)
+    assert event["event"] == "node_finished"
+
+    filtered.close()
+
+    assert closed == [True]
 
 
 @pytest.mark.parametrize(
@@ -183,6 +223,7 @@ def test_generate_delegates_to_workflow_generator_and_filters_stream(monkeypatch
     assert kwargs["user"] is user
     assert kwargs["streaming"] is True
     assert kwargs["call_depth"] == 0
+    assert kwargs["handoff_resume_route"] == WorkflowHandoffResumeRoute.SNIPPET
     workflow_generator_class.convert_to_event_stream.assert_called_once()
 
 
@@ -214,6 +255,7 @@ def test_run_published_delegates_to_workflow_generator_non_streaming(monkeypatch
     assert kwargs["app_model"].id == "snippet-1"
     assert kwargs["streaming"] is False
     assert kwargs["call_depth"] == 0
+    assert kwargs["handoff_resume_route"] == WorkflowHandoffResumeRoute.SNIPPET
 
 
 def test_ensure_start_node_for_worker_delegates(monkeypatch):
@@ -310,6 +352,7 @@ def test_generate_single_iteration_delegates_to_workflow_generator(monkeypatch):
     assert kwargs["user"] is user
     assert kwargs["streaming"] is True
     assert kwargs["session"] is session
+    assert kwargs["handoff_resume_route"] == WorkflowHandoffResumeRoute.SNIPPET
     workflow_generator_class.convert_to_event_stream.assert_called_once_with(response)
 
 
@@ -362,6 +405,7 @@ def test_generate_single_loop_delegates_to_workflow_generator(monkeypatch):
     assert kwargs["user"] is user
     assert kwargs["streaming"] is True
     assert kwargs["session"] is session
+    assert kwargs["handoff_resume_route"] == WorkflowHandoffResumeRoute.SNIPPET
     workflow_generator_class.convert_to_event_stream.assert_called_once_with(response)
 
 

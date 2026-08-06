@@ -13,6 +13,7 @@ from core.repositories.factory import WorkflowExecutionRepository
 from graphon.entities import WorkflowExecution
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
+from libs.datetime_utils import naive_utc_now
 from models import (
     Account,
     CreatorUserRole,
@@ -22,6 +23,15 @@ from models import (
 from models.enums import WorkflowRunTriggeredFrom
 
 logger = logging.getLogger(__name__)
+
+_TERMINAL_WORKFLOW_EXECUTION_STATUSES = frozenset(
+    {
+        WorkflowExecutionStatus.SUCCEEDED,
+        WorkflowExecutionStatus.FAILED,
+        WorkflowExecutionStatus.STOPPED,
+        WorkflowExecutionStatus.PARTIAL_SUCCEEDED,
+    }
+)
 
 
 class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
@@ -201,8 +211,41 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
             if existing_model:
                 if existing_model.tenant_id != self._tenant_id:
                     raise ValueError("Unauthorized access to workflow run")
-                # Preserve the original start time for pause/resume flows.
+                if existing_model.status in _TERMINAL_WORKFLOW_EXECUTION_STATUSES:
+                    # Terminal status is monotonic. In particular, a resumed
+                    # segment can emit GraphRunStarted after Stop has already
+                    # atomically failed its CLAIMED handoff. Never let that
+                    # late RUNNING write resurrect the logical workflow run.
+                    logger.info(
+                        "Ignoring late workflow execution update for terminal run: workflow_run_id=%s, "
+                        "existing_status=%s, requested_status=%s",
+                        existing_model.id,
+                        existing_model.status,
+                        db_model.status,
+                    )
+                    self._execution_cache[existing_model.id] = existing_model
+                    return
+                # A resumed graph segment has its own domain ``started_at``, but
+                # ``WorkflowRun`` represents the complete logical run. Preserve
+                # the original start and report wall-clock elapsed time so the
+                # user-visible duration includes maintenance handoff waits.
+                # GraphRuntimeState remains unchanged, so execution timeouts and
+                # token billing continue to exclude time spent between workers.
                 db_model.created_at = existing_model.created_at
+                if db_model.finished_at is not None:
+                    db_model.elapsed_time = max(
+                        (db_model.finished_at - existing_model.created_at).total_seconds(),
+                        0.0,
+                    )
+                elif db_model.status == WorkflowExecutionStatus.PAUSED:
+                    db_model.elapsed_time = max(
+                        (naive_utc_now() - existing_model.created_at).total_seconds(),
+                        0.0,
+                    )
+                else:
+                    # Starting another segment must not erase timing already
+                    # captured by a previous user-visible pause.
+                    db_model.elapsed_time = existing_model.elapsed_time
 
             # SQLAlchemy merge intelligently handles both insert and update operations
             # based on the presence of the primary key

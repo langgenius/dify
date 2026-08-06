@@ -84,8 +84,8 @@ class RedisSubscriptionBase(Subscription):
             if raw_message is None:
                 continue
 
-            # If close() sent a control event to unblock us, exit immediately
-            # without processing any message — the subscription is shutting down.
+            # close() flips only local state; exit without processing a message
+            # that happened to arrive while this subscription was shutting down.
             if self._closed.is_set():
                 break
 
@@ -117,11 +117,12 @@ class RedisSubscriptionBase(Subscription):
                 )
                 continue
 
+            # Older replicas may still publish the legacy shared close marker
+            # during an adjacent-version rollout.  It is subscription-local
+            # control data, never an application event, so ignore it rather
+            # than terminating every subscriber on the topic.
             if payload_bytes == SIG_CLOSE:
-                # Close signals are broadcast to every subscriber on the topic.
-                # The closing subscription is already handled by the _closed check above.
                 continue
-
             self._enqueue_message(payload_bytes)
 
         _logger.debug("%s listener thread stopped for channel %s", self._get_subscription_type().title(), self._topic)
@@ -196,6 +197,9 @@ class RedisSubscriptionBase(Subscription):
         except queue.Empty:
             return None
 
+        if self._closed.is_set():
+            raise SubscriptionClosedError(f"The Redis {self._get_subscription_type()} subscription is closed")
+
         return item
 
     @override
@@ -230,9 +234,6 @@ class RedisSubscriptionBase(Subscription):
         if started:
             self._unblock_message_iterator()
 
-        # Send a control event on the same Redis channel to unblock the
-        self._publish_close_event()
-
         # NOTE: PubSub is not thread-safe. More specifically, the `PubSub.close` method and the
         # message retrieval method should NOT be called concurrently.
         #
@@ -256,15 +257,6 @@ class RedisSubscriptionBase(Subscription):
     # Abstract methods to be implemented by subclasses
     def _get_subscription_type(self) -> str:
         """Return the subscription type (e.g., 'regular' or 'sharded')."""
-        raise NotImplementedError
-
-    def _publish_close_event(self) -> None:
-        """Publish a control event on the Redis channel to unblock the listener.
-
-        This is called by close() after setting _closed. The subclass should
-        publish an empty message on the same topic so that a blocking
-        get_message() call in the listener thread returns promptly.
-        """
         raise NotImplementedError
 
     def _subscribe(self) -> None:

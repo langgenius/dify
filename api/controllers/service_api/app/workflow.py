@@ -37,7 +37,6 @@ from controllers.service_api.schema import (
 )
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
     ModelCurrentlyNotSupportError,
@@ -47,18 +46,17 @@ from core.errors.error import (
 from core.helper.trace_id_helper import get_external_trace_id, get_trace_session_id, omit_trace_session_id_from_payload
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
-from extensions.ext_redis import redis_client
 from fields.base import ResponseModel
 from fields.end_user_fields import SimpleEndUser
 from fields.member_fields import SimpleAccountResponse
 from graphon.enums import WorkflowExecutionStatus
-from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import dump_response, to_timestamp
 from models.model import App, AppMode, EndUser
 from repositories.factory import DifyAPIRepositoryFactory
 from services.app_generate_service import AppGenerateService
+from services.app_task_service import AppTaskService
 from services.billing_service import BillingService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
@@ -125,6 +123,7 @@ class WorkflowRunResponse(ResponseModel):
     created_at: int | None = None
     finished_at: int | None = None
     elapsed_time: float | int | None = None
+    handoff_duration: float = 0.0
 
     @field_validator("status", mode="before")
     @classmethod
@@ -161,6 +160,7 @@ class WorkflowRunForLogResponse(ResponseModel):
     triggered_from: str | None = None
     error: str | None = None
     elapsed_time: float | int | None = None
+    handoff_duration: float = 0.0
     total_tokens: int | None = None
     total_steps: int | None = None
     created_at: int | None = None
@@ -539,12 +539,14 @@ class WorkflowTaskStopApi(Resource):
         if app_mode != AppMode.WORKFLOW:
             raise NotWorkflowAppError()
 
-        # Stop using both mechanisms for backward compatibility
-        # Legacy stop flag mechanism (without user check)
-        AppQueueManager.set_stop_flag_no_user_check(task_id)
-
-        # New graph engine command channel mechanism
-        GraphEngineManager(redis_client).send_stop_command(task_id)
+        AppTaskService.stop_task(
+            task_id,
+            InvokeFrom.SERVICE_API,
+            end_user.id,
+            app_mode,
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+        )
 
         return SimpleResultResponse(result="success").model_dump()
 

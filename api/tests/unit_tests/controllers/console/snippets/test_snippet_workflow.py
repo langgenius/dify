@@ -490,6 +490,154 @@ def test_workflow_run_detail_raises_not_found_when_run_missing(app: Flask, monke
             handler(api, snippet=snippet, run_id="run-1")
 
 
+def _snippet_event_workflow_run(**overrides):
+    values = {
+        "id": "run-1",
+        "tenant_id": "tenant-1",
+        "app_id": "snippet-1",
+        "created_by_role": snippet_workflow_module.CreatorUserRole.ACCOUNT,
+        "created_by": "account-1",
+        "finished_at": None,
+    }
+    values.update(overrides)
+    return SimpleNamespace(**values)
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"app_id": "other-snippet"},
+        {"created_by_role": snippet_workflow_module.CreatorUserRole.END_USER},
+        {"created_by": "other-account"},
+    ],
+)
+def test_workflow_run_events_rejects_cross_owner_access(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    overrides: dict[str, object],
+) -> None:
+    repository = SimpleNamespace(
+        get_workflow_run_by_id_and_tenant_id=Mock(return_value=_snippet_event_workflow_run(**overrides))
+    )
+    monkeypatch.setattr(
+        snippet_workflow_module.DifyAPIRepositoryFactory,
+        "create_api_workflow_run_repository",
+        Mock(return_value=repository),
+    )
+    api = snippet_workflow_module.SnippetWorkflowRunEventsApi()
+    handler = unwrap(api.get)
+
+    with app.test_request_context("/snippets/snippet-1/workflow-runs/run-1/events"):
+        with pytest.raises(NotFound, match="Workflow run not found"):
+            handler(api, _account(), _snippet(), "run-1")
+
+
+def test_workflow_run_events_replays_strictly_after_cursor(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    workflow_run = _snippet_event_workflow_run()
+    repository = SimpleNamespace(get_workflow_run_by_id_and_tenant_id=Mock(return_value=workflow_run))
+    build_stream = Mock(
+        return_value=iter(
+            [
+                {
+                    "event": "node_started",
+                    "data": {"node_id": snippet_workflow_module.SnippetGenerateService._VIRTUAL_START_NODE_ID},
+                },
+                {"event": "workflow_finished"},
+            ]
+        )
+    )
+    monkeypatch.setattr(
+        snippet_workflow_module.DifyAPIRepositoryFactory,
+        "create_api_workflow_run_repository",
+        Mock(return_value=repository),
+    )
+    monkeypatch.setattr(
+        snippet_workflow_module,
+        "build_workflow_event_stream",
+        build_stream,
+    )
+    api = snippet_workflow_module.SnippetWorkflowRunEventsApi()
+    handler = unwrap(api.get)
+
+    with app.test_request_context(
+        "/snippets/snippet-1/workflow-runs/run-1/events",
+        headers={"Last-Event-ID": "100-0"},
+    ):
+        response = handler(api, _account(), _snippet(), "run-1")
+        body = response.get_data(as_text=True)
+        assert '"workflow_finished"' in body
+        assert snippet_workflow_module.SnippetGenerateService._VIRTUAL_START_NODE_ID not in body
+
+    assert build_stream.call_args.kwargs["cursor"] == "100-0"
+
+
+def test_workflow_run_events_builds_owner_scoped_state_snapshot(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    workflow_run = _snippet_event_workflow_run()
+    repository = SimpleNamespace(get_workflow_run_by_id_and_tenant_id=Mock(return_value=workflow_run))
+    build_stream = Mock(return_value=iter([{"event": "workflow_started", "workflow_run_id": "run-1"}]))
+    monkeypatch.setattr(
+        snippet_workflow_module.DifyAPIRepositoryFactory,
+        "create_api_workflow_run_repository",
+        Mock(return_value=repository),
+    )
+    monkeypatch.setattr(snippet_workflow_module, "build_workflow_event_stream", build_stream)
+    api = snippet_workflow_module.SnippetWorkflowRunEventsApi()
+    handler = unwrap(api.get)
+
+    with app.test_request_context(
+        "/snippets/snippet-1/workflow-runs/run-1/events?include_state_snapshot=true&continue_on_pause=true"
+    ):
+        response = handler(api, _account(), _snippet(), "run-1")
+        assert '"workflow_started"' in response.get_data(as_text=True)
+
+    kwargs = build_stream.call_args.kwargs
+    assert kwargs["app_mode"] == snippet_workflow_module.AppMode.WORKFLOW
+    assert kwargs["workflow_run"] is workflow_run
+    assert kwargs["tenant_id"] == "tenant-1"
+    assert kwargs["app_id"] == "snippet-1"
+    assert kwargs["human_input_surface"] == snippet_workflow_module.HumanInputSurface.CONSOLE
+    assert kwargs["close_on_pause"] is False
+
+
+def test_workflow_run_events_returns_finished_terminal_with_real_task_id(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    workflow_run = _snippet_event_workflow_run(finished_at=datetime(2026, 7, 28, 12, 0, 0))
+    repository = SimpleNamespace(get_workflow_run_by_id_and_tenant_id=Mock(return_value=workflow_run))
+    finished = Mock()
+    finished.event.value = "workflow_finished"
+    finished.model_dump.return_value = {"task_id": "task-1", "workflow_run_id": "run-1"}
+    converter = Mock(return_value=finished)
+    monkeypatch.setattr(
+        snippet_workflow_module.DifyAPIRepositoryFactory,
+        "create_api_workflow_run_repository",
+        Mock(return_value=repository),
+    )
+    monkeypatch.setattr(snippet_workflow_module, "resolve_workflow_event_task_id", Mock(return_value="task-1"))
+    monkeypatch.setattr(
+        snippet_workflow_module.WorkflowResponseConverter,
+        "workflow_run_result_to_finish_response",
+        converter,
+    )
+    api = snippet_workflow_module.SnippetWorkflowRunEventsApi()
+    handler = unwrap(api.get)
+
+    with app.test_request_context("/snippets/snippet-1/workflow-runs/run-1/events"):
+        response = handler(api, _account(), _snippet(), "run-1")
+        payload = json.loads(response.get_data(as_text=True).removeprefix("data: "))
+
+    assert payload["event"] == "workflow_finished"
+    assert payload["task_id"] == "task-1"
+    assert converter.call_args.kwargs["workflow_run"] is workflow_run
+
+
 def test_draft_node_last_run_raises_not_found_when_execution_missing(
     app: Flask, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -512,26 +660,28 @@ def test_draft_node_last_run_raises_not_found_when_execution_missing(
             handler(api, snippet=snippet, node_id="llm-1")
 
 
-def test_workflow_task_stop_uses_queue_flag_and_graph_command(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    set_stop_flag = Mock()
-    send_stop_command = Mock()
-    monkeypatch.setattr(
-        snippet_workflow_module.AppQueueManager,
-        "set_stop_flag_no_user_check",
-        set_stop_flag,
-    )
-    monkeypatch.setattr(
-        snippet_workflow_module,
-        "GraphEngineManager",
-        Mock(return_value=SimpleNamespace(send_stop_command=send_stop_command)),
-    )
+def test_workflow_task_stop_passes_account_scope_to_task_service(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    stop_task = Mock()
+    monkeypatch.setattr(snippet_workflow_module.AppTaskService, "stop_task", stop_task)
 
     api = snippet_workflow_module.SnippetWorkflowTaskStopApi()
     handler = unwrap(api.post)
+    account = _account()
 
     with app.test_request_context("/snippets/snippet-1/workflow-runs/tasks/task-1/stop", method="POST"):
-        result = handler(api, snippet=SimpleNamespace(id="snippet-1"), task_id="task-1")
+        result = handler(
+            api,
+            current_user=account,
+            snippet=SimpleNamespace(id="snippet-1", tenant_id="tenant-1"),
+            task_id="task-1",
+        )
 
     assert result == {"result": "success"}
-    set_stop_flag.assert_called_once_with("task-1")
-    send_stop_command.assert_called_once_with("task-1")
+    stop_task.assert_called_once_with(
+        "task-1",
+        snippet_workflow_module.InvokeFrom.DEBUGGER,
+        "account-1",
+        snippet_workflow_module.AppMode.WORKFLOW,
+        tenant_id="tenant-1",
+        app_id="snippet-1",
+    )

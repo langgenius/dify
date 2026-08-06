@@ -333,6 +333,8 @@ def test_generate_worker_handles_errors(generator, mocker: MockerFixture):
     mocker.patch.object(type(module.db), "engine", new_callable=PropertyMock, return_value=MagicMock())
 
     application_generate_entity = FakeRagPipelineGenerateEntity(
+        task_id="pipeline-task",
+        workflow_execution_id="pipeline-run",
         app_config=SimpleNamespace(tenant_id="tenant", app_id="pipe", workflow_id="wf"),
         invoke_from=InvokeFrom.WEB_APP,
         user_id="user",
@@ -368,6 +370,8 @@ def test_generate_worker_sets_system_user_id_for_external_call(generator, mocker
     mocker.patch.object(type(module.db), "engine", new_callable=PropertyMock, return_value=MagicMock())
 
     application_generate_entity = FakeRagPipelineGenerateEntity(
+        task_id="pipeline-task",
+        workflow_execution_id="pipeline-run",
         app_config=SimpleNamespace(tenant_id="tenant", app_id="pipe", workflow_id="wf"),
         invoke_from=InvokeFrom.WEB_APP,
         user_id="user",
@@ -379,6 +383,7 @@ def test_generate_worker_sets_system_user_id_for_external_call(generator, mocker
 
     runner_instance = MagicMock()
     mocker.patch.object(module, "PipelineRunner", return_value=runner_instance)
+    active_task = mocker.patch.object(module, "active_workflow_task", return_value=contextlib.nullcontext())
 
     generator._generate_worker(
         flask_app=flask_app,
@@ -391,6 +396,11 @@ def test_generate_worker_sets_system_user_id_for_external_call(generator, mocker
     )
 
     assert module.PipelineRunner.call_args.kwargs["system_user_id"] == "session"
+    active_task.assert_called_once_with(
+        "pipeline-task",
+        workflow_run_id=application_generate_entity.workflow_execution_id,
+    )
+    runner_instance.run.assert_called_once_with()
 
 
 def test_generate_raises_when_workflow_not_found(generator, mocker: MockerFixture):
@@ -465,6 +475,102 @@ def test_generate_success_returns_converted(generator, mocker: MockerFixture):
     worker_thread.join.assert_called_once_with(timeout=300)
 
 
+def test_generate_injects_checkpoint_state_filter_and_layers(generator, mocker: MockerFixture):
+    flask_app = MagicMock()
+    mocker.patch.object(module, "preserve_flask_contexts", _dummy_preserve)
+    workflow = MagicMock(id="wf", tenant_id="tenant", app_id="pipe", graph_dict={})
+    session = MagicMock()
+    session.get.return_value = workflow
+
+    mocker.patch.object(module, "PipelineQueueManager", return_value=MagicMock())
+    worker_thread = MagicMock()
+    worker_thread.is_alive.return_value = False
+    thread_class = mocker.patch.object(module.threading, "Thread", return_value=worker_thread)
+    mocker.patch.object(generator, "_get_draft_var_saver_factory", return_value=MagicMock())
+    mocker.patch.object(generator, "_handle_response", return_value="response")
+    mocker.patch.object(module.WorkflowAppGenerateResponseConverter, "convert", return_value="converted")
+    pause_layer = MagicMock()
+    pause_layer_class = mocker.patch.object(module, "PauseStatePersistenceLayer", return_value=pause_layer)
+    graph_state = MagicMock()
+    response_filter = MagicMock()
+    injected_layer = MagicMock()
+    pause_config = SimpleNamespace(session_factory=MagicMock(), state_owner_user_id="owner")
+    entity = FakeRagPipelineGenerateEntity(
+        task_id="pipeline-task",
+        app_config=SimpleNamespace(app_id="pipe"),
+        user_id="user",
+        invoke_from=InvokeFrom.PUBLISHED_PIPELINE,
+    )
+
+    result = generator._generate(
+        session=session,
+        flask_app=flask_app,
+        context=contextlib.nullcontext(),
+        pipeline=_build_pipeline(),
+        workflow_id="wf",
+        user=_build_user(),
+        application_generate_entity=entity,
+        invoke_from=InvokeFrom.PUBLISHED_PIPELINE,
+        workflow_execution_repository=MagicMock(),
+        workflow_node_execution_repository=MagicMock(),
+        streaming=False,
+        graph_engine_layers=(injected_layer,),
+        graph_runtime_state=graph_state,
+        pause_state_config=pause_config,
+        response_stream_filter=response_filter,
+    )
+
+    assert result == "converted"
+    pause_layer_class.assert_called_once_with(
+        session_factory=pause_config.session_factory,
+        generate_entity=entity,
+        state_owner_user_id="owner",
+        response_stream_filter=response_filter,
+    )
+    worker_kwargs = thread_class.call_args.kwargs["kwargs"]
+    assert worker_kwargs["graph_engine_layers"] == (injected_layer, pause_layer)
+    assert worker_kwargs["graph_runtime_state"] is graph_state
+    assert worker_kwargs["response_stream_filter"] is response_filter
+
+
+def test_resume_reuses_generate_path(generator, mocker: MockerFixture):
+    flask_app = MagicMock()
+    mocker.patch.object(module, "current_app", SimpleNamespace(_get_current_object=lambda: flask_app))
+    generate = mocker.patch.object(generator, "_generate", return_value={"ok": True})
+    session = MagicMock()
+    pipeline = _build_pipeline()
+    workflow = _build_workflow()
+    user = _build_user()
+    entity = FakeRagPipelineGenerateEntity(
+        task_id="pipeline-task",
+        invoke_from=InvokeFrom.PUBLISHED_PIPELINE,
+        stream=False,
+    )
+    graph_state = MagicMock()
+    response_filter = MagicMock()
+    graph_layer = MagicMock()
+
+    result = generator.resume(
+        session=session,
+        pipeline=pipeline,
+        workflow=workflow,
+        user=user,
+        application_generate_entity=entity,
+        graph_runtime_state=graph_state,
+        workflow_execution_repository=MagicMock(),
+        workflow_node_execution_repository=MagicMock(),
+        graph_engine_layers=(graph_layer,),
+        response_stream_filter=response_filter,
+        workflow_thread_pool_id="pool-id",
+    )
+
+    assert result == {"ok": True}
+    assert generate.call_args.kwargs["graph_runtime_state"] is graph_state
+    assert generate.call_args.kwargs["graph_engine_layers"] == (graph_layer,)
+    assert generate.call_args.kwargs["response_stream_filter"] is response_filter
+    assert generate.call_args.kwargs["workflow_thread_pool_id"] == "pool-id"
+
+
 def test_single_iteration_generate_validates_inputs(generator, mocker: MockerFixture):
     with pytest.raises(ValueError):
         generator.single_iteration_generate(
@@ -526,7 +632,7 @@ def test_single_iteration_generate_success(generator, mocker: MockerFixture):
     mocker.patch.object(module, "WorkflowDraftVariableService", return_value=MagicMock())
     mocker.patch.object(module, "DraftVarLoader", return_value=MagicMock())
 
-    mocker.patch.object(generator, "_generate", return_value={"ok": True})
+    generate = mocker.patch.object(generator, "_generate", return_value={"ok": True})
 
     result = generator.single_iteration_generate(
         pipeline,
@@ -539,6 +645,7 @@ def test_single_iteration_generate_success(generator, mocker: MockerFixture):
     )
 
     assert result == {"ok": True}
+    assert generate.call_args.kwargs["application_generate_entity"].workflow_execution_id
 
 
 def test_single_loop_generate_success(generator, mocker: MockerFixture):
@@ -567,7 +674,7 @@ def test_single_loop_generate_success(generator, mocker: MockerFixture):
     mocker.patch.object(module, "WorkflowDraftVariableService", return_value=MagicMock())
     mocker.patch.object(module, "DraftVarLoader", return_value=MagicMock())
 
-    mocker.patch.object(generator, "_generate", return_value={"ok": True})
+    generate = mocker.patch.object(generator, "_generate", return_value={"ok": True})
 
     result = generator.single_loop_generate(
         pipeline,
@@ -580,6 +687,7 @@ def test_single_loop_generate_success(generator, mocker: MockerFixture):
     )
 
     assert result == {"ok": True}
+    assert generate.call_args.kwargs["application_generate_entity"].workflow_execution_id
 
 
 def test_handle_response_value_error_triggers_generate_task_stopped(generator, mocker: MockerFixture):

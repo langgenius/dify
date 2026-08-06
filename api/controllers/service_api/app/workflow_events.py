@@ -4,6 +4,7 @@ Service API workflow resume event stream endpoints.
 
 import json
 from collections.abc import Generator
+from typing import Any
 
 from flask import Response, request
 from flask_restx import Resource
@@ -13,6 +14,7 @@ from werkzeug.exceptions import NotFound
 
 from controllers.common.fields import EventStreamResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_model, register_schema_models
+from controllers.common.workflow_event_cursor import get_workflow_event_replay_cursor
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import NotWorkflowAppError
 from controllers.service_api.schema import event_stream_response
@@ -28,7 +30,7 @@ from extensions.ext_database import db
 from models.enums import CreatorUserRole
 from models.model import App, AppMode, EndUser
 from repositories.factory import DifyAPIRepositoryFactory
-from services.workflow_event_snapshot_service import build_workflow_event_stream
+from services.workflow_event_snapshot_service import build_workflow_event_stream, resolve_workflow_event_task_id
 
 
 class WorkflowEventsQuery(BaseModel):
@@ -51,6 +53,10 @@ class WorkflowEventsQuery(BaseModel):
             "first pause."
         ),
     )
+    cursor: str | None = Field(
+        default=None,
+        description="Replay events strictly after this SSE event ID. Last-Event-ID header takes precedence.",
+    )
 
 
 register_schema_models(service_api_ns, WorkflowEventsQuery)
@@ -71,8 +77,9 @@ class WorkflowEventsApi(Resource):
         tags=["Chatflows", "Workflows"],
         responses={
             200: (
-                "Server-Sent Events stream. Each event is delivered as `data: {JSON}\\n\\n`. Event payloads "
-                "follow the same schemas as the original streaming response."
+                "Server-Sent Events stream. Durable events are delivered as "
+                "`id: {cursor}\\ndata: {JSON}\\n\\n`; reconnect with Last-Event-ID. Event payloads follow the "
+                "same schemas as the original streaming response."
             ),
             400: "`not_workflow_app` : Please check if your app mode matches the right API route.",
             404: "`not_found` : Workflow run not found.",
@@ -117,10 +124,14 @@ class WorkflowEventsApi(Resource):
             raise NotFound("Workflow run not found")
 
         workflow_run_entity = workflow_run
+        cursor = get_workflow_event_replay_cursor(request)
 
-        if workflow_run_entity.finished_at is not None:
+        if workflow_run_entity.finished_at is not None and cursor is None:
             response = WorkflowResponseConverter.workflow_run_result_to_finish_response(
-                task_id=workflow_run_entity.id,
+                task_id=resolve_workflow_event_task_id(
+                    workflow_run=workflow_run_entity,
+                    session_maker=session_maker,
+                ),
                 workflow_run=workflow_run_entity,
                 creator_user=end_user,
             )
@@ -144,10 +155,10 @@ class WorkflowEventsApi(Resource):
 
             include_state_snapshot = request.args.get("include_state_snapshot", "false").lower() == "true"
             continue_on_pause = request.args.get("continue_on_pause", "false").lower() == "true"
-            terminal_events: list[StreamEvent] | None = [] if continue_on_pause else None
+            terminal_events: list[StreamEvent] | None = [StreamEvent.WORKFLOW_FINISHED] if continue_on_pause else None
 
             def _generate_stream_events():
-                if include_state_snapshot:
+                if include_state_snapshot or cursor is not None:
                     return generator.convert_to_event_stream(
                         build_workflow_event_stream(
                             app_mode=app_mode,
@@ -157,14 +168,16 @@ class WorkflowEventsApi(Resource):
                             session_maker=session_maker,
                             human_input_surface=HumanInputSurface.SERVICE_API,
                             close_on_pause=not continue_on_pause,
+                            cursor=cursor,
                         )
                     )
+                retrieve_kwargs: dict[str, Any] = {"terminal_events": terminal_events}
+                if cursor is not None:
+                    retrieve_kwargs["cursor"] = cursor
+                if workflow_run_entity.finished_at is not None:
+                    retrieve_kwargs["idle_timeout"] = 0
                 return generator.convert_to_event_stream(
-                    msg_generator.retrieve_events(
-                        app_mode,
-                        workflow_run_entity.id,
-                        terminal_events=terminal_events,
-                    ),
+                    msg_generator.retrieve_events(app_mode, workflow_run_entity.id, **retrieve_kwargs),
                 )
 
             event_generator = _generate_stream_events

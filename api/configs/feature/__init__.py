@@ -898,6 +898,53 @@ class WorkflowConfig(BaseSettings):
         default=1200,
     )
 
+    WORKFLOW_HANDOFF_ENABLED: bool = Field(
+        description=(
+            "Enable durable workflow handoff during planned worker shutdowns; all replicas must share object storage "
+            "and EVENT_BUS_REDIS_CHANNEL_TYPE must be streams"
+        ),
+        default=False,
+    )
+
+    WORKFLOW_HANDOFF_DRAIN_TIMEOUT_SECONDS: PositiveInt = Field(
+        description=(
+            "Maximum time in seconds for checkpoint preparation/activation and for a READY handoff's first resume claim"
+        ),
+        default=600,
+    )
+
+    WORKFLOW_HANDOFF_SCAN_INTERVAL_SECONDS: PositiveInt = Field(
+        description="Interval in seconds between scans for workflow handoffs that need to be resumed",
+        default=15,
+    )
+
+    WORKFLOW_HANDOFF_LEASE_SECONDS: PositiveInt = Field(
+        description="Duration in seconds of an exclusive workflow handoff resume lease",
+        default=120,
+    )
+
+    WORKFLOW_HANDOFF_MAX_ATTEMPTS: PositiveInt = Field(
+        description="Maximum number of attempts to resume a workflow handoff before failing closed",
+        default=20,
+    )
+
+    WORKFLOW_HANDOFF_RETENTION_DAYS: PositiveInt = Field(
+        description=(
+            "Days to retain terminal workflow handoff audit rows and completed snapshot-GC records after their "
+            "durable side effects finish"
+        ),
+        default=7,
+    )
+
+    WORKFLOW_HANDOFF_QUEUE: str = Field(
+        description=(
+            "Capability-isolated Celery queue used for workflow handoff scan and resume tasks; only upgraded workers "
+            "must consume it during an adjacent-version rollout"
+        ),
+        default="workflow_handoff",
+        min_length=1,
+    )
+
     WORKFLOW_CALL_MAX_DEPTH: PositiveInt = Field(
         description="Maximum allowed depth for nested workflow calls",
         default=5,

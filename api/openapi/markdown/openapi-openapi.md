@@ -202,6 +202,7 @@ Upload a file to use as an input variable when running the app
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | continue_on_pause | query | Whether to keep the event stream open on pause | No | boolean |
+| cursor | query | Replay events strictly after this SSE event ID. Last-Event-ID header takes precedence. | No | string |
 | include_state_snapshot | query | Whether to include workflow state snapshots | No | boolean |
 | app_id | path |  | Yes | string |
 | task_id | path |  | Yes | string |
@@ -1058,6 +1059,7 @@ types it as a required `'success'` rather than an optional field.
 | elapsed_time | number |  | No |
 | error | string |  | No |
 | finished_at | integer |  | No |
+| handoff_duration | number |  | No |
 | id | string |  | Yes |
 | outputs | object |  | No |
 | status | string |  | Yes |

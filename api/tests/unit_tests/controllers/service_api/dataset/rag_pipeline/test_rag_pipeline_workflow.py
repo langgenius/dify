@@ -20,6 +20,8 @@ Strategy:
 import io
 import uuid
 from datetime import UTC, datetime
+from inspect import unwrap
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
@@ -30,12 +32,14 @@ from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.common.errors import FilenameNotExistsError, NoFileUploadedError, TooManyFilesError
 from controllers.service_api.dataset.error import PipelineRunError
+from controllers.service_api.dataset.rag_pipeline import rag_pipeline_workflow as rag_pipeline_workflow_module
 from controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow import (
     DatasourceNodeRunApi,
     DatasourceNodeRunPayload,
     DatasourcePluginsApi,
     KnowledgebasePipelineFileUploadApi,
     PipelineRunApi,
+    PipelineWorkflowRunEventsApi,
 )
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models.account import Account
@@ -613,6 +617,109 @@ class TestPipelineRunApiPost:
                     tenant_id=str(uuid.uuid4()),
                     dataset_id=str(uuid.uuid4()),
                 )
+
+
+class TestPipelineWorkflowRunEventsApi:
+    @pytest.mark.parametrize("sqlite_session", [(Dataset,)], indirect=True)
+    def test_replays_from_cursor_for_owner(
+        self,
+        app: Flask,
+        sqlite_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        tenant_id = str(uuid.uuid4())
+        dataset_id = str(uuid.uuid4())
+        _persist_dataset(sqlite_session, tenant_id=tenant_id, dataset_id=dataset_id)
+        account = Account(name="Owner", email="owner@example.com")
+        account.id = "account-1"
+        pipeline = SimpleNamespace(id="pipeline-1", tenant_id=tenant_id)
+        workflow_run = SimpleNamespace(
+            id="run-1",
+            app_id=pipeline.id,
+            created_by_role=rag_pipeline_workflow_module.CreatorUserRole.ACCOUNT,
+            created_by=account.id,
+            finished_at=None,
+        )
+        build_stream = Mock(return_value=iter([{"event": "workflow_finished"}]))
+        session_proxy = Mock(return_value=sqlite_session)
+        session_proxy.scalar = sqlite_session.scalar
+        monkeypatch.setattr(
+            rag_pipeline_workflow_module,
+            "db",
+            SimpleNamespace(session=session_proxy, engine=sqlite_session.bind),
+        )
+        monkeypatch.setattr(rag_pipeline_workflow_module, "current_user", account)
+        rag_pipeline_service = SimpleNamespace(
+            get_pipeline=Mock(return_value=pipeline),
+            get_rag_pipeline_workflow_run=Mock(return_value=workflow_run),
+            session_maker=Mock(),
+        )
+        monkeypatch.setattr(
+            rag_pipeline_workflow_module,
+            "RagPipelineService",
+            Mock(return_value=rag_pipeline_service),
+        )
+        monkeypatch.setattr(
+            rag_pipeline_workflow_module,
+            "build_workflow_event_stream",
+            build_stream,
+        )
+
+        api = PipelineWorkflowRunEventsApi()
+        handler = unwrap(api.get)
+        with app.test_request_context(
+            f"/datasets/{dataset_id}/pipeline/workflow-runs/run-1/events",
+            headers={"Last-Event-ID": "88-2"},
+        ):
+            response = handler(tenant_id, dataset_id, "run-1")
+            assert '"workflow_finished"' in response.get_data(as_text=True)
+
+        assert build_stream.call_args.kwargs["cursor"] == "88-2"
+
+    @pytest.mark.parametrize("sqlite_session", [(Dataset,)], indirect=True)
+    def test_rejects_run_created_by_another_account(
+        self,
+        app: Flask,
+        sqlite_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        tenant_id = str(uuid.uuid4())
+        dataset_id = str(uuid.uuid4())
+        _persist_dataset(sqlite_session, tenant_id=tenant_id, dataset_id=dataset_id)
+        account = Account(name="Owner", email="owner@example.com")
+        account.id = "account-1"
+        pipeline = SimpleNamespace(id="pipeline-1")
+        workflow_run = SimpleNamespace(
+            id="run-1",
+            app_id=pipeline.id,
+            created_by_role=rag_pipeline_workflow_module.CreatorUserRole.ACCOUNT,
+            created_by="account-2",
+            finished_at=None,
+        )
+        session_proxy = Mock(return_value=sqlite_session)
+        session_proxy.scalar = sqlite_session.scalar
+        monkeypatch.setattr(
+            rag_pipeline_workflow_module,
+            "db",
+            SimpleNamespace(session=session_proxy, engine=sqlite_session.bind),
+        )
+        monkeypatch.setattr(rag_pipeline_workflow_module, "current_user", account)
+        rag_pipeline_service = SimpleNamespace(
+            get_pipeline=Mock(return_value=pipeline),
+            get_rag_pipeline_workflow_run=Mock(return_value=workflow_run),
+            session_maker=Mock(),
+        )
+        monkeypatch.setattr(
+            rag_pipeline_workflow_module,
+            "RagPipelineService",
+            Mock(return_value=rag_pipeline_service),
+        )
+
+        api = PipelineWorkflowRunEventsApi()
+        handler = unwrap(api.get)
+        with app.test_request_context(f"/datasets/{dataset_id}/pipeline/workflow-runs/run-1/events"):
+            with pytest.raises(NotFound, match="Workflow run not found"):
+                handler(tenant_id, dataset_id, "run-1")
 
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user", new="not_account")
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.service_api_ns")

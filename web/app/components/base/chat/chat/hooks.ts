@@ -99,6 +99,32 @@ function appendAgentResponseMessagePart(responseItem: ChatItemInTree, message: s
   }
 }
 
+function replaceAgentResponseMessageParts(responseItem: ChatItemInTree, message: string) {
+  const parts = responseItem.agent_response_parts ?? []
+  let lastMessageIndex = -1
+  parts.forEach((part, index) => {
+    if (part.type === 'message') lastMessageIndex = index
+  })
+
+  if (lastMessageIndex === -1) {
+    responseItem.agent_response_parts = [
+      ...parts,
+      {
+        type: 'message',
+        content: message,
+      },
+    ]
+    return
+  }
+
+  const nextParts: NonNullable<ChatItemInTree['agent_response_parts']> = []
+  parts.forEach((part, index) => {
+    if (part.type !== 'message') nextParts.push(part)
+    else if (index === lastMessageIndex) nextParts.push({ type: 'message', content: message })
+  })
+  responseItem.agent_response_parts = nextParts
+}
+
 function upsertAgentResponseThoughtPart(responseItem: ChatItemInTree, thought: ThoughtItem) {
   if (!responseItem.agent_response_parts) responseItem.agent_response_parts = []
 
@@ -407,6 +433,13 @@ export const useChat = (
           }
           pausedWorkflowEventsAbortControllerRef.current = abortController
         },
+        onWorkflowContinuationReady: () => {
+          if (generation !== workflowEventsSubscriptionGenerationRef.current) return
+
+          workflowEventsReadyRef.current = true
+          resolveWorkflowEventsReadyWaiters(true)
+          options.onWorkflowContinuationReady?.()
+        },
         onHumanInputRequired: (event) => {
           if (generation !== workflowEventsSubscriptionGenerationRef.current) return
           options.onHumanInputRequired?.(event)
@@ -420,8 +453,6 @@ export const useChat = (
           if (generation !== workflowEventsSubscriptionGenerationRef.current) return
 
           options.onWorkflowPaused?.(event)
-          workflowEventsReadyRef.current = true
-          resolveWorkflowEventsReadyWaiters(true)
         },
         onError: (...args) => {
           if (!releaseSubscription()) return
@@ -772,6 +803,8 @@ export const useChat = (
         onMessageReplace: (messageReplace) => {
           updateChatTreeNode(messageId, (responseItem) => {
             responseItem.content = messageReplace.answer
+            if (options.isNewAgent)
+              replaceAgentResponseMessageParts(responseItem, messageReplace.answer)
           })
         },
         onError() {
@@ -786,6 +819,8 @@ export const useChat = (
           handleResponding(true)
           hasStopRespondedRef.current = false
           updateChatTreeNode(messageId, (responseItem) => {
+            taskIdRef.current = task_id
+            responseItem.workflow_run_id = workflow_run_id
             if (responseItem.workflowProcess && responseItem.workflowProcess.tracing.length > 0) {
               responseItem.workflowProcess = {
                 ...responseItem.workflowProcess,
@@ -793,8 +828,6 @@ export const useChat = (
                 error: undefined,
               }
             } else {
-              taskIdRef.current = task_id
-              responseItem.workflow_run_id = workflow_run_id
               responseItem.workflowProcess = {
                 status: WorkflowRunningStatus.Running,
                 tracing: [],
@@ -1472,6 +1505,14 @@ export const useChat = (
         },
         onMessageReplace: (messageReplace) => {
           responseItem.content = messageReplace.answer
+          if (options.isNewAgent)
+            replaceAgentResponseMessageParts(responseItem, messageReplace.answer)
+          updateCurrentQAOnTree({
+            placeholderQuestionId,
+            questionItem,
+            responseItem,
+            parentId: data.parent_message_id,
+          })
         },
         onError() {
           if (requestGeneration !== workflowRequestGenerationRef.current) return
@@ -1501,6 +1542,9 @@ export const useChat = (
             hasSetResponseId = true
           }
 
+          taskIdRef.current = task_id
+          responseItem.workflow_run_id = workflow_run_id
+
           if (responseItem.workflowProcess && responseItem.workflowProcess.tracing.length > 0) {
             responseItem.workflowProcess = {
               ...responseItem.workflowProcess,
@@ -1508,8 +1552,6 @@ export const useChat = (
               error: undefined,
             }
           } else {
-            taskIdRef.current = task_id
-            responseItem.workflow_run_id = workflow_run_id
             responseItem.workflowProcess = {
               status: WorkflowRunningStatus.Running,
               tracing: [],
@@ -1760,6 +1802,8 @@ export const useChat = (
           workflowPauseConfirmedRef.current = true
           handleResponding(false)
           ensureWorkflowEventsSubscription(workflowPausedData.workflow_run_id, otherOptions)
+          notifyConversationComplete(currentWorkflowRunId || workflowPausedData.workflow_run_id)
+          settleSend()
           responseItem.workflowProcess!.status = WorkflowRunningStatus.Paused
           updateCurrentQAOnTree({
             placeholderQuestionId,

@@ -3,11 +3,10 @@ import type { TriggerNodeType } from '@/app/components/workflow/types'
 import type { IOtherOptions } from '@/service/base'
 import type { VersionHistory } from '@/types/workflow'
 import { toast } from '@langgenius/dify-ui/toast'
-import { noop } from 'es-toolkit/function'
 import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
-import { handleStream, post } from '@/service/base'
+import { handleSseResponse, post } from '@/service/base'
 import { ContentType } from '@/service/fetch'
 import { AppModeEnum } from '@/types/app'
 
@@ -415,40 +414,7 @@ export const runTriggerDebug = async ({
       }
 
       clearListeningState()
-      handleStream(
-        response,
-        baseSseOptions.onData ?? noop,
-        baseSseOptions.onCompleted,
-        baseSseOptions.onThought,
-        baseSseOptions.onMessageEnd,
-        baseSseOptions.onMessageReplace,
-        baseSseOptions.onFile,
-        baseSseOptions.onWorkflowStarted,
-        baseSseOptions.onWorkflowFinished,
-        baseSseOptions.onNodeStarted,
-        baseSseOptions.onNodeFinished,
-        baseSseOptions.onIterationStart,
-        baseSseOptions.onIterationNext,
-        baseSseOptions.onIterationFinish,
-        baseSseOptions.onLoopStart,
-        baseSseOptions.onLoopNext,
-        baseSseOptions.onLoopFinish,
-        baseSseOptions.onNodeRetry,
-        baseSseOptions.onParallelBranchStarted,
-        baseSseOptions.onParallelBranchFinished,
-        baseSseOptions.onTextChunk,
-        baseSseOptions.onTTSChunk,
-        baseSseOptions.onTTSEnd,
-        baseSseOptions.onTextReplace,
-        baseSseOptions.onAgentLog,
-        baseSseOptions.onHumanInputRequired,
-        baseSseOptions.onHumanInputFormFilled,
-        baseSseOptions.onHumanInputFormTimeout,
-        baseSseOptions.onWorkflowPaused,
-        baseSseOptions.onDataSourceNodeProcessing,
-        baseSseOptions.onDataSourceNodeCompleted,
-        baseSseOptions.onDataSourceNodeError,
-      )
+      void handleSseResponse(response, baseSseOptions, controller)
     } catch (error) {
       if (controller.signal.aborted) return
 

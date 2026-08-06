@@ -380,6 +380,8 @@ class TestSQLAlchemyWorkflowExecutionRepository:
         execution_id = sample_workflow_execution.id_
         existing_created_at = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
         sample_workflow_execution.started_at = existing_created_at
+        sample_workflow_execution.finished_at = None
+        sample_workflow_execution.status = WorkflowExecutionStatus.RUNNING
         repo.save(sample_workflow_execution)
 
         sample_workflow_execution.started_at = datetime(2026, 1, 1, 12, 30, 0, tzinfo=UTC)
@@ -389,6 +391,220 @@ class TestSQLAlchemyWorkflowExecutionRepository:
         persisted_model = sqlite_session.get(WorkflowRun, execution_id)
         assert persisted_model is not None
         assert persisted_model.created_at == existing_created_at.replace(tzinfo=None)
+        assert persisted_model.status == WorkflowExecutionStatus.RUNNING
+
+    @pytest.mark.parametrize("sqlite_session", [TABLES], indirect=True)
+    def test_save_existing_finished_run_uses_logical_wall_clock_elapsed_time(
+        self,
+        sqlite_session_factory: sessionmaker[Session],
+        sqlite_session: Session,
+        account: Account,
+        sample_workflow_execution: WorkflowExecution,
+    ):
+        initial_repo = SQLAlchemyWorkflowExecutionRepository(
+            session_factory=sqlite_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
+            user=account,
+            app_id="test_app",
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        )
+        logical_start = datetime(2026, 1, 1, 12, 0, 0)
+        sample_workflow_execution.started_at = logical_start
+        sample_workflow_execution.finished_at = None
+        sample_workflow_execution.status = WorkflowExecutionStatus.RUNNING
+        initial_repo.save(sample_workflow_execution)
+
+        resumed_repo = SQLAlchemyWorkflowExecutionRepository(
+            session_factory=sqlite_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
+            user=account,
+            app_id="test_app",
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        )
+        sample_workflow_execution.started_at = datetime(2026, 1, 1, 12, 20, 0)
+        sample_workflow_execution.finished_at = datetime(2026, 1, 1, 12, 20, 10)
+        sample_workflow_execution.status = WorkflowExecutionStatus.SUCCEEDED
+        resumed_repo.save(sample_workflow_execution)
+
+        sqlite_session.expire_all()
+        persisted_model = sqlite_session.get(WorkflowRun, sample_workflow_execution.id_)
+        assert persisted_model is not None
+        assert persisted_model.created_at == logical_start
+        assert persisted_model.elapsed_time == 1210.0
+        assert persisted_model.status == WorkflowExecutionStatus.SUCCEEDED
+
+    @pytest.mark.parametrize("sqlite_session", [TABLES], indirect=True)
+    def test_save_existing_finished_run_clamps_negative_wall_clock_elapsed_time(
+        self,
+        sqlite_session_factory: sessionmaker[Session],
+        sqlite_session: Session,
+        account: Account,
+        sample_workflow_execution: WorkflowExecution,
+    ):
+        initial_repo = SQLAlchemyWorkflowExecutionRepository(
+            session_factory=sqlite_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
+            user=account,
+            app_id="test_app",
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        )
+        logical_start = datetime(2026, 1, 1, 12, 0, 1)
+        sample_workflow_execution.started_at = logical_start
+        sample_workflow_execution.finished_at = None
+        sample_workflow_execution.status = WorkflowExecutionStatus.RUNNING
+        initial_repo.save(sample_workflow_execution)
+
+        resumed_repo = SQLAlchemyWorkflowExecutionRepository(
+            session_factory=sqlite_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
+            user=account,
+            app_id="test_app",
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        )
+        sample_workflow_execution.started_at = datetime(2026, 1, 1, 12, 0, 0)
+        sample_workflow_execution.finished_at = datetime(2026, 1, 1, 12, 0, 0)
+        sample_workflow_execution.status = WorkflowExecutionStatus.SUCCEEDED
+        resumed_repo.save(sample_workflow_execution)
+
+        sqlite_session.expire_all()
+        persisted_model = sqlite_session.get(WorkflowRun, sample_workflow_execution.id_)
+        assert persisted_model is not None
+        assert persisted_model.created_at == logical_start
+        assert persisted_model.elapsed_time == 0.0
+
+    @pytest.mark.parametrize("sqlite_session", [TABLES], indirect=True)
+    def test_save_existing_paused_run_uses_logical_wall_clock_elapsed_time(
+        self,
+        sqlite_session_factory: sessionmaker[Session],
+        sqlite_session: Session,
+        account: Account,
+        sample_workflow_execution: WorkflowExecution,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        logical_start = datetime(2026, 1, 1, 12, 0, 0)
+        monkeypatch.setattr(
+            "core.repositories.sqlalchemy_workflow_execution_repository.naive_utc_now",
+            lambda: datetime(2026, 1, 1, 12, 30, 0),
+        )
+        initial_repo = SQLAlchemyWorkflowExecutionRepository(
+            session_factory=sqlite_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
+            user=account,
+            app_id="test_app",
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        )
+        sample_workflow_execution.started_at = logical_start
+        sample_workflow_execution.finished_at = None
+        sample_workflow_execution.status = WorkflowExecutionStatus.RUNNING
+        initial_repo.save(sample_workflow_execution)
+
+        resumed_repo = SQLAlchemyWorkflowExecutionRepository(
+            session_factory=sqlite_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
+            user=account,
+            app_id="test_app",
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        )
+        sample_workflow_execution.started_at = datetime(2026, 1, 1, 12, 20, 0)
+        sample_workflow_execution.status = WorkflowExecutionStatus.PAUSED
+        resumed_repo.save(sample_workflow_execution)
+
+        sqlite_session.expire_all()
+        persisted_model = sqlite_session.get(WorkflowRun, sample_workflow_execution.id_)
+        assert persisted_model is not None
+        assert persisted_model.created_at == logical_start
+        assert persisted_model.elapsed_time == 1800.0
+        assert persisted_model.status == WorkflowExecutionStatus.PAUSED
+
+    @pytest.mark.parametrize("sqlite_session", [TABLES], indirect=True)
+    def test_save_resumed_running_segment_preserves_previous_elapsed_snapshot(
+        self,
+        sqlite_session_factory: sessionmaker[Session],
+        sqlite_session: Session,
+        account: Account,
+        sample_workflow_execution: WorkflowExecution,
+    ):
+        logical_start = datetime(2026, 1, 1, 12, 0, 0)
+        initial_repo = SQLAlchemyWorkflowExecutionRepository(
+            session_factory=sqlite_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
+            user=account,
+            app_id="test_app",
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        )
+        sample_workflow_execution.started_at = logical_start
+        sample_workflow_execution.finished_at = None
+        sample_workflow_execution.status = WorkflowExecutionStatus.RUNNING
+        initial_repo.save(sample_workflow_execution)
+
+        persisted_model = sqlite_session.get(WorkflowRun, sample_workflow_execution.id_)
+        assert persisted_model is not None
+        persisted_model.elapsed_time = 321.0
+        sqlite_session.commit()
+
+        resumed_repo = SQLAlchemyWorkflowExecutionRepository(
+            session_factory=sqlite_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
+            user=account,
+            app_id="test_app",
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        )
+        sample_workflow_execution.started_at = datetime(2026, 1, 1, 12, 20, 0)
+        resumed_repo.save(sample_workflow_execution)
+
+        sqlite_session.expire_all()
+        persisted_model = sqlite_session.get(WorkflowRun, sample_workflow_execution.id_)
+        assert persisted_model is not None
+        assert persisted_model.created_at == logical_start
+        assert persisted_model.elapsed_time == 321.0
+        assert persisted_model.status == WorkflowExecutionStatus.RUNNING
+
+    @pytest.mark.parametrize("sqlite_session", [TABLES], indirect=True)
+    def test_save_does_not_resurrect_stopped_run_when_resume_start_arrives_late(
+        self,
+        sqlite_session_factory: sessionmaker[Session],
+        sqlite_session: Session,
+        account: Account,
+        sample_workflow_execution: WorkflowExecution,
+    ):
+        logical_start = datetime(2026, 1, 1, 12, 0, 0)
+        logical_finish = datetime(2026, 1, 1, 12, 5, 0)
+        initial_repo = SQLAlchemyWorkflowExecutionRepository(
+            session_factory=sqlite_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
+            user=account,
+            app_id="test_app",
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        )
+        sample_workflow_execution.started_at = logical_start
+        sample_workflow_execution.finished_at = logical_finish
+        sample_workflow_execution.status = WorkflowExecutionStatus.STOPPED
+        initial_repo.save(sample_workflow_execution)
+
+        resumed_repo = SQLAlchemyWorkflowExecutionRepository(
+            session_factory=sqlite_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
+            user=account,
+            app_id="test_app",
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        )
+        sample_workflow_execution.started_at = datetime(2026, 1, 1, 13, 0, 0)
+        sample_workflow_execution.finished_at = None
+        sample_workflow_execution.status = WorkflowExecutionStatus.RUNNING
+        sample_workflow_execution.total_tokens = 999
+        sample_workflow_execution.total_steps = 999
+        resumed_repo.save(sample_workflow_execution)
+
+        sqlite_session.expire_all()
+        persisted_model = sqlite_session.get(WorkflowRun, sample_workflow_execution.id_)
+        assert persisted_model is not None
+        assert persisted_model.status == WorkflowExecutionStatus.STOPPED
+        assert persisted_model.created_at == logical_start
+        assert persisted_model.finished_at == logical_finish
+        assert persisted_model.elapsed_time == 300.0
+        assert persisted_model.total_tokens == 100
+        assert persisted_model.total_steps == 5
+        assert resumed_repo._execution_cache[sample_workflow_execution.id_].status == WorkflowExecutionStatus.STOPPED
 
     @pytest.mark.parametrize("sqlite_session", [TABLES], indirect=True)
     def test_save_rejects_execution_owned_by_another_tenant(

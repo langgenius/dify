@@ -6,7 +6,11 @@ import queue
 import pytest
 
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
-from core.app.apps.streaming_utils import _normalize_terminal_events, stream_topic_events
+from core.app.apps.streaming_utils import (
+    WorkflowRunIdentifiedStream,
+    _normalize_terminal_events,
+    stream_topic_events,
+)
 from core.app.entities.task_entities import StreamEvent
 from models.model import AppMode
 
@@ -74,10 +78,29 @@ def test_retrieve_events_calls_on_subscribe_after_subscription(monkeypatch: pyte
         on_subscribe=on_subscribe,
     )
 
+    # The first byte is gated on a live subscription and successful dispatch.
     assert next(generator) == StreamEvent.PING.value
+    assert topic.subscribed is True
     event = next(generator)
     assert event["event"] == StreamEvent.WORKFLOW_FINISHED.value
     with pytest.raises(StopIteration):
+        next(generator)
+
+
+def test_stream_topic_events_does_not_yield_before_dispatch_succeeds():
+    topic = FakeTopic()
+
+    def fail_to_dispatch() -> None:
+        assert topic.subscribed is True
+        raise RuntimeError("broker unavailable")
+
+    generator = stream_topic_events(
+        topic=topic,
+        idle_timeout=0.1,
+        on_subscribe=fail_to_dispatch,
+    )
+
+    with pytest.raises(RuntimeError, match="broker unavailable"):
         next(generator)
 
 
@@ -128,3 +151,21 @@ def test_stream_topic_events_can_continue_past_pause():
     assert next(generator)["event"] == StreamEvent.WORKFLOW_FINISHED.value
     with pytest.raises(StopIteration):
         next(generator)
+
+
+def test_workflow_run_identified_stream_exposes_id_and_closes_source():
+    state = {"closed": False}
+
+    def source():
+        try:
+            yield "first"
+            yield "second"
+        finally:
+            state["closed"] = True
+
+    stream = WorkflowRunIdentifiedStream(source(), workflow_run_id="run-1")
+
+    assert stream.workflow_run_id == "run-1"
+    assert next(stream) == "first"
+    stream.close()
+    assert state["closed"] is True

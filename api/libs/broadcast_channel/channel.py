@@ -8,7 +8,22 @@ import types
 from abc import abstractmethod
 from collections.abc import Iterator
 from contextlib import AbstractContextManager
-from typing import Protocol, Self, override
+from dataclasses import dataclass
+from typing import Protocol, Self, override, runtime_checkable
+
+
+@dataclass(frozen=True)
+class CursorMessage:
+    """A broadcast payload paired with a durable transport cursor.
+
+    Cursor-aware consumers use this value to expose Redis Stream entry IDs as
+    standard SSE ``id`` fields.  The existing byte-only ``receive`` API stays
+    available so non-HTTP broadcast consumers do not need to know about
+    transport metadata.
+    """
+
+    payload: bytes
+    cursor: str
 
 
 class Subscription(AbstractContextManager["Subscription"], Protocol):
@@ -75,6 +90,16 @@ class Subscription(AbstractContextManager["Subscription"], Protocol):
         ...
 
 
+@runtime_checkable
+class CursorSubscription(Subscription, Protocol):
+    """A subscription that can return a durable cursor with each message."""
+
+    @abstractmethod
+    def receive_with_cursor(self, timeout: float | None = 0.1) -> CursorMessage | None:
+        """Receive the next payload and its transport cursor."""
+        ...
+
+
 class Producer(Protocol):
     """Producer is an interface for message publishing. It is already bound to a specific topic.
 
@@ -94,7 +119,12 @@ class Subscriber(Protocol):
     """
 
     @abstractmethod
-    def subscribe(self) -> Subscription:
+    def subscribe(self, *, cursor: str | None = None) -> Subscription:
+        """Create a subscription after ``cursor`` when the transport supports replay.
+
+        Non-replayable transports reject a non-null cursor.  Omitting the
+        cursor preserves their normal live-subscription behavior.
+        """
         pass
 
 
@@ -115,6 +145,21 @@ class Topic(Producer, Subscriber, Protocol):
     @abstractmethod
     def as_subscriber(self) -> Subscriber:
         """as_subscriber create a read-only view for this topic."""
+        ...
+
+
+@runtime_checkable
+class ReplayableTopic(Topic, Protocol):
+    """A topic backed by an ordered, durable event log."""
+
+    @abstractmethod
+    def earliest_cursor(self) -> str | None:
+        """Return the earliest retained cursor, or ``None`` for an empty log."""
+        ...
+
+    @abstractmethod
+    def latest_cursor(self) -> str | None:
+        """Return the latest retained cursor, or ``None`` for an empty log."""
         ...
 
 

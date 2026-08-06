@@ -9,6 +9,9 @@ SHARED_ENV_EXCLUDE = frozenset(
     [
         # Docker Compose profile selection
         "COMPOSE_PROFILES",
+        # Container stop timing (consumed by docker-compose, not the application)
+        "COMPOSE_API_STOP_GRACE_PERIOD",
+        "COMPOSE_WORKER_STOP_GRACE_PERIOD",
         # Worker health check orchestration flags (consumed by docker-compose,
         # not by the application running inside the container)
         "COMPOSE_WORKER_HEALTHCHECK_DISABLED",

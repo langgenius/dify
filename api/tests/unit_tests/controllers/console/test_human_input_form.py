@@ -387,9 +387,8 @@ def test_workflow_events_snapshot_can_continue_across_pauses(app: Flask, monkeyp
 
     api = ConsoleWorkflowEventsApi()
     handler = unwrap(api.get)
-
     with app.test_request_context(
-        "/console/api/workflow/run-1/events?include_state_snapshot=true&continue_on_pause=true",
+        "/console/api/workflow/run-1/events?include_state_snapshot=true&continue_on_pause=true&cursor=31-0",
         method="GET",
     ):
         response = handler(api, "t1", SimpleNamespace(id="user-1"), workflow_run_id="run-1")
@@ -403,4 +402,5 @@ def test_workflow_events_snapshot_can_continue_across_pauses(app: Flask, monkeyp
         session_maker=ANY,
         human_input_surface=HumanInputSurface.CONSOLE,
         close_on_pause=False,
+        cursor="31-0",
     )

@@ -33,9 +33,18 @@ class TestBaseAppQueueManager:
     def test_set_stop_flag_checks_user(self):
         with patch("core.app.apps.base_app_queue_manager.redis_client") as mock_redis:
             mock_redis.get.return_value = b"end-user-u1"
-            AppQueueManager.set_stop_flag(task_id="t1", invoke_from=InvokeFrom.SERVICE_API, user_id="u1")
+            owned = AppQueueManager.set_stop_flag(task_id="t1", invoke_from=InvokeFrom.SERVICE_API, user_id="u1")
 
+        assert owned is True
         mock_redis.setex.assert_called_once()
+
+    def test_set_stop_flag_rejects_another_user(self):
+        with patch("core.app.apps.base_app_queue_manager.redis_client") as mock_redis:
+            mock_redis.get.return_value = b"end-user-u2"
+            owned = AppQueueManager.set_stop_flag(task_id="t1", invoke_from=InvokeFrom.SERVICE_API, user_id="u1")
+
+        assert owned is False
+        mock_redis.setex.assert_not_called()
 
     def test_set_stop_flag_no_user_check(self):
         with patch("core.app.apps.base_app_queue_manager.redis_client") as mock_redis:
@@ -85,6 +94,9 @@ class TestBaseAppQueueManager:
         with (
             patch("core.app.apps.base_app_queue_manager.redis_client") as mock_redis,
             patch("core.app.apps.base_app_queue_manager.GraphEngineManager") as graph_engine_manager,
+            patch(
+                "services.workflow_handoff_cancellation_service.request_workflow_handoff_cancel_by_task_id"
+            ) as cancel_handoff,
         ):
             mock_redis.setex.return_value = True
             graph_engine_manager.return_value.send_stop_command.side_effect = RuntimeError("redis unavailable")
@@ -93,5 +105,6 @@ class TestBaseAppQueueManager:
             manager._abort_execution("stream closed")
             manager._abort_execution("duplicate")
 
+        cancel_handoff.assert_called_once_with("t1", reason="stream closed")
         graph_engine_manager.return_value.send_stop_command.assert_called_once_with("t1", reason="stream closed")
-        assert "Failed to abort app execution for task t1" in caplog.text
+        assert "Failed to send the graph abort command for task t1" in caplog.text

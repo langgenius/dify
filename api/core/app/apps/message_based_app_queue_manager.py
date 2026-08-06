@@ -10,6 +10,7 @@ from core.app.entities.queue_entities import (
     QueueErrorEvent,
     QueueMessageEndEvent,
     QueueStopEvent,
+    QueueWorkflowMaintenancePausedEvent,
     QueueWorkflowPausedEvent,
 )
 from models.model import AppMode
@@ -52,6 +53,8 @@ class MessageBasedAppQueueManager(AppQueueManager):
             | QueueWorkflowPausedEvent,
         ):
             self.stop_listen(execution_terminal=True)
+        elif isinstance(event, QueueWorkflowMaintenancePausedEvent):
+            self.stop_listen(execution_terminal=False)
 
         if pub_from == PublishFrom.APPLICATION_MANAGER and self._is_stopped():
             if self._app_mode == AppMode.ADVANCED_CHAT.value:
