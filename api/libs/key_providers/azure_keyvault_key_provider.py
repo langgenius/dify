@@ -81,9 +81,7 @@ class AzureKeyVaultKeyProvider(BaseKeyProvider):
                 key=lambda properties: properties.created_on or datetime.min.replace(tzinfo=UTC),
             )
             resolved_version = current.version or ""
-        return self._key_client.get_cryptography_client(
-            key_name, key_version=resolved_version
-        ), resolved_version
+        return self._key_client.get_cryptography_client(key_name, key_version=resolved_version), resolved_version
 
     @override
     def generate_key_pair(self, tenant_id: str) -> str:

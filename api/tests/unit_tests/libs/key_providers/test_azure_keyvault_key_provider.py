@@ -263,6 +263,3 @@ def test_decrypt_translates_disabled_key_version_into_value_error() -> None:
 
     with pytest.raises(ValueError, match="Failed to unwrap credential"):
         provider.decrypt_with_decoding(encrypted, "tenant-1")
-
-
-
