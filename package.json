@@ -8,7 +8,7 @@
     "dev": "concurrently -k -n vinext,proxy \"vp run dify-web#dev:vinext\" \"vp run dify-web#dev:proxy\"",
     "knip": "knip --workspace web",
     "knip:production": "knip --workspace web --production --include files",
-    "knip:production-unused-check": "node ./web/scripts/check-production-unused-after-knip-fix.mjs",
+    "knip:production-unused-check": "node ./scripts/check-web-production-unused-after-knip-fix.mjs",
     "prepare": "vp config",
     "lint:oxlint": "vp lint",
     "lint:oxlint:fix": "vp lint --fix",
