@@ -44,6 +44,44 @@ from .dataset_service_test_helpers import (
 )
 
 
+class _RetryFlagLock:
+    def __init__(self, store: "_RetryFlagStore", key: str):
+        self.store = store
+        self.key = key
+        self.token = f"owner-{store.next_token}"
+        store.next_token += 1
+
+    def acquire(self, *, blocking: bool):
+        assert blocking is False
+        if self.key in self.store.values:
+            if self.store.replacement_on_conflict:
+                replacement_key, replacement_value = self.store.replacement_on_conflict
+                self.store.values[replacement_key] = replacement_value
+            return False
+        self.store.values[self.key] = self.token
+        return True
+
+    def release(self):
+        if self.store.values.get(self.key) == self.token:
+            self.store.values.pop(self.key)
+
+
+class _RetryFlagStore:
+    def __init__(
+        self,
+        values: dict[str, str] | None = None,
+        replacement_on_conflict: tuple[str, str] | None = None,
+    ):
+        self.values = values or {}
+        self.replacement_on_conflict = replacement_on_conflict
+        self.next_token = 1
+
+    def lock(self, key: str, *, timeout: int, thread_local: bool):
+        assert timeout == 600
+        assert thread_local is False
+        return _RetryFlagLock(self, key)
+
+
 class TestDocumentServiceDisplayStatus:
     """Unit tests for DocumentService display-status helpers."""
 
@@ -214,15 +252,82 @@ class TestDocumentServiceMutations:
         with pytest.raises(DocumentIndexingError):
             DocumentService.recover_document(document, session)
 
-    def test_retry_document_raises_when_retry_flag_is_already_set(self):
+    def test_retry_document_raises_when_retry_flag_is_already_set(self, rename_account_context):
         document = DatasetServiceUnitDataFactory.create_document_mock(document_id="doc-1")
         session = MagicMock()
 
         with patch("services.dataset_service.redis_client") as mock_redis:
-            mock_redis.get.return_value = "1"
+            mock_redis.lock.return_value.acquire.return_value = False
 
             with pytest.raises(ValueError, match="being retried"):
                 DocumentService.retry_document("dataset-1", [document], session)
+
+    def test_retry_document_leaves_batch_unchanged_when_later_document_is_already_being_retried(
+        self, rename_account_context
+    ):
+        first_document = DatasetServiceUnitDataFactory.create_document_mock(
+            document_id="doc-1", indexing_status="error"
+        )
+        second_document = DatasetServiceUnitDataFactory.create_document_mock(
+            document_id="doc-2", indexing_status="error"
+        )
+        first_retry_key = "document_doc-1_is_retried"
+        second_retry_key = "document_doc-2_is_retried"
+        retry_flags = _RetryFlagStore({second_retry_key: "other-request"})
+        session = MagicMock()
+
+        with (
+            patch("services.dataset_service.redis_client", retry_flags),
+            patch("services.dataset_service.retry_document_indexing_task") as retry_task,
+        ):
+            with pytest.raises(ValueError, match="being retried"):
+                DocumentService.retry_document(
+                    "dataset-1",
+                    [first_document, second_document],
+                    session,
+                )
+
+        assert first_document.indexing_status == "error"
+        assert second_document.indexing_status == "error"
+        assert first_retry_key not in retry_flags.values
+        assert retry_flags.values[second_retry_key] == "other-request"
+        retry_task.delay.assert_not_called()
+
+    def test_retry_document_does_not_release_a_retry_flag_reacquired_by_another_request(self, rename_account_context):
+        first_retry_key = "document_doc-1_is_retried"
+        second_retry_key = "document_doc-2_is_retried"
+        retry_flags = _RetryFlagStore(
+            {second_retry_key: "other-request"},
+            replacement_on_conflict=(first_retry_key, "new-owner"),
+        )
+        documents = [
+            DatasetServiceUnitDataFactory.create_document_mock(document_id="doc-1", indexing_status="error"),
+            DatasetServiceUnitDataFactory.create_document_mock(document_id="doc-2", indexing_status="error"),
+        ]
+
+        with patch("services.dataset_service.redis_client", retry_flags):
+            with pytest.raises(ValueError, match="being retried"):
+                DocumentService.retry_document("dataset-1", documents, MagicMock())
+
+        assert retry_flags.values[first_retry_key] == "new-owner"
+        assert retry_flags.values[second_retry_key] == "other-request"
+
+    def test_retry_document_releases_flags_when_status_commit_fails(self, rename_account_context):
+        retry_flags = _RetryFlagStore()
+        document = DatasetServiceUnitDataFactory.create_document_mock(document_id="doc-1", indexing_status="error")
+        session = MagicMock()
+        session.commit.side_effect = RuntimeError("database unavailable")
+
+        with (
+            patch("services.dataset_service.redis_client", retry_flags),
+            patch("services.dataset_service.retry_document_indexing_task") as retry_task,
+        ):
+            with pytest.raises(RuntimeError, match="database unavailable"):
+                DocumentService.retry_document("dataset-1", [document], session)
+
+        assert retry_flags.values == {}
+        session.rollback.assert_called_once_with()
+        retry_task.delay.assert_not_called()
 
     def test_sync_website_document_raises_when_sync_flag_exists(self):
         document = DatasetServiceUnitDataFactory.create_document_mock(document_id="doc-1")

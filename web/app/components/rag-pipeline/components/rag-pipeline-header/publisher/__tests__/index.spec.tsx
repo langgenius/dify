@@ -8,7 +8,7 @@ import { render } from '@/test/console/render'
 import Publisher from '../index'
 import { Popup } from '../popup'
 
-vi.mock('@/context/system-features-state', async () => {
+vi.mock('@/features/system-features/state', async () => {
   const { atom } = await import('jotai')
   return {
     deploymentEditionAtom: atom('CLOUD'),

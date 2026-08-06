@@ -5,7 +5,7 @@ import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
-  rootQueryClient: undefined as QueryClient | undefined,
+  queryClient: undefined as QueryClient | undefined,
   profileQueryFn: vi.fn(),
   workspaceQueryFn: vi.fn(),
   workspaceQueryOptions: vi.fn(),
@@ -20,12 +20,9 @@ const mocks = vi.hoisted(() => ({
   basePath: '',
 }))
 
-vi.mock('@/context/query-client-server', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/context/query-client-server')>()
-
+vi.mock('@/app/get-query-client', () => {
   return {
-    ...actual,
-    getQueryClientServer: () => mocks.rootQueryClient,
+    getQueryClient: () => mocks.queryClient,
   }
 })
 
@@ -76,7 +73,7 @@ describe('CommonLayoutHydrationBoundary', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.basePath = ''
-    mocks.rootQueryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    mocks.queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     mocks.headers.mockResolvedValue(
       new Headers({
         'x-dify-pathname': '/apps',
@@ -159,9 +156,6 @@ describe('CommonLayoutHydrationBoundary', () => {
   })
 
   it('should dehydrate only Common-owned queries', async () => {
-    mocks.rootQueryClient?.setQueryData(['console', 'system-features'], {
-      deployment_edition: 'CLOUD',
-    })
     const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
 
     const element = await CommonLayoutHydrationBoundary({ children: null })

@@ -113,7 +113,7 @@ type FileDownloadResult struct {
 }
 
 // CreateFileDownload requests a download URL from the Agent Stub server.
-func (c *Client) CreateFileDownload(ctx context.Context, transferMethod string, reference, url *string, forExternal bool) (*FileDownloadResult, error) {
+func (c *Client) CreateFileDownload(ctx context.Context, transferMethod string, reference, url *string, forFrontend bool) (*FileDownloadResult, error) {
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
 
@@ -129,7 +129,7 @@ func (c *Client) CreateFileDownload(ctx context.Context, transferMethod string, 
 
 	resp, err := c.stub.CreateFileDownloadRequest(ctx, &stubv1.FileDownloadRequest{
 		File:        fileMapping,
-		ForExternal: &forExternal,
+		ForFrontend: &forFrontend,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("stubclient: file download: %w", err)

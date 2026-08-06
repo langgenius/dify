@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { defaultPlan } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'
+import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
 import { useModalContextSelector } from '@/context/modal-context'
 import { ModalContextProvider } from '@/context/modal-context-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -18,6 +19,14 @@ vi.mock('@/next/navigation', () => ({
 
 vi.mock('@/app/components/billing/pricing', () => ({
   default: () => <div>billing.plansCommon.mostPopular</div>,
+}))
+
+vi.mock('@/app/components/plugins/update-plugin', () => ({
+  default: ({ onSave }: { onSave: () => void | Promise<void> }) => (
+    <button data-testid="save-plugin-update" onClick={onSave}>
+      Save plugin update
+    </button>
+  ),
 }))
 
 const mockUseProviderContext = vi.fn()
@@ -65,6 +74,43 @@ const ModalBlockingState = () => {
   const hasBlockingModalOpen = useModalContextSelector((state) => state.hasBlockingModalOpen)
 
   return <output>{hasBlockingModalOpen ? 'blocked' : 'clear'}</output>
+}
+
+const UpdatePluginTrigger = ({
+  onSave,
+  category = PluginCategoryEnum.model,
+}: {
+  onSave: () => void | Promise<void>
+  category?: PluginCategoryEnum
+}) => {
+  const setShowUpdatePluginModal = useModalContextSelector(
+    (state) => state.setShowUpdatePluginModal,
+  )
+
+  return (
+    <button
+      onClick={() =>
+        setShowUpdatePluginModal({
+          onSaveCallback: onSave,
+          payload: {
+            type: PluginSource.github,
+            category,
+            github: {
+              originalPackageInfo: {
+                id: 'plugin@1.0.0',
+                repo: 'owner/repo',
+                version: '1.0.0',
+                package: 'plugin.difypkg',
+                releases: [],
+              },
+            },
+          },
+        })
+      }
+    >
+      Open plugin update
+    </button>
+  )
 }
 
 const renderProvider = (children: React.ReactNode = <ModalBlockingState />) => {
@@ -221,5 +267,59 @@ describe('ModalContextProvider trigger events limit modal', () => {
     )
     expect(screen.queryByText('400')).not.toBeInTheDocument()
     expect(screen.getByText('blocked')).toBeInTheDocument()
+  })
+})
+
+describe('ModalContextProvider plugin update modal', () => {
+  beforeEach(() => {
+    mockConsoleStateReader.mockReset()
+    mockUseProviderContext.mockReset()
+    mockConsoleStateReader.mockReturnValue({
+      currentWorkspace: {
+        id: 'workspace-1',
+      },
+    })
+    mockUseProviderContext.mockReturnValue({
+      plan: createPlan(),
+      isFetchedPlan: false,
+    })
+  })
+
+  it('keeps a model plugin update open until its refresh callback finishes', async () => {
+    let resolveSave: (() => void) | undefined
+    const onSave = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveSave = resolve
+        }),
+    )
+    const user = userEvent.setup()
+
+    renderProvider(<UpdatePluginTrigger onSave={onSave} />)
+
+    await user.click(screen.getByRole('button', { name: 'Open plugin update' }))
+    await user.click(screen.getByTestId('save-plugin-update'))
+
+    expect(onSave).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId('save-plugin-update')).toBeInTheDocument()
+
+    resolveSave?.()
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('save-plugin-update')).not.toBeInTheDocument()
+    })
+  })
+
+  it('closes a non-model plugin update immediately after saving', async () => {
+    const onSave = vi.fn()
+    const user = userEvent.setup()
+
+    renderProvider(<UpdatePluginTrigger onSave={onSave} category={PluginCategoryEnum.tool} />)
+
+    await user.click(screen.getByRole('button', { name: 'Open plugin update' }))
+    await user.click(screen.getByTestId('save-plugin-update'))
+
+    expect(onSave).toHaveBeenCalledTimes(1)
+    expect(screen.queryByTestId('save-plugin-update')).not.toBeInTheDocument()
   })
 })

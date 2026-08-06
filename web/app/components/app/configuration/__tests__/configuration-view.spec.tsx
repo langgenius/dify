@@ -352,8 +352,9 @@ describe('ConfigurationView', () => {
 
     render(<ConfigurationView {...createViewModel({ contextValue })} />)
 
-    const badge = screen.getByRole('button', { name: 'appDebug.legacyAgentBadge.description' })
+    const badge = screen.getByRole('button', { name: 'appDebug.legacyAgentBadge.label' })
     expect(badge).toHaveTextContent('appDebug.legacyAgentBadge.label')
+    expect(badge).not.toHaveAttribute('aria-label')
 
     fireEvent.click(badge)
 

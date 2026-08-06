@@ -1,6 +1,6 @@
 import type { FC, ReactNode } from 'react'
 import type { Theme } from '../embedded-chatbot/theme/theme'
-import type { ChatConfig, ChatItem, Feedback, OnRegenerate, OnSend } from '../types'
+import type { ChatConfig, ChatItem, OnFeedback, OnRegenerate, OnSend } from '../types'
 import type { HumanInputFormSubmitData } from './answer/human-input-content/type'
 import type { AnswerActionPosition } from './answer/operation'
 import type { InputForm } from './type'
@@ -58,7 +58,7 @@ export type ChatProps = {
   onAnnotationRemoved?: (index: number) => void
   chatNode?: ReactNode
   disableFeedback?: boolean
-  onFeedback?: (messageId: string, feedback: Feedback) => void
+  onFeedback?: OnFeedback
   chatAnswerContainerInner?: string
   hideProcessDetail?: boolean
   hideLogModal?: boolean
