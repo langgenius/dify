@@ -7,7 +7,7 @@ import { defaultPlan } from '@/app/components/billing/config'
 // Avoid being mocked in tests
 export const baseProviderContextValue: ProviderContextState = {
   modelProviders: [],
-  refreshModelProviders: noop,
+  refreshModelProviders: async () => {},
   isLoadingModelProviders: false,
   textGenerationModelList: [],
   isAPIKeySet: true,
@@ -45,7 +45,7 @@ export const createMockProviderContextValue = (
 
   return {
     ...merged,
-    refreshModelProviders: merged.refreshModelProviders ?? noop,
+    refreshModelProviders: merged.refreshModelProviders ?? (async () => {}),
     onPlanInfoChanged: merged.onPlanInfoChanged ?? noop,
     refreshLicenseLimit: merged.refreshLicenseLimit ?? noop,
   }

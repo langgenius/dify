@@ -41,6 +41,10 @@ from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import Dataset
 from models.dataset import Document as DatasetDocument
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
+from services.vector_space_admission_service import (
+    VECTOR_SPACE_ADMISSION_ERROR_CODE,
+    format_vector_space_admission_error,
+)
 
 
 def make_serializable_document(**overrides):
@@ -732,11 +736,14 @@ class TestDocumentRetryApi:
         api = DocumentRetryApi()
         method = unwrap(api.post)
         payload = {"document_ids": ["doc-1"]}
-        doc = MagicMock(indexing_status="indexing")
+        doc = MagicMock(id="doc-1", indexing_status="indexing")
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
-            patch("controllers.console.datasets.datasets_document.DocumentService.get_document", return_value=doc),
+            patch(
+                "controllers.console.datasets.datasets_document.DocumentService.get_documents_by_ids",
+                return_value=[doc],
+            ),
             patch("controllers.console.datasets.datasets_document.DocumentService.check_archived", return_value=True),
             patch("controllers.console.datasets.datasets_document.DocumentService.retry_document") as retry_mock,
         ):
@@ -748,11 +755,14 @@ class TestDocumentRetryApi:
         api = DocumentRetryApi()
         method = unwrap(api.post)
         payload = {"document_ids": ["doc-1"]}
-        document = MagicMock(indexing_status=IndexingStatus.INDEXING, archived=False)
+        document = MagicMock(id="doc-1", indexing_status=IndexingStatus.INDEXING, archived=False)
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
-            patch("controllers.console.datasets.datasets_document.DocumentService.get_document", return_value=document),
+            patch(
+                "controllers.console.datasets.datasets_document.DocumentService.get_documents_by_ids",
+                return_value=[document],
+            ),
             patch("controllers.console.datasets.datasets_document.DocumentService.check_archived", return_value=False),
             patch(
                 "controllers.console.datasets.datasets_document.DocumentService.retry_document", return_value=None
@@ -762,15 +772,44 @@ class TestDocumentRetryApi:
         assert status == 204
         retry_mock.assert_called_once_with("ds-1", [document], ANY)
 
+    def test_retry_loads_selected_documents_in_one_batch(self, app: Flask, patch_tenant, patch_dataset):
+        api = DocumentRetryApi()
+        method = unwrap(api.post)
+        payload = {"document_ids": ["doc-1", "doc-2"]}
+        first_document = MagicMock(id="doc-1", indexing_status=IndexingStatus.ERROR, archived=False)
+        second_document = MagicMock(id="doc-2", indexing_status=IndexingStatus.ERROR, archived=False)
+        session = MagicMock()
+
+        with (
+            app.test_request_context("/", json=payload),
+            patch.object(type(console_ns), "payload", payload),
+            patch(
+                "controllers.console.datasets.datasets_document.DocumentService.get_documents_by_ids",
+                return_value=[first_document, second_document],
+            ) as get_documents_by_ids,
+            patch("controllers.console.datasets.datasets_document.DocumentService.check_archived", return_value=False),
+            patch(
+                "controllers.console.datasets.datasets_document.DocumentService.retry_document", return_value=None
+            ) as retry_mock,
+        ):
+            response, status = method(api, session, "ds-1")
+
+        assert status == 204
+        get_documents_by_ids.assert_called_once_with("ds-1", ["doc-1", "doc-2"], session)
+        retry_mock.assert_called_once_with("ds-1", [first_document, second_document], session)
+
     def test_retry_skips_completed_document(self, app: Flask, patch_tenant, patch_dataset):
         api = DocumentRetryApi()
         method = unwrap(api.post)
         payload = {"document_ids": ["doc-1"]}
-        document = MagicMock(indexing_status=IndexingStatus.COMPLETED, archived=False)
+        document = MagicMock(id="doc-1", indexing_status=IndexingStatus.COMPLETED, archived=False)
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
-            patch("controllers.console.datasets.datasets_document.DocumentService.get_document", return_value=document),
+            patch(
+                "controllers.console.datasets.datasets_document.DocumentService.get_documents_by_ids",
+                return_value=[document],
+            ),
             patch(
                 "controllers.console.datasets.datasets_document.DocumentService.retry_document", return_value=None
             ) as retry_mock,
@@ -1080,9 +1119,10 @@ class TestDocumentBatchIndexingStatusApi:
         api = DocumentBatchIndexingStatusApi()
         method = unwrap(api.get)
         user, _ = patch_tenant
+        error = format_vector_space_admission_error(61, 50)
         document = MagicMock(
             id="doc-1",
-            indexing_status=IndexingStatus.COMPLETED,
+            indexing_status=IndexingStatus.ERROR,
             is_paused=False,
             processing_started_at=None,
             parsing_completed_at=None,
@@ -1090,7 +1130,7 @@ class TestDocumentBatchIndexingStatusApi:
             splitting_completed_at=None,
             completed_at=None,
             paused_at=None,
-            error=None,
+            error=error,
             stopped_at=None,
         )
         session = MagicMock()
@@ -1101,14 +1141,17 @@ class TestDocumentBatchIndexingStatusApi:
             "data": [
                 {
                     "id": "doc-1",
-                    "indexing_status": "completed",
+                    "indexing_status": "error",
                     "processing_started_at": None,
                     "parsing_completed_at": None,
                     "cleaning_completed_at": None,
                     "splitting_completed_at": None,
                     "completed_at": None,
                     "paused_at": None,
-                    "error": None,
+                    "error": error,
+                    "error_code": VECTOR_SPACE_ADMISSION_ERROR_CODE,
+                    "estimated_vector_space_mb": 61,
+                    "vector_space_limit_mb": 50,
                     "stopped_at": None,
                     "completed_segments": 2,
                     "total_segments": 3,

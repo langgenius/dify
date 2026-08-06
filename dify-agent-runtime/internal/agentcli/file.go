@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"mime"
 	"os"
 	"path/filepath"
@@ -12,9 +13,9 @@ import (
 
 // FileUploadResponse is the JSON output for `dify-agent file upload`.
 type FileUploadResponse struct {
-	TransferMethod string `json:"transfer_method"`
-	Reference      string `json:"reference"`
-	DownloadURL    string `json:"download_url"`
+	TransferMethod    string `json:"transfer_method"`
+	Reference         string `json:"reference"`
+	PublicDownloadURL string `json:"public_download_url"`
 }
 
 // FileDownloadResponse is the response from a file download request.
@@ -27,6 +28,27 @@ type FileDownloadResponse struct {
 
 // RunFileUpload executes the `file upload` command.
 func RunFileUpload(env *Environment, path string) error {
+	client, err := NewStubClient(env)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = client.Close() }()
+
+	return runFileUpload(client, path, os.Stdout)
+}
+
+type fileUploadClient interface {
+	CreateFileUploadURL(ctx context.Context, filename, mimetype string) (string, error)
+	UploadFileToURL(uploadURL, filePath, filename, mimetype string) ([]byte, error)
+	CreateFileDownloadURL(
+		ctx context.Context,
+		transferMethod string,
+		reference, url *string,
+		forFrontend bool,
+	) (*FileDownloadResponse, error)
+}
+
+func runFileUpload(client fileUploadClient, path string, output io.Writer) error {
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return fmt.Errorf("resolve path: %w", err)
@@ -39,12 +61,6 @@ func RunFileUpload(env *Environment, path string) error {
 	filename := filepath.Base(absPath)
 	mimetype := guessMIMEType(filename)
 	ctx := context.Background()
-
-	client, err := NewStubClient(env)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = client.Close() }()
 
 	// Step 1: Request a signed upload URL
 	uploadURL, err := client.CreateFileUploadURL(ctx, filename, mimetype)
@@ -70,18 +86,18 @@ func RunFileUpload(env *Environment, path string) error {
 
 	// Step 3: Request download URL for the uploaded file
 	ref := reference
-	dlResp, err := client.CreateFileDownloadURL(ctx, "tool_file", &ref, nil, false)
+	dlResp, err := client.CreateFileDownloadURL(ctx, "tool_file", &ref, nil, true)
 	if err != nil {
 		return err
 	}
 
 	result := FileUploadResponse{
-		TransferMethod: "tool_file",
-		Reference:      reference,
-		DownloadURL:    dlResp.DownloadURL,
+		TransferMethod:    "tool_file",
+		Reference:         reference,
+		PublicDownloadURL: dlResp.DownloadURL,
 	}
 	out, _ := json.Marshal(result)
-	fmt.Println(string(out))
+	_, _ = fmt.Fprintln(output, string(out))
 	return nil
 }
 
