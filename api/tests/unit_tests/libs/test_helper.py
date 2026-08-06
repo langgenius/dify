@@ -1,9 +1,18 @@
 from datetime import datetime
+from unittest.mock import MagicMock
 
 import pytest
 
-from libs.helper import OptionalTimestampField, alphanumeric, email, escape_like_pattern, extract_tenant_id
+from libs.helper import (
+    OptionalTimestampField,
+    alphanumeric,
+    build_icon_url,
+    email,
+    escape_like_pattern,
+    extract_tenant_id,
+)
 from models.account import Account
+from models.enums import UploadFilePurpose
 from models.model import EndUser
 
 
@@ -197,3 +206,16 @@ class TestAlphanumericValidator:
             alphanumeric("tool.name")
         with pytest.raises(ValueError, match="not a valid alphanumeric value"):
             alphanumeric("tool/name")
+
+
+def test_build_icon_url_resolves_the_icon_purpose(monkeypatch: pytest.MonkeyPatch) -> None:
+    resolve_url = MagicMock(return_value="https://icons.example.com/icon.png")
+    monkeypatch.setattr("core.app.workflow.file_runtime.resolve_upload_file_url_for_purpose", resolve_url)
+
+    result = build_icon_url("image", "file-id")
+
+    assert result == "https://icons.example.com/icon.png"
+    resolve_url.assert_called_once_with(
+        upload_file_id="file-id",
+        purpose=UploadFilePurpose.ICON,
+    )
