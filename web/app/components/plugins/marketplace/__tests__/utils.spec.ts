@@ -431,6 +431,26 @@ describe('getMarketplacePlugins', () => {
     expect(call![0].body.category).toBe('')
   })
 
+  it('should exclude already installed plugins', async () => {
+    mockSearchAdvanced.mockResolvedValueOnce({
+      data: { plugins: [], total: 0 },
+    })
+
+    const { getMarketplacePlugins } = await import('../utils')
+    await getMarketplacePlugins(
+      {
+        query: '',
+        category: PluginCategoryEnum.trigger,
+        exclude: ['installed-plugin'],
+        type: 'plugin',
+      },
+      1,
+    )
+
+    const call = mockSearchAdvanced.mock.calls[0]
+    expect(call![0].body.exclude).toEqual(['installed-plugin'])
+  })
+
   it('should handle API error and return empty result', async () => {
     mockSearchAdvanced.mockRejectedValueOnce(new Error('API error'))
 

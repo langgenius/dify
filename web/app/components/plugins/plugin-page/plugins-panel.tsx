@@ -175,6 +175,18 @@ const PluginsPanel = ({
   const handleHide = () => setCurrentPluginID(undefined)
   const handleBuiltinToolHide = () => setCurrentBuiltinToolID(undefined)
   const hasToolMarketplacePanel = enableMarketplace && isToolIntegrationPage
+  const marketplaceCategory = isTriggerIntegrationPage
+    ? PluginCategoryEnum.trigger
+    : isAgentStrategyIntegrationPage
+      ? PluginCategoryEnum.agent
+      : isExtensionIntegrationPage
+        ? PluginCategoryEnum.extension
+        : undefined
+  const activeMarketplaceCategory = enableMarketplace ? marketplaceCategory : undefined
+  const marketplaceInstalledPluginIds = useMemo(
+    () => categoryList.map((plugin) => plugin.plugin_id),
+    [categoryList],
+  )
   const contentPaddingClassName = pluginPageContentInsetClassNames[contentInset]
   const contentFrameClassName = cn(
     pluginPageContentFrameClassNames[contentInset],
@@ -234,8 +246,12 @@ const PluginsPanel = ({
       {isPluginListLoading && <PluginListSkeleton contentFrameClassName={contentFrameClassName} />}
       {!isPluginListLoading && (
         <>
-          {hasVisiblePlugins || hasVisibleBuiltinTools || hasToolMarketplacePanel ? (
+          {hasVisiblePlugins ||
+          hasVisibleBuiltinTools ||
+          hasToolMarketplacePanel ||
+          activeMarketplaceCategory ? (
             <PluginsPanelResults
+              canInstall={canInstall}
               containerRef={containerRef}
               contentFrameClassName={contentFrameClassName}
               contentInset={contentInset}
@@ -255,6 +271,9 @@ const PluginsPanel = ({
               hasToolMarketplacePanel={hasToolMarketplacePanel}
               hasVisibleBuiltinTools={hasVisibleBuiltinTools}
               hasVisiblePlugins={hasVisiblePlugins}
+              marketplaceCategory={activeMarketplaceCategory}
+              marketplaceInstalledPluginIds={marketplaceInstalledPluginIds}
+              onOpenMarketplace={onSwitchToMarketplace}
               isAgentStrategyIntegrationPage={isAgentStrategyIntegrationPage}
               isFetching={isFetching}
               isLastPage={isLastPage}
@@ -262,7 +281,7 @@ const PluginsPanel = ({
               loadNextPage={loadNextPage}
               scrollAreaLabel={scrollAreaLabel}
               setCurrentBuiltinToolID={setCurrentBuiltinToolID}
-              tagFilterValue={filters.tags}
+              tagFilterValue={supportsTagFilter ? filters.tags : []}
               canDeletePlugin={canDeletePlugin}
               canUpdatePlugin={canUpdatePlugin}
             />

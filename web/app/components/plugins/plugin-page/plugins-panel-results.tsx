@@ -16,7 +16,37 @@ import Loading from '@/app/components/base/loading'
 import { useToolMarketplacePanel } from '@/app/components/integrations/hooks/use-tool-marketplace-panel'
 import IntegrationsToolProviderCard from '@/app/components/integrations/tool-provider-card'
 import Marketplace from '@/app/components/tools/marketplace'
+import { PluginCategoryEnum } from '../types'
+import InstallFromMarketplace from './install-from-marketplace'
 import List from './list'
+
+function MarketplaceSetupHint({ category }: { category: PluginCategoryEnum }) {
+  const { t } = useTranslation()
+  const title =
+    category === PluginCategoryEnum.trigger
+      ? t(($) => $['list.noTriggerFound'], { ns: 'plugin' })
+      : category === PluginCategoryEnum.agent
+        ? t(($) => $['list.noAgentStrategyFound'], { ns: 'plugin' })
+        : t(($) => $['list.noExtensionFound'], { ns: 'plugin' })
+  const iconClassName =
+    category === PluginCategoryEnum.trigger
+      ? 'i-custom-vender-integrations-trigger-active'
+      : category === PluginCategoryEnum.agent
+        ? 'i-custom-vender-integrations-agent-strategy-active'
+        : 'i-custom-vender-integrations-extension-active'
+
+  return (
+    <div className="mb-2 rounded-[10px] bg-workflow-process-bg p-4">
+      <div className="flex size-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur-sm">
+        <span aria-hidden="true" className={`${iconClassName} size-5 text-text-primary`} />
+      </div>
+      <div className="mt-2 system-sm-medium text-text-secondary">{title}</div>
+      <div className="mt-1 system-xs-regular text-text-tertiary">
+        {t(($) => $['list.source.marketplace'], { ns: 'plugin' })}
+      </div>
+    </div>
+  )
+}
 
 type BuiltinMarketplacePanelProps = {
   containerRef: RefObject<HTMLDivElement | null>
@@ -55,6 +85,7 @@ const BuiltinMarketplacePanel = ({
 
 type PluginsPanelResultsProps = {
   canDeletePlugin: boolean
+  canInstall: boolean
   canUpdatePlugin: boolean
   containerRef: RefObject<HTMLDivElement | null>
   contentFrameClassName: string
@@ -72,6 +103,9 @@ type PluginsPanelResultsProps = {
   isLastPage: boolean
   keywords: string
   loadNextPage: () => void
+  marketplaceCategory?: PluginCategoryEnum
+  marketplaceInstalledPluginIds: string[]
+  onOpenMarketplace?: () => void
   scrollAreaLabel?: string
   setCurrentBuiltinToolID: (id: string) => void
   tagFilterValue: string[]
@@ -79,6 +113,7 @@ type PluginsPanelResultsProps = {
 
 const PluginsPanelResults = ({
   canDeletePlugin,
+  canInstall,
   canUpdatePlugin,
   containerRef,
   contentFrameClassName,
@@ -96,6 +131,9 @@ const PluginsPanelResults = ({
   isLastPage,
   keywords,
   loadNextPage,
+  marketplaceCategory,
+  marketplaceInstalledPluginIds,
+  onOpenMarketplace,
   scrollAreaLabel,
   setCurrentBuiltinToolID,
   tagFilterValue,
@@ -118,6 +156,9 @@ const PluginsPanelResults = ({
         <ScrollAreaContent
           className={cn('flex min-h-full flex-col', isAgentStrategyIntegrationPage && 'pt-2')}
         >
+          {marketplaceCategory && marketplaceInstalledPluginIds.length === 0 && (
+            <MarketplaceSetupHint category={marketplaceCategory} />
+          )}
           {(hasVisiblePlugins || hasVisibleBuiltinTools) && (
             <List
               pluginList={filteredList}
@@ -162,6 +203,16 @@ const PluginsPanelResults = ({
               contentInset={contentInset}
               keywords={keywords}
               tagFilterValue={tagFilterValue}
+            />
+          )}
+          {marketplaceCategory && (
+            <InstallFromMarketplace
+              canInstall={canInstall}
+              category={marketplaceCategory}
+              installedPluginIds={marketplaceInstalledPluginIds}
+              onOpenMarketplace={onOpenMarketplace}
+              searchText={keywords}
+              tags={tagFilterValue}
             />
           )}
         </ScrollAreaContent>
