@@ -692,7 +692,7 @@
   "newKnowledge.uploadDocuments": "上傳文件",
   "newKnowledge.uploadDropZoneTitle": "將檔案拖放到此處，或點擊瀏覽",
   "newKnowledge.uploadFiles": "上傳檔案",
-  "newKnowledge.uploadFilesDescription": "從電腦加入檔案，建立後會立即建立索引。",
+  "newKnowledge.uploadFilesDescription": "將檔案上傳至此知識庫，系統會自動解析、分段並建立索引。",
   "newKnowledge.uploadingFiles": "正在上傳…",
   "newKnowledge.usingDefaults": "使用預設設定",
   "newKnowledge.viewLabel": "知識庫檢視",

@@ -692,7 +692,7 @@
   "newKnowledge.uploadDocuments": "تحميل المستندات",
   "newKnowledge.uploadDropZoneTitle": "اسحب الملفات وأفلتها هنا، أو انقر للتصفح",
   "newKnowledge.uploadFiles": "رفع الملفات",
-  "newKnowledge.uploadFilesDescription": "أضف ملفات من جهازك — ستتم فهرستها بمجرد إنشائها.",
+  "newKnowledge.uploadFilesDescription": "حمّل الملفات إلى قاعدة المعرفة هذه — ستتم معالجتها وتقسيمها إلى مقاطع وفهرستها تلقائيًا.",
   "newKnowledge.uploadingFiles": "جارٍ الرفع…",
   "newKnowledge.usingDefaults": "استخدام الإعدادات الافتراضية",
   "newKnowledge.viewLabel": "عرض المعرفة",

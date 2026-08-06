@@ -692,7 +692,7 @@
   "newKnowledge.uploadDocuments": "上传文档",
   "newKnowledge.uploadDropZoneTitle": "将文件拖放到此处，或点击选择文件",
   "newKnowledge.uploadFiles": "上传文件",
-  "newKnowledge.uploadFilesDescription": "从电脑添加文件。创建知识库后，系统会立即为这些文件建立索引。",
+  "newKnowledge.uploadFilesDescription": "将文件上传到此知识库，系统会自动解析、分段并建立索引。",
   "newKnowledge.uploadingFiles": "正在上传…",
   "newKnowledge.usingDefaults": "使用默认设置",
   "newKnowledge.viewLabel": "知识库视图",

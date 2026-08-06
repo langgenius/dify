@@ -692,7 +692,7 @@
   "newKnowledge.uploadDocuments": "Belgeleri yükleyin",
   "newKnowledge.uploadDropZoneTitle": "Dosyaları buraya sürükleyip bırakın veya göz atmak için tıklayın",
   "newKnowledge.uploadFiles": "Dosya yükle",
-  "newKnowledge.uploadFilesDescription": "Bilgisayarınızdan dosya ekleyin; oluşturduğunuz anda indekslenirler.",
+  "newKnowledge.uploadFilesDescription": "Dosyaları bu bilgi tabanına yükleyin; dosyalar otomatik olarak ayrıştırılır, parçalara bölünür ve indekslenir.",
   "newKnowledge.uploadingFiles": "Yükleniyor…",
   "newKnowledge.usingDefaults": "Varsayılanlar kullanılıyor",
   "newKnowledge.viewLabel": "Bilgi görünümü",

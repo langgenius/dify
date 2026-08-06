@@ -692,7 +692,7 @@
   "newKnowledge.uploadDocuments": "Завантажити документи",
   "newKnowledge.uploadDropZoneTitle": "Перетягніть файли сюди або натисніть, щоб вибрати",
   "newKnowledge.uploadFiles": "Завантажити файли",
-  "newKnowledge.uploadFilesDescription": "Додайте файли з комп’ютера — вони індексуються одразу після створення.",
+  "newKnowledge.uploadFilesDescription": "Завантажте файли до цієї бази знань — їх буде автоматично оброблено, розділено на фрагменти та проіндексовано.",
   "newKnowledge.uploadingFiles": "Завантаження…",
   "newKnowledge.usingDefaults": "Використовуються стандартні налаштування",
   "newKnowledge.viewLabel": "Вигляд бази знань",

@@ -692,7 +692,7 @@
   "newKnowledge.uploadDocuments": "Загрузить документы",
   "newKnowledge.uploadDropZoneTitle": "Перетащите файлы сюда или нажмите для выбора",
   "newKnowledge.uploadFiles": "Загрузить файлы",
-  "newKnowledge.uploadFilesDescription": "Добавьте файлы с компьютера — они будут проиндексированы сразу после создания.",
+  "newKnowledge.uploadFilesDescription": "Загрузите файлы в эту базу знаний — они будут автоматически обработаны, разбиты на фрагменты и проиндексированы.",
   "newKnowledge.uploadingFiles": "Загрузка…",
   "newKnowledge.usingDefaults": "Используются настройки по умолчанию",
   "newKnowledge.viewLabel": "Вид базы знаний",

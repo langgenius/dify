@@ -692,7 +692,7 @@
   "newKnowledge.uploadDocuments": "Prześlij dokumenty",
   "newKnowledge.uploadDropZoneTitle": "Przeciągnij i upuść pliki tutaj lub kliknij, aby przeglądać",
   "newKnowledge.uploadFiles": "Prześlij pliki",
-  "newKnowledge.uploadFilesDescription": "Dodaj pliki z komputera — zostaną zindeksowane od razu po utworzeniu.",
+  "newKnowledge.uploadFilesDescription": "Prześlij pliki do tej bazy wiedzy — zostaną automatycznie przeanalizowane, podzielone na fragmenty i zindeksowane.",
   "newKnowledge.uploadingFiles": "Przesyłanie…",
   "newKnowledge.usingDefaults": "Używane są ustawienia domyślne",
   "newKnowledge.viewLabel": "Widok wiedzy",

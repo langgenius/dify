@@ -692,7 +692,7 @@
   "newKnowledge.uploadDocuments": "書類のアップロード",
   "newKnowledge.uploadDropZoneTitle": "ここにファイルをドラッグ＆ドロップするか、クリックして選択",
   "newKnowledge.uploadFiles": "ファイルをアップロード",
-  "newKnowledge.uploadFilesDescription": "コンピューターからファイルを追加すると、作成時にすぐインデックス化されます。",
+  "newKnowledge.uploadFilesDescription": "このナレッジベースにファイルをアップロードすると、自動的に解析、チャンク分割、インデックス作成が行われます。",
   "newKnowledge.uploadingFiles": "アップロード中…",
   "newKnowledge.usingDefaults": "デフォルト設定を使用中",
   "newKnowledge.viewLabel": "ナレッジ表示",

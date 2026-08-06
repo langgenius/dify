@@ -489,12 +489,16 @@ vi.mock('../knowledge-fs-upload', () => ({
   uploadKnowledgeFsDocuments: async (
     knowledgeSpaceId: string,
     uploads: Array<{ file: File; id: string }>,
+    _progress: Map<string, { phase: 'completed' | 'pending' }>,
+    onProgress?: (file: File, phase: 'completed' | 'pending') => void,
   ) => {
     for (const { file } of uploads) {
+      onProgress?.(file, 'pending')
       await uploadMutation.mutateAsync({
         body: { file },
         params: { control_space_id: knowledgeSpaceId },
       })
+      onProgress?.(file, 'completed')
     }
   },
 }))
@@ -1719,6 +1723,48 @@ describe('DocumentsPage', () => {
         ],
       }),
     ).toBe(false)
+  })
+
+  it('shows progress on only the staged file currently being uploaded', async () => {
+    const user = userEvent.setup()
+    let resolveFirstUpload!: (value: unknown) => void
+    let resolveSecondUpload!: (value: unknown) => void
+    uploadMutation.mutateAsync
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveFirstUpload = resolve
+          }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveSecondUpload = resolve
+          }),
+      )
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />, { searchParams: '?upload=1' })
+    await user.upload(screen.getByLabelText('dataset.newKnowledge.uploadDocuments'), [
+      new File(['one'], 'one.pdf', { type: 'application/pdf' }),
+      new File(['two'], 'two.pdf', { type: 'application/pdf' }),
+    ])
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+
+    const uploadRegion = screen.getByRole('region', {
+      name: 'dataset.newKnowledge.uploadDocuments',
+    })
+    const [firstRow, secondRow] = within(uploadRegion).getAllByRole('listitem')
+    if (!firstRow || !secondRow) throw new Error('Expected two staged upload rows')
+    await waitFor(() => expect(firstRow).toHaveAttribute('aria-busy', 'true'))
+    expect(within(firstRow).getByText('dataset.newKnowledge.uploadingFiles')).toBeVisible()
+    expect(secondRow).not.toHaveAttribute('aria-busy')
+
+    await act(async () => resolveFirstUpload({}))
+    await waitFor(() => expect(secondRow).toHaveAttribute('aria-busy', 'true'))
+    expect(firstRow).not.toHaveAttribute('aria-busy')
+    expect(within(secondRow).getByText('dataset.newKnowledge.uploadingFiles')).toBeVisible()
+
+    await act(async () => resolveSecondUpload({}))
   })
 
   it('previews a browser-supported staged document from its local file', () => {

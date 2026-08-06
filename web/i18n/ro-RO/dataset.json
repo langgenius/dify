@@ -692,7 +692,7 @@
   "newKnowledge.uploadDocuments": "Încărcați documente",
   "newKnowledge.uploadDropZoneTitle": "Trage și plasează fișierele aici sau fă clic pentru a naviga",
   "newKnowledge.uploadFiles": "Încarcă fișiere",
-  "newKnowledge.uploadFilesDescription": "Adaugă fișiere de pe computer — sunt indexate imediat ce le creezi.",
+  "newKnowledge.uploadFilesDescription": "Încarcă fișiere în această bază de cunoștințe — acestea vor fi analizate, segmentate și indexate automat.",
   "newKnowledge.uploadingFiles": "Se încarcă…",
   "newKnowledge.usingDefaults": "Se folosesc valorile implicite",
   "newKnowledge.viewLabel": "Vizualizare cunoștințe",

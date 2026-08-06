@@ -692,7 +692,7 @@
   "newKnowledge.uploadDocuments": "दस्तावेज़ अपलोड करें",
   "newKnowledge.uploadDropZoneTitle": "फ़ाइलें यहाँ खींचकर छोड़ें, या ब्राउज़ करने के लिए क्लिक करें",
   "newKnowledge.uploadFiles": "फ़ाइलें अपलोड करें",
-  "newKnowledge.uploadFilesDescription": "अपने कंप्यूटर से फ़ाइलें जोड़ें — बनाते ही वे इंडेक्स हो जाएँगी।",
+  "newKnowledge.uploadFilesDescription": "इस नॉलेज बेस में फ़ाइलें अपलोड करें — उन्हें अपने-आप पार्स, खंडित और इंडेक्स किया जाएगा।",
   "newKnowledge.uploadingFiles": "अपलोड हो रहा है…",
   "newKnowledge.usingDefaults": "डिफ़ॉल्ट सेटिंग का उपयोग हो रहा है",
   "newKnowledge.viewLabel": "नॉलेज दृश्य",

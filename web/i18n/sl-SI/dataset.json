@@ -692,7 +692,7 @@
   "newKnowledge.uploadDocuments": "Nalaganje dokumentov",
   "newKnowledge.uploadDropZoneTitle": "Povlecite in spustite datoteke sem ali kliknite za brskanje",
   "newKnowledge.uploadFiles": "Naloži datoteke",
-  "newKnowledge.uploadFilesDescription": "Dodajte datoteke iz računalnika — indeksirajo se takoj ob ustvarjanju.",
+  "newKnowledge.uploadFilesDescription": "Naložite datoteke v to zbirko znanja — samodejno bodo razčlenjene, razdeljene na odseke in indeksirane.",
   "newKnowledge.uploadingFiles": "Nalaganje…",
   "newKnowledge.usingDefaults": "Uporabljene so privzete nastavitve",
   "newKnowledge.viewLabel": "Prikaz znanja",

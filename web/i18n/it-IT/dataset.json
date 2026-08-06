@@ -692,7 +692,7 @@
   "newKnowledge.uploadDocuments": "Carica documenti",
   "newKnowledge.uploadDropZoneTitle": "Trascina qui i file oppure fai clic per sfogliare",
   "newKnowledge.uploadFiles": "Carica file",
-  "newKnowledge.uploadFilesDescription": "Aggiungi file dal computer: vengono indicizzati appena li crei.",
+  "newKnowledge.uploadFilesDescription": "Carica i file in questa knowledge base: verranno analizzati, suddivisi in segmenti e indicizzati automaticamente.",
   "newKnowledge.uploadingFiles": "Caricamento…",
   "newKnowledge.usingDefaults": "Impostazioni predefinite in uso",
   "newKnowledge.viewLabel": "Vista conoscenza",

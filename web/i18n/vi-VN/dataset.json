@@ -692,7 +692,7 @@
   "newKnowledge.uploadDocuments": "Tải tài liệu lên",
   "newKnowledge.uploadDropZoneTitle": "Kéo và thả tệp vào đây hoặc nhấp để duyệt",
   "newKnowledge.uploadFiles": "Tải tệp lên",
-  "newKnowledge.uploadFilesDescription": "Thêm tệp từ máy tính — tệp sẽ được lập chỉ mục ngay khi tạo.",
+  "newKnowledge.uploadFilesDescription": "Tải tệp lên cơ sở tri thức này — tệp sẽ được tự động phân tích, chia đoạn và lập chỉ mục.",
   "newKnowledge.uploadingFiles": "Đang tải lên…",
   "newKnowledge.usingDefaults": "Đang dùng giá trị mặc định",
   "newKnowledge.viewLabel": "Chế độ xem kiến thức",

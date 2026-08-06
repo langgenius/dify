@@ -692,7 +692,7 @@
   "newKnowledge.uploadDocuments": "문서 업로드",
   "newKnowledge.uploadDropZoneTitle": "파일을 여기로 끌어다 놓거나 클릭하여 찾아보기",
   "newKnowledge.uploadFiles": "파일 업로드",
-  "newKnowledge.uploadFilesDescription": "컴퓨터에서 파일을 추가하면 생성 즉시 인덱싱됩니다.",
+  "newKnowledge.uploadFilesDescription": "이 지식 베이스에 파일을 업로드하면 자동으로 파싱, 청킹 및 인덱싱됩니다.",
   "newKnowledge.uploadingFiles": "업로드 중…",
   "newKnowledge.usingDefaults": "기본값 사용 중",
   "newKnowledge.viewLabel": "지식 보기",

@@ -692,7 +692,7 @@
   "newKnowledge.uploadDocuments": "Documenten uploaden",
   "newKnowledge.uploadDropZoneTitle": "Sleep bestanden hierheen of klik om te bladeren",
   "newKnowledge.uploadFiles": "Bestanden uploaden",
-  "newKnowledge.uploadFilesDescription": "Voeg bestanden van je computer toe; ze worden geïndexeerd zodra je ze aanmaakt.",
+  "newKnowledge.uploadFilesDescription": "Upload bestanden naar deze kennisbank — ze worden automatisch geparseerd, opgedeeld en geïndexeerd.",
   "newKnowledge.uploadingFiles": "Uploaden…",
   "newKnowledge.usingDefaults": "Standaardinstellingen gebruikt",
   "newKnowledge.viewLabel": "Kennisweergave",

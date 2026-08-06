@@ -692,7 +692,7 @@
   "newKnowledge.uploadDocuments": "Télécharger des documents",
   "newKnowledge.uploadDropZoneTitle": "Glissez-déposez les fichiers ici ou cliquez pour parcourir",
   "newKnowledge.uploadFiles": "Importer des fichiers",
-  "newKnowledge.uploadFilesDescription": "Ajoutez des fichiers depuis votre ordinateur : ils sont indexés dès leur création.",
+  "newKnowledge.uploadFilesDescription": "Importez des fichiers dans cette base de connaissances : ils seront automatiquement analysés, découpés et indexés.",
   "newKnowledge.uploadingFiles": "Téléversement…",
   "newKnowledge.usingDefaults": "Valeurs par défaut utilisées",
   "newKnowledge.viewLabel": "Vue des connaissances",

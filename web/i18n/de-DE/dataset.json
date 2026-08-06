@@ -692,7 +692,7 @@
   "newKnowledge.uploadDocuments": "Dokumente hochladen",
   "newKnowledge.uploadDropZoneTitle": "Dateien hierher ziehen oder zum Durchsuchen klicken",
   "newKnowledge.uploadFiles": "Dateien hochladen",
-  "newKnowledge.uploadFilesDescription": "Fügen Sie Dateien von Ihrem Computer hinzu — sie werden beim Erstellen sofort indiziert.",
+  "newKnowledge.uploadFilesDescription": "Laden Sie Dateien in diese Wissensdatenbank hoch — sie werden automatisch analysiert, in Abschnitte unterteilt und indiziert.",
   "newKnowledge.uploadingFiles": "Wird hochgeladen…",
   "newKnowledge.usingDefaults": "Standardeinstellungen werden verwendet",
   "newKnowledge.viewLabel": "Wissensansicht",

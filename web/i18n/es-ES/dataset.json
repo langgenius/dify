@@ -692,7 +692,7 @@
   "newKnowledge.uploadDocuments": "Subir documentos",
   "newKnowledge.uploadDropZoneTitle": "Arrastra y suelta archivos aquí, o haz clic para explorar",
   "newKnowledge.uploadFiles": "Subir archivos",
-  "newKnowledge.uploadFilesDescription": "Añade archivos desde tu ordenador; se indexarán en cuanto los crees.",
+  "newKnowledge.uploadFilesDescription": "Sube archivos a esta base de conocimiento; se analizarán, dividirán en fragmentos e indexarán automáticamente.",
   "newKnowledge.uploadingFiles": "Subiendo…",
   "newKnowledge.usingDefaults": "Usando valores predeterminados",
   "newKnowledge.viewLabel": "Vista de conocimiento",

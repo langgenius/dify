@@ -692,7 +692,7 @@
   "newKnowledge.uploadDocuments": "Unggah dokumen",
   "newKnowledge.uploadDropZoneTitle": "Seret & letakkan file di sini, atau klik untuk memilih",
   "newKnowledge.uploadFiles": "Unggah file",
-  "newKnowledge.uploadFilesDescription": "Tambahkan file dari komputer — file akan diindeks segera setelah dibuat.",
+  "newKnowledge.uploadFilesDescription": "Unggah file ke basis pengetahuan ini — file akan diurai, dibagi menjadi potongan, dan diindeks secara otomatis.",
   "newKnowledge.uploadingFiles": "Mengunggah…",
   "newKnowledge.usingDefaults": "Menggunakan pengaturan default",
   "newKnowledge.viewLabel": "Tampilan pengetahuan",

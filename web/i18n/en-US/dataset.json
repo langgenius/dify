@@ -692,7 +692,7 @@
   "newKnowledge.uploadDocuments": "Upload documents",
   "newKnowledge.uploadDropZoneTitle": "Drag & drop files here, or click to browse",
   "newKnowledge.uploadFiles": "Upload files",
-  "newKnowledge.uploadFilesDescription": "Add files from your computer — they're indexed as soon as you create.",
+  "newKnowledge.uploadFilesDescription": "Upload files to this knowledge base — they will be parsed, chunked, and indexed automatically.",
   "newKnowledge.uploadingFiles": "Uploading…",
   "newKnowledge.usingDefaults": "Using defaults",
   "newKnowledge.viewLabel": "Knowledge view",

@@ -692,7 +692,7 @@
   "newKnowledge.uploadDocuments": "อัพโหลดเอกสาร",
   "newKnowledge.uploadDropZoneTitle": "ลากและวางไฟล์ที่นี่ หรือคลิกเพื่อเรียกดู",
   "newKnowledge.uploadFiles": "อัปโหลดไฟล์",
-  "newKnowledge.uploadFilesDescription": "เพิ่มไฟล์จากคอมพิวเตอร์ ไฟล์จะถูกทำดัชนีทันทีที่สร้าง",
+  "newKnowledge.uploadFilesDescription": "อัปโหลดไฟล์ไปยังฐานความรู้นี้ ระบบจะแยกวิเคราะห์ แบ่งเป็นส่วน และจัดทำดัชนีโดยอัตโนมัติ",
   "newKnowledge.uploadingFiles": "กำลังอัปโหลด…",
   "newKnowledge.usingDefaults": "ใช้ค่าเริ่มต้น",
   "newKnowledge.viewLabel": "มุมมองความรู้",
