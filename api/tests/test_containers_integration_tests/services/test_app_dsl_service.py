@@ -600,6 +600,8 @@ class TestAppDslService:
         redis_key = f"{IMPORT_INFO_REDIS_KEY_PREFIX}{import_id}"
 
         pending = PendingData(
+            tenant_id=_DEFAULT_TENANT_ID,
+            account_id=_DEFAULT_ACCOUNT_ID,
             import_mode=ImportMode.YAML_CONTENT,
             yaml_content=_workflow_yaml(),
             name="name",
@@ -609,11 +611,7 @@ class TestAppDslService:
             icon_background="#fff",
             app_id=None,
         )
-        redis_client.setex(
-            redis_key,
-            IMPORT_INFO_REDIS_EXPIRY,
-            pending.model_dump_json(exclude={"tenant_id", "account_id"}),
-        )
+        redis_client.setex(redis_key, IMPORT_INFO_REDIS_EXPIRY, pending.model_dump_json())
 
         created_app = SimpleNamespace(
             id=str(uuid4()),

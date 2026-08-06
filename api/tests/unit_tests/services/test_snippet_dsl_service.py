@@ -440,6 +440,8 @@ workflow:
 def test_confirm_import_returns_failed_for_non_mapping_yaml(monkeypatch):
     service = SnippetDslService(session=SimpleNamespace())
     pending = SnippetPendingData(
+        tenant_id="tenant-1",
+        account_id="account-1",
         import_mode="yaml-content",
         yaml_content="- item",
         snippet_id=None,
@@ -458,6 +460,8 @@ def test_confirm_import_returns_failed_when_create_or_update_raises(monkeypatch)
     session = SimpleNamespace(scalar=Mock(return_value=None), rollback=Mock())
     service = SnippetDslService(session=session)
     pending = SnippetPendingData(
+        tenant_id="tenant-1",
+        account_id="account-1",
         import_mode="yaml-content",
         yaml_content="version: 0.1.0\nkind: snippet\nsnippet:\n  name: Bad\n",
         snippet_id="snippet-1",
