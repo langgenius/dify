@@ -6,13 +6,13 @@ import { QueryClientProvider, QueryErrorResetBoundary } from '@tanstack/react-qu
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { useHydrateAtoms } from 'jotai/react/utils'
 import { isServer } from '@/utils/client'
-import { makeQueryClient } from './query-client-server'
+import { getQueryClientServer, makeQueryClient } from './query-client-server'
 
 let browserQueryClient: QueryClient | undefined
 
 function getQueryClient() {
   if (isServer) {
-    return makeQueryClient()
+    return getQueryClientServer()
   }
   if (!browserQueryClient) browserQueryClient = makeQueryClient()
   return browserQueryClient
