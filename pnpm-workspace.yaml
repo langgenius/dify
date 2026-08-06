@@ -233,7 +233,6 @@ catalog:
   remark-directive: 4.0.0
   scheduler: 0.27.0
   server-only: 0.0.1
-  sharp: 0.35.3
   shiki: 4.4.2
   socket.io-client: 4.8.3
   sortablejs: 1.15.7
