@@ -341,6 +341,37 @@ def test_to_system_configuration_uses_owned_session_for_cloud_credit_pools() -> 
     session_context.__exit__.assert_called_once_with(None, None, None)
 
 
+def test_init_trial_provider_records_uses_owned_session(provider_db: Session) -> None:
+    assert provider_db is not None
+    manager = _build_provider_manager()
+    provider_name = "langgenius/openai/openai"
+    provider_records: dict[str, list[Provider]] = {provider_name: []}
+    session_factory = provider_manager_module.session_factory
+
+    with (
+        patch(
+            "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
+            {provider_name: _build_hosting_provider()},
+        ),
+        patch.object(
+            session_factory,
+            "create_session",
+            wraps=session_factory.create_session,
+        ) as create_session,
+    ):
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            assert executor.submit(has_app_context).result() is False
+            updated_records = executor.submit(
+                ProviderManager._init_trial_provider_records,
+                "tenant-id",
+                provider_records,
+            ).result()
+
+    assert create_session.call_count >= 1
+    assert provider_name in updated_records
+    assert updated_records[provider_name]
+
+
 def test_to_system_configuration_preserves_marketplace_behavior() -> None:
     provider_entity = _build_plugin_provider_declaration(PluginInstallationSource.Marketplace)
     manager = _build_provider_manager()

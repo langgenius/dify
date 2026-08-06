@@ -3,6 +3,7 @@ import time
 from collections.abc import Sequence
 from typing import cast
 
+from context import capture_current_context
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfig
 from core.app.apps.workflow.command_channels import (
@@ -137,7 +138,11 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 ),
             )
 
-            graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+            graph_runtime_state = GraphRuntimeState(
+                variable_pool=variable_pool,
+                start_at=time.perf_counter(),
+                execution_context=capture_current_context(),
+            )
             graph = self._init_graph(
                 graph_config=self._workflow.graph_dict,
                 graph_runtime_state=graph_runtime_state,
