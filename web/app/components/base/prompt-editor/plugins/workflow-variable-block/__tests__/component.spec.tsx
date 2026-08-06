@@ -517,7 +517,7 @@ describe('WorkflowVariableBlockComponent', () => {
     )
   })
 
-  it('should apply workflow node map updates through command handler', () => {
+  it('should apply workflow node map updates without stopping other variable blocks', () => {
     render(
       <WorkflowVariableBlockComponent
         nodeKey="k"
@@ -545,7 +545,7 @@ describe('WorkflowVariableBlockComponent', () => {
       })
     })
 
-    expect(result).toBe(true)
+    expect(result).toBe(false)
   })
 
   it('should mark non-special variable invalid when source key is missing in availableVariables', () => {

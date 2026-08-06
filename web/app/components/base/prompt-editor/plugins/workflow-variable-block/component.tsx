@@ -89,7 +89,7 @@ const WorkflowVariableBlockComponent = ({
         (payload: UpdateWorkflowNodesMapPayload) => {
           setLocalWorkflowNodesMap(payload.workflowNodesMap)
           setLocalAvailableVariables(payload.availableVariables)
-          return true
+          return false
         },
         COMMAND_PRIORITY_EDITOR,
       ),
