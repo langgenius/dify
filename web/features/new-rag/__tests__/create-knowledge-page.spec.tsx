@@ -7,6 +7,8 @@ import { newKnowledgeSourceDraftStorageKey } from '../routes'
 
 const serviceMock = vi.hoisted(() => ({
   create: vi.fn(),
+  createCrawl: vi.fn(),
+  getCrawlStatus: vi.fn(),
   getDefaultModel: vi.fn(),
   upload: vi.fn(),
   uploadBulk: vi.fn(),
@@ -91,6 +93,11 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
+vi.mock('@/service/datasets', () => ({
+  checkFirecrawlTaskStatus: serviceMock.getCrawlStatus,
+  createFirecrawlTask: serviceMock.createCrawl,
+}))
+
 const createdKnowledge = {
   control_space_id: 'e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084',
   model_setup_required: false,
@@ -146,6 +153,18 @@ describe('CreateKnowledgePage', () => {
     vi.clearAllMocks()
     globalThis.sessionStorage.clear()
     serviceMock.create.mockResolvedValue(createdKnowledge)
+    serviceMock.createCrawl.mockResolvedValue({ job_id: 'crawl-job-1' })
+    serviceMock.getCrawlStatus.mockResolvedValue({
+      data: [
+        {
+          description: 'Getting started',
+          markdown: '# Getting started',
+          source_url: 'https://docs.dify.ai/getting-started',
+          title: 'Getting started',
+        },
+      ],
+      status: 'completed',
+    })
     serviceMock.getDefaultModel.mockImplementation(({ query }: { query: { model_type: string } }) =>
       Promise.resolve({
         data: {
@@ -582,10 +601,13 @@ describe('CreateKnowledgePage', () => {
     const crawlAndPreview = screen.getByRole('button', {
       name: 'dataset.newKnowledge.crawlAndPreview',
     })
-    expect(crawlAndPreview).toBeDisabled()
+    expect(crawlAndPreview).toBeEnabled()
+    await user.click(crawlAndPreview)
+    expect(serviceMock.create).not.toHaveBeenCalled()
+    expect(routerMock.replace).not.toHaveBeenCalled()
+    expect(await screen.findByText('Getting started')).toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-    expect(screen.queryByText(/^dataset\.newKnowledge\.crawlingPages/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/^dataset\.newKnowledge\.pagesCrawled/)).not.toBeInTheDocument()
+    expect(screen.getByText(/^dataset\.newKnowledge\.pagesCrawled/)).toBeInTheDocument()
     const onlineDocuments = screen.getByRole('radio', {
       name: 'dataset.newKnowledge.onlineDocuments',
     })
@@ -689,7 +711,7 @@ describe('CreateKnowledgePage', () => {
     }
   })
 
-  it('hands the configured website draft to the real add-source workflow and starts preview', async () => {
+  it('previews a configured website in place without creating a knowledge space', async () => {
     const user = userEvent.setup()
     navigationMock.startMode = 'source'
     renderPage()
@@ -717,26 +739,16 @@ describe('CreateKnowledgePage', () => {
     ).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
 
-    await waitFor(() =>
-      expect(routerMock.replace).toHaveBeenCalledWith(
-        '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/sources/new?type=websiteCrawl&draft=a9c36c57-2d84-44d6-a36d-841f0d92a179&preview=1',
-      ),
-    )
-    expect(
-      JSON.parse(
-        globalThis.sessionStorage.getItem(
-          newKnowledgeSourceDraftStorageKey('a9c36c57-2d84-44d6-a36d-841f0d92a179'),
-        ) ?? '',
-      ),
-    ).toEqual({
-      includeSubpages: false,
-      maxPages: 25,
-      provider: 'Firecrawl',
-      rootUrl: 'https://docs.dify.ai',
-      sourceName: 'Dify docs',
-      sourceType: 'websiteCrawl',
-      syncPolicy: 'provider',
+    expect(serviceMock.create).not.toHaveBeenCalled()
+    expect(routerMock.replace).not.toHaveBeenCalled()
+    expect(serviceMock.createCrawl).toHaveBeenCalledWith({
+      options: expect.objectContaining({
+        crawl_sub_pages: false,
+        limit: 25,
+      }),
+      url: 'https://docs.dify.ai',
     })
+    expect(await screen.findByText('Getting started')).toBeInTheDocument()
   })
 
   it('falls back to direct navigation when releasing the history guard does not emit popstate', async () => {
@@ -760,7 +772,7 @@ describe('CreateKnowledgePage', () => {
     await waitFor(
       () =>
         expect(routerMock.replace).toHaveBeenCalledWith(
-          '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/sources/new?type=websiteCrawl&draft=a9c36c57-2d84-44d6-a36d-841f0d92a179&preview=1',
+          '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/sources/new?type=websiteCrawl&draft=a9c36c57-2d84-44d6-a36d-841f0d92a179',
         ),
       { timeout: 2000 },
     )
@@ -971,7 +983,7 @@ describe('CreateKnowledgePage', () => {
 
     await waitFor(() =>
       expect(routerMock.replace).toHaveBeenCalledWith(
-        '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/sources/new?type=websiteCrawl&draft=a9c36c57-2d84-44d6-a36d-841f0d92a179&preview=1',
+        '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/sources/new?type=websiteCrawl&draft=a9c36c57-2d84-44d6-a36d-841f0d92a179',
       ),
     )
     expect(

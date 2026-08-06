@@ -263,7 +263,7 @@ export function CreateKnowledgePage() {
     armHistoryGuard()
   }
 
-  const handleSubmit = async (autoPreview = false) => {
+  const handleSubmit = async () => {
     if (submissionPending || uploadSubmissionBlocked || sourceSubmissionBlocked) return
 
     const normalizedName = name.trim()
@@ -320,7 +320,6 @@ export function CreateKnowledgePage() {
               created.control_space_id,
               sourceDraft.sourceType,
               sourceDraftKey,
-              autoPreview,
             ),
           )
         } catch {
@@ -374,11 +373,7 @@ export function CreateKnowledgePage() {
             <div className="min-h-6 w-full max-w-190 flex-1 [@media(max-height:850px)]:h-6 [@media(max-height:850px)]:flex-none" />
             <Form
               className="flex max-h-full min-h-0 w-full max-w-190 flex-col"
-              onFormSubmit={() =>
-                void handleSubmit(
-                  startMode === 'source' && sourceDraft.sourceType === 'websiteCrawl',
-                )
-              }
+              onFormSubmit={() => void handleSubmit()}
             >
               <header className="shrink-0 px-6 pt-2 pb-6 sm:px-10">
                 <DialogTitle id={dialogTitleId} className="title-2xl-semi-bold text-text-primary">
@@ -520,10 +515,8 @@ export function CreateKnowledgePage() {
                       description={t(($) => $['newKnowledge.connectSourceDescription'])}
                     >
                       <CreateSourceSetup
-                        crawlPreviewDisabled={!name.trim()}
                         disabled={submissionLocked}
                         draft={sourceDraft}
-                        onCrawlPreview={() => void handleSubmit(true)}
                         onDraftChange={(value) => {
                           sourceDraftsRef.current[value.sourceType] = value
                           setSourceDraft(value)

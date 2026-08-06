@@ -6,6 +6,7 @@ import type {
   NewKnowledgeSourceDraft,
   NewKnowledgeWebsiteProvider,
 } from './routes'
+import type { CrawlResultItem } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -30,8 +31,9 @@ import {
   SelectLabel,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { checkFirecrawlTaskStatus, createFirecrawlTask } from '@/service/datasets'
 import {
   isValidWebsiteSourceDraft,
   NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH,
@@ -46,6 +48,37 @@ const sourceTypes = [
 
 const DEFAULT_INCLUDE_SUBPAGES = true
 const DEFAULT_MAX_PAGES = 100
+const CRAWL_POLL_INTERVAL_MS = 1500
+
+type LocalCrawlState = 'error' | 'idle' | 'running' | 'stopped' | 'success'
+
+function crawlPages(response: Record<string, unknown>): CrawlResultItem[] {
+  if (!Array.isArray(response.data)) return []
+  return response.data.flatMap((item) => {
+    if (!item || typeof item !== 'object') return []
+    const page = item as Record<string, unknown>
+    const sourceUrl =
+      typeof page.source_url === 'string'
+        ? page.source_url
+        : typeof page.url === 'string'
+          ? page.url
+          : ''
+    if (!sourceUrl) return []
+    return [
+      {
+        description: typeof page.description === 'string' ? page.description : '',
+        markdown:
+          typeof page.markdown === 'string'
+            ? page.markdown
+            : typeof page.content === 'string'
+              ? page.content
+              : '',
+        source_url: sourceUrl,
+        title: typeof page.title === 'string' ? page.title : sourceUrl,
+      },
+    ]
+  })
+}
 
 const providers = {
   onlineDocuments: [
@@ -138,23 +171,24 @@ function ConnectedSourceConfiguration({
 }
 
 export function CreateSourceSetup({
-  crawlPreviewDisabled,
   disabled,
   draft,
-  onCrawlPreview,
   onDraftChange,
   onSourceTypeChange,
 }: {
-  crawlPreviewDisabled: boolean
   disabled: boolean
   draft: NewKnowledgeSourceDraft
-  onCrawlPreview: () => void
   onDraftChange: (draft: NewKnowledgeSourceDraft) => void
   onSourceTypeChange: (sourceType: NewKnowledgeSourceDraft['sourceType']) => void
 }) {
   const { t } = useTranslation('dataset')
   const [optionsExpanded, setOptionsExpanded] = useState(false)
   const [backendBoundaryVisible, setBackendBoundaryVisible] = useState(false)
+  const [crawlState, setCrawlState] = useState<LocalCrawlState>('idle')
+  const [previewPages, setPreviewPages] = useState<CrawlResultItem[]>([])
+  const crawlAttemptRef = useRef(0)
+  const pollResolveRef = useRef<(() => void) | undefined>(undefined)
+  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const sourceType = draft.sourceType
   const availableProviders = providers[sourceType]
   const activeProvider = availableProviders.some((provider) => provider.label === draft.provider)
@@ -165,9 +199,22 @@ export function CreateSourceSetup({
     draft.sourceType !== 'websiteCrawl' ||
     (draft.includeSubpages === DEFAULT_INCLUDE_SUBPAGES && draft.maxPages === DEFAULT_MAX_PAGES)
   const showBackendBoundary = () => setBackendBoundaryVisible(true)
+  const stopPreview = (state: LocalCrawlState = 'stopped') => {
+    crawlAttemptRef.current += 1
+    globalThis.clearTimeout(pollTimerRef.current)
+    pollTimerRef.current = undefined
+    pollResolveRef.current?.()
+    pollResolveRef.current = undefined
+    setCrawlState(state)
+  }
+  const resetPreview = () => {
+    stopPreview('idle')
+    setPreviewPages([])
+  }
   const updateDraft = (nextDraft: NewKnowledgeSourceDraft) => {
     onDraftChange(nextDraft)
     setBackendBoundaryVisible(false)
+    resetPreview()
   }
   const selectProvider = (provider: string) => {
     if (draft.sourceType === 'onlineDocuments')
@@ -175,6 +222,63 @@ export function CreateSourceSetup({
     else if (draft.sourceType === 'onlineDrive')
       updateDraft({ ...draft, provider: provider as NewKnowledgeOnlineDriveProvider })
     else updateDraft({ ...draft, provider: provider as NewKnowledgeWebsiteProvider })
+  }
+
+  useEffect(
+    () => () => {
+      crawlAttemptRef.current += 1
+      globalThis.clearTimeout(pollTimerRef.current)
+      pollResolveRef.current?.()
+    },
+    [],
+  )
+
+  const startPreview = async () => {
+    if (draft.sourceType !== 'websiteCrawl' || !isValidWebsiteSourceDraft(draft)) return
+    const attempt = crawlAttemptRef.current + 1
+    crawlAttemptRef.current = attempt
+    globalThis.clearTimeout(pollTimerRef.current)
+    setPreviewPages([])
+    setCrawlState('running')
+    try {
+      const created = (await createFirecrawlTask({
+        options: {
+          crawl_sub_pages: draft.includeSubpages,
+          excludes: '',
+          includes: '',
+          limit: draft.maxPages,
+          max_depth: '',
+          only_main_content: true,
+          use_sitemap: true,
+        },
+        url: draft.rootUrl,
+      })) as Record<string, unknown>
+      const jobId = typeof created.job_id === 'string' ? created.job_id : undefined
+      if (!jobId) throw new Error('Website crawl did not return a job id')
+
+      while (crawlAttemptRef.current === attempt) {
+        const response = (await checkFirecrawlTaskStatus(jobId)) as Record<string, unknown>
+        if (crawlAttemptRef.current !== attempt) return
+        setPreviewPages(crawlPages(response))
+        if (response.status === 'completed') {
+          setCrawlState('success')
+          return
+        }
+        if (response.status === 'error' || !response.status) {
+          setCrawlState('error')
+          return
+        }
+        await new Promise<void>((resolve) => {
+          pollResolveRef.current = resolve
+          pollTimerRef.current = globalThis.setTimeout(() => {
+            pollResolveRef.current = undefined
+            resolve()
+          }, CRAWL_POLL_INTERVAL_MS)
+        })
+      }
+    } catch {
+      if (crawlAttemptRef.current === attempt) setCrawlState('error')
+    }
   }
 
   return (
@@ -384,24 +488,77 @@ export function CreateSourceSetup({
             type="button"
             variant="primary"
             className="w-full"
-            disabled={disabled || crawlPreviewDisabled || !previewReady}
-            onClick={onCrawlPreview}
+            disabled={disabled || crawlState === 'running' || !previewReady}
+            onClick={() => void startPreview()}
           >
-            {t(($) => $['newKnowledge.crawlAndPreview'])}
+            {crawlState === 'running'
+              ? t(($) => $['newKnowledge.crawling'])
+              : t(($) => $['newKnowledge.crawlAndPreview'])}
           </Button>
           <section
             aria-label={t(($) => $['newKnowledge.crawlPreview'])}
-            className="flex min-h-40 flex-col items-center justify-center rounded-lg border border-dashed border-divider-regular px-6 text-center"
+            className="min-h-40 rounded-lg border border-dashed border-divider-regular px-4 py-4"
           >
-            <span className="flex size-10 items-center justify-center rounded-lg bg-background-section">
-              <span aria-hidden className="i-ri-global-line size-5 text-text-tertiary" />
-            </span>
-            <p className="mt-2 system-xs-semibold text-text-primary">
-              {t(($) => $['newKnowledge.pagesAppearTitle'])}
-            </p>
-            <p className="mt-2 system-xs-regular text-text-tertiary">
-              {t(($) => $['newKnowledge.pagesAppearDescription'])}
-            </p>
+            {crawlState === 'idle' && (
+              <div className="flex min-h-32 flex-col items-center justify-center text-center">
+                <span className="flex size-10 items-center justify-center rounded-lg bg-background-section">
+                  <span aria-hidden className="i-ri-global-line size-5 text-text-tertiary" />
+                </span>
+                <p className="mt-2 system-xs-semibold text-text-primary">
+                  {t(($) => $['newKnowledge.pagesAppearTitle'])}
+                </p>
+                <p className="mt-2 system-xs-regular text-text-tertiary">
+                  {t(($) => $['newKnowledge.pagesAppearDescription'])}
+                </p>
+              </div>
+            )}
+            {crawlState === 'running' && (
+              <div className="flex items-center gap-3">
+                <span
+                  aria-hidden
+                  className="i-ri-loader-4-line size-4 animate-spin text-text-accent"
+                />
+                <p role="status" className="min-w-0 flex-1 system-xs-medium text-text-primary">
+                  {t(($) => $['newKnowledge.crawlingPages'], {
+                    count: previewPages.length,
+                    host: new URL(draft.rootUrl).host,
+                  })}
+                </p>
+                <Button type="button" size="small" onClick={() => stopPreview()}>
+                  {t(($) => $['newKnowledge.stopCrawl'])}
+                </Button>
+              </div>
+            )}
+            {crawlState === 'error' && (
+              <p role="alert" className="system-xs-regular text-text-destructive">
+                {t(($) => $['newKnowledge.crawlStartFailed'])}
+              </p>
+            )}
+            {crawlState === 'stopped' && (
+              <p role="status" className="system-xs-regular text-text-secondary">
+                {t(($) => $['newKnowledge.crawlStopped'])}
+              </p>
+            )}
+            {crawlState === 'success' && (
+              <p role="status" className="mb-3 system-xs-medium text-text-primary">
+                {t(($) => $['newKnowledge.pagesCrawled'], {
+                  count: previewPages.length,
+                  host: new URL(draft.rootUrl).host,
+                })}
+              </p>
+            )}
+            {crawlState !== 'idle' && previewPages.length > 0 && (
+              <ul className="mt-3 max-h-52 space-y-2 overflow-y-auto">
+                {previewPages.map((page) => (
+                  <li key={page.source_url} className="rounded-lg bg-background-section px-3 py-2">
+                    <p className="truncate system-xs-medium text-text-primary">{page.title}</p>
+                    <p className="truncate system-2xs-regular text-text-tertiary">
+                      {page.source_url}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
         </div>
       )}

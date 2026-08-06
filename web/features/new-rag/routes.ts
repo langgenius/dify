@@ -209,12 +209,10 @@ export const newKnowledgeAddSourcePath = (
   knowledgeSpaceId: string,
   sourceType?: NewKnowledgeSourceType,
   draftKey?: string,
-  autoPreview = false,
 ) => {
   const searchParams = new URLSearchParams()
   if (sourceType) searchParams.set('type', sourceType)
   if (draftKey) searchParams.set('draft', draftKey)
-  if (autoPreview) searchParams.set('preview', '1')
   const query = searchParams.toString()
   return `/datasets/new/${knowledgeSpaceId}/sources/new${query ? `?${query}` : ''}`
 }

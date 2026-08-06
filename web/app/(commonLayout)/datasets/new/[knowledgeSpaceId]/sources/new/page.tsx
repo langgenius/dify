@@ -8,16 +8,14 @@ export default async function Page({
   params: Promise<{ knowledgeSpaceId: string }>
   searchParams: Promise<{
     draft?: string | string[]
-    preview?: string | string[]
     type?: string | string[]
   }>
 }) {
   const { knowledgeSpaceId } = await params
-  const { draft, preview, type } = await searchParams
+  const { draft, type } = await searchParams
 
   return (
     <AddSourcePage
-      autoPreview={singleSearchParam(preview) === '1'}
       initialSourceType={singleSearchParam(type)}
       knowledgeSpaceId={knowledgeSpaceId}
       sourceDraftKey={singleSearchParam(draft)}
