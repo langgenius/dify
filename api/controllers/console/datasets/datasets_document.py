@@ -1441,9 +1441,11 @@ class DocumentRetryApi(DocumentResource):
         retry_documents = []
         if not dataset:
             raise NotFound("Dataset not found.")
+        documents = DocumentService.get_documents_by_ids(dataset.id, payload.document_ids, session)
+        documents_by_id = {document.id: document for document in documents}
         for document_id in payload.document_ids:
             try:
-                document = DocumentService.get_document(dataset.id, document_id, session=session)
+                document = documents_by_id.get(document_id)
 
                 # 404 if document not found
                 if document is None:
