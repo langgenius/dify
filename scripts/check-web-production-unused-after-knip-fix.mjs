@@ -5,7 +5,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url))
-const repoRoot = path.resolve(scriptDir, '../..')
+const repoRoot = path.resolve(scriptDir, '..')
 const webDir = path.join(repoRoot, 'web')
 const unusedLintConfig = path.join(webDir, 'oxlint.unused.config.json')
 const require = createRequire(import.meta.url)
@@ -96,7 +96,7 @@ async function restoreWorktree() {
   }
 }
 
-const knip = path.join(webDir, 'node_modules', '.bin', commandName('knip'))
+const knip = path.join(repoRoot, 'node_modules', '.bin', commandName('knip'))
 let shouldRestore = false
 let hasUnusedMessages = false
 
@@ -105,7 +105,9 @@ try {
   shouldRestore = true
 
   console.log('Running knip --production --fix...')
-  const knipResult = await run(knip, ['--production', '--fix'], { cwd: webDir })
+  const knipResult = await run(knip, ['--workspace', 'web', '--production', '--fix'], {
+    cwd: repoRoot,
+  })
   if (knipResult.status !== 0) {
     process.stdout.write(knipResult.stdout)
     process.stderr.write(knipResult.stderr)
