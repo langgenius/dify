@@ -1892,6 +1892,37 @@ describe("database durable deletion target capabilities", () => {
       ).toBe(true);
     });
 
+    it(`uses a UUID source predicate while deleting source Overview residue (${dialect})`, async () => {
+      const calls: DatabaseExecuteInput[] = [];
+      const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+        calls.push(input);
+        return result([]);
+      };
+
+      await capabilitiesFor(dialect, execute).deleteDerivedDataPage({
+        job: job({ targetType: "source" }),
+        limit: 7,
+        signal: new AbortController().signal,
+      });
+
+      const overviewQueries = calls.filter(
+        (call) =>
+          call.operation === "select" &&
+          (call.tableName === "knowledge_space_attention_states" ||
+            call.tableName === "knowledge_space_activity_events") &&
+          call.sql.includes("logical_documents"),
+      );
+      expect(overviewQueries.length).toBeGreaterThan(0);
+      for (const query of overviewQueries) {
+        const targetPosition = query.params.length === 4 ? 4 : 3;
+        expect(query.sql).toContain(
+          dialect === "postgres"
+            ? `"source_id" = CAST($${targetPosition} AS UUID)`
+            : "`source_id` = ?",
+        );
+      }
+    });
+
     it(`removes only an unpublished aggregate exactly owned by the deleted asset (${dialect})`, async () => {
       const prefix = `tenant-a/spaces/${spaceId}`;
       const rawObjectKey = `${prefix}/documents/${targetDocumentId}/raw.md`;

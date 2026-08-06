@@ -833,7 +833,9 @@ async function deleteOverviewResiduePage(
             database.dialect === "postgres"
               ? `CAST(${q("id")} AS TEXT)`
               : `CAST(${q("id")} AS CHAR(36))`
-          } FROM ${q("logical_documents")} WHERE ${q("tenant_id")} = ${p(1)} AND ${q("knowledge_space_id")} = ${p(2)} AND ${q("source_id")} = ${p(4)})))`;
+          } FROM ${q("logical_documents")} WHERE ${q("tenant_id")} = ${p(1)} AND ${q("knowledge_space_id")} = ${p(2)} AND ${q("source_id")} = ${
+            database.dialect === "postgres" ? `CAST(${p(4)} AS UUID)` : p(4)
+          })))`;
   } else if (job.targetType === "logical_document") {
     params.push(job.targetId);
     targetPredicate = ` AND ${q("resource_type")} = 'document' AND ${q("resource_id")} = ${p(4)}`;
@@ -885,7 +887,9 @@ async function hasOverviewResidue(
             database.dialect === "postgres"
               ? `CAST(${q("id")} AS TEXT)`
               : `CAST(${q("id")} AS CHAR(36))`
-          } FROM ${q("logical_documents")} WHERE ${q("tenant_id")} = ${p(1)} AND ${q("knowledge_space_id")} = ${p(2)} AND ${q("source_id")} = ${p(3)})))`;
+          } FROM ${q("logical_documents")} WHERE ${q("tenant_id")} = ${p(1)} AND ${q("knowledge_space_id")} = ${p(2)} AND ${q("source_id")} = ${
+            database.dialect === "postgres" ? `CAST(${p(3)} AS UUID)` : p(3)
+          })))`;
   } else if (job.targetType === "logical_document") {
     params.push(job.targetId);
     targetPredicate = ` AND ${q("resource_type")} = 'document' AND ${q("resource_id")} = ${p(3)}`;
