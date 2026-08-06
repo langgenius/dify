@@ -80,9 +80,7 @@ def _patch_create_session(mocker: MockerFixture, sqlite_session_factory: session
 
 
 class TestAgentChatAppRunnerRun:
-    def test_run_app_not_found(
-        self, runner: AgentChatAppRunner, mocker: MockerFixture, sqlite_session: Session
-    ):
+    def test_run_app_not_found(self, runner: AgentChatAppRunner, mocker: MockerFixture, sqlite_session: Session):
         app_config = mocker.MagicMock(app_id="app1", tenant_id="tenant", agent=mocker.MagicMock())
         generate_entity = mocker.MagicMock(app_config=app_config, inputs={}, query="q", files=[], stream=True)
 
@@ -175,9 +173,7 @@ class TestAgentChatAppRunnerRun:
 
         runner.run(generate_entity, mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock(), sqlite_session)
 
-    def test_run_model_schema_missing(
-        self, runner: AgentChatAppRunner, mocker: MockerFixture, sqlite_session: Session
-    ):
+    def test_run_model_schema_missing(self, runner: AgentChatAppRunner, mocker: MockerFixture, sqlite_session: Session):
         app_record = mocker.MagicMock(id="app1", tenant_id="tenant")
         app_config = mocker.MagicMock(app_id="app1", tenant_id="tenant", prompt_template=mocker.MagicMock())
         app_config.agent = AgentEntity(provider="p", model="m", strategy=AgentEntity.Strategy.CHAIN_OF_THOUGHT)
@@ -425,9 +421,7 @@ class TestAgentChatAppRunnerRun:
                 sqlite_session,
             )
 
-    def test_run_message_not_found(
-        self, runner: AgentChatAppRunner, mocker: MockerFixture, sqlite_session: Session
-    ):
+    def test_run_message_not_found(self, runner: AgentChatAppRunner, mocker: MockerFixture, sqlite_session: Session):
         app_record = mocker.MagicMock(id="app1", tenant_id="tenant")
         app_config = mocker.MagicMock(app_id="app1", tenant_id="tenant", prompt_template=mocker.MagicMock())
         app_config.agent = AgentEntity(provider="p", model="m", strategy=AgentEntity.Strategy.FUNCTION_CALLING)

@@ -233,9 +233,7 @@ class TestChatAppGenerator:
 
 
 class TestChatAppRunner:
-    def test_run_raises_when_app_missing(
-        self, sqlite_session_factory: sessionmaker[Session], unbound_session: Session
-    ):
+    def test_run_raises_when_app_missing(self, sqlite_session_factory: sessionmaker[Session], unbound_session: Session):
         runner = ChatAppRunner()
         app_config = SimpleNamespace(
             app_id="app-1", tenant_id="tenant-1", prompt_template=None, external_data_variables=[]
@@ -341,9 +339,7 @@ class TestChatAppRunner:
             patch.object(ChatAppRunner, "direct_output") as mock_direct,
         ):
             queue_manager = DummyQueueManager()
-            runner.run(
-                app_generate_entity, queue_manager, SimpleNamespace(), SimpleNamespace(id="m1"), sqlite_session
-            )
+            runner.run(app_generate_entity, queue_manager, SimpleNamespace(), SimpleNamespace(id="m1"), sqlite_session)
 
         assert any(isinstance(item[0], QueueAnnotationReplyEvent) for item in queue_manager.published)
         assert annotation_query.call_args.kwargs["session"] is sqlite_session
@@ -443,17 +439,11 @@ class TestChatAppRunner:
                 side_effect=lambda invoke_result, **kwargs: list(invoke_result),
             ) as mock_handle,
             patch("core.app.apps.chat.app_runner.ModelInstance", return_value=model_instance),
-            patch.object(
-                sqlite_session, "commit", side_effect=lambda: (events.append("commit"), original_commit())[1]
-            ),
-            patch.object(
-                sqlite_session, "close", side_effect=lambda: (events.append("close"), original_close())[1]
-            ),
+            patch.object(sqlite_session, "commit", side_effect=lambda: (events.append("commit"), original_commit())[1]),
+            patch.object(sqlite_session, "close", side_effect=lambda: (events.append("close"), original_close())[1]),
         ):
             model_instance.invoke_llm.side_effect = invoke_llm
-            runner.run(
-                app_generate_entity, queue_manager, SimpleNamespace(), SimpleNamespace(id="m1"), sqlite_session
-            )
+            runner.run(app_generate_entity, queue_manager, SimpleNamespace(), SimpleNamespace(id="m1"), sqlite_session)
 
         assert events == ["commit", "close", "commit", "close", "invoke", "first-chunk"]
         mock_handle.assert_called_once_with(

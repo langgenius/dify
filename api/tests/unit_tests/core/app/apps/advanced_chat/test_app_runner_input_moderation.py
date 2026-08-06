@@ -229,9 +229,7 @@ def test_run_publishes_annotation_after_commit(build_runner, sqlite_engine: Engi
     assert events == ["commit", "publish"]
 
 
-def test_run_closes_scoped_session_before_workflow_run(
-    build_runner, sqlite_session_factory: sessionmaker[Session]
-):
+def test_run_closes_scoped_session_before_workflow_run(build_runner, sqlite_session_factory: sessionmaker[Session]):
     runner = build_runner
     events = []
 

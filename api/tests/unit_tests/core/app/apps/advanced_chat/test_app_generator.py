@@ -119,9 +119,7 @@ class TestAdvancedChatAppGeneratorInternals:
             workflow_id="workflow-id",
         )
 
-    def test_generate_loads_conversation_and_files(
-        self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
-    ):
+    def test_generate_loads_conversation_and_files(self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
         generator = AdvancedChatAppGenerator()
         app_config = self._build_app_config()
 
@@ -210,9 +208,7 @@ class TestAdvancedChatAppGeneratorInternals:
         assert build_files_called["called"] is True
         assert get_conversation.call_args.kwargs["session"] is session
 
-    def test_resume_delegates_to_generate(
-        self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
-    ):
+    def test_resume_delegates_to_generate(self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
         generator = AdvancedChatAppGenerator()
         existing_trace_manager = SimpleNamespace(app_id="existing-app", user_id="existing-user")
         application_generate_entity = AdvancedChatAppGenerateEntity.model_construct(
@@ -325,9 +321,7 @@ class TestAdvancedChatAppGeneratorInternals:
         assert captured["application_generate_entity"].single_iteration_run.node_id == "node-1"
         assert captured["application_generate_entity"].extras["trace_session_id"] == "session-1"
 
-    def test_single_loop_generate_builds_debug_task(
-        self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
-    ):
+    def test_single_loop_generate_builds_debug_task(self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
         generator = AdvancedChatAppGenerator()
         app_config = self._build_app_config()
         captured: dict[str, object] = {}
@@ -1165,9 +1159,7 @@ class TestAdvancedChatAppGeneratorInternals:
 
         assert queue_manager.publish_error.called
 
-    def test_generate_debugger_enables_retrieve_source(
-        self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
-    ):
+    def test_generate_debugger_enables_retrieve_source(self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
         generator = AdvancedChatAppGenerator()
 
         app_config = WorkflowUIBasedAppConfig(
@@ -1402,9 +1394,7 @@ class TestAdvancedChatAppGeneratorResume:
         assert trace_manager.app_id == "app-id"
         assert trace_manager.user_id == "session-id"
 
-    def test_resume_preserves_existing_trace_manager(
-        self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
-    ):
+    def test_resume_preserves_existing_trace_manager(self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
         generator = AdvancedChatAppGenerator()
         existing_trace_manager = SimpleNamespace(app_id="existing-app", user_id="existing-user")
         application_generate_entity = AdvancedChatAppGenerateEntity.model_construct(

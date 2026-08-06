@@ -86,9 +86,7 @@ def _patch_sqlite_engine(mocker: MockerFixture, sqlite_engine: Engine) -> None:
     mocker.patch.object(type(module.db), "engine", new_callable=PropertyMock, return_value=sqlite_engine)
 
 
-def _patch_db_session(
-    mocker: MockerFixture, sqlite_session_factory: sessionmaker[Session]
-) -> scoped_session[Session]:
+def _patch_db_session(mocker: MockerFixture, sqlite_session_factory: sessionmaker[Session]) -> scoped_session[Session]:
     session_proxy = scoped_session(sqlite_session_factory)
     mocker.patch.object(module.db, "session", session_proxy)
     return session_proxy
@@ -407,9 +405,7 @@ def test_generate_worker_sets_system_user_id_for_external_call(
     assert module.PipelineRunner.call_args.kwargs["system_user_id"] == "session"
 
 
-def test_generate_raises_when_workflow_not_found(
-    generator, mocker: MockerFixture, sqlite_session: Session
-):
+def test_generate_raises_when_workflow_not_found(generator, mocker: MockerFixture, sqlite_session: Session):
     flask_app = MagicMock()
     mocker.patch.object(module, "preserve_flask_contexts", _dummy_preserve)
 
