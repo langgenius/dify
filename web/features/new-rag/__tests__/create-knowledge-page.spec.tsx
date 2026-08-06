@@ -45,7 +45,7 @@ vi.mock('@/context/permission-state', () => ({
   datasetDefaultPermissionKeysAtom: permissionStateMock.atom,
 }))
 
-vi.mock('@/context/system-features-state', () => ({
+vi.mock('@/features/system-features/state', () => ({
   knowledgeFsUploadEnabledAtom: systemFeaturesStateMock.uploadAtom,
   rbacEnabledAtom: systemFeaturesStateMock.rbacAtom,
 }))

@@ -24,7 +24,7 @@ import {
   workspacePermissionKeysFetchingAtom,
   workspacePermissionKeysLoadingAtom,
 } from '@/context/permission-state'
-import { knowledgeFsUploadEnabledAtom } from '@/context/system-features-state'
+import { knowledgeFsUploadEnabledAtom } from '@/features/system-features/state'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { useAuxiliaryTaskReadGuard } from './auxiliary-task-read-guard'

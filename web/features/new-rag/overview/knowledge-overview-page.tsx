@@ -9,7 +9,7 @@ import type {
 import type { Dayjs } from 'dayjs'
 import type { EChartsOption } from 'echarts'
 import type { CSSProperties } from 'react'
-import type { TriggerProps } from '@/app/components/base/date-and-time-picker/types'
+import type { DatePickerProps } from '@/app/components/base/date-and-time-picker/types'
 import type { Member } from '@/models/common'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
@@ -46,7 +46,7 @@ import {
   datasetDefaultPermissionKeysAtom,
   workspacePermissionKeysAtom,
 } from '@/context/permission-state'
-import { knowledgeFsUploadEnabledAtom } from '@/context/system-features-state'
+import { knowledgeFsUploadEnabledAtom } from '@/features/system-features/state'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
 import { useMembers } from '@/service/use-common'
@@ -910,22 +910,28 @@ function ActivityDateRangePicker({
     [i18n.language],
   )
   const renderTrigger =
-    (edge: 'start' | 'end') =>
-    ({ handleClickTrigger, isOpen, value }: TriggerProps) => (
+    (edge: 'start' | 'end'): NonNullable<DatePickerProps['renderTrigger']> =>
+    (props, state, { handleClickTrigger, value }) => (
       <div
+        {...props}
         role="button"
         tabIndex={0}
         aria-label={`${t(($) => $['newKnowledge.overview.timeRange'])} ${edge}`}
-        aria-expanded={isOpen}
         className={cn(
           'min-w-0 flex-1 truncate rounded px-1 py-0.5 text-left system-xs-regular text-components-input-text-filled outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active',
-          isOpen && 'bg-state-base-hover',
+          props.className,
+          state.open && 'bg-state-base-hover',
         )}
-        onClick={handleClickTrigger}
+        onClick={(event) => {
+          handleClickTrigger(event)
+          props.onClick?.(event)
+        }}
         onKeyDown={(event) => {
+          props.onKeyDown?.(event)
+          if (event.defaultPrevented) return
           if (event.key !== 'Enter' && event.key !== ' ') return
           event.preventDefault()
-          handleClickTrigger(event as unknown as React.MouseEvent)
+          event.currentTarget.click()
         }}
       >
         {value ? formatter.format(value.toDate()) : '—'}

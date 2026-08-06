@@ -211,7 +211,7 @@ vi.mock('@/context/permission-state', () => ({
   workspacePermissionKeysAtom: permissionStateMock.workspacePermissionKeysAtom,
 }))
 
-vi.mock('@/context/system-features-state', () => ({
+vi.mock('@/features/system-features/state', () => ({
   knowledgeFsUploadEnabledAtom: systemFeaturesStateMock.knowledgeFsUploadEnabledAtom,
 }))
 
