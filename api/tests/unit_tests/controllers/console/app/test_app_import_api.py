@@ -346,7 +346,8 @@ class TestAppImportConfirmApi:
         )
         redis_get = MagicMock(
             return_value=(
-                b'{"import_mode":"yaml-content","yaml_content":"app: {}","app_id":null,'
+                b'{"tenant_id":"tenant-1","account_id":"u1","import_mode":"yaml-content",'
+                b'"yaml_content":"app: {}","app_id":null,'
                 b'"name":null,"description":null,"icon_type":null,"icon":null,"icon_background":null}'
             )
         )
@@ -391,7 +392,8 @@ class TestAppImportConfirmApi:
             app_import_module.redis_client,
             "get",
             lambda *_args, **_kwargs: (
-                b'{"import_mode":"yaml-content","yaml_content":"app: {}","app_id":"existing-app",'
+                b'{"tenant_id":"tenant-1","account_id":"u1","import_mode":"yaml-content",'
+                b'"yaml_content":"app: {}","app_id":"existing-app",'
                 b'"name":null,"description":null,"icon_type":null,"icon":null,"icon_background":null}'
             ),
         )
