@@ -200,9 +200,7 @@ class TestEnterpriseAppDSLImport:
     @patch("controllers.inner_api.app.dsl._get_active_account")
     def test_import_failed_returns_400(self, mock_get_account, api_instance, app: Flask):
         mock_account = MagicMock()
-        mock_account.set_tenant_id_with_session.side_effect = (
-            lambda _tenant_id, *, session: session.execute(select(1))
-        )
+        mock_account.set_tenant_id_with_session.side_effect = lambda _tenant_id, *, session: session.execute(select(1))
         mock_get_account.return_value = mock_account
         self._mock_dsl.import_app.return_value = self._make_import_result(ImportStatus.FAILED)
 

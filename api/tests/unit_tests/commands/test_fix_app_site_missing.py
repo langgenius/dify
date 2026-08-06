@@ -73,9 +73,7 @@ def test_fix_app_site_missing_passes_loaded_session_to_signal(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     account, app = _persist_missing_site_owner(sqlite_session)
-    command_sessions, command_session = _bind_command_database(
-        monkeypatch, sqlite_engine, sqlite_session_factory
-    )
+    command_sessions, command_session = _bind_command_database(monkeypatch, sqlite_engine, sqlite_session_factory)
     phase_events: list[str] = []
     event.listen(command_session, "after_commit", lambda _session: phase_events.append("commit"))
 
@@ -109,9 +107,7 @@ def test_fix_app_site_missing_rolls_back_when_signal_fails(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     _account, app = _persist_missing_site_owner(sqlite_session)
-    command_sessions, command_session = _bind_command_database(
-        monkeypatch, sqlite_engine, sqlite_session_factory
-    )
+    command_sessions, command_session = _bind_command_database(monkeypatch, sqlite_engine, sqlite_session_factory)
     phase_events: list[str] = []
     event.listen(command_session, "after_rollback", lambda _session: phase_events.append("rollback"))
 

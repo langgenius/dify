@@ -577,9 +577,7 @@ class TestDocumentServiceBatchMethods:
         doc_ids = [str(uuid.uuid4()), str(uuid.uuid4())]
 
         session = sqlite_session
-        session.add_all(
-            [make_serializable_document(id=document_id, dataset_id=dataset_id) for document_id in doc_ids]
-        )
+        session.add_all([make_serializable_document(id=document_id, dataset_id=dataset_id) for document_id in doc_ids])
         session.flush()
 
         documents = DocumentService.get_documents_by_ids(dataset_id, doc_ids, session)
@@ -619,9 +617,7 @@ class TestDocumentServiceSaveValidation:
     @patch("services.dataset_service.DatasetService.check_doc_form")
     @patch("services.dataset_service.FeatureService.get_features")
     @patch("services.dataset_service.current_user")
-    def test_save_document_validates_doc_form(
-        self, mock_user, mock_features, mock_check_form, sqlite_session: Session
-    ):
+    def test_save_document_validates_doc_form(self, mock_user, mock_features, mock_check_form, sqlite_session: Session):
         """Test that doc_form is validated during save."""
         mock_user.current_tenant_id = "tenant_id"
         dataset = Mock()

@@ -105,9 +105,7 @@ class TestResolveAppAccessFilter:
             lambda tenant_id, account_id: whitelist,
         )
 
-    def test_default_preview_is_unrestricted(
-        self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
-    ):
+    def test_default_preview_is_unrestricted(self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
         self._patch_whitelist(monkeypatch, ResourceWhitelistResources(unrestricted=True))
         permissions = _permissions(app_default_keys=["app.preview"])
 
@@ -145,9 +143,7 @@ class TestResolveAppAccessFilter:
 
         assert flt.accessible_app_ids == {"app-1"}
 
-    def test_whitelist_union_with_override_apps(
-        self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
-    ):
+    def test_whitelist_union_with_override_apps(self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
         self._patch_whitelist(monkeypatch, ResourceWhitelistResources(unrestricted=False, resource_ids=["app-5"]))
         permissions = _permissions(
             app_overrides=[ResourcePermissionKeys(resource_id="app-1", permission_keys=["app.acl.preview"])],
@@ -157,9 +153,7 @@ class TestResolveAppAccessFilter:
 
         assert flt.accessible_app_ids == {"app-1", "app-5"}
 
-    def test_fetches_permissions_when_not_supplied(
-        self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
-    ):
+    def test_fetches_permissions_when_not_supplied(self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
         self._patch_whitelist(monkeypatch, ResourceWhitelistResources(unrestricted=False, resource_ids=[]))
         session = unbound_session
         captured: dict[str, object] = {}
