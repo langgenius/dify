@@ -7,10 +7,6 @@ on:
         required: true
         type: string
 
-concurrency:
-  group: style-${{ github.head_ref || github.run_id }}
-  cancel-in-progress: true
-
 permissions:
   checks: write
   statuses: write

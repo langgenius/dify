@@ -60,6 +60,7 @@ from services.dataset_ref_service import DatasetRefService
 from services.dataset_service import DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig, ProcessRule, RetrievalModel
 from services.file_service import FileService
+from services.vector_space_admission_service import get_vector_space_admission_error_fields
 from tasks.generate_summary_index_task import generate_summary_index_task
 
 from ..app.error import (
@@ -935,6 +936,7 @@ class DocumentBatchIndexingStatusApi(DocumentResource):
                 "completed_at": document.completed_at,
                 "paused_at": document.paused_at,
                 "error": document.error,
+                **get_vector_space_admission_error_fields(document.error),
                 "stopped_at": document.stopped_at,
                 "completed_segments": completed_segments,
                 "total_segments": total_segments,
@@ -995,6 +997,7 @@ class DocumentIndexingStatusApi(DocumentResource):
             "completed_at": document.completed_at,
             "paused_at": document.paused_at,
             "error": document.error,
+            **get_vector_space_admission_error_fields(document.error),
             "stopped_at": document.stopped_at,
             "completed_segments": completed_segments,
             "total_segments": total_segments,
@@ -1441,9 +1444,11 @@ class DocumentRetryApi(DocumentResource):
         retry_documents = []
         if not dataset:
             raise NotFound("Dataset not found.")
+        documents = DocumentService.get_documents_by_ids(dataset.id, payload.document_ids, session)
+        documents_by_id = {document.id: document for document in documents}
         for document_id in payload.document_ids:
             try:
-                document = DocumentService.get_document(dataset.id, document_id, session=session)
+                document = documents_by_id.get(document_id)
 
                 # 404 if document not found
                 if document is None:

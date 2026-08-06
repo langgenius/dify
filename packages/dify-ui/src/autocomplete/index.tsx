@@ -147,13 +147,11 @@ type AutocompleteInputProps = Omit<BaseAutocomplete.Input.Props, 'className' | '
 function AutocompleteInput({
   className,
   size = 'medium',
-  type = 'text',
   autoComplete = 'off',
   ...props
 }: AutocompleteInputProps) {
   return (
     <BaseAutocomplete.Input
-      type={type}
       autoComplete={autoComplete}
       className={cn(autocompleteInputVariants({ size }), className)}
       {...props}

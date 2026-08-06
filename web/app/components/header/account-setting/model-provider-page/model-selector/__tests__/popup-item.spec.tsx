@@ -307,7 +307,9 @@ describe('PopupItem', () => {
     )
 
     fireEvent.click(screen.getByText('GPT-4'))
-    fireEvent.click(screen.getByText('COMMON.OPERATION.ADD'))
+    const addButton = screen.getByRole('button', { name: 'COMMON.OPERATION.ADD' })
+    expect(addButton.closest('[aria-disabled="true"]')).toBeNull()
+    fireEvent.click(addButton)
 
     expect(onValueChange).not.toHaveBeenCalled()
     expect(mockSetShowModelModal).toHaveBeenCalled()

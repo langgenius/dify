@@ -934,6 +934,8 @@ export type AgentLogMessageItemResponse = {
   created_at?: number | null
   currency: string
   error?: string | null
+  feedback_enabled?: boolean
+  feedbacks?: Array<AgentLogFeedbackResponse>
   from_account_id?: string | null
   from_end_user_id?: string | null
   id: string
@@ -1358,6 +1360,12 @@ export type AgentSuggestedQuestionsAfterAnswerModelConfig = {
   name: string
   provider: string
   [key: string]: unknown
+}
+
+export type AgentLogFeedbackResponse = {
+  content?: string | null
+  from_source: 'admin' | 'user'
+  rating: 'dislike' | 'like'
 }
 
 export type SimpleAccount = {

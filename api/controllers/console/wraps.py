@@ -215,7 +215,7 @@ def cloud_edition_billing_resource_check[**P, R](resource: str) -> Callable[[Cal
                 elif resource == "documents" and 0 < documents_upload_quota.limit <= documents_upload_quota.size:
                     # The api of file upload is used in the multiple places,
                     # so we need to check the source of the request from datasets
-                    source = request.args.get("source")
+                    source = request.args.get("source") or request.form.get("source")
                     if source == "datasets":
                         abort(403, "The number of documents has reached the limit of your subscription.")
                     else:
