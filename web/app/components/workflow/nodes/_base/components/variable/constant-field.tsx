@@ -14,6 +14,7 @@ import {
   SelectItemText,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -21,7 +22,7 @@ import { useLanguage } from '@/app/components/header/account-setting/model-provi
 import { toolDeclarativeTypeMatches } from '@/app/components/workflow/nodes/_base/components/form-input-item.helpers'
 import ToolDateRangePicker from '@/app/components/workflow/nodes/tool/components/tool-date-range-picker'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
-import { useAppContext } from '@/context/app-context'
+import { userProfileAtom } from '@/context/account-state'
 
 type Props = Readonly<{
   schema: Partial<CredentialFormSchema>
@@ -43,7 +44,7 @@ const ConstantField: FC<Props> = ({
   isLoading,
 }) => {
   const language = useLanguage()
-  const { userProfile } = useAppContext()
+  const userProfile = useAtomValue(userProfileAtom)
   const timezone = userProfile.timezone ?? 'UTC'
   const placeholder = (schema as CredentialFormSchemaSelect).placeholder
   const selectOptions = useMemo(() => {

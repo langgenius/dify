@@ -37,6 +37,8 @@ export const getVarKindType = (type: string, schema?: ToolFormSchema) => {
       FormTypeEnum.textNumber,
       FormTypeEnum.array,
       FormTypeEnum.object,
+      FormTypeEnum.date,
+      FormTypeEnum.datePicker,
     ].includes(type as FormTypeEnum)
   )
     return VarKindType.constant

@@ -16,6 +16,7 @@ import {
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useBoolean } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
@@ -31,7 +32,7 @@ import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
 import ToolDateRangePicker from '@/app/components/workflow/nodes/tool/components/tool-date-range-picker'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
-import { useAppContext } from '@/context/app-context'
+import { userProfileAtom } from '@/context/account-state'
 import {
   createPickerProps,
   getFieldFlags,
@@ -66,7 +67,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const language = useLanguage()
-  const { userProfile } = useAppContext()
+  const userProfile = useAtomValue(userProfileAtom)
   const timezone = userProfile.timezone ?? 'UTC'
 
   const handleAutomatic = (

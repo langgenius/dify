@@ -18,6 +18,7 @@ import {
   SelectItemText,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
+import { useAtomValue } from 'jotai'
 import { useEffect, useMemo, useState } from 'react'
 import { CheckboxList } from '@/app/components/base/checkbox-list'
 import Input from '@/app/components/base/input'
@@ -30,7 +31,7 @@ import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use
 import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
 import ToolDateRangePicker from '@/app/components/workflow/nodes/tool/components/tool-date-range-picker'
 import { VarType } from '@/app/components/workflow/types'
-import { useAppContext } from '@/context/app-context'
+import { userProfileAtom } from '@/context/account-state'
 import { useFetchDynamicOptions } from '@/service/use-plugins'
 import { useTriggerPluginDynamicOptions } from '@/service/use-triggers'
 import { VarKindType } from '../types'
@@ -92,7 +93,7 @@ const FormInputItem: FC<Props> = ({
   inPanel,
 }) => {
   const language = useLanguage()
-  const { userProfile } = useAppContext()
+  const userProfile = useAtomValue(userProfileAtom)
   const timezone = userProfile.timezone ?? 'UTC'
   const [toolsOptions, setToolsOptions] = useState<FormOption[] | null>(null)
   const [isLoadingToolsOptions, setIsLoadingToolsOptions] = useState(false)
