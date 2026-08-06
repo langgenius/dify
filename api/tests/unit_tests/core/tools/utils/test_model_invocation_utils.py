@@ -89,7 +89,6 @@ def test_calculate_tokens_handles_missing_model():
     mock_factory.assert_called_once_with(tenant_id="tenant", user_id=None)
 
 
-@pytest.mark.parametrize("sqlite_session", [(ToolModelInvoke,)], indirect=True)
 def test_invoke_success_and_error_mappings(sqlite_session: Session):
     model_instance = _mock_model_instance(schema={ModelPropertyKey.CONTEXT_SIZE: 2048})
     model_instance.invoke_llm.return_value = SimpleNamespace(
@@ -158,7 +157,6 @@ def test_invoke_success_and_error_mappings(sqlite_session: Session):
         "generic-error",
     ],
 )
-@pytest.mark.parametrize("sqlite_session", [(ToolModelInvoke,)], indirect=True)
 def test_invoke_error_mappings(exc, expected, sqlite_session: Session):
     model_instance = _mock_model_instance(schema={ModelPropertyKey.CONTEXT_SIZE: 2048})
     model_instance.invoke_llm.side_effect = exc
