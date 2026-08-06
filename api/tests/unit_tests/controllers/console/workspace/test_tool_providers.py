@@ -810,7 +810,9 @@ def _mock_oauth_start_deps(controller_module: ModuleType, monkeypatch: pytest.Mo
     oauth_handler_instance.get_authorization_url.return_value = auth_response
     monkeypatch.setattr(controller_module, "OAuthHandler", MagicMock(return_value=oauth_handler_instance))
     # dump_response is called with the pydantic response class; short-circuit it.
-    monkeypatch.setattr(controller_module, "dump_response", lambda _cls, obj: {"authorization_url": obj.authorization_url})
+    monkeypatch.setattr(
+        controller_module, "dump_response", lambda _cls, obj: {"authorization_url": obj.authorization_url}
+    )
     yield create_proxy_context
 
 
