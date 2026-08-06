@@ -618,6 +618,7 @@
   "newKnowledge.settings.retrievalMode.deep": "詳細",
   "newKnowledge.settings.retrievalMode.fast": "高速",
   "newKnowledge.settings.retrievalMode.research": "研究",
+  "newKnowledge.settings.retrievalModeLabel": "検索モード",
   "newKnowledge.settings.retrievalTitle": "検索",
   "newKnowledge.settings.saveChanges": "変更を保存",
   "newKnowledge.settings.saveFailed": "変更を保存できませんでした。接続を確認してもう一度お試しください。編集内容は保持されています。",

@@ -216,6 +216,11 @@ describe('RetrievalTestPage', () => {
     expect(
       screen.getByRole('heading', { name: 'dataset.newKnowledge.retrievalTest.title' }),
     ).toBeInTheDocument()
+    expect(
+      screen.getByRole('group', {
+        name: 'dataset.newKnowledge.settings.retrievalModeLabel',
+      }),
+    ).toBeInTheDocument()
     expect(screen.getByText('dataset.newKnowledge.retrievalTest.emptyTitle')).toBeInTheDocument()
 
     await user.type(

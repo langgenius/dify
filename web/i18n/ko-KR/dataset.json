@@ -618,6 +618,7 @@
   "newKnowledge.settings.retrievalMode.deep": "심층",
   "newKnowledge.settings.retrievalMode.fast": "빠름",
   "newKnowledge.settings.retrievalMode.research": "연구",
+  "newKnowledge.settings.retrievalModeLabel": "검색 모드",
   "newKnowledge.settings.retrievalTitle": "검색",
   "newKnowledge.settings.saveChanges": "변경 사항 저장",
   "newKnowledge.settings.saveFailed": "변경 사항을 저장할 수 없습니다. 연결을 확인하고 다시 시도하세요. 편집 내용은 그대로 유지됩니다.",

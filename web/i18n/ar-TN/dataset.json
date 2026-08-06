@@ -618,6 +618,7 @@
   "newKnowledge.settings.retrievalMode.deep": "عميق",
   "newKnowledge.settings.retrievalMode.fast": "سريع",
   "newKnowledge.settings.retrievalMode.research": "بحث",
+  "newKnowledge.settings.retrievalModeLabel": "وضع الاسترجاع",
   "newKnowledge.settings.retrievalTitle": "الاسترجاع",
   "newKnowledge.settings.saveChanges": "حفظ التغييرات",
   "newKnowledge.settings.saveFailed": "تعذّر حفظ التغييرات. تحقق من اتصالك وحاول مرة أخرى — لا تزال تعديلاتك موجودة.",

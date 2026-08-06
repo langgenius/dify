@@ -618,6 +618,7 @@
   "newKnowledge.settings.retrievalMode.deep": "Sâu",
   "newKnowledge.settings.retrievalMode.fast": "Nhanh",
   "newKnowledge.settings.retrievalMode.research": "Nghiên cứu",
+  "newKnowledge.settings.retrievalModeLabel": "Chế độ truy xuất",
   "newKnowledge.settings.retrievalTitle": "Truy xuất",
   "newKnowledge.settings.saveChanges": "Lưu thay đổi",
   "newKnowledge.settings.saveFailed": "Không thể lưu thay đổi. Hãy kiểm tra kết nối và thử lại — nội dung chỉnh sửa của bạn vẫn được giữ nguyên.",

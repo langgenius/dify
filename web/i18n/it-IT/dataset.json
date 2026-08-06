@@ -618,6 +618,7 @@
   "newKnowledge.settings.retrievalMode.deep": "Approfondita",
   "newKnowledge.settings.retrievalMode.fast": "Rapida",
   "newKnowledge.settings.retrievalMode.research": "Ricerca",
+  "newKnowledge.settings.retrievalModeLabel": "Modalità di recupero",
   "newKnowledge.settings.retrievalTitle": "Recupero",
   "newKnowledge.settings.saveChanges": "Salva modifiche",
   "newKnowledge.settings.saveFailed": "Impossibile salvare le modifiche. Controlla la connessione e riprova — le modifiche sono ancora presenti.",

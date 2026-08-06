@@ -618,6 +618,7 @@
   "newKnowledge.settings.retrievalMode.deep": "Глубокий",
   "newKnowledge.settings.retrievalMode.fast": "Быстрый",
   "newKnowledge.settings.retrievalMode.research": "Исследования",
+  "newKnowledge.settings.retrievalModeLabel": "Режим поиска",
   "newKnowledge.settings.retrievalTitle": "Поиск",
   "newKnowledge.settings.saveChanges": "Сохранить изменения",
   "newKnowledge.settings.saveFailed": "Не удалось сохранить изменения. Проверьте подключение и повторите попытку — внесённые изменения сохранены.",

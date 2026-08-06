@@ -618,6 +618,7 @@
   "newKnowledge.settings.retrievalMode.deep": "Globoko",
   "newKnowledge.settings.retrievalMode.fast": "Hitro",
   "newKnowledge.settings.retrievalMode.research": "Raziskave",
+  "newKnowledge.settings.retrievalModeLabel": "Način pridobivanja",
   "newKnowledge.settings.retrievalTitle": "Pridobivanje",
   "newKnowledge.settings.saveChanges": "Shrani spremembe",
   "newKnowledge.settings.saveFailed": "Sprememb ni bilo mogoče shraniti. Preverite povezavo in poskusite znova — vaše spremembe so še vedno ohranjene.",

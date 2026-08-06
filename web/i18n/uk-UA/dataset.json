@@ -618,6 +618,7 @@
   "newKnowledge.settings.retrievalMode.deep": "Глибокий",
   "newKnowledge.settings.retrievalMode.fast": "Швидкий",
   "newKnowledge.settings.retrievalMode.research": "Дослідження",
+  "newKnowledge.settings.retrievalModeLabel": "Режим пошуку",
   "newKnowledge.settings.retrievalTitle": "Пошук",
   "newKnowledge.settings.saveChanges": "Зберегти зміни",
   "newKnowledge.settings.saveFailed": "Не вдалося зберегти зміни. Перевірте з’єднання та повторіть спробу — ваші зміни залишилися.",

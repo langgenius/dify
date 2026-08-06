@@ -618,6 +618,7 @@
   "newKnowledge.settings.retrievalMode.deep": "Głębokie",
   "newKnowledge.settings.retrievalMode.fast": "Szybkie",
   "newKnowledge.settings.retrievalMode.research": "Badania",
+  "newKnowledge.settings.retrievalModeLabel": "Tryb wyszukiwania",
   "newKnowledge.settings.retrievalTitle": "Pobieranie",
   "newKnowledge.settings.saveChanges": "Zapisz zmiany",
   "newKnowledge.settings.saveFailed": "Nie udało się zapisać zmian. Sprawdź połączenie i spróbuj ponownie — Twoje zmiany nadal są zachowane.",

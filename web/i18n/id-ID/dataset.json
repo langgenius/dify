@@ -618,6 +618,7 @@
   "newKnowledge.settings.retrievalMode.deep": "Mendalam",
   "newKnowledge.settings.retrievalMode.fast": "Cepat",
   "newKnowledge.settings.retrievalMode.research": "Penelitian",
+  "newKnowledge.settings.retrievalModeLabel": "Mode pengambilan",
   "newKnowledge.settings.retrievalTitle": "Pengambilan",
   "newKnowledge.settings.saveChanges": "Simpan perubahan",
   "newKnowledge.settings.saveFailed": "Perubahan tidak dapat disimpan. Periksa koneksi Anda dan coba lagi — perubahan Anda masih tersimpan di sini.",

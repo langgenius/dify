@@ -618,6 +618,7 @@
   "newKnowledge.settings.retrievalMode.deep": "เชิงลึก",
   "newKnowledge.settings.retrievalMode.fast": "รวดเร็ว",
   "newKnowledge.settings.retrievalMode.research": "การวิจัย",
+  "newKnowledge.settings.retrievalModeLabel": "โหมดการเรียกคืน",
   "newKnowledge.settings.retrievalTitle": "การเรียกค้น",
   "newKnowledge.settings.saveChanges": "บันทึกการเปลี่ยนแปลง",
   "newKnowledge.settings.saveFailed": "ไม่สามารถบันทึกการเปลี่ยนแปลงได้ โปรดตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง — การแก้ไขของคุณยังคงอยู่",

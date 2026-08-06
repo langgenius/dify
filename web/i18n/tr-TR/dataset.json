@@ -618,6 +618,7 @@
   "newKnowledge.settings.retrievalMode.deep": "Derin",
   "newKnowledge.settings.retrievalMode.fast": "Hızlı",
   "newKnowledge.settings.retrievalMode.research": "Araştırma",
+  "newKnowledge.settings.retrievalModeLabel": "Getirme modu",
   "newKnowledge.settings.retrievalTitle": "Getirme",
   "newKnowledge.settings.saveChanges": "Değişiklikleri kaydet",
   "newKnowledge.settings.saveFailed": "Değişiklikler kaydedilemedi. Bağlantınızı kontrol edip tekrar deneyin — düzenlemeleriniz hâlâ burada.",

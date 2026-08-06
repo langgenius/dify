@@ -618,6 +618,7 @@
   "newKnowledge.settings.retrievalMode.deep": "Profundă",
   "newKnowledge.settings.retrievalMode.fast": "Rapidă",
   "newKnowledge.settings.retrievalMode.research": "Cercetare",
+  "newKnowledge.settings.retrievalModeLabel": "Mod de regăsire",
   "newKnowledge.settings.retrievalTitle": "Regăsire",
   "newKnowledge.settings.saveChanges": "Salvați modificările",
   "newKnowledge.settings.saveFailed": "Modificările nu au putut fi salvate. Verificați conexiunea și încercați din nou — editările sunt păstrate.",

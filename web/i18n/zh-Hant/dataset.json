@@ -618,6 +618,7 @@
   "newKnowledge.settings.retrievalMode.deep": "深度",
   "newKnowledge.settings.retrievalMode.fast": "快速",
   "newKnowledge.settings.retrievalMode.research": "研究",
+  "newKnowledge.settings.retrievalModeLabel": "檢索模式",
   "newKnowledge.settings.retrievalTitle": "檢索",
   "newKnowledge.settings.saveChanges": "儲存變更",
   "newKnowledge.settings.saveFailed": "無法儲存變更。請檢查網路後重試——你的編輯仍然保留。",

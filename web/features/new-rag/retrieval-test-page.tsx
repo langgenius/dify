@@ -514,7 +514,7 @@ function EmptyState({
             : 'i-ri-alert-fill size-5 text-text-warning',
         )}
       />
-      <h2 className="mt-1.5 system-sm-medium text-text-primary">{title}</h2>
+      <h2 className="mt-1.5 system-md-medium text-text-primary">{title}</h2>
       <p className="mt-1.5 max-w-97.25 system-xs-regular text-text-tertiary">{description}</p>
     </div>
   )
@@ -696,7 +696,7 @@ function QualityActions({
           variant="secondary"
           onClick={() => void onDecision('bad-case')}
         >
-          <span aria-hidden className="mr-1 i-ri-thumb-down-line size-4" />
+          <span aria-hidden className="i-ri-thumb-down-line size-4" />
           {t(($) => $['newKnowledge.retrievalTest.makeBadCase'])}
         </Button>
       )}
@@ -707,7 +707,7 @@ function QualityActions({
           variant="secondary"
           onClick={() => void onDecision('golden')}
         >
-          <span aria-hidden className="mr-1 i-ri-thumb-up-line size-4" />
+          <span aria-hidden className="i-ri-thumb-up-line size-4" />
           {t(($) => $['newKnowledge.retrievalTest.keepGoldenQuestion'])}
         </Button>
       )}
@@ -1484,7 +1484,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
   }
 
   return (
-    <main className="mx-1 flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg bg-components-panel-bg p-5">
+    <main className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg bg-components-panel-bg p-5">
       <header className="shrink-0">
         <h1 className="title-xl-semi-bold leading-6 text-text-primary">
           {t(($) => $['newKnowledge.retrievalTest.title'])}
@@ -1497,7 +1497,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
       <div className="mt-4 flex min-h-0 min-w-0 flex-1 flex-col lg:flex-row">
         <section className="flex min-h-0 w-full shrink-0 flex-col pb-5 lg:w-117 lg:pr-6">
           <div className="shrink-0">
-            <div className="overflow-hidden rounded-xl border-2 border-components-input-border-active-prompt-2 bg-components-input-bg-active shadow-xs">
+            <div className="overflow-hidden rounded-xl bg-components-input-bg-active shadow-xs inset-ring-2 inset-ring-components-input-border-active-prompt-2">
               <label className="sr-only" htmlFor="retrieval-test-query">
                 {t(($) => $['newKnowledge.retrievalTest.queryPlaceholder'])}
               </label>
@@ -1519,7 +1519,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
               <div className="flex min-h-13 items-center justify-between gap-3 p-2.5">
                 <div
                   role="group"
-                  aria-label="Retrieval mode"
+                  aria-label={t(($) => $['newKnowledge.settings.retrievalModeLabel'])}
                   className="flex rounded-lg bg-background-section-burn p-0.5"
                 >
                   {(['fast', 'deep', 'research'] as const).map((item) => (
@@ -1546,10 +1546,11 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                 ) : (
                   <Button
                     variant="primary"
+                    className="px-3.25"
                     disabled={!query.trim() || selectedResearchActive}
                     onClick={run}
                   >
-                    <span aria-hidden className="mr-1 i-ri-play-circle-line size-4" />
+                    <span aria-hidden className="i-ri-play-circle-line size-4" />
                     {t(($) =>
                       mode === 'research'
                         ? $['newKnowledge.retrievalTest.startResearch']
@@ -1561,7 +1562,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
             </div>
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col pt-6">
+          <div className="mt-3 flex min-h-0 flex-1 flex-col pt-6">
             <div className="flex shrink-0 items-center pb-2 pl-3">
               <h2 className="system-xs-medium text-text-tertiary">
                 {t(($) => $['newKnowledge.retrievalTest.records'])}

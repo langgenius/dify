@@ -618,6 +618,7 @@
   "newKnowledge.settings.retrievalMode.deep": "गहन",
   "newKnowledge.settings.retrievalMode.fast": "तेज़",
   "newKnowledge.settings.retrievalMode.research": "अनुसंधान",
+  "newKnowledge.settings.retrievalModeLabel": "पुनर्प्राप्ति मोड",
   "newKnowledge.settings.retrievalTitle": "रिट्रीवल",
   "newKnowledge.settings.saveChanges": "बदलाव सहेजें",
   "newKnowledge.settings.saveFailed": "बदलाव सहेजे नहीं जा सके। अपना कनेक्शन जाँचें और फिर कोशिश करें — आपके बदलाव अभी भी सुरक्षित हैं।",

@@ -618,6 +618,7 @@
   "newKnowledge.settings.retrievalMode.deep": "عمیق",
   "newKnowledge.settings.retrievalMode.fast": "سریع",
   "newKnowledge.settings.retrievalMode.research": "تحقیق",
+  "newKnowledge.settings.retrievalModeLabel": "حالت بازیابی",
   "newKnowledge.settings.retrievalTitle": "بازیابی",
   "newKnowledge.settings.saveChanges": "ذخیره تغییرات",
   "newKnowledge.settings.saveFailed": "تغییرات ذخیره نشد. اتصال خود را بررسی کنید و دوباره تلاش کنید — ویرایش‌های شما همچنان حفظ شده‌اند.",

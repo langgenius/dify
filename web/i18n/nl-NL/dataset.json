@@ -618,6 +618,7 @@
   "newKnowledge.settings.retrievalMode.deep": "Diep",
   "newKnowledge.settings.retrievalMode.fast": "Snel",
   "newKnowledge.settings.retrievalMode.research": "Onderzoek",
+  "newKnowledge.settings.retrievalModeLabel": "Ophaalmodus",
   "newKnowledge.settings.retrievalTitle": "Ophalen",
   "newKnowledge.settings.saveChanges": "Wijzigingen opslaan",
   "newKnowledge.settings.saveFailed": "De wijzigingen konden niet worden opgeslagen. Controleer je verbinding en probeer het opnieuw — je wijzigingen zijn nog steeds aanwezig.",

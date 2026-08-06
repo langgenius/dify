@@ -618,6 +618,7 @@
   "newKnowledge.settings.retrievalMode.deep": "Deep",
   "newKnowledge.settings.retrievalMode.fast": "Fast",
   "newKnowledge.settings.retrievalMode.research": "Research",
+  "newKnowledge.settings.retrievalModeLabel": "Retrieval mode",
   "newKnowledge.settings.retrievalTitle": "Retrieval",
   "newKnowledge.settings.saveChanges": "Save changes",
   "newKnowledge.settings.saveFailed": "Couldn’t save changes. Check your connection and try again — your edits are still here.",
