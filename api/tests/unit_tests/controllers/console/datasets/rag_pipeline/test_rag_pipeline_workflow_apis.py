@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import datetime
 from inspect import unwrap
@@ -41,7 +42,6 @@ from libs.datetime_utils import naive_utc_now
 from models.account import Account, TenantAccountRole
 from models.dataset import Pipeline
 from models.enums import CreatorUserRole
-from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 
@@ -60,11 +60,12 @@ class SQLiteDatabase:
 
 
 @pytest.fixture(autouse=True)
-def sqlite_database(monkeypatch: pytest.MonkeyPatch, sqlite_engine):
+def sqlite_database(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_engine: Engine,
+) -> Iterator[scoped_session[Session]]:
     """Route controller transactions and model author lookups through SQLite."""
 
-    Account.__table__.create(sqlite_engine)
-    WorkflowToolProvider.__table__.create(sqlite_engine)
     database_session = scoped_session(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
     database = SQLiteDatabase(engine=sqlite_engine, session=database_session)
     monkeypatch.setattr(workflow_controller, "db", database)
@@ -236,7 +237,7 @@ def make_pipeline(
 
 
 @pytest.fixture
-def workflow_author(sqlite_database) -> Account:
+def workflow_author(sqlite_database: scoped_session[Session]) -> Account:
     account = Account(name="Alice", email=f"alice-{uuid4()}@example.com")
     account.id = str(uuid4())
     sqlite_database.add(account)

@@ -93,9 +93,8 @@ def database_app() -> Iterator[Flask]:
             db.session.remove()
 
 
-def test_draft_rag_pipeline_workflow_get_serializes_response_model(
-    database_app: Flask,
-) -> None:
+@pytest.mark.usefixtures("database_app")
+def test_draft_rag_pipeline_workflow_get_serializes_response_model() -> None:
     workflow = _make_workflow()
     expected_hash = workflow.unique_hash
     _persist_workflow(workflow)
@@ -168,7 +167,8 @@ def test_rag_pipeline_workflow_patch_serializes_response_model(
     assert response["hash"] == expected_hash
 
 
-def test_default_rag_pipeline_block_configs_serializes_root_response(database_app: Flask) -> None:
+@pytest.mark.usefixtures("database_app")
+def test_default_rag_pipeline_block_configs_serializes_root_response() -> None:
     block_configs = [{"type": "start", "config": {"title": "Start"}}]
 
     api = module.DefaultRagPipelineBlockConfigsApi()
