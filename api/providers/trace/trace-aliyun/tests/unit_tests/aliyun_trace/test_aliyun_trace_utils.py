@@ -8,22 +8,33 @@ from unittest.mock import MagicMock
 import pytest
 from dify_trace_aliyun.entities.semconv import (
     GEN_AI_FRAMEWORK,
+    GEN_AI_OPERATION_NAME,
     GEN_AI_SESSION_ID,
     GEN_AI_SPAN_KIND,
+    GEN_AI_TOOL_CALL_ARGUMENTS,
+    GEN_AI_TOOL_NAME,
+    GEN_AI_TOOL_TYPE,
     GEN_AI_USER_ID,
     INPUT_VALUE,
+    OPERATION_NAME_EXECUTE_TOOL,
     OUTPUT_VALUE,
+    TOOL_TYPE_DATASTORE,
+    TOOL_TYPE_EXTENSION,
+    TOOL_TYPE_FUNCTION,
 )
 from dify_trace_aliyun.utils import (
     create_common_span_attributes,
+    create_gen_ai_tool_attributes,
     create_links_from_trace_id,
     create_status_from_error,
     extract_retrieval_documents,
+    extract_tool_description,
     format_input_messages,
     format_output_messages,
     format_retrieval_documents,
     get_user_id_from_message_data,
     get_workflow_node_status,
+    map_gen_ai_tool_type,
     serialize_json_data,
 )
 from opentelemetry.trace import Link, StatusCode
@@ -279,3 +290,29 @@ def test_format_output_messages():
     # Exception path
     # Trigger exception in serialize_json_data by passing non-serializable
     assert format_output_messages({"text": MagicMock()}) == serialize_json_data([])
+
+
+def test_map_gen_ai_tool_type():
+    assert map_gen_ai_tool_type("dataset-retrieval") == TOOL_TYPE_DATASTORE
+    assert map_gen_ai_tool_type("extension") == TOOL_TYPE_EXTENSION
+    assert map_gen_ai_tool_type("builtin") == TOOL_TYPE_FUNCTION
+    assert map_gen_ai_tool_type(None) == TOOL_TYPE_FUNCTION
+
+
+def test_extract_tool_description():
+    assert extract_tool_description({"description": "d"}) == "d"
+    assert extract_tool_description({"tool_description": "td"}) == "td"
+    assert extract_tool_description({"other": 1}) == ""
+    assert extract_tool_description(None) == ""
+
+
+def test_create_gen_ai_tool_attributes():
+    attrs = create_gen_ai_tool_attributes(
+        tool_name="search",
+        tool_type=TOOL_TYPE_DATASTORE,
+        tool_call_arguments='{"q": 1}',
+    )
+    assert attrs[GEN_AI_OPERATION_NAME] == OPERATION_NAME_EXECUTE_TOOL
+    assert attrs[GEN_AI_TOOL_NAME] == "search"
+    assert attrs[GEN_AI_TOOL_TYPE] == TOOL_TYPE_DATASTORE
+    assert attrs[GEN_AI_TOOL_CALL_ARGUMENTS] == '{"q": 1}'

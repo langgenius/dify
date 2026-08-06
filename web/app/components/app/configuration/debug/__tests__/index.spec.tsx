@@ -50,7 +50,7 @@ const mockState = vi.hoisted(() => ({
   },
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/components/app/configuration/toast', () => ({
   toast: Object.assign(mockState.mockToastCall, {
     success: vi.fn((message: string, options?: Record<string, unknown>) =>
       mockState.mockToastCall({ type: 'success', message, ...options }),
@@ -846,10 +846,8 @@ describe('Debug', () => {
       fireEvent.click(screen.getByTestId('panel-send'))
 
       await waitFor(() => expect(mockState.mockSendCompletionMessage).toHaveBeenCalledTimes(1))
-      const [, requestData] = (mockState.mockSendCompletionMessage.mock.calls[0] ?? []) as [
-        unknown,
-        any,
-      ]
+      const [, requestData, handlers] = (mockState.mockSendCompletionMessage.mock.calls[0] ??
+        []) as [unknown, any, { onNotifyError: (message: string) => void }]
       expect(requestData).toMatchObject({
         inputs: { question: 'hello' },
         model_config: {
@@ -863,6 +861,12 @@ describe('Debug', () => {
       expect(screen.getByTestId('text-generation'))!.toHaveTextContent('final answer')
       expect(screen.getByTestId('text-generation'))!.toHaveAttribute('data-message-id', 'msg-1')
       expect(screen.getByTestId('text-generation'))!.toHaveAttribute('data-tts', 'true')
+
+      handlers.onNotifyError('Base model not found')
+      expect(mockState.mockToastCall).toHaveBeenCalledWith({
+        type: 'error',
+        message: 'Base model not found',
+      })
     })
 
     it('should notify when sending again while a response is in progress', async () => {

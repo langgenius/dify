@@ -515,6 +515,7 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
               onRetry={noop}
               supportFeedback
               feedback={detail.message.feedbacks.find((item: any) => item.from_source === 'admin')}
+              hideLogAction
               onFeedback={(feedback) => onFeedback(detail.message.id, feedback)}
               isShowTextToSpeech
               siteInfo={null}
@@ -543,7 +544,7 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
               onAnnotationRemoved={handleAnnotationRemoved}
               onFeedback={onFeedback}
               noChatInput
-              showPromptLog
+              showPromptLog={isAdvanced}
               hideProcessDetail
               hideLogModal
               chatContainerInnerClassName="px-3"
@@ -585,7 +586,7 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
                 onAnnotationRemoved={handleAnnotationRemoved}
                 onFeedback={onFeedback}
                 noChatInput
-                showPromptLog
+                showPromptLog={isAdvanced}
                 hideProcessDetail
                 hideLogModal
                 chatContainerInnerClassName="px-3"

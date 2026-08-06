@@ -5,9 +5,9 @@ permissions:
 
 on:
   workflow_run:
-    workflows: ["Build and Push API & Web"]
+    workflows: ['Build and Push API & Web']
     branches:
-      - "deploy/saas"
+      - 'deploy/saas'
     types:
       - completed
 

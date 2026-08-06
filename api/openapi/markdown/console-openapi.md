@@ -6899,7 +6899,7 @@ Check if dataset is in use
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [LimitationModel](#limitationmodel)<br> |
+| 200 | Success | **application/json**: [VectorSpaceLimitationModel](#vectorspacelimitationmodel)<br> |
 
 ### [GET] /files/support-type
 #### Responses
@@ -18081,6 +18081,13 @@ Built-in tool icons are URL strings; API-based tool icons are provider-defined p
 
 #### ExternalDatasetCreatePayload
 
+Validated fields required to create an external dataset binding.
+
+The console controller owns HTTP concerns, but the service also needs this
+contract when creating the tenant-scoped dataset and external knowledge
+binding. Keep it outside controllers so service imports do not depend on
+Flask blueprint initialization.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | description | string |  | No |
@@ -21383,6 +21390,12 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | instruction | string | Structured output generation instruction | Yes |
 | model_config | [ModelConfig](#modelconfig) | Model configuration | Yes |
 
+#### SSOProtocol
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| SSOProtocol | string |  |  |
+
 #### SandboxFileEntryResponse
 
 | Name | Type | Description | Required |
@@ -22159,7 +22172,7 @@ Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
 | plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | Yes |
 | rbac_enabled | boolean |  | Yes |
 | sso_enforced_for_signin | boolean |  | Yes |
-| sso_enforced_for_signin_protocol | string |  | Yes |
+| sso_enforced_for_signin_protocol | [SSOProtocol](#ssoprotocol) |  | Yes |
 | webapp_auth | [WebAppAuthModel](#webappauthmodel) |  | Yes |
 
 #### SystemParameters
@@ -23024,6 +23037,7 @@ Payload for updating a snippet.
 | file_upload_limit | integer |  | Yes |
 | image_file_batch_limit | integer |  | Yes |
 | image_file_size_limit | integer |  | Yes |
+| knowledge_file_size_limit | integer |  | Yes |
 | single_chunk_attachment_limit | integer |  | Yes |
 | skill_file_size_limit | integer |  | Yes |
 | video_file_size_limit | integer |  | Yes |
@@ -23093,6 +23107,14 @@ in form definition, or a variable while the workflow is running.
 | ---- | ---- | ----------- | -------- |
 | ValueSourceType | string | ValueSourceType records whether the value comes from a static setting in form definition, or a variable while the workflow is running. |  |
 
+#### VectorSpaceLimitationModel
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limit | integer |  | Yes |
+| size | integer |  | Yes |
+| usage_unknown | boolean |  | No |
+
 #### VerificationTokenResponse
 
 | Name | Type | Description | Required |
@@ -23116,7 +23138,7 @@ in form definition, or a variable while the workflow is running.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| protocol | string |  | Yes |
+| protocol | [SSOProtocol](#ssoprotocol) |  | Yes |
 
 #### WebhookTriggerResponse
 
