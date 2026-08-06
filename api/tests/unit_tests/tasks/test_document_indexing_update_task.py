@@ -272,7 +272,5 @@ def test_cleans_and_deletes_persisted_segments_with_real_session(
 
     processor.clean.assert_called_once()
     assert isinstance(processor.clean.call_args.kwargs["session"], Session)
-    assert sqlite_session.scalars(
-        select(DocumentSegment).where(DocumentSegment.document_id == document.id)
-    ).all() == []
+    assert sqlite_session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document.id)).all() == []
     delay.assert_called_once_with(dataset.id, document.id, None)
