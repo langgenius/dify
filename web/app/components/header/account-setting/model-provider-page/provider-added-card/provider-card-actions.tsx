@@ -21,7 +21,7 @@ import { getMarketplaceUrl } from '@/utils/var'
 
 type Props = Readonly<{
   detail: PluginDetail
-  onUpdate?: () => void
+  onUpdate?: () => void | Promise<void>
 }>
 
 const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {

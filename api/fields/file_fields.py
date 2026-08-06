@@ -10,6 +10,7 @@ from libs.helper import to_timestamp
 
 class UploadConfig(ResponseModel):
     file_size_limit: int
+    knowledge_file_size_limit: int
     batch_count_limit: int
     file_upload_limit: int
     image_file_size_limit: int

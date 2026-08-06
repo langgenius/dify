@@ -679,7 +679,13 @@ class TestInvokeKnowledgeIndex:
             dataset_id, document_id, False, summary_setting
         )
         mock_index_processor.index_and_clean.assert_called_once_with(
-            dataset_id, document_id, original_document_id, chunks, batch, summary_setting, session=session
+            dataset_id,
+            document_id,
+            original_document_id,
+            chunks,
+            batch,
+            summary_setting,
+            session=session,
         )
         session.commit.assert_called_once()
         assert result == {"status": "indexed"}

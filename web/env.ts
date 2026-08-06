@@ -97,6 +97,10 @@ const clientSchema = {
   NEXT_PUBLIC_LOOP_NODE_MAX_COUNT: coercedNumber.default(100),
   NEXT_PUBLIC_MAINTENANCE_NOTICE: z.string().optional(),
   /**
+   * Additional literal characters allowed in Markdown form field names.
+   */
+  NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS: z.string().default(''),
+  /**
    * The API PREFIX for MARKETPLACE
    */
   NEXT_PUBLIC_MARKETPLACE_API_PREFIX: z.url().optional(),
@@ -249,6 +253,9 @@ export const env = createEnv({
     NEXT_PUBLIC_MAINTENANCE_NOTICE: isServer
       ? process.env.NEXT_PUBLIC_MAINTENANCE_NOTICE
       : getRuntimeEnvFromBody('maintenanceNotice'),
+    NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS: isServer
+      ? process.env.NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS
+      : getRuntimeEnvFromBody('markdownFormFieldNameExtraChars'),
     NEXT_PUBLIC_MARKETPLACE_API_PREFIX: isServer
       ? process.env.NEXT_PUBLIC_MARKETPLACE_API_PREFIX
       : getRuntimeEnvFromBody('marketplaceApiPrefix'),

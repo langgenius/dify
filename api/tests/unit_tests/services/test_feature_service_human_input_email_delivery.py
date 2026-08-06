@@ -116,3 +116,19 @@ def test_get_vector_space_converts_billing_float_size(monkeypatch: pytest.Monkey
 
     assert result.size == 5120
     assert result.limit == 20480
+    assert result.usage_unknown is False
+
+
+def test_get_vector_space_preserves_unknown_usage(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(feature_service_module.dify_config, "BILLING_ENABLED", True)
+    monkeypatch.setattr(
+        feature_service_module.BillingService,
+        "get_vector_space",
+        lambda tenant_id: {"size": 0.0, "limit": 50, "usage_unknown": True},
+    )
+
+    result = FeatureService.get_vector_space("tenant-1")
+
+    assert result.size == 0
+    assert result.limit == 50
+    assert result.usage_unknown is True

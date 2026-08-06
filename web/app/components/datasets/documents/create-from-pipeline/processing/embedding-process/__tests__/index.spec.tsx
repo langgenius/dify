@@ -45,6 +45,22 @@ vi.mock('@/context/provider-context', () => ({
   }),
 }))
 
+vi.mock('@/app/components/datasets/common/vector-space-admission-alert', () => ({
+  default: ({
+    showUpgrade,
+    estimatedMb,
+    planLimitMb,
+  }: {
+    showUpgrade: boolean
+    estimatedMb: number
+    planLimitMb: number
+  }) => (
+    <div>{`vector space admission alert ${estimatedMb}MB / ${planLimitMb}MB ${
+      showUpgrade ? 'with upgrade' : 'without upgrade'
+    }`}</div>
+  ),
+}))
+
 // Mock useIndexingStatusBatch hook
 let mockFetchIndexingStatus: Mock
 let mockIndexingStatusData: IndexingStatusResponse[] = []
@@ -323,13 +339,16 @@ describe('EmbeddingProcess', () => {
       expect(screen.getByText('datasetDocuments.embedding.completed')).toBeInTheDocument()
     })
 
-    it('should show completed status when all documents have error status', async () => {
+    it('should show the vector-space admission alert after processing completes', async () => {
       const doc1 = createMockDocument({ id: 'doc-1' })
       mockIndexingStatusData = [
         createMockIndexingStatus({
           id: 'doc-1',
           indexing_status: 'error',
           error: 'Processing failed',
+          error_code: 'vector_space_estimate_exceeded',
+          estimated_vector_space_mb: 61,
+          vector_space_limit_mb: 50,
         }),
       ]
       const props = createDefaultProps({ documents: [doc1] })
@@ -340,6 +359,55 @@ describe('EmbeddingProcess', () => {
       })
 
       expect(screen.getByText('datasetDocuments.embedding.completed')).toBeInTheDocument()
+      expect(
+        screen.getByText('vector space admission alert 61MB / 50MB without upgrade'),
+      ).toBeInTheDocument()
+    })
+
+    it('should not show the vector-space alert for another indexing error', async () => {
+      const doc1 = createMockDocument({ id: 'doc-1' })
+      mockIndexingStatusData = [
+        createMockIndexingStatus({
+          id: 'doc-1',
+          indexing_status: 'error',
+          error_code: null,
+          estimated_vector_space_mb: 61,
+          vector_space_limit_mb: 50,
+        }),
+      ]
+      const props = createDefaultProps({ documents: [doc1] })
+
+      render(<EmbeddingProcess {...props} />)
+      await waitFor(() => {
+        expect(mockFetchIndexingStatus).toHaveBeenCalled()
+      })
+
+      expect(screen.queryByText(/vector space admission alert/)).not.toBeInTheDocument()
+    })
+
+    it('should not suggest an upgrade to team users', async () => {
+      mockEnableBilling = true
+      mockPlanType = Plan.team
+      const doc1 = createMockDocument({ id: 'doc-1' })
+      mockIndexingStatusData = [
+        createMockIndexingStatus({
+          id: 'doc-1',
+          indexing_status: 'error',
+          error_code: 'vector_space_estimate_exceeded',
+          estimated_vector_space_mb: 61,
+          vector_space_limit_mb: 50,
+        }),
+      ]
+      const props = createDefaultProps({ documents: [doc1] })
+
+      render(<EmbeddingProcess {...props} />)
+      await waitFor(() => {
+        expect(mockFetchIndexingStatus).toHaveBeenCalled()
+      })
+
+      expect(
+        screen.getByText('vector space admission alert 61MB / 50MB without upgrade'),
+      ).toBeInTheDocument()
     })
 
     it('should show completed status when all documents are paused', async () => {

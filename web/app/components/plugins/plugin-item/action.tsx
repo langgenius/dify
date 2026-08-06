@@ -68,7 +68,7 @@ const Action: FC<Props> = ({
     if (needUpdate) {
       setShowUpdatePluginModal({
         onSaveCallback: () => {
-          invalidateInstalledPluginList()
+          invalidateInstalledPluginList(category)
         },
         payload: {
           type: PluginSource.github,
@@ -96,7 +96,7 @@ const Action: FC<Props> = ({
       const res = await uninstallPlugin(installationId)
       if (res.success) {
         hideDeleteConfirm()
-        invalidateInstalledPluginList()
+        invalidateInstalledPluginList(category)
         onDelete()
       }
     } catch (error) {
@@ -108,6 +108,7 @@ const Action: FC<Props> = ({
     hideDeleteConfirm,
     hideDeleting,
     installationId,
+    category,
     invalidateInstalledPluginList,
     onDelete,
     showDeleting,

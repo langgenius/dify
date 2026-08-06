@@ -11,12 +11,14 @@ import {
   AddCustomModel,
   ManageCustomModelCredentials,
 } from '@/app/components/header/account-setting/model-provider-page/model-auth'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContextSelector } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { renderI18nObject } from '@/i18n-config'
 import { consoleQuery } from '@/service/client'
+import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { hasPermission } from '@/utils/permission'
 import { useModelProviderListExpanded, useSetModelProviderListExpanded } from '../atoms'
 import { ConfigurationMethodEnum } from '../declarations'
@@ -51,6 +53,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   })
   const language = useLanguage()
   const refreshModelProviders = useProviderContextSelector((state) => state.refreshModelProviders)
+  const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   const currentProviderName = provider.provider
   const expanded = useModelProviderListExpanded(currentProviderName)
   const setExpanded = useSetModelProviderListExpanded(currentProviderName)
@@ -97,6 +100,13 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
     },
     [currentProviderName, expanded, refetchModelList, setExpanded],
   )
+
+  const refreshPluginData = useCallback(async () => {
+    await Promise.all([
+      refreshModelProviders(),
+      invalidateInstalledPluginList(PluginCategoryEnum.model),
+    ])
+  }, [invalidateInstalledPluginList, refreshModelProviders])
 
   const handleOpenModelList = useCallback(() => {
     if (loading) return
@@ -149,7 +159,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
                   {providerLabel}
                 </div>
                 {pluginDetail && (
-                  <ProviderCardActions detail={pluginDetail} onUpdate={refreshModelProviders} />
+                  <ProviderCardActions detail={pluginDetail} onUpdate={refreshPluginData} />
                 )}
               </div>
               <div className="mt-0.5 flex h-4 min-w-0 items-center gap-2 system-xs-regular text-text-tertiary">
@@ -244,7 +254,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
           <div className="mb-2 flex items-center gap-1">
             <ProviderIcon provider={provider} />
             {pluginDetail && (
-              <ProviderCardActions detail={pluginDetail} onUpdate={refreshModelProviders} />
+              <ProviderCardActions detail={pluginDetail} onUpdate={refreshPluginData} />
             )}
           </div>
           <div className="flex gap-0.5">

@@ -79,10 +79,14 @@ def _make_pipeline(
     workflow_id: str | None = None,
     is_published: bool = False,
 ) -> Pipeline:
-    pipeline = Pipeline(tenant_id=tenant_id, name="Test Pipeline", description="test")
+    pipeline = Pipeline(
+        tenant_id=tenant_id,
+        name="Test Pipeline",
+        description="test",
+        workflow_id=workflow_id,
+        is_published=is_published,
+    )
     pipeline.id = pipeline_id
-    pipeline.workflow_id = workflow_id
-    pipeline.is_published = is_published
     return pipeline
 
 
@@ -122,8 +126,8 @@ def _make_dataset(*, dataset_id: str = "d1", pipeline_id: str = "p1", tenant_id:
         tenant_id=tenant_id,
         name="Test Dataset",
         created_by="u1",
+        pipeline_id=pipeline_id,
     )
-    dataset.pipeline_id = pipeline_id
     return dataset
 
 
@@ -982,14 +986,22 @@ def test_retry_error_document_success(
 
     # 1. Setup mocks
     dataset = mocker.Mock()
-    document = mocker.Mock(spec=Document)
-    document.id = "doc-1"
+    document = Document(
+        id="doc-1",
+    )
 
-    log = mocker.Mock(spec=DocumentPipelineExecutionLog)
-    log.pipeline_id = "p-1"
-    log.datasource_info = "{}"  # Ensure it's a string if it's used as JSON later
+    log = DocumentPipelineExecutionLog(
+        pipeline_id="p-1",
+        document_id="document-id",
+        datasource_type="upload_file",
+        datasource_info="{}",
+        datasource_node_id="node-id",
+        input_data="{}",
+        created_by="account-id",
+    )
+    # Ensure it's a string if it's used as JSON later
 
-    pipeline = mocker.Mock(spec=Pipeline)
+    pipeline = Pipeline(tenant_id="tenant-id", name="Test Pipeline", workflow_id="wf-1")
     pipeline.id = "p-1"
 
     workflow = mocker.Mock()
@@ -1019,9 +1031,11 @@ def test_set_datasource_variables_success(
     from models.dataset import Pipeline
 
     # 1. Setup mocks
-    pipeline = mocker.Mock(spec=Pipeline)
+    pipeline = Pipeline(
+        tenant_id="t1",
+        name="Test Pipeline",
+    )
     pipeline.id = "p-1"
-    pipeline.tenant_id = "t1"
 
     draft_wf = mocker.Mock()
     draft_wf.id = "wf-1"

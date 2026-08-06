@@ -81,14 +81,12 @@ class TestMemberInviteEmailApi:
 
     @patch("controllers.console.workspace.members.FeatureService.get_features")
     @patch("controllers.console.workspace.members.RegisterService.invite_new_member")
-    @patch("controllers.console.workspace.members.current_account_with_tenant")
     @patch("controllers.console.wraps.db")
     @patch("libs.login.check_csrf_token", return_value=None)
     def test_invite_rbac_enabled_accepts_rbac_role_id(
         self,
         mock_csrf,
         mock_db,
-        mock_current_account,
         mock_invite_member,
         mock_get_features,
         app,
@@ -98,8 +96,6 @@ class TestMemberInviteEmailApi:
         mock_invite_member.return_value = "rbac-token"
 
         tenant = SimpleNamespace(id="tenant-1", name="Test Tenant")
-        inviter = SimpleNamespace(email="inviter@example.com", current_tenant=tenant, status="active")
-        mock_current_account.return_value = (inviter, tenant.id)
 
         with patch("controllers.console.workspace.members.dify_config") as mock_config:
             mock_config.RBAC_ENABLED = True
@@ -121,14 +117,12 @@ class TestMemberInviteEmailApi:
         assert call_args.kwargs["role"] == "rbac-role-id-abc"
 
     @patch("controllers.console.workspace.members.FeatureService.get_features")
-    @patch("controllers.console.workspace.members.current_account_with_tenant")
     @patch("controllers.console.wraps.db")
     @patch("libs.login.check_csrf_token", return_value=None)
     def test_invite_rbac_disabled_rejects_invalid_role(
         self,
         mock_csrf,
         mock_db,
-        mock_current_account,
         mock_get_features,
         app,
     ):
@@ -136,8 +130,6 @@ class TestMemberInviteEmailApi:
         mock_get_features.return_value = _build_feature_flags()
 
         tenant = SimpleNamespace(id="tenant-1", name="Test Tenant")
-        inviter = SimpleNamespace(email="inviter@example.com", current_tenant=tenant, status="active")
-        mock_current_account.return_value = (inviter, tenant.id)
 
         with patch("controllers.console.workspace.members.dify_config") as mock_config:
             mock_config.RBAC_ENABLED = False
@@ -158,14 +150,12 @@ class TestMemberInviteEmailApi:
         assert exc_info.value.data == {"code": "invalid_role", "message": "Invalid role.", "status": 400}
 
     @patch("controllers.console.workspace.members.FeatureService.get_features")
-    @patch("controllers.console.workspace.members.current_account_with_tenant")
     @patch("controllers.console.wraps.db")
     @patch("libs.login.check_csrf_token", return_value=None)
     def test_invite_rbac_disabled_rejects_owner_role(
         self,
         mock_csrf,
         mock_db,
-        mock_current_account,
         mock_get_features,
         app,
     ):
@@ -173,8 +163,6 @@ class TestMemberInviteEmailApi:
         mock_get_features.return_value = _build_feature_flags()
 
         tenant = SimpleNamespace(id="tenant-1", name="Test Tenant")
-        inviter = SimpleNamespace(email="inviter@example.com", current_tenant=tenant, status="active")
-        mock_current_account.return_value = (inviter, tenant.id)
 
         with patch("controllers.console.workspace.members.dify_config") as mock_config:
             mock_config.RBAC_ENABLED = False
