@@ -18,6 +18,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
+import { Markdown } from '@/app/components/base/markdown'
 import useTimestamp from '@/hooks/use-timestamp'
 import styles from './markdown-editor.module.css'
 import {
@@ -514,6 +515,7 @@ export function MarkdownLiveBodyEditor({
   } | null>(null)
   const currentLine = getCurrentLine(body, selectionOffset)
   const showPlaceholder = (!focused && !body.trim()) || (focused && currentLine.blank)
+  const showRenderedPreview = !focused && Boolean(body.trim())
 
   const syncSelection = () => {
     const root = editorRef.current
@@ -530,78 +532,113 @@ export function MarkdownLiveBodyEditor({
     const root = editorRef.current
     if (!root) return
     const revisionChanged = renderedContentRevisionRef.current !== contentRevision
-    if (renderedBodyRef.current === body && !revisionChanged) return
+    if (renderedBodyRef.current === body && root.childNodes.length > 0 && !revisionChanged) return
     if (root.ownerDocument.activeElement === root && !revisionChanged) return
 
     renderMarkdownLiveEditorContent(root, body)
     renderedBodyRef.current = body
     renderedContentRevisionRef.current = contentRevision
-  }, [body, contentRevision, editorRef])
+  }, [body, contentRevision, editorRef, focused])
 
   return (
     <div className="relative min-h-[360px]">
-      <div
-        ref={editorRef}
-        contentEditable
-        role="textbox"
-        aria-multiline="true"
-        tabIndex={0}
-        suppressContentEditableWarning
-        className="relative z-[1] min-h-[360px] w-full bg-transparent text-[15px]/7 break-words whitespace-pre-wrap text-text-secondary caret-text-secondary outline-none"
-        onBlur={() => setFocused(false)}
-        onClick={(event: MouseEvent<HTMLDivElement>) => {
-          const referencePath = getReferencePath(event.target)
-          if (referencePath) {
-            event.preventDefault()
-            onOpenReference(referencePath)
-            return
-          }
-          syncSelection()
-        }}
-        onFocus={() => {
-          setFocused(true)
-          syncSelection()
-        }}
-        onInput={(event) => {
-          onInput(event)
-          syncSelection()
-        }}
-        onKeyDown={(event) => {
-          const referencePath = getReferencePath(event.target)
-          if (referencePath && (event.key === 'Enter' || event.key === ' ')) {
-            event.preventDefault()
-            onOpenReference(referencePath)
-            return
-          }
-          onKeyDown(event)
-        }}
-        onKeyUp={syncSelection}
-        onMouseOut={(event) => {
-          const referencePath = getReferencePath(event.target)
-          if (!referencePath) return
-          if (
-            event.relatedTarget instanceof HTMLElement &&
-            getReferencePath(event.relatedTarget) === referencePath
-          ) {
-            return
-          }
-          setReferenceTooltip(null)
-        }}
-        onMouseOver={(event) => {
-          if (!(event.target instanceof HTMLElement)) return
-          const reference = event.target.closest<HTMLElement>('[data-reference-path]')
-          const path = reference?.dataset.referencePath
-          if (!reference || !path) return
+      {showRenderedPreview && (
+        <div
+          role="textbox"
+          aria-label={placeholder}
+          aria-multiline="true"
+          tabIndex={0}
+          className="relative z-[2] min-h-[360px] cursor-text outline-none focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          onClickCapture={(event) => {
+            if (!(event.target instanceof HTMLElement)) return
+            const anchor = event.target.closest<HTMLAnchorElement>('a[href]')
+            const href = anchor?.getAttribute('href')
+            if (!href || href.startsWith('#') || /^[a-z][a-z\d+.-]*:/i.test(href)) return
 
-          const rootRect = event.currentTarget.getBoundingClientRect()
-          const referenceRect = reference.getBoundingClientRect()
-          setReferenceTooltip({
-            left: referenceRect.left - rootRect.left + referenceRect.width / 2,
-            path,
-            top: referenceRect.top - rootRect.top - 6,
-          })
-        }}
-      />
+            event.preventDefault()
+            onOpenReference(decodeURIComponent(href))
+          }}
+          onMouseDown={(event) => {
+            if (event.target instanceof HTMLElement && event.target.closest('a[href]')) return
+
+            event.preventDefault()
+            setFocused(true)
+            window.requestAnimationFrame(() => editorRef.current?.focus())
+          }}
+          onFocus={(event) => {
+            if (event.currentTarget !== event.target) return
+            setFocused(true)
+            window.requestAnimationFrame(() => editorRef.current?.focus())
+          }}
+        >
+          <Markdown content={body} />
+        </div>
+      )}
+      {!showRenderedPreview && (
+        <div
+          ref={editorRef}
+          contentEditable
+          role="textbox"
+          aria-label={placeholder}
+          aria-multiline="true"
+          tabIndex={0}
+          suppressContentEditableWarning
+          className="relative z-[1] min-h-[360px] w-full bg-transparent text-[15px]/7 break-words whitespace-pre-wrap text-text-secondary caret-text-secondary outline-none"
+          onBlur={() => setFocused(false)}
+          onClick={(event: MouseEvent<HTMLDivElement>) => {
+            const referencePath = getReferencePath(event.target)
+            if (referencePath) {
+              event.preventDefault()
+              onOpenReference(referencePath)
+              return
+            }
+            syncSelection()
+          }}
+          onFocus={() => {
+            setFocused(true)
+            syncSelection()
+          }}
+          onInput={(event) => {
+            onInput(event)
+            syncSelection()
+          }}
+          onKeyDown={(event) => {
+            const referencePath = getReferencePath(event.target)
+            if (referencePath && (event.key === 'Enter' || event.key === ' ')) {
+              event.preventDefault()
+              onOpenReference(referencePath)
+              return
+            }
+            onKeyDown(event)
+          }}
+          onKeyUp={syncSelection}
+          onMouseOut={(event) => {
+            const referencePath = getReferencePath(event.target)
+            if (!referencePath) return
+            if (
+              event.relatedTarget instanceof HTMLElement &&
+              getReferencePath(event.relatedTarget) === referencePath
+            ) {
+              return
+            }
+            setReferenceTooltip(null)
+          }}
+          onMouseOver={(event) => {
+            if (!(event.target instanceof HTMLElement)) return
+            const reference = event.target.closest<HTMLElement>('[data-reference-path]')
+            const path = reference?.dataset.referencePath
+            if (!reference || !path) return
+
+            const rootRect = event.currentTarget.getBoundingClientRect()
+            const referenceRect = reference.getBoundingClientRect()
+            setReferenceTooltip({
+              left: referenceRect.left - rootRect.left + referenceRect.width / 2,
+              path,
+              top: referenceRect.top - rootRect.top - 6,
+            })
+          }}
+        />
+      )}
       {referenceTooltip && (
         <span
           role="tooltip"
@@ -627,7 +664,7 @@ export function CsvTablePreview({ rows }: { rows: string[][] }) {
 
   if (rows.length === 0 || columnCount === 0) {
     return (
-      <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-divider-regular bg-background-default">
+      <div className="flex h-full items-center justify-center bg-background-default">
         <span className="system-sm-regular text-text-tertiary">-</span>
       </div>
     )
@@ -638,47 +675,59 @@ export function CsvTablePreview({ rows }: { rows: string[][] }) {
   const columnKeys = Array.from({ length: columnCount }, (_, index) => `column-${index + 1}`)
 
   return (
-    <div className="h-full overflow-auto rounded-xl border border-divider-regular bg-background-default">
-      <table className="min-w-full border-separate border-spacing-0 text-left">
-        <thead className="sticky top-0 z-10 bg-background-section">
-          <tr>
-            {headers.map((header, index) => (
-              <th
-                key={columnKeys[index]}
-                scope="col"
-                className="max-w-72 min-w-32 border-r border-b border-divider-subtle px-3 py-2 system-xs-semibold-uppercase text-text-tertiary last:border-r-0"
-              >
-                <span className="block truncate" title={header || undefined}>
-                  {header || `#${index + 1}`}
-                </span>
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {bodyRows.map((row) => (
-            <tr key={row.join('\u0000')} className="hover:bg-state-base-hover">
-              {columnKeys.map((columnKey, columnIndex) => {
-                const value = row[columnIndex] ?? ''
-
-                return (
-                  <td
-                    key={columnKey}
-                    className="max-w-72 min-w-32 border-r border-b border-divider-subtle px-3 py-2 align-top system-sm-regular text-text-secondary last:border-r-0"
-                  >
-                    <span
-                      className="block break-words whitespace-pre-wrap"
-                      title={value || undefined}
-                    >
-                      {value || '-'}
-                    </span>
-                  </td>
-                )
-              })}
+    <div className="flex h-full flex-col gap-1 overflow-hidden bg-background-default p-1">
+      <div className="flex h-6 shrink-0 items-center">
+        <button
+          type="button"
+          className="flex h-6 items-center gap-1 rounded-md px-1.5 system-xs-medium text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+        >
+          <span aria-hidden className="i-ri-table-line size-3.5" />
+          workspace
+          <span aria-hidden className="i-ri-arrow-down-s-line size-3.5" />
+        </button>
+      </div>
+      <div className="min-h-0 flex-1 overflow-auto">
+        <table className="min-w-full border-separate border-spacing-0 border-t border-l border-divider-subtle text-left">
+          <thead className="sticky top-0 z-10 bg-background-section">
+            <tr>
+              {headers.map((header, index) => (
+                <th
+                  key={columnKeys[index]}
+                  scope="col"
+                  className="h-7 max-w-72 min-w-32 border-r border-b border-divider-subtle px-2 py-1 system-xs-medium text-text-secondary"
+                >
+                  <span className="block truncate" title={header || undefined}>
+                    {header || `#${index + 1}`}
+                  </span>
+                </th>
+              ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {bodyRows.map((row) => (
+              <tr key={row.join('\u0000')} className="hover:bg-state-base-hover">
+                {columnKeys.map((columnKey, columnIndex) => {
+                  const value = row[columnIndex] ?? ''
+
+                  return (
+                    <td
+                      key={columnKey}
+                      className="h-7 max-w-72 min-w-32 border-r border-b border-divider-subtle px-2 py-1 align-top system-xs-regular text-text-secondary"
+                    >
+                      <span
+                        className="block break-words whitespace-pre-wrap"
+                        title={value || undefined}
+                      >
+                        {value || '-'}
+                      </span>
+                    </td>
+                  )
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
