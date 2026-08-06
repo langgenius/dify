@@ -335,6 +335,8 @@ progress:
 
 - `POST /runs` creates a running run and schedules it locally.
 - `GET /runs/{run_id}` returns `running`, `succeeded`, `failed`, or `cancelled`.
+  Failed records can also expose a stable machine-readable `error_type` alongside
+  the diagnostic `error` text.
 - `POST /runs/{run_id}/cancel` atomically accepts cancellation on any API process
   and emits `run_cancelled`; it returns `409` only when a success/failure terminal
   already won. Runner cleanup continues asynchronously on the owner process.
@@ -357,6 +359,17 @@ terminal `run_succeeded.data` object containing a `CompositorSessionSnapshot` fo
 resumption. A successful run has exactly one active result branch: JSON-safe
 `output` for final answers, or `deferred_tool_call` when a layer such as
 `dify.ask_human` ends the current agent run with an external deferred tool call.
+Failed event payloads contain the diagnostic `error`, optional source-specific
+`reason`, and optional stable `error_type`. Pydantic AI request/step budget
+exhaustion enforced by Dify Agent is reported as
+`error_type: "agent_run_limit_exceeded"`; consumers should branch on that value
+rather than parsing the error text. This type does not classify wall-clock run
+timeouts, whose classification is not implemented in this release, or provider
+and connection timeouts. The matching failed run record and terminal event are
+committed atomically with the same error type. For independently deployed Agent
+backend and API services, deploy consumers that accept the optional field before
+producers begin emitting it because the public protocol models reject unknown
+fields.
 
 ## Examples
 
