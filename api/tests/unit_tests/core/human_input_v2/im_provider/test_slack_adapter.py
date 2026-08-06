@@ -26,7 +26,8 @@ from core.human_input_v2.im_provider import (
     DirectoryReadFailure,
     DynamicCardMessagingError,
     EventAcceptance,
-    IMStreamRunError,
+    IMStreamStartError,
+    IMStreamStopError,
     MessageAccepted,
     MessageReference,
     MessageSendingError,
@@ -36,7 +37,6 @@ from core.human_input_v2.im_provider import (
     ReplacementErrorKind,
     SlackIMIntegrationCredentials,
     StaticCardIntent,
-    StopSignal,
     WebhookRequest,
 )
 
@@ -854,8 +854,7 @@ def test_webhook_consumer_exception_returns_safe_failure(mocker, caplog) -> None
     assert "sensitive consumer details" not in caplog.text
 
 
-def test_stream_uses_complete_sdk_serialization_acks_after_acceptance_and_runs_once(mocker) -> None:
-    source = threading.Event()
+def test_stream_start_delivers_complete_sdk_serialization_and_stop_is_idempotent(mocker) -> None:
     consumer = RecordingConsumer()
     request = SocketModeRequest(
         type="events_api",
@@ -880,7 +879,6 @@ def test_stream_uses_complete_sdk_serialization_acks_after_acceptance_and_runs_o
 
         def connect(self):
             self.socket_mode_request_listeners[0](self, request)
-            source.set()
 
         def send_socket_mode_response(self, response):
             self.responses.append(response)
@@ -888,15 +886,15 @@ def test_stream_uses_complete_sdk_serialization_acks_after_acceptance_and_runs_o
         def close(self):
             self.closed = True
 
-    mocker.patch("core.human_input_v2.im_integration.adapters.slack._SlackSocketModeClient", FakeSocketModeClient)
+    mocker.patch("core.human_input_v2.im_integration.adapters.slack.SocketModeClient", FakeSocketModeClient)
     adapter = _adapter(mocker, FakeWebClient())
     stream = adapter.create_stream_handler(consumer)
 
-    stream.run(StopSignal(source))
+    stream.start()
 
     socket_client = FakeSocketModeClient.instances[0]
     assert socket_client.kwargs["app_token"] == "xapp-test-app-token"
-    assert socket_client.closed is True
+    assert socket_client.closed is False
     assert len(socket_client.responses) == 1
     assert len(consumer.events) == 1
     event = consumer.events[0]
@@ -904,22 +902,37 @@ def test_stream_uses_complete_sdk_serialization_acks_after_acceptance_and_runs_o
     assert event.event_type == "message"
     assert event.occurred_at == datetime.fromtimestamp(1786003200, tz=UTC).replace(tzinfo=None)
     assert json.loads(event.payload) == request.to_dict()
-    with pytest.raises(IMStreamRunError, match="already been run"):
-        stream.run(StopSignal(source))
+
+    stream.stop()
+    stream.stop()
+
+    assert socket_client.closed is True
+    with pytest.raises(IMStreamStartError, match="already been started"):
+        stream.start()
 
 
-def test_stream_wraps_consumer_exception_as_safe_run_error(mocker, caplog) -> None:
-    source = threading.Event()
-    request = SocketModeRequest(
+def test_stream_consumer_exception_is_one_event_failure(mocker, caplog) -> None:
+    first_request = SocketModeRequest(
         type="events_api",
         envelope_id="envelope-1",
         payload={"team_id": "team-1", "event": {"type": "message"}},
     )
+    second_request = SocketModeRequest(
+        type="events_api",
+        envelope_id="envelope-2",
+        payload={"team_id": "team-1", "event": {"type": "message"}},
+    )
 
-    class FailingConsumer:
+    class FailOnceConsumer:
+        def __init__(self) -> None:
+            self.calls = 0
+
         def accept(self, event):
             del event
-            raise RuntimeError("sensitive consumer details")
+            self.calls += 1
+            if self.calls == 1:
+                raise RuntimeError("sensitive consumer details")
+            return EventAcceptance.ACCEPTED
 
     class FakeSocketModeClient:
         instances = []
@@ -927,35 +940,91 @@ def test_stream_wraps_consumer_exception_as_safe_run_error(mocker, caplog) -> No
         def __init__(self, **kwargs):
             del kwargs
             self.socket_mode_request_listeners = []
+            self.responses = []
             self.closed = False
             self.__class__.instances.append(self)
 
         def connect(self):
-            try:
-                self.socket_mode_request_listeners[0](self, request)
-            finally:
-                source.set()
+            return None
 
         def send_socket_mode_response(self, response):
-            del response
+            self.responses.append(response)
 
         def close(self):
             self.closed = True
 
-    mocker.patch("core.human_input_v2.im_integration.adapters.slack._SlackSocketModeClient", FakeSocketModeClient)
+    mocker.patch("core.human_input_v2.im_integration.adapters.slack.SocketModeClient", FakeSocketModeClient)
     adapter = _adapter(mocker, FakeWebClient())
-    stream = adapter.create_stream_handler(FailingConsumer())
+    consumer = FailOnceConsumer()
+    stream = adapter.create_stream_handler(consumer)
 
     with caplog.at_level(logging.ERROR, logger="core.human_input_v2.im_integration.adapters.slack"):
-        with pytest.raises(IMStreamRunError) as raised:
-            stream.run(StopSignal(source))
+        stream.start()
+        socket_client = FakeSocketModeClient.instances[0]
+        listener = socket_client.socket_mode_request_listeners[0]
+        listener(socket_client, first_request)
+        listener(socket_client, second_request)
+        stream.stop()
 
-    assert "sensitive consumer details" not in str(raised.value)
     assert "sensitive consumer details" not in caplog.text
-    assert FakeSocketModeClient.instances[0].closed is True
+    assert consumer.calls == 2
+    assert len(socket_client.responses) == 1
+    assert socket_client.responses[0].envelope_id == "envelope-2"
+    assert socket_client.closed is True
 
 
-def test_stream_wraps_connect_exception_as_safe_run_error(mocker, caplog) -> None:
+def test_stream_protocol_response_exception_is_one_event_failure(mocker, caplog) -> None:
+    first_request = SocketModeRequest(
+        type="events_api",
+        envelope_id="envelope-1",
+        payload={"team_id": "team-1", "event": {"type": "message"}},
+    )
+    second_request = SocketModeRequest(
+        type="events_api",
+        envelope_id="envelope-2",
+        payload={"team_id": "team-1", "event": {"type": "message"}},
+    )
+
+    class FakeSocketModeClient:
+        instances = []
+
+        def __init__(self, **kwargs):
+            del kwargs
+            self.socket_mode_request_listeners = []
+            self.response_attempts = 0
+            self.closed = False
+            self.__class__.instances.append(self)
+
+        def connect(self):
+            return None
+
+        def send_socket_mode_response(self, response):
+            del response
+            self.response_attempts += 1
+            if self.response_attempts == 1:
+                raise SlackClientError("sensitive response details")
+
+        def close(self):
+            self.closed = True
+
+    mocker.patch("core.human_input_v2.im_integration.adapters.slack.SocketModeClient", FakeSocketModeClient)
+    adapter = _adapter(mocker, FakeWebClient())
+    stream = adapter.create_stream_handler(RecordingConsumer())
+
+    with caplog.at_level(logging.ERROR, logger="core.human_input_v2.im_integration.adapters.slack"):
+        stream.start()
+        socket_client = FakeSocketModeClient.instances[0]
+        listener = socket_client.socket_mode_request_listeners[0]
+        listener(socket_client, first_request)
+        listener(socket_client, second_request)
+        stream.stop()
+
+    assert "sensitive response details" not in caplog.text
+    assert socket_client.response_attempts == 2
+    assert socket_client.closed is True
+
+
+def test_stream_wraps_connect_exception_as_safe_start_error_and_cleans_up(mocker, caplog) -> None:
     class FakeSocketModeClient:
         instances = []
 
@@ -971,68 +1040,23 @@ def test_stream_wraps_connect_exception_as_safe_run_error(mocker, caplog) -> Non
         def close(self):
             self.closed = True
 
-    mocker.patch("core.human_input_v2.im_integration.adapters.slack._SlackSocketModeClient", FakeSocketModeClient)
+    mocker.patch("core.human_input_v2.im_integration.adapters.slack.SocketModeClient", FakeSocketModeClient)
     adapter = _adapter(mocker, FakeWebClient())
     stream = adapter.create_stream_handler(RecordingConsumer())
 
     with caplog.at_level(logging.ERROR, logger="core.human_input_v2.im_integration.adapters.slack"):
-        with pytest.raises(IMStreamRunError) as raised:
-            stream.run(StopSignal(threading.Event()))
+        with pytest.raises(IMStreamStartError) as raised:
+            stream.start()
+        stream.stop()
+        stream.stop()
 
     assert "sensitive connect details" not in str(raised.value)
     assert "sensitive connect details" not in caplog.text
     assert FakeSocketModeClient.instances[0].closed is True
 
 
-def test_stream_stop_wins_over_inflight_connect_failure(mocker) -> None:
-    source = threading.Event()
-    connect_started = threading.Event()
-    release_connect = threading.Event()
-    run_errors: list[BaseException] = []
-
-    class FailingSocketModeClient:
-        instances = []
-
-        def __init__(self, **kwargs):
-            del kwargs
-            self.socket_mode_request_listeners = []
-            self.closed = False
-            self.__class__.instances.append(self)
-
-        def connect(self):
-            connect_started.set()
-            assert release_connect.wait(2)
-            assert source.is_set()
-            raise SlackClientError("safe connection failure")
-
-        def close(self):
-            self.closed = True
-
-    mocker.patch("core.human_input_v2.im_integration.adapters.slack._SlackSocketModeClient", FailingSocketModeClient)
-    adapter = _adapter(mocker, FakeWebClient())
-    stream = adapter.create_stream_handler(RecordingConsumer())
-
-    def run_stream() -> None:
-        try:
-            stream.run(StopSignal(source))
-        except BaseException as error:
-            run_errors.append(error)
-
-    run_thread = threading.Thread(target=run_stream)
-    run_thread.start()
-    assert connect_started.wait(2)
-    source.set()
-    release_connect.set()
-    run_thread.join(2)
-
-    assert not run_thread.is_alive()
-    assert run_errors == []
-    assert FailingSocketModeClient.instances[0].closed is True
-
-
-def test_stream_remote_error_is_terminal_safe_and_stops_accepting_callbacks(mocker, caplog) -> None:
+def test_stream_runtime_error_is_observable_without_adapter_lifecycle_transition(mocker, caplog) -> None:
     sensitive_marker = "sensitive remote socket error"
-    callback_invoked = threading.Event()
     consumer = RecordingConsumer()
     request = SocketModeRequest(
         type="events_api",
@@ -1046,198 +1070,108 @@ def test_stream_remote_error_is_terminal_safe_and_stops_accepting_callbacks(mock
         def __init__(self, **kwargs):
             self.kwargs = kwargs
             self.socket_mode_request_listeners = []
+            self.responses = []
             self.closed = False
             self.__class__.instances.append(self)
 
         def connect(self):
-            self.kwargs["logger"].error(sensitive_marker)
-            callback = self.kwargs["on_error_listeners"][0]
-            callback_invoked.set()
-            callback(RuntimeError(sensitive_marker))
-            self.socket_mode_request_listeners[0](self, request)
+            return None
+
+        def send_socket_mode_response(self, response):
+            self.responses.append(response)
 
         def close(self):
             self.closed = True
 
-    mocker.patch("core.human_input_v2.im_integration.adapters.slack._SlackSocketModeClient", FailingSocketModeClient)
+    mocker.patch("core.human_input_v2.im_integration.adapters.slack.SocketModeClient", FailingSocketModeClient)
     stream = _adapter(mocker, FakeWebClient()).create_stream_handler(consumer)
 
     with caplog.at_level(logging.ERROR, logger="core.human_input_v2.im_integration.adapters.slack"):
-        with pytest.raises(IMStreamRunError):
-            stream.run(StopSignal(threading.Event()))
+        stream.start()
+        socket_client = FailingSocketModeClient.instances[0]
+        socket_client.kwargs["on_error_listeners"][0](RuntimeError(sensitive_marker))
+        socket_client.socket_mode_request_listeners[0](socket_client, request)
+        stream.stop()
 
-    assert consumer.events == []
-    assert callback_invoked.is_set()
+    assert len(consumer.events) == 1
+    assert len(socket_client.responses) == 1
     assert sensitive_marker not in caplog.text
-    assert FailingSocketModeClient.instances[0].closed is True
+    assert "Slack Socket Mode remote error" in caplog.text
+    assert socket_client.closed is True
 
 
-def test_stream_remote_close_is_terminal_safe_and_stops_accepting_callbacks(mocker, caplog) -> None:
-    sensitive_marker = "sensitive remote close reason"
-    callback_invoked = threading.Event()
-    consumer = RecordingConsumer()
+def test_stream_stop_delegates_to_sdk_without_waiting_for_inflight_consumer(mocker) -> None:
+    consumer_started = threading.Event()
+    release_consumer = threading.Event()
+    stop_finished = threading.Event()
     request = SocketModeRequest(
         type="events_api",
         envelope_id="envelope-1",
         payload={"team_id": "team-1", "event": {"type": "message"}},
     )
 
-    class ClosingSocketModeClient:
-        instances = []
+    class BlockingConsumer:
+        def __init__(self) -> None:
+            self.calls = 0
 
-        def __init__(self, **kwargs):
-            self.kwargs = kwargs
-            self.socket_mode_request_listeners = []
-            self.closed = False
-            self.__class__.instances.append(self)
+        def accept(self, event):
+            del event
+            self.calls += 1
+            consumer_started.set()
+            assert release_consumer.wait(2)
+            return EventAcceptance.ACCEPTED
 
-        def connect(self):
-            callback = self.kwargs["on_close_listeners"][0]
-            callback_invoked.set()
-            callback(1006, sensitive_marker)
-            self.socket_mode_request_listeners[0](self, request)
-
-        def close(self):
-            self.closed = True
-
-    mocker.patch("core.human_input_v2.im_integration.adapters.slack._SlackSocketModeClient", ClosingSocketModeClient)
-    stream = _adapter(mocker, FakeWebClient()).create_stream_handler(consumer)
-
-    with caplog.at_level(logging.ERROR, logger="core.human_input_v2.im_integration.adapters.slack"):
-        with pytest.raises(IMStreamRunError):
-            stream.run(StopSignal(threading.Event()))
-
-    assert consumer.events == []
-    assert callback_invoked.is_set()
-    assert sensitive_marker not in caplog.text
-    assert ClosingSocketModeClient.instances[0].closed is True
-
-
-def test_stream_local_stop_close_callback_is_not_a_terminal_failure(mocker) -> None:
-    source = threading.Event()
-
-    class ClosingSocketModeClient:
-        def __init__(self, **kwargs):
-            self.kwargs = kwargs
-            self.socket_mode_request_listeners = []
-            self.closed = False
-
-        def connect(self):
-            source.set()
-
-        def close(self):
-            self.closed = True
-            self.kwargs["on_close_listeners"][0](1000, "local shutdown")
-
-    mocker.patch("core.human_input_v2.im_integration.adapters.slack._SlackSocketModeClient", ClosingSocketModeClient)
-    stream = _adapter(mocker, FakeWebClient()).create_stream_handler(RecordingConsumer())
-
-    stream.run(StopSignal(source))
-
-
-def test_stream_stop_during_client_construction_prevents_connect(mocker) -> None:
-    source = threading.Event()
-    construction_started = threading.Event()
-    release_construction = threading.Event()
-    run_errors: list[BaseException] = []
-
-    class NeverConnectedSocketModeClient:
+    class FakeSocketModeClient:
         instances = []
 
         def __init__(self, **kwargs):
             del kwargs
             self.socket_mode_request_listeners = []
-            self.closed = False
-            self.connect_calls = 0
-            self.__class__.instances.append(self)
-            construction_started.set()
-            assert release_construction.wait(2)
-
-        def connect(self):
-            self.connect_calls += 1
-
-        def close(self):
-            self.closed = True
-
-    mocker.patch(
-        "core.human_input_v2.im_integration.adapters.slack._SlackSocketModeClient",
-        NeverConnectedSocketModeClient,
-    )
-    stream = _adapter(mocker, FakeWebClient()).create_stream_handler(RecordingConsumer())
-
-    def run_stream() -> None:
-        try:
-            stream.run(StopSignal(source))
-        except BaseException as error:
-            run_errors.append(error)
-
-    run_thread = threading.Thread(target=run_stream)
-    run_thread.start()
-    assert construction_started.wait(2)
-    source.set()
-    release_construction.set()
-    run_thread.join(2)
-
-    assert not run_thread.is_alive()
-    assert run_errors == []
-    assert NeverConnectedSocketModeClient.instances[0].connect_calls == 0
-    assert NeverConnectedSocketModeClient.instances[0].closed is True
-
-
-def test_stream_stop_during_successful_connect_never_uses_established_session(mocker) -> None:
-    source = threading.Event()
-    connect_started = threading.Event()
-    release_connect = threading.Event()
-    consumer = RecordingConsumer()
-    request = SocketModeRequest(
-        type="events_api",
-        envelope_id="envelope-1",
-        payload={"team_id": "team-1", "event": {"type": "message"}},
-    )
-    run_errors: list[BaseException] = []
-
-    class StoppedSocketModeClient:
-        instances = []
-
-        def __init__(self, **kwargs):
-            del kwargs
-            self.socket_mode_request_listeners = []
+            self.responses = []
             self.closed = False
             self.__class__.instances.append(self)
 
         def connect(self):
-            connect_started.set()
-            assert release_connect.wait(2)
-            assert source.is_set()
-            self.socket_mode_request_listeners[0](self, request)
+            return None
+
+        def send_socket_mode_response(self, response):
+            self.responses.append(response)
 
         def close(self):
             self.closed = True
 
-    mocker.patch("core.human_input_v2.im_integration.adapters.slack._SlackSocketModeClient", StoppedSocketModeClient)
-    stream = _adapter(mocker, FakeWebClient()).create_stream_handler(consumer)
+    mocker.patch("core.human_input_v2.im_integration.adapters.slack.SocketModeClient", FakeSocketModeClient)
+    blocking_consumer = BlockingConsumer()
+    stream = _adapter(mocker, FakeWebClient()).create_stream_handler(blocking_consumer)
+    stream.start()
+    socket_client = FakeSocketModeClient.instances[0]
+    listener = socket_client.socket_mode_request_listeners[0]
+    callback_thread = threading.Thread(target=listener, args=(socket_client, request))
+    callback_thread.start()
+    assert consumer_started.wait(2)
 
-    def run_stream() -> None:
-        try:
-            stream.run(StopSignal(source))
-        except BaseException as error:
-            run_errors.append(error)
+    def stop_stream() -> None:
+        stream.stop()
+        stop_finished.set()
 
-    run_thread = threading.Thread(target=run_stream)
-    run_thread.start()
-    assert connect_started.wait(2)
-    source.set()
-    release_connect.set()
-    run_thread.join(2)
+    stop_thread = threading.Thread(target=stop_stream)
+    stop_thread.start()
 
-    assert not run_thread.is_alive()
-    assert run_errors == []
-    assert consumer.events == []
-    assert StoppedSocketModeClient.instances[0].closed is True
+    assert stop_finished.wait(2)
+    assert socket_client.closed is True
+
+    release_consumer.set()
+    callback_thread.join(2)
+    stop_thread.join(2)
+
+    assert not callback_thread.is_alive()
+    assert not stop_thread.is_alive()
+    assert stop_finished.is_set()
+    assert socket_client.closed is True
+    assert len(socket_client.responses) == 1
 
 
-def test_stream_wraps_close_exception_as_safe_run_error(mocker, caplog) -> None:
-    source = threading.Event()
+def test_stream_wraps_close_exception_as_safe_stop_error(mocker, caplog) -> None:
 
     class FakeSocketModeClient:
         def __init__(self, **kwargs):
@@ -1245,18 +1179,19 @@ def test_stream_wraps_close_exception_as_safe_run_error(mocker, caplog) -> None:
             self.socket_mode_request_listeners = []
 
         def connect(self):
-            source.set()
+            return None
 
         def close(self):
             raise RuntimeError("sensitive close details")
 
-    mocker.patch("core.human_input_v2.im_integration.adapters.slack._SlackSocketModeClient", FakeSocketModeClient)
+    mocker.patch("core.human_input_v2.im_integration.adapters.slack.SocketModeClient", FakeSocketModeClient)
     adapter = _adapter(mocker, FakeWebClient())
     stream = adapter.create_stream_handler(RecordingConsumer())
 
     with caplog.at_level(logging.ERROR, logger="core.human_input_v2.im_integration.adapters.slack"):
-        with pytest.raises(IMStreamRunError) as raised:
-            stream.run(StopSignal(source))
+        stream.start()
+        with pytest.raises(IMStreamStopError) as raised:
+            stream.stop()
 
     assert "sensitive close details" not in str(raised.value)
     assert "sensitive close details" not in caplog.text

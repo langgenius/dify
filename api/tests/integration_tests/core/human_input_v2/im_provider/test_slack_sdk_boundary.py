@@ -38,7 +38,8 @@ from core.human_input_v2.im_provider import (
     DirectoryReadFailure,
     DynamicCardMessagingError,
     EventAcceptance,
-    IMStreamRunError,
+    IMStreamStartError,
+    IMStreamStopError,
     MessageAccepted,
     MessageReference,
     MessageSendingError,
@@ -48,7 +49,6 @@ from core.human_input_v2.im_provider import (
     ReplacementErrorKind,
     SlackIMIntegrationCredentials,
     StaticCardIntent,
-    StopSignal,
     WebhookRequest,
 )
 from core.human_input_v2.shared import AccountId, IntegrationId, NormalizedEmail, UtcTimestamp, WorkspaceId
@@ -1096,7 +1096,6 @@ def test_real_socket_request_serialization_is_acked_only_after_acceptance(
     monkeypatch: pytest.MonkeyPatch,
     slack_api_server: _SlackApiServer,
 ) -> None:
-    source = threading.Event()
     control_request = SocketModeRequest(type="hello", envelope_id="sanitized-control", payload={})
     invalid_request = SocketModeRequest(type="events_api", envelope_id="sanitized-invalid", payload={})
     accepted_request = SocketModeRequest(
@@ -1125,7 +1124,6 @@ def test_real_socket_request_serialization_is_acked_only_after_acceptance(
             listener(self, control_request)
             listener(self, invalid_request)
             listener(self, accepted_request)
-            source.set()
 
         def send_socket_mode_response(self, response: object) -> None:
             self.responses.append(response)
@@ -1133,19 +1131,24 @@ def test_real_socket_request_serialization_is_acked_only_after_acceptance(
         def close(self) -> None:
             self.closed = True
 
-    monkeypatch.setattr(slack_adapter_module, "_SlackSocketModeClient", _SocketTransport)
+    monkeypatch.setattr(slack_adapter_module, "SocketModeClient", _SocketTransport)
     adapter, _ = _adapter(monkeypatch, slack_api_server)
     consumer = _RecordingConsumer()
+    stream = adapter.create_stream_handler(consumer)
 
-    adapter.create_stream_handler(consumer).run(StopSignal(source))
+    stream.start()
 
     transport = _SocketTransport.instance
     assert transport is not None
     assert transport.kwargs["app_token"] == "xapp-sanitized-placeholder"
-    assert transport.closed is True
+    assert transport.closed is False
     assert len(transport.responses) == 1
     assert [event.event_id for event in consumer.events] == ["sanitized-event"]
     assert json.loads(consumer.events[0].payload) == accepted_request.to_dict()
+
+    stream.stop()
+
+    assert transport.closed is True
 
 
 @pytest.mark.parametrize("failure_stage", ["connect", "close"])
@@ -1154,8 +1157,6 @@ def test_socket_transport_failures_are_normalized(
     slack_api_server: _SlackApiServer,
     failure_stage: str,
 ) -> None:
-    source = threading.Event()
-
     class _FailingSocketTransport:
         def __init__(self, **kwargs: object) -> None:
             del kwargs
@@ -1164,21 +1165,27 @@ def test_socket_transport_failures_are_normalized(
         def connect(self) -> None:
             if failure_stage == "connect":
                 raise SlackClientError("sanitized connection details")
-            source.set()
 
         def close(self) -> None:
             if failure_stage == "close":
                 raise SlackClientError("sanitized close details")
 
-    monkeypatch.setattr(slack_adapter_module, "_SlackSocketModeClient", _FailingSocketTransport)
+    monkeypatch.setattr(slack_adapter_module, "SocketModeClient", _FailingSocketTransport)
     adapter, _ = _adapter(monkeypatch, slack_api_server)
+    stream = adapter.create_stream_handler(_RecordingConsumer())
 
-    with pytest.raises(IMStreamRunError, match="stopped unexpectedly"):
-        adapter.create_stream_handler(_RecordingConsumer()).run(StopSignal(source))
+    if failure_stage == "connect":
+        with pytest.raises(IMStreamStartError):
+            stream.start()
+        stream.stop()
+    else:
+        stream.start()
+        with pytest.raises(IMStreamStopError):
+            stream.stop()
 
 
 @pytest.mark.parametrize("disconnect_kind", ["error", "close"])
-def test_socket_sdk_disconnect_listeners_are_terminal_and_safe(
+def test_socket_sdk_disconnect_listeners_are_observable_and_safe(
     monkeypatch: pytest.MonkeyPatch,
     slack_api_server: _SlackApiServer,
     disconnect_kind: str,
@@ -1211,11 +1218,7 @@ def test_socket_sdk_disconnect_listeners_are_terminal_and_safe(
             self.__class__.instance = self
 
         def connect(self) -> None:
-            if disconnect_kind == "error":
-                self.on_error_listeners[0](RuntimeError(sensitive_marker))
-            else:
-                self.on_close_listeners[0](1006, sensitive_marker)
-            self.socket_mode_request_listeners[0](self, request)
+            return None
 
         def send_socket_mode_response(self, response: object) -> None:
             self.responses.append(response)
@@ -1223,30 +1226,38 @@ def test_socket_sdk_disconnect_listeners_are_terminal_and_safe(
         def close(self) -> None:
             self.closed = True
 
-    monkeypatch.setattr(slack_adapter_module, "_SlackSocketModeClient", _ListenerSocketTransport)
+    monkeypatch.setattr(slack_adapter_module, "SocketModeClient", _ListenerSocketTransport)
     adapter, _ = _adapter(monkeypatch, slack_api_server)
+    stream = adapter.create_stream_handler(consumer)
 
     with caplog.at_level("ERROR", logger=slack_adapter_module.__name__):
-        with pytest.raises(IMStreamRunError) as raised:
-            adapter.create_stream_handler(consumer).run(StopSignal(threading.Event()))
+        stream.start()
+        transport = _ListenerSocketTransport.instance
+        assert transport is not None
+        if disconnect_kind == "error":
+            transport.on_error_listeners[0](RuntimeError(sensitive_marker))
+        else:
+            transport.on_close_listeners[0](1006, sensitive_marker)
+        transport.socket_mode_request_listeners[0](transport, request)
+        stream.stop()
 
     transport = _ListenerSocketTransport.instance
     assert transport is not None
     assert transport.closed is True
-    assert transport.responses == []
-    assert consumer.events == []
-    assert sensitive_marker not in str(raised.value)
+    assert len(transport.responses) == 1
+    assert len(consumer.events) == 1
     assert sensitive_marker not in caplog.text
 
 
-def test_socket_stop_during_transport_construction_prevents_connect(
+def test_socket_start_waits_for_transport_construction(
     monkeypatch: pytest.MonkeyPatch,
     slack_api_server: _SlackApiServer,
 ) -> None:
-    source = threading.Event()
     construction_started = threading.Event()
     release_construction = threading.Event()
-    run_errors: list[BaseException] = []
+    start_returned = threading.Event()
+    allow_stop = threading.Event()
+    lifecycle_errors: list[BaseException] = []
 
     class _ConstructionBlockedSocketTransport:
         instance: _ConstructionBlockedSocketTransport | None = None
@@ -1266,39 +1277,48 @@ def test_socket_stop_during_transport_construction_prevents_connect(
         def close(self) -> None:
             self.closed = True
 
-    monkeypatch.setattr(slack_adapter_module, "_SlackSocketModeClient", _ConstructionBlockedSocketTransport)
+    monkeypatch.setattr(slack_adapter_module, "SocketModeClient", _ConstructionBlockedSocketTransport)
     adapter, _ = _adapter(monkeypatch, slack_api_server)
     stream = adapter.create_stream_handler(_RecordingConsumer())
 
-    def _run() -> None:
+    def _manage_stream() -> None:
         try:
-            stream.run(StopSignal(source))
+            stream.start()
+            start_returned.set()
+            assert allow_stop.wait(2)
+            stream.stop()
         except BaseException as error:
-            run_errors.append(error)
+            lifecycle_errors.append(error)
 
-    run_thread = threading.Thread(target=_run)
-    run_thread.start()
+    owner_thread = threading.Thread(target=_manage_stream)
+    owner_thread.start()
     assert construction_started.wait(2)
-    source.set()
+    assert start_returned.is_set() is False
     release_construction.set()
-    run_thread.join(2)
+    assert start_returned.wait(2)
 
     transport = _ConstructionBlockedSocketTransport.instance
-    assert not run_thread.is_alive()
     assert transport is not None
-    assert transport.connect_calls == 0
+    assert transport.connect_calls == 1
+    assert transport.closed is False
+
+    allow_stop.set()
+    owner_thread.join(2)
+
+    assert not owner_thread.is_alive()
     assert transport.closed is True
-    assert run_errors == []
+    assert lifecycle_errors == []
 
 
-def test_socket_stop_during_successful_connect_rejects_new_sdk_callback(
+def test_socket_start_waits_for_connection_readiness_and_accepts_sdk_callback(
     monkeypatch: pytest.MonkeyPatch,
     slack_api_server: _SlackApiServer,
 ) -> None:
-    source = threading.Event()
     connect_started = threading.Event()
     release_connect = threading.Event()
-    run_errors: list[BaseException] = []
+    start_returned = threading.Event()
+    allow_stop = threading.Event()
+    lifecycle_errors: list[BaseException] = []
     consumer = _RecordingConsumer()
     request = SocketModeRequest(
         type="events_api",
@@ -1314,7 +1334,6 @@ def test_socket_stop_during_successful_connect_rejects_new_sdk_callback(
             self.socket_mode_request_listeners: list[Callable[[object, SocketModeRequest], None]] = []
             self.responses: list[object] = []
             self.connect_calls = 0
-            self.reconnect_calls = 0
             self.closed = False
             self.__class__.instance = self
 
@@ -1324,42 +1343,45 @@ def test_socket_stop_during_successful_connect_rejects_new_sdk_callback(
             assert release_connect.wait(2)
             self.socket_mode_request_listeners[0](self, request)
 
-        def connect_to_new_endpoint(self, force: bool = False) -> None:
-            del force
-            self.reconnect_calls += 1
-
         def send_socket_mode_response(self, response: object) -> None:
             self.responses.append(response)
 
         def close(self) -> None:
             self.closed = True
 
-    monkeypatch.setattr(slack_adapter_module, "_SlackSocketModeClient", _SuccessfulSocketTransport)
+    monkeypatch.setattr(slack_adapter_module, "SocketModeClient", _SuccessfulSocketTransport)
     adapter, _ = _adapter(monkeypatch, slack_api_server)
     stream = adapter.create_stream_handler(consumer)
 
-    def _run() -> None:
+    def _manage_stream() -> None:
         try:
-            stream.run(StopSignal(source))
+            stream.start()
+            start_returned.set()
+            assert allow_stop.wait(2)
+            stream.stop()
         except BaseException as error:
-            run_errors.append(error)
+            lifecycle_errors.append(error)
 
-    run_thread = threading.Thread(target=_run)
-    run_thread.start()
+    owner_thread = threading.Thread(target=_manage_stream)
+    owner_thread.start()
     assert connect_started.wait(2)
-    source.set()
+    assert start_returned.is_set() is False
     release_connect.set()
-    run_thread.join(2)
+    assert start_returned.wait(2)
 
     transport = _SuccessfulSocketTransport.instance
-    assert not run_thread.is_alive()
     assert transport is not None
     assert transport.connect_calls == 1
-    assert transport.reconnect_calls == 0
-    assert transport.responses == []
+    assert len(transport.responses) == 1
+    assert len(consumer.events) == 1
+    assert transport.closed is False
+
+    allow_stop.set()
+    owner_thread.join(2)
+
+    assert not owner_thread.is_alive()
     assert transport.closed is True
-    assert consumer.events == []
-    assert run_errors == []
+    assert lifecycle_errors == []
 
 
 def test_service_port_uses_real_adapter_boundary_and_protects_all_secrets(

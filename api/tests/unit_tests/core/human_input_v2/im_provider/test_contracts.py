@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import threading
 from dataclasses import FrozenInstanceError
 
 import pytest
@@ -11,9 +10,11 @@ from core.human_input_v2.im_provider import (
     CredentialTestSuccess,
     Directory,
     DirectoryEntry,
+    IMEventStream,
+    IMStreamStartError,
+    IMStreamStopError,
     ProviderUserId,
     SlackIMIntegrationCredentials,
-    StopSignal,
 )
 
 
@@ -55,15 +56,9 @@ def test_provider_neutral_values_are_immutable() -> None:
         success.provider_tenant_id = "team-2"
 
 
-def test_stop_signal_observes_caller_owned_event() -> None:
-    source = threading.Event()
-    signal = StopSignal(source)
-
-    assert signal.stop_requested is False
-    assert signal.wait(0) is False
-
-    source.set()
-    source.set()
-
-    assert signal.stop_requested is True
-    assert signal.wait(0) is True
+def test_event_stream_contract_exposes_owner_managed_lifecycle() -> None:
+    assert hasattr(IMEventStream, "start")
+    assert hasattr(IMEventStream, "stop")
+    assert not hasattr(IMEventStream, "run")
+    assert issubclass(IMStreamStartError, Exception)
+    assert issubclass(IMStreamStopError, Exception)

@@ -7,7 +7,6 @@ outside this boundary.
 
 from __future__ import annotations
 
-import threading
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Literal, NewType, Protocol
@@ -250,20 +249,6 @@ class IMEventConsumer(Protocol):
         ...
 
 
-class StopSignal:
-    """Read-only view over a caller-owned termination event."""
-
-    def __init__(self, event: threading.Event) -> None:
-        self._event = event
-
-    @property
-    def stop_requested(self) -> bool:
-        return self._event.is_set()
-
-    def wait(self, timeout: float | None = None) -> bool:
-        return self._event.wait(timeout)
-
-
 class IMWebhookHandler(Protocol):
     """Thread-safe framework-neutral authenticated Webhook handler."""
 
@@ -272,15 +257,23 @@ class IMWebhookHandler(Protocol):
         ...
 
 
-class IMStreamRunError(Exception):
-    """Operator-safe terminal or repeated stream run failure."""
+class IMStreamStartError(Exception):
+    """Operator-safe synchronous stream startup failure."""
+
+
+class IMStreamStopError(Exception):
+    """Operator-safe failure to establish the graceful-stop guarantees."""
 
 
 class IMEventStream(Protocol):
-    """Independent one-shot blocking inbound event stream."""
+    """Owner-managed inbound event resource with a one-shot lifecycle."""
 
-    def run(self, signal: StopSignal) -> None:
-        """Run once until stopped after draining in-flight consumer calls."""
+    def start(self) -> None:
+        """Synchronously initialize and start receiving events."""
+        ...
+
+    def stop(self) -> None:
+        """Synchronously drain accepted events and release owned resources."""
         ...
 
 
@@ -328,7 +321,8 @@ __all__ = [
     "IMEventStream",
     "IMMessaging",
     "IMProviderAdapter",
-    "IMStreamRunError",
+    "IMStreamStartError",
+    "IMStreamStopError",
     "IMWebhookHandler",
     "MessageAccepted",
     "MessageReference",
@@ -340,7 +334,6 @@ __all__ = [
     "ReplacementErrorKind",
     "SlackIMIntegrationCredentials",
     "StaticCardIntent",
-    "StopSignal",
     "WebhookRequest",
     "WebhookResponse",
 ]

@@ -2,7 +2,7 @@
 
 The root and its ordinary capabilities rely on the contract's external
 serialization rule and intentionally contain no synchronization. Socket Mode
-owns all concurrency state required by its independent lifecycle.
+delegates connection concurrency and resource shutdown to the Slack SDK.
 """
 
 from __future__ import annotations
@@ -10,7 +10,6 @@ from __future__ import annotations
 import json
 import logging
 import re
-import threading
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -47,7 +46,8 @@ from core.human_input_v2.im_provider import (
     IMEventConsumer,
     IMEventStream,
     IMMessaging,
-    IMStreamRunError,
+    IMStreamStartError,
+    IMStreamStopError,
     IMWebhookHandler,
     MessageAccepted,
     MessageReference,
@@ -59,7 +59,6 @@ from core.human_input_v2.im_provider import (
     ReplacementErrorKind,
     SlackIMIntegrationCredentials,
     StaticCardIntent,
-    StopSignal,
     WebhookRequest,
     WebhookResponse,
 )
@@ -70,7 +69,6 @@ _SLACK_SOCKET_SDK_LOGGER.addHandler(logging.NullHandler())
 _SLACK_SOCKET_SDK_LOGGER.propagate = False
 
 _SLACK_DIRECTORY_PAGE_SIZE = 200
-_SOCKET_WAIT_SECONDS = 0.05
 _SOCKET_WEB_API_TIMEOUT_SECONDS = 5
 _MAX_MARKDOWN_TEXT_LENGTH = MarkdownBlock.text_max_length
 _MAX_HEADER_TEXT_LENGTH = 150
@@ -134,19 +132,6 @@ class _TrustedReceiveTimeClock(Clock):
     @override
     def now(self) -> float:
         return self._received_timestamp
-
-
-class _SlackSocketModeClient(SocketModeClient):
-    """Official client variant with reconnect disabled for bounded ownership.
-
-    The SDK's disconnect control-frame path reconnects even when its public
-    automatic-reconnect option is false. This stream deliberately exposes a
-    single connection attempt so a stop request cannot race an SDK reconnect.
-    """
-
-    @override
-    def connect_to_new_endpoint(self, force: bool = False) -> None:
-        del force
 
 
 @dataclass(frozen=True, slots=True)
@@ -384,12 +369,7 @@ class _SlackWebhookHandler(IMWebhookHandler):
 
 
 class _SlackEventStream(IMEventStream):
-    """One independent Socket Mode lifecycle with private callback coordination.
-
-    Claiming ``establishing`` under ``_condition`` is the connection attempt's
-    linearization point. A later stop makes that attempt in-flight, but the
-    established session can never transition to usable ``running`` state.
-    """
+    """One owner-managed Socket Mode client with a one-shot lifecycle."""
 
     def __init__(
         self,
@@ -401,134 +381,78 @@ class _SlackEventStream(IMEventStream):
         self._app_token = app_token
         self._bot_token = bot_token
         self._consumer = consumer
-        self._run_lock = threading.Lock()
-        self._condition = threading.Condition()
-        self._has_run = False
-        self._state: Literal["idle", "establishing", "running", "stopping", "failed", "closed"] = "idle"
-        self._stop_signal: StopSignal | None = None
-        self._accepting_callbacks = False
-        self._in_flight_callbacks = 0
-        self._terminal_failure = False
+        self._client: BaseSocketModeClient | None = None
+        self._start_attempted = False
+        self._stop_requested = False
+        self._stopped = False
 
     @override
-    def run(self, signal: StopSignal) -> None:
-        with self._run_lock:
-            if self._has_run:
-                raise IMStreamRunError("This Slack event stream has already been run.")
-            self._has_run = True
-        if signal.stop_requested:
-            return
+    def start(self) -> None:
+        if self._start_attempted or self._stopped:
+            raise IMStreamStartError("This Slack event stream has already been started or stopped.")
+        self._start_attempted = True
 
         client: BaseSocketModeClient | None = None
-        stop_watcher_done = threading.Event()
-        with self._condition:
-            self._stop_signal = signal
-        stop_watcher = threading.Thread(
-            target=self._watch_for_stop,
-            args=(signal, stop_watcher_done),
-            daemon=True,
-        )
-        stop_watcher.start()
         try:
             web_client = WebClient(
                 token=self._bot_token,
                 timeout=_SOCKET_WEB_API_TIMEOUT_SECONDS,
                 retry_handlers=[],
             )
-            client = _SlackSocketModeClient(
+            client = SocketModeClient(
                 app_token=self._app_token,
                 logger=_SLACK_SOCKET_SDK_LOGGER,
                 web_client=web_client,
-                auto_reconnect_enabled=False,
                 on_error_listeners=[self._handle_socket_error],
                 on_close_listeners=[self._handle_socket_close],
             )
             client.socket_mode_request_listeners.append(self._handle_request)
-            if self._claim_establishment(signal):
-                client.connect()
-                if self._finish_establishment(signal):
-                    while True:
-                        with self._condition:
-                            if self._state in {"stopping", "failed"}:
-                                break
-                        if signal.wait(_SOCKET_WAIT_SECONDS):
-                            self._request_stop()
-                            break
+            self._client = client
+            client.connect()
         except SlackClientError:
-            if signal.stop_requested:
-                self._request_stop()
-            else:
-                self._mark_terminal_failure()
+            self._clean_up_failed_start(client)
+            raise IMStreamStartError("The Slack event stream could not be started.") from None
         except Exception:
-            if signal.stop_requested:
-                self._request_stop()
-            else:
-                _log_safe_error("Unexpected Slack Socket Mode run failure")
-                self._mark_terminal_failure()
-        finally:
-            self._request_stop()
-            if client is not None:
-                try:
-                    client.close()
-                except SlackClientError:
-                    self._mark_terminal_failure()
-                except Exception:
-                    _log_safe_error("Unexpected Slack Socket Mode close failure")
-                    self._mark_terminal_failure()
-            with self._condition:
-                while self._in_flight_callbacks:
-                    self._condition.wait()
-                self._state = "closed"
-                self._stop_signal = None
-            stop_watcher_done.set()
-            stop_watcher.join()
-        if self._terminal_failure:
-            raise IMStreamRunError("The Slack event stream stopped unexpectedly.")
+            _log_safe_error("Unexpected Slack Socket Mode startup failure")
+            self._clean_up_failed_start(client)
+            raise IMStreamStartError("The Slack event stream could not be started.") from None
 
-    def _watch_for_stop(self, signal: StopSignal, done: threading.Event) -> None:
-        while not done.is_set():
-            if signal.wait(_SOCKET_WAIT_SECONDS):
-                self._request_stop()
-                return
+    @override
+    def stop(self) -> None:
+        if self._stopped:
+            return
+        self._stop_requested = True
+        client = self._client
 
-    def _claim_establishment(self, signal: StopSignal) -> bool:
-        with self._condition:
-            if signal.stop_requested or self._state == "stopping":
-                self._state = "stopping"
-                self._accepting_callbacks = False
-                return False
-            if self._state != "idle":
-                return False
-            self._state = "establishing"
-            self._accepting_callbacks = True
-            return True
+        if client is None:
+            self._stopped = True
+            return
 
-    def _finish_establishment(self, signal: StopSignal) -> bool:
-        with self._condition:
-            if self._terminal_failure:
-                return False
-            if signal.stop_requested or self._state == "stopping":
-                self._state = "stopping"
-                self._accepting_callbacks = False
-                return False
-            if self._state != "establishing":
-                return False
-            self._state = "running"
-            return True
+        try:
+            client.close()
+        except SlackClientError:
+            _log_safe_error("Slack Socket Mode shutdown failure")
+            raise IMStreamStopError("The Slack event stream could not be stopped.") from None
+        except Exception:
+            _log_safe_error("Unexpected Slack Socket Mode shutdown failure")
+            raise IMStreamStopError("The Slack event stream could not be stopped.") from None
 
-    def _request_stop(self) -> None:
-        with self._condition:
-            if self._state not in {"failed", "closed"}:
-                self._state = "stopping"
-            self._accepting_callbacks = False
-            self._condition.notify_all()
+        self._client = None
+        self._stopped = True
 
-    def _mark_terminal_failure(self) -> None:
-        with self._condition:
-            self._terminal_failure = True
-            self._state = "failed"
-            self._accepting_callbacks = False
-            self._condition.notify_all()
+    def _clean_up_failed_start(self, client: BaseSocketModeClient | None) -> None:
+        if client is None:
+            return
+
+        self._stop_requested = True
+        try:
+            client.close()
+        except SlackClientError:
+            _log_safe_error("Slack Socket Mode startup cleanup failure")
+        except Exception:
+            _log_safe_error("Unexpected Slack Socket Mode startup cleanup failure")
+        else:
+            self._client = None
 
     def _handle_socket_error(self, error: Exception) -> None:
         del error
@@ -539,33 +463,13 @@ class _SlackEventStream(IMEventStream):
         self._handle_remote_disconnect("Slack Socket Mode remote close")
 
     def _handle_remote_disconnect(self, log_message: str) -> None:
-        with self._condition:
-            stop_requested = self._stop_signal is not None and self._stop_signal.stop_requested
-            if stop_requested or self._state in {"stopping", "closed"}:
-                if self._state != "closed":
-                    self._state = "stopping"
-                self._accepting_callbacks = False
-                self._condition.notify_all()
-                return
-            self._terminal_failure = True
-            self._state = "failed"
-            self._accepting_callbacks = False
-            self._condition.notify_all()
+        if self._stop_requested:
+            return
         _log_safe_error(log_message)
 
     def _handle_request(self, client: BaseSocketModeClient, request: SocketModeRequest) -> None:
         if request.type not in _BUSINESS_SOCKET_REQUEST_TYPES:
             return
-        with self._condition:
-            stop_requested = self._stop_signal is not None and self._stop_signal.stop_requested
-            if stop_requested:
-                if self._state != "failed":
-                    self._state = "stopping"
-                self._accepting_callbacks = False
-                self._condition.notify_all()
-            if not self._accepting_callbacks or self._state not in {"establishing", "running"}:
-                return
-            self._in_flight_callbacks += 1
         try:
             serialized_request = request.to_dict()
             event_body = serialized_request.get("payload")
@@ -582,14 +486,9 @@ class _SlackEventStream(IMEventStream):
             if acceptance is EventAcceptance.ACCEPTED:
                 client.send_socket_mode_response(SocketModeResponse(envelope_id=request.envelope_id))
         except SlackClientError:
-            self._mark_terminal_failure()
+            _log_safe_error("Slack Socket Mode event delivery failure")
         except Exception:
             _log_safe_error("Unexpected Slack Socket Mode callback failure")
-            self._mark_terminal_failure()
-        finally:
-            with self._condition:
-                self._in_flight_callbacks -= 1
-                self._condition.notify_all()
 
 
 class SlackIMProviderAdapter:
