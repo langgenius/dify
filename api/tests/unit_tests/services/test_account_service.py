@@ -2425,7 +2425,7 @@ class TestRegisterService:
 
     # ==================== Token Management Tests ====================
 
-    def test_send_reset_password_email_uses_explicit_account_id_not_account_attrs(self):
+    def test_send_reset_password_email_uses_explicit_account_id_not_account_attrs(self) -> None:
         """Regression test for #39287.
 
         The Account object passed in is loaded from the request's scoped session
@@ -2470,7 +2470,7 @@ class TestRegisterService:
         assert stored["account_id"] == "account-from-session"
         assert stored["email"] == "user@example.com"
 
-    def test_generate_invite_token_success(self, mock_redis_dependencies):
+    def test_generate_invite_token_success(self, mock_redis_dependencies: MagicMock) -> None:
         """Test successful invite token generation."""
         # Setup test data
         mock_tenant = _tenant()
