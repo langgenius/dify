@@ -2,6 +2,7 @@ import {
   DocumentAssetSchema,
   type DocumentMultimodalManifest,
   type DocumentOutline,
+  KNOWLEDGE_FS_VIRTUAL_PATH_MAX_LENGTH,
 } from "@knowledge/core";
 import { describe, expect, it } from "vitest";
 
@@ -220,6 +221,29 @@ describe("document KnowledgeFS paths", () => {
         virtualPath: "/knowledge/docs/Dify-插件-说明.md--6c07b8ca/sections/概览-架构--outline0.md",
       }),
     ]);
+
+    const longSectionPath = buildDocumentSectionKnowledgePaths({
+      asset,
+      generateId: sequenceIds(["018f0d60-7a49-7cc2-9c1b-5b36f18f2c49"]),
+      outline: {
+        ...documentOutline(asset.id, asset.knowledgeSpaceId),
+        nodes: [
+          {
+            ...documentOutline(asset.id, asset.knowledgeSpaceId).nodes[0]!,
+            id: "outline-long-section",
+            sectionPath: ["部署手册".repeat(100), "索引与检索设置".repeat(100)],
+            title: "索引与检索设置".repeat(100),
+          },
+        ],
+      },
+      tenantId: "tenant-dev",
+    })[0]!;
+
+    expect(longSectionPath.virtualPath).toHaveLength(KNOWLEDGE_FS_VIRTUAL_PATH_MAX_LENGTH);
+    expect(longSectionPath.virtualPath).toMatch(/--outlinel\.md$/u);
+    expect(longSectionPath.metadata.filename).toBe(
+      longSectionPath.virtualPath.split("/").at(-1),
+    );
 
     const publicationGenerationId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c60";
     const candidatePaths = [

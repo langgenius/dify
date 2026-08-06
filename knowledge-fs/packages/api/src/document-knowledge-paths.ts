@@ -5,6 +5,7 @@ import {
   type DocumentOutline,
   type DocumentOutlineNode,
   type KnowledgePath,
+  KNOWLEDGE_FS_VIRTUAL_PATH_MAX_LENGTH,
   KnowledgePathSchema,
   PublicationGenerationIdSchema,
 } from "@knowledge/core";
@@ -286,7 +287,13 @@ export function buildDocumentSectionKnowledgePaths({
   const documentPath = `${KNOWLEDGE_FS_DOCS_ROOT}/${documentFilenamePathSegment(asset.filename, asset.id)}`;
 
   return flattenOutlineNodes(outline.nodes).map((node) => {
-    const virtualPath = `${documentPath}/sections/${documentSectionFilename(node)}.md`;
+    const sectionPrefix = `${documentPath}/sections/`;
+    const extension = ".md";
+    const sectionFilename = documentSectionFilename(
+      node,
+      KNOWLEDGE_FS_VIRTUAL_PATH_MAX_LENGTH - sectionPrefix.length - extension.length,
+    );
+    const virtualPath = `${sectionPrefix}${sectionFilename}${extension}`;
 
     return KnowledgePathSchema.parse({
       id: generationScopedKnowledgePathId({
@@ -297,7 +304,7 @@ export function buildDocumentSectionKnowledgePaths({
       knowledgeSpaceId: asset.knowledgeSpaceId,
       metadata: {
         contentKind: "document-section",
-        filename: `${documentSectionFilename(node)}.md`,
+        filename: `${sectionFilename}${extension}`,
         mimeType: "text/markdown",
         outlineId: outline.id,
         outlineNodeId: node.id,
@@ -410,7 +417,7 @@ function flattenOutlineNodes(nodes: readonly DocumentOutlineNode[]): DocumentOut
   return nodes.flatMap((node) => [node, ...flattenOutlineNodes(node.children)]);
 }
 
-function documentSectionFilename(node: DocumentOutlineNode): string {
+function documentSectionFilename(node: DocumentOutlineNode, maxLength: number): string {
   const titleSlug =
     node.sectionPath
       .map((segment) => segment.trim())
@@ -421,8 +428,13 @@ function documentSectionFilename(node: DocumentOutlineNode): string {
       .replaceAll(/-+/gu, "-")
       .replaceAll(/^-|-$/gu, "") || "section";
   const shortId = node.id.replaceAll("-", "").slice(0, 8);
+  const suffix = `--${shortId}`;
+  const titleBudget = Math.max(1, maxLength - suffix.length);
+  let boundedTitle = titleSlug.slice(0, titleBudget);
+  if (/[\uD800-\uDBFF]$/u.test(boundedTitle)) boundedTitle = boundedTitle.slice(0, -1);
+  boundedTitle = boundedTitle.replaceAll(/-+$/gu, "") || "section".slice(0, titleBudget);
 
-  return `${titleSlug}--${shortId}`;
+  return `${boundedTitle}${suffix}`;
 }
 
 function documentMultimodalAssetFilename(item: DocumentMultimodalItem): string {

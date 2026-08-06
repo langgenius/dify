@@ -112,9 +112,10 @@ export type KnowledgeFsLeaseTargetType = z.infer<typeof KnowledgeFsLeaseTargetTy
 export const KnowledgeFsLeaseStatusSchema = z.enum(["active", "released", "expired", "failed"]);
 export type KnowledgeFsLeaseStatus = z.infer<typeof KnowledgeFsLeaseStatusSchema>;
 
+export const KNOWLEDGE_FS_VIRTUAL_PATH_MAX_LENGTH = 384;
 const KnowledgeFsLeaseVirtualPathSchema = z
   .string()
-  .max(384)
+  .max(KNOWLEDGE_FS_VIRTUAL_PATH_MAX_LENGTH)
   .regex(new RegExp(`^/(?:${KnowledgeFsNamespaceValues.join("|")})(?:/[^/\\s]+)*$`));
 
 export const KnowledgeFsLeaseSchema = z.object({
@@ -1266,7 +1267,7 @@ const KnowledgeFsNamespaceSpecs = {
 const knowledgeFsNamespacePattern = KnowledgeFsNamespaceSchema.options.join("|");
 const KnowledgeFsVirtualPathSchema = z
   .string()
-  .max(384)
+  .max(KNOWLEDGE_FS_VIRTUAL_PATH_MAX_LENGTH)
   .regex(new RegExp(`^/(?:${knowledgeFsNamespacePattern})(?:/[^/\\s]+)*$`));
 
 export function getKnowledgeFsNamespaceSpec(
