@@ -149,6 +149,25 @@ class TestFeedbackService:
         assert json_content["export_info"]["total_records"] == 1
         assert json_content["feedback_data"][0]["from_account_name"] == "Admin User"
 
+    def test_export_feedbacks_end_date_includes_entire_day(
+        self, sqlite_session: Session, sample_data: FeedbackSample
+    ) -> None:
+        feedback_day = sample_data["admin_feedback"].created_at.strftime("%Y-%m-%d")
+
+        result = FeedbackService.export_feedbacks(
+            app_id=APP_ID,
+            session=sqlite_session,
+            end_date=feedback_day,
+            format_type="json",
+        )
+
+        exported_ids = {
+            item["feedback_id"]
+            for item in json.loads(result.get_data(as_text=True))["feedback_data"]
+        }
+        assert str(sample_data["admin_feedback"].id) in exported_ids
+        assert str(sample_data["user_feedback"].id) in exported_ids
+
     def test_export_feedbacks_with_filters(self, sqlite_session: Session, sample_data: FeedbackSample) -> None:
         result = FeedbackService.export_feedbacks(
             app_id=APP_ID,
