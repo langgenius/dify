@@ -25,7 +25,8 @@ vi.mock('@/service/use-triggers', () => ({
   useDeleteTriggerSubscription: () => ({ mutate: mockDelete, isPending: false }),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => ({
+  ...(await importOriginal()),
   toast: Object.assign(vi.fn(), {
     success: vi.fn(),
     error: vi.fn(),

@@ -19,6 +19,7 @@ import { useTags } from '@/app/components/plugins/hooks'
 import Empty from '@/app/components/plugins/marketplace/empty'
 import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import {
   toolsContentInsetClassNames,
   toolsUnifiedContentFrameClassName,
@@ -272,7 +273,9 @@ const ProviderList = ({ category, contentInset = 'default', layout }: ProviderLi
       )}
       <PluginDetailPanel
         detail={currentPluginDetail}
-        onUpdate={() => invalidateInstalledPluginList()}
+        onUpdate={() => {
+          invalidateInstalledPluginList(PluginCategoryEnum.tool)
+        }}
         onHide={() => setCurrentProviderId(undefined)}
         canDeletePlugin={canDeletePlugin}
         canUpdatePlugin={canUpdatePlugin}

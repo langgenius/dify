@@ -1,9 +1,9 @@
 'use client'
 
+import { zLicenseStatus } from '@dify/contracts/api/console/system-features/zod.gen'
 import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useTranslation } from 'react-i18next'
-import { LicenseStatus } from '@/features/system-features/constants'
 import { consoleQuery } from '@/service/client'
 import PremiumBadge from '../../base/premium-badge'
 
@@ -11,7 +11,7 @@ function LicenseNav() {
   const { t } = useTranslation()
   const { data: license } = useQuery(consoleQuery.systemFeatures.license.get.queryOptions())
 
-  if (license?.status === LicenseStatus.EXPIRING) {
+  if (license?.status === zLicenseStatus.enum.expiring) {
     const count = dayjs(license.expired_at).diff(dayjs(), 'days')
     return (
       <PremiumBadge color="orange" className="select-none">
@@ -34,7 +34,7 @@ function LicenseNav() {
       </PremiumBadge>
     )
   }
-  if (license?.status === LicenseStatus.ACTIVE) {
+  if (license?.status === zLicenseStatus.enum.active) {
     return (
       <PremiumBadge color="indigo" className="select-none">
         <span className="px-1 system-xs-medium">Enterprise</span>
