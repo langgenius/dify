@@ -130,7 +130,9 @@ export const getFormInputState = (
   const isDatePicker = toolDeclarativeTypeMatches(schema, 'date-picker')
   const isDate = toolDeclarativeTypeMatches(schema, 'date') && !isDatePicker
   const isString =
-    (type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput) && !isDatePicker && !isDate
+    (type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput) &&
+    !isDatePicker &&
+    !isDate
   const isNumber = type === FormTypeEnum.textNumber
   const isObject = type === FormTypeEnum.object
   const isArray = type === FormTypeEnum.array

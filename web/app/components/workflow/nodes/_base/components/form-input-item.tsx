@@ -232,8 +232,7 @@ const FormInputItem: FC<Props> = ({
   const handleValueChange = (newValue: FormInputValue) => {
     const nextType = getVarKindType(formState) ?? varInput?.type ?? VarKindType.constant
     let nextValue: FormInputValue = newValue
-    if (isNumber)
-      nextValue = Number.parseFloat(String(newValue ?? ''))
+    if (isNumber) nextValue = Number.parseFloat(String(newValue ?? ''))
     onChange({
       ...value,
       [variable]: {
@@ -354,7 +353,7 @@ const FormInputItem: FC<Props> = ({
           type="date"
           disabled={readOnly}
           value={typeof varInput?.value === 'string' ? varInput.value : ''}
-          onChange={e => handleValueChange(e.target.value)}
+          onChange={(e) => handleValueChange(e.target.value)}
           placeholder={placeholder?.[language] || placeholder?.en_US}
         />
       )}

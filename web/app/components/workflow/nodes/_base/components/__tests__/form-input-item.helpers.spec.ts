@@ -131,20 +131,20 @@ describe('form-input-item helpers', () => {
     expect(toolDeclarativeTypeMatches({ type: 'datepicker' }, 'date-picker')).toBe(true)
     expect(toolDeclarativeTypeMatches({ type: 'date-picker' }, 'date')).toBe(false)
 
-    const dateState = getFormInputState(
-      createSchema({ type: FormTypeEnum.date }),
-      { type: VarKindType.constant, value: '2024-01-01' },
-    )
+    const dateState = getFormInputState(createSchema({ type: FormTypeEnum.date }), {
+      type: VarKindType.constant,
+      value: '2024-01-01',
+    })
     expect(dateState.isDate).toBe(true)
     expect(dateState.isDatePicker).toBe(false)
     expect(getTargetVarType(dateState)).toBe(VarType.string)
     expect(getVarKindType(dateState)).toBe(VarKindType.constant)
     expect(getFilterVar(dateState)?.({ type: VarType.string } as Var)).toBe(true)
 
-    const pickerState = getFormInputState(
-      createSchema({ type: FormTypeEnum.datePicker }),
-      { type: VarKindType.constant, value: '{}' },
-    )
+    const pickerState = getFormInputState(createSchema({ type: FormTypeEnum.datePicker }), {
+      type: VarKindType.constant,
+      value: '{}',
+    })
     expect(pickerState.isDatePicker).toBe(true)
     expect(pickerState.isDate).toBe(false)
     expect(getVarKindType(pickerState)).toBe(VarKindType.constant)

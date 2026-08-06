@@ -53,7 +53,9 @@ describe('reasoning-config-form helpers', () => {
     expect(dateFilter?.({ type: VarType.string } as never)).toBe(true)
     expect(dateFilter?.({ type: VarType.number } as never)).toBe(true)
     expect(dateFilter?.({ type: VarType.file } as never)).toBe(false)
-    expect(createFilterVar(FormTypeEnum.datePicker, { type: FormTypeEnum.datePicker } as never)).toBeUndefined()
+    expect(
+      createFilterVar(FormTypeEnum.datePicker, { type: FormTypeEnum.datePicker } as never),
+    ).toBeUndefined()
   })
 
   it('filters select options based on show_on conditions', () => {

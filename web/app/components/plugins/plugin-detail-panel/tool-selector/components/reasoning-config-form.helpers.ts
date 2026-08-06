@@ -190,7 +190,9 @@ export const getFieldFlags = (
   const isDatePicker = schema ? toolDeclarativeTypeMatches(schema, 'date-picker') : false
   const isDate = schema ? toolDeclarativeTypeMatches(schema, 'date') && !isDatePicker : false
   const isString =
-    (type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput) && !isDatePicker && !isDate
+    (type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput) &&
+    !isDatePicker &&
+    !isDate
   const isNumber = type === FormTypeEnum.textNumber
   const isObject = type === FormTypeEnum.object
   const isArray = type === FormTypeEnum.array

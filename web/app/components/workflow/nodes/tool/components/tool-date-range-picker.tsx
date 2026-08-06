@@ -6,16 +6,12 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
 import { toDayjs as parseDayjs } from '@/app/components/base/date-and-time-picker/utils/dayjs'
-import {
-  parseToolDateRangeValue,
-  stringifyToolDateRangeValue,
-} from './tool-date-range-value'
+import { parseToolDateRangeValue, stringifyToolDateRangeValue } from './tool-date-range-value'
 
 const DATE_FMT = 'YYYY-MM-DD'
 
 const toDayjs = (raw?: string, timezone?: string): Dayjs | undefined => {
-  if (!raw)
-    return undefined
+  if (!raw) return undefined
   return parseDayjs(raw, { timezone, format: DATE_FMT })
 }
 
@@ -40,12 +36,10 @@ const ToolDateRangePicker: FC<Props> = ({
   const parsed = parseToolDateRangeValue(value)
   const z = popupZIndexClassname ?? (inPanel ? 'z-[1000]' : 'z-[11]')
 
-  const patch = (partial: Partial<{ start?: string, end?: string }>) => {
+  const patch = (partial: Partial<{ start?: string; end?: string }>) => {
     const next = { ...parsed, ...partial }
-    if (!next.start)
-      delete next.start
-    if (!next.end)
-      delete next.end
+    if (!next.start) delete next.start
+    if (!next.end) delete next.end
     onChange(stringifyToolDateRangeValue(next))
   }
 
@@ -56,7 +50,7 @@ const ToolDateRangePicker: FC<Props> = ({
         readOnly && 'pointer-events-none opacity-60',
       )}
     >
-      <span className="system-xs-regular shrink-0 text-text-quaternary">
+      <span className="shrink-0 system-xs-regular text-text-quaternary">
         {t('nodes.tool.dateRange.start', { ns: 'workflow' })}
       </span>
       <div className="shrink-0">
@@ -74,10 +68,10 @@ const ToolDateRangePicker: FC<Props> = ({
           popupZIndexClassname={z}
         />
       </div>
-      <span className="system-xs-regular shrink-0 px-0.5 text-text-quaternary" aria-hidden="true">
+      <span className="shrink-0 px-0.5 system-xs-regular text-text-quaternary" aria-hidden="true">
         —
       </span>
-      <span className="system-xs-regular shrink-0 text-text-quaternary">
+      <span className="shrink-0 system-xs-regular text-text-quaternary">
         {t('nodes.tool.dateRange.end', { ns: 'workflow' })}
       </span>
       <div className="shrink-0">

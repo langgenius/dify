@@ -2263,6 +2263,8 @@ export type ToolParameterType =
   | 'array'
   | 'boolean'
   | 'checkbox'
+  | 'date'
+  | 'date-picker'
   | 'dynamic-select'
   | 'file'
   | 'files'
