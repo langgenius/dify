@@ -30,12 +30,21 @@ export type CopilotGenerateBody = {
   context_node_ids?: string[]
 }
 
+export type CopilotUsage = {
+  prompt_tokens: number
+  completion_tokens: number
+  total_tokens: number
+}
+
 export type CopilotGenerateResponse = {
   conversation_id: string
   reply: string
   graph?: CopilotGraph
   error?: string
   errors?: { code: string, detail: string, node_id?: string }[]
+  // Real token cost of this turn (planner + builder), summed server-side.
+  // Absent on older backends or when the provider reports no usage.
+  usage?: CopilotUsage
 }
 
 export type CopilotHistoryMessage = {
@@ -52,13 +61,14 @@ export type CopilotMessagesResponse = {
 
 export const generateWorkflowCopilot = (
   body: CopilotGenerateBody,
-  options?: { getAbortController?: (c: AbortController) => void },
+  options?: { signal?: AbortSignal },
 ) => {
-  if (options?.getAbortController) {
-    return post<CopilotGenerateResponse>('/workflow-copilot', { body }, {
-      getAbortController: options.getAbortController,
-    })
-  }
+  // Pass the caller's AbortSignal through the request options (a first-class
+  // RequestInit field) rather than the `getAbortController` callback: the
+  // shared client wires an options-level `signal` straight into fetch, so
+  // aborting it actually cancels the in-flight turn (Stop).
+  if (options?.signal)
+    return post<CopilotGenerateResponse>('/workflow-copilot', { body, signal: options.signal })
   return post<CopilotGenerateResponse>('/workflow-copilot', { body })
 }
 

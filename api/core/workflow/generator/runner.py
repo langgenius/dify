@@ -61,11 +61,12 @@ from core.workflow.generator.types import (
     WorkflowGenerateErrorCode,
     WorkflowGenerateErrorDict,
     WorkflowGenerateResultDict,
+    WorkflowGenerateUsageDict,
     WorkflowGenerationMode,
     WorkflowGenerationModeRequest,
 )
 from graphon.enums import BuiltinNodeTypes
-from graphon.model_runtime.entities.llm_entities import LLMResult
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
 from graphon.model_runtime.errors.invoke import (
     InvokeConnectionError,
@@ -218,6 +219,35 @@ class _BuildAttempt:
     errors: list[WorkflowGenerateErrorDict]
 
 
+@dataclass
+class _UsageAccumulator:
+    """Mutable running sum of token usage across every LLM call in one generation.
+
+    Both the planner and builder (plus any parse / reference retries) fold their
+    ``LLMResult.usage`` in here so the final result can report the real,
+    end-to-end token cost of the turn. A provider that returns no usage simply
+    contributes zeros.
+    """
+
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+
+    def add(self, usage: LLMUsage | None) -> None:
+        if usage is None:
+            return
+        self.prompt_tokens += usage.prompt_tokens
+        self.completion_tokens += usage.completion_tokens
+        self.total_tokens += usage.total_tokens
+
+    def to_dict(self) -> WorkflowGenerateUsageDict:
+        return {
+            "prompt_tokens": self.prompt_tokens,
+            "completion_tokens": self.completion_tokens,
+            "total_tokens": self.total_tokens,
+        }
+
+
 def _errors_to_str(errors: list[WorkflowGenerateErrorDict]) -> str:
     """Concatenate structured errors into the legacy single-string envelope."""
     return "; ".join(e["detail"] for e in errors)
@@ -238,10 +268,17 @@ def _empty_result() -> WorkflowGenerateResultDict:
 def _result_with_errors(
     base: WorkflowGenerateResultDict,
     errors: list[WorkflowGenerateErrorDict],
+    usage: "_UsageAccumulator | None" = None,
 ) -> WorkflowGenerateResultDict:
-    """Attach a structured error list to ``base``, populating the legacy ``error`` string too."""
+    """Attach a structured error list to ``base``, populating the legacy ``error`` string too.
+
+    ``usage`` — when provided — records the token cost spent before the failure
+    so even a failed turn reports what it burned.
+    """
     base["errors"] = errors
     base["error"] = _errors_to_str(errors)
+    if usage is not None:
+        base["usage"] = usage.to_dict()
     return base
 
 
@@ -497,6 +534,10 @@ class WorkflowGenerator:
         """
 
         # ── 1. PLANNER ────────────────────────────────────────────────────
+        # One accumulator threads through every LLM call (planner, builder, and
+        # any parse / reference retries) so the returned result reports the real
+        # end-to-end token cost of this turn.
+        usage = _UsageAccumulator()
         plan, plan_err = cls._run_stage(
             stage="Planner",
             failure_fallback_message="Failed to plan workflow",
@@ -508,6 +549,7 @@ class WorkflowGenerator:
                 ideal_output=ideal_output,
                 tool_catalogue_text=tool_catalogue_text,
                 current_graph=current_graph,
+                usage=usage,
             ),
         )
         if plan_err is not None:
@@ -567,9 +609,10 @@ class WorkflowGenerator:
             installed_tools=installed_tools,
             current_graph=current_graph,
             correction_hint="",
+            usage=usage,
         )
         if build_result.build_err is not None:
-            return _result_with_errors(_empty_result(), [build_result.build_err])
+            return _result_with_errors(_empty_result(), [build_result.build_err], usage)
 
         reference_errors = [e for e in build_result.errors if e["code"] in _REFERENCE_ERROR_CODES]
         if reference_errors:
@@ -593,6 +636,7 @@ class WorkflowGenerator:
                 installed_tools=installed_tools,
                 current_graph=current_graph,
                 correction_hint=cls._format_correction_hint(reference_errors),
+                usage=usage,
             )
             # Keep the retry only if the builder didn't hard-fail AND it left
             # fewer errors; otherwise fall back to the first attempt.
@@ -601,7 +645,8 @@ class WorkflowGenerator:
 
         if build_result.errors:
             logger.warning("Workflow generator: structural validation failed: %s", build_result.errors)
-            return _result_with_errors(build_result.result, build_result.errors)
+            return _result_with_errors(build_result.result, build_result.errors, usage)
+        build_result.result["usage"] = usage.to_dict()
         return build_result.result
 
     @classmethod
@@ -623,6 +668,7 @@ class WorkflowGenerator:
         installed_tools: set[tuple[str, str]] | None,
         current_graph: dict[str, Any] | None,
         correction_hint: str,
+        usage: "_UsageAccumulator | None" = None,
     ) -> "_BuildAttempt":
         """
         Run one builder attempt: build → postprocess (auto-repair) → validate.
@@ -631,6 +677,8 @@ class WorkflowGenerator:
         the LLM can fix the references the first attempt got wrong. Returns a
         ``_BuildAttempt`` carrying either a hard build error or the
         postprocessed result plus its (possibly empty) structural errors.
+
+        ``usage`` — when provided — accumulates this attempt's builder token cost.
         """
         effective_instruction = instruction if not correction_hint else f"{instruction}\n\n{correction_hint}"
         graph, build_err = cls._run_stage(
@@ -797,6 +845,7 @@ class WorkflowGenerator:
         messages,
         model_parameters: dict[str, Any],
         stage: str,
+        usage: "_UsageAccumulator | None" = None,
     ) -> dict[str, Any]:
         """
         Call the LLM and parse the response as JSON, retrying ONCE on parse failure.
@@ -810,6 +859,9 @@ class WorkflowGenerator:
 
         On the second failure ``_StageJSONError`` bubbles up so the outer
         runner can tag it ``INVALID_JSON`` in the result envelope.
+
+        ``usage`` — when provided — accumulates every attempt's token cost,
+        including a failed-parse attempt (those tokens were still spent).
         """
         last_detail = ""
         for attempt in range(2):
@@ -825,6 +877,8 @@ class WorkflowGenerator:
                 model_parameters=model_parameters,
                 stage=stage,
             )
+            if usage is not None:
+                usage.add(response.usage)
             text = response.message.get_text_content() or ""
             try:
                 parsed = json_repair.loads(text)
@@ -854,6 +908,7 @@ class WorkflowGenerator:
         ideal_output: str,
         tool_catalogue_text: str,
         current_graph: dict[str, Any] | None = None,
+        usage: "_UsageAccumulator | None" = None,
     ) -> PlannerResultDict:
         user_prompt = PLANNER_USER_PROMPT.format(
             mode=_planner_prompt_mode(mode),
@@ -872,6 +927,7 @@ class WorkflowGenerator:
             messages=messages,
             model_parameters=clamped_parameters,
             stage="Planner",
+            usage=usage,
         )
         try:
             return cls._validate_planner_schema(parsed)

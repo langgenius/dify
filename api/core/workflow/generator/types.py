@@ -151,6 +151,19 @@ class GraphDict(TypedDict):
     viewport: GraphViewportDict
 
 
+class WorkflowGenerateUsageDict(TypedDict):
+    """Token usage for one generation, summed across planner + builder calls.
+
+    Populated from each LLM call's ``LLMResult.usage``; a provider that returns
+    no usage contributes zeros. Surfaced to the copilot panel so the user sees
+    the real cost of a turn.
+    """
+
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+
+
 class WorkflowGenerateResultDict(TypedDict):
     """What the runner returns. ``error`` is "" on success.
 
@@ -164,6 +177,10 @@ class WorkflowGenerateResultDict(TypedDict):
     envelope; ``errors`` carries the machine-readable codes so the frontend
     can localise the message and tie failures to specific nodes. On success
     both ``error == ""`` and ``errors == []``.
+
+    ``usage`` is the summed token cost of the planner + builder LLM calls
+    (including any parse/reference retries). Optional so existing callers /
+    tests that build a result dict by hand stay valid.
     """
 
     graph: GraphDict

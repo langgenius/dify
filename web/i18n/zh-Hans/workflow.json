@@ -1378,7 +1378,11 @@
   "workflowGenerator.refineTitle": "优化 {{mode}}",
   "workflowGenerator.regenerate": "重新生成",
   "workflowGenerator.reload": "重新加载",
+  "workflowGenerator.stop": "停止",
+  "workflowGenerator.stopped": "已停止生成。",
   "workflowGenerator.studioApply": "应用",
   "workflowGenerator.studioButton": "生成",
-  "workflowGenerator.title": "生成 {{mode}}"
+  "workflowGenerator.title": "生成 {{mode}}",
+  "workflowGenerator.tokens": "tokens",
+  "workflowGenerator.tookTime": "耗时"
 }
