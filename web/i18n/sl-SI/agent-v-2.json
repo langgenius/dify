@@ -349,8 +349,6 @@
   "agentDetail.monitoring.timeRanges.today": "Danes",
   "agentDetail.monitoring.title": "Spremljanje",
   "agentDetail.monitoring.tokenUsageConsumed": "Porabljeni žetoni",
-  "agentDetail.monitoring.tracing.scope": "Nastavitve Agent App veljajo samo za pogovore Agent App. Vozlišča Agent v potekih workflow in chatflow uporabljajo nastavitve sledenja aplikacije, ki jih kliče.",
-  "agentDetail.monitoring.tracing.title": "Sledenje",
   "agentDetail.monitoring.units.tokenPerSecond": "Žeton/s",
   "agentDetail.navigationLabel": "Navigacija agenta",
   "agentDetail.publish": "Objavi",

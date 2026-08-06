@@ -349,8 +349,6 @@
   "agentDetail.monitoring.timeRanges.today": "Heute",
   "agentDetail.monitoring.title": "Monitoring",
   "agentDetail.monitoring.tokenUsageConsumed": "Verbrauchte Tokens",
-  "agentDetail.monitoring.tracing.scope": "Agent-App-Einstellungen gelten nur für Agent-App-Unterhaltungen. Agent-Knoten in Workflows und Chatflows verwenden die Tracing-Einstellungen der aufrufenden App.",
-  "agentDetail.monitoring.tracing.title": "Tracing",
   "agentDetail.monitoring.units.tokenPerSecond": "Token/s",
   "agentDetail.navigationLabel": "Agenten-Navigation",
   "agentDetail.publish": "Veröffentlichen",

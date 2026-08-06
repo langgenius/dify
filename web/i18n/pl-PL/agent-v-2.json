@@ -349,8 +349,6 @@
   "agentDetail.monitoring.timeRanges.today": "Dziś",
   "agentDetail.monitoring.title": "Monitorowanie",
   "agentDetail.monitoring.tokenUsageConsumed": "Zużyte tokeny",
-  "agentDetail.monitoring.tracing.scope": "Ustawienia Agent App dotyczą tylko rozmów Agent App. Węzły Agent w workflow i chatflow używają ustawień śledzenia aplikacji wywołującej.",
-  "agentDetail.monitoring.tracing.title": "Śledzenie",
   "agentDetail.monitoring.units.tokenPerSecond": "Token/s",
   "agentDetail.navigationLabel": "Nawigacja agenta",
   "agentDetail.publish": "Opublikuj",

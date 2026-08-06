@@ -349,8 +349,6 @@
   "agentDetail.monitoring.timeRanges.today": "Сьогодні",
   "agentDetail.monitoring.title": "Моніторинг",
   "agentDetail.monitoring.tokenUsageConsumed": "Спожиті токени",
-  "agentDetail.monitoring.tracing.scope": "Налаштування Agent App застосовуються лише до розмов Agent App. Вузли Agent у workflow та chatflow використовують налаштування трасування застосунку, що їх викликає.",
-  "agentDetail.monitoring.tracing.title": "Трасування",
   "agentDetail.monitoring.units.tokenPerSecond": "Токен/с",
   "agentDetail.navigationLabel": "Навігація агента",
   "agentDetail.publish": "Опублікувати",

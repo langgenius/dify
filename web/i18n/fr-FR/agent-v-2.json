@@ -349,8 +349,6 @@
   "agentDetail.monitoring.timeRanges.today": "Aujourd’hui",
   "agentDetail.monitoring.title": "Surveillance",
   "agentDetail.monitoring.tokenUsageConsumed": "Tokens consommés",
-  "agentDetail.monitoring.tracing.scope": "Les paramètres de l’Agent App s’appliquent uniquement à ses conversations. Les nœuds Agent des workflows et chatflows utilisent les paramètres de traçage de l’application appelante.",
-  "agentDetail.monitoring.tracing.title": "Traçage",
   "agentDetail.monitoring.units.tokenPerSecond": "Token/s",
   "agentDetail.navigationLabel": "Navigation de l’agent",
   "agentDetail.publish": "Publier",

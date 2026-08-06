@@ -349,8 +349,6 @@
   "agentDetail.monitoring.timeRanges.today": "आज",
   "agentDetail.monitoring.title": "निगरानी",
   "agentDetail.monitoring.tokenUsageConsumed": "खपत किए गए टोकन",
-  "agentDetail.monitoring.tracing.scope": "Agent App सेटिंग केवल Agent App बातचीत पर लागू होती हैं। workflow और chatflow में Agent नोड कॉल करने वाले ऐप की ट्रेसिंग सेटिंग का उपयोग करते हैं।",
-  "agentDetail.monitoring.tracing.title": "ट्रेसिंग",
   "agentDetail.monitoring.units.tokenPerSecond": "टोकन/सेकंड",
   "agentDetail.navigationLabel": "एजेंट नेविगेशन",
   "agentDetail.publish": "प्रकाशित करें",

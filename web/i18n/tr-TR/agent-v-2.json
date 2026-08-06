@@ -349,8 +349,6 @@
   "agentDetail.monitoring.timeRanges.today": "Bugün",
   "agentDetail.monitoring.title": "İzleme",
   "agentDetail.monitoring.tokenUsageConsumed": "Tüketilen tokenlar",
-  "agentDetail.monitoring.tracing.scope": "Agent App ayarları yalnızca Agent App konuşmalarına uygulanır. Workflow ve chatflow içindeki Agent düğümleri, çağıran uygulamanın izleme ayarlarını kullanır.",
-  "agentDetail.monitoring.tracing.title": "İzleme",
   "agentDetail.monitoring.units.tokenPerSecond": "Token/s",
   "agentDetail.navigationLabel": "Ajan gezinmesi",
   "agentDetail.publish": "Yayınla",

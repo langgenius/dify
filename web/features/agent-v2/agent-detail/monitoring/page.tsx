@@ -28,7 +28,6 @@ import { AgentDetailSectionSurface } from '../section-surface'
 import { AgentMonitoringChart } from './chart'
 import { getAgentMonitoringMetrics } from './metrics'
 import { AgentMonitoringTimeRangePicker } from './time-range-picker'
-import { AgentMonitoringTracingPanel } from './tracing-panel'
 
 type SourceFilterValue = 'all' | AgentLogSourceResponse['id']
 type SourceFilterItem = {
@@ -139,7 +138,6 @@ export function AgentMonitoringPage({ agentId }: AgentMonitoringPageProps) {
       <ScrollArea className="min-h-0 flex-1 overflow-hidden">
         <ScrollAreaViewport>
           <ScrollAreaContent className="px-6 pt-2 pb-3">
-            <AgentMonitoringTracingPanel agentId={agentId} />
             {shouldShowInitialSkeleton && <AgentMonitoringSkeletonGrid />}
             {shouldShowError && (
               <AgentMonitoringState>
