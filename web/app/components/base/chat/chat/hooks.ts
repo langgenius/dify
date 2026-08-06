@@ -412,6 +412,14 @@ export const useChat = (
           if (generation !== workflowEventsSubscriptionGenerationRef.current) return
           options.onHumanInputRequired?.(event)
         },
+        onHumanInputFormFilled: (event) => {
+          if (generation !== workflowEventsSubscriptionGenerationRef.current) return
+          options.onHumanInputFormFilled?.(event)
+        },
+        onHumanInputFormTimeout: (event) => {
+          if (generation !== workflowEventsSubscriptionGenerationRef.current) return
+          options.onHumanInputFormTimeout?.(event)
+        },
         onWorkflowFinished: (event) => {
           if (generation !== workflowEventsSubscriptionGenerationRef.current) return
           hasWorkflowFinished = true

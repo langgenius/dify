@@ -1726,6 +1726,49 @@ describe('useChat', () => {
       )
     })
 
+    it('should clear pending human input when form filled event arrives on workflow events subscription', async () => {
+      const callbacksList: HookCallbacks[] = []
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        callbacksList.push(options as HookCallbacks)
+      })
+      vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
+        callbacksList.push(options as HookCallbacks)
+      })
+
+      const { result } = renderHook(() => useChat())
+
+      act(() => {
+        result.current.handleSend('test-url', { query: 'hello' }, {})
+      })
+
+      act(() => {
+        callbacksList[0]!.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1' })
+        callbacksList[0]!.onHumanInputRequired({ data: { node_id: 'human-1' } })
+        callbacksList[0]!.onWorkflowPaused({ data: { workflow_run_id: 'wr-1' } })
+      })
+
+      expect(result.current.chatList[1]!.humanInputFormDataList).toHaveLength(1)
+      expect(sseGet).toHaveBeenCalledTimes(1)
+
+      let isReady: boolean | undefined
+      const readyPromise = result.current
+        .prepareHumanInputSubmission()
+        .then((ready) => (isReady = ready))
+
+      act(() => {
+        callbacksList[1]!.onWorkflowPaused({ data: { workflow_run_id: 'wr-1' } })
+      })
+      await act(async () => readyPromise)
+      expect(isReady).toBe(true)
+
+      act(() => {
+        callbacksList[1]!.onHumanInputFormFilled({ data: { node_id: 'human-1' } })
+      })
+
+      expect(result.current.chatList[1]!.humanInputFormDataList).toHaveLength(0)
+      expect(result.current.chatList[1]!.humanInputFilledFormDataList).toHaveLength(1)
+    })
+
     it('should handle non-agent mode resume', async () => {
       let callbacks: HookCallbacks
 
