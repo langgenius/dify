@@ -1191,6 +1191,7 @@ describe('useNodesInteractions', () => {
       BlockEnum.Loop,
       BlockEnum.DataSource,
       BlockEnum.KnowledgeBase,
+      BlockEnum.HumanInput,
     ]
 
     const createNodeMeta = (type: BlockEnum) => ({
@@ -1204,10 +1205,9 @@ describe('useNodesInteractions', () => {
       },
     })
 
-    const runNestedPasteScenario = async (
+    const runDisallowedPasteScenario = async (
       containerType: BlockEnum.Iteration | BlockEnum.Loop,
       nodeType: BlockEnum,
-      allowed = false,
     ) => {
       runtimeNodesMetaDataMap.value = {
         [nodeType]: createNodeMeta(nodeType),
@@ -1263,26 +1263,23 @@ describe('useNodesInteractions', () => {
 
       const pastedNodes = rfState.setNodes.mock.calls.at(-1)?.[0] as Node[]
 
-      expect(pastedNodes).toHaveLength(allowed ? 2 : 1)
+      expect(pastedNodes).toHaveLength(1)
       expect(pastedNodes[0]?.id).toBe(containerId)
-      if (!allowed) expect(pastedNodes[0]?.data._children).toEqual([])
+      expect(pastedNodes[0]?.data._children).toEqual([])
       expect(
         pastedNodes.some((node) => node.data.type === nodeType && node.parentId === containerId),
-      ).toBe(allowed)
+      ).toBe(false)
     }
 
     it.each(disallowedNestedPasteNodeTypes)(
       'should not paste %s into an iteration container',
       async (nodeType) => {
-        await runNestedPasteScenario(BlockEnum.Iteration, nodeType)
+        await runDisallowedPasteScenario(BlockEnum.Iteration, nodeType)
       },
     )
 
-    it.each([BlockEnum.Iteration, BlockEnum.Loop] as const)(
-      'should paste human-input into a %s container',
-      async (containerType) => {
-        await runNestedPasteScenario(containerType, BlockEnum.HumanInput, true)
-      },
-    )
+    it('should not paste human-input into a loop container', async () => {
+      await runDisallowedPasteScenario(BlockEnum.Loop, BlockEnum.HumanInput)
+    })
   })
 })

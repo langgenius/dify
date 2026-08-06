@@ -11,7 +11,8 @@ const availableBlocksFilter = (nodeType: BlockEnum, inContainer?: boolean) => {
       nodeType === BlockEnum.Loop ||
       nodeType === BlockEnum.End ||
       nodeType === BlockEnum.DataSource ||
-      nodeType === BlockEnum.KnowledgeBase)
+      nodeType === BlockEnum.KnowledgeBase ||
+      nodeType === BlockEnum.HumanInput)
   )
     return false
 
