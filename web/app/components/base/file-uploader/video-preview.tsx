@@ -22,7 +22,7 @@ const VideoPreview: FC<VideoPreviewProps> = ({ url, title, onCancel }) => {
         className="inset-0! top-0! left-0! flex h-dvh! max-h-none! w-screen! max-w-none! translate-0! items-center justify-center overflow-hidden! rounded-none! border-none! bg-black/80 p-8! shadow-none!"
         backdropClassName="bg-transparent!"
       >
-        <div aria-label={title} tabIndex={-1} onClick={(e) => e.stopPropagation()}>
+        <div tabIndex={-1} onClick={(e) => e.stopPropagation()}>
           <video controls title={title} autoPlay={false} preload="metadata">
             <source type="video/mp4" src={url} className="max-h-full max-w-full" />
           </video>

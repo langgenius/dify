@@ -8,10 +8,13 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.db.session_factory import get_session_maker
+from repositories.workspace_member_query_repository import WorkspaceMemberQueryRepository
 from repositories.workspace_query_repository import WorkspaceQueryRepository
 from services.feature_query_service import FeatureQueryService
 from services.feature_service import FeatureService
 from services.feature_service_gateway import FeatureServiceGateway
+from services.workspace_member_query_service import WorkspaceMemberQueryService
+from services.workspace_member_role_resolver import DeploymentWorkspaceMemberRoleResolver
 from services.workspace_plan_gateway import DeploymentWorkspacePlanGateway
 from services.workspace_query_service import WorkspaceQueryService
 
@@ -22,6 +25,7 @@ _EXTENSION_KEY = "application_services"
 class ApplicationServices:
     feature_queries: FeatureQueryService
     workspace_queries: WorkspaceQueryService
+    workspace_member_queries: WorkspaceMemberQueryService
 
 
 def build_application_services(
@@ -39,6 +43,12 @@ def build_application_services(
                 client=database_client,
             ),
             plans=DeploymentWorkspacePlanGateway(),
+        ),
+        workspace_member_queries=WorkspaceMemberQueryService(
+            members=WorkspaceMemberQueryRepository(
+                session_factory=database_client,
+            ),
+            roles=DeploymentWorkspaceMemberRoleResolver(),
         ),
     )
 

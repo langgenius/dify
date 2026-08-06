@@ -11,10 +11,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: web-e2e-${{ github.head_ref || github.run_id }}
-  cancel-in-progress: true
-
 jobs:
   test:
     name: Web Full-Stack E2E
@@ -50,9 +46,17 @@ jobs:
         working-directory: ./e2e
         run: vp run test:unit
 
-      - name: Install Playwright browser
+      - name: Install Playwright browsers for core E2E
+        if: ${{ !inputs.run-external-runtime }}
+        timeout-minutes: 15
         working-directory: ./e2e
-        run: vp run e2e:install
+        run: vp run e2e:install:ci
+
+      - name: Install Chromium for external runtime E2E
+        if: ${{ inputs.run-external-runtime }}
+        timeout-minutes: 15
+        working-directory: ./e2e
+        run: vp run e2e:install:ci:chromium
 
       - name: Run isolated source-api and built-web Cucumber E2E tests
         if: ${{ !inputs.run-external-runtime }}

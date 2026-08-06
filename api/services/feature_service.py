@@ -50,14 +50,15 @@ class FeatureService:
         return features
 
     @classmethod
-    def get_vector_space(cls, tenant_id: str) -> feature_entities.LimitationModel:
-        vector_space = feature_entities.LimitationModel(size=0, limit=5)
+    def get_vector_space(cls, tenant_id: str) -> feature_entities.VectorSpaceLimitationModel:
+        vector_space = feature_entities.VectorSpaceLimitationModel(size=0, limit=5)
         if dify_config.BILLING_ENABLED and tenant_id:
             billing_vector_space = BillingService.get_vector_space(tenant_id)
             # NOTE: billing API returns vector_space.size as float (e.g. 0.0),
             # but feature API keeps LimitationModel.size as int for compatibility.
             vector_space.size = int(billing_vector_space["size"])
             vector_space.limit = billing_vector_space["limit"]
+            vector_space.usage_unknown = billing_vector_space.get("usage_unknown", False)
 
         return vector_space
 
@@ -70,6 +71,21 @@ class FeatureService:
             knowledge_rate_limit.limit = limit_info.get("limit", 10)
             knowledge_rate_limit.subscription_plan = limit_info.get("subscription_plan", CloudPlan.SANDBOX)
         return knowledge_rate_limit
+
+    @classmethod
+    def get_knowledge_file_size_limit(cls, tenant_id: str | None) -> int:
+        default_limit = dify_config.UPLOAD_FILE_SIZE_LIMIT
+        if not dify_config.BILLING_ENABLED or not tenant_id:
+            return default_limit
+
+        billing_info = BillingService.get_info(tenant_id, exclude_vector_space=True)
+        if billing_info["enabled"] and billing_info["subscription"]["plan"] in (
+            CloudPlan.PROFESSIONAL,
+            CloudPlan.TEAM,
+        ):
+            return max(default_limit, dify_config.KNOWLEDGE_UPLOAD_FILE_SIZE_LIMIT_FOR_PAID_PLAN)
+
+        return default_limit
 
     @classmethod
     def _resolve_human_input_email_delivery_enabled(

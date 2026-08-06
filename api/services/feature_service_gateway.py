@@ -2,7 +2,12 @@
 
 from typing import override
 
-from services.entities.feature_entities import FeatureModel, LicenseModel, LimitationModel, SystemFeatureModel
+from services.entities.feature_entities import (
+    FeatureModel,
+    LicenseModel,
+    SystemFeatureModel,
+    VectorSpaceLimitationModel,
+)
 from services.feature_query_service import FeatureQueryGateway
 from services.feature_service import FeatureService
 
@@ -15,7 +20,7 @@ class FeatureServiceGateway(FeatureQueryGateway):
         return FeatureService.get_features(workspace_id, exclude_vector_space=True)
 
     @override
-    def get_vector_space(self, workspace_id: str) -> LimitationModel:
+    def get_vector_space(self, workspace_id: str) -> VectorSpaceLimitationModel:
         return FeatureService.get_vector_space(workspace_id)
 
     @override

@@ -1,8 +1,9 @@
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
-import type { ComponentProps } from 'react'
+import type { TagSelectorProps } from '../components/tag-selector'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { render } from '@/test/console/render'
+import { DatasetCardTags } from '../components/dataset-card-tags'
 import { TagSelector } from '../components/tag-selector'
 
 const { mockToast } = vi.hoisted(() => {
@@ -123,7 +124,7 @@ const defaultProps = {
   targetId: 'target-1',
   type: 'app',
   value: [appTags[0]!],
-} satisfies ComponentProps<typeof TagSelector>
+} satisfies TagSelectorProps
 
 describe('TagSelector', () => {
   beforeEach(() => {
@@ -147,6 +148,23 @@ describe('TagSelector', () => {
   it('renders selected tag names in the combobox trigger', () => {
     render(<TagSelector {...defaultProps} />)
     expect(screen.getByText('Frontend')).toBeInTheDocument()
+  })
+
+  it('keeps dataset tag interactions inside the tag trigger', async () => {
+    const user = userEvent.setup()
+    const onOuterClick = vi.fn()
+    mockUseQueryData.current = []
+
+    document.addEventListener('click', onOuterClick)
+    try {
+      render(<DatasetCardTags datasetId="dataset-1" embeddingAvailable tags={[]} />)
+
+      await user.click(screen.getByRole('combobox', { name: i18n.noTag }))
+
+      expect(onOuterClick).not.toHaveBeenCalled()
+    } finally {
+      document.removeEventListener('click', onOuterClick)
+    }
   })
 
   it('renders the no tag trigger when no current tag is visible and binding is unavailable', () => {

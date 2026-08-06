@@ -132,9 +132,6 @@ describe('Combobox wrappers', () => {
         .toHaveAttribute('autocomplete', 'off')
       await expect
         .element(screen.getByRole('combobox', { name: 'Search resources' }))
-        .toHaveAttribute('type', 'text')
-      await expect
-        .element(screen.getByRole('combobox', { name: 'Search resources' }))
         .toHaveAttribute('placeholder', 'Find a resource')
       await expect
         .element(screen.getByRole('combobox', { name: 'Search resources' }))
@@ -142,6 +139,18 @@ describe('Combobox wrappers', () => {
       await expect
         .element(screen.getByRole('combobox', { name: 'Search resources' }))
         .toHaveClass('custom-input')
+    })
+
+    it('should not inject input-only attributes into a custom textarea', async () => {
+      const screen = await renderInputCombobox({
+        children: (
+          <ComboboxInputGroup>
+            <ComboboxInput aria-label="Search resources" render={<textarea />} />
+          </ComboboxInputGroup>
+        ),
+      })
+
+      await expect.element(screen.getByLabelText('Search resources')).not.toHaveAttribute('type')
     })
 
     it('should provide fallback aria labels and decorative icons for input controls', async () => {

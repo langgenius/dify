@@ -13,8 +13,10 @@ from services.entities.feature_entities import (
     LicenseStatus,
     LimitationModel,
     SystemFeatureModel,
+    VectorSpaceLimitationModel,
 )
 from services.feature_query_service import FeatureQueryService
+from services.workspace_member_query_service import WorkspaceMemberQueryService
 from services.workspace_query_service import WorkspaceQueryService
 
 
@@ -32,6 +34,7 @@ def _install_application_services(mocker: MockerFixture):
     services = ApplicationServices(
         feature_queries=feature_queries,
         workspace_queries=create_autospec(WorkspaceQueryService, instance=True, spec_set=True),
+        workspace_member_queries=create_autospec(WorkspaceMemberQueryService, instance=True, spec_set=True),
     )
     mocker.patch("controllers.console.feature.application_services", return_value=services)
     return feature_queries
@@ -67,7 +70,7 @@ class TestFeatureVectorSpaceApi:
 
         feature_queries = _install_application_services(mocker)
         get_vector_space = feature_queries.get_vector_space
-        get_vector_space.return_value = LimitationModel(size=5120, limit=20480)
+        get_vector_space.return_value = VectorSpaceLimitationModel(size=5120, limit=20480)
 
         api = FeatureVectorSpaceApi()
 
@@ -77,6 +80,26 @@ class TestFeatureVectorSpaceApi:
 
         assert result == {"size": 5120, "limit": 20480}
         get_vector_space.assert_called_once_with(request_context)
+
+    def test_get_vector_space_preserves_unknown_usage(self, mocker: MockerFixture):
+        from controllers.console.feature import FeatureVectorSpaceApi
+
+        feature_queries = _install_application_services(mocker)
+        get_vector_space = feature_queries.get_vector_space
+        get_vector_space.return_value = VectorSpaceLimitationModel(size=0, limit=50, usage_unknown=True)
+
+        request_context = _request_context()
+        result = unwrap(FeatureVectorSpaceApi.get)(FeatureVectorSpaceApi(), request_context)
+
+        assert result == {"size": 0, "limit": 50, "usage_unknown": True}
+        get_vector_space.assert_called_once_with(request_context)
+
+    def test_vector_space_response_schema_marks_usage_unknown_optional(self):
+        schema = VectorSpaceLimitationModel.model_json_schema(mode="serialization")
+
+        assert schema["required"] == ["size", "limit"]
+        assert schema["properties"]["usage_unknown"]["type"] == "boolean"
+        assert "usage_unknown" not in schema["required"]
 
 
 class TestTrialModelsApi:

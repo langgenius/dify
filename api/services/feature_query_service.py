@@ -4,7 +4,12 @@ from collections.abc import Sequence
 from typing import Protocol
 
 from machinery.context import RequestContext
-from services.entities.feature_entities import FeatureModel, LicenseModel, LimitationModel, SystemFeatureModel
+from services.entities.feature_entities import (
+    FeatureModel,
+    LicenseModel,
+    SystemFeatureModel,
+    VectorSpaceLimitationModel,
+)
 
 
 class FeatureQueryGateway(Protocol):
@@ -12,7 +17,7 @@ class FeatureQueryGateway(Protocol):
 
     def get_workspace_features(self, workspace_id: str) -> FeatureModel: ...
 
-    def get_vector_space(self, workspace_id: str) -> LimitationModel: ...
+    def get_vector_space(self, workspace_id: str) -> VectorSpaceLimitationModel: ...
 
     def get_public_system_features(self) -> SystemFeatureModel: ...
 
@@ -34,7 +39,7 @@ class FeatureQueryService:
     def get_features(self, context: RequestContext) -> FeatureModel:
         return self._features.get_workspace_features(self._require_active_workspace(context))
 
-    def get_vector_space(self, context: RequestContext) -> LimitationModel:
+    def get_vector_space(self, context: RequestContext) -> VectorSpaceLimitationModel:
         return self._features.get_vector_space(self._require_active_workspace(context))
 
     def get_trial_models(self) -> list[str]:
