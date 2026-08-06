@@ -4,8 +4,8 @@ import {
   type DocumentMultimodalManifest,
   type DocumentOutline,
   type DocumentOutlineNode,
-  type KnowledgePath,
   KNOWLEDGE_FS_VIRTUAL_PATH_MAX_LENGTH,
+  type KnowledgePath,
   KnowledgePathSchema,
   PublicationGenerationIdSchema,
 } from "@knowledge/core";

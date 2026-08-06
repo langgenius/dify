@@ -222,14 +222,17 @@ describe("document KnowledgeFS paths", () => {
       }),
     ]);
 
-    const longSectionPath = buildDocumentSectionKnowledgePaths({
+    const longOutline = documentOutline(asset.id, asset.knowledgeSpaceId);
+    const longOutlineNode = longOutline.nodes[0];
+    if (!longOutlineNode) throw new Error("Expected document outline fixture node");
+    const longSectionPaths = buildDocumentSectionKnowledgePaths({
       asset,
       generateId: sequenceIds(["018f0d60-7a49-7cc2-9c1b-5b36f18f2c49"]),
       outline: {
-        ...documentOutline(asset.id, asset.knowledgeSpaceId),
+        ...longOutline,
         nodes: [
           {
-            ...documentOutline(asset.id, asset.knowledgeSpaceId).nodes[0]!,
+            ...longOutlineNode,
             id: "outline-long-section",
             sectionPath: ["部署手册".repeat(100), "索引与检索设置".repeat(100)],
             title: "索引与检索设置".repeat(100),
@@ -237,13 +240,13 @@ describe("document KnowledgeFS paths", () => {
         ],
       },
       tenantId: "tenant-dev",
-    })[0]!;
+    });
+    const longSectionPath = longSectionPaths[0];
+    if (!longSectionPath) throw new Error("Expected long section KnowledgeFS path");
 
     expect(longSectionPath.virtualPath).toHaveLength(KNOWLEDGE_FS_VIRTUAL_PATH_MAX_LENGTH);
     expect(longSectionPath.virtualPath).toMatch(/--outlinel\.md$/u);
-    expect(longSectionPath.metadata.filename).toBe(
-      longSectionPath.virtualPath.split("/").at(-1),
-    );
+    expect(longSectionPath.metadata.filename).toBe(longSectionPath.virtualPath.split("/").at(-1));
 
     const publicationGenerationId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c60";
     const candidatePaths = [
