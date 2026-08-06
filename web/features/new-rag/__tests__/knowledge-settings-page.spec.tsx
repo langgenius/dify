@@ -206,4 +206,22 @@ describe('KnowledgeSettingsPage', () => {
     await user.click(screen.getByRole('button', { name: 'finish-draft' }))
     expect(await screen.findByText('no-conflict')).toBeInTheDocument()
   })
+
+  it('does not report a basic info conflict when immediate retrieval settings refresh', async () => {
+    const user = userEvent.setup()
+    membersQueryMock.data = { accounts: [] }
+    membersQueryMock.isPending = false
+    const { queryClient } = renderPage()
+
+    expect(await screen.findByText('no-conflict')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'start-draft' }))
+    act(() => {
+      queryClient.setQueryData(['knowledge-fs', 'settings'], {
+        ...queryData.settings,
+        revision: 2,
+      })
+    })
+
+    expect(await screen.findByText('no-conflict')).toBeInTheDocument()
+  })
 })

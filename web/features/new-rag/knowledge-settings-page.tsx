@@ -150,7 +150,10 @@ export function KnowledgeSettingsPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
     enabled: canManageAccess,
   })
   const membersQuery = useMembers()
-  const [activeDraftVersion, setActiveDraftVersion] = useState<string>()
+  const [activeDraftVersion, setActiveDraftVersion] = useState<{
+    conflict: string
+    form: string
+  }>()
 
   const isPending =
     spaceQuery.isPending ||
@@ -172,9 +175,17 @@ export function KnowledgeSettingsPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
       .sort()
       .join('|') ?? '',
   ].join(':')
-  const settingsFormKey = activeDraftVersion ?? settingsFormVersion
+  const basicDraftVersion = [
+    knowledgeSpaceId,
+    spaceQuery.data?.resource_version ?? 0,
+    permissionsQuery.data?.data
+      .map((permission) => `${permission.account_id}:${permission.revision}`)
+      .sort()
+      .join('|') ?? '',
+  ].join(':')
+  const settingsFormKey = activeDraftVersion?.form ?? settingsFormVersion
   const serverConflict =
-    activeDraftVersion !== undefined && activeDraftVersion !== settingsFormVersion
+    activeDraftVersion !== undefined && activeDraftVersion.conflict !== basicDraftVersion
 
   const retry = () => {
     const requests: Promise<unknown>[] = [
@@ -223,7 +234,11 @@ export function KnowledgeSettingsPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
             settings={settingsQuery.data}
             space={spaceQuery.data}
             onDraftFinish={() => setActiveDraftVersion(undefined)}
-            onDraftStart={() => setActiveDraftVersion((current) => current ?? settingsFormVersion)}
+            onDraftStart={() =>
+              setActiveDraftVersion(
+                (current) => current ?? { conflict: basicDraftVersion, form: settingsFormVersion },
+              )
+            }
           />
         )}
       </div>

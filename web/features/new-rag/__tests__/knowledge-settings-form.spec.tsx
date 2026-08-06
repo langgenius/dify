@@ -203,6 +203,7 @@ function renderForm({
   members = [],
   onDraftFinish,
   onDraftStart,
+  queryClient: queryClientOverride,
   serverConflict,
   settings: settingsOverride = settings,
   space: spaceOverride = space,
@@ -211,16 +212,19 @@ function renderForm({
   members?: Member[]
   onDraftFinish?: () => void
   onDraftStart?: () => void
+  queryClient?: QueryClient
   serverConflict?: boolean
   settings?: KnowledgeFsSettingsResponse
   space?: KnowledgeFsSpaceDetailResponse
 } = {}) {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      mutations: { retry: false },
-      queries: { retry: false },
-    },
-  })
+  const queryClient =
+    queryClientOverride ??
+    new QueryClient({
+      defaultOptions: {
+        mutations: { retry: false },
+        queries: { retry: false },
+      },
+    })
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
@@ -293,6 +297,39 @@ describe('KnowledgeSettingsForm', () => {
       )
     })
     expect(serviceMock.patchSettings).not.toHaveBeenCalled()
+    expect(toastMock.success).not.toHaveBeenCalled()
+  })
+
+  it('finishes the basic info draft before refreshing saved server data', async () => {
+    const user = userEvent.setup()
+    const onDraftFinish = vi.fn()
+    let finishRefresh!: () => void
+    const refreshPromise = new Promise<void>((resolve) => {
+      finishRefresh = resolve
+    })
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        mutations: { retry: false },
+        queries: { retry: false },
+      },
+    })
+    vi.spyOn(queryClient, 'invalidateQueries').mockReturnValue(refreshPromise)
+    renderForm({ onDraftFinish, queryClient })
+
+    const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
+    await user.clear(nameInput)
+    await user.type(nameInput, 'Updated without conflict flash')
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.settings.saveChanges',
+      }),
+    )
+
+    await waitFor(() => expect(serviceMock.patchSpace).toHaveBeenCalledOnce())
+    expect(onDraftFinish).toHaveBeenCalledOnce()
+    expect(nameInput).toBeDisabled()
+    finishRefresh()
+    await waitFor(() => expect(nameInput).toBeEnabled())
   })
 
   it('uses the 40-character knowledge name limit from the design contract', () => {
@@ -358,11 +395,6 @@ describe('KnowledgeSettingsForm', () => {
 
     await user.click(screen.getByRole('switch', { name: 'dataset.newKnowledge.apiAgentAccess' }))
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-    await user.click(
-      screen.getByRole('button', {
-        name: 'dataset.newKnowledge.settings.saveChanges',
-      }),
-    )
 
     await waitFor(() => {
       expect(serviceMock.patchExternalAccess).toHaveBeenCalledWith(
@@ -378,6 +410,12 @@ describe('KnowledgeSettingsForm', () => {
         expect.anything(),
       )
     })
+    expect(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.settings.saveChanges',
+      }),
+    ).toBeDisabled()
+    expect(toastMock.success).not.toHaveBeenCalled()
   })
 
   it('requires the exact knowledge name before deletion', async () => {
@@ -434,22 +472,14 @@ describe('KnowledgeSettingsForm', () => {
     await waitFor(() => expect(serviceMock.patchSpace).toHaveBeenCalledTimes(2))
   })
 
-  it('retries only the save slice that failed', async () => {
+  it('retries an immediate retrieval settings update without submitting basic info', async () => {
     const user = userEvent.setup()
     serviceMock.patchSettings.mockRejectedValueOnce(new Error('settings unavailable'))
     renderForm()
 
-    const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
-    await user.clear(nameInput)
-    await user.type(nameInput, 'Camera specs draft')
     await user.click(
       screen.getByRole('button', {
         name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
-      }),
-    )
-    await user.click(
-      screen.getByRole('button', {
-        name: 'dataset.newKnowledge.settings.saveChanges',
       }),
     )
 
@@ -457,7 +487,7 @@ describe('KnowledgeSettingsForm', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
 
     await waitFor(() => expect(serviceMock.patchSettings).toHaveBeenCalledTimes(2))
-    expect(serviceMock.patchSpace).toHaveBeenCalledTimes(1)
+    expect(serviceMock.patchSpace).not.toHaveBeenCalled()
   })
 
   it('shows the empty state when member search does not match the owner', async () => {
@@ -504,6 +534,54 @@ describe('KnowledgeSettingsForm', () => {
     expect(topKInput).toHaveValue(10)
     expect(screen.getByText('dataset.newKnowledge.settings.topKMinimum')).toBeInTheDocument()
     expect(screen.getByText('dataset.newKnowledge.settings.scoreRange')).toBeInTheDocument()
+    await waitFor(() =>
+      expect(serviceMock.patchSettings).toHaveBeenCalledWith(
+        {
+          body: {
+            expectedRevision: 5,
+            retrieval: expect.objectContaining({ topK: 10 }),
+          },
+          params: { control_space_id: 'space-1' },
+        },
+        expect.anything(),
+      ),
+    )
+  })
+
+  it('confirms an embedding migration and then saves it immediately', async () => {
+    const user = userEvent.setup()
+    renderForm()
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.settings.embeddingModelLabel',
+      }),
+    )
+    const dialog = await screen.findByRole('alertdialog')
+    expect(serviceMock.patchSettings).not.toHaveBeenCalled()
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
+
+    await waitFor(() =>
+      expect(serviceMock.patchSettings).toHaveBeenCalledWith(
+        {
+          body: {
+            embedding: {
+              model: 'openrouter/auto',
+              pluginId: 'langgenius/openrouter',
+              provider: 'openrouter',
+            },
+            expectedRevision: 5,
+          },
+          params: { control_space_id: 'space-1' },
+        },
+        expect.anything(),
+      ),
+    )
+    expect(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.settings.saveChanges',
+      }),
+    ).toBeDisabled()
   })
 
   it('only allows a score threshold without rerank in Research mode', async () => {
@@ -540,7 +618,7 @@ describe('KnowledgeSettingsForm', () => {
     )
   })
 
-  it('prevents two profile migrations from being edited in one save', async () => {
+  it('saves a reasoning model selection immediately without enabling the basic info save', async () => {
     const user = userEvent.setup()
     renderForm()
 
@@ -550,9 +628,10 @@ describe('KnowledgeSettingsForm', () => {
       }),
     )
 
+    await waitFor(() => expect(serviceMock.patchSettings).toHaveBeenCalledOnce())
     expect(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.settings.embeddingModelLabel',
+        name: 'dataset.newKnowledge.settings.saveChanges',
       }),
     ).toBeDisabled()
   })
@@ -636,11 +715,6 @@ describe('KnowledgeSettingsForm', () => {
     })
     expect(embeddingSelector).toBeEnabled()
     await user.click(embeddingSelector)
-    await user.click(
-      screen.getByRole('button', {
-        name: 'dataset.newKnowledge.settings.saveChanges',
-      }),
-    )
 
     await waitFor(() =>
       expect(serviceMock.patchSettings).toHaveBeenCalledWith(
@@ -758,11 +832,6 @@ describe('KnowledgeSettingsForm', () => {
         name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
       }),
     )
-    await user.click(
-      screen.getByRole('button', {
-        name: 'dataset.newKnowledge.settings.saveChanges',
-      }),
-    )
 
     await waitFor(() => {
       expect(serviceMock.patchSettings).toHaveBeenCalledWith(
@@ -820,11 +889,6 @@ describe('KnowledgeSettingsForm', () => {
         name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
       }),
     )
-    await user.click(
-      screen.getByRole('button', {
-        name: 'dataset.newKnowledge.settings.saveChanges',
-      }),
-    )
 
     expect(await screen.findByRole('status')).toHaveTextContent('common.operation.saving')
     expect(toastMock.success).not.toHaveBeenCalled()
@@ -840,7 +904,8 @@ describe('KnowledgeSettingsForm', () => {
       updated_at: '2026-07-28T00:01:00Z',
     })
 
-    await waitFor(() => expect(toastMock.success).toHaveBeenCalledWith('common.api.saved'))
+    await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument())
+    expect(toastMock.success).not.toHaveBeenCalled()
   })
 
   it('offers retry when a durable profile migration fails', async () => {
@@ -874,11 +939,6 @@ describe('KnowledgeSettingsForm', () => {
     await user.click(
       screen.getByRole('button', {
         name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
-      }),
-    )
-    await user.click(
-      screen.getByRole('button', {
-        name: 'dataset.newKnowledge.settings.saveChanges',
       }),
     )
 

@@ -53,7 +53,19 @@ const REASONING_MODEL_LABEL_ID = 'knowledge-reasoning-model-label'
 const EMBEDDING_MODEL_LABEL_ID = 'knowledge-embedding-model-label'
 const RERANK_MODEL_LABEL_ID = 'knowledge-rerank-model-label'
 
-type SaveSlice = 'externalAccess' | 'members' | 'settings' | 'space'
+type BasicSaveSlice = 'members' | 'space'
+type SaveErrorSlice = 'basic' | 'externalAccess' | 'settings'
+
+type SettingsDraft = {
+  embeddingModel: DefaultModel | undefined
+  reasoningModel: DefaultModel | undefined
+  rerankEnabled: boolean
+  rerankModel: DefaultModel | undefined
+  retrievalMode: KnowledgeFsProductRetrievalProfile['defaultMode']
+  scoreThreshold: number
+  scoreThresholdEnabled: boolean
+  topK: number
+}
 
 type KnowledgeSettingsFormProps = {
   externalAccess: KnowledgeFsExternalAccessResponse
@@ -261,8 +273,10 @@ export function KnowledgeSettingsForm({
     }),
   )
   const [nameTouched, setNameTouched] = useState(false)
-  const [saveError, setSaveError] = useState(false)
+  const [saveErrorSlice, setSaveErrorSlice] = useState<SaveErrorSlice>()
+  const [isBasicRefreshing, setIsBasicRefreshing] = useState(false)
   const [pendingMigrationId, setPendingMigrationId] = useState<string>()
+  const [pendingEmbeddingModel, setPendingEmbeddingModel] = useState<DefaultModel>()
   const [iconPickerOpen, setIconPickerOpen] = useState(false)
   const [embeddingDialogOpen, setEmbeddingDialogOpen] = useState(false)
   const [discardDialogOpen, setDiscardDialogOpen] = useState(false)
@@ -270,8 +284,17 @@ export function KnowledgeSettingsForm({
   const [deleteConfirmation, setDeleteConfirmation] = useState('')
   const deleteCancelRef = useRef<HTMLButtonElement>(null)
   const pendingNavigationRef = useRef<string | undefined>(undefined)
-  const completedSaveFingerprintsRef = useRef<Partial<Record<SaveSlice, string>>>({})
+  const completedBasicSaveFingerprintsRef = useRef<Partial<Record<BasicSaveSlice, string>>>({})
   const handledMigrationIdRef = useRef<string | undefined>(undefined)
+  const pendingSettingsDraftRef = useRef<SettingsDraft | undefined>(undefined)
+  const settingsRevisionRef = useRef(settings.revision)
+  const settingsPropRevisionRef = useRef(settings.revision)
+  const settingsSaveTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+
+  if (settingsPropRevisionRef.current !== settings.revision) {
+    settingsPropRevisionRef.current = settings.revision
+    settingsRevisionRef.current = settings.revision
+  }
 
   const canEdit = space.permission_keys.includes('knowledge_space_edit')
   const canManageAccess = space.permission_keys.includes('knowledge_space_access_config')
@@ -285,7 +308,6 @@ export function KnowledgeSettingsForm({
     icon !== initialIcon ||
     visibility !== space.visibility
   const membersDirty = sortedIds(selectedMemberIds) !== sortedIds(initialSelectedMemberIds)
-  const externalAccessDirty = apiEnabled !== initialApiEnabled
   const currentEmbeddingFingerprint = modelFingerprint(embeddingModel)
   const currentRetrievalFingerprint = retrievalFingerprint({
     mode: retrievalMode,
@@ -296,21 +318,23 @@ export function KnowledgeSettingsForm({
     scoreThresholdEnabled,
     topK,
   })
+  const currentSettingsDraft: SettingsDraft = {
+    embeddingModel,
+    reasoningModel,
+    rerankEnabled,
+    rerankModel,
+    retrievalMode,
+    scoreThreshold,
+    scoreThresholdEnabled,
+    topK,
+  }
   const embeddingDirty = currentEmbeddingFingerprint !== embeddingBaseline
   const retrievalDirty = currentRetrievalFingerprint !== retrievalBaseline
-  const settingsDirty = embeddingDirty || retrievalDirty
-  const isDirty = spaceDirty || membersDirty || externalAccessDirty || settingsDirty
+  const basicDirty = spaceDirty || membersDirty
+  const isDirty = basicDirty
   const nameInvalid = !name.trim()
   const membersInvalid =
     canManageAccess && visibility === 'partial_members' && selectedMemberIds.length === 0
-  const settingsInvalid =
-    (embeddingDirty && !embeddingModel) ||
-    (retrievalDirty &&
-      (!reasoningModel ||
-        (rerankEnabled && !rerankModel) ||
-        (retrievalMode !== 'research' && scoreThresholdEnabled && !rerankEnabled))) ||
-    (initialModelSetup && retrievalDirty && retrievalMode !== 'research' && !embeddingModel) ||
-    (!initialModelSetup && embeddingDirty && retrievalDirty)
 
   const spaceMutation = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.patch.mutationOptions(),
@@ -344,17 +368,18 @@ export function KnowledgeSettingsForm({
   const deleteMutation = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.delete.mutationOptions(),
   )
+  const isBasicSaving = spaceMutation.isPending || membersMutation.isPending || isBasicRefreshing
   const isSaving =
     spaceMutation.isPending ||
     membersMutation.isPending ||
+    isBasicRefreshing ||
     externalAccessMutation.isPending ||
     settingsMutation.isPending ||
     Boolean(pendingMigrationId)
   const fieldsDisabled = !canEdit || isSaving
   const retrievalFieldsDisabled = fieldsDisabled || (!initialModelSetup && embeddingDirty)
   const scoreThresholdAvailable = retrievalMode === 'research' || rerankEnabled
-  const saveDisabled =
-    !isDirty || nameInvalid || membersInvalid || settingsInvalid || isSaving || serverConflict
+  const saveDisabled = !basicDirty || nameInvalid || membersInvalid || isSaving || serverConflict
   const startDraft = () => onDraftStart?.()
 
   const resetDraft = () => {
@@ -363,29 +388,8 @@ export function KnowledgeSettingsForm({
     setIcon(initialIcon)
     setVisibility(space.visibility)
     setSelectedMemberIds(initialSelectedMemberIds)
-    setApiEnabled(initialApiEnabled)
-    setEmbeddingModel(initialEmbeddingModel)
-    setReasoningModel(initialReasoningModel)
-    setRerankModel(initialRerankModel)
-    setRetrievalMode(initialRetrievalMode)
-    setRerankEnabled(initialRerankEnabled)
-    setTopK(initialTopK)
-    setScoreThresholdEnabled(initialScoreThresholdEnabled)
-    setScoreThreshold(initialScoreThreshold)
-    setEmbeddingBaseline(modelFingerprint(initialEmbeddingModel))
-    setRetrievalBaseline(
-      retrievalFingerprint({
-        mode: initialRetrievalMode,
-        reasoningModel: initialReasoningModel,
-        rerankEnabled: initialRerankEnabled,
-        rerankModel: initialRerankModel,
-        scoreThreshold: initialScoreThreshold,
-        scoreThresholdEnabled: initialScoreThresholdEnabled,
-        topK: initialTopK,
-      }),
-    )
     setNameTouched(false)
-    setSaveError(false)
+    if (saveErrorSlice === 'basic') setSaveErrorSlice(undefined)
     onDraftFinish?.()
   }
 
@@ -413,16 +417,24 @@ export function KnowledgeSettingsForm({
 
     if (migration?.run_state === 'succeeded') {
       handledMigrationIdRef.current = pendingMigrationId
-      // oxlint-disable-next-line eslint-react/set-state-in-effect -- The durable remote migration result commits the editable settings baseline.
-      if (embeddingDirty) setEmbeddingBaseline(currentEmbeddingFingerprint)
-      // oxlint-disable-next-line eslint-react/set-state-in-effect -- The durable remote migration result commits the editable settings baseline.
-      if (retrievalDirty) setRetrievalBaseline(currentRetrievalFingerprint)
-      // oxlint-disable-next-line eslint-react/set-state-in-effect -- A terminal remote migration retires the local polling guard.
-      setPendingMigrationId(undefined)
+      const savedDraft = pendingSettingsDraftRef.current
+      if (savedDraft) setEmbeddingBaseline(modelFingerprint(savedDraft.embeddingModel))
+      if (savedDraft) {
+        setRetrievalBaseline(
+          retrievalFingerprint({
+            mode: savedDraft.retrievalMode,
+            reasoningModel: savedDraft.reasoningModel,
+            rerankEnabled: savedDraft.rerankEnabled,
+            rerankModel: savedDraft.rerankModel,
+            scoreThreshold: savedDraft.scoreThreshold,
+            scoreThresholdEnabled: savedDraft.scoreThresholdEnabled,
+            topK: savedDraft.topK,
+          }),
+        )
+      }
       void invalidateSettingsQueries().then(() => {
-        completedSaveFingerprintsRef.current = {}
-        onDraftFinish?.()
-        toast.success(tCommon(($) => $['api.saved']))
+        pendingSettingsDraftRef.current = undefined
+        setPendingMigrationId(undefined)
       })
       return
     }
@@ -433,41 +445,29 @@ export function KnowledgeSettingsForm({
       migration?.run_state === 'canceled'
     ) {
       handledMigrationIdRef.current = pendingMigrationId
-      delete completedSaveFingerprintsRef.current.settings
       // oxlint-disable-next-line eslint-react/set-state-in-effect -- A terminal remote migration retires the local polling guard.
       setPendingMigrationId(undefined)
       // oxlint-disable-next-line eslint-react/set-state-in-effect -- The authoritative failed migration transitions the save UI to its retry state.
-      setSaveError(true)
+      setSaveErrorSlice('settings')
     }
-  }, [
-    currentEmbeddingFingerprint,
-    currentRetrievalFingerprint,
-    embeddingDirty,
-    invalidateSettingsQueries,
-    migrationQuery.data,
-    migrationQuery.isError,
-    onDraftFinish,
-    pendingMigrationId,
-    retrievalDirty,
-    tCommon,
-  ])
+  }, [invalidateSettingsQueries, migrationQuery.data, migrationQuery.isError, pendingMigrationId])
 
-  const performSave = async () => {
+  const performBasicSave = async () => {
     if (saveDisabled || !canEdit) return
 
-    setSaveError(false)
+    setSaveErrorSlice(undefined)
 
     try {
       const saveSlice = async (
-        slice: SaveSlice,
+        slice: BasicSaveSlice,
         payload: unknown,
         save: () => Promise<unknown>,
       ) => {
         const fingerprint = JSON.stringify(payload)
-        if (completedSaveFingerprintsRef.current[slice] === fingerprint) return
+        if (completedBasicSaveFingerprintsRef.current[slice] === fingerprint) return
 
         await save()
-        completedSaveFingerprintsRef.current[slice] = fingerprint
+        completedBasicSaveFingerprintsRef.current[slice] = fingerprint
       }
 
       if (spaceDirty) {
@@ -501,77 +501,143 @@ export function KnowledgeSettingsForm({
           }),
         )
       }
-      if (externalAccessDirty && canManageAccess) {
-        const body = {
-          agent_enabled: apiEnabled,
-          mcp_enabled: externalAccess.mcp_enabled,
-          service_api_enabled: apiEnabled,
-          workflow_enabled: externalAccess.workflow_enabled,
-        }
-        await saveSlice('externalAccess', body, () =>
-          externalAccessMutation.mutateAsync({
-            body,
-            params: { control_space_id: space.control_space_id },
-          }),
-        )
-      }
-      if (settingsDirty) {
-        const body: KnowledgeFsSettingsPayload = {
-          expectedRevision: settings.revision,
-        }
-        if (embeddingDirty && embeddingModel) body.embedding = modelPayload(embeddingModel)
-        if (retrievalDirty && reasoningModel) {
-          const retrieval: KnowledgeFsProductRetrievalProfile = {
-            defaultMode: retrievalMode,
-            reasoningModel: modelPayload(reasoningModel),
-            rerank: {
-              enabled: rerankEnabled,
-              model: rerankModel ? modelPayload(rerankModel) : null,
-            },
-            scoreThreshold: {
-              enabled: scoreThresholdEnabled,
-              stage: rerankEnabled ? 'rerank' : 'mode-final',
-              value: scoreThreshold,
-            },
-            topK,
-          }
-          body.retrieval = retrieval
-        }
-        const fingerprint = JSON.stringify(body)
-        if (completedSaveFingerprintsRef.current.settings !== fingerprint) {
-          const result = await settingsMutation.mutateAsync({
-            body,
-            params: { control_space_id: space.control_space_id },
-          })
-          completedSaveFingerprintsRef.current.settings = fingerprint
-          if (result.migration) {
-            handledMigrationIdRef.current = undefined
-            setPendingMigrationId(result.migration.id)
-            return
-          }
-        }
-        if (embeddingDirty) setEmbeddingBaseline(currentEmbeddingFingerprint)
-        if (retrievalDirty) setRetrievalBaseline(currentRetrievalFingerprint)
-      }
-      if (pendingMigrationId) return
-      await invalidateSettingsQueries()
-      completedSaveFingerprintsRef.current = {}
+      completedBasicSaveFingerprintsRef.current = {}
+      setIsBasicRefreshing(true)
       onDraftFinish?.()
-      toast.success(tCommon(($) => $['api.saved']))
+      void invalidateSettingsQueries().then(
+        () => setIsBasicRefreshing(false),
+        () => setIsBasicRefreshing(false),
+      )
     } catch {
-      setSaveError(true)
+      setSaveErrorSlice('basic')
     }
   }
+
+  const performExternalAccessSave = async (enabled: boolean) => {
+    if (!canEdit || !canManageAccess || externalAccessMutation.isPending) return
+
+    setSaveErrorSlice(undefined)
+    try {
+      await externalAccessMutation.mutateAsync({
+        body: {
+          agent_enabled: enabled,
+          mcp_enabled: externalAccess.mcp_enabled,
+          service_api_enabled: enabled,
+          workflow_enabled: externalAccess.workflow_enabled,
+        },
+        params: { control_space_id: space.control_space_id },
+      })
+      await invalidateSettingsQueries()
+    } catch {
+      setSaveErrorSlice('externalAccess')
+    }
+  }
+
+  const performSettingsSave = async (draft: SettingsDraft) => {
+    if (!canEdit || settingsMutation.isPending || pendingMigrationId) return
+
+    if (settingsSaveTimerRef.current) clearTimeout(settingsSaveTimerRef.current)
+
+    const nextEmbeddingFingerprint = modelFingerprint(draft.embeddingModel)
+    const nextRetrievalFingerprint = retrievalFingerprint({
+      mode: draft.retrievalMode,
+      reasoningModel: draft.reasoningModel,
+      rerankEnabled: draft.rerankEnabled,
+      rerankModel: draft.rerankModel,
+      scoreThreshold: draft.scoreThreshold,
+      scoreThresholdEnabled: draft.scoreThresholdEnabled,
+      topK: draft.topK,
+    })
+    const nextEmbeddingDirty = nextEmbeddingFingerprint !== embeddingBaseline
+    const nextRetrievalDirty = nextRetrievalFingerprint !== retrievalBaseline
+    const invalid =
+      (nextEmbeddingDirty && !draft.embeddingModel) ||
+      (nextRetrievalDirty &&
+        (!draft.reasoningModel ||
+          (draft.rerankEnabled && !draft.rerankModel) ||
+          (draft.retrievalMode !== 'research' &&
+            draft.scoreThresholdEnabled &&
+            !draft.rerankEnabled))) ||
+      (initialModelSetup &&
+        nextRetrievalDirty &&
+        draft.retrievalMode !== 'research' &&
+        !draft.embeddingModel) ||
+      (!initialModelSetup && nextEmbeddingDirty && nextRetrievalDirty)
+    if (invalid || (!nextEmbeddingDirty && !nextRetrievalDirty)) return
+
+    const body: KnowledgeFsSettingsPayload = {
+      expectedRevision: settingsRevisionRef.current,
+    }
+    if (nextEmbeddingDirty && draft.embeddingModel)
+      body.embedding = modelPayload(draft.embeddingModel)
+    if (nextRetrievalDirty && draft.reasoningModel) {
+      body.retrieval = {
+        defaultMode: draft.retrievalMode,
+        reasoningModel: modelPayload(draft.reasoningModel),
+        rerank: {
+          enabled: draft.rerankEnabled,
+          model: draft.rerankModel ? modelPayload(draft.rerankModel) : null,
+        },
+        scoreThreshold: {
+          enabled: draft.scoreThresholdEnabled,
+          stage: draft.rerankEnabled ? 'rerank' : 'mode-final',
+          value: draft.scoreThreshold,
+        },
+        topK: draft.topK,
+      }
+    }
+
+    setSaveErrorSlice(undefined)
+    pendingSettingsDraftRef.current = draft
+    try {
+      const result = await settingsMutation.mutateAsync({
+        body,
+        params: { control_space_id: space.control_space_id },
+      })
+      settingsRevisionRef.current = result.settings.revision
+      if (result.migration) {
+        handledMigrationIdRef.current = undefined
+        setPendingMigrationId(result.migration.id)
+        return
+      }
+      if (nextEmbeddingDirty) setEmbeddingBaseline(nextEmbeddingFingerprint)
+      if (nextRetrievalDirty) setRetrievalBaseline(nextRetrievalFingerprint)
+      pendingSettingsDraftRef.current = undefined
+      await invalidateSettingsQueries()
+    } catch {
+      setSaveErrorSlice('settings')
+    }
+  }
+
+  const scheduleSettingsSave = (draft: SettingsDraft) => {
+    if (settingsSaveTimerRef.current) clearTimeout(settingsSaveTimerRef.current)
+    settingsSaveTimerRef.current = setTimeout(() => void performSettingsSave(draft), 400)
+  }
+
+  useEffect(
+    () => () => {
+      if (settingsSaveTimerRef.current) clearTimeout(settingsSaveTimerRef.current)
+    },
+    [],
+  )
 
   const requestSave = (event?: React.FormEvent<HTMLFormElement>) => {
     event?.preventDefault()
     setNameTouched(true)
     if (saveDisabled) return
-    if (embeddingDirty && (space.technical_summary?.document_count ?? 0) > 0) {
-      setEmbeddingDialogOpen(true)
+    void performBasicSave()
+  }
+
+  const retrySave = () => {
+    if (saveErrorSlice === 'externalAccess') {
+      void performExternalAccessSave(apiEnabled)
       return
     }
-    void performSave()
+    if (saveErrorSlice === 'settings') {
+      void performSettingsSave(pendingSettingsDraftRef.current ?? currentSettingsDraft)
+      return
+    }
+    requestSave()
   }
 
   useEffect(() => {
@@ -680,7 +746,7 @@ export function KnowledgeSettingsForm({
         </div>
       )}
 
-      {saveError && (
+      {saveErrorSlice && (
         <div
           className="mb-3 flex items-center gap-2 rounded-lg border border-text-destructive/20 bg-background-default-subtle px-3 py-2"
           role="alert"
@@ -689,7 +755,7 @@ export function KnowledgeSettingsForm({
           <span className="min-w-0 flex-1 system-xs-regular text-text-destructive">
             {t(($) => $['newKnowledge.settings.saveFailed'])}
           </span>
-          <Button type="button" size="small" variant="ghost" onClick={() => requestSave()}>
+          <Button type="button" size="small" variant="ghost" onClick={retrySave}>
             {tCommon(($) => $['operation.retry'])}
           </Button>
         </div>
@@ -817,8 +883,8 @@ export function KnowledgeSettingsForm({
             >
               {tCommon(($) => $['operation.cancel'])}
             </Button>
-            <Button type="submit" variant="primary" disabled={saveDisabled} loading={isSaving}>
-              {isSaving
+            <Button type="submit" variant="primary" disabled={saveDisabled} loading={isBasicSaving}>
+              {isBasicSaving
                 ? tCommon(($) => $['operation.saving'])
                 : t(($) => $['newKnowledge.settings.saveChanges'])}
             </Button>
@@ -835,8 +901,8 @@ export function KnowledgeSettingsForm({
               checked={apiEnabled}
               disabled={!canEdit || !canManageAccess || isSaving || !modelSetupReady}
               onCheckedChange={(checked) => {
-                startDraft()
                 setApiEnabled(checked)
+                void performExternalAccessSave(checked)
               }}
             />
             <p
@@ -874,8 +940,8 @@ export function KnowledgeSettingsForm({
                 readonly={retrievalFieldsDisabled}
                 triggerClassName="w-full"
                 onSelect={(model) => {
-                  startDraft()
                   setReasoningModel(model)
+                  void performSettingsSave({ ...currentSettingsDraft, reasoningModel: model })
                 }}
               />
             </div>
@@ -894,8 +960,13 @@ export function KnowledgeSettingsForm({
                 readonly={fieldsDisabled || (!initialModelSetup && retrievalDirty)}
                 triggerClassName="w-full"
                 onSelect={(model) => {
-                  startDraft()
+                  if ((space.technical_summary?.document_count ?? 0) > 0) {
+                    setPendingEmbeddingModel(model)
+                    setEmbeddingDialogOpen(true)
+                    return
+                  }
                   setEmbeddingModel(model)
+                  void performSettingsSave({ ...currentSettingsDraft, embeddingModel: model })
                 }}
               />
               {embeddingDirty && (space.technical_summary?.document_count ?? 0) > 0 && (
@@ -913,9 +984,15 @@ export function KnowledgeSettingsForm({
                   checked={rerankEnabled}
                   disabled={retrievalFieldsDisabled}
                   onCheckedChange={(checked) => {
-                    startDraft()
+                    const nextScoreThresholdEnabled =
+                      !checked && retrievalMode !== 'research' ? false : scoreThresholdEnabled
                     setRerankEnabled(checked)
-                    if (!checked && retrievalMode !== 'research') setScoreThresholdEnabled(false)
+                    setScoreThresholdEnabled(nextScoreThresholdEnabled)
+                    void performSettingsSave({
+                      ...currentSettingsDraft,
+                      rerankEnabled: checked,
+                      scoreThresholdEnabled: nextScoreThresholdEnabled,
+                    })
                   }}
                 />
                 <span id={RERANK_MODEL_LABEL_ID} className="system-sm-medium text-text-secondary">
@@ -929,8 +1006,8 @@ export function KnowledgeSettingsForm({
                 readonly={retrievalFieldsDisabled || !rerankEnabled}
                 triggerClassName="w-full"
                 onSelect={(model) => {
-                  startDraft()
                   setRerankModel(model)
+                  void performSettingsSave({ ...currentSettingsDraft, rerankModel: model })
                 }}
               />
               {rerankEnabled && !rerankModel && (
@@ -953,9 +1030,15 @@ export function KnowledgeSettingsForm({
                 onValueChange={(values) => {
                   const mode = values[0]
                   if (mode === 'fast' || mode === 'deep' || mode === 'research') {
-                    startDraft()
+                    const nextScoreThresholdEnabled =
+                      mode !== 'research' && !rerankEnabled ? false : scoreThresholdEnabled
                     setRetrievalMode(mode)
-                    if (mode !== 'research' && !rerankEnabled) setScoreThresholdEnabled(false)
+                    setScoreThresholdEnabled(nextScoreThresholdEnabled)
+                    void performSettingsSave({
+                      ...currentSettingsDraft,
+                      retrievalMode: mode,
+                      scoreThresholdEnabled: nextScoreThresholdEnabled,
+                    })
                   }
                 }}
               >
@@ -986,9 +1069,11 @@ export function KnowledgeSettingsForm({
                     value={topK}
                     disabled={retrievalFieldsDisabled}
                     className="w-18 shrink-0"
+                    onBlur={() => void performSettingsSave(currentSettingsDraft)}
                     onChange={(event) => {
-                      startDraft()
-                      setTopK(clamp(Number(event.target.value), TOP_K_MIN, TOP_K_MAX))
+                      const nextTopK = clamp(Number(event.target.value), TOP_K_MIN, TOP_K_MAX)
+                      setTopK(nextTopK)
+                      scheduleSettingsSave({ ...currentSettingsDraft, topK: nextTopK })
                     }}
                   />
                   <Slider
@@ -998,8 +1083,8 @@ export function KnowledgeSettingsForm({
                     value={topK}
                     disabled={retrievalFieldsDisabled}
                     onValueChange={(value) => {
-                      startDraft()
                       setTopK(value)
+                      scheduleSettingsSave({ ...currentSettingsDraft, topK: value })
                     }}
                   />
                 </div>
@@ -1015,8 +1100,11 @@ export function KnowledgeSettingsForm({
                     checked={scoreThresholdEnabled}
                     disabled={retrievalFieldsDisabled || !scoreThresholdAvailable}
                     onCheckedChange={(checked) => {
-                      startDraft()
                       setScoreThresholdEnabled(checked)
+                      void performSettingsSave({
+                        ...currentSettingsDraft,
+                        scoreThresholdEnabled: checked,
+                      })
                     }}
                   />
                   <label
@@ -1039,13 +1127,24 @@ export function KnowledgeSettingsForm({
                     disabled={retrievalFieldsDisabled || !scoreThresholdEnabled}
                     className="w-18 shrink-0"
                     onBlur={() => {
-                      setScoreThreshold(
-                        clamp(scoreThreshold, SCORE_THRESHOLD_MIN, SCORE_THRESHOLD_MAX),
+                      const nextScoreThreshold = clamp(
+                        scoreThreshold,
+                        SCORE_THRESHOLD_MIN,
+                        SCORE_THRESHOLD_MAX,
                       )
+                      setScoreThreshold(nextScoreThreshold)
+                      void performSettingsSave({
+                        ...currentSettingsDraft,
+                        scoreThreshold: nextScoreThreshold,
+                      })
                     }}
                     onChange={(event) => {
-                      startDraft()
-                      setScoreThreshold(Number(event.target.value))
+                      const nextScoreThreshold = Number(event.target.value)
+                      setScoreThreshold(nextScoreThreshold)
+                      scheduleSettingsSave({
+                        ...currentSettingsDraft,
+                        scoreThreshold: nextScoreThreshold,
+                      })
                     }}
                   />
                   <Slider
@@ -1056,8 +1155,8 @@ export function KnowledgeSettingsForm({
                     value={scoreThreshold}
                     disabled={retrievalFieldsDisabled || !scoreThresholdEnabled}
                     onValueChange={(value) => {
-                      startDraft()
                       setScoreThreshold(value)
+                      scheduleSettingsSave({ ...currentSettingsDraft, scoreThreshold: value })
                     }}
                   />
                 </div>
@@ -1112,7 +1211,13 @@ export function KnowledgeSettingsForm({
         }}
       />
 
-      <AlertDialog open={embeddingDialogOpen} onOpenChange={setEmbeddingDialogOpen}>
+      <AlertDialog
+        open={embeddingDialogOpen}
+        onOpenChange={(open) => {
+          setEmbeddingDialogOpen(open)
+          if (!open) setPendingEmbeddingModel(undefined)
+        }}
+      >
         <AlertDialogContent>
           <div className="px-6 pt-6">
             <AlertDialogTitle className="title-xl-semi-bold text-text-primary">
@@ -1123,14 +1228,18 @@ export function KnowledgeSettingsForm({
             </AlertDialogDescription>
           </div>
           <AlertDialogActions>
-            <AlertDialogCancelButton>
+            <AlertDialogCancelButton onClick={() => setPendingEmbeddingModel(undefined)}>
               {tCommon(($) => $['operation.cancel'])}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
               tone="default"
               onClick={() => {
+                const model = pendingEmbeddingModel
                 setEmbeddingDialogOpen(false)
-                void performSave()
+                setPendingEmbeddingModel(undefined)
+                if (!model) return
+                setEmbeddingModel(model)
+                void performSettingsSave({ ...currentSettingsDraft, embeddingModel: model })
               }}
             >
               {tCommon(($) => $['operation.confirm'])}
