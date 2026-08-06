@@ -19,9 +19,7 @@ class TestParentChildIndexProcessor:
     session_factory: sessionmaker[Session]
 
     @pytest.fixture(autouse=True)
-    def _inject_sqlite_sessions(
-        self, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
-    ) -> None:
+    def _inject_sqlite_sessions(self, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]) -> None:
         self.session = sqlite_session
         self.session_factory = sqlite_session_factory
 

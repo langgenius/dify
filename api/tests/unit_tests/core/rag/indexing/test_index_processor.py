@@ -192,9 +192,7 @@ class TestIndexProcessor:
         admission_service_class.assert_not_called()
 
     def test_get_preview_output_scopes_document_to_dataset_owner(self, sqlite_session: Session) -> None:
-        dataset, document = _persist_dataset_and_document(
-            sqlite_session, indexing_technique=IndexTechniqueType.ECONOMY
-        )
+        dataset, document = _persist_dataset_and_document(sqlite_session, indexing_technique=IndexTechniqueType.ECONOMY)
         processor = IndexProcessor()
         expected_preview = MagicMock()
 

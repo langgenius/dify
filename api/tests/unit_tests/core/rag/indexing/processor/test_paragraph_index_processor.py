@@ -27,9 +27,7 @@ class TestParagraphIndexProcessor:
     session_factory: sessionmaker[Session]
 
     @pytest.fixture(autouse=True)
-    def _inject_sqlite_sessions(
-        self, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
-    ) -> None:
+    def _inject_sqlite_sessions(self, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]) -> None:
         self.session = sqlite_session
         self.session_factory = sqlite_session_factory
 
@@ -510,9 +508,7 @@ class TestParagraphIndexProcessor:
             patch("concurrent.futures.wait", side_effect=[(set(), {future}), (set(), set())]),
         ):
             with pytest.raises(ValueError, match="timeout"):
-                processor.generate_summary_preview(
-                    "tenant-1", preview_items, {"enable": True}, session=self.session
-                )
+                processor.generate_summary_preview("tenant-1", preview_items, {"enable": True}, session=self.session)
 
         future.cancel.assert_called_once()
 
@@ -726,9 +722,7 @@ class TestParagraphIndexProcessor:
             ),
             caplog.at_level(logging.WARNING, logger="core.rag.index_processor.processor.paragraph_index_processor"),
         ):
-            files = ParagraphIndexProcessor._extract_images_from_segment_attachments(
-                "tenant-1", "seg-1", session
-            )
+            files = ParagraphIndexProcessor._extract_images_from_segment_attachments("tenant-1", "seg-1", session)
 
         assert len(files) == 1
         assert sum(1 for r in caplog.records if r.levelno == logging.WARNING) == 1

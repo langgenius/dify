@@ -61,9 +61,7 @@ class TestQAIndexProcessor:
         segmentation = SimpleNamespace(max_tokens=256, chunk_overlap=10, separator="\n")
         return SimpleNamespace(segmentation=segmentation)
 
-    def test_extract_forwards_automatic_flag(
-        self, processor: QAIndexProcessor, sqlite_session: Session
-    ) -> None:
+    def test_extract_forwards_automatic_flag(self, processor: QAIndexProcessor, sqlite_session: Session) -> None:
         extract_setting = Mock()
         session = sqlite_session
         expected_docs = [Document(page_content="chunk", metadata={})]
@@ -76,16 +74,12 @@ class TestQAIndexProcessor:
         assert docs == expected_docs
         mock_extract.assert_called_once_with(extract_setting=extract_setting, is_automatic=True, session=session)
 
-    def test_transform_rejects_none_process_rule(
-        self, processor: QAIndexProcessor, sqlite_session: Session
-    ) -> None:
+    def test_transform_rejects_none_process_rule(self, processor: QAIndexProcessor, sqlite_session: Session) -> None:
         session = sqlite_session
         with pytest.raises(ValueError, match="No process rule found"):
             processor.transform([Document(page_content="text", metadata={})], process_rule=None, session=session)
 
-    def test_transform_rejects_missing_rules_key(
-        self, processor: QAIndexProcessor, sqlite_session: Session
-    ) -> None:
+    def test_transform_rejects_missing_rules_key(self, processor: QAIndexProcessor, sqlite_session: Session) -> None:
         session = sqlite_session
         with pytest.raises(ValueError, match="No rules found in process rule"):
             processor.transform(
@@ -407,9 +401,7 @@ class TestQAIndexProcessor:
         assert preview["total_segments"] == 1
         assert preview["qa_preview"] == [{"question": "Q1", "answer": "A1"}]
 
-    def test_generate_summary_preview_returns_input(
-        self, processor: QAIndexProcessor, sqlite_session: Session
-    ) -> None:
+    def test_generate_summary_preview_returns_input(self, processor: QAIndexProcessor, sqlite_session: Session) -> None:
         preview_items = [PreviewDetail(content="Q1")]
         assert (
             processor.generate_summary_preview("tenant-1", preview_items, {"enable": False}, session=sqlite_session)
