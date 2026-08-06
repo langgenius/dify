@@ -117,9 +117,7 @@ def _use_session(monkeypatch: pytest.MonkeyPatch, session: Session) -> None:
     )
 
 
-def _add_build_draft_caller(
-    session: Session, *, parent_app_id: str, backing_app_id: str | None
-) -> AgentConfigDraft:
+def _add_build_draft_caller(session: Session, *, parent_app_id: str, backing_app_id: str | None) -> AgentConfigDraft:
     agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",

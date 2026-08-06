@@ -390,9 +390,7 @@ def test_clone_inline_graph_binding_for_node_rejects_missing_source(
         )
 
 
-def test_restore_clones_inline_binding_owned_by_published_workflow(
-    monkeypatch, sqlite_session: Session
-) -> None:
+def test_restore_clones_inline_binding_owned_by_published_workflow(monkeypatch, sqlite_session: Session) -> None:
     source = WorkflowAgentNodeBinding(
         tenant_id="tenant-1",
         app_id="app-1",

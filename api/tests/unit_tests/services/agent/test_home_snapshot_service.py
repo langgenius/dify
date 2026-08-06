@@ -109,9 +109,7 @@ def test_build_apply_checkpoints_exact_active_binding(
     assert validate_generation.call_args.kwargs["base_home_snapshot_id"] == "home-old"
 
 
-def test_build_apply_forwards_default_home_generation(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-) -> None:
+def test_build_apply_forwards_default_home_generation(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
     _persist_agent(sqlite_session, app_id="app-1", backing_app_id=None)
     binding = SimpleNamespace(
         backend_binding_ref="binding-ref-1",

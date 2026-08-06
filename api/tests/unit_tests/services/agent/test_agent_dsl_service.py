@@ -339,9 +339,7 @@ def test_graph_without_package_bindings_removes_portable_fields() -> None:
     assert AGENT_NODE_JOB_DSL_KEY in graph["nodes"][0]["data"]
 
 
-def test_import_agent_app_package_creates_config_and_unpublished_draft(
-    monkeypatch, sqlite_session: Session
-) -> None:
+def test_import_agent_app_package_creates_config_and_unpublished_draft(monkeypatch, sqlite_session: Session) -> None:
     service = AgentDslService(sqlite_session)
     soul = AgentSoulConfig(config_note="portable")
     warning = DslImportWarning(code="setup", path="agent.soul", message="setup required")
@@ -527,9 +525,7 @@ def test_clone_inline_binding_copies_soul_and_drive_rows(monkeypatch, unbound_se
     )
 
 
-def test_extract_package_dependencies_covers_model_tools_and_knowledge(
-    monkeypatch, unbound_session: Session
-) -> None:
+def test_extract_package_dependencies_covers_model_tools_and_knowledge(monkeypatch, unbound_session: Session) -> None:
     model_dependency = Mock(side_effect=lambda provider: f"model:{provider}")
     tool_dependency = Mock(side_effect=lambda provider: f"tool:{provider}")
     monkeypatch.setattr(

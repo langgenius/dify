@@ -254,9 +254,7 @@ class TestAppModelValidation:
             assert result == AppMode.CHAT
             is_agent.assert_called_once_with(session=unbound_session)
 
-    def test_deleted_tools_checks_plugin_builtin_providers_through_core_plugin_service(
-        self, unbound_session: Session
-    ):
+    def test_deleted_tools_checks_plugin_builtin_providers_through_core_plugin_service(self, unbound_session: Session):
         """Plugin-backed built-in tools are checked through core PluginService."""
         # Arrange
         app = App(
