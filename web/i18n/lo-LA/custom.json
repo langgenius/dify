@@ -1,0 +1,17 @@
+{
+  "apply": "ນຳໃຊ້",
+  "change": "ປ່ຽນ",
+  "custom": "ການປັບແຕ່ງ",
+  "customize.contactUs": " ຕິດຕໍ່ພວກເຮົາ ",
+  "customize.prefix": "ເພື່ອປັບແຕ່ງໂລໂກ້ຍີ່ຫໍ້ພາຍໃນແອັບ, ກະລຸນາ",
+  "customize.suffix": "ເພື່ອອັບເກຣດເປັນເວີຊັນ Enterprise.",
+  "restore": "ຄືນຄ່າເລີ່ມຕົ້ນ",
+  "upgradeTip.des": "ອັບເກຣດແພັກເກັດຂອງທ່ານເພື່ອປັບແຕ່ງຍີ່ຫໍ້ຂອງທ່ານເອງ",
+  "upgradeTip.title": "ອັບເກຣດແພັກເກັດຂອງທ່ານ",
+  "upload": "ອັບໂຫລດ",
+  "uploadedFail": "ການອັບໂຫລດຮູບພາບລົ້ມເຫຼວ, ກະລຸນາອັບໂຫລດໃໝ່.",
+  "uploading": "ກຳລັງອັບໂຫລດ...",
+  "webapp.changeLogo": "ປ່ຽນຮູບພາບຍີ່ຫໍ້ Powered by",
+  "webapp.changeLogoTip": "ຮູບແບບ SVG ຫຼື PNG ທີ່ມີຂະໜາດຕໍ່າສຸດ 40x40px",
+  "webapp.removeBrand": "ເອົາ Powered by Dify ອອກ"
+}
