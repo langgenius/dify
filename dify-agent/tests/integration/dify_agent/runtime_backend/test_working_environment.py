@@ -13,7 +13,12 @@ from dify_agent.runtime_backend import (
     ExecutionBindingDestroySpec,
     HomeSnapshotCreateSpec,
 )
-from dify_agent.runtime_backend.e2b import E2BExecutionBindingBackend, E2BHomeSnapshotBackend, E2BSDKControlPlane
+from dify_agent.runtime_backend.e2b import (
+    E2B_MAX_ACTIVE_TIMEOUT_SECONDS,
+    E2BExecutionBindingBackend,
+    E2BHomeSnapshotBackend,
+    E2BSDKControlPlane,
+)
 from dify_agent.runtime_backend.local import LocalExecutionBindingBackend
 
 pytestmark = pytest.mark.integration
@@ -106,7 +111,11 @@ async def test_e2b_binding_checkpoint_and_collection() -> None:
     marker = uuid.uuid4().hex
     control = E2BSDKControlPlane(api_key=api_key)
     snapshots = E2BHomeSnapshotBackend(control_plane=control)
-    bindings = E2BExecutionBindingBackend(control_plane=control, template=template, active_timeout_seconds=3600)
+    bindings = E2BExecutionBindingBackend(
+        control_plane=control,
+        template=template,
+        active_timeout_seconds=E2B_MAX_ACTIVE_TIMEOUT_SECONDS,
+    )
     checkpoint_ref: str | None = None
     allocation = None
     checkpoint_allocation = None
