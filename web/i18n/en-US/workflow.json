@@ -1311,6 +1311,7 @@
   "workflowGenerator.applyToNew": "Create new app",
   "workflowGenerator.cancel": "Cancel",
   "workflowGenerator.description": "Describe what you want the workflow to do. Pick a model, write an instruction, and preview the generated graph before applying it to Studio.",
+  "workflowGenerator.discardTurn": "Discard this turn",
   "workflowGenerator.dismiss": "Dismiss",
   "workflowGenerator.errors.DANGLING_EDGE": "The generated workflow has an edge pointing at a node that doesn't exist. Try again or refine your instruction.",
   "workflowGenerator.errors.DUPLICATE_NODE_ID": "The generated workflow contains duplicate node IDs. Try regenerating.",
@@ -1360,7 +1361,11 @@
   "workflowGenerator.refineInstructionPlaceholder": "Describe the change — e.g. add a translation step, switch to a tool, add error handling.",
   "workflowGenerator.refineTitle": "Refine {{mode}}",
   "workflowGenerator.reload": "Reload",
+  "workflowGenerator.stop": "Stop",
+  "workflowGenerator.stopped": "Generation stopped.",
   "workflowGenerator.studioApply": "Apply",
   "workflowGenerator.studioButton": "Generate",
-  "workflowGenerator.title": "Generate {{mode}}"
+  "workflowGenerator.title": "Generate {{mode}}",
+  "workflowGenerator.tokens": "tokens",
+  "workflowGenerator.tookTime": "Took"
 }

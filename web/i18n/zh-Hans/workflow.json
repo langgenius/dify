@@ -1311,6 +1311,7 @@
   "workflowGenerator.applyToNew": "创建新应用",
   "workflowGenerator.cancel": "取消",
   "workflowGenerator.description": "描述你希望工作流完成的任务。选择模型、撰写指令，预览生成的图后再应用到 Studio。",
+  "workflowGenerator.discardTurn": "撤回本轮",
   "workflowGenerator.dismiss": "关闭",
   "workflowGenerator.errors.DANGLING_EDGE": "生成的工作流中有连线指向了不存在的节点，请重试或细化指令。",
   "workflowGenerator.errors.DUPLICATE_NODE_ID": "生成的工作流中存在重复的节点 ID，请重新生成。",
@@ -1360,7 +1361,11 @@
   "workflowGenerator.refineInstructionPlaceholder": "描述修改内容——例如添加翻译步骤、改用某个工具、增加错误处理。",
   "workflowGenerator.refineTitle": "优化 {{mode}}",
   "workflowGenerator.reload": "重新加载",
+  "workflowGenerator.stop": "停止",
+  "workflowGenerator.stopped": "已停止生成。",
   "workflowGenerator.studioApply": "应用",
   "workflowGenerator.studioButton": "生成",
-  "workflowGenerator.title": "生成 {{mode}}"
+  "workflowGenerator.title": "生成 {{mode}}",
+  "workflowGenerator.tokens": "tokens",
+  "workflowGenerator.tookTime": "耗时"
 }

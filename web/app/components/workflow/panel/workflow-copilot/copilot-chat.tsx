@@ -1,9 +1,9 @@
 import type { FC } from 'react'
 import type { CommonNodeType, Edge, Node } from '../../types'
-import type { CopilotConversation, CopilotGraph } from './service'
+import type { CopilotConversation, CopilotGraph, CopilotUsage } from './service'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiAddLine, RiArrowGoBackLine, RiCheckLine, RiRefreshLine, RiSparkling2Line } from '@remixicon/react'
+import { RiAddLine, RiArrowGoBackLine, RiCheckLine, RiDeleteBinLine, RiRefreshLine, RiSparkling2Line, RiStopCircleLine } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow, useNodes as useReactFlowNodes, useStoreApi } from 'reactflow'
@@ -59,14 +59,101 @@ type CopilotMessage = {
   // Assistant-only: proposed graph awaiting Apply, and whether it was applied.
   pending?: PendingProposal
   applied?: boolean
+  // Assistant-only: wall-clock generation time + real token cost of the turn,
+  // shown as a meta line under the bubble. `cancelled` marks a turn the user
+  // interrupted with Stop.
+  durationMs?: number
+  usage?: CopilotUsage
+  cancelled?: boolean
 }
+
+// The generation phases we cycle through in the live indicator. The backend is
+// a single request (not streamed), so these are an *estimated* progression —
+// timed rotation, not real stage callbacks — purely to make the wait feel alive.
+type GenPhase = 'planning' | 'building' | 'validating'
+const GEN_PHASES: GenPhase[] = ['planning', 'building', 'validating']
+// Advance to the next phase label on this cadence while a turn is in flight.
+const GEN_PHASE_INTERVAL_MS = 2500
 
 const FE_TIMEOUT_MS = 90_000
 
 const newId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
+// Human-readable elapsed time: sub-minute in seconds (one decimal), else m:ss.
+const formatDuration = (ms: number): string => {
+  const totalSeconds = ms / 1000
+  if (totalSeconds < 60)
+    return `${totalSeconds.toFixed(1)}s`
+  const m = Math.floor(totalSeconds / 60)
+  const s = Math.round(totalSeconds % 60)
+  return `${m}m ${s}s`
+}
+
 const isAbortError = (e: unknown): boolean =>
   (e instanceof DOMException || e instanceof Error) && e.name === 'AbortError'
+
+// A soft node mention is written into the draft/message as 【Title】. This
+// splits a string into alternating plain-text and mention segments so both the
+// chat bubbles and the input overlay can render the mentions with emphasis.
+type MentionSegment = { text: string, isMention: boolean }
+const MENTION_RE = /【[^】]+】/g
+
+const splitMentions = (text: string): MentionSegment[] => {
+  const segments: MentionSegment[] = []
+  let lastIndex = 0
+  for (const match of text.matchAll(MENTION_RE)) {
+    const start = match.index ?? 0
+    if (start > lastIndex)
+      segments.push({ text: text.slice(lastIndex, start), isMention: false })
+    segments.push({ text: match[0], isMention: true })
+    lastIndex = start + match[0].length
+  }
+  if (lastIndex < text.length)
+    segments.push({ text: text.slice(lastIndex), isMention: false })
+  return segments
+}
+
+// The set of node titles currently mentioned in the draft (the text inside each
+// 【…】). Used to keep the context chips in sync when the user edits the draft.
+const mentionedTitlesIn = (text: string): Set<string> => {
+  const titles = new Set<string>()
+  for (const match of text.matchAll(MENTION_RE))
+    titles.add(match[0].slice(1, -1)) // strip the 【 】 brackets
+  return titles
+}
+
+// Remove every 【title】 occurrence for the given title from a draft string.
+const stripMention = (text: string, title: string): string =>
+  text.split(`【${title}】`).join('').replace(/ {2,}/g, ' ').trimStart()
+
+// Render a string with 【Title】 mentions highlighted as inline pills.
+//  - 'bubble-user'/'bubble-assistant': chat history; each picks a pill style
+//    that reads clearly on that bubble's background.
+//  - 'overlay': the transparent layer behind the textarea — the REAL text comes
+//    from the textarea on top, so we only paint the pill background and MUST NOT
+//    add horizontal padding/margin or the block would drift off the glyphs.
+type MentionVariant = 'bubble-user' | 'bubble-assistant' | 'overlay'
+
+const MENTION_PILL_CLASS: Record<MentionVariant, string> = {
+  // On the blue user bubble: translucent white pill + white text — high contrast.
+  'bubble-user': 'mx-px inline-flex items-center rounded-md bg-white/25 px-1.5 py-px font-medium text-white',
+  // On the grey assistant bubble: accent-tinted pill + accent text.
+  'bubble-assistant': 'mx-px inline-flex items-center rounded-md bg-state-accent-active px-1.5 py-px font-medium text-text-accent',
+  // Behind the textarea: just the rounded background block (text is transparent).
+  'overlay': 'rounded-[5px] bg-state-accent-hover',
+}
+
+const renderMentionSegments = (text: string, variant: MentionVariant) =>
+  splitMentions(text).map((seg, i) => {
+    // Segments are a deterministic split of one string; index+text is stable.
+    const key = `${i}-${seg.text}`
+    if (!seg.isMention)
+      return <span key={key}>{seg.text}</span>
+    // Strip the 【 】 brackets for bubble pills; keep them in the overlay so its
+    // width matches the textarea's literal 【…】 glyphs exactly.
+    const label = variant === 'overlay' ? seg.text : seg.text.slice(1, -1)
+    return <span key={key} className={MENTION_PILL_CLASS[variant]}>{label}</span>
+  })
 
 const CopilotChat: FC = () => {
   const { t } = useTranslation()
@@ -95,12 +182,24 @@ const CopilotChat: FC = () => {
   const [conversations, setConversations] = useState<CopilotConversation[]>([])
   const [conversationId, setConversationId] = useState<string | null>(null)
 
+  // Live-generation indicator: the estimated phase label + a ticking elapsed
+  // clock so the wait feels dynamic. Both reset when a turn starts/ends.
+  const [genPhase, setGenPhase] = useState<GenPhase>('planning')
+  const [genElapsedMs, setGenElapsedMs] = useState(0)
+  // Wall-clock start of the in-flight turn, used to stamp the message duration.
+  const genStartRef = useRef<number>(0)
+  const phaseTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
   // `#` mention picker: open state, current filter query (text after the `#`),
   // and the keyboard-highlighted candidate index.
   const [mentionOpen, setMentionOpen] = useState(false)
   const [mentionQuery, setMentionQuery] = useState('')
   const [mentionActiveIndex, setMentionActiveIndex] = useState(0)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  // Transparent highlight layer behind the textarea; kept scroll-synced so the
+  // 【mention】 background blocks line up with the (transparent-bg) textarea text.
+  const overlayRef = useRef<HTMLDivElement>(null)
   // True while an IME (e.g. Chinese pinyin) is composing — Enter must NOT send.
   const composingRef = useRef(false)
   // Pinned node ids already inserted as a 【Title】 mention, so we don't duplicate
@@ -120,6 +219,39 @@ const CopilotChat: FC = () => {
       timeoutRef.current = null
     }
   }, [])
+
+  // Stop the live-generation phase/elapsed tickers (used on completion, abort,
+  // and unmount). Idempotent.
+  const stopGenTickers = useCallback(() => {
+    if (phaseTimerRef.current) {
+      clearInterval(phaseTimerRef.current)
+      phaseTimerRef.current = null
+    }
+    if (elapsedTimerRef.current) {
+      clearInterval(elapsedTimerRef.current)
+      elapsedTimerRef.current = null
+    }
+  }, [])
+
+  // Start the estimated-phase rotation + elapsed clock for a fresh turn.
+  const startGenTickers = useCallback(() => {
+    stopGenTickers()
+    genStartRef.current = Date.now()
+    setGenPhase('planning')
+    setGenElapsedMs(0)
+    let phaseIndex = 0
+    phaseTimerRef.current = setInterval(() => {
+      // Rotate up to the last phase and hold there (never wrap back to planning).
+      phaseIndex = Math.min(phaseIndex + 1, GEN_PHASES.length - 1)
+      setGenPhase(GEN_PHASES[phaseIndex] ?? 'validating')
+    }, GEN_PHASE_INTERVAL_MS)
+    elapsedTimerRef.current = setInterval(() => {
+      setGenElapsedMs(Date.now() - genStartRef.current)
+    }, 100)
+  }, [stopGenTickers])
+
+  // Clean up tickers if the panel unmounts mid-generation.
+  useEffect(() => stopGenTickers, [stopGenTickers])
 
   // ── Conversation management ────────────────────────────────────────────
   const refreshConversations = useCallback(() => {
@@ -201,10 +333,28 @@ const CopilotChat: FC = () => {
     handleNodeSelect(id)
   }, [handleNodeSelect])
 
+  // Remove a context chip → also strip its 【Title】 mention(s) from the draft
+  // so the two stay in sync (delete-chip → mention disappears).
   const handleRemovePinned = useCallback((id: string) => {
+    const removed = pinnedNodes.find(n => n.id === id)
     removeCopilotContextNode(id)
     mentionedIdsRef.current.delete(id)
-  }, [removeCopilotContextNode])
+    if (removed)
+      setInput(prev => stripMention(prev, removed.title))
+  }, [pinnedNodes, removeCopilotContextNode])
+
+  // Reverse sync: when the user edits the draft and a pinned node's 【Title】 is
+  // no longer present anywhere in the text, drop that context chip too
+  // (delete-mention → chip disappears).
+  const syncChipsFromDraft = useCallback((value: string) => {
+    const present = mentionedTitlesIn(value)
+    for (const node of pinnedNodes) {
+      if (!present.has(node.title)) {
+        removeCopilotContextNode(node.id)
+        mentionedIdsRef.current.delete(node.id)
+      }
+    }
+  }, [pinnedNodes, removeCopilotContextNode])
 
   // Nodes added from a node's "..." menu land in the store first; mirror each
   // new one into the draft as a 【Title】 mention. Deferred out of the effect
@@ -288,6 +438,7 @@ const CopilotChat: FC = () => {
     }
 
     setIsGenerating(true)
+    startGenTickers()
 
     const { getNodes, edges, transform } = store.getState()
     const nodes = getNodes()
@@ -335,12 +486,17 @@ const CopilotChat: FC = () => {
         refreshConversations()
       }
 
+      // Wall-clock turn time + real backend token usage, stamped onto the
+      // resulting assistant message so the user sees the cost of the turn.
+      const durationMs = Date.now() - genStartRef.current
+      const usage = res.usage
+
       const firstError = res.errors?.[0]
       // No usable graph at all → hard fail (surface the diagnostic).
       if (!res.graph?.nodes?.length) {
         const detail = firstError?.detail || res.error
           || t('workflow.workflowGenerator.generateFailed', { defaultValue: 'Generation failed' })
-        setMessages(prev => [...prev, { id: newId(), role: 'assistant', content: detail }])
+        setMessages(prev => [...prev, { id: newId(), role: 'assistant', content: detail, durationMs, usage }])
         toast.error(detail)
         return
       }
@@ -365,19 +521,26 @@ const CopilotChat: FC = () => {
       if (retryOfMessageId) {
         // Replace the retried assistant message's proposal in place.
         setMessages(prev => prev.map(m =>
-          m.id === retryOfMessageId ? { ...m, content: reply, pending: proposal, applied: false } : m,
+          m.id === retryOfMessageId ? { ...m, content: reply, pending: proposal, applied: false, durationMs, usage, cancelled: false } : m,
         ))
       }
       else {
-        setMessages(prev => [...prev, { id: newId(), role: 'assistant', content: reply, pending: proposal }])
+        setMessages(prev => [...prev, { id: newId(), role: 'assistant', content: reply, pending: proposal, durationMs, usage }])
       }
     }
     catch (e: unknown) {
       if (isAbortError(e)) {
+        const durationMs = Date.now() - genStartRef.current
         if (timedOutRef.current) {
           const msg = t('workflow.workflowGenerator.errors.timeout', { defaultValue: 'Generation timed out. Please try again.' })
-          setMessages(prev => [...prev, { id: newId(), role: 'assistant', content: msg }])
+          setMessages(prev => [...prev, { id: newId(), role: 'assistant', content: msg, durationMs }])
           toast.error(msg)
+        }
+        else {
+          // User pressed Stop — record a cancelled turn so the timeline stays
+          // honest about what happened (and how long it ran).
+          const msg = t('workflow.workflowGenerator.stopped', { defaultValue: 'Generation stopped.' })
+          setMessages(prev => [...prev, { id: newId(), role: 'assistant', content: msg, durationMs, cancelled: true }])
         }
         return
       }
@@ -388,6 +551,7 @@ const CopilotChat: FC = () => {
     finally {
       timedOutRef.current = false
       setIsGenerating(false)
+      stopGenTickers()
       clearTimers()
       abortRef.current = null
     }
@@ -401,6 +565,8 @@ const CopilotChat: FC = () => {
     isChatMode,
     refreshConversations,
     clearTimers,
+    startGenTickers,
+    stopGenTickers,
     t,
   ])
 
@@ -419,6 +585,16 @@ const CopilotChat: FC = () => {
       return
     runGeneration(message.pending.instruction, message.id)
   }, [isGenerating, runGeneration])
+
+  // Interrupt the in-flight turn. Aborting the request makes `runGeneration`'s
+  // catch treat it as a user stop (not a timeout) and record a cancelled turn.
+  const handleStop = useCallback(() => {
+    if (!isGenerating)
+      return
+    timedOutRef.current = false
+    abortRef.current?.abort()
+    abortRef.current = null
+  }, [isGenerating])
 
   // ── Apply / Undo ───────────────────────────────────────────────────────
   const applyGraph = useCallback((graph: CopilotGraph, highlightNodeIds?: string[]) => {
@@ -458,6 +634,29 @@ const CopilotChat: FC = () => {
     delete undoSnapshotRef.current[message.id]
     setMessages(prev => prev.map(m => m.id === message.id ? { ...m, applied: false } : m))
   }, [getNodesReadOnly, applyGraph])
+
+  // Undo a whole turn: drop the assistant message and the user message that
+  // triggered it (the immediately-preceding user turn). If the proposal was
+  // already applied to the canvas, undo that first so nothing is left behind.
+  const handleDiscardTurn = useCallback((message: CopilotMessage) => {
+    if (isGenerating)
+      return
+    if (message.applied) {
+      const snapshot = undoSnapshotRef.current[message.id]
+      if (snapshot && !getNodesReadOnly())
+        applyGraph(snapshot)
+    }
+    delete undoSnapshotRef.current[message.id]
+    setMessages((prev) => {
+      const idx = prev.findIndex(m => m.id === message.id)
+      if (idx === -1)
+        return prev
+      // Also remove the user turn directly above this assistant message.
+      const dropUser = idx > 0 && prev[idx - 1]?.role === 'user'
+      const from = dropUser ? idx - 1 : idx
+      return [...prev.slice(0, from), ...prev.slice(idx + 1)]
+    })
+  }, [isGenerating, getNodesReadOnly, applyGraph])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // While the `#` picker is open, arrows/Enter/Tab drive the list, not send.
@@ -548,12 +747,14 @@ const CopilotChat: FC = () => {
           >
             <div
               className={m.role === 'user'
-                ? 'max-w-[85%] rounded-2xl rounded-br-sm bg-components-button-primary-bg px-3 py-2 system-sm-regular text-components-button-primary-text'
-                : 'max-w-[85%] rounded-2xl rounded-bl-sm bg-components-panel-on-panel-item-bg px-3 py-2 system-sm-regular text-text-secondary'}
+                ? 'max-w-[85%] rounded-2xl rounded-br-sm bg-components-button-primary-bg px-3 py-2 system-sm-regular whitespace-pre-wrap text-components-button-primary-text'
+                : m.cancelled
+                  ? 'max-w-[85%] rounded-2xl rounded-bl-sm bg-components-panel-on-panel-item-bg px-3 py-2 system-sm-regular whitespace-pre-wrap text-text-tertiary italic'
+                  : 'max-w-[85%] rounded-2xl rounded-bl-sm bg-components-panel-on-panel-item-bg px-3 py-2 system-sm-regular whitespace-pre-wrap text-text-secondary'}
             >
-              {m.content}
+              {renderMentionSegments(m.content, m.role === 'user' ? 'bubble-user' : 'bubble-assistant')}
             </div>
-            {/* Apply / Retry / Undo actions for assistant proposals */}
+            {/* Apply / Retry / Undo / Discard actions for assistant proposals */}
             {m.role === 'assistant' && m.pending && (
               <div className="flex items-center gap-1.5">
                 {!m.applied
@@ -573,15 +774,65 @@ const CopilotChat: FC = () => {
                   <RiRefreshLine className="mr-1 size-3.5" />
                   {t('workflow.workflowGenerator.retry', { defaultValue: 'Retry' })}
                 </Button>
+                <Button
+                  size="small"
+                  variant="ghost"
+                  disabled={isGenerating}
+                  title={t('workflow.workflowGenerator.discardTurn', { defaultValue: 'Discard this turn' })}
+                  onClick={() => handleDiscardTurn(m)}
+                >
+                  <RiDeleteBinLine className="size-3.5" />
+                </Button>
+              </div>
+            )}
+            {/* Meta line: wall-clock time + real token usage for the turn. */}
+            {m.role === 'assistant' && (m.durationMs !== undefined || m.usage) && (
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 px-1 system-2xs-regular text-text-quaternary">
+                {m.durationMs !== undefined && (
+                  <span>
+                    {t('workflow.workflowGenerator.tookTime', { defaultValue: 'Took' })}
+                    {' '}
+                    {formatDuration(m.durationMs)}
+                  </span>
+                )}
+                {m.usage && (
+                  <span>
+                    ·
+                    {' '}
+                    {m.usage.total_tokens}
+                    {' '}
+                    {t('workflow.workflowGenerator.tokens', { defaultValue: 'tokens' })}
+                    {' '}
+                    (
+                    {m.usage.prompt_tokens}
+                    {' '}
+                    +
+                    {' '}
+                    {m.usage.completion_tokens}
+                    )
+                  </span>
+                )}
               </div>
             )}
           </div>
         ))}
         {isGenerating && (
-          <div className="flex justify-start">
-            <div className="rounded-2xl rounded-bl-sm bg-components-panel-on-panel-item-bg px-3 py-2 system-sm-regular text-text-tertiary">
-              {t('workflow.workflowGenerator.generating', { defaultValue: 'Generating…' })}
+          <div className="flex flex-col items-start gap-1.5">
+            <div className="flex items-center gap-2 rounded-2xl rounded-bl-sm bg-components-panel-on-panel-item-bg px-3 py-2 system-sm-regular text-text-tertiary">
+              <RiSparkling2Line className="size-4 animate-pulse text-text-accent" />
+              <span>
+                {t(`workflow.workflowGenerator.phases.${genPhase}`, {
+                  defaultValue: genPhase === 'planning'
+                    ? 'Planning the workflow…'
+                    : genPhase === 'building' ? 'Building nodes…' : 'Validating the graph…',
+                })}
+              </span>
+              <span className="text-text-quaternary tabular-nums">{formatDuration(genElapsedMs)}</span>
             </div>
+            <Button size="small" variant="ghost" onClick={handleStop}>
+              <RiStopCircleLine className="mr-1 size-3.5" />
+              {t('workflow.workflowGenerator.stop', { defaultValue: 'Stop' })}
+            </Button>
           </div>
         )}
       </div>
@@ -638,20 +889,41 @@ const CopilotChat: FC = () => {
               ))}
             </div>
           )}
-          <textarea
-            ref={inputRef}
-            className="min-h-[60px] w-full resize-none rounded-lg border border-divider-regular bg-components-input-bg-normal p-2 system-sm-regular text-text-primary outline-none focus:border-components-input-border-active"
-            placeholder={t('workflow.workflowGenerator.copilotPlaceholder', { defaultValue: 'e.g. Add an LLM node that summarizes the input… (type # to mention a node)' })}
-            value={input}
-            disabled={isGenerating}
-            onChange={(e) => {
-              setInput(e.target.value)
-              syncMentionState(e.target.value, e.target.selectionStart ?? e.target.value.length)
-            }}
-            onKeyDown={handleKeyDown}
-            onCompositionStart={() => { composingRef.current = true }}
-            onCompositionEnd={() => { composingRef.current = false }}
-          />
+          <div className="relative">
+            {/* Transparent highlight layer: same geometry as the textarea, but
+                only the 【mention】 spans paint a background. The textarea sits
+                on top with a transparent background so its real (opaque) text
+                shows while the blocks below line up glyph-for-glyph. */}
+            <div
+              ref={overlayRef}
+              aria-hidden
+              className="pointer-events-none absolute inset-0 overflow-hidden rounded-lg border border-transparent bg-components-input-bg-normal p-2 system-sm-regular break-words whitespace-pre-wrap text-transparent"
+            >
+              {renderMentionSegments(input, 'overlay')}
+              {/* trailing newline so the last line's height matches the textarea */}
+              {'\n'}
+            </div>
+            <textarea
+              ref={inputRef}
+              className="relative z-[1] min-h-[60px] w-full resize-none rounded-lg border border-divider-regular bg-transparent p-2 system-sm-regular break-words whitespace-pre-wrap text-text-primary outline-none focus:border-components-input-border-active"
+              placeholder={t('workflow.workflowGenerator.copilotPlaceholder', { defaultValue: 'e.g. Add an LLM node that summarizes the input… (type # to mention a node)' })}
+              value={input}
+              disabled={isGenerating}
+              onChange={(e) => {
+                setInput(e.target.value)
+                syncMentionState(e.target.value, e.target.selectionStart ?? e.target.value.length)
+                syncChipsFromDraft(e.target.value)
+              }}
+              onScroll={(e) => {
+                // Keep the highlight layer aligned when the textarea scrolls.
+                if (overlayRef.current)
+                  overlayRef.current.scrollTop = e.currentTarget.scrollTop
+              }}
+              onKeyDown={handleKeyDown}
+              onCompositionStart={() => { composingRef.current = true }}
+              onCompositionEnd={() => { composingRef.current = false }}
+            />
+          </div>
         </div>
         <div className="mt-2 flex justify-end">
           <Button

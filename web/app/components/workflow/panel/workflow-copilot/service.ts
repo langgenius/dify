@@ -30,12 +30,21 @@ export type CopilotGenerateBody = {
   context_node_ids?: string[]
 }
 
+export type CopilotUsage = {
+  prompt_tokens: number
+  completion_tokens: number
+  total_tokens: number
+}
+
 export type CopilotGenerateResponse = {
   conversation_id: string
   reply: string
   graph?: CopilotGraph
   error?: string
   errors?: { code: string, detail: string, node_id?: string }[]
+  // Real token cost of this turn (planner + builder), summed server-side.
+  // Absent on older backends or when the provider reports no usage.
+  usage?: CopilotUsage
 }
 
 export type CopilotHistoryMessage = {
