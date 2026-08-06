@@ -83,8 +83,8 @@ from services.agent.roster_service import AgentRosterService
 logger = logging.getLogger(__name__)
 
 _SKILL_MD = "SKILL.md"
-_MAX_SKILL_BYTES = 5 * 1024 * 1024
-_MAX_FILES_PER_SKILL = 50
+_MAX_SKILL_BYTES = 200 * 1024 * 1024
+_MAX_FILES_PER_SKILL = 5000
 _MAX_FILE_CHECK_ITEMS = 100
 _MAX_SKILLS_PER_WORKSPACE = 500
 _MAX_AGENT_SKILLS = 20
@@ -3388,7 +3388,7 @@ class SkillManagementService:
             )
 
         if total_size > _MAX_SKILL_BYTES:
-            raise SkillManagementServiceError("skill_too_large", "skill exceeds 5MB limit")
+            raise SkillManagementServiceError("skill_too_large", "skill exceeds 200MB limit")
         return rows
 
     def _sync_skill_metadata_from_draft_skill_md(self, *, skill: Skill, content: str) -> None:
@@ -3639,7 +3639,7 @@ class SkillManagementService:
     def _enforce_total_size(files: list[SkillDraftFile]) -> None:
         total = sum(file.size or 0 for file in {file.path: file for file in files}.values())
         if total > _MAX_SKILL_BYTES:
-            raise SkillManagementServiceError("skill_too_large", "skill exceeds 5MB limit")
+            raise SkillManagementServiceError("skill_too_large", "skill exceeds 200MB limit")
 
     @staticmethod
     def _load_tool_file_bytes(*, tenant_id: str, file_id: str) -> bytes:
