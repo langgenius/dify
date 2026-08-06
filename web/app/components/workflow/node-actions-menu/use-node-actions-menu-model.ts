@@ -6,6 +6,7 @@ import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import { canRunBySingle } from '@/app/components/workflow/utils'
+import { ENABLE_FEATURE_PREVIEW } from '@/config'
 import { useAllWorkflowTools } from '@/service/use-tools'
 import { canFindTool } from '@/utils'
 import { useNodesInteractions } from '../hooks/use-nodes-interactions'
@@ -80,6 +81,7 @@ export function useNodeActionsMenuModel({
   }, [handleNodeDelete, id, onClose])
 
   const handleAddToCopilot = useCallback(() => {
+    if (!ENABLE_FEATURE_PREVIEW) return
     onClose()
     const store = workflowStore.getState()
     store.addCopilotContextNode({ id, title: data.title || data.type })
@@ -98,6 +100,7 @@ export function useNodeActionsMenuModel({
       description: nodeMetaData.description,
     },
     canChangeBlock,
+    canAddToCopilot: ENABLE_FEATURE_PREVIEW,
     canRun,
     data,
     handleAddToCopilot,

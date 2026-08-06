@@ -18,6 +18,20 @@ import { useNodeMetaData } from '../../hooks/use-nodes-meta-data'
 import { useIsChatMode, useNodesReadOnly } from '../../hooks/use-workflow'
 import { NodeActionsDropdownContent } from '../dropdown-content'
 
+const featureFlags = vi.hoisted(() => ({
+  enableFeaturePreview: true,
+}))
+
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    get ENABLE_FEATURE_PREVIEW() {
+      return featureFlags.enableFeaturePreview
+    },
+  }
+})
+
 vi.mock('../../hooks/use-available-blocks', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../hooks/use-available-blocks')>()
 
@@ -113,6 +127,7 @@ describe('node actions menu details', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    featureFlags.enableFeaturePreview = true
     mockUseAvailableBlocks.mockReturnValue({
       getAvailableBlocks: vi.fn(() => ({
         availablePrevBlocks: [BlockEnum.HttpRequest],
@@ -176,6 +191,24 @@ describe('node actions menu details', () => {
       'href',
       'https://docs.example.com/node',
     )
+  })
+
+  it('should add a node to Copilot context when preview features are enabled', async () => {
+    const user = userEvent.setup()
+    const { store } = renderDropdownContent()
+
+    await user.click(screen.getByText(/workflowGenerator\.addToCopilot/))
+
+    expect(store.getState().copilotContextNodes).toEqual([{ id: 'node-1', title: 'Code Node' }])
+    expect(store.getState().showCopilotPanel).toBe(true)
+  })
+
+  it('should hide Add to Copilot when preview features are disabled', () => {
+    featureFlags.enableFeaturePreview = false
+
+    renderDropdownContent()
+
+    expect(screen.queryByText(/workflowGenerator\.addToCopilot/)).not.toBeInTheDocument()
   })
 
   it('should stop the current single run from the run action when the node is running', async () => {
