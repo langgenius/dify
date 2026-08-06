@@ -66,7 +66,7 @@ export default function DevicePage() {
   const ssoAvailable =
     sys.webapp_auth.enabled &&
     sys.webapp_auth.allow_sso &&
-    sys.webapp_auth.sso_config.protocol !== ''
+    sys.webapp_auth.sso_config.protocol !== null
 
   // URL-driven view transitions. Only advances while the user is still on
   // the entry/chooser screens — never clobbers terminal views (success /

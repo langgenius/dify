@@ -99,14 +99,20 @@ class BrandingModel(FeatureResponseModel):
     favicon: str = ""
 
 
+class SSOProtocol(StrEnum):
+    SAML = "saml"
+    OIDC = "oidc"
+    OAUTH2 = "oauth2"
+
+
 class WebAppAuthSSOModel(FeatureResponseModel):
-    protocol: str = ""
+    protocol: SSOProtocol | None = None
 
 
 class WebAppAuthModel(FeatureResponseModel):
     enabled: bool = False
     allow_sso: bool = False
-    sso_config: WebAppAuthSSOModel = WebAppAuthSSOModel()
+    sso_config: WebAppAuthSSOModel = Field(default_factory=WebAppAuthSSOModel)
     allow_email_code_login: bool = False
     allow_email_password_login: bool = False
     allow_public_access: bool = True
@@ -172,7 +178,7 @@ class SystemFeatureModel(FeatureResponseModel):
     deployment_edition: DeploymentEdition
     enable_app_deploy: bool = False
     sso_enforced_for_signin: bool = False
-    sso_enforced_for_signin_protocol: str = ""
+    sso_enforced_for_signin_protocol: SSOProtocol | None = None
     enable_marketplace: bool = False
     enable_email_code_login: bool = False
     enable_email_password_login: bool = True
@@ -182,7 +188,7 @@ class SystemFeatureModel(FeatureResponseModel):
     is_email_setup: bool = False
     license: LicenseStatusModel = LicenseStatusModel()
     branding: BrandingModel = BrandingModel()
-    webapp_auth: WebAppAuthModel = WebAppAuthModel()
+    webapp_auth: WebAppAuthModel = Field(default_factory=WebAppAuthModel)
     plugin_installation_permission: PluginInstallationPermissionModel = PluginInstallationPermissionModel()
     enable_change_email: bool = True
     enable_creators_platform: bool = False
