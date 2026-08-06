@@ -756,7 +756,16 @@ class TestDocumentSegmentIndexing:
             tokens=5,
             created_by=str(uuid4()),
         )
-        document = Document()
+        document = Document(
+            tenant_id=segment.tenant_id,
+            dataset_id=segment.dataset_id,
+            position=1,
+            data_source_type=DataSourceType.UPLOAD_FILE,
+            batch="batch_001",
+            name="test.pdf",
+            created_from=DocumentCreatedFrom.WEB,
+            created_by=segment.created_by,
+        )
         process_rule = Mock(mode="hierarchical", rules_dict={"parent_mode": "paragraph"})
         child_chunk = ChildChunk(
             tenant_id="tenant-id",
@@ -794,7 +803,16 @@ class TestDocumentSegmentIndexing:
             tokens=5,
             created_by=str(uuid4()),
         )
-        document = Document()
+        document = Document(
+            tenant_id=segment.tenant_id,
+            dataset_id=segment.dataset_id,
+            position=1,
+            data_source_type=DataSourceType.UPLOAD_FILE,
+            batch="batch_001",
+            name="test.pdf",
+            created_from=DocumentCreatedFrom.WEB,
+            created_by=segment.created_by,
+        )
         process_rule = Mock(
             mode="hierarchical",
             rules_dict={"parent_mode": ParentMode.FULL_DOC},
@@ -836,7 +854,16 @@ class TestDocumentSegmentIndexing:
             created_by=str(uuid4()),
         )
         dataset = Dataset()
-        document = Document()
+        document = Document(
+            tenant_id=segment.tenant_id,
+            dataset_id=segment.dataset_id,
+            position=1,
+            data_source_type=DataSourceType.UPLOAD_FILE,
+            batch="batch_001",
+            name="test.pdf",
+            created_from=DocumentCreatedFrom.WEB,
+            created_by=segment.created_by,
+        )
         session = Mock()
         session.get.side_effect = [dataset, document]
 
@@ -1410,8 +1437,8 @@ class TestModelIntegration:
             created_from=DocumentCreatedFrom.WEB,
             created_by=created_by,
             word_count=100,
-            id=document_id,
         )
+        document.id = document_id
 
         # Create segment
         segment = DocumentSegment(
