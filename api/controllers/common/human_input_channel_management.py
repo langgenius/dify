@@ -105,8 +105,9 @@ class FeishuChannelCandidateRequest(_StrictRequest):
 
 class DingTalkChannelCandidateRequest(_StrictRequest):
     provider: Literal[ChannelProvider.DING_TALK]
+    corp_id: IdentifierValue
     client_id: IdentifierValue
-    client_secret: SecretValue
+    client_secret: SecretValue = Field(repr=False)
 
 
 ChannelCandidateRequest = Annotated[
@@ -332,6 +333,7 @@ def _candidate_from_request(ref: ChannelRef, request: ChannelCandidateRequest):
             encrypt_key=NewSecret(request.encrypt_key) if request.encrypt_key else None,
         )
     return DingTalkIMCandidate(
+        corp_id=request.corp_id.strip(),
         client_id=request.client_id.strip(),
         client_secret=NewSecret(request.client_secret),
     )

@@ -146,6 +146,7 @@ def test_blank_secrets_and_email_revision_tokens_are_rejected() -> None:
             {
                 "candidate": {
                     "provider": "ding_talk",
+                    "corp_id": "corp",
                     "client_id": "client",
                     "client_secret": " ",
                 }
@@ -238,6 +239,7 @@ def test_im_save_and_delete_preserve_complete_revision_token() -> None:
         {
             "candidate": {
                 "provider": "ding_talk",
+                "corp_id": "corp",
                 "client_id": "client",
                 "client_secret": "secret",
             },

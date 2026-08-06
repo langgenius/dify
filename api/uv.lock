@@ -184,13 +184,49 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/a0/87/1d7019d23891897cb076b2f7e3c81ab3c2ba91de3bb067196f675d60d34c/alibabacloud-credentials-api-1.0.0.tar.gz", hash = "sha256:8c340038d904f0218d7214a8f4088c31912bfcf279af2cbc7d9be4897a97dd2f", size = 2330, upload-time = "2025-01-13T05:53:04.931Z" }
 
 [[package]]
+name = "alibabacloud-dingtalk"
+version = "2.2.54"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "alibabacloud-endpoint-util" },
+    { name = "alibabacloud-gateway-dingtalk" },
+    { name = "alibabacloud-gateway-spi" },
+    { name = "alibabacloud-openapi-util" },
+    { name = "alibabacloud-tea-openapi" },
+    { name = "alibabacloud-tea-util" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/1d/70/184a62b7271abe38f856c08131bc61b7a7e0ded006cbf39da9c76d6c2335/alibabacloud_dingtalk-2.2.54.tar.gz", hash = "sha256:c97fd332dbebf12e6826394f05767c25f6755d76212a60f67db0d1f99965b4f4", size = 2113073, upload-time = "2026-07-23T07:07:08.754Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3b/6f/ae53e468af95aacd68f8251f2d567fa16d520eac349e9952419b531dfbda/alibabacloud_dingtalk-2.2.54-py3-none-any.whl", hash = "sha256:67b4f1c70ad17fb7f1611d3594130c5318a047b1ddbb1506c21249fffaac4a9b", size = 2235207, upload-time = "2026-07-23T07:07:06.918Z" },
+]
+
+[[package]]
+name = "alibabacloud-endpoint-util"
+version = "0.0.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/92/7d/8cc92a95c920e344835b005af6ea45a0db98763ad6ad19299d26892e6c8d/alibabacloud_endpoint_util-0.0.4.tar.gz", hash = "sha256:a593eb8ddd8168d5dc2216cd33111b144f9189fcd6e9ca20e48f358a739bbf90", size = 2813, upload-time = "2025-06-12T07:20:52.572Z" }
+
+[[package]]
+name = "alibabacloud-gateway-dingtalk"
+version = "1.0.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "alibabacloud-gateway-spi" },
+    { name = "alibabacloud-tea-util" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d2/40/751d8bdf133d7fcf053f10c98e8e506810e7bee06458a02eaaa14d30ac26/alibabacloud_gateway_dingtalk-1.0.2.tar.gz", hash = "sha256:acea8b0b1d11e0394913f0b0899ddd19c0bfceab716060449b57fcc250ceb300", size = 2938, upload-time = "2023-04-25T09:48:42.249Z" }
+
+[[package]]
 name = "alibabacloud-gateway-spi"
-version = "0.0.3"
+version = "0.0.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "alibabacloud-credentials" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ab/98/d7111245f17935bf72ee9bea60bbbeff2bc42cdfe24d2544db52bc517e1a/alibabacloud_gateway_spi-0.0.3.tar.gz", hash = "sha256:10d1c53a3fc5f87915fbd6b4985b98338a776e9b44a0263f56643c5048223b8b", size = 4249, upload-time = "2025-02-23T16:29:54.222Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/cd/67/7cd36a36bf0ec53efd3fe31eaf398713f375b7b1cdcd32c51b6c0fdc09e2/alibabacloud_gateway_spi-0.0.4.tar.gz", hash = "sha256:73d6e20d65b54eed26d89c19640d3a7572e18c45ecada627f806f5dbe8ed2130", size = 4253, upload-time = "2026-06-25T06:34:08.238Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/45/85/81170c45e9d1240736f9776a1c690b958c975509381221b5f8d960b5376d/alibabacloud_gateway_spi-0.0.4-py3-none-any.whl", hash = "sha256:0d5256e95d8719da8ec9611b7ffbb12c2d26fdf7ce52c8f64e4e06350731e893", size = 4290, upload-time = "2026-06-25T06:34:07.22Z" },
+]
 
 [[package]]
 name = "alibabacloud-gpdb20160503"
@@ -204,6 +240,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/95/ba/606601479707f90138be38493b7b4d8457da10bbc58e84cd000108468a44/alibabacloud_gpdb20160503-5.2.0.tar.gz", hash = "sha256:d8f41bfcdc189f9d0283a87df2c3fa26a27617bc2d604652c7763bf9dd3ba22d", size = 299202, upload-time = "2026-04-02T19:27:25.639Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/8f/a3/eee56773d22b8ee4039f2a4754bcf957631302d2e59e5b110cdd768e25ac/alibabacloud_gpdb20160503-5.2.0-py3-none-any.whl", hash = "sha256:b2bad9d2f7e0247985120c25f6cd42e75447fb9157dff817f64eae1734abcbd7", size = 857108, upload-time = "2026-04-02T19:27:24.446Z" },
+]
+
+[[package]]
+name = "alibabacloud-openapi-util"
+version = "0.2.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "alibabacloud-tea-util" },
+    { name = "cryptography" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f6/51/be5802851a4ed20ac2c6db50ac8354a6e431e93db6e714ca39b50983626f/alibabacloud_openapi_util-0.2.4.tar.gz", hash = "sha256:87022b9dcb7593a601f7a40ca698227ac3ccb776b58cb7b06b8dc7f510995c34", size = 7981, upload-time = "2026-01-15T08:05:03.947Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/08/46/9b217343648b366eb93447f5d93116e09a61956005794aed5ef95a2e9e2e/alibabacloud_openapi_util-0.2.4-py3-none-any.whl", hash = "sha256:a2474f230b5965ae9a8c286e0dc86132a887928d02d20b8182656cf6b1b6c5bd", size = 7661, upload-time = "2026-01-15T08:05:01.374Z" },
 ]
 
 [[package]]
@@ -1335,6 +1384,7 @@ name = "dify-api"
 version = "1.16.1"
 source = { virtual = "." }
 dependencies = [
+    { name = "alibabacloud-dingtalk" },
     { name = "aliyun-log-python-sdk" },
     { name = "azure-identity" },
     { name = "bleach" },
@@ -1620,6 +1670,7 @@ vdb-xinference = [
 
 [package.metadata]
 requires-dist = [
+    { name = "alibabacloud-dingtalk", specifier = ">=2.2.54,<3.0.0" },
     { name = "aliyun-log-python-sdk", specifier = "==0.9.44" },
     { name = "azure-identity", specifier = ">=1.25.3,<2.0.0" },
     { name = "bleach", specifier = ">=6.4.0,<7.0.0" },

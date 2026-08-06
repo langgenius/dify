@@ -1,0 +1,178 @@
+{
+  "credential_test": {
+    "headers": {
+      "content-type": "application/json",
+      "x-acs-request-id": "fake-request-credential-001"
+    },
+    "statusCode": 200,
+    "body": {
+      "access_token": "fake-access-token-credential-001",
+      "expires_in": 7200
+    }
+  },
+  "directory": [
+    {
+      "request": {
+        "path": "/topapi/v2/department/listsub",
+        "body": {
+          "dept_id": 1
+        }
+      },
+      "response": {
+        "errcode": 0,
+        "errmsg": "ok",
+        "request_id": "fake-request-department-root-001",
+        "result": [
+          {
+            "dept_id": 2,
+            "name": "Fake Engineering",
+            "parent_id": 1,
+            "create_dept_group": false,
+            "auto_approve_apply": false
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "path": "/topapi/v2/user/list",
+        "body": {
+          "dept_id": 1,
+          "cursor": 0,
+          "size": 100
+        }
+      },
+      "response": {
+        "errcode": 0,
+        "errmsg": "ok",
+        "request_id": "fake-request-user-root-001",
+        "result": {
+          "has_more": true,
+          "next_cursor": 9,
+          "list": [
+            {
+              "userid": "fake-user-001",
+              "unionid": "fake-union-001",
+              "name": "Fake User One",
+              "avatar": "https://example.invalid/fake-user-001.png",
+              "state_code": "00",
+              "manager_userid": "fake-user-manager-001",
+              "mobile": "00000000000",
+              "hide_mobile": true,
+              "telephone": "000-0000",
+              "job_number": "fake-job-001",
+              "title": "Fake Engineer",
+              "email": "fake.user.one@example.invalid",
+              "work_place": "Fake Office",
+              "remark": "Fake fixture member",
+              "dept_id_list": [1, 2],
+              "extension": "{}",
+              "hired_date": 0,
+              "active": true,
+              "admin": false,
+              "boss": false,
+              "leader_in_dept": [{"dept_id": 1, "leader": false}],
+              "role_list": [{"id": 1, "name": "Fake Role", "group_name": "Fake Group"}],
+              "exclusive_account": false,
+              "login_id": "fake-login-001"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "request": {
+        "path": "/topapi/v2/user/list",
+        "body": {
+          "dept_id": 1,
+          "cursor": 9,
+          "size": 100
+        }
+      },
+      "response": {
+        "errcode": 0,
+        "errmsg": "ok",
+        "request_id": "fake-request-user-root-002",
+        "result": {
+          "has_more": false,
+          "next_cursor": 0,
+          "list": [
+            {
+              "userid": "fake-user-002",
+              "active": false,
+              "admin": false,
+              "boss": false,
+              "dept_id_list": [1]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "request": {
+        "path": "/topapi/v2/department/listsub",
+        "body": {
+          "dept_id": 2
+        }
+      },
+      "response": {
+        "errcode": 0,
+        "errmsg": "ok",
+        "request_id": "fake-request-department-child-001",
+        "result": []
+      }
+    },
+    {
+      "request": {
+        "path": "/topapi/v2/user/list",
+        "body": {
+          "dept_id": 2,
+          "cursor": 0,
+          "size": 100
+        }
+      },
+      "response": {
+        "errcode": 0,
+        "errmsg": "ok",
+        "request_id": "fake-request-user-child-001",
+        "result": {
+          "has_more": false,
+          "next_cursor": 0,
+          "list": [
+            {
+              "userid": "fake-user-002",
+              "name": "Fake Duplicate Must Not Replace First Seen",
+              "email": "fake.duplicate@example.invalid",
+              "active": false,
+              "admin": false,
+              "boss": false,
+              "dept_id_list": [2]
+            },
+            {
+              "userid": "fake-user-003",
+              "name": " ",
+              "email": "",
+              "active": true,
+              "admin": false,
+              "boss": false,
+              "dept_id_list": [2]
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "message": {
+    "headers": {
+      "content-type": "application/json",
+      "x-acs-request-id": "fake-request-message-001"
+    },
+    "statusCode": 200,
+    "body": {
+      "filteredStaffIdList": [],
+      "flowControlledStaffIdList": [],
+      "invalidStaffIdList": [],
+      "processQueryKey": "fake-process-query-key-001"
+    }
+  }
+}

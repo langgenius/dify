@@ -44,6 +44,22 @@ class SlackIMIntegrationCredentials(_ResolvedIMIntegrationCredentials):
     )
 
 
+class DingTalkIMIntegrationCredentials(_ResolvedIMIntegrationCredentials):
+    """Resolved DingTalk credentials bound for one adapter lifetime."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+    provider: Literal[IMProvider.DING_TALK] = Field(description="DingTalk credential discriminator.")
+    corp_id: str = Field(min_length=1, pattern=r"\S", description="DingTalk corporation identifier.")
+    client_id: str = Field(min_length=1, pattern=r"\S", description="DingTalk application client identifier.")
+    client_secret: str = Field(
+        min_length=1,
+        pattern=r"\S",
+        repr=False,
+        description="Resolved DingTalk application client secret.",
+    )
+
+
 ProviderUserId = NewType("ProviderUserId", str)
 CorrelationToken = NewType("CorrelationToken", str)
 
@@ -310,6 +326,7 @@ __all__ = [
     "CredentialTestFailure",
     "CredentialTestFailureKind",
     "CredentialTestSuccess",
+    "DingTalkIMIntegrationCredentials",
     "Directory",
     "DirectoryEntry",
     "DirectoryReadFailure",

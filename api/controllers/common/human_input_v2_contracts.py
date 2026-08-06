@@ -286,9 +286,10 @@ class DingTalkIMIntegrationCredentials(_RequestModel):
     """DingTalk integration credentials used by organization-level IM setup."""
 
     provider: Literal[IMProvider.DING_TALK] = Field(description="Discriminator for DingTalk integration credentials.")
+    corp_id: str = Field(description="DingTalk corporation identifier.")
     client_id: str = Field(description="DingTalk application client identifier.")
     client_secret: str | PreserveOriginalValue = Field(
-        description="DingTalk application client secret. This field will be masked in response."
+        repr=False, description="DingTalk application client secret. This field will be masked in response."
     )
 
 

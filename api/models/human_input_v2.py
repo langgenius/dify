@@ -143,8 +143,12 @@ class DingTalkIMIntegrationEncryptedCredentials(_ImmutableJSONModel):
         default=_IMProvider.DING_TALK,
         description="Discriminator for DingTalk encrypted credentials.",
     )
+    corp_id: str = Field(description="DingTalk corporation identifier.")
     client_id: str = Field(description="DingTalk application client identifier.")
-    encrypted_client_secret: str = Field(description="Encrypted DingTalk application client secret.")
+    encrypted_client_secret: str = Field(
+        repr=False,
+        description="Encrypted DingTalk application client secret.",
+    )
 
 
 class MSTeamsIMIntegrationEncryptedCredentials(_ImmutableJSONModel):

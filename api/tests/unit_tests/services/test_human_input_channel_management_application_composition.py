@@ -86,7 +86,7 @@ def test_composition_registers_resend_slack_and_two_explicit_im_stubs(sqlite_eng
         ),
         (
             ChannelRef(ChannelKind.IM, ChannelProvider.DING_TALK),
-            DingTalkIMCandidate("client", NewSecret("secret")),
+            DingTalkIMCandidate("corp", "client", NewSecret("secret")),
         ),
     ],
 )

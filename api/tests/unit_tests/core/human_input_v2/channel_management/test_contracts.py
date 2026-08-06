@@ -100,7 +100,7 @@ def test_im_candidates_scope_secret_preservation_to_slack() -> None:
     )
     assert isinstance(slack_candidate.client_secret, PreserveSlackSecret)
     with pytest.raises(ValueError, match="client_secret"):
-        DingTalkIMCandidate("client", "retain")  # type: ignore[arg-type]
+        DingTalkIMCandidate("corp", "client", "retain")  # type: ignore[arg-type]
 
 
 def test_operation_result_requires_exactly_one_outcome() -> None:
