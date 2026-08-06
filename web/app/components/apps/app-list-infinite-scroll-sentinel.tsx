@@ -6,13 +6,13 @@ import { useEffect, useEffectEvent, useRef } from 'react'
 type AppListInfiniteScrollSentinelProps = {
   canLoadMore: boolean
   fetchNextPage: () => Promise<unknown>
-  scrollRootRef: RefObject<HTMLDivElement | null>
+  scrollViewportRef: RefObject<HTMLDivElement | null>
 }
 
 export function AppListInfiniteScrollSentinel({
   canLoadMore,
   fetchNextPage,
-  scrollRootRef,
+  scrollViewportRef,
 }: AppListInfiniteScrollSentinelProps) {
   const sentinelRef = useRef<HTMLDivElement>(null)
   const handleIntersection = useEffectEvent((entry: IntersectionObserverEntry) => {
@@ -20,7 +20,7 @@ export function AppListInfiniteScrollSentinel({
   })
 
   useEffect(() => {
-    const scrollRoot = scrollRootRef.current
+    const scrollRoot = scrollViewportRef.current
     const sentinel = sentinelRef.current
     if (!canLoadMore || !scrollRoot || !sentinel || typeof IntersectionObserver === 'undefined')
       return
@@ -39,7 +39,7 @@ export function AppListInfiniteScrollSentinel({
 
     observer.observe(sentinel)
     return () => observer.disconnect()
-  }, [canLoadMore, scrollRootRef])
+  }, [canLoadMore, scrollViewportRef])
 
   return <div ref={sentinelRef} aria-hidden className="h-px" />
 }

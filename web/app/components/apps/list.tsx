@@ -45,7 +45,8 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   const [tagIDs, setTagIDs] = useState<string[]>([])
   const [sortBy, setSortBy] = useState<AppListSortBy>('last_modified')
   const debouncedKeywords = useDebounce(keywords, { wait: APP_LIST_SEARCH_DEBOUNCE_MS })
-  const containerRef = useRef<HTMLDivElement>(null)
+  const dropZoneRef = useRef<HTMLDivElement>(null)
+  const scrollViewportRef = useRef<HTMLDivElement>(null)
   const titleId = useId()
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
   const [creationDialog, setCreationDialog] = useState<AppListCreationDialog>(null)
@@ -68,7 +69,7 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
 
   const { dragging } = useDSLDragDrop({
     onDSLFileDropped: handleDSLFileDropped,
-    containerRef,
+    dropZoneRef,
     enabled: canCreateApp,
   })
 
@@ -86,7 +87,7 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   )
 
   const resetCatalogScroll = () => {
-    containerRef.current?.scrollTo({ top: 0 })
+    scrollViewportRef.current?.scrollTo({ top: 0 })
   }
   const changeCategory = (nextCategory: AppListCategory) => {
     resetCatalogScroll()
@@ -122,7 +123,10 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
 
   return (
     <>
-      <div className="relative flex h-0 min-h-0 shrink-0 grow flex-col bg-background-body">
+      <div
+        ref={dropZoneRef}
+        className="relative flex h-0 min-h-0 shrink-0 grow flex-col bg-background-body"
+      >
         {dragging && (
           <div className="absolute inset-0 z-50 m-0.5 rounded-2xl border-2 border-dashed border-components-dropzone-border-accent bg-[rgba(21,90,239,0.14)] p-2"></div>
         )}
@@ -149,7 +153,7 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
         <div className="relative min-h-0 grow">
           <ScrollArea className="size-full overflow-hidden">
             <ScrollAreaViewport
-              ref={containerRef}
+              ref={scrollViewportRef}
               role="region"
               aria-labelledby={titleId}
               className="overscroll-contain"
@@ -162,7 +166,6 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
                 <AppListCatalog
                   appListQuery={appListQuery}
                   canCreateApp={canCreateApp}
-                  containerRef={containerRef}
                   dragging={dragging}
                   hasActiveFilters={hasActiveFilters}
                   onCreateBlank={openCreateBlankModal}
@@ -171,6 +174,7 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
                   onImportDSL={openCreateFromDSLModal}
                   onOpenTagManagement={openTagManagement}
                   onTryLearnDify={onTryLearnDify}
+                  scrollViewportRef={scrollViewportRef}
                 />
               </ScrollAreaContent>
             </ScrollAreaViewport>

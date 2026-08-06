@@ -23,14 +23,14 @@ function Harness({
   canLoadMore: boolean
   fetchNextPage: () => Promise<unknown>
 }) {
-  const scrollRootRef = useRef<HTMLDivElement>(null)
+  const scrollViewportRef = useRef<HTMLDivElement>(null)
 
   return (
-    <div ref={scrollRootRef}>
+    <div ref={scrollViewportRef}>
       <AppListInfiniteScrollSentinel
         canLoadMore={canLoadMore}
         fetchNextPage={fetchNextPage}
-        scrollRootRef={scrollRootRef as RefObject<HTMLDivElement | null>}
+        scrollViewportRef={scrollViewportRef as RefObject<HTMLDivElement | null>}
       />
     </div>
   )

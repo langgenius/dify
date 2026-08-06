@@ -171,14 +171,6 @@ vi.mock('@/features/tag-management/components/tag-filter', () => ({
   ),
 }))
 
-let mockOnDSLFileDropped: ((file: File) => void) | null = null
-vi.mock('../hooks/use-dsl-drag-drop', () => ({
-  useDSLDragDrop: ({ onDSLFileDropped }: { onDSLFileDropped: (file: File) => void }) => {
-    mockOnDSLFileDropped = onDSLFileDropped
-    return { dragging: false }
-  },
-}))
-
 vi.mock('../hooks/use-workflow-online-users', () => ({
   useWorkflowOnlineUsers: (options: unknown) => mockUseWorkflowOnlineUsers(options),
 }))
@@ -553,6 +545,15 @@ const openAppSortSelect = async (user = userEvent.setup()) => {
   return user
 }
 
+const dropDSLFileOnStudioHeader = (file: File) => {
+  fireEvent.drop(screen.getByRole('button', { name: 'common.operation.create' }), {
+    dataTransfer: {
+      files: [file],
+      types: ['Files'],
+    },
+  })
+}
+
 const setActiveStudioStepByStepTour = (
   activeGuideIndex: number,
   activeGuideGroup:
@@ -573,7 +574,6 @@ describe('List', () => {
     vi.clearAllMocks()
     stepByStepTourSessionState = {}
     mockWorkspacePermissionKeys = ['app.create_and_management']
-    mockOnDSLFileDropped = null
     mockServiceState.error = null
     mockServiceState.hasNextPage = false
     mockServiceState.isFetchNextPageError = false
@@ -1244,9 +1244,7 @@ describe('List', () => {
       renderList()
 
       const mockFile = new File(['test content'], 'test.yml', { type: 'application/yaml' })
-      act(() => {
-        if (mockOnDSLFileDropped) mockOnDSLFileDropped(mockFile)
-      })
+      dropDSLFileOnStudioHeader(mockFile)
 
       expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
     })
@@ -1255,9 +1253,7 @@ describe('List', () => {
       renderList()
 
       const mockFile = new File(['test content'], 'test.yml', { type: 'application/yaml' })
-      act(() => {
-        if (mockOnDSLFileDropped) mockOnDSLFileDropped(mockFile)
-      })
+      dropDSLFileOnStudioHeader(mockFile)
 
       expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
 
@@ -1270,9 +1266,7 @@ describe('List', () => {
       renderList()
 
       const mockFile = new File(['test content'], 'test.yml', { type: 'application/yaml' })
-      act(() => {
-        if (mockOnDSLFileDropped) mockOnDSLFileDropped(mockFile)
-      })
+      dropDSLFileOnStudioHeader(mockFile)
 
       expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
 

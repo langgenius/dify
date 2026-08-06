@@ -36,7 +36,6 @@ type AppListQuery = NonNullable<GetAppsData['query']>
 type AppListCatalogProps = Readonly<{
   appListQuery: AppListQuery
   canCreateApp: boolean
-  containerRef: RefObject<HTMLDivElement | null>
   dragging: boolean
   hasActiveFilters: boolean
   onCreateBlank: () => void
@@ -45,6 +44,7 @@ type AppListCatalogProps = Readonly<{
   onImportDSL: () => void
   onOpenTagManagement: () => void
   onTryLearnDify?: (params: TryAppSelection) => void
+  scrollViewportRef: RefObject<HTMLDivElement | null>
 }>
 
 type AppListCatalogContentProps = Omit<AppListCatalogProps, 'appListQuery'> &
@@ -77,7 +77,6 @@ function CatalogSkeleton() {
 function AppListCatalogContent({
   appListPages,
   canCreateApp,
-  containerRef,
   dragging,
   hasActiveFilters,
   hasNextPage,
@@ -93,6 +92,7 @@ function AppListCatalogContent({
   onOpenTagManagement,
   onTryLearnDify,
   starredApps,
+  scrollViewportRef,
   systemFeatures,
 }: AppListCatalogContentProps) {
   const { t } = useTranslation()
@@ -242,7 +242,7 @@ function AppListCatalogContent({
       <AppListInfiniteScrollSentinel
         canLoadMore={hasNextPage && !isFetching && !isFetchNextPageError}
         fetchNextPage={onFetchNextPage}
-        scrollRootRef={containerRef}
+        scrollViewportRef={scrollViewportRef}
       />
     </>
   )
@@ -252,7 +252,6 @@ export function AppListCatalog(props: AppListCatalogProps) {
   const {
     appListQuery,
     canCreateApp,
-    containerRef,
     dragging,
     hasActiveFilters,
     onCreateBlank,
@@ -261,6 +260,7 @@ export function AppListCatalog(props: AppListCatalogProps) {
     onImportDSL,
     onOpenTagManagement,
     onTryLearnDify,
+    scrollViewportRef,
   } = props
   const systemFeaturesQuery = useQuery(systemFeaturesQueryOptions())
   const systemFeatures = systemFeaturesQuery.data
@@ -305,7 +305,6 @@ export function AppListCatalog(props: AppListCatalogProps) {
     <AppListCatalogContent
       appListPages={appList.data.pages}
       canCreateApp={canCreateApp}
-      containerRef={containerRef}
       dragging={dragging}
       hasActiveFilters={hasActiveFilters}
       hasNextPage={appList.hasNextPage}
@@ -320,6 +319,7 @@ export function AppListCatalog(props: AppListCatalogProps) {
       onImportDSL={onImportDSL}
       onOpenTagManagement={onOpenTagManagement}
       onTryLearnDify={onTryLearnDify}
+      scrollViewportRef={scrollViewportRef}
       starredApps={starredAppList.data?.data ?? emptyStarredApps}
       systemFeatures={systemFeatures}
     />
