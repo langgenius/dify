@@ -243,30 +243,17 @@ const DocumentRow = memo(
 )
 
 export function DocumentsEmpty({
-  activeTaskCount,
-  attentionTaskBadge,
   canEdit,
-  hasTaskError,
   onAddDocument,
-  onOpenTasks,
   readOnlyReasonId,
-  tasksButtonLabel,
-  tasksLiveStatus,
   uploading,
 }: {
-  activeTaskCount: number
-  attentionTaskBadge?: string
   canEdit: boolean
-  hasTaskError: boolean
   onAddDocument: () => void
-  onOpenTasks: () => void
   readOnlyReasonId?: string
-  tasksButtonLabel: string
-  tasksLiveStatus: string
   uploading: boolean
 }) {
   const { t } = useTranslation('dataset')
-  const tasksVisible = activeTaskCount > 0 || Boolean(attentionTaskBadge) || hasTaskError
 
   return (
     <div className="flex min-h-96 flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
@@ -295,18 +282,6 @@ export function DocumentsEmpty({
         <p className="system-xs-regular text-text-quaternary">
           {t(($) => $['newKnowledge.documentsDropHint'])}
         </p>
-      )}
-      {tasksVisible && (
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          <TaskTrigger
-            activeTaskCount={activeTaskCount}
-            attentionTaskBadge={attentionTaskBadge}
-            hasTaskError={hasTaskError}
-            onOpenTasks={onOpenTasks}
-            tasksButtonLabel={tasksButtonLabel}
-            tasksLiveStatus={tasksLiveStatus}
-          />
-        </div>
       )}
     </div>
   )

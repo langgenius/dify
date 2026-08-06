@@ -1448,6 +1448,17 @@ describe('DocumentsPage', () => {
   })
 
   it('renders the designed empty state with an available upload action', () => {
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [
+            task({ id: 'failed-1', state: 'failed' }),
+            task({ id: 'failed-2', state: 'failed' }),
+          ],
+        },
+      ],
+    }
+
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     const emptyState = screen.getByText('dataset.newKnowledge.documentsEmptyTitle').parentElement
@@ -1456,7 +1467,9 @@ describe('DocumentsPage', () => {
     expect(screen.getByText('dataset.newKnowledge.documentsDropHint')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeEnabled()
     expect(
-      screen.queryByRole('button', { name: 'dataset.newKnowledge.tasks' }),
+      screen.queryByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":2}',
+      }),
     ).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'dataset.newKnowledge.metadata' }),
@@ -1544,21 +1557,16 @@ describe('DocumentsPage', () => {
     expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
   })
 
-  it('keeps processing tasks reachable while the document list is empty', async () => {
-    const user = userEvent.setup()
+  it('does not expose processing tasks while the document list is empty', () => {
     tasksQuery.data = { pages: [{ items: [task({ id: 'orphaned-running-task' })] }] }
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    await user.click(
-      screen.getByRole('button', {
+    expect(
+      screen.queryByRole('button', {
         name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
       }),
-    )
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
-    ).toBeInTheDocument()
+    ).not.toBeInTheDocument()
   })
 
   it('keeps every write action unavailable for read-only users', async () => {

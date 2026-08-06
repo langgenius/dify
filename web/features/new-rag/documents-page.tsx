@@ -2449,15 +2449,9 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           />
         ) : !documents.length ? (
           <DocumentsEmpty
-            activeTaskCount={activeTasks.length}
-            attentionTaskBadge={attentionTaskBadge}
             canEdit={canUpload}
-            hasTaskError={hasTaskError}
             onAddDocument={() => openUploadForm()}
-            onOpenTasks={() => setTasksOpen(true)}
             readOnlyReasonId={documentUploadRestrictionReasonId}
-            tasksButtonLabel={tasksButtonLabel}
-            tasksLiveStatus={tasksLiveStatus}
             uploading={uploading}
           />
         ) : (
