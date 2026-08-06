@@ -241,12 +241,15 @@ class TestResolveDebugDraft:
 class TestResolveAgent:
     @pytest.fixture(autouse=True)
     def _publish_visibility(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        def is_publish_visible(*, agent: SimpleNamespace, **_kwargs: object) -> bool:
+            if "publish_visible" in vars(agent):
+                return bool(agent.publish_visible)
+            return bool(agent.active_config_is_published)
+
         monkeypatch.setattr(
             app_generator,
             "agent_has_workflow_callable_active_snapshot",
-            lambda *, agent, **_kwargs: bool(
-                getattr(agent, "publish_visible", getattr(agent, "active_config_is_published", False))
-            ),
+            is_publish_visible,
         )
 
     def test_success_chains_to_resolve_by_id(self):

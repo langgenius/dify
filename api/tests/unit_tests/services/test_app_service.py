@@ -124,13 +124,13 @@ def test_app_status_updates_commit_before_signal(update_status: Callable[..., Ap
 
 
 @pytest.mark.parametrize(
-    ("update_status", "status_field"),
+    "update_status",
     [
-        (AppService.update_app_site_status, "enable_site"),
-        (AppService.update_app_api_status, "enable_api"),
+        AppService.update_app_site_status,
+        AppService.update_app_api_status,
     ],
 )
-def test_unpublished_agent_app_access_cannot_be_enabled(update_status: Callable[..., App], status_field: str) -> None:
+def test_unpublished_agent_app_access_cannot_be_enabled(update_status: Callable[..., App]) -> None:
     app = cast(
         App,
         SimpleNamespace(
@@ -148,7 +148,8 @@ def test_unpublished_agent_app_access_cannot_be_enabled(update_status: Callable[
         with pytest.raises(AgentAccessNotReadyError):
             update_status(AppService(), app, True, session=session)
 
-    assert getattr(app, status_field) is False
+    assert app.enable_site is False
+    assert app.enable_api is False
     session.commit.assert_not_called()
 
 
