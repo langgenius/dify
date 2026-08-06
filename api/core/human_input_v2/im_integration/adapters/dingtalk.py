@@ -103,6 +103,12 @@ class _AuthenticationRejectedError(_AccessTokenError):
     pass
 
 
+@dataclass(frozen=True, slots=True)
+class _AccessToken:
+    value: str
+    expires_in: int
+
+
 class _DirectoryHTTPError(Exception):
     pass
 
@@ -403,6 +409,10 @@ def _sdk_config() -> Config:
 
 
 def _get_access_token(client: _OAuthClient, credentials: DingTalkIMIntegrationCredentials) -> str:
+    return _request_access_token(client, credentials).value
+
+
+def _request_access_token(client: _OAuthClient, credentials: DingTalkIMIntegrationCredentials) -> _AccessToken:
     try:
         response = client.get_token(
             credentials.corp_id,
@@ -428,7 +438,7 @@ def _get_access_token(client: _OAuthClient, credentials: DingTalkIMIntegrationCr
         or expires_in <= 0
     ):
         raise _AccessTokenError
-    return access_token
+    return _AccessToken(access_token, expires_in)
 
 
 def _is_authentication_rejection(error: Exception) -> bool:
