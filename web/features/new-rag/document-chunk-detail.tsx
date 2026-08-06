@@ -111,7 +111,7 @@ export function DocumentChunkDetail({
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <h3 className="system-sm-semibold break-words text-text-primary">
+                      <h3 className="system-sm-semibold wrap-break-word text-text-primary">
                         {content.heading ||
                           t(($) => $['newKnowledge.chunkHeading'], { position: chunk.ordinal })}
                       </h3>
@@ -133,7 +133,7 @@ export function DocumentChunkDetail({
                     </Button>
                   </div>
                   {content.body && (
-                    <p className="mt-3 body-md-regular break-words whitespace-pre-wrap text-text-primary">
+                    <p className="mt-3 body-md-regular wrap-break-word whitespace-pre-wrap text-text-primary">
                       {content.body}
                     </p>
                   )}
@@ -175,7 +175,7 @@ export function DocumentChunkDetail({
               <dt className="system-2xs-medium text-text-tertiary">
                 {t(($) => $['newKnowledge.sourceColumn'])}
               </dt>
-              <dd className="mt-1 system-xs-regular break-words text-text-secondary">
+              <dd className="mt-1 system-xs-regular wrap-break-word text-text-secondary">
                 {sourceName ??
                   (document.sourceId
                     ? t(($) => $['newKnowledge.sourceType.connector'])
@@ -251,7 +251,7 @@ export function DocumentChunkDetail({
               <dt className="system-2xs-medium text-text-tertiary">
                 {t(($) => $['newKnowledge.mimeType'])}
               </dt>
-              <dd className="mt-1 system-xs-regular break-words text-text-secondary">
+              <dd className="mt-1 system-xs-regular wrap-break-word text-text-secondary">
                 {revision?.mimeType ?? document.active?.mimeType ?? '—'}
               </dd>
             </div>
@@ -275,8 +275,8 @@ export function DocumentChunkDetail({
                 </div>
                 {chunkMetadataEntries(selectedChunk.userMetadata).map(([key, value]) => (
                   <div key={key}>
-                    <dt className="system-2xs-medium break-words text-text-tertiary">{key}</dt>
-                    <dd className="mt-1 system-xs-regular break-words text-text-secondary">
+                    <dt className="system-2xs-medium wrap-break-word text-text-tertiary">{key}</dt>
+                    <dd className="mt-1 system-xs-regular wrap-break-word text-text-secondary">
                       {value}
                     </dd>
                   </div>

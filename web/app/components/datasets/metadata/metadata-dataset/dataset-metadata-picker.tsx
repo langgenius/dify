@@ -202,8 +202,8 @@ function MetadataPickerSelectPanel({
           {query && <ComboboxClear aria-label={t(($) => $['operation.clear'], { ns: 'common' })} />}
         </ComboboxInputGroup>
       </div>
-      <ComboboxList>
-        {(metadata: MetadataItem) => <MetadataOption key={metadata.id} metadata={metadata} />}
+      <ComboboxList<MetadataItem>>
+        {(metadata) => <MetadataOption key={metadata.id} metadata={metadata} />}
       </ComboboxList>
       <ComboboxEmpty>{t(($) => $.noData, { ns: 'common' })}</ComboboxEmpty>
       <ComboboxSeparator />

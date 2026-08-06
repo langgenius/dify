@@ -2,13 +2,13 @@ import type { PostWorkspacesCurrentResponse } from '@dify/contracts/api/console/
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
 import type { IWorkspace } from '@/models/common'
+import { zLicenseStatus } from '@dify/contracts/api/console/system-features/zod.gen'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
-import { LicenseStatus } from '@/features/system-features/constants'
 import { consoleQuery } from '@/service/client'
 import {
   createConsoleQueryClient,
@@ -110,7 +110,11 @@ const currentWorkspaceValue: PostWorkspacesCurrentResponse = {
 }
 
 const mockSetShowPricingModal = vi.fn()
-const mockSetShowAccountSettingModal = vi.fn()
+const mockSetSettingsDestination = vi.fn()
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+})
 let mockCurrentWorkspace: PostWorkspacesCurrentResponse | undefined = currentWorkspaceValue
 let mockWorkspaces: IWorkspace[] = []
 
@@ -182,7 +186,6 @@ describe('WorkspaceCard', () => {
     mockWorkspacePermissionKeys(['workspace.member.manage'])
     vi.mocked(useModalContext).mockReturnValue({
       setShowPricingModal: mockSetShowPricingModal,
-      setShowAccountSettingModal: mockSetShowAccountSettingModal,
     } as unknown as ModalContextState)
   })
 
@@ -318,7 +321,7 @@ describe('WorkspaceCard', () => {
         deployment_edition: 'ENTERPRISE',
       },
       systemFeaturesLicense: {
-        status: LicenseStatus.ACTIVE,
+        status: zLicenseStatus.enum.active,
       },
     })
 
@@ -329,7 +332,14 @@ describe('WorkspaceCard', () => {
   it('opens workspace actions and switcher in a popover panel', async () => {
     renderWorkspaceCard()
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
+    const workspaceTrigger = screen.getByRole('button', {
+      name: 'common.mainNav.workspace.openMenu',
+    })
+    expect(workspaceTrigger).not.toHaveAttribute('data-popup-open')
+
+    fireEvent.click(workspaceTrigger)
+
+    expect(workspaceTrigger).toHaveAttribute('data-popup-open', '')
 
     const panel = await screen.findByRole('dialog', { name: 'Solar Studio' })
     expect(panel).toBeInTheDocument()
@@ -417,7 +427,14 @@ describe('WorkspaceCard', () => {
 
     expect(defaultWorkspaceOptions).toEqual(['Atlas Workspace', 'Solar Studio', 'Evan Workspace'])
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.sort.openMenu' }))
+    const sortTrigger = screen.getByRole('button', {
+      name: 'common.mainNav.workspace.sort.openMenu',
+    })
+    expect(sortTrigger).not.toHaveAttribute('data-popup-open')
+
+    fireEvent.click(sortTrigger)
+
+    expect(sortTrigger).toHaveAttribute('data-popup-open', '')
 
     expect(
       await screen.findByRole('menuitemradio', {
@@ -448,9 +465,7 @@ describe('WorkspaceCard', () => {
       await screen.findByRole('button', { name: 'common.mainNav.workspace.settings' }),
     )
 
-    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-      payload: ACCOUNT_SETTING_TAB.BILLING,
-    })
+    expect(mockSetSettingsDestination).toHaveBeenCalledWith(ACCOUNT_SETTING_TAB.BILLING)
   })
 
   it('opens members settings from workspace menu when billing is disabled', async () => {
@@ -466,12 +481,8 @@ describe('WorkspaceCard', () => {
       await screen.findByRole('button', { name: 'common.mainNav.workspace.settings' }),
     )
 
-    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-      payload: ACCOUNT_SETTING_TAB.MEMBERS,
-    })
-    expect(mockSetShowAccountSettingModal).not.toHaveBeenCalledWith({
-      payload: ACCOUNT_SETTING_TAB.BILLING,
-    })
+    expect(mockSetSettingsDestination).toHaveBeenCalledWith(ACCOUNT_SETTING_TAB.MEMBERS)
+    expect(mockSetSettingsDestination).not.toHaveBeenCalledWith(ACCOUNT_SETTING_TAB.BILLING)
   })
 
   it('switches workspace from the workspace switcher item', async () => {

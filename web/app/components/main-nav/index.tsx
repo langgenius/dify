@@ -127,14 +127,14 @@ export function MainNav({ className }: MainNavProps) {
         </nav>
         {!isCurrentWorkspaceDatasetOperator && <WebAppsSection />}
         {showEnvTag && (
-          <div className="relative z-30 mt-auto shrink-0 px-3 pb-2">
+          <div className="mt-auto shrink-0 px-3 pb-2">
             <EnvNav />
           </div>
         )}
       </div>
-      <div className="relative w-60 shrink-0">
-        <StepByStepTourMount className="absolute -top-7 left-2.5 h-8 w-[183px] overflow-visible" />
-        <div className="flex w-60 items-center justify-between bg-gradient-to-b from-background-body-transparent to-background-body to-50% py-3 pr-1 pl-3 backdrop-blur-[2px]">
+      <div className="isolate w-60 shrink-0">
+        <StepByStepTourMount className="relative z-1 -mb-1 ml-2.5 h-8 w-45.75 overflow-visible" />
+        <div className="flex w-60 items-center justify-between bg-linear-to-b from-background-body-transparent to-background-body to-50% py-3 pr-1 pl-3 backdrop-blur-[2px]">
           <div className="flex min-w-0 items-center gap-1 overflow-hidden">
             <AccountSection />
           </div>

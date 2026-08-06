@@ -172,6 +172,7 @@ def initialize_extensions(app: DifyApp):
     from context.flask_app_context import init_flask_context
     from extensions import (
         ext_app_metrics,
+        ext_application_services,
         ext_blueprints,
         ext_celery,
         ext_code_based_extension,
@@ -233,6 +234,7 @@ def initialize_extensions(app: DifyApp):
         ext_enterprise_telemetry,
         ext_request_logging,
         ext_session_factory,
+        ext_application_services,
         ext_oauth_bearer,
     ]
     for ext in extensions:

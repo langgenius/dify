@@ -79,10 +79,14 @@ def _make_pipeline(
     workflow_id: str | None = None,
     is_published: bool = False,
 ) -> Pipeline:
-    pipeline = Pipeline(tenant_id=tenant_id, name="Test Pipeline", description="test")
+    pipeline = Pipeline(
+        tenant_id=tenant_id,
+        name="Test Pipeline",
+        description="test",
+        workflow_id=workflow_id,
+        is_published=is_published,
+    )
     pipeline.id = pipeline_id
-    pipeline.workflow_id = workflow_id
-    pipeline.is_published = is_published
     return pipeline
 
 
@@ -122,8 +126,8 @@ def _make_dataset(*, dataset_id: str = "d1", pipeline_id: str = "p1", tenant_id:
         tenant_id=tenant_id,
         name="Test Dataset",
         created_by="u1",
+        pipeline_id=pipeline_id,
     )
-    dataset.pipeline_id = pipeline_id
     return dataset
 
 
@@ -608,6 +612,34 @@ def test_publish_workflow_success(mocker: MockerFixture, rag_pipeline_service: R
     mock_dataset_service_class.update_rag_pipeline_dataset_settings.assert_called_once()
 
 
+def test_publish_workflow_rejects_missing_llm_environment_reference(
+    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
+) -> None:
+    draft_workflow = mocker.Mock()
+    draft_workflow.graph_dict = {
+        "nodes": [
+            {
+                "id": "llm-node",
+                "data": {
+                    "type": "llm",
+                    "model": {"provider": "provider", "name": "model", "mode": "chat"},
+                    "model_selector": ["env", "missing_model"],
+                },
+            }
+        ]
+    }
+    draft_workflow.environment_variables = []
+    session = mocker.Mock()
+    session.scalar.return_value = draft_workflow
+
+    with pytest.raises(ValueError, match="missing_model.*not found"):
+        rag_pipeline_service.service.publish_workflow(
+            session=session,
+            pipeline=mocker.Mock(id="pipeline", tenant_id="tenant"),
+            account=mocker.Mock(id="account"),
+        )
+
+
 # --- run_datasource_workflow_node ---
 
 
@@ -954,14 +986,22 @@ def test_retry_error_document_success(
 
     # 1. Setup mocks
     dataset = mocker.Mock()
-    document = mocker.Mock(spec=Document)
-    document.id = "doc-1"
+    document = Document(
+        id="doc-1",
+    )
 
-    log = mocker.Mock(spec=DocumentPipelineExecutionLog)
-    log.pipeline_id = "p-1"
-    log.datasource_info = "{}"  # Ensure it's a string if it's used as JSON later
+    log = DocumentPipelineExecutionLog(
+        pipeline_id="p-1",
+        document_id="document-id",
+        datasource_type="upload_file",
+        datasource_info="{}",
+        datasource_node_id="node-id",
+        input_data="{}",
+        created_by="account-id",
+    )
+    # Ensure it's a string if it's used as JSON later
 
-    pipeline = mocker.Mock(spec=Pipeline)
+    pipeline = Pipeline(tenant_id="tenant-id", name="Test Pipeline", workflow_id="wf-1")
     pipeline.id = "p-1"
 
     workflow = mocker.Mock()
@@ -991,9 +1031,11 @@ def test_set_datasource_variables_success(
     from models.dataset import Pipeline
 
     # 1. Setup mocks
-    pipeline = mocker.Mock(spec=Pipeline)
+    pipeline = Pipeline(
+        tenant_id="t1",
+        name="Test Pipeline",
+    )
     pipeline.id = "p-1"
-    pipeline.tenant_id = "t1"
 
     draft_wf = mocker.Mock()
     draft_wf.id = "wf-1"
@@ -1136,6 +1178,64 @@ def test_run_draft_workflow_node_raises_when_workflow_missing(
 
     with pytest.raises(ValueError, match="Workflow not initialized"):
         rag_pipeline_service.service.run_draft_workflow_node(pipeline, "node-1", {}, account)
+
+
+def test_run_draft_workflow_node_seeds_llm_environment_variable(
+    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
+) -> None:
+    from factories import variable_factory
+
+    pipeline = _make_pipeline()
+    account = _make_account()
+    llm_environment_variable = variable_factory.build_environment_variable_from_mapping(
+        {
+            "id": "env-1",
+            "name": "for_summarize",
+            "value_type": "llm",
+            "value": {
+                "provider": "langgenius/openai/openai",
+                "name": "gpt-4o",
+                "mode": "chat",
+            },
+            "description": "Shared summarization model",
+        }
+    )
+    draft_workflow = mocker.Mock(id="wf-1", environment_variables=[llm_environment_variable])
+    draft_workflow.get_node_config_by_id.return_value = {"id": "node-1"}
+    draft_workflow.get_enclosing_node_type_and_id.return_value = None
+    mocker.patch.object(rag_pipeline_service.service, "get_draft_workflow", return_value=draft_workflow)
+
+    execution = SimpleNamespace(id="exec-1", node_id="node-1", node_type="llm", process_data={}, outputs={})
+    handle_node_run_result = mocker.patch.object(
+        rag_pipeline_service.service, "_handle_node_run_result", return_value=execution
+    )
+    single_step_run = mocker.patch("services.rag_pipeline.rag_pipeline.WorkflowEntry.single_step_run")
+
+    repo = mocker.Mock()
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+        return_value=repo,
+    )
+    rag_pipeline_service.service._node_execution_service_repo = mocker.Mock(
+        get_execution_by_id=mocker.Mock(return_value="db")
+    )
+    mocker.patch("services.rag_pipeline.rag_pipeline.DraftVariableSaver", return_value=mocker.Mock())
+    session_ctx = mocker.MagicMock()
+    session_ctx.begin.return_value = mocker.MagicMock()
+    mocker.patch("services.rag_pipeline.rag_pipeline.Session", return_value=session_ctx)
+
+    rag_pipeline_service.service.run_draft_workflow_node(pipeline, "node-1", {}, account)
+
+    getter = handle_node_run_result.call_args.kwargs["getter"]
+    getter()
+    variable_pool = single_step_run.call_args.kwargs["variable_pool"]
+    llm_model = variable_pool.get(["env", "for_summarize"])
+    assert llm_model is not None
+    assert llm_model.value == {
+        "provider": "langgenius/openai/openai",
+        "name": "gpt-4o",
+        "mode": "chat",
+    }
 
 
 def test_run_draft_workflow_node_saves_execution_and_variables(
@@ -1934,6 +2034,7 @@ def test_publish_workflow_skips_dataset_update_for_non_knowledge_nodes(
     draft = SimpleNamespace(
         type="workflow",
         graph={"nodes": [{"data": {"type": "start"}}]},
+        graph_dict={"nodes": [{"data": {"type": "start"}}]},
         features={},
         environment_variables=[],
         conversation_variables=[],
@@ -2224,6 +2325,7 @@ def test_publish_workflow_raises_when_knowledge_index_dataset_missing(
     draft = SimpleNamespace(
         type="workflow",
         graph={"nodes": [{"data": {"type": "knowledge-index"}}]},
+        graph_dict={"nodes": [{"data": {"type": "knowledge-index"}}]},
         features={},
         environment_variables=[],
         conversation_variables=[],

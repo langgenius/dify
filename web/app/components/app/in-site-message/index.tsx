@@ -112,12 +112,12 @@ function InSiteMessage({
   return (
     <div
       className={cn(
-        'fixed right-3 bottom-3 z-50 w-[360px] overflow-hidden rounded-xl border border-components-panel-border-subtle bg-components-panel-bg shadow-2xl backdrop-blur-[5px]',
+        'fixed right-3 bottom-3 z-50 w-90 overflow-hidden rounded-xl border border-components-panel-border-subtle bg-components-panel-bg shadow-2xl backdrop-blur-[5px]',
         className,
       )}
     >
       <div
-        className="flex min-h-[128px] flex-col justify-end gap-0.5 bg-cover px-4 pt-6 pb-3 text-text-primary-on-surface"
+        className="flex min-h-32 flex-col justify-end gap-0.5 bg-cover px-4 pt-6 pb-3 text-text-primary-on-surface"
         style={headerStyle}
       >
         <div className="title-3xl-bold whitespace-pre-line">{normalizedTitle}</div>

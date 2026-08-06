@@ -17,13 +17,9 @@ import {
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ZENDESK_FIELD_IDS } from '@/config'
-import { deploymentEditionAtom } from '@/context/system-features-state'
+import { deploymentEditionAtom } from '@/features/system-features/state'
 import { fetchCurrentPlanInfo } from '@/service/billing'
-import {
-  useModelListByType,
-  useModelProviders,
-  useSupportRetrievalMethods,
-} from '@/service/use-common'
+import { useModelListByType, useModelProviders } from '@/service/use-common'
 import { useEducationStatus } from '@/service/use-education'
 import { ProviderContext } from './provider-context'
 import { useAnthropicQuotaNotice } from './provider-storage'
@@ -69,7 +65,6 @@ export const ProviderContextProvider = ({ children }: ProviderContextProviderPro
   const queryClient = useQueryClient()
   const { data: providersData, isLoading: isLoadingModelProviders } = useModelProviders()
   const { data: textGenerationModelList } = useModelListByType(ModelTypeEnum.textGeneration)
-  const { data: supportRetrievalMethods } = useSupportRetrievalMethods()
 
   const [plan, setPlan] = useState<ProviderContextState['plan']>(defaultPlan)
   const [isFetchedPlan, setIsFetchedPlan] = useState(false)
@@ -77,7 +72,6 @@ export const ProviderContextProvider = ({ children }: ProviderContextProviderPro
   const [enableBilling, setEnableBilling] = useState(true)
   const [enableReplaceWebAppLogo, setEnableReplaceWebAppLogo] = useState(false)
   const [modelLoadBalancingEnabled, setModelLoadBalancingEnabled] = useState(false)
-  const [datasetOperatorEnabled, setDatasetOperatorEnabled] = useState(false)
   const [webappCopyrightEnabled, setWebappCopyrightEnabled] = useState(false)
   const [licenseLimit, setLicenseLimit] = useState({
     workspace_members: {
@@ -101,9 +95,8 @@ export const ProviderContextProvider = ({ children }: ProviderContextProviderPro
   ] = useState(false)
   const [humanInputEmailDeliveryEnabled, setHumanInputEmailDeliveryEnabled] = useState(false)
 
-  const refreshModelProviders = () => {
+  const refreshModelProviders = () =>
     queryClient.invalidateQueries({ queryKey: ['common', 'model-providers'] })
-  }
 
   const fetchPlan = async () => {
     try {
@@ -125,7 +118,6 @@ export const ProviderContextProvider = ({ children }: ProviderContextProviderPro
       }
 
       if (data.model_load_balancing_enabled) setModelLoadBalancingEnabled(true)
-      if (data.dataset_operator_enabled) setDatasetOperatorEnabled(true)
       if (data.webapp_copyright_enabled) setWebappCopyrightEnabled(true)
       setLicenseLimit({ workspace_members: resolveMemberInviteLimit(data) })
       if (data.is_allow_transfer_workspace)
@@ -205,7 +197,6 @@ export const ProviderContextProvider = ({ children }: ProviderContextProviderPro
         isAPIKeySet: !!textGenerationModelList?.data?.some(
           (model) => model.status === ModelStatusEnum.active,
         ),
-        supportRetrievalMethods: supportRetrievalMethods?.retrieval_method || [],
         plan,
         isFetchedPlan,
         isFetchedPlanInfo,
@@ -213,7 +204,6 @@ export const ProviderContextProvider = ({ children }: ProviderContextProviderPro
         onPlanInfoChanged: fetchPlan,
         enableReplaceWebAppLogo,
         modelLoadBalancingEnabled,
-        datasetOperatorEnabled,
         enableEducationPlan,
         isEducationWorkspace,
         isEducationAccount: isEducationDataFetchedAfterMount

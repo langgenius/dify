@@ -29,7 +29,7 @@ export const TopBar: FC<TopBarProps> = (props) => {
   return (
     <div
       className={cn(
-        'relative flex h-[52px] shrink-0 items-center justify-between border-b border-b-divider-subtle',
+        'relative flex h-13 shrink-0 items-center justify-between border-b border-b-divider-subtle',
         className,
       )}
     >

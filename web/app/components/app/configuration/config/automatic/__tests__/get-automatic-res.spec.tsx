@@ -14,7 +14,7 @@ let mockDefaultModel: {
 } | null = null
 
 let mockInstructionTemplate: { data: string } | undefined
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/components/app/configuration/toast', () => ({
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),
   },

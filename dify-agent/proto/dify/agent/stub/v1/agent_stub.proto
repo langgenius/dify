@@ -38,7 +38,7 @@ message FileMapping {
 
 message FileDownloadRequest {
   FileMapping file = 1;
-  optional bool for_external = 2;
+  optional bool for_frontend = 2;
 }
 
 message FileDownloadResponse {

@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react'
-import { EducationVerifyActionRecorder } from '@/app/components/education-verify-action-recorder'
 import { OAuthRegistrationAnalytics } from '@/app/components/oauth-registration-analytics'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { ModalContextProvider } from '@/context/modal-context-provider'
@@ -12,7 +11,6 @@ export async function ConsoleRuntimeProviders({ children }: { children: ReactNod
   return (
     <>
       <OAuthRegistrationAnalytics />
-      <EducationVerifyActionRecorder />
       <CommonLayoutHydrationBoundary>
         <ProfileBootstrapGate>
           <ExternalServiceSync />

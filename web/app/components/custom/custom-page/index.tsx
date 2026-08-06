@@ -33,7 +33,7 @@ const CustomPage = () => {
           </div>
           <button
             type="button"
-            className="flex h-10 w-[120px] cursor-pointer items-center justify-center rounded-3xl border-none bg-white p-0 system-md-semibold text-text-accent shadow-xs hover:opacity-95"
+            className="flex h-10 w-30 cursor-pointer items-center justify-center rounded-3xl border-none bg-white p-0 system-md-semibold text-text-accent shadow-xs hover:opacity-95"
             onClick={() => setShowPricingModal()}
           >
             {t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
@@ -42,7 +42,7 @@ const CustomPage = () => {
       )}
       <CustomWebAppBrand />
       {showContact && (
-        <div className="absolute bottom-0 h-[50px] text-xs leading-[50px] text-text-quaternary">
+        <div className="absolute bottom-0 h-12.5 text-xs leading-12.5 text-text-quaternary">
           {t(($) => $['customize.prefix'], { ns: 'custom' })}
           <a
             className="text-text-accent"

@@ -69,7 +69,7 @@ const CustomWebAppBrand = () => {
           )}
           {!uploading && (
             <Button className="relative mr-2" disabled={uploadDisabled}>
-              <span className="mr-1 i-ri-image-add-line size-4" />
+              <span className="i-ri-image-add-line size-4" />
               {webappLogo || fileId
                 ? t(($) => $.change, { ns: 'custom' })
                 : t(($) => $.upload, { ns: 'custom' })}
@@ -88,7 +88,7 @@ const CustomWebAppBrand = () => {
           )}
           {uploading && (
             <Button className="relative mr-2" disabled={true}>
-              <span className="mr-1 i-ri-loader-2-line size-4 animate-spin" />
+              <span className="i-ri-loader-2-line size-4 animate-spin" />
               {t(($) => $.uploading, { ns: 'custom' })}
             </Button>
           )}

@@ -14,11 +14,11 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean, useSessionStorageState } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/components/app/configuration/toast'
 import { Generator } from '@/app/components/base/icons/src/vender/other'
 import Loading from '@/app/components/base/loading'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -211,11 +211,11 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
         if (!open) onClose()
       }}
     >
-      <DialogContent className="h-[min(680px,calc(100dvh-2rem))] max-h-none! w-full min-w-[1140px] overflow-hidden! border-none p-0! text-left align-middle">
+      <DialogContent className="h-[min(680px,calc(100dvh-2rem))] max-h-none! w-full min-w-285 overflow-hidden! border-none p-0! text-left align-middle">
         <div className="relative flex h-full min-h-0 flex-wrap">
-          <div className="h-full w-[570px] shrink-0 overflow-y-auto border-r border-divider-regular p-6">
+          <div className="h-full w-142.5 shrink-0 overflow-y-auto border-r border-divider-regular p-6">
             <div className="mb-5">
-              <div className={`text-lg leading-[28px] font-bold ${s.textGradient}`}>
+              <div className={`text-lg leading-7 font-bold ${s.textGradient}`}>
                 {t(($) => $['codegen.title'], { ns: 'appDebug' })}
               </div>
               <div className="mt-1 text-[13px] font-normal text-text-tertiary">
@@ -255,7 +255,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
                   {t(($) => $[`${i18nPrefix}.dismiss`], { ns: 'appDebug' })}
                 </Button>
                 <Button
-                  className="flex space-x-1"
+                  className="flex"
                   variant="primary"
                   onClick={onGenerate}
                   disabled={isLoading}

@@ -11,6 +11,7 @@ runs:
     - name: Setup Vite+
       uses: voidzero-dev/setup-vp@ca1c46663915d6c1042ae23bd39ab85718bfb0fa # v1.10.0
       with:
+        version: 0.2.6
         node-version-file: .nvmrc
         cache: true
         run-install: true

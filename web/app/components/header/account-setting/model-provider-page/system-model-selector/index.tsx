@@ -166,16 +166,16 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
         onClick={() => setOpen(true)}
       >
         {isLoading ? (
-          <span className="mr-0.5 i-ri-loader-2-line size-3.5 animate-spin" />
+          <span className="i-ri-loader-2-line size-3.5 animate-spin" />
         ) : (
-          <span className="mr-0.5 i-ri-brain-2-line size-3.5" />
+          <span className="i-ri-brain-2-line size-3.5" />
         )}
         {t(($) => $['modelProvider.systemModelSettings'], { ns: 'common' })}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
           backdropProps={{ forceRender: true }}
-          className="flex max-h-[calc(100dvh-2rem)] w-[480px] max-w-[480px] flex-col overflow-hidden rounded-2xl p-0"
+          className="flex max-h-[calc(100dvh-2rem)] w-120 max-w-120 flex-col overflow-hidden rounded-2xl p-0"
         >
           <DialogCloseButton className="top-5 right-5" />
           <div className="shrink-0 px-6 pt-6 pr-14 pb-3">
@@ -273,12 +273,12 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
               </div>
             </div>
           </div>
-          <div className="flex h-[76px] shrink-0 items-center justify-end gap-2 px-6 pt-5 pb-6">
-            <Button className="min-w-[72px]" onClick={() => setOpen(false)}>
+          <div className="flex h-19 shrink-0 items-center justify-end gap-2 px-6 pt-5 pb-6">
+            <Button className="min-w-18" onClick={() => setOpen(false)}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </Button>
             <Button
-              className="min-w-[72px]"
+              className="min-w-18"
               variant="primary"
               onClick={handleSave}
               disabled={!canManageSystemDefaultModel}

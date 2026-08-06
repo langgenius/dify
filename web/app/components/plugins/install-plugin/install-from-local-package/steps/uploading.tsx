@@ -125,10 +125,10 @@ const Uploading: FC<Props> = ({
 
       {/* Action Buttons */}
       <div className="flex items-center justify-end gap-2 self-stretch p-6 pt-5">
-        <Button variant="secondary" className="min-w-[72px]" onClick={onCancel}>
+        <Button variant="secondary" className="min-w-18" onClick={onCancel}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </Button>
-        <Button variant="primary" className="min-w-[72px]" disabled>
+        <Button variant="primary" className="min-w-18" disabled>
           {t(($) => $[`${i18nPrefix}.install`], { ns: 'plugin' })}
         </Button>
       </div>

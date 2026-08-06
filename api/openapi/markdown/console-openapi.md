@@ -964,12 +964,6 @@ Stop a running Agent App chat message generation
 | ---- | ---------- | ----------- | -------- | ------ |
 | agent_id | path |  | Yes | string (uuid) |
 
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  No | **application/json**: [AgentDebugConversationRefreshPayload](#agentdebugconversationrefreshpayload)<br> |
-
 #### Responses
 
 | Code | Description | Schema |
@@ -1261,7 +1255,8 @@ Get basic information for an Agent App conversation sandbox
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | agent_id | path | Agent ID | Yes | string (uuid) |
-| conversation_id | query | Agent App conversation ID | Yes | string |
+| caller_id | query | Agent App caller ID | Yes | string |
+| caller_type | query |  | Yes | string, <br>**Available values:** "build_draft", "conversation" |
 
 #### Responses
 
@@ -1277,7 +1272,8 @@ List a directory in an Agent App conversation sandbox
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | agent_id | path | Agent ID | Yes | string (uuid) |
-| conversation_id | query | Agent App conversation ID | Yes | string |
+| caller_id | query | Agent App caller ID | Yes | string |
+| caller_type | query |  | Yes | string, <br>**Available values:** "build_draft", "conversation" |
 | path | query | Directory path relative to the sandbox workspace | No | string, <br>**Default:** . |
 
 #### Responses
@@ -1294,7 +1290,8 @@ Read a text/binary preview file in an Agent App conversation sandbox
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | agent_id | path | Agent ID | Yes | string (uuid) |
-| conversation_id | query | Agent App conversation ID | Yes | string |
+| caller_id | query | Agent App caller ID | Yes | string |
+| caller_type | query |  | Yes | string, <br>**Available values:** "build_draft", "conversation" |
 | path | query | File path relative to the sandbox workspace | Yes | string |
 
 #### Responses
@@ -3207,6 +3204,23 @@ Update MCP server configuration for an application
 | 403 | Insufficient permissions |  |
 | 404 | Server not found |  |
 
+### [POST] /apps/{app_id}/server/refresh
+Refresh MCP server configuration and regenerate server code
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | App ID | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | MCP server refreshed successfully | **application/json**: [AppMCPServerResponse](#appmcpserverresponse)<br> |
+| 403 | Insufficient permissions |  |
+| 404 | Server not found |  |
+
 ### [POST] /apps/{app_id}/site
 Update application site configuration
 
@@ -3807,7 +3821,7 @@ List a directory in a workflow Agent node sandbox
 | app_id | path | Application ID | Yes | string (uuid) |
 | node_id | path | Workflow Agent node ID | Yes | string |
 | workflow_run_id | path | Workflow run ID | Yes | string (uuid) |
-| node_execution_id | query | Optional workflow node execution ID. When omitted, the latest active session for the node is used. | No | string |
+| node_execution_id | query | Workflow node execution ID | Yes | string |
 | path | query | Directory path relative to the sandbox workspace | No | string, <br>**Default:** . |
 
 #### Responses
@@ -3826,7 +3840,7 @@ Read a text/binary preview file in a workflow Agent node sandbox
 | app_id | path | Application ID | Yes | string (uuid) |
 | node_id | path | Workflow Agent node ID | Yes | string |
 | workflow_run_id | path | Workflow run ID | Yes | string (uuid) |
-| node_execution_id | query | Optional workflow node execution ID. When omitted, the latest active session for the node is used. | No | string |
+| node_execution_id | query | Workflow node execution ID | Yes | string |
 | path | query | File path relative to the sandbox workspace | Yes | string |
 
 #### Responses
@@ -5142,23 +5156,6 @@ Restore a published workflow version into the draft workflow
 | Code | Description |
 | ---- | ----------- |
 | 204 | API key deleted successfully |
-
-### [GET] /apps/{server_id}/server/refresh
-Refresh MCP server configuration and regenerate server code
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| server_id | path | Server ID | Yes | string (uuid) |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | MCP server refreshed successfully | **application/json**: [AppMCPServerResponse](#appmcpserverresponse)<br> |
-| 403 | Insufficient permissions |  |
-| 404 | Server not found |  |
 
 ### [GET] /auth/plugin/datasource/default-list
 #### Responses
@@ -6902,7 +6899,7 @@ Check if dataset is in use
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [LimitationModel](#limitationmodel)<br> |
+| 200 | Success | **application/json**: [VectorSpaceLimitationModel](#vectorspacelimitationmodel)<br> |
 
 ### [GET] /files/support-type
 #### Responses
@@ -7053,6 +7050,9 @@ Request body:
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | query | App ID to filter by | No | string |
+| cursor | query | Opaque cursor returned by the previous page | No | string |
+| limit | query | Number of installed apps to return | No | integer, <br>**Default:** 20 |
+| name | query | App name to search for | No | string |
 
 #### Responses
 
@@ -7085,6 +7085,19 @@ Request body:
 | Code | Description |
 | ---- | ----------- |
 | 204 | App uninstalled successfully |
+
+### [GET] /installed-apps/{installed_app_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| installed_app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [InstalledAppResponse](#installedappresponse)<br> |
 
 ### [PATCH] /installed-apps/{installed_app_id}
 #### Parameters
@@ -13943,12 +13956,6 @@ Stable Agent Soul reference to one normalized skill archive.
 | date | string |  | Yes |
 | message_count | integer |  | Yes |
 
-#### AgentDebugConversationRefreshPayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| draft_type | [AgentConfigDraftType](#agentconfigdrafttype) | Agent draft surface whose conversation should be refreshed | No |
-
 #### AgentDebugConversationRefreshResponse
 
 | Name | Type | Description | Required |
@@ -14392,6 +14399,14 @@ section may be empty, which is how callers express "no knowledge layer".
 | updated_at | integer |  | No |
 | user_rate | number |  | No |
 
+#### AgentLogFeedbackResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | No |
+| from_source | string, <br>**Available values:** "admin", "user" | *Enum:* `"admin"`, `"user"` | Yes |
+| rating | string, <br>**Available values:** "dislike", "like" | *Enum:* `"dislike"`, `"like"` | Yes |
+
 #### AgentLogListResponse
 
 | Name | Type | Description | Required |
@@ -14412,6 +14427,8 @@ section may be empty, which is how callers express "no knowledge layer".
 | created_at | integer |  | No |
 | currency | string |  | Yes |
 | error | string |  | No |
+| feedback_enabled | boolean |  | No |
+| feedbacks | [ [AgentLogFeedbackResponse](#agentlogfeedbackresponse) ] |  | No |
 | from_account_id | string |  | No |
 | from_end_user_id | string |  | No |
 | id | string |  | Yes |
@@ -14666,7 +14683,8 @@ section may be empty, which is how callers express "no knowledge layer".
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| conversation_id | string | Agent App conversation ID | Yes |
+| caller_id | string | Agent App caller ID | Yes |
+| caller_type | string, <br>**Available values:** "build_draft", "conversation" | *Enum:* `"build_draft"`, `"conversation"` | Yes |
 | path | string | File path relative to the sandbox workspace | Yes |
 
 #### AgentScope
@@ -15569,6 +15587,12 @@ AppMCPServer Status Enum
 | ---- | ---- | ----------- | -------- |
 | AppMCPServerStatus | string | AppMCPServer Status Enum |  |
 
+#### AppMode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AppMode | string |  |  |
+
 #### AppModelConfigResponse
 
 | Name | Type | Description | Required |
@@ -15786,6 +15810,15 @@ AppMCPServer Status Enum
 | ---- | ---- | ----------- | -------- |
 | data | [ [AverageSessionInteractionStatisticItem](#averagesessioninteractionstatisticitem) ] |  | Yes |
 
+#### BannerContentResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| category | string |  | Yes |
+| description | string |  | Yes |
+| img-src | string |  | Yes |
+| title | string |  | Yes |
+
 #### BannerListResponse
 
 | Name | Type | Description | Required |
@@ -15796,12 +15829,20 @@ AppMCPServer Status Enum
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| content |  |  | Yes |
-| created_at | string |  | No |
+| content | [BannerContentResponse](#bannercontentresponse) |  | Yes |
+| created_at | string |  | Yes |
 | id | string |  | Yes |
-| link | string |  | No |
+| link | string |  | Yes |
 | sort | integer |  | Yes |
-| status | string |  | Yes |
+| status | [BannerStatus](#bannerstatus) |  | Yes |
+
+#### BannerStatus
+
+ExporleBanner status
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| BannerStatus | string | ExporleBanner status |  |
 
 #### BatchImportPayload
 
@@ -17902,7 +17943,9 @@ declaration of an endpoint group
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| deleted_environment_variable_ids | [ string ] | Environment variable IDs to delete when patch is true | No |
 | environment_variables | [ [EnvironmentVariableItemPayload](#environmentvariableitempayload) ] | Environment variables for the draft workflow | Yes |
+| patch | boolean | Treat environment_variables as per-ID upserts instead of replacing the full collection | No |
 
 #### ErrorDocsResponse
 
@@ -18671,21 +18714,23 @@ Input field definition for snippet parameters.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| icon | string |  | No |
-| icon_background | string |  | No |
-| icon_type | string |  | No |
+| description | string |  | Yes |
+| icon | string |  | Yes |
+| icon_background | string |  | Yes |
+| icon_type | [IconType](#icontype) |  | Yes |
 | icon_url | string |  | Yes |
 | id | string |  | Yes |
-| mode | string |  | No |
-| name | string |  | No |
-| use_icon_as_answer_icon | boolean |  | No |
+| mode | [AppMode](#appmode) |  | Yes |
+| name | string |  | Yes |
+| use_icon_as_answer_icon | boolean |  | Yes |
 
 #### InstalledAppListResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| has_more | boolean |  | Yes |
 | installed_apps | [ [InstalledAppResponse](#installedappresponse) ] |  | Yes |
+| next_cursor | string |  | Yes |
 
 #### InstalledAppResponse
 
@@ -18696,7 +18741,7 @@ Input field definition for snippet parameters.
 | editable | boolean |  | Yes |
 | id | string |  | Yes |
 | is_pinned | boolean |  | Yes |
-| last_used_at | integer |  | No |
+| last_used_at | integer |  | Yes |
 | uninstallable | boolean |  | Yes |
 
 #### InstalledAppUpdatePayload
@@ -18710,6 +18755,9 @@ Input field definition for snippet parameters.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | app_id | string | App ID to filter by | No |
+| cursor | string | Opaque cursor returned by the previous page | No |
+| limit | integer, <br>**Default:** 20 | Number of installed apps to return | No |
+| name | string | App name to search for | No |
 
 #### InstructionGeneratePayload
 
@@ -20064,6 +20112,7 @@ Enum class for parameter type.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | plugin_installation_id | string |  | Yes |
+| preserve_credentials | boolean |  | No |
 
 #### ParserUpdateCredential
 
@@ -21347,7 +21396,6 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| session_id | string |  | Yes |
 | workspace_cwd | string |  | Yes |
 
 #### SandboxListResponse
@@ -22055,7 +22103,7 @@ The subscription constructor of the trigger provider
 | ---- | ---- | ----------- | -------- |
 | _is_collaborative | boolean |  | No |
 | conversation_variables | [ object ] |  | No |
-| environment_variables | [ object ] |  | No |
+| environment_variable_patch | [SyncEnvironmentVariablePatchPayload](#syncenvironmentvariablepatchpayload) |  | No |
 | features | object |  | Yes |
 | graph | object |  | Yes |
 | hash | string |  | No |
@@ -22067,6 +22115,13 @@ The subscription constructor of the trigger provider
 | hash | string |  | Yes |
 | result | string |  | Yes |
 | updated_at | integer |  | Yes |
+
+#### SyncEnvironmentVariablePatchPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| deleted_environment_variable_ids | [ string ] |  | No |
+| environment_variables | [ object ] |  | No |
 
 #### SystemConfigurationResponse
 
@@ -22969,7 +23024,9 @@ Payload for updating a snippet.
 | file_upload_limit | integer |  | Yes |
 | image_file_batch_limit | integer |  | Yes |
 | image_file_size_limit | integer |  | Yes |
+| knowledge_file_size_limit | integer |  | Yes |
 | single_chunk_attachment_limit | integer |  | Yes |
+| skill_file_size_limit | integer |  | Yes |
 | video_file_size_limit | integer |  | Yes |
 | workflow_file_upload_limit | integer |  | Yes |
 
@@ -23036,6 +23093,14 @@ in form definition, or a variable while the workflow is running.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ValueSourceType | string | ValueSourceType records whether the value comes from a static setting in form definition, or a variable while the workflow is running. |  |
+
+#### VectorSpaceLimitationModel
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limit | integer |  | Yes |
+| size | integer |  | Yes |
+| usage_unknown | boolean |  | No |
 
 #### VerificationTokenResponse
 
@@ -23167,7 +23232,7 @@ How a workflow node is bound to an Agent.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| node_execution_id | string | Optional workflow node execution ID. When omitted, the latest active session for the node is used. | No |
+| node_execution_id | string | Workflow node execution ID | Yes |
 | path | string | File path relative to the sandbox workspace | Yes |
 
 #### WorkflowAppLogPaginationResponse

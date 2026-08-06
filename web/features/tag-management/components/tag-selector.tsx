@@ -1,6 +1,9 @@
 import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
-import type { ComboboxProps } from '@langgenius/dify-ui/combobox'
-import type { ComponentProps } from 'react'
+import type {
+  ComboboxContentProps,
+  ComboboxProps,
+  ComboboxTriggerProps,
+} from '@langgenius/dify-ui/combobox'
 import type { TagComboboxItem } from './tag-combobox-item'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Combobox, ComboboxContent, ComboboxTrigger } from '@langgenius/dify-ui/combobox'
@@ -16,7 +19,7 @@ import { useApplyTagBindingsMutation } from '../hooks/use-tag-mutations'
 import { getTagManagePermissionKey } from '../utils'
 import { isCreateTagOption } from './tag-combobox-item'
 import { TagSearchContent } from './tag-search-content'
-import { TagTrigger } from './tag-trigger'
+import { TagTriggerContent } from './tag-trigger-content'
 
 const TAG_COMBOBOX_FILTER: NonNullable<ComboboxProps<TagComboboxItem, true>['filter']> = (
   tag,
@@ -45,7 +48,7 @@ type TagSelectorRootProps = Omit<
   | 'children'
 >
 type TagSelectorContentProps = Pick<
-  ComponentProps<typeof ComboboxContent>,
+  ComboboxContentProps,
   | 'placement'
   | 'sideOffset'
   | 'alignOffset'
@@ -54,9 +57,9 @@ type TagSelectorContentProps = Pick<
   | 'popupProps'
   | 'popupClassName'
 >
-
-type TagSelectorProps = TagSelectorRootProps &
-  TagSelectorContentProps & {
+export type TagSelectorProps = TagSelectorRootProps &
+  TagSelectorContentProps &
+  Pick<ComboboxTriggerProps, 'className' | 'onClick'> & {
     targetId: string
     type: TagType
     value: Tag[]
@@ -70,6 +73,8 @@ export const TagSelector = ({
   type,
   value,
   canBindOrUnbindTags,
+  className,
+  onClick,
   onOpenTagManagement = () => {},
   onTagsChange,
   placement = 'bottom-start',
@@ -257,11 +262,17 @@ export const TagSelector = ({
         disabled={!canManageTags && !canBindOrUnbindTags}
         aria-label={triggerLabel}
         className={cn(
-          'block h-auto w-full rounded-lg border-0 bg-transparent p-0 text-left hover:bg-transparent focus:outline-hidden focus-visible:bg-transparent data-popup-open:bg-state-base-hover data-popup-open:hover:bg-state-base-hover',
+          'group/tag-area relative h-auto w-full cursor-pointer rounded-lg border-0 bg-transparent p-1 hover:bg-state-base-hover focus-visible:bg-transparent data-disabled:bg-transparent data-disabled:opacity-50 data-disabled:hover:bg-transparent data-popup-open:bg-state-base-hover data-popup-open:hover:bg-state-base-hover',
+          className,
         )}
         icon={false}
+        onClick={onClick}
       >
-        <TagTrigger tags={tagNames} canBindOrUnbindTags={canBindOrUnbindTags} />
+        <TagTriggerContent tags={tagNames} emptyLabel={emptyTriggerLabel} />
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute top-0 right-0 h-full w-20 bg-tag-selector-mask-bg group-hover/tag-area:hidden group-focus-visible/tag-area:hidden group-data-popup-open/tag-area:hidden"
+        />
       </ComboboxTrigger>
       <ComboboxContent
         placement={placement}

@@ -7,11 +7,15 @@ import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgeni
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
+import { useQueryState } from 'nuqs'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkspaceAvatar } from '@/app/components/base/workspace-avatar'
 import { Plan } from '@/app/components/billing/type'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
 import LicenseNav from '@/app/components/header/license-env'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useModalContext } from '@/context/modal-context'
@@ -81,7 +85,6 @@ function WorkspaceCreditsLabel({ credits, unit }: { credits: string; unit: strin
 }
 
 function WorkspaceCardTrigger({
-  open,
   name,
   status,
   credits,
@@ -92,7 +95,6 @@ function WorkspaceCardTrigger({
   onPrefetchWorkspaces,
   onPlanClick,
 }: {
-  open: boolean
   name: string
   status: ReactNode
   credits: number
@@ -118,14 +120,14 @@ function WorkspaceCardTrigger({
         className={cn(
           'flex w-full items-center gap-1.5 py-1.5 pr-3 pl-1.5 text-left transition-colors hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden',
           showCloudBilling ? 'rounded-t-xl' : 'rounded-xl',
-          open && 'bg-linear-to-b from-background-section-burn to-background-section',
+          'data-popup-open:bg-linear-to-b data-popup-open:from-background-section-burn data-popup-open:to-background-section',
         )}
       >
         <WorkspaceAvatar name={name} size="sm" />
         <div className="min-w-0 grow">
           <div className="flex min-w-0 items-center gap-1 pr-0.5">
             <span
-              className="max-w-[120px] min-w-0 shrink truncate system-sm-medium text-text-primary"
+              className="max-w-30 min-w-0 shrink truncate system-sm-medium text-text-primary"
               title={name}
             >
               {name}
@@ -259,7 +261,8 @@ export function WorkspaceCard() {
   const currentWorkspace = currentWorkspaceQuery.data
   const workspaces = workspacesQuery.data?.workspaces
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const { setShowPricingModal, setShowAccountSettingModal } = useModalContext()
+  const { setShowPricingModal } = useModalContext()
+  const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const isCloudEdition = deploymentEdition === 'CLOUD'
   const prefetchWorkspaces = () => {
     void queryClient.prefetchQuery(workspacesQueryOptions)
@@ -304,7 +307,6 @@ export function WorkspaceCard() {
     <Popover open={open} onOpenChange={setOpen}>
       <>
         <WorkspaceCardTrigger
-          open={open}
           name={currentWorkspace.name}
           status={renderWorkspaceStatus()}
           credits={currentWorkspace.credits}
@@ -329,13 +331,11 @@ export function WorkspaceCard() {
             inviteMembersLabel={t(($) => $['mainNav.workspace.inviteMembers'], { ns: 'common' })}
             onOpenSettings={() => {
               setOpen(false)
-              setShowAccountSettingModal({
-                payload: hasBillingPlan ? ACCOUNT_SETTING_TAB.BILLING : ACCOUNT_SETTING_TAB.MEMBERS,
-              })
+              setSettingsDestination(hasBillingPlan ? 'billing' : 'members')
             }}
             onInviteMembers={() => {
               setOpen(false)
-              setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.MEMBERS })
+              setSettingsDestination('members')
             }}
           />
           <WorkspaceSwitcher

@@ -44,44 +44,6 @@
       "count": 3
     }
   },
-  "web/__mocks__/base-ui-dropdown-menu.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 3
-    },
-    "jsx_a11y/interactive-supports-focus": {
-      "count": 2
-    },
-    "jsx_a11y/role-has-required-aria-props": {
-      "count": 1
-    }
-  },
-  "web/__mocks__/base-ui-popover.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/__mocks__/base-ui-select.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/interactive-supports-focus": {
-      "count": 1
-    },
-    "jsx_a11y/role-has-required-aria-props": {
-      "count": 2
-    }
-  },
-  "web/__mocks__/base-ui-tooltip.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/__mocks__/zustand.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 1
@@ -458,7 +420,7 @@
       "count": 2
     },
     "typescript/no-explicit-any": {
-      "count": 9
+      "count": 7
     }
   },
   "web/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool.tsx": {
@@ -565,11 +527,6 @@
       "count": 1
     },
     "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/app/configuration/debug/__tests__/chat-user-input.spec.tsx": {
-    "jsx_a11y/role-has-required-aria-props": {
       "count": 1
     }
   },
@@ -753,13 +710,7 @@
     }
   },
   "web/app/components/apps/app-card.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
     "jsx_a11y/no-noninteractive-element-to-interactive-role": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
       "count": 1
     }
   },
@@ -1065,14 +1016,6 @@
   "web/app/components/base/date-and-time-picker/hooks.ts": {
     "eslint-react/no-unnecessary-use-prefix": {
       "count": 2
-    }
-  },
-  "web/app/components/base/date-and-time-picker/time-picker/__tests__/index.spec.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
     }
   },
   "web/app/components/base/date-and-time-picker/time-picker/index.tsx": {
@@ -1544,7 +1487,7 @@
   },
   "web/app/components/base/icons/src/vender/solid/development/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 4
+      "count": 3
     }
   },
   "web/app/components/base/icons/src/vender/solid/editor/index.ts": {
@@ -1554,7 +1497,7 @@
   },
   "web/app/components/base/icons/src/vender/solid/education/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 2
+      "count": 1
     }
   },
   "web/app/components/base/icons/src/vender/solid/files/index.ts": {
@@ -1684,11 +1627,6 @@
   "web/app/components/base/markdown-blocks/audio-block.tsx": {
     "typescript/no-explicit-any": {
       "count": 5
-    }
-  },
-  "web/app/components/base/markdown-blocks/button.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 1
     }
   },
   "web/app/components/base/markdown-blocks/code-block.tsx": {
@@ -2051,17 +1989,6 @@
     }
   },
   "web/app/components/base/tab-slider-plain/index.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/base/tab-slider/index.tsx": {
-    "eslint-react/set-state-in-effect": {
-      "count": 2
-    },
     "jsx_a11y/click-events-have-key-events": {
       "count": 1
     },
@@ -2777,14 +2704,6 @@
       "count": 1
     }
   },
-  "web/app/components/datasets/list/dataset-card/__tests__/index.spec.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/list/dataset-card/components/operations-dropdown.tsx": {
     "jsx_a11y/click-events-have-key-events": {
       "count": 1
@@ -2893,11 +2812,6 @@
       "count": 1
     },
     "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/explore/learn-dify/item.tsx": {
-    "jsx_a11y/no-noninteractive-element-interactions": {
       "count": 1
     }
   },
@@ -3347,14 +3261,6 @@
       "count": 2
     }
   },
-  "web/app/components/plugins/plugin-detail-panel/subscription-list/__tests__/selector-entry.spec.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/plugins/plugin-detail-panel/subscription-list/create/hooks/use-common-modal-state.ts": {
     "erasable-syntax-only/enums": {
       "count": 1
@@ -3438,14 +3344,6 @@
   },
   "web/app/components/plugins/plugin-page/filter-management/search-box.tsx": {
     "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/plugins/reference-setting-modal/auto-update-setting/__tests__/tool-picker.spec.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
       "count": 1
     }
   },
@@ -3783,14 +3681,6 @@
       "count": 1
     }
   },
-  "web/app/components/tools/labels/__tests__/selector.spec.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/tools/labels/filter.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -4042,14 +3932,6 @@
   },
   "web/app/components/workflow/hooks/use-workflow-variables.ts": {
     "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/_base/components/__tests__/agent-strategy-selector.spec.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
       "count": 1
     }
   },
@@ -4937,9 +4819,6 @@
   },
   "web/app/components/workflow/nodes/llm/use-config.ts": {
     "eslint-react/set-state-in-effect": {
-      "count": 2
-    },
-    "typescript/no-explicit-any": {
       "count": 1
     }
   },
@@ -5020,11 +4899,6 @@
   "web/app/components/workflow/nodes/loop/use-single-run-form-params.ts": {
     "typescript/no-explicit-any": {
       "count": 3
-    }
-  },
-  "web/app/components/workflow/nodes/parameter-extractor/components/extract-parameter/__tests__/list.spec.tsx": {
-    "no-unused-vars": {
-      "count": 1
     }
   },
   "web/app/components/workflow/nodes/parameter-extractor/components/extract-parameter/item.tsx": {
@@ -5270,11 +5144,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/note-node/note-editor/toolbar/__tests__/operator.spec.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/note-node/note-editor/toolbar/color-picker.tsx": {
     "jsx_a11y/click-events-have-key-events": {
       "count": 1
@@ -5450,28 +5319,17 @@
       "count": 2
     }
   },
-  "web/app/components/workflow/panel/env-panel/index.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/panel/env-panel/variable-modal.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 4
     },
     "jsx_a11y/click-events-have-key-events": {
-      "count": 4
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 4
-    },
-    "no-restricted-imports": {
       "count": 1
     },
-    "typescript/no-explicit-any": {
+    "jsx_a11y/no-static-element-interactions": {
+      "count": 1
+    },
+    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -5480,11 +5338,6 @@
       "count": 1
     },
     "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/panel/human-input-form-list.tsx": {
-    "typescript/no-explicit-any": {
       "count": 1
     }
   },
@@ -5714,7 +5567,7 @@
       "count": 3
     },
     "typescript/no-explicit-any": {
-      "count": 8
+      "count": 6
     }
   },
   "web/app/components/workflow/update-dsl-modal.tsx": {
@@ -5758,11 +5611,6 @@
     }
   },
   "web/app/components/workflow/utils/workflow.ts": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/variable-inspect/display-content.tsx": {
     "typescript/no-explicit-any": {
       "count": 1
     }
@@ -5979,16 +5827,6 @@
       "count": 1
     }
   },
-  "web/context/external-api-panel-context.tsx": {
-    "react/only-export-components": {
-      "count": 1
-    }
-  },
-  "web/context/external-knowledge-api-context.tsx": {
-    "react/only-export-components": {
-      "count": 1
-    }
-  },
   "web/context/hooks/use-trigger-events-limit-modal.ts": {
     "eslint-react/set-state-in-effect": {
       "count": 3
@@ -5999,14 +5837,6 @@
   },
   "web/context/web-app-context.tsx": {
     "react/only-export-components": {
-      "count": 1
-    }
-  },
-  "web/features/tag-management/components/dataset-card-tags.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
       "count": 1
     }
   },

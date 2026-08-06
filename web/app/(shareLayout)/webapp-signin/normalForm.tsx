@@ -1,4 +1,5 @@
 'use client'
+import { zLicenseStatus } from '@dify/contracts/api/console/system-features/zod.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiContractLine, RiDoorLockLine, RiErrorWarningFill } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -7,7 +8,6 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { LicenseStatus } from '@/features/system-features/constants'
 import Link from '@/next/link'
 import MailAndCodeAuth from './components/mail-and-code-auth'
 import MailAndPasswordAuth from './components/mail-and-password-auth'
@@ -51,17 +51,13 @@ const NormalForm = () => {
   if (isLoading) {
     return (
       <div
-        className={cn(
-          'flex w-full grow flex-col items-center justify-center',
-          'px-6',
-          'md:px-[108px]',
-        )}
+        className={cn('flex w-full grow flex-col items-center justify-center', 'px-6', 'md:px-27')}
       >
         <Loading type="area" />
       </div>
     )
   }
-  if (systemFeatures.license?.status === LicenseStatus.LOST) {
+  if (systemFeatures.license?.status === zLicenseStatus.enum.lost) {
     return (
       <div className="mx-auto mt-8 w-full">
         <div className="relative">
@@ -81,7 +77,7 @@ const NormalForm = () => {
       </div>
     )
   }
-  if (systemFeatures.license?.status === LicenseStatus.EXPIRED) {
+  if (systemFeatures.license?.status === zLicenseStatus.enum.expired) {
     return (
       <div className="mx-auto mt-8 w-full">
         <div className="relative">
@@ -101,7 +97,7 @@ const NormalForm = () => {
       </div>
     )
   }
-  if (systemFeatures.license?.status === LicenseStatus.INACTIVE) {
+  if (systemFeatures.license?.status === zLicenseStatus.enum.inactive) {
     return (
       <div className="mx-auto mt-8 w-full">
         <div className="relative">

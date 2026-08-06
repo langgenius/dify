@@ -76,7 +76,7 @@ const AppliedEducationContent = ({
             }}
           >
             <SelectTrigger
-              className="h-12! w-fit max-w-full min-w-[280px] cursor-pointer justify-between rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-3! py-1.5! hover:bg-state-base-hover"
+              className="h-12! w-fit max-w-full min-w-70 cursor-pointer justify-between rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-3! py-1.5! hover:bg-state-base-hover"
               disabled={isSwitchingWorkspace}
             >
               <span className="flex min-w-0 items-center gap-3">

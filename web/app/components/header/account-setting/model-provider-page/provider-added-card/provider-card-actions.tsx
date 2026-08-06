@@ -21,7 +21,7 @@ import { getMarketplaceUrl } from '@/utils/var'
 
 type Props = Readonly<{
   detail: PluginDetail
-  onUpdate?: () => void
+  onUpdate?: () => void | Promise<void>
 }>
 
 const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
@@ -93,7 +93,7 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
             onSelect={handleVersionSelect}
             sideOffset={4}
             alignOffset={0}
-            trigger={
+            trigger={() => (
               <Badge
                 className={cn(
                   canUpdatePlugin &&
@@ -111,7 +111,7 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
                 }
                 hasRedCornerMark={hasNewVersion}
               />
-            }
+            )}
           />
           {isDebuggingPlugin && (
             <Badge

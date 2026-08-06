@@ -23,7 +23,7 @@ import { render as renderWithConsoleState } from '@/test/console/render'
 let mockProviderCtx: Record<string, unknown> = {}
 let mockConsoleState: Record<string, unknown> = {}
 
-const render = (ui: ReactElement, options: RenderOptions = {}) => {
+const render = (ui: ReactElement, options: RenderOptions = {}, vectorSpaceUsageUnknown = false) => {
   const queryClient = createConsoleQueryClient()
   const plan = mockProviderCtx.plan as {
     usage: { vectorSpace: number }
@@ -32,6 +32,7 @@ const render = (ui: ReactElement, options: RenderOptions = {}) => {
   queryClient.setQueryData(consoleQuery.features.vectorSpace.get.queryOptions().queryKey, {
     size: plan.usage.vectorSpace,
     limit: plan.total.vectorSpace,
+    usage_unknown: vectorSpaceUsageUnknown,
   })
   const { wrapper } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: 'CLOUD' },
@@ -41,7 +42,6 @@ const render = (ui: ReactElement, options: RenderOptions = {}) => {
 }
 
 const mockSetShowPricingModal = vi.fn()
-const mockSetShowAccountSettingModal = vi.fn()
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => mockProviderCtx,
@@ -64,10 +64,6 @@ vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
     setShowPricingModal: mockSetShowPricingModal,
   }),
-  useModalContextSelector: (selector: (s: Record<string, unknown>) => unknown) =>
-    selector({
-      setShowAccountSettingModal: mockSetShowAccountSettingModal,
-    }),
 }))
 
 vi.mock('@/context/i18n', () => ({
@@ -225,6 +221,21 @@ describe('Billing Page + Plan Integration', () => {
       expect(quotaLabel.tagName).toBe('DT')
       expect(quotaValue.tagName).toBe('DD')
       expect(quotaValue).toHaveTextContent(/3\s*\/\s*5/)
+    })
+
+    it('should display unknown vector space usage as a placeholder', () => {
+      setupProviderContext({
+        type: Plan.sandbox,
+        usage: { vectorSpace: 0 },
+        total: { vectorSpace: 50 },
+      })
+
+      render(<PlanComp loc="test" />, {}, true)
+
+      const quotaCard = screen.getByRole('group', { name: /usagePage\.vectorSpace/i })
+      const quotaValue = within(quotaCard).getByTestId('billing-quota-value')
+      expect(quotaValue).toHaveTextContent('--')
+      expect(quotaValue).not.toHaveTextContent('< 50')
     })
 
     it('should show "unlimited" for infinite quotas (professional API rate limit)', () => {

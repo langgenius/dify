@@ -26,7 +26,6 @@ vi.mock('@/next/dynamic', () => ({
 }))
 
 let documentTitleCalls: string[] = []
-let educationInitCalls: number = 0
 const mockHandleImportDSL = vi.fn()
 const mockHandleImportDSLConfirm = vi.fn()
 const mockTrackCreateApp = vi.fn()
@@ -66,10 +65,12 @@ vi.mock('@/hooks/use-document-title', () => ({
   },
 }))
 
-vi.mock('@/app/education-apply/hooks', () => ({
-  useEducationInit: () => {
-    educationInitCalls++
-  },
+vi.mock('@/app/education-apply/expire-notice', () => ({
+  EducationExpireNotice: () => null,
+}))
+
+vi.mock('@/app/education-apply/external-action-boundary', () => ({
+  EducationExternalActionBoundary: ({ children }: { children: ReactNode }) => children,
 }))
 
 vi.mock('@/context/permission-state', async () => {
@@ -106,7 +107,7 @@ vi.mock('../list', () => {
     onCreateLearnDify?: (app: App) => void
     onTryLearnDify?: (params: TryAppSelection) => void
   }) => {
-    const setShowTryAppPanel = useContextSelector(AppListContext, (ctx) => ctx.setShowTryAppPanel)
+    const openTryAppPanel = useContextSelector(AppListContext, (ctx) => ctx.openTryAppPanel)
     return React.createElement(
       'div',
       { 'data-testid': 'apps-list' },
@@ -116,7 +117,7 @@ vi.mock('../list', () => {
         {
           'data-testid': 'open-preview',
           onClick: () =>
-            setShowTryAppPanel(true, {
+            openTryAppPanel({
               appId: mockTemplateApp.app_id,
               app: mockTemplateApp,
             }),
@@ -255,7 +256,6 @@ describe('Apps', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     documentTitleCalls = []
-    educationInitCalls = 0
     mockWorkspacePermissionKeys = ['app.create_and_management']
     mockSearchParams = new URLSearchParams()
     mockReplace.mockClear()
