@@ -6,7 +6,7 @@
 
 ## Scope (v1)
 
-Contract v1 ships the provider-neutral unified tracing runtime for the topology, routing, and delivery concerns whose implementation lives entirely inside `api/core/ops/` and requires no database migration:
+Contract v1 ships the provider-neutral unified tracing runtime for topology, routing, and delivery without requiring a database migration or any Agent/Human Input tracing changes to `api/core/` outside `api/core/ops/`. The retained conversation-name `message_id` association is an independent, general trace-correlation improvement:
 
 - canonical workflow and Chatflow fragments, node spans, and synthetic Loop/Iteration wrapper spans;
 - cross-task parent-context coordination (nested-workflow `external_parent` and standalone Message-child `required_parent_context_id`);
@@ -14,14 +14,14 @@ Contract v1 ships the provider-neutral unified tracing runtime for the topology,
 - runtime selection and legacy isolation;
 - conversation-name trace association by `message_id`.
 
-The following are **out of scope for v1** and intentionally deferred, because their implementation required changes to `api/core/` outside the ops module or a new database migration, and were reverted to reduce conflict surface with the upcoming subgraph expansion:
+The following are **out of scope for v1** and intentionally deferred, because their implementation required Agent/Human Input tracing changes to `api/core/` outside the ops module or a new database migration, and were reverted to reduce conflict surface with the upcoming subgraph expansion:
 
 - **Agent execution (Agent v2) trace fragments** — collecting Agent run / tool-call / tool-result sub-spans from the Agent backend event stream, the Agent App `requested`/`resumed` two-phase correlation, and parent-context propagation through the Agent backend's tool-inner call path (`AgentToolInvokeCaller.parent_workflow_run_id` / `tool_call_span_id` and the surrounding `set_parent_trace_context`/`clear_parent_trace_context` in `AgentToolInnerService`). Agent nodes emit only node-level spans in v1.
 - **Human Input wait lifecycle tracing** — workflow-owned and Agent-App-owned human-wait spans, pause/resume private tracing-state retention across pauses, and the global-timeout reliable final-trace handoff.
 - **Global-timeout final-trace handoff persistence** — the `workflow_pauses.final_trace_status` / `final_trace_attempts` columns and the bounded handoff recovery process. General durable provider-export retry remains in scope.
 - The `WorkflowTraceState` private pause container, `HumanInputForm.updated_at` tracing consumption, and the `HumanInputFormSubmissionRepository.list_by_workflow_run_id` wait-construction helper.
 
-The deferred designs are preserved verbatim in [Out of scope (v1): deferred designs](#out-of-scope-v1-deferred-designs) so the contract can be re-expanded without re-deriving them. v1 introduces **no `api/core/` change outside `api/core/ops/` and no database migration**.
+The deferred designs are preserved verbatim in [Out of scope (v1): deferred designs](#out-of-scope-v1-deferred-designs) so the contract can be re-expanded without re-deriving them. v1 introduces **no Agent/Human Input tracing change to `api/core/` outside `api/core/ops/`, and no database migration**.
 
 The Loop/Iteration synthetic-wrapper topology itself **remains in scope**: it is implemented entirely inside `api/core/ops/unified_trace/` from existing node-execution metadata and does not depend on the deferred human-wait tracing.
 
@@ -188,7 +188,7 @@ Maintainers and provider adapters may rely on these invariants:
 
 ## Out of scope (v1): deferred designs
 
-The following designs were implemented and then deferred from v1 to avoid `api/core/` changes outside `api/core/ops/` and a database migration. They are preserved verbatim so a future contract revision can re-adopt them without re-deriving the rationale. They are **not normative for v1 adapters or Core**.
+The following designs were implemented and then deferred from v1 to avoid Agent/Human Input tracing changes to `api/core/` outside `api/core/ops/` and a database migration. They are preserved verbatim so a future contract revision can re-adopt them without re-deriving the rationale. They are **not normative for v1 adapters or Core**.
 
 ### Human-wait parent resolution by owning node execution (deferred)
 
