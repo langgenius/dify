@@ -13,6 +13,8 @@
   "embedding.segmentLength": "Lungime segmente",
   "embedding.segments": "Paragrafe",
   "embedding.textCleaning": "Pre-definiție și curățare text",
+  "embedding.vectorSpaceEstimateExceeded.description": "Document primit, dar spațiul de stocare vectorial estimat este de {{estimated}} MB, peste limita planului dvs. de {{limit}} MB, astfel că nu a fost salvat niciun vector. Dacă un alt document este în curs de procesare sau tocmai a eșuat, încercați din nou mai târziu. În caz contrar, reduceți dimensiunea fișierului sau numărul de fragmente.",
+  "embedding.vectorSpaceEstimateExceeded.title": "Spațiul vectorial estimat după încărcare depășește capacitatea planului tău",
   "embedding.waiting": "Așteptând încorporarea...",
   "list.action.addButton": "Adaugă segment",
   "list.action.archive": "Arhivează",
