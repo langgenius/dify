@@ -21,7 +21,7 @@ The following are **out of scope for v1** and intentionally deferred, because th
 - **Global-timeout final-trace handoff persistence** — the `workflow_pauses.final_trace_status` / `final_trace_attempts` columns and the bounded handoff recovery process. General durable provider-export retry remains in scope.
 - The `WorkflowTraceState` private pause container, `HumanInputForm.updated_at` tracing consumption, and the `HumanInputFormSubmissionRepository.list_by_workflow_run_id` wait-construction helper.
 
-The deferred designs are preserved verbatim in [Out of scope (v1): deferred designs](#out-of-scope-v1-deferred-designs) so the contract can be re-expanded without re-deriving them. v1 introduces **no Agent/Human Input tracing change to `api/core/` outside `api/core/ops/`, and no database migration**.
+The deferred designs are preserved verbatim in [Out of scope (v1): deferred designs](#out-of-scope-v1-deferred-designs) so the contract can be re-expanded without re-deriving them. Their runtime modules, trace-builder paths, canonical span kind, and adapter mappings are not part of v1. v1 introduces **no Agent/Human Input tracing change to `api/core/` outside `api/core/ops/`, and no database migration**.
 
 The Loop/Iteration synthetic-wrapper topology itself **remains in scope**: it is implemented entirely inside `api/core/ops/unified_trace/` from existing node-execution metadata and does not depend on the deferred human-wait tracing.
 

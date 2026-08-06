@@ -30,19 +30,19 @@ def test_canonical_trace_rejects_unknown_fields() -> None:
         )
 
 
-def test_canonical_human_wait_supports_links() -> None:
-    span = CanonicalSpan(
-        id="wait-1",
+def test_canonical_span_supports_links() -> None:
+    linked_span = CanonicalSpan(
+        id="linked-1",
         parent_id="message-2",
-        name="human_wait",
-        kind=CanonicalSpanKind.HUMAN_WAIT,
+        name="linked",
+        kind=CanonicalSpanKind.CHAIN,
         start_time=datetime(2025, 1, 1),
         end_time=None,
         status=CanonicalSpanStatus.OK,
         links=("message-1",),
     )
 
-    assert span.links == ("message-1",)
+    assert linked_span.links == ("message-1",)
 
 
 @pytest.mark.parametrize(

@@ -17,9 +17,7 @@ from core.ops.entities.trace_entity import (
     ToolTraceInfo,
     WorkflowTraceInfo,
 )
-from core.ops.unified_trace.agent_events import AgentRunTraceFragment, AgentTraceOperation
 from core.ops.unified_trace.entities import CanonicalSpanKind, CanonicalSpanStatus, CanonicalTrace
-from core.ops.unified_trace.human_wait import HumanWaitRecord
 from core.ops.unified_trace.trace_builder import (
     CanonicalTraceBuilder,
     RepositoryWorkflowExecutionLoader,
@@ -223,156 +221,6 @@ def test_build_workflow_trace_is_parent_first_and_uses_wrappers() -> None:
     loader.assert_called_once()
 
 
-def test_workflow_agent_fragment_is_nested_under_its_node() -> None:
-    started_at = datetime(2025, 1, 1)
-    fragment = AgentRunTraceFragment(
-        run_id="agent-run-1",
-        role="initial",
-        start_time=started_at,
-        end_time=started_at + timedelta(seconds=2),
-        operations=(
-            AgentTraceOperation(
-                id="agent-run-1:llm:0",
-                kind="llm",
-                name="llm",
-                start_time=started_at,
-                end_time=started_at + timedelta(seconds=1),
-                outputs="thought",
-            ),
-        ),
-        output="done",
-    )
-    builder = CanonicalTraceBuilder(
-        lambda _info: [
-            node_execution(
-                id="agent-node-exec",
-                node_type="agent",
-                metadata={"agent_fragments": [fragment]},
-            )
-        ]
-    )
-
-    trace = builder.build(workflow_info(metadata={}))
-
-    assert trace is not None
-    spans = {span.id: span for span in trace.spans}
-    assert spans["agent-run-1"].parent_id == "agent-node-exec"
-    assert spans["agent-run-1:llm:0"].parent_id == "agent-run-1"
-    assert spans["agent-run-1"].kind is CanonicalSpanKind.AGENT
-
-
-def test_workflow_agent_tool_span_publishes_parent_context() -> None:
-    started_at = datetime(2025, 1, 1)
-    operation = AgentTraceOperation(
-        id="agent-run-1:tool:call-1",
-        kind="tool",
-        name="workflow_tool",
-        start_time=started_at,
-        metadata={"tool_call_id": "call-1", "provider_type": "workflow"},
-    )
-    fragment = AgentRunTraceFragment(
-        run_id="agent-run-1",
-        role="initial",
-        start_time=started_at,
-        operations=(operation,),
-    )
-    builder = CanonicalTraceBuilder(lambda _info: [node_execution(id="agent-node-exec", node_type="agent")])
-
-    trace = builder.build(
-        workflow_info(metadata={"agent_fragments": {"agent-node-exec": [fragment.model_dump(mode="json")]}})
-    )
-
-    assert trace is not None
-    span = next(span for span in trace.spans if span.id == operation.id)
-    assert span.publishes_parent_context is True
-
-
-def test_workflow_human_wait_is_nested_under_its_node() -> None:
-    started_at = datetime(2025, 1, 1)
-    wait = HumanWaitRecord(
-        wait_id="form-1",
-        owner_id="agent-node-exec",
-        owner_kind="agent_node",
-        start_time=started_at,
-        end_time=started_at + timedelta(seconds=1),
-        outcome="submitted",
-    )
-    builder = CanonicalTraceBuilder(lambda _info: [node_execution(id="agent-node-exec", node_type="agent")])
-
-    trace = builder.build(workflow_info(metadata={"human_waits": [wait]}))
-
-    assert trace is not None
-    span = next(span for span in trace.spans if span.id == "human_wait:form-1")
-    assert span.parent_id == "agent-node-exec"
-    assert span.kind is CanonicalSpanKind.HUMAN_WAIT
-
-
-def test_workflow_human_wait_resolves_persisted_node_id_to_execution_id() -> None:
-    started_at = datetime(2025, 1, 1)
-    wait = HumanWaitRecord(
-        wait_id="form-1",
-        owner_id="agent-node",
-        owner_kind="workflow_node",
-        start_time=started_at,
-        end_time=started_at + timedelta(seconds=1),
-        outcome="submitted",
-    )
-    builder = CanonicalTraceBuilder(
-        lambda _info: [node_execution(id="agent-node-exec", node_id="agent-node", node_type="agent")]
-    )
-
-    trace = builder.build(workflow_info(metadata={"human_waits": [wait]}))
-
-    assert trace is not None
-    span = next(span for span in trace.spans if span.id == "human_wait:form-1")
-    assert span.parent_id == "agent-node-exec"
-    assert span.metadata["owner_kind"] == "agent_node"
-
-
-def test_workflow_human_wait_prefers_form_execution_id_for_repeated_container_node() -> None:
-    started_at = datetime(2025, 1, 1)
-    wait = HumanWaitRecord(
-        wait_id="human-exec-2",
-        owner_id="human-input-node",
-        owner_kind="workflow_node",
-        start_time=started_at,
-        end_time=started_at + timedelta(seconds=1),
-        outcome="submitted",
-    )
-    builder = CanonicalTraceBuilder(
-        lambda _info: [
-            node_execution(
-                id="human-exec-1",
-                node_id="human-input-node",
-                node_type="human-input",
-                iteration_id="iteration-node",
-                iteration_index=0,
-                created_at=started_at,
-            ),
-            node_execution(
-                id="human-exec-2",
-                node_id="human-input-node",
-                node_type="human-input",
-                iteration_id="iteration-node",
-                iteration_index=1,
-                created_at=started_at,
-            ),
-            node_execution(
-                id="iteration-exec",
-                node_id="iteration-node",
-                node_type="iteration",
-                created_at=started_at,
-            ),
-        ]
-    )
-
-    trace = builder.build(workflow_info(metadata={"human_waits": [wait]}))
-
-    assert trace is not None
-    span = next(span for span in trace.spans if span.id == "human_wait:human-exec-2")
-    assert span.parent_id == "human-exec-2"
-
-
 def test_workflow_tool_is_marked_as_nested_workflow_parent() -> None:
     builder = CanonicalTraceBuilder(lambda _info: [node_execution(id="tool-exec")])
 
@@ -542,42 +390,6 @@ def test_message_trace_does_not_load_workflow_executions() -> None:
     assert trace.spans[1].kind is CanonicalSpanKind.LLM
     assert trace.spans[1].metadata["total_tokens"] == 5
     loader.assert_not_called()
-
-
-def test_agent_message_resumed_wait_links_to_requesting_message() -> None:
-    builder = CanonicalTraceBuilder(lambda _info: [])
-    wait = HumanWaitRecord(
-        wait_id="form-1",
-        owner_id="message-1",
-        owner_kind="agent_message",
-        start_time=datetime(2025, 1, 1),
-        end_time=datetime(2025, 1, 1, 0, 1),
-        outcome="submitted",
-    ).with_phase("resumed", message_id="message-2", linked_message_id="message-1")
-    info = MessageTraceInfo(
-        conversation_model="agent-chat",
-        message_tokens=0,
-        answer_tokens=0,
-        total_tokens=0,
-        conversation_mode="agent-chat",
-        message_id="message-2",
-        message_data=SimpleNamespace(
-            id="message-2",
-            conversation_id="conversation-1",
-            answer="continued",
-            created_at=datetime(2025, 1, 1, 0, 1),
-            updated_at=datetime(2025, 1, 1, 0, 1, 1),
-        ),
-        metadata={"human_waits": [wait.model_dump(mode="json")]},
-    )
-
-    trace = builder.build(info)
-
-    assert trace is not None
-    wait_span = next(span for span in trace.spans if span.id == "human_wait:form-1:resumed")
-    assert wait_span.parent_id == "message-2"
-    assert wait_span.links == ("message-1",)
-    assert wait_span.metadata["wait_duration_ms"] == 60_000
 
 
 def test_generate_name_uses_message_parent_and_conversation_session() -> None:

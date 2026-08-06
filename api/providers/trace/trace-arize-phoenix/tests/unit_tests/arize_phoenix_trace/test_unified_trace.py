@@ -84,7 +84,6 @@ def test_emit_maps_every_canonical_kind(adapter, kind):
         CanonicalSpanKind.RETRIEVER: "RETRIEVER",
         CanonicalSpanKind.TOOL: "TOOL",
         CanonicalSpanKind.AGENT: "AGENT",
-        CanonicalSpanKind.HUMAN_WAIT: "CHAIN",
     }[kind]
     subject, tracer, _ = adapter
 
@@ -98,17 +97,16 @@ def test_emit_maps_every_canonical_kind(adapter, kind):
 
 def test_emit_preserves_logical_links_and_overrides_reserved_metadata(adapter):
     subject, tracer, _ = adapter
-    wait = span(
-        kind=CanonicalSpanKind.HUMAN_WAIT,
+    linked_span = span(
         metadata={"dify.span.kind": "forged", "dify.span.links": ["forged"]},
         links=("message-a",),
     )
 
-    subject.emit(trace(wait), None, MagicMock())
+    subject.emit(trace(linked_span), None, MagicMock())
 
     attributes = tracer.start_span.call_args.kwargs["attributes"]
     metadata = json.loads(attributes[SpanAttributes.METADATA])
-    assert metadata["dify.span.kind"] == "human_wait"
+    assert metadata["dify.span.kind"] == "chain"
     assert metadata["dify.span.links"] == ["message-a"]
 
 

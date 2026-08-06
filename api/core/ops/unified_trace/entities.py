@@ -15,7 +15,6 @@ class CanonicalSpanKind(StrEnum):
     RETRIEVER = "retriever"
     TOOL = "tool"
     AGENT = "agent"
-    HUMAN_WAIT = "human_wait"
 
 
 class CanonicalSpanStatus(StrEnum):

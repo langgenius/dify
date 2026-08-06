@@ -24,7 +24,6 @@ from core.ops.entities.trace_entity import (
     ToolTraceInfo,
     WorkflowTraceInfo,
 )
-from core.ops.unified_trace.agent_events import AgentRunTraceFragment
 from core.ops.unified_trace.entities import CanonicalSpan, CanonicalSpanKind, CanonicalSpanStatus, CanonicalTrace
 from core.ops.unified_trace.hierarchy import (
     WorkflowExecutionLike,
@@ -32,7 +31,6 @@ from core.ops.unified_trace.hierarchy import (
     execution_id,
     execution_metadata,
 )
-from core.ops.unified_trace.human_wait import HumanWaitRecord
 from core.repositories import DifyCoreRepositoryFactory
 from extensions.ext_database import db
 from models import Account
@@ -132,43 +130,6 @@ def _started_at(value: datetime | None) -> datetime:
     return value or datetime.now()
 
 
-def _human_waits(metadata: Mapping[str, Any]) -> list[HumanWaitRecord]:
-    raw_waits = metadata.get("human_waits")
-    if not isinstance(raw_waits, list):
-        return []
-    waits: list[HumanWaitRecord] = []
-    for raw_wait in raw_waits:
-        try:
-            waits.append(HumanWaitRecord.model_validate(raw_wait))
-        except ValidationError:
-            continue
-    return waits
-
-
-def _agent_fragments_by_parent(metadata: Mapping[str, Any]) -> dict[str, list[AgentRunTraceFragment]]:
-    raw_fragments = metadata.get("agent_fragments")
-    if not isinstance(raw_fragments, Mapping):
-        return {}
-    fragments_by_parent: dict[str, list[AgentRunTraceFragment]] = {}
-    for parent_id, raw_fragments_for_parent in raw_fragments.items():
-        if not isinstance(parent_id, str) or not isinstance(raw_fragments_for_parent, list):
-            continue
-        fragments = _agent_fragments(raw_fragments_for_parent)
-        if fragments:
-            fragments_by_parent[parent_id] = fragments
-    return fragments_by_parent
-
-
-def _agent_fragments(raw_fragments: list[Any]) -> list[AgentRunTraceFragment]:
-    fragments: list[AgentRunTraceFragment] = []
-    for raw_fragment in raw_fragments:
-        try:
-            fragments.append(AgentRunTraceFragment.model_validate(raw_fragment))
-        except ValidationError:
-            continue
-    return fragments
-
-
 def _single_session_id(trace_info: BaseTraceInfo) -> str:
     value = trace_info.metadata.get("trace_session_id")
     return value if isinstance(value, str) else ""
@@ -249,19 +210,6 @@ class CanonicalTraceBuilder:
         )
 
         execution_by_id = {execution_id(item): item for item in executions}
-        agent_fragments_by_parent = _agent_fragments_by_parent(trace_info.metadata)
-        for item_execution_id, item in execution_by_id.items():
-            node_metadata = execution_metadata(item)
-            raw_fragments = node_metadata.get("agent_fragments")
-            if not isinstance(raw_fragments, list):
-                agent_log = node_metadata.get("agent_log")
-                raw_fragments = agent_log.get("agent_fragments") if isinstance(agent_log, Mapping) else None
-            if not isinstance(raw_fragments, list):
-                continue
-            fragments = _agent_fragments(raw_fragments)
-            if fragments:
-                agent_fragments_by_parent[item_execution_id] = fragments
-
         for wrapper in hierarchy.wrappers:
             spans[wrapper.id] = CanonicalSpan(
                 id=wrapper.id,
@@ -324,78 +272,6 @@ class CanonicalTraceBuilder:
                 metadata=metadata,
                 can_parent_workflow=node_type == "tool",
             )
-
-        for wait in _human_waits(trace_info.metadata):
-            owner_id = wait.wait_id if wait.owner_kind == "workflow_node" and wait.wait_id in spans else wait.owner_id
-            if owner_id not in spans:
-                candidates = [
-                    span
-                    for span in spans.values()
-                    if span.metadata.get("node_id") == wait.owner_id and span.start_time is not None
-                ]
-                if candidates:
-                    owner_id = min(
-                        candidates,
-                        key=lambda span: abs(span.start_time.timestamp() - wait.start_time.timestamp()),
-                    ).id
-            if owner_id not in spans:
-                continue
-            owner_span = spans[owner_id]
-            owner_kind = "agent_node" if owner_span.kind is CanonicalSpanKind.AGENT else wait.owner_kind
-            spans[f"human_wait:{wait.wait_id}"] = CanonicalSpan(
-                id=f"human_wait:{wait.wait_id}",
-                parent_id=owner_id,
-                name="human_wait",
-                kind=CanonicalSpanKind.HUMAN_WAIT,
-                start_time=wait.start_time,
-                end_time=wait.end_time,
-                inputs=wait.input,
-                outputs=wait.output,
-                status=CanonicalSpanStatus.OK,
-                metadata={
-                    "wait_id": wait.wait_id,
-                    "owner_kind": owner_kind,
-                    "outcome": wait.outcome,
-                    "tool_call_id": wait.tool_call_id,
-                },
-            )
-
-        for parent_id, fragments in agent_fragments_by_parent.items():
-            if parent_id not in spans:
-                continue
-            for fragment in fragments:
-                spans[fragment.run_id] = CanonicalSpan(
-                    id=fragment.run_id,
-                    parent_id=parent_id,
-                    name="agent_run",
-                    kind=CanonicalSpanKind.AGENT,
-                    start_time=fragment.start_time,
-                    end_time=fragment.end_time,
-                    outputs=fragment.output,
-                    status=CanonicalSpanStatus.ERROR if fragment.error else CanonicalSpanStatus.OK,
-                    error=fragment.error,
-                    metadata={
-                        "role": fragment.role,
-                        "complete": fragment.complete,
-                        "warning_codes": list(fragment.warning_codes),
-                        "dropped_event_count": fragment.dropped_event_count,
-                    },
-                )
-                for operation in fragment.operations:
-                    spans[operation.id] = CanonicalSpan(
-                        id=operation.id,
-                        parent_id=fragment.run_id,
-                        name=operation.name,
-                        kind=CanonicalSpanKind.LLM if operation.kind == "llm" else CanonicalSpanKind.TOOL,
-                        start_time=operation.start_time,
-                        end_time=operation.end_time,
-                        inputs=operation.inputs,
-                        outputs=operation.outputs,
-                        status=CanonicalSpanStatus.ERROR if operation.error else CanonicalSpanStatus.OK,
-                        error=operation.error,
-                        metadata=dict(operation.metadata),
-                        publishes_parent_context=operation.metadata.get("provider_type") == "workflow",
-                    )
 
         ordered: list[CanonicalSpan] = []
         emitted: set[str] = set()
@@ -506,62 +382,6 @@ class CanonicalTraceBuilder:
                 synthetic=True,
             ),
         ]
-        for fragment in _agent_fragments(trace_info.metadata.get("agent_fragments", [])):
-            spans.append(
-                CanonicalSpan(
-                    id=fragment.run_id,
-                    parent_id=message_id,
-                    name="agent_run",
-                    kind=CanonicalSpanKind.AGENT,
-                    start_time=fragment.start_time,
-                    end_time=fragment.end_time,
-                    inputs=trace_info.inputs,
-                    outputs=fragment.output,
-                    status=CanonicalSpanStatus.ERROR if fragment.error else CanonicalSpanStatus.OK,
-                    error=fragment.error,
-                    metadata={"role": fragment.role, "complete": fragment.complete},
-                )
-            )
-            spans.extend(
-                CanonicalSpan(
-                    id=operation.id,
-                    parent_id=fragment.run_id,
-                    name=operation.name,
-                    kind=CanonicalSpanKind.LLM if operation.kind == "llm" else CanonicalSpanKind.TOOL,
-                    start_time=operation.start_time,
-                    end_time=operation.end_time,
-                    inputs=operation.inputs,
-                    outputs=operation.outputs,
-                    status=CanonicalSpanStatus.ERROR if operation.error else CanonicalSpanStatus.OK,
-                    error=operation.error,
-                    metadata=dict(operation.metadata),
-                )
-                for operation in fragment.operations
-            )
-        for wait in _human_waits(trace_info.metadata):
-            phase = wait.phase or "requested"
-            spans.append(
-                CanonicalSpan(
-                    id=f"human_wait:{wait.wait_id}:{phase}",
-                    parent_id=message_id,
-                    name="human_wait",
-                    kind=CanonicalSpanKind.HUMAN_WAIT,
-                    start_time=wait.start_time,
-                    end_time=wait.end_time,
-                    inputs=wait.input,
-                    outputs=wait.output,
-                    status=CanonicalSpanStatus.OK,
-                    metadata={
-                        "wait_id": wait.wait_id,
-                        "owner_kind": wait.owner_kind,
-                        "outcome": wait.outcome,
-                        "tool_call_id": wait.tool_call_id,
-                        "phase": phase,
-                        "wait_duration_ms": wait.wait_duration_ms,
-                    },
-                    links=(wait.linked_message_id,) if wait.linked_message_id else (),
-                )
-            )
         return CanonicalTrace(
             trace_id=trace_info.resolved_trace_id or message_id,
             session_id=resolve_session_id(trace_info),

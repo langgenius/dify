@@ -22,7 +22,7 @@ The following are **out of scope for v1** and MUST NOT be relied upon by v1 adap
 - pause/resume private tracing-state retention across Human Input pauses;
 - the global-timeout reliable final-trace handoff and any database migration to support it (`workflow_pauses.final_trace_*`).
 
-These deferred items are described in ADR-0001 under "Out of scope (v1): deferred designs" and are not normative for v1.
+These deferred items are described in ADR-0001 under "Out of scope (v1): deferred designs" and are not normative for v1. Their runtime modules, trace-builder paths, canonical span kind, and adapter mappings are absent from v1.
 
 Contract v1 accepts only the non-nested Loop and Iteration topology produced by supported Dify product paths. The tracing runtime does not detect, flatten, or warn about nested-container state that the product contract cannot produce. Before any supported producer may emit nested containers, Dify MUST revise Core topology semantics and conformance tests. Adapters MUST NOT infer nested containment.
 

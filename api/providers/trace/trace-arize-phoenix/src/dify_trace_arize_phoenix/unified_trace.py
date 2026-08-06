@@ -36,7 +36,6 @@ _KIND_MAP: dict[CanonicalSpanKind, OpenInferenceSpanKindValues] = {
     CanonicalSpanKind.RETRIEVER: OpenInferenceSpanKindValues.RETRIEVER,
     CanonicalSpanKind.TOOL: OpenInferenceSpanKindValues.TOOL,
     CanonicalSpanKind.AGENT: OpenInferenceSpanKindValues.AGENT,
-    CanonicalSpanKind.HUMAN_WAIT: OpenInferenceSpanKindValues.CHAIN,
 }
 
 

@@ -36,7 +36,6 @@ _RUN_TYPE: dict[CanonicalSpanKind, LangSmithRunType] = {
     CanonicalSpanKind.RETRIEVER: "retriever",
     CanonicalSpanKind.TOOL: "tool",
     CanonicalSpanKind.AGENT: "chain",
-    CanonicalSpanKind.HUMAN_WAIT: "chain",
 }
 
 
