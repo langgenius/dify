@@ -14,6 +14,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from pydantic import ValidationError
+from sqlalchemy.orm import Session
 
 from controllers.openapi.apps_permitted_external import (
     PermittedExternalAppDescribeApi,
@@ -69,10 +70,10 @@ def test_query_accepts_valid_mode():
     assert q.mode.value == "chat"
 
 
-def test_describe_forwards_request_session_to_response_builder():
+def test_describe_forwards_request_session_to_response_builder(unbound_session: Session):
     api = PermittedExternalAppDescribeApi()
     method = inspect.unwrap(api.get)
-    session = MagicMock()
+    session = unbound_session
     app = MagicMock()
     auth_data = SimpleNamespace(app=app)
     query = SimpleNamespace(fields={"info"})

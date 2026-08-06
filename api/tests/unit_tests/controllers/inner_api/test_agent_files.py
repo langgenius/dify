@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 
 from controllers.inner_api.agent.files import AgentFileDownloadRequestApi, AgentFileUploadRequestApi
 from core.workflow.file_reference import build_file_reference
@@ -18,7 +19,7 @@ def _raw[R](method: Callable[..., R]) -> Callable[..., R]:
     return cast(Callable[..., R], inspect.unwrap(method))
 
 
-def test_upload_request_returns_origin_free_uri(app: Flask) -> None:
+def test_upload_request_returns_origin_free_uri(app: Flask, unbound_session: Session) -> None:
     payload = {
         "tenant_id": "tenant-1",
         "user_id": "execution-user-1",
@@ -28,7 +29,7 @@ def test_upload_request_returns_origin_free_uri(app: Flask) -> None:
     }
     tenant = SimpleNamespace(id="tenant-1")
     user = SimpleNamespace(id="canonical-end-user-1")
-    session = MagicMock()
+    session = unbound_session
     with app.test_request_context("/", method="POST", json=payload):
         with (
             patch(f"{MODULE}.TenantService") as tenant_service,
@@ -49,7 +50,7 @@ def test_upload_request_returns_origin_free_uri(app: Flask) -> None:
     )
 
 
-def test_download_request_returns_origin_free_uri_for_sandbox(app: Flask) -> None:
+def test_download_request_returns_origin_free_uri_for_sandbox(app: Flask, unbound_session: Session) -> None:
     reference = build_file_reference(record_id="tool-file-1")
     payload = {
         "tenant_id": "tenant-1",
@@ -59,7 +60,7 @@ def test_download_request_returns_origin_free_uri_for_sandbox(app: Flask) -> Non
         "file": {"transfer_method": "tool_file", "reference": reference},
         "for_frontend": False,
     }
-    session = MagicMock()
+    session = unbound_session
     with app.test_request_context("/", method="POST", json=payload):
         with (
             patch(f"{MODULE}.TenantService") as tenant_service,
@@ -89,7 +90,9 @@ def test_download_request_returns_origin_free_uri_for_sandbox(app: Flask) -> Non
     )
 
 
-def test_download_request_binds_frontend_url(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_download_request_binds_frontend_url(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
     reference = build_file_reference(record_id="tool-file-1")
     payload = {
         "tenant_id": "tenant-1",
@@ -100,7 +103,7 @@ def test_download_request_binds_frontend_url(app: Flask, monkeypatch: pytest.Mon
         "for_frontend": True,
     }
     monkeypatch.setattr(f"{MODULE}.dify_config.FILES_URL", "https://files.example.com")
-    session = MagicMock()
+    session = unbound_session
     with app.test_request_context("/", method="POST", json=payload):
         with (
             patch(f"{MODULE}.TenantService") as tenant_service,

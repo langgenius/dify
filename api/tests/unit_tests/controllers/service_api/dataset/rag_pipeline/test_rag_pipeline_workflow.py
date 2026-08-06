@@ -574,7 +574,6 @@ class TestPipelineRunApiPost:
     )
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.RagPipelineService")
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.service_api_ns")
-    @pytest.mark.parametrize("sqlite_session", [(Dataset,)], indirect=True)
     def test_post_success_streaming(
         self, mock_ns, mock_svc_cls, mock_current_user, mock_gen_svc, mock_helper, app, sqlite_session: Session
     ):
@@ -609,7 +608,6 @@ class TestPipelineRunApiPost:
         mock_svc_cls.assert_called_once_with(sqlite_session)
         mock_gen_svc.generate.assert_called_once()
 
-    @pytest.mark.parametrize("sqlite_session", [(Dataset,)], indirect=True)
     def test_post_not_found(self, app: Flask, sqlite_session: Session):
         """Test NotFound when dataset check fails."""
         with app.test_request_context("/datasets/test/pipeline/run", method="POST"):
@@ -624,7 +622,6 @@ class TestPipelineRunApiPost:
 
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user", new="not_account")
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.service_api_ns")
-    @pytest.mark.parametrize("sqlite_session", [(Dataset,)], indirect=True)
     def test_post_forbidden_non_account_user(self, mock_ns, app: Flask, sqlite_session: Session):
         """Test Forbidden when current_user is not an Account."""
         tenant_id = str(uuid.uuid4())
