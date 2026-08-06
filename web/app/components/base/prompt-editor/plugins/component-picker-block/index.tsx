@@ -83,6 +83,7 @@ const ComponentPicker = ({
   })
   const [editor] = useLexicalComposerContext()
   const triggerMatchRef = useRef<MenuTextMatch | null>(null)
+  const slashTypedRef = useRef(false)
   const baseCheckForTriggerMatch = useBasicTypeaheadTriggerMatch(triggerString, {
     minLength: 0,
     maxLength: 75,
@@ -91,10 +92,22 @@ const ComponentPicker = ({
   const checkForTriggerMatch = useCallback(
     (text: string, editor: LexicalEditor) => {
       const match = baseCheckForTriggerMatch(text, editor)
+      if (
+        match &&
+        triggerString === '/' &&
+        match.matchingString.length === 0 &&
+        !slashTypedRef.current
+      ) {
+        triggerMatchRef.current = null
+        return null
+      }
+      if (match && triggerString === '/' && match.matchingString.length === 0)
+        slashTypedRef.current = false
+
       triggerMatchRef.current = match
       return match
     },
-    [baseCheckForTriggerMatch],
+    [baseCheckForTriggerMatch, triggerString],
   )
 
   const [queryString, setQueryString] = useState<string | null>(null)
@@ -140,7 +153,27 @@ const ComponentPicker = ({
       if (blurTimerRef.current) clearTimeout(blurTimerRef.current)
       unregister()
     }
-  }, [editor, clearBlurTimer])
+  }, [editor, clearBlurTimer, triggerString])
+
+  useEffect(() => {
+    const rootElement = editor.getRootElement()
+    if (!rootElement || triggerString !== '/') return
+
+    const handleBeforeInput = (event: InputEvent) => {
+      if (event.inputType === 'insertText' && event.data === '/') slashTypedRef.current = true
+    }
+
+    const handlePointerDown = () => {
+      slashTypedRef.current = false
+    }
+
+    rootElement.addEventListener('beforeinput', handleBeforeInput)
+    rootElement.addEventListener('pointerdown', handlePointerDown)
+    return () => {
+      rootElement.removeEventListener('beforeinput', handleBeforeInput)
+      rootElement.removeEventListener('pointerdown', handlePointerDown)
+    }
+  }, [editor, triggerString])
 
   eventEmitter?.useSubscription((v: EventEmitterValue) => {
     if (
