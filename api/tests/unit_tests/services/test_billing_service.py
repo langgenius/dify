@@ -185,7 +185,7 @@ class TestBillingServiceSendRequest:
         with pytest.raises(InternalServerError) as exc_info:
             BillingService._send_request("PUT", "/test", json={"key": "value"})
         assert exc_info.value.code == 500
-        assert "Unable to process billing request" in str(exc_info.value.description)
+        assert "Unable to process billing request" in exc_info.value.description
 
     @pytest.mark.parametrize(
         "status_code", [httpx.codes.BAD_REQUEST, httpx.codes.NOT_FOUND, httpx.codes.UNAUTHORIZED, httpx.codes.FORBIDDEN]

@@ -190,7 +190,7 @@ class CompletionConversationDetailApi(Resource):
     @with_session
     @get_app_model(mode=AppMode.COMPLETION)
     def get(self, session: Session, current_user: Account, app_model: App, conversation_id: UUID):
-        conversation_id_str = str(conversation_id)
+        conversation_id_str = conversation_id
         return dump_response(
             ConversationMessageDetailResponse,
             ConversationResponseSource(
@@ -213,7 +213,7 @@ class CompletionConversationDetailApi(Resource):
     @with_session
     @get_app_model(mode=AppMode.COMPLETION)
     def delete(self, session: Session, current_user: Account, app_model: App, conversation_id: UUID):
-        conversation_id_str = str(conversation_id)
+        conversation_id_str = conversation_id
 
         try:
             ConversationService.delete(app_model, conversation_id_str, current_user, session=session)
@@ -359,7 +359,7 @@ class ChatConversationDetailApi(Resource):
     @with_session
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     def get(self, session: Session, current_user: Account, app_model: App, conversation_id: UUID):
-        conversation_id_str = str(conversation_id)
+        conversation_id_str = conversation_id
         return dump_response(
             ConversationDetailResponse,
             ConversationResponseSource(
@@ -382,7 +382,7 @@ class ChatConversationDetailApi(Resource):
     @with_session
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     def delete(self, session: Session, current_user: Account, app_model: App, conversation_id: UUID):
-        conversation_id_str = str(conversation_id)
+        conversation_id_str = conversation_id
 
         try:
             ConversationService.delete(app_model, conversation_id_str, current_user, session=session)

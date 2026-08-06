@@ -625,7 +625,7 @@ class TrialMessageSuggestedQuestionApi(TrialAppResource):
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        message_id = str(message_id)
+        message_id = message_id
 
         try:
             questions = MessageService.get_suggested_questions_after_answer(

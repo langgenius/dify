@@ -228,7 +228,7 @@ class MemberListApi(Resource):
         if dify_config.RBAC_ENABLED:
             member_ids = [member.id for member in members]
             member_roles = enterprise_rbac_service.RBACService.MemberRoles.batch_get(
-                str(current_user.current_tenant.id),
+                current_user.current_tenant.id,
                 current_user.id,
                 member_ids,
             )

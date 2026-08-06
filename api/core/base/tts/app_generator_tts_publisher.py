@@ -44,7 +44,7 @@ def _process_future(
             if not invoke_result:
                 continue
             for audio in invoke_result:
-                audio_base64 = base64.b64encode(bytes(audio))
+                audio_base64 = base64.b64encode(audio)
                 audio_queue.put(AudioTrunk("responding", audio=audio_base64))
         except Exception as e:
             logging.getLogger(__name__).warning(e)

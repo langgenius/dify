@@ -284,7 +284,7 @@ class WorkflowAgentSandboxListResource(Resource):
             result = WorkflowAgentSandboxService().list_files(
                 tenant_id=tenant_id,
                 app_id=app_model.id,
-                workflow_run_id=str(workflow_run_id),
+                workflow_run_id=workflow_run_id,
                 node_id=node_id,
                 node_execution_id=query.node_execution_id,
                 path=query.path,
@@ -321,7 +321,7 @@ class WorkflowAgentSandboxReadResource(Resource):
             result = WorkflowAgentSandboxService().read_file(
                 tenant_id=tenant_id,
                 app_id=app_model.id,
-                workflow_run_id=str(workflow_run_id),
+                workflow_run_id=workflow_run_id,
                 node_id=node_id,
                 node_execution_id=query.node_execution_id,
                 path=query.path,
@@ -351,7 +351,7 @@ class WorkflowAgentSandboxUploadResource(Resource):
             result = WorkflowAgentSandboxService().upload_file(
                 tenant_id=tenant_id,
                 app_id=app_model.id,
-                workflow_run_id=str(workflow_run_id),
+                workflow_run_id=workflow_run_id,
                 node_id=node_id,
                 node_execution_id=payload.node_execution_id,
                 path=payload.path,

@@ -47,11 +47,11 @@ class CreditPoolBalance:
 class CreditPoolService:
     @staticmethod
     def _normalize_pool_type(pool_type: str | ProviderQuotaType) -> str:
-        return pool_type.value if isinstance(pool_type, ProviderQuotaType) else str(pool_type)
+        return pool_type.value if isinstance(pool_type, ProviderQuotaType) else pool_type
 
     @staticmethod
     def _use_billing_quota() -> bool:
-        return bool(dify_config.BILLING_ENABLED)
+        return dify_config.BILLING_ENABLED
 
     @staticmethod
     def _require_session(session: Session | None) -> Session:

@@ -198,7 +198,7 @@ class AgentLogsQuery(BaseModel):
         if value in (None, ""):
             return []
         if isinstance(value, list):
-            return [str(item).strip() for item in value if str(item).strip()]
+            return [item.strip() for item in value if item.strip()]
         raise ValueError("Unsupported query list type.")
 
     @field_validator("sort_by")
@@ -360,7 +360,7 @@ def _serialize_agent_app_detail(
 
     app_model = AppService().get_app(app_model, session=session)
     if FeatureService.get_system_features().webapp_auth.enabled:
-        app_setting = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=str(app_model.id))
+        app_setting = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=app_model.id)
         app_model.access_mode = app_setting.access_mode  # type: ignore[attr-defined]
 
     roster_service = _agent_roster_service(session)
@@ -378,7 +378,7 @@ def _serialize_agent_app_detail(
             )
         )
         if agent_id
-        else roster_service.get_app_backing_agent(tenant_id=app_model.tenant_id, app_id=str(app_model.id))
+        else roster_service.get_app_backing_agent(tenant_id=app_model.tenant_id, app_id=app_model.id)
     )
     if not agent:
         raise AgentNotFoundError()
@@ -412,7 +412,7 @@ def _serialize_agent_app_pagination(session: Session, app_pagination, *, tenant_
     Agent is present.
     """
 
-    app_ids = [str(app.id) for app in app_pagination.items]
+    app_ids = [app.id for app in app_pagination.items]
     roster_service = _agent_roster_service(session)
     agents_by_app_id = roster_service.load_app_backing_agents_by_app_id(
         tenant_id=tenant_id,
@@ -494,7 +494,7 @@ def _agent_api_key_count(session: Session, app_id: str) -> int:
 def _serialize_agent_api_access(session: Session, app_model: App) -> dict:
     base_url = app_model.api_base_url
     response = AgentApiAccessResponse(
-        enabled=bool(app_model.enable_api),
+        enabled=app_model.enable_api,
         service_api_base_url=base_url,
         chat_endpoint=f"{base_url}/chat-messages",
         stop_endpoint=f"{base_url}/chat-messages/{{task_id}}/stop",
@@ -506,7 +506,7 @@ def _serialize_agent_api_access(session: Session, app_model: App) -> dict:
         meta_endpoint=f"{base_url}/meta",
         api_rpm=app_model.api_rpm or 0,
         api_rph=app_model.api_rph or 0,
-        api_key_count=_agent_api_key_count(session, str(app_model.id)),
+        api_key_count=_agent_api_key_count(session, app_model.id),
     )
     return response.model_dump(mode="json")
 
@@ -893,7 +893,7 @@ class AgentApiKeyListApi(BaseApiKeyListResource):
     @with_session(write=False)
     def get(self, session: Session, tenant_id: str, agent_id: UUID) -> dict[str, object]:
         app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
-        return dump_response(ApiKeyList, self._get_api_key_list(str(app_model.id), tenant_id, session=session))
+        return dump_response(ApiKeyList, self._get_api_key_list(app_model.id, tenant_id, session=session))
 
     @console_ns.response(201, "Agent service API key created", console_ns.models[ApiKeyItem.__name__])
     @console_ns.response(400, "Maximum keys exceeded")
@@ -906,7 +906,7 @@ class AgentApiKeyListApi(BaseApiKeyListResource):
         app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
         return dump_response(
             ApiKeyItem,
-            self._create_api_key(str(app_model.id), tenant_id, session=session),
+            self._create_api_key(app_model.id, tenant_id, session=session),
         ), 201
 
 
@@ -931,7 +931,7 @@ class AgentApiKeyApi(BaseApiKeyResource):
         api_key_id: UUID,
     ) -> tuple[str, int]:
         app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
-        self._delete_api_key(str(app_model.id), str(api_key_id), tenant_id, current_user, session=session)
+        self._delete_api_key(app_model.id, str(api_key_id), tenant_id, current_user, session=session)
         return "", 204
 
 

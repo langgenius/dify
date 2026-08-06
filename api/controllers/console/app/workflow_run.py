@@ -202,7 +202,7 @@ class WorkflowRunExportApi(Resource):
     def get(self, app_model: App, run_id: UUID):
         tenant_id = app_model.tenant_id
         app_id = app_model.id
-        run_id_str = str(run_id)
+        run_id_str = run_id
 
         run_created_at = db.session.scalar(
             select(WorkflowArchiveLog.run_created_at)
@@ -386,7 +386,7 @@ class WorkflowRunDetailApi(Resource):
         """
         Get workflow run detail
         """
-        run_id_str = str(run_id)
+        run_id_str = run_id
 
         workflow_run_service = WorkflowRunService()
         workflow_run = workflow_run_service.get_workflow_run(app_model=app_model, run_id=run_id_str)
@@ -417,7 +417,7 @@ class WorkflowRunNodeExecutionListApi(Resource):
         """
         Get workflow run node execution list
         """
-        run_id_str = str(run_id)
+        run_id_str = run_id
 
         workflow_run_service = WorkflowRunService()
         node_executions = workflow_run_service.get_workflow_run_node_executions(

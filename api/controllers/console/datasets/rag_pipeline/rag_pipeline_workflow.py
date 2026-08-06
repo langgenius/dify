@@ -934,7 +934,7 @@ class RagPipelineWorkflowRunDetailApi(Resource):
         """
         Get workflow run detail
         """
-        run_id_str = str(run_id)
+        run_id_str = run_id
 
         rag_pipeline_service = RagPipelineService(db.session())
         workflow_run = rag_pipeline_service.get_rag_pipeline_workflow_run(pipeline=pipeline, run_id=run_id_str)
@@ -960,7 +960,7 @@ class RagPipelineWorkflowRunNodeExecutionListApi(Resource):
         """
         Get workflow run node execution list
         """
-        run_id_str = str(run_id)
+        run_id_str = run_id
 
         rag_pipeline_service = RagPipelineService(db.session())
         user = cast("Account | EndUser", current_user)

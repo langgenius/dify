@@ -135,7 +135,7 @@ class MessageFeedbackApi(WebApiResource):
     @web_ns.response(200, "Feedback submitted successfully", web_ns.models[ResultResponse.__name__])
     @web_ns.expect(web_ns.models[MessageFeedbackPayload.__name__])
     def post(self, app_model: App, end_user: EndUser, message_id: UUID):
-        message_id_str = str(message_id)
+        message_id_str = message_id
 
         payload = MessageFeedbackPayload.model_validate(web_ns.payload or {})
 
@@ -175,7 +175,7 @@ class MessageMoreLikeThisApi(WebApiResource):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
-        message_id_str = str(message_id)
+        message_id_str = message_id
 
         raw_args = request.args.to_dict()
         query = MessageMoreLikeThisQuery.model_validate(raw_args)
@@ -234,7 +234,7 @@ class MessageSuggestedQuestionApi(WebApiResource):
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
-        message_id_str = str(message_id)
+        message_id_str = message_id
 
         try:
             questions = MessageService.get_suggested_questions_after_answer(

@@ -32,7 +32,7 @@ class ToolFileManager:
             file_type=get_file_type_by_mime_type(tool_file.mimetype),
             transfer_method=FileTransferMethod.TOOL_FILE,
             remote_url=tool_file.original_url,
-            reference=build_file_reference(record_id=str(tool_file.id)),
+            reference=build_file_reference(record_id=tool_file.id),
             filename=tool_file.name,
             extension=extension,
             mime_type=tool_file.mimetype,

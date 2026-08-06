@@ -360,6 +360,6 @@ class TestArchivedWorkflowRunDeletion:
             result = deleter._delete_run(run, archive_log)
 
         assert result.success is False
-        assert "Archive row count mismatch before delete" in str(result.error)
+        assert "Archive row count mismatch before delete" in result.error
         db_session_with_containers.expire_all()
         assert db_session_with_containers.get(WorkflowRun, run.id) is not None

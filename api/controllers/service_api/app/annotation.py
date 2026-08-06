@@ -162,7 +162,7 @@ class AnnotationReplyActionStatusApi(Resource):
     @validate_app_token
     def get(self, app_model: App, job_id: UUID, action: str):
         """Get the status of an annotation reply action job."""
-        job_id_str = str(job_id)
+        job_id_str = job_id
         app_annotation_job_key = f"{action}_app_annotation_job_{job_id_str}"
         cache_result = redis_client.get(app_annotation_job_key)
         if cache_result is None:
