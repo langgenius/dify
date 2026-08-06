@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import dynamic from '@/next/dynamic'
 import { consoleQuery } from '@/service/client'
 import { downloadBlob } from '@/utils/download'
 import { fetchSkillFileBlob } from '../client'
@@ -80,6 +81,11 @@ import {
   updateMarkdownMetadata,
 } from './shared'
 import { SkillPublishConfirmPanel } from './skill-metadata'
+
+const SkillPdfPreview = dynamic(
+  () => import('./skill-pdf-preview').then((module) => module.SkillPdfPreview),
+  { ssr: false },
+)
 
 export function FileEditor({
   detail,
@@ -152,6 +158,7 @@ export function FileEditor({
   const [referenceSelectedIndex, setReferenceSelectedIndex] = useState(0)
   const [saveStatus, setSaveStatus] = useState<'dirty' | 'error' | 'saved' | 'saving'>('saved')
   const [hasSaveConflict, setHasSaveConflict] = useState(false)
+  const [fileObjectUrl, setFileObjectUrl] = useState<string>()
   const [savedAt, setSavedAt] = useState<number | undefined>(initialSavedAt)
   const [externalContentRevision, setExternalContentRevision] = useState(0)
   const draftContentRef = useRef(initialContent)
@@ -286,10 +293,6 @@ export function FileEditor({
     },
     enabled: canPreviewBinaryFile,
   })
-  const fileObjectUrl = useMemo(
-    () => (binaryPreviewQuery.data ? URL.createObjectURL(binaryPreviewQuery.data) : undefined),
-    [binaryPreviewQuery.data],
-  )
   const downloadMutation = useMutation({
     mutationFn: () => {
       if (!filePath) throw new Error('file path is required')
@@ -524,10 +527,16 @@ export function FileEditor({
   }, [])
 
   useEffect(() => {
-    return () => {
-      if (fileObjectUrl) URL.revokeObjectURL(fileObjectUrl)
+    if (!binaryPreviewQuery.data) {
+      setFileObjectUrl(undefined)
+      return
     }
-  }, [fileObjectUrl])
+
+    const objectUrl = URL.createObjectURL(binaryPreviewQuery.data)
+    setFileObjectUrl(objectUrl)
+
+    return () => URL.revokeObjectURL(objectUrl)
+  }, [binaryPreviewQuery.data])
 
   useEffect(() => {
     if (referencePicker?.query == null) return
@@ -1254,7 +1263,7 @@ export function FileEditor({
             )}
           </div>
         ) : codeLanguage ? (
-          <div className="h-full overflow-hidden rounded-xl border border-divider-regular bg-background-default">
+          <div className="h-full overflow-hidden bg-background-default">
             <CodeEditor
               key={editorRenderKey}
               language={codeLanguage}
@@ -1277,7 +1286,7 @@ export function FileEditor({
               value={editableDraftContent}
               spellCheck={false}
               className={cn(
-                'h-full w-full resize-none rounded-xl border border-divider-regular bg-background-default p-4 font-mono text-[13px]/[20px] text-text-secondary outline-hidden read-only:bg-background-section',
+                'h-full w-full resize-none bg-background-default p-4 font-mono text-[13px]/[20px] text-text-secondary outline-hidden read-only:bg-background-section',
               )}
               onChange={handleContentChange}
               onKeyDown={(event) => handleTextEditorKeyDown(event)}
@@ -1307,41 +1316,43 @@ export function FileEditor({
             )}
           </div>
         ) : canPreviewBinaryFile && binaryPreviewQuery.isPending ? (
-          <div className="flex h-full items-center justify-center rounded-lg border border-divider-regular bg-background-default">
-            <SkeletonRectangle className="h-full w-full rounded-lg" />
+          <div className="flex h-full items-center justify-center bg-background-default">
+            <SkeletonRectangle className="h-full w-full" />
           </div>
         ) : canPreviewBinaryFile && binaryPreviewQuery.isError ? (
-          <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-divider-regular bg-background-default">
+          <div className="flex h-full items-center justify-center bg-background-default">
             <p className="system-sm-regular text-text-tertiary">
               {t(($) => $['skillManagement.detail.loadFailed'])}
             </p>
           </div>
         ) : isSkillImageFile(file) && fileObjectUrl ? (
-          <div className="flex h-full items-center justify-center overflow-hidden rounded-xl border border-divider-regular bg-background-section p-4">
+          <div className="flex h-full items-center justify-center overflow-hidden bg-background-default pt-1 pr-4 pb-2 pl-4">
             <img
               src={fileObjectUrl}
               alt={file.path}
-              className="max-h-full max-w-full rounded-lg object-contain"
+              className="max-h-full max-w-full object-contain"
             />
           </div>
         ) : isSkillPdfFile(file) && fileObjectUrl ? (
-          <iframe
-            src={fileObjectUrl}
-            title={file.path}
-            className="h-full w-full rounded-xl border border-divider-regular bg-background-default"
-          />
+          <div className="h-full overflow-hidden bg-background-default pt-1 pl-3">
+            <SkillPdfPreview fileName={file.path} url={fileObjectUrl} />
+          </div>
         ) : (
-          <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-divider-regular bg-background-default">
-            <div className="flex flex-col items-center gap-2 text-center">
-              <span aria-hidden className={cn('size-8', getSkillFileIconClass(file))} />
-              <p className="system-sm-regular text-text-tertiary">
-                {t(($) => $['skillManagement.detail.previewUnsupported'])}
+          <div className="flex h-full items-center justify-center bg-background-default">
+            <div className="flex w-64 flex-col items-center text-center">
+              <span aria-hidden className={cn('size-16', getSkillFileIconClass(file))} />
+              <p className="mt-1 max-w-full truncate system-sm-medium text-text-secondary">
+                {getPathBaseName(file.path)}
               </p>
-              <p className="system-xs-regular text-text-quaternary">
+              <p className="mt-1 system-xs-regular text-text-tertiary">
                 {t(($) => $['skillManagement.detail.fileMeta'], {
                   size: file.size ?? 0,
                   type: file.mime_type ?? file.kind,
                 })}
+              </p>
+              <div className="mt-3 h-px w-full bg-divider-subtle" />
+              <p className="mt-3 system-xs-regular text-text-tertiary">
+                {t(($) => $['skillManagement.detail.previewUnsupported'])}
               </p>
               <Button
                 variant="secondary"

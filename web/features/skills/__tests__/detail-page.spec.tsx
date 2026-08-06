@@ -10,6 +10,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
+import { StrictMode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SkillDetailPage from '../detail-page'
 
@@ -429,7 +430,7 @@ function createAgentReference(
   }
 }
 
-function renderSkillDetailPage() {
+function renderSkillDetailPage({ strict = false }: { strict?: boolean } = {}) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
@@ -440,7 +441,13 @@ function renderSkillDetailPage() {
   return {
     ...render(
       <QueryClientProvider client={queryClient}>
-        <SkillDetailPage />
+        {strict ? (
+          <StrictMode>
+            <SkillDetailPage />
+          </StrictMode>
+        ) : (
+          <SkillDetailPage />
+        )}
       </QueryClientProvider>,
     ),
     queryClient,
@@ -1123,6 +1130,18 @@ describe('SkillDetailPage', () => {
     await user.click(getFileTreeButton('references/guide.md'))
 
     expect(await screen.findByText('# Loaded guide')).toBeInTheDocument()
+    await user.click(
+      screen.getByRole('textbox', {
+        name: 'skill.skillManagement.detail.referenceFiles.livePlaceholder',
+      }),
+    )
+    await waitFor(() => {
+      const editor = screen.getByRole('textbox', {
+        name: 'skill.skillManagement.detail.referenceFiles.livePlaceholder',
+      })
+      expect(editor).toHaveAttribute('contenteditable', 'true')
+      expect(editor).toHaveTextContent('# Loaded guide')
+    })
     expect(mocks.fetchSkillFileBlob).toHaveBeenCalledWith({
       path: 'references/guide.md',
       skillId: 'skill-1',
@@ -1368,6 +1387,11 @@ describe('SkillDetailPage', () => {
   it('renders image tool files after loading their preview blob', async () => {
     const user = userEvent.setup()
     const imageBlob = new Blob(['image'], { type: 'image/png' })
+    let previewUrlIndex = 0
+    const createObjectURL = vi
+      .spyOn(URL, 'createObjectURL')
+      .mockImplementation(() => `blob:image-preview-${++previewUrlIndex}`)
+    const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL')
     mocks.fetchSkillFileBlob.mockResolvedValue(imageBlob)
     mocks.skillDetail = createSkillDetail({
       files: [
@@ -1386,18 +1410,26 @@ describe('SkillDetailPage', () => {
       ],
     })
 
-    renderSkillDetailPage()
+    const { unmount } = renderSkillDetailPage({ strict: true })
 
     await screen.findByText('skill.skillManagement.detail.builder.title')
     await user.click(getFileTreeButton('assets/logo.png'))
 
     const preview = await screen.findByAltText('assets/logo.png')
+    const activePreviewUrl = createObjectURL.mock.results.at(-1)?.value
     expect(preview).toBeInTheDocument()
+    expect(preview).toHaveAttribute('src', activePreviewUrl)
+    expect(revokeObjectURL).not.toHaveBeenCalledWith(activePreviewUrl)
     expect(mocks.fetchSkillFileBlob).toHaveBeenCalledWith({
       path: 'assets/logo.png',
       skillId: 'skill-1',
       versionId: null,
     })
+
+    unmount()
+    expect(revokeObjectURL).toHaveBeenCalledWith(activePreviewUrl)
+    createObjectURL.mockRestore()
+    revokeObjectURL.mockRestore()
   })
 
   it('shows an image preview error when the tool file blob cannot be loaded', async () => {
