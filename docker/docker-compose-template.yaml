@@ -718,8 +718,6 @@ services:
     environment:
       HTTP_PORT: ${SSRF_HTTP_PORT:-3128}
       COREDUMP_DIR: ${SSRF_COREDUMP_DIR:-/var/spool/squid}
-      SSRF_AGENT_BACKEND_HOST: ${SSRF_AGENT_BACKEND_HOST:-agent_backend}
-      SSRF_API_HOST: ${SSRF_API_HOST:-api}
     networks:
       # Needs to reach api and agent_backend as forward-proxy destinations.
       - default
