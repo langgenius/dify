@@ -2,9 +2,8 @@
 
 import type { Dayjs } from 'dayjs'
 import type { FC } from 'react'
-import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
-import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
+import DateRangePicker from '@/app/components/base/date-and-time-picker/date-range-picker'
 import { toDayjs as parseDayjs } from '@/app/components/base/date-and-time-picker/utils/dayjs'
 import { parseToolDateRangeValue, stringifyToolDateRangeValue } from './tool-date-range-value'
 
@@ -21,20 +20,11 @@ type Props = {
   readOnly?: boolean
   timezone: string
   inPanel?: boolean
-  popupZIndexClassname?: string
 }
 
-const ToolDateRangePicker: FC<Props> = ({
-  value,
-  onChange,
-  readOnly = false,
-  timezone,
-  inPanel,
-  popupZIndexClassname,
-}) => {
+const ToolDateRangePicker: FC<Props> = ({ value, onChange, readOnly = false, timezone }) => {
   const { t } = useTranslation()
   const parsed = parseToolDateRangeValue(value)
-  const z = popupZIndexClassname ?? (inPanel ? 'z-[1000]' : 'z-[11]')
 
   const patch = (partial: Partial<{ start?: string; end?: string }>) => {
     const next = { ...parsed, ...partial }
@@ -44,51 +34,20 @@ const ToolDateRangePicker: FC<Props> = ({
   }
 
   return (
-    <div
-      className={cn(
-        'flex min-w-0 flex-1 flex-row flex-nowrap items-center gap-x-2 gap-y-1 overflow-x-auto pb-0.5',
-        readOnly && 'pointer-events-none opacity-60',
-      )}
-    >
-      <span className="shrink-0 system-xs-regular text-text-quaternary">
-        {t('nodes.tool.dateRange.start', { ns: 'workflow' })}
-      </span>
-      <div className="shrink-0">
-        <DatePicker
-          timezone={timezone}
-          needTimePicker={false}
-          noConfirm
-          value={toDayjs(parsed.start, timezone)}
-          onChange={(d) => {
-            patch({ start: d ? d.format(DATE_FMT) : undefined })
-          }}
-          onClear={() => patch({ start: undefined })}
-          placeholder={t('nodes.tool.dateRange.startPlaceholder', { ns: 'workflow' })}
-          triggerWrapClassName="w-full max-w-full"
-          popupZIndexClassname={z}
-        />
-      </div>
-      <span className="shrink-0 px-0.5 system-xs-regular text-text-quaternary" aria-hidden="true">
-        —
-      </span>
-      <span className="shrink-0 system-xs-regular text-text-quaternary">
-        {t('nodes.tool.dateRange.end', { ns: 'workflow' })}
-      </span>
-      <div className="shrink-0">
-        <DatePicker
-          timezone={timezone}
-          needTimePicker={false}
-          noConfirm
-          value={toDayjs(parsed.end, timezone)}
-          onChange={(d) => {
-            patch({ end: d ? d.format(DATE_FMT) : undefined })
-          }}
-          onClear={() => patch({ end: undefined })}
-          placeholder={t('nodes.tool.dateRange.endPlaceholder', { ns: 'workflow' })}
-          triggerWrapClassName="w-full max-w-full"
-          popupZIndexClassname={z}
-        />
-      </div>
+    <div className="min-w-0">
+      <DateRangePicker
+        className="max-w-full"
+        start={toDayjs(parsed.start, timezone)}
+        end={toDayjs(parsed.end, timezone)}
+        timezone={timezone}
+        displayFormat={t(($) => $['dateFormats.display'], { ns: 'time' })}
+        startPlaceholder={t(($) => $['nodes.tool.dateRange.startPlaceholder'], { ns: 'workflow' })}
+        endPlaceholder={t(($) => $['nodes.tool.dateRange.endPlaceholder'], { ns: 'workflow' })}
+        onStartChange={(date) => patch({ start: date?.format(DATE_FMT) })}
+        onEndChange={(date) => patch({ end: date?.format(DATE_FMT) })}
+        clearable
+        disabled={readOnly}
+      />
     </div>
   )
 }

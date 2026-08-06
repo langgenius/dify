@@ -49,12 +49,22 @@ describe('reasoning-config-form helpers', () => {
   })
 
   it('creates date field variable filters when schema declares date', () => {
-    const dateFilter = createFilterVar(FormTypeEnum.textInput, { _type: 'date' } as never)
+    const dateFilter = createPickerProps({
+      type: FormTypeEnum.textInput,
+      value: {},
+      language: 'en_US',
+      schema: { _type: 'date' } as never,
+    }).filterVar
     expect(dateFilter?.({ type: VarType.string } as never)).toBe(true)
     expect(dateFilter?.({ type: VarType.number } as never)).toBe(true)
     expect(dateFilter?.({ type: VarType.file } as never)).toBe(false)
     expect(
-      createFilterVar(FormTypeEnum.datePicker, { type: FormTypeEnum.datePicker } as never),
+      createPickerProps({
+        type: FormTypeEnum.datePicker,
+        value: {},
+        language: 'en_US',
+        schema: { type: FormTypeEnum.datePicker } as never,
+      }).filterVar,
     ).toBeUndefined()
   })
 
