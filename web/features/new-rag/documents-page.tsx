@@ -2,7 +2,7 @@
 
 import type { DocumentAction } from './document-actions-dropdown'
 import type { DocumentProcessingTask } from './document-models'
-import type { KnowledgeFsUploadProgress } from './knowledge-fs-upload'
+import type { KnowledgeFsUploadPhase, KnowledgeFsUploadProgress } from './knowledge-fs-upload'
 import type {
   ProcessingTaskEvent,
   ProcessingTaskProgressEvent,
@@ -302,6 +302,9 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   if (!taskProgressStoreRef.current) taskProgressStoreRef.current = createTaskProgressStore()
   const taskProgressStore = taskProgressStoreRef.current
   const [uploading, setUploading] = useState(false)
+  const [stagedUploadProgress, setStagedUploadProgress] = useState<
+    ReadonlyMap<File, KnowledgeFsUploadPhase>
+  >(() => new Map())
   const [reindexing, setReindexing] = useState(false)
   const [pendingDocumentAction, setPendingDocumentAction] = useState<
     { action: DocumentAction; documentId: string } | undefined
@@ -392,12 +395,14 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       writePermissionFocusOriginRef.current = document.activeElement as HTMLElement | null
       fileDragDepthRef.current = 0
       setIsFileDragActive(false)
+      setStagedUploadProgress(new Map())
       setUploadFormInitialFiles(files)
       void setUploadRequest('1')
     },
     [setUploadRequest],
   )
   const closeUploadForm = useCallback(() => {
+    setStagedUploadProgress(new Map())
     setUploadFormInitialFiles([])
     void setUploadRequest(null)
   }, [setUploadRequest])
@@ -1542,7 +1547,18 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           uploadRequestIdsRef.current.set(fingerprint, id)
           return { file, id }
         })
-        await uploadKnowledgeFsDocuments(knowledgeSpaceId, uploads, uploadProgressRef.current)
+        await uploadKnowledgeFsDocuments(
+          knowledgeSpaceId,
+          uploads,
+          uploadProgressRef.current,
+          (file, phase) => {
+            setStagedUploadProgress((current) => {
+              const next = new Map(current)
+              next.set(file, phase)
+              return next
+            })
+          },
+        )
         uploadProgressRef.current.clear()
         uploadRequestIdsRef.current.clear()
         acceptedCount = uploadableFiles.length
@@ -1580,6 +1596,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         }
         uploadPendingRef.current = false
         setUploading(false)
+        setStagedUploadProgress(new Map())
       }
     },
     [
@@ -2164,7 +2181,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       <section
         ref={documentsSectionRef}
         className={cn(
-          'relative flex min-h-full w-full flex-col px-4 pt-6 sm:px-8',
+          'relative flex min-h-full w-full flex-col gap-4 px-4 pt-6 sm:px-8',
           bulkActionsVisible ? 'pb-[calc(7rem+env(safe-area-inset-bottom,0px))]' : 'pb-6',
         )}
         onDragEnter={(event) => {
@@ -2437,6 +2454,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         ) : uploadFormOpen ? (
           <DocumentUploadForm
             initialFiles={uploadFormInitialFiles}
+            uploadProgress={stagedUploadProgress}
             uploading={uploading}
             onCancel={closeUploadForm}
             onSubmit={async (files) => {

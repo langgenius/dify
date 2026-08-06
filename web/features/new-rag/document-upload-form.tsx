@@ -1,5 +1,6 @@
 'use client'
 
+import type { KnowledgeFsUploadPhase } from './knowledge-fs-upload'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useMemo, useRef, useState } from 'react'
@@ -28,11 +29,13 @@ export function DocumentUploadForm({
   initialFiles = [],
   onCancel,
   onSubmit,
+  uploadProgress = new Map(),
   uploading,
 }: {
   initialFiles?: File[]
   onCancel: () => void
   onSubmit: (files: File[]) => Promise<boolean>
+  uploadProgress?: ReadonlyMap<File, KnowledgeFsUploadPhase>
   uploading: boolean
 }) {
   const { t } = useTranslation('dataset')
@@ -60,7 +63,7 @@ export function DocumentUploadForm({
   return (
     <form
       aria-labelledby="new-knowledge-documents-title"
-      className="mt-4 flex w-full max-w-160 flex-1 flex-col"
+      className="flex w-full max-w-160 flex-1 flex-col"
       onSubmit={(event) => {
         event.preventDefault()
         if (!validFiles.length || uploading) return
@@ -81,7 +84,7 @@ export function DocumentUploadForm({
         }}
       />
       <button
-        className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border-[1.5px] border-dashed border-divider-regular bg-background-section px-6 py-9 text-center outline-hidden transition-colors hover:border-state-accent-solid hover:bg-state-accent-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
+        className="flex h-41 w-full flex-col items-center justify-center gap-2 rounded-xl border-[1.5px] border-dashed border-divider-deep bg-background-section px-6 text-center outline-hidden transition-colors hover:border-state-accent-solid hover:bg-state-accent-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
         disabled={uploading}
         type="button"
         onClick={() => inputRef.current?.click()}
@@ -94,13 +97,13 @@ export function DocumentUploadForm({
           if (!uploading) addFiles([...event.dataTransfer.files])
         }}
       >
-        <span className="flex size-11 items-center justify-center rounded-[10px] bg-background-default-subtle">
+        <span className="flex size-11 items-center justify-center rounded-[10px] bg-components-icon-bg-midnight-soft">
           <span aria-hidden className="i-ri-file-text-fill size-5.5 text-text-accent" />
         </span>
-        <span className="system-md-medium text-text-primary">
+        <span className="text-[14px] leading-[17px] font-medium text-text-primary">
           {t(($) => $['newKnowledge.uploadDropZoneTitle'])}
         </span>
-        <span className="system-xs-regular text-text-quaternary">
+        <span className="text-[12px] leading-[15px] font-normal text-text-placeholder">
           {t(($) => $['newKnowledge.documentUploadFormats'])}
         </span>
       </button>
@@ -118,11 +121,14 @@ export function DocumentUploadForm({
               const issue = documentUploadIssue(file)
               const extension = documentUploadFileExtension(file.name).toLocaleUpperCase()
               const previewAvailable = !issue && canPreviewLocalFile(file)
+              const uploadPhase = uploadProgress.get(file)
+              const fileUploading = uploadPhase === 'pending'
               return (
                 <li
                   key={`${file.name}:${file.size}:${file.lastModified}`}
+                  aria-busy={fileUploading || undefined}
                   className={cn(
-                    'flex min-h-12 items-center overflow-hidden rounded-lg border-[0.5px] shadow-xs',
+                    'group flex h-12 items-center overflow-hidden rounded-lg border-[0.5px] shadow-xs',
                     issue
                       ? 'border-state-destructive-border bg-state-destructive-hover'
                       : 'border-components-panel-border bg-components-panel-on-panel-item-bg',
@@ -137,27 +143,54 @@ export function DocumentUploadForm({
                     </span>
                     <span className="mt-0.5 flex min-h-3 items-center gap-1 system-2xs-medium text-text-tertiary">
                       {extension || 'FILE'} · {fileSize(file.size)}
-                      {issue && (
+                      {(issue || fileUploading) && (
                         <>
                           <span aria-hidden className="text-text-quaternary">
                             ·
                           </span>
-                          <span className="truncate text-text-destructive">
-                            {t(($) => $[`newKnowledge.documentUploadExclusion.${issue}`])}
+                          <span
+                            className={cn(
+                              'truncate',
+                              issue ? 'text-text-destructive' : 'text-text-tertiary',
+                            )}
+                          >
+                            {issue
+                              ? t(($) => $[`newKnowledge.documentUploadExclusion.${issue}`])
+                              : t(($) => $['newKnowledge.uploadingFiles'])}
                           </span>
                         </>
                       )}
                     </span>
                   </span>
                   <span className="flex shrink-0 items-center gap-1 py-2 pr-3">
-                    {previewAvailable && (
-                      <Button size="small" type="button" onClick={() => openLocalFilePreview(file)}>
+                    {fileUploading ? (
+                      <span className="flex size-6 items-center justify-center">
+                        <span
+                          aria-hidden
+                          className="i-ri-loader-2-line size-4 animate-spin text-text-accent motion-reduce:animate-none"
+                        />
+                      </span>
+                    ) : previewAvailable ? (
+                      <Button
+                        className="opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 motion-reduce:transition-none"
+                        size="small"
+                        type="button"
+                        onClick={() => openLocalFilePreview(file)}
+                      >
                         {t(($) => $['newKnowledge.preview'])}
                       </Button>
+                    ) : null}
+                    {issue && (
+                      <span className="flex size-6 items-center justify-center">
+                        <span
+                          aria-hidden
+                          className="i-ri-error-warning-fill size-4 text-text-destructive"
+                        />
+                      </span>
                     )}
                     <button
                       aria-label={`${tCommon(($) => $['operation.remove'])} · ${file.name}`}
-                      className="flex size-7 shrink-0 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                      className="flex size-6 shrink-0 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                       disabled={uploading}
                       type="button"
                       onClick={() =>

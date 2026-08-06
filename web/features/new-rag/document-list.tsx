@@ -256,14 +256,14 @@ export function DocumentsEmpty({
   const { t } = useTranslation('dataset')
 
   return (
-    <div className="flex min-h-96 flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
+    <div className="flex min-h-96 flex-1 flex-col items-center justify-center gap-4 overflow-clip p-6 text-center">
       <span className="flex size-12 items-center justify-center rounded-xl bg-background-section text-text-accent">
         <span aria-hidden className="i-ri-file-text-fill size-6" />
       </span>
-      <h2 className="text-base leading-normal font-semibold text-text-primary">
+      <h2 className="text-base leading-[normal] font-semibold text-text-primary">
         {t(($) => $['newKnowledge.documentsEmptyTitle'])}
       </h2>
-      <p className="max-w-115 text-[13px] leading-normal font-normal text-text-tertiary">
+      <p className="w-115 max-w-full text-[13px] leading-4 font-normal text-text-tertiary">
         {t(($) => $['newKnowledge.documentsEmptyDescription'])}
       </p>
       <Button

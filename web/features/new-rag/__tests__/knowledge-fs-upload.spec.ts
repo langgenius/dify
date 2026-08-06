@@ -30,6 +30,7 @@ describe('uploadKnowledgeFsDocuments', () => {
 
   it('uploads every file through the generated Dify API contract', async () => {
     const directRequest = vi.spyOn(globalThis, 'fetch')
+    const onProgress = vi.fn()
     const files = [
       new File(['one'], 'one.md', { type: 'text/markdown' }),
       new File(['two'], 'two.txt', { type: 'text/plain' }),
@@ -38,6 +39,8 @@ describe('uploadKnowledgeFsDocuments', () => {
     await uploadKnowledgeFsDocuments(
       'control-space-1',
       files.map((file, index) => ({ file, id: `upload-${index}` })),
+      new Map(),
+      onProgress,
     )
 
     expect(serviceMock.uploadDocument.mock.calls).toEqual([
@@ -53,6 +56,12 @@ describe('uploadKnowledgeFsDocuments', () => {
           params: { control_space_id: 'control-space-1' },
         },
       ],
+    ])
+    expect(onProgress.mock.calls).toEqual([
+      [files[0], 'pending'],
+      [files[0], 'completed'],
+      [files[1], 'pending'],
+      [files[1], 'completed'],
     ])
     expect(directRequest).not.toHaveBeenCalled()
   })
