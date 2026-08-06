@@ -29,12 +29,15 @@ from controllers.console.datasets.datasets import (
     DatasetRetrievalSettingApi,
     DatasetRetrievalSettingMockApi,
     DatasetUseCheckApi,
+    _get_retrieval_methods_by_vector_type,
 )
 from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError
 from core.entities.knowledge_entities import IndexingEstimate
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.provider_manager import ProviderManager
+from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.storage.storage_type import StorageType
 from models.account import Account, TenantAccountRole
 from models.dataset import Dataset, DatasetQuery, Document
@@ -1272,18 +1275,20 @@ class TestDatasetApiKeyApi:
     def test_get_api_keys_success(self, app: Flask):
         api = DatasetApiKeyApi()
         method = unwrap(api.get)
-        mock_key_1 = MagicMock(spec=ApiToken)
-        mock_key_1.id = "key-1"
-        mock_key_1.type = "dataset"
-        mock_key_1.token = "ds-abc"
-        mock_key_1.last_used_at = None
-        mock_key_1.created_at = None
-        mock_key_2 = MagicMock(spec=ApiToken)
-        mock_key_2.id = "key-2"
-        mock_key_2.type = "dataset"
-        mock_key_2.token = "ds-def"
-        mock_key_2.last_used_at = None
-        mock_key_2.created_at = None
+        mock_key_1 = ApiToken(
+            id="key-1",
+            type="dataset",
+            token="ds-abc",
+            last_used_at=None,
+            created_at=None,
+        )
+        mock_key_2 = ApiToken(
+            id="key-2",
+            type="dataset",
+            token="ds-def",
+            last_used_at=None,
+            created_at=None,
+        )
         session = MagicMock()
         session.scalars.return_value.all.return_value = [mock_key_1, mock_key_2]
         with app.test_request_context("/"):
@@ -1424,6 +1429,28 @@ class TestDatasetRetrievalSettingApi:
         ):
             response = method(api)
         assert "retrieval_method" in response
+
+    def test_tidb_vector_returns_semantic_only_when_fulltext_disabled(self):
+        with patch(
+            "controllers.console.datasets.datasets.dify_config.TIDB_VECTOR_ENABLE_FULLTEXT_SEARCH",
+            False,
+        ):
+            response = _get_retrieval_methods_by_vector_type(VectorType.TIDB_VECTOR)
+
+        assert response["retrieval_method"] == [RetrievalMethod.SEMANTIC_SEARCH.value]
+
+    def test_tidb_vector_returns_full_methods_when_fulltext_enabled(self):
+        with patch(
+            "controllers.console.datasets.datasets.dify_config.TIDB_VECTOR_ENABLE_FULLTEXT_SEARCH",
+            True,
+        ):
+            response = _get_retrieval_methods_by_vector_type(VectorType.TIDB_VECTOR)
+
+        assert response["retrieval_method"] == [
+            RetrievalMethod.SEMANTIC_SEARCH.value,
+            RetrievalMethod.FULL_TEXT_SEARCH.value,
+            RetrievalMethod.HYBRID_SEARCH.value,
+        ]
 
 
 class TestDatasetRetrievalSettingMockApi:

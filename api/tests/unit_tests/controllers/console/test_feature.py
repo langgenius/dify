@@ -10,6 +10,7 @@ from services.feature_service import (
     LicenseStatus,
     LimitationModel,
     SystemFeatureModel,
+    VectorSpaceLimitationModel,
 )
 
 
@@ -40,7 +41,7 @@ class TestFeatureVectorSpaceApi:
         from controllers.console.feature import FeatureVectorSpaceApi
 
         get_vector_space = mocker.patch("controllers.console.feature.FeatureService.get_vector_space")
-        get_vector_space.return_value = LimitationModel(size=5120, limit=20480)
+        get_vector_space.return_value = VectorSpaceLimitationModel(size=5120, limit=20480)
 
         api = FeatureVectorSpaceApi()
 
@@ -49,6 +50,24 @@ class TestFeatureVectorSpaceApi:
 
         assert result == {"size": 5120, "limit": 20480}
         get_vector_space.assert_called_once_with("tenant_123")
+
+    def test_get_vector_space_preserves_unknown_usage(self, mocker: MockerFixture):
+        from controllers.console.feature import FeatureVectorSpaceApi
+
+        get_vector_space = mocker.patch("controllers.console.feature.FeatureService.get_vector_space")
+        get_vector_space.return_value = VectorSpaceLimitationModel(size=0, limit=50, usage_unknown=True)
+
+        result = unwrap(FeatureVectorSpaceApi.get)(FeatureVectorSpaceApi(), "tenant_123")
+
+        assert result == {"size": 0, "limit": 50, "usage_unknown": True}
+        get_vector_space.assert_called_once_with("tenant_123")
+
+    def test_vector_space_response_schema_marks_usage_unknown_optional(self):
+        schema = VectorSpaceLimitationModel.model_json_schema(mode="serialization")
+
+        assert schema["required"] == ["size", "limit"]
+        assert schema["properties"]["usage_unknown"]["type"] == "boolean"
+        assert "usage_unknown" not in schema["required"]
 
 
 class TestTrialModelsApi:
@@ -105,6 +124,8 @@ class TestSystemFeatureApi:
         assert result["is_allow_register"] is True
         assert result["enable_learn_app"] is True
         assert result["license"] == {"status": LicenseStatus.NONE}
+        assert result["sso_enforced_for_signin_protocol"] is None
+        assert result["webapp_auth"]["sso_config"]["protocol"] is None
         get_system_features.assert_called_once_with()
 
 
