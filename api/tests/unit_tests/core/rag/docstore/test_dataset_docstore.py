@@ -13,6 +13,32 @@ from core.rag.docstore.dataset_docstore import DatasetDocumentStore, DocumentSeg
 from core.rag.models.document import AttachmentDocument, Document
 from models.dataset import Dataset
 
+TENANT_ID = "00000000-0000-0000-0000-000000000001"
+DATASET_ID = "00000000-0000-0000-0000-000000000002"
+DOCUMENT_ID = "00000000-0000-0000-0000-000000000003"
+USER_ID = "00000000-0000-0000-0000-000000000004"
+
+
+def _segment(
+    *,
+    index_node_id: str = "doc-1",
+    index_node_hash: str = "hash-1",
+    content: str = "Test content",
+    tokens: int = 5,
+) -> DocumentSegment:
+    return DocumentSegment(
+        tenant_id=TENANT_ID,
+        dataset_id=DATASET_ID,
+        document_id=DOCUMENT_ID,
+        position=1,
+        content=content,
+        word_count=len(content),
+        tokens=tokens,
+        created_by=USER_ID,
+        index_node_id=index_node_id,
+        index_node_hash=index_node_hash,
+    )
+
 
 class TestDatasetDocumentStoreInit:
     """Tests for DatasetDocumentStore initialization."""
@@ -20,8 +46,9 @@ class TestDatasetDocumentStoreInit:
     def test_init_with_all_parameters(self):
         """Test initialization with dataset, user_id, and document_id."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
+        mock_dataset = Dataset(
+            id="test-dataset-id",
+        )
 
         store = DatasetDocumentStore(
             dataset=mock_dataset,
@@ -38,8 +65,9 @@ class TestDatasetDocumentStoreInit:
     def test_init_without_document_id(self):
         """Test initialization without document_id."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
+        mock_dataset = Dataset(
+            id="test-dataset-id",
+        )
 
         store = DatasetDocumentStore(
             dataset=mock_dataset,
@@ -56,8 +84,9 @@ class TestDatasetDocumentStoreSerialization:
     def test_to_dict(self):
         """Test serialization to dictionary."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
+        mock_dataset = Dataset(
+            id="test-dataset-id",
+        )
 
         store = DatasetDocumentStore(
             dataset=mock_dataset,
@@ -90,15 +119,11 @@ class TestDatasetDocumentStoreDocs:
     def test_docs_returns_document_dict(self):
         """Test that docs property returns a dictionary of documents."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
+        mock_dataset = Dataset(
+            id="test-dataset-id",
+        )
 
-        mock_segment = MagicMock(spec=DocumentSegment)
-        mock_segment.index_node_id = "node-1"
-        mock_segment.index_node_hash = "hash-1"
-        mock_segment.document_id = "doc-1"
-        mock_segment.dataset_id = "test-dataset-id"
-        mock_segment.content = "Test content"
+        mock_segment = _segment(index_node_id="node-1")
 
         mock_session = MagicMock()
         mock_session.scalars.return_value.all.return_value = [mock_segment]
@@ -116,8 +141,9 @@ class TestDatasetDocumentStoreDocs:
     def test_docs_empty_dataset(self):
         """Test docs property with no segments."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
+        mock_dataset = Dataset(
+            id="test-dataset-id",
+        )
 
         mock_session = MagicMock()
         mock_session.scalars.return_value.all.return_value = []
@@ -362,8 +388,9 @@ class TestDatasetDocumentStoreExists:
     def test_document_exists_returns_true(self):
         """Test document_exists returns True when segment exists."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
+        mock_dataset = Dataset(
+            id="test-dataset-id",
+        )
 
         mock_segment = MagicMock()
         mock_session = MagicMock()
@@ -381,8 +408,9 @@ class TestDatasetDocumentStoreExists:
     def test_document_exists_returns_false(self):
         """Test document_exists returns False when segment doesn't exist."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
+        mock_dataset = Dataset(
+            id="test-dataset-id",
+        )
         mock_session = MagicMock()
 
         with patch.object(DatasetDocumentStore, "get_document_segment", return_value=None):
@@ -402,15 +430,11 @@ class TestDatasetDocumentStoreGetDocument:
     def test_get_document_success(self):
         """Test getting a document successfully."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
+        mock_dataset = Dataset(
+            id="test-dataset-id",
+        )
 
-        mock_segment = MagicMock(spec=DocumentSegment)
-        mock_segment.index_node_id = "node-1"
-        mock_segment.index_node_hash = "hash-1"
-        mock_segment.document_id = "doc-1"
-        mock_segment.dataset_id = "test-dataset-id"
-        mock_segment.content = "Test content"
+        mock_segment = _segment(index_node_id="node-1")
         mock_session = MagicMock()
 
         with patch.object(DatasetDocumentStore, "get_document_segment", return_value=mock_segment):
@@ -427,8 +451,9 @@ class TestDatasetDocumentStoreGetDocument:
     def test_get_document_returns_none_when_not_found(self):
         """Test get_document returns None when not found and raise_error=False."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
+        mock_dataset = Dataset(
+            id="test-dataset-id",
+        )
         mock_session = MagicMock()
 
         with patch.object(DatasetDocumentStore, "get_document_segment", return_value=None):
@@ -444,8 +469,9 @@ class TestDatasetDocumentStoreGetDocument:
     def test_get_document_raises_when_not_found(self):
         """Test get_document raises ValueError when not found and raise_error=True."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
+        mock_dataset = Dataset(
+            id="test-dataset-id",
+        )
         mock_session = MagicMock()
 
         with patch.object(DatasetDocumentStore, "get_document_segment", return_value=None):
@@ -464,8 +490,9 @@ class TestDatasetDocumentStoreDeleteDocument:
     def test_delete_document_success(self):
         """Test deleting a document successfully."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
+        mock_dataset = Dataset(
+            id="test-dataset-id",
+        )
 
         mock_segment = MagicMock()
         mock_session = MagicMock()
@@ -484,8 +511,9 @@ class TestDatasetDocumentStoreDeleteDocument:
     def test_delete_document_returns_none_when_not_found(self):
         """Test delete_document returns None when not found and raise_error=False."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
+        mock_dataset = Dataset(
+            id="test-dataset-id",
+        )
         mock_session = MagicMock()
 
         with patch.object(DatasetDocumentStore, "get_document_segment", return_value=None):
@@ -501,8 +529,9 @@ class TestDatasetDocumentStoreDeleteDocument:
     def test_delete_document_raises_when_not_found(self):
         """Test delete_document raises ValueError when not found and raise_error=True."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
+        mock_dataset = Dataset(
+            id="test-dataset-id",
+        )
         mock_session = MagicMock()
 
         with patch.object(DatasetDocumentStore, "get_document_segment", return_value=None):
@@ -521,8 +550,9 @@ class TestDatasetDocumentStoreHashOperations:
     def test_set_document_hash_success(self):
         """Test setting document hash successfully."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
+        mock_dataset = Dataset(
+            id="test-dataset-id",
+        )
 
         mock_segment = MagicMock()
         mock_segment.index_node_hash = "old-hash"
@@ -542,8 +572,9 @@ class TestDatasetDocumentStoreHashOperations:
     def test_set_document_hash_returns_none_when_not_found(self):
         """Test set_document_hash returns None when segment not found."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
+        mock_dataset = Dataset(
+            id="test-dataset-id",
+        )
         mock_session = MagicMock()
 
         with patch.object(DatasetDocumentStore, "get_document_segment", return_value=None):
@@ -559,8 +590,9 @@ class TestDatasetDocumentStoreHashOperations:
     def test_get_document_hash_success(self):
         """Test getting document hash successfully."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
+        mock_dataset = Dataset(
+            id="test-dataset-id",
+        )
 
         mock_segment = MagicMock()
         mock_segment.index_node_hash = "test-hash"
@@ -579,8 +611,9 @@ class TestDatasetDocumentStoreHashOperations:
     def test_get_document_hash_returns_none_when_not_found(self):
         """Test get_document_hash returns None when segment not found."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
+        mock_dataset = Dataset(
+            id="test-dataset-id",
+        )
         mock_session = MagicMock()
 
         with patch.object(DatasetDocumentStore, "get_document_segment", return_value=None):
@@ -600,10 +633,11 @@ class TestDatasetDocumentStoreSegment:
     def test_get_document_segment_returns_segment(self):
         """Test getting a document segment."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
+        mock_dataset = Dataset(
+            id="test-dataset-id",
+        )
 
-        mock_segment = MagicMock(spec=DocumentSegment)
+        mock_segment = _segment()
 
         mock_session = MagicMock()
         mock_session.scalar.return_value = mock_segment
@@ -620,8 +654,9 @@ class TestDatasetDocumentStoreSegment:
     def test_get_document_segment_returns_none(self):
         """Test getting a non-existent document segment."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
+        mock_dataset = Dataset(
+            id="test-dataset-id",
+        )
 
         mock_session = MagicMock()
         mock_session.scalar.return_value = None
@@ -642,9 +677,10 @@ class TestDatasetDocumentStoreMultimodelBinding:
     def test_add_multimodel_documents_binding_with_attachments(self):
         """Test adding multimodel document bindings."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
-        mock_dataset.tenant_id = "tenant-1"
+        mock_dataset = Dataset(
+            id="test-dataset-id",
+            tenant_id="tenant-1",
+        )
 
         mock_attachment = MagicMock(spec=AttachmentDocument)
         mock_attachment.metadata = {"doc_id": "attachment-1"}
@@ -664,9 +700,10 @@ class TestDatasetDocumentStoreMultimodelBinding:
     def test_add_multimodel_documents_binding_without_attachments(self):
         """Test adding bindings with None attachments."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
-        mock_dataset.tenant_id = "tenant-1"
+        mock_dataset = Dataset(
+            id="test-dataset-id",
+            tenant_id="tenant-1",
+        )
 
         mock_session = MagicMock()
 
@@ -683,9 +720,10 @@ class TestDatasetDocumentStoreMultimodelBinding:
     def test_add_multimodel_documents_binding_with_empty_list(self):
         """Test adding bindings with empty list."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
-        mock_dataset.tenant_id = "tenant-1"
+        mock_dataset = Dataset(
+            id="test-dataset-id",
+            tenant_id="tenant-1",
+        )
 
         mock_session = MagicMock()
 
@@ -702,9 +740,10 @@ class TestDatasetDocumentStoreMultimodelBinding:
     def test_add_multimodel_documents_binding_with_none_document_id(self):
         """Test that no bindings are added when document_id is None."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
-        mock_dataset.tenant_id = "tenant-1"
+        mock_dataset = Dataset(
+            id="test-dataset-id",
+            tenant_id="tenant-1",
+        )
 
         mock_attachment = MagicMock(spec=AttachmentDocument)
         mock_attachment.metadata = {"doc_id": "attachment-1"}

@@ -1,13 +1,20 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { withSelectorKey } from '@/test/i18n-mock'
 import StatusIndicators from '../status-indicators'
 
 let installedPlugins = [{ name: 'demo-plugin', plugin_unique_identifier: 'demo@1.0.0' }]
+const { mockUseInstalledPluginList } = vi.hoisted(() => ({
+  mockUseInstalledPluginList: vi.fn(),
+}))
 
 vi.mock('@/service/use-plugins', () => ({
-  useInstalledPluginList: () => ({ data: { plugins: installedPlugins } }),
+  useInstalledPluginList: (...args: unknown[]) => {
+    mockUseInstalledPluginList(...args)
+    return { data: { plugins: installedPlugins } }
+  },
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/switch-plugin-version', () => ({
@@ -22,6 +29,23 @@ describe('StatusIndicators', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     installedPlugins = [{ name: 'demo-plugin', plugin_unique_identifier: 'demo@1.0.0' }]
+  })
+
+  it('reads the model-specific installed plugin list', () => {
+    render(
+      <StatusIndicators
+        needsConfiguration={false}
+        modelProvider={true}
+        inModelList={false}
+        disabled={true}
+        pluginInfo={{ name: 'demo-plugin' }}
+        t={t}
+      />,
+    )
+
+    expect(mockUseInstalledPluginList).toHaveBeenCalledWith(false, 100, {
+      category: PluginCategoryEnum.model,
+    })
   })
 
   const getPopoverTrigger = (name: string) => {

@@ -1,6 +1,10 @@
-import { defaultShouldDehydrateQuery, dehydrate, HydrationBoundary } from '@tanstack/react-query'
+import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
 import { Suspense } from 'react'
-import { getQueryClientServer, makeQueryClient } from '@/context/query-client-server'
+import { getQueryClient } from '@/app/get-query-client'
+import {
+  getSystemFeaturesQueryClient,
+  systemFeaturesServerQueryOptions,
+} from '@/features/system-features/server'
 import { getLocaleOnServer } from '@/i18n-config/server'
 import { getServerConsoleClientContext, serverConsoleQuery } from '@/service/server'
 import { HomeContent } from './home-content/home-content'
@@ -8,7 +12,7 @@ import { HomeShell } from './home-shell'
 import { HomeSkeleton } from './home-skeleton'
 
 export async function HomePage() {
-  const homeQueryClient = makeQueryClient()
+  const homeQueryClient = getQueryClient()
   const [locale, context] = await Promise.all([
     getLocaleOnServer(),
     getServerConsoleClientContext(),
@@ -28,9 +32,7 @@ export async function HomePage() {
   )
 
   const enableExploreBanner = (
-    await getQueryClientServer().ensureQueryData(
-      serverConsoleQuery.systemFeatures.get.queryOptions(),
-    )
+    await getSystemFeaturesQueryClient().ensureQueryData(systemFeaturesServerQueryOptions())
   ).enable_explore_banner
   if (enableExploreBanner) {
     void homeQueryClient.prefetchQuery(
@@ -41,11 +43,7 @@ export async function HomePage() {
     )
   }
 
-  const dehydratedState = dehydrate(homeQueryClient, {
-    shouldDehydrateQuery: (query) =>
-      defaultShouldDehydrateQuery(query) || query.state.status === 'pending',
-    shouldRedactErrors: () => false,
-  })
+  const dehydratedState = dehydrate(homeQueryClient)
 
   return (
     <HydrationBoundary state={dehydratedState}>
