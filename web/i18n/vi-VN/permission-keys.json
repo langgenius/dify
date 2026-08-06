@@ -1,4 +1,5 @@
 {
+  "agent.manage": "Quản lý Agents",
   "api_extension.manage": "Quản lý cấu hình phần mở rộng API",
   "app.access_config": "Cấu hình quyền truy cập ứng dụng",
   "app.acl.access_config": "Cấu hình quyền truy cập ứng dụng",
@@ -50,5 +51,5 @@
   "snippets.management": "Quản lý đoạn mã",
   "tool.manage": "Quản lý công cụ",
   "workspace.member.manage": "Quản lý thành viên",
-  "workspace.role.manage": "Quản lý quyền vai trò và quy tắc truy cập tài nguyên"
+  "workspace.role.manage": "Quản lý vai trò và bộ quyền"
 }

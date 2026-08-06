@@ -3,10 +3,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ScopeProvider } from 'jotai-scope'
 import { DeleteDeploymentDialog } from '../delete-dialog'
-import {
-  deleteDeploymentDialogOpenAtom,
-  deploymentActionAppInstanceAtom,
-} from '../state'
+import { deleteDeploymentDialogOpenAtom, deploymentActionAppInstanceAtom } from '../state'
 
 const deleteMutationMock = vi.hoisted(() => ({
   isPending: false,
@@ -53,7 +50,9 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-function createAppInstance(overrides: Partial<DeploymentActionAppInstance> = {}): DeploymentActionAppInstance {
+function createAppInstance(
+  overrides: Partial<DeploymentActionAppInstance> = {},
+): DeploymentActionAppInstance {
   return {
     id: 'app-instance-1',
     displayName: 'Deployment 1',
@@ -101,15 +100,18 @@ describe('DeleteDeploymentDialog', () => {
 
       await user.click(screen.getByRole('button', { name: 'deployments.settings.delete' }))
 
-      expect(deleteMutationMock.mutate).toHaveBeenCalledWith({
-        params: {
-          appInstanceId: 'app-instance-1',
+      expect(deleteMutationMock.mutate).toHaveBeenCalledWith(
+        {
+          params: {
+            appInstanceId: 'app-instance-1',
+          },
         },
-      }, expect.objectContaining({
-        onSuccess: expect.any(Function),
-        onError: expect.any(Function),
-        onSettled: expect.any(Function),
-      }))
+        expect.objectContaining({
+          onSuccess: expect.any(Function),
+          onError: expect.any(Function),
+          onSettled: expect.any(Function),
+        }),
+      )
     })
   })
 })

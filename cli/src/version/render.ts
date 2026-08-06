@@ -15,7 +15,8 @@ export type RenderOptions = {
 
 const COMPAT_LABEL: Record<VersionReport['compat']['status'], string> = {
   compatible: 'ok',
-  unsupported: 'incompatible',
+  too_old: 'incompatible (server too old)',
+  too_new: 'incompatible (server too new)',
   unknown: 'unknown',
 }
 
@@ -38,24 +39,24 @@ export function renderVersionText(report: VersionReport, opts: RenderOptions = {
   lines.push('Server:')
   if (server.endpoint === '') {
     lines.push(`  ${c.dim('(skipped — no host configured or --client passed)')}`)
-  }
-  else if (!server.reachable) {
+  } else if (!server.reachable) {
     lines.push(`  Endpoint:  ${server.endpoint}`)
     lines.push(`  Version:   ${c.dim('(unreachable)')}`)
-  }
-  else {
+  } else {
     lines.push(`  Endpoint:  ${server.endpoint}`)
-    lines.push(`  Version:   ${server.version ?? ''}${server.edition !== undefined ? ` (${server.edition.toLowerCase()})` : ''}`)
+    lines.push(
+      `  Version:   ${server.version ?? ''}${server.edition !== undefined ? ` (${server.edition.toLowerCase()})` : ''}`,
+    )
   }
   lines.push('')
 
   const verdictText = `Compatibility: ${COMPAT_LABEL[compat.status]} — ${compat.detail}`
-  lines.push(compat.status === 'unsupported' ? c.yellow(verdictText) : verdictText)
+  const incompatible = compat.status === 'too_old' || compat.status === 'too_new'
+  lines.push(incompatible ? c.yellow(verdictText) : verdictText)
 
   if (client.channel !== 'stable') {
     lines.push('')
-    for (const line of prereleaseWarning(client.channel))
-      lines.push(c.yellow(line))
+    for (const line of prereleaseWarning(client.channel)) lines.push(c.yellow(line))
   }
 
   return `${lines.join('\n')}\n`

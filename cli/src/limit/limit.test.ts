@@ -18,8 +18,7 @@ describe('limit', () => {
     let err: unknown
     try {
       parseLimit(String(n), '--limit')
-    }
-    catch (e) {
+    } catch (e) {
       err = e
     }
     expect(isBaseError(err)).toBe(true)
@@ -32,8 +31,7 @@ describe('limit', () => {
     let err: unknown
     try {
       parseLimit('abc', '--limit')
-    }
-    catch (e) {
+    } catch (e) {
       err = e
     }
     expect(isBaseError(err)).toBe(true)
@@ -45,8 +43,7 @@ describe('limit', () => {
     let err: unknown
     try {
       parseLimit('', '--limit')
-    }
-    catch (e) {
+    } catch (e) {
       err = e
     }
     expect(isBaseError(err)).toBe(true)

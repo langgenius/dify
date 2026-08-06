@@ -7,12 +7,38 @@ from urllib.parse import parse_qs, urlparse
 import pytest
 
 from core.tools.signature import (
-    get_signed_file_url_for_plugin,
+    bind_file_uri,
+    get_signed_file_uri_for_plugin,
     sign_tool_file,
+    sign_tool_file_uri,
     sign_upload_file_preview_url,
     verify_plugin_file_signature,
     verify_tool_file_signature,
 )
+
+
+def test_bind_file_uri_uses_selected_base_and_preserves_remote_url() -> None:
+    uri = "/files/tools/tool-file-id.png?sign=1"
+
+    assert bind_file_uri(uri, "https://files.example.com") == f"https://files.example.com{uri}"
+    assert bind_file_uri(uri, "") == uri
+    assert bind_file_uri("https://remote.example.com/report.pdf", "https://files.example.com") == (
+        "https://remote.example.com/report.pdf"
+    )
+
+
+def test_sign_tool_file_uri_has_no_origin(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("core.tools.signature.time.time", lambda: 1700000000)
+    monkeypatch.setattr("core.tools.signature.os.urandom", lambda _: b"\x08" * 16)
+    monkeypatch.setattr("core.tools.signature.dify_config.SECRET_KEY", "unit-secret")
+
+    uri = sign_tool_file_uri("tool-file-id", ".png")
+    parsed = urlparse(uri)
+
+    assert parsed.scheme == ""
+    assert parsed.netloc == ""
+    assert parsed.path == "/files/tools/tool-file-id.png"
+    assert parse_qs(parsed.query)["timestamp"] == ["1700000000"]
 
 
 def test_sign_tool_file_and_verify_roundtrip(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -125,33 +151,34 @@ def test_sign_upload_file_preview_url_ignores_internal_files_url(monkeypatch: py
     assert query["sign"][0]
 
 
-def test_get_signed_file_url_for_plugin_and_verify_roundtrip(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_signed_file_uri_for_plugin_and_verify_roundtrip(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("core.tools.signature.time.time", lambda: 1700000000)
     monkeypatch.setattr("core.tools.signature.os.urandom", lambda _: b"\x06" * 16)
     monkeypatch.setattr("core.tools.signature.dify_config.SECRET_KEY", "unit-secret")
-    monkeypatch.setattr("core.tools.signature.dify_config.FILES_URL", "https://files.example.com")
-    monkeypatch.setattr("core.tools.signature.dify_config.INTERNAL_FILES_URL", "https://internal.example.com")
     monkeypatch.setattr("core.tools.signature.dify_config.FILES_ACCESS_TIMEOUT", 60)
 
-    url = get_signed_file_url_for_plugin(
+    uri = get_signed_file_uri_for_plugin(
         filename="report.pdf",
         mimetype="application/pdf",
         tenant_id="tenant-id",
         user_id="user-id",
+        conversation_id="conversation-id",
     )
-    parsed = urlparse(url)
+    parsed = urlparse(uri)
     query = parse_qs(parsed.query)
 
-    assert parsed.netloc == "internal.example.com"
+    assert parsed.netloc == ""
     assert parsed.path == "/files/upload/for-plugin"
     assert query["tenant_id"] == ["tenant-id"]
     assert query["user_id"] == ["user-id"]
+    assert query["conversation_id"] == ["conversation-id"]
     assert (
         verify_plugin_file_signature(
             filename="report.pdf",
             mimetype="application/pdf",
             tenant_id="tenant-id",
             user_id="user-id",
+            conversation_id="conversation-id",
             timestamp=query["timestamp"][0],
             nonce=query["nonce"][0],
             sign=query["sign"][0],
@@ -164,17 +191,15 @@ def test_verify_plugin_file_signature_rejects_invalid_signatures(monkeypatch: py
     monkeypatch.setattr("core.tools.signature.time.time", lambda: 1700000000)
     monkeypatch.setattr("core.tools.signature.os.urandom", lambda _: b"\x07" * 16)
     monkeypatch.setattr("core.tools.signature.dify_config.SECRET_KEY", "unit-secret")
-    monkeypatch.setattr("core.tools.signature.dify_config.FILES_URL", "https://files.example.com")
-    monkeypatch.setattr("core.tools.signature.dify_config.INTERNAL_FILES_URL", "")
     monkeypatch.setattr("core.tools.signature.dify_config.FILES_ACCESS_TIMEOUT", 30)
 
-    url = get_signed_file_url_for_plugin(
+    uri = get_signed_file_uri_for_plugin(
         filename="report.pdf",
         mimetype="application/pdf",
         tenant_id="tenant-id",
         user_id="user-id",
     )
-    query = parse_qs(urlparse(url).query)
+    query = parse_qs(urlparse(uri).query)
 
     assert (
         verify_plugin_file_signature(

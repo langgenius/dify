@@ -79,12 +79,27 @@ const createDefaultMockApiList = (): ExternalAPIItem[] => [
 
 let mockExternalKnowledgeApiList: ExternalAPIItem[] = createDefaultMockApiList()
 
-vi.mock('@/context/external-knowledge-api-context', () => ({
-  useExternalKnowledgeApi: () => ({
-    externalKnowledgeApiList: mockExternalKnowledgeApiList,
-    mutateExternalKnowledgeApis: vi.fn(),
-    isLoading: false,
-  }),
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...original,
+    useQuery: () => ({ data: { data: mockExternalKnowledgeApiList } }),
+    useQueryClient: () => ({ invalidateQueries: vi.fn() }),
+  }
+})
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    datasets: {
+      externalKnowledgeApi: {
+        get: {
+          queryOptions: () => ({
+            queryKey: ['console', 'datasets', 'externalKnowledgeApi', 'get'],
+          }),
+        },
+      },
+    },
+  },
 }))
 
 // Suppress console.error helper
@@ -109,7 +124,9 @@ async function fillFormAndSubmit(user: ReturnType<typeof userEvent.setup>) {
 
   // Wait for button to be enabled
   await waitFor(() => {
-    const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
+    const connectButton = screen
+      .getByText('dataset.externalKnowledgeForm.connect')
+      .closest('button')
     expect(connectButton).not.toBeDisabled()
   })
 
@@ -143,7 +160,9 @@ describe('ExternalKnowledgeBaseConnector', () => {
     it('should render connect button disabled initially', () => {
       render(<ExternalKnowledgeBaseConnector />)
 
-      const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
+      const connectButton = screen
+        .getByText('dataset.externalKnowledgeForm.connect')
+        .closest('button')
       expect(connectButton).toBeDisabled()
     })
   })
@@ -169,7 +188,9 @@ describe('ExternalKnowledgeBaseConnector', () => {
       })
 
       // Verify success notification
-      expect(mockToastSuccess).toHaveBeenCalledWith('dataset.externalKnowledgeForm.connectedSuccess')
+      expect(mockToastSuccess).toHaveBeenCalledWith(
+        'dataset.externalKnowledgeForm.connectedSuccess',
+      )
 
       // Verify navigation back
       expect(mockRouterBack).toHaveBeenCalledTimes(1)
@@ -254,11 +275,15 @@ describe('ExternalKnowledgeBaseConnector', () => {
       fireEvent.change(knowledgeIdInput, { target: { value: 'kb-1' } })
 
       await waitFor(() => {
-        const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
+        const connectButton = screen
+          .getByText('dataset.externalKnowledgeForm.connect')
+          .closest('button')
         expect(connectButton).not.toBeDisabled()
       })
 
-      const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
+      const connectButton = screen
+        .getByText('dataset.externalKnowledgeForm.connect')
+        .closest('button')
       await user.click(connectButton!)
 
       // Button should show loading (the real Button component has loading prop)
@@ -270,7 +295,9 @@ describe('ExternalKnowledgeBaseConnector', () => {
       resolvePromise({ id: 'new-id' })
 
       await waitFor(() => {
-        expect(mockToastSuccess).toHaveBeenCalledWith('dataset.externalKnowledgeForm.connectedSuccess')
+        expect(mockToastSuccess).toHaveBeenCalledWith(
+          'dataset.externalKnowledgeForm.connectedSuccess',
+        )
       })
     })
   })
@@ -283,7 +310,9 @@ describe('ExternalKnowledgeBaseConnector', () => {
       const nameInput = screen.getByPlaceholderText('dataset.externalKnowledgeNamePlaceholder')
       fireEvent.change(nameInput, { target: { value: 'Test' } })
 
-      const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
+      const connectButton = screen
+        .getByText('dataset.externalKnowledgeForm.connect')
+        .closest('button')
       expect(connectButton).toBeDisabled()
     })
 
@@ -293,7 +322,9 @@ describe('ExternalKnowledgeBaseConnector', () => {
       const knowledgeIdInput = screen.getByPlaceholderText('dataset.externalKnowledgeIdPlaceholder')
       fireEvent.change(knowledgeIdInput, { target: { value: 'kb-1' } })
 
-      const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
+      const connectButton = screen
+        .getByText('dataset.externalKnowledgeForm.connect')
+        .closest('button')
       expect(connectButton).toBeDisabled()
     })
 
@@ -307,7 +338,9 @@ describe('ExternalKnowledgeBaseConnector', () => {
       fireEvent.change(knowledgeIdInput, { target: { value: 'kb-1' } })
 
       await waitFor(() => {
-        const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
+        const connectButton = screen
+          .getByText('dataset.externalKnowledgeForm.connect')
+          .closest('button')
         expect(connectButton).not.toBeDisabled()
       })
     })
@@ -320,7 +353,9 @@ describe('ExternalKnowledgeBaseConnector', () => {
       render(<ExternalKnowledgeBaseConnector />)
 
       const nameInput = screen.getByPlaceholderText('dataset.externalKnowledgeNamePlaceholder')
-      const descriptionInput = screen.getByPlaceholderText('dataset.externalKnowledgeDescriptionPlaceholder')
+      const descriptionInput = screen.getByPlaceholderText(
+        'dataset.externalKnowledgeDescriptionPlaceholder',
+      )
 
       await user.type(nameInput, 'My Knowledge Base')
       await user.type(descriptionInput, 'My Description')
@@ -333,7 +368,9 @@ describe('ExternalKnowledgeBaseConnector', () => {
       const user = userEvent.setup()
       render(<ExternalKnowledgeBaseConnector />)
 
-      const cancelButton = screen.getByText('dataset.externalKnowledgeForm.cancel').closest('button')
+      const cancelButton = screen
+        .getByText('dataset.externalKnowledgeForm.cancel')
+        .closest('button')
       await user.click(cancelButton!)
 
       expect(mockReplace).toHaveBeenCalledWith('/datasets')
@@ -344,7 +381,7 @@ describe('ExternalKnowledgeBaseConnector', () => {
       render(<ExternalKnowledgeBaseConnector />)
 
       const buttons = screen.getAllByRole('button')
-      const backButton = buttons.find(btn => btn.classList.contains('rounded-full'))
+      const backButton = buttons.find((btn) => btn.classList.contains('rounded-full'))
       await user.click(backButton!)
 
       expect(mockReplace).toHaveBeenCalledWith('/datasets')

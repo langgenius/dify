@@ -1,4 +1,5 @@
 {
+  "agent.manage": "Manage Agents",
   "api_extension.manage": "Manage API extension configuration",
   "app.access_config": "Configure app access permissions",
   "app.acl.access_config": "Configure app access permissions",
@@ -50,5 +51,5 @@
   "snippets.management": "Manage snippets",
   "tool.manage": "Manage tools",
   "workspace.member.manage": "Manage members",
-  "workspace.role.manage": "Manage role permissions and resource access rules"
+  "workspace.role.manage": "Manage roles and permission sets"
 }

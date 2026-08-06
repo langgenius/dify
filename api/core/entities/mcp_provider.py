@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 from pydantic import BaseModel
 
 from configs import dify_config
-from core.entities.provider_entities import BasicProviderConfig
+from core.entities.provider_entities import BasicProviderConfig, ProviderConfigType
 from core.helper import encrypter
 from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.mcp.types import OAuthClientInformation, OAuthClientMetadata, OAuthTokens
@@ -315,7 +315,7 @@ class MCPProviderEntity(BaseModel):
             return data
 
         # Create dynamic config only for encrypted fields
-        config = [BasicProviderConfig(type=BasicProviderConfig.Type.SECRET_INPUT, name=key) for key in encrypted_fields]
+        config = [BasicProviderConfig(type=ProviderConfigType.SECRET_INPUT, name=key) for key in encrypted_fields]
 
         encrypter_instance, _ = create_provider_encrypter(
             tenant_id=self.tenant_id,

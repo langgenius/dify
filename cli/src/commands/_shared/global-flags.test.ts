@@ -22,8 +22,7 @@ describe('resolveRetryAttempts', () => {
     let caught: unknown
     try {
       resolveRetryAttempts({ flag: undefined, env: () => 'foo' })
-    }
-    catch (e) {
+    } catch (e) {
       caught = e
     }
     expect((caught as { code: string }).code).toBe('usage_invalid_flag')
@@ -34,8 +33,7 @@ describe('resolveRetryAttempts', () => {
     let caught: unknown
     try {
       resolveRetryAttempts({ flag: undefined, env: () => '-1' })
-    }
-    catch (e) {
+    } catch (e) {
       caught = e
     }
     expect((caught as { code: string }).code).toBe('usage_invalid_flag')

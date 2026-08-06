@@ -26,6 +26,7 @@ from controllers.console.app.workflow_draft_variable import (
 from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.wraps import account_initialization_required, setup_required, with_current_user
 from core.app.file_access import DatabaseFileAccessController
+from core.workflow.llm_environment_variable import LLMEnvironmentVariable, environment_variable_value_type
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping, build_from_mappings
@@ -98,7 +99,7 @@ class RagPipelineVariableCollectionApi(Resource):
         query = PaginationQuery.model_validate(request.args.to_dict())
 
         # fetch draft workflow by app_model
-        rag_pipeline_service = RagPipelineService()
+        rag_pipeline_service = RagPipelineService(db.session())
         workflow_exist = rag_pipeline_service.is_workflow_exist(pipeline=pipeline)
         if not workflow_exist:
             raise DraftWorkflowNotExist()
@@ -290,7 +291,7 @@ class RagPipelineVariableResetApi(Resource):
             session=db.session(),
         )
 
-        rag_pipeline_service = RagPipelineService()
+        rag_pipeline_service = RagPipelineService(db.session())
         draft_workflow = rag_pipeline_service.get_draft_workflow(pipeline=pipeline)
         if draft_workflow is None:
             raise NotFoundError(
@@ -347,7 +348,7 @@ class RagPipelineEnvironmentVariableCollectionApi(Resource):
         Get draft workflow
         """
         # fetch draft workflow by app_model
-        rag_pipeline_service = RagPipelineService()
+        rag_pipeline_service = RagPipelineService(db.session())
         workflow = rag_pipeline_service.get_draft_workflow(pipeline=pipeline)
         if workflow is None:
             raise DraftWorkflowNotExist()
@@ -362,7 +363,11 @@ class RagPipelineEnvironmentVariableCollectionApi(Resource):
                     "name": v.name,
                     "description": v.description,
                     "selector": v.selector,
-                    "value_type": v.value_type.value,
+                    "value_type": (
+                        environment_variable_value_type(v)
+                        if isinstance(v, LLMEnvironmentVariable)
+                        else v.value_type.value
+                    ),
                     "value": v.value,
                     # Do not track edited for env vars.
                     "edited": False,

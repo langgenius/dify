@@ -1,4 +1,5 @@
 {
+  "agent.manage": "Agents verwalten",
   "api_extension.manage": "API-Erweiterungskonfiguration verwalten",
   "app.access_config": "App-Zugriffsberechtigungen konfigurieren",
   "app.acl.access_config": "App-Zugriffsberechtigungen konfigurieren",
@@ -50,5 +51,5 @@
   "snippets.management": "Snippets verwalten",
   "tool.manage": "Tools verwalten",
   "workspace.member.manage": "Mitglieder verwalten",
-  "workspace.role.manage": "Rollenberechtigungen und Ressourcenzugriffsregeln verwalten"
+  "workspace.role.manage": "Rollen und Berechtigungssätze verwalten"
 }

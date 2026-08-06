@@ -13,7 +13,7 @@ of a separate validation error.
 """
 
 from sqlalchemy import select
-from sqlalchemy.orm import scoped_session
+from sqlalchemy.orm import Session
 
 from core.rag.entities.metadata_entities import Condition, MetadataFilteringCondition
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
@@ -41,7 +41,7 @@ class InnerKnowledgeRetrievalService:
     def retrieve(
         self,
         request: InnerKnowledgeRetrieveRequest,
-        session: scoped_session,
+        session: Session,
     ) -> InnerKnowledgeRetrieveResponse:
         """Run tenant-scoped retrieval for a trusted internal caller.
 
@@ -64,13 +64,13 @@ class InnerKnowledgeRetrievalService:
         self._validate_datasets(tenant_id=request.caller.tenant_id, dataset_ids=request.dataset_ids, session=session)
 
         rag = DatasetRetrieval()
-        results = rag.knowledge_retrieval(request=self._to_rag_request(request))
+        results = rag.knowledge_retrieval(session=session, request=self._to_rag_request(request))
         return InnerKnowledgeRetrieveResponse(
             results=results,
             usage=InnerKnowledgeRetrieveUsage.model_validate(jsonable_encoder(rag.llm_usage)),
         )
 
-    def _validate_caller_app(self, *, tenant_id: str, app_id: str, session: scoped_session) -> None:
+    def _validate_caller_app(self, *, tenant_id: str, app_id: str, session: Session) -> None:
         app = session.scalar(select(App).where(App.id == app_id).limit(1))
         if app is None:
             raise InnerKnowledgeRetrieveAppNotFoundError(f"App '{app_id}' not found")
@@ -79,7 +79,7 @@ class InnerKnowledgeRetrievalService:
                 f"App '{app_id}' does not belong to tenant '{tenant_id}'"
             )
 
-    def _validate_datasets(self, *, tenant_id: str, dataset_ids: list[str], session: scoped_session) -> None:
+    def _validate_datasets(self, *, tenant_id: str, dataset_ids: list[str], session: Session) -> None:
         datasets = session.scalars(select(Dataset).where(Dataset.id.in_(dataset_ids))).all()
 
         found_ids = {dataset.id for dataset in datasets}

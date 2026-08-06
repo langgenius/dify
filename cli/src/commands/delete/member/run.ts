@@ -65,9 +65,8 @@ export async function runDeleteMember(
     }
   }
 
-  await runWithSpinner(
-    { io, label: `Removing ${opts.memberId}` },
-    () => factory(deps.http).remove(wsId, opts.memberId),
+  await runWithSpinner({ io, label: `Removing ${opts.memberId}` }, () =>
+    factory(deps.http).remove(wsId, opts.memberId),
   )
 
   const textLine = `${cs.successIcon()} Removed ${opts.memberId}\n`

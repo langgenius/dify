@@ -47,25 +47,32 @@ function UserAccessPolicyRow({
   const selectedPolicyId = selectedAccessPolicyId ?? DEFAULT_ACCESS_POLICY_ID
   const isPolicySelectDisabled = disabled || isMaintainer || !onChange
   const isRemoveDisabled = disabled || isMaintainer || !onRemove || !selectedAccessPolicyId
-  const defaultAccessPolicyName = t('accessRule.defaultPermission', { ns: 'permission' })
+  const defaultAccessPolicyName = t(($) => $['accessRule.defaultPermission'], { ns: 'permission' })
   const accountEmail = setting.account.email || setting.account.account_name
 
-  const handlePolicyChange = useCallback((nextPolicyId: string | null) => {
-    if (isPolicySelectDisabled || !nextPolicyId || nextPolicyId === selectedPolicyId)
-      return
+  const handlePolicyChange = useCallback(
+    (nextPolicyId: string | null) => {
+      if (isPolicySelectDisabled || !nextPolicyId || nextPolicyId === selectedPolicyId) return
 
-    onChange?.(accountId, [nextPolicyId])
-  }, [accountId, isPolicySelectDisabled, onChange, selectedPolicyId])
+      onChange?.(accountId, [nextPolicyId])
+    },
+    [accountId, isPolicySelectDisabled, onChange, selectedPolicyId],
+  )
 
   const handleRemove = useCallback(() => {
-    if (isRemoveDisabled || !selectedAccessPolicyId)
-      return
+    if (isRemoveDisabled || !selectedAccessPolicyId) return
 
     onRemove?.(accountId, selectedAccessPolicyId)
   }, [accountId, isRemoveDisabled, onRemove, selectedAccessPolicyId])
 
   return (
-    <div className={cn('grid min-h-19 items-center gap-4 px-6 py-4', ACCESS_RULE_TABLE_GRID, className)}>
+    <div
+      className={cn(
+        'grid min-h-19 items-center gap-4 px-6 py-4',
+        ACCESS_RULE_TABLE_GRID,
+        className,
+      )}
+    >
       <div className="flex min-w-0 items-center gap-3">
         <Avatar
           avatar={setting.account.avatar ?? null}
@@ -80,21 +87,19 @@ function UserAccessPolicyRow({
             </span>
             {isMaintainer && (
               <span className="max-w-24 shrink-0 truncate rounded-[5px] border border-text-accent-secondary px-1 py-0.5 system-2xs-medium-uppercase text-text-accent-secondary">
-                {t('accessRule.maintainer', { ns: 'permission' })}
+                {t(($) => $['accessRule.maintainer'], { ns: 'permission' })}
               </span>
             )}
           </div>
-          <p className="truncate system-xs-regular text-text-tertiary">
-            {accountEmail}
-          </p>
+          <p className="truncate system-xs-regular text-text-tertiary">{accountEmail}</p>
         </div>
       </div>
-      <Select
-        value={selectedPolicyId}
-        onValueChange={handlePolicyChange}
-      >
+      <Select value={selectedPolicyId} onValueChange={handlePolicyChange}>
         <SelectTrigger
-          aria-label={t('accessRule.exceptionPermissionFor', { ns: 'permission', name: setting.account.account_name })}
+          aria-label={t(($) => $['accessRule.exceptionPermissionFor'], {
+            ns: 'permission',
+            name: setting.account.account_name,
+          })}
           size="small"
           disabled={isPolicySelectDisabled}
           className="w-36"
@@ -110,7 +115,7 @@ function UserAccessPolicyRow({
             <SelectItemText>{defaultAccessPolicyName}</SelectItemText>
             <SelectItemIndicator />
           </SelectItem>
-          {policyOptions.map(policy => (
+          {policyOptions.map((policy) => (
             <SelectItem key={policy.id} value={policy.id}>
               <SelectItemText>{policy.name}</SelectItemText>
               <SelectItemIndicator />
@@ -124,7 +129,7 @@ function UserAccessPolicyRow({
         className="w-fit rounded-md border-none bg-transparent p-0 text-left system-xs-medium text-text-destructive outline-hidden hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:no-underline"
         onClick={handleRemove}
       >
-        {t('operation.remove', { ns: 'common' })}
+        {t(($) => $['operation.remove'], { ns: 'common' })}
       </button>
     </div>
   )

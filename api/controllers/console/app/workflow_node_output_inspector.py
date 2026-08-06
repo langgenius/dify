@@ -41,6 +41,7 @@ from controllers.console.wraps import (
     rbac_permission_required,
     setup_required,
 )
+from extensions.ext_database import db
 from libs.exception import BaseHTTPException
 from libs.login import login_required
 from models import App, AppMode
@@ -92,7 +93,9 @@ def _serve_snapshot(app_model: App, run_id: UUID) -> dict:
     Flask request context.
     """
     try:
-        snapshot = _service().snapshot_workflow_run(app_model=app_model, workflow_run_id=str(run_id))
+        snapshot = _service().snapshot_workflow_run(
+            app_model=app_model, workflow_run_id=str(run_id), session=db.session()
+        )
     except NodeOutputInspectorError as error:
         raise _InspectorNotFound(error) from error
     return snapshot.model_dump(mode="json")
@@ -105,6 +108,7 @@ def _serve_node_detail(app_model: App, run_id: UUID, node_id: str) -> dict:
             app_model=app_model,
             workflow_run_id=str(run_id),
             node_id=node_id,
+            session=db.session(),
         )
     except NodeOutputInspectorError as error:
         raise _InspectorNotFound(error) from error
@@ -119,6 +123,7 @@ def _serve_output_preview(app_model: App, run_id: UUID, node_id: str, output_nam
             workflow_run_id=str(run_id),
             node_id=node_id,
             output_name=output_name,
+            session=db.session(),
         )
     except NodeOutputInspectorError as error:
         raise _InspectorNotFound(error) from error
@@ -245,7 +250,7 @@ def _stream_inspector_events(app_model: App, run_id: UUID) -> Iterator[str]:
     # if the run is gone (raised before yielding any bytes, so Flask turns it
     # into the normal HTTP 404 path).
     try:
-        snapshot = service.snapshot_workflow_run(app_model=app_model, workflow_run_id=run_id_str)
+        snapshot = service.snapshot_workflow_run(app_model=app_model, workflow_run_id=run_id_str, session=db.session())
     except NodeOutputInspectorError as error:
         raise _InspectorNotFound(error) from error
 
@@ -308,6 +313,7 @@ def _stream_inspector_events(app_model: App, run_id: UUID) -> Iterator[str]:
                 app_model=app_model,
                 workflow_run_id=run_id_str,
                 node_id=message.node_id,
+                session=db.session(),
             )
         except NodeOutputInspectorError:
             # Node may not appear in the graph yet (race with persistence); skip.

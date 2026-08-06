@@ -35,10 +35,13 @@ vi.mock('@/app/components/base/chat/chat/check-input-forms-hooks', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
+vi.mock('@/app/components/workflow/hooks/use-workflow-panel-interactions', () => ({
   useWorkflowInteractions: () => ({
     handleCancelDebugAndPreviewPanel: workflowHookMocks.handleCancelDebugAndPreviewPanel,
   }),
+}))
+
+vi.mock('@/app/components/workflow/hooks/use-workflow-run', () => ({
   useWorkflowRun: () => ({
     handleRun: workflowHookMocks.handleRun,
   }),
@@ -50,7 +53,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/before-run-form/form-i
     value,
     onChange,
   }: {
-    payload: { variable: string, label: string, type: InputVarType }
+    payload: { variable: string; label: string; type: InputVarType }
     value: unknown
     onChange: (value: unknown) => void
   }) => (
@@ -64,13 +67,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/before-run-form/form-i
 }))
 
 vi.mock('@/app/components/workflow/run/result-text', () => ({
-  default: ({
-    outputs,
-    onClick,
-  }: {
-    outputs?: string
-    onClick: () => void
-  }) => (
+  default: ({ outputs, onClick }: { outputs?: string; onClick: () => void }) => (
     <button type="button" onClick={onClick}>
       {outputs || 'empty-result'}
     </button>
@@ -104,15 +101,12 @@ describe('SnippetRunPanel', () => {
   it('should render snippet input fields with defaults and run with edited inputs', async () => {
     const user = userEvent.setup()
 
-    renderWorkflowComponent(
-      <SnippetRunPanel fields={fields} />,
-      {
-        initialStoreState: {
-          showInputsPanel: true,
-          previewPanelWidth: 480,
-        },
+    renderWorkflowComponent(<SnippetRunPanel fields={fields} />, {
+      initialStoreState: {
+        showInputsPanel: true,
+        previewPanelWidth: 480,
       },
-    )
+    })
 
     expect(screen.getByText(`Topic:${InputVarType.textInput}:default topic`)).toBeInTheDocument()
 
@@ -139,30 +133,27 @@ describe('SnippetRunPanel', () => {
   it('should copy successful text results and open details from the result panel', async () => {
     const user = userEvent.setup()
 
-    renderWorkflowComponent(
-      <SnippetRunPanel fields={[]} />,
-      {
-        initialStoreState: {
-          showInputsPanel: false,
-          previewPanelWidth: 480,
-          workflowRunningData: {
-            task_id: 'task-1',
-            resultText: 'final answer',
-            tracing: [],
-            result: {
-              status: WorkflowRunningStatus.Succeeded,
-              finished_at: 1710000000,
-              files: [],
-              inputs: '{}',
-              inputs_truncated: false,
-              process_data_truncated: false,
-              outputs: '{}',
-              outputs_truncated: false,
-            },
+    renderWorkflowComponent(<SnippetRunPanel fields={[]} />, {
+      initialStoreState: {
+        showInputsPanel: false,
+        previewPanelWidth: 480,
+        workflowRunningData: {
+          task_id: 'task-1',
+          resultText: 'final answer',
+          tracing: [],
+          result: {
+            status: WorkflowRunningStatus.Succeeded,
+            finished_at: 1710000000,
+            files: [],
+            inputs: '{}',
+            inputs_truncated: false,
+            process_data_truncated: false,
+            outputs: '{}',
+            outputs_truncated: false,
           },
         },
       },
-    )
+    })
 
     expect(screen.getByText('final answer')).toBeInTheDocument()
 

@@ -7,6 +7,12 @@ class AppUnavailableError(BaseHTTPException):
     code = 400
 
 
+class AgentNotPublishedError(BaseHTTPException):
+    error_code = "agent_not_published"
+    description = "Agent has not been published. Please publish the Agent before using the web app."
+    code = 400
+
+
 class NotCompletionAppError(BaseHTTPException):
     error_code = "not_completion_app"
     description = "Please check if your Completion app mode matches the right API route."
@@ -94,6 +100,12 @@ class UnsupportedAudioTypeError(BaseHTTPException):
 class ProviderNotSupportSpeechToTextError(BaseHTTPException):
     error_code = "provider_not_support_speech_to_text"
     description = "Provider not support speech to text."
+    code = 400
+
+
+class SpeechToTextDisabledError(BaseHTTPException):
+    error_code = "speech_to_text_disabled"
+    description = "Speech to text is disabled."
     code = 400
 
 

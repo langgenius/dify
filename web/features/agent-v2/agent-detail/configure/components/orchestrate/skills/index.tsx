@@ -6,28 +6,37 @@ import { useMutation } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { agentComposerSkillsAtom } from '@/features/agent-v2/agent-composer/store-modules/skills'
+import {
+  agentComposerSkillsAtom,
+  removeAgentSkillAtom,
+  upsertAgentSkillAtom,
+} from '@/features/agent-v2/agent-composer/store-modules/skills'
 import { consoleQuery } from '@/service/client'
 import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
 import { AgentConfigureTipContent } from '../common/tip-content'
-import { useAgentDriveApiContext } from '../drive-context'
+import { useAgentConfigApiContext } from '../config-context'
 import { AgentSkillItem } from './item'
 import { AgentSkillUploadDialog } from './upload-dialog'
 
 export function AgentSkills() {
   const { t } = useTranslation('agentV2')
-  const skillsTip = t('agentDetail.configure.skills.tip')
+  const skillsTip = t(($) => $['agentDetail.configure.skills.tip'])
   const skillsListId = 'agent-configure-skills-list'
   const [isUploadOpen, setIsUploadOpen] = useState(false)
   const promptAddCallbackRef = useRef<AgentOrchestrateAddActionOptions['onAdded']>(undefined)
-  const apiContext = useAgentDriveApiContext()
+  const apiContext = useAgentConfigApiContext()
   const skills = useAtomValue(agentComposerSkillsAtom)
-  const setSkills = useSetAtom(agentComposerSkillsAtom)
-  const { mutate: deleteAgentSkill } = useMutation(consoleQuery.agent.byAgentId.skills.bySlug.delete.mutationOptions())
-  const { mutate: deleteAppSkill } = useMutation(consoleQuery.apps.byAppId.agent.skills.bySlug.delete.mutationOptions())
+  const upsertAgentSkill = useSetAtom(upsertAgentSkillAtom)
+  const removeAgentSkill = useSetAtom(removeAgentSkillAtom)
+  const { mutate: deleteAgentSkill } = useMutation(
+    consoleQuery.agent.byAgentId.config.skills.byName.delete.mutationOptions(),
+  )
+  const { mutate: deleteAppSkill } = useMutation(
+    consoleQuery.apps.byAppId.agent.config.skills.byName.delete.mutationOptions(),
+  )
 
   const handleOpenUpload = useCallback((options?: AgentOrchestrateAddActionOptions) => {
     promptAddCallbackRef.current = options?.onAdded
@@ -35,78 +44,96 @@ export function AgentSkills() {
   }, [])
   useRegisterAgentOrchestrateAddAction('skills', handleOpenUpload)
 
-  const handleUploaded = useCallback((skill: AgentSkill) => {
-    setSkills(skills => [
-      ...skills.filter(item => item.id !== skill.id),
-      skill,
-    ])
-    promptAddCallbackRef.current?.(skill)
-    promptAddCallbackRef.current = undefined
-  }, [setSkills])
+  const handleUploaded = useCallback(
+    (skill: AgentSkill) => {
+      upsertAgentSkill(skill)
+      promptAddCallbackRef.current?.(skill)
+      promptAddCallbackRef.current = undefined
+    },
+    [upsertAgentSkill],
+  )
 
   const handleUploadOpenChange = useCallback((open: boolean) => {
-    if (!open)
-      promptAddCallbackRef.current = undefined
+    if (!open) promptAddCallbackRef.current = undefined
     setIsUploadOpen(open)
   }, [])
 
-  const handleRemoveSkill = useCallback((skillId: string) => {
-    const skill = skills.find(item => item.id === skillId)
-    const skillSlug = skill?.path ?? skill?.skillMdKey?.split('/', 1)[0]
-    if (!skillSlug)
-      return
+  const handleRemoveSkill = useCallback(
+    (skillId: string) => {
+      const skill = skills.find((item) => item.id === skillId)
+      if (!skill) return
 
-    const onSuccess = () => {
-      setSkills(skills => skills.filter(item => item.id !== skillId))
-    }
-    if (apiContext.workflow) {
-      deleteAppSkill({
-        params: {
-          app_id: apiContext.workflow.appId,
-          slug: skillSlug,
-        },
-        query: {
-          node_id: apiContext.workflow.nodeId,
-        },
-      }, { onSuccess })
-      return
-    }
+      const onSuccess = () => {
+        removeAgentSkill(skillId)
+      }
+      if (apiContext.workflow) {
+        deleteAppSkill(
+          {
+            params: {
+              app_id: apiContext.workflow.appId,
+              name: skill.name,
+            },
+            query: {
+              node_id: apiContext.workflow.nodeId,
+              draft_type: apiContext.draftType,
+              version_id: apiContext.versionId,
+            },
+          },
+          { onSuccess },
+        )
+        return
+      }
 
-    deleteAgentSkill({
-      params: {
-        agent_id: apiContext.agentId,
-        slug: skillSlug,
-      },
-    }, { onSuccess })
-  }, [apiContext, deleteAgentSkill, deleteAppSkill, setSkills, skills])
+      deleteAgentSkill(
+        {
+          params: {
+            agent_id: apiContext.agentId,
+            name: skill.name,
+          },
+          query: {
+            draft_type: apiContext.draftType,
+            version_id: apiContext.versionId,
+          },
+        },
+        { onSuccess },
+      )
+    },
+    [apiContext, deleteAgentSkill, deleteAppSkill, removeAgentSkill, skills],
+  )
 
   return (
     <>
       <ConfigureSection
-        label={t('agentDetail.configure.skills.label')}
+        label={t(($) => $['agentDetail.configure.skills.label'])}
         labelId="agent-configure-skills-label"
+        buildDraftChangeSection="skills"
         panelId={skillsListId}
         tip={<AgentConfigureTipContent type="skills" />}
         tipAriaLabel={skillsTip}
         rootClassName="border-b border-divider-subtle pt-4"
         panelContentClassName="flex flex-col gap-1 pb-4"
-        actions={(
+        actions={
           <ConfigureSectionAddButton
-            ariaLabel={t('agentDetail.configure.skills.add')}
+            ariaLabel={t(($) => $['agentDetail.configure.skills.add'])}
             onClick={() => handleOpenUpload()}
           />
-        )}
+        }
       >
-        {skills.length === 0
-          ? (
-              <ConfigureSectionEmpty
-                title={t('agentDetail.configure.skills.empty.title')}
-                description={t('agentDetail.configure.skills.empty.description')}
-              />
-            )
-          : skills.map(skill => (
-              <AgentSkillItem key={skill.id} apiContext={apiContext} skill={skill} onRemove={handleRemoveSkill} />
-            ))}
+        {skills.length === 0 ? (
+          <ConfigureSectionEmpty
+            title={t(($) => $['agentDetail.configure.skills.empty.title'])}
+            description={t(($) => $['agentDetail.configure.skills.empty.description'])}
+          />
+        ) : (
+          skills.map((skill) => (
+            <AgentSkillItem
+              key={skill.id}
+              apiContext={apiContext}
+              skill={skill}
+              onRemove={handleRemoveSkill}
+            />
+          ))
+        )}
       </ConfigureSection>
       <AgentSkillUploadDialog
         apiContext={apiContext}

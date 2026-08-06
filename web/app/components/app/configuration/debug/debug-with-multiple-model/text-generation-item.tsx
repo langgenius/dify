@@ -1,12 +1,10 @@
 import type { FC } from 'react'
 import type { ModelAndParameter } from '../types'
-import type {
-  OnSend,
-  TextGenerationConfig,
-} from '@/app/components/base/text-generation/types'
+import type { OnSend, TextGenerationConfig } from '@/app/components/base/text-generation/types'
 import { noop } from 'es-toolkit/function'
 import { cloneDeep } from 'es-toolkit/object'
 import { memo } from 'react'
+import { toast } from '@/app/components/app/configuration/toast'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import { TransferMethod } from '@/app/components/base/chat/types'
 import { useFeatures } from '@/app/components/base/features/hooks'
@@ -22,9 +20,7 @@ import { APP_CHAT_WITH_MULTIPLE_MODEL } from '../types'
 type TextGenerationItemProps = {
   modelAndParameter: ModelAndParameter
 }
-const TextGenerationItem: FC<TextGenerationItemProps> = ({
-  modelAndParameter,
-}) => {
+const TextGenerationItem: FC<TextGenerationItemProps> = ({ modelAndParameter }) => {
   const {
     isAdvancedMode,
     modelConfig,
@@ -42,19 +38,21 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({
     datasetConfigs,
   } = useDebugConfigurationContext()
   const { textGenerationModelList } = useProviderContext()
-  const features = useFeatures(s => s.features)
+  const features = useFeatures((s) => s.features)
   const postDatasets = dataSets.map(({ id }) => ({
     dataset: {
       enabled: true,
       id,
     },
   }))
-  const contextVar = modelConfig.configs.prompt_variables.find(item => item.is_context_var)?.key
+  const contextVar = modelConfig.configs.prompt_variables.find((item) => item.is_context_var)?.key
   const config: TextGenerationConfig = {
     pre_prompt: !isAdvancedMode ? modelConfig.configs.prompt_template : '',
     prompt_type: promptMode,
     chat_prompt_config: isAdvancedMode ? chatPromptConfig : cloneDeep(DEFAULT_CHAT_PROMPT_CONFIG),
-    completion_prompt_config: isAdvancedMode ? completionPromptConfig : cloneDeep(DEFAULT_COMPLETION_PROMPT_CONFIG),
+    completion_prompt_config: isAdvancedMode
+      ? completionPromptConfig
+      : cloneDeep(DEFAULT_COMPLETION_PROMPT_CONFIG),
     user_input_form: promptVariablesToUserInputsForm(modelConfig.configs.prompt_variables),
     dataset_query_variable: contextVar || '',
     // features
@@ -79,16 +77,15 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({
     },
     system_parameters: modelConfig.system_parameters,
   }
-  const {
-    completion,
-    handleSend,
-    isResponding,
-    messageId,
-  } = useTextGeneration()
+  const { completion, handleSend, isResponding, messageId } = useTextGeneration()
 
   const doSend: OnSend = (message, files) => {
-    const currentProvider = textGenerationModelList.find(item => item.provider === modelAndParameter.provider)
-    const currentModel = currentProvider?.models.find(model => model.model === modelAndParameter.model)
+    const currentProvider = textGenerationModelList.find(
+      (item) => item.provider === modelAndParameter.provider,
+    )
+    const currentModel = currentProvider?.models.find(
+      (model) => model.model === modelAndParameter.model,
+    )
 
     const configData = {
       ...config,
@@ -117,16 +114,14 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({
       })
     }
 
-    handleSend(
-      `apps/${appId}/completion-messages`,
-      data,
-    )
+    handleSend(`apps/${appId}/completion-messages`, data, {
+      onNotifyError: (message) => toast.error(message),
+    })
   }
 
   const { eventEmitter } = useEventEmitterContextContext()
   eventEmitter?.useSubscription((v: any) => {
-    if (v.type === APP_CHAT_WITH_MULTIPLE_MODEL)
-      doSend(v.payload.message, v.payload.files)
+    if (v.type === APP_CHAT_WITH_MULTIPLE_MODEL) doSend(v.payload.message, v.payload.files)
   })
 
   return (

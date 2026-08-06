@@ -1,4 +1,5 @@
 {
+  "agent.manage": "مدیریت Agents",
   "api_extension.manage": "مدیریت پیکربندی افزونه API",
   "app.access_config": "پیکربندی مجوزهای دسترسی برنامه",
   "app.acl.access_config": "پیکربندی مجوزهای دسترسی برنامه",
@@ -50,5 +51,5 @@
   "snippets.management": "مدیریت قطعه‌کدها",
   "tool.manage": "مدیریت ابزارها",
   "workspace.member.manage": "مدیریت اعضا",
-  "workspace.role.manage": "مدیریت مجوزهای نقش و قوانین دسترسی به منابع"
+  "workspace.role.manage": "مدیریت نقش‌ها و مجموعه‌های مجوز"
 }

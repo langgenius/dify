@@ -1,4 +1,9 @@
-import type { AgentKnowledgeDatasetConfig, AgentSoulAppFeaturesConfig } from '@dify/contracts/api/console/agent/types.gen'
+import type {
+  AgentKnowledgeDatasetConfig,
+  AgentSoulAppFeaturesConfig,
+  AgentSoulModelConfig,
+  ToolProviderType,
+} from '@dify/contracts/api/console/agent/types.gen'
 import type { FileTreeIconType } from '@langgenius/dify-ui/file-tree'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
@@ -15,6 +20,10 @@ import type { I18nKeysWithPrefix } from '@/types/i18n'
 
 export type EnvScope = 'secret' | 'plain'
 
+export type AgentComposerModel = DefaultModel & {
+  model_settings?: AgentSoulModelConfig['model_settings']
+}
+
 export type EnvVariable = {
   id: string
   key: string
@@ -25,20 +34,29 @@ export type EnvVariable = {
 
 export type AgentSkill = {
   description?: string
-  archiveKey?: string
+  fileId?: string
+  hash?: string
   id: string
+  isMissing?: boolean
+  mimeType?: string
   name: string
-  path?: string
+  size?: number
   skillMdKey?: string
 }
 
 export type AgentFileNode = {
-  id: string
-  name: string
-  icon: FileTreeIconType
-  fileId?: string
   driveKey?: string
+  hash?: string
+  id: string
+  icon: FileTreeIconType
+  isMissing?: boolean
+  fileId?: string
+  configName?: string
   children?: AgentFileNode[]
+  virtualContent?: string
+  mimeType?: string
+  name: string
+  size?: number
 }
 
 export type AgentKnowledgeRetrievalItem = {
@@ -75,10 +93,12 @@ type AgentProviderToolCredentialType = 'api-key' | 'oauth2' | 'unauthorized'
 export type AgentProviderTool = AgentToolBase & {
   kind: 'provider'
   displayName?: string
+  pluginId?: string
+  pluginUniqueIdentifier?: string
   iconClassName: string
   icon?: ToolDefaultValue['provider_icon']
   iconDark?: ToolDefaultValue['provider_icon_dark']
-  providerType?: string
+  providerType: ToolProviderType
   allowDelete?: boolean
   credentialId?: string
   credentialKey?: I18nKeysWithPrefix<'agentV2', 'agentDetail.configure.tools.'>
@@ -97,8 +117,9 @@ export type AgentCliTool = AgentToolBase & {
 export type AgentTool = AgentProviderTool | AgentCliTool
 
 export type AgentSoulConfigFormState = {
+  configNote: string
   prompt: string
-  model?: DefaultModel
+  model?: AgentComposerModel
   appFeatures?: AgentSoulAppFeaturesConfig
   skills: AgentSkill[]
   files: AgentFileNode[]
@@ -109,6 +130,7 @@ export type AgentSoulConfigFormState = {
 }
 
 export const defaultAgentSoulConfigFormState: AgentSoulConfigFormState = {
+  configNote: '',
   prompt: '',
   skills: [],
   files: [],

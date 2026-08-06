@@ -29,14 +29,11 @@ describe('RetrievalSetting', () => {
   })
 
   it('should render the learn-more link and qualified retrieval method options', () => {
-    render(
-      <RetrievalSetting
-        {...baseProps}
-        indexMethod={IndexMethodEnum.QUALIFIED}
-      />,
-    )
+    render(<RetrievalSetting {...baseProps} indexMethod={IndexMethodEnum.QUALIFIED} />)
 
-    expect(screen.getByRole('link', { name: 'datasetSettings.form.retrievalSetting.learnMore' })).toHaveAttribute(
+    expect(
+      screen.getByRole('link', { name: 'datasetSettings.form.retrievalSetting.learnMore' }),
+    ).toHaveAttribute(
       'href',
       resolveDocLink('/use-dify/knowledge/create-knowledge/setting-indexing-methods'),
     )
@@ -46,12 +43,7 @@ describe('RetrievalSetting', () => {
   })
 
   it('should render only the economical retrieval method for economical indexing', () => {
-    render(
-      <RetrievalSetting
-        {...baseProps}
-        indexMethod={IndexMethodEnum.ECONOMICAL}
-      />,
-    )
+    render(<RetrievalSetting {...baseProps} indexMethod={IndexMethodEnum.ECONOMICAL} />)
 
     expect(screen.getByText('dataset.retrieval.keyword_search.title')).toBeInTheDocument()
     expect(screen.queryByText('dataset.retrieval.semantic_search.title')).not.toBeInTheDocument()

@@ -19,7 +19,15 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 
 // Mock ModelSelector (external component from header module)
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: ({ onSelect, readonly, defaultModel }: { onSelect?: (val: Record<string, string>) => void, readonly?: boolean, defaultModel?: { model?: string } }) => (
+  default: ({
+    onSelect,
+    readonly,
+    defaultModel,
+  }: {
+    onSelect?: (val: Record<string, string>) => void
+    readonly?: boolean
+    defaultModel?: { model?: string }
+  }) => (
     <div data-testid="model-selector" data-readonly={readonly}>
       <span data-testid="current-model">{defaultModel?.model || 'none'}</span>
       <button
@@ -118,20 +126,14 @@ describe('SummaryIndexSetting', () => {
 
     it('should show disabled text when not enabled', () => {
       render(
-        <SummaryIndexSetting
-          entry="dataset-settings"
-          summaryIndexSetting={{ enable: false }}
-        />,
+        <SummaryIndexSetting entry="dataset-settings" summaryIndexSetting={{ enable: false }} />,
       )
       expect(screen.getByText(`${ns}.form.summaryAutoGenEnableTip`)).toBeInTheDocument()
     })
 
     it('should show enabled tip when enabled', () => {
       render(
-        <SummaryIndexSetting
-          entry="dataset-settings"
-          summaryIndexSetting={{ enable: true }}
-        />,
+        <SummaryIndexSetting entry="dataset-settings" summaryIndexSetting={{ enable: true }} />,
       )
       expect(screen.getByText(`${ns}.form.summaryAutoGenTip`)).toBeInTheDocument()
     })
@@ -168,10 +170,7 @@ describe('SummaryIndexSetting', () => {
 
     it('should not show model selector when disabled', () => {
       render(
-        <SummaryIndexSetting
-          entry="create-document"
-          summaryIndexSetting={{ enable: false }}
-        />,
+        <SummaryIndexSetting entry="create-document" summaryIndexSetting={{ enable: false }} />,
       )
       expect(screen.queryByTestId('model-selector')).not.toBeInTheDocument()
     })
@@ -207,19 +206,18 @@ describe('SummaryIndexSetting', () => {
       render(
         <SummaryIndexSetting
           entry="knowledge-base"
-          summaryIndexSetting={{ enable: true, model_provider_name: 'anthropic', model_name: 'claude-3' }}
+          summaryIndexSetting={{
+            enable: true,
+            model_provider_name: 'anthropic',
+            model_name: 'claude-3',
+          }}
         />,
       )
       expect(screen.getByTestId('current-model')).toHaveTextContent('claude-3')
     })
 
     it('should pass undefined defaultModel when provider is missing', () => {
-      render(
-        <SummaryIndexSetting
-          entry="knowledge-base"
-          summaryIndexSetting={{ enable: true }}
-        />,
-      )
+      render(<SummaryIndexSetting entry="knowledge-base" summaryIndexSetting={{ enable: true }} />)
       expect(screen.getByTestId('current-model')).toHaveTextContent('none')
     })
   })

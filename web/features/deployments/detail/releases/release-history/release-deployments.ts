@@ -21,11 +21,14 @@ export type ReleaseWithSummaryDeployments = Release & {
 
 function dedupeReleaseDeployments(items: ReleaseDeployment[]) {
   return items.filter((item, index) => {
-    return items.findIndex(candidate => candidate.environmentId === item.environmentId) === index
+    return items.findIndex((candidate) => candidate.environmentId === item.environmentId) === index
   })
 }
 
-function releaseSummaryEnvironmentDeployment(environment: Environment, status: RuntimeInstanceStatusValue): ReleaseDeployment {
+function releaseSummaryEnvironmentDeployment(
+  environment: Environment,
+  status: RuntimeInstanceStatusValue,
+): ReleaseDeployment {
   return {
     environmentId: environment.id,
     environmentName: environment.displayName,
@@ -36,14 +39,20 @@ function releaseSummaryEnvironmentDeployment(environment: Environment, status: R
 export function getReleaseSummaryDeployments(summary: ReleaseSummary) {
   // Each deployed environment carries its runtime status so a failed deployment
   // surfaces as failed instead of being assumed healthy.
-  const deployedItems = summary.deployedEnvironments
-    .map(deployment => releaseSummaryEnvironmentDeployment(deployment.environment, deployment.status))
+  const deployedItems = summary.deployedEnvironments.map((deployment) =>
+    releaseSummaryEnvironmentDeployment(deployment.environment, deployment.status),
+  )
   const actionItems = summary.environmentActions
-    .filter(action => action.kind === ReleaseEnvironmentActionKind.RELEASE_ENVIRONMENT_ACTION_KIND_DEPLOYING)
-    .map(action => releaseSummaryEnvironmentDeployment(action.environment, RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_DEPLOYING))
+    .filter(
+      (action) =>
+        action.kind === ReleaseEnvironmentActionKind.RELEASE_ENVIRONMENT_ACTION_KIND_DEPLOYING,
+    )
+    .map((action) =>
+      releaseSummaryEnvironmentDeployment(
+        action.environment,
+        RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_DEPLOYING,
+      ),
+    )
 
-  return dedupeReleaseDeployments([
-    ...deployedItems,
-    ...actionItems,
-  ])
+  return dedupeReleaseDeployments([...deployedItems, ...actionItems])
 }

@@ -53,9 +53,9 @@ describe('useTags', () => {
   it('should return same structure on re-render', () => {
     const { result, rerender } = renderHook(() => useTags())
 
-    const firstTagNames = result.current.tags.map(t => t.name)
+    const firstTagNames = result.current.tags.map((t) => t.name)
     rerender()
-    expect(result.current.tags.map(t => t.name)).toEqual(firstTagNames)
+    expect(result.current.tags.map((t) => t.name)).toEqual(firstTagNames)
   })
 })
 
@@ -94,16 +94,18 @@ describe('useCategories', () => {
       const { result } = renderHook(() => useCategories(true))
 
       expect(result.current.categoriesMap.tool!.label).toBe('plugin.categorySingle.tool')
-      expect(result.current.categoriesMap['agent-strategy']!.label).toBe('plugin.categorySingle.agent')
+      expect(result.current.categoriesMap['agent-strategy']!.label).toBe(
+        'plugin.categorySingle.agent',
+      )
     })
   })
 
   it('should return same structure on re-render', () => {
     const { result, rerender } = renderHook(() => useCategories())
 
-    const firstCategoryNames = result.current.categories.map(c => c.name)
+    const firstCategoryNames = result.current.categories.map((c) => c.name)
     rerender()
-    expect(result.current.categories.map(c => c.name)).toEqual(firstCategoryNames)
+    expect(result.current.categories.map((c) => c.name)).toEqual(firstCategoryNames)
   })
 })
 
@@ -117,7 +119,10 @@ describe('usePluginPageTabs', () => {
 
     expect(result.current).toHaveLength(2)
     expect(result.current[0]).toEqual({ value: 'plugins', text: 'common.menus.plugins' })
-    expect(result.current[1]).toEqual({ value: 'discover', text: 'common.menus.exploreMarketplace' })
+    expect(result.current[1]).toEqual({
+      value: 'discover',
+      text: 'common.menus.exploreMarketplace',
+    })
   })
 
   it('should have consistent structure across re-renders', () => {

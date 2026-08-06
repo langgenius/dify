@@ -1,10 +1,14 @@
 from contextlib import nullcontext
+from datetime import datetime
+from http import HTTPStatus
 from inspect import unwrap
 from types import SimpleNamespace
+from typing import NamedTuple, override
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from flask_restx import Resource
 
 from controllers.console.auth.error import (
     CannotTransferOwnerToSelfError,
@@ -14,102 +18,107 @@ from controllers.console.auth.error import (
     NotOwnerError,
     OwnerTransferLimitError,
 )
-from controllers.console.error import EmailSendIpLimitError, WorkspaceMembersLimitExceeded
+from controllers.console.error import EmailSendIpLimitError, SeatsLimitExceeded, WorkspaceMembersLimitExceeded
+from controllers.console.workspace.error import InvalidMemberRoleError
 from controllers.console.workspace.members import (
     DatasetOperatorMemberListApi,
     MemberInviteEmailApi,
+    MemberInviteErrorResponse,
     MemberListApi,
     MemberUpdateRoleApi,
     OwnerTransfer,
     OwnerTransferCheckApi,
     SendOwnerTransferEmailApi,
+    _count_new_member_invites,
 )
-from services.errors.account import AccountAlreadyInTenantError
+from libs.external_api import ExternalApi
+from machinery.context import RequestContext
+from services.errors.account import AccountAlreadyInTenantError, SeatsLimitExceededError
+from services.workspace_member_query_service import (
+    WorkspaceMemberQueryService,
+    WorkspaceMemberRole,
+    WorkspaceMemberSummary,
+)
+
+
+class _RecordingWorkspaceMemberQueryService(WorkspaceMemberQueryService):
+    def __init__(self, result: tuple[WorkspaceMemberSummary, ...]) -> None:
+        self._result = result
+        self.contexts: list[RequestContext] = []
+
+    @override
+    def list_current(self, context: RequestContext) -> tuple[WorkspaceMemberSummary, ...]:
+        self.contexts.append(context)
+        return self._result
+
+
+class _ApplicationServicesStub(NamedTuple):
+    workspace_member_queries: WorkspaceMemberQueryService
 
 
 class TestMemberListApi:
-    def test_get_success(self, app: Flask):
+    def test_get_passes_context_and_serializes_application_result(self, app: Flask) -> None:
         api = MemberListApi()
         method = unwrap(api.get)
-
-        tenant = MagicMock()
-        user = MagicMock(current_tenant=tenant)
-        member = MagicMock()
-        member.id = "m1"
-        member.name = "Member"
-        member.email = "member@test.com"
-        member.avatar = "avatar.png"
-        member.current_role = SimpleNamespace(value="admin")
-        member.status = SimpleNamespace(value="active")
-        members = [member]
+        request_context = RequestContext(
+            request_id="request-1",
+            trace_id="trace-1",
+            account_id="actor-1",
+            active_workspace_id="workspace-1",
+        )
+        timestamp = datetime(2026, 1, 1)
+        workspace_member_queries = _RecordingWorkspaceMemberQueryService(
+            (
+                WorkspaceMemberSummary(
+                    id="member-1",
+                    name="Member",
+                    email="member@example.com",
+                    avatar=None,
+                    last_login_at=None,
+                    last_active_at=timestamp,
+                    created_at=timestamp,
+                    role="owner",
+                    roles=(
+                        WorkspaceMemberRole(id="workspace.owner", name="Owner"),
+                        WorkspaceMemberRole(id="workspace.editor", name="Editor"),
+                    ),
+                    status="active",
+                ),
+            )
+        )
+        application_services_stub = _ApplicationServicesStub(workspace_member_queries=workspace_member_queries)
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.workspace.members.TenantService.get_tenant_members", return_value=members),
-        ):
-            result, status = method(api, user)
-
-        assert status == 200
-        assert len(result["accounts"]) == 1
-        assert result["accounts"][0]["role"] == "admin"
-        assert result["accounts"][0]["roles"] == [{"id": "admin", "name": "admin"}]
-
-    def test_get_with_rbac_enabled_fetches_roles_in_batch(self, app):
-        api = MemberListApi()
-        method = unwrap(api.get)
-
-        tenant = MagicMock(id="tenant-1")
-        user = MagicMock(id="acct-1", current_tenant=tenant)
-        member = SimpleNamespace(
-            id="m1",
-            name="Member",
-            email="member@test.com",
-            avatar=None,
-            last_login_at=1,
-            last_active_at=2,
-            created_at=3,
-            current_role=SimpleNamespace(value="editor"),
-            status=SimpleNamespace(value="active"),
-        )
-        role_item = SimpleNamespace(
-            account_id="m1",
-            roles=[
-                SimpleNamespace(id="workspace.owner", name="Owner"),
-                SimpleNamespace(id="workspace.editor", name="Editor"),
-            ],
-        )
-
-        with (
-            app.test_request_context("/"),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "tenant-1")),
-            patch("controllers.console.workspace.members.dify_config.RBAC_ENABLED", True),
-            patch("controllers.console.workspace.members.TenantService.get_tenant_members", return_value=[member]),
             patch(
-                "controllers.console.workspace.members.enterprise_rbac_service.RBACService.MemberRoles.batch_get",
-                return_value=[role_item],
-            ) as mock_batch_get,
+                "controllers.console.workspace.members.application_services",
+                return_value=application_services_stub,
+            ),
         ):
-            result, status = method(api)
+            result, status = method(api, request_context=request_context)
 
-        assert status == 200
-        assert result["accounts"][0]["role"] == "editor"
-        assert result["accounts"][0]["roles"] == [
-            {"id": "workspace.owner", "name": "Owner"},
-            {"id": "workspace.editor", "name": "Editor"},
-        ]
-        mock_batch_get.assert_called_once_with("tenant-1", "acct-1", ["m1"])
-
-    def test_get_no_tenant(self, app: Flask):
-        api = MemberListApi()
-        method = unwrap(api.get)
-
-        user = MagicMock(current_tenant=None)
-
-        with (
-            app.test_request_context("/"),
-        ):
-            with pytest.raises(ValueError):
-                method(api, user)
+        assert status == HTTPStatus.OK
+        assert result == {
+            "accounts": [
+                {
+                    "id": "member-1",
+                    "name": "Member",
+                    "email": "member@example.com",
+                    "avatar": None,
+                    "avatar_url": None,
+                    "last_login_at": None,
+                    "last_active_at": int(timestamp.timestamp()),
+                    "created_at": int(timestamp.timestamp()),
+                    "role": "owner",
+                    "roles": [
+                        {"id": "workspace.owner", "name": "Owner"},
+                        {"id": "workspace.editor", "name": "Editor"},
+                    ],
+                    "status": "active",
+                }
+            ]
+        }
+        assert workspace_member_queries.contexts == [request_context]
 
 
 class TestMemberInviteEmailApi:
@@ -130,7 +139,7 @@ class TestMemberInviteEmailApi:
         features.workspace_members.is_available.return_value = True
 
         payload = {
-            "emails": ["a@test.com"],
+            "emails": ["A@TEST.com", "a@test.com"],
             "role": "normal",
             "language": "en-US",
         }
@@ -138,8 +147,10 @@ class TestMemberInviteEmailApi:
         with (
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
-            patch("controllers.console.workspace.members._count_new_member_invites", return_value=1),
-            patch("controllers.console.workspace.members.RegisterService.invite_new_member", return_value="token"),
+            patch("controllers.console.workspace.members._count_new_member_invites", return_value=(1, 1)) as mock_count,
+            patch(
+                "controllers.console.workspace.members.RegisterService.invite_new_member", return_value="token"
+            ) as mock_invite,
             patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "http://x"),
             patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", False),
             patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
@@ -148,6 +159,10 @@ class TestMemberInviteEmailApi:
 
         assert status == 201
         assert result["result"] == "success"
+        assert result["invitation_results"][0]["email"] == "a@test.com"
+        mock_count.assert_not_called()
+        mock_invite.assert_called_once()
+        assert mock_invite.call_args.kwargs["email"] == "a@test.com"
 
     def test_invite_limit_exceeded(self, app: Flask):
         api = MemberInviteEmailApi()
@@ -168,7 +183,7 @@ class TestMemberInviteEmailApi:
         with (
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
-            patch("controllers.console.workspace.members._count_new_member_invites", return_value=1),
+            patch("controllers.console.workspace.members._count_new_member_invites", return_value=(1, 1)),
             patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", True),
             patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
         ):
@@ -195,7 +210,7 @@ class TestMemberInviteEmailApi:
         with (
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
-            patch("controllers.console.workspace.members._count_new_member_invites", return_value=2),
+            patch("controllers.console.workspace.members._count_new_member_invites", return_value=(2, 2)),
             patch("controllers.console.workspace.members._count_current_members", return_value=9),
             patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", False),
             patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", True),
@@ -222,7 +237,7 @@ class TestMemberInviteEmailApi:
         with (
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
-            patch("controllers.console.workspace.members._count_new_member_invites", return_value=0),
+            patch("controllers.console.workspace.members._count_new_member_invites", return_value=(0, 0)),
             patch(
                 "controllers.console.workspace.members.RegisterService.invite_new_member",
                 side_effect=AccountAlreadyInTenantError(),
@@ -247,10 +262,29 @@ class TestMemberInviteEmailApi:
         }
 
         with app.test_request_context("/", json=payload):
-            result, status = method(api, MagicMock())
+            with pytest.raises(InvalidMemberRoleError) as exc_info:
+                method(api, MagicMock())
 
-        assert status == 400
-        assert result["code"] == "invalid-role"
+        assert exc_info.value.error_code == "invalid_role"
+
+    def test_invite_invalid_payload_matches_documented_error_response(self):
+        app = Flask(__name__)
+        api = ExternalApi(app)
+        method = unwrap(MemberInviteEmailApi.post)
+
+        @api.route("/workspaces/current/members/invite-email")
+        class MemberInviteValidationApi(Resource):
+            def post(self):
+                return method(MemberInviteEmailApi(), MagicMock())
+
+        response = app.test_client().post(
+            "/workspaces/current/members/invite-email",
+            json={"emails": [], "role": "normal"},
+        )
+
+        assert response.status_code == 400
+        error = MemberInviteErrorResponse.model_validate(response.get_json())
+        assert error.code == "invalid_param"
 
     def test_invite_generic_exception(self, app: Flask):
         api = MemberInviteEmailApi()
@@ -271,7 +305,7 @@ class TestMemberInviteEmailApi:
         with (
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
-            patch("controllers.console.workspace.members._count_new_member_invites", return_value=1),
+            patch("controllers.console.workspace.members._count_new_member_invites", return_value=(1, 1)),
             patch(
                 "controllers.console.workspace.members.RegisterService.invite_new_member",
                 side_effect=Exception("boom"),
@@ -283,6 +317,222 @@ class TestMemberInviteEmailApi:
             result, _ = method(api, user)
 
         assert result["invitation_results"][0]["status"] == "failed"
+
+    def test_invite_seats_limit_exceeded(self, app: Flask):
+        api = MemberInviteEmailApi()
+        method = unwrap(api.post)
+
+        tenant = MagicMock(id="t1")
+        user = MagicMock(current_tenant=tenant)
+        features = MagicMock()
+        features.billing.enabled = False
+        features.workspace_members.enabled = False
+        license_info = MagicMock()
+        license_info.seats.is_available.return_value = False
+
+        payload = {
+            "emails": ["a@test.com", "b@test.com"],
+            "role": "normal",
+        }
+
+        with (
+            app.test_request_context("/", json=payload),
+            patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
+            patch("controllers.console.workspace.members._count_new_member_invites", return_value=(2, 2)),
+            patch(
+                "controllers.console.workspace.members.FeatureService.get_license",
+                return_value=license_info,
+            ) as mock_get_license,
+            patch("controllers.console.workspace.members.RegisterService.invite_new_member") as mock_invite,
+            patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", True),
+            patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
+        ):
+            with pytest.raises(SeatsLimitExceeded):
+                method(api, user)
+
+        mock_get_license.assert_called_once_with()
+        license_info.seats.is_available.assert_called_once_with(2)
+        mock_invite.assert_not_called()
+
+    def test_invite_existing_accounts_do_not_consume_seats(self, app: Flask):
+        api = MemberInviteEmailApi()
+        method = unwrap(api.post)
+
+        tenant = MagicMock(id="t1")
+        user = MagicMock(current_tenant=tenant)
+        features = MagicMock()
+        features.billing.enabled = False
+        features.workspace_members.enabled = False
+        license_info = MagicMock()
+        license_info.seats.is_available.return_value = False
+
+        payload = {
+            "emails": ["a@test.com", "b@test.com"],
+            "role": "normal",
+        }
+
+        with (
+            app.test_request_context("/", json=payload),
+            patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
+            patch("controllers.console.workspace.members._count_new_member_invites", return_value=(2, 0)),
+            patch(
+                "controllers.console.workspace.members.FeatureService.get_license",
+                return_value=license_info,
+            ) as mock_get_license,
+            patch(
+                "controllers.console.workspace.members.RegisterService.invite_new_member", return_value="token"
+            ) as mock_invite,
+            patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "http://x"),
+            patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", True),
+            patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
+        ):
+            result, status = method(api, user)
+
+        assert status == 201
+        assert len(result["invitation_results"]) == 2
+        mock_get_license.assert_not_called()
+        license_info.seats.is_available.assert_not_called()
+        assert mock_invite.call_count == 2
+
+    def test_invite_mixed_accounts_with_available_seats(self, app: Flask):
+        api = MemberInviteEmailApi()
+        method = unwrap(api.post)
+
+        tenant = MagicMock(id="t1")
+        user = MagicMock(current_tenant=tenant)
+        features = MagicMock()
+        features.billing.enabled = False
+        features.workspace_members.enabled = False
+        license_info = MagicMock()
+        license_info.seats.is_available.return_value = True
+
+        payload = {
+            "emails": ["a@test.com", "b@test.com"],
+            "role": "normal",
+        }
+
+        with (
+            app.test_request_context("/", json=payload),
+            patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
+            patch("controllers.console.workspace.members._count_new_member_invites", return_value=(2, 1)),
+            patch(
+                "controllers.console.workspace.members.FeatureService.get_license",
+                return_value=license_info,
+            ) as mock_get_license,
+            patch(
+                "controllers.console.workspace.members.RegisterService.invite_new_member", return_value="token"
+            ) as mock_invite,
+            patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "http://x"),
+            patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", True),
+            patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
+        ):
+            result, status = method(api, user)
+
+        assert status == 201
+        assert len(result["invitation_results"]) == 2
+        mock_get_license.assert_called_once_with()
+        license_info.seats.is_available.assert_called_once_with(1)
+        assert mock_invite.call_count == 2
+
+    def test_invite_skips_seats_limit_when_enterprise_disabled(self, app: Flask):
+        api = MemberInviteEmailApi()
+        method = unwrap(api.post)
+
+        tenant = MagicMock(id="t1")
+        user = MagicMock(current_tenant=tenant)
+        features = MagicMock()
+        features.billing.enabled = False
+        features.workspace_members.enabled = False
+        license_info = MagicMock()
+        license_info.seats.is_available.return_value = False
+
+        payload = {
+            "emails": ["a@test.com"],
+            "role": "normal",
+        }
+
+        with (
+            app.test_request_context("/", json=payload),
+            patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
+            patch("controllers.console.workspace.members._count_new_member_invites", return_value=(1, 1)),
+            patch(
+                "controllers.console.workspace.members.FeatureService.get_license",
+                return_value=license_info,
+            ) as mock_get_license,
+            patch("controllers.console.workspace.members.RegisterService.invite_new_member", return_value="token"),
+            patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "http://x"),
+            patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", False),
+            patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
+        ):
+            result, status = method(api, user)
+
+        assert status == 201
+        assert result["invitation_results"][0]["status"] == "success"
+        mock_get_license.assert_not_called()
+        license_info.seats.is_available.assert_not_called()
+
+    def test_invite_seats_error_is_reported_as_failed_result(self, app: Flask):
+        api = MemberInviteEmailApi()
+        method = unwrap(api.post)
+
+        tenant = MagicMock(id="t1")
+        user = MagicMock(current_tenant=tenant)
+        features = MagicMock()
+        features.billing.enabled = False
+        features.workspace_members.enabled = False
+        license_info = MagicMock()
+        license_info.seats.is_available.return_value = True
+
+        payload = {
+            "emails": ["a@test.com"],
+            "role": "normal",
+        }
+
+        with (
+            app.test_request_context("/", json=payload),
+            patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
+            patch("controllers.console.workspace.members._count_new_member_invites", return_value=(1, 1)),
+            patch(
+                "controllers.console.workspace.members.FeatureService.get_license",
+                return_value=license_info,
+            ),
+            patch(
+                "controllers.console.workspace.members.RegisterService.invite_new_member",
+                side_effect=SeatsLimitExceededError("licensed seats limit exceeded"),
+            ),
+            patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "http://x"),
+            patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", True),
+            patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
+        ):
+            result, status = method(api, user)
+
+        assert status == 201
+        assert result["invitation_results"][0]["status"] == "failed"
+        assert result["invitation_results"][0]["message"] == "licensed seats limit exceeded"
+
+
+class TestCountNewMemberInvites:
+    def test_count_new_member_invites(self):
+        new_account = None
+        existing_account_not_in_tenant = SimpleNamespace(id="account-2")
+        existing_account_in_tenant = SimpleNamespace(id="account-3")
+
+        with (
+            patch(
+                "controllers.console.workspace.members.AccountService.get_account_by_email_with_case_fallback",
+                side_effect=[new_account, existing_account_not_in_tenant, existing_account_in_tenant],
+            ) as mock_get_account,
+            patch("controllers.console.workspace.members.db.session") as mock_session,
+        ):
+            mock_session.scalar.side_effect = [None, "join-id"]
+            result = _count_new_member_invites(
+                "tenant-1",
+                ["new@test.com", "existing@test.com", "member@test.com"],
+            )
+
+        assert result == (2, 1)
+        assert mock_get_account.call_count == 3
+        assert mock_session.scalar.call_count == 2
 
 
 class TestMemberUpdateRoleApi:

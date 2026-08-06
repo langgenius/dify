@@ -1,24 +1,51 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { withSelectorKey } from '@/test/i18n-mock'
 import StatusIndicators from '../status-indicators'
 
 let installedPlugins = [{ name: 'demo-plugin', plugin_unique_identifier: 'demo@1.0.0' }]
+const { mockUseInstalledPluginList } = vi.hoisted(() => ({
+  mockUseInstalledPluginList: vi.fn(),
+}))
 
 vi.mock('@/service/use-plugins', () => ({
-  useInstalledPluginList: () => ({ data: { plugins: installedPlugins } }),
+  useInstalledPluginList: (...args: unknown[]) => {
+    mockUseInstalledPluginList(...args)
+    return { data: { plugins: installedPlugins } }
+  },
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/switch-plugin-version', () => ({
-  SwitchPluginVersion: ({ uniqueIdentifier }: { uniqueIdentifier: string }) => <div>{`SwitchVersion:${uniqueIdentifier}`}</div>,
+  SwitchPluginVersion: ({ uniqueIdentifier }: { uniqueIdentifier: string }) => (
+    <div>{`SwitchVersion:${uniqueIdentifier}`}</div>
+  ),
 }))
 
-const t = (key: string) => key
+const t = withSelectorKey((key: string) => key, 'workflow')
 
 describe('StatusIndicators', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     installedPlugins = [{ name: 'demo-plugin', plugin_unique_identifier: 'demo@1.0.0' }]
+  })
+
+  it('reads the model-specific installed plugin list', () => {
+    render(
+      <StatusIndicators
+        needsConfiguration={false}
+        modelProvider={true}
+        inModelList={false}
+        disabled={true}
+        pluginInfo={{ name: 'demo-plugin' }}
+        t={t}
+      />,
+    )
+
+    expect(mockUseInstalledPluginList).toHaveBeenCalledWith(false, 100, {
+      category: PluginCategoryEnum.model,
+    })
   })
 
   const getPopoverTrigger = (name: string) => {
@@ -56,7 +83,9 @@ describe('StatusIndicators', () => {
 
     await user.hover(getPopoverTrigger('nodes.agent.modelSelectorTooltips.deprecated'))
 
-    expect(await screen.findByText('nodes.agent.modelSelectorTooltips.deprecated')).toBeInTheDocument()
+    expect(
+      await screen.findByText('nodes.agent.modelSelectorTooltips.deprecated'),
+    ).toBeInTheDocument()
   })
 
   it('should render model-not-support tooltip when disabled model is not in model list and has no pluginInfo', async () => {

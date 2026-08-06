@@ -7,7 +7,7 @@ separate ``agent-backend.v1`` event stream.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
 from enum import StrEnum
 
@@ -69,9 +69,17 @@ class FakeAgentBackendRunClient:
         del request
         return CancelRunResponse(run_id=run_id, status="cancelled")
 
-    def stream_events(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
+    def stream_events(
+        self,
+        run_id: str,
+        *,
+        after: str | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> Iterator[RunEvent]:
         """Yield the deterministic public ``RunEvent`` sequence for ``run_id``."""
         for event in self._events(run_id):
+            if should_stop is not None and should_stop():
+                return
             if after is not None and event.id is not None and event.id <= after:
                 continue
             yield event

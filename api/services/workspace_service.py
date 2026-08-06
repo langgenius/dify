@@ -1,23 +1,32 @@
 from flask_login import current_user
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from enums.cloud_plan import CloudPlan
-from extensions.ext_database import db
+from enums.deployment_edition import DeploymentEdition
 from models.account import Tenant, TenantAccountJoin, TenantAccountRole
 from services.account_service import TenantService
 from services.feature_service import FeatureService
 
 
+def _set_credit_pool_info(
+    tenant_info: dict[str, object], *, quota_limit: int, quota_used: int, exhausted_at: int | None = None
+) -> None:
+    tenant_info["trial_credits"] = quota_limit
+    tenant_info["trial_credits_used"] = quota_used
+    if isinstance(exhausted_at, int) and exhausted_at > 0 and quota_limit > 0 and quota_used >= quota_limit:
+        tenant_info["trial_credits_exhausted_at"] = exhausted_at
+
+
 class WorkspaceService:
     @classmethod
-    def get_tenant_info(cls, tenant: Tenant):
+    def get_tenant_info(cls, tenant: Tenant, session: Session):
         if not tenant:
             return None
         tenant_info: dict[str, object] = {
             "id": tenant.id,
             "name": tenant.name,
-            "plan": tenant.plan,
             "status": tenant.status,
             "created_at": tenant.created_at,
             "trial_end_reason": None,
@@ -25,7 +34,7 @@ class WorkspaceService:
         }
 
         # Get role of user
-        tenant_account_join = db.session.scalar(
+        tenant_account_join = session.scalar(
             select(TenantAccountJoin)
             .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == current_user.id)
             .limit(1)
@@ -34,10 +43,11 @@ class WorkspaceService:
         tenant_info["role"] = tenant_account_join.role
 
         feature = FeatureService.get_features(tenant.id, exclude_vector_space=True)
+        tenant_info["plan"] = feature.billing.subscription.plan if feature.billing.enabled else None
         can_replace_logo = feature.can_replace_logo
 
         if can_replace_logo and TenantService.has_roles(
-            tenant, [TenantAccountRole.OWNER, TenantAccountRole.ADMIN], session=db.session
+            tenant, [TenantAccountRole.OWNER, TenantAccountRole.ADMIN], session=session
         ):
             base_url = dify_config.FILES_URL
             replace_webapp_logo = (
@@ -51,24 +61,34 @@ class WorkspaceService:
                 "remove_webapp_brand": remove_webapp_brand,
                 "replace_webapp_logo": replace_webapp_logo,
             }
-        if dify_config.EDITION == "CLOUD":
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             tenant_info["next_credit_reset_date"] = feature.next_credit_reset_date
 
-            from services.credit_pool_service import CreditPoolService
+            from services.credit_pool_service import CreditPoolBalance, CreditPoolService
 
-            paid_pool = CreditPoolService.get_pool(tenant_id=tenant.id, pool_type="paid")
+            paid_pool = CreditPoolService.get_pool(tenant_id=tenant.id, pool_type="paid", session=session)
             # if the tenant is not on the sandbox plan and the paid pool is not full, use the paid pool
             if (
                 feature.billing.subscription.plan != CloudPlan.SANDBOX
                 and paid_pool is not None
                 and (paid_pool.quota_limit == -1 or paid_pool.quota_limit > paid_pool.quota_used)
             ):
-                tenant_info["trial_credits"] = paid_pool.quota_limit
-                tenant_info["trial_credits_used"] = paid_pool.quota_used
+                exhausted_at = paid_pool.exhausted_at if isinstance(paid_pool, CreditPoolBalance) else None
+                _set_credit_pool_info(
+                    tenant_info,
+                    quota_limit=paid_pool.quota_limit,
+                    quota_used=paid_pool.quota_used,
+                    exhausted_at=exhausted_at,
+                )
             else:
-                trial_pool = CreditPoolService.get_pool(tenant_id=tenant.id, pool_type="trial")
+                trial_pool = CreditPoolService.get_pool(tenant_id=tenant.id, pool_type="trial", session=session)
                 if trial_pool:
-                    tenant_info["trial_credits"] = trial_pool.quota_limit
-                    tenant_info["trial_credits_used"] = trial_pool.quota_used
+                    exhausted_at = trial_pool.exhausted_at if isinstance(trial_pool, CreditPoolBalance) else None
+                    _set_credit_pool_info(
+                        tenant_info,
+                        quota_limit=trial_pool.quota_limit,
+                        quota_used=trial_pool.quota_used,
+                        exhausted_at=exhausted_at,
+                    )
 
         return tenant_info

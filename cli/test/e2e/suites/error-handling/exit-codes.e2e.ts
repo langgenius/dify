@@ -61,17 +61,14 @@ describe('E2E / exit code standards (spec 5.4)', () => {
     // a non-zero code. In practice the CLI exits 6 (config_schema_unsupported).
     const corruptTmp = await withTempConfig()
     try {
-      await writeFile(
-        join(corruptTmp.configDir, 'config.yml'),
-        ': broken yaml [[[',
-        { mode: 0o600 },
-      )
+      await writeFile(join(corruptTmp.configDir, 'config.yml'), ': broken yaml [[[', {
+        mode: 0o600,
+      })
       const result = await run(['config', 'get', 'defaults.format'], {
         configDir: corruptTmp.configDir,
       })
       expect(result.exitCode).toBe(6)
-    }
-    finally {
+    } finally {
       await corruptTmp.cleanup()
     }
   })
@@ -83,13 +80,7 @@ describe('E2E / exit code standards (spec 5.4)', () => {
     // WTA-249 has been fixed: app not found now correctly returns exit 1.
     //
     // Scenario: get app with a non-existent UUID + -o json → server_4xx_other
-    const result = await fx.r([
-      'get',
-      'app',
-      ZERO,
-      '-o',
-      'json',
-    ])
+    const result = await fx.r(['get', 'app', ZERO, '-o', 'json'])
     // WTA-249 has been fixed in the current build: 4xx with -o json now
     // correctly returns exit 1.
     expect(result.exitCode, 'app not found with -o json must exit 1 (WTA-249 fixed)').toBe(1)
@@ -107,8 +98,7 @@ describe('E2E / exit code standards (spec 5.4)', () => {
         configDir: unauthTmp.configDir,
       })
       assertNonZeroExit(result)
-    }
-    finally {
+    } finally {
       await unauthTmp.cleanup()
     }
   })
@@ -160,8 +150,7 @@ describe('E2E / exit code standards (spec 5.4)', () => {
       const r2 = await run(['get', 'app'], { configDir: unauthTmp.configDir })
       expect(r1.exitCode).toBe(r2.exitCode)
       expect(r1.exitCode).not.toBe(0)
-    }
-    finally {
+    } finally {
       await unauthTmp.cleanup()
     }
   })
@@ -181,18 +170,13 @@ describe('E2E / exit code standards (spec 5.4)', () => {
     try {
       const authResult = await run(['get', 'app'], { configDir: unauthTmp.configDir })
       authExitCode = authResult.exitCode
-    }
-    finally {
+    } finally {
       await unauthTmp.cleanup()
     }
     expect(authExitCode!, 'not_logged_in must exit 4').toBe(4)
 
     // Class 1 — server/resource error (not_found, server_5xx, network)
-    const serverResult = await fx.r([
-      'use',
-      'workspace',
-      'nonexistent-workspace-id-xyz',
-    ])
+    const serverResult = await fx.r(['use', 'workspace', 'nonexistent-workspace-id-xyz'])
     expect(serverResult.exitCode, 'workspace not found must exit 1').toBe(1)
   })
 })

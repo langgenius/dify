@@ -8,8 +8,11 @@ const mockState = vi.hoisted(() => ({
 const mockRunMode = vi.hoisted(() => vi.fn())
 const mockHandleWorkflowStartRunInChatflow = vi.hoisted(() => vi.fn())
 
-vi.mock('../../hooks', () => ({
+vi.mock('../../hooks/use-workflow', () => ({
   useNodesReadOnly: () => ({ nodesReadOnly: mockState.nodesReadOnly }),
+}))
+
+vi.mock('../../hooks/use-workflow-start-run', () => ({
   useWorkflowStartRun: () => ({
     handleWorkflowStartRunInChatflow: mockHandleWorkflowStartRunInChatflow,
   }),
@@ -25,7 +28,7 @@ vi.mock('../../hooks-store', () => ({
 }))
 
 vi.mock('../run-mode', () => ({
-  default: ({ text, disabled }: { text?: string, disabled?: boolean }) => {
+  default: ({ text, disabled }: { text?: string; disabled?: boolean }) => {
     mockRunMode({ text, disabled })
 
     return (

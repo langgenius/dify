@@ -5,7 +5,8 @@ import { useConfigsMap } from '../use-configs-map'
 const mockUseFeatures = vi.fn()
 
 vi.mock('@/app/components/base/features/hooks', () => ({
-  useFeatures: (selector: (state: { features: { file: Record<string, unknown> } }) => unknown) => mockUseFeatures(selector),
+  useFeatures: (selector: (state: { features: { file: Record<string, unknown> } }) => unknown) =>
+    mockUseFeatures(selector),
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
@@ -15,14 +16,17 @@ vi.mock('@/app/components/workflow/store', () => ({
 describe('useConfigsMap', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseFeatures.mockImplementation((selector: (state: { features: { file: Record<string, unknown> } }) => unknown) => selector({
-      features: {
-        file: {
-          enabled: true,
-          number_limits: 3,
-        },
-      },
-    }))
+    mockUseFeatures.mockImplementation(
+      (selector: (state: { features: { file: Record<string, unknown> } }) => unknown) =>
+        selector({
+          features: {
+            file: {
+              enabled: true,
+              number_limits: 3,
+            },
+          },
+        }),
+    )
   })
 
   it('should map workflow app id and feature file settings into inspect-var configs', () => {
