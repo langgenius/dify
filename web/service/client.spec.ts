@@ -619,28 +619,43 @@ describe('consoleQuery app mutation defaults', () => {
     expect(invalidateQueries).not.toHaveBeenCalled()
   })
 
-  it('should invalidate every app list cache after starring an app', async () => {
+  it('should keep a star mutation pending until visible app lists synchronize', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = new QueryClient()
-    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    const invalidationResolvers: Array<() => void> = []
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          invalidationResolvers.push(resolve)
+        }),
+    )
     const mutationOptions = consoleQuery.apps.byAppId.star.post.mutationOptions()
 
-    await mutationOptions.onSuccess?.(
+    const synchronization = mutationOptions.onSuccess?.(
       { result: 'success' },
       { params: { app_id: 'app-1' } },
       undefined,
       createMutationContext(queryClient),
     )
+    let synchronized = false
+    void Promise.resolve(synchronization).then(() => {
+      synchronized = true
+    })
+    await Promise.resolve()
 
+    expect(synchronized).toBe(false)
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: consoleQuery.apps.get.key(),
     })
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: consoleQuery.apps.starred.get.key(),
     })
-    expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: consoleQuery.apps.recent.get.key(),
-    })
+    expect(invalidateQueries).toHaveBeenCalledTimes(2)
+
+    invalidationResolvers.forEach((resolve) => resolve())
+    await synchronization
+
+    expect(synchronized).toBe(true)
   })
 
   it('should invalidate the owning API key cache after app and dataset mutations', async () => {

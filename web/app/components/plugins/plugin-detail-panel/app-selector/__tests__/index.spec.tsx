@@ -30,6 +30,9 @@ const apps = [
   },
 ] satisfies AppPartial[]
 
+const mockAppDetailQuery = vi.hoisted(() => vi.fn())
+const mockUseAppWorkflow = vi.hoisted(() => vi.fn())
+
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     apps: {
@@ -73,7 +76,7 @@ vi.mock('@/service/client', () => ({
                 : undefined
             return {
               queryKey: ['apps', appId],
-              queryFn: () => apps.find((app) => app.id === appId),
+              queryFn: () => mockAppDetailQuery(appId),
               enabled: !!appId,
             }
           },
@@ -84,11 +87,16 @@ vi.mock('@/service/client', () => ({
 }))
 
 vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: () => ({ data: undefined }),
+  useFileUploadConfig: () => ({
+    data: undefined,
+    isError: false,
+    isFetching: false,
+    refetch: vi.fn(),
+  }),
 }))
 
 vi.mock('@/service/use-workflow', () => ({
-  useAppWorkflow: () => ({ data: undefined, isFetching: false }),
+  useAppWorkflow: (appId: string) => mockUseAppWorkflow(appId),
 }))
 
 function renderWithQueryClient(children: ReactNode) {
@@ -120,6 +128,35 @@ function StatefulAppSelector({ onSelect }: { onSelect: (value: AppSelectorValue)
 describe('AppSelector', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockAppDetailQuery.mockImplementation((appId: string) => apps.find((app) => app.id === appId))
+    mockUseAppWorkflow.mockReturnValue({
+      data: undefined,
+      isError: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    })
+  })
+
+  it('should start the workflow query before selected app detail resolves', async () => {
+    const user = userEvent.setup()
+    mockAppDetailQuery.mockReturnValue(new Promise(() => {}))
+    mockUseAppWorkflow.mockReturnValue({
+      data: undefined,
+      isError: false,
+      isFetching: true,
+      refetch: vi.fn(),
+    })
+
+    renderWithQueryClient(
+      <AppSelector value={{ app_id: 'app-2', inputs: {} }} onSelect={vi.fn()} />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'app.appSelector.label' }))
+
+    await waitFor(() => {
+      expect(mockUseAppWorkflow).toHaveBeenCalledWith('app-2')
+    })
+    expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
   })
 
   it('should keep the main interaction: outer panel, inner app list, then inputs panel', async () => {

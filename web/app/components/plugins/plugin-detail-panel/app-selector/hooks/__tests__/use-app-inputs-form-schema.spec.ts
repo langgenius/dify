@@ -6,11 +6,16 @@ import { useAppInputsFormSchema } from '../use-app-inputs-form-schema'
 
 let mockAppDetailData: Record<string, unknown> | null = null
 let mockAppWorkflowData: Record<string, unknown> | null = null
+const mockAppRefetch = vi.fn()
+const mockFileUploadConfigRefetch = vi.fn()
+const mockWorkflowRefetch = vi.fn()
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: () => ({
     data: mockAppDetailData,
+    isError: false,
     isFetching: false,
+    refetch: mockAppRefetch,
   }),
 }))
 
@@ -20,13 +25,18 @@ vi.mock('@/service/use-common', () => ({
       file_size_limit: 15,
       image_file_size_limit: 10,
     },
+    isError: false,
+    isFetching: false,
+    refetch: mockFileUploadConfigRefetch,
   }),
 }))
 
 vi.mock('@/service/use-workflow', () => ({
   useAppWorkflow: () => ({
     data: mockAppWorkflowData,
+    isError: false,
     isFetching: false,
+    refetch: mockWorkflowRefetch,
   }),
 }))
 
@@ -145,5 +155,22 @@ describe('useAppInputsFormSchema', () => {
     )
 
     expect(result.current.inputFormSchema).toEqual([])
+  })
+
+  it('should retry every query owned by the workflow input panel', () => {
+    const { result } = renderHook(() =>
+      useAppInputsFormSchema({
+        appDetail: {
+          id: 'app-2',
+          mode: AppModeEnum.WORKFLOW,
+        } as never,
+      }),
+    )
+
+    result.current.retry()
+
+    expect(mockFileUploadConfigRefetch).toHaveBeenCalledTimes(1)
+    expect(mockAppRefetch).toHaveBeenCalledTimes(1)
+    expect(mockWorkflowRefetch).toHaveBeenCalledTimes(1)
   })
 })

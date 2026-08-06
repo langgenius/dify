@@ -164,10 +164,10 @@ export function AppSelector({
               onSearchChange={setSearchText}
             />
           </div>
-          {selectedAppDetail && (
+          {currentAppInfo && (
             <AppInputsPanel
               value={formattedValue}
-              appDetail={selectedAppDetail}
+              appDetail={currentAppInfo}
               onFormChange={handleFormChange}
             />
           )}

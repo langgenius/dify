@@ -152,7 +152,9 @@ type UseAppInputsFormSchemaParams = {
 
 type UseAppInputsFormSchemaResult = {
   inputFormSchema: InputSchemaItem[]
+  isError: boolean
   isLoading: boolean
+  retry: () => void
   fileUploadConfig?: FileUploadConfigResponse
 }
 
@@ -161,17 +163,20 @@ export function useAppInputsFormSchema({
 }: UseAppInputsFormSchemaParams): UseAppInputsFormSchemaResult {
   const isBasicApp = isBasicAppMode(appDetail.mode)
 
-  const { data: fileUploadConfig } = useFileUploadConfig()
-  const { data: currentApp, isFetching: isAppLoading } = useQuery(
+  const fileUploadConfigQuery = useFileUploadConfig()
+  const { data: fileUploadConfig } = fileUploadConfigQuery
+  const appQuery = useQuery(
     consoleQuery.apps.byAppId.get.queryOptions({
       input: { params: { app_id: appDetail.id } },
     }),
   )
-  const { data: currentWorkflow, isFetching: isWorkflowLoading } = useAppWorkflow(
-    isBasicApp ? '' : appDetail.id,
-  )
+  const { data: currentApp } = appQuery
+  const workflowQuery = useAppWorkflow(isBasicApp ? '' : appDetail.id)
+  const { data: currentWorkflow } = workflowQuery
 
-  const isLoading = isAppLoading || isWorkflowLoading
+  const isLoading =
+    fileUploadConfigQuery.isFetching || appQuery.isFetching || workflowQuery.isFetching
+  const isError = fileUploadConfigQuery.isError || appQuery.isError || workflowQuery.isError
 
   const inputFormSchema = useMemo(() => {
     if (!currentApp) return []
@@ -197,9 +202,19 @@ export function useAppInputsFormSchema({
     return [...baseSchema, createImageUploadSchema(basicFileConfig, fileUploadConfig)]
   }, [currentApp, currentWorkflow, fileUploadConfig, isBasicApp])
 
+  const retry = () => {
+    void Promise.all([
+      fileUploadConfigQuery.refetch(),
+      appQuery.refetch(),
+      ...(!isBasicApp ? [workflowQuery.refetch()] : []),
+    ])
+  }
+
   return {
     inputFormSchema,
+    isError,
     isLoading,
+    retry,
     fileUploadConfig,
   }
 }
