@@ -1,6 +1,8 @@
+from typing import cast
 from unittest.mock import patch
 
-from services.feature_service import FeatureService
+from services.billing_service import BillingInfo
+from services.feature_service import FeatureService, LimitationModel
 
 
 def test_get_features_exclude_vector_space_sets_vector_space_to_none():
@@ -35,3 +37,15 @@ def test_get_features_exclude_vector_space_sets_vector_space_to_none():
 
     assert features.vector_space is None
     get_info.assert_called_once_with(tenant_id, exclude_vector_space=True)
+
+
+def test_full_features_keep_treating_unknown_vector_usage_as_zero():
+    vector_space = LimitationModel()
+
+    FeatureService._fulfill_vector_space_from_billing_info(
+        vector_space,
+        cast(BillingInfo, {"vector_space": {"size": 0.0, "limit": 50, "usage_unknown": True}}),
+    )
+
+    assert vector_space.size == 0
+    assert vector_space.limit == 50

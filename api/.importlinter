@@ -8,7 +8,53 @@ root_packages =
     extensions
     factories
     libs
+    machinery
     models
+    repositories
     tasks
     services
 include_external_packages = True
+
+[importlinter:contract:machinery-framework-boundary]
+name = API machinery is framework neutral
+type = forbidden
+source_modules =
+    machinery
+forbidden_modules =
+    controllers
+    extensions
+    flask
+    models
+    sqlalchemy
+    werkzeug
+
+[importlinter:contract:workspace-query-service-boundary]
+name = Workspace query application service is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.workspace_query_service
+forbidden_modules =
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    werkzeug
+
+[importlinter:contract:workspace-member-query-service-boundary]
+name = Workspace member query application service is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.workspace_member_query_service
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    services.enterprise
+    services.workspace_member_role_resolver
+    sqlalchemy
+    werkzeug

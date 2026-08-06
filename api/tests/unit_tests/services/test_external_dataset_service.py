@@ -9,7 +9,7 @@ import json
 import re
 from datetime import datetime
 from typing import Any
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -35,28 +35,29 @@ class ExternalDatasetServiceTestDataFactory:
         tenant_id: str = "tenant-123",
         name: str = "Test API",
         settings: dict[str, Any] | None = None,
-        **kwargs,
-    ) -> Mock:
-        """Create a mock ExternalKnowledgeApis object."""
-        api = Mock(spec=ExternalKnowledgeApis)
+        description: str = "Test description",
+        created_by: str = "user-123",
+        updated_by: str = "user-123",
+        created_at: datetime = datetime(2024, 1, 1, 12, 0),
+        updated_at: datetime = datetime(2024, 1, 1, 12, 0),
+    ) -> ExternalKnowledgeApis:
+        """Create an ExternalKnowledgeApis object."""
+        api = ExternalKnowledgeApis(
+            name=name,
+            description=description,
+            tenant_id=tenant_id,
+            settings="{}",
+            created_by=created_by,
+            updated_by=updated_by,
+        )
         api.id = api_id
-        api.tenant_id = tenant_id
-        api.name = name
-        api.description = kwargs.get("description", "Test description")
 
         if settings is None:
             settings = {"endpoint": "https://api.example.com", "api_key": "test-key-123"}
 
         api.settings = json.dumps(settings, ensure_ascii=False)
-        api.settings_dict = settings
-        api.created_by = kwargs.get("created_by", "user-123")
-        api.updated_by = kwargs.get("updated_by", "user-123")
-        api.created_at = kwargs.get("created_at", datetime(2024, 1, 1, 12, 0))
-        api.updated_at = kwargs.get("updated_at", datetime(2024, 1, 1, 12, 0))
-
-        for key, value in kwargs.items():
-            if key not in ["description", "created_by", "updated_by", "created_at", "updated_at"]:
-                setattr(api, key, value)
+        api.created_at = created_at
+        api.updated_at = updated_at
 
         return api
 
@@ -66,23 +67,20 @@ class ExternalDatasetServiceTestDataFactory:
         tenant_id: str = "tenant-123",
         name: str = "Test Dataset",
         provider: str = "external",
-        **kwargs,
-    ) -> Mock:
-        """Create a mock Dataset object."""
-        dataset = Mock(spec=Dataset)
-        dataset.id = dataset_id
-        dataset.tenant_id = tenant_id
-        dataset.name = name
-        dataset.provider = provider
-        dataset.description = kwargs.get("description", "")
-        dataset.retrieval_model = kwargs.get("retrieval_model", {})
-        dataset.created_by = kwargs.get("created_by", "user-123")
-
-        for key, value in kwargs.items():
-            if key not in ["description", "retrieval_model", "created_by"]:
-                setattr(dataset, key, value)
-
-        return dataset
+        description: str = "",
+        retrieval_model: dict[str, Any] | None = None,
+        created_by: str = "user-123",
+    ) -> Dataset:
+        """Create a Dataset object."""
+        return Dataset(
+            id=dataset_id,
+            tenant_id=tenant_id,
+            name=name,
+            provider=provider,
+            description=description,
+            retrieval_model=retrieval_model or {},
+            created_by=created_by,
+        )
 
     @staticmethod
     def create_external_knowledge_binding_mock(
@@ -91,20 +89,17 @@ class ExternalDatasetServiceTestDataFactory:
         dataset_id: str = "dataset-123",
         external_knowledge_api_id: str = "api-123",
         external_knowledge_id: str = "knowledge-123",
-        **kwargs,
-    ) -> Mock:
-        """Create a mock ExternalKnowledgeBindings object."""
-        binding = Mock(spec=ExternalKnowledgeBindings)
+        created_by: str = "user-123",
+    ) -> ExternalKnowledgeBindings:
+        """Create an ExternalKnowledgeBindings object."""
+        binding = ExternalKnowledgeBindings(
+            tenant_id=tenant_id,
+            external_knowledge_api_id=external_knowledge_api_id,
+            dataset_id=dataset_id,
+            external_knowledge_id=external_knowledge_id,
+            created_by=created_by,
+        )
         binding.id = binding_id
-        binding.tenant_id = tenant_id
-        binding.dataset_id = dataset_id
-        binding.external_knowledge_api_id = external_knowledge_api_id
-        binding.external_knowledge_id = external_knowledge_id
-        binding.created_by = kwargs.get("created_by", "user-123")
-
-        for key, value in kwargs.items():
-            if key != "created_by":
-                setattr(binding, key, value)
 
         return binding
 

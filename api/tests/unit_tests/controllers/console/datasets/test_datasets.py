@@ -1272,18 +1272,20 @@ class TestDatasetApiKeyApi:
     def test_get_api_keys_success(self, app: Flask):
         api = DatasetApiKeyApi()
         method = unwrap(api.get)
-        mock_key_1 = MagicMock(spec=ApiToken)
-        mock_key_1.id = "key-1"
-        mock_key_1.type = "dataset"
-        mock_key_1.token = "ds-abc"
-        mock_key_1.last_used_at = None
-        mock_key_1.created_at = None
-        mock_key_2 = MagicMock(spec=ApiToken)
-        mock_key_2.id = "key-2"
-        mock_key_2.type = "dataset"
-        mock_key_2.token = "ds-def"
-        mock_key_2.last_used_at = None
-        mock_key_2.created_at = None
+        mock_key_1 = ApiToken(
+            id="key-1",
+            type="dataset",
+            token="ds-abc",
+            last_used_at=None,
+            created_at=None,
+        )
+        mock_key_2 = ApiToken(
+            id="key-2",
+            type="dataset",
+            token="ds-def",
+            last_used_at=None,
+            created_at=None,
+        )
         session = MagicMock()
         session.scalars.return_value.all.return_value = [mock_key_1, mock_key_2]
         with app.test_request_context("/"):

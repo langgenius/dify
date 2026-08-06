@@ -85,6 +85,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
     ProcessRule,
     RetrievalModel,
 )
+from services.feature_service import FeatureService
 from services.file_service import FileService
 from services.summary_index_service import SummaryIndexService
 
@@ -699,9 +700,10 @@ class DocumentAddByFileApi(DatasetApiResource):
                 "- `provider_not_initialize` : No valid model provider credentials found. Please go to "
                 "Settings -> Model Provider to complete your provider credentials.\n"
                 "- `invalid_param` : Knowledge base does not exist, external datasets not supported, "
-                "file too large, unsupported file type, missing required fields, or invalid doc_form "
+                "unsupported file type, missing required fields, or invalid doc_form "
                 "(must be `text_model`, `hierarchical_model`, or `qa_model`)."
             ),
+            413: "`file_too_large` : File size exceeded.",
         },
     )
     @service_api_ns.doc("create_document_by_file")
@@ -712,6 +714,7 @@ class DocumentAddByFileApi(DatasetApiResource):
             200: "Document created successfully",
             401: "Unauthorized - invalid API token",
             400: "Bad request - invalid file or parameters",
+            413: "File too large",
         }
     )
     @service_api_ns.response(
@@ -778,13 +781,17 @@ class DocumentAddByFileApi(DatasetApiResource):
 
         if not current_user:
             raise ValueError("current_user is required")
-        upload_file = FileService(db.engine).upload_file(
-            filename=file.filename,
-            content=file.stream.read(),
-            mimetype=file.mimetype,
-            user=current_user,
-            source="datasets",
-        )
+        try:
+            upload_file = FileService(db.engine).upload_file(
+                filename=file.filename,
+                content=file.stream.read(),
+                mimetype=file.mimetype,
+                user=current_user,
+                source="datasets",
+                default_file_size_limit=FeatureService.get_knowledge_file_size_limit(tenant_id),
+            )
+        except services.errors.file.FileTooLargeError as file_too_large_error:
+            raise FileTooLargeError(file_too_large_error.description)
         data_source = {
             "type": "upload_file",
             "info_list": {"data_source_type": "upload_file", "file_info_list": {"file_ids": [upload_file.id]}},
@@ -859,6 +866,7 @@ def _update_document_by_file(
                 mimetype=file.mimetype,
                 user=current_user,
                 source="datasets",
+                default_file_size_limit=FeatureService.get_knowledge_file_size_limit(tenant_id),
             )
         except services.errors.file.FileTooLargeError as file_too_large_error:
             raise FileTooLargeError(file_too_large_error.description)
@@ -916,9 +924,10 @@ class DeprecatedDocumentUpdateByFileApi(DatasetApiResource):
                 "- `provider_not_initialize` : No valid model provider credentials found. Please go to "
                 "Settings -> Model Provider to complete your provider credentials.\n"
                 "- `invalid_param` : Knowledge base does not exist, external datasets not supported, "
-                "file too large, unsupported file type, or invalid doc_form (must be `text_model`, "
-                "`hierarchical_model`, or `qa_model`)."
+                "unsupported file type, or invalid doc_form (must be `text_model`, `hierarchical_model`, "
+                "or `qa_model`)."
             ),
+            413: "`file_too_large` : File size exceeded.",
         },
     )
     @service_api_ns.doc("update_document_by_file_deprecated")
@@ -935,6 +944,7 @@ class DeprecatedDocumentUpdateByFileApi(DatasetApiResource):
             200: "Document updated successfully",
             401: "Unauthorized - invalid API token",
             404: "Document not found",
+            413: "File too large",
         }
     )
     @service_api_ns.response(
@@ -1400,9 +1410,10 @@ class DocumentApi(DatasetApiResource):
                 "- `provider_not_initialize` : No valid model provider credentials found. Please go to "
                 "Settings -> Model Provider to complete your provider credentials.\n"
                 "- `invalid_param` : Knowledge base does not exist, external datasets not supported, "
-                "file too large, unsupported file type, or invalid doc_form (must be `text_model`, "
-                "`hierarchical_model`, or `qa_model`)."
+                "unsupported file type, or invalid doc_form (must be `text_model`, `hierarchical_model`, "
+                "or `qa_model`)."
             ),
+            413: "`file_too_large` : File size exceeded.",
         },
     )
     @service_api_ns.doc("update_document_by_file")
@@ -1413,6 +1424,7 @@ class DocumentApi(DatasetApiResource):
             200: "Document updated successfully",
             401: "Unauthorized - invalid API token",
             404: "Document not found",
+            413: "File too large",
         }
     )
     @service_api_ns.response(
