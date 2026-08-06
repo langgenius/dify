@@ -552,9 +552,6 @@ catalogs:
     server-only:
       specifier: 0.0.1
       version: 0.0.1
-    sharp:
-      specifier: 0.35.3
-      version: 0.35.3
     shiki:
       specifier: 4.4.2
       version: 4.4.2
@@ -1443,9 +1440,6 @@ importers:
       server-only:
         specifier: 'catalog:'
         version: 0.0.1
-      sharp:
-        specifier: 'catalog:'
-        version: 0.35.3(@types/node@25.9.5)
       shiki:
         specifier: 'catalog:'
         version: 4.4.2
@@ -1977,9 +1971,6 @@ packages:
 
   '@emnapi/core@1.9.2':
     resolution: {integrity: sha512-UC+ZhH3XtczQYfOlu3lNEkdW/p4dsJ1r/bP7H8+rhao3TTTMO1ATq/4DdIi23XuGoFY+Cz0JmCbdVl0hz9jZcA==}
-
-  '@emnapi/runtime@1.11.1':
-    resolution: {integrity: sha512-vgj7R3y3Wgx24IQaGPA/R6YFXLHVMOZ0uVEyIQPaWs+rd1AzfEMXlAC22FYwO1XkKR6NPsq7mUandH8oIRdZFw==}
 
   '@emnapi/runtime@1.11.2':
     resolution: {integrity: sha512-kyOl3X0DuTiT1h2ft8r2fYO8JYtU9a9Xis/zBSiGArNaagCOWx90N1k2wxp18czFDH+OgcWGb5ZP/XMt3dcyPA==}
@@ -9738,11 +9729,6 @@ snapshots:
       tslib: 2.8.1
     optional: true
 
-  '@emnapi/runtime@1.11.1':
-    dependencies:
-      tslib: 2.8.1
-    optional: true
-
   '@emnapi/runtime@1.11.2':
     dependencies:
       tslib: 2.8.1
@@ -10175,7 +10161,8 @@ snapshots:
       '@iconify/types': 2.0.0
       import-meta-resolve: 4.2.0
 
-  '@img/colour@1.1.0': {}
+  '@img/colour@1.1.0':
+    optional: true
 
   '@img/sharp-darwin-arm64@0.35.3':
     optionalDependencies:
@@ -10264,7 +10251,7 @@ snapshots:
 
   '@img/sharp-wasm32@0.35.3':
     dependencies:
-      '@emnapi/runtime': 1.11.1
+      '@emnapi/runtime': 1.11.2
     optional: true
 
   '@img/sharp-webcontainers-wasm32@0.35.3':
@@ -16705,6 +16692,7 @@ snapshots:
       '@img/sharp-win32-ia32': 0.35.3
       '@img/sharp-win32-x64': 0.35.3
       '@types/node': 25.9.5
+    optional: true
 
   shebang-command@2.0.0:
     dependencies:
@@ -18031,7 +18019,6 @@ time:
   remark-directive@4.0.0: '2025-02-27T15:15:20.630Z'
   scheduler@0.27.0: '2025-10-01T21:39:15.208Z'
   server-only@0.0.1: '2022-09-03T01:07:26.139Z'
-  sharp@0.35.3: '2026-07-01T11:28:34.077Z'
   shiki@4.4.2: '2026-08-05T00:41:14.729Z'
   socket.io-client@4.8.3: '2025-12-23T16:39:16.428Z'
   sortablejs@1.15.7: '2026-02-11T22:42:31.720Z'
