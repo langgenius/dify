@@ -35,6 +35,7 @@ from .im_candidates import (
     FeishuIMCandidate,
     IMCandidate,
     NewSecret,
+    PreserveSlackSecret,
     SlackIMCandidate,
 )
 
@@ -65,6 +66,7 @@ __all__ = [
     "IMChannelSummary",
     "IMChannelTestSummary",
     "NewSecret",
+    "PreserveSlackSecret",
     "ResendChannelSummary",
     "ResendChannelTestSummary",
     "SaveEmailChannelCommand",

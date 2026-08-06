@@ -24,6 +24,7 @@ from controllers.common.human_input_channel_management import (
 from controllers.common.human_input_channel_management import (
     test_channel_command as build_test_channel_command,
 )
+from controllers.common.human_input_v2_contracts import PreserveOriginalValue
 from core.human_input_v2.channel_management import (
     ChannelCapability,
     ChannelFailureCategory,
@@ -65,6 +66,7 @@ def test_strict_request_rejects_extra_and_partial_cas_fields() -> None:
                     "client_secret": "secret",
                     "signing_secret": "signing",
                     "bot_token": "token",
+                    "app_token": "app-token",
                     "tenant_id": "attacker-selected",
                 }
             }
@@ -79,6 +81,7 @@ def test_strict_request_rejects_extra_and_partial_cas_fields() -> None:
                     "client_secret": "secret",
                     "signing_secret": "signing",
                     "bot_token": "token",
+                    "app_token": "app-token",
                 },
                 "expected_integration_id": "integration-1",
             }
@@ -105,9 +108,36 @@ def test_secret_placeholders_are_rejected(secret: str) -> None:
                     "client_secret": secret,
                     "signing_secret": "signing",
                     "bot_token": "token",
+                    "app_token": "app-token",
                 }
             }
         )
+
+
+@pytest.mark.parametrize(
+    "preserved_field",
+    ["client_secret", "signing_secret", "bot_token", "app_token"],
+)
+def test_slack_save_accepts_structured_secret_preservation(preserved_field: str) -> None:
+    candidate: dict[str, object] = {
+        "provider": "slack",
+        "client_id": "client",
+        "client_secret": "client-secret",
+        "signing_secret": "signing-secret",
+        "bot_token": "bot-token",
+        "app_token": "app-token",
+    }
+    candidate[preserved_field] = {"tag": "preserve_original_value"}
+
+    request = SaveChannelRequest.model_validate(
+        {
+            "candidate": candidate,
+            "expected_integration_id": "integration-1",
+            "expected_config_version": 1,
+        }
+    )
+
+    assert isinstance(getattr(request.candidate, preserved_field), PreserveOriginalValue)
 
 
 def test_blank_secrets_and_email_revision_tokens_are_rejected() -> None:

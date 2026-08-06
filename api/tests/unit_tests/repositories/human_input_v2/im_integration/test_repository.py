@@ -211,6 +211,7 @@ def test_provider_replacement_invalidates_current_children_in_same_transaction(r
                 "encrypted_client_secret": "secret",
                 "encrypted_signing_secret": "signing",
                 "encrypted_bot_token": "token",
+                "encrypted_app_token": "app-token",
             }
         ),
         configured_by_account_id=AccountId("account-2"),

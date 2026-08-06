@@ -297,6 +297,7 @@ def test_facade_rejects_im_candidate_type_provider_mismatch_before_handler_work(
         client_secret=NewSecret("client-secret"),
         signing_secret=NewSecret("signing-secret"),
         bot_token=NewSecret("bot-token"),
+        app_token=NewSecret("app-token"),
     )
     object.__setattr__(candidate, "provider", ChannelProvider.FEISHU)
     command = SaveIMChannelCommand(handler.ref, candidate)
@@ -339,6 +340,7 @@ def test_im_mutation_does_not_touch_registered_email_handler() -> None:
             client_secret=NewSecret("client-secret"),
             signing_secret=NewSecret("signing-secret"),
             bot_token=NewSecret("bot-token"),
+            app_token=NewSecret("app-token"),
         ),
     )
 

@@ -24,6 +24,7 @@ from core.human_input_v2.channel_management import (
     IMChannelSummary,
     IMChannelTestSummary,
     NewSecret,
+    PreserveSlackSecret,
     ResendChannelSummary,
     ResendChannelTestSummary,
     SlackIMCandidate,
@@ -75,7 +76,7 @@ def test_plaintext_secret_repr_is_redacted() -> None:
     assert "ciphertext" not in repr(EncryptedCredentials.from_mapping({"secret": "ciphertext"}))
 
 
-def test_im_candidates_require_new_secrets_and_do_not_export_retention() -> None:
+def test_im_candidates_scope_secret_preservation_to_slack() -> None:
     assert not hasattr(channel_management, "RetainSecret")
 
     with pytest.raises(ValueError, match="app_secret"):
@@ -83,7 +84,21 @@ def test_im_candidates_require_new_secrets_and_do_not_export_retention() -> None
     with pytest.raises(ValueError, match="verification_token"):
         FeishuIMCandidate("app", NewSecret("secret"), verification_token="retain")  # type: ignore[arg-type]
     with pytest.raises(ValueError, match="client_secret"):
-        SlackIMCandidate("client", "retain", NewSecret("signing"), NewSecret("bot"))  # type: ignore[arg-type]
+        SlackIMCandidate(  # type: ignore[arg-type]
+            "client",
+            "retain",
+            NewSecret("signing"),
+            NewSecret("bot"),
+            NewSecret("app"),
+        )
+    slack_candidate = SlackIMCandidate(
+        "client",
+        PreserveSlackSecret(),
+        NewSecret("signing"),
+        NewSecret("bot"),
+        NewSecret("app"),
+    )
+    assert isinstance(slack_candidate.client_secret, PreserveSlackSecret)
     with pytest.raises(ValueError, match="client_secret"):
         DingTalkIMCandidate("client", "retain")  # type: ignore[arg-type]
 

@@ -163,6 +163,7 @@ def test_provider_tenant_replacement_gets_new_identity_and_invalidates_current_s
                 "encrypted_client_secret": "ciphertext-2",
                 "encrypted_signing_secret": "ciphertext-3",
                 "encrypted_bot_token": "ciphertext-4",
+                "encrypted_app_token": "ciphertext-5",
             }
         ),
         configured_by_account_id=AccountId("account-2"),
@@ -201,6 +202,7 @@ def test_provider_replacement_requires_new_integration_identity() -> None:
                     "encrypted_client_secret": "ciphertext-2",
                     "encrypted_signing_secret": "ciphertext-3",
                     "encrypted_bot_token": "ciphertext-4",
+                    "encrypted_app_token": "ciphertext-5",
                 }
             ),
             configured_by_account_id=None,

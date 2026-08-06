@@ -277,6 +277,9 @@ class SlackIMIntegrationCredentials(_RequestModel):
     bot_token: str | PreserveOriginalValue = Field(
         description="Slack bot token used for API calls and message delivery."
     )
+    app_token: str | PreserveOriginalValue = Field(
+        description="Slack app-level token used exclusively for Socket Mode."
+    )
 
 
 class DingTalkIMIntegrationCredentials(_RequestModel):

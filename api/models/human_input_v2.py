@@ -133,6 +133,7 @@ class SlackIMIntegrationEncryptedCredentials(_ImmutableJSONModel):
     encrypted_client_secret: str = Field(description="Encrypted Slack OAuth client secret.")
     encrypted_signing_secret: str = Field(description="Encrypted Slack callback signing secret.")
     encrypted_bot_token: str = Field(description="Encrypted Slack bot token.")
+    encrypted_app_token: str = Field(description="Encrypted Slack app-level Socket Mode token.")
 
 
 class DingTalkIMIntegrationEncryptedCredentials(_ImmutableJSONModel):

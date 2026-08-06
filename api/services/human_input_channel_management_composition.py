@@ -22,15 +22,17 @@ from core.human_input_v2.email_channel import EmailProviderValidator
 from core.human_input_v2.shared import AccountId, NormalizedEmail, WorkspaceId
 from extensions.ext_database import db
 from repositories.human_input_v2.email_channel import SQLAlchemyEmailChannelRepository
+from repositories.human_input_v2.im_integration import SQLAlchemyIMControlPlaneRepository
 from services.human_input_channel_management_service import HumanInputChannelManagementService
 from services.human_input_email_channel_manager import (
     DifyEmailCredentialProtector,
     HumanInputEmailChannelManager,
 )
+from services.human_input_im_channel_manager import HumanInputIMChannelManager
 from services.human_input_resend_channel import ResendEmailProviderValidator
+from services.human_input_slack_channel import SlackIMCredentialProtector, SlackIMProviderConfigurationPort
 
 _UNIMPLEMENTED_IM_REFS = (
-    ChannelRef(ChannelKind.IM, ChannelProvider.SLACK),
     ChannelRef(ChannelKind.IM, ChannelProvider.FEISHU),
     ChannelRef(ChannelKind.IM, ChannelProvider.DING_TALK),
 )
@@ -91,7 +93,7 @@ def build_human_input_channel_management_service(
     session_maker: sessionmaker[Session] | None = None,
     email_validator: EmailProviderValidator | None = None,
 ) -> HumanInputChannelManagementService:
-    """Compose functional Resend management and explicit IM provider stubs."""
+    """Compose functional Resend and Slack management with remaining IM stubs."""
 
     operation_sessions = session_maker or sessionmaker(bind=db.engine, expire_on_commit=False)
     email_repository = SQLAlchemyEmailChannelRepository(operation_sessions)
@@ -100,9 +102,15 @@ def build_human_input_channel_management_service(
         email_validator or ResendEmailProviderValidator(),
         DifyEmailCredentialProtector(),
     )
+    im_repository = SQLAlchemyIMControlPlaneRepository(operation_sessions)
+    slack_handler = HumanInputIMChannelManager(
+        ChannelRef(ChannelKind.IM, ChannelProvider.SLACK),
+        im_repository,
+        SlackIMProviderConfigurationPort(SlackIMCredentialProtector()),
+    )
     im_handlers = tuple(UnimplementedIMChannelHandler(ref) for ref in _UNIMPLEMENTED_IM_REFS)
     return HumanInputChannelManagementService(
-        ChannelHandlerRegistry((email_handler, *im_handlers)),
+        ChannelHandlerRegistry((email_handler, slack_handler, *im_handlers)),
     )
 
 

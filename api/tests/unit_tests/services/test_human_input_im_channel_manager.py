@@ -54,7 +54,8 @@ _CANDIDATE = SlackIMCandidate(
     "client",
     NewSecret("client-secret"),
     NewSecret("signing-secret"),
-    NewSecret("bot-token"),
+    NewSecret("xoxb-test-bot-token"),
+    NewSecret("xapp-test-app-token"),
 )
 
 
@@ -109,6 +110,7 @@ class FakeProviderPort:
                     "encrypted_client_secret": "cipher-1",
                     "encrypted_signing_secret": "cipher-2",
                     "encrypted_bot_token": "cipher-3",
+                    "encrypted_app_token": "cipher-4",
                 }
             ),
         )

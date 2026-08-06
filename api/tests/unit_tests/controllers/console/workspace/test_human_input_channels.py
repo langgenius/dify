@@ -372,6 +372,7 @@ def test_im_candidate_test_returns_explicit_unimplemented_response(
                 "client_secret": "secret",
                 "signing_secret": "signing",
                 "bot_token": "token",
+                "app_token": "app-token",
             }
         },
     ):

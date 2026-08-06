@@ -145,6 +145,7 @@ class IMProviderPort:
                     "encrypted_client_secret": "cipher-2",
                     "encrypted_signing_secret": "cipher-3",
                     "encrypted_bot_token": "cipher-4",
+                    "encrypted_app_token": "cipher-5",
                 }
             ),
         )
@@ -183,6 +184,7 @@ def _im_integration() -> IMIntegration:
                 "encrypted_client_secret": "cipher-1",
                 "encrypted_signing_secret": "cipher-1",
                 "encrypted_bot_token": "cipher-1",
+                "encrypted_app_token": "cipher-1",
             }
         ),
         configured_by_account_id=_CONTEXT.actor_account_id,
@@ -239,6 +241,7 @@ def test_real_email_and_im_managers_coexist_and_mutate_independently() -> None:
                 client_secret=NewSecret("new-client-secret"),
                 signing_secret=NewSecret("new-signing-secret"),
                 bot_token=NewSecret("new-bot-token"),
+                app_token=NewSecret("new-app-token"),
             ),
             expected_integration_id=str(original_im.id),
             expected_config_version=original_im.config_version,

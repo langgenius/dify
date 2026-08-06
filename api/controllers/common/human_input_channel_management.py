@@ -6,6 +6,7 @@ from typing import Annotated, Literal, Self, cast
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from controllers.common.human_input_v2_contracts import PreserveOriginalValue
 from core.human_input_v2.channel_management import (
     ChannelCapability,
     ChannelCollectionResult,
@@ -25,6 +26,7 @@ from core.human_input_v2.channel_management import (
     GetChannelCommand,
     IMChannelSummary,
     NewSecret,
+    PreserveSlackSecret,
     ResendChannelSummary,
     ResendChannelTestSummary,
     SaveEmailChannelCommand,
@@ -60,6 +62,7 @@ def _validate_secret_value(value: str) -> str:
 
 
 SecretValue = Annotated[str, Field(min_length=1), AfterValidator(_validate_secret_value)]
+type SlackSecretValue = SecretValue | PreserveOriginalValue
 IdentifierValue = Annotated[str, Field(min_length=1)]
 
 
@@ -86,9 +89,10 @@ class ResendChannelCandidateRequest(_StrictRequest):
 class SlackChannelCandidateRequest(_StrictRequest):
     provider: Literal[ChannelProvider.SLACK]
     client_id: IdentifierValue
-    client_secret: SecretValue
-    signing_secret: SecretValue
-    bot_token: SecretValue
+    client_secret: SlackSecretValue
+    signing_secret: SlackSecretValue
+    bot_token: SlackSecretValue
+    app_token: SlackSecretValue
 
 
 class FeishuChannelCandidateRequest(_StrictRequest):
@@ -315,9 +319,10 @@ def _candidate_from_request(ref: ChannelRef, request: ChannelCandidateRequest):
     if isinstance(request, SlackChannelCandidateRequest):
         return SlackIMCandidate(
             client_id=request.client_id.strip(),
-            client_secret=NewSecret(request.client_secret),
-            signing_secret=NewSecret(request.signing_secret),
-            bot_token=NewSecret(request.bot_token),
+            client_secret=_slack_secret_directive(request.client_secret),
+            signing_secret=_slack_secret_directive(request.signing_secret),
+            bot_token=_slack_secret_directive(request.bot_token),
+            app_token=_slack_secret_directive(request.app_token),
         )
     if isinstance(request, FeishuChannelCandidateRequest):
         return FeishuIMCandidate(
@@ -330,6 +335,12 @@ def _candidate_from_request(ref: ChannelRef, request: ChannelCandidateRequest):
         client_id=request.client_id.strip(),
         client_secret=NewSecret(request.client_secret),
     )
+
+
+def _slack_secret_directive(value: SlackSecretValue) -> NewSecret | PreserveSlackSecret:
+    if isinstance(value, PreserveOriginalValue):
+        return PreserveSlackSecret()
+    return NewSecret(value)
 
 
 def channel_view_response(view: ChannelView) -> ChannelViewResponse:

@@ -2,17 +2,21 @@
 
 from __future__ import annotations
 
+from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import timedelta
 from threading import Event, Lock, get_ident
 from time import monotonic, sleep
+from typing import cast
 
 import pytest
 import sqlalchemy as sa
 from sqlalchemy import event
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.engine import Connection
+from sqlalchemy.engine.interfaces import DBAPICursor, ExecutionContext
+from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 
 from core.human_input_v2.approval import (
     ApproverGrant,
@@ -163,7 +167,7 @@ class _PausingSubmissionRepository:
         self._release_transaction = release_transaction
 
     @contextmanager
-    def transaction(self, scope: SubmissionAttemptScope):
+    def transaction(self, scope: SubmissionAttemptScope) -> Generator[SubmissionTransaction, None, None]:
         with self._delegate.transaction(scope) as transaction:
             yield _PausingSubmissionTransaction(
                 transaction,
@@ -179,7 +183,7 @@ class _CountingSubmissionRepository:
         self.attempt_count = 0
 
     @contextmanager
-    def transaction(self, scope: SubmissionAttemptScope):
+    def transaction(self, scope: SubmissionAttemptScope) -> Generator[SubmissionTransaction, None, None]:
         with self._lock:
             self.attempt_count += 1
         with self._delegate.transaction(scope) as transaction:
@@ -191,7 +195,11 @@ class _NamedPostgreSQLSession(Session):
 
 
 @event.listens_for(_NamedPostgreSQLSession, "after_begin")
-def _set_postgresql_application_name(session: Session, _transaction, connection) -> None:
+def _set_postgresql_application_name(
+    session: Session,
+    _transaction: SessionTransaction,
+    connection: Connection,
+) -> None:
     application_name = session.info.get("application_name")
     if isinstance(application_name, str):
         connection.execute(
@@ -340,6 +348,7 @@ def _seed_scenario(session_maker: sessionmaker[Session]) -> _SeededScenario:
             encrypted_client_secret="encrypted-client-secret",
             encrypted_signing_secret="encrypted-signing-secret",
             encrypted_bot_token="encrypted-bot-token",
+            encrypted_app_token="encrypted-app-token",
         ),
         tenant_id=str(workspace_id),
         provider_tenant_id=provider_tenant_id,
@@ -481,7 +490,7 @@ def _command(scenario: _SeededScenario, *, proof: object, endpoint_id: DeliveryE
     )
 
 
-def test_context_load_uses_one_snapshot_across_contact_membership_and_im_queries(flask_req_ctx) -> None:
+def test_context_load_uses_one_snapshot_across_contact_membership_and_im_queries(flask_req_ctx: object) -> None:
     _require_postgresql()
     session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
     scenario = _seed_scenario(session_maker)
@@ -492,7 +501,14 @@ def test_context_load_uses_one_snapshot_across_contact_membership_and_im_queries
     mutation_committed = Event()
     loader_thread_id: list[int] = []
 
-    def pause_after_contact_query(_connection, _cursor, statement, _parameters, _context, _executemany) -> None:
+    def pause_after_contact_query(
+        _connection: Connection,
+        _cursor: DBAPICursor,
+        statement: str,
+        _parameters: object,
+        _context: ExecutionContext,
+        _executemany: bool,
+    ) -> None:
         normalized_statement = " ".join(statement.lower().split())
         if (
             loader_thread_id
@@ -539,7 +555,7 @@ def test_context_load_uses_one_snapshot_across_contact_membership_and_im_queries
         _cleanup_scenario(session_maker, scenario)
 
 
-def test_row_lock_serialization_loser_retries_and_observes_completed_form(flask_req_ctx) -> None:
+def test_row_lock_serialization_loser_retries_and_observes_completed_form(flask_req_ctx: object) -> None:
     _require_postgresql()
     session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
     scenario = _seed_scenario(session_maker)
@@ -552,11 +568,14 @@ def test_row_lock_serialization_loser_retries_and_observes_completed_form(flask_
         release_transaction=release_winner,
     )
     loser_application_name = f"submission-serialization-loser-{uuidv7()}"
-    loser_session_maker = sessionmaker(
-        bind=db.engine,
-        class_=_NamedPostgreSQLSession,
-        expire_on_commit=False,
-        info={"application_name": loser_application_name},
+    loser_session_maker = cast(
+        sessionmaker[Session],
+        sessionmaker(
+            bind=db.engine,
+            class_=_NamedPostgreSQLSession,
+            expire_on_commit=False,
+            info={"application_name": loser_application_name},
+        ),
     )
     loser_repository = _CountingSubmissionRepository(SQLAlchemySubmissionRepository(loser_session_maker))
     winner_command = _command(
@@ -629,7 +648,7 @@ def test_row_lock_serialization_loser_retries_and_observes_completed_form(flask_
 
 
 @pytest.mark.parametrize("proof_kind", ["email", "im"])
-def test_loaded_context_remains_authoritative_after_identity_change(flask_req_ctx, proof_kind: str) -> None:
+def test_loaded_context_remains_authoritative_after_identity_change(flask_req_ctx: object, proof_kind: str) -> None:
     _require_postgresql()
     session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
     scenario = _seed_scenario(session_maker)

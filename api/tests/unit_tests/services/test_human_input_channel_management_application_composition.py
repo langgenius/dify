@@ -30,10 +30,11 @@ from services.human_input_channel_management_composition import (
     build_human_input_channel_management_service,
 )
 from services.human_input_email_channel_manager import HumanInputEmailChannelManager
+from services.human_input_im_channel_manager import HumanInputIMChannelManager
 from services.human_input_resend_channel import ResendEmailProviderValidator
 
 
-def test_composition_registers_resend_and_three_explicit_im_stubs(sqlite_engine) -> None:
+def test_composition_registers_resend_slack_and_two_explicit_im_stubs(sqlite_engine) -> None:
     service = build_human_input_channel_management_service(
         session_maker=sessionmaker(sqlite_engine, class_=Session),
     )
@@ -48,12 +49,15 @@ def test_composition_registers_resend_and_three_explicit_im_stubs(sqlite_engine)
     assert isinstance(email_handler, HumanInputEmailChannelManager)
     assert isinstance(email_handler._validator, ResendEmailProviderValidator)
     im_handlers = [handler for handler in service._registry.handlers() if handler.ref.kind is ChannelKind.IM]
+    slack_handler = next(handler for handler in im_handlers if handler.ref.provider is ChannelProvider.SLACK)
+    assert isinstance(slack_handler, HumanInputIMChannelManager)
     context = build_human_input_channel_management_context(
         workspace_id="workspace-1",
         actor_account_id="account-1",
         actor_email="operator@example.com",
     )
-    for handler in im_handlers:
+    unimplemented_handlers = [handler for handler in im_handlers if handler.ref.provider is not ChannelProvider.SLACK]
+    for handler in unimplemented_handlers:
         assert isinstance(handler, UnimplementedIMChannelHandler)
         failure = handler.get(context).failure
         assert failure is not None
@@ -68,7 +72,13 @@ def test_composition_registers_resend_and_three_explicit_im_stubs(sqlite_engine)
     [
         (
             ChannelRef(ChannelKind.IM, ChannelProvider.SLACK),
-            SlackIMCandidate("client", NewSecret("secret"), NewSecret("signing"), NewSecret("bot")),
+            SlackIMCandidate(
+                "client",
+                NewSecret("secret"),
+                NewSecret("signing"),
+                NewSecret("xoxb-test-bot"),
+                NewSecret("xapp-test-app"),
+            ),
         ),
         (
             ChannelRef(ChannelKind.IM, ChannelProvider.FEISHU),
@@ -158,9 +168,9 @@ def test_collection_has_bounded_queries_and_performs_no_provider_io(sqlite_engin
     finally:
         event.remove(sqlite_engine, "before_cursor_execute", record_statement)
 
-    assert len(result.channels) == 1
-    assert len(result.failures) == 3
-    assert len([statement for statement in statements if statement.lstrip().upper().startswith("SELECT")]) == 1
+    assert len(result.channels) == 2
+    assert len(result.failures) == 2
+    assert len([statement for statement in statements if statement.lstrip().upper().startswith("SELECT")]) == 2
 
 
 def test_channel_layers_keep_transport_persistence_and_provider_imports_separate() -> None:
