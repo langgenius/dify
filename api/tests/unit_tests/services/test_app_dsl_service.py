@@ -169,11 +169,17 @@ def test_pending_import_is_scoped_to_its_owner(monkeypatch: pytest.MonkeyPatch, 
 
     monkeypatch.setattr("services.app_dsl_service.redis_client.get", pending_imports.get)
     monkeypatch.setattr("services.app_dsl_service.redis_client.delete", pending_imports.pop)
-    monkeypatch.setattr(
-        service,
-        "_create_or_update_app",
-        Mock(return_value=Mock(id="app-1", mode=AppMode.WORKFLOW)),
-    )
+    create_or_update = Mock(return_value=Mock(id="app-1", mode=AppMode.WORKFLOW))
+    monkeypatch.setattr(service, "_create_or_update_app", create_or_update)
+    load = Mock(wraps=yaml.safe_load)
+    monkeypatch.setattr("services.app_dsl_service.yaml.safe_load", load)
+
+    pending_imports[redis_key] = pending_data.model_dump_json(exclude={"tenant_id", "account_id"})
+    assert service.confirm_import(import_id=pending.id, account=creator).status == ImportStatus.FAILED
+    load.assert_not_called()
+    create_or_update.assert_not_called()
+    assert redis_key in pending_imports
+    pending_imports[redis_key] = pending_data.model_dump_json()
 
     for other_account in (
         Mock(id="account-1", current_tenant_id="tenant-2"),
@@ -185,36 +191,58 @@ def test_pending_import_is_scoped_to_its_owner(monkeypatch: pytest.MonkeyPatch, 
     assert redis_key not in pending_imports
 
 
+def test_pending_import_requires_current_tenant(monkeypatch: pytest.MonkeyPatch, unbound_session: Session) -> None:
+    setex = Mock()
+    monkeypatch.setattr("services.app_dsl_service.redis_client.setex", setex)
+
+    result = AppDslService(session=unbound_session).import_app(
+        account=Mock(id="account-1", current_tenant_id=None),
+        import_mode="yaml-content",
+        yaml_content="version: 99.0.0\nkind: app\napp: {name: Test, mode: workflow}\n",
+    )
+
+    assert result.status == ImportStatus.FAILED
+    assert result.error == "Current tenant is not set"
+    setex.assert_not_called()
+
+
 @pytest.mark.parametrize(
-    ("tenant_id", "account_id", "expected"),
+    ("caller_tenant_id", "caller_account_id", "expected"),
     [
         ("tenant-1", "account-1", True),
         (None, "account-1", False),
-        ("tenant-1", None, False),
         ("tenant-2", "account-1", False),
         ("tenant-1", "account-2", False),
     ],
 )
 def test_pending_import_owner_access(
-    tenant_id: str | None,
-    account_id: str | None,
+    caller_tenant_id: str | None,
+    caller_account_id: str,
     expected: bool,
 ) -> None:
     pending = PendingData(
-        tenant_id=tenant_id,
-        account_id=account_id,
+        tenant_id="tenant-1",
+        account_id="account-1",
         import_mode="yaml-content",
         yaml_content="",
     )
 
-    assert pending.is_accessible_by(tenant_id="tenant-1", account_id="account-1") is expected
+    assert pending.is_accessible_by(tenant_id=caller_tenant_id, account_id=caller_account_id) is expected
 
 
-def test_pending_import_owner_access_accepts_legacy_json() -> None:
-    pending = PendingData.model_validate_json('{"import_mode":"yaml-content","yaml_content":""}')
+@pytest.mark.parametrize(
+    "payload",
+    [
+        '{"import_mode":"yaml-content","yaml_content":"secret-token-123"}',
+        '{"tenant_id":"tenant-1","import_mode":"yaml-content","yaml_content":"secret-token-123"}',
+        '{"account_id":"account-1","import_mode":"yaml-content","yaml_content":"secret-token-123"}',
+    ],
+)
+def test_pending_import_owner_is_required(payload: str) -> None:
+    with pytest.raises(ValueError) as exc_info:
+        PendingData.model_validate_json(payload)
 
-    assert pending.is_accessible_by(tenant_id="tenant-1", account_id="account-1")
-    assert not pending.is_accessible_by(tenant_id=None, account_id="account-1")
+    assert "secret-token-123" not in str(exc_info.value)
 
 
 def test_create_or_update_app_loads_existing_model_config_with_service_session(

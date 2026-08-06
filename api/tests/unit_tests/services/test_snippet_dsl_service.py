@@ -2,6 +2,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
+import yaml
 
 from graphon.nodes import BuiltinNodeTypes
 from services.snippet_dsl_service import (
@@ -254,7 +255,7 @@ workflow:
 
 
 def test_import_snippet_stores_pending_data_for_newer_dsl(monkeypatch: pytest.MonkeyPatch):
-    service = SnippetDslService(session=SimpleNamespace(scalar=Mock(return_value=None)))
+    service = SnippetDslService(session=SimpleNamespace(scalar=Mock(return_value=None), rollback=Mock()))
     setex = Mock()
     monkeypatch.setattr("services.snippet_dsl_service.redis_client.setex", setex)
     yaml_content = """
@@ -267,6 +268,15 @@ workflow:
     nodes: []
     edges: []
 """
+
+    missing_tenant = service.import_snippet(
+        account=SimpleNamespace(id="account-1", current_tenant_id=None),
+        import_mode=ImportMode.YAML_CONTENT.value,
+        yaml_content=yaml_content,
+    )
+    assert missing_tenant.status == ImportStatus.FAILED
+    assert missing_tenant.error == "Current tenant is not set"
+    setex.assert_not_called()
 
     result = service.import_snippet(
         account=SimpleNamespace(id="account-1", current_tenant_id="tenant-1"),
@@ -383,7 +393,7 @@ def test_confirm_import_returns_failed_for_invalid_pending_payload(monkeypatch: 
 
 
 def test_confirm_import_is_scoped_to_its_owner(monkeypatch: pytest.MonkeyPatch):
-    service = SnippetDslService(session=SimpleNamespace(scalar=Mock(return_value=None)))
+    service = SnippetDslService(session=SimpleNamespace(scalar=Mock(return_value=None), rollback=Mock()))
     account = SimpleNamespace(id="account-1", current_tenant_id="tenant-1")
     snippet = SimpleNamespace(id="snippet-new")
     yaml_content = """
@@ -409,12 +419,21 @@ workflow:
     create_or_update = Mock(return_value=snippet)
     monkeypatch.setattr(service, "_create_or_update_snippet", create_or_update)
     redis_key = "snippet_import_info:import-1"
+    pending_json = pending.model_dump_json(exclude={"tenant_id", "account_id"})
     monkeypatch.setattr(
         "services.snippet_dsl_service.redis_client.get",
-        Mock(side_effect=lambda key: pending.model_dump_json() if key == redis_key else None),
+        Mock(side_effect=lambda key: pending_json if key == redis_key else None),
     )
     redis_delete = Mock()
     monkeypatch.setattr("services.snippet_dsl_service.redis_client.delete", redis_delete)
+    load = Mock(wraps=yaml.safe_load)
+    monkeypatch.setattr("services.snippet_dsl_service.yaml.safe_load", load)
+
+    assert service.confirm_import(import_id="import-1", account=account).status == ImportStatus.FAILED
+    load.assert_not_called()
+    create_or_update.assert_not_called()
+    redis_delete.assert_not_called()
+    pending_json = pending.model_dump_json()
 
     for other_account in (
         SimpleNamespace(id="account-1", current_tenant_id="tenant-2"),
@@ -440,6 +459,8 @@ workflow:
 def test_confirm_import_returns_failed_for_non_mapping_yaml(monkeypatch: pytest.MonkeyPatch):
     service = SnippetDslService(session=SimpleNamespace())
     pending = SnippetPendingData(
+        tenant_id="tenant-1",
+        account_id="account-1",
         import_mode="yaml-content",
         yaml_content="- item",
         snippet_id=None,
@@ -458,6 +479,8 @@ def test_confirm_import_returns_failed_when_create_or_update_raises(monkeypatch:
     session = SimpleNamespace(scalar=Mock(return_value=None), rollback=Mock())
     service = SnippetDslService(session=session)
     pending = SnippetPendingData(
+        tenant_id="tenant-1",
+        account_id="account-1",
         import_mode="yaml-content",
         yaml_content="version: 0.1.0\nkind: snippet\nsnippet:\n  name: Bad\n",
         snippet_id="snippet-1",

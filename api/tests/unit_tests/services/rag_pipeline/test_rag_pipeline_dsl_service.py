@@ -623,6 +623,15 @@ def test_confirm_import_rejects_non_serialized_pending_data(
 def test_import_pending_version_stores_redis(monkeypatch: pytest.MonkeyPatch, service: RagPipelineDslService) -> None:
     setex = Mock()
     monkeypatch.setattr(module.redis_client, "setex", setex)
+    missing_tenant = service.import_rag_pipeline(
+        account=Mock(id="account-1", current_tenant_id=None),
+        import_mode=ImportMode.YAML_CONTENT.value,
+        yaml_content=_valid_dsl(version="1.0.0"),
+    )
+    assert missing_tenant.status == ImportStatus.FAILED
+    assert missing_tenant.error == "Current tenant is not set"
+    setex.assert_not_called()
+
     result = service.import_rag_pipeline(
         account=_account(), import_mode=ImportMode.YAML_CONTENT.value, yaml_content=_valid_dsl(version="1.0.0")
     )
@@ -793,14 +802,27 @@ def test_confirm_import_updates_tenant_pipeline_and_dataset(
         pipeline_id=pipeline.id,
     )
     redis_key = "app_import_info:import-1"
+    pending_json = pending.model_dump_json(exclude={"tenant_id", "account_id"})
     monkeypatch.setattr(
         module.redis_client,
         "get",
-        Mock(side_effect=lambda key: pending.model_dump_json() if key == redis_key else None),
+        Mock(side_effect=lambda key: pending_json if key == redis_key else None),
     )
     delete = Mock()
     monkeypatch.setattr(module.redis_client, "delete", delete)
+    load = Mock(wraps=module.yaml.safe_load)
+    monkeypatch.setattr(module.yaml, "safe_load", load)
+    create_or_update = Mock(wraps=service._create_or_update_pipeline)
+    monkeypatch.setattr(service, "_create_or_update_pipeline", create_or_update)
     monkeypatch.setattr(module.KnowledgeConfiguration, "model_validate", Mock(return_value=_knowledge_configuration()))
+
+    assert service.confirm_import(import_id="import-1", account=_account()).status == ImportStatus.FAILED
+    load.assert_not_called()
+    create_or_update.assert_not_called()
+    delete.assert_not_called()
+    assert pipeline.name == "Pipeline"
+    pending_json = pending.model_dump_json()
+
     for foreign_account in (_account(tenant_id="tenant-2"), _account(account_id="account-2")):
         assert service.confirm_import(import_id="import-1", account=foreign_account).status == ImportStatus.FAILED
     delete.assert_not_called()
