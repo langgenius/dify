@@ -113,38 +113,40 @@ def test_list_workflow_run_archives_aggregates_month_rows(sqlite_session: Sessio
         }
     )
     cache = FakeTaskCache(tasks_by_download_id={march_download_id: ready_task})
-    sqlite_session.add_all([
-        _bundle(
-            year=2025,
-            month=3,
-            shard="00-of-01",
-            bundle_id="bundle-a",
-            workflow_run_count=40,
-            row_count=360,
-            archive_bytes=1024,
-            archived_at=previous,
-        ),
-        _bundle(
-            year=2025,
-            month=3,
-            shard="00-of-01",
-            bundle_id="bundle-b",
-            workflow_run_count=60,
-            row_count=540,
-            archive_bytes=3072,
-            archived_at=latest,
-        ),
-        _bundle(
-            year=2025,
-            month=2,
-            shard="00-of-01",
-            bundle_id="bundle-c",
-            workflow_run_count=20,
-            row_count=180,
-            archive_bytes=1024,
-            archived_at=previous,
-        ),
-    ])
+    sqlite_session.add_all(
+        [
+            _bundle(
+                year=2025,
+                month=3,
+                shard="00-of-01",
+                bundle_id="bundle-a",
+                workflow_run_count=40,
+                row_count=360,
+                archive_bytes=1024,
+                archived_at=previous,
+            ),
+            _bundle(
+                year=2025,
+                month=3,
+                shard="00-of-01",
+                bundle_id="bundle-b",
+                workflow_run_count=60,
+                row_count=540,
+                archive_bytes=3072,
+                archived_at=latest,
+            ),
+            _bundle(
+                year=2025,
+                month=2,
+                shard="00-of-01",
+                bundle_id="bundle-c",
+                workflow_run_count=20,
+                row_count=180,
+                archive_bytes=1024,
+                archived_at=previous,
+            ),
+        ]
+    )
     sqlite_session.flush()
 
     result = list_workflow_run_archives(
@@ -165,10 +167,12 @@ def test_list_workflow_run_archives_aggregates_month_rows(sqlite_session: Sessio
 
 
 def test_create_workflow_run_archive_download_task_creates_stable_pending_task(sqlite_session: Session) -> None:
-    sqlite_session.add_all([
-        _bundle(shard="01-of-02", bundle_id="bundle-b", archive_bytes=2048),
-        _bundle(shard="00-of-02", bundle_id="bundle-a", archive_bytes=1024),
-    ])
+    sqlite_session.add_all(
+        [
+            _bundle(shard="01-of-02", bundle_id="bundle-b", archive_bytes=2048),
+            _bundle(shard="00-of-02", bundle_id="bundle-a", archive_bytes=1024),
+        ]
+    )
     sqlite_session.flush()
     cache = FakeTaskCache()
     dispatched_tasks: list[WorkflowRunArchiveDownloadTask] = []

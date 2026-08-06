@@ -306,9 +306,7 @@ def test_failed_worker_cannot_overwrite_ready_task(
     )
     ready_task = processing_task.model_copy(update={"status": WorkflowRunArchiveDownloadStatus.READY})
     cache = FakeTaskCache(ready_task)
-    preparer = _preparer(
-        storage=FakeArchiveStorage({}), cache=cache, session_factory=sqlite_session_factory
-    )
+    preparer = _preparer(storage=FakeArchiveStorage({}), cache=cache, session_factory=sqlite_session_factory)
 
     result = preparer._mark_failed(processing_task, error="late failure")
 

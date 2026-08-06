@@ -166,9 +166,7 @@ def test_catalog_discovery_is_ordered_and_limited_before_storage_io(
     sqlite_session_factory: sessionmaker[Session], sqlite_session: Session
 ) -> None:
     cursor = _catalog_entry()
-    entry = _catalog_entry(
-        catalog_id="019f63b7-5ca4-7681-9ce0-800283608f40", bundle_id="bundle-b"
-    )
+    entry = _catalog_entry(catalog_id="019f63b7-5ca4-7681-9ce0-800283608f40", bundle_id="bundle-b")
     sqlite_session.add_all([_bundle_model(cursor), _bundle_model(entry)])
     sqlite_session.commit()
     storage = MagicMock()

@@ -97,9 +97,7 @@ def test_decode_and_calculate_archive_bundle_index_values() -> None:
 def test_upsert_archive_bundle_index_inserts_new_bundle(sqlite_session: Session) -> None:
     data = _manifest_bytes()
 
-    bundle = upsert_archive_bundle_index_from_manifest(
-        sqlite_session, decode_archive_bundle_manifest(data), len(data)
-    )
+    bundle = upsert_archive_bundle_index_from_manifest(sqlite_session, decode_archive_bundle_manifest(data), len(data))
     sqlite_session.flush()
 
     assert bundle.tenant_id == TENANT_ID
@@ -127,9 +125,7 @@ def test_upsert_archive_bundle_index_updates_existing_bundle(sqlite_session: Ses
     sqlite_session.flush()
     data = _manifest_bytes()
 
-    bundle = upsert_archive_bundle_index_from_manifest(
-        sqlite_session, decode_archive_bundle_manifest(data), len(data)
-    )
+    bundle = upsert_archive_bundle_index_from_manifest(sqlite_session, decode_archive_bundle_manifest(data), len(data))
 
     assert bundle is existing
     assert existing.workflow_run_count == 2
