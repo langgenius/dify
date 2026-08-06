@@ -14,7 +14,7 @@ on:
         required: false
         type: string
   release:
-    types: [ released ]
+    types: [released]
 
 concurrency:
   group: difyctl-release

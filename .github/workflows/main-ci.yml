@@ -2,10 +2,10 @@ name: Main CI Pipeline
 
 on:
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
   merge_group:
-    branches: [ "main" ]
-    types: [ checks_requested ]
+    branches: ["main"]
+    types: [checks_requested]
 
 permissions:
   actions: write
@@ -15,8 +15,7 @@ permissions:
   statuses: write
 
 concurrency:
-  group: main-ci-${{ github.event.pull_request.number ||
-    github.event.merge_group.head_sha || github.run_id }}
+  group: main-ci-${{ github.event.pull_request.number || github.event.merge_group.head_sha || github.run_id }}
   cancel-in-progress: true
 
 jobs:
@@ -155,8 +154,7 @@ jobs:
     needs:
       - pre_job
       - check-changes
-    if: needs.pre_job.outputs.should_skip != 'true' &&
-      needs.check-changes.outputs.api-changed == 'true'
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.api-changed == 'true'
     uses: ./.github/workflows/api-tests.yml
     secrets: inherit
 
@@ -165,8 +163,7 @@ jobs:
     needs:
       - pre_job
       - check-changes
-    if: needs.pre_job.outputs.should_skip != 'true' &&
-      needs.check-changes.outputs.api-changed != 'true'
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.api-changed != 'true'
     runs-on: depot-ubuntu-24.04
     steps:
       - name: Report skipped API tests
@@ -217,8 +214,7 @@ jobs:
     needs:
       - pre_job
       - check-changes
-    if: needs.pre_job.outputs.should_skip != 'true' &&
-      needs.check-changes.outputs.cli-changed == 'true'
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.cli-changed == 'true'
     uses: ./.github/workflows/cli-tests.yml
     secrets: inherit
 
@@ -227,8 +223,7 @@ jobs:
     needs:
       - pre_job
       - check-changes
-    if: needs.pre_job.outputs.should_skip != 'true' &&
-      needs.check-changes.outputs.cli-changed != 'true'
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.cli-changed != 'true'
     runs-on: depot-ubuntu-24.04
     steps:
       - name: Report skipped CLI tests
@@ -279,8 +274,7 @@ jobs:
     needs:
       - pre_job
       - check-changes
-    if: needs.pre_job.outputs.should_skip != 'true' &&
-      needs.check-changes.outputs.web-changed == 'true'
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.web-changed == 'true'
     uses: ./.github/workflows/web-tests.yml
     secrets: inherit
 
@@ -289,8 +283,7 @@ jobs:
     needs:
       - pre_job
       - check-changes
-    if: needs.pre_job.outputs.should_skip != 'true' &&
-      needs.check-changes.outputs.web-changed != 'true'
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.web-changed != 'true'
     runs-on: depot-ubuntu-24.04
     steps:
       - name: Report skipped web tests
@@ -341,8 +334,7 @@ jobs:
     needs:
       - pre_job
       - check-changes
-    if: needs.pre_job.outputs.should_skip != 'true' &&
-      needs.check-changes.outputs.e2e-changed == 'true'
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.e2e-changed == 'true'
     uses: ./.github/workflows/web-e2e.yml
     with:
       run-external-runtime: false
@@ -353,8 +345,7 @@ jobs:
     needs:
       - pre_job
       - check-changes
-    if: needs.pre_job.outputs.should_skip != 'true' &&
-      needs.check-changes.outputs.e2e-changed != 'true'
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.e2e-changed != 'true'
     runs-on: depot-ubuntu-24.04
     steps:
       - name: Report skipped web full-stack e2e
@@ -406,16 +397,14 @@ jobs:
     if: needs.pre_job.outputs.should_skip != 'true'
     uses: ./.github/workflows/style.yml
     with:
-      base-rev: ${{ github.event.pull_request.base.sha ||
-        github.event.merge_group.base_sha }}
+      base-rev: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
 
   vdb-tests-run:
     name: Run VDB Tests
     needs:
       - pre_job
       - check-changes
-    if: needs.pre_job.outputs.should_skip != 'true' &&
-      needs.check-changes.outputs.vdb-changed == 'true'
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.vdb-changed == 'true'
     uses: ./.github/workflows/vdb-tests.yml
 
   vdb-tests-skip:
@@ -423,8 +412,7 @@ jobs:
     needs:
       - pre_job
       - check-changes
-    if: needs.pre_job.outputs.should_skip != 'true' &&
-      needs.check-changes.outputs.vdb-changed != 'true'
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.vdb-changed != 'true'
     runs-on: depot-ubuntu-24.04
     steps:
       - name: Report skipped VDB tests
@@ -475,8 +463,7 @@ jobs:
     needs:
       - pre_job
       - check-changes
-    if: needs.pre_job.outputs.should_skip != 'true' &&
-      needs.check-changes.outputs.migration-changed == 'true'
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.migration-changed == 'true'
     uses: ./.github/workflows/db-migration-test.yml
 
   db-migration-test-skip:
@@ -484,8 +471,7 @@ jobs:
     needs:
       - pre_job
       - check-changes
-    if: needs.pre_job.outputs.should_skip != 'true' &&
-      needs.check-changes.outputs.migration-changed != 'true'
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.migration-changed != 'true'
     runs-on: depot-ubuntu-24.04
     steps:
       - name: Report skipped DB migration tests
@@ -536,8 +522,7 @@ jobs:
     needs:
       - pre_job
       - check-changes
-    if: needs.pre_job.outputs.should_skip != 'true' &&
-      needs.check-changes.outputs.sandbox-runtime-changed == 'true'
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.sandbox-runtime-changed == 'true'
     uses: ./.github/workflows/sandbox-runtime-tests.yml
     secrets: inherit
 
@@ -546,13 +531,11 @@ jobs:
     needs:
       - pre_job
       - check-changes
-    if: needs.pre_job.outputs.should_skip != 'true' &&
-      needs.check-changes.outputs.sandbox-runtime-changed != 'true'
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.sandbox-runtime-changed != 'true'
     runs-on: depot-ubuntu-24.04
     steps:
       - name: Report skipped sandbox runtime tests
-        run: echo "No sandbox-runtime-related changes detected; skipping sandbox runtime
-          tests."
+        run: echo "No sandbox-runtime-related changes detected; skipping sandbox runtime tests."
 
   sandbox-runtime-tests:
     name: Sandbox Runtime Tests

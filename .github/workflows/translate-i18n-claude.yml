@@ -4,23 +4,19 @@ name: Translate i18n Files with Claude Code
 # Push events are bridged by trigger-i18n-sync.yml via repository_dispatch.
 on:
   repository_dispatch:
-    types: [ i18n-sync ]
+    types: [i18n-sync]
   workflow_dispatch:
     inputs:
       files:
-        description: 'Specific files to translate (space-separated, e.g., "app common").
-          Required for full mode; leave empty in incremental mode to use en-US
-          files changed since HEAD~1.'
+        description: 'Specific files to translate (space-separated, e.g., "app common"). Required for full mode; leave empty in incremental mode to use en-US files changed since HEAD~1.'
         required: false
         type: string
       languages:
-        description: 'Specific languages to translate (space-separated, e.g., "zh-Hans
-          ja-JP"). Leave empty for all supported target languages except en-US.'
+        description: 'Specific languages to translate (space-separated, e.g., "zh-Hans ja-JP"). Leave empty for all supported target languages except en-US.'
         required: false
         type: string
       mode:
-        description: 'Sync mode: incremental (compare with previous en-US revision) or
-          full (sync all keys in scope)'
+        description: 'Sync mode: incremental (compare with previous en-US revision) or full (sync all keys in scope)'
         required: false
         default: incremental
         type: choice
