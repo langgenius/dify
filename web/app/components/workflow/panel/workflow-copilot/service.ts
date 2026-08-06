@@ -14,7 +14,7 @@ import { del, get, post } from '@/service/base'
 export type CopilotGraph = {
   nodes: Node[]
   edges: Edge[]
-  viewport?: { x: number, y: number, zoom: number }
+  viewport?: { x: number; y: number; zoom: number }
 }
 
 export type CopilotGenerateBody = {
@@ -22,7 +22,12 @@ export type CopilotGenerateBody = {
   conversation_id?: string | null
   mode: 'workflow' | 'advanced-chat'
   message: string
-  model_config: { provider: string, name: string, mode: string, completion_params?: Record<string, unknown> }
+  model_config: {
+    provider: string
+    name: string
+    mode: string
+    completion_params?: Record<string, unknown>
+  }
   current_graph?: CopilotGraph
   // Node ids the user pinned as focus context. The backend resolves them to
   // full node structure from `current_graph` and appends to the generator
@@ -30,21 +35,12 @@ export type CopilotGenerateBody = {
   context_node_ids?: string[]
 }
 
-export type CopilotUsage = {
-  prompt_tokens: number
-  completion_tokens: number
-  total_tokens: number
-}
-
 export type CopilotGenerateResponse = {
   conversation_id: string
   reply: string
   graph?: CopilotGraph
   error?: string
-  errors?: { code: string, detail: string, node_id?: string }[]
-  // Real token cost of this turn (planner + builder), summed server-side.
-  // Absent on older backends or when the provider reports no usage.
-  usage?: CopilotUsage
+  errors?: { code: string; detail: string; node_id?: string }[]
 }
 
 export type CopilotHistoryMessage = {
@@ -87,7 +83,9 @@ export type CopilotConversationsResponse = {
 }
 
 export const listCopilotConversations = (appId: string) => {
-  return get<CopilotConversationsResponse>('/workflow-copilot/conversations', { params: { app_id: appId } })
+  return get<CopilotConversationsResponse>('/workflow-copilot/conversations', {
+    params: { app_id: appId },
+  })
 }
 
 export const deleteCopilotConversation = (conversationId: string) => {

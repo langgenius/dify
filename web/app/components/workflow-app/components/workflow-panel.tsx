@@ -23,15 +23,6 @@ const DebugAndPreview = dynamic(() => import('@/app/components/workflow/panel/de
 const WorkflowPreview = dynamic(() => import('@/app/components/workflow/panel/workflow-preview'), {
   ssr: false,
 })
-const ChatVariablePanel = dynamic(() => import('@/app/components/workflow/panel/chat-variable-panel'), {
-  ssr: false,
-})
-const GlobalVariablePanel = dynamic(() => import('@/app/components/workflow/panel/global-variable-panel'), {
-  ssr: false,
-})
-const WorkflowCopilotPanel = dynamic(() => import('@/app/components/workflow/panel/workflow-copilot'), {
-  ssr: false,
-})
 const ChatVariablePanel = dynamic(
   () => import('@/app/components/workflow/panel/chat-variable-panel'),
   {
@@ -40,6 +31,12 @@ const ChatVariablePanel = dynamic(
 )
 const GlobalVariablePanel = dynamic(
   () => import('@/app/components/workflow/panel/global-variable-panel'),
+  {
+    ssr: false,
+  },
+)
+const WorkflowCopilotPanel = dynamic(
+  () => import('@/app/components/workflow/panel/workflow-copilot'),
   {
     ssr: false,
   },
@@ -80,54 +77,11 @@ const WorkflowPanelOnLeft = () => {
 }
 const WorkflowPanelOnRight = () => {
   const isChatMode = useIsChatMode()
-  const historyWorkflowData = useStore(s => s.historyWorkflowData)
-  const showDebugAndPreviewPanel = useStore(s => s.showDebugAndPreviewPanel)
-  const showChatVariablePanel = useStore(s => s.showChatVariablePanel)
-  const showGlobalVariablePanel = useStore(s => s.showGlobalVariablePanel)
-  const showCopilotPanel = useStore(s => s.showCopilotPanel)
-  const controlMode = useStore(s => s.controlMode)
-
-  return (
-    <>
-      {
-        historyWorkflowData && !isChatMode && (
-          <Record />
-        )
-      }
-      {
-        historyWorkflowData && isChatMode && (
-          <ChatRecord />
-        )
-      }
-      {
-        showDebugAndPreviewPanel && isChatMode && (
-          <DebugAndPreview />
-        )
-      }
-      {
-        showDebugAndPreviewPanel && !isChatMode && (
-          <WorkflowPreview />
-        )
-      }
-      {
-        showChatVariablePanel && isChatMode && (
-          <ChatVariablePanel />
-        )
-      }
-      {
-        showGlobalVariablePanel && (
-          <GlobalVariablePanel />
-        )
-      }
-      {
-        showCopilotPanel && (
-          <WorkflowCopilotPanel />
-        )
-      }
   const historyWorkflowData = useStore((s) => s.historyWorkflowData)
   const showDebugAndPreviewPanel = useStore((s) => s.showDebugAndPreviewPanel)
   const showChatVariablePanel = useStore((s) => s.showChatVariablePanel)
   const showGlobalVariablePanel = useStore((s) => s.showGlobalVariablePanel)
+  const showCopilotPanel = useStore((s) => s.showCopilotPanel)
   const controlMode = useStore((s) => s.controlMode)
 
   return (
@@ -138,6 +92,7 @@ const WorkflowPanelOnRight = () => {
       {showDebugAndPreviewPanel && !isChatMode && <WorkflowPreview />}
       {showChatVariablePanel && isChatMode && <ChatVariablePanel />}
       {showGlobalVariablePanel && <GlobalVariablePanel />}
+      {showCopilotPanel && <WorkflowCopilotPanel />}
       {controlMode === 'comment' && <CommentsPanel />}
     </>
   )

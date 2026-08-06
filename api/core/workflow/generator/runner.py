@@ -28,7 +28,6 @@ import json
 import logging
 import re
 import time
-from dataclasses import dataclass
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from copy import deepcopy
@@ -61,12 +60,11 @@ from core.workflow.generator.types import (
     WorkflowGenerateErrorCode,
     WorkflowGenerateErrorDict,
     WorkflowGenerateResultDict,
-    WorkflowGenerateUsageDict,
     WorkflowGenerationMode,
     WorkflowGenerationModeRequest,
 )
 from graphon.enums import BuiltinNodeTypes
-from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from graphon.model_runtime.entities.llm_entities import LLMResult
 from graphon.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
 from graphon.model_runtime.errors.invoke import (
     InvokeConnectionError,
@@ -194,60 +192,6 @@ def _err(code: str, detail: str, node_id: str = "") -> WorkflowGenerateErrorDict
     return out
 
 
-# Error codes that mean "a variable reference points somewhere it shouldn't".
-# These are the ones the builder-retry loop tries to self-heal; other codes
-# (missing terminal, cycle, ...) aren't fixable by re-prompting the builder.
-_REFERENCE_ERROR_CODES = frozenset(
-    {
-        WorkflowGenerateErrorCode.UNKNOWN_NODE_REFERENCE,
-        WorkflowGenerateErrorCode.UNRESOLVED_REFERENCE,
-    }
-)
-
-
-@dataclass
-class _BuildAttempt:
-    """Outcome of one builder→postprocess→validate attempt.
-
-    ``build_err`` is set only on a hard builder failure (JSON/schema/invoke);
-    otherwise ``result`` holds the postprocessed graph and ``errors`` the
-    structural validation findings (empty means fully valid).
-    """
-
-    build_err: WorkflowGenerateErrorDict | None
-    result: WorkflowGenerateResultDict
-    errors: list[WorkflowGenerateErrorDict]
-
-
-@dataclass
-class _UsageAccumulator:
-    """Mutable running sum of token usage across every LLM call in one generation.
-
-    Both the planner and builder (plus any parse / reference retries) fold their
-    ``LLMResult.usage`` in here so the final result can report the real,
-    end-to-end token cost of the turn. A provider that returns no usage simply
-    contributes zeros.
-    """
-
-    prompt_tokens: int = 0
-    completion_tokens: int = 0
-    total_tokens: int = 0
-
-    def add(self, usage: LLMUsage | None) -> None:
-        if usage is None:
-            return
-        self.prompt_tokens += usage.prompt_tokens
-        self.completion_tokens += usage.completion_tokens
-        self.total_tokens += usage.total_tokens
-
-    def to_dict(self) -> WorkflowGenerateUsageDict:
-        return {
-            "prompt_tokens": self.prompt_tokens,
-            "completion_tokens": self.completion_tokens,
-            "total_tokens": self.total_tokens,
-        }
-
-
 def _errors_to_str(errors: list[WorkflowGenerateErrorDict]) -> str:
     """Concatenate structured errors into the legacy single-string envelope."""
     return "; ".join(e["detail"] for e in errors)
@@ -268,17 +212,10 @@ def _empty_result() -> WorkflowGenerateResultDict:
 def _result_with_errors(
     base: WorkflowGenerateResultDict,
     errors: list[WorkflowGenerateErrorDict],
-    usage: "_UsageAccumulator | None" = None,
 ) -> WorkflowGenerateResultDict:
-    """Attach a structured error list to ``base``, populating the legacy ``error`` string too.
-
-    ``usage`` — when provided — records the token cost spent before the failure
-    so even a failed turn reports what it burned.
-    """
+    """Attach a structured error list to ``base``, populating the legacy ``error`` string too."""
     base["errors"] = errors
     base["error"] = _errors_to_str(errors)
-    if usage is not None:
-        base["usage"] = usage.to_dict()
     return base
 
 
@@ -534,10 +471,6 @@ class WorkflowGenerator:
         """
 
         # ── 1. PLANNER ────────────────────────────────────────────────────
-        # One accumulator threads through every LLM call (planner, builder, and
-        # any parse / reference retries) so the returned result reports the real
-        # end-to-end token cost of this turn.
-        usage = _UsageAccumulator()
         plan, plan_err = cls._run_stage(
             stage="Planner",
             failure_fallback_message="Failed to plan workflow",
@@ -549,7 +482,6 @@ class WorkflowGenerator:
                 ideal_output=ideal_output,
                 tool_catalogue_text=tool_catalogue_text,
                 current_graph=current_graph,
-                usage=usage,
             ),
         )
         if plan_err is not None:
@@ -587,111 +519,22 @@ class WorkflowGenerator:
             if isinstance(item, dict) and (item.get("variable") or "").strip()
         ]
 
-        # ── 2. BUILDER (+ one reference-repair retry) ─────────────────────
-        # First build. If postprocess auto-repair can't clear every bad
-        # variable reference, we re-run the builder ONCE with a correction
-        # hint naming the offending references, then keep whichever result is
-        # cleaner. This turns "one hallucinated ref blocks the whole graph"
-        # into a self-healing loop for the common case.
-        build_result = cls._build_and_validate(
-            model_instance=model_instance,
-            model_parameters=model_parameters,
-            provider=provider,
-            model_name=model_name,
-            model_mode=model_mode,
-            mode=mode,
-            instruction=instruction,
-            ideal_output=ideal_output,
-            plan=plan,
-            plan_nodes=plan_nodes,
-            start_inputs=start_inputs,
-            tool_catalogue_text=tool_catalogue_text,
-            installed_tools=installed_tools,
-            current_graph=current_graph,
-            correction_hint="",
-            usage=usage,
-        )
-        if build_result.build_err is not None:
-            return _result_with_errors(_empty_result(), [build_result.build_err], usage)
+        # First event the stream sees: the high-level plan, before the slower
+        # builder call. Non-streaming callers ignore it.
+        yield "plan", _build_plan_event(plan=plan, plan_nodes=plan_nodes, start_inputs=start_inputs, mode=resolved_mode)
 
-        reference_errors = [e for e in build_result.errors if e["code"] in _REFERENCE_ERROR_CODES]
-        if reference_errors:
-            logger.info(
-                "Workflow generator: %d reference error(s) survived repair; retrying builder once",
-                len(reference_errors),
-            )
-            retry = cls._build_and_validate(
+        # ── 2. BUILDER ────────────────────────────────────────────────────
+        builder_started_at = time.monotonic()
+
+        def build_graph() -> GraphDict:
+            return cls._run_parallel_node_builders(
                 model_instance=model_instance,
                 model_parameters=model_parameters,
                 provider=provider,
                 model_name=model_name,
                 model_mode=model_mode,
-                mode=mode,
+                mode=resolved_mode,
                 instruction=instruction,
-                ideal_output=ideal_output,
-                plan=plan,
-                plan_nodes=plan_nodes,
-                start_inputs=start_inputs,
-                tool_catalogue_text=tool_catalogue_text,
-                installed_tools=installed_tools,
-                current_graph=current_graph,
-                correction_hint=cls._format_correction_hint(reference_errors),
-                usage=usage,
-            )
-            # Keep the retry only if the builder didn't hard-fail AND it left
-            # fewer errors; otherwise fall back to the first attempt.
-            if retry.build_err is None and len(retry.errors) < len(build_result.errors):
-                build_result = retry
-
-        if build_result.errors:
-            logger.warning("Workflow generator: structural validation failed: %s", build_result.errors)
-            return _result_with_errors(build_result.result, build_result.errors, usage)
-        build_result.result["usage"] = usage.to_dict()
-        return build_result.result
-
-    @classmethod
-    def _build_and_validate(
-        cls,
-        *,
-        model_instance,
-        model_parameters: dict[str, Any],
-        provider: str,
-        model_name: str,
-        model_mode: str,
-        mode: WorkflowGenerationMode,
-        instruction: str,
-        ideal_output: str,
-        plan: PlannerResultDict,
-        plan_nodes: list[dict[str, Any]],
-        start_inputs: list[dict[str, Any]],
-        tool_catalogue_text: str,
-        installed_tools: set[tuple[str, str]] | None,
-        current_graph: dict[str, Any] | None,
-        correction_hint: str,
-        usage: "_UsageAccumulator | None" = None,
-    ) -> "_BuildAttempt":
-        """
-        Run one builder attempt: build → postprocess (auto-repair) → validate.
-
-        ``correction_hint`` is appended to the builder instruction on a retry so
-        the LLM can fix the references the first attempt got wrong. Returns a
-        ``_BuildAttempt`` carrying either a hard build error or the
-        postprocessed result plus its (possibly empty) structural errors.
-
-        ``usage`` — when provided — accumulates this attempt's builder token cost.
-        """
-        effective_instruction = instruction if not correction_hint else f"{instruction}\n\n{correction_hint}"
-        graph, build_err = cls._run_stage(
-            stage="Builder",
-            failure_fallback_message="Failed to build workflow graph",
-            run=lambda: cls._run_builder(
-                model_instance=model_instance,
-                model_parameters=model_parameters,
-                provider=provider,
-                model_name=model_name,
-                model_mode=model_mode,
-                mode=mode,
-                instruction=effective_instruction,
                 ideal_output=ideal_output,
                 plan_nodes=plan_nodes,
                 plan_edges=plan_edges,
@@ -711,10 +554,6 @@ class WorkflowGenerator:
             (time.monotonic() - builder_started_at) * 1000,
         )
         if build_err is not None:
-            return _BuildAttempt(build_err=build_err, result=_empty_result(), errors=[])
-
-        graph = cast(GraphDict, graph)
-        graph = cls._postprocess_graph(graph=graph, mode=mode)
             yield (
                 "result",
                 cast(dict[str, Any], _with_mode(_result_with_errors(_empty_result(), [build_err]), resolved_mode)),
@@ -735,21 +574,6 @@ class WorkflowGenerator:
             "error": "",
             "errors": [],
         }
-        errors = cls._validate_structure(graph=graph, mode=mode, installed_tools=installed_tools)
-        return _BuildAttempt(build_err=None, result=result, errors=errors)
-
-    @classmethod
-    def _format_correction_hint(cls, reference_errors: list[WorkflowGenerateErrorDict]) -> str:
-        """Turn surviving reference errors into a concise builder correction block."""
-        lines = "\n".join(f"- {e['detail']}" for e in reference_errors)
-        return (
-            "IMPORTANT — the previous attempt produced INVALID variable references:\n"
-            f"{lines}\n"
-            "Fix them: every value_selector and every {{#node_id.var#}} placeholder MUST point at "
-            "a real upstream node id and an output variable that node actually declares. "
-            "Never use an if-else branch name ('true'/'false') as a node id. "
-            "For an LLM node use its 'text' output; for a code node use one of its declared 'outputs' keys."
-        )
         _with_mode(result, resolved_mode)
 
         # Final structural sanity check — fail closed if start/end shape is
@@ -845,7 +669,6 @@ class WorkflowGenerator:
         messages,
         model_parameters: dict[str, Any],
         stage: str,
-        usage: "_UsageAccumulator | None" = None,
     ) -> dict[str, Any]:
         """
         Call the LLM and parse the response as JSON, retrying ONCE on parse failure.
@@ -859,9 +682,6 @@ class WorkflowGenerator:
 
         On the second failure ``_StageJSONError`` bubbles up so the outer
         runner can tag it ``INVALID_JSON`` in the result envelope.
-
-        ``usage`` — when provided — accumulates every attempt's token cost,
-        including a failed-parse attempt (those tokens were still spent).
         """
         last_detail = ""
         for attempt in range(2):
@@ -877,8 +697,6 @@ class WorkflowGenerator:
                 model_parameters=model_parameters,
                 stage=stage,
             )
-            if usage is not None:
-                usage.add(response.usage)
             text = response.message.get_text_content() or ""
             try:
                 parsed = json_repair.loads(text)
@@ -908,7 +726,6 @@ class WorkflowGenerator:
         ideal_output: str,
         tool_catalogue_text: str,
         current_graph: dict[str, Any] | None = None,
-        usage: "_UsageAccumulator | None" = None,
     ) -> PlannerResultDict:
         user_prompt = PLANNER_USER_PROMPT.format(
             mode=_planner_prompt_mode(mode),
@@ -927,7 +744,6 @@ class WorkflowGenerator:
             messages=messages,
             model_parameters=clamped_parameters,
             stage="Planner",
-            usage=usage,
         )
         try:
             return cls._validate_planner_schema(parsed)
@@ -1395,14 +1211,6 @@ class WorkflowGenerator:
         cls._normalize_sys_query_references(nodes=nodes, mode=mode)
         cls._reconcile_variable_references(nodes=nodes, mode=mode)
 
-        # Deterministic auto-repair for the NON-start reference bugs the builder
-        # LLM produces (an if-else condition selecting a branch case-id like
-        # ``["true","false"]``, or a selector naming an output the source node
-        # never declares). Redirect these onto a real upstream output so one
-        # hallucinated reference can't block the whole graph. Anything still
-        # unresolvable falls through to the validator and is surfaced.
-        cls._repair_variable_references(nodes=nodes, edges=deduped_edges)
-
         # Schema backstop: a "file" / "file-list" start variable MUST carry a
         # non-empty ``allowed_file_types`` or Studio refuses to load the draft
         # ("supported file types is required"). The builder is now told to set
@@ -1752,205 +1560,6 @@ class WorkflowGenerator:
         # Other node types (if-else, iteration-start, loop-start, ...) don't
         # produce outputs of their own.
         return False
-
-    # Node types whose single canonical output has a fixed, well-known name.
-    # Used by the reference-repair pass to remap a hallucinated output var
-    # (``{#node9.item#}``) onto the output the node actually exposes.
-    _CANONICAL_OUTPUT_VAR: ClassVar = {
-        BuiltinNodeTypes.LLM: "text",
-        BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL: "result",
-        BuiltinNodeTypes.HTTP_REQUEST: "body",
-        BuiltinNodeTypes.TEMPLATE_TRANSFORM: "output",
-        BuiltinNodeTypes.DOCUMENT_EXTRACTOR: "text",
-        BuiltinNodeTypes.VARIABLE_AGGREGATOR: "output",
-        BuiltinNodeTypes.LEGACY_VARIABLE_AGGREGATOR: "output",
-        BuiltinNodeTypes.ITERATION: "output",
-        BuiltinNodeTypes.LOOP: "output",
-        BuiltinNodeTypes.LIST_OPERATOR: "result",
-    }
-
-    @classmethod
-    def _canonical_output_var(cls, node: dict[str, Any]) -> str | None:
-        """
-        Best-effort "primary output variable" a downstream node can read from
-        ``node``. Returns ``None`` for node types that expose nothing (if-else,
-        start-of-container, ...) or whose outputs are fully dynamic in a way we
-        can't pick a default for.
-
-        Used only by the auto-repair pass, never by validation.
-        """
-        data = node.get("data") or {}
-        node_type = data.get("type")
-        fixed = cls._CANONICAL_OUTPUT_VAR.get(node_type)
-        if fixed is not None:
-            return fixed
-        if node_type == BuiltinNodeTypes.CODE:
-            outputs = data.get("outputs") or {}
-            return next(iter(outputs), None)
-        if node_type == BuiltinNodeTypes.PARAMETER_EXTRACTOR:
-            params = data.get("parameters") or []
-            first = next((p for p in params if isinstance(p, dict) and p.get("name")), None)
-            return first.get("name") if first else None
-        if node_type == BuiltinNodeTypes.START:
-            variables = data.get("variables") or []
-            first = next((v for v in variables if isinstance(v, dict) and v.get("variable")), None)
-            return first.get("variable") if first else None
-        return None
-
-    @classmethod
-    def _repair_variable_references(cls, *, nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> None:
-        """
-        Deterministically fix the two dominant NON-start reference bugs the
-        builder LLM produces, so a single hallucination doesn't block the whole
-        graph from being applied:
-
-          1. A selector / placeholder pointing at a node that doesn't exist
-             (the classic ``{#true.false#}`` — an if-else condition whose
-             ``variable_selector`` names a branch case-id instead of a real
-             upstream variable). We redirect it to the nearest upstream node
-             that exposes a canonical output.
-          2. A reference to a real node that doesn't DECLARE that variable
-             (``{#node9.item#}`` when node9 only exposes ``text``). We remap the
-             variable name to that node's canonical output.
-
-        Start-node references are handled earlier by
-        ``_reconcile_variable_references`` (it auto-injects the missing input),
-        so this pass leaves them alone. Anything it still can't resolve falls
-        through to the validator and is surfaced (and highlighted) to the user.
-        """
-        nodes_by_id: dict[str, dict[str, Any]] = {n.get("id", ""): n for n in nodes if n.get("id")}
-        preds = cls._predecessor_map(nodes=nodes, edges=edges)
-
-        for node in nodes:
-            node_id = node.get("id") or ""
-            # Ordered list of upstream nodes that expose *some* output — the
-            # fallback target when a reference points nowhere usable.
-            upstream_sources = cls._upstream_output_sources(
-                node_id=node_id, nodes_by_id=nodes_by_id, preds=preds
-            )
-            cls._repair_refs_in_data(
-                node.get("data") or {},
-                nodes_by_id=nodes_by_id,
-                upstream_sources=upstream_sources,
-            )
-
-    @classmethod
-    def _predecessor_map(
-        cls, *, nodes: list[dict[str, Any]], edges: list[dict[str, Any]]
-    ) -> dict[str, list[str]]:
-        """node_id → list of direct predecessor node ids (edge source→target)."""
-        preds: dict[str, list[str]] = {n.get("id", ""): [] for n in nodes if n.get("id")}
-        for edge in edges:
-            src, tgt = edge.get("source"), edge.get("target")
-            if isinstance(src, str) and isinstance(tgt, str) and tgt in preds and src in preds:
-                preds[tgt].append(src)
-        return preds
-
-    @classmethod
-    def _upstream_output_sources(
-        cls,
-        *,
-        node_id: str,
-        nodes_by_id: dict[str, dict[str, Any]],
-        preds: dict[str, list[str]],
-    ) -> list[tuple[str, str]]:
-        """
-        Breadth-first walk backwards from ``node_id`` collecting every upstream
-        ``(source_node_id, canonical_var)`` a reference could be redirected to,
-        nearest first. Cycle-safe via a visited set.
-        """
-        out: list[tuple[str, str]] = []
-        seen: set[str] = {node_id}
-        queue: list[str] = list(preds.get(node_id, []))
-        while queue:
-            cur = queue.pop(0)
-            if cur in seen:
-                continue
-            seen.add(cur)
-            source = nodes_by_id.get(cur)
-            if source is not None:
-                var = cls._canonical_output_var(source)
-                if var:
-                    out.append((cur, var))
-            queue.extend(preds.get(cur, []))
-        return out
-
-    @classmethod
-    def _repair_refs_in_data(
-        cls,
-        value: Any,
-        *,
-        nodes_by_id: dict[str, dict[str, Any]],
-        upstream_sources: list[tuple[str, str]],
-    ) -> None:
-        """
-        Rewrite bad ``[node_id, var]`` value-selectors in place. Placeholder
-        strings (``{{#node.var#}}``) are intentionally left to the validator —
-        rewriting free text risks corrupting a prompt, whereas a structured
-        2-element selector has exactly one safe interpretation.
-        """
-        if isinstance(value, dict):
-            for k, v in list(value.items()):
-                if (
-                    isinstance(v, list)
-                    and len(v) == 2
-                    and all(isinstance(x, str) for x in v)
-                    and k not in cls._NON_SELECTOR_LIST_KEYS
-                ):
-                    repaired = cls._repair_selector(
-                        selector=(v[0].strip(), v[1].strip()),
-                        nodes_by_id=nodes_by_id,
-                        upstream_sources=upstream_sources,
-                    )
-                    if repaired is not None and list(repaired) != v:
-                        value[k] = list(repaired)
-                        logger.info(
-                            "Workflow generator: repaired reference %s -> %s", v, list(repaired)
-                        )
-                        continue
-                cls._repair_refs_in_data(
-                    v, nodes_by_id=nodes_by_id, upstream_sources=upstream_sources
-                )
-        elif isinstance(value, list):
-            for item in value:
-                cls._repair_refs_in_data(
-                    item, nodes_by_id=nodes_by_id, upstream_sources=upstream_sources
-                )
-
-    @classmethod
-    def _repair_selector(
-        cls,
-        *,
-        selector: tuple[str, str],
-        nodes_by_id: dict[str, dict[str, Any]],
-        upstream_sources: list[tuple[str, str]],
-    ) -> tuple[str, str] | None:
-        """
-        Return a corrected ``(node_id, var)`` for a broken selector, or ``None``
-        when it's already valid or unfixable.
-
-        Strategy:
-          * points at a REAL node but wrong var → remap to that node's canonical
-            output (keeps the user's intended data source);
-          * points at a NON-existent node → redirect to the nearest upstream
-            output (the dominant ``{#true.false#}`` branch-name case).
-        """
-        node_id, var = selector
-        # sys.* is a runtime system namespace, never a graph node.
-        if node_id == "sys":
-            return None
-        target = nodes_by_id.get(node_id)
-        if target is not None:
-            if cls._declares_variable(target, var):
-                return None
-            canonical = cls._canonical_output_var(target)
-            if canonical:
-                return (node_id, canonical)
-            # Real node with no usable output (e.g. if-else) → fall back to an
-            # upstream source instead.
-        if upstream_sources:
-            return upstream_sources[0]
-        return None
 
     @classmethod
     def _sole_declared_variable(cls, node: dict[str, Any]) -> str | None:
@@ -2463,6 +2072,14 @@ class WorkflowGenerator:
         data.setdefault("desc", "")
         data.setdefault("selected", False)
         # `data.type` is the actual node-type string — we never override it.
+        # Tool nodes must always carry `tool_parameters` / `tool_configurations`
+        # objects: the Studio canvas' checklist validator (`getNodeUsedVars`)
+        # calls `Object.keys(node.tool_parameters)` unguarded and crashes on a
+        # missing field. The builder is prompted to emit these, but a terse LLM
+        # response can omit them — backfill empty dicts so the draft always loads.
+        if data.get("type") == BuiltinNodeTypes.TOOL:
+            data.setdefault("tool_parameters", {})
+            data.setdefault("tool_configurations", {})
 
     @classmethod
     def _fill_edge_defaults(cls, edge: dict[str, Any]) -> None:

@@ -3966,7 +3966,7 @@ class TestWorkflowGeneratorGraphCycleValidation:
 
 
 class TestWorkflowGeneratorDuplicateNodeIds:
-    """Duplicate planner ids make every cross-reference ambiguous."""
+    """Duplicate planner ids are rejected as an invalid schema."""
 
     def test_duplicate_ids_surface_dedicated_code(self):
         planner = json.dumps(
@@ -4012,7 +4012,7 @@ class TestWorkflowGeneratorDuplicateNodeIds:
         )
 
         codes = {e["code"] for e in result["errors"]}
-        assert "DUPLICATE_NODE_ID" in codes
+        assert codes == {"INVALID_SCHEMA"}
 
 
 class TestReferenceAutoRepair:
@@ -4032,11 +4032,9 @@ class TestReferenceAutoRepair:
     def _builder(nodes, edges):
         return json.dumps({"nodes": nodes, "edges": edges, "viewport": {"x": 0, "y": 0, "zoom": 0.7}})
 
-    def test_if_else_condition_selecting_branch_name_is_redirected_to_upstream(self):
-        # The classic ``{#true.false#}`` bug: the if-else condition's
-        # ``variable_selector`` names the branch case-ids ["true","false"]
-        # instead of a real upstream variable. Auto-repair must redirect it to
-        # the nearest upstream output (the LLM's ``text``) so no error survives.
+    def test_if_else_condition_selector_wrong_var_is_remapped_to_canonical_output(self):
+        # ``["node2", "item"]`` where node2 is an LLM (only exposes ``text``):
+        # remap the var to the node's canonical output instead of failing.
         planner = self._planner(
             [
                 {"label": "Start", "node_type": "start", "purpose": "x"},
@@ -4047,7 +4045,230 @@ class TestReferenceAutoRepair:
         )
         builder = self._builder(
             nodes=[
-        assert codes == {"INVALID_SCHEMA"}
+                {
+                    "id": "node1",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {"type": "start", "title": "Start", "variables": []},
+                },
+                {
+                    "id": "node2",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {"type": "llm", "title": "LLM"},
+                },
+                {
+                    "id": "node3",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {
+                        "type": "if-else",
+                        "title": "Check",
+                        "cases": [
+                            {
+                                "case_id": "true",
+                                "logical_operator": "and",
+                                "conditions": [
+                                    {
+                                        "id": "c1",
+                                        "variable_selector": ["node2", "item"],
+                                        "comparison_operator": "is",
+                                        "value": "yes",
+                                    }
+                                ],
+                            }
+                        ],
+                    },
+                },
+                {
+                    "id": "node4",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {"type": "end", "title": "End", "outputs": []},
+                },
+            ],
+            edges=[
+                {"id": "a", "source": "node1", "target": "node2", "type": "custom"},
+                {"id": "b", "source": "node2", "target": "node3", "type": "custom"},
+                {"id": "c", "source": "node3", "target": "node4", "type": "custom"},
+            ],
+        )
+        model_instance = _GraphFixtureModel(planner, builder)
+
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="x",
+        )
+
+        assert result["errors"] == []
+        if_node = next(n for n in result["graph"]["nodes"] if n["data"]["type"] == "if-else")
+        selector = if_node["data"]["cases"][0]["conditions"][0]["variable_selector"]
+        assert selector == ["node2", "text"]
+        assert model_instance.invoke_llm.call_count == 5
+
+    def test_selector_wrong_var_on_real_node_is_remapped_to_canonical_output(self):
+        # ``["node2", "item"]`` where node2 is an LLM (only exposes ``text``):
+        # remap the var to the node's canonical output instead of failing.
+        planner = self._planner(
+            [
+                {"label": "Start", "node_type": "start", "purpose": "x"},
+                {"label": "LLM", "node_type": "llm", "purpose": "x"},
+                {"label": "End", "node_type": "end", "purpose": "x"},
+            ]
+        )
+        builder = self._builder(
+            nodes=[
+                {
+                    "id": "node1",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {"type": "start", "title": "Start", "variables": []},
+                },
+                {
+                    "id": "node2",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {"type": "llm", "title": "LLM"},
+                },
+                {
+                    "id": "node3",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {
+                        "type": "end",
+                        "title": "End",
+                        # BUG: node2 (LLM) has no ``item`` output.
+                        "outputs": [{"variable": "out", "value_selector": ["node2", "item"]}],
+                    },
+                },
+            ],
+            edges=[
+                {"id": "a", "source": "node1", "target": "node2", "type": "custom"},
+                {"id": "b", "source": "node2", "target": "node3", "type": "custom"},
+            ],
+        )
+        model_instance = _GraphFixtureModel(planner, builder)
+
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="x",
+        )
+
+        assert result["errors"] == []
+        end_node = next(n for n in result["graph"]["nodes"] if n["data"]["type"] == "end")
+        assert end_node["data"]["outputs"][0]["value_selector"] == ["node2", "text"]
+
+    def test_placeholder_ref_wrong_var_is_remapped_to_canonical_output(self):
+        planner = self._planner(
+            [
+                {"label": "Start", "node_type": "start", "purpose": "x"},
+                {"label": "Code", "node_type": "code", "purpose": "x"},
+                {"label": "LLM", "node_type": "llm", "purpose": "x"},
+                {"label": "End", "node_type": "end", "purpose": "x"},
+            ]
+        )
+        builder = self._builder(
+            nodes=[
+                {
+                    "id": "node1",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {"type": "start", "title": "Start", "variables": []},
+                },
+                {
+                    "id": "node2",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {"type": "code", "title": "Code", "outputs": {"summary": {"type": "string"}}},
+                },
+                {
+                    "id": "node3",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {
+                        "type": "llm",
+                        "title": "LLM",
+                        "prompt_template": [{"role": "user", "text": "See {{#node2.mystery#}}."}],
+                    },
+                },
+                {
+                    "id": "node4",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {"type": "end", "title": "End", "outputs": []},
+                },
+            ],
+            edges=[
+                {"id": "a", "source": "node1", "target": "node2", "type": "custom"},
+                {"id": "b", "source": "node2", "target": "node3", "type": "custom"},
+                {"id": "c", "source": "node3", "target": "node4", "type": "custom"},
+            ],
+        )
+        model_instance = _GraphFixtureModel(planner, builder)
+
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="x",
+        )
+
+        assert result["errors"] == []
+        llm_node = next(n for n in result["graph"]["nodes"] if n["data"]["type"] == "llm")
+        assert llm_node["data"]["prompt_template"][0]["text"] == "See {{#node2.summary#}}."
+
+    def test_clean_first_build_does_not_retry(self):
+        # A valid graph must NOT trigger JSON/schema retry calls.
+        planner = self._planner(
+            [
+                {"label": "Start", "node_type": "start", "purpose": "x"},
+                {"label": "End", "node_type": "end", "purpose": "x"},
+            ]
+        )
+        builder = self._builder(
+            nodes=[
+                {
+                    "id": "node1",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {"type": "start", "title": "Start", "variables": []},
+                },
+                {
+                    "id": "node2",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {"type": "end", "title": "End", "outputs": []},
+                },
+            ],
+            edges=[{"id": "x", "source": "node1", "target": "node2", "type": "custom"}],
+        )
+        model_instance = _GraphFixtureModel(planner, builder)
+
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="x",
+        )
+
+        assert result["errors"] == []
+        assert model_instance.invoke_llm.call_count == 3
 
 
 def _stream_planner_json() -> str:
@@ -4074,97 +4295,12 @@ def _stream_builder_json() -> str:
                     "id": "node1",
                     "type": "custom",
                     "position": {"x": 0, "y": 0},
-                    "data": {"type": "start", "title": "Start", "variables": []},
                     "data": {"type": "start", "title": "Start", "desc": "", "variables": []},
                 },
                 {
                     "id": "node2",
                     "type": "custom",
                     "position": {"x": 0, "y": 0},
-                    "data": {"type": "llm", "title": "LLM"},
-                },
-                {
-                    "id": "node3",
-                    "type": "custom",
-                    "position": {"x": 0, "y": 0},
-                    "data": {
-                        "type": "if-else",
-                        "title": "Check",
-                        "cases": [
-                            {
-                                "case_id": "true",
-                                "logical_operator": "and",
-                                "conditions": [
-                                    {
-                                        "id": "c1",
-                                        # BUG: branch names used as [node_id, var]
-                                        "variable_selector": ["true", "false"],
-                                        "comparison_operator": "is",
-                                        "value": "yes",
-                                    }
-                                ],
-                            }
-                        ],
-                    },
-                },
-                {
-                    "id": "node4",
-                    "type": "custom",
-                    "position": {"x": 0, "y": 0},
-                    "data": {"type": "end", "title": "End", "outputs": []},
-                },
-            ],
-            edges=[
-                {"id": "a", "source": "node1", "target": "node2", "type": "custom"},
-                {"id": "b", "source": "node2", "target": "node3", "type": "custom"},
-                {"id": "c", "source": "node3", "target": "node4", "type": "custom"},
-            ],
-        )
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [_llm_result(planner), _llm_result(builder)]
-        result = WorkflowGenerator.generate_workflow_graph(
-            model_instance=model_instance,
-            model_parameters={},
-            provider="openai",
-            model_name="gpt-4o",
-            model_mode="chat",
-            mode="workflow",
-            instruction="x",
-        )
-
-        assert result["errors"] == []
-        if_node = next(n for n in result["graph"]["nodes"] if n["data"]["type"] == "if-else")
-        selector = if_node["data"]["cases"][0]["conditions"][0]["variable_selector"]
-        # Redirected onto the upstream LLM's canonical ``text`` output.
-        assert selector == ["node2", "text"]
-        # A single builder call — repair was deterministic, no retry needed.
-        assert model_instance.invoke_llm.call_count == 2
-
-    def test_selector_wrong_var_on_real_node_is_remapped_to_canonical_output(self):
-        # ``["node2","item"]`` where node2 is an LLM (only exposes ``text``):
-        # remap the var to the node's canonical output instead of failing.
-        planner = self._planner(
-            [
-                {"label": "Start", "node_type": "start", "purpose": "x"},
-                {"label": "LLM", "node_type": "llm", "purpose": "x"},
-                {"label": "End", "node_type": "end", "purpose": "x"},
-            ]
-        )
-        builder = self._builder(
-            nodes=[
-                {
-                    "id": "node1",
-                    "type": "custom",
-                    "position": {"x": 0, "y": 0},
-                    "data": {"type": "start", "title": "Start", "variables": []},
-                },
-                {
-                    "id": "node2",
-                    "type": "custom",
-                    "position": {"x": 0, "y": 0},
-                    "data": {"type": "llm", "title": "LLM"},
-                },
-                {
                     "data": {
                         "type": "llm",
                         "title": "Summarize",
@@ -4179,132 +4315,6 @@ def _stream_builder_json() -> str:
                     "data": {
                         "type": "end",
                         "title": "End",
-                        # BUG: node2 (LLM) has no ``item`` output.
-                        "outputs": [{"variable": "out", "value_selector": ["node2", "item"]}],
-                    },
-                },
-            ],
-            edges=[
-                {"id": "a", "source": "node1", "target": "node2", "type": "custom"},
-                {"id": "b", "source": "node2", "target": "node3", "type": "custom"},
-            ],
-        )
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [_llm_result(planner), _llm_result(builder)]
-        result = WorkflowGenerator.generate_workflow_graph(
-            model_instance=model_instance,
-            model_parameters={},
-            provider="openai",
-            model_name="gpt-4o",
-            model_mode="chat",
-            mode="workflow",
-            instruction="x",
-        )
-
-        assert result["errors"] == []
-        end_node = next(n for n in result["graph"]["nodes"] if n["data"]["type"] == "end")
-        assert end_node["data"]["outputs"][0]["value_selector"] == ["node2", "text"]
-
-    def test_unfixable_placeholder_ref_triggers_one_builder_retry(self):
-        # A prompt-string placeholder ``{{#node2.mystery#}}`` is intentionally
-        # NOT auto-rewritten (rewriting free text risks corrupting a prompt),
-        # so it survives repair and triggers ONE builder retry with a
-        # correction hint. The retry returns a clean graph → success.
-        planner = self._planner(
-            [
-                {"label": "Start", "node_type": "start", "purpose": "x"},
-                {"label": "Code", "node_type": "code", "purpose": "x"},
-                {"label": "LLM", "node_type": "llm", "purpose": "x"},
-                {"label": "End", "node_type": "end", "purpose": "x"},
-            ]
-        )
-
-        def _nodes(placeholder_var: str):
-            return [
-                {
-                    "id": "node1",
-                    "type": "custom",
-                    "position": {"x": 0, "y": 0},
-                    "data": {"type": "start", "title": "Start", "variables": []},
-                },
-                {
-                    "id": "node2",
-                    "type": "custom",
-                    "position": {"x": 0, "y": 0},
-                    "data": {"type": "code", "title": "Code", "outputs": {"summary": {"type": "string"}}},
-                },
-                {
-                    "id": "node3",
-                    "type": "custom",
-                    "position": {"x": 0, "y": 0},
-                    "data": {
-                        "type": "llm",
-                        "title": "LLM",
-                        "prompt_template": [{"role": "user", "text": f"See {{{{#node2.{placeholder_var}#}}}}."}],
-                    },
-                },
-                {
-                    "id": "node4",
-                    "type": "custom",
-                    "position": {"x": 0, "y": 0},
-                    "data": {"type": "end", "title": "End", "outputs": []},
-                },
-            ]
-
-        edges = [
-            {"id": "a", "source": "node1", "target": "node2", "type": "custom"},
-            {"id": "b", "source": "node2", "target": "node3", "type": "custom"},
-            {"id": "c", "source": "node3", "target": "node4", "type": "custom"},
-        ]
-        bad_builder = self._builder(nodes=_nodes("mystery"), edges=edges)  # undeclared key
-        good_builder = self._builder(nodes=_nodes("summary"), edges=edges)  # real code output
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [
-            _llm_result(planner),
-            _llm_result(bad_builder),
-            _llm_result(good_builder),
-        ]
-        result = WorkflowGenerator.generate_workflow_graph(
-            model_instance=model_instance,
-            model_parameters={},
-            provider="openai",
-            model_name="gpt-4o",
-            model_mode="chat",
-            mode="workflow",
-            instruction="x",
-        )
-
-        # Retry recovered a clean graph: planner + 2 builder calls.
-        assert result["errors"] == []
-        assert model_instance.invoke_llm.call_count == 3
-
-    def test_clean_first_build_does_not_retry(self):
-        # A valid graph must NOT trigger the retry — exactly two LLM calls.
-        planner = self._planner(
-            [
-                {"label": "Start", "node_type": "start", "purpose": "x"},
-                {"label": "End", "node_type": "end", "purpose": "x"},
-            ]
-        )
-        builder = self._builder(
-            nodes=[
-                {
-                    "id": "node1",
-                    "type": "custom",
-                    "position": {"x": 0, "y": 0},
-                    "data": {"type": "start", "title": "Start", "variables": []},
-                },
-                {
-                    "id": "node2",
-                    "type": "custom",
-                    "position": {"x": 0, "y": 0},
-                    "data": {"type": "end", "title": "End", "outputs": []},
-                },
-            ],
-            edges=[{"id": "x", "source": "node1", "target": "node2", "type": "custom"}],
-        )
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [_llm_result(planner), _llm_result(builder)]
                         "desc": "",
                         "outputs": [{"variable": "summary", "value_selector": ["node2", "text"]}],
                     },
@@ -4404,12 +4414,9 @@ class TestWorkflowGeneratorStream:
             model_name="gpt-4o",
             model_mode="chat",
             mode="workflow",
-            instruction="x",
-        )
-
-        assert result["errors"] == []
-        assert model_instance.invoke_llm.call_count == 2
             instruction="Summarize a URL",
         )
 
+        assert result["errors"] == []
+        assert model_instance.invoke_llm.call_count == 4
         assert result["mode"] == "workflow"
