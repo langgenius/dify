@@ -129,7 +129,6 @@ class TestAppMCPServerResponse:
 
 
 class TestAppMCPServerController:
-    @pytest.mark.parametrize("sqlite_session", [(AppMCPServer,)], indirect=True)
     def test_get_returns_empty_dict_when_server_missing(self, sqlite_session: Session) -> None:
         api = AppMCPServerController()
         method = unwrap(api.get)
@@ -139,7 +138,6 @@ class TestAppMCPServerController:
 
         assert response == {}
 
-    @pytest.mark.parametrize("sqlite_session", [(AppMCPServer,)], indirect=True)
     def test_post_returns_201(self, sqlite_session: Session) -> None:
         api = AppMCPServerController()
         method = unwrap(api.post)
@@ -163,7 +161,6 @@ class TestAppMCPServerController:
         assert response["parameters"] == {"timeout": 30}
         assert status_code == 201
 
-    @pytest.mark.parametrize("sqlite_session", [(AppMCPServer,)], indirect=True)
     def test_put_updates_server_for_app(self, sqlite_session: Session) -> None:
         api = AppMCPServerController()
         method = unwrap(api.put)
@@ -193,7 +190,6 @@ class TestAppMCPServerController:
         assert response["id"] == "server-1"
         assert updated_server.description == "Updated"
 
-    @pytest.mark.parametrize("sqlite_session", [(AppMCPServer,)], indirect=True)
     @pytest.mark.parametrize(
         ("foreign_tenant_id", "foreign_app_id"),
         [
