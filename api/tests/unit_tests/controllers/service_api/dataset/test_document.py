@@ -26,6 +26,7 @@ import pytest
 from flask import Flask
 from werkzeug.exceptions import Forbidden, NotFound
 
+from controllers.common.errors import FileTooLargeError as FileTooLargeHTTPError
 from controllers.service_api.dataset.document import (
     DeprecatedDocumentAddByTextApi,
     DeprecatedDocumentUpdateByFileApi,
@@ -47,6 +48,7 @@ from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, DocumentDocType, IndexingStatus
 from services.dataset_service import DocumentService
 from services.entities.knowledge_entities.knowledge_entities import ProcessRule, RetrievalModel
+from services.errors.file import FileTooLargeError as FileTooLargeServiceError
 
 
 def _document_data_source_info() -> dict[str, str]:
@@ -1155,6 +1157,9 @@ class TestDocumentIndexingStatusApi:
                     "completed_at": 1609459204,
                     "paused_at": None,
                     "error": None,
+                    "error_code": None,
+                    "estimated_vector_space_mb": None,
+                    "vector_space_limit_mb": None,
                     "stopped_at": None,
                     "completed_segments": 5,
                     "total_segments": 5,
@@ -1592,6 +1597,52 @@ class TestDocumentAddByFileApiPost:
             {"document": _expected_document_response(mock_document), "batch": "batch-file"},
             200,
         )
+
+    @patch(
+        "controllers.service_api.dataset.document.FeatureService.get_knowledge_file_size_limit",
+        return_value=15,
+    )
+    @patch("controllers.service_api.dataset.document.FileService")
+    @patch("controllers.service_api.dataset.document.current_user")
+    @patch("controllers.service_api.dataset.document.db")
+    def test_add_by_file_too_large_returns_http_413(
+        self,
+        mock_db,
+        mock_current_user,
+        mock_file_svc_cls,
+        mock_get_limit,
+        app: Flask,
+        mock_tenant,
+        mock_dataset,
+    ):
+        mock_dataset.provider = "vendor"
+        mock_dataset.indexing_technique = "economy"
+        mock_dataset.chunk_structure = None
+        mock_db.session.scalar.return_value = mock_dataset
+        mock_current_user.__bool__ = Mock(return_value=True)
+        mock_file_svc_cls.return_value.upload_file.side_effect = FileTooLargeServiceError()
+
+        from io import BytesIO
+
+        data = {
+            "file": (BytesIO(b"oversized content"), "test.pdf", "application/pdf"),
+            "data": json.dumps({"process_rule": {"mode": "automatic", "rules": None}}),
+        }
+        with app.test_request_context(
+            f"/datasets/{mock_dataset.id}/document/create-by-file",
+            method="POST",
+            content_type="multipart/form-data",
+            data=data,
+        ):
+            api = DocumentAddByFileApi()
+            with pytest.raises(FileTooLargeHTTPError) as exc_info:
+                _unwrap_non_wrapped_controller(type(api).post)(
+                    api, mock_db.session, tenant_id=mock_tenant, dataset_id=mock_dataset.id
+                )
+
+        assert exc_info.value.code == 413
+        assert exc_info.value.error_code == "file_too_large"
+        mock_get_limit.assert_called_once_with(mock_tenant)
 
     @patch("controllers.service_api.dataset.document.db")
     @patch("controllers.service_api.wraps.FeatureService")
