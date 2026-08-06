@@ -12,7 +12,7 @@ import { defaultPlan } from '@/app/components/billing/config'
 export type ProviderContextState = {
   modelProviders: ModelProvider[]
   isLoadingModelProviders: boolean
-  refreshModelProviders: () => void
+  refreshModelProviders: () => Promise<void>
   textGenerationModelList: Model[]
   isAPIKeySet: boolean
   plan: {
@@ -50,7 +50,7 @@ export type ProviderContextState = {
 export const baseProviderContextValue: ProviderContextState = {
   modelProviders: [],
   isLoadingModelProviders: false,
-  refreshModelProviders: noop,
+  refreshModelProviders: async () => {},
   textGenerationModelList: [],
   isAPIKeySet: true,
   plan: defaultPlan,

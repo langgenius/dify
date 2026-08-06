@@ -120,7 +120,6 @@ const DatasetCard = ({
       <div
         role={isPreviewOnly ? 'button' : undefined}
         tabIndex={isPreviewOnly ? 0 : undefined}
-        aria-disabled={isPreviewOnly ? 'true' : undefined}
         aria-label={isPreviewOnly ? dataset.name : undefined}
         className={cardClassName}
         data-disable-nprogress={true}
