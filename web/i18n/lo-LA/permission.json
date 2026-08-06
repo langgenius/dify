@@ -1,5 +1,6 @@
 {
   "accessRule.actions": "ການຈັດການ",
+  "accessRule.addException": "ເພີ່ມຂໍ້ຍົກເວັ້ນ",
   "accessRule.addMemberAria": "ເພີ່ມ {{name}}",
   "accessRule.addMembersTitle": "ເພີ່ມສະມາຊິກ",
   "accessRule.allPermittedMembers": "ສະມາຊິກທັງໝົດທີ່ມີສິດຕາມບົດບາດ",

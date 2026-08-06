@@ -66,6 +66,7 @@
   "filter.period.yearToDate": "ຕົ້ນປີເຖິງປັດຈຸບັນ",
   "filter.sortBy": "ລຽງລຳດັບໂດຍ:",
   "monitoring.description": "ການຕິດຕາມກວດກາບັນທຶກສະຖານະການເຮັດວຽກຂອງແອັບພລິເຄຊັນ, ລວມທັງປະສິດທິພາບ, ກິດຈະກຳຂອງຜູ້ໃຊ້ ແລະ ຄ່າໃຊ້ຈ່າຍ.",
+  "retention.upgradeTip.description": "ອັບເກຣດເພື່ອຮັກສາບັນທຶກທັງໝົດທີ່ສ້າງຂຶ້ນຫຼັງຈາກການອັບເກຣດໂດຍບໍ່ຈຳກັດເວລາ; ບັນທຶກທີ່ໝົດອາຍຸໃນເມື່ອກ່ອນບໍ່ສາມາດກູ້ຄືນໄດ້.",
   "runDetail.fileListDetail": "ລາຍລະອຽດ",
   "runDetail.fileListLabel": "ລາຍລະອຽດໄຟລ໌",
   "runDetail.testWithParams": "ທົດສອບດ້ວຍພາລາມິເຕີ",

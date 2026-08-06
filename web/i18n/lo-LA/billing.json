@@ -151,6 +151,7 @@
   "plansCommon.workflowExecution.standard": "ການເຮັດວຽກຂອງ Workflow ແບບມາດຕະຖານ",
   "plansCommon.workflowExecution.tooltip": "ບຸລິມະສິດຄິວ ແລະ ຄວາມໄວໃນການປະມວນຜົນ Workflow.",
   "plansCommon.year": "ປີ",
+  "plansCommon.yearlyBilling": "ໃບບິນລາຍປີ",
   "plansCommon.yearlyTip": "ຊຳລະ 10 ເດືອນ, ໃຊ້ໄດ້ 1 ປີ!",
   "teamMembers": "ສະມາຊິກໃນທິມ",
   "triggerLimitModal.description": "ທ່ານໄດ້ໃຊ້ງານຮອດຂີດຈຳກັດຂອງເຫດການຕົວເລີ່ມຕົ້ນ Workflow ສຳລັບແພັກເກດນີ້ແລ້ວ.",

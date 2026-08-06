@@ -13,6 +13,8 @@
   "embedding.segmentLength": "ຄວາມຍາວສູງສຸດຂອງສ່ວນຍ່ອຍ",
   "embedding.segments": "ຫຍໍ້ໜ້າ",
   "embedding.textCleaning": "ກົດການຈັດການຂໍ້ຄວາມລ່ວງໜ້າ",
+  "embedding.vectorSpaceEstimateExceeded.description": "ເອກະສານທີ່ໄດ້ຮັບ, ແຕ່ການເກັບຮັກສາ vector ຄາດຄະເນແມ່ນ {{estimated}} MB, ເກີນຂອບເຂດຈໍາກັດແຜນການຂອງທ່ານ {{limit}} MB, ດັ່ງນັ້ນບໍ່ມີ vectors ໄດ້ຖືກຂຽນ. ຖ້າເອກະສານອື່ນກຳລັງປະມວນຜົນ ຫຼືລົ້ມເຫລວ, ກະລຸນາລອງໃໝ່ໃນພາຍຫຼັງ; ຖ້າບໍ່ດັ່ງນັ້ນ, ຫຼຸດຜ່ອນຂະຫນາດໄຟລ໌ຫຼືຈໍານວນ chunks.",
+  "embedding.vectorSpaceEstimateExceeded.title": "ການ​ເກັບ​ຮັກ​ສາ vector ຄາດ​ຄະ​ເນ​ຫຼັງ​ຈາກ​ການ​ອັບ​ໂຫຼດ​ເກີນ​ຄວາມ​ສາ​ມາດ​ແຜນ​ການ​ຂອງ​ທ່ານ​",
   "embedding.waiting": "ກຳລັງລໍຖ້າການຝັງຕົວ...",
   "list.action.addButton": "ເພີ່ມສ່ວນຍ່ອຍ",
   "list.action.archive": "ເກັບເຂົ້າຄັງ",

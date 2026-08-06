@@ -65,7 +65,9 @@ const data = {
     },
     {
       value: 'lo-LA',
-      label: 'ລາວ',
+      name: 'ລາວ (ລາວ)',
+      prompt_name: 'Lao',
+      example: 'ສະບາຍດີ, Dify!',
       supported: true,
     },
     {
