@@ -50,8 +50,8 @@ function KnowledgeSettingsSkeleton() {
         <SkeletonRectangle className="h-9 flex-1 rounded-lg" />
       </div>
       <div className="flex justify-end gap-2 pt-1">
-        <SkeletonRectangle className="h-8 w-[71px] rounded-lg" />
-        <SkeletonRectangle className="h-8 w-[115px] rounded-lg" />
+        <SkeletonRectangle className="h-8 w-17.75 rounded-lg" />
+        <SkeletonRectangle className="h-8 w-28.75 rounded-lg" />
       </div>
       <div className="h-px bg-divider-subtle" />
       <div className="flex gap-1">
@@ -103,7 +103,7 @@ function KnowledgeSettingsSkeleton() {
             {t(($) => $['newKnowledge.settings.dangerZone'])}
           </h2>
         </div>
-        <div className="flex min-h-[58px] flex-1 items-center justify-between rounded-xl border border-components-panel-border bg-background-section px-4">
+        <div className="flex min-h-14.5 flex-1 items-center justify-between rounded-xl border border-components-panel-border bg-background-section px-4">
           <div>
             <p className="system-sm-medium text-text-secondary">
               {t(($) => $['newKnowledge.settings.deleteTitle'])}

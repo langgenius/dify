@@ -46,7 +46,7 @@ function PluginTaskList({
         <ScrollAreaViewport
           aria-label={t(($) => $['task.installing'], { ns: 'plugin' })}
           style={{ overflowX: 'hidden' }}
-          className="max-h-[420px] overscroll-contain"
+          className="max-h-105 overscroll-contain"
           role="region"
         >
           <ScrollAreaContent style={{ minWidth: 0 }} className="w-full max-w-full pr-3">

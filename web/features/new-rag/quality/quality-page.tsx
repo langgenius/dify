@@ -631,7 +631,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
             <h2 className="mt-4 system-md-semibold text-text-primary">
               {t(($) => $['newKnowledge.qualityPage.goldenEmptyTitle'])}
             </h2>
-            <p className="mt-1 max-w-128 system-xs-regular text-text-tertiary">
+            <p className="mt-1 max-w-lg system-xs-regular text-text-tertiary">
               {t(($) => $['newKnowledge.qualityPage.goldenEmptyDescription'])}
             </p>
             <div className="mt-4 flex gap-2">

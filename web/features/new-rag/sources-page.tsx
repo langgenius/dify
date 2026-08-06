@@ -545,7 +545,7 @@ function SourcesEmpty({
         <h2 className="title-xl-semi-bold text-text-primary">
           {t(($) => $['newKnowledge.sourcesEmptyTitle'])}
         </h2>
-        <p className="w-full max-w-[440px] body-sm-regular text-text-tertiary">
+        <p className="w-full max-w-110 body-sm-regular text-text-tertiary">
           {t(($) => $['newKnowledge.sourcesEmptyDescription'])}
         </p>
       </div>

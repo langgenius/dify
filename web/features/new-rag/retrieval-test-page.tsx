@@ -528,7 +528,7 @@ function FailedResult({ description, onRetry }: { description: string; onRetry: 
       className="flex min-h-10 items-center gap-2 rounded-lg bg-util-colors-red-red-50 px-3 py-2"
     >
       <span aria-hidden className="i-ri-alert-line size-4 text-text-destructive" />
-      <span className="min-w-0 flex-1 system-xs-regular break-words text-text-destructive">
+      <span className="min-w-0 flex-1 system-xs-regular wrap-break-word text-text-destructive">
         {t(($) => $['newKnowledge.retrievalTest.failedTitle'])}
         {' — '}
         <span>{description}</span>
@@ -905,7 +905,7 @@ function ResearchProcess({
                     {payloadLines.length > 0 && (completed || current) && (
                       <ul className="mt-1.5 space-y-1 system-xs-regular text-text-tertiary">
                         {payloadLines.map((line) => (
-                          <li key={line} className="break-words">
+                          <li key={line} className="wrap-break-word">
                             {line}
                           </li>
                         ))}

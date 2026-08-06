@@ -204,7 +204,7 @@ export function CreatorFilter({ value, onChange }: CreatorFilterProps) {
                     <FieldItem key={creator.id}>
                       <FieldLabel
                         className={cn(
-                          'flex h-9 w-full cursor-pointer items-center gap-2 rounded-lg px-2 font-normal outline-hidden hover:bg-state-base-hover has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-state-accent-solid',
+                          'flex h-9 w-full cursor-pointer items-center gap-2 rounded-lg px-2 font-normal outline-hidden hover:bg-state-base-hover has-focus-visible:ring-2 has-focus-visible:ring-state-accent-solid',
                           selectionDisabled && 'cursor-not-allowed text-text-disabled',
                         )}
                       >

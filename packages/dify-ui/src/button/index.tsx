@@ -43,7 +43,7 @@ const buttonVariants = cva(
         ],
       },
       size: {
-        small: 'h-6 gap-1 rounded-md px-[9px] text-xs font-medium',
+        small: 'h-6 gap-1 rounded-md px-2.25 text-xs font-medium',
         medium: 'h-8 gap-1 rounded-lg px-3.5 text-[13px] leading-4 font-medium',
         large: 'h-9 gap-1.5 rounded-[10px] px-4 text-sm font-semibold',
       },
@@ -56,7 +56,7 @@ const buttonVariants = cva(
       {
         variant: 'primary',
         size: 'small',
-        class: 'gap-[3px] px-2',
+        class: 'gap-0.75 px-2',
       },
       {
         variant: 'primary',

@@ -1398,7 +1398,7 @@ function InventoryPanel({
               {categories.map((category) => (
                 <li
                   key={category.label}
-                  className="flex items-center gap-1.5 text-[12px] leading-[15px] font-normal text-text-tertiary"
+                  className="flex items-center gap-1.5 text-[12px] leading-3.75 font-normal text-text-tertiary"
                 >
                   <span aria-hidden className={cn('size-2 rounded-full', category.color)} />
                   {category.label}
