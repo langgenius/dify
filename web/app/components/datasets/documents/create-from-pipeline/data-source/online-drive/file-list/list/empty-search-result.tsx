@@ -20,10 +20,8 @@ const EmptySearchResult = ({
       <div className="system-sm-regular text-text-secondary">
         {t(($) => $['onlineDrive.emptySearchResult'], { ns: 'datasetPipeline' })}
       </div>
-      <Button variant="secondary-accent" size="small" onClick={onResetKeywords} className="px-1.5">
-        <span className="px-0.75">
-          {t(($) => $['onlineDrive.resetKeywords'], { ns: 'datasetPipeline' })}
-        </span>
+      <Button variant="secondary-accent" size="small" onClick={onResetKeywords}>
+        <span>{t(($) => $['onlineDrive.resetKeywords'], { ns: 'datasetPipeline' })}</span>
       </Button>
     </div>
   )

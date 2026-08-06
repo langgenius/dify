@@ -318,7 +318,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                     >
                       <span
                         aria-hidden
-                        className="mr-1 i-ri-equalizer-2-line size-4 text-components-button-secondary-text"
+                        className="i-ri-equalizer-2-line size-4 text-components-button-secondary-text"
                       />
                       <div className="system-sm-medium text-text-secondary">
                         {t(($) => $['createTool.editAction'], { ns: 'tools' })}
@@ -332,7 +332,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                         <Button
                           nativeButton={false}
                           variant="primary"
-                          className={cn('my-3 h-8 min-w-0 flex-1 rounded-lg px-3 py-2')}
+                          className={cn('my-3 h-8 min-w-0 flex-1 rounded-lg py-2')}
                           render={
                             <a
                               href={`${basePath}/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`}
@@ -342,14 +342,14 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                             />
                           }
                         >
-                          <span className="min-w-0 truncate px-0.5 system-sm-medium">
+                          <span className="min-w-0 truncate system-sm-medium">
                             {t(($) => $.openInStudio, { ns: 'tools' })}
                           </span>
                           <span aria-hidden className="i-ri-arrow-right-up-line size-4 shrink-0" />
                         </Button>
                         <Button
                           variant="secondary"
-                          className={cn('my-3 h-8 min-w-0 flex-1 rounded-lg px-3 py-2')}
+                          className={cn('my-3 h-8 min-w-0 flex-1 rounded-lg py-2')}
                           onClick={() => setWorkflowToolDrawerOpen(true)}
                           disabled={!canManageTools}
                         >
@@ -357,7 +357,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                             aria-hidden
                             className="i-ri-equalizer-2-line size-4 shrink-0 text-components-button-secondary-text"
                           />
-                          <span className="min-w-0 truncate px-0.5 system-sm-medium text-components-button-secondary-text">
+                          <span className="min-w-0 truncate system-sm-medium text-components-button-secondary-text">
                             {t(($) => $['createTool.editAction'], { ns: 'tools' })}
                           </span>
                         </Button>
@@ -395,7 +395,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                                   }}
                                   disabled={!canOpenCredentialSettings}
                                 >
-                                  <StatusDot className="mr-2" status="success" />
+                                  <StatusDot status="success" />
                                   {t(($) => $['auth.authorized'], { ns: 'tools' })}
                                 </Button>
                               )}

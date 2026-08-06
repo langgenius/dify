@@ -170,11 +170,22 @@ export type Variable = {
   isParagraph?: boolean
 }
 
+export type LLMCompletionParams = Record<string, unknown>
+
+export type LLMEnvironmentVariableValue = {
+  provider: string
+  name: string
+  mode: string
+  completion_params?: LLMCompletionParams
+}
+
+export type EnvironmentVariableValue = string | number | LLMEnvironmentVariableValue
+
 export type EnvironmentVariable = {
   id: string
   name: string
-  value: any
-  value_type: 'string' | 'number' | 'secret'
+  value: EnvironmentVariableValue
+  value_type: 'string' | 'number' | 'secret' | 'llm'
   description: string
 }
 
@@ -234,11 +245,8 @@ export type InputVar = {
   json_schema?: string | Record<string, any> // for jsonObject type
 } & Partial<UploadFileSetting>
 
-export type ModelConfig = {
-  provider: string
-  name: string
-  mode: string
-  completion_params: Record<string, any>
+export type ModelConfig = LLMEnvironmentVariableValue & {
+  completion_params: LLMCompletionParams
 }
 
 export enum PromptRole {

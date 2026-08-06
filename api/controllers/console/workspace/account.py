@@ -43,7 +43,6 @@ from controllers.console.wraps import (
     enterprise_license_required,
     only_edition_cloud,
     setup_required,
-    with_current_tenant_id,
     with_current_user,
 )
 from enums.deployment_edition import DeploymentEdition
@@ -333,8 +332,7 @@ class AccountAvatarApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @with_current_tenant_id
-    def get(self, current_tenant_id: str, current_user: Account):
+    def get(self, current_user: Account):
         args = AccountAvatarQuery.model_validate(request.args.to_dict(flat=True))
         avatar = args.avatar
 
@@ -343,9 +341,6 @@ class AccountAvatarApi(Resource):
 
         upload_file = db.session.scalar(select(UploadFile).where(UploadFile.id == avatar).limit(1))
         if upload_file is None:
-            raise NotFound("Avatar file not found")
-
-        if upload_file.tenant_id != current_tenant_id:
             raise NotFound("Avatar file not found")
 
         if upload_file.created_by_role != CreatorUserRole.ACCOUNT or upload_file.created_by != current_user.id:

@@ -228,6 +228,7 @@ async function setEditorText(
   editor: LexicalEditor,
   text: string,
   selectEnd: boolean,
+  selectionOffset?: number,
 ): Promise<void> {
   await act(async () => {
     editor.update(() => {
@@ -237,9 +238,26 @@ async function setEditorText(
       const textNode = $createTextNode(text)
       paragraph.append(textNode)
       root.append(paragraph)
-      if (selectEnd) textNode.selectEnd()
+      if (typeof selectionOffset === 'number') textNode.select(selectionOffset, selectionOffset)
+      else if (selectEnd) textNode.selectEnd()
     })
   })
+}
+
+function markSlashTyped(editable: HTMLElement) {
+  editable.dispatchEvent(
+    new InputEvent('beforeinput', {
+      bubbles: true,
+      cancelable: true,
+      inputType: 'insertText',
+      data: '/',
+    }),
+  )
+}
+
+async function insertSlashTrigger(editor: LexicalEditor, editable: HTMLElement): Promise<void> {
+  markSlashTyped(editable)
+  await setEditorText(editor, '/', true)
 }
 
 function readEditorText(editor: LexicalEditor): string {
@@ -642,6 +660,44 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
     })
   })
 
+  it('opens the slash menu when the user types / but not when clicking after an existing slash', async () => {
+    const captures: Captures = { editor: null, eventEmitter: null }
+    const urlPrompt = 'Use https://dict.youdao.com/dictvoice?audio=word&type=0'
+
+    render(
+      <MinimalEditor
+        triggerString="/"
+        workflowVariableBlock={makeWorkflowVariableBlock({}, [
+          makeWorkflowVarNode('node-1', 'Node 1', [makeWorkflowNodeVar('output', VarType.string)]),
+        ])}
+        agentOutputBlock={{
+          show: true,
+          outputs: [],
+          onChange: vi.fn(),
+        }}
+        captures={captures}
+      />,
+    )
+
+    const editor = await waitForEditor(captures)
+    const editable = screen.getByTestId(CONTENT_EDITABLE_TEST_ID)
+
+    await insertSlashTrigger(editor, editable)
+    await flushNextTick()
+
+    expect(await screen.findByText('output')).toBeInTheDocument()
+
+    await setEditorText(editor, urlPrompt, false, urlPrompt.indexOf('://') + 2)
+    await flushNextTick()
+
+    fireEvent.pointerDown(editable)
+    fireEvent.click(editable)
+    await flushNextTick()
+
+    expect(screen.queryByText('output')).not.toBeInTheDocument()
+    expect(screen.queryByText('workflow.nodes.agent.outputVars.newOutput')).not.toBeInTheDocument()
+  })
+
   it('clears slash trigger state after creating an agent output from the footer action', async () => {
     const captures: Captures = { editor: null, eventEmitter: null }
 
@@ -662,8 +718,9 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
 
     const editor = await waitForEditor(captures)
     const dispatchSpy = vi.spyOn(editor, 'dispatchCommand')
+    const editable = screen.getByTestId(CONTENT_EDITABLE_TEST_ID)
 
-    await setEditorText(editor, '/', true)
+    await insertSlashTrigger(editor, editable)
     await flushNextTick()
 
     const newOutputAction = await screen.findByText('workflow.nodes.agent.outputVars.newOutput')
@@ -677,7 +734,6 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
       ).not.toBeInTheDocument()
     })
 
-    const editable = screen.getByTestId(CONTENT_EDITABLE_TEST_ID)
     fireEvent.focus(editable)
 
     await flushNextTick()
@@ -1028,7 +1084,8 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
       )
 
       const editor = await waitForEditor(captures)
-      await setEditorText(editor, '/', true)
+      const editable = screen.getByTestId(CONTENT_EDITABLE_TEST_ID)
+      await insertSlashTrigger(editor, editable)
       expect(await screen.findByText('payload')).toBeInTheDocument()
 
       vi.useFakeTimers()

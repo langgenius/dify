@@ -710,13 +710,7 @@
     }
   },
   "web/app/components/apps/app-card.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
     "jsx_a11y/no-noninteractive-element-to-interactive-role": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
       "count": 1
     }
   },
@@ -2002,17 +1996,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/tab-slider/index.tsx": {
-    "eslint-react/set-state-in-effect": {
-      "count": 2
-    },
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/base/tag-input/index.stories.tsx": {
     "jsx_a11y/label-has-associated-control": {
       "count": 12
@@ -2718,14 +2701,6 @@
   },
   "web/app/components/datasets/hit-testing/components/score.tsx": {
     "unicorn/prefer-number-properties": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/list/dataset-card/__tests__/index.spec.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
       "count": 1
     }
   },
@@ -4844,9 +4819,6 @@
   },
   "web/app/components/workflow/nodes/llm/use-config.ts": {
     "eslint-react/set-state-in-effect": {
-      "count": 2
-    },
-    "typescript/no-explicit-any": {
       "count": 1
     }
   },
@@ -5347,28 +5319,17 @@
       "count": 2
     }
   },
-  "web/app/components/workflow/panel/env-panel/index.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/panel/env-panel/variable-modal.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 4
     },
     "jsx_a11y/click-events-have-key-events": {
-      "count": 4
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 4
-    },
-    "no-restricted-imports": {
       "count": 1
     },
-    "typescript/no-explicit-any": {
+    "jsx_a11y/no-static-element-interactions": {
+      "count": 1
+    },
+    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -5606,7 +5567,7 @@
       "count": 3
     },
     "typescript/no-explicit-any": {
-      "count": 8
+      "count": 6
     }
   },
   "web/app/components/workflow/update-dsl-modal.tsx": {
@@ -5876,14 +5837,6 @@
   },
   "web/context/web-app-context.tsx": {
     "react/only-export-components": {
-      "count": 1
-    }
-  },
-  "web/features/tag-management/components/dataset-card-tags.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
       "count": 1
     }
   },

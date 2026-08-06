@@ -21,6 +21,8 @@ class TestSystemFeatureApi:
             result = SystemFeatureApi().get()
 
         assert result == system_features.model_dump()
+        assert result["sso_enforced_for_signin_protocol"] is None
+        assert result["webapp_auth"]["sso_config"]["protocol"] is None
         mock_features.assert_called_once()
 
     @patch("controllers.web.feature.FeatureService.get_system_features")

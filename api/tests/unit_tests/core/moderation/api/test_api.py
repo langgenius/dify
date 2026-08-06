@@ -50,7 +50,9 @@ class TestApiModeration:
 
     @patch("core.moderation.api.api.ApiModeration._get_api_based_extension")
     def test_validate_config_success(self, mock_get_extension, api_config):
-        mock_get_extension.return_value = MagicMock(spec=APIBasedExtension)
+        mock_get_extension.return_value = APIBasedExtension(
+            tenant_id="tenant-id", name="Test Extension", api_endpoint="https://example.com", api_key="test-key"
+        )
         ApiModeration.validate_config("test-tenant-id", api_config)
         mock_get_extension.assert_called_once_with("test-tenant-id", "test-extension-id", db.session)
 
@@ -136,9 +138,12 @@ class TestApiModeration:
     @patch("core.moderation.api.api.decrypt_token")
     @patch("core.moderation.api.api.APIBasedExtensionRequestor")
     def test_get_config_by_requestor_success(self, mock_requestor_cls, mock_decrypt, mock_get_ext, api_moderation):
-        mock_ext = MagicMock(spec=APIBasedExtension)
-        mock_ext.api_endpoint = "http://api.test"
-        mock_ext.api_key = "encrypted-key"
+        mock_ext = APIBasedExtension(
+            tenant_id="tenant-id",
+            name="Test Extension",
+            api_endpoint="http://api.test",
+            api_key="encrypted-key",
+        )
         mock_get_ext.return_value = mock_ext
 
         mock_decrypt.return_value = "decrypted-key"

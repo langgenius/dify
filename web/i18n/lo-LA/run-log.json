@@ -1,0 +1,21 @@
+{
+  "circularInvocationTip": "ມີການເອີ້ນໃຊ້ເຄື່ອງມື ຫຼື ໂນດຊ້ຳກັນເປັນວົງຈອນໃນ Workflow ນີ້.",
+  "detail": "ລາຍລະອຽດ",
+  "input": "ຂໍ້ມູນນຳເຂົ້າ",
+  "meta.executor": "ຜູ້ດຳເນີນການ",
+  "meta.startTime": "ເວລາເລີ່ມຕົ້ນ",
+  "meta.status": "ສະຖານະ",
+  "meta.steps": "ຂັ້ນຕອນການເຮັດວຽກ",
+  "meta.time": "ເວລາທີ່ໃຊ້ໄປ",
+  "meta.title": "ຂໍ້ມູນເມຕາ",
+  "meta.tokens": "ໂທເຄັນທັງໝົດ",
+  "result": "ຜົນລັດ",
+  "resultEmpty.link": "ແຜງລາຍລະອຽດ",
+  "resultEmpty.tipLeft": "ກະລຸນາໄປທີ່ ",
+  "resultEmpty.tipRight": " ເພື່ອເບິ່ງ.",
+  "resultEmpty.title": "ການປະມວນຜົນນີ້ສະແດງຜົນໃນຮູບແບບ JSON ເທົ່ານັ້ນ,",
+  "resultPanel.status": "ສະຖານະ",
+  "resultPanel.time": "ເວລາທີ່ໃຊ້ໄປ",
+  "resultPanel.tokens": "ໂທເຄັນທັງໝົດ",
+  "tracing": "ການຕິດຕາມ"
+}

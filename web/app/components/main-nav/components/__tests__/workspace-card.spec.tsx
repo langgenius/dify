@@ -2,13 +2,13 @@ import type { PostWorkspacesCurrentResponse } from '@dify/contracts/api/console/
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
 import type { IWorkspace } from '@/models/common'
+import { zLicenseStatus } from '@dify/contracts/api/console/system-features/zod.gen'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
-import { LicenseStatus } from '@/features/system-features/constants'
 import { consoleQuery } from '@/service/client'
 import {
   createConsoleQueryClient,
@@ -321,7 +321,7 @@ describe('WorkspaceCard', () => {
         deployment_edition: 'ENTERPRISE',
       },
       systemFeaturesLicense: {
-        status: LicenseStatus.ACTIVE,
+        status: zLicenseStatus.enum.active,
       },
     })
 

@@ -59,13 +59,8 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         .map((node) => node.id),
     )
     const [x, y, zoom] = transform
-    const {
-      appId,
-      conversationVariables,
-      environmentVariables,
-      syncWorkflowDraftHash,
-      isWorkflowDataLoaded,
-    } = workflowStore.getState()
+    const { appId, conversationVariables, syncWorkflowDraftHash, isWorkflowDataLoaded } =
+      workflowStore.getState()
 
     if (!appId || !isWorkflowDataLoaded) return null
 
@@ -118,7 +113,6 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
           },
         },
         features: featuresPayload,
-        environment_variables: environmentVariables,
         conversation_variables: conversationVariables,
         hash: syncWorkflowDraftHash,
         ...(isCollaborationEnabled ? { _is_collaborative: true } : {}),
@@ -144,6 +138,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     async (
       notRefreshWhenSyncError?: boolean,
       callback?: SyncDraftCallback,
+      options?: SyncDraftOptions,
     ): Promise<SyncDraftResult | null> => {
       if (getNodesReadOnly()) return null
 
@@ -168,6 +163,15 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
           params: {
             ...baseParams.params,
             hash: latestHash || null,
+            ...(options?.environmentVariablePatch
+              ? {
+                  environment_variable_patch: {
+                    environment_variables: options.environmentVariablePatch.environmentVariables,
+                    deleted_environment_variable_ids:
+                      options.environmentVariablePatch.deletedEnvironmentVariableIds,
+                  },
+                }
+              : {}),
           },
         }
 
@@ -220,7 +224,8 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         !collaborationManager.getIsLeader() &&
         !options?.forceLocal
 
-      if (!shouldRequestLeader) return doSyncWorkflowDraftLocally(notRefreshWhenSyncError, callback)
+      if (!shouldRequestLeader)
+        return doSyncWorkflowDraftLocally(notRefreshWhenSyncError, callback, options)
 
       try {
         const result = await collaborationManager.requestWorkflowSync()

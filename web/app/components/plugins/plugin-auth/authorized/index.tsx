@@ -218,10 +218,7 @@ const Authorized = ({
                 <Button
                   className={cn('w-full', state.open && 'bg-components-button-secondary-bg-hover')}
                 >
-                  <StatusDot
-                    className="mr-2"
-                    status={unavailableCredential ? 'disabled' : 'success'}
-                  />
+                  <StatusDot status={unavailableCredential ? 'disabled' : 'success'} />
                   {credentials.length}
                   &nbsp;
                   {credentials.length > 1
@@ -229,7 +226,7 @@ const Authorized = ({
                     : t(($) => $['auth.authorization'], { ns: 'plugin' })}
                   {!!unavailableCredentials.length &&
                     ` (${unavailableCredentials.length} ${t(($) => $['auth.unavailable'], { ns: 'plugin' })})`}
-                  <span className="ml-0.5 i-ri-arrow-down-s-line size-4" />
+                  <span className="i-ri-arrow-down-s-line size-4" />
                 </Button>
               )}
             </div>
