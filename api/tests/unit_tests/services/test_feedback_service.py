@@ -161,10 +161,7 @@ class TestFeedbackService:
             format_type="json",
         )
 
-        exported_ids = {
-            item["feedback_id"]
-            for item in json.loads(result.get_data(as_text=True))["feedback_data"]
-        }
+        exported_ids = {item["feedback_id"] for item in json.loads(result.get_data(as_text=True))["feedback_data"]}
         assert str(sample_data["admin_feedback"].id) in exported_ids
         assert str(sample_data["user_feedback"].id) in exported_ids
 
