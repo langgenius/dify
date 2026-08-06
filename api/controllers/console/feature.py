@@ -10,6 +10,7 @@ from services.feature_service import (
     LicenseModel,
     LimitationModel,
     SystemFeatureModel,
+    VectorSpaceLimitationModel,
 )
 
 from . import console_ns
@@ -37,6 +38,7 @@ register_response_schema_models(
     LimitationModel,
     SystemFeatureModel,
     TrialModelsResponse,
+    VectorSpaceLimitationModel,
 )
 
 
@@ -71,7 +73,7 @@ class FeatureVectorSpaceApi(Resource):
     @console_ns.response(
         200,
         "Success",
-        console_ns.models[LimitationModel.__name__],
+        console_ns.models[VectorSpaceLimitationModel.__name__],
     )
     @setup_required
     @login_required

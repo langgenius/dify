@@ -32,6 +32,7 @@ const render = (ui: ReactElement, options: RenderOptions = {}) => {
   queryClient.setQueryData(consoleQuery.features.vectorSpace.get.queryOptions().queryKey, {
     size: plan.usage.vectorSpace,
     limit: plan.total.vectorSpace,
+    usage_unknown: false,
   })
   const { wrapper } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: 'CLOUD' },
