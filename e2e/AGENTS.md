@@ -37,7 +37,7 @@ An uninitialized instance is installed and authenticated lazily; an initialized 
 ## Tags And External Runtime
 
 - Default scenarios use shared authenticated storage state. `@unauthenticated` creates a clean context; `@authenticated` is an intent and selection tag only.
-- `@axe` identifies the standalone automated WCAG Level A scan and is excluded from the default functional suite and CI commands.
+- `@axe` identifies the standalone automated WCAG Level A scan. It is excluded from the default functional suite and normal CI commands; the accessibility feature branch runs it in a dedicated push job.
 - `@prepared` requires the prepared fixtures; the post-merge seed profile includes them.
 - `@external-model` and `@external-tool` identify scenarios that call real external runtimes. Deterministic commands exclude these tags; external commands are opt-in.
 - `@microphone` uses the checked-in fake audio fixture and an isolated Chromium context.
