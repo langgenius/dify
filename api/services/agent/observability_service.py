@@ -224,8 +224,7 @@ class AgentObservabilityService:
                 )
             if source_filter.kind in {"all", "workflow"}:
                 rows.extend(
-                    self.serialize_log_message(message)
-                    for message in self._list_workflow_messages(
+                    self._list_workflow_messages(
                         app=app,
                         agent_id=agent_id,
                         conversation_id=conversation_id,
@@ -308,22 +307,20 @@ class AgentObservabilityService:
         workflow_app = aliased(App)
         stmt = (
             select(
-                Conversation,
+                WorkflowNodeExecutionModel.id.label("node_execution_id"),
+                WorkflowNodeExecutionModel.title.label("node_title"),
+                WorkflowNodeExecutionModel.status.label("node_status"),
+                WorkflowNodeExecutionModel.created_by_role.label("node_created_by_role"),
+                WorkflowNodeExecutionModel.created_by.label("node_created_by"),
+                WorkflowNodeExecutionModel.created_at.label("node_created_at"),
+                WorkflowNodeExecutionModel.finished_at.label("node_finished_at"),
                 workflow_app,
                 WorkflowAgentNodeBinding.workflow_id,
                 WorkflowAgentNodeBinding.workflow_version,
                 WorkflowAgentNodeBinding.node_id,
-                func.count(sa.distinct(Message.id)).label("message_count"),
-                func.max(Message.created_at).label("created_at"),
-                func.max(Message.updated_at).label("updated_at"),
-                func.sum(sa.case((Message.status == MessageStatus.PAUSED, 1), else_=0)).label("paused_count"),
-                func.sum(
-                    sa.case((or_(Message.error.is_not(None), Message.status == MessageStatus.ERROR), 1), else_=0)
-                ).label("failed_count"),
             )
-            .select_from(Message)
-            .join(Conversation, Conversation.id == Message.conversation_id)
-            .join(WorkflowRun, WorkflowRun.id == Message.workflow_run_id)
+            .select_from(WorkflowNodeExecutionModel)
+            .join(WorkflowRun, WorkflowRun.id == WorkflowNodeExecutionModel.workflow_run_id)
             .join(
                 WorkflowAgentNodeBinding,
                 and_(
@@ -334,40 +331,32 @@ class AgentObservabilityService:
                     WorkflowAgentNodeBinding.workflow_version == WorkflowRun.version,
                 ),
             )
-            .join(
-                WorkflowNodeExecutionModel,
-                and_(
-                    WorkflowNodeExecutionModel.workflow_run_id == WorkflowRun.id,
-                    WorkflowNodeExecutionModel.node_id == WorkflowAgentNodeBinding.node_id,
-                ),
-            )
             .join(workflow_app, workflow_app.id == WorkflowAgentNodeBinding.app_id)
-            .where(Message.workflow_run_id.is_not(None), Conversation.app_id == WorkflowAgentNodeBinding.app_id)
-            .group_by(
-                Conversation.id,
-                workflow_app.id,
-                WorkflowAgentNodeBinding.workflow_id,
-                WorkflowAgentNodeBinding.workflow_version,
-                WorkflowAgentNodeBinding.node_id,
+            .where(
+                WorkflowNodeExecutionModel.tenant_id == app.tenant_id,
+                WorkflowNodeExecutionModel.app_id == WorkflowAgentNodeBinding.app_id,
+                WorkflowNodeExecutionModel.workflow_id == WorkflowAgentNodeBinding.workflow_id,
+                WorkflowNodeExecutionModel.node_id == WorkflowAgentNodeBinding.node_id,
             )
         )
-        stmt = self._apply_observability_filters(stmt, params=params, source_filter=source_filter)
+        stmt = self._apply_workflow_node_filters(stmt, params=params, workflow_app=workflow_app)
         stmt = self._apply_workflow_source_filter(stmt, source_filter)
         rows = list(self._session.execute(stmt).all())
         return [
-            self._serialize_conversation_log(
-                conversation=row[0],
-                message_count=row.message_count,
-                paused_count=row.paused_count,
-                failed_count=row.failed_count,
+            self._serialize_workflow_execution_log(
+                node_execution_id=row.node_execution_id,
+                title=row.node_title,
+                status=row.node_status,
+                created_by_role=row.node_created_by_role,
+                created_by=row.node_created_by,
+                created_at=row.node_created_at,
+                finished_at=row.node_finished_at,
                 source=self._serialize_workflow_source(
-                    app=row[1],
+                    app=row[7],
                     workflow_id=row.workflow_id,
                     workflow_version=row.workflow_version,
                     node_id=row.node_id,
                 ),
-                created_at=row.created_at,
-                updated_at=row.updated_at,
             )
             for row in rows
         ]
@@ -443,10 +432,12 @@ class AgentObservabilityService:
         conversation_id: str,
         params: AgentLogQueryParams,
         source_filter: AgentSourceFilter,
-    ) -> list[Message]:
+    ) -> list[dict[str, Any]]:
+        workflow_app = aliased(App)
         stmt = (
-            select(Message)
-            .join(WorkflowRun, WorkflowRun.id == Message.workflow_run_id)
+            select(WorkflowNodeExecutionModel)
+            .select_from(WorkflowNodeExecutionModel)
+            .join(WorkflowRun, WorkflowRun.id == WorkflowNodeExecutionModel.workflow_run_id)
             .join(
                 WorkflowAgentNodeBinding,
                 and_(
@@ -457,18 +448,23 @@ class AgentObservabilityService:
                     WorkflowAgentNodeBinding.workflow_version == WorkflowRun.version,
                 ),
             )
-            .join(
-                WorkflowNodeExecutionModel,
-                and_(
-                    WorkflowNodeExecutionModel.workflow_run_id == WorkflowRun.id,
-                    WorkflowNodeExecutionModel.node_id == WorkflowAgentNodeBinding.node_id,
-                ),
+            .join(workflow_app, workflow_app.id == WorkflowAgentNodeBinding.app_id)
+            .where(
+                WorkflowNodeExecutionModel.id == conversation_id,
+                WorkflowNodeExecutionModel.tenant_id == app.tenant_id,
+                WorkflowNodeExecutionModel.app_id == WorkflowAgentNodeBinding.app_id,
+                WorkflowNodeExecutionModel.workflow_id == WorkflowAgentNodeBinding.workflow_id,
+                WorkflowNodeExecutionModel.node_id == WorkflowAgentNodeBinding.node_id,
             )
-            .where(Message.conversation_id == conversation_id)
         )
-        stmt = self._apply_message_filters(stmt, params=params, source_filter=source_filter)
+        stmt = self._apply_workflow_node_filters(stmt, params=params, workflow_app=workflow_app)
         stmt = self._apply_workflow_source_filter(stmt, source_filter)
-        return list(self._session.scalars(stmt.order_by(Message.created_at.desc(), Message.id.desc())).all())
+        executions = list(
+            self._session.scalars(
+                stmt.order_by(WorkflowNodeExecutionModel.created_at.desc(), WorkflowNodeExecutionModel.id.desc())
+            ).all()
+        )
+        return [self.serialize_workflow_node_message(execution) for execution in executions]
 
     def _list_workflow_sources(self, *, app: App, agent_id: str) -> list[dict[str, Any]]:
         workflow_app = aliased(App)
@@ -523,6 +519,62 @@ class AgentObservabilityService:
             stmt = cls._apply_status_filter(stmt, params.statuses)
         return stmt
 
+    @classmethod
+    def _apply_workflow_node_filters(cls, stmt, *, params: AgentLogQueryParams, workflow_app):
+        if params.start:
+            stmt = stmt.where(WorkflowNodeExecutionModel.created_at >= params.start)
+        if params.end:
+            stmt = stmt.where(WorkflowNodeExecutionModel.created_at < params.end)
+        if params.keyword:
+            escaped_keyword = escape_like_pattern(params.keyword)
+            pattern = f"%{escaped_keyword}%"
+            stmt = stmt.where(
+                or_(
+                    WorkflowNodeExecutionModel.inputs.ilike(pattern, escape="\\"),
+                    WorkflowNodeExecutionModel.outputs.ilike(pattern, escape="\\"),
+                    WorkflowNodeExecutionModel.error.ilike(pattern, escape="\\"),
+                    WorkflowNodeExecutionModel.title.ilike(pattern, escape="\\"),
+                    workflow_app.name.ilike(pattern, escape="\\"),
+                )
+            )
+        if params.statuses:
+            stmt = cls._apply_workflow_node_status_filter(stmt, params.statuses)
+        return stmt
+
+    @staticmethod
+    def _apply_workflow_node_status_filter(stmt, statuses: tuple[str, ...]):
+        conditions = []
+        for status in statuses:
+            normalized = status.strip().lower()
+            if normalized in {"success", "normal"}:
+                conditions.append(WorkflowNodeExecutionModel.status == WorkflowNodeExecutionStatus.SUCCEEDED)
+            elif normalized in {"failed", "error"}:
+                conditions.append(
+                    WorkflowNodeExecutionModel.status.in_(
+                        (
+                            WorkflowNodeExecutionStatus.FAILED,
+                            WorkflowNodeExecutionStatus.EXCEPTION,
+                            WorkflowNodeExecutionStatus.STOPPED,
+                        )
+                    )
+                )
+            elif normalized == "paused":
+                conditions.append(
+                    WorkflowNodeExecutionModel.status.in_(
+                        (
+                            WorkflowNodeExecutionStatus.PAUSED,
+                            WorkflowNodeExecutionStatus.PENDING,
+                            WorkflowNodeExecutionStatus.RUNNING,
+                            WorkflowNodeExecutionStatus.RETRY,
+                        )
+                    )
+                )
+            else:
+                raise ValueError(f"Unsupported status: {status}")
+        if not conditions:
+            return stmt
+        return stmt.where(or_(*conditions))
+
     @staticmethod
     def _apply_workflow_source_filter(stmt, source_filter: AgentSourceFilter):
         if source_filter.app_id:
@@ -569,8 +621,8 @@ class AgentObservabilityService:
         source: dict[str, Any],
         created_at: datetime | None,
         updated_at: datetime | None,
-        user_rate: float | None = None,
-        operation_rate: float | None = None,
+        user_rate: float | None,
+        operation_rate: float | None,
     ) -> dict[str, Any]:
         return {
             "id": conversation.id,
