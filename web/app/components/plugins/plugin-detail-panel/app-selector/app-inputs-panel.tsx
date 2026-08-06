@@ -1,5 +1,5 @@
 'use client'
-import type { App } from '@/types/app'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,7 +12,7 @@ type Props = Readonly<{
     app_id: string
     inputs: Record<string, unknown>
   }
-  appDetail: App
+  appDetail: Pick<AppDetailWithSite, 'id' | 'mode'>
   onFormChange: (value: Record<string, unknown>) => void
 }>
 

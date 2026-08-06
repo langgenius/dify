@@ -8,12 +8,11 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useExportAppDsl, useExportWorkflowAppDsl } from '@/app/components/app/use-export-app-dsl'
-import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import { copyApp, deleteApp, fetchAppDetail, updateAppInfo } from '@/service/apps'
-import { appDetailQueryKeyPrefix, useInvalidateAppList } from '@/service/use-apps'
+import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 
@@ -62,7 +61,6 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
   const { onPlanInfoChanged } = useProviderContext()
   const appDetail = useAppStore((state) => state.appDetail)
   const setAppDetail = useAppStore((state) => state.setAppDetail)
-  const invalidateAppList = useInvalidateAppList()
   const { exportAppDsl, isExporting: isAppDslExporting } = useExportAppDsl()
   const { exportWorkflowAppDsl, isExporting: isWorkflowAppDslExporting } = useExportWorkflowAppDsl()
   const isExporting = isAppDslExporting || isWorkflowAppDslExporting
@@ -131,8 +129,6 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
     setActiveModal(null)
   }, [setActiveModal])
 
-  const setNeedRefresh = useSetNeedRefreshAppList()
-
   const emitAppMetaUpdate = useCallback(() => {
     if (!appDetail?.id) return
 
@@ -163,7 +159,6 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
           try {
             const res = await fetchAppDetail({ url: '/apps', id: appDetail.id })
             if (disposed) return
-            queryClient.setQueryData([...appDetailQueryKeyPrefix, appDetail.id], res)
             setAppDetail({ ...res })
           } catch (error) {
             console.error('failed to refresh app detail from collaboration update:', error)
@@ -176,7 +171,7 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
       disposed = true
       unsubscribe?.()
     }
-  }, [appDetail?.id, queryClient, setAppDetail])
+  }, [appDetail?.id, setAppDetail])
 
   const onEdit: CreateAppModalProps['onConfirm'] = useCallback(
     async ({
@@ -205,7 +200,6 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
           t(($) => $.editDone, { ns: 'app' }),
           { type: 'success' },
         )
-        queryClient.setQueryData([...appDetailQueryKeyPrefix, app.id], app)
         setAppDetail(app)
         emitAppMetaUpdate()
       } catch {
@@ -215,7 +209,7 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
         )
       }
     },
-    [appDetail, closeModal, queryClient, setAppDetail, t, emitAppMetaUpdate],
+    [appDetail, closeModal, setAppDetail, t, emitAppMetaUpdate],
   )
 
   const onCopy: DuplicateAppModalProps['onConfirm'] = useCallback(
@@ -235,7 +229,9 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
           t(($) => $['newApp.appCreated'], { ns: 'app' }),
           { type: 'success' },
         )
-        setNeedRefresh('1')
+        void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
+        void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.starred.get.key() })
+        void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.recent.get.key() })
         onPlanInfoChanged()
         getRedirection(newApp, replace, { isRbacEnabled })
       } catch {
@@ -245,7 +241,7 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
         )
       }
     },
-    [appDetail, closeModal, isRbacEnabled, onPlanInfoChanged, replace, setNeedRefresh, t],
+    [appDetail, closeModal, isRbacEnabled, onPlanInfoChanged, queryClient, replace, t],
   )
 
   const onExport = useCallback(
@@ -287,7 +283,9 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
         t(($) => $.appDeleted, { ns: 'app' }),
         { type: 'success' },
       )
-      invalidateAppList()
+      void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
+      void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.starred.get.key() })
+      void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.recent.get.key() })
       onPlanInfoChanged()
       setAppDetail()
       replace('/apps')
@@ -298,7 +296,7 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
       )
     }
     closeModal()
-  }, [appDetail, closeModal, invalidateAppList, onPlanInfoChanged, replace, setAppDetail, t])
+  }, [appDetail, closeModal, onPlanInfoChanged, queryClient, replace, setAppDetail, t])
 
   return {
     appDetail,

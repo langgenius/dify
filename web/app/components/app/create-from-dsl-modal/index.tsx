@@ -21,7 +21,6 @@ import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { userProfileIdAtom } from '@/context/account-state'
@@ -29,8 +28,7 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
-import { consoleClient, consoleQuery } from '@/service/client'
-import { useInvalidateAppList } from '@/service/use-apps'
+import { consoleQuery } from '@/service/client'
 import { AppModeEnum as AppMode } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
@@ -58,10 +56,6 @@ type PendingImport = {
   importedVersion: string
   systemVersion: string
 }
-
-type ImportSource =
-  | { type: (typeof CreateFromDSLModalTab)['FROM_FILE']; file: File }
-  | { type: (typeof CreateFromDSLModalTab)['FROM_URL']; url: string }
 
 const CREATE_FROM_DSL_HOTKEY = 'Mod+Enter' satisfies Hotkey
 
@@ -99,28 +93,11 @@ function CreateFromDSLModal({
   const [currentFile, setCurrentFile] = useState<File | undefined>(droppedFile)
   const [currentTab, setCurrentTab] = useState(activeTab)
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null)
-  const importMutation = useMutation({
-    mutationFn: async (source: ImportSource) => {
-      const body =
-        source.type === CreateFromDSLModalTab.FROM_FILE
-          ? ({
-              mode: 'yaml-content',
-              yaml_content: await source.file.text(),
-            } satisfies AppImportPayload)
-          : ({
-              mode: 'yaml-url',
-              yaml_url: source.url,
-            } satisfies AppImportPayload)
-
-      return consoleClient.apps.imports.post({ body })
-    },
-  })
+  const importMutation = useMutation(consoleQuery.apps.imports.post.mutationOptions())
   const confirmImportMutation = useMutation(
     consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions(),
   )
   const { handleCheckPluginDependencies } = usePluginDependencies()
-  const setNeedRefresh = useSetNeedRefreshAppList()
-  const invalidateAppList = useInvalidateAppList()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
@@ -149,9 +126,6 @@ function CreateFromDSLModal({
             : undefined,
       },
     )
-    setNeedRefresh('1')
-    invalidateAppList()
-
     if (!response.app_id || !appMode) return
 
     await handleCheckPluginDependencies(response.app_id)
@@ -190,17 +164,23 @@ function CreateFromDSLModal({
     if (isAppsFull || isImporting) return
 
     try {
-      let source: ImportSource
+      let body: AppImportPayload
       if (currentTab === CreateFromDSLModalTab.FROM_FILE) {
         if (!currentFile) return
-        source = { type: CreateFromDSLModalTab.FROM_FILE, file: currentFile }
+        body = {
+          mode: 'yaml-content',
+          yaml_content: await currentFile.text(),
+        }
       } else {
         const yamlUrl = values.dslUrl?.trim()
         if (!yamlUrl) return
-        source = { type: CreateFromDSLModalTab.FROM_URL, url: yamlUrl }
+        body = {
+          mode: 'yaml-url',
+          yaml_url: yamlUrl,
+        }
       }
 
-      const response = await importMutation.mutateAsync(source)
+      const response = await importMutation.mutateAsync({ body })
       await handleImportResponse(response)
     } catch {
       toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))

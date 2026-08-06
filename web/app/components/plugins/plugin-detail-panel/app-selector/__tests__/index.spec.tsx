@@ -1,6 +1,6 @@
+import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactNode } from 'react'
 import type { AppSelectorValue } from '../index'
-import type { App } from '@/types/app'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -9,7 +9,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppModeEnum } from '@/types/app'
 import { AppSelector } from '../index'
 
-const apps: App[] = [
+const apps = [
   {
     id: 'app-1',
     name: 'Support Bot',
@@ -17,10 +17,8 @@ const apps: App[] = [
     icon_type: 'emoji',
     icon: '🤖',
     icon_background: '#FFEAD5',
-    model_config: {
-      user_input_form: [],
-    },
-  } as unknown as App,
+    icon_url: null,
+  },
   {
     id: 'app-2',
     name: 'Workflow App',
@@ -28,8 +26,9 @@ const apps: App[] = [
     icon_type: 'emoji',
     icon: '⚙️',
     icon_background: '#E0EAFF',
-  } as unknown as App,
-]
+    icon_url: null,
+  },
+] satisfies AppPartial[]
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
@@ -65,15 +64,23 @@ vi.mock('@/service/client', () => ({
           placeholderData,
         }),
       },
+      byAppId: {
+        get: {
+          queryOptions: ({ input }: { input: unknown }) => {
+            const appId =
+              typeof input === 'object' && input && 'params' in input
+                ? (input.params as { app_id: string }).app_id
+                : undefined
+            return {
+              queryKey: ['apps', appId],
+              queryFn: () => apps.find((app) => app.id === appId),
+              enabled: !!appId,
+            }
+          },
+        },
+      },
     },
   },
-}))
-
-vi.mock('@/service/use-apps', () => ({
-  normalizeAppPagination: <T,>(response: T) => response,
-  useAppDetail: (appId: string) => ({
-    data: apps.find((app) => app.id === appId),
-  }),
 }))
 
 vi.mock('@/service/use-common', () => ({

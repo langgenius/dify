@@ -3,17 +3,17 @@
 import type { RefObject } from 'react'
 import { useEffect, useEffectEvent, useRef } from 'react'
 
-type InfiniteScrollSentinelProps = {
+type AppListInfiniteScrollSentinelProps = {
   canLoadMore: boolean
   fetchNextPage: () => Promise<unknown>
   scrollRootRef: RefObject<HTMLDivElement | null>
 }
 
-export const InfiniteScrollSentinel = ({
+export function AppListInfiniteScrollSentinel({
   canLoadMore,
   fetchNextPage,
   scrollRootRef,
-}: InfiniteScrollSentinelProps) => {
+}: AppListInfiniteScrollSentinelProps) {
   const sentinelRef = useRef<HTMLDivElement>(null)
   const handleIntersection = useEffectEvent((entry: IntersectionObserverEntry) => {
     if (entry.isIntersecting && canLoadMore) void fetchNextPage()

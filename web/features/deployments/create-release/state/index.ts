@@ -1,5 +1,6 @@
 'use client'
 
+import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import type {
   CreateReleaseResponse,
   ListReleasesResponse,
@@ -7,7 +8,6 @@ import type {
 } from '@dify/contracts/enterprise/types.gen'
 import type { Getter } from 'jotai/vanilla'
 import type { UnsupportedDslNode } from '../../shared/domain/error'
-import type { App } from '@/types/app'
 import { keepPreviousData, queryOptions, skipToken } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import { atomWithForm, createFormAtoms } from 'jotai-tanstack-form'
@@ -20,15 +20,16 @@ import {
 import { selectAtom } from 'jotai/utils'
 import * as z from 'zod'
 import { consoleQuery } from '@/service/client'
-import { normalizeAppPagination } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
 import { encodeDslContent, isWorkflowDsl } from '../../shared/domain/dsl'
 import { isDeploymentDslImportEnabled } from '../../shared/domain/feature-flags'
 
 export type ReleaseSourceMode = 'sourceApp' | 'dsl'
 
-export type SourceAppPickerValue = Pick<App, 'id' | 'name'> &
-  Partial<Pick<App, 'icon_type' | 'icon' | 'icon_background' | 'icon_url' | 'mode'>>
+export type SourceAppPickerValue = Pick<
+  AppPartial,
+  'id' | 'name' | 'icon_type' | 'icon' | 'icon_background' | 'icon_url' | 'mode'
+>
 
 export type CreateReleaseFormValues = {
   releaseSourceMode: ReleaseSourceMode
@@ -53,26 +54,6 @@ const CREATE_RELEASE_SOURCE_APP_PAGE_SIZE = 20
 
 function deploymentReleaseSourceMode(mode: ReleaseSourceMode): ReleaseSourceMode {
   return mode === 'dsl' && !isDeploymentDslImportEnabled ? 'sourceApp' : mode
-}
-
-function workflowSourceAppPickerValue(
-  value: unknown,
-  fallbackId: string,
-): SourceAppPickerValue | undefined {
-  if (!value || typeof value !== 'object') return undefined
-
-  const record = value as Record<string, unknown>
-  const mode = typeof record.mode === 'string' ? record.mode : undefined
-  if (mode !== AppModeEnum.WORKFLOW) return undefined
-
-  const id = typeof record.id === 'string' && record.id ? record.id : fallbackId
-  const name = typeof record.name === 'string' && record.name ? record.name : id
-
-  return {
-    id,
-    name,
-    mode,
-  }
 }
 
 const createReleaseFormSchema = z.object({
@@ -166,10 +147,9 @@ const defaultSourceAppQueryAtom = atomWithQuery((get) => {
 })
 
 function defaultSourceApp(get: Getter) {
-  const latestSourceAppId = latestReleaseSourceAppId(get)
-  if (!latestSourceAppId) return undefined
+  const sourceApp = get(defaultSourceAppQueryAtom).data
 
-  return workflowSourceAppPickerValue(get(defaultSourceAppQueryAtom).data, latestSourceAppId)
+  return sourceApp?.mode === AppModeEnum.WORKFLOW ? sourceApp : undefined
 }
 
 function submittedReleaseName(get: Getter) {
@@ -256,10 +236,6 @@ export const createReleaseSourceAppsQueryAtom = atomWithInfiniteQuery((get) => {
     getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
     initialPageParam: 1,
     placeholderData: keepPreviousData,
-    select: (data) => ({
-      ...data,
-      pages: data.pages.map(normalizeAppPagination),
-    }),
     enabled: Boolean(
       get(createReleaseDialogOpenAtom) &&
       effectiveCreateReleaseSourceMode(get) === 'sourceApp' &&

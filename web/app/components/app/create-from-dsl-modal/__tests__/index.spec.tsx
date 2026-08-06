@@ -1,7 +1,6 @@
 /* oxlint-disable typescript/no-explicit-any */
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/app/components/apps/storage'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
@@ -17,7 +16,6 @@ const mockGetRedirection = vi.fn()
 const mockResolveImportedAppRedirectionTarget = vi.fn(
   async (target: Record<string, unknown>) => target,
 )
-const mockInvalidateAppList = vi.hoisted(() => vi.fn())
 const toastMocks = vi.hoisted(() => ({
   call: vi.fn(),
   success: vi.fn(),
@@ -82,6 +80,12 @@ vi.mock('@/service/client', async (importOriginal) => {
       apps: {
         ...actual.consoleQuery.apps,
         imports: {
+          ...actual.consoleQuery.apps.imports,
+          post: {
+            mutationOptions: () => ({
+              mutationFn: ({ body }: { body: Record<string, unknown> }) => mockImportDSL(body),
+            }),
+          },
           byImportId: {
             confirm: {
               post: {
@@ -97,10 +101,6 @@ vi.mock('@/service/client', async (importOriginal) => {
     },
   }
 })
-vi.mock('@/service/use-apps', () => ({
-  useInvalidateAppList: () => mockInvalidateAppList,
-}))
-
 vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
   usePluginDependencies: () => ({
     handleCheckPluginDependencies: mockHandleCheckPluginDependencies,
@@ -164,8 +164,6 @@ describe('CreateFromDSLModal', () => {
     mockPlanUsage = 0
     mockPlanTotal = 10
     mockWorkspacePermissionKeys = ['app.create_and_management']
-    localStorage.clear()
-
     Object.defineProperty(File.prototype, 'text', {
       configurable: true,
       value: vi.fn().mockResolvedValue('app: demo'),
@@ -312,8 +310,6 @@ describe('CreateFromDSLModal', () => {
     })
     expect(handleSuccess).toHaveBeenCalledTimes(1)
     expect(handleClose).toHaveBeenCalledTimes(1)
-    expect(localStorage.getItem(NEED_REFRESH_APP_LIST_KEY)).toBe('1')
-    expect(mockInvalidateAppList).toHaveBeenCalledTimes(1)
     expect(mockHandleCheckPluginDependencies).toHaveBeenCalledWith('app-1')
     expect(mockGetRedirection).toHaveBeenCalledWith(
       { id: 'app-1', mode: 'chat', permission_keys: ['app.acl.view_layout'] },
@@ -475,7 +471,6 @@ describe('CreateFromDSLModal', () => {
     expect(mockImportDSLConfirm).toHaveBeenCalledWith({
       import_id: 'import-3',
     })
-    expect(mockInvalidateAppList).toHaveBeenCalledTimes(1)
     expect(mockTrackCreateApp).toHaveBeenCalledWith({
       source: 'studio_upload',
       appMode: AppModeEnum.WORKFLOW,

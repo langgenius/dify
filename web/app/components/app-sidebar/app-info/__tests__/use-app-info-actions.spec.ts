@@ -16,7 +16,7 @@ const toastMocks = vi.hoisted(() => {
 })
 const mockReplace = vi.fn()
 const mockOnPlanInfoChanged = vi.fn()
-const mockInvalidateAppList = vi.fn()
+const mockInvalidateQueries = vi.fn()
 const mockSetAppDetail = vi.fn()
 const mockUpdateAppInfo = vi.fn()
 const mockCopyApp = vi.fn()
@@ -78,17 +78,13 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   }),
 }))
 
-vi.mock('@/service/use-apps', () => ({
-  appDetailQueryKeyPrefix: ['apps', 'detail'],
-  useInvalidateAppList: () => mockInvalidateAppList,
-}))
-
 vi.mock('@tanstack/react-query', () => ({
   queryOptions: <TOptions>(options: TOptions) => options,
   useSuspenseQuery: () => ({
     data: { rbac_enabled: true },
   }),
   useQueryClient: () => ({
+    invalidateQueries: mockInvalidateQueries,
     setQueryData: mockSetQueryData,
   }),
 }))
@@ -333,6 +329,7 @@ describe('useAppInfoActions', () => {
       })
 
       expect(mockCopyApp).toHaveBeenCalled()
+      expect(mockInvalidateQueries).toHaveBeenCalledTimes(3)
       expect(toastMocks.call).toHaveBeenCalledWith({
         type: 'success',
         message: 'app.newApp.appCreated',
@@ -519,7 +516,7 @@ describe('useAppInfoActions', () => {
 
       expect(mockDeleteApp).toHaveBeenCalledWith('app-1')
       expect(toastMocks.call).toHaveBeenCalledWith({ type: 'success', message: 'app.appDeleted' })
-      expect(mockInvalidateAppList).toHaveBeenCalled()
+      expect(mockInvalidateQueries).toHaveBeenCalledTimes(3)
       expect(mockReplace).toHaveBeenCalledWith('/apps')
       expect(mockSetAppDetail).toHaveBeenCalledWith()
     })

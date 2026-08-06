@@ -7,19 +7,19 @@ import { useAppInputsFormSchema } from '../use-app-inputs-form-schema'
 let mockAppDetailData: Record<string, unknown> | null = null
 let mockAppWorkflowData: Record<string, unknown> | null = null
 
+vi.mock('@tanstack/react-query', () => ({
+  useQuery: () => ({
+    data: mockAppDetailData,
+    isFetching: false,
+  }),
+}))
+
 vi.mock('@/service/use-common', () => ({
   useFileUploadConfig: () => ({
     data: {
       file_size_limit: 15,
       image_file_size_limit: 10,
     },
-  }),
-}))
-
-vi.mock('@/service/use-apps', () => ({
-  useAppDetail: () => ({
-    data: mockAppDetailData,
-    isFetching: false,
   }),
 }))
 

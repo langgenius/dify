@@ -1,12 +1,13 @@
 'use client'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { FileUpload } from '@/app/components/base/features/types'
 import type { FileUploadConfigResponse } from '@/models/common'
-import type { App } from '@/types/app'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
+import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { BlockEnum, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
-import { useAppDetail } from '@/service/use-apps'
+import { consoleQuery } from '@/service/client'
 import { useFileUploadConfig } from '@/service/use-common'
 import { useAppWorkflow } from '@/service/use-workflow'
 import { AppModeEnum, Resolution } from '@/types/app'
@@ -118,7 +119,7 @@ function createImageUploadSchema(
 }
 
 function buildBasicAppSchema(
-  currentApp: App,
+  currentApp: AppDetailWithSite,
   fileUploadConfig?: FileUploadConfigResponse,
 ): InputSchemaItem[] {
   const userInputForm = currentApp.model_config?.user_input_form as
@@ -146,7 +147,7 @@ function buildWorkflowSchema(
 }
 
 type UseAppInputsFormSchemaParams = {
-  appDetail: App
+  appDetail: Pick<AppDetailWithSite, 'id' | 'mode'>
 }
 
 type UseAppInputsFormSchemaResult = {
@@ -161,7 +162,11 @@ export function useAppInputsFormSchema({
   const isBasicApp = isBasicAppMode(appDetail.mode)
 
   const { data: fileUploadConfig } = useFileUploadConfig()
-  const { data: currentApp, isFetching: isAppLoading } = useAppDetail(appDetail.id)
+  const { data: currentApp, isFetching: isAppLoading } = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: { params: { app_id: appDetail.id } },
+    }),
+  )
   const { data: currentWorkflow, isFetching: isWorkflowLoading } = useAppWorkflow(
     isBasicApp ? '' : appDetail.id,
   )
