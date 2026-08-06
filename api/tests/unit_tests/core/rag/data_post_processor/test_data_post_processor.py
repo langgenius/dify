@@ -113,9 +113,7 @@ class TestDataPostProcessor:
         assert kwargs["weights"].vector_setting.embedding_model_name == "embedding-y"
         assert kwargs["weights"].keyword_setting.keyword_weight == 0.3
 
-    def test_get_rerank_runner_for_reranking_model_returns_none_without_model_instance(
-        self, unbound_session: Session
-    ):
+    def test_get_rerank_runner_for_reranking_model_returns_none_without_model_instance(self, unbound_session: Session):
         processor = DataPostProcessor.__new__(DataPostProcessor)
         reranking_model = {
             "reranking_provider_name": "provider-x",
@@ -138,9 +136,7 @@ class TestDataPostProcessor:
         model_mock.assert_called_once_with("tenant-1", reranking_model)
         factory_mock.assert_not_called()
 
-    def test_get_rerank_runner_for_reranking_model_creates_runner_with_model_instance(
-        self, unbound_session: Session
-    ):
+    def test_get_rerank_runner_for_reranking_model_creates_runner_with_model_instance(self, unbound_session: Session):
         processor = DataPostProcessor.__new__(DataPostProcessor)
         model_instance = object()
         expected_runner = object()
@@ -171,13 +167,9 @@ class TestDataPostProcessor:
     def test_get_rerank_runner_returns_none_for_unsupported_mode(self, unbound_session: Session):
         processor = DataPostProcessor.__new__(DataPostProcessor)
 
+        assert processor._get_rerank_runner("unsupported", "tenant-1", None, None, session=unbound_session) is None
         assert (
-            processor._get_rerank_runner("unsupported", "tenant-1", None, None, session=unbound_session) is None
-        )
-        assert (
-            processor._get_rerank_runner(
-                RerankMode.WEIGHTED_SCORE, "tenant-1", None, None, session=unbound_session
-            )
+            processor._get_rerank_runner(RerankMode.WEIGHTED_SCORE, "tenant-1", None, None, session=unbound_session)
             is None
         )
 

@@ -224,9 +224,7 @@ def test_delete_removes_keyword_table_and_optional_file(patched_runtime):
     patched_runtime.storage.delete.assert_not_called()
     assert patched_runtime.session.get(DatasetKeywordTable, db_keyword.id) is None
 
-    file_keyword = DatasetKeywordTable(
-        dataset_id="dataset-1", keyword_table="", data_source_type="object_storage"
-    )
+    file_keyword = DatasetKeywordTable(dataset_id="dataset-1", keyword_table="", data_source_type="object_storage")
     patched_runtime.session.add(file_keyword)
     patched_runtime.session.commit()
     keyword_file = Jieba(_dataset(file_keyword))
@@ -238,9 +236,7 @@ def test_delete_removes_keyword_table_and_optional_file(patched_runtime):
 
 
 def test_save_dataset_keyword_table_to_database(patched_runtime):
-    dataset_keyword_table = DatasetKeywordTable(
-        dataset_id="dataset-1", keyword_table="", data_source_type="database"
-    )
+    dataset_keyword_table = DatasetKeywordTable(dataset_id="dataset-1", keyword_table="", data_source_type="database")
     patched_runtime.session.add(dataset_keyword_table)
     patched_runtime.session.flush()
     keyword = Jieba(_dataset(dataset_keyword_table))

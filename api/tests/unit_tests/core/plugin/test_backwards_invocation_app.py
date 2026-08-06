@@ -367,9 +367,7 @@ class TestPluginAppBackwardsInvocation:
         )
         app = MagicMock(mode=AppMode.COMPLETION)
 
-        result = PluginAppBackwardsInvocation.invoke_completion_app(
-            app, MagicMock(), False, {"x": 1}, [], self.session
-        )
+        result = PluginAppBackwardsInvocation.invoke_completion_app(app, MagicMock(), False, {"x": 1}, [], self.session)
 
         assert result == {"ok": 1}
         assert spy.call_count == 1
