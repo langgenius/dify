@@ -565,6 +565,7 @@
   "newKnowledge.retrievalTest.retrieving": "เรียกข้อมูลแหล่งที่มาแล้ว",
   "newKnowledge.retrievalTest.retrievingActive": "กำลังเรียกข้อมูลแหล่งที่มา…",
   "newKnowledge.retrievalTest.retry": "ลองอีกครั้ง",
+  "newKnowledge.retrievalTest.revision": "รุ่นแก้ไข {{revision}}",
   "newKnowledge.retrievalTest.run": "เรียกใช้",
   "newKnowledge.retrievalTest.running": "กำลังวิจัย…",
   "newKnowledge.retrievalTest.savedBadCase": "บันทึกเป็นกรณีที่ต้องปรับปรุงแล้ว",

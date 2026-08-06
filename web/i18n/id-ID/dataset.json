@@ -565,6 +565,7 @@
   "newKnowledge.retrievalTest.retrieving": "Sumber telah diambil",
   "newKnowledge.retrievalTest.retrievingActive": "Mengambil sumber…",
   "newKnowledge.retrievalTest.retry": "Coba lagi",
+  "newKnowledge.retrievalTest.revision": "Rev. {{revision}}",
   "newKnowledge.retrievalTest.run": "Jalankan",
   "newKnowledge.retrievalTest.running": "Sedang melakukan riset…",
   "newKnowledge.retrievalTest.savedBadCase": "Disimpan sebagai kasus bermasalah",

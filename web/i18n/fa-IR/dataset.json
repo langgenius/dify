@@ -565,6 +565,7 @@
   "newKnowledge.retrievalTest.retrieving": "منابع بازیابی شدند",
   "newKnowledge.retrievalTest.retrievingActive": "در حال بازیابی منابع…",
   "newKnowledge.retrievalTest.retry": "تلاش دوباره",
+  "newKnowledge.retrievalTest.revision": "بازبینی {{revision}}",
   "newKnowledge.retrievalTest.run": "اجرا",
   "newKnowledge.retrievalTest.running": "در حال پژوهش…",
   "newKnowledge.retrievalTest.savedBadCase": "به‌عنوان مورد نیازمند بهبود ذخیره شد",

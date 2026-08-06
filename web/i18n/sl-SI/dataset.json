@@ -565,6 +565,7 @@
   "newKnowledge.retrievalTest.retrieving": "Viri pridobljeni",
   "newKnowledge.retrievalTest.retrievingActive": "Pridobivanje virov…",
   "newKnowledge.retrievalTest.retry": "Poskusi znova",
+  "newKnowledge.retrievalTest.revision": "Različica {{revision}}",
   "newKnowledge.retrievalTest.run": "Zaženi",
   "newKnowledge.retrievalTest.running": "Raziskovanje…",
   "newKnowledge.retrievalTest.savedBadCase": "Shranjeno kot problematičen primer",

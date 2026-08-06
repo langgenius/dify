@@ -565,6 +565,7 @@
   "newKnowledge.retrievalTest.retrieving": "소스 검색 완료",
   "newKnowledge.retrievalTest.retrievingActive": "소스 검색 중…",
   "newKnowledge.retrievalTest.retry": "다시 시도",
+  "newKnowledge.retrievalTest.revision": "리비전 {{revision}}",
   "newKnowledge.retrievalTest.run": "실행",
   "newKnowledge.retrievalTest.running": "리서치 중…",
   "newKnowledge.retrievalTest.savedBadCase": "문제 사례로 저장됨",

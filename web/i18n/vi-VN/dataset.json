@@ -565,6 +565,7 @@
   "newKnowledge.retrievalTest.retrieving": "Đã truy xuất nguồn",
   "newKnowledge.retrievalTest.retrievingActive": "Đang truy xuất nguồn…",
   "newKnowledge.retrievalTest.retry": "Thử lại",
+  "newKnowledge.retrievalTest.revision": "Bản sửa đổi {{revision}}",
   "newKnowledge.retrievalTest.run": "Chạy",
   "newKnowledge.retrievalTest.running": "Đang nghiên cứu…",
   "newKnowledge.retrievalTest.savedBadCase": "Đã lưu làm trường hợp cần cải thiện",

@@ -454,7 +454,9 @@ function EvidenceCard({
         </span>
         {evidence.revision && (
           <span className="shrink-0 rounded-xs bg-divider-subtle px-1.25 py-px system-xs-regular text-text-tertiary">
-            {evidence.revision}
+            {t(($) => $['newKnowledge.retrievalTest.revision'], {
+              revision: evidence.revision,
+            })}
           </span>
         )}
         {evidence.page !== undefined && (
@@ -705,7 +707,7 @@ function QualityActions({
         <Button
           disabled={pending}
           loading={pending}
-          variant="secondary"
+          variant="ghost"
           onClick={() => void onDecision('bad-case')}
         >
           <span aria-hidden className="i-ri-thumb-down-line size-4" />

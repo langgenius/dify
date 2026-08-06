@@ -565,6 +565,7 @@
   "newKnowledge.retrievalTest.retrieving": "Джерела отримано",
   "newKnowledge.retrievalTest.retrievingActive": "Отримання джерел…",
   "newKnowledge.retrievalTest.retry": "Повторити",
+  "newKnowledge.retrievalTest.revision": "Ред. {{revision}}",
   "newKnowledge.retrievalTest.run": "Запустити",
   "newKnowledge.retrievalTest.running": "Триває дослідження…",
   "newKnowledge.retrievalTest.savedBadCase": "Збережено як проблемний випадок",

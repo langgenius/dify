@@ -565,6 +565,7 @@
   "newKnowledge.retrievalTest.retrieving": "Surse preluate",
   "newKnowledge.retrievalTest.retrievingActive": "Se preiau sursele…",
   "newKnowledge.retrievalTest.retry": "Reîncearcă",
+  "newKnowledge.retrievalTest.revision": "Rev. {{revision}}",
   "newKnowledge.retrievalTest.run": "Rulează",
   "newKnowledge.retrievalTest.running": "Cercetare în curs…",
   "newKnowledge.retrievalTest.savedBadCase": "Salvat drept caz problematic",

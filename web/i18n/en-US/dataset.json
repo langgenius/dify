@@ -565,6 +565,7 @@
   "newKnowledge.retrievalTest.retrieving": "Retrieved sources",
   "newKnowledge.retrievalTest.retrievingActive": "Retrieving sources…",
   "newKnowledge.retrievalTest.retry": "Retry",
+  "newKnowledge.retrievalTest.revision": "Rev {{revision}}",
   "newKnowledge.retrievalTest.run": "Run",
   "newKnowledge.retrievalTest.running": "Researching…",
   "newKnowledge.retrievalTest.savedBadCase": "Saved as bad case",

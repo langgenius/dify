@@ -565,6 +565,7 @@
   "newKnowledge.retrievalTest.retrieving": "Sources récupérées",
   "newKnowledge.retrievalTest.retrievingActive": "Récupération des sources…",
   "newKnowledge.retrievalTest.retry": "Réessayer",
+  "newKnowledge.retrievalTest.revision": "Rév. {{revision}}",
   "newKnowledge.retrievalTest.run": "Exécuter",
   "newKnowledge.retrievalTest.running": "Recherche en cours…",
   "newKnowledge.retrievalTest.savedBadCase": "Enregistré comme cas problématique",

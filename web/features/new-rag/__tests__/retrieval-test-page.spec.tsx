@@ -916,6 +916,7 @@ describe('RetrievalTestPage', () => {
           kind: 'resource',
           metadata: {
             documentId: 'asset-1',
+            revision: '2',
             score: 0.9,
             text: 'Refunds are available within 30 days.',
           },
@@ -938,6 +939,9 @@ describe('RetrievalTestPage', () => {
       screen.getByRole('link', { name: 'dataset.newKnowledge.retrievalTest.open' }),
     ).toHaveAttribute('href', '/datasets/new/space-1/documents/document-1')
     expect(screen.getByText('refund-policy.txt')).toBeInTheDocument()
+    expect(
+      screen.getByText('dataset.newKnowledge.retrievalTest.revision:{"revision":"2"}'),
+    ).toBeInTheDocument()
   })
 
   it('keeps a failed run in Records and renders the failure inline', async () => {

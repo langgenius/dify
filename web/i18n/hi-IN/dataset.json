@@ -565,6 +565,7 @@
   "newKnowledge.retrievalTest.retrieving": "स्रोत प्राप्त किए गए",
   "newKnowledge.retrievalTest.retrievingActive": "स्रोत प्राप्त किए जा रहे हैं…",
   "newKnowledge.retrievalTest.retry": "फिर से कोशिश करें",
+  "newKnowledge.retrievalTest.revision": "संशोधन {{revision}}",
   "newKnowledge.retrievalTest.run": "चलाएँ",
   "newKnowledge.retrievalTest.running": "रिसर्च जारी है…",
   "newKnowledge.retrievalTest.savedBadCase": "सुधार योग्य मामले के रूप में सहेजा गया",

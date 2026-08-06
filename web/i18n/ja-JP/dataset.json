@@ -565,6 +565,7 @@
   "newKnowledge.retrievalTest.retrieving": "ソースを取得しました",
   "newKnowledge.retrievalTest.retrievingActive": "ソースを取得中…",
   "newKnowledge.retrievalTest.retry": "再試行",
+  "newKnowledge.retrievalTest.revision": "リビジョン {{revision}}",
   "newKnowledge.retrievalTest.run": "実行",
   "newKnowledge.retrievalTest.running": "調査中…",
   "newKnowledge.retrievalTest.savedBadCase": "問題ケースとして保存しました",

@@ -565,6 +565,7 @@
   "newKnowledge.retrievalTest.retrieving": "Источники найдены",
   "newKnowledge.retrievalTest.retrievingActive": "Получение источников…",
   "newKnowledge.retrievalTest.retry": "Повторить",
+  "newKnowledge.retrievalTest.revision": "Ред. {{revision}}",
   "newKnowledge.retrievalTest.run": "Запустить",
   "newKnowledge.retrievalTest.running": "Идёт исследование…",
   "newKnowledge.retrievalTest.savedBadCase": "Сохранено как проблемный случай",

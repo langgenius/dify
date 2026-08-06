@@ -565,6 +565,7 @@
   "newKnowledge.retrievalTest.retrieving": "Źródła pobrane",
   "newKnowledge.retrievalTest.retrievingActive": "Pobieranie źródeł…",
   "newKnowledge.retrievalTest.retry": "Spróbuj ponownie",
+  "newKnowledge.retrievalTest.revision": "Wersja {{revision}}",
   "newKnowledge.retrievalTest.run": "Uruchom",
   "newKnowledge.retrievalTest.running": "Trwa badanie…",
   "newKnowledge.retrievalTest.savedBadCase": "Zapisano jako przypadek do poprawy",

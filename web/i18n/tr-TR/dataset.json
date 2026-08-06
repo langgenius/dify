@@ -565,6 +565,7 @@
   "newKnowledge.retrievalTest.retrieving": "Kaynaklar getirildi",
   "newKnowledge.retrievalTest.retrievingActive": "Kaynaklar getiriliyor…",
   "newKnowledge.retrievalTest.retry": "Tekrar dene",
+  "newKnowledge.retrievalTest.revision": "Rev. {{revision}}",
   "newKnowledge.retrievalTest.run": "Çalıştır",
   "newKnowledge.retrievalTest.running": "Araştırılıyor…",
   "newKnowledge.retrievalTest.savedBadCase": "Sorunlu durum olarak kaydedildi",

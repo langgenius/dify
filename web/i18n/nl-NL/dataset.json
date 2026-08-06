@@ -565,6 +565,7 @@
   "newKnowledge.retrievalTest.retrieving": "Bronnen opgehaald",
   "newKnowledge.retrievalTest.retrievingActive": "Bronnen ophalen…",
   "newKnowledge.retrievalTest.retry": "Opnieuw proberen",
+  "newKnowledge.retrievalTest.revision": "Rev. {{revision}}",
   "newKnowledge.retrievalTest.run": "Uitvoeren",
   "newKnowledge.retrievalTest.running": "Onderzoek wordt uitgevoerd…",
   "newKnowledge.retrievalTest.savedBadCase": "Opgeslagen als probleemgeval",

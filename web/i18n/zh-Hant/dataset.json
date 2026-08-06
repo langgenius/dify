@@ -565,6 +565,7 @@
   "newKnowledge.retrievalTest.retrieving": "已檢索相關來源",
   "newKnowledge.retrievalTest.retrievingActive": "正在檢索相關來源…",
   "newKnowledge.retrievalTest.retry": "重試",
+  "newKnowledge.retrievalTest.revision": "修訂 {{revision}}",
   "newKnowledge.retrievalTest.run": "執行",
   "newKnowledge.retrievalTest.running": "研究中…",
   "newKnowledge.retrievalTest.savedBadCase": "已儲存為問題案例",

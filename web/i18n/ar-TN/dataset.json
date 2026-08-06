@@ -565,6 +565,7 @@
   "newKnowledge.retrievalTest.retrieving": "تم استرداد المصادر",
   "newKnowledge.retrievalTest.retrievingActive": "جارٍ استرداد المصادر…",
   "newKnowledge.retrievalTest.retry": "إعادة المحاولة",
+  "newKnowledge.retrievalTest.revision": "المراجعة {{revision}}",
   "newKnowledge.retrievalTest.run": "تشغيل",
   "newKnowledge.retrievalTest.running": "جارٍ البحث…",
   "newKnowledge.retrievalTest.savedBadCase": "تم الحفظ كحالة تحتاج إلى تحسين",
