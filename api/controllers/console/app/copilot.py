@@ -109,6 +109,7 @@ class WorkflowCopilotApi(Resource):
             "graph": result.get("graph"),
             "error": result.get("error", ""),
             "errors": result.get("errors", []),
+            "usage": result.get("usage"),
         }
 
 

@@ -3193,3 +3193,108 @@ class TestReferenceAutoRepair:
 
         assert result["errors"] == []
         assert model_instance.invoke_llm.call_count == 2
+
+
+def _llm_result_with_usage(text: str, prompt: int, completion: int) -> MagicMock:
+    """An ``LLMResult`` stand-in carrying real integer token usage.
+
+    The runner reads ``response.usage.{prompt,completion,total}_tokens`` to sum
+    a turn's cost, so those must be real ints (a bare MagicMock would make the
+    accumulator's ``+=`` produce a MagicMock, not a number).
+    """
+    result = MagicMock()
+    result.message.get_text_content.return_value = text
+    result.usage.prompt_tokens = prompt
+    result.usage.completion_tokens = completion
+    result.usage.total_tokens = prompt + completion
+    return result
+
+
+class TestWorkflowGeneratorUsageAccounting:
+    """The result reports token usage summed across planner + builder calls."""
+
+    @staticmethod
+    def _planner() -> str:
+        return json.dumps(
+            {
+                "title": "x",
+                "description": "x",
+                "nodes": [
+                    {"label": "Start", "node_type": "start", "purpose": "x"},
+                    {"label": "End", "node_type": "end", "purpose": "x"},
+                ],
+            }
+        )
+
+    @staticmethod
+    def _builder() -> str:
+        return json.dumps(
+            {
+                "nodes": [
+                    {
+                        "id": "node1",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {"type": "start", "title": "Start", "variables": []},
+                    },
+                    {
+                        "id": "node2",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {"type": "end", "title": "End", "outputs": []},
+                    },
+                ],
+                "edges": [{"id": "x", "source": "node1", "target": "node2", "type": "custom"}],
+                "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+            }
+        )
+
+    def test_usage_is_summed_across_planner_and_builder(self):
+        model_instance = MagicMock()
+        model_instance.invoke_llm.side_effect = [
+            _llm_result_with_usage(self._planner(), prompt=100, completion=20),
+            _llm_result_with_usage(self._builder(), prompt=300, completion=50),
+        ]
+
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="x",
+        )
+
+        assert result["errors"] == []
+        assert result["usage"] == {
+            "prompt_tokens": 400,
+            "completion_tokens": 70,
+            "total_tokens": 470,
+        }
+
+    def test_usage_is_reported_even_on_failed_generation(self):
+        # Planner returns non-JSON on both attempts → INVALID_JSON, but the two
+        # burned planner attempts must still be accounted for.
+        model_instance = MagicMock()
+        model_instance.invoke_llm.side_effect = [
+            _llm_result_with_usage("not json", prompt=80, completion=5),
+            _llm_result_with_usage("still not json", prompt=90, completion=5),
+        ]
+
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="x",
+        )
+
+        assert result["errors"], "expected a hard failure"
+        assert result["usage"] == {
+            "prompt_tokens": 170,
+            "completion_tokens": 10,
+            "total_tokens": 180,
+        }
