@@ -22,7 +22,7 @@ from controllers.console.wraps import (
 from extensions.ext_database import db
 from fields._value_type_serializer import serialize_value_type
 from fields.base import ResponseModel
-from libs.helper import to_timestamp
+from libs.helper import dump_response, to_timestamp
 from libs.login import login_required
 from models import ConversationVariable
 from models.model import App, AppMode
@@ -119,7 +119,8 @@ class ConversationVariablesApi(Resource):
         with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             rows = session.scalars(stmt).all()
 
-        response = PaginatedConversationVariableResponse.model_validate(
+        return dump_response(
+            PaginatedConversationVariableResponse,
             {
                 "page": page,
                 "limit": page_size,
@@ -135,6 +136,5 @@ class ConversationVariablesApi(Resource):
                     )
                     for row in rows
                 ],
-            }
+            },
         )
-        return response.model_dump(mode="json")

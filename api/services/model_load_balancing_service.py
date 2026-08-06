@@ -3,6 +3,7 @@ import logging
 from typing import Any, TypedDict, cast
 
 from sqlalchemy import or_, select
+from sqlalchemy.orm import Session
 
 from constants import HIDDEN_VALUE
 from core.entities.provider_configuration import ProviderConfiguration
@@ -14,7 +15,6 @@ from core.helper.model_provider_cache import (
 from core.model_manager import LBModelManager
 from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_provider_manager
 from core.provider_manager import ProviderConfigurationCacheSource, ProviderManager
-from extensions.ext_database import db
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import (
     ModelCredentialSchema,
@@ -93,7 +93,13 @@ class ModelLoadBalancingService:
         provider_configuration.disable_model_load_balancing(model=model, model_type=ModelType(model_type))
 
     def get_load_balancing_configs(
-        self, tenant_id: str, provider: str, model: str, model_type: str, config_from: str = ""
+        self,
+        tenant_id: str,
+        provider: str,
+        model: str,
+        model_type: str,
+        session: Session,
+        config_from: str = "",
     ) -> tuple[bool, list[LoadBalancingConfigSummaryDict]]:
         """
         Get load balancing configurations.
@@ -131,7 +137,7 @@ class ModelLoadBalancingService:
 
         # Get load balancing configurations
         load_balancing_configs = list(
-            db.session.scalars(
+            session.scalars(
                 select(LoadBalancingModelConfig)
                 .where(
                     LoadBalancingModelConfig.tenant_id == tenant_id,
@@ -158,7 +164,7 @@ class ModelLoadBalancingService:
 
             if not inherit_config_exists:
                 # Initialize the inherit configuration
-                inherit_config = self._init_inherit_config(tenant_id, provider, model, model_type_enum)
+                inherit_config = self._init_inherit_config(tenant_id, provider, model, model_type_enum, session=session)
 
                 # prepend the inherit configuration
                 load_balancing_configs.insert(0, inherit_config)
@@ -233,7 +239,13 @@ class ModelLoadBalancingService:
         return is_load_balancing_enabled, datas
 
     def get_load_balancing_config(
-        self, tenant_id: str, provider: str, model: str, model_type: str, config_id: str
+        self,
+        tenant_id: str,
+        provider: str,
+        model: str,
+        model_type: str,
+        config_id: str,
+        session: Session,
     ) -> LoadBalancingConfigDetailDict | None:
         """
         Get load balancing configuration.
@@ -256,7 +268,7 @@ class ModelLoadBalancingService:
         model_type_enum = ModelType(model_type)
 
         # Get load balancing configurations
-        load_balancing_model_config = db.session.scalar(
+        load_balancing_model_config = session.scalar(
             select(LoadBalancingModelConfig)
             .where(
                 LoadBalancingModelConfig.tenant_id == tenant_id,
@@ -296,7 +308,12 @@ class ModelLoadBalancingService:
         return result
 
     def _init_inherit_config(
-        self, tenant_id: str, provider: str, model: str, model_type: ModelType
+        self,
+        tenant_id: str,
+        provider: str,
+        model: str,
+        model_type: ModelType,
+        session: Session,
     ) -> LoadBalancingModelConfig:
         """
         Initialize the inherit configuration.
@@ -314,8 +331,8 @@ class ModelLoadBalancingService:
             model_name=model,
             name="__inherit__",
         )
-        db.session.add(inherit_config)
-        db.session.commit()
+        session.add(inherit_config)
+        session.commit()
         ProviderManager.invalidate_configurations_cache(
             tenant_id,
             sources=(ProviderConfigurationCacheSource.PROVIDER_LOAD_BALANCING_CONFIGS,),
@@ -324,7 +341,14 @@ class ModelLoadBalancingService:
         return inherit_config
 
     def update_load_balancing_configs(
-        self, tenant_id: str, provider: str, model: str, model_type: str, configs: list[dict], config_from: str
+        self,
+        tenant_id: str,
+        provider: str,
+        model: str,
+        model_type: str,
+        configs: list[dict],
+        config_from: str,
+        session: Session,
     ):
         """
         Update load balancing configurations.
@@ -350,7 +374,7 @@ class ModelLoadBalancingService:
         if not isinstance(configs, list):
             raise ValueError("Invalid load balancing configs")
 
-        current_load_balancing_configs = db.session.scalars(
+        current_load_balancing_configs = session.scalars(
             select(LoadBalancingModelConfig).where(
                 LoadBalancingModelConfig.tenant_id == tenant_id,
                 LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
@@ -377,7 +401,7 @@ class ModelLoadBalancingService:
 
             if credential_id:
                 if config_from == "predefined-model":
-                    credential_record = db.session.scalar(
+                    credential_record = session.scalar(
                         select(ProviderCredential)
                         .where(
                             ProviderCredential.id == credential_id,
@@ -387,7 +411,7 @@ class ModelLoadBalancingService:
                         .limit(1)
                     )
                 else:
-                    credential_record = db.session.scalar(
+                    credential_record = session.scalar(
                         select(ProviderModelCredential)
                         .where(
                             ProviderModelCredential.id == credential_id,
@@ -440,7 +464,7 @@ class ModelLoadBalancingService:
                 load_balancing_config.name = name
                 load_balancing_config.enabled = enabled
                 load_balancing_config.updated_at = naive_utc_now()
-                db.session.commit()
+                session.commit()
                 ProviderManager.invalidate_configurations_cache(
                     tenant_id,
                     sources=(ProviderConfigurationCacheSource.PROVIDER_LOAD_BALANCING_CONFIGS,),
@@ -496,8 +520,8 @@ class ModelLoadBalancingService:
                         encrypted_config=json.dumps(credentials),
                     )
 
-                db.session.add(load_balancing_model_config)
-                db.session.commit()
+                session.add(load_balancing_model_config)
+                session.commit()
                 ProviderManager.invalidate_configurations_cache(
                     tenant_id,
                     sources=(ProviderConfigurationCacheSource.PROVIDER_LOAD_BALANCING_CONFIGS,),
@@ -506,8 +530,8 @@ class ModelLoadBalancingService:
         # get deleted config ids
         deleted_config_ids = set(current_load_balancing_configs_dict.keys()) - updated_config_ids
         for config_id in deleted_config_ids:
-            db.session.delete(current_load_balancing_configs_dict[config_id])
-            db.session.commit()
+            session.delete(current_load_balancing_configs_dict[config_id])
+            session.commit()
             ProviderManager.invalidate_configurations_cache(
                 tenant_id,
                 sources=(ProviderConfigurationCacheSource.PROVIDER_LOAD_BALANCING_CONFIGS,),
@@ -522,6 +546,7 @@ class ModelLoadBalancingService:
         model: str,
         model_type: str,
         credentials: dict[str, Any],
+        session: Session,
         config_id: str | None = None,
     ):
         """
@@ -548,7 +573,7 @@ class ModelLoadBalancingService:
         load_balancing_model_config = None
         if config_id:
             # Get load balancing config
-            load_balancing_model_config = db.session.scalar(
+            load_balancing_model_config = session.scalar(
                 select(LoadBalancingModelConfig)
                 .where(
                     LoadBalancingModelConfig.tenant_id == tenant_id,

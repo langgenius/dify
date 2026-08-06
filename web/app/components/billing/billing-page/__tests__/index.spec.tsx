@@ -1,11 +1,12 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { render } from '@/test/console/render'
 import Billing from '../index'
 
 let currentBillingUrl: string | null = 'https://billing'
 let fetching = false
 let isManager = true
 let enableBilling = true
-let workspacePermissionKeys: string[] = ['billing.subscription.manage']
+let billingUrlEnabled = false
 
 const refetchMock = vi.fn()
 const openAsyncWindowMock = vi.fn()
@@ -19,23 +20,26 @@ type BillingWindowOptions = {
 type OpenAsyncWindowCall = [BillingUrlCallback, BillingWindowOptions]
 
 vi.mock('@/service/use-billing', () => ({
-  useBillingUrl: () => ({
-    data: currentBillingUrl,
-    isFetching: fetching,
-    refetch: refetchMock,
-  }),
+  useBillingUrl: (enabled: boolean) => {
+    billingUrlEnabled = enabled
+    return {
+      data: currentBillingUrl,
+      isFetching: fetching,
+      refetch: refetchMock,
+    }
+  },
 }))
 
 vi.mock('@/hooks/use-async-window-open', () => ({
   useAsyncWindowOpen: () => openAsyncWindowMock,
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
     isCurrentWorkspaceManager: isManager,
-    workspacePermissionKeys,
-  }),
-}))
+  }))
+})
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
@@ -54,28 +58,35 @@ describe('Billing', () => {
     fetching = false
     isManager = true
     enableBilling = true
-    workspacePermissionKeys = ['billing.subscription.manage']
+    billingUrlEnabled = false
     refetchMock.mockResolvedValue({ data: 'https://billing' })
   })
 
-  it('shows the billing action when subscription management permission is granted without manager role', () => {
+  it('hides the billing action from non-manager members', () => {
     isManager = false
 
     render(<Billing />)
 
-    expect(screen.getByRole('button', { name: /billing\.viewBillingTitle/ })).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /billing\.viewBillingTitle/ }),
+    ).not.toBeInTheDocument()
+    expect(billingUrlEnabled).toBe(false)
   })
 
-  it('hides the billing action when subscription management permission is missing or billing is disabled', () => {
-    workspacePermissionKeys = []
+  it('shows the billing action to managers without billing permission keys', () => {
     render(<Billing />)
-    expect(screen.queryByRole('button', { name: /billing\.viewBillingTitle/ })).not.toBeInTheDocument()
 
-    vi.clearAllMocks()
-    workspacePermissionKeys = ['billing.subscription.manage']
+    expect(screen.getByRole('button', { name: /billing\.viewBillingTitle/ })).toBeInTheDocument()
+    expect(billingUrlEnabled).toBe(true)
+  })
+
+  it('hides the billing action when billing is disabled', () => {
     enableBilling = false
     render(<Billing />)
-    expect(screen.queryByRole('button', { name: /billing\.viewBillingTitle/ })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /billing\.viewBillingTitle/ }),
+    ).not.toBeInTheDocument()
+    expect(billingUrlEnabled).toBe(false)
   })
 
   it('opens the billing window with the immediate url when the button is clicked', async () => {

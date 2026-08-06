@@ -3,7 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Bucket from '../bucket'
 
 vi.mock('@/app/components/base/icons/src/public/knowledge/online-drive', () => ({
-  BucketsGray: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="buckets-gray" {...props} />,
+  BucketsGray: (props: React.SVGProps<SVGSVGElement>) => (
+    <svg data-testid="buckets-gray" {...props} />
+  ),
 }))
 
 describe('Bucket', () => {
@@ -29,7 +31,9 @@ describe('Bucket', () => {
 
   it('should call handleBackToBucketList on icon button click', () => {
     render(<Bucket {...defaultProps} />)
-    fireEvent.click(screen.getByRole('button', { name: 'datasetPipeline.onlineDrive.breadcrumbs.allBuckets' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'datasetPipeline.onlineDrive.breadcrumbs.allBuckets' }),
+    )
     expect(defaultProps.handleBackToBucketList).toHaveBeenCalledOnce()
   })
 

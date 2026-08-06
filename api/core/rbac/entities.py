@@ -13,6 +13,14 @@ class RBACResourceScope(StrEnum):
     WORKSPACE = "workspace"
 
 
+class RBACResourceWhitelistScope(StrEnum):
+    """Whitelist scopes accepted by RBAC app and dataset access config APIs."""
+
+    ALL = "all"
+    SPECIFIC = "specific"
+    ONLY_ME = "only_me"
+
+
 class RBACPermission(StrEnum):
     """Permission points (RBAC scenes) checked by ``rbac_permission_required``.
 
@@ -53,6 +61,7 @@ class RBACPermission(StrEnum):
     WORKSPACE_ROLE_MANAGE = "workspace_role_manage"
     API_EXTENSION_MANAGE = "api_extension_manage"
     CUSTOMIZATION_MANAGE = "customization_manage"
+    AGENT_MANAGE = "agent_manage"
 
     SNIPPETS_CREATE_AND_MODIFY = "snippets_create_and_modify"
     SNIPPETS_MANAGE = "snippets_management"

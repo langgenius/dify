@@ -1,11 +1,12 @@
-/* eslint-disable ts/no-explicit-any */
-import { act, renderHook, waitFor } from '@testing-library/react'
+/* oxlint-disable typescript/no-explicit-any */
+import { act, waitFor } from '@testing-library/react'
 import { updateAppModelConfig } from '@/service/apps'
+import { renderHook } from '@/test/console/render'
 import { AppModeEnum, ModelModeType } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import { useConfiguration } from '../use-configuration'
 
-const mockSetShowAccountSettingModal = vi.fn()
+const mockSetSettingsDestination = vi.fn()
 const mockSetShowAppConfigureFeaturesModal = vi.fn()
 const mockSetDetailSidebarMode = vi.fn()
 const mockHandleMultipleModelConfigsChange = vi.fn()
@@ -29,13 +30,6 @@ let mockTempStopState: string[] = []
 let mockCurrentModelFeatures = ['vision']
 let mockCurrentModelMode = ModelModeType.chat
 let mockAppPermissionKeys: string[] = [AppACLPermission.Edit, AppACLPermission.ReleaseAndVersion]
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 vi.mock('ahooks', async () => {
   const actual = await vi.importActual<any>('ahooks')
 
@@ -51,23 +45,38 @@ vi.mock('ahooks', async () => {
   }
 })
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => ({
     currentWorkspace: { id: 'workspace-1' },
     isLoadingCurrentWorkspace: false,
-    workspacePermissionKeys: ['app.create_and_management'],
-  }),
-  useSelector: (selector: (state: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => unknown) => selector({
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: ['app.create_and_management'],
-  }),
-}))
+  }))
+})
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+    isLoadingCurrentWorkspace: false,
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: ['app.create_and_management'],
+  }))
+})
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+    isLoadingCurrentWorkspace: false,
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: ['app.create_and_management'],
+  }))
+})
 
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowAccountSettingModal: mockSetShowAccountSettingModal,
-  }),
-}))
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+})
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
@@ -76,21 +85,22 @@ vi.mock('@/context/provider-context', () => ({
 }))
 
 vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
-    appDetail: {
-      id: 'app-1',
-      model_config: {
-        updated_at: 1710000000,
+  useStore: (selector: (state: Record<string, unknown>) => unknown) =>
+    selector({
+      appDetail: {
+        id: 'app-1',
+        model_config: {
+          updated_at: 1710000000,
+        },
+        mode: AppModeEnum.CHAT,
+        permission_keys: mockAppPermissionKeys,
       },
-      mode: AppModeEnum.CHAT,
-      permission_keys: mockAppPermissionKeys,
-    },
-    showAppConfigureFeaturesModal: false,
-    setShowAppConfigureFeaturesModal: mockSetShowAppConfigureFeaturesModal,
-  }),
+      showAppConfigureFeaturesModal: false,
+      setShowAppConfigureFeaturesModal: mockSetShowAppConfigureFeaturesModal,
+    }),
 }))
 
-vi.mock('@/app/components/main-nav/storage', () => ({
+vi.mock('@/app/components/detail-sidebar/storage', () => ({
   useSetDetailSidebarMode: () => mockSetDetailSidebarMode,
 }))
 
@@ -177,7 +187,8 @@ vi.mock('@/service/datasets', () => ({
 }))
 
 vi.mock('@/utils/completion-params', () => ({
-  fetchAndMergeValidCompletionParams: (...args: unknown[]) => mockFetchAndMergeValidCompletionParams(...args),
+  fetchAndMergeValidCompletionParams: (...args: unknown[]) =>
+    mockFetchAndMergeValidCompletionParams(...args),
 }))
 
 describe('useConfiguration', () => {
@@ -285,9 +296,11 @@ describe('useConfiguration', () => {
       await result.current.appPublisherProps.onPublish!(undefined, result.current.featuresData)
     })
 
-    expect(updateAppModelConfig).toHaveBeenCalledWith(expect.objectContaining({
-      url: '/apps/app-1/model-config',
-    }))
+    expect(updateAppModelConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: '/apps/app-1/model-config',
+      }),
+    )
   })
 
   it('should block publishing when app release permission is missing', async () => {
@@ -371,9 +384,11 @@ describe('useConfiguration', () => {
       await result.current.appPublisherProps.onPublish!(undefined, result.current.featuresData)
     })
 
-    expect(updateAppModelConfig).toHaveBeenCalledWith(expect.objectContaining({
-      url: '/apps/app-1/model-config',
-    }))
+    expect(updateAppModelConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: '/apps/app-1/model-config',
+      }),
+    )
   })
 
   it('should expose derived feature flags and imperative callbacks', async () => {
@@ -454,8 +469,15 @@ describe('useConfiguration', () => {
     act(() => {
       result.current.onFeaturesChange(undefined as never)
       result.current.onFeaturesChange({ moreLikeThis: { enabled: true } } as never)
-      result.current.onAutoAddPromptVariable([{ key: 'city', name: 'City', type: 'string', required: true } as never])
-      result.current.onAgentSettingChange({ enabled: true, max_iteration: 5, strategy: 'react', tools: [] } as never)
+      result.current.onAutoAddPromptVariable([
+        { key: 'city', name: 'City', type: 'string', required: true } as never,
+      ])
+      result.current.onAgentSettingChange({
+        enabled: true,
+        max_iteration: 5,
+        strategy: 'react',
+        tools: [],
+      } as never)
       result.current.onEnableMultipleModelDebug()
       result.current.setShowUseGPT4Confirm(true)
       result.current.onConfirmUseGPT4()
@@ -470,7 +492,7 @@ describe('useConfiguration', () => {
     expect(mockFormattingChangedDispatcher).toHaveBeenCalled()
     expect(mockHandleMultipleModelConfigsChange).toHaveBeenCalled()
     expect(mockSetDetailSidebarMode).toHaveBeenCalledWith('collapse')
-    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'provider' })
+    expect(mockSetSettingsDestination).toHaveBeenCalledWith('provider')
     expect(mockSetConversationHistoriesRole).toHaveBeenCalledWith({
       assistant_prefix: 'bot',
       user_prefix: 'user',

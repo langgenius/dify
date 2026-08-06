@@ -13,7 +13,10 @@ export const timeOfDayToDayjs = (timeOfDay: number): Dayjs => {
   return res
 }
 
-export const convertLocalSecondsToUTCDaySeconds = (secondsInDay: number, localTimezone: string): number => {
+export const convertLocalSecondsToUTCDaySeconds = (
+  secondsInDay: number,
+  localTimezone: string,
+): number => {
   const localDayStart = dayjs().tz(localTimezone).startOf('day')
   const localTargetTime = localDayStart.add(secondsInDay, 'second')
   const utcTargetTime = localTargetTime.utc()
@@ -23,12 +26,14 @@ export const convertLocalSecondsToUTCDaySeconds = (secondsInDay: number, localTi
 }
 
 export const dayjsToTimeOfDay = (date?: Dayjs): number => {
-  if (!date)
-    return 0
+  if (!date) return 0
   return date.hour() * 3600 + date.minute() * 60
 }
 
-export const convertUTCDaySecondsToLocalSeconds = (utcDaySeconds: number, localTimezone: string): number => {
+export const convertUTCDaySecondsToLocalSeconds = (
+  utcDaySeconds: number,
+  localTimezone: string,
+): number => {
   const utcDayStart = dayjs().utc().startOf('day')
   const utcTargetTime = utcDayStart.add(utcDaySeconds, 'second')
   const localTargetTime = utcTargetTime.tz(localTimezone)

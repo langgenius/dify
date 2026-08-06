@@ -42,7 +42,10 @@ describe('extractFunctionParams', () => {
     })
 
     it('extracts multiple parameters', () => {
-      const result = extractFunctionParams(SAMPLE_CODES.python3.multipleParams, CodeLanguage.python3)
+      const result = extractFunctionParams(
+        SAMPLE_CODES.python3.multipleParams,
+        CodeLanguage.python3,
+      )
       expect(result).toEqual(['param1', 'param2', 'param3'])
     })
 
@@ -60,27 +63,42 @@ describe('extractFunctionParams', () => {
   // JavaScript のテストケース
   describe('JavaScript', () => {
     it('handles no parameters', () => {
-      const result = extractFunctionParams(SAMPLE_CODES.javascript.noParams, CodeLanguage.javascript)
+      const result = extractFunctionParams(
+        SAMPLE_CODES.javascript.noParams,
+        CodeLanguage.javascript,
+      )
       expect(result).toEqual([])
     })
 
     it('extracts single parameter', () => {
-      const result = extractFunctionParams(SAMPLE_CODES.javascript.singleParam, CodeLanguage.javascript)
+      const result = extractFunctionParams(
+        SAMPLE_CODES.javascript.singleParam,
+        CodeLanguage.javascript,
+      )
       expect(result).toEqual(['param1'])
     })
 
     it('extracts multiple parameters', () => {
-      const result = extractFunctionParams(SAMPLE_CODES.javascript.multipleParams, CodeLanguage.javascript)
+      const result = extractFunctionParams(
+        SAMPLE_CODES.javascript.multipleParams,
+        CodeLanguage.javascript,
+      )
       expect(result).toEqual(['param1', 'param2', 'param3'])
     })
 
     it('handles comments in code', () => {
-      const result = extractFunctionParams(SAMPLE_CODES.javascript.withComments, CodeLanguage.javascript)
+      const result = extractFunctionParams(
+        SAMPLE_CODES.javascript.withComments,
+        CodeLanguage.javascript,
+      )
       expect(result).toEqual(['param1', 'param2'])
     })
 
     it('handles whitespace', () => {
-      const result = extractFunctionParams(SAMPLE_CODES.javascript.withSpaces, CodeLanguage.javascript)
+      const result = extractFunctionParams(
+        SAMPLE_CODES.javascript.withSpaces,
+        CodeLanguage.javascript,
+      )
       expect(result).toEqual(['param1', 'param2'])
     })
   })
@@ -175,7 +193,6 @@ function main(name, age, city) {
         }
     };
 }`,
-
   },
 }
 
@@ -183,7 +200,10 @@ describe('extractReturnType', () => {
   // Python3 のテスト
   describe('Python3', () => {
     it('extracts single return value', () => {
-      const result = extractReturnType(RETURN_TYPE_SAMPLES.python3.singleReturn, CodeLanguage.python3)
+      const result = extractReturnType(
+        RETURN_TYPE_SAMPLES.python3.singleReturn,
+        CodeLanguage.python3,
+      )
       expect(result).toEqual({
         result: {
           type: VarType.string,
@@ -193,7 +213,10 @@ describe('extractReturnType', () => {
     })
 
     it('extracts multiple return values', () => {
-      const result = extractReturnType(RETURN_TYPE_SAMPLES.python3.multipleReturns, CodeLanguage.python3)
+      const result = extractReturnType(
+        RETURN_TYPE_SAMPLES.python3.multipleReturns,
+        CodeLanguage.python3,
+      )
       expect(result).toEqual({
         result: {
           type: VarType.string,
@@ -212,7 +235,10 @@ describe('extractReturnType', () => {
     })
 
     it('handles complex return statement', () => {
-      const result = extractReturnType(RETURN_TYPE_SAMPLES.python3.complexReturn, CodeLanguage.python3)
+      const result = extractReturnType(
+        RETURN_TYPE_SAMPLES.python3.complexReturn,
+        CodeLanguage.python3,
+      )
       expect(result).toEqual({
         result: {
           type: VarType.string,
@@ -229,7 +255,10 @@ describe('extractReturnType', () => {
       })
     })
     it('handles nested object structure', () => {
-      const result = extractReturnType(RETURN_TYPE_SAMPLES.python3.nestedObject, CodeLanguage.python3)
+      const result = extractReturnType(
+        RETURN_TYPE_SAMPLES.python3.nestedObject,
+        CodeLanguage.python3,
+      )
       expect(result).toEqual({
         personal_info: {
           type: VarType.string,
@@ -250,7 +279,10 @@ describe('extractReturnType', () => {
   // JavaScript のテスト
   describe('JavaScript', () => {
     it('extracts single return value', () => {
-      const result = extractReturnType(RETURN_TYPE_SAMPLES.javascript.singleReturn, CodeLanguage.javascript)
+      const result = extractReturnType(
+        RETURN_TYPE_SAMPLES.javascript.singleReturn,
+        CodeLanguage.javascript,
+      )
       expect(result).toEqual({
         result: {
           type: VarType.string,
@@ -260,7 +292,10 @@ describe('extractReturnType', () => {
     })
 
     it('extracts multiple return values', () => {
-      const result = extractReturnType(RETURN_TYPE_SAMPLES.javascript.multipleReturns, CodeLanguage.javascript)
+      const result = extractReturnType(
+        RETURN_TYPE_SAMPLES.javascript.multipleReturns,
+        CodeLanguage.javascript,
+      )
       expect(result).toEqual({
         result: {
           type: VarType.string,
@@ -274,7 +309,10 @@ describe('extractReturnType', () => {
     })
 
     it('handles return with parentheses', () => {
-      const result = extractReturnType(RETURN_TYPE_SAMPLES.javascript.withParentheses, CodeLanguage.javascript)
+      const result = extractReturnType(
+        RETURN_TYPE_SAMPLES.javascript.withParentheses,
+        CodeLanguage.javascript,
+      )
       expect(result).toEqual({
         result: {
           type: VarType.string,
@@ -288,12 +326,18 @@ describe('extractReturnType', () => {
     })
 
     it('returns empty object when no return statement', () => {
-      const result = extractReturnType(RETURN_TYPE_SAMPLES.javascript.noReturn, CodeLanguage.javascript)
+      const result = extractReturnType(
+        RETURN_TYPE_SAMPLES.javascript.noReturn,
+        CodeLanguage.javascript,
+      )
       expect(result).toEqual({})
     })
 
     it('handles quoted keys', () => {
-      const result = extractReturnType(RETURN_TYPE_SAMPLES.javascript.withQuotes, CodeLanguage.javascript)
+      const result = extractReturnType(
+        RETURN_TYPE_SAMPLES.javascript.withQuotes,
+        CodeLanguage.javascript,
+      )
       expect(result).toEqual({
         result: {
           type: VarType.string,
@@ -306,7 +350,10 @@ describe('extractReturnType', () => {
       })
     })
     it('handles nested object structure', () => {
-      const result = extractReturnType(RETURN_TYPE_SAMPLES.javascript.nestedObject, CodeLanguage.javascript)
+      const result = extractReturnType(
+        RETURN_TYPE_SAMPLES.javascript.nestedObject,
+        CodeLanguage.javascript,
+      )
       expect(result).toEqual({
         personal_info: {
           type: VarType.string,

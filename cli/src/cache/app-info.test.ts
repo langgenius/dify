@@ -2,7 +2,7 @@ import type { AppMeta } from '@/types/app-meta'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import yaml from 'js-yaml'
+import { dump, load } from 'js-yaml'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { ENV_CACHE_DIR } from '@/store/dir'
 import { CACHE_APP_INFO, cachePath, getCache } from '@/store/manager'
@@ -40,10 +40,8 @@ describe('app-info disk cache', () => {
     process.env[ENV_CACHE_DIR] = dir
   })
   afterEach(async () => {
-    if (prevCacheDir === undefined)
-      delete process.env[ENV_CACHE_DIR]
-    else
-      process.env[ENV_CACHE_DIR] = prevCacheDir
+    if (prevCacheDir === undefined) delete process.env[ENV_CACHE_DIR]
+    else process.env[ENV_CACHE_DIR] = prevCacheDir
     await rm(dir, { recursive: true, force: true })
   })
 
@@ -91,8 +89,7 @@ describe('app-info disk cache', () => {
     await c.set('h', 'app-1', metaInfoOnly())
     const { stat } = await import('node:fs/promises')
     const s = await stat(appInfoPath(dir))
-    if (platform() !== 'win32')
-      expect(s.mode & 0o777).toBe(0o600)
+    if (platform() !== 'win32') expect(s.mode & 0o777).toBe(0o600)
   })
 
   it('missing cache file is not an error', async () => {
@@ -112,9 +109,11 @@ describe('app-info disk cache', () => {
     await seed.set('h', 'app-2', metaInfoOnly('app-2'))
 
     // Inject a corrupt sibling alongside the real one.
-    const file = yaml.load(await readFile(appInfoPath(dir), 'utf8')) as { entries: Record<string, unknown> }
+    const file = load(await readFile(appInfoPath(dir), 'utf8')) as {
+      entries: Record<string, unknown>
+    }
     file.entries['h::app-1'] = 'corrupted-string-not-object'
-    await writeFile(appInfoPath(dir), yaml.dump(file), 'utf8')
+    await writeFile(appInfoPath(dir), dump(file), 'utf8')
 
     const c = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     expect(c.get('h', 'app-1')).toBeUndefined()
@@ -122,7 +121,7 @@ describe('app-info disk cache', () => {
   })
 
   it('treats a non-object entries map as empty', async () => {
-    await writeFile(appInfoPath(dir), yaml.dump({ entries: 'not-an-object' }), 'utf8')
+    await writeFile(appInfoPath(dir), dump({ entries: 'not-an-object' }), 'utf8')
     const c = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     expect(c.get('h', 'app-1')).toBeUndefined()
   })
@@ -137,7 +136,7 @@ describe('app-info disk cache', () => {
     }
     await c.set('h', 'app-1', slim)
     const raw = await readFile(appInfoPath(dir), 'utf8')
-    const parsed = yaml.load(raw) as { entries: Record<string, unknown> }
+    const parsed = load(raw) as { entries: Record<string, unknown> }
     expect(Object.keys(parsed.entries)).toHaveLength(1)
   })
 })

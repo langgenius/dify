@@ -1,16 +1,28 @@
 'use client'
 
-import type { AgentConfigSnapshotDetailResponse, AgentConfigSnapshotSummaryResponse } from '@dify/contracts/api/console/agent/types.gen'
+import type {
+  AgentConfigSnapshotDetailResponse,
+  AgentConfigSnapshotSummaryResponse,
+} from '@dify/contracts/api/console/agent/types.gen'
 import type { ReactNode } from 'react'
-import type { DefaultModel, Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { AgentBuildDraftChangedKey } from './build-draft-changes-context'
+import type { Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { AgentComposerModel } from '@/features/agent-v2/agent-composer/form-state'
 import { cn } from '@langgenius/dify-ui/cn'
-import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
+import {
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AgentOrchestrateAddActionsProvider } from './add-actions'
 import { AgentAdvancedSettings } from './advanced'
 import { AgentOrchestrateBottomActions } from './bottom-actions'
-import { AgentDriveApiContextProvider } from './drive-context'
+import { AgentBuildDraftChangedKeysProvider } from './build-draft-changes-context'
+import { AgentConfigApiContextProvider } from './config-context'
 import { AgentFiles } from './files'
 import { AgentOrchestrateHeader } from './header'
 import { AgentKnowledgeRetrieval } from './knowledge'
@@ -21,48 +33,47 @@ import { AgentOrchestrateReadOnlyContext } from './read-only-context'
 import { AgentSkills } from './skills'
 import { AgentTools } from './tools'
 
+const EMPTY_BUILD_DRAFT_CHANGED_KEYS: readonly AgentBuildDraftChangedKey[] = []
+
 type AgentOrchestratePanelProps = {
   agentId: string
   appId?: string
   nodeId?: string
-  activeConfigIsPublished?: boolean
-  activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
   agentSoulConfig?: AgentConfigSnapshotDetailResponse['config_snapshot']
   agentName?: string | null
-  currentModel?: DefaultModel
+  currentModel?: AgentComposerModel
   textGenerationModelList: Model[]
-  draftSavedAt?: number
   isPublishing?: boolean
   className?: string
   readOnly?: boolean
   selectedVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
   isBuildDraftActive?: boolean
+  buildDraftChangedKeys?: readonly AgentBuildDraftChangedKey[]
   showHeader?: boolean
   showPublishBar?: boolean
   headerAction?: ReactNode
   bottomAction?: ReactNode
-  onSelectModel: (model: DefaultModel) => void
-  onPublish: () => void | Promise<void>
+  onSelectModel: (model: AgentComposerModel) => void
+  onPublish?: () => void | Promise<void>
   onExitVersions?: () => void
-  onOpenVersions: () => void
+  onOpenVersions?: () => void
+  onVersionRestored?: () => void | Promise<void>
 }
 
 export function AgentOrchestratePanel({
   agentId,
   appId,
   nodeId,
-  activeConfigIsPublished,
-  activeConfigSnapshot,
   agentSoulConfig: _agentSoulConfig,
   agentName,
   currentModel,
   textGenerationModelList,
-  draftSavedAt,
   isPublishing,
   className,
   readOnly = false,
   selectedVersionSnapshot,
   isBuildDraftActive = false,
+  buildDraftChangedKeys = [],
   showHeader = true,
   showPublishBar = true,
   headerAction,
@@ -71,82 +82,107 @@ export function AgentOrchestratePanel({
   onPublish,
   onExitVersions,
   onOpenVersions,
+  onVersionRestored,
 }: AgentOrchestratePanelProps) {
   const { t } = useTranslation('agentV2')
   const orchestrateHeadingId = 'agent-configure-orchestrate-heading'
-  const orchestrateLabel = t('agentDetail.configure.title')
-  const orchestrateBottomAction = bottomAction ?? (showPublishBar
-    ? (
-        <AgentConfigurePublishBar
-          agentId={agentId}
-          activeConfigIsPublished={activeConfigIsPublished}
-          activeConfigSnapshot={activeConfigSnapshot}
-          agentName={agentName}
-          draftSavedAt={draftSavedAt}
-          isPublishing={isPublishing}
-          selectedVersionSnapshot={selectedVersionSnapshot}
-          onPublish={onPublish}
-          onExitVersions={onExitVersions}
-          onOpenVersions={onOpenVersions}
-        />
-      )
-    : null)
+  const orchestrateLabel = t(($) => $['agentDetail.configure.title'])
+  const orchestrateBottomAction =
+    bottomAction ??
+    (showPublishBar ? (
+      <AgentConfigurePublishBar
+        agentId={agentId}
+        agentName={agentName}
+        isPublishing={isPublishing}
+        selectedVersionSnapshot={selectedVersionSnapshot}
+        onPublish={onPublish}
+        onExitVersions={onExitVersions}
+        onOpenVersions={onOpenVersions}
+        onVersionRestored={onVersionRestored}
+      />
+    ) : null)
   const hasBottomAction = !!orchestrateBottomAction
-  const driveApiContext = useMemo(() => appId && nodeId
-    ? {
-        agentId,
-        workflow: {
-          appId,
-          nodeId,
-        },
-      }
-    : { agentId }, [agentId, appId, nodeId])
+  const draftType = isBuildDraftActive ? ('debug_build' as const) : ('draft' as const)
+  const configApiContext = useMemo(
+    () =>
+      appId && nodeId
+        ? {
+            agentId,
+            draftType,
+            versionId: selectedVersionSnapshot?.id ?? undefined,
+            workflow: {
+              appId,
+              nodeId,
+            },
+          }
+        : {
+            agentId,
+            draftType,
+            versionId: selectedVersionSnapshot?.id ?? undefined,
+          },
+    [agentId, appId, draftType, nodeId, selectedVersionSnapshot?.id],
+  )
 
   return (
-    <div className={cn('relative flex max-w-140 min-w-90 flex-[0_0_min(41.08280255%,560px)] flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg', className)}>
-      {showHeader && <AgentOrchestrateHeader headingId={orchestrateHeadingId} trailingAction={headerAction} isBuildDraftActive={isBuildDraftActive} />}
+    <div
+      className={cn(
+        'relative flex max-w-140 min-w-90 flex-[0_0_min(41.08280255%,560px)] flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg',
+        className,
+      )}
+    >
+      {showHeader && (
+        <AgentOrchestrateHeader
+          headingId={orchestrateHeadingId}
+          trailingAction={headerAction}
+          isBuildDraftActive={isBuildDraftActive}
+        />
+      )}
 
       <AgentOrchestrateReadOnlyContext value={readOnly}>
-        <div
-          aria-readonly={readOnly}
-          className="flex min-h-0 flex-1 flex-col"
-        >
-          <ScrollArea
-            className="min-h-0 flex-1 overflow-hidden"
-            label={showHeader ? undefined : orchestrateLabel}
-            labelledBy={showHeader ? orchestrateHeadingId : undefined}
-            slotClassNames={{
-              viewport: 'overscroll-contain',
-              content: cn('min-h-full px-4 py-3', hasBottomAction && 'pb-20'),
-              scrollbar: hasBottomAction ? 'z-20' : undefined,
-            }}
-          >
-            <AgentDriveApiContextProvider value={driveApiContext}>
-              <AgentOrchestrateAddActionsProvider>
-                <AgentModelField
-                  currentModel={currentModel}
-                  textGenerationModelList={textGenerationModelList}
-                  onSelect={onSelectModel}
-                />
-                <AgentPromptEditor />
-                <AgentSkills />
-                <AgentFiles />
-                <AgentTools />
-                <AgentKnowledgeRetrieval />
-                <AgentAdvancedSettings />
-              </AgentOrchestrateAddActionsProvider>
-            </AgentDriveApiContextProvider>
+        <div aria-readonly={readOnly} className="flex min-h-0 flex-1 flex-col">
+          <ScrollArea className="min-h-0 flex-1 overflow-hidden">
+            <ScrollAreaViewport
+              aria-label={showHeader ? undefined : orchestrateLabel}
+              aria-labelledby={showHeader ? orchestrateHeadingId : undefined}
+              className="overscroll-contain"
+              role="region"
+            >
+              <ScrollAreaContent className={cn('min-h-full px-4 py-3', hasBottomAction && 'pb-20')}>
+                <AgentConfigApiContextProvider value={configApiContext}>
+                  <AgentOrchestrateAddActionsProvider>
+                    <AgentBuildDraftChangedKeysProvider
+                      changedKeys={
+                        isBuildDraftActive ? buildDraftChangedKeys : EMPTY_BUILD_DRAFT_CHANGED_KEYS
+                      }
+                    >
+                      <AgentModelField
+                        currentModel={currentModel}
+                        textGenerationModelList={textGenerationModelList}
+                        onSelect={onSelectModel}
+                      />
+                      <AgentPromptEditor />
+                      <AgentSkills />
+                      <AgentFiles />
+                      <AgentTools />
+                      <AgentKnowledgeRetrieval />
+                      <AgentAdvancedSettings />
+                    </AgentBuildDraftChangedKeysProvider>
+                  </AgentOrchestrateAddActionsProvider>
+                </AgentConfigApiContextProvider>
+              </ScrollAreaContent>
+            </ScrollAreaViewport>
+            <ScrollAreaScrollbar className={hasBottomAction ? 'z-20' : undefined}>
+              <ScrollAreaThumb />
+            </ScrollAreaScrollbar>
           </ScrollArea>
         </div>
       </AgentOrchestrateReadOnlyContext>
 
-      {orchestrateBottomAction
-        ? (
-            <AgentOrchestrateBottomActions>
-              {orchestrateBottomAction}
-            </AgentOrchestrateBottomActions>
-          )
-        : null}
+      {orchestrateBottomAction ? (
+        <AgentOrchestrateBottomActions shrinkOnOpen={!bottomAction}>
+          {orchestrateBottomAction}
+        </AgentOrchestrateBottomActions>
+      ) : null}
     </div>
   )
 }

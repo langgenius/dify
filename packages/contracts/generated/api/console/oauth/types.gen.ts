@@ -40,6 +40,7 @@ export type OAuthClientPayload = {
 export type OAuthProviderAccountResponse = {
   avatar?: string | null
   email: string
+  id: string
   interface_language: string
   name: string
   timezone: string
@@ -84,8 +85,8 @@ export type GetOauthDataSourceBindingByProviderResponses = {
   200: OAuthDataSourceBindingResponse
 }
 
-export type GetOauthDataSourceBindingByProviderResponse
-  = GetOauthDataSourceBindingByProviderResponses[keyof GetOauthDataSourceBindingByProviderResponses]
+export type GetOauthDataSourceBindingByProviderResponse =
+  GetOauthDataSourceBindingByProviderResponses[keyof GetOauthDataSourceBindingByProviderResponses]
 
 export type GetOauthDataSourceByProviderData = {
   body?: never
@@ -105,8 +106,8 @@ export type GetOauthDataSourceByProviderResponses = {
   200: OAuthDataSourceResponse
 }
 
-export type GetOauthDataSourceByProviderResponse
-  = GetOauthDataSourceByProviderResponses[keyof GetOauthDataSourceByProviderResponses]
+export type GetOauthDataSourceByProviderResponse =
+  GetOauthDataSourceByProviderResponses[keyof GetOauthDataSourceByProviderResponses]
 
 export type GetOauthDataSourceByProviderByBindingIdSyncData = {
   body?: never
@@ -126,8 +127,8 @@ export type GetOauthDataSourceByProviderByBindingIdSyncResponses = {
   200: OAuthDataSourceSyncResponse
 }
 
-export type GetOauthDataSourceByProviderByBindingIdSyncResponse
-  = GetOauthDataSourceByProviderByBindingIdSyncResponses[keyof GetOauthDataSourceByProviderByBindingIdSyncResponses]
+export type GetOauthDataSourceByProviderByBindingIdSyncResponse =
+  GetOauthDataSourceByProviderByBindingIdSyncResponses[keyof GetOauthDataSourceByProviderByBindingIdSyncResponses]
 
 export type GetOauthPluginByProviderIdDatasourceGetAuthorizationUrlData = {
   body?: never
@@ -144,8 +145,8 @@ export type GetOauthPluginByProviderIdDatasourceGetAuthorizationUrlResponses = {
   200: PluginOAuthAuthorizationUrlResponse
 }
 
-export type GetOauthPluginByProviderIdDatasourceGetAuthorizationUrlResponse
-  = GetOauthPluginByProviderIdDatasourceGetAuthorizationUrlResponses[keyof GetOauthPluginByProviderIdDatasourceGetAuthorizationUrlResponses]
+export type GetOauthPluginByProviderIdDatasourceGetAuthorizationUrlResponse =
+  GetOauthPluginByProviderIdDatasourceGetAuthorizationUrlResponses[keyof GetOauthPluginByProviderIdDatasourceGetAuthorizationUrlResponses]
 
 export type GetOauthPluginByProviderToolAuthorizationUrlData = {
   body?: never
@@ -160,8 +161,8 @@ export type GetOauthPluginByProviderToolAuthorizationUrlResponses = {
   200: PluginOAuthAuthorizationUrlResponse
 }
 
-export type GetOauthPluginByProviderToolAuthorizationUrlResponse
-  = GetOauthPluginByProviderToolAuthorizationUrlResponses[keyof GetOauthPluginByProviderToolAuthorizationUrlResponses]
+export type GetOauthPluginByProviderToolAuthorizationUrlResponse =
+  GetOauthPluginByProviderToolAuthorizationUrlResponses[keyof GetOauthPluginByProviderToolAuthorizationUrlResponses]
 
 export type PostOauthProviderData = {
   body: OAuthProviderRequest
@@ -187,8 +188,8 @@ export type PostOauthProviderAccountResponses = {
   200: OAuthProviderAccountResponse
 }
 
-export type PostOauthProviderAccountResponse
-  = PostOauthProviderAccountResponses[keyof PostOauthProviderAccountResponses]
+export type PostOauthProviderAccountResponse =
+  PostOauthProviderAccountResponses[keyof PostOauthProviderAccountResponses]
 
 export type PostOauthProviderAuthorizeData = {
   body: OAuthClientPayload
@@ -201,8 +202,8 @@ export type PostOauthProviderAuthorizeResponses = {
   200: OAuthProviderAuthorizeResponse
 }
 
-export type PostOauthProviderAuthorizeResponse
-  = PostOauthProviderAuthorizeResponses[keyof PostOauthProviderAuthorizeResponses]
+export type PostOauthProviderAuthorizeResponse =
+  PostOauthProviderAuthorizeResponses[keyof PostOauthProviderAuthorizeResponses]
 
 export type PostOauthProviderTokenData = {
   body: OAuthTokenRequest
@@ -215,5 +216,5 @@ export type PostOauthProviderTokenResponses = {
   200: OAuthProviderTokenResponse
 }
 
-export type PostOauthProviderTokenResponse
-  = PostOauthProviderTokenResponses[keyof PostOauthProviderTokenResponses]
+export type PostOauthProviderTokenResponse =
+  PostOauthProviderTokenResponses[keyof PostOauthProviderTokenResponses]

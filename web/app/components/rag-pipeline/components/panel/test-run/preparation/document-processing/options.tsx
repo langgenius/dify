@@ -12,7 +12,13 @@ type OptionsProps = {
   CustomActions: (props: CustomActionsProps) => React.JSX.Element
   onSubmit: (data: Record<string, any>) => void
 }
-const Options = ({ initialData, configurations, schema, CustomActions, onSubmit }: OptionsProps) => {
+const Options = ({
+  initialData,
+  configurations,
+  schema,
+  CustomActions,
+  onSubmit,
+}: OptionsProps) => {
   const form = useAppForm({
     defaultValues: initialData,
     validators: {

@@ -8,7 +8,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Spinner used while fetching data (`area`) or bootstrapping the full application shell (`app`).',
+        component:
+          'Spinner used while fetching data (`area`) or bootstrapping the full application shell (`app`).',
       },
     },
   },

@@ -9,14 +9,11 @@ const mocks = vi.hoisted(() => ({
   }),
 }))
 
-vi.mock('@/context/query-client-server', () => ({
-  getQueryClientServer: () => ({
+vi.mock('@/features/system-features/server', () => ({
+  getSystemFeaturesQueryClient: () => ({
     ensureQueryData: mocks.ensureQueryData,
   }),
-}))
-
-vi.mock('@/features/system-features/server', () => ({
-  serverSystemFeaturesQueryOptions: () => mocks.systemFeaturesQueryOptions,
+  systemFeaturesServerQueryOptions: () => mocks.systemFeaturesQueryOptions,
 }))
 
 vi.mock('@/features/deployments/deploy-drawer', () => ({
@@ -52,9 +49,11 @@ describe('DeploymentsLayout', () => {
     mocks.ensureQueryData.mockResolvedValue({ enable_app_deploy: false })
     const { default: DeploymentsLayout } = await import('../layout')
 
-    await expect(DeploymentsLayout({
-      children: <div>Deployments content</div>,
-    })).rejects.toThrow('NEXT_NOT_FOUND')
+    await expect(
+      DeploymentsLayout({
+        children: <div>Deployments content</div>,
+      }),
+    ).rejects.toThrow('NEXT_NOT_FOUND')
 
     expect(mocks.notFound).toHaveBeenCalledTimes(1)
   })

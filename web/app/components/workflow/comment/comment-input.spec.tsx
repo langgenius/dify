@@ -1,6 +1,7 @@
 import type { FC } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { render } from '@/test/console/render'
 import { CommentInput } from './comment-input'
 
 type MentionInputProps = {
@@ -13,32 +14,31 @@ type MentionInputProps = {
   className?: string
 }
 
-const stableT = (key: string, options?: { ns?: string }) => (
+const stableT = (key: string, options?: { ns?: string }) =>
   options?.ns ? `${options.ns}.${key}` : key
-)
 
 let mentionInputProps: MentionInputProps | null = null
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: stableT,
-  }),
+const mockConsoleState = vi.hoisted(() => ({
+  userProfile: {
+    id: 'user-1',
+    name: 'Alice',
+    avatar_url: 'avatar',
+  },
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    userProfile: {
-      id: 'user-1',
-      name: 'Alice',
-      avatar_url: 'avatar',
-    },
-  }),
-}))
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return {
+    useTranslation: () => ({
+      t: withSelectorKey(stableT),
+    }),
+  }
+})
 
-vi.mock('@langgenius/dify-ui/avatar', () => ({
-  Avatar: ({ name }: { name: string }) => <div data-testid="avatar">{name}</div>,
-  default: ({ name }: { name: string }) => <div data-testid="avatar">{name}</div>,
-}))
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => mockConsoleState)
+})
 
 vi.mock('./mention-input', () => ({
   MentionInput: ((props: MentionInputProps) => {
@@ -62,13 +62,7 @@ describe('CommentInput', () => {
   })
 
   it('passes translated placeholder to mention input', () => {
-    render(
-      <CommentInput
-        position={{ x: 0, y: 0 }}
-        onSubmit={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-    )
+    render(<CommentInput position={{ x: 0, y: 0 }} onSubmit={vi.fn()} onCancel={vi.fn()} />)
 
     expect(mentionInputProps?.placeholder).toBe('workflow.comments.placeholder.add')
     expect(mentionInputProps?.autoFocus).toBe(true)
@@ -78,13 +72,7 @@ describe('CommentInput', () => {
   it('calls onCancel when Escape is pressed', () => {
     const onCancel = vi.fn()
 
-    render(
-      <CommentInput
-        position={{ x: 0, y: 0 }}
-        onSubmit={vi.fn()}
-        onCancel={onCancel}
-      />,
-    )
+    render(<CommentInput position={{ x: 0, y: 0 }} onSubmit={vi.fn()} onCancel={onCancel} />)
 
     fireEvent.keyDown(document, { key: 'Escape' })
 
@@ -94,13 +82,7 @@ describe('CommentInput', () => {
   it('forwards mention submit to onSubmit', () => {
     const onSubmit = vi.fn()
 
-    render(
-      <CommentInput
-        position={{ x: 0, y: 0 }}
-        onSubmit={onSubmit}
-        onCancel={vi.fn()}
-      />,
-    )
+    render(<CommentInput position={{ x: 0, y: 0 }} onSubmit={onSubmit} onCancel={vi.fn()} />)
 
     fireEvent.click(screen.getByTestId('mention-input'))
 

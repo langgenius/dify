@@ -1,8 +1,9 @@
 import type { CreateSnippetDialogPayload } from '@/app/components/snippets/create-snippet-dialog'
 import type { SnippetDetail } from '@/models/snippet'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
+import { render } from '@/test/console/render'
 import SnippetInfoDropdown from '../dropdown'
 
 const mockReplace = vi.fn()
@@ -13,14 +14,18 @@ const mockUpdateMutate = vi.fn()
 const mockExportMutateAsync = vi.fn()
 const mockDeleteMutate = vi.fn()
 let mockWorkspacePermissionKeys: string[] = ['snippets.create_and_modify', 'snippets.management']
-let mockDropdownOpen = false
-let mockDropdownOnOpenChange: ((open: boolean) => void) | undefined
-
-vi.mock('@/context/app-context', () => ({
-  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }),
+const mockConsoleState = vi.hoisted(() => ({
+  current: {
+    get workspacePermissionKeys() {
+      return mockWorkspacePermissionKeys
+    },
+  },
 }))
+
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => mockConsoleState.current)
+})
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
@@ -29,7 +34,7 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 vi.mock('@/utils/download', () => ({
-  downloadBlob: (args: { data: Blob, fileName: string }) => mockDownloadBlob(args),
+  downloadBlob: (args: { data: Blob; fileName: string }) => mockDownloadBlob(args),
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -37,52 +42,6 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
     success: (...args: unknown[]) => mockToastSuccess(...args),
     error: (...args: unknown[]) => mockToastError(...args),
   },
-}))
-
-vi.mock('@langgenius/dify-ui/dropdown-menu', () => ({
-  DropdownMenu: ({
-    open,
-    onOpenChange,
-    children,
-  }: {
-    open?: boolean
-    onOpenChange?: (open: boolean) => void
-    children: React.ReactNode
-  }) => {
-    mockDropdownOpen = !!open
-    mockDropdownOnOpenChange = onOpenChange
-    return <div>{children}</div>
-  },
-  DropdownMenuTrigger: ({
-    children,
-    className,
-  }: {
-    children: React.ReactNode
-    className?: string
-  }) => (
-    <button
-      type="button"
-      className={className}
-      onClick={() => mockDropdownOnOpenChange?.(!mockDropdownOpen)}
-    >
-      {children}
-    </button>
-  ),
-  DropdownMenuContent: ({ children }: { children: React.ReactNode }) => (
-    mockDropdownOpen ? <div>{children}</div> : null
-  ),
-  DropdownMenuItem: ({
-    children,
-    onClick,
-  }: {
-    children: React.ReactNode
-    onClick?: () => void
-  }) => (
-    <button type="button" onClick={onClick}>
-      {children}
-    </button>
-  ),
-  DropdownMenuSeparator: () => <hr />,
 }))
 
 vi.mock('@/service/use-snippets', () => ({
@@ -113,7 +72,7 @@ type MockCreateSnippetDialogProps = {
 }
 
 vi.mock('@/app/components/snippets/create-snippet-dialog', () => ({
-  default: ({
+  CreateSnippetDialog: ({
     isOpen,
     title,
     confirmText,
@@ -121,8 +80,7 @@ vi.mock('@/app/components/snippets/create-snippet-dialog', () => ({
     onClose,
     onConfirm,
   }: MockCreateSnippetDialogProps) => {
-    if (!isOpen)
-      return null
+    if (!isOpen) return null
 
     return (
       <div data-testid="create-snippet-dialog">
@@ -132,19 +90,23 @@ vi.mock('@/app/components/snippets/create-snippet-dialog', () => ({
         <div>{initialValue?.description}</div>
         <button
           type="button"
-          onClick={() => onConfirm({
-            name: 'Updated snippet',
-            description: 'Updated description',
-            graph: {
-              nodes: [],
-              edges: [],
-              viewport: { x: 0, y: 0, zoom: 1 },
-            },
-          })}
+          onClick={() =>
+            onConfirm({
+              name: 'Updated snippet',
+              description: 'Updated description',
+              graph: {
+                nodes: [],
+                edges: [],
+                viewport: { x: 0, y: 0, zoom: 1 },
+              },
+            })
+          }
         >
           submit-edit
         </button>
-        <button type="button" onClick={onClose}>close-edit</button>
+        <button type="button" onClick={onClose}>
+          close-edit
+        </button>
       </div>
     )
   },
@@ -164,8 +126,6 @@ describe('SnippetInfoDropdown', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockWorkspacePermissionKeys = ['snippets.create_and_modify', 'snippets.management']
-    mockDropdownOpen = false
-    mockDropdownOnOpenChange = undefined
   })
 
   // Rendering coverage for the menu trigger itself.
@@ -192,7 +152,7 @@ describe('SnippetInfoDropdown', () => {
       await user.click(screen.getByRole('button'))
 
       expect(screen.getByText('snippet.menu.editInfo')).toBeInTheDocument()
-      expect(screen.queryByText('snippet.menu.exportSnippet')).not.toBeInTheDocument()
+      expect(screen.getByText('snippet.menu.exportSnippet')).toBeInTheDocument()
       expect(screen.queryByText('snippet.menu.deleteSnippet')).not.toBeInTheDocument()
 
       unmount()
@@ -201,7 +161,7 @@ describe('SnippetInfoDropdown', () => {
       await user.click(screen.getByRole('button'))
 
       expect(screen.queryByText('snippet.menu.editInfo')).not.toBeInTheDocument()
-      expect(screen.getByText('snippet.menu.exportSnippet')).toBeInTheDocument()
+      expect(screen.queryByText('snippet.menu.exportSnippet')).not.toBeInTheDocument()
       expect(screen.getByText('snippet.menu.deleteSnippet')).toBeInTheDocument()
     })
   })
@@ -210,9 +170,11 @@ describe('SnippetInfoDropdown', () => {
   describe('Edit Snippet', () => {
     it('should open the edit dialog and submit snippet updates', async () => {
       const user = userEvent.setup()
-      mockUpdateMutate.mockImplementation((_variables: unknown, options?: { onSuccess?: () => void }) => {
-        options?.onSuccess?.()
-      })
+      mockUpdateMutate.mockImplementation(
+        (_variables: unknown, options?: { onSuccess?: () => void }) => {
+          options?.onSuccess?.()
+        },
+      )
 
       render(<SnippetInfoDropdown snippet={mockSnippet} />)
       await user.click(screen.getByRole('button'))
@@ -222,20 +184,25 @@ describe('SnippetInfoDropdown', () => {
       expect(screen.getByText('snippet.editDialogTitle')).toBeInTheDocument()
       expect(screen.getByText('common.operation.save')).toBeInTheDocument()
       expect(screen.getByText(mockSnippet.name)).toBeInTheDocument()
+      if (!mockSnippet.description)
+        throw new Error('mockSnippet.description is required for this test')
       expect(screen.getByText(mockSnippet.description)).toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'submit-edit' }))
 
-      expect(mockUpdateMutate).toHaveBeenCalledWith({
-        params: { snippetId: mockSnippet.id },
-        body: {
-          name: 'Updated snippet',
-          description: 'Updated description',
+      expect(mockUpdateMutate).toHaveBeenCalledWith(
+        {
+          params: { snippetId: mockSnippet.id },
+          body: {
+            name: 'Updated snippet',
+            description: 'Updated description',
+          },
         },
-      }, expect.objectContaining({
-        onSuccess: expect.any(Function),
-        onError: expect.any(Function),
-      }))
+        expect.objectContaining({
+          onSuccess: expect.any(Function),
+          onError: expect.any(Function),
+        }),
+      )
       expect(mockToastSuccess).toHaveBeenCalledWith('snippet.editDone')
     })
   })
@@ -244,7 +211,7 @@ describe('SnippetInfoDropdown', () => {
   describe('Export Snippet', () => {
     it('should export and download the snippet yaml', async () => {
       const user = userEvent.setup()
-      mockWorkspacePermissionKeys = ['snippets.management']
+      mockWorkspacePermissionKeys = ['snippets.create_and_modify']
       mockExportMutateAsync.mockResolvedValue('yaml: content')
 
       render(<SnippetInfoDropdown snippet={mockSnippet} />)
@@ -264,7 +231,7 @@ describe('SnippetInfoDropdown', () => {
 
     it('should show an error toast when export fails', async () => {
       const user = userEvent.setup()
-      mockWorkspacePermissionKeys = ['snippets.management']
+      mockWorkspacePermissionKeys = ['snippets.create_and_modify']
       mockExportMutateAsync.mockRejectedValue(new Error('export failed'))
 
       render(<SnippetInfoDropdown snippet={mockSnippet} />)
@@ -282,9 +249,11 @@ describe('SnippetInfoDropdown', () => {
   describe('Delete Snippet', () => {
     it('should confirm deletion and redirect to the snippets list', async () => {
       const user = userEvent.setup()
-      mockDeleteMutate.mockImplementation((_variables: unknown, options?: { onSuccess?: () => void }) => {
-        options?.onSuccess?.()
-      })
+      mockDeleteMutate.mockImplementation(
+        (_variables: unknown, options?: { onSuccess?: () => void }) => {
+          options?.onSuccess?.()
+        },
+      )
 
       render(<SnippetInfoDropdown snippet={mockSnippet} />)
 
@@ -296,12 +265,15 @@ describe('SnippetInfoDropdown', () => {
 
       await user.click(screen.getByRole('button', { name: 'snippet.menu.deleteSnippet' }))
 
-      expect(mockDeleteMutate).toHaveBeenCalledWith({
-        params: { snippetId: mockSnippet.id },
-      }, expect.objectContaining({
-        onSuccess: expect.any(Function),
-        onError: expect.any(Function),
-      }))
+      expect(mockDeleteMutate).toHaveBeenCalledWith(
+        {
+          params: { snippetId: mockSnippet.id },
+        },
+        expect.objectContaining({
+          onSuccess: expect.any(Function),
+          onError: expect.any(Function),
+        }),
+      )
       expect(mockToastSuccess).toHaveBeenCalledWith('snippet.deleted')
       expect(mockReplace).toHaveBeenCalledWith('/snippets')
     })

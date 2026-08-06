@@ -6,7 +6,7 @@ Test objectives:
 2. Verify span attribute mapping correctness
 """
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.otel.decorators.handlers.generate_handler import AppGenerateHandler
@@ -31,6 +31,7 @@ class TestAppGenerateHandler:
         handler = AppGenerateHandler()
 
         kwargs = {
+            "session": MagicMock(),
             "app_model": mock_app_model,
             "user": mock_account_user,
             "args": {"workflow_id": "test-wf-123"},

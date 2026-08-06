@@ -3,9 +3,47 @@
 import * as z from 'zod'
 
 /**
- * GeneratorResponse
+ * WorkflowInstructionSuggestionsPayload
+ *
+ * Payload for the workflow-generator instruction-suggestions endpoint.
+ *
+ * Runs before the user picks a model, so the suggestions come from the
+ * tenant's default model. The underlying generator never raises — an empty
+ * ``suggestions`` list is a valid 200 (soft-fail).
  */
-export const zGeneratorResponse = z.unknown()
+export const zWorkflowInstructionSuggestionsPayload = z.object({
+  count: z.int().gte(1).lte(6).optional().default(4),
+  language: z.string().nullish(),
+  mode: z.enum(['advanced-chat', 'workflow']),
+})
+
+/**
+ * WorkflowInstructionSuggestionsResponse
+ */
+export const zWorkflowInstructionSuggestionsResponse = z.object({
+  suggestions: z.array(z.string()),
+})
+
+/**
+ * WorkflowGraphEdge
+ *
+ * React Flow edge shape with extensible renderer metadata.
+ */
+export const zWorkflowGraphEdge = z.object({
+  id: z.string(),
+  source: z.string(),
+  target: z.string(),
+  type: z.string(),
+})
+
+/**
+ * WorkflowGraphViewport
+ */
+export const zWorkflowGraphViewport = z.object({
+  x: z.number(),
+  y: z.number(),
+  zoom: z.number(),
+})
 
 /**
  * LLMMode
@@ -25,6 +63,101 @@ export const zModelConfig = z.object({
 })
 
 /**
+ * WorkflowGenerateErrorCode
+ */
+export const zWorkflowGenerateErrorCode = z.enum([
+  'DANGLING_EDGE',
+  'DUPLICATE_NODE_ID',
+  'EMPTY_INSTRUCTION',
+  'EMPTY_PLAN',
+  'GRAPH_CYCLE',
+  'INSTRUCTION_TOO_LONG',
+  'INVALID_CONTAINER',
+  'INVALID_JSON',
+  'INVALID_SCHEMA',
+  'MISSING_START',
+  'MISSING_TERMINAL',
+  'MODEL_ERROR',
+  'UNKNOWN_NODE_REFERENCE',
+  'UNKNOWN_TOOL',
+  'UNRESOLVED_REFERENCE',
+])
+
+/**
+ * WorkflowGenerateErrorResponse
+ */
+export const zWorkflowGenerateErrorResponse = z.object({
+  code: zWorkflowGenerateErrorCode,
+  detail: z.string(),
+  node_id: z.string().nullish(),
+})
+
+/**
+ * WorkflowPlanNodeResponse
+ */
+export const zWorkflowPlanNodeResponse = z.object({
+  label: z.string(),
+  node_type: z.string(),
+  purpose: z.string().optional().default(''),
+})
+
+/**
+ * WorkflowPlanStartInputResponse
+ */
+export const zWorkflowPlanStartInputResponse = z.object({
+  label: z.string().optional().default(''),
+  type: z.string().optional().default(''),
+  variable: z.string(),
+})
+
+/**
+ * WorkflowGeneratePlanEventResponse
+ */
+export const zWorkflowGeneratePlanEventResponse = z.object({
+  app_name: z.string().optional().default(''),
+  description: z.string().optional().default(''),
+  event: z.literal('plan').optional().default('plan'),
+  icon: z.string().optional().default(''),
+  mode: z.enum(['advanced-chat', 'workflow']),
+  nodes: z.array(zWorkflowPlanNodeResponse),
+  start_inputs: z.array(zWorkflowPlanStartInputResponse).optional(),
+  title: z.string().optional().default(''),
+})
+
+/**
+ * WorkflowGraphPosition
+ */
+export const zWorkflowGraphPosition = z.object({
+  x: z.number(),
+  y: z.number(),
+})
+
+/**
+ * WorkflowGraphNode
+ *
+ * React Flow node shape accepted and returned by the generator.
+ *
+ * Node-specific configuration lives under ``data`` and wrapper metadata
+ * differs for container children, so unknown wrapper fields must survive
+ * request validation and response serialization.
+ */
+export const zWorkflowGraphNode = z.object({
+  data: z.record(z.string(), z.unknown()),
+  id: z.string(),
+  position: zWorkflowGraphPosition,
+  type: z.string(),
+})
+
+/**
+ * WorkflowGraph
+ */
+export const zWorkflowGraph = z.object({
+  edges: z.array(zWorkflowGraphEdge),
+  nodes: z.array(zWorkflowGraphNode),
+  viewport: zWorkflowGraphViewport,
+})
+
+/**
  * WorkflowGeneratePayload
  *
  * Payload for the cmd+k `/create` and `/refine` workflow generator endpoint.
@@ -34,16 +167,67 @@ export const zModelConfig = z.object({
  * can reuse its existing handler.
  */
 export const zWorkflowGeneratePayload = z.object({
-  current_graph: z.record(z.string(), z.unknown()).nullish(),
+  current_graph: zWorkflowGraph.nullish(),
   ideal_output: z.string().optional().default(''),
   instruction: z.string(),
-  mode: z.enum(['advanced-chat', 'workflow']),
+  mode: z.enum(['advanced-chat', 'auto', 'workflow']),
   model_config: zModelConfig,
 })
+
+/**
+ * WorkflowGenerateResponse
+ */
+export const zWorkflowGenerateResponse = z.object({
+  app_name: z.string().optional().default(''),
+  error: z.string().optional().default(''),
+  errors: z.array(zWorkflowGenerateErrorResponse).optional(),
+  graph: zWorkflowGraph,
+  icon: z.string().optional().default(''),
+  message: z.string().optional().default(''),
+  mode: z.enum(['advanced-chat', 'workflow']).nullish(),
+})
+
+/**
+ * WorkflowGenerateResultEventResponse
+ */
+export const zWorkflowGenerateResultEventResponse = z.object({
+  app_name: z.string().optional().default(''),
+  error: z.string().optional().default(''),
+  errors: z.array(zWorkflowGenerateErrorResponse).optional(),
+  event: z.literal('result').optional().default('result'),
+  graph: zWorkflowGraph,
+  icon: z.string().optional().default(''),
+  message: z.string().optional().default(''),
+  mode: z.enum(['advanced-chat', 'workflow']).nullish(),
+})
+
+/**
+ * WorkflowGenerateStreamEventResponse
+ *
+ * Schema for each JSON object carried by an SSE ``data:`` frame.
+ */
+export const zWorkflowGenerateStreamEventResponse = z.union([
+  zWorkflowGeneratePlanEventResponse,
+  zWorkflowGenerateResultEventResponse,
+])
 
 export const zPostWorkflowGenerateBody = zWorkflowGeneratePayload
 
 /**
  * Workflow graph generated successfully
  */
-export const zPostWorkflowGenerateResponse = zGeneratorResponse
+export const zPostWorkflowGenerateResponse = zWorkflowGenerateResponse
+
+export const zPostWorkflowGenerateStreamBody = zWorkflowGeneratePayload
+
+/**
+ * Server-Sent Events stream; each data frame matches this plan/result event schema
+ */
+export const zPostWorkflowGenerateStreamResponse = zWorkflowGenerateStreamEventResponse
+
+export const zPostWorkflowGenerateSuggestionsBody = zWorkflowInstructionSuggestionsPayload
+
+/**
+ * Suggestions generated successfully
+ */
+export const zPostWorkflowGenerateSuggestionsResponse = zWorkflowInstructionSuggestionsResponse

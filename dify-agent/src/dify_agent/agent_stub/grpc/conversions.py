@@ -98,13 +98,19 @@ def file_download_request_from_proto(message: agent_stub_pb2.FileDownloadRequest
         "reference": message.file.reference if message.file.HasField("reference") else None,
         "url": message.file.url if message.file.HasField("url") else None,
     }
-    return AgentStubFileDownloadRequest.model_validate({"file": file_mapping_kwargs})
+    return AgentStubFileDownloadRequest.model_validate(
+        {
+            "file": file_mapping_kwargs,
+            "for_frontend": message.for_frontend if message.HasField("for_frontend") else True,
+        }
+    )
 
 
 def proto_file_download_request(
     pb2_module,
     *,
     file: AgentStubFileMapping,
+    for_frontend: bool = True,
 ) -> agent_stub_pb2.FileDownloadRequest:
     """Build one protobuf file-download request from the public DTO."""
     mapping = pb2_module.FileMapping(transfer_method=file.transfer_method)
@@ -112,7 +118,9 @@ def proto_file_download_request(
         mapping.reference = file.reference
     if file.url is not None:
         mapping.url = file.url
-    return pb2_module.FileDownloadRequest(file=mapping)
+    request = pb2_module.FileDownloadRequest(file=mapping)
+    request.for_frontend = for_frontend
+    return request
 
 
 def file_download_response_from_proto(message: agent_stub_pb2.FileDownloadResponse) -> AgentStubFileDownloadResponse:

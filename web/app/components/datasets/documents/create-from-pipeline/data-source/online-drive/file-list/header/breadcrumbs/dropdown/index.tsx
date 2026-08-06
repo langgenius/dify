@@ -14,20 +14,16 @@ type DropdownProps = {
   onBreadcrumbClick: (index: number) => void
 }
 
-const Dropdown = ({
-  startIndex,
-  breadcrumbs,
-  onBreadcrumbClick,
-}: DropdownProps) => {
+const Dropdown = ({ startIndex, breadcrumbs, onBreadcrumbClick }: DropdownProps) => {
   const { t } = useTranslation()
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        render={(
+        render={
           <button
             type="button"
-            aria-label={t('operation.more', { ns: 'common' })}
+            aria-label={t(($) => $['operation.more'], { ns: 'common' })}
             className={cn(
               'flex size-6 items-center justify-center rounded-md',
               'hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover',
@@ -35,7 +31,7 @@ const Dropdown = ({
           >
             <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
           </button>
-        )}
+        }
       />
       <DropdownMenuContent
         placement="bottom-start"

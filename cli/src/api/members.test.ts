@@ -18,7 +18,7 @@ describe('MembersClient.list', () => {
   })
 
   it('GETs /workspaces/<id>/members and returns parsed envelope', async () => {
-    stub = await startStubServer(cap =>
+    stub = await startStubServer((cap) =>
       jsonResponder(
         200,
         {
@@ -26,12 +26,11 @@ describe('MembersClient.list', () => {
           limit: 20,
           total: 1,
           has_more: false,
-          data: [
-            { id: 'm-1', name: 'Mia', email: 'mia@e.com', role: 'admin', status: 'active' },
-          ],
+          data: [{ id: 'm-1', name: 'Mia', email: 'mia@e.com', role: 'admin', status: 'active' }],
         },
         cap,
-      ))
+      ),
+    )
 
     const result = await makeClient(stub.url).list('ws-1')
 
@@ -41,8 +40,9 @@ describe('MembersClient.list', () => {
   })
 
   it('URL-encodes workspace id', async () => {
-    stub = await startStubServer(cap =>
-      jsonResponder(200, { page: 1, limit: 20, total: 0, has_more: false, data: [] }, cap))
+    stub = await startStubServer((cap) =>
+      jsonResponder(200, { page: 1, limit: 20, total: 0, has_more: false, data: [] }, cap),
+    )
 
     await makeClient(stub.url).list('ws with space')
 
@@ -50,8 +50,9 @@ describe('MembersClient.list', () => {
   })
 
   it('forwards page/limit as query params', async () => {
-    stub = await startStubServer(cap =>
-      jsonResponder(200, { page: 2, limit: 50, total: 0, has_more: false, data: [] }, cap))
+    stub = await startStubServer((cap) =>
+      jsonResponder(200, { page: 2, limit: 50, total: 0, has_more: false, data: [] }, cap),
+    )
 
     await makeClient(stub.url).list('ws-1', { page: 2, limit: 50 })
 
@@ -59,18 +60,18 @@ describe('MembersClient.list', () => {
   })
 
   it('propagates server 403 as classified BaseError', async () => {
-    stub = await startStubServer(cap => jsonResponder(403, { error: 'forbidden' }, cap))
+    stub = await startStubServer((cap) => jsonResponder(403, { error: 'forbidden' }, cap))
 
     await expect(makeClient(stub.url).list('ws-1')).rejects.toSatisfy(
-      err => isHttpClientError(err) && err.httpStatus === 403,
+      (err) => isHttpClientError(err) && err.httpStatus === 403,
     )
   })
 
   it('propagates 404 as classified BaseError', async () => {
-    stub = await startStubServer(cap => jsonResponder(404, { error: 'not found' }, cap))
+    stub = await startStubServer((cap) => jsonResponder(404, { error: 'not found' }, cap))
 
     await expect(makeClient(stub.url).list('ws-missing')).rejects.toSatisfy(
-      err => isHttpClientError(err) && err.httpStatus === 404,
+      (err) => isHttpClientError(err) && err.httpStatus === 404,
     )
   })
 })
@@ -83,7 +84,7 @@ describe('MembersClient.invite', () => {
   })
 
   it('POSTs JSON body and returns parsed invite response', async () => {
-    stub = await startStubServer(cap =>
+    stub = await startStubServer((cap) =>
       jsonResponder(
         201,
         {
@@ -95,7 +96,8 @@ describe('MembersClient.invite', () => {
           tenant_id: 'ws-1',
         },
         cap,
-      ))
+      ),
+    )
 
     const result = await makeClient(stub.url).invite('ws-1', {
       email: 'new@e.com',
@@ -113,11 +115,11 @@ describe('MembersClient.invite', () => {
   })
 
   it('propagates 400 (already in tenant) as classified BaseError', async () => {
-    stub = await startStubServer(cap => jsonResponder(400, { error: 'already in tenant' }, cap))
+    stub = await startStubServer((cap) => jsonResponder(400, { error: 'already in tenant' }, cap))
 
     await expect(
       makeClient(stub.url).invite('ws-1', { email: 'u@e.com', role: 'normal' }),
-    ).rejects.toSatisfy(err => isHttpClientError(err) && err.httpStatus === 400)
+    ).rejects.toSatisfy((err) => isHttpClientError(err) && err.httpStatus === 400)
   })
 })
 
@@ -129,7 +131,7 @@ describe('MembersClient.remove', () => {
   })
 
   it('DELETEs member by id and returns success', async () => {
-    stub = await startStubServer(cap => jsonResponder(200, { result: 'success' }, cap))
+    stub = await startStubServer((cap) => jsonResponder(200, { result: 'success' }, cap))
 
     const result = await makeClient(stub.url).remove('ws-1', 'm-1')
 
@@ -139,10 +141,10 @@ describe('MembersClient.remove', () => {
   })
 
   it('propagates 400 (cannot operate self / cannot remove owner)', async () => {
-    stub = await startStubServer(cap => jsonResponder(400, { error: 'cannot operate self' }, cap))
+    stub = await startStubServer((cap) => jsonResponder(400, { error: 'cannot operate self' }, cap))
 
     await expect(makeClient(stub.url).remove('ws-1', 'm-1')).rejects.toSatisfy(
-      err => isHttpClientError(err) && err.httpStatus === 400,
+      (err) => isHttpClientError(err) && err.httpStatus === 400,
     )
   })
 })
@@ -154,23 +156,23 @@ describe('MembersClient.updateRole', () => {
     await stub?.stop()
   })
 
-  it('PUTs role payload to /role subresource', async () => {
-    stub = await startStubServer(cap => jsonResponder(200, { result: 'success' }, cap))
+  it('PATCHes role payload to the member resource', async () => {
+    stub = await startStubServer((cap) => jsonResponder(200, { result: 'success' }, cap))
 
     const result = await makeClient(stub.url).updateRole('ws-1', 'm-1', { role: 'admin' })
 
-    expect(stub.captured.method).toBe('PUT')
-    expect(stub.captured.url).toBe('/openapi/v1/workspaces/ws-1/members/m-1/role')
+    expect(stub.captured.method).toBe('PATCH')
+    expect(stub.captured.url).toBe('/openapi/v1/workspaces/ws-1/members/m-1')
     expect(JSON.parse(stub.captured.body ?? '{}')).toEqual({ role: 'admin' })
     expect(result.result).toBe('success')
   })
 
   it('propagates 400 (admin cannot demote owner)', async () => {
-    stub = await startStubServer(cap => jsonResponder(400, { error: 'no permission' }, cap))
+    stub = await startStubServer((cap) => jsonResponder(400, { error: 'no permission' }, cap))
 
     await expect(
       makeClient(stub.url).updateRole('ws-1', 'm-1', { role: 'admin' }),
-    ).rejects.toSatisfy(err => isHttpClientError(err) && err.httpStatus === 400)
+    ).rejects.toSatisfy((err) => isHttpClientError(err) && err.httpStatus === 400)
   })
 })
 
@@ -181,8 +183,8 @@ describe('WorkspacesClient.switch (integration with stub)', () => {
     await stub?.stop()
   })
 
-  it('POSTs /workspaces/<id>/switch and returns workspace detail', async () => {
-    stub = await startStubServer(cap =>
+  it('POSTs /workspaces/<id>:switch and returns workspace detail', async () => {
+    stub = await startStubServer((cap) =>
       jsonResponder(
         200,
         {
@@ -194,22 +196,23 @@ describe('WorkspacesClient.switch (integration with stub)', () => {
           created_at: '2026-05-18T00:00:00Z',
         },
         cap,
-      ))
+      ),
+    )
 
     const client = new WorkspacesClient(testHttpClient(stub.url, 'dfoa_test'))
     const result = await client.switch('ws-1')
 
     expect(stub.captured.method).toBe('POST')
-    expect(stub.captured.url).toBe('/openapi/v1/workspaces/ws-1/switch')
+    expect(stub.captured.url).toBe('/openapi/v1/workspaces/ws-1:switch')
     expect(result.current).toBe(true)
   })
 
   it('propagates 404 (non-member)', async () => {
-    stub = await startStubServer(cap => jsonResponder(404, { error: 'not found' }, cap))
+    stub = await startStubServer((cap) => jsonResponder(404, { error: 'not found' }, cap))
 
     const client = new WorkspacesClient(testHttpClient(stub.url, 'dfoa_test'))
     await expect(client.switch('ws-x')).rejects.toSatisfy(
-      err => isHttpClientError(err) && err.httpStatus === 404,
+      (err) => isHttpClientError(err) && err.httpStatus === 404,
     )
   })
 })

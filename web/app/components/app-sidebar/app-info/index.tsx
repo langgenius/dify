@@ -1,6 +1,8 @@
 import type { AppInfoActions } from './use-app-info-actions'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { getAppACLCapabilities } from '@/utils/permission'
 import AppInfoDetailPanel from './app-info-detail-panel'
 import AppInfoModals from './app-info-modals'
@@ -23,10 +25,7 @@ type AppInfoDetailLayerProps = {
   open?: boolean
 }
 
-const AppInfoDetailLayer = ({
-  actions,
-  open = actions.panelOpen,
-}: AppInfoDetailLayerProps) => {
+const AppInfoDetailLayer = ({ actions, open = actions.panelOpen }: AppInfoDetailLayerProps) => {
   const {
     appDetail,
     closePanel,
@@ -38,13 +37,13 @@ const AppInfoDetailLayer = ({
     onEdit,
     onCopy,
     onExport,
+    isExporting,
     exportCheck,
     handleConfirmExport,
     onConfirmDelete,
   } = actions
 
-  if (!appDetail)
-    return null
+  if (!appDetail) return null
 
   return (
     <>
@@ -53,6 +52,7 @@ const AppInfoDetailLayer = ({
         show={open}
         onClose={closePanel}
         openModal={openModal}
+        isExporting={isExporting}
         exportCheck={exportCheck}
       />
       <AppInfoModals
@@ -64,6 +64,7 @@ const AppInfoDetailLayer = ({
         onEdit={onEdit}
         onCopy={onCopy}
         onExport={onExport}
+        isExporting={isExporting}
         exportCheck={exportCheck}
         handleConfirmExport={handleConfirmExport}
         onConfirmDelete={onConfirmDelete}
@@ -79,26 +80,20 @@ export const AppInfoView = ({
   actions,
   renderDetail = true,
 }: AppInfoViewProps) => {
-  const {
-    appDetail,
-    panelOpen,
-    setPanelOpen,
-    activeModal,
-    secretEnvList,
-  } = actions
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const { appDetail, panelOpen, setPanelOpen, activeModal, secretEnvList } = actions
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const appACLCapabilities = getAppACLCapabilities(appDetail?.permission_keys, {
     currentUserId,
     resourceMaintainer: appDetail?.maintainer,
     workspacePermissionKeys,
   })
 
-  if (!appDetail)
-    return null
+  if (!appDetail) return null
 
   const detailLayerOpen = onlyShowDetail ? openState : panelOpen
-  const shouldRenderDetailLayer = renderDetail && (detailLayerOpen || activeModal || secretEnvList.length > 0)
+  const shouldRenderDetailLayer =
+    renderDetail && (detailLayerOpen || activeModal || secretEnvList.length > 0)
 
   return (
     <div>
@@ -107,17 +102,11 @@ export const AppInfoView = ({
           appDetail={appDetail}
           expand={expand}
           onClick={() => {
-            if (appACLCapabilities.canAccessLayout)
-              setPanelOpen(v => !v)
+            if (appACLCapabilities.canAccessLayout) setPanelOpen((v) => !v)
           }}
         />
       )}
-      {shouldRenderDetailLayer && (
-        <AppInfoDetailLayer
-          actions={actions}
-          open={detailLayerOpen}
-        />
-      )}
+      {shouldRenderDetailLayer && <AppInfoDetailLayer actions={actions} open={detailLayerOpen} />}
     </div>
   )
 }

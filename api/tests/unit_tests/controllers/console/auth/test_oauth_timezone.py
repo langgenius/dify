@@ -33,6 +33,7 @@ def test_oauth_login_passes_language_and_timezone_to_authorization_url(
         invite_token=None,
         timezone="Asia/Shanghai",
         language="zh-Hans",
+        redirect_url=None,
     )
     mock_redirect.assert_called_once_with("https://github.com/login/oauth/authorize?state=...")
 

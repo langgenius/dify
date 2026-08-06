@@ -22,10 +22,11 @@ const AppInfoTrigger = ({ appDetail, expand, onClick }: AppInfoTriggerProps) => 
       className="block w-full"
       aria-label={!expand ? `${appDetail.name} - ${modeLabel}` : undefined}
     >
-      <div className={cn(
-        'rounded-xl hover:bg-state-base-hover',
-        expand ? 'flex items-start gap-2 p-2' : 'flex items-center justify-center px-1 py-1.5',
-      )}
+      <div
+        className={cn(
+          'rounded-xl hover:bg-state-base-hover',
+          expand ? 'flex items-start gap-2 p-2' : 'flex items-center justify-center px-1 py-1.5',
+        )}
       >
         <div className="flex shrink-0 items-center">
           <div>
@@ -42,7 +43,9 @@ const AppInfoTrigger = ({ appDetail, expand, onClick }: AppInfoTriggerProps) => 
           <>
             <div className="flex min-w-0 flex-1 flex-col items-start justify-center gap-0.5 self-stretch">
               <div className="flex w-full min-w-0 pr-1">
-                <div className="truncate system-md-semibold text-text-secondary">{appDetail.name}</div>
+                <div className="truncate system-md-semibold text-text-secondary">
+                  {appDetail.name}
+                </div>
               </div>
               <div className="system-2xs-medium-uppercase whitespace-nowrap text-text-tertiary">
                 {modeLabel}

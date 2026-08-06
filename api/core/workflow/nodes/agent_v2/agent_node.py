@@ -5,8 +5,10 @@ from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, override
 
 from agenton.compositor import CompositorSessionSnapshot
+from dify_agent.protocol import CancelRunRequest
 
 from clients.agent_backend import (
+    AgentBackendAgentMessageDeltaInternalEvent,
     AgentBackendDeferredToolCallInternalEvent,
     AgentBackendError,
     AgentBackendHTTPError,
@@ -20,18 +22,20 @@ from clients.agent_backend import (
     AgentBackendStreamInternalEvent,
     AgentBackendTransportError,
     AgentBackendValidationError,
-    RuntimeLayerSpec,
-    extract_runtime_layer_specs,
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.repositories.human_input_repository import HumanInputFormRepository, HumanInputFormRepositoryImpl
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from core.workflow.nodes.human_input.session_binding import default_session_binding
 from core.workflow.system_variables import SystemVariableKey, get_system_text
-from graphon.entities.pause_reason import HumanInputRequired, SchedulingPause
+from graphon.entities.pause_reason import HitlRequired, SchedulingPause
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from graphon.node_events import NodeEventBase, NodeRunResult, PauseRequestedEvent, StreamCompletedEvent
+from graphon.graph_events import NodeRunPauseRequestedEvent
+from graphon.node_events import NodeEventBase, NodeRunResult, StreamCompletedEvent
 from graphon.nodes.base.node import Node
 from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
 from services.agent.prompt_mentions import extract_workflow_node_output_selectors
+from services.agent.workspace_service import AgentWorkspaceNotFoundError
 
 from .ask_human_hitl import AskHumanFormBuildError, build_ask_human_pause_reason
 from .ask_human_resume import build_deferred_tool_results, resolve_ask_human_form
@@ -50,7 +54,7 @@ from .runtime_request_builder import (
     WorkflowAgentRuntimeRequestBuilder,
     WorkflowAgentRuntimeRequestBuildError,
 )
-from .session_store import WorkflowAgentRuntimeSessionStore, WorkflowAgentSessionScope
+from .session_store import WorkflowAgentSessionScope, WorkflowAgentWorkspaceStore
 
 if TYPE_CHECKING:
     from graphon.entities import GraphInitParams
@@ -62,7 +66,7 @@ logger = logging.getLogger(__name__)
 # Stage 4 §5+§7: the terminal events that `_consume_event_stream` may return.
 # Stream + started events are filtered out before we yield; transport errors
 # are surfaced as a separate StreamCompletedEvent in the second tuple slot.
-_TerminalAgentBackendEvent = (
+type _TerminalAgentBackendEvent = (
     AgentBackendRunSucceededInternalEvent
     | AgentBackendRunFailedInternalEvent
     | AgentBackendRunCancelledInternalEvent
@@ -87,7 +91,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         output_adapter: WorkflowAgentOutputAdapter,
         type_checker: PerOutputTypeChecker,
         failure_orchestrator: OutputFailureOrchestrator,
-        session_store: WorkflowAgentRuntimeSessionStore | None = None,
+        session_store: WorkflowAgentWorkspaceStore,
     ) -> None:
         super().__init__(
             node_id=node_id,
@@ -113,8 +117,45 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
     def populate_start_event(self, event) -> None:
         event.extras["agent_node"] = {"version": "2", "agent_node_kind": self.node_data.agent_node_kind}
 
+    @staticmethod
+    def _to_graph_pause_reason(reason: HumanInputRequired | SchedulingPause) -> HitlRequired | SchedulingPause:
+        if isinstance(reason, HumanInputRequired):
+            return HitlRequired(
+                session_id=default_session_binding.issue_session_id_for_form(form_id=reason.form_id),
+                node_id=reason.node_id,
+                node_title=reason.node_title,
+            )
+        return reason
+
     @override
-    def _run(self) -> Generator[NodeEventBase, None, None]:
+    def _run(self) -> Generator[NodeEventBase | NodeRunPauseRequestedEvent, None, None]:
+        inputs: dict[str, Any] = {}
+        process_data: dict[str, Any] = {}
+        metadata: dict[str, Any] = {
+            "agent_backend": {
+                "status": "not_started",
+            }
+        }
+        try:
+            yield from self._run_inner(inputs=inputs, process_data=process_data, metadata=metadata)
+        except Exception as error:
+            if not process_data:
+                raise
+            yield self._failure_event(
+                inputs=inputs,
+                process_data=process_data,
+                metadata=metadata,
+                error=str(error),
+                error_type="agent_workflow_node_runtime_error",
+            )
+
+    def _run_inner(
+        self,
+        *,
+        inputs: dict[str, Any],
+        process_data: dict[str, Any],
+        metadata: dict[str, Any],
+    ) -> Generator[NodeEventBase | NodeRunPauseRequestedEvent, None, None]:
         dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
         workflow_id = self.graph_init_params.workflow_id
         workflow_run_id = get_system_text(
@@ -127,21 +168,24 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             self.graph_runtime_state.variable_pool,
             SystemVariableKey.CONVERSATION_ID,
         )
-        inputs: dict[str, Any] = {}
-        process_data: dict[str, Any] = {}
-        metadata: dict[str, Any] = {
-            "agent_backend": {
-                "status": "not_started",
-            }
-        }
 
         # ──── Setup: resolve binding once + extract declared outputs for stage 4 checks ────
         try:
+            existing_scope = self._session_store.load_existing_node_execution_scope(
+                tenant_id=dify_ctx.tenant_id,
+                app_id=dify_ctx.app_id,
+                workflow_id=workflow_id,
+                workflow_run_id=workflow_run_id,
+                node_id=self._node_id,
+                node_execution_id=self.execution_id,
+            )
             bundle = self._binding_resolver.resolve(
                 tenant_id=dify_ctx.tenant_id,
                 app_id=dify_ctx.app_id,
                 workflow_id=workflow_id,
                 node_id=self._node_id,
+                binding_id=existing_scope.workflow_agent_binding_id if existing_scope is not None else None,
+                snapshot_id=existing_scope.agent_config_snapshot_id if existing_scope is not None else None,
             )
         except WorkflowAgentBindingError as error:
             yield self._failure_event(
@@ -152,20 +196,31 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 error_type=error.error_code,
             )
             return
+        except AgentWorkspaceNotFoundError as error:
+            yield self._failure_event(
+                inputs=inputs,
+                process_data=process_data,
+                metadata=metadata,
+                error=str(error),
+                error_type="agent_workflow_node_runtime_error",
+            )
+            return
 
-        process_data = {
-            "agent_id": bundle.agent.id,
-            "agent_config_snapshot_id": bundle.snapshot.id,
-            "binding_id": bundle.binding.id,
-        }
-        session_scope = WorkflowAgentSessionScope(
+        process_data.update(
+            {
+                "agent_id": bundle.agent.id,
+                "agent_config_snapshot_id": bundle.snapshot.id,
+                "workflow_agent_binding_id": bundle.binding.id,
+            }
+        )
+        session_scope = existing_scope or WorkflowAgentSessionScope(
             tenant_id=dify_ctx.tenant_id,
             app_id=dify_ctx.app_id,
             workflow_id=workflow_id,
             workflow_run_id=workflow_run_id,
             node_id=self._node_id,
-            node_execution_id=self.id,
-            binding_id=bundle.binding.id,
+            node_execution_id=self.execution_id,
+            workflow_agent_binding_id=bundle.binding.id,
             agent_id=bundle.agent.id,
             agent_config_snapshot_id=bundle.snapshot.id,
         )
@@ -184,47 +239,53 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         # the second Agent run as deferred_tool_results; if it is somehow still
         # waiting, re-emit the same pause defensively.
         deferred_tool_results = None
-        if self._session_store is not None:
-            stored_session = self._session_store.load_active_session(session_scope)
-            if stored_session is not None and stored_session.pending_form_id is not None:
-                resume_outcome = resolve_ask_human_form(
-                    form_id=stored_session.pending_form_id,
-                    tenant_id=dify_ctx.tenant_id,
-                    node_id=self._node_id,
+        stored_session = self._session_store.load_or_create_node_execution_session(
+            session_scope,
+            home_snapshot_id=bundle.snapshot.home_snapshot_id,
+        )
+        if stored_session.pending_form_id is not None:
+            resume_outcome = resolve_ask_human_form(
+                form_id=stored_session.pending_form_id,
+                tenant_id=dify_ctx.tenant_id,
+                node_id=self._node_id,
+            )
+            if resume_outcome is not None and resume_outcome.repause is not None:
+                yield self._pause_event(
+                    reason=resume_outcome.repause,
+                    inputs=inputs,
+                    process_data=process_data,
+                    metadata=metadata,
                 )
-                if resume_outcome is not None and resume_outcome.repause is not None:
-                    yield PauseRequestedEvent(reason=resume_outcome.repause)
-                    return
-                if (
-                    resume_outcome is not None
-                    and resume_outcome.deferred_result is not None
-                    and stored_session.pending_tool_call_id is not None
-                ):
-                    deferred_tool_results = build_deferred_tool_results(
-                        tool_call_id=stored_session.pending_tool_call_id,
-                        result=resume_outcome.deferred_result,
-                    )
+                return
+            if (
+                resume_outcome is not None
+                and resume_outcome.deferred_result is not None
+                and stored_session.pending_tool_call_id is not None
+            ):
+                deferred_tool_results = build_deferred_tool_results(
+                    tool_call_id=stored_session.pending_tool_call_id,
+                    result=resume_outcome.deferred_result,
+                )
 
         # ──── Retry loop (Stage 4 §7) ────
         attempt = 0
         while True:
             try:
-                session_snapshot = None
-                if self._session_store is not None:
-                    session_snapshot = self._session_store.load_active_snapshot(session_scope)
                 runtime_request = self._runtime_request_builder.build(
                     WorkflowAgentRuntimeBuildContext(
                         dify_context=dify_ctx,
                         workflow_id=workflow_id,
                         workflow_run_id=workflow_run_id,
                         node_id=self._node_id,
-                        node_execution_id=self.id,
+                        node_execution_id=self.execution_id,
                         variable_pool=self.graph_runtime_state.variable_pool,
                         binding=bundle.binding,
                         agent=bundle.agent,
                         snapshot=bundle.snapshot,
+                        binding_id=stored_session.binding_id,
+                        backend_binding_ref=stored_session.backend_binding_ref,
                         attempt=attempt,
-                        session_snapshot=session_snapshot,
+                        session_snapshot=stored_session.session_snapshot,
                         deferred_tool_results=deferred_tool_results,
                     )
                 )
@@ -250,8 +311,9 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             # Capture inputs only from the first attempt so retry doesn't churn the
             # node's "inputs" payload that ends up in the workflow detail view.
             if attempt == 0:
-                inputs = {"agent_backend_request": runtime_request.redacted_request}
-            metadata = dict(runtime_request.metadata)
+                inputs["agent_backend_request"] = runtime_request.redacted_request
+            metadata.clear()
+            metadata.update(runtime_request.metadata)
             metadata["attempt"] = attempt
 
             try:
@@ -272,7 +334,12 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 "status": create_response.status,
             }
 
-            terminal_event, exhausted = self._consume_event_stream(create_response.run_id, metadata)
+            terminal_event, exhausted = self._consume_event_stream(
+                create_response.run_id,
+                inputs=inputs,
+                process_data=process_data,
+                metadata=metadata,
+            )
             if exhausted is not None:
                 # Streaming error / unexpected end — surface immediately without
                 # retrying because the failure is transport-level.
@@ -295,7 +362,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 # form is built *before* the snapshot is saved so its id can be
                 # persisted as the pause correlation (ENG-637).
                 try:
-                    pause_reason: HumanInputRequired | SchedulingPause | None = build_ask_human_pause_reason(
+                    pause_request = build_ask_human_pause_reason(
                         deferred_tool_call=terminal_event.deferred_tool_call,
                         node_id=self._node_id,
                         default_node_title=bundle.agent.name or self._node_id,
@@ -321,9 +388,11 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 # deferred_tool_results from the submitted form.
                 pending_form_id: str | None = None
                 pending_tool_call_id: str | None = None
-                if isinstance(pause_reason, HumanInputRequired):
-                    pending_form_id = pause_reason.form_id
+                pause_reason: HumanInputRequired | SchedulingPause
+                if pause_request is not None:
+                    pending_form_id = pause_request.form_id
                     pending_tool_call_id = terminal_event.deferred_tool_call.tool_call_id
+                    pause_reason = pause_request
                 else:
                     pause_reason = SchedulingPause(
                         message=terminal_event.message
@@ -331,29 +400,23 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                     )
                 self._save_session_snapshot(
                     session_scope=session_scope,
-                    backend_run_id=terminal_event.run_id,
+                    binding_id=stored_session.binding_id,
                     snapshot=terminal_event.session_snapshot,
-                    runtime_layer_specs=extract_runtime_layer_specs(runtime_request.request.composition),
                     metadata=metadata,
                     pending_form_id=pending_form_id,
                     pending_tool_call_id=pending_tool_call_id,
                 )
-                yield PauseRequestedEvent(reason=pause_reason)
-                return
-
-            # Non-success terminal (failed / cancelled) skips per-output
-            # post-processing — the backend itself already failed. We also retire
-            # the local ACTIVE session row so a workflow loop back into the same
-            # Agent node cannot resume from a stale snapshot. The failed agent
-            # backend layers (suspended per ``on_exit``) are left for agent
-            # backend's own GC; this row will no longer be picked up by the
-            # workflow-terminal cleanup layer.
-            if not isinstance(terminal_event, AgentBackendRunSucceededInternalEvent):
-                self._mark_session_cleaned_on_failure(
-                    session_scope=session_scope,
-                    backend_run_id=terminal_event.run_id,
+                yield self._pause_event(
+                    reason=pause_reason,
+                    inputs=inputs,
+                    process_data=process_data,
                     metadata=metadata,
                 )
+                return
+
+            # A failed attempt does not retire the product-owned Binding. The
+            # Workflow Run terminal lifecycle event owns that transition.
+            if not isinstance(terminal_event, AgentBackendRunSucceededInternalEvent):
                 yield StreamCompletedEvent(
                     node_run_result=self._output_adapter.build_failure_result(
                         event=terminal_event,
@@ -366,9 +429,8 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
 
             self._save_session_snapshot(
                 session_scope=session_scope,
-                backend_run_id=terminal_event.run_id,
+                binding_id=stored_session.binding_id,
                 snapshot=terminal_event.session_snapshot,
-                runtime_layer_specs=extract_runtime_layer_specs(runtime_request.request.composition),
                 metadata=metadata,
             )
 
@@ -440,6 +502,9 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
     def _consume_event_stream(
         self,
         run_id: str,
+        *,
+        inputs: dict[str, Any],
+        process_data: dict[str, Any],
         metadata: dict[str, Any],
     ) -> tuple[
         _TerminalAgentBackendEvent | None,
@@ -456,7 +521,10 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         """
         stream_event_count = 0
         try:
-            for public_event in self._agent_backend_client.stream_events(run_id):
+            for public_event in self._agent_backend_client.stream_events(
+                run_id,
+                should_stop=self._is_graph_aborted,
+            ):
                 stream_event_count += 1
                 for internal_event in self._event_adapter.adapt(public_event):
                     if internal_event.type == AgentBackendInternalEventType.RUN_STARTED:
@@ -464,6 +532,10 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                     if internal_event.type == AgentBackendInternalEventType.STREAM_EVENT:
                         if isinstance(internal_event, AgentBackendStreamInternalEvent):
                             self._record_stream_metadata(metadata, internal_event)
+                        continue
+                    if internal_event.type == AgentBackendInternalEventType.AGENT_MESSAGE_DELTA:
+                        if isinstance(internal_event, AgentBackendAgentMessageDeltaInternalEvent):
+                            self._record_agent_message_delta_metadata(metadata, internal_event)
                         continue
                     metadata["agent_backend"] = {
                         **dict(metadata.get("agent_backend") or {}),
@@ -480,31 +552,54 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         | AgentBackendDeferredToolCallInternalEvent,
                     ):
                         return internal_event, None
+                    self._cancel_backend_run(run_id, reason="unexpected_event")
                     return None, self._failure_event(
-                        inputs={},
-                        process_data={},
+                        inputs=inputs,
+                        process_data=process_data,
                         metadata=metadata,
                         error=f"Unexpected internal event type {internal_event.type!r}",
                         error_type="agent_backend_stream_error",
                     )
         except AgentBackendError as error:
+            self._cancel_backend_run(run_id, reason=self._stream_stop_reason())
             return None, self._failure_event(
-                inputs={},
-                process_data={},
+                inputs=inputs,
+                process_data=process_data,
                 metadata=metadata,
                 error=str(error),
                 error_type=self._agent_backend_error_type(error),
             )
         except Exception as error:
+            self._cancel_backend_run(run_id, reason=self._stream_stop_reason())
             return None, self._failure_event(
-                inputs={},
-                process_data={},
+                inputs=inputs,
+                process_data=process_data,
                 metadata=metadata,
                 error=str(error),
                 error_type="agent_backend_stream_error",
             )
 
+        self._cancel_backend_run(run_id, reason="stream_ended_without_terminal_event")
         return None, None
+
+    def _is_graph_aborted(self) -> bool:
+        """Let Agent SSE consumption observe GraphEngine's cooperative abort state."""
+        try:
+            return self.graph_runtime_state.graph_execution.aborted
+        except (AttributeError, RuntimeError):
+            return False
+
+    def _stream_stop_reason(self) -> str:
+        return "workflow_graph_aborted" if self._is_graph_aborted() else "event_stream_failed"
+
+    def _cancel_backend_run(self, run_id: str, *, reason: str) -> None:
+        try:
+            self._agent_backend_client.cancel_run(
+                run_id,
+                CancelRunRequest(reason=reason, message="Workflow Agent event consumption stopped"),
+            )
+        except Exception:
+            logger.warning("Failed to cancel Workflow Agent backend run: run_id=%s", run_id, exc_info=True)
 
     @staticmethod
     def _record_type_check_metadata(metadata: dict[str, Any], outcome: OutputTypeCheckOutcome) -> None:
@@ -548,21 +643,17 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         self,
         *,
         session_scope: WorkflowAgentSessionScope,
-        backend_run_id: str,
+        binding_id: str,
         snapshot: CompositorSessionSnapshot | None,
-        runtime_layer_specs: list[RuntimeLayerSpec],
         metadata: dict[str, Any],
         pending_form_id: str | None = None,
         pending_tool_call_id: str | None = None,
     ) -> None:
-        if self._session_store is None:
-            return
         try:
             self._session_store.save_active_snapshot(
                 scope=session_scope,
-                backend_run_id=backend_run_id,
+                binding_id=binding_id,
                 snapshot=snapshot,
-                runtime_layer_specs=runtime_layer_specs,
                 pending_form_id=pending_form_id,
                 pending_tool_call_id=pending_tool_call_id,
             )
@@ -571,50 +662,18 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             metadata["agent_backend"] = agent_backend
         except Exception:
             logger.warning(
-                "Failed to persist workflow Agent runtime session snapshot: "
-                "tenant_id=%s workflow_run_id=%s node_id=%s binding_id=%s agent_id=%s backend_run_id=%s",
+                "Failed to persist workflow Agent Binding session snapshot: "
+                "tenant_id=%s workflow_run_id=%s node_id=%s binding_id=%s agent_id=%s",
                 session_scope.tenant_id,
                 session_scope.workflow_run_id,
                 session_scope.node_id,
-                session_scope.binding_id,
+                session_scope.workflow_agent_binding_id,
                 session_scope.agent_id,
-                backend_run_id,
                 exc_info=True,
             )
             agent_backend = dict(metadata.get("agent_backend") or {})
             agent_backend["session_snapshot_persisted"] = False
-            agent_backend["session_snapshot_persist_error"] = "workflow_agent_runtime_session_store_error"
-            metadata["agent_backend"] = agent_backend
-
-    def _mark_session_cleaned_on_failure(
-        self,
-        *,
-        session_scope: WorkflowAgentSessionScope,
-        backend_run_id: str,
-        metadata: dict[str, Any],
-    ) -> None:
-        if self._session_store is None:
-            return
-        try:
-            self._session_store.mark_cleaned(scope=session_scope, backend_run_id=backend_run_id)
-            agent_backend = dict(metadata.get("agent_backend") or {})
-            agent_backend["session_snapshot_cleaned_on_failure"] = True
-            metadata["agent_backend"] = agent_backend
-        except Exception:
-            logger.warning(
-                "Failed to mark workflow Agent runtime session cleaned on agent run failure: "
-                "tenant_id=%s workflow_run_id=%s node_id=%s binding_id=%s agent_id=%s backend_run_id=%s",
-                session_scope.tenant_id,
-                session_scope.workflow_run_id,
-                session_scope.node_id,
-                session_scope.binding_id,
-                session_scope.agent_id,
-                backend_run_id,
-                exc_info=True,
-            )
-            agent_backend = dict(metadata.get("agent_backend") or {})
-            agent_backend["session_snapshot_cleaned_on_failure"] = False
-            agent_backend["session_snapshot_cleanup_error"] = "workflow_agent_runtime_session_store_error"
+            agent_backend["session_snapshot_persist_error"] = "workflow_agent_workspace_store_error"
             metadata["agent_backend"] = agent_backend
 
     @staticmethod
@@ -656,6 +715,27 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             )
         )
 
+    def _pause_event(
+        self,
+        *,
+        reason: HumanInputRequired | SchedulingPause,
+        inputs: dict[str, Any],
+        process_data: dict[str, Any],
+        metadata: dict[str, Any],
+    ) -> NodeRunPauseRequestedEvent:
+        return NodeRunPauseRequestedEvent(
+            id=self.execution_id,
+            node_id=self._node_id,
+            node_type=self.node_type,
+            node_run_result=NodeRunResult(
+                status=WorkflowNodeExecutionStatus.PAUSED,
+                inputs=inputs,
+                process_data=process_data,
+                metadata={WorkflowNodeExecutionMetadataKey.AGENT_LOG: metadata},
+            ),
+            reason=self._to_graph_pause_reason(reason),
+        )
+
     @staticmethod
     def _agent_backend_error_type(error: AgentBackendError) -> str:
         if isinstance(error, AgentBackendValidationError):
@@ -678,6 +758,17 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             usage = event.data.get("usage") or event.data.get("model_usage")
             if isinstance(usage, Mapping):
                 agent_backend["usage"] = dict(usage)
+        metadata["agent_backend"] = agent_backend
+
+    @staticmethod
+    def _record_agent_message_delta_metadata(
+        metadata: dict[str, Any], event: AgentBackendAgentMessageDeltaInternalEvent
+    ) -> None:
+        agent_backend = dict(metadata.get("agent_backend") or {})
+        agent_backend["agent_message_delta_count"] = int(agent_backend.get("agent_message_delta_count") or 0) + 1
+        agent_backend["agent_message_delta_length"] = int(agent_backend.get("agent_message_delta_length") or 0) + len(
+            event.delta
+        )
         metadata["agent_backend"] = agent_backend
 
     @classmethod

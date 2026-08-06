@@ -79,7 +79,7 @@ jobs:
       ws2_app_id:                 ${{ steps.out.outputs.DIFY_E2E_WS2_APP_ID }}
 
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
         with:
           ref: ${{ inputs.cli_ref || github.ref }}
           persist-credentials: false
@@ -88,7 +88,7 @@ jobs:
         with:
           bun-version: latest
 
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
         with:
           package_json_field: packageManager
           run_install: false
@@ -123,7 +123,7 @@ jobs:
         shell: bash
 
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
         with:
           ref: ${{ inputs.cli_ref || github.ref }}
           persist-credentials: false
@@ -131,7 +131,7 @@ jobs:
       - uses: ./.github/actions/setup-web
       - uses: oven-sh/setup-bun@v2
         with: { bun-version: latest }
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
         with: { package_json_field: packageManager, run_install: false }
       - run: pnpm install --frozen-lockfile
       - run: pnpm tree:gen
@@ -170,7 +170,7 @@ jobs:
         shell: bash
 
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
         with:
           ref: ${{ inputs.cli_ref || github.ref }}
           persist-credentials: false
@@ -178,7 +178,7 @@ jobs:
       - uses: ./.github/actions/setup-web
       - uses: oven-sh/setup-bun@v2
         with: { bun-version: latest }
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
         with: { package_json_field: packageManager, run_install: false }
       - run: pnpm install --frozen-lockfile
       - run: pnpm tree:gen
@@ -233,7 +233,7 @@ jobs:
         shell: bash
 
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
         with:
           ref: ${{ inputs.cli_ref || github.ref }}
           persist-credentials: false
@@ -241,7 +241,7 @@ jobs:
       - uses: ./.github/actions/setup-web
       - uses: oven-sh/setup-bun@v2
         with: { bun-version: latest }
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
         with: { package_json_field: packageManager, run_install: false }
       - run: pnpm install --frozen-lockfile
       - run: pnpm tree:gen
@@ -295,7 +295,7 @@ jobs:
         shell: bash
 
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
         with:
           ref: ${{ inputs.cli_ref || github.ref }}
           persist-credentials: false
@@ -303,7 +303,7 @@ jobs:
       - uses: ./.github/actions/setup-web
       - uses: oven-sh/setup-bun@v2
         with: { bun-version: latest }
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
         with: { package_json_field: packageManager, run_install: false }
       - run: pnpm install --frozen-lockfile
       - run: pnpm tree:gen
@@ -351,7 +351,7 @@ jobs:
         shell: bash
 
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
         with:
           ref: ${{ inputs.cli_ref || github.ref }}
           persist-credentials: false
@@ -359,7 +359,7 @@ jobs:
       - uses: ./.github/actions/setup-web
       - uses: oven-sh/setup-bun@v2
         with: { bun-version: latest }
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
         with: { package_json_field: packageManager, run_install: false }
       - run: pnpm install --frozen-lockfile
       - run: pnpm tree:gen

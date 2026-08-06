@@ -32,8 +32,7 @@ export function registerConversation(
   appId: string,
   conversationId: string,
 ): void {
-  if (!conversationId || !appId)
-    return
+  if (!conversationId || !appId) return
   _conversations.push({ host, token, appId, conversationId })
 }
 
@@ -49,8 +48,7 @@ export function getRegisteredConversations(): readonly ConversationEntry[] {
  * Called once from global-teardown.ts.
  */
 export async function cleanupRegisteredConversations(): Promise<void> {
-  if (_conversations.length === 0)
-    return
+  if (_conversations.length === 0) return
 
   console.warn(`[E2E teardown] Cleaning up ${_conversations.length} staged conversation(s)…`)
 
@@ -60,14 +58,13 @@ export async function cleanupRegisteredConversations(): Promise<void> {
     ),
   )
 
-  const failed = results.filter(r => r.status === 'rejected')
+  const failed = results.filter((r) => r.status === 'rejected')
   if (failed.length > 0) {
     console.warn(
       `[E2E teardown] ${failed.length} conversation deletion(s) failed (non-blocking):`,
-      failed.map(r => (r as PromiseRejectedResult).reason).join(', '),
+      failed.map((r) => (r as PromiseRejectedResult).reason).join(', '),
     )
-  }
-  else {
+  } else {
     console.warn(`[E2E teardown] All conversations cleaned up.`)
   }
 
