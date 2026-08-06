@@ -16,7 +16,7 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from models import Account, Tenant
 from models.model import App, AppMode, AppModelConfig, IconType
 from models.workflow import Workflow
-from services.agent.errors import AgentNameConflictError
+from services.agent.errors import AgentAccessNotReadyError, AgentNameConflictError
 from services.app_service import AppListParams, AppService, CreateAppParams
 
 
@@ -109,7 +109,7 @@ class TestCreateAppTransactionBoundary:
     [AppService.update_app_site_status, AppService.update_app_api_status],
 )
 def test_app_status_updates_commit_before_signal(update_status: Callable[..., App]) -> None:
-    app = cast(App, SimpleNamespace(enable_site=False, enable_api=False))
+    app = cast(App, SimpleNamespace(enable_site=False, enable_api=False, mode=AppMode.CHAT))
     session = MagicMock()
     phase_events: list[str] = []
     session.commit.side_effect = lambda: phase_events.append("commit")
@@ -121,6 +121,36 @@ def test_app_status_updates_commit_before_signal(update_status: Callable[..., Ap
         update_status(AppService(), app, True, session=session)
 
     assert phase_events == ["commit", "signal"]
+
+
+@pytest.mark.parametrize(
+    "update_status",
+    [
+        AppService.update_app_site_status,
+        AppService.update_app_api_status,
+    ],
+)
+def test_unpublished_agent_app_access_cannot_be_enabled(update_status: Callable[..., App]) -> None:
+    app = cast(
+        App,
+        SimpleNamespace(
+            id="app-1",
+            tenant_id="tenant-1",
+            mode=AppMode.AGENT,
+            enable_site=False,
+            enable_api=False,
+        ),
+    )
+    session = MagicMock()
+    session.scalar.return_value = SimpleNamespace(id="agent-1")
+
+    with patch("services.app_service.agent_has_workflow_callable_active_snapshot", return_value=False):
+        with pytest.raises(AgentAccessNotReadyError):
+            update_status(AppService(), app, True, session=session)
+
+    assert app.enable_site is False
+    assert app.enable_api is False
+    session.commit.assert_not_called()
 
 
 class TestOpenapiVisibilityHelpers:
@@ -411,6 +441,8 @@ class TestAgentAppType:
         # Runtime config comes from the Agent Soul, so no model_config is seeded.
         assert "model_config" not in default_app_templates[AppMode.AGENT]
         assert default_app_templates[AppMode.AGENT]["app"]["mode"] == AppMode.AGENT
+        assert default_app_templates[AppMode.AGENT]["app"]["enable_site"] is False
+        assert default_app_templates[AppMode.AGENT]["app"]["enable_api"] is False
 
     def test_create_app_params_accepts_agent_mode(self):
         from services.app_service import CreateAppParams
