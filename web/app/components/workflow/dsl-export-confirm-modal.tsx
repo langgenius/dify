@@ -13,7 +13,7 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-export type DSLExportConfirmModalProps = {
+type DSLExportConfirmModalProps = {
   envList: Array<{ name: string; value: unknown }>
   onConfirm: (state: boolean) => void | Promise<void>
   onClose: () => void
