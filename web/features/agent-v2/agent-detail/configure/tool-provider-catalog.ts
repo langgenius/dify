@@ -14,6 +14,12 @@ import {
   useAllWorkflowTools,
 } from '@/service/use-tools'
 
+type AgentToolPresentationProvider = Pick<
+  AgentProviderTool,
+  'kind' | 'id' | 'name' | 'displayName' | 'pluginId' | 'providerType'
+>
+type AgentToolPresentationSource = AgentTool | AgentToolPresentationProvider
+
 export type AgentToolProviderCatalog = {
   providerById: Map<string, ToolWithProvider>
   resolvedProviderTypes: Set<AgentProviderTool['providerType']>
@@ -80,7 +86,7 @@ export function getLocalizedText(
   return text?.[language] ?? text?.en_US ?? text?.zh_Hans
 }
 
-export function getAgentProviderPluginId(tool: AgentProviderTool) {
+export function getAgentProviderPluginId(tool: AgentToolPresentationProvider) {
   if (tool.pluginId) return tool.pluginId
 
   if (tool.providerType !== 'plugin' && tool.providerType !== CollectionType.builtIn) return ''
@@ -101,7 +107,7 @@ function getMarketplacePluginInfo(pluginId: string) {
   }
 }
 
-function getProviderFallbackDisplayName(tool: AgentProviderTool) {
+function getProviderFallbackDisplayName(tool: AgentToolPresentationProvider) {
   const providerIdSegments = tool.name.split('/').filter(Boolean)
   return providerIdSegments.at(-1) ?? tool.name
 }
@@ -115,7 +121,7 @@ export function getAgentProviderToolDisplayName({
   language: string
   marketplacePlugin?: MarketplacePlugin
   provider?: ToolWithProvider
-  tool: AgentProviderTool
+  tool: AgentToolPresentationProvider
 }) {
   if (provider) return tool.displayName ?? getLocalizedText(provider.label, language) ?? tool.name
 
@@ -128,7 +134,7 @@ export function getAgentProviderToolDisplayName({
 }
 
 export function useAgentToolPresentation(
-  tools: AgentTool[],
+  tools: AgentToolPresentationSource[],
   { providerById, resolvedProviderTypes }: AgentToolProviderCatalog,
 ) {
   const language = useGetLanguage()

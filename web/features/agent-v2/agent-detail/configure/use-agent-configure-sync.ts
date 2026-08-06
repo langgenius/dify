@@ -22,7 +22,7 @@ import {
   agentComposerSavedDraftAtom,
   isAgentComposerDirtyAtom,
 } from '@/features/agent-v2/agent-composer/store'
-import { agentComposerToolsAtom } from '@/features/agent-v2/agent-composer/store-modules/tools'
+import { agentComposerToolPresentationIdentitiesAtom } from '@/features/agent-v2/agent-composer/store-modules/tools'
 import { consoleQuery } from '@/service/client'
 import {
   getAgentToolPublishIssue,
@@ -48,9 +48,9 @@ export function useAgentConfigureSync({
   const { t: tCommon } = useTranslation('common')
   const { t: tWorkflow } = useTranslation('workflow')
   const getKnowledgeValidationMessage = useKnowledgeValidationMessage()
-  const tools = useAtomValue(agentComposerToolsAtom)
+  const toolPresentationIdentities = useAtomValue(agentComposerToolPresentationIdentitiesAtom)
   const toolProviderCatalog = useAgentToolProviderCatalog()
-  const toolPresentation = useAgentToolPresentation(tools, toolProviderCatalog)
+  const toolPresentation = useAgentToolPresentation(toolPresentationIdentities, toolProviderCatalog)
   const queryClient = useQueryClient()
   const store = useStore()
   const setSavedDraft = useSetAtom(agentComposerSavedDraftAtom)
