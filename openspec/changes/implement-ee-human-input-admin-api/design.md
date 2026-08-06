@@ -28,7 +28,7 @@ EE backend使用Go 1.25、Kratos、Protobuf HTTP annotations和Wire。这里的P
 - 在EE Dashboard提供API summary定义的完整Kratos HTTP admin surface。
 - 复用EE现有`difyclient`依赖方向，把所有Human Input command/query转发到Dify internal HTTP API。
 - 保证EE与Dify workspace两个transport入口汇入同一个Dify Python application service。
-- 保留CAS、secret operation、latest-only pagination、typed diagnostic和Contact/binding owner semantics。
+- 保留CAS、secret replace-or-preserve语义、latest-only pagination、typed diagnostic和Contact/binding owner semantics；EE public Protobuf使用独立credential update/response messages，并把existing integration中省略的secret映射为Dify internal preserve command。
 - 对authentication、EE-owned human-actor audit、operation/correlation tracking、timeout、error mapping、secret redaction和observability建立明确边界。
 
 **Non-Goals:**

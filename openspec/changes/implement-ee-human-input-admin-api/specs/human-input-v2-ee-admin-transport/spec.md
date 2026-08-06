@@ -14,7 +14,7 @@ EE backend MUST 在 `dify.enterprise.api.enterprise` package 中定义 `Enterpri
 
 ### Requirement: Transport MUST 在调用 Dify client 前完成强类型校验与默认值处理
 
-Protobuf contract MUST 保留 API summary 中的 provider、status、read-only effective deployment `DISABLED / WEBHOOK / STREAM` event transport mode、result、removal reason、credential、Contact、identity、binding、sync run 与 pagination shape。Integration upsert/test request MUST NOT包含event transport mode或tenant-selectable supported modes。Required enum zero value、ID、CAS version、secret operation、page 和 limit MUST 在 transport boundary 被拒绝；省略 page/limit 时 MUST 分别使用 `1` 和 `20`。
+Protobuf contract MUST 保留 API summary 中的 provider、status、read-only effective deployment `DISABLED / WEBHOOK / STREAM` event transport mode、result、removal reason、credential、Contact、identity、binding、sync run 与 pagination shape。Integration upsert/test request MUST 使用独立的provider credential update messages，response MUST 使用只包含allow-listed non-secret identifiers的credential messages；两者不得复用。Integration upsert/test request MUST NOT包含event transport mode或tenant-selectable supported modes。Required enum zero value、ID、CAS version、first-create required secret replacement、page 和 limit MUST 在 transport boundary 被拒绝；省略 page/limit 时 MUST 分别使用 `1` 和 `20`。
 
 #### Scenario: 请求包含非法 enum 或 CAS token
 - **WHEN** 请求包含 unspecified required enum、空 ID、非正 config version 或越界 pagination
@@ -48,17 +48,21 @@ Protobuf contract MUST 保留 API summary 中的 provider、status、read-only e
 - **WHEN** caller不能证明EE-specific service identity，即使其持有其他generic internal credential
 - **THEN** Dify MUST 拒绝该mutation，使所有EE admin human-actor audit保持完整
 
-### Requirement: Secret-bearing transport MUST 支持 replace-or-preserve 且不得泄露 secret
+### Requirement: Secret-bearing transport MUST 通过optional replacement表达replace-or-preserve且不得泄露secret
 
-Provider credential secret MUST 表达为非空 replacement 或 `preserve_original_value`。EE 只校验和转发该 command，不缓存、持久化、解密或回显 secret。Response、Kratos error、structured log、trace attribute 与 generated API documentation MUST NOT 包含 plaintext、masked value、ciphertext 或 hash-derived secret。
+EE public Protobuf中的provider credential update message MUST 使用optional plaintext string表达secret replacement：字段present时MUST为非空replacement；更新已有integration时字段omitted MUST表示preserve。首次创建integration时，所有provider-required secret MUST present，缺失时EE transport/service MUST在调用Dify前拒绝请求。EE MUST把public omission语义映射为EE→Dify internal typed contract中的显式preserve command，且MUST NOT尝试读取现有secret。Public response credential message MUST只包含allow-listed non-secret identifiers，并且public Protobuf、OpenAPI与TypeScript生成物MUST NOT定义或引用`SecretUpdate`、`PreserveOriginalValue`或`preserve_original_value`。EE不缓存、持久化、解密或回显secret；response、Kratos error、structured log、trace attribute与generated API documentation MUST NOT包含plaintext、masked value、ciphertext或hash-derived secret。
 
 #### Scenario: 管理员保留已存在 secret
-- **WHEN** update request 对一个 secret 使用 `preserve_original_value`
-- **THEN** EE MUST 原样转发 preserve operation，由 Dify 判断其是否有效，并 MUST NOT 尝试读取现有 secret
+- **WHEN** update request 对已有integration省略一个secret字段
+- **THEN** EE MUST 将省略映射为Dify internal preserve operation，并 MUST NOT 尝试读取现有secret
 
-#### Scenario: Dify 返回 secret-related validation error
-- **WHEN** Dify 拒绝 first-create preserve 或空 replacement
-- **THEN** EE MUST 返回稳定的 sanitized invalid-request error，且 MUST NOT 将 Dify raw body 或 credential内容写入日志
+#### Scenario: 首次创建缺少必需 secret
+- **WHEN** first-create request省略provider-required secret或提供空replacement
+- **THEN** EE MUST在调用Dify前返回稳定的sanitized invalid-request error，且 MUST NOT 将credential内容写入日志
+
+#### Scenario: Integration response返回credential projection
+- **WHEN** Dify返回configured integration及其provider credential projection
+- **THEN** EE response MUST只包含provider的non-secret identifier字段，并 MUST NOT包含任何secret、masked value、ciphertext或hash-derived value
 
 ### Requirement: EE transport MUST 稳定映射 Dify internal errors
 
