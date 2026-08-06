@@ -14,8 +14,6 @@ import { useTranslation } from 'react-i18next'
 import { userProfileAtom } from '@/context/account-state'
 import { PermissionLevel } from '@/models/permission'
 
-export type { CredentialPermission }
-
 type PermissionSelectorProps = {
   disabled?: boolean
   permission: CredentialPermission

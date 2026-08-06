@@ -1,7 +1,7 @@
 import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { PluginPayload } from '../types'
-import type { CredentialPermission } from './permission-selector'
 import type { FormSchema } from '@/app/components/base/form/types'
+import type { CredentialPermission } from '@/models/permission'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'

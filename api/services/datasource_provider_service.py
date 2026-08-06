@@ -706,16 +706,16 @@ class DatasourceProviderService:
                     if key in provider_credential_secret_variables:
                         credentials[key] = encrypter.encrypt_token(tenant_id, value)
 
-                datasource_provider_kwargs: dict[str, Any] = dict(
-                    tenant_id=tenant_id,
-                    name=db_provider_name,
-                    provider=provider_id.provider_name,
-                    plugin_id=provider_id.plugin_id,
-                    auth_type=credential_type.value,
-                    encrypted_credentials=credentials,
-                    avatar_url=avatar_url or "default",
-                    expires_at=expire_at,
-                )
+                datasource_provider_kwargs: dict[str, Any] = {
+                    "tenant_id": tenant_id,
+                    "name": db_provider_name,
+                    "provider": provider_id.provider_name,
+                    "plugin_id": provider_id.plugin_id,
+                    "auth_type": credential_type.value,
+                    "encrypted_credentials": credentials,
+                    "avatar_url": avatar_url or "default",
+                    "expires_at": expire_at,
+                }
                 if user_id is not None:
                     datasource_provider_kwargs["user_id"] = user_id
                 if visibility is not None:
