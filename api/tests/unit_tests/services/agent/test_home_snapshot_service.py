@@ -11,6 +11,7 @@ from models.agent import (
     Agent,
     AgentConfigDraft,
     AgentConfigDraftType,
+    AgentConfigSnapshot,
     AgentHomeSnapshot,
     AgentScope,
     AgentSource,
@@ -158,11 +159,12 @@ def test_build_apply_fails_fast_without_source_binding(unbound_session: Session)
         )
 
 
-def test_home_snapshot_collection_database_failure_propagates(monkeypatch: pytest.MonkeyPatch) -> None:
-    context = MagicMock()
-    session = context.__enter__.return_value
+def test_home_snapshot_collection_database_failure_propagates(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     error = RuntimeError("database unavailable")
-    session.scalar.side_effect = error
+    scalar = MagicMock(side_effect=error)
+    monkeypatch.setattr(sqlite_session, "scalar", scalar)
     monkeypatch.setattr(
         "services.agent.home_snapshot_service.session_factory.create_session",
         lambda: nullcontext(sqlite_session),
@@ -174,6 +176,7 @@ def test_home_snapshot_collection_database_failure_propagates(monkeypatch: pytes
             home_snapshot_id="home-1",
         )
 
+    scalar.assert_called_once()
     assert exc_info.value is error
 
 

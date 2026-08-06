@@ -724,9 +724,7 @@ class TestGetWorkflow(_RealSessionTest):
         mocker.patch("services.app_generate_service.WorkflowService", return_value=ws)
 
         with pytest.raises(ValueError, match="Workflow not initialized"):
-            AppGenerateService._get_workflow(
-                _make_app(AppMode.WORKFLOW), InvokeFrom.DEBUGGER, session=self.session
-            )
+            AppGenerateService._get_workflow(_make_app(AppMode.WORKFLOW), InvokeFrom.DEBUGGER, session=self.session)
 
     def test_non_debugger_fetches_published(self, mocker: MockerFixture):
         pub_wf = _make_workflow()
@@ -746,9 +744,7 @@ class TestGetWorkflow(_RealSessionTest):
         mocker.patch("services.app_generate_service.WorkflowService", return_value=ws)
 
         with pytest.raises(ValueError, match="Workflow not published"):
-            AppGenerateService._get_workflow(
-                _make_app(AppMode.WORKFLOW), InvokeFrom.SERVICE_API, session=self.session
-            )
+            AppGenerateService._get_workflow(_make_app(AppMode.WORKFLOW), InvokeFrom.SERVICE_API, session=self.session)
 
     def test_specific_workflow_id_valid_uuid(self, mocker: MockerFixture):
         valid_uuid = str(uuid.uuid4())
