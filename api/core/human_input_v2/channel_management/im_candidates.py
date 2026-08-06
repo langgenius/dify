@@ -83,12 +83,13 @@ class SlackIMCandidate:
 
 @dataclass(frozen=True, slots=True)
 class DingTalkIMCandidate:
+    corp_id: str
     client_id: str
     client_secret: NewSecret = field(repr=False)
     provider: ChannelProvider = field(default=ChannelProvider.DING_TALK, init=False)
 
     def __post_init__(self) -> None:
-        _require_non_blank(client_id=self.client_id)
+        _require_non_blank(corp_id=self.corp_id, client_id=self.client_id)
         _require_new_secret(client_secret=self.client_secret)
 
 
