@@ -83,7 +83,6 @@ from services.agent.roster_service import AgentRosterService
 logger = logging.getLogger(__name__)
 
 _SKILL_MD = "SKILL.md"
-_MAX_FILE_BYTES = 512 * 1024
 _MAX_SKILL_BYTES = 5 * 1024 * 1024
 _MAX_FILES_PER_SKILL = 50
 _MAX_FILE_CHECK_ITEMS = 100
@@ -2368,16 +2367,6 @@ class SkillManagementService:
                 error={"code": "invalid_file_extension", "message": "file extension is invalid"},
             )
 
-        if item.size > _MAX_FILE_BYTES:
-            return cls._build_file_check_result(
-                item=item,
-                path=path,
-                error={
-                    "code": "file_too_large",
-                    "message": f"file exceeds {_MAX_FILE_BYTES} byte limit",
-                },
-            )
-
         duplicate_in_draft = path in existing_file_paths
         duplicate_in_batch = path in batch_paths
         if duplicate_in_draft:
@@ -3090,8 +3079,6 @@ class SkillManagementService:
                     raw_path = normalize_skill_file_path(info.filename.strip("/"))
                     path = normalize_skill_file_path(path_map[raw_path])
                     payload = archive.read(info)
-                    if len(payload) > _MAX_FILE_BYTES:
-                        raise SkillManagementServiceError("file_too_large", "file exceeds 512KB limit")
                     text = self._decode_text_payload(path, payload)
                     if path == _SKILL_MD:
                         if text is None:
@@ -3380,8 +3367,6 @@ class SkillManagementService:
                 if item.path == _SKILL_MD and strict_frontmatter:
                     content_text = self._sync_skill_md_text(skill, content_text or "")
                 content_bytes = (content_text or "").encode("utf-8")
-                if len(content_bytes) > _MAX_FILE_BYTES:
-                    raise SkillManagementServiceError("file_too_large", "file exceeds 512KB limit")
                 file_size = len(content_bytes)
                 file_hash = hashlib.sha256(content_bytes).hexdigest()
                 total_size += file_size

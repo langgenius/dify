@@ -2103,7 +2103,7 @@ def test_check_draft_files_reports_batch_validation_results() -> None:
     assert [error["code"] for error in second_guide["errors"]] == ["duplicate_file_path"]
     assert [error["code"] for error in result["data"]["policy.md"]["errors"]] == ["file_already_exists"]
     assert [error["code"] for error in result["data"]["README"]["errors"]] == ["missing_file_extension"]
-    assert [error["code"] for error in result["data"]["big.md"]["errors"]] == ["file_too_large"]
+    assert result["data"]["big.md"]["errors"] == []
     assert [error["code"] for error in result["data"]["escape.md"]["errors"]] == ["invalid_file_path"]
 
 
