@@ -245,9 +245,7 @@ def test_product_application_create_schedules_selected_website_import() -> None:
             "services.knowledge_fs.product_application_service.uuid.uuid5",
             return_value="operation-1",
         ),
-        patch(
-            "tasks.knowledge_fs_initial_source_tasks.import_initial_website_source.delay"
-        ) as schedule_import,
+        patch("tasks.knowledge_fs_initial_source_tasks.import_initial_website_source.delay") as schedule_import,
     ):
         application.create_space(tenant_id="tenant-1", account_id="account-1", payload=payload)
 

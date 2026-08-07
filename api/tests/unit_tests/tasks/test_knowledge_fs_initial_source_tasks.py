@@ -13,6 +13,8 @@ from tasks.knowledge_fs_initial_source_tasks import (
     start_initial_website_source_import,
 )
 
+_DEFAULT_CREDENTIAL = object()
+
 
 def _payload(sync_policy: str = "daily") -> KnowledgeFSInitialWebsiteSourcePayload:
     return KnowledgeFSInitialWebsiteSourcePayload.model_validate(
@@ -40,12 +42,19 @@ def _facade() -> MagicMock:
     facade.list_source_connections.return_value = SimpleNamespace(
         data=[
             SimpleNamespace(
+                configuration={"credentialId": "firecrawl-credential-1"},
                 id="connection-1",
                 provider_id="plugin-daemon-website",
                 status="active",
             )
         ],
         next_cursor=None,
+    )
+    facade.create_source_connection.return_value = SimpleNamespace(
+        configuration={"credentialId": "firecrawl-credential-1"},
+        id="connection-created",
+        provider_id="plugin-daemon-website",
+        status="active",
     )
     facade.create_source.return_value = SimpleNamespace(id="source-1")
     facade.import_selected_source_crawl.return_value = SimpleNamespace(
@@ -61,11 +70,18 @@ def _facade() -> MagicMock:
 def _runtime(
     facade: MagicMock,
     *,
+    credential: SimpleNamespace | None | object = _DEFAULT_CREDENTIAL,
     state: KnowledgeFSControlSpaceState = KnowledgeFSControlSpaceState.ACTIVE,
     knowledge_space_id: str | None = "space-1",
 ):
     session_context = MagicMock()
-    session_context.__enter__.return_value = object()
+    session = MagicMock()
+    session.scalar.return_value = (
+        SimpleNamespace(id="firecrawl-credential-1", name="Firecrawl")
+        if credential is _DEFAULT_CREDENTIAL
+        else credential
+    )
+    session_context.__enter__.return_value = session
     session_maker = MagicMock(return_value=session_context)
     with (
         patch(
@@ -160,6 +176,7 @@ def test_initial_website_source_import_configures_remaining_sync_modes(
         SimpleNamespace(
             data=[
                 SimpleNamespace(
+                    configuration={"credentialId": "firecrawl-credential-1"},
                     id="connection-2",
                     provider_id="plugin-daemon-website",
                     status="active",
@@ -235,19 +252,74 @@ def test_initial_website_source_import_rejects_missing_control_space() -> None:
             )
 
 
-def test_initial_website_source_import_rejects_unavailable_provider_and_connection() -> None:
+def test_initial_website_source_import_rejects_unavailable_provider() -> None:
     unavailable_provider = _facade()
     unavailable_provider.list_source_providers.return_value = SimpleNamespace(data=[])
     with pytest.raises(RuntimeError, match="provider is unavailable"):
         _start(unavailable_provider, _payload())
 
-    unavailable_connection = _facade()
-    unavailable_connection.list_source_connections.return_value = SimpleNamespace(
+
+def test_initial_website_source_import_rejects_missing_firecrawl_credential() -> None:
+    facade = _facade()
+    with (
+        _runtime(facade, credential=None),
+        pytest.raises(RuntimeError, match="credential is unavailable"),
+    ):
+        start_initial_website_source_import(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="control-1",
+            operation_id="operation-1",
+            payload=_payload(),
+        )
+
+    facade.create_source_connection.assert_not_called()
+    facade.create_source.assert_not_called()
+
+
+def test_initial_website_source_import_creates_missing_firecrawl_connection() -> None:
+    facade = _facade()
+    facade.list_source_connections.return_value = SimpleNamespace(
         data=[SimpleNamespace(id="inactive", provider_id="other", status="disabled")],
         next_cursor=None,
     )
-    with pytest.raises(RuntimeError, match="connection is unavailable"):
-        _start(unavailable_connection, _payload())
+
+    assert _start(facade, _payload()) == "workflow-1"
+
+    connection_payload = facade.create_source_connection.call_args.kwargs["payload"]
+    assert connection_payload.auth_kind == "endpoint"
+    assert connection_payload.configuration == {
+        "credentialId": "firecrawl-credential-1",
+        "datasource": "crawl",
+        "pluginId": "langgenius/firecrawl_datasource",
+        "provider": "firecrawl",
+        "providerKind": "website",
+    }
+    assert connection_payload.credentials == {}
+    assert connection_payload.provider_id == "plugin-daemon-website"
+    source_payload = facade.create_source.call_args.kwargs["payload"]
+    assert source_payload.connection_id == "connection-created"
+
+
+def test_initial_website_source_import_retries_provisioning_firecrawl_connection() -> None:
+    facade = _facade()
+    facade.list_source_connections.return_value = SimpleNamespace(
+        data=[
+            SimpleNamespace(
+                configuration={"credentialId": "firecrawl-credential-1"},
+                id="connection-1",
+                provider_id="plugin-daemon-website",
+                status="provisioning",
+            )
+        ],
+        next_cursor=None,
+    )
+
+    with pytest.raises(KnowledgeFSInitialSourceNotReadyError, match="still provisioning"):
+        _start(facade, _payload())
+
+    facade.create_source_connection.assert_not_called()
+    facade.create_source.assert_not_called()
 
 
 def test_initial_website_source_import_retries_running_workflow() -> None:

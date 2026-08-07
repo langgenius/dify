@@ -3,15 +3,18 @@
 from __future__ import annotations
 
 from celery import shared_task
+from sqlalchemy import select
 
 from core.db.session_factory import session_factory
 from models.knowledge_fs import KnowledgeFSControlSpaceState
+from models.oauth import DatasourceProvider
 from repositories.sqlalchemy_knowledge_fs_control_space_repository import (
     SQLAlchemyKnowledgeFSControlSpaceRepository,
 )
 from services.knowledge_fs.product_dto import (
     KnowledgeFSCrawlImportPayload,
     KnowledgeFSInitialWebsiteSourcePayload,
+    KnowledgeFSSourceConnectionCreatePayload,
     KnowledgeFSSourceCreatePayload,
     KnowledgeFSSourceSyncPolicyPayload,
 )
@@ -19,6 +22,7 @@ from services.knowledge_fs.product_remote import KnowledgeFSProductResourceNotFo
 from services.knowledge_fs.runtime import get_knowledge_fs_runtime
 
 _FIRECRAWL_PROVIDER_ID = "plugin-daemon-website"
+_FIRECRAWL_PLUGIN_ID = "langgenius/firecrawl_datasource"
 _PAGE_SIZE = 200
 
 
@@ -44,7 +48,32 @@ def _find_initial_source(*, facade, tenant_id: str, account_id: str, control_spa
         cursor = response.next_cursor
 
 
-def _find_firecrawl_connection(*, facade, tenant_id: str, account_id: str, control_space_id: str):
+def _find_firecrawl_credential(*, session_maker, tenant_id: str) -> tuple[str, str]:
+    with session_maker() as session:
+        credential = session.scalar(
+            select(DatasourceProvider)
+            .where(
+                DatasourceProvider.tenant_id == tenant_id,
+                DatasourceProvider.provider == "firecrawl",
+                DatasourceProvider.plugin_id == _FIRECRAWL_PLUGIN_ID,
+            )
+            .order_by(DatasourceProvider.is_default.desc(), DatasourceProvider.created_at.asc())
+            .limit(1)
+        )
+    if credential is None:
+        raise RuntimeError("Firecrawl credential is unavailable")
+    return str(credential.id), credential.name or "Firecrawl"
+
+
+def _find_or_create_firecrawl_connection(
+    *,
+    facade,
+    tenant_id: str,
+    account_id: str,
+    control_space_id: str,
+    credential_id: str,
+    credential_name: str,
+):
     providers = facade.list_source_providers(
         tenant_id=tenant_id,
         account_id=account_id,
@@ -63,11 +92,41 @@ def _find_firecrawl_connection(*, facade, tenant_id: str, account_id: str, contr
             limit=_PAGE_SIZE,
         )
         for connection in response.data:
-            if connection.provider_id == _FIRECRAWL_PROVIDER_ID and connection.status == "active":
+            if (
+                connection.provider_id != _FIRECRAWL_PROVIDER_ID
+                or connection.configuration.get("credentialId") != credential_id
+            ):
+                continue
+            if connection.status == "active":
                 return connection
+            if connection.status == "provisioning":
+                raise KnowledgeFSInitialSourceNotReadyError("Firecrawl connection is still provisioning")
+            raise RuntimeError(f"Firecrawl connection is unavailable in state {connection.status}")
         if not response.next_cursor:
-            raise RuntimeError("Firecrawl connection is unavailable")
+            break
         cursor = response.next_cursor
+
+    connection = facade.create_source_connection(
+        tenant_id=tenant_id,
+        account_id=account_id,
+        control_space_id=control_space_id,
+        payload=KnowledgeFSSourceConnectionCreatePayload(
+            authKind="endpoint",
+            configuration={
+                "credentialId": credential_id,
+                "datasource": "crawl",
+                "pluginId": _FIRECRAWL_PLUGIN_ID,
+                "provider": "firecrawl",
+                "providerKind": "website",
+            },
+            credentials={},
+            name=credential_name,
+            providerId=_FIRECRAWL_PROVIDER_ID,
+        ),
+    )
+    if connection.status != "active":
+        raise KnowledgeFSInitialSourceNotReadyError("Firecrawl connection is still provisioning")
+    return connection
 
 
 def start_initial_website_source_import(
@@ -105,11 +164,17 @@ def start_initial_website_source_import(
         request_id=request_id,
     )
     if source is None:
-        connection = _find_firecrawl_connection(
+        credential_id, credential_name = _find_firecrawl_credential(
+            session_maker=session_maker,
+            tenant_id=tenant_id,
+        )
+        connection = _find_or_create_firecrawl_connection(
             facade=facade,
             tenant_id=tenant_id,
             account_id=account_id,
             control_space_id=control_space_id,
+            credential_id=credential_id,
+            credential_name=credential_name,
         )
         source = facade.create_source(
             tenant_id=tenant_id,
