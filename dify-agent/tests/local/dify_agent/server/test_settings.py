@@ -144,26 +144,6 @@ def test_server_settings_rejects_sandbox_files_base_url_query_or_fragment() -> N
         _ = ServerSettings(sandbox_files_base_url="https://dify.example.com#fragment")
 
 
-def test_server_settings_accepts_grpc_agent_stub_api_base_url_and_bind_override() -> None:
-    settings = ServerSettings(
-        agent_stub_api_base_url="grpc://agent.example.com:9091",
-        agent_stub_grpc_bind_address="0.0.0.0:9191",
-        server_secret_key=_base64url_secret(secrets.token_bytes(32)),
-    )
-
-    assert settings.agent_stub_api_base_url == "grpc://agent.example.com:9091"
-    assert settings.agent_stub_grpc_bind_address == "0.0.0.0:9191"
-
-
-def test_server_settings_rejects_grpc_bind_override_without_grpc_url() -> None:
-    with pytest.raises(ValidationError, match="grpc://"):
-        _ = ServerSettings(
-            agent_stub_api_base_url="https://agent.example.com/agent-stub",
-            agent_stub_grpc_bind_address="0.0.0.0:9191",
-            server_secret_key=_base64url_secret(secrets.token_bytes(32)),
-        )
-
-
 def test_server_settings_rejects_invalid_server_secret_key() -> None:
     with pytest.raises(ValidationError, match="32 decoded bytes"):
         _ = ServerSettings(server_secret_key=_base64url_secret(b"short"))
