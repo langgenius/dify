@@ -7,11 +7,12 @@ export type HomeCatalogTab = 'plugins' | 'templates'
 export type HomeCatalogTabLabels = Record<HomeCatalogTab, string>
 
 type HomeCatalogTabsProps = {
-  activeTab?: HomeCatalogTab
+  activeTab?: HomeCatalogTab | null
   className?: string
   isMarketplacePlatform: boolean
   labels?: HomeCatalogTabLabels
   language?: string
+  pluginsHref?: string
 }
 
 const HomeCatalogTabs = ({
@@ -20,6 +21,7 @@ const HomeCatalogTabs = ({
   isMarketplacePlatform,
   labels,
   language,
+  pluginsHref: pluginsHrefOverride,
 }: HomeCatalogTabsProps) => {
   const { t } = useTranslation()
   const catalogParams = language ? { language } : undefined
@@ -28,9 +30,11 @@ const HomeCatalogTabs = ({
     const queryString = searchParams.toString()
     return queryString ? `${path}?${queryString}` : path
   }
-  const pluginsHref = isMarketplacePlatform
-    ? getRelativeCatalogHref('/plugins')
-    : getMarketplaceUrl('/plugins', catalogParams)
+  const pluginsHref =
+    pluginsHrefOverride ??
+    (isMarketplacePlatform
+      ? getRelativeCatalogHref('/plugins')
+      : getMarketplaceUrl('/plugins', catalogParams))
   const templatesHref = getRelativeCatalogHref('/templates')
   const isPluginsActive = activeTab === 'plugins'
   const isTemplatesActive = activeTab === 'templates'
