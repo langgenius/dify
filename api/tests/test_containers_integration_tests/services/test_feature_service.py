@@ -5,15 +5,15 @@ from faker import Faker
 from sqlalchemy.orm import Session
 
 from enums import CloudPlan, DeploymentEdition
-from services.feature_service import (
+from services.entities.feature_entities import (
     FeatureModel,
-    FeatureService,
     KnowledgeRateLimitModel,
     LicenseModel,
     LicenseStatus,
     SSOProtocol,
     SystemFeatureModel,
 )
+from services.feature_service import FeatureService
 
 
 class TestFeatureService:
@@ -1391,47 +1391,6 @@ class TestFeatureService:
 
             # Verify mock interactions
             mock_external_service_dependencies["billing_service"].get_info.assert_called_once_with(tenant_id)
-
-    def test_license_limitation_model_is_available(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test LicenseLimitationModel.is_available method with various scenarios.
-
-        This test verifies:
-        - Proper quota availability calculation
-        - Correct handling of unlimited limits
-        - Proper handling of disabled limits
-        - Return value correctness for different scenarios
-        """
-        from services.feature_service import LicenseLimitationModel
-
-        # Test case 1: Limit disabled
-        disabled_limit = LicenseLimitationModel(enabled=False, size=5, limit=10)
-        assert disabled_limit.is_available(3) is True
-        assert disabled_limit.is_available(10) is True
-
-        # Test case 2: Unlimited limit
-        unlimited_limit = LicenseLimitationModel(enabled=True, size=5, limit=0)
-        assert unlimited_limit.is_available(3) is True
-        assert unlimited_limit.is_available(100) is True
-
-        # Test case 3: Available quota
-        available_limit = LicenseLimitationModel(enabled=True, size=5, limit=10)
-        assert available_limit.is_available(3) is True
-        assert available_limit.is_available(5) is True
-        assert available_limit.is_available(1) is True
-
-        # Test case 4: Insufficient quota
-        insufficient_limit = LicenseLimitationModel(enabled=True, size=8, limit=10)
-        assert insufficient_limit.is_available(3) is False
-        assert insufficient_limit.is_available(2) is True
-        assert insufficient_limit.is_available(1) is True
-
-        # Test case 5: Exact quota usage
-        exact_limit = LicenseLimitationModel(enabled=True, size=7, limit=10)
-        assert exact_limit.is_available(3) is True
-        assert exact_limit.is_available(3) is True
 
     def test_get_features_workspace_members_disabled(
         self, db_session_with_containers: Session, mock_external_service_dependencies

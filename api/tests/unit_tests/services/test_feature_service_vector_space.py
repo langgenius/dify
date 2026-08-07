@@ -3,7 +3,8 @@ from unittest.mock import patch
 
 from enums import DeploymentEdition
 from services.billing_service import BillingInfo
-from services.feature_service import FeatureService, LimitationModel
+from services.entities.feature_entities import LimitationModel
+from services.feature_service import FeatureService
 
 
 def test_get_features_exclude_vector_space_sets_vector_space_to_none():

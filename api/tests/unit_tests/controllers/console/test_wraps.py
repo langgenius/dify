@@ -41,7 +41,7 @@ from machinery.context import RequestContext
 from models import Account
 from models.account import AccountStatus, TenantAccountRole
 from models.dataset import RateLimitLog
-from services.feature_service import LicenseStatus
+from services.entities.feature_entities import LicenseStatus
 
 
 @pytest.fixture(autouse=True)

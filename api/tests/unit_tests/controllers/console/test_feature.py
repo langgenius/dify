@@ -3,7 +3,7 @@ from inspect import unwrap
 from pytest_mock import MockerFixture
 
 from enums import DeploymentEdition
-from services.feature_service import (
+from services.entities.feature_entities import (
     FeatureModel,
     LicenseLimitationModel,
     LicenseModel,

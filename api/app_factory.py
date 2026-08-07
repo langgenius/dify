@@ -17,7 +17,7 @@ from dify_app import DifyApp
 from enums import DeploymentEdition
 from extensions.ext_socketio import sio
 from services.enterprise.enterprise_service import EnterpriseService
-from services.feature_service import LicenseStatus
+from services.entities.feature_entities import LicenseStatus
 
 logger = logging.getLogger(__name__)
 

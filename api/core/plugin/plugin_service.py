@@ -66,8 +66,9 @@ from services.enterprise.plugin_manager_service import (
     PluginManagerService,
     PreUninstallPluginRequest,
 )
+from services.entities.feature_entities import PluginInstallationPermissionModel, PluginInstallationScope
 from services.errors.plugin import PluginInstallationForbiddenError
-from services.feature_service import FeatureService, PluginInstallationPermissionModel, PluginInstallationScope
+from services.feature_service import FeatureService
 
 logger = logging.getLogger(__name__)
 _provider_entities_adapter: TypeAdapter[list[PluginModelProviderDeclaration]] = TypeAdapter(

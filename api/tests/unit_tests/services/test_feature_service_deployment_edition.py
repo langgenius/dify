@@ -4,7 +4,8 @@ import pytest
 from pydantic import ValidationError
 
 from enums import DeploymentEdition
-from services.feature_service import FeatureService, SystemFeatureModel
+from services.entities.feature_entities import SystemFeatureModel
+from services.feature_service import FeatureService
 
 
 def test_system_feature_model_requires_deployment_edition() -> None:

@@ -4,14 +4,14 @@ from controllers.common.schema import register_response_schema_models
 from fields.base import ResponseModel
 from libs.helper import dump_response
 from libs.login import login_required
-from services.feature_service import (
+from services.entities.feature_entities import (
     FeatureModel,
-    FeatureService,
     LicenseModel,
     LimitationModel,
     SystemFeatureModel,
     VectorSpaceLimitationModel,
 )
+from services.feature_service import FeatureService
 
 from . import console_ns
 from .wraps import (

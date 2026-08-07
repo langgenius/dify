@@ -2,8 +2,9 @@ from flask_restx import Resource
 
 from controllers.common.schema import register_response_schema_models
 from controllers.web import web_ns
+from extensions.ext_application_services import application_services
 from libs.helper import dump_response
-from services.feature_service import FeatureService, SystemFeatureModel
+from services.entities.feature_entities import SystemFeatureModel
 
 register_response_schema_models(web_ns, SystemFeatureModel)
 
@@ -29,4 +30,7 @@ class SystemFeatureApi(Resource):
 
         Authentication configuration must be available before the authentication flow can be selected.
         """
-        return dump_response(SystemFeatureModel, FeatureService.get_system_features())
+        return dump_response(
+            SystemFeatureModel,
+            application_services().feature_queries.get_system_features(),
+        )
