@@ -43,6 +43,7 @@ from models.tools import ToolFile
 from services.skill_management_service import (
     SkillAssistAttachmentPayload,
     SkillAssistDraftOperationPayload,
+    SkillAssistModelPayload,
     SkillCreatePayload,
     SkillDraftFileCheckPayload,
     SkillDraftFileOperation,
