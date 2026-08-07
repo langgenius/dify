@@ -2264,7 +2264,7 @@ export type ToolParameterType =
   | 'boolean'
   | 'checkbox'
   | 'date'
-  | 'date-picker'
+  | 'date-range'
   | 'dynamic-select'
   | 'file'
   | 'files'

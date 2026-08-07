@@ -2383,7 +2383,7 @@ export const zToolParameterType = z.enum([
   'boolean',
   'checkbox',
   'date',
-  'date-picker',
+  'date-range',
   'dynamic-select',
   'file',
   'files',
