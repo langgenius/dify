@@ -793,12 +793,14 @@ async function processSelectedCrawlImport(
       state: "importing",
     }),
   );
-  await importCrawlPages(
-    input,
-    execution,
-    source,
-    [...requestedUrls].map((sourceUrl) => matched.get(sourceUrl)!),
-  );
+  const selectedPages = [...requestedUrls].map((sourceUrl) => {
+    const page = matched.get(sourceUrl);
+    if (!page) {
+      throw runtimeError("SOURCE_CRAWL_PAGE_NOT_FOUND", "Selected crawl page is unavailable");
+    }
+    return page;
+  });
+  await importCrawlPages(input, execution, source, selectedPages);
 }
 
 async function importCrawlPages(

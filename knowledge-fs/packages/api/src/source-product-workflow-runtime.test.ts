@@ -847,10 +847,7 @@ describe("source-product workflow provider imports", () => {
       },
       inventory: [],
       run: providerRun(source.id, "crawl-import", {
-        selectedSourceUrls: [
-          "https://example.test/selected",
-          "https://example.test/missing",
-        ],
+        selectedSourceUrls: ["https://example.test/selected", "https://example.test/missing"],
       }),
       source,
       websiteCrawl: {
