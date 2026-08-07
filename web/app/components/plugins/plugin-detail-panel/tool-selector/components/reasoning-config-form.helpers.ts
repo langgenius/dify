@@ -20,13 +20,7 @@ type ReasoningConfigInput = {
 
 export type ReasoningConfigValue = Record<string, ReasoningConfigInput>
 
-export const getVarKindType = (type: string, schema?: ToolFormSchema) => {
-  if (
-    schema &&
-    (toolDeclarativeTypeMatches(schema, 'date-range') || toolDeclarativeTypeMatches(schema, 'date'))
-  )
-    return VarKindType.constant
-
+export const getVarKindType = (type: string) => {
   if (type === FormTypeEnum.file || type === FormTypeEnum.files) return VarKindType.variable
 
   if (
@@ -47,13 +41,7 @@ export const getVarKindType = (type: string, schema?: ToolFormSchema) => {
   return undefined
 }
 
-export const resolveTargetVarType = (type: string, schema?: ToolFormSchema) => {
-  if (
-    schema &&
-    (toolDeclarativeTypeMatches(schema, 'date-range') || toolDeclarativeTypeMatches(schema, 'date'))
-  )
-    return VarType.string
-
+export const resolveTargetVarType = (type: string) => {
   if (type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput) return VarType.string
   if (type === FormTypeEnum.textNumber) return VarType.number
   if (type === FormTypeEnum.files) return VarType.arrayFile
@@ -115,12 +103,11 @@ export const updateInputAutoState = (
   variable: string,
   enabled: boolean,
   type: string,
-  schema?: ToolFormSchema,
 ) => {
   return {
     ...value,
     [variable]: {
-      value: enabled ? null : { type: getVarKindType(type, schema), value: null },
+      value: enabled ? null : { type: getVarKindType(type), value: null },
       auto: enabled ? (1 as const) : (0 as const),
     },
   }
@@ -145,11 +132,10 @@ export const updateReasoningValue = (
   variable: string,
   type: string,
   newValue: unknown,
-  schema?: ToolFormSchema,
 ) => {
   return produce(value, (draft) => {
     draft[variable]!.value = {
-      type: getVarKindType(type, schema),
+      type: getVarKindType(type),
       value: newValue,
     }
   })
@@ -240,7 +226,7 @@ export const createPickerProps = ({
             [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
         : createFilterVar(type),
     schema: schema as Partial<CredentialFormSchema>,
-    targetVarType: resolveTargetVarType(type, schema),
+    targetVarType: resolveTargetVarType(type),
     selectItems: schema.options ? getVisibleSelectOptions(schema.options, value, language) : [],
   }
 }

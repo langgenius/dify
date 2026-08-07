@@ -71,13 +71,8 @@ const ReasoningConfigForm: React.FC<Props> = ({
   const userProfile = useAtomValue(userProfileAtom)
   const timezone = userProfile.timezone ?? 'UTC'
 
-  const handleAutomatic = (
-    key: string,
-    val: boolean,
-    type: string,
-    fieldSchema: ToolFormSchema,
-  ) => {
-    onChange(updateInputAutoState(value, key, val, type, fieldSchema))
+  const handleAutomatic = (key: string, val: boolean, type: string) => {
+    onChange(updateInputAutoState(value, key, val, type))
   }
 
   const handleTypeChange = useCallback(
@@ -90,9 +85,9 @@ const ReasoningConfigForm: React.FC<Props> = ({
   )
 
   const handleValueChange = useCallback(
-    (variable: string, varType: string, fieldSchema: ToolFormSchema) => {
+    (variable: string, varType: string) => {
       return (newValue: unknown) => {
-        onChange(updateReasoningValue(value, variable, varType, newValue, fieldSchema))
+        onChange(updateReasoningValue(value, variable, varType, newValue))
       }
     },
     [onChange, value],
@@ -193,7 +188,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
             {tooltipContent}
             <span className="mx-1 system-xs-regular text-text-quaternary">·</span>
             <span className="system-xs-regular text-text-tertiary">
-              {resolveTargetVarType(type, schema)}
+              {resolveTargetVarType(type)}
             </span>
             {isShowJSONEditor && (
               <Tooltip>
@@ -224,7 +219,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
             <Switch
               size="xs"
               checked={!!auto}
-              onCheckedChange={(val) => handleAutomatic(variable, val, type, schema)}
+              onCheckedChange={(val) => handleAutomatic(variable, val, type)}
             />
           </label>
         </div>
@@ -239,7 +234,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
             {isString && (
               <MixedVariableTextInput
                 value={(varInput?.value as string) || ''}
-                onChange={handleValueChange(variable, type, schema)}
+                onChange={handleValueChange(variable, type)}
                 nodesOutputVars={nodeOutputVars}
                 availableNodes={availableNodes}
               />
@@ -249,7 +244,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
                 className="h-8 grow"
                 type="number"
                 value={(varInput?.value as string | number) || ''}
-                onChange={(e) => handleValueChange(variable, type, schema)(e.target.value)}
+                onChange={(e) => handleValueChange(variable, type)(e.target.value)}
                 placeholder={placeholder?.[language] || placeholder?.en_US}
               />
             )}
@@ -257,7 +252,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
               <div className="min-w-0 grow">
                 <ToolDatePicker
                   value={typeof varInput?.value === 'string' ? varInput.value : ''}
-                  onChange={handleValueChange(variable, type, schema)}
+                  onChange={handleValueChange(variable, type)}
                   timezone={timezone}
                   placeholder={placeholder?.[language] || placeholder?.en_US}
                 />
@@ -267,7 +262,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
               <div className="grow">
                 <ToolDateRangePicker
                   value={varInput?.value}
-                  onChange={handleValueChange(variable, type, schema)}
+                  onChange={handleValueChange(variable, type)}
                   timezone={timezone}
                 />
               </div>
@@ -275,7 +270,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
             {isBoolean && (
               <FormInputBoolean
                 value={varInput?.value as boolean}
-                onChange={handleValueChange(variable, type, schema)}
+                onChange={handleValueChange(variable, type)}
               />
             )}
             {isSelect && options && (
@@ -283,7 +278,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
                 value={selectedOption?.value ?? null}
                 onValueChange={(value) => {
                   if (value == null || value === '') return
-                  handleValueChange(variable, type, schema)(value)
+                  handleValueChange(variable, type)(value)
                 }}
               >
                 <SelectTrigger className="h-8 grow">
@@ -308,7 +303,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
                   isInNode
                   height={100}
                   language={CodeLanguage.json}
-                  onChange={handleValueChange(variable, type, schema)}
+                  onChange={handleValueChange(variable, type)}
                   className="w-full"
                   placeholder={
                     <div className="whitespace-pre">
