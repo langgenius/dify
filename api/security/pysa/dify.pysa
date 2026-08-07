@@ -1,7 +1,28 @@
-# Flask 3 request payloads originate outside Dify's trust boundary. Keep these
-# models local so the check does not depend on Pysa's optional model bundle.
+# Flask 3 request payload and metadata sources. Route method parameters are
+# modeled separately below because Flask-RESTX supplies path values directly.
 @property
 def werkzeug.sansio.request.Request.args() -> TaintSource[UserControlled]: ...
+
+@property
+def werkzeug.sansio.request.Request.cookies() -> TaintSource[UserControlled]: ...
+
+@property
+def werkzeug.sansio.request.Request.headers() -> TaintSource[UserControlled]: ...
+
+@property
+def werkzeug.sansio.request.Request.path() -> TaintSource[UserControlled]: ...
+
+@property
+def werkzeug.sansio.request.Request.full_path() -> TaintSource[UserControlled]: ...
+
+@property
+def werkzeug.sansio.request.Request.url() -> TaintSource[UserControlled]: ...
+
+@property
+def werkzeug.sansio.request.Request.base_url() -> TaintSource[UserControlled]: ...
+
+@property
+def werkzeug.sansio.request.Request.query_string() -> TaintSource[UserControlled]: ...
 
 @property
 def werkzeug.wrappers.request.Request.data() -> TaintSource[UserControlled]: ...
@@ -15,18 +36,112 @@ def werkzeug.wrappers.request.Request.form() -> TaintSource[UserControlled]: ...
 @property
 def werkzeug.wrappers.request.Request.json() -> TaintSource[UserControlled]: ...
 
-def werkzeug.wrappers.request.Request.get_data() -> TaintSource[UserControlled]: ...
+@property
+def werkzeug.wrappers.request.Request.values() -> TaintSource[UserControlled]: ...
 
+@property
+def werkzeug.wrappers.request.Request.view_args() -> TaintSource[UserControlled]: ...
+
+def werkzeug.wrappers.request.Request.get_data() -> TaintSource[UserControlled]: ...
 def werkzeug.wrappers.request.Request.get_json() -> TaintSource[UserControlled]: ...
 
-# Data returned by a custom API tool originates outside Dify's trust boundary.
+ModelQuery(
+    name = "dify_flask_restx_path_parameters",
+    find = "methods",
+    where = [
+        name.matches("^(get|post|put|patch|delete|head|options)$"),
+        cls.fully_qualified_name.matches("^controllers\."),
+        cls.name.matches("(Api|Resource)$")
+    ],
+    model = [
+        Parameters(
+            TaintSource[UserControlled],
+            where = [
+                Not(name.equals("self")),
+                AnyOf(
+                    name.matches("(^id$|_id$|_ids$|_code$|^code$|^filename$|^path$)"),
+                    type_annotation.fully_qualified.matches("^(builtins\.)?(str|int|float|bool)$"),
+                    type_annotation.fully_qualified.equals("uuid.UUID")
+                )
+            ]
+        )
+    ]
+)
+
+# The SSRF-safe owners remain sinks so the analysis can identify caller paths
+# which let untrusted data select an outbound destination. Their responses are
+# external data sources regardless of whether the network policy allows them.
+def core.helper.ssrf_proxy.make_request(
+    method,
+    url: TaintSink[HTTPClientRequest],
+    max_retries,
+    stream_response,
+    **kwargs,
+) -> TaintSource[DataFromInternet]: ...
+
+def core.helper.ssrf_proxy.get(url: TaintSink[HTTPClientRequest], max_retries, **kwargs) -> TaintSource[DataFromInternet]: ...
+def core.helper.ssrf_proxy.post(url: TaintSink[HTTPClientRequest], max_retries, **kwargs) -> TaintSource[DataFromInternet]: ...
+def core.helper.ssrf_proxy.put(url: TaintSink[HTTPClientRequest], max_retries, **kwargs) -> TaintSource[DataFromInternet]: ...
+def core.helper.ssrf_proxy.patch(url: TaintSink[HTTPClientRequest], max_retries, **kwargs) -> TaintSource[DataFromInternet]: ...
+def core.helper.ssrf_proxy.delete(url: TaintSink[HTTPClientRequest], max_retries, **kwargs) -> TaintSource[DataFromInternet]: ...
+def core.helper.ssrf_proxy.head(url: TaintSink[HTTPClientRequest], max_retries, **kwargs) -> TaintSource[DataFromInternet]: ...
+
+def core.file.remote_fetcher.make_request(
+    method,
+    url: TaintSink[HTTPClientRequest],
+    max_retries,
+    **kwargs,
+) -> TaintSource[DataFromInternet]: ...
+
+# Custom tools, the plugin daemon, and MCP servers cross process or network
+# trust boundaries. Model their high-level return values so serialization and
+# dynamically typed protocol objects cannot break a source-to-sink trace.
 def core.tools.custom_tool.tool.ApiTool.validate_and_parse_response(
     self,
     response,
 ) -> TaintSource[DataFromInternet]: ...
 
-# Code and templates sent to the sandbox remain security-sensitive sinks. These
-# models let Pysa trace request and external-tool data to Dify's execution edge.
+def core.plugin.impl.base.BasePluginClient._request_with_model(
+    self, method, path, type_, headers, data, params, files
+) -> TaintSource[DataFromInternet]: ...
+
+def core.plugin.impl.base.BasePluginClient._request_with_plugin_daemon_response(
+    self, method, path, type_, headers, data, params, files, transformer
+) -> TaintSource[DataFromInternet]: ...
+
+def core.plugin.impl.base.BasePluginClient._stream_request_with_model(
+    self, method, path, type_, headers, data, params, files
+) -> TaintSource[DataFromInternet]: ...
+
+def core.plugin.impl.base.BasePluginClient._request_with_plugin_daemon_response_stream(
+    self, method, path, type_, headers, data, params, files
+) -> TaintSource[DataFromInternet]: ...
+
+def core.plugin.impl.tool.PluginToolManager.invoke(
+    self,
+    tenant_id,
+    user_id,
+    tool_provider,
+    tool_name,
+    credentials,
+    credential_type,
+    tool_parameters,
+    conversation_id,
+    app_id,
+    message_id,
+) -> TaintSource[DataFromInternet]: ...
+
+def core.mcp.session.client_session.ClientSession.call_tool(
+    self, name, arguments, read_timeout_seconds
+) -> TaintSource[DataFromInternet]: ...
+
+def core.mcp.mcp_client.MCPClient.invoke_tool(self, tool_name, tool_args) -> TaintSource[DataFromInternet]: ...
+
+def core.tools.mcp_tool.tool.MCPTool.invoke_remote_mcp_tool(
+    self, tool_parameters, user_id, app_id
+) -> TaintSource[DataFromInternet]: ...
+
+# Dify-owned execution edges.
 def core.helper.code_executor.code_executor.CodeExecutor.execute_code(
     cls,
     language,
