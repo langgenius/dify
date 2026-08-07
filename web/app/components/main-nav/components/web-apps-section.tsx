@@ -123,7 +123,6 @@ const WebAppsSectionContent = () => {
   const renderAppNavItem = (installedApp: (typeof installedApps)[number]) => (
     <AppNavItem
       key={installedApp.id}
-      variant="mainNav"
       app={installedApp}
       ariaLabel={t(($) => $['mainNav.webApps.openApp'], {
         ns: 'common',

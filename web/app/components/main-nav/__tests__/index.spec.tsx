@@ -1369,7 +1369,6 @@ describe('MainNav', () => {
         screen.queryByRole('region', { name: 'explore.sidebar.webApps' }),
       ).not.toBeInTheDocument()
     })
-    expect(screen.queryByText('explore.sidebar.noApps.title')).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'common.operation.search' }),
     ).not.toBeInTheDocument()

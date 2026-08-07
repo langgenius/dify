@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import AppNavItem from '../app-nav-item'
 
 const baseProps = {
+  ariaLabel: 'My App',
   app: {
     id: 'app-123',
     app_owner_tenant_id: 'tenant-1',
@@ -54,7 +55,7 @@ describe('AppNavItem', () => {
     })
 
     it('should use a contextual accessible name when ariaLabel is provided', () => {
-      render(<AppNavItem {...baseProps} variant="mainNav" ariaLabel="Open My App web app" />)
+      render(<AppNavItem {...baseProps} ariaLabel="Open My App web app" />)
 
       const link = screen.getByRole('link', { name: 'Open My App web app' })
 
