@@ -42,6 +42,7 @@ from controllers.console.wraps import (
     setup_required,
     with_current_user,
 )
+from enums import DeploymentEdition
 from extensions.ext_database import db
 from libs.helper import EmailStr, extract_remote_ip
 from libs.helper import timezone as validate_timezone_string
@@ -120,7 +121,9 @@ class LoginApi(Resource):
         request_email = args.email
         normalized_email = request_email.lower()
 
-        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(normalized_email):
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and BillingService.is_email_in_freeze(
+            normalized_email
+        ):
             _log_console_login_failure(email=normalized_email, reason=LoginFailureReason.ACCOUNT_IN_FREEZE)
             raise AccountInFreezeError()
 

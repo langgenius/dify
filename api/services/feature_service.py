@@ -6,9 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
-from enums.cloud_plan import CloudPlan
-from enums.deployment_edition import DeploymentEdition
-from enums.hosted_provider import HostedTrialProvider
+from enums import CloudPlan, DeploymentEdition, HostedTrialProvider
 from services.billing_service import BillingInfo, BillingService
 from services.enterprise.enterprise_service import EnterpriseService
 
@@ -25,7 +23,13 @@ class SubscriptionModel(FeatureResponseModel):
 
 
 class BillingModel(FeatureResponseModel):
-    enabled: bool = False
+    # Deprecated compatibility field. Deployment edition is the only source of truth for product edition.
+    # TODO: Remove after clients migrate to `SystemFeatureModel.deployment_edition`.
+    enabled: bool = Field(
+        default=False,
+        deprecated=True,
+        description="Deprecated. Use system features deployment_edition to determine the product edition.",
+    )
     subscription: SubscriptionModel = SubscriptionModel()
 
 
@@ -222,14 +226,14 @@ class FeatureService:
 
         cls._fulfill_params_from_env(features)
 
-        if dify_config.BILLING_ENABLED and tenant_id:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and tenant_id:
             cls._fulfill_params_from_billing_api(
                 features,
                 tenant_id,
                 exclude_vector_space=exclude_vector_space,
             )
 
-        if dify_config.ENTERPRISE_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
             features.webapp_copyright_enabled = True
             features.knowledge_pipeline.publish_enabled = True
             cls._fulfill_params_from_workspace_info(features, tenant_id)
@@ -244,7 +248,7 @@ class FeatureService:
     @classmethod
     def get_vector_space(cls, tenant_id: str) -> VectorSpaceLimitationModel:
         vector_space = VectorSpaceLimitationModel(size=0, limit=5)
-        if dify_config.BILLING_ENABLED and tenant_id:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and tenant_id:
             billing_vector_space = BillingService.get_vector_space(tenant_id)
             # NOTE: billing API returns vector_space.size as float (e.g. 0.0),
             # but feature API keeps LimitationModel.size as int for compatibility.
@@ -257,7 +261,7 @@ class FeatureService:
     @classmethod
     def get_knowledge_rate_limit(cls, tenant_id: str):
         knowledge_rate_limit = KnowledgeRateLimitModel()
-        if dify_config.BILLING_ENABLED and tenant_id:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and tenant_id:
             knowledge_rate_limit.enabled = True
             limit_info = BillingService.get_knowledge_rate_limit(tenant_id)
             knowledge_rate_limit.limit = limit_info.get("limit", 10)
@@ -267,7 +271,7 @@ class FeatureService:
     @classmethod
     def get_knowledge_file_size_limit(cls, tenant_id: str | None) -> int:
         default_limit = dify_config.UPLOAD_FILE_SIZE_LIMIT
-        if not dify_config.BILLING_ENABLED or not tenant_id:
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD or not tenant_id:
             return default_limit
 
         billing_info = BillingService.get_info(tenant_id, exclude_vector_space=True)
@@ -281,7 +285,7 @@ class FeatureService:
 
     @classmethod
     def _resolve_human_input_email_delivery_enabled(cls, *, features: FeatureModel, tenant_id: str | None) -> bool:
-        if dify_config.ENTERPRISE_ENABLED or not dify_config.BILLING_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
             return True
         if not tenant_id:
             return False
@@ -297,7 +301,7 @@ class FeatureService:
 
         cls._fulfill_system_params_from_env(system_features)
 
-        if dify_config.ENTERPRISE_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
             system_features.branding.enabled = True
             system_features.webapp_auth.enabled = True
             system_features.enable_change_email = False
@@ -315,7 +319,7 @@ class FeatureService:
     def is_workspace_creation_allowed(cls) -> bool:
         """Resolve the backend workspace-creation policy, including the Enterprise override."""
         is_allowed = dify_config.ALLOW_CREATE_WORKSPACE
-        if not dify_config.ENTERPRISE_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
             return is_allowed
 
         enterprise_info = EnterpriseService.get_info()
@@ -324,12 +328,12 @@ class FeatureService:
     @classmethod
     def is_plugin_manager_enabled(cls) -> bool:
         """Return whether Enterprise plugin credential policies must be enforced."""
-        return dify_config.ENTERPRISE_ENABLED
+        return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE
 
     @classmethod
     def get_plugin_installation_permission(cls) -> PluginInstallationPermissionModel:
         """Resolve the validated deployment-wide plugin installation policy."""
-        if not dify_config.ENTERPRISE_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
             return PluginInstallationPermissionModel()
 
         return cls._resolve_plugin_installation_permission(EnterpriseService.get_info())
@@ -341,7 +345,7 @@ class FeatureService:
         Non-enterprise deployments have no license, so an unconstrained default
         (unlimited seats/workspaces) is returned.
         """
-        if not dify_config.ENTERPRISE_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
             return LicenseModel()
         return cls._build_license(EnterpriseService.get_info())
 

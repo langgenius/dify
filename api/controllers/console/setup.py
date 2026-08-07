@@ -6,7 +6,7 @@ from sqlalchemy import select
 
 from configs import dify_config
 from controllers.fastopenapi import console_router
-from enums.deployment_edition import DeploymentEdition
+from enums import DeploymentEdition
 from libs.helper import EmailStr, extract_remote_ip
 from libs.password import valid_password
 from models.model import DifySetup, db

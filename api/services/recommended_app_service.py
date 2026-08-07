@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
-from enums.deployment_edition import DeploymentEdition
+from enums import DeploymentEdition
 from models.model import AccountTrialAppRecord, App, TrialApp
 from services.recommend_app.recommend_app_factory import RecommendAppRetrievalFactory
 

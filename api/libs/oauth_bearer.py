@@ -25,6 +25,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, ServiceUnavailable, Unauthorized
 
 from configs import dify_config
+from enums import DeploymentEdition
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.rate_limit import enforce_bearer_rate_limit
@@ -531,7 +532,7 @@ def require_workspace_member(ctx: AuthContext, tenant_id: str) -> None:
     No-op on EE (gateway RBAC owns tenant isolation) and for SSO subjects
     (no `tenant_account_joins` row by definition).
     """
-    if dify_config.ENTERPRISE_ENABLED:
+    if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
         return
     if ctx.subject_type != SubjectType.ACCOUNT or ctx.account_id is None:
         return

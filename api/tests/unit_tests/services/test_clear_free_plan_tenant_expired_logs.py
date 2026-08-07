@@ -11,7 +11,7 @@ from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan, DeploymentEdition
 from graphon.file import FileTransferMethod, FileType
 from models.account import Tenant
 from models.enums import (
@@ -471,7 +471,7 @@ def test_process_with_tenant_ids_filters_by_plan_and_logs_errors(
     sqlite_session.commit()
     _configure_process_boundaries(monkeypatch, sqlite_engine)
     monkeypatch.setattr(service_module.click, "echo", MagicMock())
-    monkeypatch.setattr(service_module.dify_config, "BILLING_ENABLED", True)
+    monkeypatch.setattr(service_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
 
     def fake_get_info(tenant_id: str) -> dict[str, dict[str, str]]:
         if tenant_id == "tenant-sandbox":
@@ -524,7 +524,7 @@ def test_process_without_tenant_ids_batches_and_scales_interval(
     monkeypatch.setattr(service_module.datetime, "datetime", FixedDateTime)
     _configure_process_boundaries(monkeypatch, sqlite_engine)
     monkeypatch.setattr(service_module.click, "echo", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(service_module.dify_config, "BILLING_ENABLED", False)
+    monkeypatch.setattr(service_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     process_tenant = MagicMock()
     monkeypatch.setattr(ClearFreePlanTenantExpiredLogs, "process_tenant", process_tenant)
     statements: list[str] = []
@@ -564,7 +564,7 @@ def test_process_with_tenant_ids_emits_progress_every_100(
     sqlite_session.add_all([_create_tenant(tenant_id) for tenant_id in tenant_ids])
     sqlite_session.commit()
     _configure_process_boundaries(monkeypatch, sqlite_engine)
-    monkeypatch.setattr(service_module.dify_config, "BILLING_ENABLED", False)
+    monkeypatch.setattr(service_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     echo = MagicMock()
     monkeypatch.setattr(service_module.click, "echo", echo)
     monkeypatch.setattr(ClearFreePlanTenantExpiredLogs, "process_tenant", MagicMock())
@@ -598,7 +598,7 @@ def test_process_without_tenant_ids_all_intervals_too_many_uses_min_interval(
     monkeypatch.setattr(service_module.datetime, "datetime", FixedDateTime)
     _configure_process_boundaries(monkeypatch, sqlite_engine)
     monkeypatch.setattr(service_module.click, "echo", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(service_module.dify_config, "BILLING_ENABLED", False)
+    monkeypatch.setattr(service_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     process_tenant = MagicMock()
     monkeypatch.setattr(ClearFreePlanTenantExpiredLogs, "process_tenant", process_tenant)
     statements: list[str] = []

@@ -36,11 +36,12 @@ from core.workflow.nodes.human_input.entities import ParagraphInputConfig, UserA
 from core.workflow.nodes.human_input.enums import FormInputType, HumanInputFormKind, HumanInputFormStatus
 from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType, HumanInputRequired
 from core.workflow.system_variables import build_system_variables
+from enums import DeploymentEdition
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.runtime import GraphRuntimeState, VariablePool
 from models.account import Account
-from models.enums import CreatorUserRole
+from models.enums import CreatorUserRole, MessageStatus
 from models.human_input import HumanInputForm
 from models.model import AppMode
 from models.workflow import WorkflowRun
@@ -378,7 +379,7 @@ class TestHitlServiceApi:
         monkeypatch: pytest.MonkeyPatch,
         sqlite_engine: Engine,
     ) -> None:
-        monkeypatch.setattr(ags_module.dify_config, "BILLING_ENABLED", False)
+        monkeypatch.setattr(ags_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
         monkeypatch.setattr(ags_module, "RateLimit", _DummyRateLimit)
 
         workflow = MagicMock()
@@ -453,7 +454,6 @@ class TestHitlServiceApi:
     def test_advanced_chat_blocking_pipeline_pause_payload_contract(self) -> None:
         from core.app.app_config.entities import AppAdditionalFeatures
         from core.app.apps.advanced_chat.generate_task_pipeline import AdvancedChatAppGenerateTaskPipeline
-        from models.enums import MessageStatus
         from models.model import EndUser
 
         app_config = WorkflowUIBasedAppConfig(

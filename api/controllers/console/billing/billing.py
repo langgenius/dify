@@ -15,7 +15,7 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.login import login_required

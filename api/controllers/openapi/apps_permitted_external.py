@@ -23,7 +23,8 @@ from controllers.openapi._models import (
 )
 from controllers.openapi.apps import build_app_describe_response
 from controllers.openapi.auth.composition import auth_router
-from controllers.openapi.auth.data import AuthData, Edition
+from controllers.openapi.auth.data import AuthData
+from enums import DeploymentEdition
 from libs.oauth_bearer import Scope, TokenType
 from models import App
 from models.enums import AppStatus
@@ -37,7 +38,7 @@ class PermittedExternalAppsListApi(Resource):
     @auth_router.guard(
         scope=Scope.APPS_READ_PERMITTED_EXTERNAL,
         allowed_token_types=frozenset({TokenType.OAUTH_EXTERNAL_SSO}),
-        edition=frozenset({Edition.EE}),
+        edition=frozenset({DeploymentEdition.ENTERPRISE}),
     )
     @returns(200, PermittedExternalAppsListResponse, description="Permitted external apps list")
     @accepts(query=PermittedExternalAppsListQuery)
@@ -94,7 +95,7 @@ class PermittedExternalAppDescribeApi(Resource):
     @auth_router.guard(
         scope=Scope.APPS_READ_PERMITTED_EXTERNAL,
         allowed_token_types=frozenset({TokenType.OAUTH_EXTERNAL_SSO}),
-        edition=frozenset({Edition.EE}),
+        edition=frozenset({DeploymentEdition.ENTERPRISE}),
     )
     @returns(200, AppDescribeResponse, description="Permitted external app description")
     @accepts(query=AppDescribeQuery)

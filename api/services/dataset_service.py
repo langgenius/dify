@@ -23,7 +23,7 @@ from core.model_manager import ModelManager
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan
 from events.dataset_event import dataset_was_deleted
 from events.document_event import document_was_deleted
 from extensions.ext_redis import redis_client

@@ -10,6 +10,7 @@ from unittest.mock import patch
 
 import pytest
 
+from enums import DeploymentEdition
 from services.enterprise.enterprise_service import (
     INVALID_LICENSE_CACHE_TTL,
     LICENSE_STATUS_CACHE_KEY,
@@ -265,12 +266,12 @@ class TestJoinDefaultWorkspace:
 
 
 class TestTryJoinDefaultWorkspace:
-    def test_try_join_default_workspace_enterprise_disabled_noop(self):
+    def test_try_join_default_workspace_non_enterprise_edition_noop(self):
         with (
             patch("services.enterprise.enterprise_service.dify_config") as mock_config,
             patch("services.enterprise.enterprise_service.EnterpriseService.join_default_workspace") as mock_join,
         ):
-            mock_config.ENTERPRISE_ENABLED = False
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
 
             try_join_default_workspace("11111111-1111-1111-1111-111111111111")
 
@@ -283,7 +284,7 @@ class TestTryJoinDefaultWorkspace:
             patch("services.enterprise.enterprise_service.dify_config") as mock_config,
             patch("services.enterprise.enterprise_service.EnterpriseService.join_default_workspace") as mock_join,
         ):
-            mock_config.ENTERPRISE_ENABLED = True
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
             mock_join.return_value = DefaultWorkspaceJoinResult(
                 workspace_id="22222222-2222-2222-2222-222222222222",
                 joined=True,
@@ -302,7 +303,7 @@ class TestTryJoinDefaultWorkspace:
             patch("services.enterprise.enterprise_service.dify_config") as mock_config,
             patch("services.enterprise.enterprise_service.EnterpriseService.join_default_workspace") as mock_join,
         ):
-            mock_config.ENTERPRISE_ENABLED = True
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
             mock_join.return_value = DefaultWorkspaceJoinResult(
                 workspace_id="",
                 joined=False,
@@ -321,7 +322,7 @@ class TestTryJoinDefaultWorkspace:
             patch("services.enterprise.enterprise_service.dify_config") as mock_config,
             patch("services.enterprise.enterprise_service.EnterpriseService.join_default_workspace") as mock_join,
         ):
-            mock_config.ENTERPRISE_ENABLED = True
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
             mock_join.side_effect = Exception("network failure")
 
             # Should not raise
@@ -331,7 +332,7 @@ class TestTryJoinDefaultWorkspace:
 
     def test_try_join_default_workspace_invalid_account_id_soft_fails(self):
         with patch("services.enterprise.enterprise_service.dify_config") as mock_config:
-            mock_config.ENTERPRISE_ENABLED = True
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
 
             # Should not raise even though UUID parsing fails inside join_default_workspace
             try_join_default_workspace("not-a-uuid")
@@ -347,9 +348,9 @@ _EE_SVC = "services.enterprise.enterprise_service"
 class TestGetCachedLicenseStatus:
     """Tests for EnterpriseService.get_cached_license_status."""
 
-    def test_returns_none_when_enterprise_disabled(self):
+    def test_returns_none_outside_enterprise_edition(self):
         with patch(f"{_EE_SVC}.dify_config") as mock_config:
-            mock_config.ENTERPRISE_ENABLED = False
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
 
             assert EnterpriseService.get_cached_license_status() is None
 
@@ -361,7 +362,7 @@ class TestGetCachedLicenseStatus:
             patch(f"{_EE_SVC}.redis_client") as mock_redis,
             patch.object(EnterpriseService, "get_info") as mock_get_info,
         ):
-            mock_config.ENTERPRISE_ENABLED = True
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
             mock_redis.get.return_value = b"active"
 
             result = EnterpriseService.get_cached_license_status()
@@ -378,7 +379,7 @@ class TestGetCachedLicenseStatus:
             patch(f"{_EE_SVC}.redis_client") as mock_redis,
             patch.object(EnterpriseService, "get_info") as mock_get_info,
         ):
-            mock_config.ENTERPRISE_ENABLED = True
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
             mock_redis.get.return_value = None
             mock_get_info.return_value = {"License": {"status": "active"}}
 
@@ -397,7 +398,7 @@ class TestGetCachedLicenseStatus:
             patch(f"{_EE_SVC}.redis_client") as mock_redis,
             patch.object(EnterpriseService, "get_info") as mock_get_info,
         ):
-            mock_config.ENTERPRISE_ENABLED = True
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
             mock_redis.get.return_value = None
             mock_get_info.return_value = {"License": {"status": "expired"}}
 
@@ -416,7 +417,7 @@ class TestGetCachedLicenseStatus:
             patch(f"{_EE_SVC}.redis_client") as mock_redis,
             patch.object(EnterpriseService, "get_info") as mock_get_info,
         ):
-            mock_config.ENTERPRISE_ENABLED = True
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
             mock_redis.get.side_effect = ConnectionError("redis down")
             mock_get_info.return_value = {"License": {"status": "active"}}
 
@@ -433,7 +434,7 @@ class TestGetCachedLicenseStatus:
             patch(f"{_EE_SVC}.redis_client") as mock_redis,
             patch.object(EnterpriseService, "get_info") as mock_get_info,
         ):
-            mock_config.ENTERPRISE_ENABLED = True
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
             mock_redis.get.return_value = None
             mock_redis.setex.side_effect = ConnectionError("redis down")
             mock_get_info.return_value = {"License": {"status": "expiring"}}
@@ -448,7 +449,7 @@ class TestGetCachedLicenseStatus:
             patch(f"{_EE_SVC}.redis_client") as mock_redis,
             patch.object(EnterpriseService, "get_info") as mock_get_info,
         ):
-            mock_config.ENTERPRISE_ENABLED = True
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
             mock_redis.get.return_value = None
             mock_get_info.side_effect = Exception("network failure")
 
@@ -460,7 +461,7 @@ class TestGetCachedLicenseStatus:
             patch(f"{_EE_SVC}.redis_client") as mock_redis,
             patch.object(EnterpriseService, "get_info") as mock_get_info,
         ):
-            mock_config.ENTERPRISE_ENABLED = True
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
             mock_redis.get.return_value = None
             mock_get_info.return_value = {}  # no "License" key
 

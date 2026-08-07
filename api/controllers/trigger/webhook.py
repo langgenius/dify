@@ -7,7 +7,7 @@ from werkzeug.exceptions import NotFound, RequestEntityTooLarge
 from controllers.trigger import bp
 from core.trigger.debug.event_bus import TriggerDebugEventBus
 from core.trigger.debug.events import WebhookDebugEvent, build_webhook_pool_key
-from enums.quota_type import QuotaType
+from enums import QuotaType
 from services.errors.app import QuotaExceededError
 from services.trigger.webhook_service import RawWebhookDataDict, WebhookService
 

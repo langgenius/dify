@@ -4,6 +4,7 @@ import pytest
 from flask import Flask
 
 from controllers.console.auth.oauth import OAuthLogin, _generate_account
+from enums import DeploymentEdition
 from libs.oauth import OAuthUserInfo
 from services.errors.account import AccountRegisterError
 
@@ -116,7 +117,7 @@ def test_generate_account_rejects_new_user_when_registration_disabled(
     app: Flask,
 ):
     mock_feature_service.get_system_features.return_value.is_allow_register = False
-    mock_config.BILLING_ENABLED = False
+    mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
     user_info = OAuthUserInfo(id="github-123", name="Test User", email="user@example.com")
 
     with app.test_request_context(headers={"Accept-Language": "en-US,en;q=0.9"}):

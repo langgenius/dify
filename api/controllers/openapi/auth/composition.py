@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from controllers.openapi.auth.conditions import (
-    EDITION_EE,
+    EDITION_ENTERPRISE,
     HAS_ALLOWED_ROLES,
     HAS_RBAC,
     LOADED_APP_IS_PRIVATE,
@@ -11,7 +11,6 @@ from controllers.openapi.auth.conditions import (
     WORKSPACE_MEMBERSHIP_REQUIRED,
     WORKSPACE_SCOPED,
 )
-from controllers.openapi.auth.data import Edition
 from controllers.openapi.auth.flow import When
 from controllers.openapi.auth.pipeline import AuthPipeline, PipelineRoute, PipelineRouter
 from controllers.openapi.auth.prepare import (
@@ -33,6 +32,7 @@ from controllers.openapi.auth.verify import (
     check_workspace_mismatch,
     check_workspace_role,
 )
+from enums import DeploymentEdition
 from libs.oauth_bearer import TokenType
 
 account_pipeline = AuthPipeline(
@@ -42,7 +42,7 @@ account_pipeline = AuthPipeline(
         When(WORKSPACE_MEMBERSHIP_REQUIRED, then=load_tenant_from_request),
         load_account,
         When(WORKSPACE_SCOPED, then=load_workspace_role),
-        When(PATH_HAS_APP_ID & EDITION_EE, then=load_app_access_mode),
+        When(PATH_HAS_APP_ID & EDITION_ENTERPRISE, then=load_app_access_mode),
     ],
     auth=[
         When(PATH_HAS_APP_ID, then=check_app_api_enabled),
@@ -51,8 +51,8 @@ account_pipeline = AuthPipeline(
         When(PATH_HAS_APP_ID, then=check_workspace_mismatch),
         When(HAS_ALLOWED_ROLES, then=check_workspace_role),
         When(HAS_RBAC, then=check_rbac_permission),
-        When(PATH_HAS_APP_ID & EDITION_EE & WEBAPP_AUTH_ENABLED & WEBAPP_RUN_SCOPED, then=check_acl),
-        When(EDITION_EE & LOADED_APP_IS_PRIVATE & WEBAPP_RUN_SCOPED, then=check_private_app_permission),
+        When(PATH_HAS_APP_ID & EDITION_ENTERPRISE & WEBAPP_AUTH_ENABLED & WEBAPP_RUN_SCOPED, then=check_acl),
+        When(EDITION_ENTERPRISE & LOADED_APP_IS_PRIVATE & WEBAPP_RUN_SCOPED, then=check_private_app_permission),
     ],
 )
 
@@ -74,6 +74,9 @@ external_sso_pipeline = AuthPipeline(
 auth_router = PipelineRouter(
     {
         TokenType.OAUTH_ACCOUNT: PipelineRoute(account_pipeline),
-        TokenType.OAUTH_EXTERNAL_SSO: PipelineRoute(external_sso_pipeline, required_edition=frozenset({Edition.EE})),
+        TokenType.OAUTH_EXTERNAL_SSO: PipelineRoute(
+            external_sso_pipeline,
+            required_edition=frozenset({DeploymentEdition.ENTERPRISE}),
+        ),
     }
 )

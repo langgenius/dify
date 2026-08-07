@@ -9,6 +9,8 @@ This module contains tests for:
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
+from enums import DeploymentEdition
+
 
 class TestWorkflowRunArchiver:
     """Tests for the WorkflowRunArchiver class."""
@@ -19,7 +21,7 @@ class TestWorkflowRunArchiver:
         """Test archiver can be initialized with various options."""
         from services.retention.workflow_run.archive_paid_plan_workflow_run import WorkflowRunArchiver
 
-        mock_config.BILLING_ENABLED = False
+        mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
 
         archiver = WorkflowRunArchiver(
             days=90,

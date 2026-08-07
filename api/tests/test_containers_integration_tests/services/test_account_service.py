@@ -9,6 +9,7 @@ from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
 from controllers.console.error import AccountNotFound, NotAllowedCreateWorkspace
+from enums import DeploymentEdition
 from models import AccountStatus, App, Dataset, TenantAccountJoin, TenantStatus
 from services.account_service import AccountService, RegisterService, TenantService, TokenPair
 from services.errors.account import (
@@ -156,7 +157,7 @@ class TestAccountService:
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = True
-        dify_config.BILLING_ENABLED = True
+        dify_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
 
         with pytest.raises(AccountRegisterError):
             AccountService.create_account(
@@ -167,7 +168,7 @@ class TestAccountService:
                 session=db_session_with_containers,
             )
 
-        dify_config.BILLING_ENABLED = False  # Reset config for other tests
+        dify_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY  # Reset config for other tests
 
     def test_authenticate_account_not_found(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -1105,14 +1106,14 @@ class TestAccountService:
         fake = Faker()
         email_in_freeze = fake.email()
         # Setup mocks
-        dify_config.BILLING_ENABLED = True
+        dify_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = True
 
         with pytest.raises(AccountRegisterError):
             AccountService.get_user_through_email(email_in_freeze, session=db_session_with_containers)
 
         # Reset config
-        dify_config.BILLING_ENABLED = False
+        dify_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
 
     def test_delete_account(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
