@@ -90,7 +90,7 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
                 href="https://docs.dify.ai/en/guides/knowledge-base"
                 target="_blank"
                 rel="noreferrer"
-                className="rounded-sm system-xs-regular text-text-accent outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                className="rounded-sm system-xs-regular text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
               >
                 {t(($) => $['newKnowledge.learnMore'])}
               </a>

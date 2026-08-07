@@ -97,6 +97,25 @@ class WorkspaceService:
         )
 
     @classmethod
+    def get_current_workspace_summary(cls, tenant: Tenant, account_id: str, *, session: Session) -> dict[str, object]:
+        tenant_account_join = session.scalar(
+            select(TenantAccountJoin)
+            .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == account_id)
+            .limit(1)
+        )
+        assert tenant_account_join is not None, "TenantAccountJoin not found"
+
+        effective_pool = cls.get_effective_credit_pool(tenant.id, session=session)
+
+        return {
+            "id": tenant.id,
+            "name": tenant.name,
+            "role": tenant_account_join.role,
+            "plan": effective_pool.plan,
+            "credits": effective_pool.remaining_credits,
+        }
+
+    @classmethod
     def get_tenant_info(cls, tenant: Tenant, session: Session):
         if not tenant:
             return None

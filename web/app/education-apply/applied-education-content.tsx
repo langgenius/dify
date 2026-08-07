@@ -1,9 +1,11 @@
 'use client'
 
-import type { TenantListItemResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type {
+  GetWorkspacesCurrentSummaryResponse,
+  TenantListItemResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
 import type { Plan as PlanType } from '@/app/components/billing/type'
-import type { ICurrentWorkspace } from '@/models/common'
 import { Select, SelectTrigger } from '@langgenius/dify-ui/select'
 import { useTranslation } from 'react-i18next'
 import { Plan } from '@/app/components/billing/type'
@@ -12,7 +14,7 @@ import { PlanBadge } from '@/app/components/header/plan-badge'
 
 type AppliedEducationContentProps = {
   workspaces: TenantListItemResponse[]
-  currentWorkspace: ICurrentWorkspace
+  currentWorkspace: GetWorkspacesCurrentSummaryResponse
   plan: PlanType
   action: ReactNode
   isSwitchingWorkspace: boolean

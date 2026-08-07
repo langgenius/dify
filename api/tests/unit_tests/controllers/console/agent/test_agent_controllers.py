@@ -1,3 +1,4 @@
+from datetime import datetime
 from inspect import getsource, unwrap
 from types import SimpleNamespace
 from typing import Any, cast
@@ -5,6 +6,7 @@ from unittest.mock import MagicMock, Mock, call
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError, NotFound
 
 from controllers.console import console_ns
@@ -53,8 +55,71 @@ from controllers.console.app.message import (
     AgentMessageFeedbackApi,
     AgentMessageSuggestedQuestionApi,
 )
-from models.agent import AgentConfigDraftType
+from core.app.entities.app_invoke_entities import InvokeFrom
+from models.agent import Agent, AgentConfigDraftType, AgentScope, AgentSource, AgentStatus
+from models.enums import ConversationFromSource
+from models.model import AppMode, Conversation, Message
 from services.entities.agent_entities import ComposerSaveStrategy, ComposerVariant
+
+
+def _persist_conversation_message(
+    session: Session,
+    *,
+    app_id: str,
+    conversation_id: str,
+    message_id: str,
+    created_at: datetime,
+) -> tuple[Conversation, Message]:
+    conversation = session.get(Conversation, conversation_id)
+    if conversation is None:
+        conversation = Conversation(
+            app_id=app_id,
+            app_model_config_id=None,
+            model_provider=None,
+            override_model_configs=None,
+            model_id=None,
+            mode=AppMode.CHAT,
+            name="Conversation",
+            inputs={},
+            introduction="",
+            system_instruction="",
+            system_instruction_tokens=0,
+            status="normal",
+            invoke_from=InvokeFrom.DEBUGGER,
+            from_source=ConversationFromSource.CONSOLE,
+            from_end_user_id=None,
+            from_account_id="00000000-0000-0000-0000-000000000021",
+        )
+        conversation.id = conversation_id
+        session.add(conversation)
+        session.flush()
+    message = Message(
+        app_id=app_id,
+        conversation_id=conversation.id,
+        inputs={},
+        query="query",
+        message={},
+        message_tokens=0,
+        message_unit_price=0,
+        message_price_unit=0,
+        answer="answer",
+        answer_tokens=0,
+        answer_unit_price=0,
+        answer_price_unit=0,
+        provider_response_latency=0,
+        total_price=0,
+        currency="USD",
+        invoke_from=InvokeFrom.DEBUGGER,
+        from_source=ConversationFromSource.CONSOLE,
+        from_end_user_id=None,
+        from_account_id="00000000-0000-0000-0000-000000000021",
+        app_mode=AppMode.CHAT,
+        created_at=created_at,
+    )
+    message.id = message_id
+    session.add(message)
+    session.flush()
+    return conversation, message
 
 
 def _version_response(version_id: str = "version-1") -> dict:
@@ -430,18 +495,25 @@ def test_agent_app_create_omits_optional_role_as_empty_string(
 
 
 def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
+    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str, sqlite_session: Session
 ) -> None:
     agent_id = "00000000-0000-0000-0000-000000000001"
-    app_model = _app_detail_obj(id="app-1", bound_agent_id=agent_id)
-    agent = SimpleNamespace(
-        id=agent_id,
-        app_id="app-1",
-        backing_app_id=None,
+    tenant_id = "00000000-0000-0000-0000-000000000002"
+    app_id = "00000000-0000-0000-0000-000000000003"
+    app_model = _app_detail_obj(id=app_id, tenant_id=tenant_id, bound_agent_id=agent_id)
+    agent = Agent(
+        tenant_id=tenant_id,
+        name="Resolved agent",
+        description="",
         role="Resolved role",
-        debug_conversation_id="debug-conversation-detail",
-        active_config_snapshot_id=None,
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        app_id=app_id,
+        status=AgentStatus.ACTIVE,
     )
+    agent.id = agent_id
+    sqlite_session.add(agent)
+    sqlite_session.flush()
     captured: dict[str, object] = {}
     monkeypatch.setattr(roster_controller.AgentRosterService, "get_agent_app_model", lambda _self, **kwargs: app_model)
     monkeypatch.setattr(roster_controller, "_resolve_agent_runtime_app_model", lambda _session, **kwargs: app_model)
@@ -472,17 +544,16 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
 
         def update_app(self, app_obj: object, args: dict[str, object], *, session: object) -> object:
             captured["update"] = {"app": app_obj, "args": args}
-            return _app_detail_obj(id="app-1", name=args["name"], bound_agent_id=agent_id)
+            return _app_detail_obj(id=app_id, tenant_id=tenant_id, name=args["name"], bound_agent_id=agent_id)
 
         def delete_app(self, app_obj: object, *, session: object) -> None:
             captured["delete"] = app_obj
 
     monkeypatch.setattr(roster_controller, "AppService", FakeAppService)
-    session = Mock()
-    session.scalar.return_value = agent
-    detail = unwrap(AgentAppApi.get)(AgentAppApi(), session, "tenant-1", SimpleNamespace(id=account_id), agent_id)
+    session = sqlite_session
+    detail = unwrap(AgentAppApi.get)(AgentAppApi(), session, tenant_id, SimpleNamespace(id=account_id), agent_id)
     assert detail["id"] == agent_id
-    assert detail["app_id"] == "app-1"
+    assert detail["app_id"] == app_id
     assert detail["debug_conversation_id"] == "debug-conversation-detail"
     assert detail["debug_conversation_has_messages"] is True
     assert detail["debug_conversation_message_count"] == 2
@@ -495,10 +566,10 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
         "/console/api/agent/00000000-0000-0000-0000-000000000001",
         json={"name": "Renamed", "description": "", "role": "Reviewer", "icon_type": "emoji", "icon": "R"},
     ):
-        updated = unwrap(AgentAppApi.put)(AgentAppApi(), session, "tenant-1", SimpleNamespace(id=account_id), agent_id)
+        updated = unwrap(AgentAppApi.put)(AgentAppApi(), session, tenant_id, SimpleNamespace(id=account_id), agent_id)
     assert updated["name"] == "Renamed"
     assert updated["id"] == agent_id
-    assert updated["app_id"] == "app-1"
+    assert updated["app_id"] == app_id
     assert updated["debug_conversation_id"] == "debug-conversation-detail"
     assert updated["debug_conversation_has_messages"] is True
     assert updated["debug_conversation_message_count"] == 2
@@ -508,7 +579,7 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
     update_call = cast(dict[str, object], captured["update"])
     assert update_call["app"] is app_model
     assert cast(dict[str, object], update_call["args"])["role"] == "Reviewer"
-    deleted, status = unwrap(AgentAppApi.delete)(AgentAppApi(), session, "tenant-1", agent_id)
+    deleted, status = unwrap(AgentAppApi.delete)(AgentAppApi(), session, tenant_id, agent_id)
     assert (deleted, status) == ("", 204)
     assert captured["delete"] is app_model
 
@@ -735,7 +806,9 @@ def test_agent_api_access_uses_agent_id_and_returns_service_api_metadata(monkeyp
     }
 
 
-def test_agent_api_status_and_key_routes_resolve_backing_app(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_agent_api_status_and_key_routes_resolve_backing_app(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
     agent_id = "00000000-0000-0000-0000-000000000001"
     api_key_id = "00000000-0000-0000-0000-000000000002"
     app_model = SimpleNamespace(
@@ -747,7 +820,6 @@ def test_agent_api_status_and_key_routes_resolve_backing_app(app: Flask, monkeyp
         api_rph=0,
     )
     captured: dict[str, object] = {}
-    session = MagicMock()
     resolve_app = Mock(return_value=app_model)
     monkeypatch.setattr(roster_controller, "_resolve_agent_app_model", resolve_app)
     monkeypatch.setattr(roster_controller, "_agent_api_key_count", lambda _session, app_id: 1)
@@ -792,34 +864,42 @@ def test_agent_api_status_and_key_routes_resolve_backing_app(app: Flask, monkeyp
     with app.test_request_context(
         "/console/api/agent/00000000-0000-0000-0000-000000000001/api-enable", json={"enable_api": True}
     ):
-        enabled = unwrap(AgentApiStatusApi.post)(AgentApiStatusApi(), session, "tenant-1", agent_id)
+        enabled = unwrap(AgentApiStatusApi.post)(AgentApiStatusApi(), unbound_session, "tenant-1", agent_id)
     assert enabled["enabled"] is True
     assert captured["enable"] == {"app": app_model, "enable_api": True}
-    keys = unwrap(AgentApiKeyListApi.get)(AgentApiKeyListApi(), session, "tenant-1", agent_id)
+    keys = unwrap(AgentApiKeyListApi.get)(AgentApiKeyListApi(), unbound_session, "tenant-1", agent_id)
     assert keys == {"data": []}
-    assert captured["list_keys"] == {"session": session, "resource_id": "app-1", "tenant_id": "tenant-1"}
-    created, status = unwrap(AgentApiKeyListApi.post)(AgentApiKeyListApi(), session, "tenant-1", agent_id)
+    assert captured["list_keys"] == {
+        "session": unbound_session,
+        "resource_id": "app-1",
+        "tenant_id": "tenant-1",
+    }
+    created, status = unwrap(AgentApiKeyListApi.post)(AgentApiKeyListApi(), unbound_session, "tenant-1", agent_id)
     assert status == 201
     assert created["id"] == api_key_id
     assert created["token"] == "app-test-token"
-    assert captured["create_key"] == {"session": session, "resource_id": "app-1", "tenant_id": "tenant-1"}
+    assert captured["create_key"] == {
+        "session": unbound_session,
+        "resource_id": "app-1",
+        "tenant_id": "tenant-1",
+    }
     current_user = SimpleNamespace(id="account-1", is_admin_or_owner=True)
     deleted, delete_status = unwrap(AgentApiKeyApi.delete)(
-        AgentApiKeyApi(), session, "tenant-1", current_user, agent_id, api_key_id
+        AgentApiKeyApi(), unbound_session, "tenant-1", current_user, agent_id, api_key_id
     )
     assert (deleted, delete_status) == ("", 204)
     assert captured["delete_key"] == {
-        "session": session,
+        "session": unbound_session,
         "resource_id": "app-1",
         "api_key_id": api_key_id,
         "tenant_id": "tenant-1",
         "current_user": current_user,
     }
     assert resolve_app.call_args_list == [
-        call(session, tenant_id="tenant-1", agent_id=agent_id),
-        call(session, tenant_id="tenant-1", agent_id=agent_id),
-        call(session, tenant_id="tenant-1", agent_id=agent_id),
-        call(session, tenant_id="tenant-1", agent_id=agent_id),
+        call(unbound_session, tenant_id="tenant-1", agent_id=agent_id),
+        call(unbound_session, tenant_id="tenant-1", agent_id=agent_id),
+        call(unbound_session, tenant_id="tenant-1", agent_id=agent_id),
+        call(unbound_session, tenant_id="tenant-1", agent_id=agent_id),
     ]
 
 
@@ -1327,7 +1407,7 @@ def test_agent_composer_routes_resolve_app_from_agent_id(
 
 
 def test_agent_chat_generate_and_stop_routes_resolve_app_from_agent_id(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
+    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str, unbound_session: Session
 ) -> None:
     agent_id = "00000000-0000-0000-0000-000000000001"
     app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="agent")
@@ -1358,22 +1438,21 @@ def test_agent_chat_generate_and_stop_routes_resolve_app_from_agent_id(
     )
     monkeypatch.setattr(completion_controller, "_create_chat_message", create_chat_message)
     monkeypatch.setattr(completion_controller, "_stop_chat_message", stop_chat_message)
-    session = Mock()
     with app.test_request_context(json={"inputs": {}, "query": "hello"}):
         assert unwrap(AgentChatMessageApi.post)(
-            AgentChatMessageApi(), session, "tenant-1", SimpleNamespace(id=account_id), agent_id
+            AgentChatMessageApi(), unbound_session, "tenant-1", SimpleNamespace(id=account_id), agent_id
         ) == {"result": "generated"}
     assert cast(dict[str, object], captured["resolve"]) == {"tenant_id": "tenant-1", "agent_id": agent_id}
-    assert captured["resolve_session"] is session
+    assert captured["resolve_session"] is unbound_session
     create_call = cast(dict[str, object], captured["create"])
-    assert create_call["session"] is session
+    assert create_call["session"] is unbound_session
     assert create_call["app_model"] is app_model
     assert cast(SimpleNamespace, create_call["current_user"]).id == account_id
     assert unwrap(AgentChatMessageStopApi.post)(
-        AgentChatMessageStopApi(), session, "tenant-1", account_id, agent_id, "task-1"
+        AgentChatMessageStopApi(), unbound_session, "tenant-1", account_id, agent_id, "task-1"
     ) == ({"result": "success"}, 200)
     assert captured["stop_resolve"] == {
-        "session": session,
+        "session": unbound_session,
         "tenant_id": "tenant-1",
         "agent_id": agent_id,
     }
@@ -1424,7 +1503,7 @@ def test_agent_chat_stream_preflight_preserves_first_normal_event() -> None:
 
 
 def test_agent_build_chat_finalize_route_resolves_app_from_agent_id(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
+    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str, unbound_session: Session
 ) -> None:
     agent_id = "00000000-0000-0000-0000-000000000001"
     app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="agent")
@@ -1444,14 +1523,13 @@ def test_agent_build_chat_finalize_route_resolves_app_from_agent_id(
         lambda _self, **kwargs: resolve_agent_app_model(**kwargs),
     )
     monkeypatch.setattr(completion_controller, "_create_build_chat_finalization_message", create_finalization_message)
-    session = Mock()
     with app.test_request_context():
         assert unwrap(AgentBuildChatFinalizeApi.post)(
-            AgentBuildChatFinalizeApi(), session, "tenant-1", SimpleNamespace(id=account_id), agent_id
+            AgentBuildChatFinalizeApi(), unbound_session, "tenant-1", SimpleNamespace(id=account_id), agent_id
         ) == {"result": "generated"}
     assert cast(dict[str, object], captured["resolve"]) == {"tenant_id": "tenant-1", "agent_id": agent_id}
     finalize_call = cast(dict[str, object], captured["finalize"])
-    assert finalize_call["session"] is session
+    assert finalize_call["session"] is unbound_session
     assert finalize_call["app_model"] is app_model
     assert finalize_call["current_tenant_id"] == "tenant-1"
     assert finalize_call["agent_id"] == agent_id
@@ -1459,7 +1537,7 @@ def test_agent_build_chat_finalize_route_resolves_app_from_agent_id(
 
 
 def test_build_chat_finalization_helper_forces_debug_build_and_push_prompt(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
+    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str, unbound_session: Session
 ) -> None:
     app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="agent")
     captured: dict[str, object] = {}
@@ -1478,18 +1556,17 @@ def test_build_chat_finalization_helper_forces_debug_build_and_push_prompt(
         completion_controller, "_resolve_current_user_agent_debug_conversation_id", resolve_debug_conversation
     )
     monkeypatch.setattr(completion_controller.AppGenerateService, "generate", generate)
-    session = Mock()
     with app.test_request_context(headers={"X-Trace-Id": "trace-1"}):
         result = completion_controller._create_build_chat_finalization_message(
             current_tenant_id="tenant-1",
             current_user=SimpleNamespace(id=account_id),
             app_model=app_model,
             agent_id="agent-1",
-            session=session,
+            session=unbound_session,
         )
     assert result == ({"result": "success"}, 200)
     assert captured["resolve_debug_conversation"] == {
-        "session": session,
+        "session": unbound_session,
         "current_tenant_id": "tenant-1",
         "current_user": SimpleNamespace(id=account_id),
         "app_model": app_model,
@@ -1576,6 +1653,7 @@ def test_agent_chat_helper_resolves_scoped_conversation_and_forces_streaming(
     payload_extra: dict[str, str | None],
     expected_draft_type: AgentConfigDraftType,
     expected_start_new: bool,
+    unbound_session: Session,
 ) -> None:
     app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="agent")
     current_user = SimpleNamespace(id=account_id)
@@ -1603,7 +1681,7 @@ def test_agent_chat_helper_resolves_scoped_conversation_and_forces_streaming(
         headers={"X-Trace-Id": "trace-1"},
     ):
         result = completion_controller._create_chat_message(
-            current_user=current_user, app_model=app_model, session=Mock()
+            current_user=current_user, app_model=app_model, session=unbound_session
         )
     assert result == {"response": {"answer": "ok"}}
     assert captured["app_model"] is app_model
@@ -1620,7 +1698,7 @@ def test_agent_chat_helper_resolves_scoped_conversation_and_forces_streaming(
 
 
 def test_agent_chat_helper_ignores_private_exit_intent_payload_key(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
+    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str, unbound_session: Session
 ) -> None:
     app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="agent")
     current_user = SimpleNamespace(id=account_id)
@@ -1653,7 +1731,7 @@ def test_agent_chat_helper_ignores_private_exit_intent_payload_key(
         result = completion_controller._create_chat_message(
             current_user=current_user,
             app_model=app_model,
-            session=Mock(),
+            session=unbound_session,
         )
 
     assert result == {"response": {"answer": "ok"}}
@@ -1677,6 +1755,7 @@ def test_agent_chat_helper_rejects_foreign_debug_conversation_before_generation(
     account_id: str,
     payload_extra: dict[str, str],
     expected_draft_type: AgentConfigDraftType,
+    unbound_session: Session,
 ) -> None:
     app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="agent")
     generate = MagicMock()
@@ -1702,7 +1781,7 @@ def test_agent_chat_helper_rejects_foreign_debug_conversation_before_generation(
                 current_user=SimpleNamespace(id=account_id),
                 app_model=app_model,
                 agent_id="agent-1",
-                session=Mock(),
+                session=unbound_session,
             )
 
     resolve_debug_conversation.assert_called_once()
@@ -1835,25 +1914,30 @@ def test_resolve_current_user_agent_debug_conversation_uses_agent_or_backing_app
     ],
 )
 def test_agent_chat_helper_maps_generation_errors(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, error: Exception, expected: type[Exception]
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    error: Exception,
+    expected: type[Exception],
+    unbound_session: Session,
 ) -> None:
     app_model = SimpleNamespace(id="app-1", mode="chat")
     monkeypatch.setattr(completion_controller.AppGenerateService, "generate", lambda **_: (_ for _ in ()).throw(error))
     with app.test_request_context(json={"inputs": {}, "query": "hello"}):
         with pytest.raises(expected):
             completion_controller._create_chat_message(
-                current_user=SimpleNamespace(id="account-1"), app_model=app_model, session=Mock()
+                current_user=SimpleNamespace(id="account-1"), app_model=app_model, session=unbound_session
             )
 
 
-def test_agent_chat_message_routes_resolve_app_from_agent_id(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_agent_chat_message_routes_resolve_app_from_agent_id(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
     agent_id = "00000000-0000-0000-0000-000000000001"
     message_id = "00000000-0000-0000-0000-000000000002"
     app_model = SimpleNamespace(id="app-1", mode="agent")
     current_user = SimpleNamespace(id="account-1")
     captured: dict[str, object] = {}
     resolver_calls: list[dict[str, object]] = []
-    session = Mock()
 
     def resolve_agent_app_model(**kwargs: object) -> object:
         resolver_calls.append(kwargs)
@@ -1881,50 +1965,68 @@ def test_agent_chat_message_routes_resolve_app_from_agent_id(app: Flask, monkeyp
     monkeypatch.setattr(message_controller, "_get_message_suggested_questions", get_message_suggested_questions)
     monkeypatch.setattr(message_controller, "_get_message_detail", get_message_detail)
     assert unwrap(AgentChatMessageListApi.get)(
-        AgentChatMessageListApi(), session, "tenant-1", current_user, agent_id
+        AgentChatMessageListApi(), unbound_session, "tenant-1", current_user, agent_id
     ) == {"data": []}
     list_call = cast(dict[str, object], captured["list"])
-    assert list_call["session"] is session
+    assert list_call["session"] is unbound_session
     assert list_call["app_model"] is app_model
     with app.test_request_context(json={"message_id": message_id, "rating": "like"}):
         assert unwrap(AgentMessageFeedbackApi.post)(
-            AgentMessageFeedbackApi(), session, "tenant-1", current_user, agent_id
+            AgentMessageFeedbackApi(), unbound_session, "tenant-1", current_user, agent_id
         ) == {"result": "success"}
     feedback_call = cast(dict[str, object], captured["feedback"])
-    assert feedback_call["session"] is session
+    assert feedback_call["session"] is unbound_session
     assert feedback_call["app_model"] is app_model
     assert feedback_call["current_user"] is current_user
     assert unwrap(AgentMessageSuggestedQuestionApi.get)(
-        AgentMessageSuggestedQuestionApi(), session, "tenant-1", current_user, agent_id, message_id
+        AgentMessageSuggestedQuestionApi(), unbound_session, "tenant-1", current_user, agent_id, message_id
     ) == {"data": ["next"]}
     suggested_call = cast(dict[str, object], captured["suggested"])
-    assert suggested_call["session"] is session
+    assert suggested_call["session"] is unbound_session
     assert suggested_call["app_model"] is app_model
     assert suggested_call["current_user"] is current_user
     assert suggested_call["message_id"] == message_id
-    assert unwrap(AgentMessageApi.get)(AgentMessageApi(), session, "tenant-1", agent_id, message_id) == {
+    assert unwrap(AgentMessageApi.get)(AgentMessageApi(), unbound_session, "tenant-1", agent_id, message_id) == {
         "id": message_id
     }
     detail_call = cast(dict[str, object], captured["detail"])
-    assert detail_call == {"session": session, "app_model": app_model, "message_id": message_id}
+    assert detail_call == {"session": unbound_session, "app_model": app_model, "message_id": message_id}
     assert resolver_calls == [
-        {"session": session, "tenant_id": "tenant-1", "agent_id": agent_id},
-        {"session": session, "tenant_id": "tenant-1", "agent_id": agent_id},
-        {"session": session, "tenant_id": "tenant-1", "agent_id": agent_id},
-        {"session": session, "tenant_id": "tenant-1", "agent_id": agent_id},
+        {"session": unbound_session, "tenant_id": "tenant-1", "agent_id": agent_id},
+        {"session": unbound_session, "tenant_id": "tenant-1", "agent_id": agent_id},
+        {"session": unbound_session, "tenant_id": "tenant-1", "agent_id": agent_id},
+        {"session": unbound_session, "tenant_id": "tenant-1", "agent_id": agent_id},
     ]
 
 
-def test_list_chat_messages_supports_first_id_pagination(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_list_chat_messages_supports_first_id_pagination(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    app_id = "00000000-0000-0000-0000-000000000001"
     conversation_id = "00000000-0000-0000-0000-000000000010"
     first_message_id = "00000000-0000-0000-0000-000000000011"
     older_message_id = "00000000-0000-0000-0000-000000000012"
-    conversation = SimpleNamespace(id=conversation_id)
-    first_message = SimpleNamespace(id=first_message_id, created_at=2)
-    older_message = SimpleNamespace(id=older_message_id, created_at=1)
-    scalar_values = iter([conversation, first_message, True])
-    scalars_result = SimpleNamespace(all=lambda: [older_message])
-    session = SimpleNamespace(scalar=lambda _stmt: next(scalar_values), scalars=lambda _stmt: scalars_result)
+    _persist_conversation_message(
+        sqlite_session,
+        app_id=app_id,
+        conversation_id=conversation_id,
+        message_id="00000000-0000-0000-0000-000000000013",
+        created_at=datetime(2025, 1, 1),
+    )
+    _persist_conversation_message(
+        sqlite_session,
+        app_id=app_id,
+        conversation_id=conversation_id,
+        message_id=older_message_id,
+        created_at=datetime(2025, 1, 2),
+    )
+    _persist_conversation_message(
+        sqlite_session,
+        app_id=app_id,
+        conversation_id=conversation_id,
+        message_id=first_message_id,
+        created_at=datetime(2025, 1, 3),
+    )
 
     class FakeMessagePaginationResponse:
         @classmethod
@@ -1943,20 +2045,27 @@ def test_list_chat_messages_supports_first_id_pagination(app: Flask, monkeypatch
         f"/console/api/agent/agent-1/chat-messages?conversation_id={conversation_id}&first_id={first_message_id}&limit=1"
     ):
         result = message_controller._list_chat_messages(
-            session=session, app_model=SimpleNamespace(id="app-1", mode="chat")
+            session=sqlite_session, app_model=SimpleNamespace(id=app_id, mode="chat")
         )
     assert result == {"data": [older_message_id], "limit": 1, "has_more": True}
 
 
-def test_list_agent_chat_messages_uses_current_user_conversation(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_list_agent_chat_messages_uses_current_user_conversation(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    app_id = "00000000-0000-0000-0000-000000000001"
     conversation_id = "00000000-0000-0000-0000-000000000010"
     message_id = "00000000-0000-0000-0000-000000000011"
-    conversation = SimpleNamespace(id=conversation_id)
-    message = SimpleNamespace(id=message_id, created_at=1)
+    conversation, _ = _persist_conversation_message(
+        sqlite_session,
+        app_id=app_id,
+        conversation_id=conversation_id,
+        message_id=message_id,
+        created_at=datetime(2025, 1, 1),
+    )
     current_user = SimpleNamespace(id="account-1")
-    app_model = SimpleNamespace(id="app-1", mode="agent")
+    app_model = SimpleNamespace(id=app_id, mode="agent")
     captured: dict[str, object] = {}
-    session = SimpleNamespace(scalar=lambda _stmt: False, scalars=lambda _stmt: SimpleNamespace(all=lambda: [message]))
 
     class FakeMessagePaginationResponse:
         @classmethod
@@ -1977,13 +2086,17 @@ def test_list_agent_chat_messages_uses_current_user_conversation(app: Flask, mon
     monkeypatch.setattr(message_controller, "attach_message_extra_contents", lambda messages: None)
     monkeypatch.setattr(message_controller, "MessageInfiniteScrollPaginationResponse", FakeMessagePaginationResponse)
     with app.test_request_context(f"/console/api/agent/agent-1/chat-messages?conversation_id={conversation_id}"):
-        result = message_controller._list_chat_messages(session=session, app_model=app_model, current_user=current_user)
+        result = message_controller._list_chat_messages(
+            session=sqlite_session, app_model=app_model, current_user=current_user
+        )
     assert result == {"data": [message_id], "limit": 20, "has_more": False}
-    assert captured.pop("session") is session
+    assert captured.pop("session") is sqlite_session
     assert captured == {"app_model": app_model, "conversation_id": conversation_id, "user": current_user}
 
 
-def test_list_agent_chat_messages_rejects_foreign_conversation(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_list_agent_chat_messages_rejects_foreign_conversation(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
     conversation_id = "00000000-0000-0000-0000-000000000010"
     monkeypatch.setattr(
         message_controller.ConversationService,
@@ -1993,32 +2106,33 @@ def test_list_agent_chat_messages_rejects_foreign_conversation(app: Flask, monke
     with app.test_request_context(f"/console/api/agent/agent-1/chat-messages?conversation_id={conversation_id}"):
         with pytest.raises(NotFound):
             message_controller._list_chat_messages(
-                session=Mock(),
+                session=unbound_session,
                 app_model=SimpleNamespace(id="app-1", mode="agent"),
                 current_user=SimpleNamespace(id="account-1"),
             )
 
 
 def test_update_message_feedback_rejects_empty_rating_without_existing_feedback(
-    app: Flask,
+    app: Flask, sqlite_session: Session
 ) -> None:
+    app_id = "00000000-0000-0000-0000-000000000001"
     message_id = "00000000-0000-0000-0000-000000000002"
-    message = SimpleNamespace(
-        id=message_id,
-        app_id="app-1",
-        admin_feedback_with_session=MagicMock(return_value=None),
+    _, message = _persist_conversation_message(
+        sqlite_session,
+        app_id=app_id,
+        conversation_id="00000000-0000-0000-0000-000000000010",
+        message_id=message_id,
+        created_at=datetime(2025, 1, 1),
     )
-    session = MagicMock()
-    session.scalar.return_value = message
     with app.test_request_context(json={"message_id": message_id, "rating": None}):
         with pytest.raises(ValueError, match="rating cannot be None"):
             message_controller._update_message_feedback(
-                session=session,
+                session=sqlite_session,
                 current_user=SimpleNamespace(id="account-1"),
-                app_model=SimpleNamespace(id="app-1"),
+                app_model=SimpleNamespace(id=app_id),
             )
 
-    message.admin_feedback_with_session.assert_called_once_with(session=session)
+    assert message.admin_feedback_with_session(session=sqlite_session) is None
 
 
 @pytest.mark.parametrize(
@@ -2041,12 +2155,10 @@ def test_update_message_feedback_rejects_empty_rating_without_existing_feedback(
     ],
 )
 def test_get_message_suggested_questions_maps_service_errors(
-    monkeypatch: pytest.MonkeyPatch, error: Exception, expected: type[Exception]
+    monkeypatch: pytest.MonkeyPatch, error: Exception, expected: type[Exception], unbound_session: Session
 ) -> None:
-    session = Mock()
-
     def raise_error(**kwargs: object) -> None:
-        assert kwargs["session"] is session
+        assert kwargs["session"] is unbound_session
         raise error
 
     monkeypatch.setattr(
@@ -2056,7 +2168,7 @@ def test_get_message_suggested_questions_maps_service_errors(
     )
     with pytest.raises(expected):
         message_controller._get_message_suggested_questions(
-            session=session,
+            session=unbound_session,
             current_user=SimpleNamespace(id="account-1"),
             app_model=SimpleNamespace(id="app-1"),
             message_id="00000000-0000-0000-0000-000000000002",
