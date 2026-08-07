@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+# These tests exercise local SDK boundaries with test doubles, not Microsoft systems.
 import base64
 import json
 import pickle
@@ -26,8 +27,10 @@ from botframework.connector.auth import (
 from cryptography.hazmat.primitives.asymmetric import rsa
 from jwt.algorithms import RSAAlgorithm
 from msrest.authentication import BasicTokenAuthentication
+from pydantic import JsonValue
 
 from core.human_input_v2.approval import FrozenFormAction, FrozenFormDefinition
+from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import ms_teams
 from core.human_input_v2.im_provider import (
     AuthenticatedIMEvent,
@@ -162,7 +165,10 @@ class _ConnectorServer:
 
     @property
     def base_url(self) -> str:
-        host, port = self.server.server_address
+        host = self.server.server_address[0]
+        port = self.server.server_address[1]
+        assert isinstance(host, str)
+        assert isinstance(port, int)
         return f"http://{host}:{port}/"
 
 
@@ -219,7 +225,7 @@ def _unsigned_token(claims: Mapping[str, object]) -> str:
 
 def _credentials() -> MSTeamsIMIntegrationCredentials:
     return MSTeamsIMIntegrationCredentials(
-        provider="ms_teams",
+        provider=IMProvider.MS_TEAMS,
         tenant_id="11111111-1111-1111-1111-111111111111",
         client_id="22222222-2222-2222-2222-222222222222",
         client_secret="test-only-client-secret",
@@ -289,10 +295,19 @@ def _adapter(
             client_id=selected_credentials.client_id,
         )
 
+    def graph_credential_factory(*_args: object, **_kwargs: object) -> _GraphCredential:
+        return graph_credential
+
+    def graph_client_factory(*_args: object, **_kwargs: object) -> httpx.Client:
+        return graph_client
+
+    def bot_credentials_factory(*_args: object, **_kwargs: object) -> MicrosoftAppCredentials:
+        return bot_credentials
+
     monkeypatch.setattr(bot_credentials, "get_access_token", bot_access_token)
-    monkeypatch.setattr(ms_teams, "ClientSecretCredential", lambda *args, **kwargs: graph_credential)
-    monkeypatch.setattr(ms_teams.httpx, "Client", lambda *args, **kwargs: graph_client)
-    monkeypatch.setattr(ms_teams, "MicrosoftAppCredentials", lambda *args, **kwargs: bot_credentials)
+    monkeypatch.setattr(ms_teams, "ClientSecretCredential", graph_credential_factory)
+    monkeypatch.setattr(ms_teams.httpx, "Client", graph_client_factory)
+    monkeypatch.setattr(ms_teams, "MicrosoftAppCredentials", bot_credentials_factory)
     if connector_factory is not None:
         monkeypatch.setattr(ms_teams, "ConnectorClient", connector_factory)
     return ms_teams.MSTeamsIMProviderAdapter(selected_credentials), graph_credential, graph_boundary
@@ -304,15 +319,16 @@ def _card_intent(
     rendered_content: str = "Sanitized **rendered** content",
     action_style: str = "primary",
 ) -> NormalizedCardIntent:
-    input_definition: dict[str, object] = {
+    input_definition: dict[str, JsonValue] = {
         "type": input_type,
         "output_variable_name": "decision",
     }
     default_value = "Sanitized initial value"
     if input_type == "select":
+        selector: list[JsonValue] = []
         input_definition["option_source"] = {
             "type": "constant",
-            "selector": [],
+            "selector": selector,
             "value": ["Approve", "Reject"],
         }
         default_value = "Approve"
@@ -478,10 +494,17 @@ def test_real_connector_and_graph_boundaries_round_trip_all_outbound_capabilitie
     card_body = send_requests[1].json_body()
     assert card_body["type"] == "message"
     assert card_body["summary"] == "Sanitized **rendered** content"
-    attachment = card_body["attachments"][0]
+    attachments = card_body["attachments"]
+    assert isinstance(attachments, list)
+    attachment = attachments[0]
+    assert isinstance(attachment, dict)
     assert attachment["contentType"] == "application/vnd.microsoft.card.adaptive"
     content = attachment["content"]
-    assert [element["type"] for element in content["body"]] == ["TextBlock", "TextBlock", "Input.ChoiceSet"]
+    assert isinstance(content, dict)
+    card_elements = content["body"]
+    assert isinstance(card_elements, list)
+    assert all(isinstance(element, dict) for element in card_elements)
+    assert [element["type"] for element in card_elements] == ["TextBlock", "TextBlock", "Input.ChoiceSet"]
     assert content["actions"] == [
         {
             "type": "Action.Submit",
@@ -584,6 +607,21 @@ def test_real_connector_maps_exact_update_failures_without_selecting_another_mes
     assert isinstance(unknown, ReplacementError)
     assert unknown.kind is ReplacementErrorKind.UNKNOWN
     assert len(state.requests_for("update")) == 2
+
+
+def test_replacement_rejects_locator_without_serialized_payload(monkeypatch: pytest.MonkeyPatch) -> None:
+    adapter, _, _ = _adapter(monkeypatch)
+    undersized_reference = object.__new__(ms_teams._MSTeamsMessageLocator)
+    digest_only = base64.urlsafe_b64encode(b"x" * ms_teams._MESSAGE_LOCATOR_DIGEST_SIZE).rstrip(b"=").decode()
+    object.__setattr__(undersized_reference, "_serialized_value", digest_only)
+
+    result = adapter.dynamic_card_messaging.replace_with_static(
+        undersized_reference,
+        StaticCardIntent("Sanitized static content"),
+    )
+
+    assert isinstance(result, ReplacementError)
+    assert result.kind is ReplacementErrorKind.INVALID_REFERENCE
 
 
 @pytest.mark.parametrize(
