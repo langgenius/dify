@@ -368,14 +368,17 @@ class WorkspaceSkillFileUploadApi(Resource):
         if not file.filename:
             return {"code": "filename_missing", "message": "filename is required"}, 400
 
-        result = SkillManagementService().upload_file(
-            tenant_id=current_tenant_id,
-            user_id=current_user.id,
-            filename=file.filename,
-            content=file.stream.read(),
-            mime_type=file.mimetype,
-        )
-        return dump_response(SkillFileUploadResponse, result), 201
+        try:
+            result = SkillManagementService().upload_file(
+                tenant_id=current_tenant_id,
+                user_id=current_user.id,
+                filename=file.filename,
+                content=file.stream.read(),
+                mime_type=file.mimetype,
+            )
+            return dump_response(SkillFileUploadResponse, result), 201
+        except SkillManagementServiceError as exc:
+            return _error_response(exc)
 
 
 @console_ns.route("/workspaces/current/skills/tags")
