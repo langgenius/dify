@@ -29,7 +29,6 @@ import {
   isCurrentWorkspaceEditorAtom,
   isCurrentWorkspaceManagerAtom,
   isCurrentWorkspaceOwnerAtom,
-  refreshCurrentWorkspaceAtom,
 } from '../workspace-state'
 
 const mockGetRequest = vi.hoisted(() => vi.fn())
@@ -224,7 +223,6 @@ function ConsoleBootstrapProbe() {
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
   const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
   const refreshUserProfile = useSetAtom(refreshUserProfileAtom)
-  const refreshCurrentWorkspace = useSetAtom(refreshCurrentWorkspaceAtom)
   const refreshPermissionsAfterMutationDenial = useSetAtom(
     refreshWorkspacePermissionKeysAfterMutationDenialAtom,
   )
@@ -282,9 +280,6 @@ function ConsoleBootstrapProbe() {
       </span>
       <button type="button" onClick={refreshUserProfile}>
         refresh user
-      </button>
-      <button type="button" onClick={refreshCurrentWorkspace}>
-        refresh workspace
       </button>
       <button type="button" onClick={() => void refreshPermissionsAfterMutationDenial()}>
         refresh permissions after denial
@@ -466,15 +461,13 @@ describe('Console bootstrap', () => {
   })
 
   describe('Refresh actions', () => {
-    it('should invalidate the source queries when refresh actions are called', async () => {
+    it('should invalidate the user profile query when refresh is called', async () => {
       const { queryClient } = renderConsoleBootstrap()
       const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries')
 
       fireEvent.click(await screen.findByRole('button', { name: /refresh user/i }))
-      fireEvent.click(screen.getByRole('button', { name: /refresh workspace/i }))
 
       expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['user-profile'] })
-      expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['current-workspace-summary'] })
     })
 
     it('starts a fresh permission request without waiting for an older request', async () => {

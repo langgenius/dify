@@ -1,7 +1,7 @@
 'use client'
 
 import { atom } from 'jotai'
-import { atomWithQuery, queryClientAtom } from 'jotai-tanstack-query'
+import { atomWithQuery } from 'jotai-tanstack-query'
 import { consoleQuery } from '@/service/client'
 import { initialWorkspaceSummary } from './app-context-defaults'
 import { getWorkspaceRoleFlags, normalizeCurrentWorkspaceSummary } from './app-context-normalizers'
@@ -42,9 +42,4 @@ export const isCurrentWorkspaceDatasetOperatorAtom = atom((get) => {
 
 export const currentWorkspaceLoadingAtom = atom((get) => {
   return get(currentWorkspaceQueryAtom).isPending
-})
-
-export const refreshCurrentWorkspaceAtom = atom(null, (get) => {
-  const queryClient = get(queryClientAtom)
-  queryClient.invalidateQueries({ queryKey: consoleQuery.workspaces.current.summary.get.key() })
 })

@@ -3,13 +3,15 @@ import type {
   StepByStepTourStatePatchPayload,
   StepByStepTourStateResponse,
 } from '@dify/contracts/api/console/onboarding/types.gen'
-import type { GetWorkspacesCurrentSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type {
+  GetWorkspacesCurrentSummaryResponse,
+  TenantListItemResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
 import type { Mock } from 'vitest'
 import type { StepByStepTourSessionState } from '@/app/components/step-by-step-tour/types'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
-import type { IWorkspace } from '@/models/common'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
@@ -395,7 +397,7 @@ let mockPathname = '/apps'
 let mockInstalledApps: InstalledAppResponse[] = []
 let mockInstalledAppsPending = false
 let mockInstalledAppsHasNextPage = false
-let mockWorkspaces: IWorkspace[] = []
+let mockWorkspaces: TenantListItemResponse[] = []
 
 const ownerWorkspacePermissionKeys = [
   'workspace.member.manage',

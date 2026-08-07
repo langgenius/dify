@@ -26,16 +26,6 @@ export type Member = Pick<GetAccountProfileResponse, 'id' | 'name' | 'email' | '
   roles: Role[]
 }
 
-export type IWorkspace = {
-  id: string
-  name: string
-  plan: string
-  status: string
-  created_at: number
-  last_opened_at?: number | null
-  current: boolean
-}
-
 export type DataSourceNotionPage = {
   page_icon: null | {
     type: string | null

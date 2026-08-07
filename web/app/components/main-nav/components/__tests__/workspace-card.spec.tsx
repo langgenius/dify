@@ -1,7 +1,9 @@
-import type { GetWorkspacesCurrentSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type {
+  GetWorkspacesCurrentSummaryResponse,
+  TenantListItemResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
-import type { IWorkspace } from '@/models/common'
 import { zLicenseStatus } from '@dify/contracts/api/console/system-features/zod.gen'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -113,7 +115,7 @@ vi.mock('nuqs', async (importOriginal) => {
   return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
 })
 let mockCurrentWorkspace: GetWorkspacesCurrentSummaryResponse | undefined = currentWorkspaceValue
-let mockWorkspaces: IWorkspace[] = []
+let mockWorkspaces: TenantListItemResponse[] = []
 
 const mockCurrentWorkspaceQuery = (
   data: GetWorkspacesCurrentSummaryResponse | undefined = currentWorkspaceValue,
