@@ -19,6 +19,14 @@ describe('WebAppAddress', () => {
 
   it('does not reinterpret an unsupported environment path as an ordinary webapp', () => {
     expect(parseWebAppAddress('/env/workflow')).toBeNull()
+    expect(parseWebAppAddress('/env/not-a-mode/workflow-app')).toBeNull()
+  })
+
+  it('accepts every webapp mode under the environment prefix', () => {
+    expect(parseWebAppAddress('/env/chat/chat-app')).toEqual({
+      kind: 'environment',
+      code: 'chat-app',
+    })
   })
 
   it('builds the environment upload and workflow URLs', () => {

@@ -77,16 +77,8 @@ const createConversationData = (
 
 describe('shareQueryKeys', () => {
   it('should isolate web app metadata by complete address', () => {
-    const firstAddress = {
-      kind: 'environment' as const,
-      environmentId: 'environment-1',
-      code: 'webapp',
-    }
-    const secondAddress = {
-      kind: 'environment' as const,
-      environmentId: 'environment-2',
-      code: 'webapp',
-    }
+    const firstAddress = { kind: 'environment' as const, code: 'webapp' }
+    const secondAddress = { kind: 'default' as const, code: 'webapp' }
     expect(shareQueryKeys.appAccessMode(firstAddress, 'webapp')).not.toEqual(
       shareQueryKeys.appAccessMode(secondAddress, 'webapp'),
     )
