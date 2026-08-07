@@ -52,7 +52,13 @@ from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
 from services.dsl_version import check_version_compatibility
 from services.enterprise.rbac_service import RBACService
-from services.entities.dsl_entities import CheckDependenciesResult, DslImportWarning, ImportMode, ImportStatus
+from services.entities.dsl_entities import (
+    CheckDependenciesResult,
+    DslImportWarning,
+    ImportMode,
+    ImportStatus,
+    PendingImportOwner,
+)
 from services.errors.account import NoPermissionError
 from services.errors.app import WorkflowNotFoundError
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
@@ -80,7 +86,7 @@ class Import(BaseModel):
     warnings: list[DslImportWarning] = Field(default_factory=list)
 
 
-class PendingData(BaseModel):
+class PendingData(PendingImportOwner):
     import_mode: str
     yaml_content: str
     name: str | None = None
@@ -241,6 +247,8 @@ class AppDslService:
             # If major version mismatch, store import info in Redis
             if status == ImportStatus.PENDING:
                 pending_data = PendingData(
+                    tenant_id=account.current_tenant_id,
+                    account_id=account.id,
                     import_mode=import_mode,
                     yaml_content=content,
                     name=name,
@@ -346,6 +354,15 @@ class AppDslService:
                     error="Invalid import information",
                 )
             pending_data = PendingData.model_validate_json(pending_data)
+            if not pending_data.is_accessible_by(
+                tenant_id=account.current_tenant_id,
+                account_id=account.id,
+            ):
+                return Import(
+                    id=import_id,
+                    status=ImportStatus.FAILED,
+                    error="Import information expired or does not exist",
+                )
             data = yaml.safe_load(pending_data.yaml_content)
 
             app = None
