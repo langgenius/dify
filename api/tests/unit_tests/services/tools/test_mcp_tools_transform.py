@@ -300,8 +300,13 @@ class TestMCPToolTransform:
 
         result = ToolTransformService.convert_mcp_schema_to_parameter(schema)
 
-        for parameter in result:
-            assert parameter.type == ToolParameter.ToolParameterType.STRING
+        assert {parameter.name: parameter.type for parameter in result} == {
+            "as_file": ToolParameter.ToolParameterType.STRING,
+            "as_secret": ToolParameter.ToolParameterType.STRING,
+            "as_system_files": ToolParameter.ToolParameterType.STRING,
+            "as_model_selector": ToolParameter.ToolParameterType.STRING,
+            "as_select": ToolParameter.ToolParameterType.STRING,
+        }
 
     def test_convert_mcp_schema_to_parameter_preserves_standard_json_schema_types(self):
         """Standard JSON schema types must survive the unsupported-type fallback."""
