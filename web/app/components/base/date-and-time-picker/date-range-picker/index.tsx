@@ -11,7 +11,7 @@ import { useLocale } from '@/context/i18n'
 import { formatToLocalTime } from '@/utils/format'
 import DatePicker from '../date-picker'
 
-export type DateRangePickerProps = Readonly<{
+type DateRangePickerProps = Readonly<{
   start?: Dayjs
   end?: Dayjs
   timezone?: string
