@@ -1,6 +1,6 @@
 import type { RefObject } from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useMarketplace } from '@/app/components/tools/marketplace/hooks'
+import { useMarketplace } from './hooks'
 
 type UseToolMarketplacePanelParams = {
   containerRef: RefObject<HTMLDivElement | null>
@@ -14,11 +14,17 @@ export function useToolMarketplacePanel({
   tagFilterValue,
 }: UseToolMarketplacePanelParams) {
   const toolListTailRef = useRef<HTMLDivElement>(null)
-  const marketplaceContext = useMarketplace(keywords, tagFilterValue)
+  const [marketplaceActivated, setMarketplaceActivated] = useState(
+    () => !globalThis.IntersectionObserver,
+  )
+  const hasActiveSearchOrTagFilter = !!keywords || tagFilterValue.length > 0
+  const shouldLoadMarketplace = marketplaceActivated || hasActiveSearchOrTagFilter
+  const marketplaceContext = useMarketplace(keywords, tagFilterValue, shouldLoadMarketplace)
   const { handleScroll } = marketplaceContext
   const [isMarketplaceArrowVisible, setIsMarketplaceArrowVisible] = useState(true)
 
   const showMarketplacePanel = useCallback(() => {
+    setMarketplaceActivated(true)
     containerRef.current?.scrollTo({
       top: toolListTailRef.current ? toolListTailRef.current.offsetTop - 80 : 0,
       behavior: 'smooth',
@@ -43,10 +49,22 @@ export function useToolMarketplacePanel({
     return () => {
       if (container) container.removeEventListener('scroll', onContainerScroll)
     }
-  }, [onContainerScroll])
+  }, [containerRef, onContainerScroll])
+
+  useEffect(() => {
+    const target = toolListTailRef.current
+    if (!target || marketplaceActivated) return
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry?.isIntersecting) return
+      setMarketplaceActivated(true)
+      observer.disconnect()
+    })
+    observer.observe(target)
+    return () => observer.disconnect()
+  }, [marketplaceActivated])
 
   return {
-    containerRef,
     isMarketplaceArrowVisible,
     marketplaceContext,
     showMarketplacePanel,

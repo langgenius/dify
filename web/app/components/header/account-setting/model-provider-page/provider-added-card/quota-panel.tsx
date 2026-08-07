@@ -1,6 +1,7 @@
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FC, MouseEvent } from 'react'
 import type { ModelProvider } from '../declarations'
-import type { Plugin } from '@/app/components/plugins/types'
+import type { PluginManifestInMarket } from '@/app/components/plugins/types'
 import type { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
@@ -17,9 +18,9 @@ import InstallFromMarketplace from '@/app/components/plugins/install-plugin/inst
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/client'
+import { fetchManifestFromMarketPlace, fetchPluginInfoFromMarketPlace } from '@/service/plugins'
 import { formatNumber } from '@/utils/format'
 import { PreferredProviderTypeEnum } from '../declarations'
-import { useMarketplaceAllPlugins } from '../hooks'
 import {
   MODEL_PROVIDER_QUOTA_GET_PAID,
   modelNameMap,
@@ -69,8 +70,14 @@ const QuotaInfotip: FC<QuotaInfotipProps> = ({ tipText }) => {
 }
 
 type QuotaPanelProps = {
-  providers: ModelProvider[]
+  providers: Array<ModelProviderSummaryResponse | ModelProvider>
 }
+
+type MarketplacePluginToInstall = {
+  manifest: PluginManifestInMarket
+  uniqueIdentifier: string
+}
+
 const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
   const { t } = useTranslation()
   const { data: deploymentEdition } = useSuspenseQuery({
@@ -94,8 +101,8 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
     [providers],
   )
   const { formatMonthDay } = useTimestamp()
-  const { plugins: allPlugins } = useMarketplaceAllPlugins(providers, '')
-  const [selectedPlugin, setSelectedPlugin] = useState<Plugin | null>(null)
+  const [selectedPlugin, setSelectedPlugin] = useState<MarketplacePluginToInstall | null>(null)
+  const [loadingPluginId, setLoadingPluginId] = useState<string | null>(null)
   const [
     isShowInstallModal,
     { setTrue: showInstallFromMarketplace, setFalse: hideInstallFromMarketplace },
@@ -105,19 +112,41 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
   const selectedPluginIdRef = useRef<string | null>(null)
 
   const handleIconClick = useCallback(
-    (key: ModelProviderQuotaGetPaid) => {
+    async (key: ModelProviderQuotaGetPaid) => {
+      if (loadingPluginId) return
+
       const isInstalled = providerMap.get(key)
-      if (!isInstalled && allPlugins && canInstallPlugin) {
+      if (!isInstalled && canInstallPlugin) {
         const pluginId = providerKeyToPluginId[key]
-        const plugin = allPlugins.find((p) => p.plugin_id === pluginId)
-        if (plugin) {
-          setSelectedPlugin(plugin)
+        const [org, name] = pluginId.split('/')
+        if (!org || !name) return
+
+        setLoadingPluginId(pluginId)
+        try {
+          const pluginInfo = await fetchPluginInfoFromMarketPlace({ org, name })
+          const uniqueIdentifier = pluginInfo.data.plugin.latest_package_identifier
+          if (!uniqueIdentifier) return
+          const manifest = await fetchManifestFromMarketPlace(uniqueIdentifier)
+          setSelectedPlugin({
+            manifest: {
+              ...manifest.data.plugin,
+              org,
+              name,
+              from: 'marketplace',
+              icon: manifest.data.plugin.icon || 'marketplace',
+            },
+            uniqueIdentifier,
+          })
           selectedPluginIdRef.current = pluginId
           showInstallFromMarketplace()
+        } catch {
+          // Keep the provider actionable so the user can retry the marketplace request.
+        } finally {
+          setLoadingPluginId(null)
         }
       }
     },
-    [allPlugins, canInstallPlugin, providerMap, showInstallFromMarketplace],
+    [canInstallPlugin, loadingPluginId, providerMap, showInstallFromMarketplace],
   )
 
   useEffect(() => {
@@ -211,6 +240,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
               .filter(({ key }) => trialModels.includes(key))
               .map(({ key, Icon }) => {
                 const providerType = providerMap.get(key)
+                const isLoadingPlugin = loadingPluginId === providerKeyToPluginId[key]
                 const isConfigured = (installedProvidersMap.get(key)?.length ?? 0) > 0
                 const getTooltipKey = () => {
                   if (!providerType) return 'modelProvider.card.modelNotSupported'
@@ -229,13 +259,21 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
                       render={
                         <button
                           type="button"
+                          aria-busy={isLoadingPlugin}
+                          aria-disabled={isLoadingPlugin}
                           className={cn(
-                            'relative size-6 border-0 bg-transparent p-0',
+                            'relative size-6 border-0 bg-transparent p-0 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
                             !providerType && canInstallPlugin && 'cursor-pointer hover:opacity-80',
                           )}
                           onClick={() => handleIconClick(key)}
                         >
                           <Icon className="size-6 rounded-lg" />
+                          {isLoadingPlugin && (
+                            <span
+                              aria-hidden
+                              className="absolute inset-1 i-ri-loader-2-line animate-spin text-text-accent"
+                            />
+                          )}
                           {!providerType && (
                             <div className="absolute inset-0 rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge opacity-30" />
                           )}
@@ -256,8 +294,8 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
           currentDifyVersion={currentDifyVersion}
         >
           <InstallFromMarketplace
-            manifest={selectedPlugin}
-            uniqueIdentifier={selectedPlugin.latest_package_identifier}
+            manifest={selectedPlugin.manifest}
+            uniqueIdentifier={selectedPlugin.uniqueIdentifier}
             onClose={hideInstallFromMarketplace}
             onSuccess={hideInstallFromMarketplace}
           />
