@@ -734,6 +734,7 @@ describe("source-product workflow provider imports", () => {
   });
 
   it("compensates every materialized document when a provider batch is partial", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const source = sourceRecord("partial-import-source", { type: "connector" });
     const documents: readonly MaterializedSourceDocument[] = [
       {
@@ -776,9 +777,19 @@ describe("source-product workflow provider imports", () => {
     );
     expect(fixture.publish).not.toHaveBeenCalled();
     await expect(fixture.getRun()).resolves.toMatchObject({
-      lastErrorCode: "SOURCE_IMPORT_PARTIAL_FAILURE",
+      lastErrorCode: "PARSE_FAILED",
+      lastErrorMessage: "parse failed",
       state: "failed",
     });
+    expect(consoleError).toHaveBeenCalledWith(
+      "Source workflow document materialization failed",
+      expect.objectContaining({
+        errorCode: "PARSE_FAILED",
+        filename: "Partial.md",
+        sourceId: source.id,
+      }),
+    );
+    consoleError.mockRestore();
   });
 
   it("rejects missing logical-revision ownership proofs and compensates exact writes", async () => {

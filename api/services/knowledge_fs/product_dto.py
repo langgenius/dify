@@ -1506,6 +1506,9 @@ class KnowledgeFSSourceWorkflowResponse(ResponseModel):
     knowledge_space_id: str = Field(validation_alias=AliasChoices("knowledge_space_id", "knowledgeSpaceId"))
     kind: str
     last_error_code: str | None = Field(default=None, validation_alias=AliasChoices("last_error_code", "lastErrorCode"))
+    last_error_message: str | None = Field(
+        default=None, validation_alias=AliasChoices("last_error_message", "lastErrorMessage")
+    )
     max_execution_attempts: int = Field(
         ge=1, validation_alias=AliasChoices("max_execution_attempts", "maxExecutionAttempts")
     )

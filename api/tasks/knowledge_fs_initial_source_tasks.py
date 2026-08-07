@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from celery import shared_task
 from sqlalchemy import select
 
@@ -25,6 +27,8 @@ from services.knowledge_fs.runtime import get_knowledge_fs_runtime
 _FIRECRAWL_PROVIDER_ID = "plugin-daemon-website"
 _FIRECRAWL_PLUGIN_ID = "langgenius/firecrawl_datasource"
 _PAGE_SIZE = 200
+
+logger = logging.getLogger(__name__)
 
 
 class KnowledgeFSInitialSourceNotReadyError(RuntimeError):
@@ -232,6 +236,49 @@ def start_initial_website_source_import(
             workflow_id=workflow.id,
         )
     if workflow.state != "completed":
+        failed_source = facade.get_source(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            source_id=source_id,
+        )
+        initial_import = {
+            "errorCode": workflow.last_error_code,
+            "errorMessage": workflow.last_error_message,
+            "state": workflow.state,
+            "workflowId": workflow.id,
+        }
+        if (
+            failed_source.metadata.get("preview") is not False
+            or failed_source.metadata.get("initialImport") != initial_import
+            or failed_source.status != "disabled"
+        ):
+            facade.update_source(
+                tenant_id=tenant_id,
+                account_id=account_id,
+                control_space_id=control_space_id,
+                source_id=source_id,
+                payload=KnowledgeFSSourceUpdatePayload(
+                    expectedVersion=failed_source.version,
+                    metadata={
+                        **failed_source.metadata,
+                        "initialImport": initial_import,
+                        "preview": False,
+                    },
+                    status="disabled",
+                ),
+            )
+        logger.error(
+            "Initial website Source import failed",
+            extra={
+                "control_space_id": control_space_id,
+                "error_code": workflow.last_error_code,
+                "error_message": workflow.last_error_message,
+                "source_id": source_id,
+                "workflow_id": workflow.id,
+                "workflow_state": workflow.state,
+            },
+        )
         return workflow.id
 
     imported_source = facade.get_source(

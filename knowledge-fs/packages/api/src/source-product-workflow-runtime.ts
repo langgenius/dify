@@ -290,11 +290,14 @@ export function createSourceProductWorkflowRuntime(input: {
       return "completed";
     } catch (error) {
       const safe = safeSourceOperationError("sourceWorkflow", error);
+      const persistedError =
+        error instanceof SourceProductWorkflowRuntimeError
+          ? { code: error.code, message: error.message }
+          : safe;
       try {
         await input.repository.fail({
-          errorCode: error instanceof SourceProductWorkflowRuntimeError ? error.code : safe.code,
-          errorMessage:
-            error instanceof SourceProductWorkflowRuntimeError ? error.message : safe.message,
+          errorCode: persistedError.code,
+          errorMessage: persistedError.message,
           fence: fence(execution?.run() ?? run),
           now: iso(now()),
         });
@@ -1233,14 +1236,29 @@ async function materializeCandidates(
     },
   );
   if (result.failed.length > 0) {
+    for (const failure of result.failed) {
+      console.error("Source workflow document materialization failed", {
+        errorCode: failure.code,
+        errorMessage: failure.error,
+        filename: failure.filename,
+        knowledgeSpaceId: run.knowledgeSpaceId,
+        sourceId: source.id,
+        workflowId: run.id,
+        workflowKind: run.kind,
+      });
+    }
     await input.materializer.compensate({
       ...compensationScope,
       documents: result.documents,
     });
-    throw runtimeError(
-      "SOURCE_IMPORT_PARTIAL_FAILURE",
-      "One or more selected provider items failed",
-    );
+    const firstFailure = result.failed[0];
+    if (!firstFailure) {
+      throw runtimeError(
+        "SOURCE_IMPORT_PARTIAL_FAILURE",
+        "One or more selected provider items failed",
+      );
+    }
+    throw runtimeError(firstFailure.code, firstFailure.error);
   }
   await publishLogicalRevisions(input, execution, source, result.documents, candidates);
 }

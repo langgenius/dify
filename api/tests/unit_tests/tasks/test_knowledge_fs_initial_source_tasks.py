@@ -180,13 +180,18 @@ def test_initial_website_source_import_reuses_source_across_pages_and_preserves_
     ]
     facade.import_selected_source_crawl.return_value = SimpleNamespace(
         id="failed-workflow",
+        last_error_code="SOURCE_DOCUMENT_MATERIALIZATION_FAILED",
+        last_error_message="Source document materialization failed",
         state="failed",
     )
 
     assert _start(facade, _payload()) == "failed-workflow"
     facade.create_source.assert_not_called()
     facade.list_source_connections.assert_not_called()
-    facade.update_source.assert_not_called()
+    source_update_payload = facade.update_source.call_args.kwargs["payload"]
+    assert source_update_payload.status == "disabled"
+    assert source_update_payload.metadata["preview"] is False
+    assert source_update_payload.metadata["initialImport"]["state"] == "failed"
     facade.update_source_sync_policy.assert_not_called()
 
 
@@ -423,6 +428,30 @@ def test_initial_website_source_import_keeps_polling_existing_running_workflow()
     assert raised.value.workflow_id == "workflow-1"
     facade.import_selected_source_crawl.assert_not_called()
     facade.get_source.assert_not_called()
+
+
+def test_initial_website_source_import_exposes_failed_source_without_activating_it() -> None:
+    facade = _facade()
+    facade.get_source_workflow.return_value = SimpleNamespace(
+        id="workflow-1",
+        last_error_code="SOURCE_DOCUMENT_MATERIALIZATION_FAILED",
+        last_error_message="Source document materialization failed",
+        source_id="source-1",
+        state="failed",
+    )
+
+    assert _start(facade, _payload(), workflow_id="workflow-1") == "workflow-1"
+
+    source_update_payload = facade.update_source.call_args.kwargs["payload"]
+    assert source_update_payload.status == "disabled"
+    assert source_update_payload.metadata["preview"] is False
+    assert source_update_payload.metadata["initialImport"] == {
+        "errorCode": "SOURCE_DOCUMENT_MATERIALIZATION_FAILED",
+        "errorMessage": "Source document materialization failed",
+        "state": "failed",
+        "workflowId": "workflow-1",
+    }
+    facade.update_source_sync_policy.assert_not_called()
 
 
 def test_initial_website_source_task_returns_result_and_retries_not_ready_error() -> None:
