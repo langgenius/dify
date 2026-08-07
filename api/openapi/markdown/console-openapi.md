@@ -19411,17 +19411,6 @@ Enum class for model property key.
 | ---- | ---- | ----------- | -------- |
 | ModelPropertyKey | string | Enum class for model property key. |  |
 
-#### ModelProviderCustomConfigurationSummaryResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| available_credentials | [ [CredentialConfiguration](#credentialconfiguration) ] |  | Yes |
-| current_credential_id | string |  | No |
-| current_credential_name | string |  | No |
-| current_credential_usable | boolean |  | Yes |
-| has_custom_models | boolean | Whether custom model configuration exists, including saved model credentials. | Yes |
-| status | [CustomConfigurationStatus](#customconfigurationstatus) |  | Yes |
-
 #### ModelProviderCreditsResponse
 
 | Name | Type | Description | Required |
@@ -19434,6 +19423,17 @@ Enum class for model property key.
 | quota_limit | integer | Credit limit for the effective pool; -1 means unlimited. | Yes |
 | quota_used | integer |  | Yes |
 | remaining_credits | integer | Remaining credits; -1 means unlimited. | Yes |
+
+#### ModelProviderCustomConfigurationSummaryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| available_credentials | [ [CredentialConfiguration](#credentialconfiguration) ] |  | Yes |
+| current_credential_id | string |  | No |
+| current_credential_name | string |  | No |
+| current_credential_usable | boolean |  | Yes |
+| has_custom_models | boolean | Whether custom model configuration exists, including saved model credentials. | Yes |
+| status | [CustomConfigurationStatus](#customconfigurationstatus) |  | Yes |
 
 #### ModelProviderListResponse
 
