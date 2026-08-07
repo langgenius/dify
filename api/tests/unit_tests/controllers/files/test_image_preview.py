@@ -6,6 +6,7 @@ import pytest
 from werkzeug.exceptions import NotFound
 
 import controllers.files.image_preview as module
+from controllers.common.file_response import INERT_DOCUMENT_CSP
 
 
 @pytest.fixture(autouse=True)
@@ -54,6 +55,26 @@ class TestImagePreviewApi:
         response = get_fn("file-id")
 
         assert response.mimetype == "image/png"
+        assert response.headers["X-Content-Type-Options"] == "nosniff"
+
+    @patch.object(module, "FileService")
+    def test_svg_is_served_inert(self, mock_file_service):
+        """A stored SVG must not be renderable as a document in the app origin."""
+        module.request = fake_request({"timestamp": "123", "nonce": "abc", "sign": "sig"})
+
+        mock_file_service.return_value.get_image_preview.return_value = (
+            iter([b"<svg xmlns='http://www.w3.org/2000/svg'><script>alert(1)</script></svg>"]),
+            "image/svg+xml",
+        )
+
+        api = module.ImagePreviewApi()
+        get_fn = unwrap(api.get)
+
+        response = get_fn("file-id")
+
+        assert response.headers["Content-Disposition"].startswith("attachment")
+        assert response.headers["Content-Security-Policy"] == INERT_DOCUMENT_CSP
+        assert response.headers["X-Content-Type-Options"] == "nosniff"
 
     @patch.object(module, "FileService")
     def test_unsupported_file_type(self, mock_file_service):
@@ -77,7 +98,7 @@ class TestImagePreviewApi:
 
 
 class TestFilePreviewApi:
-    @patch.object(module, "enforce_download_for_html")
+    @patch.object(module, "harden_served_file")
     @patch.object(module, "FileService")
     def test_basic_stream(self, mock_file_service, mock_enforce):
         module.request = fake_request(
@@ -107,7 +128,7 @@ class TestFilePreviewApi:
         assert "Accept-Ranges" not in response.headers
         mock_enforce.assert_called_once()
 
-    @patch.object(module, "enforce_download_for_html")
+    @patch.object(module, "harden_served_file")
     @patch.object(module, "FileService")
     def test_as_attachment(self, mock_file_service, mock_enforce):
         module.request = fake_request(
@@ -180,6 +201,24 @@ class TestWorkspaceWebappLogoApi:
         response = get_fn("workspace-id")
 
         assert response.mimetype == "image/png"
+        assert response.headers["X-Content-Type-Options"] == "nosniff"
+
+    @patch.object(module, "FileService")
+    @patch.object(module.TenantService, "get_custom_config")
+    def test_svg_logo_is_served_inert(self, mock_config, mock_file_service):
+        mock_config.return_value = {"replace_webapp_logo": "logo-id"}
+        mock_file_service.return_value.get_public_image_preview.return_value = (
+            iter([b"<svg xmlns='http://www.w3.org/2000/svg'><script>alert(1)</script></svg>"]),
+            "image/svg+xml",
+        )
+
+        api = module.WorkspaceWebappLogoApi()
+        get_fn = unwrap(api.get)
+
+        response = get_fn("workspace-id")
+
+        assert response.headers["Content-Disposition"].startswith("attachment")
+        assert response.headers["Content-Security-Policy"] == INERT_DOCUMENT_CSP
 
     @patch.object(module.TenantService, "get_custom_config")
     def test_logo_not_configured(self, mock_config):
