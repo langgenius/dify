@@ -2365,7 +2365,11 @@ def test_delete_skill_requires_confirmation_when_referenced() -> None:
         service.delete_skill(tenant_id=TENANT, skill_id=created["id"])
     assert exc_info.value.code == "skill_delete_confirmation_required"
 
-    deleted = service.delete_skill(tenant_id=TENANT, skill_id=created["id"], confirmation_name="finance-sop")
+    deleted = service.delete_skill(
+        tenant_id=TENANT,
+        skill_id=created["id"],
+        confirmation_name=created["display_name"],
+    )
     assert deleted == {"id": created["id"], "deleted": True}
     assert service.list_skills(tenant_id=TENANT)["data"] == []
 
@@ -2430,7 +2434,11 @@ def test_delete_skill_removes_bindings_without_writing_agent_config_skill_refs()
         )
         session.commit()
 
-    deleted = service.delete_skill(tenant_id=TENANT, skill_id=created["id"], confirmation_name="finance-sop")
+    deleted = service.delete_skill(
+        tenant_id=TENANT,
+        skill_id=created["id"],
+        confirmation_name=created["display_name"],
+    )
 
     with session_factory.create_session() as session:
         agent = session.get(Agent, AGENT)

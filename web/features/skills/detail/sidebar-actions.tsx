@@ -17,10 +17,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { downloadBlob } from '@/utils/download'
@@ -50,6 +51,7 @@ function SkillDetailDeleteDialog({
 }) {
   const { t } = useTranslation('skill')
   const { t: tCommon } = useTranslation('common')
+  const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
   const queryClient = useQueryClient()
   const router = useRouter()
   const deleteMutation = useMutation(
@@ -84,7 +86,7 @@ function SkillDetailDeleteDialog({
           skill_id: detail.id,
         },
         body: {
-          confirmation_name: detail.name,
+          confirmation_name: referenceCount > 0 ? detail.display_name : detail.name,
         },
       },
       {
@@ -102,36 +104,79 @@ function SkillDetailDeleteDialog({
   }
 
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="p-6">
-        <AlertDialogTitle className="truncate title-2xl-semi-bold text-text-primary">
-          {t(($) => $['skillManagement.deleteDialog.title'], { name: detail.display_name })}
-        </AlertDialogTitle>
-        <AlertDialogDescription className="mt-2 system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-          {description}
-        </AlertDialogDescription>
-        {referenceCount > 0 && (
-          <div className="mt-4">
-            {referencesQuery.isPending ? (
-              <SkillReferencesListSkeleton compact />
-            ) : (
-              <SkillReferencesList
-                compact
-                maxHeight="max-h-[240px]"
-                references={references}
-                testId="skill-delete-reference-list"
-                visibleLimit={5}
-              />
-            )}
-          </div>
-        )}
-        <AlertDialogActions className="p-0 pt-6">
+    <AlertDialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) setConfirmDeleteInput('')
+        onOpenChange(nextOpen)
+      }}
+    >
+      <AlertDialogContent>
+        <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+          <AlertDialogTitle className="truncate title-2xl-semi-bold text-text-primary">
+            {t(($) => $['skillManagement.deleteDialog.title'], { name: detail.display_name })}
+          </AlertDialogTitle>
+          <AlertDialogDescription className="mt-2 system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+            {description}
+          </AlertDialogDescription>
+          {referenceCount > 0 && (
+            <div className="mt-4">
+              {referencesQuery.isPending ? (
+                <SkillReferencesListSkeleton compact />
+              ) : (
+                <SkillReferencesList
+                  compact
+                  maxHeight="max-h-[240px]"
+                  references={references}
+                  testId="skill-delete-reference-list"
+                  visibleLimit={5}
+                />
+              )}
+            </div>
+          )}
+          {referenceCount > 0 && (
+            <Field name="confirm-skill-name" className="mt-2">
+              <FieldLabel className="mb-1 block py-0 system-sm-regular text-text-secondary">
+                <Trans
+                  i18nKey={($) => $['skillManagement.deleteDialog.confirmInputLabel']}
+                  ns="skill"
+                  values={{ skillName: detail.display_name }}
+                  components={{
+                    skillName: (
+                      <span className="system-sm-semibold text-text-primary" translate="no" />
+                    ),
+                  }}
+                />
+              </FieldLabel>
+              <div className="relative">
+                <FieldControl
+                  type="text"
+                  autoComplete="off"
+                  spellCheck={false}
+                  placeholder={t(($) => $['skillManagement.deleteDialog.confirmInputPlaceholder'])}
+                  value={confirmDeleteInput}
+                  onValueChange={setConfirmDeleteInput}
+                  className="border-components-input-border-hover bg-components-input-bg-normal pr-20 focus:border-components-input-border-active focus:bg-components-input-bg-active"
+                />
+                <button
+                  type="button"
+                  onClick={() => setConfirmDeleteInput(detail.display_name)}
+                  className="absolute top-1/2 right-2 -translate-y-1/2 rounded-full bg-black/6 px-2.5 py-1 system-xs-medium text-text-secondary hover:bg-black/10"
+                >
+                  {tCommon(($) => $['operation.fill'])}
+                </button>
+              </div>
+            </Field>
+          )}
+        </div>
+        <AlertDialogActions>
           <AlertDialogCancelButton disabled={deleteMutation.isPending}>
             {tCommon(($) => $['operation.cancel'])}
           </AlertDialogCancelButton>
           <AlertDialogConfirmButton
             tone="destructive"
             loading={deleteMutation.isPending}
+            disabled={referenceCount > 0 && confirmDeleteInput !== detail.display_name}
             onClick={handleDelete}
           >
             {tCommon(($) => $['operation.delete'])}

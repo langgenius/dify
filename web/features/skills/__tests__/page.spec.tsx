@@ -516,13 +516,19 @@ describe('SkillsPage', () => {
     )
     expect(within(dialog).getByTestId('skill-delete-reference-list')).toBeInTheDocument()
 
+    await user.type(
+      within(dialog).getByPlaceholderText(
+        'skill.skillManagement.deleteDialog.confirmInputPlaceholder',
+      ),
+      'Refund approval',
+    )
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.delete' }))
 
     await waitFor(() => {
       expect(mocks.deleteSkillMutationFn).toHaveBeenCalledWith(
         {
           body: {
-            confirmation_name: 'refund-approval',
+            confirmation_name: 'Refund approval',
           },
           params: {
             skill_id: 'skill-1',

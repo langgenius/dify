@@ -1995,7 +1995,7 @@ class SkillManagementService:
             reference_count = self._reference_counts(session, tenant_id=tenant_id, skill_ids=[skill.id]).get(
                 skill.id, 0
             )
-            if reference_count > 0 and confirmation_name != skill.name:
+            if reference_count > 0 and confirmation_name != skill.display_name:
                 raise SkillManagementServiceError(
                     "skill_delete_confirmation_required",
                     "skill is referenced and requires name confirmation",

@@ -4,6 +4,8 @@
   "skillManagement.createFailed": "Failed to create skill.",
   "skillManagement.createSuccess": "Skill created.",
   "skillManagement.dateTimeFormat": "MMM D, YYYY HH:mm",
+  "skillManagement.deleteDialog.confirmInputLabel": "To confirm, type <skillName>{{skillName}}</skillName> in the box below:",
+  "skillManagement.deleteDialog.confirmInputPlaceholder": "Enter Skill Display Name…",
   "skillManagement.deleteDialog.description": "This skill will be removed from the workspace. Agents that reference it may lose access to this capability.",
   "skillManagement.deleteDialog.referencedDescription": "This Skill is referenced by {{count}} Agent, Workflow, or Chatflow item. Deleting it will remove the Skill from the workspace and clear those bindings.",
   "skillManagement.deleteDialog.title": "Delete {{name}}?",

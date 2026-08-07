@@ -1800,8 +1800,9 @@ describe('SkillDetailPage', () => {
     })
   })
 
-  it('confirms deletion from the sidebar More menu and returns to Skills', async () => {
+  it('requires the display name before deleting a referenced skill from the sidebar', async () => {
     const user = userEvent.setup()
+    mocks.skillDetail = createSkillDetail({ reference_count: 1 })
     mocks.deleteSkillMutationFn.mockResolvedValue({})
     renderSkillDetailPage()
 
@@ -1815,7 +1816,18 @@ describe('SkillDetailPage', () => {
     expect(
       screen.getByText('skill.skillManagement.deleteDialog.title:{"name":"Untitled skill"}'),
     ).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+    const dialog = screen.getByRole('alertdialog')
+    const confirmationInput = within(dialog).getByPlaceholderText(
+      'skill.skillManagement.deleteDialog.confirmInputPlaceholder',
+    )
+    const confirmButton = within(dialog).getByRole('button', {
+      name: 'common.operation.confirm',
+    })
+    expect(confirmButton).toBeDisabled()
+
+    await user.type(confirmationInput, 'Untitled skill')
+    expect(confirmButton).toBeEnabled()
+    await user.click(confirmButton)
 
     await waitFor(() => {
       expect(mocks.deleteSkillMutationFn).toHaveBeenCalledWith(
@@ -2402,7 +2414,7 @@ describe('SkillDetailPage', () => {
     expect(sendButton).toBeDisabled()
   })
 
-  it('rejects image attachments in Skill Builder before uploading', async () => {
+  it('uploads image attachments in Skill Builder', async () => {
     const user = userEvent.setup({ applyAccept: false })
     const { container } = renderSkillDetailPage()
 
@@ -2417,10 +2429,8 @@ describe('SkillDetailPage', () => {
       }),
     )
 
-    expect(mocks.uploadSkillFile).not.toHaveBeenCalled()
-    expect(toast.error).toHaveBeenCalledWith(
-      'skill.skillManagement.detail.builder.attachUnsupported',
-    )
+    expect(mocks.uploadSkillFile).toHaveBeenCalledWith(expect.any(File))
+    expect(toast.error).not.toHaveBeenCalled()
   })
 
   it('shows unavailable feedback for Skill Builder voice input', async () => {
