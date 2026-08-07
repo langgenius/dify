@@ -36,7 +36,7 @@ export function AgentFormFields({
         <button
           type="button"
           aria-label={iconAriaLabel}
-          className="shrink-0 rounded-full outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          className="shrink-0 rounded-full focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           onClick={onIconClick}
         >
           <AppIcon
