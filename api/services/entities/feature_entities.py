@@ -94,6 +94,7 @@ class LicenseModel(LicenseStatusModel):
     expired_at: str = ""
     workspaces: LicenseLimitationModel = LicenseLimitationModel(enabled=False, size=0, limit=0)
     seats: LicenseLimitationModel = LicenseLimitationModel(enabled=False, size=0, limit=0)
+    license_expiry_notice_enabled: bool = False
 
 
 class BrandingModel(FeatureResponseModel):

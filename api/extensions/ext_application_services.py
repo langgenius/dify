@@ -15,7 +15,7 @@ from services.feature_service import FeatureService
 from services.feature_service_gateway import FeatureServiceGateway
 from services.workspace_member_query_service import WorkspaceMemberQueryService
 from services.workspace_member_role_resolver import DeploymentWorkspaceMemberRoleResolver
-from services.workspace_query_compat import LegacyWorkspacePlanGateway
+from services.workspace_plan_gateway import DeploymentWorkspacePlanGateway
 from services.workspace_query_service import WorkspaceQueryService
 
 _EXTENSION_KEY = "application_services"
@@ -42,7 +42,7 @@ def build_application_services(
             workspaces=WorkspaceQueryRepository(
                 client=database_client,
             ),
-            plans=LegacyWorkspacePlanGateway(),
+            plans=DeploymentWorkspacePlanGateway(),
         ),
         workspace_member_queries=WorkspaceMemberQueryService(
             members=WorkspaceMemberQueryRepository(

@@ -213,6 +213,10 @@ describe('PluginItem', () => {
       // Assert
       const img = screen.getByRole('img')
       expect(img).toHaveAttribute('alt', `plugin-${plugin.plugin_unique_identifier}-logo`)
+      expect(img).toHaveAttribute('loading', 'lazy')
+      expect(img).toHaveAttribute('decoding', 'async')
+      expect(img).toHaveAttribute('width', '40')
+      expect(img).toHaveAttribute('height', '40')
     })
 
     it('should not render category label in corner mark', () => {

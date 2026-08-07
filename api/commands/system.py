@@ -11,7 +11,7 @@ from events.app_event import app_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.db_migration_lock import DbMigrationAutoRenewLock
-from libs.rsa import generate_key_pair
+from libs.key_providers import generate_key_pair
 from models import Tenant
 from models.model import App, AppMode, Conversation
 from models.provider import Provider, ProviderModel

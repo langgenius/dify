@@ -574,16 +574,23 @@ class ProviderManager:
     instance scope.
     """
 
-    decoding_rsa_key: Any | None
-    decoding_cipher_rsa: Any | None
+    # Keyed by tenant_id -- a single ProviderManager instance may be asked to decrypt
+    # credentials belonging to different tenants (e.g. load balancing configs each carry
+    # their own tenant_id), so this cache must not collapse to a single shared value.
+    _decoding_contexts: dict[str, Any]
     _model_runtime: ModelRuntime
     _configurations_cache: dict[str, ProviderConfigurations]
 
     def __init__(self, model_runtime: ModelRuntime):
-        self.decoding_rsa_key = None
-        self.decoding_cipher_rsa = None
+        self._decoding_contexts = {}
         self._model_runtime = model_runtime
         self._configurations_cache = {}
+
+    def _get_decoding_context(self, tenant_id: str) -> Any:
+        """Return this manager's cached decoding context for `tenant_id`, fetching it once if absent."""
+        if tenant_id not in self._decoding_contexts:
+            self._decoding_contexts[tenant_id] = encrypter.get_decrypt_decoding(tenant_id)
+        return self._decoding_contexts[tenant_id]
 
     def clear_configurations_cache(self, tenant_id: str | None = None) -> None:
         """Drop assembled provider configurations cached on this manager instance."""
@@ -1501,16 +1508,14 @@ class ProviderManager:
             return {}
 
         # Decrypt secret variables
-        if self.decoding_rsa_key is None or self.decoding_cipher_rsa is None:
-            self.decoding_rsa_key, self.decoding_cipher_rsa = encrypter.get_decrypt_decoding(tenant_id)
+        decoding_context = self._get_decoding_context(tenant_id)
 
         for variable in secret_variables:
             if variable in credentials:
                 with contextlib.suppress(ValueError):
                     credentials[variable] = encrypter.decrypt_token_with_decoding(
                         credentials.get(variable) or "",
-                        self.decoding_rsa_key,
-                        self.decoding_cipher_rsa,
+                        decoding_context,
                     )
 
         # Cache the decrypted credentials
@@ -1662,17 +1667,15 @@ class ProviderManager:
                         else []
                     )
 
-                    # Get decoding rsa key and cipher for decrypting credentials
-                    if self.decoding_rsa_key is None or self.decoding_cipher_rsa is None:
-                        self.decoding_rsa_key, self.decoding_cipher_rsa = encrypter.get_decrypt_decoding(tenant_id)
+                    # Get decoding context for decrypting credentials
+                    decoding_context = self._get_decoding_context(tenant_id)
 
                     for variable in provider_credential_secret_variables:
                         if variable in provider_credentials:
                             try:
                                 provider_credentials[variable] = encrypter.decrypt_token_with_decoding(
                                     provider_credentials.get(variable, ""),
-                                    self.decoding_rsa_key,
-                                    self.decoding_cipher_rsa,
+                                    decoding_context,
                                 )
                             except ValueError:
                                 pass
@@ -1806,19 +1809,15 @@ class ProviderManager:
                             except (ValueError, JSONDecodeError):
                                 continue
 
-                            # Get decoding rsa key and cipher for decrypting credentials
-                            if self.decoding_rsa_key is None or self.decoding_cipher_rsa is None:
-                                self.decoding_rsa_key, self.decoding_cipher_rsa = encrypter.get_decrypt_decoding(
-                                    load_balancing_model_config.tenant_id
-                                )
+                            # Get decoding context for decrypting credentials
+                            decoding_context = self._get_decoding_context(load_balancing_model_config.tenant_id)
 
                             for variable in model_credential_secret_variables:
                                 if variable in provider_model_credentials:
                                     try:
                                         provider_model_credentials[variable] = encrypter.decrypt_token_with_decoding(
                                             provider_model_credentials.get(variable) or "",
-                                            self.decoding_rsa_key,
-                                            self.decoding_cipher_rsa,
+                                            decoding_context,
                                         )
                                     except ValueError:
                                         pass

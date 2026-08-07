@@ -2,13 +2,12 @@
 
 The router is a thin HTTP adapter around ``AgentStubControlPlaneService``. It
 keeps FastAPI-specific request parsing and HTTPException translation here while
-sharing auth, DTO validation, connection-id generation, and file/config/drive
-delegation with the gRPC transport.
+the service owns auth and file/config/drive delegation.
 """
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Header, HTTPException, Response
+from fastapi import APIRouter, Header, HTTPException
 
 from dify_agent.agent_stub.protocol.agent_stub import (
     AgentStubConnectRequest,
@@ -42,7 +41,10 @@ def create_agent_stub_http_router(
     """Create HTTP routes bound to the application's Agent Stub dependencies."""
     router = APIRouter(prefix="/agent-stub", tags=["agent-stub"])
     service = AgentStubControlPlaneService(
-        token_codec, file_request_handler, config_request_handler, drive_request_handler
+        token_codec=token_codec,
+        file_request_handler=file_request_handler,
+        config_request_handler=config_request_handler,
+        drive_request_handler=drive_request_handler,
     )
 
     @router.post("/connections", response_model=AgentStubConnectResponse)
@@ -85,17 +87,6 @@ def create_agent_stub_http_router(
         except AgentStubControlPlaneError as exc:
             raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
-    @router.get("/config/skills/{name}/pull")
-    async def pull_config_skill(
-        name: str,
-        authorization: str | None = Header(default=None, alias="Authorization"),
-    ) -> Response:
-        try:
-            payload = await service.pull_config_skill(name=name, authorization=authorization)
-            return Response(content=payload, media_type="application/zip")
-        except AgentStubControlPlaneError as exc:
-            raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
-
     @router.get("/config/skills/{name}/inspect")
     async def inspect_config_skill(
         name: str,
@@ -103,17 +94,6 @@ def create_agent_stub_http_router(
     ) -> dict[str, object]:
         try:
             return await service.inspect_config_skill(name=name, authorization=authorization)
-        except AgentStubControlPlaneError as exc:
-            raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
-
-    @router.get("/config/files/{name}/pull")
-    async def pull_config_file(
-        name: str,
-        authorization: str | None = Header(default=None, alias="Authorization"),
-    ) -> Response:
-        try:
-            payload = await service.pull_config_file(name=name, authorization=authorization)
-            return Response(content=payload, media_type="application/octet-stream")
         except AgentStubControlPlaneError as exc:
             raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 

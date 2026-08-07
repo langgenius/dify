@@ -179,7 +179,7 @@ Then('I should see the Agent v2 full-config fixture sections', async function (t
 })
 
 Then(
-  'the duplicated Agent v2 should inherit the full-config fixture from {string}',
+  'the duplicated Agent v2 should inherit the full-config fixture from {string} without inheriting its publication state',
   async function (this: DifyWorld, agentName: string) {
     const sourceAgent = getPreseededAgent(this, agentName)
     const duplicatedAgentId = getCurrentAgentId(this)
@@ -198,7 +198,8 @@ Then(
 
     expect(duplicatedDetail.id).toBe(duplicatedAgentId)
     expect(duplicatedDetail.name).toBe(this.lastCreatedAgentName)
-    expect(duplicatedSnapshot.activeConfigIsPublished).toBe(sourceSnapshot.activeConfigIsPublished)
+    expect(sourceSnapshot.activeConfigIsPublished).toBe(true)
+    expect(duplicatedSnapshot.activeConfigIsPublished).toBe(false)
     expect(duplicatedSnapshot.model).toEqual({
       name: stableModel.name,
       provider: stableModel.provider,

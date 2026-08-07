@@ -168,9 +168,21 @@ export function useAgentConfigureSync({
           },
           body: {},
         })
-        await queryClient.invalidateQueries({
-          queryKey: consoleQuery.agent.byAgentId.versions.get.key(),
-        })
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: consoleQuery.agent.byAgentId.versions.get.key(),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: consoleQuery.agent.byAgentId.get.queryKey({
+              input: { params: { agent_id: agentId } },
+            }),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: consoleQuery.agent.byAgentId.apiAccess.get.queryKey({
+              input: { params: { agent_id: agentId } },
+            }),
+          }),
+        ])
       }
 
       return true

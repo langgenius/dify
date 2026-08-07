@@ -47,7 +47,7 @@ export default function AccountAboutDialog({
                   href="https://github.com/langgenius/dify/blob/main/LICENSE"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="rounded-sm outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                  className="rounded-sm focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                 >
                   Open Source License
                 </Link>
@@ -58,7 +58,7 @@ export default function AccountAboutDialog({
                     href="https://dify.ai/privacy"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="rounded-sm outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                    className="rounded-sm focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                   >
                     Privacy Policy
                   </Link>
@@ -67,7 +67,7 @@ export default function AccountAboutDialog({
                     href="https://dify.ai/terms"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="rounded-sm outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                    className="rounded-sm focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                   >
                     Terms of Service
                   </Link>
