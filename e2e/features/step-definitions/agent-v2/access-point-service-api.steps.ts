@@ -9,13 +9,10 @@ import {
 import { SERVICE_API_RUNTIME_STEP_TIMEOUT_MS } from '../../agent-v2/support/service-api-sse'
 import { getCurrentAgentId, getServiceApiCard } from './access-point-helpers'
 
-async function enableAgentApiAccessWithKey(world: DifyWorld) {
+async function createAgentApiKey(world: DifyWorld) {
   const agentId = getCurrentAgentId(world)
   const client = world.getConsoleClient()
-  const apiAccess = await client.agent.byAgentId.apiEnable.post({
-    body: { enable_api: true },
-    params: { agent_id: agentId },
-  })
+  const apiAccess = await client.agent.byAgentId.apiAccess.get({ params: { agent_id: agentId } })
   const apiKey = await client.agent.byAgentId.apiKeys.post({ params: { agent_id: agentId } })
 
   world.agentBuilder.accessPoint.serviceApiBaseURL = apiAccess.service_api_base_url
@@ -23,25 +20,25 @@ async function enableAgentApiAccessWithKey(world: DifyWorld) {
 }
 
 Given(
-  'Agent v2 Backend service API access has been enabled with a key via API',
+  'an Agent v2 Backend service API key has been created via API',
   async function (this: DifyWorld) {
-    await enableAgentApiAccessWithKey(this)
+    await createAgentApiKey(this)
   },
 )
 
 Then('I should see the Agent v2 Backend service API endpoint', async function (this: DifyWorld) {
   const serviceApiCard = getServiceApiCard(this)
-
-  if (!this.agentBuilder.accessPoint.serviceApiBaseURL)
-    throw new Error('No Agent v2 service API endpoint found. Enable Backend service API first.')
+  const agentId = getCurrentAgentId(this)
+  const apiAccess = await this.getConsoleClient().agent.byAgentId.apiAccess.get({
+    params: { agent_id: agentId },
+  })
+  this.agentBuilder.accessPoint.serviceApiBaseURL = apiAccess.service_api_base_url
 
   await expect(serviceApiCard.getByRole('heading', { name: 'Backend service API' })).toBeVisible({
     timeout: 30_000,
   })
   await expect(serviceApiCard.getByText('Service API Endpoint')).toBeVisible()
-  await expect(
-    serviceApiCard.getByText(this.agentBuilder.accessPoint.serviceApiBaseURL),
-  ).toBeVisible()
+  await expect(serviceApiCard.getByText(apiAccess.service_api_base_url)).toBeVisible()
   await expect(serviceApiCard.getByLabel('Copy service API endpoint')).toBeEnabled()
 })
 

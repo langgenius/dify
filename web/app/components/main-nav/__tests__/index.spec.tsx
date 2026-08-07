@@ -3,12 +3,15 @@ import type {
   StepByStepTourStatePatchPayload,
   StepByStepTourStateResponse,
 } from '@dify/contracts/api/console/onboarding/types.gen'
+import type {
+  GetWorkspacesCurrentSummaryResponse,
+  TenantListItemResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
 import type { Mock } from 'vitest'
 import type { StepByStepTourSessionState } from '@/app/components/step-by-step-tour/types'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
-import type { ICurrentWorkspace, IWorkspace } from '@/models/common'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
@@ -238,7 +241,7 @@ vi.mock('react-i18next', async () => {
 
 vi.mock('@/service/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/client')>()
-  const currentWorkspaceQueryKey = ['console', 'workspaces', 'current', 'post'] as const
+  const currentWorkspaceQueryKey = ['console', 'workspaces', 'current', 'summary', 'get'] as const
   const currentPermissionsQueryKey = [
     ['console', 'workspaces', 'current', 'rbac', 'myPermissions', 'get'],
     { type: 'query' },
@@ -249,14 +252,16 @@ vi.mock('@/service/client', async (importOriginal) => {
       if (prop === 'workspaces') {
         return {
           current: {
-            post: {
-              key: () => currentWorkspaceQueryKey,
-              queryKey: () => currentWorkspaceQueryKey,
-              queryOptions: (options?: object) => ({
-                queryKey: currentWorkspaceQueryKey,
-                queryFn: () => new Promise(() => {}),
-                ...options,
-              }),
+            summary: {
+              get: {
+                key: () => currentWorkspaceQueryKey,
+                queryKey: () => currentWorkspaceQueryKey,
+                queryOptions: (options?: object) => ({
+                  queryKey: currentWorkspaceQueryKey,
+                  queryFn: () => new Promise(() => {}),
+                  ...options,
+                }),
+              },
             },
             rbac: {
               myPermissions: {
@@ -392,7 +397,7 @@ let mockPathname = '/apps'
 let mockInstalledApps: InstalledAppResponse[] = []
 let mockInstalledAppsPending = false
 let mockInstalledAppsHasNextPage = false
-let mockWorkspaces: IWorkspace[] = []
+let mockWorkspaces: TenantListItemResponse[] = []
 
 const ownerWorkspacePermissionKeys = [
   'workspace.member.manage',
@@ -450,13 +455,8 @@ const consoleState: ConsoleStateFixture = {
     id: 'workspace-1',
     name: 'Solar Studio',
     plan: Plan.team,
-    status: 'normal',
-    created_at: 0,
+    credits: 7500,
     role: 'owner',
-    providers: [],
-    trial_credits: 10000,
-    trial_credits_used: 2500,
-    next_credit_reset_date: 0,
   },
   isCurrentWorkspaceManager: true,
   isCurrentWorkspaceOwner: true,
@@ -497,8 +497,8 @@ const renderMainNav = (
   const currentConsoleState = mockConsoleState.current ?? consoleState
   mockConsoleState.current = currentConsoleState
   queryClient.setQueryData(
-    consoleQuery.workspaces.current.post.queryKey(),
-    currentConsoleState.currentWorkspace as ICurrentWorkspace,
+    consoleQuery.workspaces.current.summary.get.queryKey(),
+    currentConsoleState.currentWorkspace as GetWorkspacesCurrentSummaryResponse,
   )
   queryClient.setQueryData(userProfileQueryOptions().queryKey, {
     profile: {
@@ -1310,11 +1310,20 @@ describe('MainNav', () => {
 
     renderMainNav()
 
+    const scrollViewport = await screen.findByRole('region', {
+      name: 'explore.sidebar.webApps',
+    })
+    scrollViewport.scrollTop = 240
+    scrollViewport.scrollTo = (optionsOrX?: ScrollToOptions | number, y?: number) => {
+      const top = typeof optionsOrX === 'object' ? optionsOrX.top : y
+      scrollViewport.scrollTop = Number(top ?? 0)
+    }
     await user.click(await screen.findByRole('button', { name: 'common.operation.search' }))
     const searchInput = screen.getByPlaceholderText('common.mainNav.webApps.searchPlaceholder')
     await user.type(searchInput, 'beta')
 
     await waitFor(() => {
+      expect(scrollViewport.scrollTop).toBe(0)
       expect(screen.queryByText('Alpha App')).not.toBeInTheDocument()
       expect(screen.getByText('Beta Tool')).toBeInTheDocument()
     })

@@ -801,7 +801,7 @@ class TestEmailI18nService:
         """Test email service sends email with branding support."""
         # Arrange
         from libs.email_i18n import EmailI18nConfig, EmailI18nService, EmailLanguage, EmailTemplate, EmailType
-        from services.feature_service import BrandingModel
+        from services.entities.feature_entities import BrandingModel
 
         mock_renderer = MagicMock()
         mock_renderer.render_template.return_value = "<html>Rendered content</html>"

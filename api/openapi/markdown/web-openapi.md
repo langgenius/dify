@@ -1448,6 +1448,12 @@ Form input definition.
 | summary | string |  | No |
 | word_count | integer |  | No |
 
+#### SSOProtocol
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| SSOProtocol | string |  |  |
+
 #### SavedMessageCreatePayload
 
 | Name | Type | Description | Required |
@@ -1560,6 +1566,7 @@ Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
 | enable_email_password_login | boolean, <br>**Default:** true |  | Yes |
 | enable_explore_banner | boolean |  | Yes |
 | enable_learn_app | boolean, <br>**Default:** true |  | Yes |
+| enable_license_expiry_notice | boolean, <br>**Default:** true |  | Yes |
 | enable_marketplace | boolean |  | Yes |
 | enable_social_oauth_login | boolean |  | Yes |
 | enable_step_by_step_tour | boolean |  | Yes |
@@ -1570,7 +1577,7 @@ Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
 | plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | Yes |
 | rbac_enabled | boolean |  | Yes |
 | sso_enforced_for_signin | boolean |  | Yes |
-| sso_enforced_for_signin_protocol | string |  | Yes |
+| sso_enforced_for_signin_protocol | [SSOProtocol](#ssoprotocol) |  | Yes |
 | webapp_auth | [WebAppAuthModel](#webappauthmodel) |  | Yes |
 
 #### SystemParameters
@@ -1634,7 +1641,7 @@ in form definition, or a variable while the workflow is running.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| protocol | string |  | Yes |
+| protocol | [SSOProtocol](#ssoprotocol) |  | Yes |
 
 #### WebAppCustomConfigResponse
 

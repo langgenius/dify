@@ -14,7 +14,7 @@ import { setZendeskConversationFields } from '@/app/components/base/zendesk/util
 import { ZENDESK_FIELD_IDS } from '@/config'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { refreshUserProfileAtom, userProfileAtom } from '../account-state'
-import { initialWorkspaceInfo } from '../app-context-defaults'
+import { initialWorkspaceSummary } from '../app-context-defaults'
 import {
   datasetDefaultPermissionKeysAtom,
   refreshWorkspacePermissionKeysAfterMutationDenialAtom,
@@ -29,7 +29,6 @@ import {
   isCurrentWorkspaceEditorAtom,
   isCurrentWorkspaceManagerAtom,
   isCurrentWorkspaceOwnerAtom,
-  refreshCurrentWorkspaceAtom,
 } from '../workspace-state'
 
 const mockGetRequest = vi.hoisted(() => vi.fn())
@@ -43,13 +42,8 @@ const mockCurrentWorkspaceResponse = vi.hoisted(() => ({
   id: 'workspace-1',
   name: 'Workspace',
   plan: 'sandbox',
-  status: 'normal',
-  created_at: 1704067200,
+  credits: 200,
   role: 'editor',
-  trial_credits: 200,
-  trial_credits_used: 0,
-  next_credit_reset_date: 1706745600,
-  custom_config: {},
 }))
 const mockCurrentWorkspaceQueryState = vi.hoisted(() => ({
   data: mockCurrentWorkspaceResponse as typeof mockCurrentWorkspaceResponse | undefined,
@@ -143,19 +137,21 @@ vi.mock('@/service/client', () => ({
     },
     workspaces: {
       current: {
-        post: {
-          key: () => ['current-workspace'],
-          queryOptions: (options: {
-            select?: (workspace?: typeof mockCurrentWorkspaceResponse) => unknown
-          }) => ({
-            queryKey: ['current-workspace'],
-            queryFn: async () => {
-              if (mockCurrentWorkspaceQueryState.isPending) return new Promise(() => {})
+        summary: {
+          get: {
+            key: () => ['current-workspace-summary'],
+            queryOptions: (options: {
+              select?: (workspace?: typeof mockCurrentWorkspaceResponse) => unknown
+            }) => ({
+              queryKey: ['current-workspace-summary'],
+              queryFn: async () => {
+                if (mockCurrentWorkspaceQueryState.isPending) return new Promise(() => {})
 
-              return mockCurrentWorkspaceQueryState.data
-            },
-            ...options,
-          }),
+                return mockCurrentWorkspaceQueryState.data
+              },
+              ...options,
+            }),
+          },
         },
         rbac: {
           myPermissions: {
@@ -227,7 +223,6 @@ function ConsoleBootstrapProbe() {
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
   const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
   const refreshUserProfile = useSetAtom(refreshUserProfileAtom)
-  const refreshCurrentWorkspace = useSetAtom(refreshCurrentWorkspaceAtom)
   const refreshPermissionsAfterMutationDenial = useSetAtom(
     refreshWorkspacePermissionKeysAfterMutationDenialAtom,
   )
@@ -285,9 +280,6 @@ function ConsoleBootstrapProbe() {
       </span>
       <button type="button" onClick={refreshUserProfile}>
         refresh user
-      </button>
-      <button type="button" onClick={refreshCurrentWorkspace}>
-        refresh workspace
       </button>
       <button type="button" onClick={() => void refreshPermissionsAfterMutationDenial()}>
         refresh permissions after denial
@@ -425,8 +417,8 @@ describe('Console bootstrap', () => {
       renderConsoleBootstrap()
 
       expect(await screen.findByText('user:user@example.com')).toBeInTheDocument()
-      expect(screen.getByText(`workspace:${initialWorkspaceInfo.name}`)).toBeInTheDocument()
-      expect(screen.getByText(`role:${initialWorkspaceInfo.role}`)).toBeInTheDocument()
+      expect(screen.getByText(`workspace:${initialWorkspaceSummary.name}`)).toBeInTheDocument()
+      expect(screen.getByText(`role:${initialWorkspaceSummary.role}`)).toBeInTheDocument()
       expect(screen.getByText('keys:')).toBeInTheDocument()
       expect(screen.getByText('dataset keys:')).toBeInTheDocument()
       expect(screen.getByText('version://')).toBeInTheDocument()
@@ -440,7 +432,7 @@ describe('Console bootstrap', () => {
 
       renderConsoleBootstrap()
 
-      expect(await screen.findByText(`role:${initialWorkspaceInfo.role}`)).toBeInTheDocument()
+      expect(await screen.findByText(`role:${initialWorkspaceSummary.role}`)).toBeInTheDocument()
     })
 
     it('should derive role flags from the current workspace role', async () => {
@@ -469,15 +461,13 @@ describe('Console bootstrap', () => {
   })
 
   describe('Refresh actions', () => {
-    it('should invalidate the source queries when refresh actions are called', async () => {
+    it('should invalidate the user profile query when refresh is called', async () => {
       const { queryClient } = renderConsoleBootstrap()
       const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries')
 
       fireEvent.click(await screen.findByRole('button', { name: /refresh user/i }))
-      fireEvent.click(screen.getByRole('button', { name: /refresh workspace/i }))
 
       expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['user-profile'] })
-      expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['current-workspace'] })
     })
 
     it('starts a fresh permission request without waiting for an older request', async () => {

@@ -22,7 +22,7 @@ from models import Tenant
 from models.enums import CustomizeTokenStrategy
 from models.human_input import RecipientType
 from models.model import App, AppMode, IconType, Site
-from services.feature_service import FeatureModel
+from services.entities.feature_entities import FeatureModel
 from services.human_input_service import FormExpiredError
 
 HumanInputFormApi = human_input_module.HumanInputFormApi

@@ -13,7 +13,6 @@ import { useTranslation } from 'react-i18next'
 import AppCard from '@/app/components/app/overview/app-card'
 import TriggerCard from '@/app/components/app/overview/trigger-card'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
 import Loading from '@/app/components/base/loading'
 import MCPServiceCard from '@/app/components/tools/mcp/mcp-service-card'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
@@ -27,7 +26,7 @@ import {
   updateAppSiteConfig,
   updateAppSiteStatus,
 } from '@/service/apps'
-import { appDetailQueryKeyPrefix } from '@/service/use-apps'
+import { consoleQuery } from '@/service/client'
 import { useAppWorkflow } from '@/service/use-workflow'
 import { AppModeEnum } from '@/types/app'
 import { asyncRunSafe } from '@/utils'
@@ -96,17 +95,14 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
     ? buildTriggerModeMessage(t(($) => $['mcp.server.title'], { ns: 'tools' }))
     : null
 
-  const setNeedRefresh = useSetNeedRefreshAppList()
-
   const updateAppDetail = useCallback(async () => {
     try {
       const res = await fetchAppDetail({ url: '/apps', id: appId })
-      queryClient.setQueryData([...appDetailQueryKeyPrefix, appId], res)
       setAppDetail({ ...res })
     } catch (error) {
       console.error(error)
     }
-  }, [appId, queryClient, setAppDetail])
+  }, [appId, setAppDetail])
 
   const handleCallbackResult = (
     err: Error | null,
@@ -184,8 +180,11 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
         body: params,
       }) as Promise<App>,
     )
-    if (!err) setNeedRefresh('1')
-
+    if (!err) {
+      void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
+      void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.starred.get.key() })
+      void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.recent.get.key() })
+    }
     handleCallbackResult(err)
   }
 

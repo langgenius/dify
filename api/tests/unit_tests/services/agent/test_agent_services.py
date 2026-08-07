@@ -856,6 +856,7 @@ def test_publish_agent_app_draft_rejects_missing_model(monkeypatch: pytest.Monke
         scope=AgentScope.ROSTER,
         source=AgentSource.AGENT_APP,
         status=AgentStatus.ACTIVE,
+        app_id="app-1",
         active_config_snapshot_id="version-1",
         active_config_is_published=False,
     )
@@ -877,6 +878,7 @@ def test_publish_agent_app_draft_rejects_missing_model(monkeypatch: pytest.Monke
         raise AssertionError("knowledge datasets must not be validated when Agent Soul has no model")
 
     monkeypatch.setattr(composer_service.ComposerConfigValidator, "validate_publish_payload", lambda payload: None)
+    monkeypatch.setattr(composer_service, "agent_has_workflow_callable_active_snapshot", lambda **_kwargs: False)
     monkeypatch.setattr(AgentComposerService, "validate_knowledge_datasets", fail_validate_knowledge_datasets)
     monkeypatch.setattr(AgentComposerService, "_create_config_version", fail_create_config_version)
 
@@ -908,6 +910,7 @@ def test_publish_agent_app_draft_creates_published_snapshot(monkeypatch: pytest.
         scope=AgentScope.ROSTER,
         source=AgentSource.AGENT_APP,
         status=AgentStatus.ACTIVE,
+        app_id="app-1",
         active_config_snapshot_id="version-1",
     )
     draft = AgentConfigDraft(
@@ -920,12 +923,16 @@ def test_publish_agent_app_draft_creates_published_snapshot(monkeypatch: pytest.
         config_snapshot=_agent_soul_with_model(),
     )
     version = SimpleNamespace(id="version-2")
-    session.add_all([agent, draft])
+    app = _app(mode=AppMode.AGENT)
+    app.enable_site = False
+    app.enable_api = False
+    session.add_all([agent, draft, app])
     session.commit()
     created: dict[str, object] = {}
     calls: list[str] = []
 
     monkeypatch.setattr(composer_service.ComposerConfigValidator, "validate_publish_payload", lambda payload: None)
+    monkeypatch.setattr(composer_service, "agent_has_workflow_callable_active_snapshot", lambda **_kwargs: False)
     monkeypatch.setattr(AgentComposerService, "validate_knowledge_datasets", lambda **kwargs: None)
     monkeypatch.setattr(
         composer_service,
@@ -957,6 +964,9 @@ def test_publish_agent_app_draft_creates_published_snapshot(monkeypatch: pytest.
     assert agent.active_config_snapshot_id == "version-2"
     assert agent.active_config_has_model is True
     assert agent.active_config_is_published is True
+    assert app.enable_site is True
+    assert app.enable_api is True
+    assert app.updated_by == "account-1"
 
 
 def test_repeated_publish_reuses_normal_draft_home_without_creating_resources(
@@ -973,6 +983,7 @@ def test_repeated_publish_reuses_normal_draft_home_without_creating_resources(
         scope=AgentScope.ROSTER,
         source=AgentSource.AGENT_APP,
         status=AgentStatus.ACTIVE,
+        app_id="app-1",
         active_config_snapshot_id="version-1",
     )
     draft = AgentConfigDraft(
@@ -984,12 +995,21 @@ def test_repeated_publish_reuses_normal_draft_home_without_creating_resources(
         home_snapshot_id="home-1",
         config_snapshot=_agent_soul_with_model(),
     )
-    session.add_all([agent, draft])
+    app = _app(mode=AppMode.AGENT)
+    app.enable_site = False
+    app.enable_api = False
+    session.add_all([agent, draft, app])
     session.commit()
     published_homes: list[str] = []
     versions = iter([SimpleNamespace(id="version-2"), SimpleNamespace(id="version-3")])
     create_from_build = MagicMock()
     monkeypatch.setattr(composer_service.ComposerConfigValidator, "validate_publish_payload", lambda _payload: None)
+    publish_visibility = iter([False, True])
+    monkeypatch.setattr(
+        composer_service,
+        "agent_has_workflow_callable_active_snapshot",
+        lambda **_kwargs: next(publish_visibility),
+    )
     monkeypatch.setattr(AgentComposerService, "validate_knowledge_datasets", lambda **_kwargs: None)
     monkeypatch.setattr(composer_service, "validate_home_snapshot_binding", lambda **_kwargs: None)
     monkeypatch.setattr(
@@ -1007,6 +1027,8 @@ def test_repeated_publish_reuses_normal_draft_home_without_creating_resources(
         agent_id="agent-1",
         account_id="account-1",
     )
+    app.enable_site = False
+    app.enable_api = False
     second = AgentComposerService.publish_agent_app_draft(
         session=session,
         tenant_id="tenant-1",
@@ -1018,6 +1040,8 @@ def test_repeated_publish_reuses_normal_draft_home_without_creating_resources(
     assert second["active_config_snapshot_id"] == "version-3"
     assert published_homes == ["home-1", "home-1"]
     assert draft.home_snapshot_id == "home-1"
+    assert app.enable_site is False
+    assert app.enable_api is False
     create_from_build.assert_not_called()
 
 
@@ -5264,8 +5288,8 @@ class TestAgentAppBackingAgent:
             id="target-app",
             app_model_config=target_config,
             app_model_config_with_session=lambda *, session: target_config,
-            enable_site=True,
-            enable_api=True,
+            enable_site=False,
+            enable_api=False,
             use_icon_as_answer_icon=False,
             tracing=None,
         )
@@ -5363,7 +5387,7 @@ class TestAgentAppBackingAgent:
         assert params.mode == "agent"
         assert params.agent_role == "Analyst"
         assert target_app.enable_site is False
-        assert target_app.enable_api is True
+        assert target_app.enable_api is False
         assert target_app.use_icon_as_answer_icon is True
         assert target_app.tracing == "{}"
         assert target_config.opening_statement == "hello"
@@ -5377,6 +5401,7 @@ class TestAgentAppBackingAgent:
         assert target_version.summary == "configured"
         assert target_version.version_note == "v1"
         assert target_agent.active_config_has_model is True
+        assert target_agent.active_config_is_published is False
         assert target_agent.updated_by == "account-1"
         assert session.get(Agent, target_agent.id) is target_agent
 
