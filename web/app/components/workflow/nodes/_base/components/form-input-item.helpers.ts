@@ -13,8 +13,8 @@ import { VarKindType } from '../types'
 
 type FormInputSchema = CredentialFormSchema &
   Partial<{
-    _type: FormTypeEnum | string
-    multiple: boolean | string | number
+    _type: FormTypeEnum
+    multiple: boolean
     options: FormOption[]
     placeholder: TypeWithI18N
     scope: string
@@ -40,23 +40,6 @@ export type SelectItem = {
   icon?: string
   name: string
   value: string
-}
-
-const normalizeDeclarativeParamType = (raw: string | undefined): string => {
-  if (!raw || typeof raw !== 'string') return ''
-
-  return raw.trim().toLowerCase().replace(/_/g, '-')
-}
-
-export const toolDeclarativeTypeMatches = (
-  schema: { type?: string; _type?: string },
-  expected: 'date' | 'date-range',
-): boolean => {
-  const candidates = [schema.type, schema._type].filter(
-    (value): value is string => typeof value === 'string',
-  )
-
-  return candidates.some((candidate) => normalizeDeclarativeParamType(candidate) === expected)
 }
 
 type FormInputState = {
@@ -90,16 +73,6 @@ const optionMatchesValue = (values: ResourceVarInputs, showOnItem: ShowOnConditi
   values[showOnItem.variable]?.value === showOnItem.value ||
   values[showOnItem.variable] === showOnItem.value
 
-const normalizeMultipleFlag = (multiple: FormInputSchema['multiple']) => {
-  if (typeof multiple === 'string') {
-    const normalized = multiple.trim().toLowerCase()
-    if (normalized === 'true') return true
-    if (normalized === 'false') return false
-  }
-
-  return multiple === true || multiple === 1
-}
-
 const getOptionLabel = (option: SelectableOption, language: string) => {
   if (typeof option.label === 'string') return option.label
 
@@ -121,12 +94,9 @@ export const getFormInputState = (
     _type,
   } = schema
 
-  const isDateRange = toolDeclarativeTypeMatches(schema, 'date-range')
-  const isDate = toolDeclarativeTypeMatches(schema, 'date') && !isDateRange
-  const isString =
-    (type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput) &&
-    !isDateRange &&
-    !isDate
+  const isDateRange = type === FormTypeEnum.dateRange
+  const isDate = type === FormTypeEnum.date
+  const isString = type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput
   const isNumber = type === FormTypeEnum.textNumber
   const isObject = type === FormTypeEnum.object
   const isArray = type === FormTypeEnum.array
@@ -142,7 +112,7 @@ export const getFormInputState = (
   const showTypeSwitch = isNumber || isBoolean || isObject || isArray || isSelect || isDate
   const isConstant = varInput?.type === VarKindType.constant || !varInput?.type
   const showVariableSelector = isFile || varInput?.type === VarKindType.variable
-  const isMultipleSelect = normalizeMultipleFlag(multiple) && (isSelect || isDynamicSelect)
+  const isMultipleSelect = multiple && (isSelect || isDynamicSelect)
 
   return {
     defaultValue,
@@ -175,7 +145,6 @@ export const getFormInputState = (
 export const getTargetVarType = (state: FormInputState) => {
   if (state.isString) return VarType.string
   if (state.isNumber) return VarType.number
-  if (state.isDate || state.isDateRange) return VarType.string
   if (state.isFile) return state.isFiles ? VarType.arrayFile : VarType.file
   if (state.isSelect && state.isMultipleSelect) return VarType.arrayString
   if (state.isSelect) return VarType.string
@@ -189,10 +158,7 @@ export const getFilterVar = (state: FormInputState) => {
   if (state.isNumber) return (varPayload: Var) => varPayload.type === VarType.number
   if (state.isSelect && state.isMultipleSelect)
     return (varPayload: Var) => [VarType.array, VarType.arrayString].includes(varPayload.type)
-  if (state.isString)
-    return (varPayload: Var) =>
-      [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
-  if (state.isDate)
+  if (state.isString || state.isDate)
     return (varPayload: Var) =>
       [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
   if (state.isFile)

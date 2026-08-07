@@ -18,7 +18,6 @@ import {
   getVarKindType,
   mapSelectItems,
   normalizeVariableSelectorValue,
-  toolDeclarativeTypeMatches,
 } from '../form-input-item.helpers'
 
 const createSchema = (
@@ -124,14 +123,7 @@ describe('form-input-item helpers', () => {
     ).toBeUndefined()
   })
 
-  it('should match declarative date types and expose date field state', () => {
-    expect(toolDeclarativeTypeMatches({ type: 'date' }, 'date')).toBe(true)
-    expect(toolDeclarativeTypeMatches({ _type: 'DATE' }, 'date')).toBe(true)
-    expect(toolDeclarativeTypeMatches({ type: 'date-range' }, 'date-range')).toBe(true)
-    expect(toolDeclarativeTypeMatches({ type: 'DATE_RANGE' }, 'date-range')).toBe(true)
-    expect(toolDeclarativeTypeMatches({ type: 'date-range' }, 'date')).toBe(false)
-    expect(toolDeclarativeTypeMatches({ type: 'date-picker' }, 'date-range')).toBe(false)
-
+  it('should expose date field state', () => {
     const dateState = getFormInputState(createSchema({ type: FormTypeEnum.date }), {
       type: VarKindType.constant,
       value: '2024-01-01',

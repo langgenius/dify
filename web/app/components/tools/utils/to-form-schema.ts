@@ -177,7 +177,7 @@ const correctInitialData = (
 ): FormValueInput => {
   if (type === 'text-input' || type === 'secret-input') target.type = 'mixed'
 
-  if (type === 'boolean' || type === FormTypeEnum.checkbox) {
+  if (type === 'boolean') {
     if (typeof defaultValue === 'string')
       target.value = defaultValue === 'true' || defaultValue === '1'
 
