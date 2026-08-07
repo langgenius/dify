@@ -163,12 +163,7 @@ def _is_fixed_scenario_item(name: str, *, kind: Literal["skill", "file"]) -> boo
         return False
     item = name[len(prefix) : -len(suffix) if suffix else None]
     index_text, separator, run_scope = item.partition("-")
-    return (
-        bool(separator and run_scope)
-        and index_text.isascii()
-        and index_text.isdigit()
-        and int(index_text) < count
-    )
+    return bool(separator and run_scope) and index_text.isascii() and index_text.isdigit() and int(index_text) < count
 
 
 def _skill_archive(*, name: str, content_bytes: int) -> bytes:
