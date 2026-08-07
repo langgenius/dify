@@ -6,9 +6,16 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 
-from controllers.inner_api.agent.files import AgentFileDownloadRequestApi, AgentFileUploadRequestApi
+from controllers.inner_api.agent.files import (
+    AgentFileDownloadRequestApi,
+    AgentFileRequestHttpError,
+    AgentFileUploadRequestApi,
+)
 from core.workflow.file_reference import build_file_reference
+from models import Account, TenantAccountJoin
+from models.account import AccountStatus
 from services.file_request_service import DownloadFileRequestResult
 
 MODULE = "controllers.inner_api.agent.files"
@@ -16,6 +23,22 @@ MODULE = "controllers.inner_api.agent.files"
 
 def _raw[R](method: Callable[..., R]) -> Callable[..., R]:
     return cast(Callable[..., R], inspect.unwrap(method))
+
+
+def _persist_account_memberships(session: Session) -> None:
+    account = Account(name="Tenant member", email="member@example.com", status=AccountStatus.ACTIVE)
+    account.id = "account-1"
+    decoy = Account(name="Other tenant member", email="decoy@example.com", status=AccountStatus.ACTIVE)
+    decoy.id = "account-outside-tenant"
+    session.add_all(
+        [
+            account,
+            decoy,
+            TenantAccountJoin(tenant_id="tenant-1", account_id=account.id),
+            TenantAccountJoin(tenant_id="tenant-other", account_id=decoy.id),
+        ]
+    )
+    session.commit()
 
 
 def test_upload_request_returns_origin_free_uri(app: Flask) -> None:
@@ -46,7 +69,68 @@ def test_upload_request_returns_origin_free_uri(app: Flask) -> None:
         tenant_id="tenant-1",
         user_id="canonical-end-user-1",
         conversation_id="conversation-1",
+        user_from=None,
     )
+
+
+@pytest.mark.parametrize("sqlite_session", [(Account, TenantAccountJoin)], indirect=True)
+def test_upload_request_preserves_tenant_scoped_account_owner(app: Flask, sqlite_session: Session) -> None:
+    _persist_account_memberships(sqlite_session)
+    payload = {
+        "tenant_id": "tenant-1",
+        "user_id": "account-1",
+        "user_from": "account",
+        "filename": "report.pdf",
+        "mimetype": "application/pdf",
+        "conversation_id": "conversation-1",
+    }
+    tenant = SimpleNamespace(id="tenant-1")
+    with app.test_request_context("/", method="POST", json=payload):
+        with (
+            patch(f"{MODULE}.TenantService") as tenant_service,
+            patch(f"{MODULE}.get_user") as get_user,
+            patch(f"{MODULE}.get_signed_file_uri_for_plugin", return_value="/files/upload/for-plugin?sign=1") as sign,
+        ):
+            tenant_service.get_tenant_by_id.return_value = tenant
+            response = _raw(AgentFileUploadRequestApi.post)(AgentFileUploadRequestApi(), sqlite_session)
+
+    assert response == {"upload_uri": "/files/upload/for-plugin?sign=1"}
+    get_user.assert_not_called()
+    sign.assert_called_once_with(
+        filename="report.pdf",
+        mimetype="application/pdf",
+        tenant_id="tenant-1",
+        user_id="account-1",
+        conversation_id="conversation-1",
+        user_from="account",
+    )
+
+
+@pytest.mark.parametrize("sqlite_session", [(Account, TenantAccountJoin)], indirect=True)
+def test_upload_request_rejects_account_outside_tenant_without_signing(app: Flask, sqlite_session: Session) -> None:
+    _persist_account_memberships(sqlite_session)
+    payload = {
+        "tenant_id": "tenant-1",
+        "user_id": "account-outside-tenant",
+        "user_from": "account",
+        "filename": "report.pdf",
+        "mimetype": "application/pdf",
+    }
+    tenant = SimpleNamespace(id="tenant-1")
+    with app.test_request_context("/", method="POST", json=payload):
+        with (
+            patch(f"{MODULE}.TenantService") as tenant_service,
+            patch(f"{MODULE}.get_user") as get_user,
+            patch(f"{MODULE}.get_signed_file_uri_for_plugin") as sign,
+        ):
+            tenant_service.get_tenant_by_id.return_value = tenant
+            with pytest.raises(AgentFileRequestHttpError) as exc_info:
+                _raw(AgentFileUploadRequestApi.post)(AgentFileUploadRequestApi(), sqlite_session)
+
+    assert exc_info.value.error_code == "user_not_found"
+    assert exc_info.value.code == 404
+    get_user.assert_not_called()
+    sign.assert_not_called()
 
 
 def test_download_request_returns_origin_free_uri_for_sandbox(app: Flask) -> None:

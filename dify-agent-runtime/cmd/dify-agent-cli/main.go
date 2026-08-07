@@ -103,14 +103,21 @@ func newFileCommand() *cobra.Command {
 		Short: "Upload or download workflow files through the Agent Stub.",
 	}
 
+	var noDownloadLink bool
 	upload := &cobra.Command{
 		Use:   "upload PATH",
 		Short: "Upload one sandbox-local file as a ToolFile output reference.",
 		Args:  cobra.ExactArgs(1),
 		RunE: withEnv(func(env *agentcli.Environment, args []string, _ *cobra.Command) error {
-			return agentcli.RunFileUpload(env, args[0])
+			return agentcli.RunFileUpload(env, args[0], noDownloadLink)
 		}),
 	}
+	upload.Flags().BoolVar(
+		&noDownloadLink,
+		"no-download-link",
+		false,
+		"Skip creating a public download link after upload.",
+	)
 
 	var downloadTo string
 	download := &cobra.Command{

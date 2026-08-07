@@ -199,9 +199,13 @@ def test_load_or_create_persists_binding_on_node_execution(monkeypatch, home_sna
         session=session,
     )
 
-    assert resolved.id == "binding-1"
+    assert resolved.backend_binding_ref == "backend-binding-1"
+    assert resolved.agent_id == "agent-1"
+    assert resolved.agent_config_version_id == "config-1"
+    assert resolved.agent_config_version_kind == "snapshot"
     owner_scope = get_active.call_args.kwargs["expected_owner_scope"]
     assert owner_scope.owner_scope_key == "node-1:workflow-binding-1"
+    session.rollback.assert_called_once_with()
 
 
 def test_load_existing_pointer_rejects_missing_workflow_identity(monkeypatch: pytest.MonkeyPatch) -> None:

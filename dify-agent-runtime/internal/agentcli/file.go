@@ -2,6 +2,7 @@ package agentcli
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,7 +16,7 @@ import (
 type FileUploadResponse struct {
 	TransferMethod    string `json:"transfer_method"`
 	Reference         string `json:"reference"`
-	PublicDownloadURL string `json:"public_download_url"`
+	PublicDownloadURL string `json:"public_download_url,omitempty"`
 }
 
 // FileDownloadResponse is the response from a file download request.
@@ -27,14 +28,14 @@ type FileDownloadResponse struct {
 }
 
 // RunFileUpload executes the `file upload` command.
-func RunFileUpload(env *Environment, path string) error {
+func RunFileUpload(env *Environment, path string, noDownloadLink bool) error {
 	client, err := NewStubClient(env)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = client.Close() }()
 
-	return runFileUpload(client, path, os.Stdout)
+	return runFileUpload(client, path, noDownloadLink, os.Stdout)
 }
 
 type fileUploadClient interface {
@@ -48,7 +49,7 @@ type fileUploadClient interface {
 	) (*FileDownloadResponse, error)
 }
 
-func runFileUpload(client fileUploadClient, path string, output io.Writer) error {
+func runFileUpload(client fileUploadClient, path string, noDownloadLink bool, output io.Writer) error {
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return fmt.Errorf("resolve path: %w", err)
@@ -83,22 +84,45 @@ func runFileUpload(client fileUploadClient, path string, output io.Writer) error
 	if reference == "" {
 		return fmt.Errorf("signed file upload response is missing reference")
 	}
-
-	// Step 3: Request download URL for the uploaded file
-	ref := reference
-	dlResp, err := client.CreateFileDownloadURL(ctx, "tool_file", &ref, nil, true)
-	if err != nil {
-		return err
+	if noDownloadLink && !isCanonicalDifyFileReference(reference) {
+		return fmt.Errorf("signed file upload response has invalid reference")
 	}
 
 	result := FileUploadResponse{
-		TransferMethod:    "tool_file",
-		Reference:         reference,
-		PublicDownloadURL: dlResp.DownloadURL,
+		TransferMethod: "tool_file",
+		Reference:      reference,
+	}
+	if !noDownloadLink {
+		// Step 3: Request a browser-visible URL unless the caller only needs the
+		// canonical ToolFile reference.
+		ref := reference
+		dlResp, err := client.CreateFileDownloadURL(ctx, "tool_file", &ref, nil, true)
+		if err != nil {
+			return err
+		}
+		result.PublicDownloadURL = dlResp.DownloadURL
 	}
 	out, _ := json.Marshal(result)
 	_, _ = fmt.Fprintln(output, string(out))
 	return nil
+}
+
+func isCanonicalDifyFileReference(reference string) bool {
+	encodedPayload, found := strings.CutPrefix(reference, "dify-file-ref:")
+	if !found || encodedPayload == "" {
+		return false
+	}
+	payloadJSON, err := base64.URLEncoding.DecodeString(encodedPayload)
+	if err != nil {
+		return false
+	}
+	var payload struct {
+		RecordID string `json:"record_id"`
+	}
+	if err := json.Unmarshal(payloadJSON, &payload); err != nil {
+		return false
+	}
+	return payload.RecordID != ""
 }
 
 // RunFileDownload executes the `file download` command.

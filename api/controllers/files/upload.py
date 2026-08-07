@@ -1,14 +1,19 @@
+from typing import Literal
+
 from flask import request
 from flask_restx import Resource
 from flask_restx.api import HTTPStatus
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 from werkzeug.exceptions import Forbidden
 
 import services
+from core.db.session_factory import session_factory
 from core.tools.signature import verify_plugin_file_signature
 from core.tools.tool_file_manager import ToolFileManager, resolve_extension
 from core.workflow.file_reference import build_file_reference
 from fields.file_fields import FileResponse
+from models import Account, TenantAccountJoin
 
 from ..common.errors import (
     FileTooLargeError,
@@ -26,6 +31,7 @@ class PluginUploadQuery(BaseModel):
     sign: str = Field(..., description="HMAC signature")
     tenant_id: str = Field(..., description="Tenant identifier")
     user_id: str | None = Field(default=None, description="User identifier")
+    user_from: Literal["account", "end-user"] | None = Field(default=None, description="User identity type")
     conversation_id: str | None = Field(default=None, description="Conversation identifier")
 
 
@@ -77,8 +83,22 @@ class PluginUploadFileApi(Resource):
         nonce = args.nonce
         sign = args.sign
         tenant_id = args.tenant_id
-        user_id = args.user_id
-        user = get_user(tenant_id, user_id)
+        if args.user_from == "account":
+            if args.user_id is None:
+                raise Forbidden("Invalid request.")
+            with session_factory.create_session() as session:
+                owner_id = session.scalar(
+                    select(Account.id)
+                    .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
+                    .where(
+                        Account.id == args.user_id,
+                        TenantAccountJoin.tenant_id == tenant_id,
+                    )
+                )
+            if owner_id is None:
+                raise Forbidden("Invalid request.")
+        else:
+            owner_id = get_user(tenant_id, args.user_id).id
 
         filename = file.filename
         mimetype = file.mimetype
@@ -90,8 +110,9 @@ class PluginUploadFileApi(Resource):
             filename=filename,
             mimetype=mimetype,
             tenant_id=tenant_id,
-            user_id=user.id,
+            user_id=owner_id,
             conversation_id=args.conversation_id,
+            user_from=args.user_from,
             timestamp=timestamp,
             nonce=nonce,
             sign=sign,
@@ -100,7 +121,7 @@ class PluginUploadFileApi(Resource):
 
         try:
             tool_file = ToolFileManager().create_file_by_raw(
-                user_id=user.id,
+                user_id=owner_id,
                 tenant_id=tenant_id,
                 file_binary=file.stream.read(),
                 mimetype=mimetype,

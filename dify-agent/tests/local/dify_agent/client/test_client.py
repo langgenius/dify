@@ -22,6 +22,10 @@ from dify_agent.client import (
     DifyAgentValidationError,
 )
 from dify_agent.protocol import (
+    BindingFileDownloadRequest,
+    BindingFileDownloadResponse,
+    BindingFileListResponse,
+    BindingFileReadResponse,
     CancelRunRequest,
     CancelRunResponse,
     CreateExecutionBindingRequest,
@@ -37,10 +41,6 @@ from dify_agent.protocol import (
     RunStartedEvent,
     RunSucceededEvent,
     RunSucceededEventData,
-    WorkspaceListResponse,
-    WorkspaceReadResponse,
-    WorkspaceUploadRequest,
-    WorkspaceUploadResponse,
 )
 
 
@@ -83,17 +83,23 @@ def _run_status_json(status: str) -> dict[str, object]:
     return {"run_id": "run-1", "status": status, "created_at": now, "updated_at": now, "error": None}
 
 
-def _workspace_upload_request(path: str = "report.txt") -> WorkspaceUploadRequest:
-    return WorkspaceUploadRequest(
+def _binding_file_download_request(path: str = "report.txt") -> BindingFileDownloadRequest:
+    return BindingFileDownloadRequest(
         backend_binding_ref="binding-ref",
         path=path,
         execution_context=DifyExecutionContextLayerConfig(
             tenant_id="tenant-1",
+            user_id="account-1",
             user_from="account",
             agent_mode="agent_app",
             invoke_from="debugger",
         ),
     )
+
+
+def _assert_binding_download_timeout(request: httpx.Request) -> None:
+    timeout = cast(dict[str, float], request.extensions["timeout"])
+    assert timeout == {"connect": 90.0, "read": 90.0, "write": 90.0, "pool": 90.0}
 
 
 def _function_tool_result_payload(key: str) -> dict[str, object]:
@@ -239,85 +245,70 @@ def test_async_methods_and_wait_run_parse_protocol_dtos() -> None:
     asyncio.run(scenario())
 
 
-def test_sync_workspace_methods_post_dtos_and_parse_responses() -> None:
+def test_sync_binding_file_methods_post_dtos_and_parse_responses() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path == "/workspace/files/list":
+        if request.url.path == "/execution-bindings/files/list":
             payload = cast(dict[str, object], json.loads(request.content))
             assert payload["path"] == "."
             assert payload["backend_binding_ref"] == "binding-ref"
             return httpx.Response(200, json={"path": ".", "entries": [], "truncated": False})
-        if request.url.path == "/workspace/files/read":
+        if request.url.path == "/execution-bindings/files/read":
             payload = cast(dict[str, object], json.loads(request.content))
             assert payload["path"] == "note.txt"
             assert payload["max_bytes"] == 128
             return httpx.Response(
                 200, json={"path": "note.txt", "size": 5, "truncated": False, "binary": False, "text": "hello"}
             )
-        if request.url.path == "/workspace/files/upload":
+        if request.url.path == "/execution-bindings/files/download":
+            _assert_binding_download_timeout(request)
             payload = cast(dict[str, object], json.loads(request.content))
             assert payload["path"] == "report.txt"
             return httpx.Response(
                 200,
-                json={
-                    "path": "report.txt",
-                    "file": {
-                        "transfer_method": "tool_file",
-                        "reference": "dify-file-ref:file-1",
-                        "download_url": "https://files.example.com/report.txt",
-                    },
-                },
+                json={"reference": "dify-file-ref:file-1"},
             )
         raise AssertionError(f"unexpected request: {request.method} {request.url}")
 
     client = Client(base_url="http://testserver", sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)))
 
-    listing = client.list_workspace_files_sync("binding-ref", ".")
-    preview = client.read_workspace_file_sync("binding-ref", "note.txt", max_bytes=128)
-    uploaded = client.upload_workspace_file_sync(_workspace_upload_request())
+    listing = client.list_binding_files_sync("binding-ref", ".")
+    preview = client.read_binding_file_sync("binding-ref", "note.txt", max_bytes=128)
+    downloaded = client.download_binding_file_sync(_binding_file_download_request())
 
-    assert isinstance(listing, WorkspaceListResponse)
+    assert isinstance(listing, BindingFileListResponse)
     assert listing.path == "."
-    assert isinstance(preview, WorkspaceReadResponse)
+    assert isinstance(preview, BindingFileReadResponse)
     assert preview.text == "hello"
-    assert isinstance(uploaded, WorkspaceUploadResponse)
-    assert uploaded.file.reference == "dify-file-ref:file-1"
-    assert uploaded.file.download_url == "https://files.example.com/report.txt"
+    assert isinstance(downloaded, BindingFileDownloadResponse)
+    assert downloaded.reference == "dify-file-ref:file-1"
 
 
-def test_async_workspace_methods_post_dtos_and_parse_responses() -> None:
+def test_async_binding_file_methods_post_dtos_and_parse_responses() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path == "/workspace/files/list":
+        if request.url.path == "/execution-bindings/files/list":
             return httpx.Response(200, json={"path": ".", "entries": [], "truncated": False})
-        if request.url.path == "/workspace/files/read":
+        if request.url.path == "/execution-bindings/files/read":
+            payload = cast(dict[str, object], json.loads(request.content))
+            assert payload["max_bytes"] == 262144
             return httpx.Response(
                 200, json={"path": "note.txt", "size": 5, "truncated": False, "binary": False, "text": "hello"}
             )
-        if request.url.path == "/workspace/files/upload":
-            return httpx.Response(
-                200,
-                json={
-                    "path": "report.txt",
-                    "file": {
-                        "transfer_method": "tool_file",
-                        "reference": "dify-file-ref:file-1",
-                        "download_url": "https://files.example.com/report.txt",
-                    },
-                },
-            )
+        if request.url.path == "/execution-bindings/files/download":
+            _assert_binding_download_timeout(request)
+            return httpx.Response(200, json={"reference": "dify-file-ref:file-1"})
         raise AssertionError(f"unexpected request: {request.method} {request.url}")
 
     async def scenario() -> None:
         http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
         client = Client(base_url="http://testserver", async_http_client=http_client)
 
-        listing = await client.list_workspace_files("binding-ref", ".")
-        preview = await client.read_workspace_file("binding-ref", "note.txt")
-        uploaded = await client.upload_workspace_file(_workspace_upload_request())
+        listing = await client.list_binding_files("binding-ref", ".")
+        preview = await client.read_binding_file("binding-ref", "note.txt")
+        downloaded = await client.download_binding_file(_binding_file_download_request())
 
         assert listing.path == "."
         assert preview.text == "hello"
-        assert uploaded.file.reference == "dify-file-ref:file-1"
-        assert uploaded.file.download_url == "https://files.example.com/report.txt"
+        assert downloaded.reference == "dify-file-ref:file-1"
         await http_client.aclose()
 
     asyncio.run(scenario())
@@ -445,28 +436,22 @@ def test_home_snapshot_client_maps_sync_validation_and_async_http_errors() -> No
     asyncio.run(scenario())
 
 
-def test_sync_upload_workspace_file_rejects_missing_download_url() -> None:
+def test_sync_download_binding_file_rejects_missing_reference() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path != "/workspace/files/upload":
+        if request.url.path != "/execution-bindings/files/download":
             raise AssertionError(f"unexpected request: {request.method} {request.url}")
         return httpx.Response(
             200,
-            json={
-                "path": "report.txt",
-                "file": {
-                    "transfer_method": "tool_file",
-                    "reference": "dify-file-ref:file-1",
-                },
-            },
+            json={},
         )
 
     client = Client(base_url="http://testserver", sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)))
 
     with pytest.raises(DifyAgentValidationError):
-        _ = client.upload_workspace_file_sync(_workspace_upload_request())
+        _ = client.download_binding_file_sync(_binding_file_download_request())
 
 
-def test_sync_workspace_methods_map_invalid_json_to_validation_error() -> None:
+def test_sync_binding_file_methods_map_invalid_json_to_validation_error() -> None:
     responses = iter([httpx.Response(200, text="not-json"), httpx.Response(404, json={"detail": "missing"})])
 
     def handler(_request: httpx.Request) -> httpx.Response:
@@ -475,10 +460,10 @@ def test_sync_workspace_methods_map_invalid_json_to_validation_error() -> None:
     client = Client(base_url="http://testserver", sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)))
 
     with pytest.raises(DifyAgentValidationError):
-        _ = client.list_workspace_files_sync("binding-ref", ".")
+        _ = client.list_binding_files_sync("binding-ref", ".")
 
     with pytest.raises(DifyAgentHTTPError) as http_error:
-        _ = client.read_workspace_file_sync("binding-ref", "missing.txt")
+        _ = client.read_binding_file_sync("binding-ref", "missing.txt")
     assert http_error.value.status_code == 404
 
 

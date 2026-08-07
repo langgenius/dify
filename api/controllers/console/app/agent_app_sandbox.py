@@ -1,8 +1,8 @@
 """Console routes for Agent App and workflow Agent sandbox file access.
 
 The API accepts product-facing Conversation, Build Draft, or Workflow Node
-Execution locators and proxies list/read/upload to the agent backend's
-``/sandbox`` contract.
+Execution locators and proxies list/read/download to the agent backend's
+``/execution-bindings/files`` contract.
 """
 
 from __future__ import annotations
@@ -13,6 +13,7 @@ from uuid import UUID
 from dify_agent.client import DifyAgentClientError, DifyAgentHTTPError, DifyAgentTimeoutError
 from flask_restx import Resource
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from controllers.common.schema import (
@@ -24,6 +25,7 @@ from controllers.common.schema import (
 from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.agent.app_helpers import resolve_agent_runtime_app_model
+from controllers.console.app.error import AppNotFoundError
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     account_initialization_required,
@@ -32,6 +34,7 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
+from core.db.session_factory import session_factory
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.login import login_required
@@ -43,11 +46,17 @@ from services.agent_app_sandbox_service import (
     WorkflowAgentSandboxService,
 )
 
+_BINDING_PATH_DESCRIPTION = (
+    "Binding path: relative paths start in Workspace; exact `~` and paths beginning with `~/` start in Home; "
+    "`~user` is an ordinary relative path from Workspace; absolute paths remain absolute; `..` and paths outside "
+    "Workspace are governed by backend isolation, not a Workspace-root restriction"
+)
+
 
 class AgentSandboxListQuery(BaseModel):
     caller_type: Literal["conversation", "build_draft"]
     caller_id: str = Field(min_length=1, description="Agent App caller ID")
-    path: str = Field(default=".", description="Directory path relative to the sandbox workspace")
+    path: str = Field(default=".", description=_BINDING_PATH_DESCRIPTION)
 
 
 class AgentSandboxInfoQuery(BaseModel):
@@ -58,28 +67,28 @@ class AgentSandboxInfoQuery(BaseModel):
 class AgentSandboxFileQuery(BaseModel):
     caller_type: Literal["conversation", "build_draft"]
     caller_id: str = Field(min_length=1, description="Agent App caller ID")
-    path: str = Field(min_length=1, description="File path relative to the sandbox workspace")
+    path: str = Field(min_length=1, description=_BINDING_PATH_DESCRIPTION)
 
 
-class AgentSandboxUploadPayload(BaseModel):
+class AgentSandboxDownloadPayload(BaseModel):
     caller_type: Literal["conversation", "build_draft"]
     caller_id: str = Field(min_length=1, description="Agent App caller ID")
-    path: str = Field(min_length=1, description="File path relative to the sandbox workspace")
+    path: str = Field(min_length=1, description=_BINDING_PATH_DESCRIPTION)
 
 
 class WorkflowAgentSandboxListQuery(BaseModel):
     node_execution_id: str = Field(min_length=1, description="Workflow node execution ID")
-    path: str = Field(default=".", description="Directory path relative to the sandbox workspace")
+    path: str = Field(default=".", description=_BINDING_PATH_DESCRIPTION)
 
 
 class WorkflowAgentSandboxFileQuery(BaseModel):
     node_execution_id: str = Field(min_length=1, description="Workflow node execution ID")
-    path: str = Field(min_length=1, description="File path relative to the sandbox workspace")
+    path: str = Field(min_length=1, description=_BINDING_PATH_DESCRIPTION)
 
 
-class WorkflowAgentSandboxUploadPayload(BaseModel):
+class WorkflowAgentSandboxDownloadPayload(BaseModel):
     node_execution_id: str = Field(min_length=1, description="Workflow node execution ID")
-    path: str = Field(min_length=1, description="File path relative to the sandbox workspace")
+    path: str = Field(min_length=1, description=_BINDING_PATH_DESCRIPTION)
 
 
 class SandboxFileEntryResponse(ResponseModel):
@@ -107,21 +116,21 @@ class SandboxReadResponse(ResponseModel):
     text: str | None = None
 
 
-class SandboxUploadResponse(ResponseModel):
+class SandboxDownloadResponse(ResponseModel):
     url: str
 
 
 register_schema_models(
     console_ns,
-    AgentSandboxUploadPayload,
-    WorkflowAgentSandboxUploadPayload,
+    AgentSandboxDownloadPayload,
+    WorkflowAgentSandboxDownloadPayload,
 )
 register_response_schema_models(
     console_ns,
     SandboxInfoResponse,
     SandboxListResponse,
     SandboxReadResponse,
-    SandboxUploadResponse,
+    SandboxDownloadResponse,
 )
 
 
@@ -141,6 +150,8 @@ def _handle(exc: Exception) -> tuple[dict[str, object], int]:
     raise exc
 
 
+# Agent GET resources retain only scalar ``app_id`` and end their read
+# transaction before sandbox-service work can reach Dify Agent.
 @console_ns.route("/agent/<uuid:agent_id>/sandbox")
 class AgentAppSandboxInfoResource(Resource):
     @console_ns.doc("get_agent_app_sandbox_info")
@@ -155,11 +166,13 @@ class AgentAppSandboxInfoResource(Resource):
     @with_session(write=False)
     def get(self, session: Session, current_user: Account, tenant_id: str, agent_id: UUID):
         app_model = resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
+        app_id = app_model.id
+        session.rollback()
         query = query_params_from_request(AgentSandboxInfoQuery)
         try:
             result = AgentAppSandboxService().get_info(
                 tenant_id=tenant_id,
-                app_id=app_model.id,
+                app_id=app_id,
                 agent_id=str(agent_id),
                 caller_type=query.caller_type,
                 caller_id=query.caller_id,
@@ -184,11 +197,13 @@ class AgentAppSandboxListResource(Resource):
     @with_session(write=False)
     def get(self, session: Session, current_user: Account, tenant_id: str, agent_id: UUID):
         app_model = resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
+        app_id = app_model.id
+        session.rollback()
         query = query_params_from_request(AgentSandboxListQuery)
         try:
             result = AgentAppSandboxService().list_files(
                 tenant_id=tenant_id,
-                app_id=app_model.id,
+                app_id=app_id,
                 agent_id=str(agent_id),
                 caller_type=query.caller_type,
                 caller_id=query.caller_id,
@@ -214,11 +229,13 @@ class AgentAppSandboxReadResource(Resource):
     @with_session(write=False)
     def get(self, session: Session, current_user: Account, tenant_id: str, agent_id: UUID):
         app_model = resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
+        app_id = app_model.id
+        session.rollback()
         query = query_params_from_request(AgentSandboxFileQuery)
         try:
             result = AgentAppSandboxService().read_file(
                 tenant_id=tenant_id,
-                app_id=app_model.id,
+                app_id=app_id,
                 agent_id=str(agent_id),
                 caller_type=query.caller_type,
                 caller_id=query.caller_id,
@@ -230,32 +247,30 @@ class AgentAppSandboxReadResource(Resource):
         return result.model_dump()
 
 
-@console_ns.route("/agent/<uuid:agent_id>/sandbox/files/upload")
-class AgentAppSandboxUploadResource(Resource):
-    @console_ns.doc("upload_agent_app_sandbox_file")
-    @console_ns.doc(description="Upload one Agent App sandbox file and return a signed download URL")
-    @console_ns.expect(console_ns.models[AgentSandboxUploadPayload.__name__])
-    @console_ns.response(200, "Uploaded", console_ns.models[SandboxUploadResponse.__name__])
+@console_ns.route("/agent/<uuid:agent_id>/sandbox/files/download")
+class AgentAppSandboxDownloadResource(Resource):
+    @console_ns.doc("download_agent_app_sandbox_file")
+    @console_ns.doc(description="Create a ToolFile from one Agent App Binding file and return its download URL")
+    @console_ns.expect(console_ns.models[AgentSandboxDownloadPayload.__name__])
+    @console_ns.response(200, "Download URL returned", console_ns.models[SandboxDownloadResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @with_current_tenant_id
     @with_current_user
-    @with_session(write=False)
-    @model_validate(AgentSandboxUploadPayload)
+    @model_validate(AgentSandboxDownloadPayload)
     def post(
         self,
-        req_data: AgentSandboxUploadPayload,
-        session: Session,
+        req_data: AgentSandboxDownloadPayload,
         current_user: Account,
         tenant_id: str,
         agent_id: UUID,
     ):
-        app_model = resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
+        app_id = _resolve_agent_download_app_id(tenant_id=tenant_id, agent_id=agent_id)
         try:
-            result = AgentAppSandboxService().upload_file(
+            result = AgentAppSandboxService().download_file(
                 tenant_id=tenant_id,
-                app_id=app_model.id,
+                app_id=app_id,
                 agent_id=str(agent_id),
                 caller_type=req_data.caller_type,
                 caller_id=req_data.caller_id,
@@ -340,37 +355,60 @@ class WorkflowAgentSandboxReadResource(Resource):
 
 
 @console_ns.route(
-    "/apps/<uuid:app_id>/workflow-runs/<uuid:workflow_run_id>/agent-nodes/<string:node_id>/sandbox/files/upload"
+    "/apps/<uuid:app_id>/workflow-runs/<uuid:workflow_run_id>/agent-nodes/<string:node_id>/sandbox/files/download"
 )
-class WorkflowAgentSandboxUploadResource(Resource):
-    @console_ns.doc("upload_workflow_agent_sandbox_file")
-    @console_ns.doc(description="Upload one workflow Agent sandbox file and return a signed download URL")
-    @console_ns.expect(console_ns.models[WorkflowAgentSandboxUploadPayload.__name__])
-    @console_ns.response(200, "Uploaded", console_ns.models[SandboxUploadResponse.__name__])
+class WorkflowAgentSandboxDownloadResource(Resource):
+    @console_ns.doc("download_workflow_agent_sandbox_file")
+    @console_ns.doc(description="Create a ToolFile from one workflow Agent Binding file and return its download URL")
+    @console_ns.expect(console_ns.models[WorkflowAgentSandboxDownloadPayload.__name__])
+    @console_ns.response(200, "Download URL returned", console_ns.models[SandboxDownloadResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @with_current_user
     @with_current_tenant_id
-    @model_validate(WorkflowAgentSandboxUploadPayload)
+    @model_validate(WorkflowAgentSandboxDownloadPayload)
     def post(
         self,
-        req_data: WorkflowAgentSandboxUploadPayload,
+        req_data: WorkflowAgentSandboxDownloadPayload,
         tenant_id: str,
-        app_model: App,
+        current_user: Account,
+        app_id: UUID,
         workflow_run_id: UUID,
         node_id: str,
     ):
+        resolved_app_id = _resolve_workflow_download_app_id(tenant_id=tenant_id, app_id=app_id)
         try:
-            result = WorkflowAgentSandboxService().upload_file(
+            result = WorkflowAgentSandboxService().download_file(
                 tenant_id=tenant_id,
-                app_id=app_model.id,
+                app_id=resolved_app_id,
                 workflow_run_id=str(workflow_run_id),
                 node_id=node_id,
                 node_execution_id=req_data.node_execution_id,
+                account_id=current_user.id,
                 path=req_data.path,
-                session=db.session(),
             )
         except Exception as exc:
             return _handle(exc)
         return result.model_dump()
+
+
+def _resolve_agent_download_app_id(*, tenant_id: str, agent_id: UUID) -> str:
+    with session_factory.create_session() as session:
+        app_model = resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
+        return app_model.id
+
+
+def _resolve_workflow_download_app_id(*, tenant_id: str, app_id: UUID) -> str:
+    with session_factory.create_session() as session:
+        app_model = session.scalar(
+            select(App).where(
+                App.id == str(app_id),
+                App.tenant_id == tenant_id,
+                App.status == "normal",
+                App.mode.in_((AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value)),
+            )
+        )
+        if app_model is None:
+            raise AppNotFoundError()
+        return app_model.id

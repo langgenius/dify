@@ -6,12 +6,12 @@ from unittest.mock import MagicMock
 
 import pytest
 from dify_agent.client import DifyAgentClientError, DifyAgentHTTPError, DifyAgentTimeoutError
-from dify_agent.protocol import WorkspaceListResponse, WorkspaceReadResponse
+from dify_agent.protocol import BindingFileListResponse, BindingFileReadResponse
 from sqlalchemy.orm import Session
 
 from controllers.console import agent_app_sandbox as module
 from models.model import App, AppMode, IconType
-from services.agent_app_sandbox_service import AgentSandboxInfo, AgentSandboxInspectorError, AgentSandboxUploadDownload
+from services.agent_app_sandbox_service import AgentSandboxDownload, AgentSandboxInfo, AgentSandboxInspectorError
 
 
 class _AgentAppService:
@@ -41,9 +41,9 @@ class _AgentAppService:
         caller_id: str,
         account_id: str,
         path: str,
-    ) -> WorkspaceListResponse:
+    ) -> BindingFileListResponse:
         self.calls.append(("list", tenant_id, app_id, agent_id, caller_type, caller_id, account_id, path))
-        return WorkspaceListResponse(path=path, entries=[], truncated=False)
+        return BindingFileListResponse(path=path, entries=[], truncated=False)
 
     def read_file(
         self,
@@ -55,11 +55,11 @@ class _AgentAppService:
         caller_id: str,
         account_id: str,
         path: str,
-    ) -> WorkspaceReadResponse:
+    ) -> BindingFileReadResponse:
         self.calls.append(("read", tenant_id, app_id, agent_id, caller_type, caller_id, account_id, path))
-        return WorkspaceReadResponse(path=path, size=5, truncated=False, binary=False, text="hello")
+        return BindingFileReadResponse(path=path, size=5, truncated=False, binary=False, text="hello")
 
-    def upload_file(
+    def download_file(
         self,
         *,
         tenant_id: str,
@@ -69,14 +69,14 @@ class _AgentAppService:
         caller_id: str,
         account_id: str,
         path: str,
-    ) -> AgentSandboxUploadDownload:
-        self.calls.append(("upload", tenant_id, app_id, agent_id, caller_type, caller_id, account_id, path))
-        return AgentSandboxUploadDownload(url="https://files.example/report.txt")
+    ) -> AgentSandboxDownload:
+        self.calls.append(("download", tenant_id, app_id, agent_id, caller_type, caller_id, account_id, path))
+        return AgentSandboxDownload(url="https://files.example/report.txt")
 
 
 class _WorkflowService:
     def __init__(self) -> None:
-        self.calls: list[tuple[str, str, str, str, str, str]] = []
+        self.calls: list[tuple[str, ...]] = []
 
     def list_files(
         self,
@@ -88,9 +88,9 @@ class _WorkflowService:
         node_execution_id: str,
         path: str,
         session,
-    ) -> WorkspaceListResponse:
+    ) -> BindingFileListResponse:
         self.calls.append(("list", tenant_id, app_id, workflow_run_id, node_id, path))
-        return WorkspaceListResponse(path=path, entries=[], truncated=False)
+        return BindingFileListResponse(path=path, entries=[], truncated=False)
 
     def read_file(
         self,
@@ -102,11 +102,11 @@ class _WorkflowService:
         node_execution_id: str,
         path: str,
         session,
-    ) -> WorkspaceReadResponse:
+    ) -> BindingFileReadResponse:
         self.calls.append(("read", tenant_id, app_id, workflow_run_id, node_id, path))
-        return WorkspaceReadResponse(path=path, size=5, truncated=False, binary=False, text="hello")
+        return BindingFileReadResponse(path=path, size=5, truncated=False, binary=False, text="hello")
 
-    def upload_file(
+    def download_file(
         self,
         *,
         tenant_id: str,
@@ -114,11 +114,11 @@ class _WorkflowService:
         workflow_run_id: str,
         node_id: str,
         node_execution_id: str,
+        account_id: str,
         path: str,
-        session,
-    ) -> AgentSandboxUploadDownload:
-        self.calls.append(("upload", tenant_id, app_id, workflow_run_id, node_id, path))
-        return AgentSandboxUploadDownload(url="https://files.example/upload.txt")
+    ) -> AgentSandboxDownload:
+        self.calls.append(("download", tenant_id, app_id, workflow_run_id, node_id, account_id, path))
+        return AgentSandboxDownload(url="https://files.example/download.txt")
 
 
 def _app_model(app_id: str = "app-1") -> App:
@@ -172,28 +172,30 @@ def test_agent_app_sandbox_resources_proxy_service(monkeypatch: pytest.MonkeyPat
         "query_params_from_request",
         lambda model: SimpleNamespace(caller_type="build_draft", caller_id="build-1", path="sub/report.txt"),
     )
+    download_context = MagicMock()
+    download_session = download_context.__enter__.return_value
+    monkeypatch.setattr(module.session_factory, "create_session", lambda: download_context)
 
     info = unwrap(module.AgentAppSandboxInfoResource.get)(object(), session, account, "tenant-1", "agent-1")
     listing = unwrap(module.AgentAppSandboxListResource.get)(object(), session, account, "tenant-1", "agent-1")
     preview = unwrap(module.AgentAppSandboxReadResource.get)(object(), session, account, "tenant-1", "agent-1")
-    req_data = module.AgentSandboxUploadPayload.model_validate(
+    req_data = module.AgentSandboxDownloadPayload.model_validate(
         {"caller_type": "build_draft", "caller_id": "build-1", "path": "report.txt"}
     )
-    upload = unwrap(module.AgentAppSandboxUploadResource.post)(
-        object(), req_data, session, account, "tenant-1", "agent-1"
-    )
+    download = unwrap(module.AgentAppSandboxDownloadResource.post)(object(), req_data, account, "tenant-1", "agent-1")
 
     assert info == {"workspace_cwd": "."}
     assert listing["path"] == "sub/report.txt"
     assert preview["text"] == "hello"
-    assert upload == {"url": "https://files.example/report.txt"}
+    assert download == {"url": "https://files.example/report.txt"}
     assert service.calls == [
         ("info", "tenant-1", "app-1", "agent-1", "build_draft", "build-1", "account-1", ""),
         ("list", "tenant-1", "app-1", "agent-1", "build_draft", "build-1", "account-1", "sub/report.txt"),
         ("read", "tenant-1", "app-1", "agent-1", "build_draft", "build-1", "account-1", "sub/report.txt"),
-        ("upload", "tenant-1", "app-1", "agent-1", "build_draft", "build-1", "account-1", "report.txt"),
+        ("download", "tenant-1", "app-1", "agent-1", "build_draft", "build-1", "account-1", "report.txt"),
     ]
-    assert all(call.kwargs["session"] is session for call in resolver.call_args_list)
+    assert all(call.kwargs["session"] is session for call in resolver.call_args_list[:3])
+    assert resolver.call_args_list[3].kwargs["session"] is download_session
 
 
 def test_agent_app_sandbox_resource_returns_normalized_errors(
@@ -235,6 +237,9 @@ def test_workflow_agent_sandbox_resources_proxy_service(monkeypatch: pytest.Monk
         lambda model: SimpleNamespace(node_execution_id="execution-1", path="out.txt"),
     )
     app_model = _app_model()
+    download_context = MagicMock()
+    download_context.__enter__.return_value.scalar.return_value = app_model
+    monkeypatch.setattr(module.session_factory, "create_session", lambda: download_context)
 
     listing = unwrap(module.WorkflowAgentSandboxListResource.get)(
         object(), "tenant-1", app_model, "run-1", "agent-node"
@@ -242,18 +247,71 @@ def test_workflow_agent_sandbox_resources_proxy_service(monkeypatch: pytest.Monk
     preview = unwrap(module.WorkflowAgentSandboxReadResource.get)(
         object(), "tenant-1", app_model, "run-1", "agent-node"
     )
-    req_data = module.WorkflowAgentSandboxUploadPayload.model_validate(
-        {"node_execution_id": "execution-1", "path": "upload.txt"}
+    req_data = module.WorkflowAgentSandboxDownloadPayload.model_validate(
+        {"node_execution_id": "execution-1", "path": "download.txt"}
     )
-    upload = unwrap(module.WorkflowAgentSandboxUploadResource.post)(
-        object(), req_data, "tenant-1", app_model, "run-1", "agent-node"
+    account = SimpleNamespace(id="account-1")
+    download = unwrap(module.WorkflowAgentSandboxDownloadResource.post)(
+        object(), req_data, "tenant-1", account, "app-1", "run-1", "agent-node"
     )
 
     assert listing["path"] == "out.txt"
     assert preview["text"] == "hello"
-    assert upload == {"url": "https://files.example/upload.txt"}
+    assert download == {"url": "https://files.example/download.txt"}
     assert service.calls == [
         ("list", "tenant-1", "app-1", "run-1", "agent-node", "out.txt"),
         ("read", "tenant-1", "app-1", "run-1", "agent-node", "out.txt"),
-        ("upload", "tenant-1", "app-1", "run-1", "agent-node", "upload.txt"),
+        ("download", "tenant-1", "app-1", "run-1", "agent-node", "account-1", "download.txt"),
     ]
+
+
+def test_download_route_session_scopes_exit_before_service_calls(monkeypatch: pytest.MonkeyPatch) -> None:
+    events: list[str] = []
+
+    class RecordingContext:
+        def __init__(self, session: MagicMock, label: str) -> None:
+            self.session = session
+            self.label = label
+
+        def __enter__(self) -> MagicMock:
+            return self.session
+
+        def __exit__(self, *_args: object) -> None:
+            events.append(f"{self.label}-exit")
+
+    agent_session = MagicMock()
+    workflow_session = MagicMock()
+    workflow_session.scalar.return_value = _app_model()
+    contexts = iter(
+        [
+            RecordingContext(agent_session, "agent-app"),
+            RecordingContext(workflow_session, "workflow-app"),
+        ]
+    )
+    monkeypatch.setattr(module.session_factory, "create_session", lambda: next(contexts))
+    monkeypatch.setattr(module, "resolve_agent_runtime_app_model", lambda **_kwargs: _app_model())
+
+    class RecordingAgentService(_AgentAppService):
+        def download_file(self, **kwargs) -> AgentSandboxDownload:
+            events.append("agent-download")
+            return super().download_file(**kwargs)
+
+    class RecordingWorkflowService(_WorkflowService):
+        def download_file(self, **kwargs) -> AgentSandboxDownload:
+            events.append("workflow-download")
+            return super().download_file(**kwargs)
+
+    monkeypatch.setattr(module, "AgentAppSandboxService", RecordingAgentService)
+    monkeypatch.setattr(module, "WorkflowAgentSandboxService", RecordingWorkflowService)
+    account = SimpleNamespace(id="account-1")
+    agent_payload = module.AgentSandboxDownloadPayload(
+        caller_type="build_draft", caller_id="build-1", path="report.txt"
+    )
+    workflow_payload = module.WorkflowAgentSandboxDownloadPayload(node_execution_id="execution-1", path="report.txt")
+
+    unwrap(module.AgentAppSandboxDownloadResource.post)(object(), agent_payload, account, "tenant-1", "agent-1")
+    unwrap(module.WorkflowAgentSandboxDownloadResource.post)(
+        object(), workflow_payload, "tenant-1", account, "app-1", "run-1", "agent-node"
+    )
+
+    assert events == ["agent-app-exit", "agent-download", "workflow-app-exit", "workflow-download"]

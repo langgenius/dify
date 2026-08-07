@@ -6,6 +6,7 @@ from typing import Literal
 
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, ValidationError
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -19,6 +20,7 @@ from core.plugin.entities.request import RequestDownloadFileMapping, RequestRequ
 from core.tools.signature import bind_file_uri, get_signed_file_uri_for_plugin
 from fields.base import ResponseModel
 from libs.exception import BaseHTTPException
+from models import Account, TenantAccountJoin
 from services.account_service import TenantService
 from services.file_request_service import FileRequestService
 
@@ -38,6 +40,7 @@ class AgentFileRequestHttpError(BaseHTTPException):
 class AgentFileUploadRequestPayload(RequestRequestUploadFile):
     tenant_id: str
     user_id: str
+    user_from: Literal["account", "end-user"] | None = None
 
     model_config = ConfigDict(extra="forbid")
 
@@ -113,13 +116,26 @@ class AgentFileUploadRequestApi(Resource):
                 status_code=404,
             )
         try:
-            user = get_user(tenant.id, payload.user_id)
+            if payload.user_from == "account":
+                owner_id = session.scalar(
+                    select(Account.id)
+                    .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
+                    .where(
+                        Account.id == payload.user_id,
+                        TenantAccountJoin.tenant_id == tenant.id,
+                    )
+                )
+                if owner_id is None:
+                    raise ValueError("account not found")
+            else:
+                owner_id = get_user(tenant.id, payload.user_id).id
             upload_uri = get_signed_file_uri_for_plugin(
                 filename=payload.filename,
                 mimetype=payload.mimetype,
                 tenant_id=tenant.id,
-                user_id=user.id,
+                user_id=owner_id,
                 conversation_id=payload.conversation_id,
+                user_from=payload.user_from,
             )
         except ValueError as exc:
             raise AgentFileRequestHttpError(
