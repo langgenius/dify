@@ -51,7 +51,13 @@ export default function AccountPage() {
   const userProfile = userProfileResp.profile
   const mutateUserProfile = () =>
     queryClient.invalidateQueries({ queryKey: userProfileQueryOptions().queryKey })
-  const { isEducationAccount } = useProviderContext()
+  const { enableEducationPlan } = useProviderContext()
+  const { data: isEducationAccount = false } = useQuery(
+    consoleQuery.account.education.get.queryOptions({
+      enabled: enableEducationPlan,
+      select: ({ is_student }) => is_student ?? false,
+    }),
+  )
   const [editNameModalVisible, setEditNameModalVisible] = useState(false)
   const [editName, setEditName] = useState('')
   const [editing, setEditing] = useState(false)
