@@ -29,6 +29,7 @@ import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
+import ToolDatePicker from '@/app/components/workflow/nodes/tool/components/tool-date-picker'
 import ToolDateRangePicker from '@/app/components/workflow/nodes/tool/components/tool-date-range-picker'
 import { VarType } from '@/app/components/workflow/types'
 import { userProfileAtom } from '@/context/account-state'
@@ -349,14 +350,15 @@ const FormInputItem: FC<Props> = ({
         />
       )}
       {isDate && isConstant && (
-        <Input
-          className="h-8 grow"
-          type="date"
-          disabled={readOnly}
-          value={typeof varInput?.value === 'string' ? varInput.value : ''}
-          onChange={(e) => handleValueChange(e.target.value)}
-          placeholder={placeholder?.[language] || placeholder?.en_US}
-        />
+        <div className="min-w-0 grow">
+          <ToolDatePicker
+            value={varInput?.value}
+            onChange={handleValueChange}
+            timezone={timezone}
+            readOnly={readOnly}
+            placeholder={placeholder?.[language] || placeholder?.en_US}
+          />
+        </div>
       )}
       {isDatePicker && varInput?.type !== VarKindType.variable && (
         <div className="min-w-0 grow">

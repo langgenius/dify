@@ -30,6 +30,7 @@ import FormInputTypeSwitch from '@/app/components/workflow/nodes/_base/component
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
+import ToolDatePicker from '@/app/components/workflow/nodes/tool/components/tool-date-picker'
 import ToolDateRangePicker from '@/app/components/workflow/nodes/tool/components/tool-date-range-picker'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import { userProfileAtom } from '@/context/account-state'
@@ -253,13 +254,14 @@ const ReasoningConfigForm: React.FC<Props> = ({
               />
             )}
             {isDate && isConstant && (
-              <Input
-                className="h-8 grow"
-                type="date"
-                value={typeof varInput?.value === 'string' ? varInput.value : ''}
-                onChange={(e) => handleValueChange(variable, type, schema)(e.target.value)}
-                placeholder={placeholder?.[language] || placeholder?.en_US}
-              />
+              <div className="min-w-0 grow">
+                <ToolDatePicker
+                  value={typeof varInput?.value === 'string' ? varInput.value : ''}
+                  onChange={handleValueChange(variable, type, schema)}
+                  timezone={timezone}
+                  placeholder={placeholder?.[language] || placeholder?.en_US}
+                />
+              </div>
             )}
             {isDatePicker && varInput?.type !== VarKindType.variable && (
               <div className="grow">

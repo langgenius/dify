@@ -34,7 +34,6 @@ import { useFetchDynamicOptions } from '@/service/use-plugins'
 import { useIsChatMode } from '../../../../hooks/use-workflow'
 import { useWorkflowVariables } from '../../../../hooks/use-workflow-variables'
 import useAvailableVarList from '../../hooks/use-available-var-list'
-import { toolDeclarativeTypeMatches } from '../form-input-item.helpers'
 import { removeFileVars, varTypeToStructType } from './utils'
 import VarFullPathPanel from './var-full-path-panel'
 import {
@@ -154,13 +153,7 @@ const VarReferencePicker: FC<Props> = ({
   }, [])
 
   const [varKindType, setVarKindType] = useState<VarKindType>(defaultVarKindType)
-  const resolvedVarKindType = useMemo(() => {
-    if (isSupportConstantValue && toolDeclarativeTypeMatches(schema ?? {}, 'date-picker'))
-      return VarKindType.constant
-
-    return varKindType
-  }, [isSupportConstantValue, schema, varKindType])
-  const isConstant = isSupportConstantValue && resolvedVarKindType === VarKindType.constant
+  const isConstant = isSupportConstantValue && varKindType === VarKindType.constant
 
   const outputVars = useMemo(() => {
     const results = passedInAvailableVars || availableVars
@@ -246,16 +239,16 @@ const VarReferencePicker: FC<Props> = ({
           })
         }
       })
-      onChange(newValue, resolvedVarKindType, varInfo)
+      onChange(newValue, varKindType, varInfo)
       setOpen(false)
     },
-    [onChange, resolvedVarKindType],
+    [onChange, varKindType],
   )
 
   const handleClearVar = useCallback(() => {
-    if (resolvedVarKindType === VarKindType.constant) onChange('', resolvedVarKindType)
-    else onChange([], resolvedVarKindType)
-  }, [onChange, resolvedVarKindType])
+    if (varKindType === VarKindType.constant) onChange('', varKindType)
+    else onChange([], varKindType)
+  }, [onChange, varKindType])
 
   const handleVariableJump = useCallback(
     (nodeId: string) => {
@@ -409,7 +402,6 @@ const VarReferencePicker: FC<Props> = ({
             outputVarNodeId={outputVarNodeId}
             placeholder={triggerPlaceholder}
             readonly={readonly}
-            schema={schema}
             schemaWithDynamicSelect={schemaWithDynamicSelect}
             setControlFocus={setControlFocus}
             setOpen={setOpen}

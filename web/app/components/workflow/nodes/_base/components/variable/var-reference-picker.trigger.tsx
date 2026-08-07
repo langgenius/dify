@@ -29,7 +29,6 @@ import Badge from '@/app/components/base/badge'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
-import { toolDeclarativeTypeMatches } from '@/app/components/workflow/nodes/_base/components/form-input-item.helpers'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
 import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import RemoveButton from '../remove-button'
@@ -70,7 +69,6 @@ type Props = Readonly<{
   outputVarNodeId?: string
   placeholder?: string
   readonly: boolean
-  schema?: Partial<CredentialFormSchema>
   schemaWithDynamicSelect?: Partial<CredentialFormSchema>
   setControlFocus: (value: number) => void
   setOpen: (value: boolean) => void
@@ -115,7 +113,6 @@ const VarReferencePickerTrigger: FC<Props> = ({
   outputVarNodeId,
   placeholder,
   readonly,
-  schema,
   schemaWithDynamicSelect,
   setControlFocus,
   setOpen,
@@ -306,7 +303,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
               isJustShowValue && 'h-6 bg-transparent p-0',
             )}
           >
-            {isSupportConstantValue && !toolDeclarativeTypeMatches(schema ?? {}, 'date-picker') ? (
+            {isSupportConstantValue ? (
               <div
                 onClick={(e) => {
                   e.stopPropagation()
