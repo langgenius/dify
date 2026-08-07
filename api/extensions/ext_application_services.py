@@ -10,7 +10,7 @@ from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.db.session_factory import get_session_maker
 from enums.deployment_edition import DeploymentEdition
-from repositories.init_validation_repository import InitValidationRepository
+from repositories.installation_state_repository import InstallationStateRepository
 from repositories.workspace_member_query_repository import WorkspaceMemberQueryRepository
 from repositories.workspace_query_repository import WorkspaceQueryRepository
 from services.feature_query_service import FeatureQueryService
@@ -39,6 +39,7 @@ def build_application_services(
     deployment_edition: DeploymentEdition,
     initialization_password: str | None,
 ) -> ApplicationServices:
+    installation_state = InstallationStateRepository(client=database_client)
     return ApplicationServices(
         feature_queries=FeatureQueryService(
             features=FeatureServiceGateway(),
@@ -46,7 +47,7 @@ def build_application_services(
             app_dsl_version=CURRENT_APP_DSL_VERSION,
         ),
         init_validation=InitValidationService(
-            state=InitValidationRepository(client=database_client),
+            state=installation_state,
             validation_required=(deployment_edition != DeploymentEdition.CLOUD and bool(initialization_password)),
             expected_password=initialization_password,
         ),
