@@ -16,9 +16,11 @@ from controllers.console.workspace.model_providers import (
     ModelProviderIconApi,
     ModelProviderListApi,
     ModelProviderPaymentCheckoutUrlApi,
+    ModelProviderSummaryListApi,
     ModelProviderValidateApi,
     PreferredProviderTypeUpdateApi,
 )
+from core.entities.provider_entities import CredentialConfiguration
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod
@@ -28,6 +30,10 @@ from models.provider import ProviderType
 from services.entities.model_provider_entities import (
     CustomConfigurationResponse,
     CustomConfigurationStatus,
+    ModelProviderCustomConfigurationSummaryResponse,
+    ModelProviderPluginSummaryResponse,
+    ModelProviderSummaryResponse,
+    ModelProviderSystemConfigurationSummaryResponse,
     ProviderResponse,
     SystemConfigurationResponse,
 )
@@ -140,6 +146,82 @@ class TestModelProviderListApi:
 
         get_provider_list.assert_called_once_with(tenant_id="tenant1", model_type=None)
         assert result == {"data": []}
+
+
+class TestModelProviderSummaryListApi:
+    def test_get_success(self, app: Flask):
+        api = ModelProviderSummaryListApi()
+        method = unwrap(api.get)
+        provider = ModelProviderSummaryResponse(
+            tenant_id="tenant1",
+            provider="langgenius/openai/openai",
+            plugin_id="langgenius/openai",
+            label=I18nObject(en_US="OpenAI"),
+            description=I18nObject(en_US="OpenAI models"),
+            icon_small=I18nObject(en_US="icon.svg"),
+            icon_small_dark=None,
+            supported_model_types=[ModelType.LLM],
+            configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
+            preferred_provider_type=ProviderType.CUSTOM,
+            is_configured=True,
+            custom_configuration=ModelProviderCustomConfigurationSummaryResponse(
+                status=CustomConfigurationStatus.ACTIVE,
+                has_custom_models=True,
+                available_credentials=[
+                    CredentialConfiguration(
+                        credential_id=VALID_UUID,
+                        credential_name="production",
+                    ),
+                    CredentialConfiguration(
+                        credential_id="223e4567-e89b-12d3-a456-426614174000",
+                        credential_name="backup",
+                    ),
+                ],
+                current_credential_id=VALID_UUID,
+                current_credential_name="production",
+                current_credential_usable=True,
+            ),
+            system_configuration=ModelProviderSystemConfigurationSummaryResponse(enabled=False),
+        )
+        plugin = ModelProviderPluginSummaryResponse(
+            installation_id="installation-1",
+            plugin_id="langgenius/openai",
+            plugin_unique_identifier="langgenius/openai:1.0.0@checksum",
+            runtime_type="local",
+            source="marketplace",
+            version="1.0.0",
+        )
+
+        with (
+            app.test_request_context("/"),
+            patch(
+                "controllers.console.workspace.model_providers.ModelProviderService.get_provider_summary_list",
+                return_value=([provider], {"langgenius/openai": plugin}),
+            ) as get_provider_summary_list,
+        ):
+            result = method(api, "tenant1")
+
+        get_provider_summary_list.assert_called_once_with(tenant_id="tenant1")
+        assert result["data"][0]["provider"] == "langgenius/openai/openai"
+        assert "tenant_id" not in result["data"][0]
+        assert result["data"][0]["custom_configuration"] == {
+            "status": "active",
+            "has_custom_models": True,
+            "available_credentials": [
+                {
+                    "credential_id": VALID_UUID,
+                    "credential_name": "production",
+                },
+                {
+                    "credential_id": "223e4567-e89b-12d3-a456-426614174000",
+                    "credential_name": "backup",
+                },
+            ],
+            "current_credential_id": VALID_UUID,
+            "current_credential_name": "production",
+            "current_credential_usable": True,
+        }
+        assert result["plugins"]["langgenius/openai"]["installation_id"] == "installation-1"
 
 
 class TestModelProviderCreditsApi:
