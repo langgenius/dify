@@ -59,6 +59,12 @@ def _facade() -> MagicMock:
     facade.create_source.return_value = SimpleNamespace(id="source-1")
     facade.import_selected_source_crawl.return_value = SimpleNamespace(
         id="workflow-1",
+        source_id="source-1",
+        state="completed",
+    )
+    facade.get_source_workflow.return_value = SimpleNamespace(
+        id="workflow-1",
+        source_id="source-1",
         state="completed",
     )
     facade.get_source.return_value = SimpleNamespace(
@@ -114,7 +120,12 @@ def _runtime(
         yield repository_type
 
 
-def _start(facade: MagicMock, payload: KnowledgeFSInitialWebsiteSourcePayload) -> str:
+def _start(
+    facade: MagicMock,
+    payload: KnowledgeFSInitialWebsiteSourcePayload,
+    *,
+    workflow_id: str | None = None,
+) -> str:
     with _runtime(facade):
         return start_initial_website_source_import(
             tenant_id="tenant-1",
@@ -122,6 +133,7 @@ def _start(facade: MagicMock, payload: KnowledgeFSInitialWebsiteSourcePayload) -
             control_space_id="control-1",
             operation_id="operation-1",
             payload=payload,
+            workflow_id=workflow_id,
         )
 
 
@@ -368,11 +380,49 @@ def test_initial_website_source_import_retries_running_workflow() -> None:
     facade = _facade()
     facade.import_selected_source_crawl.return_value = SimpleNamespace(
         id="running-workflow",
+        source_id="source-1",
         state="running",
     )
 
-    with pytest.raises(KnowledgeFSInitialSourceNotReadyError, match="still running"):
+    with pytest.raises(KnowledgeFSInitialSourceNotReadyError, match="still running") as raised:
         _start(facade, _payload())
+
+    assert raised.value.workflow_id == "running-workflow"
+
+
+def test_initial_website_source_import_polls_existing_workflow_without_recreating_it() -> None:
+    facade = _facade()
+
+    assert _start(facade, _payload(), workflow_id="workflow-1") == "workflow-1"
+
+    facade.get_source_workflow.assert_called_once_with(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="control-1",
+        run_id="workflow-1",
+    )
+    facade.list_sources.assert_not_called()
+    facade.list_source_connections.assert_not_called()
+    facade.create_source.assert_not_called()
+    facade.import_selected_source_crawl.assert_not_called()
+    source_update_payload = facade.update_source.call_args.kwargs["payload"]
+    assert source_update_payload.status == "active"
+
+
+def test_initial_website_source_import_keeps_polling_existing_running_workflow() -> None:
+    facade = _facade()
+    facade.get_source_workflow.return_value = SimpleNamespace(
+        id="workflow-1",
+        source_id="source-1",
+        state="importing",
+    )
+
+    with pytest.raises(KnowledgeFSInitialSourceNotReadyError, match="still running") as raised:
+        _start(facade, _payload(), workflow_id="workflow-1")
+
+    assert raised.value.workflow_id == "workflow-1"
+    facade.import_selected_source_crawl.assert_not_called()
+    facade.get_source.assert_not_called()
 
 
 def test_initial_website_source_task_returns_result_and_retries_not_ready_error() -> None:
@@ -409,3 +459,38 @@ def test_initial_website_source_task_returns_result_and_retries_not_ready_error(
             payload=serialized_payload,
         )
     retry.assert_called_once()
+
+
+def test_initial_website_source_task_retries_with_workflow_id() -> None:
+    serialized_payload = _payload().model_dump(mode="json")
+    retry_error = RuntimeError("retry requested")
+    with (
+        patch(
+            "tasks.knowledge_fs_initial_source_tasks.start_initial_website_source_import",
+            side_effect=KnowledgeFSInitialSourceNotReadyError(
+                "not ready",
+                workflow_id="workflow-1",
+            ),
+        ),
+        patch.object(import_initial_website_source, "retry", side_effect=retry_error) as retry,
+        pytest.raises(RuntimeError, match="retry requested"),
+    ):
+        import_initial_website_source.run(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="control-1",
+            operation_id="operation-1",
+            payload=serialized_payload,
+        )
+
+    retry.assert_called_once_with(
+        exc=retry.call_args.kwargs["exc"],
+        kwargs={
+            "tenant_id": "tenant-1",
+            "account_id": "account-1",
+            "control_space_id": "control-1",
+            "operation_id": "operation-1",
+            "payload": serialized_payload,
+            "workflow_id": "workflow-1",
+        },
+    )

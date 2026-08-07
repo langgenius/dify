@@ -30,6 +30,10 @@ _PAGE_SIZE = 200
 class KnowledgeFSInitialSourceNotReadyError(RuntimeError):
     """The Space or Source workflow is still progressing and should be retried."""
 
+    def __init__(self, message: str, *, workflow_id: str | None = None) -> None:
+        super().__init__(message)
+        self.workflow_id = workflow_id
+
 
 def _find_initial_source(*, facade, tenant_id: str, account_id: str, control_space_id: str, request_id: str):
     cursor: str | None = None
@@ -137,6 +141,7 @@ def start_initial_website_source_import(
     control_space_id: str,
     operation_id: str,
     payload: KnowledgeFSInitialWebsiteSourcePayload,
+    workflow_id: str | None = None,
 ) -> str:
     """Idempotently create the provisional Source and start its selected crawl import."""
 
@@ -156,61 +161,76 @@ def start_initial_website_source_import(
             )
 
     facade = get_knowledge_fs_runtime(session_maker).facade
-    request_id = f"initial-website-source:{operation_id}"
-    source = _find_initial_source(
-        facade=facade,
-        tenant_id=tenant_id,
-        account_id=account_id,
-        control_space_id=control_space_id,
-        request_id=request_id,
-    )
-    if source is None:
-        credential_id, credential_name = _find_firecrawl_credential(
-            session_maker=session_maker,
+    if workflow_id is not None:
+        workflow = facade.get_source_workflow(
             tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            run_id=workflow_id,
         )
-        connection = _find_or_create_firecrawl_connection(
+        if workflow.source_id is None:
+            raise RuntimeError("Initial website Source import workflow has no Source")
+        source_id = workflow.source_id
+    else:
+        request_id = f"initial-website-source:{operation_id}"
+        source = _find_initial_source(
             facade=facade,
             tenant_id=tenant_id,
             account_id=account_id,
             control_space_id=control_space_id,
-            credential_id=credential_id,
-            credential_name=credential_name,
+            request_id=request_id,
         )
-        source = facade.create_source(
+        if source is None:
+            credential_id, credential_name = _find_firecrawl_credential(
+                session_maker=session_maker,
+                tenant_id=tenant_id,
+            )
+            connection = _find_or_create_firecrawl_connection(
+                facade=facade,
+                tenant_id=tenant_id,
+                account_id=account_id,
+                control_space_id=control_space_id,
+                credential_id=credential_id,
+                credential_name=credential_name,
+            )
+            source = facade.create_source(
+                tenant_id=tenant_id,
+                account_id=account_id,
+                control_space_id=control_space_id,
+                payload=KnowledgeFSSourceCreatePayload(
+                    connectionId=connection.id,
+                    metadata={
+                        "clientRequestId": request_id,
+                        "crawlOptions": {
+                            "includeSubpages": payload.crawl_options.include_subpages,
+                            "limit": payload.crawl_options.limit,
+                        },
+                        "preview": True,
+                        "providerId": _FIRECRAWL_PROVIDER_ID,
+                    },
+                    name=payload.name,
+                    status="disabled",
+                    type="web",
+                    uri=payload.root_url,
+                ),
+            )
+        source_id = source.id
+        workflow = facade.import_selected_source_crawl(
             tenant_id=tenant_id,
             account_id=account_id,
             control_space_id=control_space_id,
-            payload=KnowledgeFSSourceCreatePayload(
-                connectionId=connection.id,
-                metadata={
-                    "clientRequestId": request_id,
-                    "crawlOptions": {
-                        "includeSubpages": payload.crawl_options.include_subpages,
-                        "limit": payload.crawl_options.limit,
-                    },
-                    "preview": True,
-                    "providerId": _FIRECRAWL_PROVIDER_ID,
-                },
-                name=payload.name,
-                status="disabled",
-                type="web",
-                uri=payload.root_url,
+            source_id=source_id,
+            payload=KnowledgeFSCrawlImportPayload(
+                sourceUrls=[selection.source_url for selection in payload.selection],
             ),
+            idempotency_key=f"{request_id}:crawl-import",
         )
 
-    workflow = facade.import_selected_source_crawl(
-        tenant_id=tenant_id,
-        account_id=account_id,
-        control_space_id=control_space_id,
-        source_id=source.id,
-        payload=KnowledgeFSCrawlImportPayload(
-            sourceUrls=[selection.source_url for selection in payload.selection],
-        ),
-        idempotency_key=f"{request_id}:crawl-import",
-    )
     if workflow.state in {"queued", "running", "crawling", "importing", "syncing"}:
-        raise KnowledgeFSInitialSourceNotReadyError("Initial website Source import is still running")
+        raise KnowledgeFSInitialSourceNotReadyError(
+            "Initial website Source import is still running",
+            workflow_id=workflow.id,
+        )
     if workflow.state != "completed":
         return workflow.id
 
@@ -218,7 +238,7 @@ def start_initial_website_source_import(
         tenant_id=tenant_id,
         account_id=account_id,
         control_space_id=control_space_id,
-        source_id=source.id,
+        source_id=source_id,
     )
     if imported_source.status == "active" and imported_source.metadata.get("preview") is False:
         committed_source = imported_source
@@ -227,7 +247,7 @@ def start_initial_website_source_import(
             tenant_id=tenant_id,
             account_id=account_id,
             control_space_id=control_space_id,
-            source_id=source.id,
+            source_id=source_id,
             payload=KnowledgeFSSourceUpdatePayload(
                 expectedVersion=imported_source.version,
                 metadata={**imported_source.metadata, "preview": False},
@@ -239,7 +259,7 @@ def start_initial_website_source_import(
             tenant_id=tenant_id,
             account_id=account_id,
             control_space_id=control_space_id,
-            source_id=source.id,
+            source_id=source_id,
         )
         expected_revision = current_policy.revision
     except KnowledgeFSProductResourceNotFoundError:
@@ -269,7 +289,7 @@ def start_initial_website_source_import(
         tenant_id=tenant_id,
         account_id=account_id,
         control_space_id=control_space_id,
-        source_id=source.id,
+        source_id=source_id,
         payload=sync_policy,
     )
     return workflow.id
@@ -289,6 +309,7 @@ def import_initial_website_source(
     control_space_id: str,
     operation_id: str,
     payload: dict[str, object],
+    workflow_id: str | None = None,
 ) -> str:
     try:
         return start_initial_website_source_import(
@@ -297,8 +318,21 @@ def import_initial_website_source(
             control_space_id=control_space_id,
             operation_id=operation_id,
             payload=KnowledgeFSInitialWebsiteSourcePayload.model_validate(payload),
+            workflow_id=workflow_id,
         )
     except KnowledgeFSInitialSourceNotReadyError as exc:
+        if exc.workflow_id is not None:
+            raise self.retry(
+                exc=exc,
+                kwargs={
+                    "tenant_id": tenant_id,
+                    "account_id": account_id,
+                    "control_space_id": control_space_id,
+                    "operation_id": operation_id,
+                    "payload": payload,
+                    "workflow_id": exc.workflow_id,
+                },
+            )
         raise self.retry(exc=exc)
 
 
