@@ -88,10 +88,7 @@ def start_initial_website_source_import(
         )
         if control_space is None:
             raise RuntimeError("KnowledgeFS control-space was not found")
-        if (
-            control_space.state is not KnowledgeFSControlSpaceState.ACTIVE
-            or control_space.knowledge_space_id is None
-        ):
+        if control_space.state is not KnowledgeFSControlSpaceState.ACTIVE or control_space.knowledge_space_id is None:
             if control_space.state is KnowledgeFSControlSpaceState.PROVISIONING:
                 raise KnowledgeFSInitialSourceNotReadyError("KnowledgeFS Space is still provisioning")
             raise RuntimeError(
