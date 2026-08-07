@@ -563,6 +563,45 @@ describe('consoleQuery agent query defaults', () => {
 })
 
 describe('consoleQuery app mutation defaults', () => {
+  it('should write an updated app into its exact detail cache', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const detailQueryKey = consoleQuery.apps.byAppId.get.queryKey({
+      input: { params: { app_id: 'app-1' } },
+    })
+    const otherDetailQueryKey = consoleQuery.apps.byAppId.get.queryKey({
+      input: { params: { app_id: 'app-2' } },
+    })
+    const updatedApp = {
+      enable_api: false,
+      enable_site: false,
+      icon_url: null,
+      id: 'app-1',
+      mode: 'chat',
+      name: 'Updated app',
+    }
+    queryClient.setQueryData(detailQueryKey, { ...updatedApp, name: 'Old app' })
+    queryClient.setQueryData(otherDetailQueryKey, { ...updatedApp, id: 'app-2', name: 'Other app' })
+
+    const mutationOptions = consoleQuery.apps.byAppId.put.mutationOptions()
+    await mutationOptions.onSuccess?.(
+      updatedApp,
+      {
+        params: { app_id: 'app-1' },
+        body: { name: updatedApp.name },
+      },
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(queryClient.getQueryData(detailQueryKey)).toEqual(updatedApp)
+    expect(queryClient.getQueryData(otherDetailQueryKey)).toEqual({
+      ...updatedApp,
+      id: 'app-2',
+      name: 'Other app',
+    })
+  })
+
   it('should invalidate app lists without blocking a directly completed import', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = new QueryClient()

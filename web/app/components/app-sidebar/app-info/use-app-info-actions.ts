@@ -1,7 +1,11 @@
-import type { EnvironmentVariableItemResponse } from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  AppDetailWithSite,
+  EnvironmentVariableItemResponse,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { Dispatch, SetStateAction } from 'react'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
+import type { App } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useState } from 'react'
@@ -38,6 +42,36 @@ type AppInfoUiState = {
 }
 
 const emptySecretEnvList: EnvironmentVariableItemResponse[] = []
+
+type AppMetadata = Pick<
+  App,
+  | 'description'
+  | 'icon'
+  | 'icon_background'
+  | 'icon_type'
+  | 'icon_url'
+  | 'max_active_requests'
+  | 'name'
+  | 'updated_at'
+  | 'use_icon_as_answer_icon'
+>
+
+const updateCachedAppMetadata = (cachedApp: AppDetailWithSite | undefined, app: AppMetadata) => {
+  if (!cachedApp) return cachedApp
+
+  return {
+    ...cachedApp,
+    description: app.description,
+    icon: app.icon,
+    icon_background: app.icon_background,
+    icon_type: app.icon_type,
+    icon_url: app.icon_url,
+    max_active_requests: app.max_active_requests,
+    name: app.name,
+    updated_at: app.updated_at,
+    use_icon_as_answer_icon: app.use_icon_as_answer_icon,
+  }
+}
 
 const createInitialUiState = (resetKey?: string): AppInfoUiState => ({
   resetKey,
@@ -159,6 +193,15 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
           try {
             const res = await fetchAppDetail({ url: '/apps', id: appDetail.id })
             if (disposed) return
+            queryClient.setQueryData(
+              consoleQuery.apps.byAppId.get.queryKey({
+                input: { params: { app_id: appDetail.id } },
+              }),
+              (cachedApp) => updateCachedAppMetadata(cachedApp, res),
+            )
+            void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
+            void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.starred.get.key() })
+            void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.recent.get.key() })
             setAppDetail({ ...res })
           } catch (error) {
             console.error('failed to refresh app detail from collaboration update:', error)
@@ -171,7 +214,7 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
       disposed = true
       unsubscribe?.()
     }
-  }, [appDetail?.id, setAppDetail])
+  }, [appDetail?.id, queryClient, setAppDetail])
 
   const onEdit: CreateAppModalProps['onConfirm'] = useCallback(
     async ({
@@ -200,6 +243,15 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
           t(($) => $.editDone, { ns: 'app' }),
           { type: 'success' },
         )
+        queryClient.setQueryData(
+          consoleQuery.apps.byAppId.get.queryKey({
+            input: { params: { app_id: appDetail.id } },
+          }),
+          (cachedApp) => updateCachedAppMetadata(cachedApp, app),
+        )
+        void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
+        void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.starred.get.key() })
+        void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.recent.get.key() })
         setAppDetail(app)
         emitAppMetaUpdate()
       } catch {
@@ -209,7 +261,7 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
         )
       }
     },
-    [appDetail, closeModal, setAppDetail, t, emitAppMetaUpdate],
+    [appDetail, closeModal, setAppDetail, t, emitAppMetaUpdate, queryClient],
   )
 
   const onCopy: DuplicateAppModalProps['onConfirm'] = useCallback(

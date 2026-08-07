@@ -452,7 +452,13 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
           },
           put: {
             mutationOptions: {
-              onSuccess: (_data, _variables, _onMutateResult, context) => {
+              onSuccess: (data, variables, _onMutateResult, context) => {
+                context.client.setQueryData(
+                  consoleQuery.apps.byAppId.get.queryKey({
+                    input: { params: variables.params },
+                  }),
+                  data,
+                )
                 void context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
                 void context.client.invalidateQueries({
                   queryKey: consoleQuery.apps.starred.get.key(),

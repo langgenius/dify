@@ -1,5 +1,4 @@
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
-import type { Mock } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
@@ -42,52 +41,60 @@ const mockUpdateAppMutation = vi.hoisted(() =>
 const mockDeleteAppMutation = vi.hoisted(() =>
   vi.fn((_variables: unknown): Promise<unknown> => Promise.resolve()),
 )
-const mockToggleAppStarMutation = vi.hoisted(() =>
+const mockStarAppMutation = vi.hoisted(() =>
   vi.fn((_variables: unknown): Promise<unknown> => Promise.resolve()),
 )
-const mockMutationState = vi.hoisted(() => ({
-  hookIndex: 0,
-  deletePending: false,
-  toggleStarPending: false,
-}))
+const mockUnstarAppMutation = vi.hoisted(() =>
+  vi.fn((_variables: unknown): Promise<unknown> => Promise.resolve()),
+)
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+vi.mock('@/service/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/client')>()
+  const withMutation = (operation: object, mutationFn: typeof mockCopyApp) =>
+    new Proxy(operation, {
+      get(target, property, receiver) {
+        if (property === 'mutationOptions')
+          return () => ({ mutationFn: (variables: unknown) => mutationFn(variables) })
+        return Reflect.get(target, property, receiver)
+      },
+    })
+  const copy = new Proxy(actual.consoleQuery.apps.byAppId.copy, {
+    get(target, property, receiver) {
+      if (property === 'post') return withMutation(target.post, mockCopyApp)
+      return Reflect.get(target, property, receiver)
+    },
+  })
+  const star = new Proxy(actual.consoleQuery.apps.byAppId.star, {
+    get(target, property, receiver) {
+      if (property === 'post') return withMutation(target.post, mockStarAppMutation)
+      if (property === 'delete') return withMutation(target.delete, mockUnstarAppMutation)
+      return Reflect.get(target, property, receiver)
+    },
+  })
+  const byAppId = new Proxy(actual.consoleQuery.apps.byAppId, {
+    get(target, property, receiver) {
+      if (property === 'copy') return copy
+      if (property === 'put') return withMutation(target.put, mockUpdateAppMutation)
+      if (property === 'delete') return withMutation(target.delete, mockDeleteAppMutation)
+      if (property === 'star') return star
+      return Reflect.get(target, property, receiver)
+    },
+  })
+  const apps = new Proxy(actual.consoleQuery.apps, {
+    get(target, property, receiver) {
+      if (property === 'byAppId') return byAppId
+      return Reflect.get(target, property, receiver)
+    },
+  })
 
   return {
     ...actual,
-    useMutation: () => {
-      const mutationIndex = mockMutationState.hookIndex++ % 5
-      const mutation =
-        mutationIndex === 0
-          ? mockCopyApp
-          : mutationIndex === 1
-            ? mockUpdateAppMutation
-            : mutationIndex === 2
-              ? mockDeleteAppMutation
-              : mockToggleAppStarMutation
-      const mutate = (
-        variables: unknown,
-        callbacks?: {
-          onSuccess?: (data: unknown) => void
-          onError?: (error: unknown) => void
-        },
-      ) => {
-        void Promise.resolve()
-          .then(() => mutation(variables))
-          .then((data) => callbacks?.onSuccess?.(data))
-          .catch((error) => callbacks?.onError?.(error))
-      }
-
-      return {
-        mutate,
-        mutateAsync: mutation,
-        isPending:
-          mutationIndex === 2
-            ? mockMutationState.deletePending
-            : mutationIndex > 2 && mockMutationState.toggleStarPending,
-      }
-    },
+    consoleQuery: new Proxy(actual.consoleQuery, {
+      get(target, property, receiver) {
+        if (property === 'apps') return apps
+        return Reflect.get(target, property, receiver)
+      },
+    }),
   }
 })
 
@@ -461,9 +468,6 @@ describe('AppCard', () => {
     mockRbacEnabled = true
     mockUserCanAccessApp.result = true
     mockUserCanAccessApp.isLoading = false
-    mockMutationState.hookIndex = 0
-    mockMutationState.deletePending = false
-    mockMutationState.toggleStarPending = false
     mockCopyApp.mockResolvedValue({
       id: 'new-app-id',
       mode: 'chat',
@@ -733,7 +737,7 @@ describe('AppCard', () => {
       fireEvent.click(screen.getByRole('button', { name: 'app.studio.starApp' }))
 
       await waitFor(() => {
-        expect(mockToggleAppStarMutation).toHaveBeenCalledWith({
+        expect(mockStarAppMutation).toHaveBeenCalledWith({
           params: { app_id: mockApp.id },
         })
       })
@@ -747,7 +751,7 @@ describe('AppCard', () => {
       fireEvent.click(screen.getByRole('button', { name: 'app.studio.unstarApp' }))
 
       await waitFor(() => {
-        expect(mockToggleAppStarMutation).toHaveBeenCalledWith({
+        expect(mockUnstarAppMutation).toHaveBeenCalledWith({
           params: { app_id: starredApp.id },
         })
       })
@@ -1041,7 +1045,7 @@ describe('AppCard', () => {
     })
 
     it('should handle delete failure', async () => {
-      ;(mockDeleteAppMutation as Mock).mockRejectedValueOnce(new Error('Delete failed'))
+      mockDeleteAppMutation.mockRejectedValueOnce(new Error('Delete failed'))
 
       render(<AppCard app={mockApp} />)
 
@@ -1065,7 +1069,7 @@ describe('AppCard', () => {
     })
 
     it('should handle delete failure without an error message', async () => {
-      ;(mockDeleteAppMutation as Mock).mockRejectedValueOnce({})
+      mockDeleteAppMutation.mockRejectedValueOnce({})
 
       render(<AppCard app={mockApp} />)
 
@@ -1524,7 +1528,11 @@ describe('AppCard', () => {
     })
 
     it('should handle case when installed_apps is empty array', async () => {
-      ;(exploreService.fetchInstalledAppList as Mock).mockResolvedValueOnce({ installed_apps: [] })
+      vi.mocked(exploreService.fetchInstalledAppList).mockResolvedValueOnce({
+        has_more: false,
+        installed_apps: [],
+        next_cursor: null,
+      })
 
       // Configure mockOpenAsyncWindow to call the callback and trigger error
       mockOpenAsyncWindow.mockImplementationOnce(
@@ -1555,7 +1563,7 @@ describe('AppCard', () => {
     })
 
     it('should handle case when API throws in callback', async () => {
-      ;(exploreService.fetchInstalledAppList as Mock).mockRejectedValueOnce(
+      vi.mocked(exploreService.fetchInstalledAppList).mockRejectedValueOnce(
         new Error('Network error'),
       )
 

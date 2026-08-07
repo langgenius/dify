@@ -57,6 +57,10 @@ type PendingImport = {
   systemVersion: string
 }
 
+type ImportSource =
+  | { type: (typeof CreateFromDSLModalTab)['FROM_FILE']; file: File }
+  | { type: (typeof CreateFromDSLModalTab)['FROM_URL']; url: string }
+
 const CREATE_FROM_DSL_HOTKEY = 'Mod+Enter' satisfies Hotkey
 
 function getImportedAppMode(mode?: string | null): AppModeEnum | undefined {
@@ -93,7 +97,25 @@ function CreateFromDSLModal({
   const [currentFile, setCurrentFile] = useState<File | undefined>(droppedFile)
   const [currentTab, setCurrentTab] = useState(activeTab)
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null)
-  const importMutation = useMutation(consoleQuery.apps.imports.post.mutationOptions())
+  const { mutateAsync: requestImport } = useMutation(
+    consoleQuery.apps.imports.post.mutationOptions(),
+  )
+  const importMutation = useMutation({
+    mutationFn: async (source: ImportSource) => {
+      const body =
+        source.type === CreateFromDSLModalTab.FROM_FILE
+          ? ({
+              mode: 'yaml-content',
+              yaml_content: await source.file.text(),
+            } satisfies AppImportPayload)
+          : ({
+              mode: 'yaml-url',
+              yaml_url: source.url,
+            } satisfies AppImportPayload)
+
+      return requestImport({ body })
+    },
+  })
   const confirmImportMutation = useMutation(
     consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions(),
   )
@@ -164,23 +186,17 @@ function CreateFromDSLModal({
     if (isAppsFull || isImporting) return
 
     try {
-      let body: AppImportPayload
+      let source: ImportSource
       if (currentTab === CreateFromDSLModalTab.FROM_FILE) {
         if (!currentFile) return
-        body = {
-          mode: 'yaml-content',
-          yaml_content: await currentFile.text(),
-        }
+        source = { type: CreateFromDSLModalTab.FROM_FILE, file: currentFile }
       } else {
         const yamlUrl = values.dslUrl?.trim()
         if (!yamlUrl) return
-        body = {
-          mode: 'yaml-url',
-          yaml_url: yamlUrl,
-        }
+        source = { type: CreateFromDSLModalTab.FROM_URL, url: yamlUrl }
       }
 
-      const response = await importMutation.mutateAsync({ body })
+      const response = await importMutation.mutateAsync(source)
       await handleImportResponse(response)
     } catch {
       toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))

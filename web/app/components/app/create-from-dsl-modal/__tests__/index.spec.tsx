@@ -402,6 +402,51 @@ describe('CreateFromDSLModal', () => {
     )
   })
 
+  it('should lock the complete file import while reading its content', async () => {
+    let resolveFileText!: (value: string) => void
+    const file = new File(['app: demo'], 'demo.yml', { type: 'text/yaml' })
+    const readFile = vi.spyOn(file, 'text').mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveFileText = resolve
+        }),
+    )
+    const handleClose = vi.fn()
+    mockImportDSL.mockResolvedValue({
+      id: 'import-file-in-flight',
+      status: DSLImportStatus.COMPLETED,
+      app_id: 'app-1',
+      app_mode: AppModeEnum.CHAT,
+      permission_keys: ['app.acl.view_layout'],
+    })
+
+    render(<CreateFromDSLModal show onClose={handleClose} droppedFile={file} />)
+
+    fireEvent.click(getCreateButton())
+    await waitFor(() => {
+      expect(readFile).toHaveBeenCalledTimes(1)
+      expect(getCreateButton()).toHaveAttribute('aria-disabled', 'true')
+    })
+
+    fireEvent.click(getCreateButton())
+    fireEvent.click(screen.getAllByRole('button', { name: /(?:^|\.)newApp\.Cancel(?=$|:)/ })[0]!)
+    fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
+
+    expect(readFile).toHaveBeenCalledTimes(1)
+    expect(mockImportDSL).not.toHaveBeenCalled()
+    expect(handleClose).not.toHaveBeenCalled()
+
+    resolveFileText('app: demo')
+
+    await waitFor(() => {
+      expect(mockImportDSL).toHaveBeenCalledTimes(1)
+      expect(mockImportDSL).toHaveBeenCalledWith({
+        mode: DSLImportMode.YAML_CONTENT,
+        yaml_content: 'app: demo',
+      })
+    })
+  })
+
   it('should remove the current file and keep the create shortcut guarded', async () => {
     render(
       <CreateFromDSLModal
