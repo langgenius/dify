@@ -242,7 +242,7 @@ export function createInMemorySourceProductWorkflowRepository(input?: {
     },
     appendCrawlPages: async ({ fence, now, pages: nextPages }) => {
       const run = fenced(fence);
-      if (run.kind !== "crawl-preview") invalidState();
+      if (run.kind !== "crawl-preview" && run.kind !== "crawl-import") invalidState();
       const byId = pages.get(run.id) ?? new Map<string, SourceCrawlPreviewPage>();
       for (const page of nextPages) {
         const existing = byId.get(page.pageId);

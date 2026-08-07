@@ -923,7 +923,7 @@ describe('CreateKnowledgePage', () => {
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.reCrawl' })).toBeEnabled()
   })
 
-  it('imports selected crawled website pages after creating the knowledge space', async () => {
+  it('submits selected preview URLs for the server-side crawl import', async () => {
     const user = userEvent.setup()
     navigationMock.startMode = 'source'
     renderPage()
@@ -950,30 +950,30 @@ describe('CreateKnowledgePage', () => {
       ),
     )
     expect(routerMock.replace).not.toHaveBeenCalledWith(expect.stringContaining('/sources/new'))
-    expect(serviceMock.createKfsSource).toHaveBeenCalledWith({
+    expect(serviceMock.create).toHaveBeenCalledWith({
       body: expect.objectContaining({
-        connectionId: 'firecrawl-connection-1',
-        name: 'Dify docs',
-        status: 'disabled',
-        type: 'web',
-        uri: 'https://docs.dify.ai',
+        initial_source: {
+          crawl_options: {
+            include_subpages: true,
+            limit: 100,
+          },
+          kind: 'website_crawl',
+          name: 'Dify docs',
+          provider: 'firecrawl',
+          root_url: 'https://docs.dify.ai',
+          selection: [
+            {
+              source_url: 'https://docs.dify.ai/getting-started',
+              title: 'Getting started',
+            },
+          ],
+          sync_policy: 'provider',
+        },
       }),
-      params: { control_space_id: createdKnowledge.control_space_id },
     })
-    expect(serviceMock.selectWorkflowPages).toHaveBeenCalledWith({
-      body: { pageIds: ['kfs-page-1'] },
-      headers: { 'Idempotency-Key': 'a9c36c57-2d84-44d6-a36d-841f0d92a179' },
-      params: { control_space_id: createdKnowledge.control_space_id, run_id: 'run-1' },
-    })
-    expect(serviceMock.updateSyncPolicy).toHaveBeenCalledWith({
-      body: expect.objectContaining({
-        enabled: true,
-        expectedRevision: 0,
-        expectedSourceVersion: 3,
-        mode: 'provider',
-      }),
-      params: { control_space_id: createdKnowledge.control_space_id, source_id: 'source-1' },
-    })
+    expect(serviceMock.createKfsSource).not.toHaveBeenCalled()
+    expect(serviceMock.startKfsCrawlPreview).not.toHaveBeenCalled()
+    expect(serviceMock.selectWorkflowPages).not.toHaveBeenCalled()
   })
 
   it('falls back to direct navigation when releasing the history guard does not emit popstate', async () => {

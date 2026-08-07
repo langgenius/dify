@@ -672,6 +672,17 @@ KNOWLEDGE_FS_PRODUCT_OPERATIONS: Final[MappingProxyType[str, KnowledgeFSProductO
             max_response_bytes=512 * 1024,
             stream_kind="json",
         ),
+        "importSelectedSourceCrawl": _operation(
+            "POST",
+            "createSourceCrawlImportWorkflow",
+            KnowledgeFSProductPermission.DOCUMENT_WRITE,
+            "/knowledge-spaces/{id}/sources/{sourceId}/crawl-import",
+            "json",
+            resource_resolver="source",
+            max_request_bytes=1024 * 1024,
+            max_response_bytes=512 * 1024,
+            stream_kind="json",
+        ),
         "importSourceWorkflow": _operation(
             "POST",
             "createSourceImportWorkflow",

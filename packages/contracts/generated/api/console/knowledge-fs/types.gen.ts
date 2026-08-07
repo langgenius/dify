@@ -29,6 +29,7 @@ export type KnowledgeFsSpaceCreatePayload = {
   embedding?: KnowledgeFsModelIntent | null
   icon?: string | null
   idempotency_key?: string | null
+  initial_source?: KnowledgeFsInitialWebsiteSourcePayload | null
   name: string
   retrieval?: KnowledgeFsRetrievalProfileIntent | null
   slug: string
@@ -754,6 +755,10 @@ export type KnowledgeFsSourceUpdatePayload = {
   status?: 'active' | 'disabled' | 'error' | 'syncing' | null
 }
 
+export type KnowledgeFsCrawlImportPayload = {
+  sourceUrls: Array<string>
+}
+
 export type KnowledgeFsSourceFilesResponse = {
   buckets: Array<KnowledgeFsSourceFileBucketResponse>
 }
@@ -918,6 +923,16 @@ export type KnowledgeFsModelIntent = {
   model: string
   plugin_id: string
   provider: string
+}
+
+export type KnowledgeFsInitialWebsiteSourcePayload = {
+  crawl_options: KnowledgeFsInitialWebsiteCrawlOptionsPayload
+  kind: 'website_crawl'
+  name: string
+  provider: 'firecrawl'
+  root_url: string
+  selection: Array<KnowledgeFsInitialWebsiteSelectionPayload>
+  sync_policy?: 'daily' | 'manual' | 'provider'
 }
 
 export type KnowledgeFsRetrievalProfileIntent = {
@@ -1410,6 +1425,16 @@ export type KnowledgeFsUploadSessionPartPayload = {
   checksumSha256Base64?: string | null
   etag: string
   partNumber: number
+}
+
+export type KnowledgeFsInitialWebsiteCrawlOptionsPayload = {
+  include_subpages?: boolean
+  limit?: number
+}
+
+export type KnowledgeFsInitialWebsiteSelectionPayload = {
+  source_url: string
+  title?: string | null
 }
 
 export type KnowledgeFsRerankIntent = {
@@ -3021,6 +3046,26 @@ export type PatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponses = {
 
 export type PatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponse =
   PatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponses[keyof PatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponses]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImportData = {
+  body: KnowledgeFsCrawlImportPayload
+  headers: {
+    'Idempotency-Key': string
+  }
+  path: {
+    control_space_id: string
+    source_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}/crawl-import'
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImportResponses = {
+  202: KnowledgeFsSourceWorkflowResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImportResponse =
+  PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImportResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImportResponses]
 
 export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlPreviewData = {
   body?: never

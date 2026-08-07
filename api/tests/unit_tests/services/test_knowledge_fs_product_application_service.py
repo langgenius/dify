@@ -222,6 +222,57 @@ def test_product_application_create_allows_model_setup_after_creation() -> None:
     assert response.model_setup_required is True
 
 
+def test_product_application_create_schedules_selected_website_import() -> None:
+    application, _product, _control_plane, _commands, _facade, _rbac = _application()
+    payload = _create_payload(
+        initial_source={
+            "kind": "website_crawl",
+            "name": "Dify docs",
+            "provider": "firecrawl",
+            "root_url": "https://docs.dify.ai",
+            "crawl_options": {"include_subpages": True, "limit": 25},
+            "selection": [
+                {
+                    "source_url": "https://docs.dify.ai/getting-started",
+                    "title": "Getting started",
+                }
+            ],
+        }
+    )
+
+    with (
+        patch(
+            "services.knowledge_fs.product_application_service.uuid.uuid5",
+            return_value="operation-1",
+        ),
+        patch(
+            "tasks.knowledge_fs_initial_source_tasks.import_initial_website_source.delay"
+        ) as schedule_import,
+    ):
+        application.create_space(tenant_id="tenant-1", account_id="account-1", payload=payload)
+
+    schedule_import.assert_called_once_with(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="control-1",
+        operation_id="operation-1",
+        payload={
+            "kind": "website_crawl",
+            "name": "Dify docs",
+            "provider": "firecrawl",
+            "root_url": "https://docs.dify.ai",
+            "crawl_options": {"include_subpages": True, "limit": 25},
+            "selection": [
+                {
+                    "source_url": "https://docs.dify.ai/getting-started",
+                    "title": "Getting started",
+                }
+            ],
+            "sync_policy": "provider",
+        },
+    )
+
+
 def test_product_application_create_generates_idempotency_and_skips_default_visibility_update() -> None:
     application, _product, control_plane, commands, _facade, _rbac = _application()
 

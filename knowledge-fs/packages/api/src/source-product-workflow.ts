@@ -435,6 +435,14 @@ export interface SourceProductWorkflowService {
       readonly sourceId: string;
     },
   ): Promise<SourceWorkflowRun>;
+  createCrawlImport(
+    input: SourceWorkflowPrincipal & {
+      readonly idempotencyKey: string;
+      readonly knowledgeSpaceId: string;
+      readonly sourceId: string;
+      readonly sourceUrls: readonly string[];
+    },
+  ): Promise<SourceWorkflowRun>;
   createPreview(
     input: SourceWorkflowPrincipal & {
       readonly idempotencyKey: string;
@@ -667,6 +675,40 @@ export function createSourceProductWorkflowService(input: {
         knowledgeSpaceId: request.knowledgeSpaceId,
         kind: "crawl-preview",
         payload: {},
+        requiredPermissionScope: requiredSourceScope(source),
+        sourceId: request.sourceId,
+      });
+    },
+    createCrawlImport: async (request) => {
+      const { source } = await requireSource(
+        request,
+        request.knowledgeSpaceId,
+        request.sourceId,
+        "write",
+      );
+      if (source.type !== "web") {
+        throw new SourceWorkflowError(
+          "SOURCE_CRAWL_TYPE_INVALID",
+          "Source is not a website source",
+        );
+      }
+      const sourceUrls = [...new Set(request.sourceUrls.map((url) => url.trim()))];
+      if (
+        sourceUrls.length < 1 ||
+        sourceUrls.length > maxImportItems ||
+        sourceUrls.some((url) => !url || url.length > 4_096)
+      ) {
+        throw new SourceWorkflowError(
+          "SOURCE_IMPORT_ITEMS_INVALID",
+          `Crawl import must contain 1-${maxImportItems} source URLs`,
+        );
+      }
+      return start(request, {
+        idempotencyKey: request.idempotencyKey,
+        knowledgeSpaceId: request.knowledgeSpaceId,
+        kind: "crawl-import",
+        payload: { selectedSourceUrls: sourceUrls },
+        progressTotal: sourceUrls.length,
         requiredPermissionScope: requiredSourceScope(source),
         sourceId: request.sourceId,
       });

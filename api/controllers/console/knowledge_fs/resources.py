@@ -68,6 +68,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSBulkDeletionAcceptedResponse,
     KnowledgeFSBulkDocumentDeletePayload,
     KnowledgeFSBulkJobResponse,
+    KnowledgeFSCrawlImportPayload,
     KnowledgeFSCrawlPreviewPageListQuery,
     KnowledgeFSCrawlPreviewPageListResponse,
     KnowledgeFSCrawlPreviewSelectionPayload,
@@ -231,6 +232,7 @@ register_schema_models(
     KnowledgeFSSourceConnectionCreatePayload,
     KnowledgeFSSourceConnectionListQuery,
     KnowledgeFSSourceConnectionRefreshPayload,
+    KnowledgeFSCrawlImportPayload,
     KnowledgeFSCrawlPreviewSelectionPayload,
     KnowledgeFSSourceDeletePayload,
     KnowledgeFSSourceDeleteQuery,
@@ -1819,6 +1821,32 @@ class KnowledgeFSSpaceSourceCrawlPreviewApi(Resource):
             account_id=actor_id,
             control_space_id=control_space_id,
             source_id=source_id,
+            idempotency_key=_idempotency_key(),
+        )
+        return dump_response(KnowledgeFSSourceWorkflowResponse, result), HTTPStatus.ACCEPTED
+
+
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/crawl-import")
+class KnowledgeFSSpaceSourceCrawlImportApi(Resource):
+    @console_ns.expect(console_ns.models[KnowledgeFSCrawlImportPayload.__name__])
+    @console_ns.doc(params=_IDEMPOTENCY_HEADER_PARAMS)
+    @console_ns.response(
+        HTTPStatus.ACCEPTED,
+        "KnowledgeFS selected website crawl import accepted",
+        console_ns.models[KnowledgeFSSourceWorkflowResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def post(self, control_space_id: str, source_id: str):
+        actor_id, tenant_id = _actor()
+        result = _console_services().facade.import_selected_source_crawl(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            source_id=source_id,
+            payload=_payload(KnowledgeFSCrawlImportPayload),
             idempotency_key=_idempotency_key(),
         )
         return dump_response(KnowledgeFSSourceWorkflowResponse, result), HTTPStatus.ACCEPTED

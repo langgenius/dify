@@ -957,6 +957,16 @@ export const DIFY_CAPABILITY_V2_OPERATIONS: readonly DifyCapabilityV2Operation[]
     resourceType: "source",
   },
   {
+    action: "source_workflows.crawl_import.create",
+    allowedCallerKinds: STANDARD_CALLERS,
+    method: "POST",
+    operationId: "createSourceCrawlImportWorkflow",
+    parentResource: { pathParameter: "id" },
+    pathTemplate: "/knowledge-spaces/{id}/sources/{sourceId}/crawl-import",
+    resource: { pathParameter: "sourceId" },
+    resourceType: "source",
+  },
+  {
     action: "source_workflows.import.create",
     allowedCallerKinds: STANDARD_CALLERS,
     method: "POST",

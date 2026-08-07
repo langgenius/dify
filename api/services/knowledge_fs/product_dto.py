@@ -93,6 +93,44 @@ class KnowledgeFSRetrievalProfileIntent(BaseModel):
         return self
 
 
+class KnowledgeFSInitialWebsiteCrawlOptionsPayload(BaseModel):
+    include_subpages: bool = True
+    limit: int = Field(default=100, ge=1, le=200)
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class KnowledgeFSInitialWebsiteSelectionPayload(BaseModel):
+    source_url: str = Field(min_length=1, max_length=4_096)
+    title: str | None = Field(default=None, max_length=500)
+
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("source_url")
+    @classmethod
+    def normalize_source_url(cls, source_url: str) -> str:
+        return source_url.strip()
+
+
+class KnowledgeFSInitialWebsiteSourcePayload(BaseModel):
+    kind: Literal["website_crawl"]
+    name: str = Field(min_length=1, max_length=200)
+    provider: Literal["firecrawl"]
+    root_url: str = Field(min_length=1, max_length=4_096)
+    crawl_options: KnowledgeFSInitialWebsiteCrawlOptionsPayload
+    selection: list[KnowledgeFSInitialWebsiteSelectionPayload] = Field(min_length=1, max_length=200)
+    sync_policy: Literal["provider", "daily", "manual"] = "provider"
+
+    model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def validate_selection(self) -> KnowledgeFSInitialWebsiteSourcePayload:
+        source_urls = [item.source_url for item in self.selection]
+        if len(set(source_urls)) != len(source_urls):
+            raise ValueError("initial website selection URLs must be unique")
+        return self
+
+
 class KnowledgeFSSpaceCreatePayload(BaseModel):
     name: str = Field(min_length=1, max_length=40)
     slug: str = Field(min_length=1, max_length=160, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
@@ -102,6 +140,7 @@ class KnowledgeFSSpaceCreatePayload(BaseModel):
     embedding: KnowledgeFSModelIntent | None = None
     retrieval: KnowledgeFSRetrievalProfileIntent | None = None
     idempotency_key: str | None = Field(default=None, min_length=1, max_length=255)
+    initial_source: KnowledgeFSInitialWebsiteSourcePayload | None = None
 
     model_config = ConfigDict(extra="forbid")
 
@@ -1636,6 +1675,22 @@ class KnowledgeFSCrawlPreviewSelectionPayload(BaseModel):
     model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
 
 
+class KnowledgeFSCrawlImportPayload(BaseModel):
+    source_urls: list[str] = Field(min_length=1, max_length=200, alias="sourceUrls")
+
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
+
+    @field_validator("source_urls")
+    @classmethod
+    def validate_source_urls(cls, source_urls: list[str]) -> list[str]:
+        normalized = [source_url.strip() for source_url in source_urls]
+        if any(not source_url or len(source_url) > 4_096 for source_url in normalized):
+            raise ValueError("source URLs must be non-empty and at most 4096 characters")
+        if len(set(normalized)) != len(normalized):
+            raise ValueError("source URLs must be unique")
+        return normalized
+
+
 class KnowledgeFSCrawledPageResponse(ResponseModel):
     content: str
     description: str | None = None
@@ -2444,6 +2499,7 @@ __all__ = [
     "KnowledgeFSBulkDeletionAcceptedResponse",
     "KnowledgeFSBulkDocumentDeletePayload",
     "KnowledgeFSBulkJobResponse",
+    "KnowledgeFSCrawlImportPayload",
     "KnowledgeFSCrawlPreviewPageListQuery",
     "KnowledgeFSCrawlPreviewPageListResponse",
     "KnowledgeFSCrawlPreviewSelectionPayload",
@@ -2472,6 +2528,9 @@ __all__ = [
     "KnowledgeFSExternalAccessPayload",
     "KnowledgeFSExternalAccessResponse",
     "KnowledgeFSIdempotencyHeader",
+    "KnowledgeFSInitialWebsiteCrawlOptionsPayload",
+    "KnowledgeFSInitialWebsiteSelectionPayload",
+    "KnowledgeFSInitialWebsiteSourcePayload",
     "KnowledgeFSJWKResponse",
     "KnowledgeFSJWKSResponse",
     "KnowledgeFSLogicalDocumentDeletePayload",

@@ -110,6 +110,16 @@ class KnowledgeFSProductApplicationService:
                 control_space_id=result.control_space.id,
                 visibility=payload.visibility,
             )
+        if payload.initial_source is not None:
+            from tasks.knowledge_fs_initial_source_tasks import import_initial_website_source
+
+            import_initial_website_source.delay(
+                tenant_id=tenant_id,
+                account_id=account_id,
+                control_space_id=result.control_space.id,
+                operation_id=operation_id,
+                payload=payload.initial_source.model_dump(mode="json"),
+            )
         return KnowledgeFSSpaceCreateResponse(
             control_space_id=result.control_space.id,
             state=result.control_space.state,

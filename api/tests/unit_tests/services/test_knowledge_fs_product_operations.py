@@ -76,6 +76,7 @@ def test_ready_product_operations_exactly_match_capability_method_path_and_actio
         "getTrace",
         "grepKnowledgeFs",
         "importSourceWorkflow",
+        "importSelectedSourceCrawl",
         "importSourceFiles",
         "importSourcePages",
         "listDocumentChunks",
