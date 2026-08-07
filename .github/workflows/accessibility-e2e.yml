@@ -1,39 +1,47 @@
 name: WCAG Accessibility E2E
+run-name: WCAG ${{ inputs.level }} · ${{ inputs.page }}
 
 on:
-  push:
-    branches: ["chore/add-wcag-checker"]
   workflow_dispatch:
     inputs:
       page:
-        description: Page to scan at both WCAG levels
+        description: Page to scan
         required: true
-        default: all
+        default: home
         type: choice
         options:
-          - all
-          - sign-in
           - home
+          - sign-in
           - studio
           - agents
           - knowledge
           - integrations
+          - all
+      level:
+        description: WCAG level to scan
+        required: true
+        default: aa
+        type: choice
+        options:
+          - aa
+          - a
+          - both
 
 permissions:
   contents: read
 
 concurrency:
-  group: accessibility-e2e-${{ github.ref }}
+  group: accessibility-e2e-${{ github.ref }}-${{ inputs.page }}-${{ inputs.level }}
   cancel-in-progress: true
 
 jobs:
   accessibility:
-    name: WCAG Level ${{ matrix.label }} · ${{ github.event_name == 'push' && 'home' || inputs.page || 'all pages' }}
+    name: WCAG Level ${{ matrix.label }} · ${{ inputs.page }}
     runs-on: depot-ubuntu-24.04-4
     timeout-minutes: 120
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(github.event_name == 'push' && '{"include":[{"level":"aa","label":"AA"}]}' || '{"include":[{"level":"a","label":"A"},{"level":"aa","label":"AA"}]}') }}
+      matrix: ${{ fromJSON(inputs.level == 'both' && '{"include":[{"level":"a","label":"A"},{"level":"aa","label":"AA"}]}' || inputs.level == 'a' && '{"include":[{"level":"a","label":"A"}]}' || '{"include":[{"level":"aa","label":"AA"}]}') }}
     defaults:
       run:
         shell: bash
@@ -71,7 +79,7 @@ jobs:
           E2E_ADMIN_PASSWORD: E2eAdmin12345
           E2E_FORCE_WEB_BUILD: "1"
           E2E_INIT_PASSWORD: E2eInit12345
-          WCAG_PAGE: ${{ github.event_name == 'push' && 'home' || inputs.page || 'all' }}
+          WCAG_PAGE: ${{ inputs.page }}
         run: |
           if [[ "$WCAG_PAGE" == "all" ]]; then
             vp run e2e:accessibility:${{ matrix.level }}
@@ -83,7 +91,7 @@ jobs:
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: cucumber-report-accessibility-${{ matrix.level }}-${{ github.event_name == 'push' && 'home' || inputs.page || 'all' }}
+          name: cucumber-report-accessibility-${{ matrix.level }}-${{ inputs.page }}
           path: e2e/cucumber-report
           retention-days: 7
 
@@ -91,7 +99,7 @@ jobs:
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: e2e-logs-accessibility-${{ matrix.level }}-${{ github.event_name == 'push' && 'home' || inputs.page || 'all' }}
+          name: e2e-logs-accessibility-${{ matrix.level }}-${{ inputs.page }}
           path: e2e/.logs/*.log
           include-hidden-files: true
           retention-days: 7

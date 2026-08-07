@@ -39,7 +39,7 @@ An uninitialized instance is installed and authenticated lazily; an initialized 
 ## Tags And External Runtime
 
 - Default scenarios use shared authenticated storage state. `@unauthenticated` creates a clean context; `@authenticated` is an intent and selection tag only.
-- `@axe` identifies standalone automated WCAG scans and is excluded from the default functional suite and normal CI commands. `@wcag-a` and `@wcag-aa` select the independent level-specific scans. Page selectors use `@wcag-page-<slug>` and correspond to the folders under `features/accessibility/`. Pushes to the accessibility feature branch run only the Home page WCAG AA scan. Manual workflow runs accept a page choice and keep WCAG A and AA as separate jobs.
+- `@axe` identifies standalone automated WCAG scans and is excluded from the default functional suite and normal CI commands. `@wcag-a` and `@wcag-aa` select the independent level-specific scans. Page selectors use `@wcag-page-<slug>` and correspond to the folders under `features/accessibility/`. The accessibility workflow has no push trigger. Manual runs accept page and level choices; selecting both levels creates separate WCAG A and AA jobs.
 - `@prepared` requires the prepared fixtures; the post-merge seed profile includes them.
 - `@external-model` and `@external-tool` identify scenarios that call real external runtimes. Deterministic commands exclude these tags; external commands are opt-in.
 - `@microphone` uses the checked-in fake audio fixture and an isolated Chromium context.

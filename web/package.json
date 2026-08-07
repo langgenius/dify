@@ -25,6 +25,7 @@
     "knip": "knip",
     "knip:production": "knip --production --include files",
     "knip:production-unused-check": "node ./scripts/check-production-unused-after-knip-fix.mjs",
+    "lint:a11y": "node ./scripts/lint-a11y.mjs",
     "lint:tss": "tsslint --project tsconfig.json",
     "preinstall": "npx only-allow pnpm",
     "start": "node ./scripts/copy-and-start.mjs",
