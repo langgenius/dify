@@ -6,9 +6,9 @@ permissions:
 
 on:
   workflow_run:
-    workflows: ["Build and Push API & Web"]
+    workflows: ['Build and Push API & Web']
     branches:
-      - "deploy/konwledge"
+      - 'deploy/konwledge'
     types:
       - completed
 

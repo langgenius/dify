@@ -18,6 +18,7 @@ import {
   type KnowledgeSpaceProvisioningRepository,
   type KnowledgeSpaceUnpublishedProfileActivationRepository,
   type LegacySpacePublicationBootstrapRepository,
+  type PageIndexFindabilityRepository,
   type PageIndexUpgradeBackfillRepository,
   type QualityControlRepository,
   type ResearchTaskDurableRepository,
@@ -67,6 +68,7 @@ import {
   createDatabaseKnowledgeSpaceUnpublishedProfileActivationRepository,
   createDatabaseLegacySpacePublicationBootstrapRepository,
   createDatabaseLogicalDocumentRepository,
+  createDatabasePageIndexFindabilityRepository,
   createDatabasePageIndexUpgradeBackfillRepository,
   createDatabaseParseArtifactRepository,
   createDatabaseProjectionSetPublicationMemberRepository,
@@ -131,6 +133,7 @@ export interface ApiDatabaseRepositoryBundle {
     | undefined;
   readonly legacySpacePublicationBootstraps?: LegacySpacePublicationBootstrapRepository | undefined;
   readonly pageIndexUpgradeBackfills?: PageIndexUpgradeBackfillRepository | undefined;
+  readonly pageIndexFindability?: PageIndexFindabilityRepository | undefined;
   readonly researchTaskDurableRepository?: ResearchTaskDurableRepository | undefined;
   readonly researchTaskPartialResults?: ResearchTaskPartialResultRepository | undefined;
   readonly researchTaskProgressEvents?: ResearchTaskProgressRepository | undefined;
@@ -203,6 +206,10 @@ export function createApiDatabaseRepositories({
     database,
     maxClaimBatchSize: maxListLimit,
     maxItemsPerJob: maxPageIndexUpgradeItems,
+  });
+  const pageIndexFindability = createDatabasePageIndexFindabilityRepository({
+    database,
+    maxBatchSize,
   });
   const tidbFtsPostingBackfills =
     database.dialect === "tidb"
@@ -286,10 +293,16 @@ export function createApiDatabaseRepositories({
   const integratedKnowledgeSpaceProvisioning =
     createDatabaseIntegratedKnowledgeSpaceProvisioningRepository({ database });
   const capabilityGrantProvenance = createDatabaseCapabilityGrantProvenanceRepository({ database });
-  const difyIntegrationFreezes = createDatabaseDifyIntegrationFreezeRepository({ database });
-  const difyIntegrationStates = createDatabaseDifyIntegrationStateRepository({ database });
+  const difyIntegrationFreezes = createDatabaseDifyIntegrationFreezeRepository({
+    database,
+  });
+  const difyIntegrationStates = createDatabaseDifyIntegrationStateRepository({
+    database,
+  });
   const knowledgeSpaceUnpublishedProfileActivations =
-    createDatabaseKnowledgeSpaceUnpublishedProfileActivationRepository({ database });
+    createDatabaseKnowledgeSpaceUnpublishedProfileActivationRepository({
+      database,
+    });
   const knowledgeSpaceProfileBackfills = createDatabaseKnowledgeSpaceProfileBackfillRepository({
     database,
     maxClaimBatchSize: maxListLimit,
@@ -346,7 +359,10 @@ export function createApiDatabaseRepositories({
         database,
         maxListLimit,
       }),
-      graphIndex: createDatabaseGraphIndexRepository({ database, maxBatchSize }),
+      graphIndex: createDatabaseGraphIndexRepository({
+        database,
+        maxBatchSize,
+      }),
       knowledgeNodes: createDatabaseKnowledgeNodeRepository({
         database,
         maxBatchSize,
@@ -417,6 +433,7 @@ export function createApiDatabaseRepositories({
     knowledgeSpaceProvisioning,
     knowledgeSpaceUnpublishedProfileActivations,
     pageIndexUpgradeBackfills,
+    pageIndexFindability,
     researchTaskDurableRepository,
     researchTaskPartialResults,
     researchTaskProgressEvents,

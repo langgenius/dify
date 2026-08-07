@@ -2,9 +2,9 @@ name: Deploy Dev
 
 on:
   workflow_run:
-    workflows: ["KnowledgeFS CI"]
+    workflows: ['KnowledgeFS CI']
     branches:
-      - "deploy/konwledge"
+      - 'deploy/konwledge'
     types:
       - completed
 

@@ -42,7 +42,9 @@ describe("createApiDatabaseRepositories", () => {
 
     const repositories = createApiDatabaseRepositories({
       database,
-      env: { DATABASE_URL: "postgresql://user:pass@localhost:5432/knowledge_fs" },
+      env: {
+        DATABASE_URL: "postgresql://user:pass@localhost:5432/knowledge_fs",
+      },
       sourceCredentialFingerprinter,
     });
 
@@ -106,6 +108,7 @@ describe("createApiDatabaseRepositories", () => {
       knowledgeSpaceProvisioning: expect.any(Object),
       knowledgeSpaceUnpublishedProfileActivations: expect.any(Object),
       legacySpacePublicationBootstraps: expect.any(Object),
+      pageIndexFindability: expect.any(Object),
       pageIndexUpgradeBackfills: expect.any(Object),
       qualityControl: expect.any(Object),
       researchTaskDurableRepository: expect.any(Object),
@@ -214,19 +217,27 @@ describe("createApiDatabaseRepositories", () => {
 
   it("forbids replica-local Agent workspace snapshots in production", () => {
     expect(() =>
-      assertApiAgentWorkspaceSnapshotDurability({ production: true, repository: undefined }),
+      assertApiAgentWorkspaceSnapshotDurability({
+        production: true,
+        repository: undefined,
+      }),
     ).toThrow("durable database repository");
     expect(() =>
       assertApiAgentWorkspaceSnapshotDurability({
         production: true,
         repository: createApiDatabaseRepositories({
           database: createSchemaDatabaseAdapter({ kind: "postgres" }),
-          env: { DATABASE_URL: "postgresql://user:pass@localhost:5432/knowledge_fs" },
+          env: {
+            DATABASE_URL: "postgresql://user:pass@localhost:5432/knowledge_fs",
+          },
         }).agentWorkspaceSnapshots,
       }),
     ).not.toThrow();
     expect(() =>
-      assertApiAgentWorkspaceSnapshotDurability({ production: false, repository: undefined }),
+      assertApiAgentWorkspaceSnapshotDurability({
+        production: false,
+        repository: undefined,
+      }),
     ).not.toThrow();
   });
 
@@ -240,7 +251,9 @@ describe("createApiDatabaseRepositories", () => {
     ).toThrow("durable database repositories");
     const repositories = createApiDatabaseRepositories({
       database: createSchemaDatabaseAdapter({ kind: "postgres" }),
-      env: { DATABASE_URL: "postgresql://user:pass@localhost:5432/knowledge_fs" },
+      env: {
+        DATABASE_URL: "postgresql://user:pass@localhost:5432/knowledge_fs",
+      },
     });
     expect(() =>
       assertApiKnowledgeFsDurability({
@@ -254,7 +267,9 @@ describe("createApiDatabaseRepositories", () => {
   it("does not assemble credential backfill without the SecretStore keyed fingerprinter", () => {
     const repositories = createApiDatabaseRepositories({
       database: createSchemaDatabaseAdapter({ kind: "postgres" }),
-      env: { DATABASE_URL: "postgresql://user:pass@localhost:5432/knowledge_fs" },
+      env: {
+        DATABASE_URL: "postgresql://user:pass@localhost:5432/knowledge_fs",
+      },
     });
 
     expect(repositories.usesDatabaseRepositories).toBe(true);

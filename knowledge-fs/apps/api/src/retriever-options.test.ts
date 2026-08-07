@@ -1,6 +1,7 @@
 import {
   type DocumentOutlineRepository,
   type GraphIndexRepository,
+  type PageIndexWholeTreeSelector,
   type PublishedPageIndexRepository,
   type ScorePageIndexSemanticCandidatesInput,
   createRetrievalPlanner,
@@ -271,7 +272,10 @@ describe("createApiRetriever final rerank wiring", () => {
           rerankItem(secondDocument, 1, 0.4),
           rerankItem(thirdDocument, 2, 0.9),
         ],
-        metadata: { model: input.model, provider: "dify-model-runtime" as const },
+        metadata: {
+          model: input.model,
+          provider: "dify-model-runtime" as const,
+        },
         model: input.model,
       };
     });
@@ -495,6 +499,7 @@ describe("createApiRetriever dense and visual wiring", () => {
         },
       },
       pageIndexSemanticTreeSearch: { score: async () => [] },
+      pageIndexWholeTreeSelector: wholeTreeSelectorStub(),
       planner: createRetrievalPlanner({ maxTopK: 100 }),
       publishedProjectionMembership: {
         filterComponentKeys: async (input) =>
@@ -559,9 +564,18 @@ describe("createApiRetriever dense and visual wiring", () => {
       topK: 10,
     });
 
-    expect(denseScopes[0]).toMatchObject({ projectionSetPublicationId: publicationId, tenantId });
-    expect(ftsScopes[0]).toMatchObject({ projectionSetPublicationId: publicationId, tenantId });
-    expect(visualScopes[0]).toMatchObject({ projectionSetPublicationId: publicationId, tenantId });
+    expect(denseScopes[0]).toMatchObject({
+      projectionSetPublicationId: publicationId,
+      tenantId,
+    });
+    expect(ftsScopes[0]).toMatchObject({
+      projectionSetPublicationId: publicationId,
+      tenantId,
+    });
+    expect(visualScopes[0]).toMatchObject({
+      projectionSetPublicationId: publicationId,
+      tenantId,
+    });
     expect(visualEmbeddingScopes[0]).toMatchObject({ tenantId });
     expect(visualEmbedCalls).toBe(1);
 
@@ -620,7 +634,10 @@ describe("createApiRetriever dense and visual wiring", () => {
           return [
             {
               ...candidateWithGraphSeed(),
-              metadata: { multimodal: { projectionRole: "visual-asset" }, nodeKind: "image" },
+              metadata: {
+                multimodal: { projectionRole: "visual-asset" },
+                nodeKind: "image",
+              },
               nodeId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c51",
               projectionId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c45",
               source: "visual" as const,
@@ -628,7 +645,11 @@ describe("createApiRetriever dense and visual wiring", () => {
           ];
         },
       },
-      visualQuery: { model: "clip", mode: "fallback", provider: visualProvider },
+      visualQuery: {
+        model: "clip",
+        mode: "fallback",
+        provider: visualProvider,
+      },
     });
 
     const result = await retriever.retrieve({
@@ -669,7 +690,11 @@ describe("createApiRetriever dense and visual wiring", () => {
         searchFts: async () => [],
         searchVisualDense: async () => [],
       },
-      visualQuery: { model: "clip", mode: "fallback", provider: visualProvider },
+      visualQuery: {
+        model: "clip",
+        mode: "fallback",
+        provider: visualProvider,
+      },
     });
 
     await retriever.retrieve({
@@ -765,9 +790,13 @@ describe("createApiRetriever PageIndex outline wiring", () => {
     const dense = vi.fn(async () => [denseCandidate]);
     const fts = vi.fn(async () => []);
     const rerankCalls: string[][] = [];
-    const traverse = vi.fn(async () => ({ entities: [], relations: [], timedOut: false }));
+    const traverse = vi.fn(async () => ({
+      entities: [],
+      relations: [],
+      timedOut: false,
+    }));
     const graph = { traverse } as unknown as GraphIndexRepository;
-    const pageIndex = {} as PublishedPageIndexRepository;
+    const pageIndex = publishedPageIndexFixture();
     const score = vi.fn(async (input: ScorePageIndexSemanticCandidatesInput) =>
       input.candidates.map((candidate) => ({
         candidateId: candidate.candidateId,
@@ -780,8 +809,13 @@ describe("createApiRetriever PageIndex outline wiring", () => {
       graph,
       pageIndex,
       pageIndexSemanticTreeSearch: { score },
+      pageIndexWholeTreeSelector: wholeTreeSelectorStub(0.96, "Direct warranty evidence"),
       planner: createRetrievalPlanner({ maxTopK: 100 }),
-      repository: { publishedMembershipEnforced: true, searchDense: dense, searchFts: fts },
+      repository: {
+        publishedMembershipEnforced: true,
+        searchDense: dense,
+        searchFts: fts,
+      },
       rerankerOptions: {
         model: "rerank-model",
         provider: preferredReranker("irrelevant", rerankCalls),
@@ -806,10 +840,18 @@ describe("createApiRetriever PageIndex outline wiring", () => {
       queryVector: [0.1, 0.2],
       retrievalProfile: {
         defaultMode: "research",
-        reasoningModel: { model: "chat", pluginId: "vendor/chat", provider: "vendor" },
+        reasoningModel: {
+          model: "chat",
+          pluginId: "vendor/chat",
+          provider: "vendor",
+        },
         rerank: {
           enabled: true,
-          model: { model: "rerank", pluginId: "vendor/rerank", provider: "vendor" },
+          model: {
+            model: "rerank",
+            pluginId: "vendor/rerank",
+            provider: "vendor",
+          },
         },
         revision: 1,
         scoreThreshold: { enabled: false, stage: "mode-final" },
@@ -820,7 +862,7 @@ describe("createApiRetriever PageIndex outline wiring", () => {
     });
 
     expect(dense).toHaveBeenCalledOnce();
-    expect(score).toHaveBeenCalledOnce();
+    expect(score).not.toHaveBeenCalled();
     expect(fts).not.toHaveBeenCalled();
     expect(traverse).not.toHaveBeenCalled();
     expect(rerankCalls).toEqual([]);
@@ -832,10 +874,99 @@ describe("createApiRetriever PageIndex outline wiring", () => {
         },
       },
       score: 0.96,
-      sources: ["dense", "pageindex"],
+      sources: ["pageindex", "dense"],
     });
   });
 });
+
+function wholeTreeSelectorStub(score = 0.8, reason = "semantic match"): PageIndexWholeTreeSelector {
+  return {
+    select: async (input) => ({
+      estimatedPromptTokens: 100,
+      nodeCount: input.outline.nodes.length,
+      selections: input.outline.nodes[0]
+        ? [{ nodeId: input.outline.nodes[0].id, reason, score }]
+        : [],
+      strategy: "whole-tree",
+      summaryCoverage: 1,
+    }),
+  };
+}
+
+function publishedPageIndexFixture(): PublishedPageIndexRepository {
+  const denseCandidate = candidateWithGraphSeed();
+  const outlineNode = {
+    childNodeIds: [],
+    children: [],
+    endOffset: 10,
+    id: "outline-guide",
+    level: 1,
+    metadata: {},
+    sectionPath: ["Guide"],
+    sourceElementIds: [],
+    sourceNodeIds: [],
+    startOffset: 0,
+    summary: "Published camera warranty guide",
+    title: "Guide",
+    tocSource: "parser-heading" as const,
+  };
+  const outline = {
+    artifactHash: denseCandidate.citation.artifactHash,
+    createdAt: "2026-08-05T00:00:00.000Z",
+    documentAssetId: denseCandidate.citation.documentAssetId,
+    id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c60",
+    knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+    metadata: {},
+    nodes: [outlineNode],
+    outlineVersion: "outline-v1",
+    parseArtifactId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c61",
+    publicationGenerationId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c62",
+    version: 1,
+  };
+  return {
+    listOutlines: async (input) => ({
+      items: input.documentAssetIds?.includes(outline.documentAssetId)
+        ? [
+            {
+              documentAssetId: outline.documentAssetId,
+              generationId: outline.publicationGenerationId,
+              outline,
+              publicationId: input.publicationId,
+            },
+          ]
+        : [],
+    }),
+    openLeafEvidence: async (input) => ({
+      items: [
+        {
+          citation: denseCandidate.citation,
+          node: {
+            artifactHash: denseCandidate.citation.artifactHash,
+            documentAssetId: denseCandidate.citation.documentAssetId,
+            endOffset: 10,
+            id: denseCandidate.nodeId,
+            kind: "chunk",
+            knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+            metadata: denseCandidate.metadata,
+            parseArtifactId: outline.parseArtifactId,
+            permissionScope: denseCandidate.permissionScope,
+            publicationGenerationId: outline.publicationGenerationId,
+            sourceLocation: denseCandidate.citation,
+            startOffset: 0,
+            text: "Published camera warranty evidence",
+          },
+          outlineId: outline.id,
+          outlineNodeId: input.outlineNodeId,
+          projections: [{ id: denseCandidate.projectionId, type: "dense-vector" }],
+        },
+      ],
+      openedRange: { endOffset: 10, startOffset: 0 },
+      outline,
+      selectedNode: outlineNode,
+      truncated: false,
+    }),
+  };
+}
 
 /** A base dense hit that carries a graph entity id, so graph expansion can seed from it. */
 function candidateWithGraphSeed() {
@@ -900,7 +1031,11 @@ function retrievalProfile({
       };
   readonly scoreThreshold:
     | { readonly enabled: false; readonly stage: "rerank" }
-    | { readonly enabled: true; readonly stage: "rerank"; readonly value: number };
+    | {
+        readonly enabled: true;
+        readonly stage: "rerank";
+        readonly value: number;
+      };
 }) {
   return {
     defaultMode: "fast" as const,

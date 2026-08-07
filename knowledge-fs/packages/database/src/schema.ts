@@ -459,7 +459,10 @@ const tables = [
       integerColumn("revision"),
       varcharColumn("state", 16),
       jsonColumn("snapshot"),
-      { name: "snapshot_digest", type: { postgres: "CHAR(64)", tidb: "CHAR(64)" } },
+      {
+        name: "snapshot_digest",
+        type: { postgres: "CHAR(64)", tidb: "CHAR(64)" },
+      },
       jsonColumn("capability_snapshot"),
       {
         name: "capability_snapshot_digest",
@@ -928,7 +931,10 @@ const tables = [
       varcharColumn("requested_by_subject_id", 255, true),
       varcharColumn("access_channel", 16, true),
       varcharColumn("idempotency_key", 255),
-      { name: "idempotency_digest", type: { postgres: "CHAR(64)", tidb: "CHAR(64)" } },
+      {
+        name: "idempotency_digest",
+        type: { postgres: "CHAR(64)", tidb: "CHAR(64)" },
+      },
       varcharColumn("run_state", 16),
       integerColumn("active_slot", true),
       varcharColumn("checkpoint", 32),
@@ -1060,7 +1066,10 @@ const tables = [
       varcharColumn("kind", 16),
       integerColumn("source_manifest_version"),
       jsonColumn("source_snapshot"),
-      { name: "source_snapshot_digest", type: { postgres: "CHAR(64)", tidb: "CHAR(64)" } },
+      {
+        name: "source_snapshot_digest",
+        type: { postgres: "CHAR(64)", tidb: "CHAR(64)" },
+      },
       varcharColumn("run_state", 16),
       integerColumn("execution_attempts"),
       integerColumn("max_execution_attempts"),
@@ -1247,7 +1256,10 @@ const tables = [
         name: "source_connection_secret_refs_state_ck",
       },
       {
-        expression: { postgres: '"row_version" >= 1', tidb: "`row_version` >= 1" },
+        expression: {
+          postgres: '"row_version" >= 1',
+          tidb: "`row_version` >= 1",
+        },
         name: "source_connection_secret_refs_version_ck",
       },
       {
@@ -1573,7 +1585,10 @@ const tables = [
       { ...jsonColumn("required_permission_scope"), nullable: true },
       varcharColumn("access_channel", 16, true),
       varcharColumn("idempotency_key", 255),
-      { name: "idempotency_digest", type: { postgres: "CHAR(64)", tidb: "CHAR(64)" } },
+      {
+        name: "idempotency_digest",
+        type: { postgres: "CHAR(64)", tidb: "CHAR(64)" },
+      },
       integerColumn("execution_attempts"),
       integerColumn("max_execution_attempts"),
       varcharColumn("worker_id", 255, true),
@@ -1600,7 +1615,10 @@ const tables = [
         name: "source_workflow_outbox_status_ck",
       },
       {
-        expression: { postgres: '"delivery_revision" >= 1', tidb: "`delivery_revision` >= 1" },
+        expression: {
+          postgres: '"delivery_revision" >= 1',
+          tidb: "`delivery_revision` >= 1",
+        },
         name: "source_workflow_outbox_revision_ck",
       },
       {
@@ -1664,7 +1682,10 @@ const tables = [
       varcharColumn("title", 500, true),
       varcharColumn("description", 2000, true),
       varcharColumn("etag", 1024, true),
-      { name: "content_hash", type: { postgres: "CHAR(64)", tidb: "CHAR(64)" } },
+      {
+        name: "content_hash",
+        type: { postgres: "CHAR(64)", tidb: "CHAR(64)" },
+      },
       varcharColumn("content_object_key", 2048),
       timestampColumn("created_at"),
     ],
@@ -1734,7 +1755,10 @@ const tables = [
     name: "source_credential_backfills",
     checkConstraints: [
       {
-        expression: { postgres: '"source_version" >= 1', tidb: "`source_version` >= 1" },
+        expression: {
+          postgres: '"source_version" >= 1',
+          tidb: "`source_version` >= 1",
+        },
         name: "source_credential_backfills_source_version_ck",
       },
       {
@@ -1792,7 +1816,10 @@ const tables = [
         name: "candidate_credential_ref",
         type: { postgres: "TEXT", tidb: "VARCHAR(255)" },
       },
-      { name: "secret_fingerprint", type: { postgres: "CHAR(64)", tidb: "CHAR(64)" } },
+      {
+        name: "secret_fingerprint",
+        type: { postgres: "CHAR(64)", tidb: "CHAR(64)" },
+      },
       {
         name: "run_state",
         type: { postgres: "TEXT", tidb: "VARCHAR(16)" },
@@ -2803,7 +2830,10 @@ const tables = [
         name: "logical_documents_active_revision_ck",
       },
       {
-        expression: { postgres: '"row_version" >= 0', tidb: "`row_version` >= 0" },
+        expression: {
+          postgres: '"row_version" >= 0',
+          tidb: "`row_version` >= 0",
+        },
         name: "logical_documents_row_version_ck",
       },
       {
@@ -2890,7 +2920,10 @@ const tables = [
         name: "document_revisions_expected_row_version_ck",
       },
       {
-        expression: { postgres: '"size_bytes" >= 0', tidb: "`size_bytes` >= 0" },
+        expression: {
+          postgres: '"size_bytes" >= 0',
+          tidb: "`size_bytes` >= 0",
+        },
         name: "document_revisions_size_ck",
       },
       {
@@ -2950,7 +2983,10 @@ const tables = [
       idColumn("compilation_attempt_id", true),
       integerColumn("expected_active_revision", true),
       integerColumn("expected_document_row_version"),
-      { name: "content_hash", type: { postgres: "CHAR(64)", tidb: "CHAR(64)" } },
+      {
+        name: "content_hash",
+        type: { postgres: "CHAR(64)", tidb: "CHAR(64)" },
+      },
       varcharColumn("mime_type", 255),
       bigintColumn("size_bytes"),
       varcharColumn("state", 16),
@@ -2967,7 +3003,10 @@ const tables = [
         name: "document_revision_chunks_ordinal_ck",
       },
       {
-        expression: { postgres: '"token_count" >= 0', tidb: "`token_count` >= 0" },
+        expression: {
+          postgres: '"token_count" >= 0',
+          tidb: "`token_count` >= 0",
+        },
         name: "document_revision_chunks_tokens_ck",
       },
     ],
@@ -3122,11 +3161,17 @@ const tables = [
     name: "document_settings_heads",
     checkConstraints: [
       {
-        expression: { postgres: '"active_revision" > 0', tidb: "`active_revision` > 0" },
+        expression: {
+          postgres: '"active_revision" > 0',
+          tidb: "`active_revision` > 0",
+        },
         name: "document_settings_heads_revision_ck",
       },
       {
-        expression: { postgres: '"row_version" >= 0', tidb: "`row_version` >= 0" },
+        expression: {
+          postgres: '"row_version" >= 0',
+          tidb: "`row_version` >= 0",
+        },
         name: "document_settings_heads_row_version_ck",
       },
     ],
@@ -3169,7 +3214,10 @@ const tables = [
         name: "document_reindex_attempts_active_slot_ck",
       },
       {
-        expression: { postgres: '"row_version" >= 0', tidb: "`row_version` >= 0" },
+        expression: {
+          postgres: '"row_version" >= 0',
+          tidb: "`row_version` >= 0",
+        },
         name: "document_reindex_attempts_row_version_ck",
       },
       {
@@ -3347,8 +3395,8 @@ const tables = [
       {
         expression: {
           postgres:
-            '"target_revision" >= 1 AND ("capability_grant_id" IS NOT NULL OR "permission_snapshot_revision" >= 1) AND "row_version" >= 1 AND "execution_attempts" >= 0 AND "max_execution_attempts" >= 1 AND "execution_attempts" <= "max_execution_attempts" AND ("active_slot" IS NULL OR "active_slot" = 1)',
-          tidb: "`target_revision` >= 1 AND (`capability_grant_id` IS NOT NULL OR `permission_snapshot_revision` >= 1) AND `row_version` >= 1 AND `execution_attempts` >= 0 AND `max_execution_attempts` >= 1 AND `execution_attempts` <= `max_execution_attempts` AND (`active_slot` IS NULL OR `active_slot` = 1)",
+            '(("target_type" = \'logical_document\' AND "target_revision" >= 0) OR ("target_type" <> \'logical_document\' AND "target_revision" >= 1)) AND ("capability_grant_id" IS NOT NULL OR "permission_snapshot_revision" >= 1) AND "row_version" >= 1 AND "execution_attempts" >= 0 AND "max_execution_attempts" >= 1 AND "execution_attempts" <= "max_execution_attempts" AND ("active_slot" IS NULL OR "active_slot" = 1)',
+          tidb: "((`target_type` = 'logical_document' AND `target_revision` >= 0) OR (`target_type` <> 'logical_document' AND `target_revision` >= 1)) AND (`capability_grant_id` IS NOT NULL OR `permission_snapshot_revision` >= 1) AND `row_version` >= 1 AND `execution_attempts` >= 0 AND `max_execution_attempts` >= 1 AND `execution_attempts` <= `max_execution_attempts` AND (`active_slot` IS NULL OR `active_slot` = 1)",
         },
         name: "deletion_jobs_positive_ck",
       },
@@ -3464,8 +3512,9 @@ const tables = [
       },
       {
         expression: {
-          postgres: '"target_revision" >= 1 AND "row_version" >= 1',
-          tidb: "`target_revision` >= 1 AND `row_version` >= 1",
+          postgres:
+            '(("target_type" = \'logical_document\' AND "target_revision" >= 0) OR ("target_type" <> \'logical_document\' AND "target_revision" >= 1)) AND "row_version" >= 1',
+          tidb: "((`target_type` = 'logical_document' AND `target_revision` >= 0) OR (`target_type` <> 'logical_document' AND `target_revision` >= 1)) AND `row_version` >= 1",
         },
         name: "deletion_tombstones_positive_ck",
       },
@@ -3582,7 +3631,10 @@ const tables = [
         name: "deletion_outbox_event_ck",
       },
       {
-        expression: { postgres: '"schema_version" = 1', tidb: "`schema_version` = 1" },
+        expression: {
+          postgres: '"schema_version" = 1',
+          tidb: "`schema_version` = 1",
+        },
         name: "deletion_outbox_schema_ck",
       },
       {
@@ -3831,7 +3883,10 @@ const tables = [
     name: "legacy_space_publication_bootstrap_items",
     checkConstraints: [
       {
-        expression: { postgres: '"document_version" > 0', tidb: "`document_version` > 0" },
+        expression: {
+          postgres: '"document_version" > 0',
+          tidb: "`document_version` > 0",
+        },
         name: "legacy_space_bootstrap_items_version_ck",
       },
       {
@@ -3909,7 +3964,10 @@ const tables = [
         name: "page_index_upgrade_backfills_counts_ck",
       },
       {
-        expression: { postgres: '"head_revision" > 0', tidb: "`head_revision` > 0" },
+        expression: {
+          postgres: '"head_revision" > 0',
+          tidb: "`head_revision` > 0",
+        },
         name: "page_index_upgrade_backfills_revision_ck",
       },
       {
@@ -3983,7 +4041,10 @@ const tables = [
         false,
       ),
       {
-        expression: { postgres: '"document_version" > 0', tidb: "`document_version` > 0" },
+        expression: {
+          postgres: '"document_version" > 0',
+          tidb: "`document_version` > 0",
+        },
         name: "page_index_upgrade_items_version_ck",
       },
       {
@@ -5233,7 +5294,10 @@ const tables = [
         name: "research_task_outbox_event_ck",
       },
       {
-        expression: { postgres: '"schema_version" = 1', tidb: "`schema_version` = 1" },
+        expression: {
+          postgres: '"schema_version" = 1',
+          tidb: "`schema_version` = 1",
+        },
         name: "research_task_outbox_schema_ck",
       },
       {
@@ -5685,6 +5749,79 @@ const tables = [
     ],
   },
   {
+    name: "page_index_findability_evaluations",
+    checkConstraints: [
+      {
+        expression: {
+          postgres: `"status" IN ('failed', 'not-evaluated', 'passed')`,
+          tidb: "`status` IN ('failed', 'not-evaluated', 'passed')",
+        },
+        name: "page_index_findability_status_ck",
+      },
+      {
+        expression: {
+          postgres: `"recommended_route" IN ('hybrid', 'layered', 'unchanged')`,
+          tidb: "`recommended_route` IN ('hybrid', 'layered', 'unchanged')",
+        },
+        name: "page_index_findability_route_ck",
+      },
+      {
+        expression: {
+          postgres: `"summary_repair_state" IN ('not-requested', 'queued', 'leased', 'dispatched', 'failed') AND "summary_repair_attempts" >= 0 AND (("summary_repair_state" = 'leased' AND "lock_token" IS NOT NULL AND "locked_by" IS NOT NULL AND "lease_expires_at" IS NOT NULL) OR ("summary_repair_state" <> 'leased' AND "lock_token" IS NULL AND "locked_by" IS NULL AND "lease_expires_at" IS NULL))`,
+          tidb: "`summary_repair_state` IN ('not-requested', 'queued', 'leased', 'dispatched', 'failed') AND `summary_repair_attempts` >= 0 AND ((`summary_repair_state` = 'leased' AND `lock_token` IS NOT NULL AND `locked_by` IS NOT NULL AND `lease_expires_at` IS NOT NULL) OR (`summary_repair_state` <> 'leased' AND `lock_token` IS NULL AND `locked_by` IS NULL AND `lease_expires_at` IS NULL))",
+        },
+        name: "page_index_findability_repair_ck",
+      },
+      {
+        expression: {
+          postgres: "jsonb_typeof(\"evaluation\") = 'object'",
+          tidb: "JSON_TYPE(`evaluation`) = 'OBJECT'",
+        },
+        name: "page_index_findability_evaluation_ck",
+      },
+      {
+        expression: {
+          postgres: '"document_version" >= 1',
+          tidb: "`document_version` >= 1",
+        },
+        name: "page_index_findability_document_version_ck",
+      },
+    ],
+    foreignKeys: [
+      {
+        columns: ["tenant_id", "knowledge_space_id"],
+        name: "page_index_findability_scope_fk",
+        onDelete: "CASCADE",
+        referencedColumns: ["tenant_id", "id"],
+        referencedTable: "knowledge_spaces",
+      },
+    ],
+    columns: [
+      idColumn(),
+      varcharColumn("tenant_id", 255),
+      idColumn("knowledge_space_id"),
+      idColumn("document_asset_id"),
+      bigintColumn("document_version"),
+      idColumn("outline_id"),
+      idColumn("publication_generation_id"),
+      varcharColumn("publication_fingerprint", 96),
+      idColumn("compilation_attempt_id"),
+      varcharColumn("evaluator_version", 128),
+      varcharColumn("status", 32),
+      varcharColumn("recommended_route", 16),
+      jsonColumn("evaluation"),
+      varcharColumn("summary_repair_state", 24),
+      integerColumn("summary_repair_attempts"),
+      varcharColumn("summary_repair_error", 2000, true),
+      timestampColumn("available_at", true),
+      idColumn("lock_token", true),
+      varcharColumn("locked_by", 255, true),
+      timestampColumn("lease_expires_at", true),
+      timestampColumn("evaluated_at"),
+      timestampColumn("updated_at"),
+    ],
+  },
+  {
     name: "bulk_operations",
     checkConstraints: [
       {
@@ -6100,6 +6237,25 @@ const indexes = [
     name: "knowledge_space_profile_migration_runs_claim_idx",
     purpose: "Claim queued profile migrations and recover expired execution leases",
     tableName: "knowledge_space_profile_migration_runs",
+  },
+  {
+    columns: ["tenant_id", "knowledge_space_id", "publication_generation_id", "evaluator_version"],
+    name: "page_index_findability_generation_evaluator_uq",
+    purpose: "Persist one deterministic evaluator result per immutable document generation",
+    tableName: "page_index_findability_evaluations",
+    unique: true,
+  },
+  {
+    columns: ["tenant_id", "knowledge_space_id", "document_asset_id", "publication_generation_id"],
+    name: "page_index_findability_route_idx",
+    purpose: "Batch-load exact-generation PageIndex routing decisions for Research",
+    tableName: "page_index_findability_evaluations",
+  },
+  {
+    columns: ["summary_repair_state", "available_at", "lease_expires_at", "updated_at", "id"],
+    name: "page_index_findability_repair_queue_idx",
+    purpose: "Claim bounded low-findability summary repairs without scanning evaluation history",
+    tableName: "page_index_findability_evaluations",
   },
   {
     columns: ["tenant_id", "knowledge_space_id", "created_at", "id"],

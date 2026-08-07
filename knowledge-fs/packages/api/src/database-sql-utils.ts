@@ -33,6 +33,7 @@ export function jsonInsertPlaceholder(
   if (
     column !== "metadata" &&
     column !== "elements" &&
+    column !== "evaluation" &&
     column !== "expected_evidence_ids" &&
     column !== "items" &&
     column !== "nodes" &&

@@ -22,7 +22,10 @@ import {
   createLlmAnswerQueryGenerator,
   createLlmAutoRetrievalModeResolver,
   createModelCapabilityPreflight,
+  createPageIndexFindabilityEvaluator,
+  createPageIndexLayeredTreeSearch,
   createPageIndexSemanticTreeSearch,
+  createPageIndexWholeTreeSelector,
   createProfileAwareKnowledgeSpaceManifestRepository,
   createProfileAwareQueryGenerator,
   createPublishedProjectionReadSnapshotResolver,
@@ -157,6 +160,41 @@ const pageIndexSemanticTreeSearch = createPageIndexSemanticTreeSearch({
   providerFactory: profileReasoningCapability.providerFactory,
   timeoutMs: 20_000,
 });
+const pageIndexLayeredTreeSearch = createPageIndexLayeredTreeSearch({
+  maxFrontierNodes: 40,
+  maxOutputTokens: profileReasoningCapability.maxOutputTokens,
+  maxPromptTokens: 8_000,
+  maxResponseChars: 32_000,
+  maxSelectedNodesPerStep: 8,
+  maxSummaryChars: 600,
+  maxTitleChars: 200,
+  maxTreeNodes: 10_000,
+  providerFactory: profileReasoningCapability.providerFactory,
+  timeoutMs: 20_000,
+});
+const pageIndexFindabilityEvaluator = createPageIndexFindabilityEvaluator({
+  evaluatorVersion: "pageindex-layered-findability-v1",
+  layeredTreeSearch: pageIndexLayeredTreeSearch,
+  maxQuestions: 100,
+  maxTreeDepth: 8,
+  minMeanReciprocalRank: 0.5,
+  minPathRecallAtK: 0.8,
+  minQuestions: 3,
+  minRecallAtK: 0.7,
+  topK: 5,
+});
+const pageIndexWholeTreeSelector = createPageIndexWholeTreeSelector({
+  maxOutputTokens: profileReasoningCapability.maxOutputTokens,
+  maxPromptTokens: 24_000,
+  maxResponseChars: 64_000,
+  maxSelectedNodes: 8,
+  maxSummaryChars: 600,
+  maxTitleChars: 200,
+  maxTreeNodes: 2_000,
+  minimumSummaryCoverage: 0.5,
+  providerFactory: profileReasoningCapability.providerFactory,
+  timeoutMs: 20_000,
+});
 const knowledgeSpaceSemanticIngestionOptions = createApiKnowledgeSpaceSemanticIngestionOptions({
   providerFactory: profileReasoningCapability.providerFactory,
 });
@@ -181,20 +219,39 @@ const modelCapabilityPreflight = createModelCapabilityPreflight({
   vectorStorageDialect: adapter.database.dialect,
 });
 const datasourceInvocationClient = createApiDatasourceInvocationClient(process.env);
-const websiteCrawlOptions = createApiWebsiteCrawlOptions({ client: datasourceInvocationClient });
+const websiteCrawlOptions = createApiWebsiteCrawlOptions({
+  client: datasourceInvocationClient,
+});
 const onlineDocumentOptions = createApiOnlineDocumentOptions({
   client: datasourceInvocationClient,
 });
-const onlineDriveOptions = createApiOnlineDriveOptions({ client: datasourceInvocationClient });
+const onlineDriveOptions = createApiOnlineDriveOptions({
+  client: datasourceInvocationClient,
+});
 const sourceCredentialTesterOptions = createApiSourceCredentialTesterOptions({
   client: datasourceInvocationClient,
 });
 const difyManagedDatasourceFields = [
-  { name: "credentialId", required: true, secret: false, type: "string" as const },
+  {
+    name: "credentialId",
+    required: true,
+    secret: false,
+    type: "string" as const,
+  },
   { name: "pluginId", required: true, secret: false, type: "string" as const },
   { name: "provider", required: true, secret: false, type: "string" as const },
-  { name: "datasource", required: true, secret: false, type: "string" as const },
-  { name: "providerKind", required: true, secret: false, type: "string" as const },
+  {
+    name: "datasource",
+    required: true,
+    secret: false,
+    type: "string" as const,
+  },
+  {
+    name: "providerKind",
+    required: true,
+    secret: false,
+    type: "string" as const,
+  },
 ] as const;
 const sourceOAuthProviders = { get: (_providerId: string) => undefined };
 // These IDs are persisted contract values. Their runtime and credential owner is always Dify.
@@ -300,11 +357,15 @@ let researchDirectStreamReady = false;
 const readinessChecks = {
   ...baseReadinessChecks,
   ...(integratedModeEnabled
-    ? { "integrated-provisioning.configuration": () => integratedProvisioningReady }
+    ? {
+        "integrated-provisioning.configuration": () => integratedProvisioningReady,
+      }
     : {}),
   ...(uploadSessionOptions ? { "direct-upload.configuration": () => directUploadReady } : {}),
   ...(researchTaskDirectStream
-    ? { "research-direct-stream.configuration": () => researchDirectStreamReady }
+    ? {
+        "research-direct-stream.configuration": () => researchDirectStreamReady,
+      }
     : {}),
 };
 assertApiAgentWorkspaceSnapshotDurability({
@@ -393,6 +454,24 @@ const documentCompilationRuntime = createApiDocumentCompilationRuntime({
   ...(deletionLifecycleFence ? { deletionFence: deletionLifecycleFence } : {}),
   ...(deletionObjectWriteAdmission ? { objectWriteAdmission: deletionObjectWriteAdmission } : {}),
   embeddingResolver,
+  ...(databaseRepositories.pageIndexFindability && repositoryOptions.goldenQuestions
+    ? {
+        findability: {
+          evaluator: pageIndexFindabilityEvaluator,
+          goldenQuestions: repositoryOptions.goldenQuestions,
+          onError: (error) => {
+            process.stderr.write(
+              `${JSON.stringify({
+                error:
+                  error instanceof Error ? error.message : "unknown PageIndex findability error",
+                event: "knowledge_fs.page_index.findability_error",
+              })}\n`,
+            );
+          },
+          repository: databaseRepositories.pageIndexFindability,
+        },
+      }
+    : {}),
   ...(databaseRepositories.knowledgeSpaceUnpublishedProfileActivations
     ? {
         initialProfileActivations: databaseRepositories.knowledgeSpaceUnpublishedProfileActivations,
@@ -411,7 +490,9 @@ const documentCompilationRuntime = createApiDocumentCompilationRuntime({
           access: repositoryOptions.knowledgeSpaceAccess,
           bindings: databaseRepositories.knowledgeSpaceProfilePublications,
           ...(databaseRepositories.capabilityGrantProvenance
-            ? { capabilityGrants: databaseRepositories.capabilityGrantProvenance }
+            ? {
+                capabilityGrants: databaseRepositories.capabilityGrantProvenance,
+              }
             : {}),
           repository: databaseRepositories.knowledgeSpaceProfileMigrations,
         },
@@ -426,10 +507,14 @@ const documentCompilationRuntime = createApiDocumentCompilationRuntime({
     ...(repositoryOptions.documentChunks ? { chunks: repositoryOptions.documentChunks } : {}),
     ...(repositoryOptions.graphIndex ? { graph: repositoryOptions.graphIndex } : {}),
     ...(databaseRepositories.legacySpacePublicationBootstraps
-      ? { legacyBootstraps: databaseRepositories.legacySpacePublicationBootstraps }
+      ? {
+          legacyBootstraps: databaseRepositories.legacySpacePublicationBootstraps,
+        }
       : {}),
     ...(databaseRepositories.pageIndexUpgradeBackfills
-      ? { pageIndexUpgradeBackfills: databaseRepositories.pageIndexUpgradeBackfills }
+      ? {
+          pageIndexUpgradeBackfills: databaseRepositories.pageIndexUpgradeBackfills,
+        }
       : {}),
     manifests: knowledgeSpaceManifests,
     ...(repositoryOptions.logicalDocuments
@@ -458,11 +543,18 @@ const documentCompilationRuntime = createApiDocumentCompilationRuntime({
   },
   semantic: knowledgeSpaceSemanticIngestionOptions,
   ...(visualEmbeddingOptions
-    ? { visual: { model: visualEmbeddingOptions.model, provider: visualEmbeddingOptions.provider } }
+    ? {
+        visual: {
+          model: visualEmbeddingOptions.model,
+          provider: visualEmbeddingOptions.provider,
+        },
+      }
     : {}),
 });
 const sourceProductAuthorization = repositoryOptions.knowledgeSpaceAccess
-  ? createKnowledgeSpaceAuthorizationGuard({ access: repositoryOptions.knowledgeSpaceAccess })
+  ? createKnowledgeSpaceAuthorizationGuard({
+      access: repositoryOptions.knowledgeSpaceAccess,
+    })
   : undefined;
 const sourceConnectionService =
   sourceProductAuthorization &&
@@ -523,7 +615,9 @@ const visualQueryEmbeddingOptions = visualEmbeddingOptions?.queryEmbeddingProvid
       embeddings: visualEmbeddingOptions.queryEmbeddingProvider,
     }
   : undefined;
-const retrievalPlanner = createRetrievalPlanner({ maxTopK: RETRIEVAL_MAX_TOP_K });
+const retrievalPlanner = createRetrievalPlanner({
+  maxTopK: RETRIEVAL_MAX_TOP_K,
+});
 // Undefined when KNOWLEDGE_GRAPH_EXPANSION=off — the retriever then skips the graph wrapper.
 const graphExpansionOptions = createApiGraphExpansionOptions();
 const retriever = retrievalRepository
@@ -542,7 +636,14 @@ const retriever = retrievalRepository
       ...(publishedPageIndex
         ? {
             pageIndex: publishedPageIndex,
+            ...(databaseRepositories.pageIndexFindability
+              ? {
+                  pageIndexFindability: databaseRepositories.pageIndexFindability,
+                }
+              : {}),
+            pageIndexLayeredTreeSearch,
             pageIndexSemanticTreeSearch,
+            pageIndexWholeTreeSelector,
           }
         : repositoryOptions.documentOutlines
           ? { outlines: repositoryOptions.documentOutlines }

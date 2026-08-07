@@ -175,7 +175,11 @@ const taskApiResponse = vi.hoisted(() => (item: BackgroundTask) => ({
   id: item.id,
   knowledge_space_id: item.knowledgeSpaceId,
   operation: item.operation ?? 'document_processing',
+  progress_completed:
+    item.progressCompleted ?? (item.state === 'succeeded' ? (item.progressTotal ?? 1) : 0),
+  progress_failed: item.progressFailed ?? 0,
   progress_percent: item.progressPercent,
+  progress_total: item.progressTotal ?? 1,
   source_id: item.sourceId ?? null,
   state:
     item.state === 'succeeded'
@@ -846,7 +850,7 @@ describe('DocumentsPage', () => {
     expect(rowMenuItems).toHaveLength(6)
     expect(rowMenuItems.map((item) => item.textContent)).toEqual([
       'common.operation.rename',
-      'dataset.newKnowledge.reindexDocument',
+      'dataset.newKnowledge.retryTask',
       'dataset.newKnowledge.disableSource',
       'dataset.batchAction.archive',
       'dataset.newKnowledge.downloadDocuments',
@@ -1260,6 +1264,52 @@ describe('DocumentsPage', () => {
         'dataset.newKnowledge.documentsReindexStarted',
       ),
     )
+  })
+
+  it('retries a failed document from its row action', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [{ items: [document({ id: 'one', status: 'failed', title: 'One.pdf' })] }],
+    }
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [task({ documentId: 'one', id: 'failed-task', state: 'failed' })],
+        },
+      ],
+    }
+    retryMutation.mutateAsync.mockResolvedValueOnce(
+      task({ documentId: 'one', id: 'failed-task', state: 'queued' }),
+    )
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: /dataset\.newKnowledge\.documentActions/,
+      }),
+    )
+    expect(
+      screen.queryByRole('menuitem', { name: 'dataset.newKnowledge.reindexDocument' }),
+    ).not.toBeInTheDocument()
+    const retry = await screen.findByRole('menuitem', {
+      name: 'dataset.newKnowledge.retryTask',
+    })
+    expect(retry).toBeEnabled()
+    expect(retry).not.toHaveAttribute('aria-disabled', 'true')
+    await user.click(retry)
+
+    await waitFor(() =>
+      expect(retryMutation.mutateAsync).toHaveBeenCalledWith({
+        params: {
+          control_space_id: 'space-1',
+          task_id: 'failed-task',
+          task_kind: 'document',
+        },
+      }),
+    )
+    expect(
+      await screen.findByText('dataset.newKnowledge.documentStatus.queued'),
+    ).toBeInTheDocument()
   })
 
   it('renames a document through its user-facing display metadata', async () => {
@@ -2476,7 +2526,7 @@ describe('DocumentsPage', () => {
     expect(within(panel).queryByText('later-document')).not.toBeInTheDocument()
     expect(
       within(panel).getByText(
-        'dataset.newKnowledge.processDocument:{"name":"dataset.newKnowledge.documentColumn"}',
+        'dataset.newKnowledge.addDocument · dataset.newKnowledge.documentColumn',
       ),
     ).toBeInTheDocument()
     await user.click(within(panel).getByRole('button', { name: 'dataset.newKnowledge.loadMore' }))
@@ -2782,7 +2832,11 @@ describe('DocumentsPage', () => {
     expect(reindex).toBeEnabled()
     const orderedActions = within(actions).getAllByRole('button')
     expect(orderedActions[0]).toHaveAccessibleName('dataset.newKnowledge.reindexDocuments')
-    expect(orderedActions[1]).toHaveAccessibleName('dataset.newKnowledge.clearDocumentSelection')
+    expect(orderedActions[1]).toHaveAccessibleName('dataset.newKnowledge.downloadDocuments')
+    expect(orderedActions[1]).toBeDisabled()
+    expect(orderedActions[2]).toHaveAccessibleName('dataset.newKnowledge.deleteDocuments')
+    expect(orderedActions[2]).toBeDisabled()
+    expect(orderedActions[3]).toHaveAccessibleName('dataset.newKnowledge.clearDocumentSelection')
     expect(actions.firstElementChild).toHaveTextContent(
       'dataset.newKnowledge.documentsSelected:{"count":1}',
     )
@@ -2795,6 +2849,41 @@ describe('DocumentsPage', () => {
     await waitFor(() =>
       expect(screen.getByRole('heading', { name: 'dataset.newKnowledge.documents' })).toHaveFocus(),
     )
+  })
+
+  it('keeps unsupported bulk document actions disabled', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [
+        {
+          items: [
+            document({ id: 'one', rowVersion: 2, title: 'One.pdf' }),
+            document({ id: 'two', rowVersion: 4, title: 'Two.pdf' }),
+          ],
+        },
+      ],
+    }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('checkbox', { name: 'One.pdf' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Two.pdf' }))
+
+    const actions = screen.getByRole('group', {
+      name: 'dataset.newKnowledge.bulkDocumentActions',
+    })
+    expect(
+      within(actions).getByRole('button', { name: 'dataset.newKnowledge.downloadDocuments' }),
+    ).toBeDisabled()
+    expect(
+      within(actions).getByRole('button', { name: 'dataset.newKnowledge.deleteDocuments' }),
+    ).toBeDisabled()
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(removeDocumentMutation).not.toHaveBeenCalled()
+    expect(screen.getByRole('checkbox', { name: 'One.pdf' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Two.pdf' })).toBeChecked()
+    expect(
+      screen.getByRole('group', { name: 'dataset.newKnowledge.bulkDocumentActions' }),
+    ).toBeInTheDocument()
   })
 
   it('prompts for model setup before re-indexing selected documents', async () => {
@@ -2928,8 +3017,21 @@ describe('DocumentsPage', () => {
       pages: [
         {
           items: [
-            task({ id: 'running' }),
-            task({ id: 'failed', state: 'failed', errorMessage: 'Parser failed' }),
+            task({ id: 'running', progressCompleted: 1, progressTotal: 3 }),
+            task({
+              id: 'failed',
+              state: 'failed',
+              errorMessage: 'Parser failed',
+              progressCompleted: 8,
+              progressTotal: 12,
+            }),
+            task({
+              canRetry: true,
+              id: 'canceled',
+              state: 'canceled',
+              progressCompleted: 2,
+              progressTotal: 5,
+            }),
             task({ id: 'done', state: 'succeeded' }),
           ],
         },
@@ -2939,9 +3041,9 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     const trigger = screen.getByRole('button', {
-      name: 'dataset.newKnowledge.tasksWithAttention:{"count":2}',
+      name: 'dataset.newKnowledge.tasksWithAttention:{"count":3}',
     })
-    expect(trigger).toHaveTextContent('2')
+    expect(trigger).toHaveTextContent('3')
     expect(trigger).toHaveAttribute('data-has-error', 'true')
     await user.click(trigger)
     const panel = screen.getByRole('dialog', { name: 'dataset.newKnowledge.backgroundTasks' })
@@ -2953,10 +3055,15 @@ describe('DocumentsPage', () => {
       within(panel).getByText((_, element) =>
         Boolean(
           element?.tagName === 'P' &&
-          element.textContent?.includes('dataset.newKnowledge.processingTaskState.running') &&
-          element.textContent.includes('·'),
+          element.textContent?.includes('1/3') &&
+          element.textContent.includes('—'),
         ),
       ),
+    ).toBeInTheDocument()
+    expect(
+      within(panel).getByRole('button', {
+        name: /dataset\.newKnowledge\.retryTask.*canceled/,
+      }),
     ).toBeInTheDocument()
   })
 
@@ -2968,7 +3075,7 @@ describe('DocumentsPage', () => {
         {
           items: [
             task({ id: 'document-task', state: 'succeeded' }),
-            backgroundTask({ id: 'reindex-task' }),
+            backgroundTask({ id: 'reindex-task', progressCompleted: 12, progressTotal: 12 }),
             backgroundTask({
               errorMessage: 'Source sync failed',
               id: 'source-task',
@@ -2992,10 +3099,12 @@ describe('DocumentsPage', () => {
     const panel = screen.getByRole('dialog', { name: 'dataset.newKnowledge.backgroundTasks' })
     expect(within(panel).getAllByRole('listitem')).toHaveLength(3)
     expect(
-      within(panel).getByText('dataset.newKnowledge.overview.operation.document_reindex'),
+      within(panel).getByText('dataset.newKnowledge.reindexDocuments · 12'),
     ).toBeInTheDocument()
     expect(
-      within(panel).getByText('dataset.newKnowledge.overview.operation.source_sync'),
+      within(panel).getByText(
+        'dataset.newKnowledge.overview.operation.source_sync · Notion support SOP',
+      ),
     ).toBeInTheDocument()
     expect(within(panel).getByText('Source sync failed')).toBeInTheDocument()
   })
@@ -3032,12 +3141,12 @@ describe('DocumentsPage', () => {
 
     expect(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.interruptTask · Alpha.pdf · task-a',
+        name: 'dataset.newKnowledge.interruptTask · dataset.newKnowledge.addDocument · Alpha.pdf · task-a',
       }),
     ).toBeInTheDocument()
     expect(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.interruptTask · Beta.pdf · task-b',
+        name: 'dataset.newKnowledge.interruptTask · dataset.newKnowledge.addDocument · Beta.pdf · task-b',
       }),
     ).toBeInTheDocument()
   })
@@ -3225,7 +3334,7 @@ describe('DocumentsPage', () => {
       }),
     )
     const nextAction = screen.getByRole('button', {
-      name: 'dataset.newKnowledge.interruptTask · sso-enterprise.pdf · new-action',
+      name: 'dataset.newKnowledge.interruptTask · dataset.newKnowledge.addDocument · sso-enterprise.pdf · new-action',
     })
     act(() => nextAction.focus())
     expect(nextAction).toHaveFocus()
@@ -3256,11 +3365,11 @@ describe('DocumentsPage', () => {
     )
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.interruptTask · sso-enterprise.pdf · pending-action',
+        name: 'dataset.newKnowledge.interruptTask · dataset.newKnowledge.addDocument · sso-enterprise.pdf · pending-action',
       }),
     )
     const nextAction = screen.getByRole('button', {
-      name: 'dataset.newKnowledge.interruptTask · sso-enterprise.pdf · focus-target',
+      name: 'dataset.newKnowledge.interruptTask · dataset.newKnowledge.addDocument · sso-enterprise.pdf · focus-target',
     })
     act(() => nextAction.focus())
 
@@ -3294,9 +3403,7 @@ describe('DocumentsPage', () => {
     rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
     await act(async () => resolveRetry?.(task({ id: 'advanced-success', state: 'queued' })))
 
-    expect(
-      screen.getByText(/dataset\.newKnowledge\.processingTaskState\.running/),
-    ).toBeInTheDocument()
+    expect(screen.getByText(/45%/)).toBeInTheDocument()
   })
 
   it('ignores a delayed task action after document permission is revoked', async () => {
@@ -3394,21 +3501,26 @@ describe('DocumentsPage', () => {
     expect(screen.queryByText('dataset.newKnowledge.taskActionFailed')).not.toBeInTheDocument()
   })
 
-  it('does not offer retry for a canceled task', async () => {
+  it('offers retry for an interrupted task when the operation is retryable', async () => {
     const user = userEvent.setup()
     documentsQuery.data = { pages: [{ items: [document({})] }] }
-    tasksQuery.data = { pages: [{ items: [task({ id: 'canceled', state: 'canceled' })] }] }
+    tasksQuery.data = {
+      pages: [{ items: [task({ canRetry: true, id: 'canceled', state: 'canceled' })] }],
+    }
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasks',
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
       }),
     )
 
-    expect(
-      screen.queryByRole('button', { name: 'dataset.newKnowledge.retryTask' }),
-    ).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }))
+    expect(retryMutation.mutateAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: expect.objectContaining({ task_id: 'canceled', task_kind: 'document' }),
+      }),
+    )
   })
 
   it('clears an old failure across retry and shows the next terminal error', async () => {
@@ -4790,15 +4902,9 @@ describe('DocumentsPage', () => {
         name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
       }),
     )
-    await waitFor(() =>
-      expect(
-        screen.getByText(/dataset\.newKnowledge\.processingTaskState\.running.*"progress":80/),
-      ).toBeInTheDocument(),
-    )
+    await waitFor(() => expect(screen.getByText(/80%/)).toBeInTheDocument())
     await act(async () => {})
-    expect(
-      screen.queryByText(/dataset\.newKnowledge\.processingTaskState\.running.*"progress":20/),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByText(/20%/)).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
     tasksQuery.data = {

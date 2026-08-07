@@ -130,6 +130,10 @@ describe("migration file rendering", () => {
       "packages/database/migrations/0034_knowledge_space_emoji_icons.tidb.sql",
       "packages/database/migrations/0035_research_task_answer_streaming.postgres.sql",
       "packages/database/migrations/0035_research_task_answer_streaming.tidb.sql",
+      "packages/database/migrations/0036_page_index_findability.postgres.sql",
+      "packages/database/migrations/0036_page_index_findability.tidb.sql",
+      "packages/database/migrations/0037_logical_document_zero_revision_deletion.postgres.sql",
+      "packages/database/migrations/0037_logical_document_zero_revision_deletion.tidb.sql",
     ]);
     expect(artifacts[2]?.content).toContain('ALTER COLUMN "dense_vector" TYPE vector');
     expect(artifacts[2]?.content).not.toContain("vector(1536)");
@@ -625,6 +629,39 @@ describe("migration file rendering", () => {
     );
   });
 
+  it("allows zero revisions only for logical-document deletion records", () => {
+    const artifacts = getDatabaseMigrationArtifacts();
+
+    for (const dialect of ["postgres", "tidb"] as const) {
+      const migration = artifacts.find((artifact) =>
+        artifact.path.endsWith(`0037_logical_document_zero_revision_deletion.${dialect}.sql`),
+      )?.content;
+
+      expect(migration).toContain("deletion_jobs_positive_ck");
+      expect(migration).toContain("deletion_tombstones_positive_ck");
+      expect(migration).toContain("target_type");
+      expect(migration).toContain("logical_document");
+      expect(migration).toContain("target_revision");
+      expect(migration).toContain(">= 0");
+      expect(migration).toContain(
+        dialect === "tidb" ? "<> ''logical_document''" : "<> 'logical_document'",
+      );
+      expect(migration).toContain(">= 1");
+    }
+
+    const tidb = artifacts.find((artifact) =>
+      artifact.path.endsWith("0037_logical_document_zero_revision_deletion.tidb.sql"),
+    )?.content;
+    expect(tidb?.match(/FROM information_schema\.tidb_check_constraints/gu)).toHaveLength(4);
+    expect(tidb?.match(/'ALTER TABLE `deletion_(?:jobs|tombstones)` DROP CHECK/gu)).toHaveLength(2);
+    expect(
+      tidb?.match(/'ALTER TABLE `deletion_(?:jobs|tombstones)` ADD CONSTRAINT/gu),
+    ).toHaveLength(2);
+    expect(tidb).not.toMatch(
+      /ALTER TABLE `deletion_(?:jobs|tombstones)`\s+DROP CONSTRAINT[^;]+ADD CONSTRAINT/gu,
+    );
+  });
+
   it("keeps migration 0015 safe to replay after DDL commits before its marker", () => {
     const artifacts = getDatabaseMigrationArtifacts();
     const postgres = artifacts.find(
@@ -814,6 +851,8 @@ describe("migration file rendering", () => {
       "packages/database/migrations/0033_research_task_final_answers.postgres.sql",
       "packages/database/migrations/0034_knowledge_space_emoji_icons.postgres.sql",
       "packages/database/migrations/0035_research_task_answer_streaming.postgres.sql",
+      "packages/database/migrations/0036_page_index_findability.postgres.sql",
+      "packages/database/migrations/0037_logical_document_zero_revision_deletion.postgres.sql",
     ]);
     expect(
       getPendingMigrationArtifacts({
@@ -853,6 +892,8 @@ describe("migration file rendering", () => {
           "0033_research_task_final_answers",
           "0034_knowledge_space_emoji_icons",
           "0035_research_task_answer_streaming",
+          "0036_page_index_findability",
+          "0037_logical_document_zero_revision_deletion",
         ],
         dialect: "postgres",
       }),

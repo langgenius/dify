@@ -21,9 +21,23 @@ import {
   multimodalEvidenceAnswerLines,
   multimodalEvidenceFromCitations,
 } from "./multimodal-evidence";
+import {
+  estimateResearchModelPromptTokens,
+  notifyResearchModelCallAfter,
+  notifyResearchModelCallBefore,
+} from "./research-model-usage";
+import {
+  retrievalResultFromResearchCheckpoint,
+  validateResearchRetrievalCheckpointScope,
+  validateResearchRetrievalDurableCheckpoint,
+} from "./research-retrieval-checkpoint";
+import {
+  DurableResearchRetrievalPolicy,
+  InteractiveResearchRetrievalPolicy,
+} from "./research-retrieval-policy";
 import type { HybridRetrievalItem } from "./retrieval-fusion";
 import { evidenceTextFromHybridItem } from "./retrieval-rerank";
-import type { BasicHybridRetriever } from "./retrieval-types";
+import type { BasicHybridRetriever, HybridRetrievalResult } from "./retrieval-types";
 
 export interface HybridQueryGeneratorOptions {
   readonly embeddingModel?: string | undefined;
@@ -97,77 +111,152 @@ export function createHybridQueryGenerator({
       const tenantId = input.subject.tenantId;
       const retrievalProfileMetadata = queryRetrievalProfileMetadata(input.retrievalProfile);
       const projectionSnapshotMetadata = queryProjectionSnapshotMetadata(input.projectionSnapshot);
-      const embedStartedAt = Date.now();
-      const resolvedEmbedding = embeddingResolver
-        ? await embeddingResolver.resolve({
-            ...(input.embeddingProfile ? { profile: input.embeddingProfile } : {}),
-            knowledgeSpaceId: input.knowledgeSpaceId,
-            tenantId,
-          })
-        : null;
-      const queryEmbedding = await embedQueryVector({
-        model: resolvedEmbedding?.model ?? effectiveEmbeddingModel,
-        profile: resolvedEmbedding,
-        provider: resolvedEmbedding?.providerInstance ?? effectiveEmbeddingProvider,
-        query: input.query,
-        tenantId,
-      });
-      if (resolvedEmbedding) {
-        if (input.embeddingProfile) {
-          assertObservedEmbeddingDimension({
-            observedDimension: queryEmbedding.vector.length,
-            profile: input.embeddingProfile,
-          });
-        } else {
-          await embeddingResolver?.observeDimension?.({
-            dimension: queryEmbedding.vector.length,
-            knowledgeSpaceId: input.knowledgeSpaceId,
-            revision: resolvedEmbedding.revision,
-            tenantId,
-            vectorSpaceId: resolvedEmbedding.vectorSpaceId,
-          });
-        }
-      }
-
-      if (resolvedEmbedding || effectiveEmbeddingProvider) {
-        yield traceStepEvent("query.embed", embedStartedAt, "ok", {
-          ...(queryEmbedding.embeddingModel ? { model: queryEmbedding.embeddingModel } : {}),
-          dimension: queryEmbedding.vector.length,
-          ...(queryEmbedding.vectorSpaceId ? { vectorSpaceId: queryEmbedding.vectorSpaceId } : {}),
-        });
-      }
-
       const retrieveStartedAt = Date.now();
       const retrievalTopK = input.topK ?? input.retrievalProfile?.topK ?? topK;
-      const retrieval = await retriever.retrieve({
-        ...(queryEmbedding.vectorSpaceId
-          ? { denseProjectionModel: queryEmbedding.vectorSpaceId }
-          : {}),
-        knowledgeSpaceId: input.knowledgeSpaceId,
-        limit: input.topK !== undefined || input.retrievalProfile ? retrievalTopK : limit,
-        mode: input.mode,
-        permissionScope: input.permissionScope,
-        ...(input.projectionSnapshot ? { projectionSnapshot: input.projectionSnapshot } : {}),
-        query: input.query,
-        queryVector: queryEmbedding.vector,
-        ...(input.requestedMode ? { requestedMode: input.requestedMode } : {}),
-        ...(input.retrievalProfile ? { retrievalProfile: input.retrievalProfile } : {}),
-        tenantId,
-        topK: retrievalTopK,
-        traceId: input.traceId,
-      });
+      const restoredCheckpoint = input.researchRetrievalCheckpoint
+        ? validateResearchRetrievalCheckpointScope({
+            checkpoint: input.researchRetrievalCheckpoint,
+            query: input.query,
+            traceId: input.traceId,
+          })
+        : undefined;
+      const restoredDurableCheckpoint = input.researchDurableCheckpoint
+        ? validateResearchRetrievalDurableCheckpoint(input.researchDurableCheckpoint)
+        : undefined;
+      if (restoredCheckpoint && restoredDurableCheckpoint) {
+        throw new Error("Research query cannot restore legacy and durable checkpoints together");
+      }
+      let checkpointWritten = false;
+      let evidenceBundle = restoredCheckpoint;
+      let retrieval: HybridRetrievalResult;
+      if (restoredCheckpoint) {
+        retrieval = retrievalResultFromResearchCheckpoint(restoredCheckpoint);
+      } else {
+        const embedStartedAt = Date.now();
+        const resolvedEmbedding = embeddingResolver
+          ? await embeddingResolver.resolve({
+              ...(input.embeddingProfile ? { profile: input.embeddingProfile } : {}),
+              knowledgeSpaceId: input.knowledgeSpaceId,
+              tenantId,
+            })
+          : null;
+        const queryEmbedding = await embedQueryVector({
+          model: resolvedEmbedding?.model ?? effectiveEmbeddingModel,
+          profile: resolvedEmbedding,
+          provider: resolvedEmbedding?.providerInstance ?? effectiveEmbeddingProvider,
+          query: input.query,
+          tenantId,
+        });
+        if (resolvedEmbedding) {
+          if (input.embeddingProfile) {
+            assertObservedEmbeddingDimension({
+              observedDimension: queryEmbedding.vector.length,
+              profile: input.embeddingProfile,
+            });
+          } else {
+            await embeddingResolver?.observeDimension?.({
+              dimension: queryEmbedding.vector.length,
+              knowledgeSpaceId: input.knowledgeSpaceId,
+              revision: resolvedEmbedding.revision,
+              tenantId,
+              vectorSpaceId: resolvedEmbedding.vectorSpaceId,
+            });
+          }
+        }
+        if (resolvedEmbedding || effectiveEmbeddingProvider) {
+          yield traceStepEvent("query.embed", embedStartedAt, "ok", {
+            ...(queryEmbedding.embeddingModel ? { model: queryEmbedding.embeddingModel } : {}),
+            dimension: queryEmbedding.vector.length,
+            ...(queryEmbedding.vectorSpaceId
+              ? { vectorSpaceId: queryEmbedding.vectorSpaceId }
+              : {}),
+          });
+        }
+        retrieval = await retriever.retrieve({
+          ...(queryEmbedding.vectorSpaceId
+            ? { denseProjectionModel: queryEmbedding.vectorSpaceId }
+            : {}),
+          knowledgeSpaceId: input.knowledgeSpaceId,
+          limit: input.topK !== undefined || input.retrievalProfile ? retrievalTopK : limit,
+          mode: input.mode,
+          ...(input.onResearchRetrievalCheckpoint
+            ? {
+                onResearchRound: async (checkpoint) => {
+                  const bundle = evidenceBundleAssembler.assemble({
+                    query: input.query,
+                    retrieval: checkpoint.result,
+                    ...(checkpoint.terminal ? {} : { state: "partial" as const }),
+                    traceId: input.traceId,
+                  });
+                  await input.onResearchRetrievalCheckpoint?.(bundle);
+                  checkpointWritten = checkpoint.terminal;
+                },
+              }
+            : {}),
+          ...(input.onResearchDurableCheckpoint
+            ? {
+                onResearchSearchCheckpoint: async (boundary) => {
+                  const bundle = evidenceBundleAssembler.assemble({
+                    query: input.query,
+                    retrieval: boundary.result,
+                    ...(boundary.checkpoint.phase === "complete"
+                      ? {}
+                      : { state: "partial" as const }),
+                    traceId: input.traceId,
+                  });
+                  await input.onResearchDurableCheckpoint?.({
+                    evidenceBundle: bundle,
+                    searchState: boundary.checkpoint,
+                  });
+                },
+              }
+            : {}),
+          permissionScope: input.permissionScope,
+          ...(input.projectionSnapshot ? { projectionSnapshot: input.projectionSnapshot } : {}),
+          query: input.query,
+          queryVector: queryEmbedding.vector,
+          ...(input.requestedMode ? { requestedMode: input.requestedMode } : {}),
+          ...(input.researchModelCallObserver
+            ? { researchModelCallObserver: input.researchModelCallObserver }
+            : {}),
+          ...(input.mode === "research"
+            ? {
+                researchExecutionPolicy:
+                  input.researchExecutionKind === "durable"
+                    ? DurableResearchRetrievalPolicy
+                    : InteractiveResearchRetrievalPolicy,
+              }
+            : {}),
+          ...(restoredDurableCheckpoint
+            ? {
+                researchSearchCheckpoint: restoredDurableCheckpoint.searchState,
+                researchSearchCheckpointResult: retrievalResultFromResearchCheckpoint(
+                  restoredDurableCheckpoint.evidenceBundle,
+                ),
+              }
+            : {}),
+          ...(input.retrievalProfile ? { retrievalProfile: input.retrievalProfile } : {}),
+          tenantId,
+          topK: retrievalTopK,
+          traceId: input.traceId,
+        });
+      }
       yield traceStepEvent("query.retrieve", retrieveStartedAt, "ok", {
+        ...(restoredCheckpoint || restoredDurableCheckpoint ? { checkpointed: true } : {}),
         itemCount: retrieval.items.length,
         ...(projectionSnapshotMetadata ? { projectionSnapshot: projectionSnapshotMetadata } : {}),
         ...(retrievalProfileMetadata ? { retrievalProfile: retrievalProfileMetadata } : {}),
         ...(retrieval.plan ? { plan: retrieval.plan } : {}),
         ...(retrieval.metrics ? { metrics: retrieval.metrics } : {}),
       });
-      const evidenceBundle = evidenceBundleAssembler.assemble({
+      evidenceBundle ??= evidenceBundleAssembler.assemble({
         query: input.query,
         retrieval,
         traceId: input.traceId,
       });
+      if (!restoredCheckpoint && !checkpointWritten) {
+        await input.onResearchRetrievalCheckpoint?.(evidenceBundle);
+      }
 
       if (retrieval.items.length === 0) {
         yield {
@@ -208,20 +297,45 @@ export function createHybridQueryGenerator({
         citations,
         maxItems: maxMultimodalEvidenceItems,
       });
-      const generatedAnswer =
-        multimodalAnswerProvider && multimodalEvidence.length > 0
-          ? await multimodalAnswerProvider.generate({
-              evidence: retrieval.items.map((item) => ({
-                citation: item.citation,
-                nodeId: item.nodeId,
-                text: evidenceTextFromHybridItem(item),
-              })),
-              multimodalEvidence,
-              query: input.query,
-              tenantId,
-              traceId: input.traceId,
-            })
-          : undefined;
+      let generatedAnswer: MultimodalAnswerProviderResult | undefined;
+      if (multimodalAnswerProvider && multimodalEvidence.length > 0) {
+        const modelCall = {
+          callId: `query-answer:${input.traceId}:${input.researchExecutionAttempt ?? 0}:multimodal-extractive`,
+          estimatedPromptTokens: estimateResearchModelPromptTokens({
+            evidence: retrieval.items.map((item) => evidenceTextFromHybridItem(item)),
+            query: input.query,
+          }),
+          maxOutputTokens: 1_024,
+          model: "configured-multimodal-provider",
+          provider: "configured-multimodal-provider",
+          step: "query.answer" as const,
+        };
+        await notifyResearchModelCallBefore(input.researchModelCallObserver, modelCall);
+        try {
+          generatedAnswer = await multimodalAnswerProvider.generate({
+            evidence: retrieval.items.map((item) => ({
+              citation: item.citation,
+              nodeId: item.nodeId,
+              text: evidenceTextFromHybridItem(item),
+            })),
+            multimodalEvidence,
+            query: input.query,
+            tenantId,
+            traceId: input.traceId,
+          });
+        } catch (error) {
+          await notifyResearchModelCallAfter(input.researchModelCallObserver, {
+            ...modelCall,
+            status: "failed",
+          });
+          throw error;
+        }
+        await notifyResearchModelCallAfter(input.researchModelCallObserver, {
+          ...modelCall,
+          ...(generatedAnswer.metadata === undefined ? {} : { metadata: generatedAnswer.metadata }),
+          status: "succeeded",
+        });
+      }
       const answer = truncateAnswer(
         generatedAnswer?.text.trim()
           ? generatedAnswer.text
@@ -327,7 +441,10 @@ async function embedQueryVector({
   }
 
   if (profile) {
-    assertEmbeddingModelMatchesProfile({ observedModel: resolvedModel, profile });
+    assertEmbeddingModelMatchesProfile({
+      observedModel: resolvedModel,
+      profile,
+    });
     assertObservedEmbeddingDimension({
       observedDimension: vector.length,
       profile,

@@ -15,6 +15,7 @@ import {
   type DocumentProcessingTaskRepository,
   type DocumentSettingsRepository,
   type DurableTaskOperationalMetrics,
+  type GoldenQuestionRepository,
   type GraphIndexRepository,
   type IndexProjectionRepository,
   type KnowledgeGatewayOptions,
@@ -33,6 +34,9 @@ import {
   type LegacySpacePublicationBootstrapService,
   type LogicalDocumentRepository,
   type ModelCapabilityPreflight,
+  type PageIndexFindabilityEvaluator,
+  type PageIndexFindabilityRepository,
+  type PageIndexSummaryRepairRuntime,
   type PageIndexUpgradeBackfillRepository,
   type PageIndexUpgradeBackfillRuntime,
   type PageIndexUpgradeBackfillService,
@@ -64,6 +68,8 @@ import {
   createKnowledgeSpaceSemanticIngestionPostProcessor,
   createLegacySpacePublicationBootstrapRuntime,
   createLegacySpacePublicationBootstrapService,
+  createPageIndexFindabilityPublicationEvaluator,
+  createPageIndexSummaryRepairRuntime,
   createPageIndexUpgradeBackfillRuntime,
   createPageIndexUpgradeBackfillService,
   createRepositoryDocumentCompilationCandidateEvaluator,
@@ -107,6 +113,14 @@ export interface CreateApiDocumentCompilationRuntimeOptions {
   readonly deletionFence?: DeletionLifecycleFenceGuard | undefined;
   readonly objectWriteAdmission?: DeletionObjectWriteAdmission | undefined;
   readonly embeddingResolver: KnowledgeSpaceEmbeddingResolver | undefined;
+  readonly findability?:
+    | {
+        readonly evaluator: PageIndexFindabilityEvaluator;
+        readonly goldenQuestions: Pick<GoldenQuestionRepository, "listTrusted">;
+        readonly onError?: ((error: unknown) => void) | undefined;
+        readonly repository: PageIndexFindabilityRepository;
+      }
+    | undefined;
   readonly initialProfileActivations?:
     | KnowledgeSpaceUnpublishedProfileActivationRepository
     | undefined;
@@ -168,6 +182,7 @@ export interface ApiDocumentCompilationRuntimeAssembly {
   readonly legacyBootstrapService: LegacySpacePublicationBootstrapService;
   readonly pageIndexUpgradeBackfillRuntime: PageIndexUpgradeBackfillRuntime;
   readonly pageIndexUpgradeBackfillService: PageIndexUpgradeBackfillService;
+  readonly pageIndexSummaryRepairRuntime?: PageIndexSummaryRepairRuntime | undefined;
   readonly profileMigrationRuntime?: KnowledgeSpaceProfileMigrationRuntime | undefined;
   readonly runtime: DocumentCompilationRuntime;
   readonly sourceCompilationPublication: ReturnType<
@@ -216,6 +231,7 @@ export function createApiDocumentCompilationRuntime({
   deletionFence,
   objectWriteAdmission,
   embeddingResolver,
+  findability,
   initialProfileActivations,
   modelCapabilityPreflight,
   metrics,
@@ -311,6 +327,18 @@ export function createApiDocumentCompilationRuntime({
     publications: repositories.publications,
     validator,
   });
+  const findabilityPublication = findability
+    ? createPageIndexFindabilityPublicationEvaluator({
+        evaluator: findability.evaluator,
+        findability: findability.repository,
+        goldenQuestions: findability.goldenQuestions,
+        maxEvidenceIds: 1_000,
+        maxQuestions: 100,
+        nodes: repositories.nodes,
+        outlines: repositories.outlines,
+        profiles: repositories.profiles,
+      })
+    : undefined;
   const fingerprintMaterial = createRepositoryDocumentCompilationFingerprintMaterialResolver({
     artifacts: repositories.artifacts,
     assets: repositories.assets,
@@ -465,13 +493,19 @@ export function createApiDocumentCompilationRuntime({
             }
           : {}),
         ...(multimodal?.documentMultimodalLocalAssetAllowlist
-          ? { multimodalLocalAssetAllowlist: multimodal.documentMultimodalLocalAssetAllowlist }
+          ? {
+              multimodalLocalAssetAllowlist: multimodal.documentMultimodalLocalAssetAllowlist,
+            }
           : {}),
         ...(multimodal?.documentMultimodalMaxExtractedAssets
-          ? { multimodalMaxExtractedAssets: multimodal.documentMultimodalMaxExtractedAssets }
+          ? {
+              multimodalMaxExtractedAssets: multimodal.documentMultimodalMaxExtractedAssets,
+            }
           : {}),
         ...(multimodal?.documentMultimodalMaxLocalAssetBytes
-          ? { multimodalMaxLocalAssetBytes: multimodal.documentMultimodalMaxLocalAssetBytes }
+          ? {
+              multimodalMaxLocalAssetBytes: multimodal.documentMultimodalMaxLocalAssetBytes,
+            }
           : {}),
         ...(multimodal?.documentMultimodalMaxPdfRasterizedAssets
           ? {
@@ -497,6 +531,18 @@ export function createApiDocumentCompilationRuntime({
     profiles: repositories.profiles,
   });
   const processor = createDocumentCompilationPublicationProcessor({
+    ...(findabilityPublication
+      ? {
+          afterPublished: ({ attempt, publication }) =>
+            findabilityPublication
+              .evaluatePublished({
+                attempt,
+                publicationFingerprint: publication.published.fingerprint,
+              })
+              .then(() => undefined),
+          ...(findability?.onError ? { onAfterPublishedError: findability.onError } : {}),
+        }
+      : {}),
     assets: repositories.assets,
     compileCandidate,
     coordinator,
@@ -551,6 +597,21 @@ export function createApiDocumentCompilationRuntime({
   const pageIndexUpgradeBackfillService = createPageIndexUpgradeBackfillService({
     repository: repositories.pageIndexUpgradeBackfills,
   });
+  const pageIndexSummaryRepairRuntime = findability
+    ? createPageIndexSummaryRepairRuntime({
+        attempts: repositories.attempts,
+        compilationJobs,
+        intervalMs: config.tickMs,
+        leaseMs: config.leaseMs,
+        maxAttempts: Math.min(3, config.maxAttempts),
+        maxBatchSize: config.batchSize,
+        ...(findability.onError ? { onError: findability.onError } : {}),
+        repository: findability.repository,
+        retryBaseMs: config.retryBaseMs,
+        retryMaxMs: config.retryMaxMs,
+        workerId: `page-index-summary-repair-${workerId}`,
+      })
+    : undefined;
   let started = false;
   let documentMutationTimer: ReturnType<typeof setInterval> | undefined;
   let profileMigrationTimer: ReturnType<typeof setInterval> | undefined;
@@ -569,6 +630,7 @@ export function createApiDocumentCompilationRuntime({
     legacyBootstrapService,
     pageIndexUpgradeBackfillRuntime,
     pageIndexUpgradeBackfillService,
+    ...(pageIndexSummaryRepairRuntime ? { pageIndexSummaryRepairRuntime } : {}),
     ...(profileMigrationRuntime ? { profileMigrationRuntime } : {}),
     runtime,
     sourceCompilationPublication,
@@ -581,6 +643,7 @@ export function createApiDocumentCompilationRuntime({
       runtime.start();
       legacyBootstrapRuntime.start();
       pageIndexUpgradeBackfillRuntime.start();
+      pageIndexSummaryRepairRuntime?.start();
       void documentMutationReconciler.tick().catch(() => undefined);
       documentMutationTimer = setInterval(
         () => void documentMutationReconciler.tick().catch(() => undefined),
@@ -598,6 +661,7 @@ export function createApiDocumentCompilationRuntime({
         return;
       }
       pageIndexUpgradeBackfillRuntime.stop();
+      pageIndexSummaryRepairRuntime?.stop();
       if (documentMutationTimer) {
         clearInterval(documentMutationTimer);
         documentMutationTimer = undefined;

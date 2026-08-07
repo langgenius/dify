@@ -196,14 +196,14 @@ describe("PageIndex semantic tree search", () => {
       timeoutMs: 5_000,
     });
 
-    await expect(
-      search.score({
-        candidates: [candidate("c1")],
-        query: "invoice",
-        reasoningModel: REASONING_MODEL,
-        tenantId: "tenant-1",
-      }),
-    ).rejects.toThrow("did not match the selected reasoning model");
+    const result = search.score({
+      candidates: [candidate("c1")],
+      query: "invoice",
+      reasoningModel: REASONING_MODEL,
+      tenantId: "tenant-1",
+    });
+    await expect(result).rejects.toMatchObject({ failureKind: "integrity" });
+    await expect(result).rejects.toThrow("did not match the selected reasoning model");
   });
 });
 

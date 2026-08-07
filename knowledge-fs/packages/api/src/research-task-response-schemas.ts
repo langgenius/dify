@@ -103,6 +103,13 @@ export const ResearchTaskDryRunPlanResponseSchema = z
       scannedResources: z.number().int().nonnegative(),
       toolCalls: z.number().int().nonnegative(),
       totalTokens: z.number().int().nonnegative(),
+      workBounds: z
+        .object({
+          modelCalls: researchTaskEstimateBoundSchema(),
+          openedResources: researchTaskEstimateBoundSchema(),
+          retrievalSteps: researchTaskEstimateBoundSchema(),
+        })
+        .optional(),
     }),
     knowledgeSpaceId: z.string().uuid(),
     query: z.string().min(1),
@@ -130,3 +137,11 @@ export const ResearchTaskDryRunPlanResponseSchema = z
     strategyVersion: z.literal("research-dry-run-planner-v1"),
   })
   .openapi("ResearchTaskDryRunPlan");
+
+function researchTaskEstimateBoundSchema() {
+  return z.object({
+    estimated: z.number().int().nonnegative(),
+    max: z.number().int().nonnegative(),
+    min: z.number().int().nonnegative(),
+  });
+}

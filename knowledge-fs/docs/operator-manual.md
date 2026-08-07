@@ -143,10 +143,13 @@ The service has three retrieval pipelines and one optional public router:
 
 - **Fast** runs ordinary dense + FTS hybrid recall, candidate fusion, and the configured final
   rerank.
-- **Research** embeds the query, runs published dense semantic Value Search, rebuilds the bounded
-  candidates into their document/section hierarchy, and asks the space's frozen reasoning model
-  to score every candidate through PageIndex-style tree reasoning. It does not run FTS, Graph
-  expansion, or the ordinary candidate reranker.
+- **Research** embeds the query, runs published dense semantic Value Search, selects a bounded
+  document shortlist, reads those outlines in one batch, and asks the frozen reasoning model to
+  choose nodes from each fitting title-and-summary tree in one request per document. Value priors
+  propagate to outline nodes and merge with the LLM choices before bounded immutable ranges are
+  opened. Oversized or weak-summary trees use a bounded flattened fallback; repeated recoverable
+  provider failures use the Value lane. Research does not run FTS, Graph expansion, or the ordinary
+  candidate reranker.
 - **Deep** runs ordinary hybrid recall, adds permission-scoped Graph expansion, merges both
   candidate sets, and then runs one unified final rerank.
 - An explicit `mode: "auto"` asks the knowledge space's published `reasoningModel` through the
@@ -180,6 +183,26 @@ Operate with these checks:
   with `mode=auto`, backfill each job to a reviewed concrete mode or cancel it. Workers fail closed
   on unresolved legacy Auto jobs because replaying the old heuristic would violate the frozen
   model/publication contract.
+
+Research-specific triage:
+
+- Compare `pageIndexSelectedDocuments`, `pageIndexLayeredDocuments`, `pageIndexLayeredSteps`, and
+  `pageIndexFallbackDocuments` to distinguish document recall, book-like traversal depth, and
+  quality fallback. `pageIndexWholeTreeDocuments` is compatibility-path telemetry, not the
+  production default.
+- Use `pageIndexSerializedTreeTokens`, `pageIndexScannedNodes`, `researchModelCalls`,
+  `researchRounds`, and `researchOpenedResources` when diagnosing latency or cost.
+- Inspect `degradationFlags`, `researchBudgetExhaustedReasons`, and
+  `researchSufficiencyReached` before treating a partial result as a provider outage.
+- Durable Research writes navigation checkpoints after every successful outline level and
+  evidence-only checkpoints at replay-safe round boundaries. Retrieval resumes from the saved
+  frontier; synthesis reuses the latest authorized evidence checkpoint.
+- The findability evaluator consumes existing human-maintained Golden Questions only. No labels
+  means `not-evaluated`; it must not be treated as a failed tree or publication blocker.
+- A failed, sufficiently sampled findability result routes only that exact publication generation
+  to hybrid retrieval and leases at most one summary repair per document version. Inspect
+  `knowledge_fs.page_index.findability_error` logs and
+  `page_index_findability_evaluations.summary_repair_*` fields before retrying manually.
 
 Do not place raw answer text, document chunks, prompts, JWTs, uploaded bytes, or AnswerTrace
 evidence text in operational logs/OTLP attributes unless an incident-specific data handling process

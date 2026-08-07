@@ -114,7 +114,10 @@ export const useFileUpload = ({
 
   const fileUploadConfig = useMemo(
     () => ({
-      file_size_limit: fileUploadConfigResponse?.file_size_limit ?? 15,
+      file_size_limit:
+        fileUploadConfigResponse?.knowledge_file_size_limit ??
+        fileUploadConfigResponse?.file_size_limit ??
+        15,
       batch_count_limit: supportBatchUpload
         ? (fileUploadConfigResponse?.batch_count_limit ?? 5)
         : 1,

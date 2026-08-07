@@ -415,12 +415,13 @@ published `defaultMode`. Explicit `fast`, `research`, and `deep` requests also b
 
 The model is instructed to select the least expensive sufficient pipeline: **Fast** for ordinary
 dense + FTS hybrid recall, fusion, and final rerank; **Research** for published semantic Value
-Search followed by PageIndex hierarchy-aware LLM tree scoring, without FTS, Graph, or the ordinary
-reranker; and **Deep** for ordinary hybrid recall plus Graph expansion, followed by one unified
-final rerank. Selection is not implemented by hard-coded CJK/language, query-length, word-count, or
-keyword rules. A timeout, provider failure, invalid response, or model-identity mismatch safely
-degrades to the published `defaultMode` and is recorded in the trace; it never falls back to the
-removed heuristic.
+Search, bounded document selection, and book-like PageIndex navigation one outline level at a time,
+without FTS, Graph, or the ordinary reranker; and **Deep** for ordinary hybrid recall plus Graph expansion, followed by
+one unified final rerank. Selection is not implemented by hard-coded CJK/language, query-length,
+word-count, or keyword rules. A timeout, provider failure, invalid response, or model-identity
+mismatch in the Auto router safely degrades to the published `defaultMode` and is recorded in the
+trace; it never falls back to the removed heuristic. A frozen-model identity mismatch inside the
+Research retrieval lane itself remains a terminal integrity error.
 
 **Response headers**:
 
@@ -513,10 +514,15 @@ and `totalMs`. Mode-specific fields are:
 - **Fast**: ordinary dense + FTS hybrid recall and candidate fusion, followed by the single final
   rerank pass when reranking is enabled by the published profile.
 - **Research**: dense candidate count/latency for semantic Value Search plus PageIndex fields such
-  as `pageIndexMatchedNodes`, `pageIndexOpenedRanges`, candidate truncation, selected sections, the
-  semantic LLM score version, and threshold-filtered candidates. FTS/fusion/ordinary-rerank plan
-  limits are zero and no Graph expansion is used. The final evidence `score` is the frozen
-  reasoning model's strict `[0,1]` relevance score, not a dense similarity score.
+  as selected/layered/compatibility/fallback document counts, layered steps, serialized prompt-token
+  estimate, matched/scanned nodes, opened ranges, candidate truncation, rounds, continuation
+  searches, model calls, opened resources, retrieval steps, sufficiency, degradation, and
+  budget-exhaustion reasons. FTS,
+  ordinary fusion/rerank, and Graph expansion remain disabled. When the LLM selects a node, its
+  strict `[0,1]` relevance score is authoritative; Value priors schedule and supplement nodes and
+  are not presented as a separate user score. Recoverable selection failures can degrade to the
+  bounded Value lane, while permission, tenant, publication-snapshot, checkpoint-scope, and frozen
+  model-identity failures remain terminal.
 - **Deep**: ordinary hybrid fields plus `graphExpansionSeeds`, traversed entities, relations,
   candidates, latency, and timeout state, followed by the single final rerank pass when reranking
   is enabled by the published profile.
@@ -836,7 +842,7 @@ published reasoning model before the deterministic dry-run planner runs; `retrie
 `requestedMode: "auto"` and reports the concrete `resolvedMode`.
 
 **Responses**:
-- `200`: `ResearchTaskDryRunPlan` `{ knowledgeSpaceId, query, strategyVersion, budget: { budgetUsd?, exceedsBudget, remainingBudgetUsd? }, estimates: { costUsd: { currency, estimated, min, max }, inputTokens, outputTokens, totalTokens, latencyMs: { p50, p95 }, retrievalSteps, scannedResources, toolCalls, cacheHitProbability }, retrievalPlan: { requestedMode, resolvedMode, queryLanguage, topK, denseTopK, ftsTopK, fusionLimit, rerankCandidateLimit, strategyVersion }, steps: [{ name: enum(analyze|generate|inspect|plan|retrieve), estimatedInputTokens, estimatedOutputTokens, estimatedToolCalls, estimatedLatencyMs, estimatedCostUsd }] }`.
+- `200`: `ResearchTaskDryRunPlan` `{ knowledgeSpaceId, query, strategyVersion, budget: { budgetUsd?, exceedsBudget, remainingBudgetUsd? }, estimates: { costUsd: { currency, estimated, min, max }, inputTokens, outputTokens, totalTokens, latencyMs: { p50, p95 }, retrievalSteps, scannedResources, toolCalls, cacheHitProbability, workBounds?: { modelCalls: { min, estimated, max }, openedResources: { min, estimated, max }, retrievalSteps: { min, estimated, max } } }, retrievalPlan: { requestedMode, resolvedMode, queryLanguage, topK, denseTopK, ftsTopK, fusionLimit, rerankCandidateLimit, strategyVersion }, steps: [{ name: enum(analyze|generate|inspect|plan|retrieve), estimatedInputTokens, estimatedOutputTokens, estimatedToolCalls, estimatedLatencyMs, estimatedCostUsd }] }`.
 - `400`; `404`; `401`/`403`.
 
 ### `POST /research-tasks`
@@ -851,6 +857,12 @@ reclassify the query. Router failure uses the frozen profile's `defaultMode`; om
 that default directly without an LLM call. Auto creation requires a query-ready published runtime
 snapshot and returns `503` when that immutable tuple is unavailable; the legacy mutable-profile
 compatibility path does not admit Auto.
+
+Durable Research retrieval persists its layered frontier after every successful outline level and
+an evidence-only partial after each replay-safe sufficiency round. A retrieval retry resumes from
+the saved chapter frontier. If answer synthesis later times out, retry revalidates the
+job/query/trace and current access fences, rehydrates the latest immutable evidence checkpoint, and
+skips repeated embedding, completed tree decisions, and evidence opening.
 
 **Responses**:
 - `201`: `ResearchTaskJob` `{ id, tenantId, subjectId, knowledgeSpaceId, queueJobId, query, stage: enum(queued|planning|retrieving|analyzing|generating|completed|failed|canceled), limits?, budgetUsd?, cost: { totalUsd, budgetUsd?, budgetExceeded?, entries: [{ step, provider, costUsd, usage, recordedAt: number }] }, error?, createdAt: number, updatedAt: number, completedAt?: number }`.
@@ -867,7 +879,7 @@ compatibility path does not admit Auto.
 **Auth**: Bearer; scope `knowledge-spaces:read`.
 **Path params**: `id` (string, min 1). **Query** (strict): `limit` (int 1–100, optional, default 25); `cursor` (optional).
 **Responses**:
-- `200`: `{ items: [{ tenantId, knowledgeSpaceId, researchTaskJobId, sequence: int>0, answer?: string, evidenceBundle }], nextCursor? }`. `answer` is the final Research-only LLM synthesis; legacy rows and evidence-only results omit it. `EvidenceBundle` `{ id, query, state: enum(answerable|partial|not-enough-evidence|conflict|permission-limited), items: [{ nodeId, text, score: 0–1, scores, freshness, citations[], conflicts[], metadata }], missingEvidence: [{ text, reason: enum(not-retrieved|permission-filtered|stale|conflict|unknown), expectedEvidenceId?, metadata }], traceId?, createdAt }`.
+- `200`: `{ items: [{ tenantId, knowledgeSpaceId, researchTaskJobId, sequence: int>0, answer?: string, evidenceBundle }], nextCursor? }`. `answer` is the final Research-only LLM synthesis; legacy rows and replay-safe evidence checkpoints omit it. Intermediate checkpoints use `state: "partial"`; the terminal bundle derives its state from evidence sufficiency and can still be `answerable` after a recoverable lane degradation. `EvidenceBundle` `{ id, query, state: enum(answerable|partial|not-enough-evidence|conflict|permission-limited), items: [{ nodeId, text, score: 0–1, scores, freshness, citations[], conflicts[], metadata }], missingEvidence: [{ text, reason: enum(not-retrieved|permission-filtered|stale|conflict|unknown), expectedEvidenceId?, metadata }], traceId?, createdAt }`.
 - `404`; `401`/`403`.
 
 ### `GET /research-tasks/{id}/events`

@@ -75,8 +75,10 @@ describe("runApiDatabaseMigrations", () => {
         "0033_research_task_final_answers",
         "0034_knowledge_space_emoji_icons",
         "0035_research_task_answer_streaming",
+        "0036_page_index_findability",
+        "0037_logical_document_zero_revision_deletion",
       ],
-      pendingBeforeRun: 35,
+      pendingBeforeRun: 37,
     });
     expect(operations).toEqual([
       "schema",
@@ -152,8 +154,12 @@ describe("runApiDatabaseMigrations", () => {
       "insert",
       "schema",
       "insert",
+      "schema",
+      "insert",
+      "schema",
+      "insert",
     ]);
-    expect(migrationSql).toHaveLength(35);
+    expect(migrationSql).toHaveLength(37);
     expect(migrationSql[2]).toContain("-- Migration id: 0003_projection_set_publications\n");
     expect(migrationSql[2]).toContain("-- Dialect: postgres\n");
     expect(migrationSql[2]).toContain('CREATE TABLE IF NOT EXISTS "projection_set_publications"');
@@ -200,6 +206,10 @@ describe("runApiDatabaseMigrations", () => {
     expect(migrationSql[32]).toContain("-- Migration id: 0033_research_task_final_answers\n");
     expect(migrationSql[33]).toContain("-- Migration id: 0034_knowledge_space_emoji_icons\n");
     expect(migrationSql[34]).toContain("-- Migration id: 0035_research_task_answer_streaming\n");
+    expect(migrationSql[35]).toContain("-- Migration id: 0036_page_index_findability\n");
+    expect(migrationSql[36]).toContain(
+      "-- Migration id: 0037_logical_document_zero_revision_deletion\n",
+    );
     expect(closed).toBe(true);
   });
 

@@ -20,7 +20,9 @@ function oneItemRetriever(): BasicHybridRetriever {
             pageNumber: 2,
             sectionPath: ["Invoice"],
           },
-          metadata: { text: "苏州语灵人工智能科技有限公司 发票号码 26322000003220128076" },
+          metadata: {
+            text: "苏州语灵人工智能科技有限公司 发票号码 26322000003220128076",
+          },
           nodeId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2d02",
           permissionScope: [],
           projectionIds: ["fts-1"],
@@ -96,6 +98,84 @@ const QUERY_INPUT = {
 };
 
 describe("llm answer query generator", () => {
+  it("resumes final synthesis from a durable evidence checkpoint without embedding or retrieval", async () => {
+    const embed = vi.fn(async () => {
+      throw new Error("checkpoint replay must not embed");
+    });
+    const retrieve = vi.fn(async () => {
+      throw new Error("checkpoint replay must not retrieve");
+    });
+    const provider: LlmAnswerProvider = {
+      stream: async function* () {
+        yield { delta: "checkpoint answer", type: "delta" };
+        yield { type: "done" };
+      },
+    };
+    const generator = createLlmAnswerQueryGenerator({
+      embeddingModel: "embedding-v1",
+      embeddings: { embed, kind: "static", models: async () => [] },
+      limit: 3,
+      maxAnswerChars: 1_000,
+      model: "answer-model",
+      provider,
+      retriever: { retrieve },
+      topK: 10,
+    });
+    const events = [];
+    for await (const event of generator.stream({
+      ...QUERY_INPUT,
+      researchExecutionKind: "durable",
+      researchRetrievalCheckpoint: {
+        createdAt: "2026-08-05T00:00:00.000Z",
+        id: "018f0d60-7a49-7cc2-9c1b-5b36f18f8a02",
+        items: [
+          {
+            citations: [
+              {
+                artifactHash: "a".repeat(64),
+                documentAssetId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2d01",
+                documentVersion: 1,
+                sectionPath: ["Invoice"],
+              },
+            ],
+            conflicts: [],
+            freshness: { status: "unknown" },
+            metadata: { projectionIds: ["dense-1"], sources: ["dense"] },
+            nodeId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2d02",
+            score: 0.9,
+            scores: { final: 0.9, retrieval: 0.8 },
+            text: "persisted invoice evidence",
+          },
+        ],
+        missingEvidence: [],
+        query: QUERY_INPUT.query,
+        state: "answerable",
+        traceId: QUERY_INPUT.traceId,
+      },
+    })) {
+      events.push(event);
+    }
+
+    expect(embed).not.toHaveBeenCalled();
+    expect(retrieve).not.toHaveBeenCalled();
+    expect(events).toContainEqual({
+      delta: "checkpoint answer",
+      type: "delta",
+    });
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        step: expect.objectContaining({
+          metadata: expect.objectContaining({
+            checkpointed: true,
+            itemCount: 1,
+          }),
+          name: "query.retrieve",
+        }),
+        type: "trace-step",
+      }),
+    );
+  });
+
   it("retrieves with the resolved knowledge-space vectorSpaceId", async () => {
     const embedCalls: EmbedTextsInput[] = [];
     const retrieveCalls: unknown[] = [];
@@ -104,7 +184,11 @@ describe("llm answer query generator", () => {
         embedCalls.push(input);
         return {
           dense: [[0.2, 0.4]],
-          metadata: { dimension: 2, model: "space-model", provider: "dify-model-runtime" },
+          metadata: {
+            dimension: 2,
+            model: "space-model",
+            provider: "dify-model-runtime",
+          },
           model: "space-model",
         };
       },
@@ -139,7 +223,10 @@ describe("llm answer query generator", () => {
       topK: 10,
     });
 
-    for await (const _event of generator.stream({ ...QUERY_INPUT, mode: "fast" })) {
+    for await (const _event of generator.stream({
+      ...QUERY_INPUT,
+      mode: "fast",
+    })) {
       // Drain the stream.
     }
 
@@ -215,7 +302,10 @@ describe("llm answer query generator", () => {
     expect(reasoningProviderFactory).toHaveBeenCalledWith(retrievalProfile.reasoningModel);
     expect(defaultProvider.stream).not.toHaveBeenCalled();
     expect(selectedProvider.stream).toHaveBeenCalledWith(
-      expect.objectContaining({ model: "space-reasoning-v2", tenantId: "tenant-1" }),
+      expect.objectContaining({
+        model: "space-reasoning-v2",
+        tenantId: "tenant-1",
+      }),
     );
     expect(retrieveCalls).toEqual([
       expect.objectContaining({
@@ -430,14 +520,20 @@ describe("llm answer query generator", () => {
 
     // The text LLM must NOT be invoked when the VLM produced an answer.
     expect(textCalls).toHaveLength(0);
-    expect(events[0]).toEqual({ delta: "The chart shows revenue growth.", type: "delta" });
+    expect(events[0]).toEqual({
+      delta: "The chart shows revenue growth.",
+      type: "delta",
+    });
     expect(events.at(-1)).toEqual(
       expect.objectContaining({
         finishReason: "retrieval-evidence",
         metadata: expect.objectContaining({
           multimodalAnswer: expect.objectContaining({ provider: "configured" }),
           multimodalEvidence: expect.arrayContaining([
-            expect.objectContaining({ caption: "Revenue chart", modality: "image" }),
+            expect.objectContaining({
+              caption: "Revenue chart",
+              modality: "image",
+            }),
           ]),
         }),
         type: "done",
@@ -450,7 +546,10 @@ describe("llm answer query generator", () => {
     const provider: LlmAnswerProvider = {
       kind: "gemini",
       stream: async function* (input) {
-        textCalls.push({ ...input, messages: input.messages.map((message) => ({ ...message })) });
+        textCalls.push({
+          ...input,
+          messages: input.messages.map((message) => ({ ...message })),
+        });
         yield { delta: "fallback answer", type: "delta" };
         yield { finishReason: "STOP", type: "done" };
       },
@@ -465,7 +564,10 @@ describe("llm answer query generator", () => {
         },
       },
       provider,
-      retriever: multimodalRetriever({ caption: "Revenue chart", ocrText: "Q1 +12%" }),
+      retriever: multimodalRetriever({
+        caption: "Revenue chart",
+        ocrText: "Q1 +12%",
+      }),
       topK: 10,
     });
 
@@ -483,7 +585,9 @@ describe("llm answer query generator", () => {
     expect(events[0]).toEqual({ delta: "fallback answer", type: "delta" });
     expect(events.at(-1)).toEqual(
       expect.objectContaining({
-        metadata: expect.objectContaining({ multimodalAnswerFailure: "vlm exploded" }),
+        metadata: expect.objectContaining({
+          multimodalAnswerFailure: "vlm exploded",
+        }),
         type: "done",
       }),
     );
@@ -519,7 +623,10 @@ describe("llm answer query generator", () => {
       expect.objectContaining({ type: "delta" }),
       expect.objectContaining({
         finishReason: "no-retrieval-evidence",
-        metadata: expect.objectContaining({ generator: "llm-answer", model: "gemini-2.5-flash" }),
+        metadata: expect.objectContaining({
+          generator: "llm-answer",
+          model: "gemini-2.5-flash",
+        }),
         type: "done",
       }),
     ]);
@@ -577,7 +684,10 @@ describe("llm answer query generator", () => {
     }
 
     expect(steps.map((step) => step.name)).toEqual(["query.retrieve", "query.answer"]);
-    expect(steps[0]).toMatchObject({ metadata: { itemCount: 1 }, status: "ok" });
+    expect(steps[0]).toMatchObject({
+      metadata: { itemCount: 1 },
+      status: "ok",
+    });
     expect(steps[1]).toMatchObject({
       metadata: {
         answerChars: "Grounded answer.".length,
@@ -618,7 +728,11 @@ describe("llm answer query generator", () => {
       "embeddingModel is required when embeddings are configured",
     );
     expect(() =>
-      createLlmAnswerQueryGenerator({ ...baseOptions, embeddingModel: "  ", embeddings }),
+      createLlmAnswerQueryGenerator({
+        ...baseOptions,
+        embeddingModel: "  ",
+        embeddings,
+      }),
     ).toThrow("embeddingModel is required when embeddings are configured");
     expect(() => createLlmAnswerQueryGenerator({ ...baseOptions, model: "  " })).toThrow(
       "LLM answer query generator model is required",
@@ -633,7 +747,10 @@ describe("llm answer query generator", () => {
       "LLM answer query generator maxAnswerChars must be at least 1",
     );
     expect(() =>
-      createLlmAnswerQueryGenerator({ ...baseOptions, maxEvidenceCharsPerItem: 0 }),
+      createLlmAnswerQueryGenerator({
+        ...baseOptions,
+        maxEvidenceCharsPerItem: 0,
+      }),
     ).toThrow("LLM answer query generator maxEvidenceCharsPerItem must be at least 1");
   });
 
@@ -699,7 +816,10 @@ describe("llm answer query generator", () => {
 
     const steps = [];
     const events = [];
-    for await (const event of generator.stream({ ...QUERY_INPUT, mode: "fast" })) {
+    for await (const event of generator.stream({
+      ...QUERY_INPUT,
+      mode: "fast",
+    })) {
       if (event.type === "trace-step") {
         steps.push(event.step);
       } else {
@@ -720,7 +840,10 @@ describe("llm answer query generator", () => {
       "query.retrieve",
       "query.answer",
     ]);
-    expect(steps[0]).toMatchObject({ metadata: { model: "embed-1" }, status: "ok" });
+    expect(steps[0]).toMatchObject({
+      metadata: { model: "embed-1" },
+      status: "ok",
+    });
     expect(steps[1]?.metadata.metrics).toMatchObject({ fusedCandidates: 1 });
     expect(events.at(-1)).toEqual(
       expect.objectContaining({
@@ -1013,7 +1136,10 @@ describe("llm answer query generator", () => {
 
     const failedStep = steps.find((step) => step.status === "error");
     expect(failedStep).toMatchObject({
-      metadata: { error: "empty-multimodal-answer", synthesis: "multimodal-provider" },
+      metadata: {
+        error: "empty-multimodal-answer",
+        synthesis: "multimodal-provider",
+      },
       name: "query.answer",
     });
     expect(events[0]).toEqual({ delta: "text fallback", type: "delta" });
@@ -1114,13 +1240,20 @@ describe("llm answer query generator", () => {
   });
 
   it("embeds Research queries before semantic Value Search and answer synthesis", async () => {
-    const retrievalInputs: { denseProjectionModel?: string; queryVector: readonly number[] }[] = [];
+    const retrievalInputs: {
+      denseProjectionModel?: string;
+      queryVector: readonly number[];
+    }[] = [];
     const generator = createLlmAnswerQueryGenerator({
       embeddingModel: "research-embedding",
       embeddings: {
         embed: async () => ({
           dense: [[0.4, 0.6]],
-          metadata: { dimension: 2, model: "research-embedding", provider: "static" },
+          metadata: {
+            dimension: 2,
+            model: "research-embedding",
+            provider: "static",
+          },
           model: "research-embedding",
         }),
         kind: "static",

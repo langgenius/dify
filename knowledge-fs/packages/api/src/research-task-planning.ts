@@ -31,6 +31,7 @@ export interface ResearchTaskDryRunPlannerOptions {
   readonly maxQueryBytes?: number | undefined;
   readonly maxTopK?: number | undefined;
   readonly retrievalPlanner: ResearchTaskRetrievalPlanner;
+  readonly researchPolicy?: ResearchRetrievalExecutionPolicy | undefined;
 }
 
 export interface ResearchTaskLlmPricing {
@@ -72,12 +73,25 @@ export interface ResearchTaskDryRunPlan {
     readonly scannedResources: number;
     readonly toolCalls: number;
     readonly totalTokens: number;
+    readonly workBounds?:
+      | {
+          readonly modelCalls: ResearchTaskEstimateBound;
+          readonly openedResources: ResearchTaskEstimateBound;
+          readonly retrievalSteps: ResearchTaskEstimateBound;
+        }
+      | undefined;
   };
   readonly knowledgeSpaceId: string;
   readonly query: string;
   readonly retrievalPlan: ResearchTaskRetrievalPlan;
   readonly steps: readonly ResearchTaskDryRunStep[];
   readonly strategyVersion: "research-dry-run-planner-v1";
+}
+
+export interface ResearchTaskEstimateBound {
+  readonly estimated: number;
+  readonly max: number;
+  readonly min: number;
 }
 
 export interface ResearchTaskDryRunStep {
@@ -115,15 +129,16 @@ const defaultMaxQueryBytes = 16_384;
 // HTTP/MCP request schemas keep their own explicit-override ceilings. The dry-run planner must
 // also accept an immutable space profile's Top K, whose persisted contract allows values to 100.
 const defaultMaxTopK = 100;
-const defaultLlmPricing: ResearchTaskLlmPricing = {
+export const DefaultResearchTaskLlmPricing: ResearchTaskLlmPricing = Object.freeze({
   inputPerTokenUsd: 0.000003,
   outputPerTokenUsd: 0.000012,
-};
+});
 
 export function createResearchTaskDryRunPlanner({
-  llmPricing = defaultLlmPricing,
+  llmPricing = DefaultResearchTaskLlmPricing,
   maxQueryBytes = defaultMaxQueryBytes,
   maxTopK = defaultMaxTopK,
+  researchPolicy = DurableResearchRetrievalPolicy,
   retrievalPlanner,
 }: ResearchTaskDryRunPlannerOptions): ResearchTaskDryRunPlanner {
   if (!Number.isSafeInteger(maxQueryBytes) || maxQueryBytes < 1) {
@@ -176,7 +191,7 @@ export function createResearchTaskDryRunPlanner({
         topK,
         traceId: input.traceId,
       });
-      const retrievalWork = estimateRetrievalWork(retrievalPlan);
+      const retrievalWork = estimateRetrievalWork(retrievalPlan, researchPolicy);
       const steps = estimateSteps(query, retrievalPlan, retrievalWork, llmPricing);
       const inputTokens = steps.reduce((total, step) => total + step.estimatedInputTokens, 0);
       const outputTokens = steps.reduce((total, step) => total + step.estimatedOutputTokens, 0);
@@ -216,6 +231,7 @@ export function createResearchTaskDryRunPlanner({
           scannedResources: retrievalWork.scannedResources,
           toolCalls,
           totalTokens: inputTokens + outputTokens,
+          workBounds: retrievalWork.workBounds,
         },
         knowledgeSpaceId,
         query,
@@ -279,11 +295,15 @@ function estimateSteps(
     ...(shouldInspectDocumentStructure
       ? [
           {
-            estimatedCostUsd: roundCurrency((queryTokens + 384) * llmPricing.inputPerTokenUsd),
-            estimatedInputTokens: queryTokens + 384,
-            estimatedLatencyMs: 180,
-            estimatedOutputTokens: 0,
-            // Published Research first scans Summary/Outline and traverses the PageIndex tree.
+            estimatedCostUsd: estimateLlmCost(
+              (queryTokens + 384) * retrievalWork.inspectToolCalls,
+              128 * retrievalWork.inspectToolCalls,
+              llmPricing,
+            ),
+            estimatedInputTokens: (queryTokens + 384) * retrievalWork.inspectToolCalls,
+            estimatedLatencyMs: 350 * retrievalWork.inspectToolCalls,
+            estimatedOutputTokens: 128 * retrievalWork.inspectToolCalls,
+            // Root-to-leaf layered selections plus a bounded compatibility/fallback allowance.
             estimatedToolCalls: retrievalWork.inspectToolCalls,
             name: "inspect" as const,
           },
@@ -322,10 +342,16 @@ interface ResearchTaskRetrievalWorkEstimate {
   readonly retrievalSteps: number;
   readonly retrieveToolCalls: number;
   readonly scannedResources: number;
+  readonly workBounds: {
+    readonly modelCalls: ResearchTaskEstimateBound;
+    readonly openedResources: ResearchTaskEstimateBound;
+    readonly retrievalSteps: ResearchTaskEstimateBound;
+  };
 }
 
 function estimateRetrievalWork(
   retrievalPlan: ResearchTaskRetrievalPlan,
+  researchPolicy: ResearchRetrievalExecutionPolicy,
 ): ResearchTaskRetrievalWorkEstimate {
   const baseHybridScans = retrievalPlan.denseTopK + retrievalPlan.ftsTopK;
 
@@ -338,18 +364,44 @@ function estimateRetrievalWork(
         // Dense + FTS, followed by the single final rerank pass.
         retrieveToolCalls: 3,
         scannedResources: baseHybridScans,
+        workBounds: fixedWorkBounds({
+          modelCalls: 3,
+          openedResources: baseHybridScans,
+          retrievalSteps: 3,
+        }),
       };
     case "research": {
-      const pageIndexCandidateScan = Math.min(Math.max(retrievalPlan.topK * 4, 20), 100);
+      const policyWork = estimateResearchRetrievalWork(researchPolicy, {
+        includeFinalSynthesis: true,
+      });
+      const inspectionModelCalls = Math.max(0, policyWork.expected.modelCalls - 1);
       return {
-        // Summary/Outline scan + PageIndex tree traversal live in the existing inspect step.
-        inspectToolCalls: 2,
-        retrievalLatencyMs: 120 + pageIndexCandidateScan * 2 + retrievalPlan.topK * 4,
-        // Summary/Outline scan, tree traversal, then bounded selected-leaf opens.
-        retrievalSteps: 3,
-        retrieveToolCalls: 1,
-        // PageIndex section candidates plus selected leaf opens; no dense/FTS/rerank estimate.
-        scannedResources: pageIndexCandidateScan + retrievalPlan.topK,
+        inspectToolCalls: inspectionModelCalls,
+        retrievalLatencyMs:
+          120 +
+          retrievalPlan.denseTopK * 2 +
+          policyWork.expected.openedResources * 4 +
+          inspectionModelCalls * 350,
+        retrievalSteps: policyWork.expected.retrievalSteps,
+        retrieveToolCalls: policyWork.expected.retrievalSteps,
+        scannedResources: retrievalPlan.denseTopK + policyWork.expected.openedResources,
+        workBounds: {
+          modelCalls: estimateBound(
+            policyWork.minimum.modelCalls,
+            policyWork.expected.modelCalls,
+            policyWork.maximum.modelCalls,
+          ),
+          openedResources: estimateBound(
+            policyWork.minimum.openedResources,
+            policyWork.expected.openedResources,
+            policyWork.maximum.openedResources,
+          ),
+          retrievalSteps: estimateBound(
+            policyWork.minimum.retrievalSteps,
+            policyWork.expected.retrievalSteps,
+            policyWork.maximum.retrievalSteps,
+          ),
+        },
       };
     }
     case "deep":
@@ -362,8 +414,33 @@ function estimateRetrievalWork(
         retrieveToolCalls: 6,
         // Conservatively budget a second hybrid scan and bounded graph traversal candidates.
         scannedResources: baseHybridScans * 2 + retrievalPlan.fusionLimit,
+        workBounds: fixedWorkBounds({
+          modelCalls: 3,
+          openedResources: baseHybridScans * 2 + retrievalPlan.fusionLimit,
+          retrievalSteps: 4,
+        }),
       };
   }
+}
+
+function estimateBound(min: number, estimated: number, max: number): ResearchTaskEstimateBound {
+  return { estimated, max, min };
+}
+
+function fixedWorkBounds(input: {
+  readonly modelCalls: number;
+  readonly openedResources: number;
+  readonly retrievalSteps: number;
+}): ResearchTaskRetrievalWorkEstimate["workBounds"] {
+  return {
+    modelCalls: estimateBound(input.modelCalls, input.modelCalls, input.modelCalls),
+    openedResources: estimateBound(
+      input.openedResources,
+      input.openedResources,
+      input.openedResources,
+    ),
+    retrievalSteps: estimateBound(input.retrievalSteps, input.retrievalSteps, input.retrievalSteps),
+  };
 }
 
 function estimateTokens(text: string): number {
@@ -426,3 +503,8 @@ function roundCurrency(value: number): number {
 function roundProbability(value: number): number {
   return Math.min(1, Math.max(0, Math.round(value * 100) / 100));
 }
+import {
+  DurableResearchRetrievalPolicy,
+  type ResearchRetrievalExecutionPolicy,
+  estimateResearchRetrievalWork,
+} from "./research-retrieval-policy";

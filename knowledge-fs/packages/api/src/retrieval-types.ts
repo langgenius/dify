@@ -1,5 +1,8 @@
 import type { KnowledgeSpaceRetrievalProfile } from "@knowledge/core";
 import type { PublishedProjectionReadSnapshot } from "./published-projection-read-snapshot";
+import type { ResearchModelCallObserver } from "./research-model-usage";
+import type { ResearchRetrievalSearchCheckpoint } from "./research-retrieval-checkpoint";
+import type { ResearchRetrievalExecutionPolicy } from "./research-retrieval-policy";
 import type { SearchDenseInput } from "./retrieval-candidates";
 import type { HybridRetrievalItem } from "./retrieval-fusion";
 import type { RetrievalQueryLanguage } from "./retrieval-text-utils";
@@ -8,6 +11,17 @@ export interface HybridRetrievalResult {
   readonly items: HybridRetrievalItem[];
   readonly metrics?: HybridRetrievalMetrics | undefined;
   readonly plan?: RetrievalPlan | undefined;
+}
+
+export interface ResearchRetrievalRoundCheckpoint {
+  readonly result: HybridRetrievalResult;
+  readonly round: number;
+  readonly terminal: boolean;
+}
+
+export interface ResearchRetrievalSearchCheckpointBoundary {
+  readonly checkpoint: ResearchRetrievalSearchCheckpoint;
+  readonly result: HybridRetrievalResult;
 }
 
 export interface HybridRetrievalMetrics {
@@ -23,15 +37,30 @@ export interface HybridRetrievalMetrics {
   readonly multimodalCandidates?: number | undefined;
   readonly pageIndexMatchedNodes?: number | undefined;
   readonly pageIndexCandidateTruncated?: boolean | undefined;
+  readonly pageIndexFallbackDocuments?: number | undefined;
+  readonly pageIndexFlattenedLevels?: number | undefined;
+  readonly pageIndexLayeredDocuments?: number | undefined;
+  readonly pageIndexLayeredSteps?: number | undefined;
   readonly pageIndexOpenedRanges?: number | undefined;
   readonly pageIndexScannedNodes?: number | undefined;
   readonly pageIndexScannedOutlines?: number | undefined;
   readonly pageIndexScoreVersion?: string | undefined;
+  readonly pageIndexSelectedDocuments?: number | undefined;
+  readonly pageIndexSerializedTreeTokens?: number | undefined;
+  readonly pageIndexWholeTreeDocuments?: number | undefined;
   readonly permissionFilteredCandidates?: number | undefined;
   readonly rerankCandidates?: number | undefined;
   readonly rerankMs?: number | undefined;
   readonly scoreThresholdFilteredCandidates?: number | undefined;
   readonly reasoningTreeSearchNodes?: number | undefined;
+  readonly researchBudgetExhaustedReasons?: readonly string[] | undefined;
+  readonly researchExecutionKind?: "durable" | "interactive" | undefined;
+  readonly researchModelCalls?: number | undefined;
+  readonly researchOpenedResources?: number | undefined;
+  readonly researchRounds?: number | undefined;
+  readonly researchRetrievalSteps?: number | undefined;
+  readonly researchSufficiencyReached?: boolean | undefined;
+  readonly researchSupplementalSearches?: number | undefined;
   readonly graphExpansionCandidates?: number | undefined;
   readonly graphExpansionMs?: number | undefined;
   readonly graphExpansionTimedOut?: boolean | undefined;
@@ -75,6 +104,21 @@ export interface RetrieveHybridInput extends SearchDenseInput {
   readonly query: string;
   /** Original request mode, retained only for low-cardinality operational aggregation. */
   readonly requestedMode?: RetrievalMode | undefined;
+  /** Internal execution envelope. Public interactive requests omit it and use the safe default. */
+  readonly researchExecutionPolicy?: ResearchRetrievalExecutionPolicy | undefined;
+  readonly researchModelCallObserver?: ResearchModelCallObserver | undefined;
+  /** Durable-only replay boundary. Implementations call it after each safely opened evidence round. */
+  readonly onResearchRound?:
+    | ((checkpoint: ResearchRetrievalRoundCheckpoint) => Promise<void>)
+    | undefined;
+  /** Durable replay-safe writer for navigation frontiers and evidence queue progress. */
+  readonly onResearchSearchCheckpoint?:
+    | ((checkpoint: ResearchRetrievalSearchCheckpointBoundary) => Promise<void>)
+    | undefined;
+  /** Durable search state restored after a failed execution attempt. */
+  readonly researchSearchCheckpoint?: ResearchRetrievalSearchCheckpoint | undefined;
+  /** Evidence items paired with `researchSearchCheckpoint` at the same durable boundary. */
+  readonly researchSearchCheckpointResult?: HybridRetrievalResult | undefined;
   readonly retrievalProfile?: KnowledgeSpaceRetrievalProfile | undefined;
   readonly traceId?: string | undefined;
 }

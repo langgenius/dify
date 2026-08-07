@@ -435,14 +435,14 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
   return (
     <main className="relative min-h-full min-w-0 flex-1 px-8 pt-8 pb-20">
       <header>
-        <h1 className="title-md-semi-bold text-text-primary">
+        <h1 className="system-xl-semibold text-text-primary">
           {t(($) => $['newKnowledge.qualityPage.title'])}
         </h1>
         <p className="mt-1 system-xs-regular text-text-tertiary">
           {t(($) => $['newKnowledge.qualityPage.description'])}
         </p>
       </header>
-      <div className="mt-6 flex items-center justify-between">
+      <div className="mt-2.5 flex h-14 items-end justify-between">
         <div
           role="tablist"
           aria-label={t(($) => $['newKnowledge.qualityPage.title'])}
@@ -500,7 +500,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
       {activeTab === 'golden' &&
         (goldenQuestions.length ? (
           <div className="mt-3 w-full overflow-x-auto">
-            <div className="grid h-8 min-w-195 grid-cols-[16px_minmax(180px,2fr)_90px_minmax(120px,1fr)_minmax(160px,1.5fr)_minmax(100px,0.75fr)_32px] items-center gap-3 system-2xs-medium-uppercase text-text-tertiary">
+            <div className="grid h-8 min-w-195 grid-cols-[16px_minmax(180px,2fr)_90px_minmax(120px,1fr)_minmax(160px,1.5fr)_minmax(100px,0.75fr)_32px] items-center gap-3 text-[11px] leading-4 font-medium text-text-tertiary">
               <Checkbox
                 aria-label={t(($) => $['newKnowledge.qualityPage.selectAll'])}
                 checked={allSelected}
@@ -626,9 +626,9 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
             )}
           </div>
         ) : (
-          <div className="flex min-h-[calc(100vh-22rem)] flex-col items-center justify-center text-center">
-            <span aria-hidden className="i-ri-thumb-up-line size-8 text-text-tertiary" />
-            <h2 className="mt-4 system-md-semibold text-text-primary">
+          <div className="mt-2.5 flex h-140 flex-col items-center justify-center text-center">
+            <span aria-hidden className="i-ri-thumb-up-line size-7 text-text-tertiary" />
+            <h2 className="mt-3 system-md-semibold text-text-primary">
               {t(($) => $['newKnowledge.qualityPage.goldenEmptyTitle'])}
             </h2>
             <p className="mt-1 max-w-lg system-xs-regular text-text-tertiary">
@@ -656,7 +656,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
       {activeTab === 'bad' &&
         (badCases.length ? (
           <div className="mt-3 w-full overflow-x-auto">
-            <div className="grid h-8 min-w-202 grid-cols-[minmax(240px,624px)_140px_180px_120px_80px] items-center gap-3 system-2xs-medium-uppercase text-text-tertiary">
+            <div className="grid h-8 min-w-202 grid-cols-[minmax(240px,624px)_140px_180px_120px_80px] items-center gap-3 text-[11px] leading-4 font-medium text-text-tertiary">
               <span>{t(($) => $['newKnowledge.qualityPage.question'])}</span>
               <span>{t(($) => $['newKnowledge.qualityPage.statusLabel'])}</span>
               <span>{t(($) => $['newKnowledge.qualityPage.reason'])}</span>
@@ -769,9 +769,9 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
             )}
           </div>
         ) : (
-          <div className="flex min-h-[calc(100vh-22rem)] flex-col items-center justify-center text-center">
-            <span aria-hidden className="i-ri-check-line size-8 text-text-tertiary" />
-            <h2 className="mt-4 system-md-semibold text-text-primary">
+          <div className="mt-2.5 flex h-140 flex-col items-center justify-center text-center">
+            <span aria-hidden className="i-ri-check-line size-7 text-text-tertiary" />
+            <h2 className="mt-3 system-md-semibold text-text-primary">
               {t(($) => $['newKnowledge.qualityPage.badCasesEmptyTitle'])}
             </h2>
             <p className="mt-1 max-w-136 system-xs-regular text-text-tertiary">

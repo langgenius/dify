@@ -56,6 +56,7 @@ class FileService:
         tenant_id: str | None = None,
         source: Literal["datasets"] | None = None,
         source_url: str = "",
+        default_file_size_limit: int | None = None,
     ) -> UploadFile:
         # get file extension
         extension = os.path.splitext(filename)[1].lstrip(".").lower()
@@ -79,7 +80,11 @@ class FileService:
         file_size = len(content)
 
         # check if the file size is exceeded
-        if not FileService.is_file_size_within_limit(extension=extension, file_size=file_size):
+        if not FileService.is_file_size_within_limit(
+            extension=extension,
+            file_size=file_size,
+            default_file_size_limit=default_file_size_limit,
+        ):
             raise FileTooLargeError
 
         # generate file key
@@ -119,7 +124,12 @@ class FileService:
         return upload_file
 
     @staticmethod
-    def is_file_size_within_limit(*, extension: str, file_size: int) -> bool:
+    def is_file_size_within_limit(
+        *,
+        extension: str,
+        file_size: int,
+        default_file_size_limit: int | None = None,
+    ) -> bool:
         if extension in IMAGE_EXTENSIONS:
             file_size_limit = dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT * 1024 * 1024
         elif extension in VIDEO_EXTENSIONS:
@@ -127,7 +137,12 @@ class FileService:
         elif extension in AUDIO_EXTENSIONS:
             file_size_limit = dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT * 1024 * 1024
         else:
-            file_size_limit = dify_config.UPLOAD_FILE_SIZE_LIMIT * 1024 * 1024
+            # Context-specific uploads may override the default limit without changing media-specific limits.
+            file_size_limit = (
+                (default_file_size_limit if default_file_size_limit is not None else dify_config.UPLOAD_FILE_SIZE_LIMIT)
+                * 1024
+                * 1024
+            )
 
         return file_size <= file_size_limit
 

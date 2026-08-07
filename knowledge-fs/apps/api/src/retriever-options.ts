@@ -4,7 +4,10 @@ import {
   type GraphIndexRepository,
   type HybridRetrievalItem,
   type HybridRetrievalRepository,
+  type PageIndexFindabilityRepository,
+  type PageIndexLayeredTreeSearch,
   type PageIndexSemanticTreeSearch,
+  type PageIndexWholeTreeSelector,
   type ProjectionSetPublicationMemberRepository,
   type PublishedGraphIndexRepository,
   type PublishedPageIndexRepository,
@@ -59,8 +62,13 @@ export interface ApiRetrieverOptions {
   readonly outlines?: DocumentOutlineRepository | undefined;
   /** Strict publication-member scoped PageIndex capability used by production Research. */
   readonly pageIndex?: PublishedPageIndexRepository | undefined;
+  readonly pageIndexFindability?: Pick<PageIndexFindabilityRepository, "getManyRoutes"> | undefined;
   /** Profile-scoped LLM scorer for semantic Value Search candidates. */
   readonly pageIndexSemanticTreeSearch?: PageIndexSemanticTreeSearch | undefined;
+  /** Book-like sibling-level PageIndex traversal used as the primary Research navigation lane. */
+  readonly pageIndexLayeredTreeSearch?: PageIndexLayeredTreeSearch | undefined;
+  /** Compatibility selector used only if a lower-level caller omits layered navigation. */
+  readonly pageIndexWholeTreeSelector?: PageIndexWholeTreeSelector | undefined;
   /**
    * Mode-aware planner. Optional for compatibility with the underlying
    * `createBasicHybridRetriever`; when omitted the basic retriever falls back to
@@ -122,7 +130,10 @@ export function createApiRetriever({
   metrics,
   outlines,
   pageIndex,
+  pageIndexFindability,
   pageIndexSemanticTreeSearch,
+  pageIndexLayeredTreeSearch,
+  pageIndexWholeTreeSelector,
   planner,
   publishedGraph,
   publishedProjectionMembership,
@@ -176,17 +187,25 @@ export function createApiRetriever({
     if (!pageIndexSemanticTreeSearch) {
       throw new Error("Published PageIndex retrieval requires semantic LLM tree search");
     }
+    if (!pageIndexWholeTreeSelector) {
+      throw new Error("Published PageIndex retrieval requires its compatibility tree selector");
+    }
     const pageIndexPlanner = planner;
     if (!pageIndexPlanner) {
       throw new Error("Published PageIndex retrieval requires a mode-aware planner");
     }
     stack = createPublishedPageIndexRetrievalPath({
+      ...(pageIndexFindability ? { findability: pageIndexFindability } : {}),
+      ...(pageIndexLayeredTreeSearch ? { layeredTreeSearch: pageIndexLayeredTreeSearch } : {}),
       // Research's planner already caps semantic recall at RETRIEVAL_MAX_TOP_K.
       maxSemanticCandidates: 100,
+      maxSemanticCandidatesPerCall: 5,
+      pageIndex,
       planner: pageIndexPlanner,
       retriever: multimodalStack,
       semanticTreeSearch: pageIndexSemanticTreeSearch,
       valueSearch: repository,
+      wholeTreeSelector: pageIndexWholeTreeSelector,
     });
   } else if (outlines) {
     stack = createDocumentOutlineRetrievalPath({
@@ -229,7 +248,10 @@ export function createApiRetriever({
       ? { rerankerFactory: rerankerOptions.providerFactory }
       : {}),
     ...(rerankerOptions && legacyDefaultConfigured
-      ? { reranker: rerankerOptions.provider, rerankerModel: rerankerOptions.model }
+      ? {
+          reranker: rerankerOptions.provider,
+          rerankerModel: rerankerOptions.model,
+        }
       : {}),
     retriever: extendedStack,
   });
@@ -406,7 +428,10 @@ function createVisualDenseRetrievalPath({
           })
           .then(
             (candidates) => ({ candidates, ok: true as const }),
-            () => ({ candidates: [] as RetrievalCandidate[], ok: false as const }),
+            () => ({
+              candidates: [] as RetrievalCandidate[],
+              ok: false as const,
+            }),
           );
       const basePromise = retriever.retrieve(input);
       const [baseResult, visualResult] =
@@ -415,7 +440,13 @@ function createVisualDenseRetrievalPath({
               const base = await basePromise;
 
               return base.items.length > 0
-                ? [base, { candidates: [] as RetrievalCandidate[], ok: true as const }]
+                ? [
+                    base,
+                    {
+                      candidates: [] as RetrievalCandidate[],
+                      ok: true as const,
+                    },
+                  ]
                 : [base, await retrieveVisual()];
             })()
           : await Promise.all([basePromise, retrieveVisual()]);

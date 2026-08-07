@@ -79,4 +79,42 @@ describe("query generator projection snapshot propagation", () => {
     expect(calls).toHaveLength(1);
     expect(calls[0]?.projectionSnapshot).toBe(projectionSnapshot);
   });
+
+  it.each([
+    ["hybrid", createHybridQueryGenerator] as const,
+    ["llm", createLlmAnswerQueryGenerator] as const,
+  ])("threads the durable Research execution policy through the %s generator", async (_, make) => {
+    const calls: RetrieveHybridInput[] = [];
+    const shared = {
+      limit: 10,
+      maxAnswerChars: 1_000,
+      retriever: capturingRetriever(calls),
+      topK: 5,
+    };
+    const generator =
+      make === createLlmAnswerQueryGenerator
+        ? createLlmAnswerQueryGenerator({
+            ...shared,
+            model: "reasoning-model",
+            provider: {
+              stream: async function* () {
+                yield { type: "done" as const };
+              },
+            },
+          })
+        : createHybridQueryGenerator(shared);
+
+    await drain(
+      generator.stream({
+        ...queryInput,
+        mode: "research",
+        researchExecutionKind: "durable",
+      }),
+    );
+
+    expect(calls[0]?.researchExecutionPolicy).toMatchObject({
+      checkpointMode: "replay-safe-boundaries",
+      kind: "durable",
+    });
+  });
 });
