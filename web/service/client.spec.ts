@@ -572,6 +572,68 @@ describe('consoleQuery agent query defaults', () => {
   })
 })
 
+describe('consoleQuery education defaults', () => {
+  it('should not retry education status failures', async () => {
+    const request = vi.fn().mockRejectedValue(new Error('education status failed'))
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: 2 },
+      },
+    })
+
+    await expect(
+      queryClient.fetchQuery(consoleQuery.account.education.get.queryOptions()),
+    ).rejects.toThrow('education status failed')
+
+    expect(request).toHaveBeenCalledTimes(1)
+  })
+
+  it('should invalidate education status after activation succeeds', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+
+    await consoleQuery.account.education.post.mutationOptions().onSuccess?.(
+      { message: 'success' },
+      {
+        body: {
+          institution: 'Dify University',
+          role: 'Student',
+          token: 'education-token',
+        },
+      },
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.account.education.get.key(),
+    })
+  })
+
+  it('should preserve education status after activation is rejected', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+
+    await consoleQuery.account.education.post.mutationOptions().onSuccess?.(
+      { message: 'failed' },
+      {
+        body: {
+          institution: 'Dify University',
+          role: 'Student',
+          token: 'education-token',
+        },
+      },
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(invalidateQueries).not.toHaveBeenCalled()
+  })
+})
+
 describe('consoleQuery app mutation defaults', () => {
   it('should write an updated app into its exact detail cache', async () => {
     const consoleQuery = await loadConsoleQuery()

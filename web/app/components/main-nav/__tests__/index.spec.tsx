@@ -491,7 +491,11 @@ const defaultMainNavSystemFeatures: MainNavSystemFeatures = {
 
 const renderMainNav = (
   systemFeatures: MainNavSystemFeatures = defaultMainNavSystemFeatures,
-  options: { store?: ReturnType<typeof createStore>; extra?: ReactNode } = {},
+  options: {
+    store?: ReturnType<typeof createStore>
+    extra?: ReactNode
+    educationStatus?: NonNullable<Parameters<typeof renderWithConsoleQuery>[1]>['educationStatus']
+  } = {},
 ) => {
   const queryClient = createConsoleQueryClient()
   const currentConsoleState = mockConsoleState.current ?? consoleState
@@ -531,6 +535,7 @@ const renderMainNav = (
     </JotaiProvider>,
     {
       systemFeatures: resolvedSystemFeatures,
+      educationStatus: options.educationStatus,
       workspacePermissionKeys: currentConsoleState.workspacePermissionKeys,
       queryClient,
     },
@@ -579,7 +584,7 @@ describe('MainNav', () => {
     mockConsoleState.current = consoleState
     ;(useProviderContext as Mock).mockReturnValue({
       enableBilling: true,
-      isEducationAccount: false,
+      enableEducationPlan: false,
       isEducationWorkspace: false,
       isFetchedPlan: true,
       plan: { type: Plan.sandbox },
@@ -726,13 +731,15 @@ describe('MainNav', () => {
   it('shows the user education badge in the account popup without adding the workspace plan there', async () => {
     ;(useProviderContext as Mock).mockReturnValue({
       enableBilling: true,
-      isEducationAccount: true,
+      enableEducationPlan: true,
       isEducationWorkspace: false,
       isFetchedPlan: true,
       plan: { type: Plan.sandbox },
     } as ProviderContextState)
 
-    renderMainNav()
+    renderMainNav(defaultMainNavSystemFeatures, {
+      educationStatus: { is_student: true },
+    })
 
     fireEvent.click(screen.getByRole('button', { name: 'common.account.account' }))
 

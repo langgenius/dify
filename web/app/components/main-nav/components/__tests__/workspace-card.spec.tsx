@@ -180,7 +180,7 @@ describe('WorkspaceCard', () => {
     mockCurrentWorkspaceQuery()
     vi.mocked(useProviderContext).mockReturnValue({
       enableBilling: true,
-      isEducationAccount: false,
+      enableEducationPlan: false,
       isEducationWorkspace: false,
       isFetchedPlan: true,
       plan: { type: Plan.sandbox },
@@ -308,7 +308,7 @@ describe('WorkspaceCard', () => {
     })
     vi.mocked(useProviderContext).mockReturnValue({
       enableBilling: false,
-      isEducationAccount: false,
+      enableEducationPlan: false,
       isEducationWorkspace: false,
       isFetchedPlan: true,
       plan: { type: Plan.sandbox },

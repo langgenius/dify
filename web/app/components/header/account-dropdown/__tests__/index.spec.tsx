@@ -79,7 +79,7 @@ describe('AccountDropdown', () => {
     vi.clearAllMocks()
     mockUseRouter.mockReturnValue({ push: mockPush })
     vi.mocked(useProviderContext).mockReturnValue({
-      isEducationAccount: false,
+      enableEducationPlan: false,
     } as ProviderContextState)
     vi.mocked(useLogout).mockReturnValue({
       mutateAsync: mockLogout,
