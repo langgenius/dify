@@ -1,3 +1,4 @@
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ModelProvider } from '../declarations'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useCredentialStatus } from '@/app/components/header/account-setting/model-provider-page/model-auth/hooks'
@@ -64,7 +65,9 @@ function deriveVariant(
   return 'api-required-add'
 }
 
-export function useCredentialPanelState(provider: ModelProvider | undefined): CredentialPanelState {
+export function useCredentialPanelState(
+  provider: ModelProvider | ModelProviderSummaryResponse | undefined,
+): CredentialPanelState {
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,

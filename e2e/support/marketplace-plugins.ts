@@ -100,7 +100,7 @@ const waitForPluginInstallTask = async (
 
 const getMarketplaceDownloadUrl = (pluginUniqueIdentifier: string) => {
   const url = new URL(
-    '/api/v1/plugins/download',
+    '/api/v1/plugins/download-url',
     process.env.E2E_MARKETPLACE_API_URL || defaultMarketplaceApiUrl,
   )
   url.searchParams.set('unique_identifier', pluginUniqueIdentifier)

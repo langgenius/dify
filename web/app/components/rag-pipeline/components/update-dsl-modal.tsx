@@ -63,7 +63,7 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
               <div className="flex items-start gap-1 self-stretch pt-1 pb-0.5">
                 <Button size="small" variant="secondary" className="relative" onClick={onBackup}>
                   <RiFileDownloadLine className="size-3.5 text-components-button-secondary-text" />
-                  <div className="flex items-center justify-center gap-1 px-0.75">
+                  <div className="flex items-center justify-center gap-1">
                     {t(($) => $['common.backupCurrentDraft'], { ns: 'workflow' })}
                   </div>
                 </Button>

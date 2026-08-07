@@ -1,4 +1,5 @@
 import dataclasses
+import json
 import secrets
 import uuid
 from types import SimpleNamespace
@@ -128,7 +129,7 @@ class TestDraftVariableSaver:
             assert name == c.expected_name, fail_msg
 
     def test_build_variables_from_start_mapping_rebuilds_system_files(self, sqlite_session: Session):
-        mock_user = MagicMock(spec=Account)
+        mock_user = Account(name="Test Account", email="test@example.com")
         mock_user.id = str(uuid.uuid4())
         saver = DraftVariableSaver(
             session=sqlite_session,
@@ -169,9 +170,8 @@ class TestDraftVariableSaver:
     def draft_saver(self, sqlite_session: Session):
         """Create DraftVariableSaver instance with user context."""
         # Create a mock user
-        mock_user = MagicMock(spec=Account)
+        mock_user = Account(name="Test Account", email="test@example.com")
         mock_user.id = "test-user-id"
-        mock_user.tenant_id = "test-tenant-id"
 
         return DraftVariableSaver(
             session=sqlite_session,
@@ -218,9 +218,8 @@ class TestDraftVariableSaver:
             assert draft_var.file_id == mock_draft_var_file.id
 
     def test_try_offload_large_variable_uses_resource_tenant(self, sqlite_session: Session):
-        mock_user = MagicMock(spec=Account)
+        mock_user = Account(name="Test Account", email="test@example.com")
         mock_user.id = "test-user-id"
-        mock_user.current_tenant_id = ""
         saver = DraftVariableSaver(
             session=sqlite_session,
             tenant_id="app-tenant-id",
@@ -268,7 +267,7 @@ class TestDraftVariableSaver:
         self, mock_batch_upsert, sqlite_session: Session
     ):
         """Start node should persist common `sys.*` variables, not only `sys.files`."""
-        mock_user = MagicMock(spec=Account)
+        mock_user = Account(name="Test Account", email="test@example.com")
         mock_user.id = "test-user-id"
         mock_user.tenant_id = "test-tenant-id"
 
@@ -303,7 +302,7 @@ class TestDraftVariableSaver:
 
     @patch("services.workflow_draft_variable_service._batch_upsert_draft_variable", autospec=True)
     def test_start_node_save_normalizes_reserved_prefix_outputs(self, mock_batch_upsert, sqlite_session: Session):
-        mock_user = MagicMock(spec=Account)
+        mock_user = Account(name="Test Account", email="test@example.com")
         mock_user.id = "test-user-id"
         mock_user.tenant_id = "test-tenant-id"
 
@@ -474,13 +473,11 @@ class TestWorkflowDraftVariableService:
         """Reset a node variable from its execution output and flush the restored value."""
         service = WorkflowDraftVariableService(sqlite_session)
 
-        # Create mock execution record
-        mock_execution = Mock(spec=WorkflowNodeExecutionModel)
-        mock_execution.load_full_outputs.return_value = {"test_var": "output_value"}
+        execution = WorkflowNodeExecutionModel(outputs=json.dumps({"test_var": "output_value"}))
 
         # Mock the repository to return the execution record
         service._api_node_execution_repo = Mock()
-        service._api_node_execution_repo.get_execution_by_id.return_value = mock_execution
+        service._api_node_execution_repo.get_execution_by_id.return_value = execution
 
         test_app_id = self._get_test_app_id()
         workflow = self._create_test_workflow(test_app_id)
@@ -549,13 +546,11 @@ class TestWorkflowDraftVariableService:
         sqlite_session.add(variable)
         sqlite_session.commit()
 
-        # Create mock execution record
-        mock_execution = Mock(spec=WorkflowNodeExecutionModel)
-        mock_execution.load_full_outputs.return_value = {"sys.files": "[]"}
+        execution = WorkflowNodeExecutionModel(outputs=json.dumps({"sys.files": "[]"}))
 
         # Mock the repository to return the execution record
         service._api_node_execution_repo = Mock()
-        service._api_node_execution_repo.get_execution_by_id.return_value = mock_execution
+        service._api_node_execution_repo.get_execution_by_id.return_value = execution
 
         with patch.object(sqlite_session, "flush", wraps=sqlite_session.flush) as flush:
             result = service._reset_node_var_or_sys_var(workflow, variable)
@@ -584,13 +579,11 @@ class TestWorkflowDraftVariableService:
         sqlite_session.add(variable)
         sqlite_session.commit()
 
-        # Create mock execution record
-        mock_execution = Mock(spec=WorkflowNodeExecutionModel)
-        mock_execution.load_full_outputs.return_value = {"sys.query": "reset query"}
+        execution = WorkflowNodeExecutionModel(outputs=json.dumps({"sys.query": "reset query"}))
 
         # Mock the repository to return the execution record
         service._api_node_execution_repo = Mock()
-        service._api_node_execution_repo.get_execution_by_id.return_value = mock_execution
+        service._api_node_execution_repo.get_execution_by_id.return_value = execution
 
         with patch.object(sqlite_session, "flush", wraps=sqlite_session.flush) as flush:
             result = service._reset_node_var_or_sys_var(workflow, variable)

@@ -14,18 +14,18 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { toast } from '@langgenius/dify-ui/toast'
+import { useQuery } from '@tanstack/react-query'
 import { useBoolean, useSessionStorageState } from 'ahooks'
 import * as React from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Generator } from '@/app/components/base/icons/src/vender/other'
+import { toast } from '@/app/components/app/configuration/toast'
 import Loading from '@/app/components/base/loading'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import { consoleQuery } from '@/service/client'
 import { generateRule } from '@/service/debug'
-import { useGenerateRuleTemplate } from '@/service/use-apps'
 import { languageMap } from '../../../../workflow/nodes/_base/components/editor/code-editor/index'
 import { useAutoGenModel } from '../auto-gen-model-storage'
 import IdeaOutput from '../automatic/idea-output'
@@ -70,21 +70,31 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
 }) => {
   const { t } = useTranslation()
   const [storedModel, setStoredModel] = useAutoGenModel()
-  const [model, setModel] = React.useState<Model>(
-    storedModel || {
-      name: '',
-      provider: '',
-      mode: mode as unknown as ModelModeType,
-      completion_params: defaultCompletionParams,
-    },
-  )
+  const [selectedModel, setSelectedModel] = React.useState<Model>()
   const { defaultModel } = useModelListAndDefaultModelAndCurrentProviderAndModel(
     ModelTypeEnum.textGeneration,
   )
-  const [instructionFromSessionStorage, setInstruction] = useSessionStorageState<string>(
-    `improve-instruction-${flowId}-${nodeId}`,
-  )
-  const instruction = instructionFromSessionStorage || ''
+  const model = useMemo<Model>(() => {
+    if (selectedModel) return selectedModel
+    if (storedModel) {
+      return {
+        ...storedModel,
+        completion_params: {
+          ...defaultCompletionParams,
+          ...storedModel.completion_params,
+        },
+      }
+    }
+
+    return {
+      name: defaultModel?.model ?? '',
+      provider: defaultModel?.provider.provider ?? '',
+      mode: mode as unknown as ModelModeType,
+      completion_params: defaultCompletionParams,
+    }
+  }, [defaultModel, mode, selectedModel, storedModel])
+  const [instructionFromSessionStorage, setInstructionFromSessionStorage] =
+    useSessionStorageState<string>(`improve-instruction-${flowId}-${nodeId}`)
 
   const [ideaOutput, setIdeaOutput] = useState<string>('')
 
@@ -95,13 +105,15 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
       storageKey,
     },
   )
-  const [editorKey, setEditorKey] = useState(`${flowId}-0`)
-  const { data: instructionTemplate } = useGenerateRuleTemplate(GeneratorType.code)
-  useEffect(() => {
-    if (!instruction && instructionTemplate) setInstruction(instructionTemplate.data)
-
-    setEditorKey(`${flowId}-${Date.now()}`)
-  }, [instructionTemplate])
+  const [editorKey] = useState(`${flowId}-0`)
+  const { data: instructionTemplate } = useQuery({
+    ...consoleQuery.instructionGenerate.template.post.queryOptions({
+      input: { body: { type: GeneratorType.code } },
+    }),
+    retry: 0,
+  })
+  const instruction = instructionFromSessionStorage ?? instructionTemplate?.data ?? ''
+  const instructionEditorKey = `${editorKey}-${instructionTemplate ? 'template' : 'pending'}`
 
   const isValid = () => {
     if (instruction.trim() === '') {
@@ -124,10 +136,10 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
         name: newValue.modelId,
         mode: newValue.mode as ModelModeType,
       }
-      setModel(newModel)
+      setSelectedModel(newModel)
       setStoredModel(newModel)
     },
-    [model, setModel, setStoredModel],
+    [model, setStoredModel],
   )
 
   const handleCompletionParamsChange = useCallback(
@@ -136,10 +148,10 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
         ...model,
         completion_params: newParams as CompletionParams,
       }
-      setModel(newModel)
+      setSelectedModel(newModel)
       setStoredModel(newModel)
     },
-    [model, setModel, setStoredModel],
+    [model, setStoredModel],
   )
 
   const onGenerate = async () => {
@@ -156,9 +168,9 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
         ideal_output: ideaOutput,
         language: languageMap[codeLanguages] || 'javascript',
       })
-      if ((res as any).code)
+      if ('code' in res && typeof res.code === 'string')
         // not current or current is the same as the template would return a code field
-        res.modified = (res as any).code
+        res.modified = res.code
 
       if (error) {
         toast.error(error)
@@ -174,26 +186,6 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
     isShowConfirmOverwrite,
     { setTrue: showConfirmOverwrite, setFalse: hideShowConfirmOverwrite },
   ] = useBoolean(false)
-
-  useEffect(() => {
-    if (defaultModel) {
-      if (storedModel) {
-        setModel({
-          ...storedModel,
-          completion_params: {
-            ...defaultCompletionParams,
-            ...storedModel.completion_params,
-          },
-        })
-      } else {
-        setModel((prev) => ({
-          ...prev,
-          name: defaultModel.model,
-          provider: defaultModel.provider.provider,
-        }))
-      }
-    }
-  }, [defaultModel, storedModel])
 
   const renderLoading = (
     <div className="flex h-full w-0 grow flex-col items-center justify-center space-y-3">
@@ -240,9 +232,9 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
                   {t(($) => $['codegen.instruction'], { ns: 'appDebug' })}
                 </div>
                 <InstructionEditor
-                  editorKey={editorKey}
+                  editorKey={instructionEditorKey}
                   value={instruction}
-                  onChange={setInstruction}
+                  onChange={setInstructionFromSessionStorage}
                   nodeId={nodeId}
                   generatorType={GeneratorType.code}
                   isShowCurrentBlock={!!currentCode}
@@ -255,12 +247,12 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
                   {t(($) => $[`${i18nPrefix}.dismiss`], { ns: 'appDebug' })}
                 </Button>
                 <Button
-                  className="flex space-x-1"
+                  className="flex"
                   variant="primary"
                   onClick={onGenerate}
                   disabled={isLoading}
                 >
-                  <Generator className="size-4" />
+                  <span aria-hidden className="i-custom-vender-other-generator size-4" />
                   <span className="text-xs font-semibold">
                     {t(($) => $['codegen.generate'], { ns: 'appDebug' })}
                   </span>

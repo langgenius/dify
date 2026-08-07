@@ -97,7 +97,7 @@ function RevokeApiKeyButton({ apiKey }: { apiKey: ApiKey }) {
         aria-busy={isRevoking}
         disabled={isRevoking}
         className={cn(
-          'inline-flex size-8 shrink-0 items-center justify-center rounded-md text-text-tertiary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+          'inline-flex size-8 shrink-0 items-center justify-center rounded-md text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
           isRevoking
             ? 'cursor-not-allowed opacity-60'
             : 'hover:bg-state-destructive-hover hover:text-text-destructive',

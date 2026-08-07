@@ -8,6 +8,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { RiAlertFill, RiCloseLine, RiFileDownloadLine } from '@remixicon/react'
 import { memo, useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import DSLImportWarningDescription from '@/app/components/app/create-from-dsl-modal/dsl-import-warning-description'
 import { Uploader } from '@/app/components/app/create-from-dsl-modal/uploader'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
@@ -92,10 +93,16 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
       await handleWorkflowUpdate(appId)
       collaborationManager.emitWorkflowUpdate(appId)
       onImport?.()
-      const payload = getImportNotificationPayload(status, t, warnings)
+      const payload = getImportNotificationPayload(status, t)
       toast[payload.type](
         payload.message,
-        payload.children ? { description: payload.children } : undefined,
+        payload.children
+          ? {
+              description: (
+                <DSLImportWarningDescription warnings={warnings} fallback={payload.children} />
+              ),
+            }
+          : undefined,
       )
       await handleCheckPluginDependencies(appId)
       setLoading(false)
@@ -209,7 +216,7 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
               <div className="flex items-start gap-1 self-stretch pt-1 pb-0.5">
                 <Button size="small" variant="secondary" className="relative" onClick={onBackup}>
                   <RiFileDownloadLine className="size-3.5 text-components-button-secondary-text" />
-                  <div className="flex items-center justify-center gap-1 px-0.75">
+                  <div className="flex items-center justify-center gap-1">
                     {t(($) => $['common.backupCurrentDraft'], { ns: 'workflow' })}
                   </div>
                 </Button>

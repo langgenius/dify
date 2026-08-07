@@ -114,17 +114,6 @@ def trial_feature_enable[**P, R](view: Callable[P, R]):
     return decorated
 
 
-def explore_banner_enabled[**P, R](view: Callable[P, R]):
-    @wraps(view)
-    def decorated(*args: P.args, **kwargs: P.kwargs):
-        features = FeatureService.get_system_features()
-        if not features.enable_explore_banner:
-            abort(403, "Explore banner feature is not enabled.")
-        return view(*args, **kwargs)
-
-    return decorated
-
-
 class InstalledAppResource(Resource):
     # must be reversed if there are multiple decorators
 

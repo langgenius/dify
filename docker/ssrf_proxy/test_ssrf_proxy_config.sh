@@ -39,6 +39,24 @@ http_code_for() {
   printf '%s\n' "$output" | awk '$1 ~ /^HTTP\// { code = $2 } END { print code }'
 }
 
+http_code_for_post() {
+  local proxy_url="$1"
+  local target_url="$2"
+  local output
+
+  output="$(
+    docker run \
+      --rm \
+      --network "$NETWORK_NAME" \
+      --env "http_proxy=$proxy_url" \
+      --env "https_proxy=$proxy_url" \
+      "$CLIENT_IMAGE" \
+      wget -S -O /dev/null -T 10 --post-data=file-bytes "$target_url" 2>&1 || true
+  )"
+
+  printf '%s\n' "$output" | awk '$1 ~ /^HTTP\// { code = $2 } END { print code }'
+}
+
 direct_http_code_for() {
   local target_url="$1"
   local output
@@ -76,6 +94,19 @@ assert_public_target_allowed() {
   if [[ ! "$status_code" =~ ^[234][0-9][0-9]$ || "$status_code" == "403" ]]; then
     echo "Expected $target_url to remain reachable, got ${status_code:-no response}."
     docker logs "$CONTAINER_NAME" >&2 || true
+    exit 1
+  fi
+}
+
+assert_post_target_not_blocked() {
+  local proxy_url="$1"
+  local target_url="$2"
+  local status_code
+
+  status_code="$(http_code_for_post "$proxy_url" "$target_url")"
+  if [[ -z "$status_code" || "$status_code" == "403" ]]; then
+    echo "Expected POST $target_url to pass the proxy ACL, got ${status_code:-no response}."
+    docker logs "$AGENT_PROXY_CONTAINER_NAME" >&2 || true
     exit 1
   fi
 }
@@ -214,6 +245,8 @@ assert_private_target_blocked "$agent_proxy_url" "http://agent_backend:5050/inde
 
 # api /files/* must be allowed.
 assert_public_target_allowed "$agent_proxy_url" "http://api:5001/files/test"
+assert_public_target_allowed "$agent_proxy_url" "http://api:5001/files/test?timestamp=1&nonce=2&sign=3"
+assert_post_target_not_blocked "$agent_proxy_url" "http://api:5001/files/upload/for-plugin?timestamp=1&nonce=2&sign=3"
 
 # api non-/files paths must be blocked.
 assert_private_target_blocked "$agent_proxy_url" "http://api:5001/index.html"

@@ -111,7 +111,7 @@ const ConversationOpener = ({
             )}
             {isHovering && (
               <Button className="w-full" onClick={handleOpenOpeningModal} disabled={disabled}>
-                <RiEditLine className="mr-1 size-4" />
+                <RiEditLine className="size-4" />
                 {t(($) => $['openingStatement.writeOpener'], { ns: 'appDebug' })}
               </Button>
             )}

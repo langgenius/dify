@@ -141,7 +141,7 @@ const ConditionWrap: FC<Props> = ({
                   className="border-0 bg-transparent p-0 hover:bg-transparent focus-visible:bg-transparent [&>*:last-child]:hidden"
                 >
                   <Button size="small" disabled={readOnly}>
-                    <RiAddLine className="mr-1 size-3.5" />
+                    <RiAddLine className="size-3.5" />
                     {t(($) => $['nodes.ifElse.addSubVariable'], { ns: 'workflow' })}
                   </Button>
                 </SelectTrigger>

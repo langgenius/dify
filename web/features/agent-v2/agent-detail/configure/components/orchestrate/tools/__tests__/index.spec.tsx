@@ -811,7 +811,7 @@ describe('AgentTools', () => {
     it('should open provider tool settings with catalog icon and parameters', async () => {
       const user = userEvent.setup()
       toolProviderState.builtInTools = [duckDuckGoProvider]
-      const { baseElement } = renderAgentTools()
+      renderAgentTools()
 
       await user.click(
         screen.getByRole('button', {
@@ -824,7 +824,9 @@ describe('AgentTools', () => {
         }),
       )
 
-      expect(baseElement.querySelector('[style*="duckduckgo.svg"]')).toBeInTheDocument()
+      expect(screen.getByTestId('tool-icon')).toHaveTextContent(
+        'https://example.com/duckduckgo.svg',
+      )
       expect(screen.getByRole('form', { name: 'tool settings' })).toBeInTheDocument()
       expect(screen.getByText('Search Query')).toBeInTheDocument()
     })
