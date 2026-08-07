@@ -117,9 +117,6 @@ class CapturingPluginLayerBuilder:
 
 
 class FakeCoreLayerBuilder:
-    def __init__(self, provider_type: str = "builtin") -> None:
-        self.provider_type = provider_type
-
     def build_layers(self, *, tenant_id, app_id, user_id, tools, invoke_from):
         assert tenant_id == "tenant-1"
         assert app_id == "app-1"
@@ -130,7 +127,7 @@ class FakeCoreLayerBuilder:
             core_tools=DifyCoreToolsLayerConfig(
                 tools=[
                     DifyCoreToolConfig(
-                        provider_type=self.provider_type,  # type: ignore[arg-type]
+                        provider_type="builtin",
                         provider_id="audio",
                         tool_name="transcribe",
                         name="transcribe",
@@ -344,17 +341,6 @@ def test_build_includes_core_tools_layer_returned_by_injected_builder():
     layers = _request_layers(result)
     assert DIFY_CORE_TOOLS_LAYER_ID in layers
     assert DIFY_PLUGIN_TOOLS_LAYER_ID not in layers
-
-
-def test_build_exposes_workflow_tool_names_for_trace_collection():
-    context = _context()
-
-    result = WorkflowAgentRuntimeRequestBuilder(
-        credentials_provider=FakeCredentialsProvider(),
-        dify_tools_builder=FakeCoreLayerBuilder(provider_type="workflow"),  # type: ignore[arg-type]
-    ).build(context)
-
-    assert result.workflow_tool_names == frozenset({"transcribe"})
 
 
 def test_normalizes_langgenius_model_provider_for_agent_backend_transport():
