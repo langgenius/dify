@@ -14,6 +14,7 @@ export type MainNavRouteConfig = {
   activeIcon: string
   visibility: MainNavRouteVisibility
   feature?: 'agentV2' | 'marketplace'
+  prefetchOnIntent?: boolean
 } & ({ label: string; labelKey?: never } | { label?: never; labelKey: string })
 
 export type MainNavRouteVisibilityOptions = {
@@ -87,6 +88,7 @@ export const MAIN_NAV_ROUTES = [
     icon: 'i-custom-vender-main-nav-integrations',
     activeIcon: 'i-custom-vender-main-nav-integrations-active',
     visibility: VISIBLE_TO_ALL,
+    prefetchOnIntent: true,
   },
   {
     key: 'marketplace',

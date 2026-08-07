@@ -3,6 +3,7 @@
 import type { ComponentType } from 'react'
 import type { IntegrationSection } from '@/app/components/integrations/routes'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useState } from 'react'
 import Link from '@/next/link'
 import { buildIntegrationPath } from './routes'
 import {
@@ -55,6 +56,7 @@ export function IntegrationSidebarNavItem({
   onSelect,
   section,
 }: IntegrationSidebarNavItemProps) {
+  const [isPrefetchEnabled, setIsPrefetchEnabled] = useState(false)
   const isActive = item.section === section
   const icon = isActive && item.activeIcon ? item.activeIcon : item.icon
 
@@ -119,6 +121,9 @@ export function IntegrationSidebarNavItem({
   return (
     <Link
       href={buildIntegrationPath(item.section)}
+      prefetch={isPrefetchEnabled ? null : false}
+      onMouseEnter={() => setIsPrefetchEnabled(true)}
+      onFocus={() => setIsPrefetchEnabled(true)}
       aria-label={item.label}
       aria-current={isActive ? 'page' : undefined}
       className={className}

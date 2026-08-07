@@ -8,4 +8,5 @@ export type MainNavItem = {
   active: (pathname: string) => boolean
   icon: string
   activeIcon: string
+  prefetchOnIntent?: boolean
 }

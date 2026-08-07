@@ -60,6 +60,7 @@ export function MainNav({ className }: MainNavProps) {
         active: route.active,
         icon: route.icon,
         activeIcon: route.activeIcon,
+        prefetchOnIntent: 'prefetchOnIntent' in route && route.prefetchOnIntent,
       })),
     [
       agentV2Enabled,

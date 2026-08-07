@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react'
 import type { MainNavItem } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useState } from 'react'
 import Link from '@/next/link'
 
 const NavIcon = ({ icon, className }: { icon: string; className?: string }) => (
@@ -16,11 +17,15 @@ type MainNavLinkProps = {
 }
 
 const MainNavLink = ({ item, pathname, children }: MainNavLinkProps) => {
+  const [isPrefetchEnabled, setIsPrefetchEnabled] = useState(false)
   const activated = item.active(pathname)
 
   return (
     <Link
       href={item.href}
+      prefetch={item.prefetchOnIntent ? (isPrefetchEnabled ? null : false) : undefined}
+      onMouseEnter={item.prefetchOnIntent ? () => setIsPrefetchEnabled(true) : undefined}
+      onFocus={item.prefetchOnIntent ? () => setIsPrefetchEnabled(true) : undefined}
       aria-current={activated ? 'page' : undefined}
       title={item.label}
       className={cn(
