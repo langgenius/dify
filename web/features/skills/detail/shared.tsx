@@ -145,6 +145,8 @@ export type BuilderChatMessage = {
   rawContent?: string
   reasoningContent?: string
   role: 'assistant' | 'user'
+  suggestedDisplayName?: string
+  suggestedName?: string
   suggestions?: string[]
   thinkingDurationSeconds?: number
   tone?: 'error'

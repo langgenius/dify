@@ -520,6 +520,15 @@ export function SkillBuilderPanel({
     isSendingRef.current = true
     const requestMessage =
       trimmedPrompt || t(($) => $['skillManagement.detail.builder.attachmentOnlyMessage'])
+    const conversationHistory = messagesRef.current
+      .filter((message) => message.content.trim() && message.id !== `assistant-${skillId}-intro`)
+      .slice(-12)
+      .map(({ content, role, suggestedDisplayName, suggestedName }) => ({
+        content,
+        role,
+        suggested_display_name: suggestedDisplayName,
+        suggested_name: suggestedName,
+      }))
 
     const userMessage: BuilderChatMessage = {
       attachments: attachedFiles,
@@ -554,6 +563,7 @@ export function SkillBuilderPanel({
 
     void sendSkillAssistMessage({
       skillId,
+      history: conversationHistory,
       attachments: attachedFiles.map((attachment) => ({
         mime_type: attachment.mimeType,
         name: attachment.name,
@@ -614,6 +624,20 @@ export function SkillBuilderPanel({
                     ...message,
                     reasoningContent: `${message.reasoningContent ?? ''}${reasoning}`,
                   }
+                : message,
+            ),
+          )
+          return
+        }
+        if (event.event === 'skill_assistant_name_suggestion') {
+          const suggestedName = typeof event.name === 'string' ? event.name : undefined
+          const suggestedDisplayName =
+            typeof event.display_name === 'string' ? event.display_name : undefined
+          if (!suggestedName && !suggestedDisplayName) return
+          updateMessages((currentMessages) =>
+            currentMessages.map((message) =>
+              message.id === assistantMessageId
+                ? { ...message, suggestedName, suggestedDisplayName }
                 : message,
             ),
           )
