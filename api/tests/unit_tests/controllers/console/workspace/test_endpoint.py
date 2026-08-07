@@ -11,11 +11,15 @@ from controllers.console.workspace.endpoint import (
     DeprecatedEndpointDeleteApi,
     DeprecatedEndpointUpdateApi,
     EndpointCollectionApi,
+    EndpointCreatePayload,
     EndpointDisableApi,
     EndpointEnableApi,
+    EndpointIdPayload,
     EndpointItemApi,
     EndpointListApi,
     EndpointListForSinglePluginApi,
+    EndpointUpdatePayload,
+    LegacyEndpointUpdatePayload,
 )
 from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.plugin.entities.endpoint import EndpointEntityWithInstance, EndpointProviderDeclaration
@@ -60,12 +64,13 @@ class TestEndpointCollectionApi:
             "name": "endpoint",
             "settings": {"a": 1},
         }
+        req_data = EndpointCreatePayload(**payload)
 
         with (
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.endpoint.EndpointService.create_endpoint", return_value=True),
         ):
-            result = method(api, "t1", "u1")
+            result = method(api, req_data, "t1", "u1")
 
         assert result["success"] is True
 
@@ -78,6 +83,7 @@ class TestEndpointCollectionApi:
             "name": "endpoint",
             "settings": {},
         }
+        req_data = EndpointCreatePayload(**payload)
 
         with (
             app.test_request_context("/", json=payload),
@@ -87,7 +93,7 @@ class TestEndpointCollectionApi:
             ),
         ):
             with pytest.raises(ValueError):
-                method(api, "t1", "u1")
+                method(api, req_data, "t1", "u1")
 
     def test_create_validation_error(self, app: Flask):
         api = EndpointCollectionApi()
@@ -103,7 +109,7 @@ class TestEndpointCollectionApi:
             app.test_request_context("/", json=payload),
         ):
             with pytest.raises(ValueError):
-                method(api, "t1", "u1")
+                method(api, EndpointCreatePayload(**payload), "t1", "u1")
 
 
 class TestDeprecatedEndpointCreateApi:
@@ -116,12 +122,13 @@ class TestDeprecatedEndpointCreateApi:
             "name": "endpoint",
             "settings": {"a": 1},
         }
+        req_data = EndpointCreatePayload(**payload)
 
         with (
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.endpoint.EndpointService.create_endpoint", return_value=True),
         ):
-            result = method(api, "t1", "u1")
+            result = method(api, req_data, "t1", "u1")
 
         assert result["success"] is True
 
@@ -242,6 +249,7 @@ class TestEndpointItemApi:
             "name": "new-name",
             "settings": {"x": 1},
         }
+        req_data = EndpointUpdatePayload(**payload)
 
         with (
             app.test_request_context("/", method="PATCH", json=payload),
@@ -250,7 +258,7 @@ class TestEndpointItemApi:
                 return_value=True,
             ) as mock_update,
         ):
-            result = method(api, "t1", "u1", "e1")
+            result = method(api, req_data, "t1", "u1", "e1")
 
         assert result["success"] is True
         mock_update.assert_called_once_with(
@@ -271,7 +279,7 @@ class TestEndpointItemApi:
             app.test_request_context("/", method="PATCH", json=payload),
         ):
             with pytest.raises(ValueError):
-                method(api, "t1", "u1", "e1")
+                method(api, EndpointUpdatePayload(**payload), "t1", "u1", "e1")
 
     def test_update_service_failure(self, app: Flask):
         api = EndpointItemApi()
@@ -281,12 +289,13 @@ class TestEndpointItemApi:
             "name": "n",
             "settings": {},
         }
+        req_data = EndpointUpdatePayload(**payload)
 
         with (
             app.test_request_context("/", method="PATCH", json=payload),
             patch("controllers.console.workspace.endpoint.EndpointService.update_endpoint", return_value=False),
         ):
-            result = method(api, "t1", "u1", "e1")
+            result = method(api, req_data, "t1", "u1", "e1")
 
         assert result["success"] is False
 
@@ -297,12 +306,13 @@ class TestDeprecatedEndpointDeleteApi:
         method = inspect.unwrap(api.post)
 
         payload = {"endpoint_id": "e1"}
+        req_data = EndpointIdPayload(**payload)
 
         with (
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.endpoint.EndpointService.delete_endpoint", return_value=True),
         ):
-            result = method(api, "t1", "u1")
+            result = method(api, req_data, "t1", "u1")
 
         assert result["success"] is True
 
@@ -314,19 +324,20 @@ class TestDeprecatedEndpointDeleteApi:
             app.test_request_context("/", json={}),
         ):
             with pytest.raises(ValueError):
-                method(api, "t1", "u1")
+                method(api, EndpointIdPayload(), "t1", "u1")
 
     def test_delete_service_failure(self, app: Flask):
         api = DeprecatedEndpointDeleteApi()
         method = inspect.unwrap(api.post)
 
         payload = {"endpoint_id": "e1"}
+        req_data = EndpointIdPayload(**payload)
 
         with (
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.endpoint.EndpointService.delete_endpoint", return_value=False),
         ):
-            result = method(api, "t1", "u1")
+            result = method(api, req_data, "t1", "u1")
 
         assert result["success"] is False
 
@@ -341,12 +352,13 @@ class TestDeprecatedEndpointUpdateApi:
             "name": "new-name",
             "settings": {"x": 1},
         }
+        req_data = LegacyEndpointUpdatePayload(**payload)
 
         with (
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.endpoint.EndpointService.update_endpoint", return_value=True),
         ):
-            result = method(api, "t1", "u1")
+            result = method(api, req_data, "t1", "u1")
 
         assert result["success"] is True
 
@@ -360,7 +372,7 @@ class TestDeprecatedEndpointUpdateApi:
             app.test_request_context("/", json=payload),
         ):
             with pytest.raises(ValueError):
-                method(api, "t1", "u1")
+                method(api, LegacyEndpointUpdatePayload(**payload), "t1", "u1")
 
     def test_update_service_failure(self, app: Flask):
         api = DeprecatedEndpointUpdateApi()
@@ -371,12 +383,13 @@ class TestDeprecatedEndpointUpdateApi:
             "name": "n",
             "settings": {},
         }
+        req_data = LegacyEndpointUpdatePayload(**payload)
 
         with (
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.endpoint.EndpointService.update_endpoint", return_value=False),
         ):
-            result = method(api, "t1", "u1")
+            result = method(api, req_data, "t1", "u1")
 
         assert result["success"] is False
 
@@ -417,12 +430,13 @@ class TestEndpointEnableApi:
         method = inspect.unwrap(api.post)
 
         payload = {"endpoint_id": "e1"}
+        req_data = EndpointIdPayload(**payload)
 
         with (
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.endpoint.EndpointService.enable_endpoint", return_value=True),
         ):
-            result = method(api, "t1", "u1")
+            result = method(api, req_data, "t1", "u1")
 
         assert result["success"] is True
 
@@ -434,19 +448,20 @@ class TestEndpointEnableApi:
             app.test_request_context("/", json={}),
         ):
             with pytest.raises(ValueError):
-                method(api, "t1", "u1")
+                method(api, EndpointIdPayload(), "t1", "u1")
 
     def test_enable_service_failure(self, app: Flask):
         api = EndpointEnableApi()
         method = inspect.unwrap(api.post)
 
         payload = {"endpoint_id": "e1"}
+        req_data = EndpointIdPayload(**payload)
 
         with (
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.endpoint.EndpointService.enable_endpoint", return_value=False),
         ):
-            result = method(api, "t1", "u1")
+            result = method(api, req_data, "t1", "u1")
 
         assert result["success"] is False
 
@@ -457,12 +472,13 @@ class TestEndpointDisableApi:
         method = inspect.unwrap(api.post)
 
         payload = {"endpoint_id": "e1"}
+        req_data = EndpointIdPayload(**payload)
 
         with (
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.endpoint.EndpointService.disable_endpoint", return_value=True),
         ):
-            result = method(api, "t1", "u1")
+            result = method(api, req_data, "t1", "u1")
 
         assert result["success"] is True
 
@@ -474,4 +490,4 @@ class TestEndpointDisableApi:
             app.test_request_context("/", json={}),
         ):
             with pytest.raises(ValueError):
-                method(api, "t1", "u1")
+                method(api, EndpointIdPayload(), "t1", "u1")
