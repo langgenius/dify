@@ -1,16 +1,11 @@
 'use client'
 
-import type {
-  EnvironmentDeployment,
-  WorkflowVersion,
-} from '@dify/contracts/enterprise-app-deploy/types.gen'
+import type { EnvironmentDeployment } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { DeploymentDialogRequest } from './deployment-dialog/types'
-import type { DeploymentVersion } from './version'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { AppModeEnum } from '@/types/app'
@@ -21,14 +16,7 @@ import { EnvironmentTable } from './environment-table'
 import { AppDeployStateBoundary, latestAppWorkflowVersionAtom } from './state'
 import { useRefreshAppEnvironmentsAfterDeploymentPolling } from './use-refresh-app-environments-after-deployment-polling'
 import { useUndeployWorkflow } from './use-undeploy-workflow'
-
-function toDialogVersion(version: WorkflowVersion, defaultName: string): DeploymentVersion {
-  return {
-    description: version.marked_comment || undefined,
-    id: version.id,
-    name: getWorkflowVersionName(version, defaultName),
-  }
-}
+import { toDeploymentVersion } from './version'
 
 function AppDeployContent({ appId }: { appId: string }) {
   const { t } = useTranslation('deployments')
@@ -59,7 +47,7 @@ function AppDeployContent({ appId }: { appId: string }) {
       currentVersionId: deploymentState?.current_version?.id,
       environment,
       environmentId,
-      initialVersion: toDialogVersion(
+      initialVersion: toDeploymentVersion(
         version,
         tWorkflow(($) => $['versionHistory.defaultName']),
       ),

@@ -1,16 +1,18 @@
-import type { InputVar } from '@/app/components/workflow/types'
+import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
+import type { InputVar, Node } from '@/app/components/workflow/types'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppSSO } from '@/types/app'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
-import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { BlockEnum, isTriggerNode } from '@/app/components/workflow/types'
 import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
 
 export type AccessPointAppInfo = AppDetailResponse & Partial<AppSSO>
-export type PublishedWorkflow = FetchWorkflowDraftResponse | null | undefined
+export type PublishedWorkflow = WorkflowResponse | null | undefined
 
 type AppRouteMode = Exclude<AppModeEnum, 'agent'>
+
+const EMPTY_WORKFLOW_NODES: Node[] = []
 
 const APP_API_REFERENCE_PATHS: Record<AppRouteMode, DocPathWithoutLang> = {
   'advanced-chat': '/api-reference/guides/chatflow',
@@ -31,7 +33,7 @@ export function getPublishedWorkflowState(
   workflow: PublishedWorkflow,
 ) {
   const isWorkflowApp = appInfo.mode === AppModeEnum.WORKFLOW
-  const nodes = workflow?.graph?.nodes ?? []
+  const nodes = getPublishedWorkflowNodes(workflow)
   const hasStartNode = nodes.some((node) => node.data.type === BlockEnum.Start)
   const hasTriggerNode = nodes.some((node) => isTriggerNode(node.data.type))
 
@@ -41,6 +43,12 @@ export function getPublishedWorkflowState(
     isUnpublished: isWorkflowApp && !workflow?.graph,
     isWorkflowApp,
   }
+}
+
+export function getPublishedWorkflowNodes(workflow: PublishedWorkflow) {
+  return Array.isArray(workflow?.graph?.nodes)
+    ? (workflow.graph.nodes as Node[])
+    : EMPTY_WORKFLOW_NODES
 }
 
 export function getBuiltInAccessUrls(appInfo: AccessPointAppInfo) {
@@ -58,7 +66,9 @@ export function getBuiltInAccessUrls(appInfo: AccessPointAppInfo) {
 }
 
 export function getHiddenStartInputs(workflow: PublishedWorkflow) {
-  const startNode = workflow?.graph?.nodes.find((node) => node.data.type === BlockEnum.Start)
+  const startNode = getPublishedWorkflowNodes(workflow).find(
+    (node) => node.data.type === BlockEnum.Start,
+  )
 
   return ((startNode?.data as { variables?: InputVar[] } | undefined)?.variables ?? []).filter(
     (variable) => variable.hide === true,

@@ -24,7 +24,7 @@ import {
 import { AppModeEnum } from '@/types/app'
 import { AccessPointCard } from './access-point-card'
 import { AccessPointUrl } from './access-point-url'
-import { isAdvancedApp } from './utils'
+import { getPublishedWorkflowNodes, isAdvancedApp } from './utils'
 
 type MCPAccessPointCardProps = {
   appInfo: AccessPointAppInfo
@@ -66,7 +66,7 @@ export function MCPAccessPointCard({
   const serverUrl = serverPublished
     ? `${appInfo.api_base_url.replace(/\/v1$/, '')}/mcp/server/${detail?.server_code}/mcp`
     : '***********'
-  const workflowNodes = useMemo(() => workflow?.graph?.nodes ?? [], [workflow?.graph?.nodes])
+  const workflowNodes = getPublishedWorkflowNodes(workflow)
   const missingStartNode =
     workflowApp && !workflowNodes.some((node) => node.data.type === BlockEnum.Start)
   const appUnpublished = advancedApp ? !workflow?.graph : !basicConfig?.updated_at

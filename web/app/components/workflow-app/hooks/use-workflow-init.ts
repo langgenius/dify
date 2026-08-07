@@ -9,8 +9,9 @@ import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { appWorkflowQueryOptions, useWorkflowConfig } from '@/service/use-workflow'
+import { useWorkflowConfig } from '@/service/use-workflow'
 import { fetchNodesDefaultConfigs, fetchWorkflowDraft, syncWorkflowDraft } from '@/service/workflow'
+import { appWorkflowQueryOptions } from '@/service/workflow-queries'
 import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { useWorkflowDraftGraphForCanvas } from './use-workflow-draft-graph-for-canvas'
@@ -213,9 +214,9 @@ export const useWorkflowInit = () => {
       const publishedWorkflow = publishedWorkflowResult.value
       workflowStore.getState().setPublishedAt(publishedWorkflow?.created_at ?? 0)
       const graph = publishedWorkflow?.graph
-      workflowStore
-        .getState()
-        .setLastPublishedHasUserInput(hasConnectedUserInput(graph?.nodes, graph?.edges))
+      const nodes = Array.isArray(graph?.nodes) ? (graph.nodes as Node[]) : undefined
+      const edges = Array.isArray(graph?.edges) ? (graph.edges as Edge[]) : undefined
+      workflowStore.getState().setLastPublishedHasUserInput(hasConnectedUserInput(nodes, edges))
     } else {
       console.error(publishedWorkflowResult.reason)
       workflowStore.getState().setLastPublishedHasUserInput(false)

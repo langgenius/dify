@@ -118,7 +118,7 @@ export type NodeTracing = {
   agentLog?: AgentLogItemWithChildren[] // agent log
 }
 
-export type VersionEnvironment = {
+type VersionEnvironment = {
   id: string
   name: string
 }

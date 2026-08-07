@@ -1,7 +1,8 @@
+import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { CSSProperties, ReactNode } from 'react'
 import type { ModelAndParameter } from '../../configuration/debug/types'
 import type { AppPublisherProps } from '../types'
-import type { PublishWorkflowParams, VersionHistory } from '@/types/workflow'
+import type { PublishWorkflowParams } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
@@ -11,6 +12,13 @@ import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { APP_PUBLISH_HOTKEY } from '../hotkeys'
 import PublishWithMultipleModel from '../publish-with-multiple-model'
 import { PublisherTimelineMarker } from '../shared/timeline-marker'
+
+type PublisherVersionInfo = Pick<
+  WorkflowResponse,
+  'created_at' | 'marked_comment' | 'marked_name' | 'version_number'
+> & {
+  created_by?: { name: string } | null
+}
 
 type PublisherSummarySectionProps = Pick<
   AppPublisherProps,
@@ -30,7 +38,7 @@ type PublisherSummarySectionProps = Pick<
   isWorkflowApp?: boolean
   onEditVersion?: () => void
   upgradeHighlightStyle: CSSProperties
-  versionInfo?: VersionHistory | null
+  versionInfo?: PublisherVersionInfo | null
 }
 
 export function PublisherSummarySection({
@@ -56,7 +64,7 @@ export function PublisherSummarySection({
   const resolvedHasUnpublishedChanges = hasUnpublishedChanges ?? !hasPublishedVersion
   const publishedTimestamp =
     publishedAt || (versionInfo?.created_at ? versionInfo.created_at * 1000 : undefined)
-  const publisherName = versionInfo?.created_by.name
+  const publisherName = versionInfo?.created_by?.name
   const markedName = versionInfo?.marked_name
   const markedComment = versionInfo?.marked_comment
   const publishButtonDisabled =

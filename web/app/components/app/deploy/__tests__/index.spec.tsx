@@ -22,15 +22,15 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/client'
+import {
+  appWorkflowQueryOptions,
+  appWorkflowVersionsInfiniteQueryOptions,
+} from '@/service/workflow-queries'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppACLPermission } from '@/utils/permission'
 import AppDeploy from '..'
 import { EnvironmentTable } from '../environment-table'
-import {
-  AppDeployStateBoundary,
-  getEnvironmentDeploymentActions,
-  latestPublishedWorkflowQueryOptions,
-} from '../state'
+import { AppDeployStateBoundary, getEnvironmentDeploymentActions } from '../state'
 
 const APP_ID = 'app-1'
 const ACTIVITY_AT = 1_784_941_200
@@ -508,21 +508,8 @@ const appEnvironmentDeploymentsQueryOptions =
       },
     },
   })
-const latestPublishedWorkflowQuery = latestPublishedWorkflowQueryOptions(APP_ID)
-const appWorkflowVersionsInfiniteQueryOptions =
-  consoleQuery.apps.byAppId.workflows.get.infiniteOptions({
-    input: (pageParam) => ({
-      params: {
-        app_id: APP_ID,
-      },
-      query: {
-        limit: 10,
-        page: Number(pageParam),
-      },
-    }),
-    getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
-    initialPageParam: 1,
-  })
+const latestPublishedWorkflowQuery = appWorkflowQueryOptions(APP_ID)
+const appWorkflowVersionsQuery = appWorkflowVersionsInfiniteQueryOptions(APP_ID)
 
 function workflowDeploymentPrecheckQueryOptions(workflowId: string) {
   return consoleQuery.enterprise.appDeploy.deploymentService.precheckWorkflowDeployment.queryOptions(
@@ -642,7 +629,7 @@ function render(
     latestPublishedWorkflowQuery.queryKey,
     mockBuiltInEnvironment.publishedWorkflow,
   )
-  queryClient.setQueryData(appWorkflowVersionsInfiniteQueryOptions.queryKey, {
+  queryClient.setQueryData(appWorkflowVersionsQuery.queryKey, {
     pageParams: [1],
     pages: [
       {

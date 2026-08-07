@@ -107,6 +107,9 @@ const startNode: Node<{ variables: InputVar[] }> = {
 }
 
 const workflowWithHiddenInput: NonNullable<PublishedWorkflow> = {
+  conversation_variables: [],
+  environment_variables: [],
+  features: {},
   id: 'workflow-id',
   graph: {
     nodes: [startNode],
@@ -121,6 +124,7 @@ const workflowWithHiddenInput: NonNullable<PublishedWorkflow> = {
   version: '1',
   marked_name: '',
   marked_comment: '',
+  rag_pipeline_variables: [],
 }
 
 describe('WebAppAccessPointCard', () => {

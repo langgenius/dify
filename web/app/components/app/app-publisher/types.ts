@@ -4,11 +4,11 @@ import type { PublishWorkflowParams } from '@/types/workflow'
 
 export type AppPublisherPublishParams = ModelAndParameter | PublishWorkflowParams
 
-export type AppPublisherPublishHandler =
+type AppPublisherPublishHandler =
   | ((params?: AppPublisherPublishParams) => Promise<unknown> | unknown)
   | ((params?: unknown) => Promise<unknown> | unknown)
 
-export type AppPublisherRestoreHandler = () => Promise<unknown> | unknown
+type AppPublisherRestoreHandler = () => Promise<unknown> | unknown
 
 export type AppPublisherProps = {
   disabled?: boolean

@@ -2,9 +2,9 @@ import type { AppPublisherProps } from '../types'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
+import { toDeploymentVersion } from '@/app/components/app/deploy/version'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { WorkflowToolDrawer } from '@/app/components/tools/workflow-tool'
-import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { AccessMode } from '@/models/access-control'
@@ -168,17 +168,11 @@ export function PublisherContent({
   })
   const latestPublishedVersion = publish.isPublishedWorkflowSuccess
     ? publish.publishedWorkflow
-      ? {
-          description: publish.publishedWorkflow.marked_comment || undefined,
-          id: publish.publishedWorkflow.id,
-          latest: true,
-          name: getWorkflowVersionName(
-            publish.publishedWorkflow,
-            t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
-          ),
-          publishedAt: publish.publishedWorkflow.created_at * 1000,
-          publishedBy: publish.publishedWorkflow.created_by?.name,
-        }
+      ? toDeploymentVersion(
+          publish.publishedWorkflow,
+          t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
+          publish.publishedWorkflow.id,
+        )
       : null
     : undefined
   const environmentTabs = supportsMultiEnvironment ? (
@@ -267,12 +261,9 @@ export function PublisherContent({
         showBuiltInPublisher={showBuiltInPublisher}
         workflowLaunch={{
           open: workflowLaunch.open,
-          hiddenVariables: workflowLaunch.supportedVariables,
-          unsupportedVariables: workflowLaunch.unsupportedVariables,
-          values: workflowLaunch.values,
-          onOpenChange: workflowLaunch.setOpen,
-          onValueChange: workflowLaunch.handleValueChange,
-          onSubmit: workflowLaunch.handleSubmit,
+          hiddenVariables: workflowLaunch.hiddenVariables,
+          targetUrl: workflowLaunch.targetUrl,
+          onOpenChange: workflowLaunch.onOpenChange,
         }}
         onOpenChange={handleOpenChange}
       />

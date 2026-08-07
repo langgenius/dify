@@ -3,7 +3,6 @@ import type { FlowType } from '@/types/common'
 import type {
   FetchWorkflowDraftPageParams,
   FetchWorkflowDraftPageResponse,
-  FetchWorkflowDraftResponse,
   NodeTracing,
   PublishWorkflowParams,
   UpdateWorkflowParams,
@@ -11,25 +10,13 @@ import type {
   WorkflowConfigResponse,
   WorkflowRunHistoryResponse,
 } from '@/types/workflow'
-import {
-  queryOptions,
-  useInfiniteQuery,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { del, get, patch, post, put } from './base'
-import { useInvalid, useReset } from './use-base'
+import { useInvalid } from './use-base'
 import { getFlowPrefix } from './utils'
+import { appWorkflowQueryOptions, appWorkflowVersionsInfiniteQueryKey } from './workflow-queries'
 
 const NAME_SPACE = 'workflow'
-
-export const appWorkflowQueryOptions = (appID: string) =>
-  queryOptions({
-    enabled: !!appID,
-    queryKey: [NAME_SPACE, 'publish', appID],
-    queryFn: () => get<FetchWorkflowDraftResponse | null>(`/apps/${appID}/workflows/publish`),
-  })
 
 export const useAppWorkflow = (appID: string) => {
   return useQuery(appWorkflowQueryOptions(appID))
@@ -58,8 +45,8 @@ export const useInvalidateWorkflowRunHistory = () => {
 export const useInvalidateAppWorkflow = () => {
   const queryClient = useQueryClient()
   return (appID: string) => {
-    queryClient.invalidateQueries({
-      queryKey: [NAME_SPACE, 'publish', appID],
+    return queryClient.invalidateQueries({
+      queryKey: appWorkflowQueryOptions(appID).queryKey,
     })
   }
 }
@@ -102,7 +89,13 @@ export const useWorkflowVersionHistory = (params: FetchWorkflowDraftPageParams) 
 }
 
 export const useResetWorkflowVersionHistory = () => {
-  return useReset([...WorkflowVersionHistoryKey])
+  const queryClient = useQueryClient()
+
+  return () =>
+    Promise.all([
+      queryClient.resetQueries({ queryKey: [...WorkflowVersionHistoryKey] }),
+      queryClient.resetQueries({ queryKey: appWorkflowVersionsInfiniteQueryKey() }),
+    ])
 }
 
 export const useUpdateWorkflow = () => {
@@ -116,11 +109,11 @@ export const useUpdateWorkflow = () => {
           marked_comment: params.releaseNotes,
         },
       }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: [...WorkflowVersionHistoryKey],
-      })
-    },
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: [...WorkflowVersionHistoryKey] }),
+        queryClient.invalidateQueries({ queryKey: appWorkflowVersionsInfiniteQueryKey() }),
+      ]),
   })
 }
 

@@ -3,7 +3,7 @@ import type { AppPublisherProps } from '../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useTranslation } from 'react-i18next'
-import { WorkflowLaunchDialog } from '@/app/components/app/overview/app-card-sections'
+import { WorkflowLaunchDialog } from '@/app/components/app/overview/workflow-launch-dialog'
 import { BuiltInPublisher } from '../../built-in-publisher'
 import { PublisherEnvironmentFlow } from '../../environment-deployment-flow'
 
@@ -13,7 +13,7 @@ type PublisherPanelProps = Pick<AppPublisherProps, 'crossAxisOffset' | 'disabled
   environmentPublisherKey: string
   open: boolean
   showBuiltInPublisher: boolean
-  workflowLaunch: Omit<ComponentProps<typeof WorkflowLaunchDialog>, 't'>
+  workflowLaunch: ComponentProps<typeof WorkflowLaunchDialog>
   onOpenChange: (open: boolean) => void
 }
 
@@ -54,7 +54,7 @@ export function PublisherPanel({
           )}
         </div>
       </PopoverContent>
-      <WorkflowLaunchDialog t={t} {...workflowLaunch} />
+      <WorkflowLaunchDialog {...workflowLaunch} />
     </Popover>
   )
 }

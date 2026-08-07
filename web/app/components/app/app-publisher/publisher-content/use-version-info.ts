@@ -1,4 +1,4 @@
-import type { VersionHistory } from '@/types/workflow'
+import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -16,7 +16,7 @@ export function useVersionInfo({
   onClosePublisher,
 }: {
   appId?: string
-  publishedWorkflow?: VersionHistory | null
+  publishedWorkflow?: WorkflowResponse | null
   onClosePublisher: () => void
 }) {
   const { t } = useTranslation()

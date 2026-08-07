@@ -4,19 +4,15 @@ import type { CollaborationUpdate } from '@/app/components/workflow/collaboratio
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { useQueryClient } from '@tanstack/react-query'
 import { use, useEffect } from 'react'
-import {
-  appWorkflowVersionsInfiniteQueryOptions,
-  latestPublishedWorkflowQueryOptions,
-} from '@/app/components/app/deploy/state'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { WorkflowContext } from '@/app/components/workflow/context'
+import { useAppWorkflow, useInvalidateAppWorkflow } from '@/service/use-workflow'
 import {
   appWorkflowQueryOptions,
-  useAppWorkflow,
-  useInvalidateAppWorkflow,
-} from '@/service/use-workflow'
+  appWorkflowVersionsInfiniteQueryOptions,
+} from '@/service/workflow-queries'
 import { AppModeEnum } from '@/types/app'
 import { APP_PUBLISH_HOTKEY } from '../hotkeys'
 
@@ -38,15 +34,13 @@ type UsePublishControllerParams = Pick<
 }
 
 function refreshAppDeploymentWorkflowVersions(queryClient: QueryClient, appId: string) {
-  const latestPublishedWorkflowQuery = latestPublishedWorkflowQueryOptions(appId)
   const workflowVersionsQuery = appWorkflowVersionsInfiniteQueryOptions(appId)
 
-  void Promise.all([
-    queryClient.invalidateQueries({ queryKey: latestPublishedWorkflowQuery.queryKey }),
-    queryClient.invalidateQueries({ queryKey: workflowVersionsQuery.queryKey }),
-  ]).catch((error) => {
-    console.warn('[app-publisher] refresh deployment workflow versions failed', error)
-  })
+  void queryClient
+    .invalidateQueries({ queryKey: workflowVersionsQuery.queryKey })
+    .catch((error) => {
+      console.warn('[app-publisher] refresh deployment workflow versions failed', error)
+    })
 }
 
 export function usePublishController({
