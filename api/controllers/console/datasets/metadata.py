@@ -205,8 +205,7 @@ class DocumentMetadataEditApi(Resource):
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @with_session
     def post(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID):
-        dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset_for_tenant(dataset_id_str, current_tenant_id, session=session)
+        dataset = DatasetService.get_dataset_for_tenant(str(dataset_id), current_tenant_id, session=session)
         if dataset is None:
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user, session)

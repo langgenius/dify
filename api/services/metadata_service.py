@@ -239,13 +239,10 @@ class MetadataService:
         dataset: Dataset,
         metadata_args: MetadataOperationData,
         current_user: Account | None = None,  # TODO: the service_api is not migrated yet
-        current_tenant_id: str | None = None,
         *,
         session: Session,
     ):
-        current_user, _ = resolve_account_fallback(
-            current_user, current_tenant_id, fallback_tenant_id=dataset.tenant_id
-        )
+        current_user = resolve_account_fallback(current_user, fallback_tenant_id=dataset.tenant_id).account
         metadata_ids = {
             metadata_value.id
             for operation in metadata_args.operation_data
@@ -282,8 +279,7 @@ class MetadataService:
                 else:
                     doc_metadata = {}
                 for metadata_value in operation.metadata_list:
-                    metadata = metadata_by_id[metadata_value.id]
-                    doc_metadata[metadata.name] = metadata_value.value
+                    doc_metadata[metadata_by_id[metadata_value.id].name] = metadata_value.value
                 if dataset.built_in_field_enabled:
                     doc_metadata[BuiltInField.document_name] = document.name
                     doc_metadata[BuiltInField.uploader] = document.get_uploader(session=session)
@@ -304,7 +300,6 @@ class MetadataService:
                     )
 
                 for metadata_value in operation.metadata_list:
-                    metadata = metadata_by_id[metadata_value.id]
                     # check if binding already exists
                     if operation.partial_update:
                         existing_binding = session.scalar(
@@ -313,7 +308,7 @@ class MetadataService:
                                 DatasetMetadataBinding.tenant_id == dataset.tenant_id,
                                 DatasetMetadataBinding.dataset_id == dataset.id,
                                 DatasetMetadataBinding.document_id == document.id,
-                                DatasetMetadataBinding.metadata_id == metadata.id,
+                                DatasetMetadataBinding.metadata_id == metadata_value.id,
                             )
                             .limit(1)
                         )
@@ -324,7 +319,7 @@ class MetadataService:
                         tenant_id=dataset.tenant_id,
                         dataset_id=dataset.id,
                         document_id=document.id,
-                        metadata_id=metadata.id,
+                        metadata_id=metadata_value.id,
                         created_by=current_user.id,
                     )
                     session.add(dataset_metadata_binding)

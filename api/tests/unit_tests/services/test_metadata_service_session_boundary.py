@@ -90,7 +90,6 @@ def test_update_documents_metadata_uses_caller_session_for_uploader() -> None:
             dataset,
             metadata_args,
             _account(),
-            "tenant-1",
             session=session,
         )
 
