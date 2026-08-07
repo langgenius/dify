@@ -1,7 +1,25 @@
 import type { InstalledAppResponse } from '@dify/contracts/api/console/installed-apps/types.gen'
+import type { AnchorHTMLAttributes, ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import AppNavItem from '../app-nav-item'
+
+vi.mock('@/next/link', () => ({
+  default: ({
+    children,
+    href,
+    prefetch,
+    ...props
+  }: AnchorHTMLAttributes<HTMLAnchorElement> & {
+    children?: ReactNode
+    href: string
+    prefetch?: boolean | null
+  }) => (
+    <a href={href} data-prefetch={prefetch === null ? 'auto' : prefetch} {...props}>
+      {children}
+    </a>
+  ),
+}))
 
 const baseProps = {
   app: {
@@ -51,6 +69,7 @@ describe('AppNavItem', () => {
       expect(link).toHaveAttribute('href', '/installed/app-123')
       expect(link).toHaveAttribute('aria-label', 'My App')
       expect(link).not.toHaveAttribute('aria-current')
+      expect(link).not.toHaveAttribute('data-prefetch')
     })
 
     it('should use a contextual accessible name when ariaLabel is provided', () => {
@@ -61,6 +80,33 @@ describe('AppNavItem', () => {
       expect(link).toHaveAttribute('href', '/installed/app-123')
       expect(link).toHaveAttribute('aria-label', 'Open My App web app')
       expect(screen.getByText('My App')).toBeInTheDocument()
+    })
+
+    it('should enable prefetch after pointer intent when requested', async () => {
+      const user = userEvent.setup()
+      render(<AppNavItem {...baseProps} prefetchOnIntent />)
+
+      const link = screen.getByRole('link', { name: 'My App' })
+
+      expect(link).toHaveAttribute('data-prefetch', 'false')
+
+      await user.hover(link)
+
+      expect(link).toHaveAttribute('data-prefetch', 'auto')
+    })
+
+    it('should enable prefetch after keyboard focus when requested', async () => {
+      const user = userEvent.setup()
+      render(<AppNavItem {...baseProps} prefetchOnIntent />)
+
+      const link = screen.getByRole('link', { name: 'My App' })
+
+      expect(link).toHaveAttribute('data-prefetch', 'false')
+
+      await user.tab()
+
+      expect(link).toHaveFocus()
+      expect(link).toHaveAttribute('data-prefetch', 'auto')
     })
 
     it('should expose selected state through the current link', () => {

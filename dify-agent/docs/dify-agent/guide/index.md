@@ -56,9 +56,8 @@ also reads `.env` and `dify-agent/.env` when present.
 | `DIFY_AGENT_E2B_SHELLCTL_PORT` | `5004` | shellctl port exposed by the E2B template. |
 | `DIFY_AGENT_SANDBOX_FILE_UPLOAD_MAX_BYTES` | `52428800` | Standalone Dify Agent maximum for whole-file Workspace upload capture; 50 MiB by default. Docker Compose derives it from `PLUGIN_MAX_FILE_SIZE`. |
 | `DIFY_AGENT_SHELL_REDACT_PATTERNS` | empty | JSON array of additional regex patterns redacted from Shell output. |
-| `DIFY_AGENT_STUB_API_BASE_URL` | empty | Agent Stub API base URL reachable from the Sandbox. HTTP may be the service root or `/agent-stub`; gRPC must be `grpc://host:port`. Enables `DIFY_AGENT_STUB_*` env injection for user `shell.run` jobs. |
-| `DIFY_AGENT_SANDBOX_FILES_BASE_URL` | empty | Dify API base URL reachable from the Sandbox for signed `/files/*` upload/download bytes. Required when Agent Stub file operations are enabled. May include an ingress path prefix, but not a query or fragment. |
-| `DIFY_AGENT_STUB_GRPC_BIND_ADDRESS` | empty | Optional `host:port` bind override used only when `DIFY_AGENT_STUB_API_BASE_URL` uses `grpc://`. |
+| `DIFY_AGENT_STUB_API_BASE_URL` | empty | HTTP(S) Agent Stub API base URL reachable from the Sandbox. It may be the service root or `/agent-stub`. Enables `DIFY_AGENT_STUB_*` env injection for user `shell.run` jobs. |
+| `DIFY_AGENT_SANDBOX_FILES_BASE_URL` | empty | Dify API base URL reachable from the Sandbox for signed `/files/*` upload/download bytes, including Config file and skill pulls. Required when Agent Stub file operations are enabled. May include an ingress path prefix, but not a query or fragment. |
 | `DIFY_AGENT_SERVER_SECRET_KEY` | empty | Security-sensitive server-wide root secret used to derive the JWE encryption key for Agent Stub bearer tokens; required when `DIFY_AGENT_STUB_API_BASE_URL` is set. The supplied default config uses a development value; set a unique unpadded base64url 32-byte secret in production. |
 | `DIFY_AGENT_OUTBOUND_HTTP_CONNECT_TIMEOUT` | `10` | Shared outbound HTTP connect timeout in seconds. |
 | `DIFY_AGENT_OUTBOUND_HTTP_READ_TIMEOUT` | `600` | Shared outbound HTTP read timeout in seconds. |
@@ -99,6 +98,14 @@ The two Sandbox-facing base URLs have different owners. Agent Stub control
 requests use `DIFY_AGENT_STUB_API_BASE_URL`; signed file bytes use
 `DIFY_AGENT_SANDBOX_FILES_BASE_URL`. `DIFY_AGENT_INNER_API_URL` remains a
 trusted service-to-service URL and is never returned to the Sandbox.
+
+Config file and skill pulls use the same split: Agent Stub authorizes the
+Config target and returns a short-lived URL, then the Sandbox fetches the bytes
+directly from the Dify API `/files/*` data plane.
+
+Removing Agent Stub gRPC is a breaking transport migration: replace every
+`grpc://` Agent Stub URL with HTTP(S), remove
+`DIFY_AGENT_STUB_GRPC_BIND_ADDRESS`, and deploy without a gRPC fallback.
 
 For a remote Sandbox, expose only `/agent-stub/*` from Agent Backend and the
 existing `/files/*` Dify API data plane. The `/files/*` ingress must preserve
