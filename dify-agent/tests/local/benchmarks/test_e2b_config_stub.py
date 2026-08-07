@@ -122,6 +122,8 @@ def test_pull_routes_enforce_one_request_per_fixed_scenario_item(path: str, expe
         "/agent-stub/config/files/%2e%2e/pull",
         "/agent-stub/config/files/file-0%2Fetc.bin/pull",
         "/agent-stub/config/files/file-0%20bad.bin/pull",
+        f"/agent-stub/config/files/file-0-{'a' * 256}.bin/pull",
+        f"/agent-stub/config/files/{'file-0-' * 128}/pull",
     ],
 )
 def test_pull_routes_reject_invalid_or_traversal_names(path: str) -> None:

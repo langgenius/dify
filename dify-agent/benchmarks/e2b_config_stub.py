@@ -7,7 +7,7 @@ import hashlib
 import io
 import os
 from pathlib import Path
-import re
+import string
 from threading import Lock
 from typing import Literal
 from urllib.parse import unquote, urlsplit
@@ -27,9 +27,8 @@ _HEALTH_PATH = "/health"
 _SKILL_PULL_PREFIX = "/agent-stub/config/skills/"
 _FILE_PULL_PREFIX = "/agent-stub/config/files/"
 _PULL_SUFFIX = "/pull"
-_SAFE_NAME_PATTERN = re.compile(r"[A-Za-z0-9._-]+")
-_SKILL_NAME_PATTERN = re.compile(r"skill-(?P<index>\d+)-[A-Za-z0-9._-]+")
-_FILE_NAME_PATTERN = re.compile(r"file-(?P<index>\d+)-[A-Za-z0-9._-]+\.bin")
+_SAFE_NAME_CHARACTERS = frozenset(string.ascii_letters + string.digits + "._-")
+_MAX_CONFIG_ITEM_NAME_LENGTH = 255
 _CONFIG_SKILL_COUNT = 3
 _CONFIG_FILE_COUNT = 10
 
@@ -149,15 +148,27 @@ def _pull_name(path: str, *, prefix: str) -> str | None:
 
 
 def _is_safe_name(name: str) -> bool:
-    return name not in {".", ".."} and _SAFE_NAME_PATTERN.fullmatch(name) is not None
+    return (
+        0 < len(name) <= _MAX_CONFIG_ITEM_NAME_LENGTH
+        and name not in {".", ".."}
+        and all(character in _SAFE_NAME_CHARACTERS for character in name)
+    )
 
 
 def _is_fixed_scenario_item(name: str, *, kind: Literal["skill", "file"]) -> bool:
-    pattern, count = (
-        (_SKILL_NAME_PATTERN, _CONFIG_SKILL_COUNT) if kind == "skill" else (_FILE_NAME_PATTERN, _CONFIG_FILE_COUNT)
+    prefix, suffix, count = (
+        ("skill-", "", _CONFIG_SKILL_COUNT) if kind == "skill" else ("file-", ".bin", _CONFIG_FILE_COUNT)
     )
-    match = pattern.fullmatch(name)
-    return match is not None and int(match.group("index")) < count
+    if not name.startswith(prefix) or (suffix and not name.endswith(suffix)):
+        return False
+    item = name[len(prefix) : -len(suffix) if suffix else None]
+    index_text, separator, run_scope = item.partition("-")
+    return (
+        bool(separator and run_scope)
+        and index_text.isascii()
+        and index_text.isdigit()
+        and int(index_text) < count
+    )
 
 
 def _skill_archive(*, name: str, content_bytes: int) -> bytes:

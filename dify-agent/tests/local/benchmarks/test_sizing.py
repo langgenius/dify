@@ -17,7 +17,7 @@ from benchmarks.schemas import (
     RunSample,
     TargetIdentity,
 )
-from benchmarks.sizing import ScenarioId, SizingInputV2, calculate_sizing_result, main
+from benchmarks.sizing import E2B_CALCULATOR_URL, ScenarioId, SizingInputV2, calculate_sizing_result, main
 
 
 def _point(
@@ -428,7 +428,12 @@ def test_cli_writes_only_sizing_artifacts_and_no_monetary_model(tmp_path: Path) 
     assert "plan_base" not in all_output
     assert "total cost" not in all_output
     assert "| Required ACU | E2B vCPUs | E2B RAM GB | E2B Run Hours/month | E2B Concurrency |" in report
-    assert "https://pricing.e2b.dev/" in report
+    calculator_prefix = "- E2B calculator: "
+    calculator_urls = [
+        line.removeprefix(calculator_prefix) for line in report.splitlines() if line.startswith(calculator_prefix)
+    ]
+    assert calculator_urls == [E2B_CALCULATOR_URL]
+    assert serialized["e2b_calculator_url"] == E2B_CALCULATOR_URL
     assert "1.2346" in report
     assert "1.23457" not in report
     assert "- Peak Runs/s: **17**" in report
