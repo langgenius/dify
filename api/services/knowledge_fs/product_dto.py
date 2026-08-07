@@ -1434,6 +1434,9 @@ class KnowledgeFSSourceSyncPolicyResponse(ResponseModel):
 
 
 class KnowledgeFSSourceResponse(ResponseModel):
+    sync_workflow: KnowledgeFSSourceWorkflowResponse | None = Field(
+        default=None, validation_alias=AliasChoices("sync_workflow", "syncWorkflow")
+    )
     id: str
     connection_id: str | None = Field(default=None, validation_alias=AliasChoices("connection_id", "connectionId"))
     credential_configured: bool | None = Field(

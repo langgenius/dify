@@ -877,6 +877,8 @@ describe("source product workflow service boundaries", () => {
   it("uses capability authorization without minting durable permission snapshots", async () => {
     const repository = createInMemorySourceProductWorkflowRepository({
       generateLeaseToken: () => "capability-lease",
+      resolveCapabilityGrantScope: ({ grantId }) =>
+        grantId === "capability-a" ? ["grant:capability"] : null,
     });
     const access = accessFixture();
     const authorization = { authorize: vi.fn(async () => Promise.reject(new Error("unexpected"))) };

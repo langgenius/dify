@@ -222,12 +222,8 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
     listRuns: async ({ candidateGrants, cursor, knowledgeSpaceId, limit, sourceId, tenantId }) => {
       listLimit(limit);
       const readLimit = limit + 1;
-      const params: DatabaseQueryValue[] = [
-        tenantId,
-        knowledgeSpaceId,
-        JSON.stringify(candidateGrants),
-      ];
-      let predicate = ` AND ${sourceRunPermissionScopeSql(database, p(database, 3))}`;
+      const params: DatabaseQueryValue[] = [tenantId, knowledgeSpaceId];
+      let predicate = ` AND ${boundSourceRunPermissionScopeSql(database, params, candidateGrants)}`;
       if (sourceId) {
         params.push(sourceId);
         predicate += ` AND ${q(database, "source_id")} = ${p(database, params.length)}`;
@@ -249,12 +245,8 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
     listRecentRuns: async ({ candidateGrants, cursor, knowledgeSpaceId, limit, tenantId }) => {
       listLimit(limit);
       const readLimit = limit + 1;
-      const params: DatabaseQueryValue[] = [
-        tenantId,
-        knowledgeSpaceId,
-        JSON.stringify(candidateGrants),
-      ];
-      let predicate = ` AND ${sourceRunPermissionScopeSql(database, p(database, 3))}`;
+      const params: DatabaseQueryValue[] = [tenantId, knowledgeSpaceId];
+      let predicate = ` AND ${boundSourceRunPermissionScopeSql(database, params, candidateGrants)}`;
       if (cursor) {
         params.push(cursor.createdAt, cursor.id);
         predicate += ` AND (${q(database, "created_at")} < ${p(
@@ -1151,6 +1143,34 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
         tableName: policyTable,
       });
       return result.rows.map(mapPolicy);
+    },
+    listLatestSyncRuns: async ({ candidateGrants, knowledgeSpaceId, sourceIds, tenantId }) => {
+      const ids = validatedSourceBatchIds(sourceIds);
+      if (ids.length === 0) return [];
+      const params: DatabaseQueryValue[] = [tenantId, knowledgeSpaceId];
+      const permissionScopePredicate = boundSourceRunPermissionScopeSql(
+        database,
+        params,
+        candidateGrants,
+      );
+      params.push("sync");
+      const kindPlaceholder = p(database, params.length);
+      const placeholders = ids
+        .map((id) => {
+          params.push(id);
+          return p(database, params.length);
+        })
+        .join(", ");
+      const rankColumn = "source_run_rank";
+      const rankedRuns = "ranked_source_workflow_runs";
+      const result = await database.execute({
+        maxRows: ids.length,
+        operation: "select",
+        params,
+        sql: `SELECT * FROM (SELECT ${q(database, runTable)}.*, ROW_NUMBER() OVER (PARTITION BY ${q(database, "source_id")} ORDER BY CASE WHEN ${q(database, "active_slot")} = 1 THEN 1 ELSE 0 END DESC, ${q(database, "created_at")} DESC, ${q(database, "updated_at")} DESC, ${q(database, "id")} DESC) AS ${q(database, rankColumn)} FROM ${q(database, runTable)} WHERE ${q(database, "tenant_id")} = ${p(database, 1)} AND ${q(database, "knowledge_space_id")} = ${p(database, 2)} AND ${permissionScopePredicate} AND ${q(database, "kind")} = ${kindPlaceholder} AND ${q(database, "source_id")} IN (${placeholders})) ${q(database, rankedRuns)} WHERE ${q(database, rankColumn)} = 1;`,
+        tableName: runTable,
+      });
+      return result.rows.map(mapRun);
     },
     listLatestSyncCompletions: async ({ knowledgeSpaceId, sourceIds, tenantId }) => {
       const ids = validatedSourceBatchIds(sourceIds);
@@ -2435,7 +2455,26 @@ function permissionScopeSql(database: DatabaseAdapter, column: string, grants: s
  * frozen scope through capability_grants instead of treating the nullable legacy snapshot column
  * as public content.
  */
-function sourceRunPermissionScopeSql(database: DatabaseAdapter, grants: string): string {
+function boundSourceRunPermissionScopeSql(
+  database: DatabaseAdapter,
+  params: DatabaseQueryValue[],
+  candidateGrants: readonly string[],
+): string {
+  const serializedGrants = JSON.stringify(candidateGrants);
+  params.push(serializedGrants);
+  const requiredScopeGrants = p(database, params.length);
+  if (database.dialect === "postgres") {
+    return sourceRunPermissionScopeSql(database, requiredScopeGrants, requiredScopeGrants);
+  }
+  params.push(serializedGrants);
+  return sourceRunPermissionScopeSql(database, requiredScopeGrants, p(database, params.length));
+}
+
+function sourceRunPermissionScopeSql(
+  database: DatabaseAdapter,
+  requiredScopeGrants: string,
+  capabilityScopeGrants: string,
+): string {
   const runs = q(database, runTable);
   const provenance = q(database, "source_run_capability");
   const capabilityGrants = q(database, "capability_grants");
@@ -2444,7 +2483,7 @@ function sourceRunPermissionScopeSql(database: DatabaseAdapter, grants: string):
   return `((${requiredScope} IS NOT NULL AND ${permissionScopeSql(
     database,
     requiredScope,
-    grants,
+    requiredScopeGrants,
   )}) OR (${requiredScope} IS NULL AND ${capabilityGrantId} IS NOT NULL AND EXISTS (SELECT 1 FROM ${capabilityGrants} ${provenance} WHERE ${provenance}.${q(
     database,
     "tenant_id",
@@ -2457,7 +2496,7 @@ function sourceRunPermissionScopeSql(database: DatabaseAdapter, grants: string):
   )} = ${capabilityGrantId} AND ${permissionScopeSql(
     database,
     `${provenance}.${q(database, "content_scope_ids")}`,
-    grants,
+    capabilityScopeGrants,
   )})))`;
 }
 function fenceConflict(): never {

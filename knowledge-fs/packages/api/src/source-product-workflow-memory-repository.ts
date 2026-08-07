@@ -18,6 +18,13 @@ import {
 
 export function createInMemorySourceProductWorkflowRepository(input?: {
   readonly generateLeaseToken?: (() => string) | undefined;
+  readonly resolveCapabilityGrantScope?:
+    | ((input: {
+        readonly grantId: string;
+        readonly knowledgeSpaceId: string;
+        readonly tenantId: string;
+      }) => readonly string[] | null)
+    | undefined;
 }): SourceProductWorkflowRepository {
   const generateLeaseToken = input?.generateLeaseToken ?? randomUUID;
   const runs = new Map<string, SourceWorkflowRun>();
@@ -27,6 +34,24 @@ export function createInMemorySourceProductWorkflowRepository(input?: {
   const claimableAt = new Map<string, string>();
   const policies = new Map<string, SourceSyncPolicyRecord>();
   const selections = new Map<string, { idempotencyKey: string; pageIds: readonly string[] }>();
+  const runPermissionScopeAllows = (
+    run: SourceWorkflowRun,
+    candidateGrants: readonly string[],
+  ): boolean => {
+    if (!run.capabilityGrantId) {
+      return candidatePermissionScopeAllows(run.requiredPermissionScope, candidateGrants);
+    }
+    const requiredScope = input?.resolveCapabilityGrantScope?.({
+      grantId: run.capabilityGrantId,
+      knowledgeSpaceId: run.knowledgeSpaceId,
+      tenantId: run.tenantId,
+    });
+    return (
+      requiredScope !== undefined &&
+      requiredScope !== null &&
+      candidatePermissionScopeAllows(requiredScope, candidateGrants)
+    );
+  };
 
   const requiredRun = (runId: string) => {
     const run = runs.get(runId);
@@ -477,9 +502,7 @@ export function createInMemorySourceProductWorkflowRepository(input?: {
     listRuns: async ({ candidateGrants, cursor, knowledgeSpaceId, limit, sourceId, tenantId }) => {
       const list = Array.from(runs.values())
         .filter((run) => run.tenantId === tenantId && run.knowledgeSpaceId === knowledgeSpaceId)
-        .filter((run) =>
-          candidatePermissionScopeAllows(run.requiredPermissionScope, candidateGrants),
-        )
+        .filter((run) => runPermissionScopeAllows(run, candidateGrants))
         .filter((run) => !sourceId || run.sourceId === sourceId)
         .filter((run) => !cursor || run.id > cursor)
         .sort((left, right) => left.id.localeCompare(right.id));
@@ -491,9 +514,7 @@ export function createInMemorySourceProductWorkflowRepository(input?: {
       }
       const list = Array.from(runs.values())
         .filter((run) => run.tenantId === tenantId && run.knowledgeSpaceId === knowledgeSpaceId)
-        .filter((run) =>
-          candidatePermissionScopeAllows(run.requiredPermissionScope, candidateGrants),
-        )
+        .filter((run) => runPermissionScopeAllows(run, candidateGrants))
         .filter(
           (run) =>
             !cursor ||
@@ -635,6 +656,38 @@ export function createInMemorySourceProductWorkflowRepository(input?: {
         const policy = policies.get(`${tenantId}\0${knowledgeSpaceId}\0${sourceId}`);
         return policy ? [clonePolicy(policy)] : [];
       });
+    },
+    listLatestSyncRuns: async ({ candidateGrants, knowledgeSpaceId, sourceIds, tenantId }) => {
+      const ids = validatedSourceBatchIds(sourceIds);
+      const requestedSourceIds = new Set(ids);
+      const latestBySourceId = new Map<string, SourceWorkflowRun>();
+      for (const run of runs.values()) {
+        if (
+          run.tenantId !== tenantId ||
+          run.knowledgeSpaceId !== knowledgeSpaceId ||
+          !runPermissionScopeAllows(run, candidateGrants) ||
+          run.kind !== "sync" ||
+          !run.sourceId ||
+          !requestedSourceIds.has(run.sourceId)
+        ) {
+          continue;
+        }
+        const latest = latestBySourceId.get(run.sourceId);
+        const runIsActive = run.activeSlot === 1;
+        const latestIsActive = latest?.activeSlot === 1;
+        if (
+          !latest ||
+          (runIsActive && !latestIsActive) ||
+          (runIsActive === latestIsActive &&
+            (run.createdAt > latest.createdAt ||
+              (run.createdAt === latest.createdAt &&
+                (run.updatedAt > latest.updatedAt ||
+                  (run.updatedAt === latest.updatedAt && run.id > latest.id)))))
+        ) {
+          latestBySourceId.set(run.sourceId, run);
+        }
+      }
+      return [...latestBySourceId.values()].map(cloneRun);
     },
     listLatestSyncCompletions: async ({ knowledgeSpaceId, sourceIds, tenantId }) => {
       const ids = validatedSourceBatchIds(sourceIds);

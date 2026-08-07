@@ -738,6 +738,7 @@ export type KnowledgeFsSourceResponse = {
   permission_scope: Array<string>
   status: 'active' | 'disabled' | 'error' | 'syncing'
   sync_policy?: KnowledgeFsSourceSyncPolicyResponse | null
+  sync_workflow?: KnowledgeFsSourceWorkflowResponse | null
   type: 'connector' | 'object-storage' | 'upload' | 'web'
   updated_at: string
   uri: string

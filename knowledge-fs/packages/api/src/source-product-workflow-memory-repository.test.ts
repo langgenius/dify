@@ -1158,6 +1158,94 @@ describe("in-memory source product workflow repository", () => {
       }),
     ).resolves.toEqual([]);
   });
+
+  it("lists the latest sync runs in the requested tenant and space", async () => {
+    const repository = createInMemorySourceProductWorkflowRepository({
+      resolveCapabilityGrantScope: ({
+        grantId,
+        knowledgeSpaceId: scopedSpaceId,
+        tenantId: scopedTenantId,
+      }) =>
+        grantId === "capability-private" &&
+        scopedSpaceId === knowledgeSpaceId &&
+        scopedTenantId === tenantId
+          ? ["team:private"]
+          : null,
+    });
+    await repository.start(runRecord("active-sync"));
+    await repository.start(
+      runRecord("other-source", {
+        sourceId: "source-other",
+      }),
+    );
+    await repository.start(
+      runRecord("private-source", {
+        requiredPermissionScope: ["team:private"],
+        sourceId: "source-private",
+      }),
+    );
+    await repository.start(
+      runRecord("capability-private-source", {
+        accessChannel: undefined,
+        capabilityGrantId: "capability-private",
+        permissionSnapshotId: undefined,
+        permissionSnapshotRevision: undefined,
+        requestedBySubjectId: undefined,
+        requiredPermissionScope: undefined,
+        sourceId: "source-capability-private",
+      }),
+    );
+    await terminalRun(repository, "completed-sync", "completed");
+
+    await expect(
+      repository.listLatestSyncRuns({
+        candidateGrants: [],
+        knowledgeSpaceId,
+        sourceIds: [
+          "source-memory",
+          "source-other",
+          "source-private",
+          "source-capability-private",
+          "source-memory",
+        ],
+        tenantId,
+      }),
+    ).resolves.toEqual([
+      expect.objectContaining({ id: "active-sync", sourceId: "source-memory" }),
+      expect.objectContaining({ id: "other-source", sourceId: "source-other" }),
+    ]);
+    await expect(
+      repository.listLatestSyncRuns({
+        candidateGrants: ["team:private"],
+        knowledgeSpaceId,
+        sourceIds: ["source-private"],
+        tenantId,
+      }),
+    ).resolves.toEqual([
+      expect.objectContaining({ id: "private-source", sourceId: "source-private" }),
+    ]);
+    await expect(
+      repository.listLatestSyncRuns({
+        candidateGrants: ["team:private"],
+        knowledgeSpaceId,
+        sourceIds: ["source-capability-private"],
+        tenantId,
+      }),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        id: "capability-private-source",
+        sourceId: "source-capability-private",
+      }),
+    ]);
+    await expect(
+      repository.listLatestSyncRuns({
+        candidateGrants: [],
+        knowledgeSpaceId,
+        sourceIds: ["source-memory"],
+        tenantId: "other-tenant",
+      }),
+    ).resolves.toEqual([]);
+  });
 });
 
 function runRecord(id: string, patch: Partial<NewSourceWorkflowRun> = {}): NewSourceWorkflowRun {

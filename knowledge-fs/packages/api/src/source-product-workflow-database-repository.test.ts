@@ -77,6 +77,7 @@ describe.each(["postgres", "tidb"] as const)(
         tenantId,
         knowledgeSpaceId,
         JSON.stringify(["team:camera"]),
+        ...(dialect === "tidb" ? [JSON.stringify(["team:camera"])] : []),
         now,
         runId,
         6,
@@ -1836,6 +1837,92 @@ describe("database source-product workflow repository edge coverage", () => {
       repository.listLatestSyncCompletions({ knowledgeSpaceId, sourceIds: [], tenantId }),
     ).resolves.toEqual([]);
     expect(calls).toHaveLength(1);
+  });
+
+  it("lists the latest sync run for each requested source", async () => {
+    const calls: DatabaseExecuteInput[] = [];
+    const database = testDatabase("postgres", async (input) => {
+      calls.push(input);
+      return {
+        rows: [
+          sourceRunRow("running"),
+          {
+            ...sourceRunRow("running"),
+            id: "00000000-0000-4000-8000-000000000222",
+            source_id: "source-b",
+          },
+        ],
+        rowsAffected: 2,
+      };
+    });
+    const repository = createDatabaseSourceProductWorkflowRepository({ database });
+
+    await expect(
+      repository.listLatestSyncRuns({
+        candidateGrants: ["team:reader"],
+        knowledgeSpaceId,
+        sourceIds: [sourceId, "source-b", sourceId],
+        tenantId,
+      }),
+    ).resolves.toEqual([
+      expect.objectContaining({ sourceId, state: "running" }),
+      expect.objectContaining({ sourceId: "source-b", state: "running" }),
+    ]);
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({
+      maxRows: 2,
+      operation: "select",
+      params: [tenantId, knowledgeSpaceId, '["team:reader"]', "sync", sourceId, "source-b"],
+      tableName: "source_workflow_runs",
+    });
+    expect(calls[0]?.sql).toContain("ROW_NUMBER() OVER");
+    expect(calls[0]?.sql).toContain('CASE WHEN "active_slot" = 1 THEN 1 ELSE 0 END DESC');
+    expect(calls[0]?.sql).toContain('"source_run_rank" = 1');
+    expect(calls[0]?.sql).toContain('"source_id" IN ($5, $6)');
+    expect(calls[0]?.sql).toContain('"required_permission_scope"');
+    expect(calls[0]?.sql).toContain('"capability_grants"');
+    await expect(
+      repository.listLatestSyncRuns({
+        candidateGrants: [],
+        knowledgeSpaceId,
+        sourceIds: [],
+        tenantId,
+      }),
+    ).resolves.toEqual([]);
+    expect(calls).toHaveLength(1);
+  });
+
+  it("binds both permission-scope branches for TiDB latest sync runs", async () => {
+    const calls: DatabaseExecuteInput[] = [];
+    const database = testDatabase("tidb", async (input) => {
+      calls.push(input);
+      return empty();
+    });
+    const repository = createDatabaseSourceProductWorkflowRepository({ database });
+
+    await expect(
+      repository.listLatestSyncRuns({
+        candidateGrants: ["team:reader"],
+        knowledgeSpaceId,
+        sourceIds: [sourceId],
+        tenantId,
+      }),
+    ).resolves.toEqual([]);
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.params).toEqual([
+      tenantId,
+      knowledgeSpaceId,
+      '["team:reader"]',
+      '["team:reader"]',
+      "sync",
+      sourceId,
+    ]);
+    const call = calls[0];
+    expect(call).toBeDefined();
+    if (!call) throw new Error("Expected latest sync run query");
+    expect(call.sql.match(/\?/gu)).toHaveLength(call.params.length);
   });
 
   it("persists an exact Capability source-policy binding without legacy ACL provenance", async () => {

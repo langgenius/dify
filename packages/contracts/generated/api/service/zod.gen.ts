@@ -2024,6 +2024,40 @@ export const zKnowledgeFsSourceSyncPolicyResponse = z.object({
 })
 
 /**
+ * KnowledgeFSSourceUpdatePayload
+ */
+export const zKnowledgeFsSourceUpdatePayload = z.object({
+  expectedVersion: z.int().gte(1).nullish(),
+  metadata: z.record(z.string(), z.unknown()).nullish(),
+  name: z.string().min(1).max(200).nullish(),
+  status: z.enum(['active', 'disabled', 'error', 'syncing']).nullish(),
+})
+
+/**
+ * KnowledgeFSSourceWorkflowResponse
+ */
+export const zKnowledgeFsSourceWorkflowResponse = z.object({
+  canceled_at: z.iso.datetime().nullish(),
+  checkpoint: z.string(),
+  completed_at: z.iso.datetime().nullish(),
+  created_at: z.iso.datetime(),
+  cursor: z.string().nullish(),
+  execution_attempts: z.int().gte(0),
+  id: z.string(),
+  kind: z.string(),
+  knowledge_space_id: z.string(),
+  last_error_code: z.string().nullish(),
+  max_execution_attempts: z.int().gte(1),
+  progress_completed: z.int().gte(0),
+  progress_failed: z.int().gte(0),
+  progress_skipped: z.int().gte(0),
+  progress_total: z.int().gte(0).nullish(),
+  source_id: z.string().nullish(),
+  state: z.string(),
+  updated_at: z.iso.datetime(),
+})
+
+/**
  * KnowledgeFSSourceResponse
  */
 export const zKnowledgeFsSourceResponse = z.object({
@@ -2038,6 +2072,7 @@ export const zKnowledgeFsSourceResponse = z.object({
   permission_scope: z.array(z.string()),
   status: z.enum(['active', 'disabled', 'error', 'syncing']),
   sync_policy: zKnowledgeFsSourceSyncPolicyResponse.nullish(),
+  sync_workflow: zKnowledgeFsSourceWorkflowResponse.nullish(),
   type: z.enum(['connector', 'object-storage', 'upload', 'web']),
   updated_at: z.iso.datetime(),
   uri: z.string(),
@@ -2050,16 +2085,6 @@ export const zKnowledgeFsSourceResponse = z.object({
 export const zKnowledgeFsSourceListResponse = z.object({
   data: z.array(zKnowledgeFsSourceResponse),
   next_cursor: z.string().nullish(),
-})
-
-/**
- * KnowledgeFSSourceUpdatePayload
- */
-export const zKnowledgeFsSourceUpdatePayload = z.object({
-  expectedVersion: z.int().gte(1).nullish(),
-  metadata: z.record(z.string(), z.unknown()).nullish(),
-  name: z.string().min(1).max(200).nullish(),
-  status: z.enum(['active', 'disabled', 'error', 'syncing']).nullish(),
 })
 
 /**

@@ -33,7 +33,7 @@ import {
 } from '@langgenius/dify-ui/select'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -46,7 +46,12 @@ import { consoleClient, consoleQuery } from '@/service/client'
 import { hasPermission } from '@/utils/permission'
 import { KnowledgeModelSetupDialog } from './components/knowledge-model-setup-dialog'
 import { newKnowledgeAddSourcePath } from './routes'
-import { sourceFromApi, sourceWorkflowFromApi } from './source-models'
+import {
+  sourceFromApi,
+  sourceStatusWithSyncWorkflow,
+  sourceWorkflowFromApi,
+  sourceWorkflowStatus,
+} from './source-models'
 import { useKnowledgeModelSetupGuard } from './use-knowledge-model-setup-guard'
 
 type SourceStatus = Source['status']
@@ -56,23 +61,6 @@ type SourceSort = 'name-asc' | 'name-desc'
 const PAGE_SIZE = 50
 const MAX_AUTO_FILTER_PAGES = 4
 const SOURCE_POLL_INTERVAL = 3000
-const SOURCE_WORKFLOW_POLL_INTERVAL = 1500
-const SOURCE_WORKFLOW_SUCCESS_STATES = new Set([
-  'complete',
-  'completed',
-  'success',
-  'succeeded',
-  'zero_results',
-])
-const SOURCE_WORKFLOW_FAILURE_STATES = new Set([
-  'canceled',
-  'cancelled',
-  'error',
-  'exhausted',
-  'failed',
-  'timed_out',
-  'timeout',
-])
 
 const statusDotStatus: Record<SourceStatus, StatusDotStatus> = {
   active: 'success',
@@ -164,17 +152,6 @@ function createIdempotencyKey() {
   return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
 }
 
-function normalizedWorkflowState(state: string) {
-  return state.trim().toLowerCase().replaceAll('-', '_').replaceAll(' ', '_')
-}
-
-function sourceWorkflowStatus(state: string): SourceStatus {
-  const normalized = normalizedWorkflowState(state)
-  if (SOURCE_WORKFLOW_FAILURE_STATES.has(normalized)) return 'error'
-  if (SOURCE_WORKFLOW_SUCCESS_STATES.has(normalized)) return 'active'
-  return 'syncing'
-}
-
 function getOpenableSourceUri(uri: string) {
   try {
     const url = new URL(uri)
@@ -190,20 +167,66 @@ function getOpenableSourceUri(uri: string) {
   }
 }
 
+function sourceWorkflowIsActive(workflow?: Source['syncWorkflow']) {
+  return workflow !== undefined && sourceWorkflowStatus(workflow.state) === 'syncing'
+}
+
+function latestSourceWorkflow(
+  sourceWorkflow?: Source['syncWorkflow'],
+  sourceOverrideWorkflow?: Source['syncWorkflow'],
+) {
+  if (!sourceWorkflow || !sourceOverrideWorkflow) return sourceWorkflow ?? sourceOverrideWorkflow
+  if (sourceWorkflow.id === sourceOverrideWorkflow.id) return sourceWorkflow
+  const sourceWorkflowIsRunning = sourceWorkflowIsActive(sourceWorkflow)
+  const sourceOverrideWorkflowIsRunning = sourceWorkflowIsActive(sourceOverrideWorkflow)
+  // The server snapshot ranks active runs first, so an active server run remains authoritative
+  // even when it is an older run being retried. A local active override still has to be newer
+  // than a terminal server run, otherwise it could remain stuck after a later run completes.
+  if (sourceWorkflowIsRunning && !sourceOverrideWorkflowIsRunning) return sourceWorkflow
+  const createdAtComparison = sourceWorkflow.createdAt.localeCompare(
+    sourceOverrideWorkflow.createdAt,
+  )
+  if (createdAtComparison !== 0)
+    return createdAtComparison > 0 ? sourceWorkflow : sourceOverrideWorkflow
+  const updatedAtComparison = sourceWorkflow.updatedAt.localeCompare(
+    sourceOverrideWorkflow.updatedAt,
+  )
+  if (updatedAtComparison !== 0)
+    return updatedAtComparison > 0 ? sourceWorkflow : sourceOverrideWorkflow
+  return sourceWorkflow.id > sourceOverrideWorkflow.id ? sourceWorkflow : sourceOverrideWorkflow
+}
+
 function getCurrentSource(source: Source, sourceOverride?: Source) {
   if (!sourceOverride || sourceOverride.id !== source.id) return source
   const sourceVersion = source.version ?? -1
   const overrideVersion = sourceOverride.version ?? -1
   if (sourceVersion > overrideVersion) return source
-  const currentSource =
-    sourceVersion < overrideVersion || source.updatedAt <= sourceOverride.updatedAt
-      ? sourceOverride
-      : source
+  const overrideHasNewerSource =
+    sourceVersion < overrideVersion || source.updatedAt < sourceOverride.updatedAt
+  const sourceHasNewerSource =
+    sourceVersion === overrideVersion && source.updatedAt > sourceOverride.updatedAt
+  if (sourceHasNewerSource) return source
+  const syncWorkflow = overrideHasNewerSource
+    ? sourceOverride.syncWorkflow
+    : latestSourceWorkflow(source.syncWorkflow, sourceOverride.syncWorkflow)
+  if (
+    !overrideHasNewerSource &&
+    source.syncWorkflow &&
+    source.syncWorkflow.id !== sourceOverride.syncWorkflow?.id &&
+    syncWorkflow === source.syncWorkflow
+  )
+    return source
   return {
-    ...currentSource,
+    ...sourceOverride,
     lastSyncedAt: source.lastSyncedAt ?? sourceOverride.lastSyncedAt,
+    status: sourceStatusWithSyncWorkflow(sourceOverride.status, syncWorkflow),
+    syncWorkflow,
     syncPolicy: source.syncPolicy ?? sourceOverride.syncPolicy,
   }
+}
+
+function sourceNeedsPolling(source: Source) {
+  return source.status === 'syncing' || sourceWorkflowIsActive(source.syncWorkflow)
 }
 
 type SourceAction = 'remove' | 'sync' | 'toggle'
@@ -346,7 +369,6 @@ function SourceRow({
   ensureModelSetupReady,
   knowledgeSpaceId,
   onCheckedChange,
-  onSourceReconciled,
   onRemoved,
   onSourceChange,
   source,
@@ -357,7 +379,6 @@ function SourceRow({
   ensureModelSetupReady: () => Promise<boolean>
   knowledgeSpaceId: string
   onCheckedChange: (checked: boolean) => void
-  onSourceReconciled: () => void
   onRemoved: () => void
   onSourceChange: (source: Source) => void
   source: Source
@@ -367,40 +388,8 @@ function SourceRow({
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const queryClient = useQueryClient()
   const [pendingAction, setPendingAction] = useState<SourceAction>()
-  const [acceptedSyncRun, setAcceptedSyncRun] = useState<ReturnType<typeof sourceWorkflowFromApi>>()
-  const syncWorkflowQuery = useQuery({
-    ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.get.queryOptions({
-      input: {
-        params: {
-          control_space_id: knowledgeSpaceId,
-          run_id: acceptedSyncRun?.id ?? '',
-        },
-      },
-    }),
-    enabled: Boolean(acceptedSyncRun),
-    refetchInterval: (query) => {
-      const workflow = query.state.data ? sourceWorkflowFromApi(query.state.data) : acceptedSyncRun
-      return workflow && sourceWorkflowStatus(workflow.state) === 'syncing'
-        ? SOURCE_WORKFLOW_POLL_INTERVAL
-        : false
-    },
-  })
-  const syncWorkflow = syncWorkflowQuery.data
-    ? sourceWorkflowFromApi(syncWorkflowQuery.data)
-    : acceptedSyncRun
-  const syncWorkflowId = syncWorkflow?.id
-  const syncWorkflowState = syncWorkflow?.state
+  const syncWorkflow = source.syncWorkflow
 
-  useEffect(() => {
-    if (!syncWorkflowState || sourceWorkflowStatus(syncWorkflowState) === 'syncing') return
-    void queryClient.invalidateQueries({
-      queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.get.key(),
-    })
-  }, [queryClient, syncWorkflowId, syncWorkflowState])
-
-  const visibleSource = syncWorkflow
-    ? { ...source, status: sourceWorkflowStatus(syncWorkflow.state) }
-    : source
   const providerName = sourceProviderName(source)
   const sourceSyncPolicy = source.syncPolicy
   const syncPolicy = sourceSyncPolicy
@@ -431,7 +420,6 @@ function SourceRow({
     action: SourceAction,
     mutation: () => Promise<Result>,
     onAccepted?: (result: Result) => void,
-    onRefreshed?: () => void,
     beforeAction?: () => Promise<boolean>,
   ) => {
     if (pendingAction) return false
@@ -455,10 +443,14 @@ function SourceRow({
       onAccepted?.(result)
 
       try {
-        await queryClient.invalidateQueries({
-          queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.get.key(),
-        })
-        onRefreshed?.()
+        await queryClient.invalidateQueries(
+          {
+            queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.get.key(),
+          },
+          {
+            throwOnError: true,
+          },
+        )
       } catch {
         // The accepted mutation is already reflected by the list-owner state.
       }
@@ -478,10 +470,12 @@ function SourceRow({
         }),
       (workflow) => {
         const run = sourceWorkflowFromApi(workflow)
-        setAcceptedSyncRun(run)
-        onSourceChange({ ...source, status: sourceWorkflowStatus(run.state) })
+        onSourceChange({
+          ...source,
+          syncWorkflow: run,
+          status: sourceStatusWithSyncWorkflow(source.status, run),
+        })
       },
-      onSourceReconciled,
       ensureModelSetupReady,
     )
 
@@ -498,12 +492,18 @@ function SourceRow({
             params: { control_space_id: knowledgeSpaceId, source_id: source.id },
           }),
         ),
-      (updatedSource) =>
+      (updatedSource) => {
+        const syncWorkflow =
+          updatedSource.syncWorkflow ??
+          (sourceWorkflowIsActive(source.syncWorkflow) ? source.syncWorkflow : undefined)
         onSourceChange({
           ...updatedSource,
           lastSyncedAt: updatedSource.lastSyncedAt ?? source.lastSyncedAt,
+          status: sourceStatusWithSyncWorkflow(updatedSource.status, syncWorkflow),
+          syncWorkflow,
           syncPolicy: updatedSource.syncPolicy ?? source.syncPolicy,
-        }),
+        })
+      },
     )
 
   const removeSource = () =>
@@ -525,7 +525,7 @@ function SourceRow({
     <tr
       className={cn(
         'h-[50px] border-t border-divider-subtle',
-        visibleSource.status === 'disabled' && '[&>td:not(:first-child)]:opacity-60',
+        source.status === 'disabled' && '[&>td:not(:first-child)]:opacity-60',
       )}
     >
       <td className="py-2 pr-3 whitespace-nowrap">
@@ -549,17 +549,17 @@ function SourceRow({
         <span
           className={cn(
             'inline-flex items-center gap-1.5 system-xs-medium text-text-primary',
-            visibleSource.status === 'syncing' && 'text-text-accent',
+            source.status === 'syncing' && 'text-text-accent',
           )}
         >
           <StatusDot
-            status={statusDotStatus[visibleSource.status]}
+            status={statusDotStatus[source.status]}
             className={cn(
               'shrink-0',
-              visibleSource.status === 'syncing' && 'animate-pulse motion-reduce:animate-none',
+              source.status === 'syncing' && 'animate-pulse motion-reduce:animate-none',
             )}
           />
-          {t(($) => $[`newKnowledge.sourceStatus.${visibleSource.status}`])}
+          {t(($) => $[`newKnowledge.sourceStatus.${source.status}`])}
         </span>
       </td>
       <td className="py-2 pr-3 system-xs-regular whitespace-nowrap text-text-secondary">
@@ -568,10 +568,10 @@ function SourceRow({
       <td
         className={cn(
           'py-2 pr-3 system-xs-regular whitespace-nowrap',
-          visibleSource.status === 'error' ? 'text-text-destructive' : 'text-text-secondary',
+          source.status === 'error' ? 'text-text-destructive' : 'text-text-secondary',
         )}
       >
-        {visibleSource.status === 'syncing' && syncWorkflow ? (
+        {source.status === 'syncing' && syncWorkflow ? (
           <span className="inline-flex items-center gap-1.5 text-text-accent">
             <span
               aria-hidden
@@ -585,7 +585,7 @@ function SourceRow({
               total: syncWorkflow.progressTotal ?? '—',
             })}
           </span>
-        ) : visibleSource.status === 'error' ? (
+        ) : source.status === 'error' ? (
           <span className="inline-flex items-center gap-1.5">
             <span aria-hidden className="i-ri-error-warning-fill size-3.5" />
             {syncWorkflow?.lastErrorCode ?? t(($) => $['newKnowledge.sourceSyncFailed'])}
@@ -596,7 +596,7 @@ function SourceRow({
       </td>
       <td className="py-2 text-right whitespace-nowrap">
         <div className="flex items-center justify-end gap-1">
-          {canSync && visibleSource.status === 'error' && (
+          {canSync && source.status === 'error' && (
             <Button
               size="small"
               variant="secondary"
@@ -610,7 +610,7 @@ function SourceRow({
           <SourceActions
             canEdit={canEdit}
             canSync={canSync}
-            source={visibleSource}
+            source={source}
             pendingAction={pendingAction}
             onSync={syncSource}
             onToggle={toggleSource}
@@ -732,8 +732,9 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
           page.data.some(
             (source) =>
               !removedSourceIds.has(source.id) &&
-              getCurrentSource(sourceFromApi(source), sourceOverrides[source.id]).status ===
-                'syncing',
+              sourceNeedsPolling(
+                getCurrentSource(sourceFromApi(source), sourceOverrides[source.id]),
+              ),
           ),
         )
           ? SOURCE_POLL_INTERVAL
@@ -989,14 +990,6 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                         ...current,
                         [updatedSource.id]: updatedSource,
                       }))
-                    }
-                    onSourceReconciled={() =>
-                      setSourceOverrides((current) => {
-                        if (!current[source.id]) return current
-                        const next = { ...current }
-                        delete next[source.id]
-                        return next
-                      })
                     }
                     onCheckedChange={(checked) => {
                       setSelectedSourceIds((current) => {

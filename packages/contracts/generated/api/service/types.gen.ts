@@ -1677,6 +1677,7 @@ export type KnowledgeFsSourceResponse = {
   permission_scope: Array<string>
   status: 'active' | 'disabled' | 'error' | 'syncing'
   sync_policy?: KnowledgeFsSourceSyncPolicyResponse | null
+  sync_workflow?: KnowledgeFsSourceWorkflowResponse | null
   type: 'connector' | 'object-storage' | 'upload' | 'web'
   updated_at: string
   uri: string
@@ -1704,6 +1705,27 @@ export type KnowledgeFsSourceUpdatePayload = {
   } | null
   name?: string | null
   status?: 'active' | 'disabled' | 'error' | 'syncing' | null
+}
+
+export type KnowledgeFsSourceWorkflowResponse = {
+  canceled_at?: string | null
+  checkpoint: string
+  completed_at?: string | null
+  created_at: string
+  cursor?: string | null
+  execution_attempts: number
+  id: string
+  kind: string
+  knowledge_space_id: string
+  last_error_code?: string | null
+  max_execution_attempts: number
+  progress_completed: number
+  progress_failed: number
+  progress_skipped: number
+  progress_total?: number | null
+  source_id?: string | null
+  state: string
+  updated_at: string
 }
 
 export type KnowledgeFsSourceWorkspacePagesResponse = {

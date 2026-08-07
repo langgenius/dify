@@ -1394,7 +1394,7 @@ describe("source handlers without optional collaborators", () => {
     sourceDocumentMaterializer?: SourceDocumentMaterializer;
     sourceProductWorkflows?: Pick<
       SourceProductWorkflowRepository,
-      "listLatestSyncCompletions" | "listSyncPolicies"
+      "listLatestSyncCompletions" | "listLatestSyncRuns" | "listSyncPolicies"
     >;
     sources?: SourceRepository;
     websiteCrawlConnector?: WebsiteCrawlConnector;
@@ -1480,8 +1480,13 @@ describe("source handlers without optional collaborators", () => {
   it("enriches a source list with product sync details in bulk lookups", async () => {
     const listSyncPolicies = vi.fn();
     const listLatestSyncCompletions = vi.fn();
+    const listLatestSyncRuns = vi.fn();
     const bare = createBareApp({
-      sourceProductWorkflows: { listLatestSyncCompletions, listSyncPolicies },
+      sourceProductWorkflows: {
+        listLatestSyncCompletions,
+        listLatestSyncRuns,
+        listSyncPolicies,
+      },
     });
     const { sourceId, spaceId } = await seedSource(bare, "web");
     listSyncPolicies.mockResolvedValue([
@@ -1506,6 +1511,29 @@ describe("source handlers without optional collaborators", () => {
     listLatestSyncCompletions.mockResolvedValue([
       { completedAt: "2026-07-14T01:00:00.000Z", sourceId },
     ]);
+    listLatestSyncRuns.mockResolvedValue([
+      {
+        activeSlot: 1,
+        checkpoint: "provider-read",
+        createdAt: "2026-07-14T02:00:00.000Z",
+        executionAttempts: 1,
+        id: "00000000-0000-4000-8000-000000000222",
+        idempotencyKey: "source-sync-active",
+        knowledgeSpaceId: spaceId,
+        kind: "sync",
+        maxExecutionAttempts: 5,
+        payload: {},
+        progressCompleted: 2,
+        progressFailed: 0,
+        progressSkipped: 0,
+        progressTotal: 5,
+        rowVersion: 2,
+        sourceId,
+        state: "syncing",
+        tenantId: "tenant-1",
+        updatedAt: "2026-07-14T02:01:00.000Z",
+      },
+    ]);
 
     const response = await bare.app.request(`/knowledge-spaces/${spaceId}/sources`);
 
@@ -1513,8 +1541,16 @@ describe("source handlers without optional collaborators", () => {
     await expect(response.json()).resolves.toMatchObject({
       items: [
         {
+          syncWorkflow: {
+            id: "00000000-0000-4000-8000-000000000222",
+            progressCompleted: 2,
+            progressTotal: 5,
+            sourceId,
+            state: "syncing",
+          },
           id: sourceId,
           lastSyncedAt: "2026-07-14T01:00:00.000Z",
+          status: "syncing",
           syncPolicy: {
             enabled: true,
             mode: "provider",
@@ -1534,6 +1570,124 @@ describe("source handlers without optional collaborators", () => {
       knowledgeSpaceId: spaceId,
       sourceIds: [sourceId],
       tenantId: "tenant-1",
+    });
+    expect(listLatestSyncRuns).toHaveBeenCalledOnce();
+    expect(listLatestSyncRuns).toHaveBeenCalledWith({
+      candidateGrants: [],
+      knowledgeSpaceId: spaceId,
+      sourceIds: [sourceId],
+      tenantId: "tenant-1",
+    });
+  });
+
+  it("keeps the latest terminal sync result in the source list", async () => {
+    const listLatestSyncRuns = vi.fn();
+    const bare = createBareApp({
+      sourceProductWorkflows: {
+        listLatestSyncCompletions: vi.fn().mockResolvedValue([]),
+        listLatestSyncRuns,
+        listSyncPolicies: vi.fn().mockResolvedValue([]),
+      },
+    });
+    const { sourceId, spaceId } = await seedSource(bare, "web");
+    listLatestSyncRuns.mockResolvedValue([
+      {
+        checkpoint: "provider-read",
+        createdAt: "2030-07-14T02:00:00.000Z",
+        executionAttempts: 1,
+        id: "00000000-0000-4000-8000-000000000333",
+        idempotencyKey: "source-sync-failed",
+        knowledgeSpaceId: spaceId,
+        kind: "sync",
+        lastErrorCode: "PROVIDER_FAILED",
+        maxExecutionAttempts: 5,
+        payload: {},
+        progressCompleted: 2,
+        progressFailed: 1,
+        progressSkipped: 0,
+        progressTotal: 5,
+        rowVersion: 3,
+        sourceId,
+        state: "failed",
+        tenantId: "tenant-1",
+        updatedAt: "2030-07-14T02:01:00.000Z",
+      },
+    ]);
+
+    const response = await bare.app.request(`/knowledge-spaces/${spaceId}/sources`);
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      items: [
+        {
+          id: sourceId,
+          status: "error",
+          syncWorkflow: {
+            id: "00000000-0000-4000-8000-000000000333",
+            lastErrorCode: "PROVIDER_FAILED",
+            state: "failed",
+          },
+        },
+      ],
+    });
+  });
+
+  it("keeps a disabled source disabled while exposing its active sync run", async () => {
+    const listLatestSyncRuns = vi.fn();
+    const bare = createBareApp({
+      sourceProductWorkflows: {
+        listLatestSyncCompletions: vi.fn().mockResolvedValue([]),
+        listLatestSyncRuns,
+        listSyncPolicies: vi.fn().mockResolvedValue([]),
+      },
+    });
+    const { sourceId, spaceId } = await seedSource(bare, "web");
+    const source = await bare.sources.get({ id: sourceId, knowledgeSpaceId: spaceId });
+    expect(source).not.toBeNull();
+    await bare.sources.update({
+      expectedVersion: source?.version,
+      id: sourceId,
+      knowledgeSpaceId: spaceId,
+      status: "disabled",
+    });
+    listLatestSyncRuns.mockResolvedValue([
+      {
+        activeSlot: 1,
+        checkpoint: "provider-read",
+        createdAt: "2030-07-14T02:00:00.000Z",
+        executionAttempts: 1,
+        id: "00000000-0000-4000-8000-000000000444",
+        idempotencyKey: "source-sync-active-disabled",
+        knowledgeSpaceId: spaceId,
+        kind: "sync",
+        maxExecutionAttempts: 5,
+        payload: {},
+        progressCompleted: 2,
+        progressFailed: 0,
+        progressSkipped: 0,
+        progressTotal: 5,
+        rowVersion: 2,
+        sourceId,
+        state: "syncing",
+        tenantId: "tenant-1",
+        updatedAt: "2030-07-14T02:01:00.000Z",
+      },
+    ]);
+
+    const response = await bare.app.request(`/knowledge-spaces/${spaceId}/sources`);
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      items: [
+        {
+          id: sourceId,
+          status: "disabled",
+          syncWorkflow: {
+            id: "00000000-0000-4000-8000-000000000444",
+            state: "syncing",
+          },
+        },
+      ],
     });
   });
 

@@ -58,6 +58,10 @@ export const SourceWorkflowRunResponseSchema = z
   })
   .openapi("SourceWorkflowRun");
 
+const SourceListItemResponseSchema = SourceResponseSchema.extend({
+  syncWorkflow: SourceWorkflowRunResponseSchema.optional(),
+});
+
 export const createSourceRoute = createRoute({
   method: "post",
   operationId: "createKnowledgeSpaceSource",
@@ -105,7 +109,7 @@ export const listSourcesRoute = createRoute({
       content: {
         "application/json": {
           schema: z.object({
-            items: z.array(SourceResponseSchema),
+            items: z.array(SourceListItemResponseSchema),
             nextCursor: z.string().optional(),
           }),
         },

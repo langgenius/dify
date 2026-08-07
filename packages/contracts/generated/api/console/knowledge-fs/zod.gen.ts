@@ -574,6 +574,7 @@ export const zKnowledgeFsSourceResponse = z.object({
   permission_scope: z.array(z.string()),
   status: z.enum(['active', 'disabled', 'error', 'syncing']),
   sync_policy: zKnowledgeFsSourceSyncPolicyResponse.nullish(),
+  sync_workflow: zKnowledgeFsSourceWorkflowResponse.nullish(),
   type: z.enum(['connector', 'object-storage', 'upload', 'web']),
   updated_at: z.iso.datetime(),
   uri: z.string(),

@@ -37,7 +37,11 @@ import type {
   SourceDocumentMaterializer,
 } from "./source-document-materializer";
 import { safeSourceOperationError, sourceOperationFailureMetadata } from "./source-operation-error";
-import type { SourceProductWorkflowRepository } from "./source-product-workflow";
+import {
+  type SourceProductWorkflowRepository,
+  type SourceWorkflowRun,
+  toPublicSourceWorkflowRun,
+} from "./source-product-workflow";
 import {
   SourceCapacityExceededError,
   type SourceCursor,
@@ -76,7 +80,10 @@ export interface RegisterSourceHandlersOptions {
   readonly sourceCredentials?: SourceCredentialService | undefined;
   readonly sourceDocumentMaterializer?: SourceDocumentMaterializer | undefined;
   readonly sourceProductWorkflows?:
-    | Pick<SourceProductWorkflowRepository, "listLatestSyncCompletions" | "listSyncPolicies">
+    | Pick<
+        SourceProductWorkflowRepository,
+        "listLatestSyncCompletions" | "listLatestSyncRuns" | "listSyncPolicies"
+      >
     | undefined;
   readonly sources: SourceRepository;
   readonly spaces: KnowledgeSpaceRepository;
@@ -227,7 +234,7 @@ export function registerSourceHandlers({
     }
 
     const sourceIds = result.items.map((source) => source.id);
-    const [syncPolicies, syncCompletions] = sourceProductWorkflows
+    const [syncPolicies, syncCompletions, latestSyncRuns] = sourceProductWorkflows
       ? await Promise.all([
           sourceProductWorkflows.listSyncPolicies({
             knowledgeSpaceId: params.id,
@@ -239,13 +246,22 @@ export function registerSourceHandlers({
             sourceIds,
             tenantId: subject.tenantId,
           }),
+          sourceProductWorkflows.listLatestSyncRuns({
+            candidateGrants,
+            knowledgeSpaceId: params.id,
+            sourceIds,
+            tenantId: subject.tenantId,
+          }),
         ])
-      : [[], []];
+      : [[], [], []];
     const syncPoliciesBySourceId = new Map(
       syncPolicies.map((policy) => [policy.sourceId, SourceSyncPolicyResponseSchema.parse(policy)]),
     );
     const lastSyncedAtBySourceId = new Map(
       syncCompletions.map((completion) => [completion.sourceId, completion.completedAt]),
+    );
+    const latestSyncRunBySourceId = new Map(
+      latestSyncRuns.flatMap((run) => (run.sourceId ? [[run.sourceId, run] as const] : [])),
     );
 
     return context.json(
@@ -253,8 +269,16 @@ export function registerSourceHandlers({
         items: result.items.map((source) => {
           const lastSyncedAt = lastSyncedAtBySourceId.get(source.id);
           const syncPolicy = syncPoliciesBySourceId.get(source.id);
+          const latestSyncRun = latestSyncRunBySourceId.get(source.id);
+          const syncWorkflow =
+            latestSyncRun &&
+            (latestSyncRun.activeSlot === 1 || latestSyncRun.updatedAt >= source.updatedAt)
+              ? toPublicSourceWorkflowRun(latestSyncRun)
+              : undefined;
           return {
             ...toSourceResponse(source),
+            status: sourceStatusWithSyncWorkflow(source, syncWorkflow ? latestSyncRun : undefined),
+            ...(syncWorkflow ? { syncWorkflow } : {}),
             ...(lastSyncedAt ? { lastSyncedAt } : {}),
             ...(syncPolicy ? { syncPolicy } : {}),
           };
@@ -1142,6 +1166,13 @@ export function registerSourceHandlers({
       return context.json({ code: failure.code, error: failure.message }, 502);
     }
   });
+}
+
+function sourceStatusWithSyncWorkflow(source: Source, run?: SourceWorkflowRun): Source["status"] {
+  if (source.status === "disabled" || !run) return source.status;
+  if (run.state === "failed" || run.state === "canceled") return "error";
+  if (run.state === "completed" || run.state === "zero_results") return "active";
+  return "syncing";
 }
 
 type SourceRequestContext = Parameters<

@@ -1,4 +1,4 @@
-import type { Source, SourceSyncPolicy } from '../source-models'
+import type { Source, SourceSyncPolicy, SourceWorkflowRun } from '../source-models'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import datasetTranslations from '@/i18n/en-US/dataset.json'
@@ -11,6 +11,28 @@ const permissionState = vi.hoisted(() => ({
   workspacePermissionKeys: ['dataset.acl.edit', 'dataset.external.connect'],
 }))
 const sourceApiResponse = vi.hoisted(() => (source: Source) => ({
+  sync_workflow: source.syncWorkflow
+    ? {
+        canceled_at: source.syncWorkflow.canceledAt ?? null,
+        checkpoint: source.syncWorkflow.checkpoint,
+        completed_at: source.syncWorkflow.completedAt ?? null,
+        created_at: source.syncWorkflow.createdAt,
+        cursor: source.syncWorkflow.cursor ?? null,
+        execution_attempts: source.syncWorkflow.executionAttempts,
+        id: source.syncWorkflow.id,
+        knowledge_space_id: source.syncWorkflow.knowledgeSpaceId,
+        kind: source.syncWorkflow.kind,
+        last_error_code: source.syncWorkflow.lastErrorCode ?? null,
+        max_execution_attempts: source.syncWorkflow.maxExecutionAttempts,
+        progress_completed: source.syncWorkflow.progressCompleted,
+        progress_failed: source.syncWorkflow.progressFailed,
+        progress_skipped: source.syncWorkflow.progressSkipped,
+        progress_total: source.syncWorkflow.progressTotal ?? null,
+        source_id: source.syncWorkflow.sourceId ?? null,
+        state: source.syncWorkflow.state,
+        updated_at: source.syncWorkflow.updatedAt,
+      }
+    : null,
   connection_id: source.connectionId ?? null,
   created_at: source.createdAt,
   credential_configured: source.credentialConfigured ?? null,
@@ -86,29 +108,7 @@ const settingsState = vi.hoisted(() => ({
   configurationState: 'active' as 'active' | 'setup-required',
   refetch: vi.fn(),
 }))
-const workflowState = vi.hoisted(() => ({
-  data: undefined as
-    | {
-        canceled_at: null
-        checkpoint: string
-        completed_at: null
-        created_at: string
-        execution_attempts: number
-        id: string
-        kind: string
-        knowledge_space_id: string
-        last_error_code: null
-        max_execution_attempts: number
-        progress_completed: number
-        progress_failed: number
-        progress_skipped: number
-        progress_total: number
-        source_id: string
-        state: string
-        updated_at: string
-      }
-    | undefined,
-}))
+
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const original = await importOriginal<typeof import('@tanstack/react-query')>()
   return {
@@ -124,18 +124,15 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
           }
         : undefined,
     }),
-    useQuery: (options: { queryKey?: unknown[] }) => {
-      if (options.queryKey?.[1] === 'source-workflow') return { data: workflowState.data }
-      return {
-        data: {
-          configuration_state: settingsState.configurationState,
-          embedding: null,
-          retrieval: null,
-          revision: 1,
-        },
-        refetch: settingsState.refetch,
-      }
-    },
+    useQuery: () => ({
+      data: {
+        configuration_state: settingsState.configurationState,
+        embedding: null,
+        retrieval: null,
+        revision: 1,
+      },
+      refetch: settingsState.refetch,
+    }),
     useQueryClient: () => ({ invalidateQueries: invalidateQueriesMock }),
   }
 })
@@ -171,15 +168,6 @@ vi.mock('@/service/client', () => ({
               queryOptions: ({ input }: { input: unknown }) => ({
                 queryKey: ['knowledge-fs', 'settings', input],
               }),
-            },
-          },
-          sourceWorkflows: {
-            byRunId: {
-              get: {
-                queryOptions: ({ input }: { input: { params: { run_id: string } } }) => ({
-                  queryKey: ['knowledge-fs', 'source-workflow', input.params.run_id],
-                }),
-              },
             },
           },
           sources: {
@@ -228,6 +216,23 @@ const workflow = (state = 'queued') => ({
   updated_at: '2026-07-20T10:00:00Z',
 })
 
+const sourceWorkflow = (state = 'queued'): SourceWorkflowRun => ({
+  checkpoint: 'sync',
+  createdAt: '2026-07-20T10:00:00Z',
+  executionAttempts: 1,
+  id: 'workflow-1',
+  kind: 'sync',
+  knowledgeSpaceId: 'space-1',
+  maxExecutionAttempts: 3,
+  progressCompleted: 0,
+  progressFailed: 0,
+  progressSkipped: 0,
+  progressTotal: 1,
+  sourceId: 'source-1',
+  state,
+  updatedAt: '2026-07-20T10:00:00Z',
+})
+
 describe('SourcesPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -239,7 +244,7 @@ describe('SourcesPage', () => {
     sourcesQuery.isPending = false
     clientMock.deleteSource.mockResolvedValue({ status: 'accepted' })
     clientMock.patchSource.mockResolvedValue(source({}))
-    workflowState.data = undefined
+    invalidateQueriesMock.mockResolvedValue(undefined)
     clientMock.syncSource.mockResolvedValue(workflow())
     permissionState.workspacePermissionKeys = ['dataset.acl.edit', 'dataset.external.connect']
     settingsState.configurationState = 'active'
@@ -282,7 +287,13 @@ describe('SourcesPage', () => {
     expect(
       options.refetchInterval({
         state: {
-          data: { pages: [{ data: [sourceApiResponse(source({ status: 'active' }))] }] },
+          data: {
+            pages: [
+              {
+                data: [sourceApiResponse(source({ syncWorkflow: sourceWorkflow('completed') }))],
+              },
+            ],
+          },
         },
       }),
     ).toBe(false)
@@ -349,7 +360,12 @@ describe('SourcesPage', () => {
         {
           items: [
             source({ id: 'active', name: 'Product documentation', status: 'active' }),
-            source({ id: 'syncing', name: 'API reference', status: 'syncing' }),
+            source({
+              syncWorkflow: { ...sourceWorkflow('syncing'), sourceId: 'syncing' },
+              id: 'syncing',
+              name: 'API reference',
+              status: 'active',
+            }),
             source({ id: 'disabled', name: 'Legacy FAQ', status: 'disabled' }),
             source({ id: 'error', name: 'Support site', status: 'error' }),
           ],
@@ -372,6 +388,13 @@ describe('SourcesPage', () => {
       screen.getByRole('option', { name: 'dataset.newKnowledge.sourceStatus.error' }),
     )
     expect(screen.getByText('Support site')).toBeInTheDocument()
+    expect(screen.queryByText('Product documentation')).not.toBeInTheDocument()
+
+    await user.click(sourceFilter)
+    await user.click(
+      screen.getByRole('option', { name: 'dataset.newKnowledge.sourceStatus.syncing' }),
+    )
+    expect(screen.getByText('API reference')).toBeInTheDocument()
     expect(screen.queryByText('Product documentation')).not.toBeInTheDocument()
 
     await user.click(sourceFilter)
@@ -642,7 +665,9 @@ describe('SourcesPage', () => {
       ),
     ).toBeInTheDocument()
     finishRefresh?.()
-    workflowState.data = workflow('completed')
+    sourcesQuery.data = {
+      pages: [{ items: [source({ syncWorkflow: sourceWorkflow('completed') })] }],
+    }
     rerender(<SourcesPage knowledgeSpaceId="space-1" />)
     await waitFor(() =>
       expect(
@@ -651,18 +676,491 @@ describe('SourcesPage', () => {
         ),
       ).toBeInTheDocument(),
     )
-    await waitFor(() => expect(invalidateQueriesMock).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(invalidateQueriesMock).toHaveBeenCalledTimes(1))
     const options = infiniteOptionsMock.mock.lastCall?.[0]
     expect(options).toBeDefined()
     if (!options) throw new Error('Expected source infinite query options')
     expect(
       options.refetchInterval({
         state: {
-          data: { pages: [{ data: [sourceApiResponse(source({ status: 'active' }))] }] },
+          data: {
+            pages: [
+              {
+                data: [sourceApiResponse(source({ syncWorkflow: sourceWorkflow('completed') }))],
+              },
+            ],
+          },
         },
       }),
     ).toBe(false)
-    expect(invalidateQueriesMock).toHaveBeenLastCalledWith({ queryKey: ['sources'] })
+    expect(invalidateQueriesMock).toHaveBeenLastCalledWith(
+      { queryKey: ['sources'] },
+      { throwOnError: true },
+    )
+  })
+
+  it('restores an active source sync from the server on page load', async () => {
+    sourcesQuery.data = {
+      pages: [{ items: [source({ syncWorkflow: sourceWorkflow('syncing') })] }],
+    }
+    const restored = render(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    expect(
+      within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
+        'dataset.newKnowledge.sourceStatus.syncing',
+      ),
+    ).toBeInTheDocument()
+
+    sourcesQuery.data = {
+      pages: [{ items: [source({ syncWorkflow: sourceWorkflow('completed') })] }],
+    }
+    restored.rerender(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    await waitFor(() =>
+      expect(
+        within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
+          'dataset.newKnowledge.sourceStatus.active',
+        ),
+      ).toBeInTheDocument(),
+    )
+  })
+
+  it('keeps a disabled source disabled while its sync is active', async () => {
+    const user = userEvent.setup()
+    sourcesQuery.data = {
+      pages: [
+        {
+          items: [
+            source({
+              status: 'disabled',
+              syncWorkflow: sourceWorkflow('syncing'),
+            }),
+          ],
+        },
+      ],
+    }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    const row = screen.getByRole('row', { name: /Product documentation/ })
+    expect(within(row).getByText('dataset.newKnowledge.sourceStatus.disabled')).toBeInTheDocument()
+    expect(
+      within(row).queryByText('dataset.newKnowledge.sourceStatus.syncing'),
+    ).not.toBeInTheDocument()
+
+    await user.click(
+      within(row).getByRole('button', {
+        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+      }),
+    )
+    await user.click(screen.getByRole('menuitem', { name: 'dataset.newKnowledge.syncNow' }))
+
+    expect(within(row).getByText('dataset.newKnowledge.sourceStatus.disabled')).toBeInTheDocument()
+    expect(
+      within(row).queryByText('dataset.newKnowledge.sourceStatus.syncing'),
+    ).not.toBeInTheDocument()
+
+    const options = infiniteOptionsMock.mock.lastCall?.[0]
+    expect(options).toBeDefined()
+    if (!options) throw new Error('Expected source infinite query options')
+    expect(
+      options.refetchInterval({
+        state: {
+          data: {
+            pages: [
+              {
+                data: [
+                  sourceApiResponse(
+                    source({ status: 'disabled', syncWorkflow: sourceWorkflow('syncing') }),
+                  ),
+                ],
+              },
+            ],
+          },
+        },
+      }),
+    ).toBe(3000)
+    expect(
+      options.refetchInterval({
+        state: {
+          data: {
+            pages: [
+              {
+                data: [
+                  sourceApiResponse(
+                    source({ status: 'disabled', syncWorkflow: sourceWorkflow('completed') }),
+                  ),
+                ],
+              },
+            ],
+          },
+        },
+      }),
+    ).toBe(false)
+  })
+
+  it('keeps polling an active sync when enabling a disabled source and refresh fails', async () => {
+    const user = userEvent.setup()
+    const activeWorkflow = sourceWorkflow('syncing')
+    sourcesQuery.data = {
+      pages: [
+        {
+          items: [
+            source({
+              status: 'disabled',
+              syncWorkflow: activeWorkflow,
+            }),
+          ],
+        },
+      ],
+    }
+    clientMock.patchSource.mockResolvedValue(
+      source({
+        status: 'active',
+        updatedAt: '2026-07-20T10:01:00Z',
+        version: 4,
+      }),
+    )
+    invalidateQueriesMock.mockRejectedValueOnce(new Error('Source refresh failed'))
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    const row = screen.getByRole('row', { name: /Product documentation/ })
+    await user.click(
+      within(row).getByRole('button', {
+        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+      }),
+    )
+    await user.click(screen.getByRole('menuitem', { name: 'dataset.enable' }))
+
+    await waitFor(() =>
+      expect(
+        within(row).getByText('dataset.newKnowledge.sourceStatus.syncing'),
+      ).toBeInTheDocument(),
+    )
+    const options = infiniteOptionsMock.mock.lastCall?.[0]
+    expect(options).toBeDefined()
+    if (!options) throw new Error('Expected source infinite query options')
+    expect(
+      options.refetchInterval({
+        state: {
+          data: {
+            pages: [
+              {
+                data: [
+                  sourceApiResponse(source({ status: 'disabled', syncWorkflow: activeWorkflow })),
+                ],
+              },
+            ],
+          },
+        },
+      }),
+    ).toBe(3000)
+  })
+
+  it('keeps a failed restored sync visible when the source list reaches a terminal state', async () => {
+    sourcesQuery.data = {
+      pages: [{ items: [source({ syncWorkflow: sourceWorkflow('syncing') })] }],
+    }
+    const restored = render(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    sourcesQuery.data = {
+      pages: [
+        {
+          items: [
+            source({
+              syncWorkflow: {
+                ...sourceWorkflow('failed'),
+                lastErrorCode: 'PROVIDER_FAILED',
+              },
+            }),
+          ],
+        },
+      ],
+    }
+    restored.rerender(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    await waitFor(() =>
+      expect(
+        within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
+          'PROVIDER_FAILED',
+        ),
+      ).toBeInTheDocument(),
+    )
+    expect(invalidateQueriesMock).not.toHaveBeenCalled()
+  })
+
+  it('reconciles the source list after a sync finishes', async () => {
+    const user = userEvent.setup()
+    sourcesQuery.data = { pages: [{ items: [source({})] }] }
+    invalidateQueriesMock.mockImplementationOnce((_filters, options) =>
+      options?.throwOnError
+        ? Promise.reject(new Error('Initial source refresh failed'))
+        : Promise.resolve(),
+    )
+
+    const rendered = render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+      }),
+    )
+    await user.click(screen.getByRole('menuitem', { name: 'dataset.newKnowledge.syncNow' }))
+
+    expect(
+      within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
+        'dataset.newKnowledge.sourceStatus.syncing',
+      ),
+    ).toBeInTheDocument()
+
+    sourcesQuery.data = {
+      pages: [{ items: [source({ syncWorkflow: sourceWorkflow('completed') })] }],
+    }
+    rendered.rerender(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    await waitFor(() => expect(invalidateQueriesMock).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      const options = infiniteOptionsMock.mock.lastCall?.[0]
+      expect(options).toBeDefined()
+      if (!options) throw new Error('Expected source infinite query options')
+      expect(
+        options.refetchInterval({
+          state: {
+            data: {
+              pages: [
+                {
+                  data: [sourceApiResponse(source({ syncWorkflow: sourceWorkflow('completed') }))],
+                },
+              ],
+            },
+          },
+        }),
+      ).toBe(false)
+    })
+    expect(
+      within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
+        'dataset.newKnowledge.sourceStatus.active',
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('tracks a newer server workflow after a local sync completes', async () => {
+    const user = userEvent.setup()
+    sourcesQuery.data = { pages: [{ items: [source({})] }] }
+
+    const rendered = render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+      }),
+    )
+    await user.click(screen.getByRole('menuitem', { name: 'dataset.newKnowledge.syncNow' }))
+
+    sourcesQuery.data = {
+      pages: [{ items: [source({ syncWorkflow: sourceWorkflow('completed') })] }],
+    }
+    rendered.rerender(<SourcesPage knowledgeSpaceId="space-1" />)
+    await waitFor(() =>
+      expect(
+        within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
+          'dataset.newKnowledge.sourceStatus.active',
+        ),
+      ).toBeInTheDocument(),
+    )
+
+    sourcesQuery.data = {
+      pages: [
+        {
+          items: [
+            source({
+              syncWorkflow: { ...sourceWorkflow('syncing'), id: 'workflow-2' },
+            }),
+          ],
+        },
+      ],
+    }
+    rendered.rerender(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    await waitFor(() =>
+      expect(
+        within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
+          'dataset.newKnowledge.sourceStatus.syncing',
+        ),
+      ).toBeInTheDocument(),
+    )
+  })
+
+  it('replaces a local active sync with a newer terminal server workflow', async () => {
+    const user = userEvent.setup()
+    sourcesQuery.data = { pages: [{ items: [source({})] }] }
+
+    const rendered = render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+      }),
+    )
+    await user.click(screen.getByRole('menuitem', { name: 'dataset.newKnowledge.syncNow' }))
+
+    await waitFor(() =>
+      expect(
+        within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
+          'dataset.newKnowledge.sourceStatus.syncing',
+        ),
+      ).toBeInTheDocument(),
+    )
+
+    sourcesQuery.data = {
+      pages: [
+        {
+          items: [
+            source({
+              syncWorkflow: {
+                ...sourceWorkflow('completed'),
+                createdAt: '2026-07-20T11:00:00Z',
+                id: 'workflow-2',
+                updatedAt: '2026-07-20T11:01:00Z',
+              },
+            }),
+          ],
+        },
+      ],
+    }
+    rendered.rerender(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    await waitFor(() =>
+      expect(
+        within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
+          'dataset.newKnowledge.sourceStatus.active',
+        ),
+      ).toBeInTheDocument(),
+    )
+    const options = infiniteOptionsMock.mock.lastCall?.[0]
+    expect(options).toBeDefined()
+    if (!options) throw new Error('Expected source infinite query options')
+    expect(
+      options.refetchInterval({
+        state: {
+          data: {
+            pages: [
+              {
+                data: [
+                  sourceApiResponse(
+                    source({
+                      syncWorkflow: {
+                        ...sourceWorkflow('completed'),
+                        createdAt: '2026-07-20T11:00:00Z',
+                        id: 'workflow-2',
+                        updatedAt: '2026-07-20T11:01:00Z',
+                      },
+                    }),
+                  ),
+                ],
+              },
+            ],
+          },
+        },
+      }),
+    ).toBe(false)
+  })
+
+  it('tracks an older workflow when the server has retried it', async () => {
+    const user = userEvent.setup()
+    sourcesQuery.data = { pages: [{ items: [source({})] }] }
+    clientMock.syncSource.mockResolvedValue({
+      ...workflow('completed'),
+      created_at: '2026-07-20T11:00:00Z',
+      id: 'newer-terminal-workflow',
+      updated_at: '2026-07-20T11:01:00Z',
+    })
+
+    const rendered = render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+      }),
+    )
+    await user.click(screen.getByRole('menuitem', { name: 'dataset.newKnowledge.syncNow' }))
+
+    const retriedWorkflow = {
+      ...sourceWorkflow('syncing'),
+      createdAt: '2026-07-20T09:00:00Z',
+      id: 'older-retried-workflow',
+      updatedAt: '2026-07-20T12:00:00Z',
+    }
+    sourcesQuery.data = {
+      pages: [{ items: [source({ syncWorkflow: retriedWorkflow })] }],
+    }
+    rendered.rerender(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    await waitFor(() =>
+      expect(
+        within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
+          'dataset.newKnowledge.sourceStatus.syncing',
+        ),
+      ).toBeInTheDocument(),
+    )
+    const options = infiniteOptionsMock.mock.lastCall?.[0]
+    expect(options).toBeDefined()
+    if (!options) throw new Error('Expected source infinite query options')
+    expect(
+      options.refetchInterval({
+        state: {
+          data: {
+            pages: [
+              {
+                data: [sourceApiResponse(source({ syncWorkflow: retriedWorkflow }))],
+              },
+            ],
+          },
+        },
+      }),
+    ).toBe(3000)
+  })
+
+  it('keeps a newly accepted sync visible when the source list still has an older workflow', async () => {
+    const user = userEvent.setup()
+    sourcesQuery.data = {
+      pages: [{ items: [source({ syncWorkflow: sourceWorkflow('completed') })] }],
+    }
+    clientMock.syncSource.mockResolvedValue({
+      ...workflow(),
+      created_at: '2026-07-20T11:00:00Z',
+      id: 'workflow-2',
+      updated_at: '2026-07-20T11:00:00Z',
+    })
+    invalidateQueriesMock.mockRejectedValueOnce(new Error('Source refresh failed'))
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+      }),
+    )
+    await user.click(screen.getByRole('menuitem', { name: 'dataset.newKnowledge.syncNow' }))
+
+    await waitFor(() =>
+      expect(
+        within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
+          'dataset.newKnowledge.sourceStatus.syncing',
+        ),
+      ).toBeInTheDocument(),
+    )
+    const options = infiniteOptionsMock.mock.lastCall?.[0]
+    expect(options).toBeDefined()
+    if (!options) throw new Error('Expected source infinite query options')
+    expect(
+      options.refetchInterval({
+        state: {
+          data: {
+            pages: [
+              {
+                data: [sourceApiResponse(source({ syncWorkflow: sourceWorkflow('completed') }))],
+              },
+            ],
+          },
+        },
+      }),
+    ).toBe(3000)
   })
 
   it('prompts for model setup before syncing a source', async () => {
@@ -729,7 +1227,7 @@ describe('SourcesPage', () => {
     )
   })
 
-  it('uses the returned source version while the list replica is stale', async () => {
+  it('uses the returned source version while a workflow-enriched list replica is stale', async () => {
     const user = userEvent.setup()
     const syncPolicy: SourceSyncPolicy = {
       createdAt: '2026-07-20T10:00:00Z',
@@ -743,7 +1241,10 @@ describe('SourcesPage', () => {
       sourceId: 'source-1',
       updatedAt: '2026-07-20T10:00:00Z',
     }
-    sourcesQuery.data = { pages: [{ items: [source({ syncPolicy })] }] }
+    sourcesQuery.data = {
+      pages: [{ items: [source({ syncPolicy, syncWorkflow: sourceWorkflow('failed') })] }],
+    }
+    invalidateQueriesMock.mockRejectedValue(new Error('Source refresh failed'))
     clientMock.patchSource
       .mockResolvedValueOnce(
         source({

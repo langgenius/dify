@@ -400,6 +400,12 @@ export interface SourceProductWorkflowRepository {
     readonly sourceIds: readonly string[];
     readonly tenantId: string;
   }): Promise<readonly SourceSyncPolicyRecord[]>;
+  listLatestSyncRuns(input: {
+    readonly candidateGrants: readonly string[];
+    readonly knowledgeSpaceId: string;
+    readonly sourceIds: readonly string[];
+    readonly tenantId: string;
+  }): Promise<readonly SourceWorkflowRun[]>;
   listLatestSyncCompletions(input: {
     readonly knowledgeSpaceId: string;
     readonly sourceIds: readonly string[];

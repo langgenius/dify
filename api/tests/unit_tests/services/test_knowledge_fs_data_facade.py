@@ -174,6 +174,26 @@ class RecordingRemote:
             return {
                 "items": [
                     {
+                        "syncWorkflow": {
+                            "canceledAt": None,
+                            "checkpoint": "provider-read",
+                            "completedAt": None,
+                            "createdAt": "2030-01-01T00:00:00Z",
+                            "cursor": None,
+                            "executionAttempts": 1,
+                            "id": "workflow-1",
+                            "knowledgeSpaceId": "space-1",
+                            "kind": "sync",
+                            "lastErrorCode": None,
+                            "maxExecutionAttempts": 3,
+                            "progressCompleted": 2,
+                            "progressFailed": 0,
+                            "progressSkipped": 0,
+                            "progressTotal": 5,
+                            "sourceId": "source-1",
+                            "state": "syncing",
+                            "updatedAt": "2030-01-01T00:01:00Z",
+                        },
                         "connectionId": None,
                         "createdAt": "2030-01-01T00:00:00Z",
                         "id": "source-1",
@@ -977,6 +997,9 @@ def test_basic_product_facade_resolves_control_space_then_uses_exact_kfs_routes(
     assert updated.settings.embedding is not None
     assert updated.settings.embedding.plugin_id == "plugin-1"
     assert len(sources.data) == 1
+    assert sources.data[0].sync_workflow is not None
+    assert sources.data[0].sync_workflow.id == "workflow-1"
+    assert sources.data[0].sync_workflow.state == "syncing"
     assert sources.data[0].last_synced_at == datetime(2030, 1, 1, 1, tzinfo=UTC)
     assert sources.data[0].sync_policy is not None
     assert sources.data[0].sync_policy.mode == "provider"

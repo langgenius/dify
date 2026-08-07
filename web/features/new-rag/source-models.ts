@@ -20,6 +20,7 @@ export type Source = {
   name: string
   permissionScope?: string[]
   status: 'active' | 'syncing' | 'error' | 'disabled'
+  syncWorkflow?: SourceWorkflowRun
   syncPolicy?: SourceSyncPolicy
   type: 'upload' | 'object-storage' | 'connector' | 'web'
   updatedAt: string
@@ -110,7 +111,42 @@ export type SourceSyncPolicy = {
 
 export type SourceSyncPolicyBody = KnowledgeFsSourceSyncPolicyPayload
 
+const SOURCE_WORKFLOW_SUCCESS_STATES = new Set([
+  'complete',
+  'completed',
+  'success',
+  'succeeded',
+  'zero_results',
+])
+const SOURCE_WORKFLOW_FAILURE_STATES = new Set([
+  'canceled',
+  'cancelled',
+  'error',
+  'exhausted',
+  'failed',
+  'timed_out',
+  'timeout',
+])
+
+export function sourceWorkflowStatus(state: string): Source['status'] {
+  const normalized = state.trim().toLowerCase().replaceAll('-', '_').replaceAll(' ', '_')
+  if (SOURCE_WORKFLOW_FAILURE_STATES.has(normalized)) return 'error'
+  if (SOURCE_WORKFLOW_SUCCESS_STATES.has(normalized)) return 'active'
+  return 'syncing'
+}
+
+export function sourceStatusWithSyncWorkflow(
+  status: Source['status'],
+  syncWorkflow?: SourceWorkflowRun,
+): Source['status'] {
+  if (status === 'disabled' || !syncWorkflow) return status
+  return sourceWorkflowStatus(syncWorkflow.state)
+}
+
 export function sourceFromApi(source: KnowledgeFsSourceResponse): Source {
+  const syncWorkflow = source.sync_workflow
+    ? sourceWorkflowFromApi(source.sync_workflow)
+    : undefined
   return {
     connectionId: source.connection_id ?? undefined,
     createdAt: source.created_at,
@@ -121,7 +157,8 @@ export function sourceFromApi(source: KnowledgeFsSourceResponse): Source {
     metadata: source.metadata,
     name: source.name,
     permissionScope: source.permission_scope,
-    status: source.status,
+    status: sourceStatusWithSyncWorkflow(source.status, syncWorkflow),
+    syncWorkflow,
     syncPolicy: source.sync_policy ? sourceSyncPolicyFromApi(source.sync_policy) : undefined,
     type: source.type,
     updatedAt: source.updated_at,
