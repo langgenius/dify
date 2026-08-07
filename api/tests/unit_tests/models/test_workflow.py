@@ -173,10 +173,10 @@ def test_workflow_account_getters_use_caller_session():
         created_by="created-account-id",
         environment_variables=[],
         conversation_variables=[],
+        updated_by="updated-account-id",
     )
-    workflow.updated_by = "updated-account-id"
-    created_account = mock.Mock(spec=Account)
-    updated_account = mock.Mock(spec=Account)
+    created_account = Account(name="Test Account", email="test@example.com")
+    updated_account = Account(name="Test Account", email="test@example.com")
     session = mock.Mock()
     session.get.side_effect = [created_account, updated_account]
 
@@ -245,8 +245,9 @@ def test_normalize_environment_variable_mappings_keeps_hidden_value():
 
 class TestWorkflowNodeExecution:
     def test_execution_metadata_dict(self):
-        node_exec = WorkflowNodeExecutionModel()
-        node_exec.execution_metadata = None
+        node_exec = WorkflowNodeExecutionModel(
+            execution_metadata=None,
+        )
         assert node_exec.execution_metadata_dict == {}
 
         original = {"a": 1, "b": ["2"]}
@@ -409,8 +410,9 @@ class TestWorkflowDraftVariableGetValue:
             size=12,
             storage_key="canonical-storage-key",
         )
-        draft_var = WorkflowDraftVariable()
-        draft_var.app_id = "app-1"
+        draft_var = WorkflowDraftVariable(
+            app_id="app-1",
+        )
         draft_var.set_value(build_segment(persisted_file))
         draft_var._WorkflowDraftVariable__value = None
 

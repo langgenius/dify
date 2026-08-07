@@ -1,7 +1,16 @@
 import pytest
 
+from enums.deployment_edition import DeploymentEdition
 from services import feature_service as feature_service_module
+from services.entities.feature_entities import SystemFeatureModel
 from services.feature_service import FeatureService
+
+
+def test_system_feature_model_disables_knowledge_fs_by_default() -> None:
+    features = SystemFeatureModel(deployment_edition=DeploymentEdition.COMMUNITY)
+
+    assert features.knowledge_fs_enabled is False
+    assert features.knowledge_fs_upload_enabled is False
 
 
 @pytest.mark.parametrize(

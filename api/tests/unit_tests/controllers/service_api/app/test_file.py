@@ -210,9 +210,10 @@ from inspect import unwrap
 def mock_app_model():
     from models import App
 
-    app = Mock(spec=App)
-    app.id = str(uuid.uuid4())
-    app.tenant_id = str(uuid.uuid4())
+    app = App(
+        id=str(uuid.uuid4()),
+        tenant_id=str(uuid.uuid4()),
+    )
     return app
 
 
@@ -220,8 +221,9 @@ def mock_app_model():
 def mock_end_user():
     from models import EndUser
 
-    user = Mock(spec=EndUser)
-    user.id = str(uuid.uuid4())
+    user = EndUser(
+        id=str(uuid.uuid4()),
+    )
     return user
 
 

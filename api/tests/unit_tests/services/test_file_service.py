@@ -86,7 +86,7 @@ class TestFileService:
         mock_now.return_value = datetime(2024, 1, 1, tzinfo=UTC)
         mock_get_url.return_value = "http://signed-url"
 
-        user = MagicMock(spec=Account)
+        user = Account(name="Test Account", email="test@example.com")
         user.id = "user_id"
         content = b"file content"
         filename = "test.jpg"
@@ -127,7 +127,7 @@ class TestFileService:
         mock_storage.save.assert_called_once_with(result.key, expected_content)
 
     def test_upload_file_uses_explicit_resource_tenant(self, file_service: FileService):
-        user = MagicMock(spec=Account)
+        user = Account(name="Test Account", email="test@example.com")
         user.id = "user-id"
 
         with (
@@ -154,7 +154,7 @@ class TestFileService:
     def test_upload_file_long_filename(self, file_service: FileService, db_session: Session):
         # Setup
         long_name = "a" * 210 + ".txt"
-        user = MagicMock(spec=Account)
+        user = Account(name="Test Account", email="test@example.com")
         user.id = "user_id"
 
         with (
@@ -189,8 +189,9 @@ class TestFileService:
                 file_service.upload_file(filename="test.jpg", content=content, mimetype="image/jpeg", user=MagicMock())
 
     def test_upload_file_end_user(self, file_service: FileService, db_session: Session):
-        user = MagicMock(spec=EndUser)
-        user.id = "end_user_id"
+        user = EndUser(
+            id="end_user_id",
+        )
 
         with (
             patch("services.file_service.storage"),
@@ -224,6 +225,32 @@ class TestFileService:
             # Default
             assert FileService.is_file_size_within_limit(extension="txt", file_size=5 * 1024 * 1024) is True
             assert FileService.is_file_size_within_limit(extension="pdf", file_size=6 * 1024 * 1024) is False
+            assert (
+                FileService.is_file_size_within_limit(
+                    extension="pdf",
+                    file_size=6 * 1024 * 1024,
+                    default_file_size_limit=7,
+                )
+                is True
+            )
+            assert (
+                FileService.is_file_size_within_limit(
+                    extension="pdf",
+                    file_size=8 * 1024 * 1024,
+                    default_file_size_limit=7,
+                )
+                is False
+            )
+
+            # Media-specific limits are not affected by the knowledge document override.
+            assert (
+                FileService.is_file_size_within_limit(
+                    extension="jpg",
+                    file_size=11 * 1024 * 1024,
+                    default_file_size_limit=100,
+                )
+                is False
+            )
 
     def test_get_file_base64_success(self, file_service: FileService, db_session: Session):
         self._persist_upload_file(db_session, key="test_key")

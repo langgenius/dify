@@ -347,8 +347,9 @@ class TestConversationAppModeValidation:
         Verifies that CHAT, AGENT_CHAT, AGENT, and ADVANCED_CHAT modes pass
         validation without raising NotChatAppError.
         """
-        app = Mock(spec=App)
-        app.mode = mode
+        app = App(
+            mode=mode,
+        )
 
         # Validation should pass without raising for chat modes
         app_mode = AppMode.value_of(app.mode)
@@ -360,8 +361,9 @@ class TestConversationAppModeValidation:
         Verifies that calling a conversation endpoint with a COMPLETION mode
         app raises NotChatAppError.
         """
-        app = Mock(spec=App)
-        app.mode = AppMode.COMPLETION
+        app = App(
+            mode=AppMode.COMPLETION,
+        )
 
         app_mode = AppMode.value_of(app.mode)
         assert app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}
@@ -374,8 +376,9 @@ class TestConversationAppModeValidation:
         Verifies that calling a conversation endpoint with a WORKFLOW mode
         app raises NotChatAppError.
         """
-        app = Mock(spec=App)
-        app.mode = AppMode.WORKFLOW
+        app = App(
+            mode=AppMode.WORKFLOW,
+        )
 
         app_mode = AppMode.value_of(app.mode)
         assert app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}
@@ -450,8 +453,8 @@ class TestConversationService:
         mock_pagination.return_value = mock_result
 
         result = ConversationService.pagination_by_last_id(
-            app_model=Mock(spec=App),
-            user=Mock(spec=EndUser),
+            app_model=App(),
+            user=EndUser(),
             last_id=None,
             limit=20,
             invoke_from=Mock(),

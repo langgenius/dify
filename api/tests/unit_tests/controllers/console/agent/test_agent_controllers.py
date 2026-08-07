@@ -459,6 +459,11 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
         "get_system_features",
         lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
     )
+    monkeypatch.setattr(
+        roster_controller,
+        "agent_has_workflow_callable_active_snapshot",
+        lambda **_kwargs: False,
+    )
 
     class FakeAppService:
         def get_app(self, app_obj: object, *, session: object) -> object:
@@ -482,6 +487,7 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
     assert detail["debug_conversation_has_messages"] is True
     assert detail["debug_conversation_message_count"] == 2
     assert detail["role"] == "Resolved role"
+    assert detail["access_ready"] is False
     assert "active_config_is_published" not in detail
     assert "bound_agent_id" not in detail
     assert captured["get_app"] == {"app": app_model, "session": session}
@@ -699,12 +705,19 @@ def test_agent_publish_and_build_draft_routes_call_composer_service(
 def test_agent_api_access_uses_agent_id_and_returns_service_api_metadata(monkeypatch: pytest.MonkeyPatch) -> None:
     agent_id = "00000000-0000-0000-0000-000000000001"
     app_model = SimpleNamespace(
-        id="app-1", enable_api=True, api_base_url="https://api.example.test/v1", api_rpm=60, api_rph=600
+        id="app-1",
+        tenant_id="tenant-1",
+        enable_api=True,
+        api_base_url="https://api.example.test/v1",
+        api_rpm=60,
+        api_rph=600,
     )
     monkeypatch.setattr(roster_controller, "_resolve_agent_app_model", lambda _session, **kwargs: app_model)
     monkeypatch.setattr(roster_controller, "_agent_api_key_count", lambda _session, app_id: 2)
+    monkeypatch.setattr(roster_controller, "_agent_app_access_ready", lambda _session, _app: True)
     response = unwrap(AgentApiAccessApi.get)(AgentApiAccessApi(), MagicMock(), "tenant-1", agent_id)
     assert response == {
+        "access_ready": True,
         "enabled": True,
         "service_api_base_url": "https://api.example.test/v1",
         "streaming_only": True,
@@ -726,13 +739,19 @@ def test_agent_api_status_and_key_routes_resolve_backing_app(app: Flask, monkeyp
     agent_id = "00000000-0000-0000-0000-000000000001"
     api_key_id = "00000000-0000-0000-0000-000000000002"
     app_model = SimpleNamespace(
-        id="app-1", enable_api=False, api_base_url="https://api.example.test/v1", api_rpm=0, api_rph=0
+        id="app-1",
+        tenant_id="tenant-1",
+        enable_api=False,
+        api_base_url="https://api.example.test/v1",
+        api_rpm=0,
+        api_rph=0,
     )
     captured: dict[str, object] = {}
     session = MagicMock()
     resolve_app = Mock(return_value=app_model)
     monkeypatch.setattr(roster_controller, "_resolve_agent_app_model", resolve_app)
     monkeypatch.setattr(roster_controller, "_agent_api_key_count", lambda _session, app_id: 1)
+    monkeypatch.setattr(roster_controller, "_agent_app_access_ready", lambda _session, _app: True)
 
     class FakeAppService:
         def update_app_api_status(self, app_obj: object, enable_api: bool, *, session: object) -> object:
@@ -1363,7 +1382,6 @@ def test_agent_chat_generate_and_stop_routes_resolve_app_from_agent_id(
 
 
 def test_agent_chat_stream_preflight_raises_first_error_event() -> None:
-
     class ClosableStream:
         def __init__(self) -> None:
             self.closed = False
@@ -1492,7 +1510,6 @@ def test_build_chat_finalization_helper_forces_debug_build_and_push_prompt(
 
 
 def test_drain_streaming_generate_response_returns_on_message_end() -> None:
-
     class ClosableResponse:
         def __init__(self) -> None:
             self._chunks = iter(
