@@ -710,13 +710,7 @@
     }
   },
   "web/app/components/apps/app-card.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
     "jsx_a11y/no-noninteractive-element-to-interactive-role": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
       "count": 1
     }
   },
@@ -2002,17 +1996,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/tab-slider/index.tsx": {
-    "eslint-react/set-state-in-effect": {
-      "count": 2
-    },
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/base/tag-input/index.stories.tsx": {
     "jsx_a11y/label-has-associated-control": {
       "count": 12
@@ -2721,14 +2704,6 @@
       "count": 1
     }
   },
-  "web/app/components/datasets/list/dataset-card/__tests__/index.spec.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/list/dataset-card/components/operations-dropdown.tsx": {
     "jsx_a11y/click-events-have-key-events": {
       "count": 1
@@ -2916,14 +2891,6 @@
       "count": 4
     }
   },
-  "web/app/components/header/account-setting/model-provider-page/hooks.ts": {
-    "eslint-react/no-unnecessary-use-prefix": {
-      "count": 1
-    },
-    "typescript/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/header/account-setting/model-provider-page/model-auth/add-custom-model.tsx": {
     "jsx_a11y/click-events-have-key-events": {
       "count": 2
@@ -2941,14 +2908,6 @@
     }
   },
   "web/app/components/header/account-setting/model-provider-page/model-auth/authorized/index.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/model-auth/config-model.tsx": {
     "jsx_a11y/click-events-have-key-events": {
       "count": 1
     },
@@ -2997,11 +2956,6 @@
   "web/app/components/header/account-setting/model-provider-page/model-modal/index.tsx": {
     "typescript/no-explicit-any": {
       "count": 5
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/model-parameter-modal/configuration-button.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 2
     }
   },
   "web/app/components/header/account-setting/model-provider-page/model-parameter-modal/index.tsx": {
@@ -3391,14 +3345,6 @@
     },
     "typescript/no-explicit-any": {
       "count": 25
-    }
-  },
-  "web/app/components/plugins/update-plugin/plugin-version-picker.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
     }
   },
   "web/app/components/rag-pipeline/components/__tests__/publish-as-knowledge-pipeline-modal.spec.tsx": {
@@ -4844,9 +4790,6 @@
   },
   "web/app/components/workflow/nodes/llm/use-config.ts": {
     "eslint-react/set-state-in-effect": {
-      "count": 2
-    },
-    "typescript/no-explicit-any": {
       "count": 1
     }
   },
@@ -5347,28 +5290,17 @@
       "count": 2
     }
   },
-  "web/app/components/workflow/panel/env-panel/index.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/panel/env-panel/variable-modal.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 4
     },
     "jsx_a11y/click-events-have-key-events": {
-      "count": 4
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 4
-    },
-    "no-restricted-imports": {
       "count": 1
     },
-    "typescript/no-explicit-any": {
+    "jsx_a11y/no-static-element-interactions": {
+      "count": 1
+    },
+    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -5606,7 +5538,7 @@
       "count": 3
     },
     "typescript/no-explicit-any": {
-      "count": 8
+      "count": 6
     }
   },
   "web/app/components/workflow/update-dsl-modal.tsx": {
@@ -5876,14 +5808,6 @@
   },
   "web/context/web-app-context.tsx": {
     "react/only-export-components": {
-      "count": 1
-    }
-  },
-  "web/features/tag-management/components/dataset-card-tags.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
       "count": 1
     }
   },

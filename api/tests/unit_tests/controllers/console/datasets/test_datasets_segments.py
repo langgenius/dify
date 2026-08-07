@@ -1,3 +1,4 @@
+from datetime import datetime
 from inspect import unwrap
 from types import SimpleNamespace
 from typing import Any, cast
@@ -42,16 +43,16 @@ def _segment():
         word_count=1,
         tokens=1,
         created_by="u1",
+        answer="a",
+        keywords=["test"],
+        index_node_id="n1",
+        index_node_hash="h",
+        status=SegmentStatus.COMPLETED,
+        updated_by="u1",
     )
     segment.id = "seg-1"
-    segment.answer = "a"
-    segment.keywords = ["test"]
-    segment.index_node_id = "n1"
-    segment.index_node_hash = "h"
-    segment.status = SegmentStatus.COMPLETED
     segment.created_at = naive_utc_now()
     segment.updated_at = naive_utc_now()
-    segment.updated_by = "u1"
     return segment
 
 
@@ -65,9 +66,9 @@ def _child_chunk():
         content="child",
         word_count=1,
         created_by="u1",
+        type=SegmentType.CUSTOMIZED,
     )
     child_chunk.id = "cc-1"
-    child_chunk.type = SegmentType.CUSTOMIZED
     child_chunk.created_at = naive_utc_now()
     child_chunk.updated_at = naive_utc_now()
     return child_chunk
@@ -532,8 +533,19 @@ class TestDatasetDocumentSegmentBatchImportApi:
         api = DatasetDocumentSegmentBatchImportApi()
         method = unwrap(api.post)
         payload = {"upload_file_id": "file-1"}
-        upload_file = MagicMock(spec=UploadFile)
-        upload_file.name = "test.csv"
+        upload_file = UploadFile(
+            tenant_id="tenant-id",
+            storage_type="opendal",
+            key="test-key",
+            name="test.csv",
+            size=0,
+            extension="txt",
+            mime_type="text/plain",
+            created_by_role="account",
+            created_by="account-id",
+            created_at=datetime.now(),
+            used=False,
+        )
         user = MagicMock(id="u1")
         session = MagicMock()
         session.scalar.return_value = upload_file
@@ -1079,8 +1091,20 @@ class TestSegmentOperationCases:
         user = MagicMock(is_dataset_editor=True)
         dataset = MagicMock()
         document = MagicMock()
-        upload_file = MagicMock(spec=UploadFile, extension="csv", id="file-1")
-        upload_file.name = "test.csv"
+        upload_file = UploadFile(
+            tenant_id="tenant-id",
+            storage_type="opendal",
+            key="test-key",
+            name="test.csv",
+            size=0,
+            extension="csv",
+            mime_type="text/csv",
+            created_by_role="account",
+            created_by="account-id",
+            created_at=datetime.now(),
+            used=False,
+        )
+        upload_file.id = "file-1"
         payload = {"upload_file_id": "file-1"}
         session = MagicMock()
         session.scalar.return_value = upload_file

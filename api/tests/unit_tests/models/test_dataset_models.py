@@ -97,8 +97,8 @@ class TestDatasetModelValidation:
             name="Test Dataset",
             data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=str(uuid4()),
+            id=str(uuid4()),
         )
-        dataset.id = str(uuid4())
         account = Mock()
         process_rule = Mock()
         session = Mock()
@@ -118,8 +118,8 @@ class TestDatasetModelValidation:
             name="Test Dataset",
             data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=str(uuid4()),
+            id=str(uuid4()),
         )
-        dataset.id = str(uuid4())
         keyword_table = Mock()
         session = Mock()
         session.scalar.return_value = keyword_table
@@ -137,8 +137,8 @@ class TestDatasetModelValidation:
             created_by=str(uuid4()),
             provider="vendor",
             built_in_field_enabled=False,
+            id=str(uuid4()),
         )
-        dataset.id = str(uuid4())
         account = Mock(name="account", name_value="Ada")
         account.name = "Ada"
         session = Mock()
@@ -274,9 +274,13 @@ class TestDatasetModelValidation:
             created_by=str(uuid4()),
             provider="external",
         )
-        binding = Mock(spec=ExternalKnowledgeBindings)
-        binding.external_knowledge_id = "knowledge-1"
-        binding.external_knowledge_api_id = str(uuid4())
+        binding = ExternalKnowledgeBindings(
+            tenant_id="tenant-id",
+            external_knowledge_api_id=str(uuid4()),
+            dataset_id="dataset-id",
+            external_knowledge_id="knowledge-1",
+            created_by="account-id",
+        )
 
         session = Mock()
         session.scalar.side_effect = [binding, None]
@@ -686,7 +690,7 @@ class TestDocumentModelRelationships:
             created_from=DocumentCreatedFrom.WEB,
             created_by=str(uuid4()),
         )
-        dataset = Mock(spec=Dataset)
+        dataset = Dataset()
         session = Mock()
         session.get.return_value = dataset
 
@@ -752,20 +756,31 @@ class TestDocumentSegmentIndexing:
             tokens=5,
             created_by=str(uuid4()),
         )
-        document = Mock(spec=Document)
+        document = Document()
         process_rule = Mock(mode="hierarchical", rules_dict={"parent_mode": "paragraph"})
-        document.get_dataset_process_rule.return_value = process_rule
-        child_chunk = Mock(spec=ChildChunk)
+        child_chunk = ChildChunk(
+            tenant_id="tenant-id",
+            dataset_id="dataset-id",
+            document_id="document-id",
+            segment_id="segment-id",
+            position=1,
+            content="",
+            word_count=0,
+            created_by="account-id",
+        )
         session = Mock()
         session.get.return_value = document
         session.scalars.return_value.all.return_value = [child_chunk]
 
-        with patch("models.dataset.Rule.model_validate", return_value=Mock(parent_mode="paragraph")):
+        with (
+            patch.object(Document, "get_dataset_process_rule", return_value=process_rule) as get_process_rule,
+            patch("models.dataset.Rule.model_validate", return_value=Mock(parent_mode="paragraph")),
+        ):
             result = segment.get_child_chunks(session=session)
 
         assert result == [child_chunk]
         session.get.assert_called_once_with(Document, segment.document_id)
-        document.get_dataset_process_rule.assert_called_once_with(session=session)
+        get_process_rule.assert_called_once_with(session=session)
         session.scalars.assert_called_once()
 
     def test_get_child_chunks_includes_full_doc_unless_explicitly_hidden(self):
@@ -779,17 +794,29 @@ class TestDocumentSegmentIndexing:
             tokens=5,
             created_by=str(uuid4()),
         )
-        document = Mock(spec=Document)
-        document.get_dataset_process_rule.return_value = Mock(
+        document = Document()
+        process_rule = Mock(
             mode="hierarchical",
             rules_dict={"parent_mode": ParentMode.FULL_DOC},
         )
         session = Mock()
         session.get.return_value = document
-        child_chunk = Mock(spec=ChildChunk)
+        child_chunk = ChildChunk(
+            tenant_id="tenant-id",
+            dataset_id="dataset-id",
+            document_id="document-id",
+            segment_id="segment-id",
+            position=1,
+            content="",
+            word_count=0,
+            created_by="account-id",
+        )
         session.scalars.return_value.all.return_value = [child_chunk]
 
-        with patch("models.dataset.Rule.model_validate", return_value=Mock(parent_mode=ParentMode.FULL_DOC)):
+        with (
+            patch.object(Document, "get_dataset_process_rule", return_value=process_rule),
+            patch("models.dataset.Rule.model_validate", return_value=Mock(parent_mode=ParentMode.FULL_DOC)),
+        ):
             result = segment.get_child_chunks(session=session)
             response_result = segment.get_child_chunks(session=session, include_full_doc=False)
 
@@ -808,8 +835,8 @@ class TestDocumentSegmentIndexing:
             tokens=5,
             created_by=str(uuid4()),
         )
-        dataset = Mock(spec=Dataset)
-        document = Mock(spec=Document)
+        dataset = Dataset()
+        document = Document()
         session = Mock()
         session.get.side_effect = [dataset, document]
 
@@ -1369,8 +1396,8 @@ class TestModelIntegration:
             data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=created_by,
             indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+            id=dataset_id,
         )
-        dataset.id = dataset_id
 
         # Create document
         document = Document(
@@ -1383,8 +1410,8 @@ class TestModelIntegration:
             created_from=DocumentCreatedFrom.WEB,
             created_by=created_by,
             word_count=100,
+            id=document_id,
         )
-        document.id = document_id
 
         # Create segment
         segment = DocumentSegment(

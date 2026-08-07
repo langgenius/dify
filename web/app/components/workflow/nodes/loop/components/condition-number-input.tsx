@@ -59,7 +59,7 @@ const ConditionNumberInput = ({
       <DropdownMenu open={numberVarTypeVisible} onOpenChange={setNumberVarTypeVisible}>
         <DropdownMenuTrigger render={<Button className="shrink-0" variant="ghost" size="small" />}>
           {capitalize(numberVarType)}
-          <RiArrowDownSLine className="ml-px size-3.5" />
+          <RiArrowDownSLine className="size-3.5" />
         </DropdownMenuTrigger>
         <DropdownMenuContent
           placement="bottom-start"

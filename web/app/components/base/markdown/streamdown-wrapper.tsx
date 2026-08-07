@@ -35,6 +35,8 @@ type SanitizeSchema = {
   [key: string]: unknown
 }
 
+const MARKDOWN_FORM_TAG_RE = /<form(?:\s|>)/i
+
 const CodeBlock = dynamic(() => import('@/app/components/base/markdown-blocks/code-block'), {
   ssr: false,
 })
@@ -167,6 +169,10 @@ const StreamdownWrapper = (props: StreamdownWrapperProps) => {
     className,
     mode = 'streaming',
   } = props
+  // Remend treats Markdown punctuation inside raw HTML attributes as incomplete syntax.
+  // Form markup must reach the HTML parser unchanged or a field name such as `field()!*&-`
+  // gains a synthetic trailing `*` after the closing form tag.
+  const shouldParseIncompleteMarkdown = !MARKDOWN_FORM_TAG_RE.test(latexContent)
 
   const remarkPlugins = useMemo(
     () => [
@@ -245,6 +251,7 @@ const StreamdownWrapper = (props: StreamdownWrapperProps) => {
       components={components}
       isAnimating={isAnimating}
       mode={mode}
+      parseIncompleteMarkdown={shouldParseIncompleteMarkdown}
     >
       {latexContent}
     </Streamdown>

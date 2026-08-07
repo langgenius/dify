@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RiSettings2Line } from '@remixicon/react'
 import { memo, useState } from 'react'
@@ -16,9 +15,9 @@ const ParamsConfig: FC = () => {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         render={
-          <Button variant="ghost" size="small" className={cn('')}>
+          <Button variant="ghost" size="small">
             <RiSettings2Line className="size-3.5" />
-            <div className="ml-1">{t(($) => $['voice.settings'], { ns: 'appDebug' })}</div>
+            <div>{t(($) => $['voice.settings'], { ns: 'appDebug' })}</div>
           </Button>
         }
       />

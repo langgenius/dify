@@ -25,6 +25,12 @@ from core.trigger.constants import (
     TRIGGER_SCHEDULE_NODE_TYPE,
     TRIGGER_WEBHOOK_NODE_TYPE,
 )
+from core.workflow.llm_environment_variable import (
+    LLMEnvironmentVariable,
+    parse_llm_model_selector,
+    resolve_llm_model_config,
+    should_resolve_llm_model_selector,
+)
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from core.workflow.nodes.trigger_schedule.trigger_schedule_node import TriggerScheduleNode
 from events.app_event import app_model_config_was_updated, app_was_created
@@ -32,7 +38,7 @@ from extensions.ext_redis import redis_client
 from factories import variable_factory
 from graphon.enums import BuiltinNodeTypes
 from graphon.model_runtime.utils.encoders import jsonable_encoder
-from graphon.nodes.llm.entities import LLMNodeData
+from graphon.nodes.llm.entities import LLMNodeData, ModelConfig
 from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
 from graphon.nodes.tool.entities import ToolNodeData
@@ -476,8 +482,8 @@ class AppDslService:
             app.icon_type = resolved_icon_type
             app.icon = icon
             app.icon_background = icon_background or app_data.get("icon_background", "#FFFFFF")
-            app.enable_site = True
-            app.enable_api = True
+            app.enable_site = app_mode != AppMode.AGENT
+            app.enable_api = app_mode != AppMode.AGENT
             app.use_icon_as_answer_icon = app_data.get("use_icon_as_answer_icon", False)
             app.created_by = account.id
             app.maintainer = account.id
@@ -789,6 +795,34 @@ class AppDslService:
         :return: dependencies list format like ["langgenius/google"]
         """
         graph = workflow.graph_dict
+        referenced_llm_nodes = [
+            node.get("data", {})
+            for node in graph.get("nodes", [])
+            if node.get("data", {}).get("type") == BuiltinNodeTypes.LLM
+            and should_resolve_llm_model_selector(node.get("data", {}).get("model_selector"))
+        ]
+        environment_variables = (
+            {variable.name: variable for variable in workflow.environment_variables} if referenced_llm_nodes else {}
+        )
+        for node_data in referenced_llm_nodes:
+            try:
+                selector = parse_llm_model_selector(node_data["model_selector"])
+                variable = environment_variables.get(selector[1])
+                if not isinstance(variable, LLMEnvironmentVariable):
+                    raise ValueError(
+                        f"LLM environment variable '{selector[1]}' was not found or is not an LLM variable"
+                    )
+                node_data["model"] = resolve_llm_model_config(
+                    node_model=ModelConfig.model_validate(node_data.get("model", {})),
+                    variable_name=selector[1],
+                    variable_value=variable.value,
+                ).model_dump(mode="json")
+            except ValueError as exc:
+                logger.warning(
+                    "Skipping unresolved LLM environment model while extracting dependencies for selector %r: %s",
+                    node_data.get("model_selector"),
+                    exc,
+                )
         dependencies = cls._extract_dependencies_from_workflow_graph(graph)
         return dependencies
 

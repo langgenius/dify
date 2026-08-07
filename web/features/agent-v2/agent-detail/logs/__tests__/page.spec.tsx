@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
   logsQueryFn: vi.fn(),
   logSourcesQueryFn: vi.fn(),
   messagesQueryFn: vi.fn(),
+  feedbackMutationFn: vi.fn(),
   logsQueryOptions: vi.fn((input: AgentLogsQueryInput) => ({
     queryKey: ['agent-logs', input],
     queryFn: () => mocks.logsQueryFn(input),
@@ -34,6 +35,9 @@ const mocks = vi.hoisted(() => ({
   messagesQueryOptions: vi.fn((input: AgentLogsQueryInput) => ({
     queryKey: ['agent-log-messages', input],
     queryFn: () => mocks.messagesQueryFn(input),
+  })),
+  feedbackMutationOptions: vi.fn(() => ({
+    mutationFn: mocks.feedbackMutationFn,
   })),
 }))
 
@@ -57,6 +61,11 @@ vi.mock('@/service/client', () => ({
     },
     agent: {
       byAgentId: {
+        feedbacks: {
+          post: {
+            mutationOptions: mocks.feedbackMutationOptions,
+          },
+        },
         logSources: {
           get: {
             queryOptions: mocks.logSourcesQueryOptions,
@@ -64,11 +73,13 @@ vi.mock('@/service/client', () => ({
         },
         logs: {
           get: {
+            key: () => ['agent-logs'],
             queryOptions: mocks.logsQueryOptions,
           },
           byConversationId: {
             messages: {
               get: {
+                key: () => ['agent-log-messages'],
                 queryOptions: mocks.messagesQueryOptions,
               },
             },
@@ -202,6 +213,8 @@ const messagesResponse: AgentLogMessageListResponse = {
       error: null,
       from_account_id: null,
       from_end_user_id: 'end-user-1',
+      feedback_enabled: true,
+      feedbacks: [],
       id: 'message-1',
       latency: 1.234,
       message_id: 'message-1',
@@ -255,6 +268,7 @@ describe('AgentLogsPage', () => {
     mocks.logsQueryFn.mockResolvedValue(emptyLogsResponse)
     mocks.logSourcesQueryFn.mockResolvedValue(logSourcesResponse)
     mocks.messagesQueryFn.mockResolvedValue(messagesResponse)
+    mocks.feedbackMutationFn.mockResolvedValue({ result: 'success' })
   })
 
   describe('Query contract', () => {

@@ -11,7 +11,7 @@ import json
 from collections.abc import Generator
 from contextlib import contextmanager
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 from unittest.mock import MagicMock, Mock, call
 
 import pytest
@@ -19,6 +19,7 @@ import yaml
 from sqlalchemy import Engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from graphon.enums import BuiltinNodeTypes
 from models import Account, Tenant
@@ -234,6 +235,84 @@ def test_extract_dependencies_from_model_config_covers_models_rerankers_and_tool
     assert dependencies == ["model:openai", "model:cohere", "tool:google"]
     assert analyze_model.call_args_list == [call("openai"), call("cohere")]
     analyze_tool.assert_called_once_with("google")
+
+
+def test_extract_workflow_dependencies_uses_llm_environment_variable_provider(
+    monkeypatch: pytest.MonkeyPatch, service: RagPipelineDslService
+) -> None:
+    workflow = SimpleNamespace(
+        graph_dict={
+            "nodes": [
+                {
+                    "id": "llm-node",
+                    "data": {
+                        "type": "llm",
+                        "title": "LLM",
+                        "model": {"provider": "old-provider", "name": "old-model", "mode": "chat"},
+                        "model_selector": ["env", "shared_model"],
+                        "prompt_template": [{"role": "system", "text": "x"}],
+                        "context": {"enabled": False, "variable_selector": []},
+                        "vision": {"enabled": False},
+                    },
+                }
+            ]
+        },
+        environment_variables=[
+            LLMEnvironmentVariable(
+                name="shared_model",
+                value={"provider": "new-provider", "name": "new-model", "mode": "chat"},
+            )
+        ],
+    )
+    analyze_dependency = Mock(side_effect=lambda provider: provider)
+    monkeypatch.setattr(
+        module.DependenciesAnalysisService,
+        "analyze_model_provider_dependency",
+        analyze_dependency,
+    )
+
+    result = service._extract_dependencies_from_workflow(cast(Workflow, workflow))
+
+    assert result == ["new-provider"]
+    analyze_dependency.assert_called_once_with("new-provider")
+
+
+@pytest.mark.parametrize("model_selector", [[], ["env", "missing_model"]])
+def test_extract_workflow_dependencies_tolerates_unresolved_llm_environment_reference(
+    monkeypatch: pytest.MonkeyPatch,
+    service: RagPipelineDslService,
+    model_selector: list[str],
+) -> None:
+    workflow = SimpleNamespace(
+        graph_dict={
+            "nodes": [
+                {
+                    "id": "llm-node",
+                    "data": {
+                        "type": "llm",
+                        "title": "LLM",
+                        "model": {"provider": "old-provider", "name": "old-model", "mode": "chat"},
+                        "model_selector": model_selector,
+                        "prompt_template": [{"role": "system", "text": "x"}],
+                        "context": {"enabled": False, "variable_selector": []},
+                        "vision": {"enabled": False},
+                    },
+                }
+            ]
+        },
+        environment_variables=[],
+    )
+    analyze_dependency = Mock(side_effect=lambda provider: provider)
+    monkeypatch.setattr(
+        module.DependenciesAnalysisService,
+        "analyze_model_provider_dependency",
+        analyze_dependency,
+    )
+
+    result = service._extract_dependencies_from_workflow(cast(Workflow, workflow))
+
+    assert result == ["old-provider"]
+    analyze_dependency.assert_called_once_with("old-provider")
 
 
 def test_extract_dependencies_from_workflow_graph_covers_plugin_and_model_nodes(

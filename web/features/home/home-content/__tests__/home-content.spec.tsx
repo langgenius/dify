@@ -770,7 +770,7 @@ describe('HomeContent', () => {
       renderHomeContent()
 
       const card = screen.getByRole('button', { name: /Preview Only App.*app\.types\.chatbot/ })
-      expect(card).toHaveAttribute('aria-disabled', 'true')
+      expect(card).not.toHaveAttribute('aria-disabled')
       expect(screen.queryByRole('link', { name: /Preview Only App/ })).not.toBeInTheDocument()
       expect(screen.getByText('Readonly Author')).toBeInTheDocument()
 

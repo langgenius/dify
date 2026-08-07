@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound, Unauthorized
 
 import services
-from configs import dify_config
 from controllers.common.errors import (
     FilenameNotExistsError,
     FileTooLargeError,
@@ -28,6 +27,7 @@ from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.admin import admin_required
 from controllers.console.error import AccountNotLinkTenantError
+from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
@@ -36,18 +36,16 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
-from enums.cloud_plan import CloudPlan
-from enums.deployment_edition import DeploymentEdition
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.helper import dump_response, to_timestamp
 from libs.login import login_required
 from libs.pagination import paginate_query
-from models.account import Account, Tenant, TenantAccountJoin, TenantCustomConfigDict, TenantStatus
+from machinery.context import RequestContext
+from models.account import Account, Tenant, TenantCustomConfigDict, TenantStatus
 from services.account_service import TenantService
-from services.billing_service import BillingService, SubscriptionPlan
 from services.enterprise.enterprise_service import EnterpriseService
-from services.feature_service import FeatureService
 from services.file_service import FileService
 from services.workspace_service import WorkspaceService
 
@@ -219,58 +217,10 @@ register_response_schema_models(
 @console_ns.route("/workspaces")
 class TenantListApi(Resource):
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[TenantListResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_user
-    @with_current_tenant_id
-    @with_session(write=False)
-    def get(self, session: Session, current_tenant_id: str, current_user: Account):
-        tenant_rows: list[tuple[Tenant, TenantAccountJoin]] = [
-            (tenant, membership)
-            for tenant, membership in TenantService.get_workspaces_for_account(current_user.id, session=session)
-            if tenant.status == TenantStatus.NORMAL
-        ]
-        tenants = [tenant for tenant, _ in tenant_rows]
-        tenant_dicts = []
-        is_enterprise_only = dify_config.ENTERPRISE_ENABLED and not dify_config.BILLING_ENABLED
-        is_saas = dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and dify_config.BILLING_ENABLED
-        tenant_plans: dict[str, SubscriptionPlan] = {}
-
-        if is_saas:
-            tenant_ids = [tenant.id for tenant in tenants]
-            if tenant_ids:
-                tenant_plans = BillingService.get_plan_bulk(tenant_ids)
-                if not tenant_plans:
-                    logger.warning("get_plan_bulk returned empty result, falling back to legacy feature path")
-
-        for tenant, membership in tenant_rows:
-            plan: str = CloudPlan.SANDBOX
-            if is_saas:
-                tenant_plan = tenant_plans.get(tenant.id)
-                if tenant_plan:
-                    plan = tenant_plan["plan"] or CloudPlan.SANDBOX
-                else:
-                    features = FeatureService.get_features(tenant.id, exclude_vector_space=True)
-                    plan = features.billing.subscription.plan or CloudPlan.SANDBOX
-            elif not is_enterprise_only:
-                features = FeatureService.get_features(tenant.id, exclude_vector_space=True)
-                plan = features.billing.subscription.plan or CloudPlan.SANDBOX
-
-            # Create a dictionary with tenant attributes
-            tenant_dict = {
-                "id": tenant.id,
-                "name": tenant.name,
-                "status": tenant.status,
-                "created_at": tenant.created_at,
-                "last_opened_at": membership.last_opened_at,
-                "plan": plan,
-                "current": tenant.id == current_tenant_id if current_tenant_id else False,
-            }
-
-            tenant_dicts.append(tenant_dict)
-
-        return dump_response(TenantListResponse, {"workspaces": tenant_dicts}), HTTPStatus.OK
+    @console_account_admission()
+    def get(self, request_context: RequestContext):
+        workspaces = application_services().workspace_queries.list_for_account(request_context)
+        return dump_response(TenantListResponse, {"workspaces": workspaces}), HTTPStatus.OK
 
 
 @console_ns.route("/all-workspaces")

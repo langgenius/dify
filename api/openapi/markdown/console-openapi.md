@@ -6899,7 +6899,7 @@ Check if dataset is in use
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [LimitationModel](#limitationmodel)<br> |
+| 200 | Success | **application/json**: [VectorSpaceLimitationModel](#vectorspacelimitationmodel)<br> |
 
 ### [GET] /files/support-type
 #### Responses
@@ -10597,6 +10597,20 @@ Update a plugin endpoint
 | ---- | ----------- | ------ |
 | 200 | Model providers retrieved successfully | **application/json**: [ModelProviderListResponse](#modelproviderlistresponse)<br> |
 
+### [GET] /workspaces/current/model-providers/credits
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Model provider credits retrieved successfully | **application/json**: [ModelProviderCreditsResponse](#modelprovidercreditsresponse)<br> |
+
+### [GET] /workspaces/current/model-providers/summary
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Model provider summaries retrieved successfully | **application/json**: [ModelProviderSummaryListResponse](#modelprovidersummarylistresponse)<br> |
+
 ### [GET] /workspaces/current/model-providers/{provider}/checkout-url
 #### Parameters
 
@@ -11142,6 +11156,19 @@ Returns permission flags that control workspace features like member invitations
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginInstallTaskStartResponse](#plugininstalltaskstartresponse)<br> |
 
+### [GET] /workspaces/current/plugin/installed-ids
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| category | query | Plugin category to include | Yes | string, <br>**Available values:** "agent-strategy", "datasource", "extension", "model", "tool", "trigger" |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PluginInstalledIdsResponse](#plugininstalledidsresponse)<br> |
+
 ### [GET] /workspaces/current/plugin/list
 #### Parameters
 
@@ -11400,8 +11427,11 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| language | query | Language used for localized label and description search | No | string, <br>**Available values:** "en_US", "ja_JP", "pt_BR", "zh_Hans", <br>**Default:** en_US |
 | page | query | Page number | No | integer, <br>**Default:** 1 |
 | page_size | query | Page size (1-256) | No | integer, <br>**Default:** 256 |
+| query | query | Case-insensitive search query | No | string |
+| tags | query | Match any plugin tag | No | [ string ] |
 | category | path |  | Yes | string |
 
 #### Responses
@@ -13248,6 +13278,7 @@ Model class for AI model.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| access_ready | boolean |  | Yes |
 | api_key_count | integer |  | Yes |
 | api_rph | integer |  | Yes |
 | api_rpm | integer |  | Yes |
@@ -13313,6 +13344,7 @@ Model class for AI model.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | access_mode | string |  | No |
+| access_ready | boolean |  | No |
 | api_base_url | string |  | No |
 | app_id | string |  | No |
 | backing_app_id | string |  | No |
@@ -14399,6 +14431,14 @@ section may be empty, which is how callers express "no knowledge layer".
 | updated_at | integer |  | No |
 | user_rate | number |  | No |
 
+#### AgentLogFeedbackResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | No |
+| from_source | string, <br>**Available values:** "admin", "user" | *Enum:* `"admin"`, `"user"` | Yes |
+| rating | string, <br>**Available values:** "dislike", "like" | *Enum:* `"dislike"`, `"like"` | Yes |
+
 #### AgentLogListResponse
 
 | Name | Type | Description | Required |
@@ -14419,6 +14459,8 @@ section may be empty, which is how callers express "no knowledge layer".
 | created_at | integer |  | No |
 | currency | string |  | Yes |
 | error | string |  | No |
+| feedback_enabled | boolean |  | No |
+| feedbacks | [ [AgentLogFeedbackResponse](#agentlogfeedbackresponse) ] |  | No |
 | from_account_id | string |  | No |
 | from_end_user_id | string |  | No |
 | id | string |  | Yes |
@@ -17933,7 +17975,9 @@ declaration of an endpoint group
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| deleted_environment_variable_ids | [ string ] | Environment variable IDs to delete when patch is true | No |
 | environment_variables | [ [EnvironmentVariableItemPayload](#environmentvariableitempayload) ] | Environment variables for the draft workflow | Yes |
+| patch | boolean | Treat environment_variables as per-ID upserts instead of replacing the full collection | No |
 
 #### ErrorDocsResponse
 
@@ -18068,6 +18112,13 @@ Built-in tool icons are URL strings; API-based tool icons are provider-defined p
 | page | integer, <br>**Default:** 1 | Page number | No |
 
 #### ExternalDatasetCreatePayload
+
+Validated fields required to create an external dataset binding.
+
+The console controller owns HTTP concerns, but the service also needs this
+contract when creating the tenant-scoped dataset and external knowledge
+binding. Keep it outside controllers so service imports do not depend on
+Flask blueprint initialization.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -19360,6 +19411,30 @@ Enum class for model property key.
 | ---- | ---- | ----------- | -------- |
 | ModelPropertyKey | string | Enum class for model property key. |  |
 
+#### ModelProviderCreditsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| exhausted_at | integer |  | Yes |
+| is_exhausted | boolean |  | Yes |
+| is_unlimited | boolean |  | Yes |
+| next_credit_reset_date | integer |  | Yes |
+| pool_type | string |  | Yes |
+| quota_limit | integer | Credit limit for the effective pool; -1 means unlimited. | Yes |
+| quota_used | integer |  | Yes |
+| remaining_credits | integer | Remaining credits; -1 means unlimited. | Yes |
+
+#### ModelProviderCustomConfigurationSummaryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| available_credentials | [ [CredentialConfiguration](#credentialconfiguration) ] |  | Yes |
+| current_credential_id | string |  | No |
+| current_credential_name | string |  | No |
+| current_credential_usable | boolean |  | Yes |
+| has_custom_models | boolean | Whether custom model configuration exists, including saved model credentials. | Yes |
+| status | [CustomConfigurationStatus](#customconfigurationstatus) |  | Yes |
+
 #### ModelProviderListResponse
 
 | Name | Type | Description | Required |
@@ -19371,6 +19446,49 @@ Enum class for model property key.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | payment_link | string |  | Yes |
+
+#### ModelProviderPluginSummaryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| installation_id | string |  | Yes |
+| plugin_id | string |  | Yes |
+| plugin_unique_identifier | string |  | Yes |
+| runtime_type | string |  | Yes |
+| source | [PluginInstallationSource](#plugininstallationsource) |  | Yes |
+| version | string |  | Yes |
+
+#### ModelProviderSummaryListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ModelProviderSummaryResponse](#modelprovidersummaryresponse) ] |  | Yes |
+| plugins | object |  | Yes |
+
+#### ModelProviderSummaryResponse
+
+Fields required to render the collapsed model-provider list.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| configurate_methods | [ [ConfigurateMethod](#configuratemethod) ] |  | Yes |
+| custom_configuration | [ModelProviderCustomConfigurationSummaryResponse](#modelprovidercustomconfigurationsummaryresponse) |  | Yes |
+| description | [I18nObject](#i18nobject) |  | No |
+| icon_small | [I18nObject](#i18nobject) |  | No |
+| icon_small_dark | [I18nObject](#i18nobject) |  | No |
+| is_configured | boolean |  | Yes |
+| label | [I18nObject](#i18nobject) |  | Yes |
+| plugin_id | string |  | Yes |
+| preferred_provider_type | [ProviderType](#providertype) |  | Yes |
+| provider | string |  | Yes |
+| supported_model_types | [ [ModelType](#modeltype) ] |  | Yes |
+| system_configuration | [ModelProviderSystemConfigurationSummaryResponse](#modelprovidersystemconfigurationsummaryresponse) |  | Yes |
+
+#### ModelProviderSystemConfigurationSummaryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | Yes |
 
 #### ModelSelectorScope
 
@@ -20361,8 +20479,11 @@ Shared permission levels for resources (datasets, credentials, etc.)
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| language | string, <br>**Available values:** "en_US", "ja_JP", "pt_BR", "zh_Hans", <br>**Default:** en_US | Language used for localized label and description search<br>*Enum:* `"en_US"`, `"ja_JP"`, `"pt_BR"`, `"zh_Hans"` | No |
 | page | integer, <br>**Default:** 1 | Page number | No |
 | page_size | integer, <br>**Default:** 256 | Page size (1-256) | No |
+| query | string | Case-insensitive search query | No |
+| tags | [ string ] | Match any plugin tag | No |
 
 #### PluginCategoryListResponse
 
@@ -20562,6 +20683,18 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | plugins | [ [PluginInstallationItemResponse](#plugininstallationitemresponse) ] |  | Yes |
+
+#### PluginInstalledIdsQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| category | [PluginCategory](#plugincategory) | Plugin category to include | Yes |
+
+#### PluginInstalledIdsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| plugin_ids | [ string ] |  | Yes |
 
 #### PluginListResponse
 
@@ -21371,6 +21504,12 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | instruction | string | Structured output generation instruction | Yes |
 | model_config | [ModelConfig](#modelconfig) | Model configuration | Yes |
 
+#### SSOProtocol
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| SSOProtocol | string |  |  |
+
 #### SandboxFileEntryResponse
 
 | Name | Type | Description | Required |
@@ -22091,7 +22230,7 @@ The subscription constructor of the trigger provider
 | ---- | ---- | ----------- | -------- |
 | _is_collaborative | boolean |  | No |
 | conversation_variables | [ object ] |  | No |
-| environment_variables | [ object ] |  | No |
+| environment_variable_patch | [SyncEnvironmentVariablePatchPayload](#syncenvironmentvariablepatchpayload) |  | No |
 | features | object |  | Yes |
 | graph | object |  | Yes |
 | hash | string |  | No |
@@ -22103,6 +22242,13 @@ The subscription constructor of the trigger provider
 | hash | string |  | Yes |
 | result | string |  | Yes |
 | updated_at | integer |  | Yes |
+
+#### SyncEnvironmentVariablePatchPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| deleted_environment_variable_ids | [ string ] |  | No |
+| environment_variables | [ object ] |  | No |
 
 #### SystemConfigurationResponse
 
@@ -22140,7 +22286,7 @@ Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
 | plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | Yes |
 | rbac_enabled | boolean |  | Yes |
 | sso_enforced_for_signin | boolean |  | Yes |
-| sso_enforced_for_signin_protocol | string |  | Yes |
+| sso_enforced_for_signin_protocol | [SSOProtocol](#ssoprotocol) |  | Yes |
 | webapp_auth | [WebAppAuthModel](#webappauthmodel) |  | Yes |
 
 #### SystemParameters
@@ -23005,6 +23151,7 @@ Payload for updating a snippet.
 | file_upload_limit | integer |  | Yes |
 | image_file_batch_limit | integer |  | Yes |
 | image_file_size_limit | integer |  | Yes |
+| knowledge_file_size_limit | integer |  | Yes |
 | single_chunk_attachment_limit | integer |  | Yes |
 | skill_file_size_limit | integer |  | Yes |
 | video_file_size_limit | integer |  | Yes |
@@ -23074,6 +23221,14 @@ in form definition, or a variable while the workflow is running.
 | ---- | ---- | ----------- | -------- |
 | ValueSourceType | string | ValueSourceType records whether the value comes from a static setting in form definition, or a variable while the workflow is running. |  |
 
+#### VectorSpaceLimitationModel
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limit | integer |  | Yes |
+| size | integer |  | Yes |
+| usage_unknown | boolean |  | No |
+
 #### VerificationTokenResponse
 
 | Name | Type | Description | Required |
@@ -23097,7 +23252,7 @@ in form definition, or a variable while the workflow is running.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| protocol | string |  | Yes |
+| protocol | [SSOProtocol](#ssoprotocol) |  | Yes |
 
 #### WebhookTriggerResponse
 

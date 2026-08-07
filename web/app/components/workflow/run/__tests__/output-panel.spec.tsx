@@ -21,8 +21,16 @@ vi.mock('@/app/components/base/markdown', () => ({
 }))
 
 vi.mock('@/app/components/workflow/run/status-container', () => ({
-  default: ({ status, children }: { status: string; children?: React.ReactNode }) => (
-    <div data-status={status} data-testid="status-container">
+  default: ({
+    status,
+    children,
+    copyContent,
+  }: {
+    status: string
+    children?: React.ReactNode
+    copyContent?: string
+  }) => (
+    <div data-copy-content={copyContent} data-status={status} data-testid="status-container">
       {children}
     </div>
   ),
@@ -62,6 +70,10 @@ describe('OutputPanel', () => {
     render(<OutputPanel error="Execution failed" />)
 
     expect(screen.getByTestId('status-container')).toHaveAttribute('data-status', 'failed')
+    expect(screen.getByTestId('status-container')).toHaveAttribute(
+      'data-copy-content',
+      'Execution failed',
+    )
     expect(screen.getByText('Execution failed')).toBeInTheDocument()
   })
 

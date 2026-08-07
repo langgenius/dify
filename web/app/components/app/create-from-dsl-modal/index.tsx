@@ -334,7 +334,6 @@ function CreateFromDSLModal({
                   disabled={createDisabled}
                   loading={isImporting}
                   variant="primary"
-                  className="gap-1"
                 >
                   <span>{t(($) => $['newApp.Create'], { ns: 'app' })}</span>
                   <KbdGroup>

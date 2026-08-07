@@ -175,6 +175,25 @@ class FakeRedisPipeline:
         return list(self.results)
 
 
+def _terminal_event(
+    event_type: str,
+    run_id: str,
+) -> RunSucceededEvent | RunFailedEvent | RunCancelledEvent:
+    if event_type == "run_succeeded":
+        return RunSucceededEvent(
+            run_id=run_id,
+            data=RunSucceededEventData(
+                output="done",
+                session_snapshot=CompositorSessionSnapshot(layers=[]),
+            ),
+        )
+    if event_type == "run_failed":
+        return RunFailedEvent(run_id=run_id, data=RunFailedEventData(error="model failed"))
+    if event_type == "run_cancelled":
+        return RunCancelledEvent(run_id=run_id, data=RunCancelledEventData(reason="cancelled"))
+    raise AssertionError(f"unexpected terminal event type: {event_type}")
+
+
 def test_create_run_writes_running_record_without_job_queue_and_with_retention() -> None:
     redis = FakeRedis()
     store = RedisRunStore(redis, prefix="test")  # pyright: ignore[reportArgumentType]
@@ -504,3 +523,47 @@ def test_get_events_round_trips_run_succeeded_output_and_session_snapshot() -> N
     assert decoded.id == event_id
     assert decoded.data.output == output
     assert decoded.data.session_snapshot == session_snapshot
+
+
+@pytest.mark.parametrize("terminal_type", ["run_succeeded", "run_failed", "run_cancelled"])
+def test_iter_events_ends_after_replaying_terminal_event(terminal_type: str) -> None:
+    redis = FakeRedis()
+    store = RedisRunStore(redis, prefix="test")  # pyright: ignore[reportArgumentType]
+
+    async def scenario() -> list[str]:
+        record = await store.create_run()
+        _ = await store.append_event(RunStartedEvent(run_id=record.run_id))
+        _ = await store.finalize_run(_terminal_event(terminal_type, record.run_id))
+        redis.commands.clear()
+
+        async def collect_events() -> list[str]:
+            return [event.type async for event in store.iter_events(record.run_id)]
+
+        return await asyncio.wait_for(collect_events(), timeout=1)
+
+    event_types = asyncio.run(scenario())
+
+    assert event_types == ["run_started", terminal_type]
+    assert "xread" not in [command[0] for command in redis.commands]
+
+
+@pytest.mark.parametrize("terminal_type", ["run_succeeded", "run_failed", "run_cancelled"])
+def test_iter_events_ends_after_live_terminal_event(terminal_type: str) -> None:
+    redis = FakeRedis()
+    store = RedisRunStore(redis, prefix="test")  # pyright: ignore[reportArgumentType]
+
+    async def scenario() -> str:
+        record = await store.create_run()
+        events = store.iter_events(record.run_id)
+        next_event = asyncio.ensure_future(anext(events))
+        await asyncio.sleep(0)
+        assert not next_event.done()
+        assert "xread" in [command[0] for command in redis.commands]
+
+        _ = await store.finalize_run(_terminal_event(terminal_type, record.run_id))
+        event = await asyncio.wait_for(next_event, timeout=1)
+        with pytest.raises(StopAsyncIteration):
+            _ = await anext(events)
+        return event.type
+
+    assert asyncio.run(scenario()) == terminal_type

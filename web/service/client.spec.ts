@@ -108,6 +108,7 @@ const getRetryFn = (queryOptions: object): RetryFn => {
 
 const createAgent = (overrides: Partial<AgentMutationResponse> = {}): AgentMutationResponse => ({
   ...overrides,
+  access_ready: overrides.access_ready ?? true,
   debug_conversation_has_messages: overrides.debug_conversation_has_messages ?? false,
   debug_conversation_message_count: overrides.debug_conversation_message_count ?? 0,
   enable_api: overrides.enable_api ?? true,
@@ -522,6 +523,16 @@ describe('normalizeConsoleOpenAPIURL', () => {
     expect(searchParams.getAll('creators')).toEqual(['user-1'])
     expect(searchParams.has('tag_ids[0]')).toBe(false)
     expect(searchParams.has('creators[0]')).toBe(false)
+  })
+
+  it('should serialize plugin category tags as repeated params', () => {
+    const url = normalizeConsoleOpenAPIURL(
+      'https://example.com/console/api/workspaces/current/plugin/tool/list?tags%5B1%5D=rag&tags%5B0%5D=search',
+    )
+    const searchParams = new URL(url).searchParams
+
+    expect(searchParams.getAll('tags')).toEqual(['search', 'rag'])
+    expect(searchParams.has('tags[0]')).toBe(false)
   })
 })
 

@@ -107,7 +107,7 @@ const AccessRuleSection = ({
         <div className="flex shrink-0 items-center gap-3">
           {canManage && (
             <Button variant="primary" size="medium" onClick={onCreate} disabled={isLoadingRules}>
-              <span className="mr-0.5 i-ri-add-line size-3.5" />
+              <span className="i-ri-add-line size-3.5" />
               <span>{t(($) => $['accessRule.newPermissionSet'], { ns: 'permission' })}</span>
             </Button>
           )}

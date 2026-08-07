@@ -1,3 +1,4 @@
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
 import type { ModelProvider, PreferredProviderTypeEnum } from '../declarations'
 import type { CardVariant } from './use-credential-panel-state'
@@ -11,16 +12,16 @@ import { useChangeProviderPriority } from './use-change-provider-priority'
 import { isDestructiveVariant, useCredentialPanelState } from './use-credential-panel-state'
 
 type CredentialPanelProps = {
-  provider: ModelProvider
+  provider: ModelProviderSummaryResponse | ModelProvider
 }
 
 type CredentialPanelContentProps = {
-  provider: ModelProvider
+  provider: ModelProviderSummaryResponse | ModelProvider
   state: ReturnType<typeof useCredentialPanelState>
   isChangingPriority: boolean
   onChangePriority: (key: PreferredProviderTypeEnum) => void
   renderActions?: (props: {
-    provider: ModelProvider
+    provider: ModelProviderSummaryResponse | ModelProvider
     state: ReturnType<typeof useCredentialPanelState>
     isChangingPriority: boolean
     onChangePriority: (key: PreferredProviderTypeEnum) => void

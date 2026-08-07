@@ -856,7 +856,9 @@ class WorkflowResponseConverter:
         return tuple(flattened_files)
 
     @classmethod
-    def _fetch_files_from_variable_value(cls, value: Union[dict, list, Segment]) -> Sequence[Mapping[str, Any]]:
+    def _fetch_files_from_variable_value(
+        cls, value: Union[dict, list, Segment, File, None]
+    ) -> Sequence[Mapping[str, Any]]:
         """
         Fetch files from variable value
         :param value: variable value
@@ -871,7 +873,6 @@ class WorkflowResponseConverter:
                 files.append(value.value.to_dict())
             case ArrayFileSegment():
                 files.extend([i.to_dict() for i in value.value])
-            # pyrefly: ignore [unreachable-match-case]
             case File():
                 files.append(value.to_dict())
             case list():
