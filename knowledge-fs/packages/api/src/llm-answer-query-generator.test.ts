@@ -96,6 +96,13 @@ const QUERY_INPUT = {
   },
   traceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f8a01",
 };
+const QUERY_IMAGE = {
+  body: new Uint8Array([1, 2, 3]),
+  byteSize: 3,
+  mimeType: "image/png" as const,
+  sha256: "b".repeat(64),
+  uploadFileId: "00000000-0000-4000-8000-000000000001",
+};
 
 describe("llm answer query generator", () => {
   it("resumes final synthesis from a durable evidence checkpoint without embedding or retrieval", async () => {
@@ -1126,7 +1133,10 @@ describe("llm answer query generator", () => {
 
     const steps = [];
     const events = [];
-    for await (const event of generator.stream(QUERY_INPUT)) {
+    for await (const event of generator.stream({
+      ...QUERY_INPUT,
+      resolvedQueryImages: [QUERY_IMAGE],
+    })) {
       if (event.type === "trace-step") {
         steps.push(event.step);
       } else {
@@ -1153,6 +1163,130 @@ describe("llm answer query generator", () => {
     );
   });
 
+  it("records a typed query-image degradation when final VLM synthesis is unavailable", async () => {
+    const provider: LlmAnswerProvider = {
+      stream: async function* () {
+        yield { delta: "text fallback", type: "delta" };
+        yield { finishReason: "STOP", type: "done" };
+      },
+    };
+    const generator = createLlmAnswerQueryGenerator({
+      limit: 3,
+      maxAnswerChars: 1_000,
+      model: "reasoning-model",
+      provider,
+      retriever: oneItemRetriever(),
+      topK: 10,
+    });
+    const events = [];
+    const steps = [];
+
+    for await (const event of generator.stream({
+      ...QUERY_INPUT,
+      resolvedQueryImages: [
+        {
+          body: new Uint8Array([1, 2, 3]),
+          byteSize: 3,
+          mimeType: "image/png",
+          sha256: "b".repeat(64),
+          uploadFileId: "00000000-0000-4000-8000-000000000001",
+        },
+      ],
+    })) {
+      if (event.type === "trace-step") steps.push(event.step);
+      else events.push(event);
+    }
+
+    expect(steps).toContainEqual(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          degradationReason: "query-image-ignored-no-vision-model",
+        }),
+        name: "query.answer.multimodal",
+        status: "skipped",
+      }),
+    );
+    expect(events.at(-1)).toEqual(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          queryImageDegradationReasons: ["query-image-ignored-no-vision-model"],
+        }),
+        type: "done",
+      }),
+    );
+  });
+
+  it("synthesizes pure-image Research from the derived query and original image", async () => {
+    const retrievalInputs: Parameters<BasicHybridRetriever["retrieve"]>[0][] = [];
+    const multimodalInputs: unknown[] = [];
+    let textProviderCalled = false;
+    const image = {
+      body: new Uint8Array([1, 2, 3]),
+      byteSize: 3,
+      mimeType: "image/png" as const,
+      sha256: "b".repeat(64),
+      uploadFileId: "00000000-0000-4000-8000-000000000001",
+    };
+    const generator = createLlmAnswerQueryGenerator({
+      limit: 3,
+      maxAnswerChars: 1_000,
+      model: "reasoning-model",
+      multimodalAnswerProvider: {
+        generate: async (input) => {
+          multimodalInputs.push(input);
+          return { text: "The invoice total is 42." };
+        },
+      },
+      provider: {
+        stream: async function* () {
+          textProviderCalled = true;
+          yield { delta: "unexpected", type: "delta" };
+        },
+      },
+      retriever: {
+        retrieve: async (input) => {
+          retrievalInputs.push(input);
+          return oneItemRetriever().retrieve(input);
+        },
+      },
+      topK: 10,
+    });
+    const events = [];
+
+    for await (const event of generator.stream({
+      ...QUERY_INPUT,
+      query: "",
+      queryImageMetadata: [image],
+      resolvedQueryImages: [image],
+      retrievalQuery: "Image OCR: TOTAL 42",
+    })) {
+      if (event.type !== "trace-step") events.push(event);
+    }
+
+    expect(textProviderCalled).toBe(false);
+    expect(retrievalInputs[0]).toMatchObject({
+      query: "Image OCR: TOTAL 42",
+      queryImages: [image],
+    });
+    expect(multimodalInputs[0]).toMatchObject({
+      query: "Image OCR: TOTAL 42",
+      queryImages: [image],
+    });
+    expect(events[0]).toEqual({ delta: "The invoice total is 42.", type: "delta" });
+    expect(events.at(-1)).toEqual(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          evidenceBundle: expect.objectContaining({
+            query: "",
+            queryImages: [expect.objectContaining({ uploadFileId: image.uploadFileId })],
+            retrievalQuery: "Image OCR: TOTAL 42",
+          }),
+        }),
+        type: "done",
+      }),
+    );
+  });
+
   it("labels non-Error VLM failures with a generic failure reason", async () => {
     const provider: LlmAnswerProvider = {
       stream: async function* () {
@@ -1173,7 +1307,10 @@ describe("llm answer query generator", () => {
     });
 
     const events = [];
-    for await (const event of generator.stream(QUERY_INPUT)) {
+    for await (const event of generator.stream({
+      ...QUERY_INPUT,
+      resolvedQueryImages: [QUERY_IMAGE],
+    })) {
       if (event.type !== "trace-step") {
         events.push(event);
       }

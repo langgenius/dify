@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { type EvidenceBundle, EvidenceBundleSchema } from "@knowledge/core";
 
+import type { QueryImageMetadata } from "./query-images";
 import { hybridRetrievalItemToEvidenceItem } from "./retrieval-evidence";
 import type { HybridRetrievalResult } from "./retrieval-types";
 
@@ -33,6 +34,8 @@ export interface AssembleEvidenceBundleInput {
   readonly expectedEvidenceIds?: readonly string[] | undefined;
   readonly permissionLimited?: boolean | undefined;
   readonly query: string;
+  readonly queryImages?: readonly QueryImageMetadata[] | undefined;
+  readonly retrievalQuery?: string | undefined;
   readonly retrieval: HybridRetrievalResult;
   readonly state?: EvidenceBundle["state"] | undefined;
   readonly traceId?: string | undefined;
@@ -101,8 +104,12 @@ export function createEvidenceBundleAssembler({
     assemble(input) {
       const query = input.query.trim();
 
-      if (!query) {
-        throw new Error("EvidenceBundle assembler query is required");
+      if (!query && (input.queryImages?.length ?? 0) === 0) {
+        throw new Error(
+          input.queryImages === undefined
+            ? "EvidenceBundle assembler query is required"
+            : "EvidenceBundle assembler query or queryImages is required",
+        );
       }
 
       if (input.retrieval.items.length > maxItems) {
@@ -137,6 +144,8 @@ export function createEvidenceBundleAssembler({
         items,
         missingEvidence,
         query,
+        ...(input.queryImages?.length ? { queryImages: input.queryImages } : {}),
+        ...(input.retrievalQuery?.trim() ? { retrievalQuery: input.retrievalQuery.trim() } : {}),
         state:
           input.state ??
           answerability.evaluate({

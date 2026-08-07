@@ -166,6 +166,29 @@ describe("LLM auto retrieval mode resolver", () => {
     expect(JSON.stringify(fallback)).not.toContain("provider secret");
   });
 
+  it("routes a pure-image Auto query to Research without text classification", async () => {
+    const resolve = vi.fn();
+
+    await expect(
+      resolveRetrievalModeRequest({
+        fallbackMode: "fast",
+        hasQueryImages: true,
+        query: " ",
+        reasoningModel,
+        requestedMode: "auto",
+        resolver: { resolve },
+        tenantId: "tenant-a",
+      }),
+    ).resolves.toEqual({
+      degraded: false,
+      durationMs: 0,
+      requestedMode: "auto",
+      resolvedMode: "research",
+      resolver: "image-policy",
+    });
+    expect(resolve).not.toHaveBeenCalled();
+  });
+
   it("times out once and never falls back when the caller-owned signal is canceled", async () => {
     const blockingProvider = () => ({
       // A provider adapter may fail to honor AbortSignal. The resolver's own race must still

@@ -192,6 +192,7 @@ from services.knowledge_fs.product_remote import (
     KnowledgeFSRemoteMultipartFile,
     KnowledgeFSRemoteSSEResponse,
 )
+from services.knowledge_fs.query_images import KnowledgeFSQueryImageError, validate_query_image_references
 from services.knowledge_fs.runtime import KnowledgeFSRuntime, get_knowledge_fs_runtime
 from services.knowledge_fs_capability import (
     KnowledgeFSCapabilityConfigurationError,
@@ -358,6 +359,12 @@ def _knowledge_fs_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
             if exc.status_code == HTTPStatus.REQUEST_ENTITY_TOO_LARGE:
                 raise RequestEntityTooLarge() from exc
             raise UnprocessableEntity() from exc
+        except KnowledgeFSQueryImageError as exc:
+            if exc.code == "QUERY_IMAGE_NOT_FOUND":
+                raise NotFound() from exc
+            if exc.code in {"QUERY_IMAGE_COUNT_EXCEEDED", "QUERY_IMAGE_TOO_LARGE", "QUERY_IMAGE_TOTAL_TOO_LARGE"}:
+                raise RequestEntityTooLarge() from exc
+            raise KnowledgeFSInvalidRequestHTTPError() from exc
         except (
             KnowledgeFSAppBindingManagementError,
             KnowledgeFSCredentialPolicyError,
@@ -2168,6 +2175,12 @@ class KnowledgeFSSpaceQueryAdmissionApi(Resource):
     def post(self, control_space_id: str):
         actor_id, tenant_id = _actor()
         payload = _payload(KnowledgeFSQueryCreatePayload)
+        validate_query_image_references(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            upload_file_ids=[image.upload_file_id for image in getattr(payload, "query_images", ())],
+            mark_used=True,
+        )
         issued = _console_services().broker.issue_interactive(
             tenant_id=tenant_id,
             account_id=actor_id,
@@ -2247,11 +2260,18 @@ class KnowledgeFSSpaceResearchTasksApi(Resource):
     @_knowledge_fs_errors
     def post(self, control_space_id: str):
         actor_id, tenant_id = _actor()
+        payload = _payload(KnowledgeFSResearchTaskCreatePayload)
+        validate_query_image_references(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            upload_file_ids=[image.upload_file_id for image in getattr(payload, "query_images", ())],
+            mark_used=True,
+        )
         result = _console_services().facade.create_research_task(
             tenant_id=tenant_id,
             account_id=actor_id,
             control_space_id=control_space_id,
-            payload=_payload(KnowledgeFSResearchTaskCreatePayload),
+            payload=payload,
         )
         return dump_response(KnowledgeFSResearchTaskResponse, result), HTTPStatus.ACCEPTED
 
@@ -2270,11 +2290,18 @@ class KnowledgeFSSpaceResearchTaskPlanApi(Resource):
     @_knowledge_fs_errors
     def post(self, control_space_id: str):
         actor_id, tenant_id = _actor()
+        payload = _payload(KnowledgeFSResearchTaskPlanPayload)
+        validate_query_image_references(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            upload_file_ids=[image.upload_file_id for image in getattr(payload, "query_images", ())],
+            mark_used=False,
+        )
         result = _console_services().facade.plan_research_task(
             tenant_id=tenant_id,
             account_id=actor_id,
             control_space_id=control_space_id,
-            payload=_payload(KnowledgeFSResearchTaskPlanPayload),
+            payload=payload,
         )
         return dump_response(KnowledgeFSResearchTaskPlanResponse, result)
 

@@ -31,7 +31,9 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSOverviewQueryOutcomesResponse,
     KnowledgeFSOverviewWindowQuery,
     KnowledgeFSQualityListQuery,
+    KnowledgeFSQueryCreatePayload,
     KnowledgeFSRerankIntent,
+    KnowledgeFSResearchTaskCreatePayload,
     KnowledgeFSResearchTaskPartialListResponse,
     KnowledgeFSRetrievalProfileIntent,
     KnowledgeFSScoreThresholdIntent,
@@ -48,6 +50,32 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSUploadSessionCompletePayload,
     KnowledgeFSUploadSessionCreatePayload,
 )
+
+
+def test_query_payloads_accept_either_text_or_upload_file_images() -> None:
+    upload_file_id = "00000000-0000-4000-8000-000000000001"
+
+    image_query = KnowledgeFSQueryCreatePayload.model_validate({"queryImages": [{"uploadFileId": upload_file_id}]})
+    mixed_research = KnowledgeFSResearchTaskCreatePayload.model_validate(
+        {"query": "find this", "queryImages": [{"uploadFileId": upload_file_id}]}
+    )
+
+    assert image_query.query is None
+    assert image_query.query_images[0].upload_file_id == upload_file_id
+    assert mixed_research.query == "find this"
+    with pytest.raises(ValidationError, match="At least one"):
+        KnowledgeFSQueryCreatePayload.model_validate({})
+    with pytest.raises(ValidationError, match="UUID"):
+        KnowledgeFSQueryCreatePayload.model_validate({"queryImages": [{"uploadFileId": "bad"}]})
+    with pytest.raises(ValidationError, match="duplicate"):
+        KnowledgeFSQueryCreatePayload.model_validate(
+            {
+                "queryImages": [
+                    {"uploadFileId": upload_file_id},
+                    {"uploadFileId": upload_file_id},
+                ]
+            }
+        )
 
 
 def test_trace_response_translates_historical_retrieval_statistics() -> None:

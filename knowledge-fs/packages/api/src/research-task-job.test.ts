@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  QUERY_IMAGE_REFERENCES_METADATA_KEY,
+  queryImageReferencesFromMetadata,
+} from "./query-images";
+
+import {
   RESEARCH_TASK_PARTIAL_ANSWER_MAX_CHARS,
   type ResearchTaskDurableDispatch,
   createInMemoryResearchTaskJobRepository,
@@ -108,6 +113,26 @@ describe("research task job state machine", () => {
       },
     ]);
     expect(record).toHaveBeenCalledWith({ lifecycle: "queued", taskKind: "research" });
+  });
+
+  it("accepts an image-only task and persists only immutable references", async () => {
+    const machine = createResearchTaskJobStateMachine({
+      generateId: () => "research-task-job-1",
+      jobs: new FakeJobQueue(),
+      repository: createInMemoryResearchTaskJobRepository({ maxJobs: 10 }),
+    });
+    const image = { uploadFileId: "00000000-0000-4000-8000-000000000001" };
+
+    const job = await machine.start({
+      ...baseStartInput(),
+      query: undefined,
+      queryImages: [image],
+    });
+
+    expect(job.query).toBe("");
+    expect(job.metadata[QUERY_IMAGE_REFERENCES_METADATA_KEY]).toEqual([image]);
+    expect(queryImageReferencesFromMetadata(job.metadata)).toEqual([image]);
+    expect(JSON.stringify(job.metadata)).not.toContain("base64");
   });
 
   it("uses the durable dispatch for both initial delivery and resume", async () => {

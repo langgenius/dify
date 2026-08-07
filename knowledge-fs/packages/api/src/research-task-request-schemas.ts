@@ -1,5 +1,7 @@
 import { z } from "@hono/zod-openapi";
 
+import { QueryImageReferencesSchema, hasQueryInput } from "./query-images";
+
 export const CreateResearchTaskSchema = z
   .object({
     budgetUsd: z.number().nonnegative().optional(),
@@ -19,10 +21,20 @@ export const CreateResearchTaskSchema = z
       .describe(
         "Explicit auto uses the frozen knowledge-space reasoning model once; the durable task stores the resolved mode.",
       ),
-    query: z.string().min(1).max(16_000),
+    query: z.string().max(16_000).optional(),
+    queryImages: QueryImageReferencesSchema.default([]),
     topK: z.number().int().positive().max(50).optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((value, context) => {
+    if (!hasQueryInput(value)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "At least one of query or queryImages is required",
+        path: ["query"],
+      });
+    }
+  });
 
 export const PlanResearchTaskSchema = z
   .object({
@@ -34,10 +46,20 @@ export const PlanResearchTaskSchema = z
       .describe(
         "Explicit auto uses the frozen knowledge-space reasoning model once; retries never reclassify.",
       ),
-    query: z.string().min(1).max(16_000),
+    query: z.string().max(16_000).optional(),
+    queryImages: QueryImageReferencesSchema.default([]),
     topK: z.number().int().positive().max(50).optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((value, context) => {
+    if (!hasQueryInput(value)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "At least one of query or queryImages is required",
+        path: ["query"],
+      });
+    }
+  });
 
 export const ResearchTaskJobParamsSchema = z.object({
   id: z.string().min(1),

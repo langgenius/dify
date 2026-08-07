@@ -195,11 +195,17 @@ function resolveFinalRerankPlan(
 ): RetrievalPlan {
   return (
     planner?.plan({
+      hasQueryImages: (input.queryImages?.length ?? 0) > 0,
       mode: input.mode,
       query: input.query,
       topK: input.topK,
       traceId: input.traceId,
-    }) ?? defaultRetrievalPlan({ query: input.query, topK: input.topK })
+    }) ??
+    defaultRetrievalPlan({
+      hasQueryImages: (input.queryImages?.length ?? 0) > 0,
+      query: input.query,
+      topK: input.topK,
+    })
   );
 }
 

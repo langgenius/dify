@@ -40,6 +40,13 @@ import type {
   PublishedProjectionReadSnapshotResolver,
 } from "./published-projection-read-snapshot";
 import {
+  QUERY_IMAGE_EXPANSION_METADATA_KEY,
+  type QueryImageResolver,
+  queryImageExpansionFromMetadata,
+  queryImageMetadata,
+  queryImageReferencesFromMetadata,
+} from "./query-images";
+import {
   type ResearchModelCallObserver,
   ResearchModelCallObserverError,
   type ResearchModelPricing,
@@ -104,6 +111,7 @@ export interface ResearchTaskRuntimeOptions {
   readonly partials: ResearchTaskPartialResultRepository;
   readonly projectionSnapshotResolver?: PublishedProjectionReadSnapshotResolver | undefined;
   readonly progress?: ResearchTaskProgressPublisher | undefined;
+  readonly queryImageResolver?: QueryImageResolver | undefined;
   readonly repository: ResearchTaskDurableRepository;
   readonly retryDelayMs?: number | undefined;
   readonly workerId: string;
@@ -161,6 +169,7 @@ export function createResearchTaskRuntime({
   partials,
   projectionSnapshotResolver,
   progress,
+  queryImageResolver,
   repository,
   retryDelayMs = 1_000,
   workerId,
@@ -314,6 +323,7 @@ export function createResearchTaskRuntime({
         partials,
         projectionSnapshotResolver,
         publishProgress,
+        queryImageResolver,
         repository,
         serialize,
         updateCurrent: (updated) => {
@@ -556,6 +566,7 @@ async function runResearchTask({
   partials,
   projectionSnapshotResolver,
   publishProgress,
+  queryImageResolver,
   repository,
   serialize,
   updateCurrent,
@@ -582,6 +593,7 @@ async function runResearchTask({
     payload?: Record<string, unknown>,
     options?: ResearchTaskProgressPublishOptions,
   ) => Promise<void>;
+  readonly queryImageResolver?: QueryImageResolver | undefined;
   readonly repository: ResearchTaskDurableRepository;
   readonly serialize: <T>(operation: () => Promise<T>) => Promise<T>;
   readonly updateCurrent: (current: ResearchTaskJob) => void;
@@ -658,10 +670,23 @@ async function runResearchTask({
         tenantId: current.tenantId,
       });
   const retrievalProfile = frozenRuntime?.retrievalProfile ?? manifest?.retrievalProfile;
+  const queryImageReferences = queryImageReferencesFromMetadata(current.metadata);
+  if (queryImageReferences.length > 0 && !queryImageResolver) {
+    throw new Error("Research query images require a configured Dify UploadFile resolver");
+  }
+  const resolvedQueryImages = queryImageResolver
+    ? await queryImageResolver.resolve({
+        references: queryImageReferences,
+        signal: abortSignal,
+        subjectId: authorizationContext.subjectId,
+        tenantId: current.tenantId,
+      })
+    : [];
   assertDurableRetrievalModeDecision(current, frozenRuntime);
   const requestedMode = current.mode ?? retrievalProfile?.defaultMode ?? "research";
   const plan = modePlanner.plan({
     mode: requestedMode,
+    hasQueryImages: queryImageReferences.length > 0,
     query: current.query,
     topK: current.topK ?? retrievalProfile?.topK ?? 10,
   });
@@ -675,7 +700,7 @@ async function runResearchTask({
   await revalidate();
   if (current.stage === "planning") {
     await advance("retrieving", {
-      questions: [current.query],
+      questions: [researchTaskDisplayQuery(current)],
       topK: plan.topK,
     });
   }
@@ -708,7 +733,7 @@ async function runResearchTask({
       fingerprint: projectionSnapshot.fingerprint,
       knowledgeSpaceId: current.knowledgeSpaceId,
       publicationId: projectionSnapshot.publicationId,
-      query: current.query,
+      query: researchTaskRetrievalQuery(current),
       tenantId: current.tenantId,
       traceId: current.id,
     });
@@ -723,6 +748,26 @@ async function runResearchTask({
         metadata: {
           ...current.metadata,
           [RESEARCH_RETRIEVAL_DURABLE_CHECKPOINT_METADATA_KEY]: payload,
+        },
+        updatedAt: now(),
+      });
+    });
+    current = updated;
+    updateCurrent(updated);
+  };
+  const persistQueryImageExpansion = async (expansion: string): Promise<void> => {
+    const normalized = expansion.trim();
+    if (!normalized) return;
+    await revalidate();
+    await assertWritable();
+    if (queryImageExpansionFromMetadata(current.metadata) === normalized) return;
+    const updated = await serialize(async () => {
+      current = getCurrent();
+      return repository.update({
+        ...current,
+        metadata: {
+          ...current.metadata,
+          [QUERY_IMAGE_EXPANSION_METADATA_KEY]: normalized,
         },
         updatedAt: now(),
       });
@@ -780,6 +825,19 @@ async function runResearchTask({
       permissionScope: [...authorizationContext.permissionScopes],
       ...(projectionSnapshot ? { projectionSnapshot } : {}),
       query: current.query,
+      ...(queryImageReferences.length > 0 ? { queryImages: queryImageReferences } : {}),
+      ...(resolvedQueryImages.length > 0
+        ? {
+            queryImageMetadata: resolvedQueryImages.map(queryImageMetadata),
+            resolvedQueryImages,
+          }
+        : {}),
+      ...(queryImageExpansionFromMetadata(current.metadata)
+        ? { queryImageExpansion: queryImageExpansionFromMetadata(current.metadata) }
+        : {}),
+      ...(queryImageReferences.length > 0
+        ? { onQueryImageExpansion: persistQueryImageExpansion }
+        : {}),
       researchExecutionKind: "durable",
       researchExecutionAttempt: current.executionAttempts,
       researchModelCallObserver,
@@ -841,7 +899,9 @@ async function runResearchTask({
         retrievedChunkCount === undefined
           ? undefined
           : {
-              results: [{ chunkCount: retrievedChunkCount, question: current.query }],
+              results: [
+                { chunkCount: retrievedChunkCount, question: researchTaskDisplayQuery(current) },
+              ],
               ...(retrievalCandidateCount === undefined
                 ? {}
                 : { retrievalCount: retrievalCandidateCount }),
@@ -876,7 +936,9 @@ async function runResearchTask({
       retrievedChunkCount === undefined
         ? undefined
         : {
-            results: [{ chunkCount: retrievedChunkCount, question: current.query }],
+            results: [
+              { chunkCount: retrievedChunkCount, question: researchTaskDisplayQuery(current) },
+            ],
             ...(retrievalCandidateCount === undefined
               ? {}
               : { retrievalCount: retrievalCandidateCount }),
@@ -945,11 +1007,23 @@ function loadResearchDurableCheckpoint({
       fingerprint: projectionSnapshot.fingerprint,
       knowledgeSpaceId: job.knowledgeSpaceId,
       publicationId: projectionSnapshot.publicationId,
-      query: job.query,
+      query: researchTaskRetrievalQuery(job),
       tenantId: job.tenantId,
       traceId: job.id,
     }),
   };
+}
+
+function researchTaskRetrievalQuery(job: ResearchTaskJob): string {
+  return [job.query.trim(), queryImageExpansionFromMetadata(job.metadata)]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+function researchTaskDisplayQuery(job: ResearchTaskJob): string {
+  return (
+    job.query.trim() || `[${queryImageReferencesFromMetadata(job.metadata).length} query image(s)]`
+  );
 }
 
 function createResearchTaskModelCallObserver({

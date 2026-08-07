@@ -14,6 +14,7 @@ from controllers.inner_api.knowledge_fs.storage import (
     KnowledgeFSObjectListApi,
     KnowledgeFSObjectMetadataApi,
     KnowledgeFSObjectStorageHttpError,
+    KnowledgeFSQueryImageApi,
 )
 from services.knowledge_fs.object_storage import (
     KnowledgeFSObjectList,
@@ -21,6 +22,7 @@ from services.knowledge_fs.object_storage import (
     KnowledgeFSObjectStorageChecksumError,
     KnowledgeFSObjectStorageUnavailableError,
 )
+from services.knowledge_fs.query_images import KnowledgeFSResolvedQueryImage
 
 
 @pytest.fixture
@@ -36,6 +38,38 @@ def object_metadata() -> KnowledgeFSObjectMetadata:
 
 def _metadata_header(metadata: dict[str, str]) -> str:
     return urlsafe_b64encode(json.dumps(metadata).encode()).decode().rstrip("=")
+
+
+@patch("controllers.inner_api.knowledge_fs.storage.load_query_image")
+def test_query_image_endpoint_returns_only_actor_owned_bounded_bytes(
+    load_query_image: MagicMock,
+    app: Flask,
+) -> None:
+    upload_file_id = "00000000-0000-4000-8000-000000000001"
+    body = b"\x89PNG\r\n\x1a\nquery"
+    load_query_image.return_value = KnowledgeFSResolvedQueryImage(
+        upload_file_id=upload_file_id,
+        byte_size=len(body),
+        mime_type="image/png",
+        body=body,
+        sha256="a" * 64,
+    )
+    handler = KnowledgeFSQueryImageApi()
+
+    with app.test_request_context(
+        f"/?uploadFileId={upload_file_id}&tenantId=tenant-1&subjectId=dify-account:account-1"
+    ):
+        result = inspect.unwrap(handler.get)(handler)
+
+    assert result.get_data() == body
+    assert result.content_type == "image/png"
+    assert result.headers["X-Query-Image-Sha256"] == "a" * 64
+    assert result.headers["X-Query-Image-Upload-File-Id"] == upload_file_id
+    load_query_image.assert_called_once_with(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        upload_file_id=upload_file_id,
+    )
 
 
 @patch("controllers.inner_api.knowledge_fs.storage.KnowledgeFSObjectStorageService")

@@ -12,6 +12,7 @@ import {
   readTopScore,
 } from "./failed-query-recorder";
 import type { PublishedProjectionReadSnapshot } from "./published-projection-read-snapshot";
+import type { QueryImageMetadata, QueryImageReference, ResolvedQueryImage } from "./query-images";
 import type { ResearchModelCallObserver } from "./research-model-usage";
 import type { ResearchRetrievalDurableCheckpoint } from "./research-retrieval-checkpoint";
 import type {
@@ -47,6 +48,17 @@ export interface QueryGenerationInput {
   readonly permissionScope: readonly string[];
   readonly projectionSnapshot?: PublishedProjectionReadSnapshot | undefined;
   readonly query: string;
+  /** Immutable Dify UploadFile references supplied by the caller. */
+  readonly queryImages?: readonly QueryImageReference[] | undefined;
+  readonly queryImageMetadata?: readonly QueryImageMetadata[] | undefined;
+  /** Bounded bytes resolved at the authenticated gateway boundary for this run only. */
+  readonly resolvedQueryImages?: readonly ResolvedQueryImage[] | undefined;
+  /** Vision-derived navigation text; durable Research retries reuse the persisted value. */
+  readonly queryImageExpansion?: string | undefined;
+  /** Durable-only writer used before retrieval so retries do not repeat the vision call. */
+  readonly onQueryImageExpansion?: ((expansion: string) => Promise<void>) | undefined;
+  /** Text actually used by text retrieval; never overwrites the caller's `query`. */
+  readonly retrievalQuery?: string | undefined;
   readonly requestedMode?: QueryGenerationMode | "auto" | undefined;
   /** Durable-only replay boundary writer. Interactive callers never supply this callback. */
   readonly onResearchRetrievalCheckpoint?:
@@ -431,6 +443,7 @@ async function recordAnswerTrace({
     knowledgeSpaceId: input.knowledgeSpaceId,
     mode: input.mode,
     query: input.query,
+    ...(input.queryImageMetadata?.length ? { queryImages: input.queryImageMetadata } : {}),
     steps: [
       ...stageSteps,
       {
@@ -461,6 +474,11 @@ async function captureFailedQuery({
   readonly traceId: string;
 }): Promise<void> {
   if (!failedQueryRecorder) {
+    return;
+  }
+  // Failed-query clustering is text-semantic. Do not collapse every pure-image request into the
+  // same empty-string cluster; image-aware triage is a separate product decision.
+  if (!input.query.trim()) {
     return;
   }
   // Provenance-free legacy rows cannot be authorized safely. If a caller bypasses the normal

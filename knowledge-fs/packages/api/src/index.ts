@@ -302,6 +302,8 @@ export * from "./page-index-whole-tree-selection";
 export * from "./published-projection-read-snapshot";
 export * from "./published-knowledge-space-runtime-snapshot";
 export * from "./query-handlers";
+export * from "./query-images";
+export * from "./query-image-expansion";
 export * from "./query-virtual-entries";
 export * from "./query-routes";
 export * from "./quality-control";
@@ -776,6 +778,7 @@ export function createKnowledgeGateway({
   runtimeSnapshotResolver,
   projectionSetPublications,
   queryGenerator,
+  queryImageResolver,
   qualityControl,
   rateLimiter = createNoopRateLimiter(),
   readinessChecks,
@@ -1821,6 +1824,7 @@ export function createKnowledgeGateway({
     now: () => Date.parse(now()),
     ...(projectionSnapshotResolver ? { projectionSnapshotResolver } : {}),
     queryGenerator: effectiveQueryGenerator,
+    ...(queryImageResolver ? { queryImageResolver } : {}),
     ...(retrievalExecutionLeases ? { retrievalExecutionLeases } : {}),
     ...(runtimeSnapshotResolver ? { runtimeSnapshotResolver } : {}),
     sessionRepository,

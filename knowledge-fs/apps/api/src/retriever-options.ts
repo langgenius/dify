@@ -4,6 +4,7 @@ import {
   type GraphIndexRepository,
   type HybridRetrievalItem,
   type HybridRetrievalRepository,
+  type ImageBytesVisualEmbeddingProvider,
   type PageIndexFindabilityRepository,
   type PageIndexLayeredTreeSearch,
   type PageIndexSemanticTreeSearch,
@@ -11,6 +12,7 @@ import {
   type ProjectionSetPublicationMemberRepository,
   type PublishedGraphIndexRepository,
   type PublishedPageIndexRepository,
+  QUERY_IMAGE_VISUAL_LEG_UNAVAILABLE,
   type RetrievalCandidate,
   type RetrievalOperationalMetrics,
   type RetrievalPlanner,
@@ -94,6 +96,14 @@ export interface ApiRetrieverOptions {
         readonly provider: EmbeddingProvider;
       }
     | undefined;
+  /** Query-image embeddings in the same visual vector space; separately feature-gated. */
+  readonly imageQuery?:
+    | {
+        readonly model: string;
+        readonly mode: "fallback" | "primary";
+        readonly provider: ImageBytesVisualEmbeddingProvider;
+      }
+    | undefined;
 }
 
 /**
@@ -128,6 +138,7 @@ export function createApiRetriever({
   graph,
   graphExpansion,
   metrics,
+  imageQuery,
   outlines,
   pageIndex,
   pageIndexFindability,
@@ -160,17 +171,18 @@ export function createApiRetriever({
   });
   const searchVisualDense = repository.searchVisualDense;
   const visualAwareRetriever =
-    visualQuery && searchVisualDense
+    (visualQuery || imageQuery) && searchVisualDense
       ? createVisualDenseRetrievalPath({
+          ...(imageQuery ? { imageQuery } : {}),
           planner,
           publishedMembershipEnforced: repository.publishedMembershipEnforced === true,
           ...(publishedProjectionMembership ? { publishedProjectionMembership } : {}),
           retriever: basicRetriever,
           searchVisualDense,
           strictPublishedReads,
-          visualQuery,
+          ...(visualQuery ? { visualQuery } : {}),
         })
-      : basicRetriever;
+      : createUnavailableQueryImageVisualRetrievalPath(basicRetriever);
   const multimodalStack = createImageOcrRetrievalPath({
     imageBoost: 0.2,
     maxImageCandidates: 5,
@@ -260,17 +272,18 @@ export function createApiRetriever({
     retrieve: async (input) => {
       const resolvedMode =
         planner?.plan({
+          hasQueryImages: (input.queryImages?.length ?? 0) > 0,
           mode: input.mode,
           query: input.query,
           topK: input.topK,
           traceId: input.traceId,
         }).resolvedMode ?? (input.mode === "research" ? "research" : "fast");
 
-      if (!embeddingEnabled) {
+      if (!embeddingEnabled && input.query.trim()) {
         throw new HybridEmbeddingCapabilityUnavailableError();
       }
 
-      if (ftsReadiness && resolvedMode !== "research") {
+      if (ftsReadiness && resolvedMode !== "research" && input.query.trim()) {
         if (!input.tenantId) {
           throw new Error("TiDB FTS readiness requires a tenant-scoped retrieval input");
         }
@@ -287,7 +300,31 @@ export function createApiRetriever({
   };
 }
 
+function createUnavailableQueryImageVisualRetrievalPath(
+  retriever: BasicHybridRetriever,
+): BasicHybridRetriever {
+  return {
+    retrieve: async (input) => {
+      const result = await retriever.retrieve(input);
+      if ((input.queryImages?.length ?? 0) === 0) return result;
+      return {
+        ...result,
+        metrics: result.metrics
+          ? {
+              ...result.metrics,
+              degradationFlags: [
+                ...(result.metrics.degradationFlags ?? []),
+                QUERY_IMAGE_VISUAL_LEG_UNAVAILABLE,
+              ],
+            }
+          : undefined,
+      };
+    },
+  };
+}
+
 function createVisualDenseRetrievalPath({
+  imageQuery,
   planner,
   publishedMembershipEnforced,
   publishedProjectionMembership,
@@ -296,6 +333,7 @@ function createVisualDenseRetrievalPath({
   strictPublishedReads,
   visualQuery,
 }: {
+  readonly imageQuery?: NonNullable<ApiRetrieverOptions["imageQuery"]> | undefined;
   readonly planner?: RetrievalPlanner | undefined;
   readonly publishedMembershipEnforced: boolean;
   readonly publishedProjectionMembership?:
@@ -304,7 +342,7 @@ function createVisualDenseRetrievalPath({
   readonly retriever: BasicHybridRetriever;
   readonly searchVisualDense: NonNullable<HybridRetrievalRepository["searchVisualDense"]>;
   readonly strictPublishedReads: boolean;
-  readonly visualQuery: NonNullable<ApiRetrieverOptions["visualQuery"]>;
+  readonly visualQuery?: NonNullable<ApiRetrieverOptions["visualQuery"]> | undefined;
 }): BasicHybridRetriever {
   return {
     retrieve: async (input) => {
@@ -326,14 +364,120 @@ function createVisualDenseRetrievalPath({
         );
       }
       const plan = planner?.plan({
+        hasQueryImages: (input.queryImages?.length ?? 0) > 0,
         mode: input.mode,
         query: input.query,
         topK: input.topK,
         traceId: input.traceId,
       });
-      const retrieveVisual = () =>
-        visualQuery.provider
-          .embed({
+      const searchVector = async (
+        queryVector: readonly number[],
+        resolvedModel: string,
+      ): Promise<RetrievalCandidate[]> => {
+        if (queryVector.length === 0 || !queryVector.every((value) => Number.isFinite(value))) {
+          throw new Error("Visual query embedding provider returned an invalid query vector");
+        }
+        if (!resolvedModel.trim()) {
+          throw new Error("Visual query embedding provider returned an empty model");
+        }
+        const candidates = await searchVisualDense({
+          denseProjectionModel: resolvedModel,
+          filters: input.filters,
+          knowledgeSpaceId: input.knowledgeSpaceId,
+          permissionScope: input.permissionScope,
+          projectionSetCandidateFingerprint: input.projectionSetCandidateFingerprint,
+          projectionSetFingerprint: input.projectionSetFingerprint,
+          ...(snapshot ? { projectionSetPublicationId: snapshot.publicationId } : {}),
+          projectionSetReadMode: input.projectionSetReadMode,
+          queryVector,
+          ...(snapshot
+            ? { tenantId: snapshot.tenantId }
+            : input.tenantId
+              ? { tenantId: input.tenantId }
+              : {}),
+          topK: plan?.denseTopK ?? input.topK,
+        });
+        const metadataFiltered = filterRetrievalCandidatesByMetadata(
+          candidates,
+          normalizeRetrievalMetadataFilters(input.filters),
+        );
+        const permissionFiltered = filterRetrievalCandidatesByPermission(
+          metadataFiltered,
+          normalizeRetrievalPermissionScope(input.permissionScope),
+        );
+
+        const projectionFiltered = snapshot
+          ? permissionFiltered
+          : filterRetrievalCandidatesByProjectionSet(permissionFiltered, {
+              candidateFingerprint: input.projectionSetCandidateFingerprint,
+              mode: input.projectionSetReadMode,
+              publishedFingerprint: input.projectionSetFingerprint,
+            });
+        if (!snapshot || !publishedProjectionMembership) {
+          return projectionFiltered;
+        }
+
+        const allowed = new Set(
+          await publishedProjectionMembership.filterComponentKeys({
+            componentKeys: [
+              ...new Set(projectionFiltered.map((candidate) => candidate.projectionId)),
+            ],
+            componentType: "index-projection",
+            knowledgeSpaceId: snapshot.knowledgeSpaceId,
+            publicationId: snapshot.publicationId,
+            tenantId: snapshot.tenantId,
+          }),
+        );
+
+        return projectionFiltered.filter((candidate) => allowed.has(candidate.projectionId));
+      };
+      const retrieveVisual = async () => {
+        try {
+          if ((input.queryImages?.length ?? 0) > 0) {
+            if (!imageQuery) {
+              return {
+                candidateLists: [] as RetrievalCandidate[][],
+                degradationFlag: QUERY_IMAGE_VISUAL_LEG_UNAVAILABLE,
+                ok: false as const,
+              };
+            }
+            const images = input.queryImages ?? [];
+            const embedding = await imageQuery.provider.embedImages({
+              images: images.map((image) => ({
+                assetRef: { uploadFileId: image.uploadFileId },
+                body: image.body,
+                contentType: image.mimeType,
+                documentAssetId: image.uploadFileId,
+                metadata: { queryImage: true, sha256: image.sha256 },
+                modality: "image",
+                nodeId: image.uploadFileId,
+                objectKey: image.uploadFileId,
+                sourceText: "",
+              })),
+              inputType: "query",
+              model: imageQuery.model,
+              ...(snapshot
+                ? { tenantId: snapshot.tenantId }
+                : input.tenantId
+                  ? { tenantId: input.tenantId }
+                  : {}),
+            });
+            if (embedding.dense.length !== images.length) {
+              throw new Error(
+                `Visual query embedding provider returned ${embedding.dense.length} vectors for ${images.length} images`,
+              );
+            }
+            const resolvedModel = embedding.model.trim();
+            const candidateLists = await Promise.all(
+              embedding.dense.map((vector) => searchVector(vector, resolvedModel)),
+            );
+            return { candidateLists, ok: true as const };
+          }
+
+          if (!visualQuery || !input.query.trim()) {
+            return { candidateLists: [] as RetrievalCandidate[][], ok: true as const };
+          }
+          const embedding = await visualQuery.provider.embed({
             inputType: "search_query",
             model: visualQuery.model,
             texts: [input.query],
@@ -342,100 +486,44 @@ function createVisualDenseRetrievalPath({
               : input.tenantId
                 ? { tenantId: input.tenantId }
                 : {}),
-          })
-          .then(async (embedding) => {
-            if (embedding.dense.length !== 1) {
-              throw new Error(
-                `Visual query embedding provider returned ${embedding.dense.length} vectors for 1 query`,
-              );
-            }
-
-            const queryVector = embedding.dense[0];
-
-            if (!queryVector || queryVector.length === 0) {
-              throw new Error("Visual query embedding provider returned no query vector");
-            }
-
-            if (!queryVector.every((value) => Number.isFinite(value))) {
-              throw new Error("Visual query embedding provider returned a non-finite query vector");
-            }
-
-            const resolvedModel = embedding.model.trim();
-
-            if (!resolvedModel) {
-              throw new Error("Visual query embedding provider returned an empty model");
-            }
-
-            if (
-              embedding.metadata.dimension !== undefined &&
-              embedding.metadata.dimension !== queryVector.length
-            ) {
-              throw new Error(
-                `Visual query embedding provider reported dimension=${embedding.metadata.dimension}; query vector has dimension=${queryVector.length}`,
-              );
-            }
-
-            const candidates = await searchVisualDense({
-              denseProjectionModel: resolvedModel,
-              filters: input.filters,
-              knowledgeSpaceId: input.knowledgeSpaceId,
-              permissionScope: input.permissionScope,
-              projectionSetCandidateFingerprint: input.projectionSetCandidateFingerprint,
-              projectionSetFingerprint: input.projectionSetFingerprint,
-              ...(snapshot ? { projectionSetPublicationId: snapshot.publicationId } : {}),
-              projectionSetReadMode: input.projectionSetReadMode,
-              queryVector,
-              ...(snapshot
-                ? { tenantId: snapshot.tenantId }
-                : input.tenantId
-                  ? { tenantId: input.tenantId }
-                  : {}),
-              topK: plan?.denseTopK ?? input.topK,
-            });
-            const metadataFiltered = filterRetrievalCandidatesByMetadata(
-              candidates,
-              normalizeRetrievalMetadataFilters(input.filters),
+          });
+          if (embedding.dense.length !== 1) {
+            throw new Error(
+              `Visual query embedding provider returned ${embedding.dense.length} vectors for 1 query`,
             );
-            const permissionFiltered = filterRetrievalCandidatesByPermission(
-              metadataFiltered,
-              normalizeRetrievalPermissionScope(input.permissionScope),
+          }
+          const queryVector = embedding.dense[0];
+          if (!queryVector) {
+            throw new Error("Visual query embedding provider returned no query vector");
+          }
+          if (
+            embedding.metadata.dimension !== undefined &&
+            embedding.metadata.dimension !== queryVector.length
+          ) {
+            throw new Error(
+              `Visual query embedding provider reported dimension=${embedding.metadata.dimension}; query vector has dimension=${queryVector.length}`,
             );
-
-            const projectionFiltered = snapshot
-              ? permissionFiltered
-              : filterRetrievalCandidatesByProjectionSet(permissionFiltered, {
-                  candidateFingerprint: input.projectionSetCandidateFingerprint,
-                  mode: input.projectionSetReadMode,
-                  publishedFingerprint: input.projectionSetFingerprint,
-                });
-            if (!snapshot || !publishedProjectionMembership) {
-              return projectionFiltered;
-            }
-
-            const allowed = new Set(
-              await publishedProjectionMembership.filterComponentKeys({
-                componentKeys: [
-                  ...new Set(projectionFiltered.map((candidate) => candidate.projectionId)),
-                ],
-                componentType: "index-projection",
-                knowledgeSpaceId: snapshot.knowledgeSpaceId,
-                publicationId: snapshot.publicationId,
-                tenantId: snapshot.tenantId,
-              }),
-            );
-
-            return projectionFiltered.filter((candidate) => allowed.has(candidate.projectionId));
-          })
-          .then(
-            (candidates) => ({ candidates, ok: true as const }),
-            () => ({
-              candidates: [] as RetrievalCandidate[],
-              ok: false as const,
-            }),
-          );
+          }
+          return {
+            candidateLists: [await searchVector(queryVector, embedding.model)],
+            ok: true as const,
+          };
+        } catch {
+          return {
+            candidateLists: [] as RetrievalCandidate[][],
+            degradationFlag:
+              (input.queryImages?.length ?? 0) > 0
+                ? QUERY_IMAGE_VISUAL_LEG_UNAVAILABLE
+                : "visual-dense-failed:skipped",
+            ok: false as const,
+          };
+        }
+      };
       const basePromise = retriever.retrieve(input);
+      const visualMode =
+        (input.queryImages?.length ?? 0) > 0 ? imageQuery?.mode : visualQuery?.mode;
       const [baseResult, visualResult] =
-        visualQuery.mode === "fallback"
+        visualMode === "fallback" && (input.queryImages?.length ?? 0) === 0
           ? await (async () => {
               const base = await basePromise;
 
@@ -443,7 +531,7 @@ function createVisualDenseRetrievalPath({
                 ? [
                     base,
                     {
-                      candidates: [] as RetrievalCandidate[],
+                      candidateLists: [] as RetrievalCandidate[][],
                       ok: true as const,
                     },
                   ]
@@ -451,7 +539,11 @@ function createVisualDenseRetrievalPath({
             })()
           : await Promise.all([basePromise, retrieveVisual()]);
 
-      if (visualQuery.mode === "fallback" && baseResult.items.length > 0) {
+      if (
+        visualMode === "fallback" &&
+        (input.queryImages?.length ?? 0) === 0 &&
+        baseResult.items.length > 0
+      ) {
         return baseResult;
       }
 
@@ -463,7 +555,7 @@ function createVisualDenseRetrievalPath({
                 ...baseResult.metrics,
                 degradationFlags: [
                   ...(baseResult.metrics.degradationFlags ?? []),
-                  "visual-dense-failed:skipped",
+                  visualResult.degradationFlag,
                 ],
               },
             }
@@ -475,13 +567,16 @@ function createVisualDenseRetrievalPath({
         items: mergeVisualDenseItems({
           baseItems: baseResult.items,
           limit: input.limit,
-          visualCandidates: visualResult.candidates,
-          visualWeight: visualQuery.mode === "primary" ? 1 : 0.5,
+          visualCandidateLists: visualResult.candidateLists,
+          visualWeight: visualMode === "primary" ? 1 : 0.5,
         }),
         metrics: baseResult.metrics
           ? {
               ...baseResult.metrics,
-              visualEmbeddingCandidates: visualResult.candidates.length,
+              visualEmbeddingCandidates: visualResult.candidateLists.reduce(
+                (total, candidates) => total + candidates.length,
+                0,
+              ),
             }
           : undefined,
       };
@@ -492,12 +587,12 @@ function createVisualDenseRetrievalPath({
 function mergeVisualDenseItems({
   baseItems,
   limit,
-  visualCandidates,
+  visualCandidateLists,
   visualWeight,
 }: {
   readonly baseItems: readonly HybridRetrievalItem[];
   readonly limit: number;
-  readonly visualCandidates: readonly RetrievalCandidate[];
+  readonly visualCandidateLists: readonly (readonly RetrievalCandidate[])[];
   readonly visualWeight: number;
 }): HybridRetrievalItem[] {
   const byNodeId = new Map<string, HybridRetrievalItem>();
@@ -506,39 +601,44 @@ function mergeVisualDenseItems({
     byNodeId.set(item.nodeId, cloneHybridItem(item));
   }
 
-  const normalizedVisualItems = fuseRetrievalCandidates({
-    dense: visualCandidates,
-    fts: [],
-    limit: visualCandidates.length,
-  });
-
-  for (const visualItem of normalizedVisualItems) {
-    const contribution = visualItem.score * visualWeight;
-    const existing = byNodeId.get(visualItem.nodeId);
-
-    if (existing) {
-      byNodeId.set(visualItem.nodeId, {
-        ...existing,
-        metadata: { ...visualItem.metadata, ...existing.metadata },
-        projectionIds: uniqueStrings([...existing.projectionIds, ...visualItem.projectionIds]),
-        score: existing.score + contribution,
-        sources: uniqueStrings([...existing.sources, "visual"]) as HybridRetrievalItem["sources"],
-      });
-      continue;
-    }
-
-    byNodeId.set(visualItem.nodeId, {
-      citation: {
-        ...visualItem.citation,
-        sectionPath: [...visualItem.citation.sectionPath],
-      },
-      metadata: { ...visualItem.metadata },
-      nodeId: visualItem.nodeId,
-      permissionScope: visualItem.permissionScope ? [...visualItem.permissionScope] : undefined,
-      projectionIds: [...visualItem.projectionIds],
-      score: contribution,
-      sources: ["visual"],
+  const nonEmptyLists = visualCandidateLists.filter((candidates) => candidates.length > 0);
+  const perImageWeight =
+    visualCandidateLists.length > 0 ? visualWeight / visualCandidateLists.length : 0;
+  for (const visualCandidates of nonEmptyLists) {
+    const normalizedVisualItems = fuseRetrievalCandidates({
+      dense: visualCandidates,
+      fts: [],
+      limit: visualCandidates.length,
     });
+
+    for (const visualItem of normalizedVisualItems) {
+      const contribution = visualItem.score * perImageWeight;
+      const existing = byNodeId.get(visualItem.nodeId);
+
+      if (existing) {
+        byNodeId.set(visualItem.nodeId, {
+          ...existing,
+          metadata: { ...visualItem.metadata, ...existing.metadata },
+          projectionIds: uniqueStrings([...existing.projectionIds, ...visualItem.projectionIds]),
+          score: existing.score + contribution,
+          sources: uniqueStrings([...existing.sources, "visual"]) as HybridRetrievalItem["sources"],
+        });
+        continue;
+      }
+
+      byNodeId.set(visualItem.nodeId, {
+        citation: {
+          ...visualItem.citation,
+          sectionPath: [...visualItem.citation.sectionPath],
+        },
+        metadata: { ...visualItem.metadata },
+        nodeId: visualItem.nodeId,
+        permissionScope: visualItem.permissionScope ? [...visualItem.permissionScope] : undefined,
+        projectionIds: [...visualItem.projectionIds],
+        score: contribution,
+        sources: ["visual"],
+      });
+    }
   }
 
   return [...byNodeId.values()]

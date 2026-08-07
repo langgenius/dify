@@ -856,6 +856,93 @@ describe("hybrid query generator", () => {
     );
   });
 
+  it("uses the derived text and original image for pure-image Research synthesis", async () => {
+    const retrievalInputs: Parameters<BasicHybridRetriever["retrieve"]>[0][] = [];
+    const answerInputs: unknown[] = [];
+    const image = {
+      body: new Uint8Array([1, 2, 3]),
+      byteSize: 3,
+      mimeType: "image/png" as const,
+      sha256: "b".repeat(64),
+      uploadFileId: "00000000-0000-4000-8000-000000000001",
+    };
+    const generator = createHybridQueryGenerator({
+      limit: 3,
+      maxAnswerChars: 1_000,
+      multimodalAnswerProvider: {
+        generate: async (input) => {
+          answerInputs.push(input);
+          return { text: "The image total is 42." };
+        },
+      },
+      retriever: {
+        retrieve: async (input) => {
+          retrievalInputs.push(input);
+          return {
+            items: [
+              {
+                citation: {
+                  artifactHash: "a".repeat(64),
+                  documentAssetId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2d31",
+                  documentVersion: 1,
+                  sectionPath: ["Invoice"],
+                },
+                metadata: { text: "Invoice total 42" },
+                nodeId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2d32",
+                permissionScope: [],
+                projectionIds: ["visual-1"],
+                score: 0.9,
+                sources: ["dense"],
+              },
+            ],
+          };
+        },
+      },
+      topK: 10,
+    });
+    const events = [];
+
+    for await (const event of generator.stream({
+      knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
+      mode: "research",
+      permissionScope: [],
+      query: "",
+      queryImageMetadata: [image],
+      resolvedQueryImages: [image],
+      retrievalQuery: "Image OCR: TOTAL 42",
+      subject: {
+        scopes: ["knowledge-spaces:read"],
+        subjectId: "user-1",
+        tenantId: "tenant-1",
+      },
+      traceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f8a10",
+    })) {
+      if (event.type !== "trace-step") events.push(event);
+    }
+
+    expect(retrievalInputs[0]).toMatchObject({
+      query: "Image OCR: TOTAL 42",
+      queryImages: [image],
+    });
+    expect(answerInputs[0]).toMatchObject({
+      query: "Image OCR: TOTAL 42",
+      queryImages: [image],
+    });
+    expect(events[0]).toEqual({ delta: "The image total is 42.", type: "delta" });
+    expect(events.at(-1)).toEqual(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          evidenceBundle: expect.objectContaining({
+            query: "",
+            queryImages: [expect.objectContaining({ uploadFileId: image.uploadFileId })],
+            retrievalQuery: "Image OCR: TOTAL 42",
+          }),
+        }),
+        type: "done",
+      }),
+    );
+  });
+
   it("embeds Research queries for semantic Value Search", async () => {
     const retrievalInputs: { denseProjectionModel?: string; queryVector: readonly number[] }[] = [];
     const generator = createHybridQueryGenerator({

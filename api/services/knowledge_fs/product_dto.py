@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import Annotated, Literal
+from uuid import UUID
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, JsonValue, RootModel, field_validator, model_validator
 
@@ -1827,8 +1828,40 @@ class KnowledgeFSSourceImportResponse(ResponseModel):
     skipped: list[str]
 
 
-class KnowledgeFSQueryCreatePayload(BaseModel):
-    query: str = Field(min_length=1, max_length=16_000)
+class KnowledgeFSQueryImageReference(BaseModel):
+    upload_file_id: str = Field(min_length=1, alias="uploadFileId")
+
+    model_config = ConfigDict(extra="forbid", serialize_by_alias=True, validate_by_alias=True, validate_by_name=True)
+
+    @field_validator("upload_file_id")
+    @classmethod
+    def validate_upload_file_id(cls, value: str) -> str:
+        try:
+            UUID(value)
+        except ValueError as exc:
+            raise ValueError("uploadFileId must be a UUID") from exc
+        return value
+
+
+class _KnowledgeFSQueryModalities(BaseModel):
+    query: str | None = Field(default=None, max_length=16_000)
+    query_images: list[KnowledgeFSQueryImageReference] = Field(
+        default_factory=list,
+        max_length=4,
+        alias="queryImages",
+        exclude_if=lambda value: not value,
+    )
+
+    @model_validator(mode="after")
+    def validate_query_modality(self) -> _KnowledgeFSQueryModalities:
+        if not (self.query and self.query.strip()) and not self.query_images:
+            raise ValueError("At least one of query or queryImages is required")
+        if len({image.upload_file_id for image in self.query_images}) != len(self.query_images):
+            raise ValueError("queryImages must not contain duplicate uploadFileId values")
+        return self
+
+
+class KnowledgeFSQueryCreatePayload(_KnowledgeFSQueryModalities):
     mode: Literal["auto", "deep", "fast", "research"] | None = None
     active_document_ids: list[str] = Field(
         default_factory=list,
@@ -1865,8 +1898,7 @@ class KnowledgeFSResearchTaskLimits(BaseModel):
     model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
 
 
-class KnowledgeFSResearchTaskCreatePayload(BaseModel):
-    query: str = Field(min_length=1, max_length=16_000)
+class KnowledgeFSResearchTaskCreatePayload(_KnowledgeFSQueryModalities):
     mode: Literal["auto", "deep", "fast", "research"] | None = None
     top_k: int | None = Field(default=None, ge=1, le=50, alias="topK")
     budget_usd: float | None = Field(default=None, ge=0, alias="budgetUsd")
@@ -1880,6 +1912,11 @@ class KnowledgeFSResearchTaskResponse(ResponseModel):
     id: str
     knowledge_space_id: str = Field(validation_alias=AliasChoices("knowledge_space_id", "knowledgeSpaceId"))
     query: str
+    query_images: list[KnowledgeFSQueryImageReference] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("query_images", "queryImages"),
+        exclude_if=lambda value: not value,
+    )
     budget_usd: float | None = Field(default=None, ge=0, validation_alias=AliasChoices("budget_usd", "budgetUsd"))
     completed_at: float | None = Field(default=None, validation_alias=AliasChoices("completed_at", "completedAt"))
     cost: dict[str, object]
@@ -1908,10 +1945,9 @@ class KnowledgeFSResearchTaskListResponse(ResponseModel):
     next_cursor: str | None = Field(default=None, validation_alias=AliasChoices("next_cursor", "nextCursor"))
 
 
-class KnowledgeFSResearchTaskPlanPayload(BaseModel):
+class KnowledgeFSResearchTaskPlanPayload(_KnowledgeFSQueryModalities):
     budget_usd: float | None = Field(default=None, ge=0, alias="budgetUsd")
     mode: Literal["auto", "deep", "fast", "research"] | None = None
-    query: str = Field(min_length=1, max_length=16_000)
     top_k: int | None = Field(default=None, ge=1, le=50, alias="topK")
 
     model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
@@ -1950,6 +1986,11 @@ class KnowledgeFSResearchTaskPlanResponse(ResponseModel):
     estimates: dict[str, object]
     knowledge_space_id: str = Field(validation_alias=AliasChoices("knowledge_space_id", "knowledgeSpaceId"))
     query: str
+    query_images: list[KnowledgeFSQueryImageReference] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("query_images", "queryImages"),
+        exclude_if=lambda value: not value,
+    )
     retrieval_plan: KnowledgeFSResearchTaskRetrievalPlanResponse = Field(
         validation_alias=AliasChoices("retrieval_plan", "retrievalPlan")
     )

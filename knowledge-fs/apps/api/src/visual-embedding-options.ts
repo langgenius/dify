@@ -26,6 +26,7 @@ export interface ApiVisualEmbeddingEnv extends DifyModelRuntimeClientEnv {
   readonly KNOWLEDGE_VISUAL_EMBEDDING_PROVIDER?: string | undefined;
   readonly KNOWLEDGE_VISUAL_EMBEDDING_QUERY_MODE?: string | undefined;
   readonly KNOWLEDGE_VISUAL_EMBEDDING_QUERY_MODEL?: string | undefined;
+  readonly KNOWLEDGE_QUERY_IMAGE_RETRIEVAL_ENABLED?: string | undefined;
 }
 
 export interface ApiVisualEmbeddingOptions {
@@ -33,6 +34,7 @@ export interface ApiVisualEmbeddingOptions {
   readonly provider: NonNullable<KnowledgeGatewayOptions["visualEmbeddingProvider"]>;
   readonly queryEmbeddingModel?: string | undefined;
   readonly queryEmbeddingProvider?: EmbeddingProvider | undefined;
+  readonly queryImageEmbeddingProvider?: ImageBytesVisualEmbeddingProvider | undefined;
   readonly queryMode: "fallback" | "off" | "primary";
 }
 
@@ -76,6 +78,16 @@ export function createApiVisualEmbeddingOptions({
 
   const queryMode = normalizedQueryMode(env.KNOWLEDGE_VISUAL_EMBEDDING_QUERY_MODE);
   const queryModel = trimmed(env.KNOWLEDGE_VISUAL_EMBEDDING_QUERY_MODEL) ?? model;
+  const imageBytesProvider = createDifyImageBytesVisualEmbeddingProvider({
+    client,
+    pluginId,
+    provider: pluginProvider,
+  });
+  const queryImageEnabled = booleanEnv(
+    env.KNOWLEDGE_QUERY_IMAGE_RETRIEVAL_ENABLED,
+    false,
+    "KNOWLEDGE_QUERY_IMAGE_RETRIEVAL_ENABLED",
+  );
 
   return {
     model,
@@ -89,11 +101,7 @@ export function createApiVisualEmbeddingOptions({
       ...(trimmed(env.KNOWLEDGE_VISUAL_EMBEDDING_PREFERRED_VARIANT)
         ? { preferredVariant: trimmed(env.KNOWLEDGE_VISUAL_EMBEDDING_PREFERRED_VARIANT) }
         : { preferredVariant: "thumbnail" }),
-      provider: createDifyImageBytesVisualEmbeddingProvider({
-        client,
-        pluginId,
-        provider: pluginProvider,
-      }),
+      provider: imageBytesProvider,
     }),
     ...(queryMode === "off"
       ? {}
@@ -105,6 +113,7 @@ export function createApiVisualEmbeddingOptions({
             pluginId,
             provider: pluginProvider,
           }),
+          ...(queryImageEnabled ? { queryImageEmbeddingProvider: imageBytesProvider } : {}),
         }),
     queryMode,
   };
@@ -145,7 +154,7 @@ function createDifyImageBytesVisualEmbeddingProvider({
           content_type: "image",
           file_id: image.objectKey,
         })),
-        inputType: "document",
+        inputType: input.inputType ?? "document",
         model: input.model,
         pluginId,
         provider,
@@ -244,6 +253,14 @@ function positiveIntegerEnv(value: string | undefined, fallback: number, name: s
   }
 
   return parsed;
+}
+
+function booleanEnv(value: string | undefined, fallback: boolean, name: string): boolean {
+  const normalized = trimmed(value)?.toLowerCase();
+  if (!normalized) return fallback;
+  if (["1", "true", "on"].includes(normalized)) return true;
+  if (["0", "false", "off"].includes(normalized)) return false;
+  throw new Error(`${name} must be true or false`);
 }
 
 function trimmed(value: string | undefined): string | undefined {

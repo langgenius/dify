@@ -88,6 +88,7 @@ import type { ProjectionSetPublicationRepository } from "./projection-publicatio
 import type { PublishedGraphIndexRepository } from "./published-graph-index-repository";
 import type { PublishedKnowledgeSpaceRuntimeSnapshotResolver } from "./published-knowledge-space-runtime-snapshot";
 import type { QualityControlRepository, QualityReplayRuntime } from "./quality-control";
+import type { QueryImageResolver } from "./query-images";
 import type { RateLimiter } from "./rate-limit";
 import type { RelationExtractionProvider } from "./relation-extraction-flow";
 import type { RelevanceTriageSignals } from "./relevance-triage";
@@ -283,6 +284,8 @@ export interface KnowledgeGatewayOptions {
   publishedGraph?: PublishedGraphIndexRepository;
   runtimeSnapshotResolver?: PublishedKnowledgeSpaceRuntimeSnapshotResolver;
   queryGenerator?: QueryGenerator;
+  /** Resolves Dify UploadFile references through the authenticated inner API. */
+  queryImageResolver?: QueryImageResolver;
   qualityControl?: {
     readonly onRuntime?: ((runtime: QualityReplayRuntime) => void) | undefined;
     readonly repository: QualityControlRepository;

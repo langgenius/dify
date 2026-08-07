@@ -34,6 +34,11 @@ import {
   type PublishedProjectionReadSnapshotResolver,
   PublishedProjectionReadUnavailableError,
 } from "./published-projection-read-snapshot";
+import {
+  QueryImageResolutionError,
+  type QueryImageResolver,
+  queryImageMetadata,
+} from "./query-images";
 import { streamQueryRoute } from "./query-routes";
 import {
   type ActiveRetrievalExecutionLease,
@@ -61,6 +66,7 @@ export interface RegisterQueryHandlersOptions {
   readonly generateQueryRunId: () => string;
   readonly manifests: KnowledgeSpaceManifestRepository;
   readonly queryGenerator: QueryGenerator | undefined;
+  readonly queryImageResolver?: QueryImageResolver | undefined;
   readonly retrievalExecutionLeases?: RetrievalExecutionLeaseCoordinator | undefined;
   readonly projectionSnapshotResolver?: PublishedProjectionReadSnapshotResolver | undefined;
   readonly runtimeSnapshotResolver?: PublishedKnowledgeSpaceRuntimeSnapshotResolver | undefined;
@@ -83,6 +89,7 @@ export function registerQueryHandlers({
   generateQueryRunId,
   manifests,
   queryGenerator,
+  queryImageResolver,
   retrievalExecutionLeases,
   projectionSnapshotResolver,
   runtimeSnapshotResolver,
@@ -99,9 +106,10 @@ export function registerQueryHandlers({
   app.openapi(streamQueryRoute, async (context) => {
     const subject = context.get("subject");
     const body = context.req.valid("json");
-    const query = body.query.trim();
+    const query = body.query?.trim() ?? "";
+    const queryImages = body.queryImages ?? [];
 
-    if (!query) {
+    if (!query && queryImages.length === 0) {
       return context.json({ error: "Invalid query request" }, 400);
     }
 
@@ -214,11 +222,39 @@ export function registerQueryHandlers({
     const releaseEarlyExecutionLease = async (): Promise<void> => {
       await executionLease?.release().catch(() => undefined);
     };
+    let resolvedQueryImages = [] as Awaited<ReturnType<QueryImageResolver["resolve"]>>;
+    if (queryImages.length > 0) {
+      if (!queryImageResolver) {
+        await releaseEarlyExecutionLease();
+        return context.json(
+          {
+            code: "QUERY_IMAGE_RESOLVER_UNAVAILABLE",
+            error: "Query image resolution is unavailable",
+          },
+          503,
+        );
+      }
+      try {
+        resolvedQueryImages = await queryImageResolver.resolve({
+          references: queryImages,
+          ...(executionLease ? { signal: executionLease.signal } : {}),
+          subjectId: subject.subjectId,
+          tenantId: subject.tenantId,
+        });
+      } catch (error) {
+        await releaseEarlyExecutionLease();
+        if (error instanceof QueryImageResolutionError) {
+          return context.json({ code: error.code, error: error.message }, error.status);
+        }
+        throw error;
+      }
+    }
     const routeStartedAt = Date.now();
     let modeResolution: Awaited<ReturnType<typeof resolveRetrievalModeRequest>>;
     try {
       modeResolution = await resolveRetrievalModeRequest({
         fallbackMode,
+        hasQueryImages: resolvedQueryImages.length > 0,
         query,
         reasoningModel: retrievalProfile?.reasoningModel,
         requestedMode,
@@ -272,6 +308,7 @@ export function registerQueryHandlers({
     };
     try {
       readinessModePlanner.plan({
+        hasQueryImages: resolvedQueryImages.length > 0,
         mode: requestedMode,
         query,
         resolvedMode,
@@ -305,7 +342,7 @@ export function registerQueryHandlers({
       return context.json({ error: "Query generation unavailable" }, 503);
     }
 
-    if (tidbFtsPostingReadiness && resolvedMode !== "research") {
+    if (tidbFtsPostingReadiness && resolvedMode !== "research" && query) {
       try {
         await tidbFtsPostingReadiness.assertReady({
           knowledgeSpaceId: space.id,
@@ -401,6 +438,9 @@ export function registerQueryHandlers({
         knowledgeSpaceId: space.id,
         permissionSnapshot: permissionScope,
         query,
+        ...(resolvedQueryImages.length > 0
+          ? { queryImageHashes: resolvedQueryImages.map((image) => image.sha256) }
+          : {}),
         ...(executionLease ? { retrievalExecution: executionLease } : {}),
         ...(body.sessionId ? { sessionId: body.sessionId } : {}),
         subjectId: subject.subjectId,
@@ -447,6 +487,13 @@ export function registerQueryHandlers({
           permissionScope,
           ...(projectionSnapshot ? { projectionSnapshot } : {}),
           query,
+          ...(queryImages.length > 0 ? { queryImages } : {}),
+          ...(resolvedQueryImages.length > 0
+            ? {
+                resolvedQueryImages,
+                queryImageMetadata: resolvedQueryImages.map(queryImageMetadata),
+              }
+            : {}),
           requestedMode: modeResolution.requestedMode,
           ...(retrievalProfile ? { retrievalProfile } : {}),
           sessionContext: session.context,

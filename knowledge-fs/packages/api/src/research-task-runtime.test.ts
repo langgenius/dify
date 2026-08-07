@@ -14,6 +14,10 @@ import {
 import { createInMemoryKnowledgeSpaceManifestRepository } from "./knowledge-space-manifest-repository";
 import type { PublishedKnowledgeSpaceRuntimeSnapshot } from "./published-knowledge-space-runtime-snapshot";
 import {
+  QUERY_IMAGE_EXPANSION_METADATA_KEY,
+  QUERY_IMAGE_REFERENCES_METADATA_KEY,
+} from "./query-images";
+import {
   RESEARCH_RETRIEVAL_DURABLE_CHECKPOINT_METADATA_KEY,
   ResearchRetrievalCheckpointVersion,
   type ResearchRetrievalDurableCheckpoint,
@@ -250,6 +254,58 @@ describe("research task production runtime", () => {
 
     await expect(runtime.tick()).resolves.toMatchObject({ succeeded: 1 });
     expect(inputs).toEqual([expect.objectContaining({ requestedMode: "auto" })]);
+  });
+
+  it("resolves durable image references and checkpoints expansion text before retrieval", async () => {
+    const snapshot = publishedRuntimeSnapshot(SPACE_ID);
+    const imageId = "00000000-0000-4000-8000-000000000001";
+    const repository = new MemoryDurableRepository({
+      ...baseJob(),
+      metadata: {
+        [QUERY_IMAGE_REFERENCES_METADATA_KEY]: [{ uploadFileId: imageId }],
+        [RESEARCH_TASK_RUNTIME_SNAPSHOT_METADATA_KEY]:
+          toResearchTaskRuntimeSnapshotPayload(snapshot),
+      },
+      mode: "research",
+      query: "",
+    });
+    const resolve = vi.fn(async () => [
+      {
+        body: new Uint8Array([1, 2, 3]),
+        byteSize: 3,
+        mimeType: "image/png" as const,
+        sha256: "a".repeat(64),
+        uploadFileId: imageId,
+      },
+    ]);
+    const runtime = createResearchTaskRuntime({
+      ...runtimeOptions(repository),
+      allowLegacyProfileFallback: false,
+      generator: {
+        stream: async function* (input) {
+          expect(input.resolvedQueryImages).toHaveLength(1);
+          expect(input.queryImages).toEqual([{ uploadFileId: imageId }]);
+          await input.onQueryImageExpansion?.("Image OCR: invoice 42");
+          yield traceStep("query.retrieve");
+        },
+      },
+      projectionSnapshotResolver: {
+        resolve: async () => snapshot.projectionSnapshot,
+      },
+      queryImageResolver: { resolve },
+    });
+
+    await expect(runtime.tick()).resolves.toMatchObject({ succeeded: 1 });
+    expect(resolve).toHaveBeenCalledWith(
+      expect.objectContaining({
+        references: [{ uploadFileId: imageId }],
+        subjectId: "subject-1",
+        tenantId: "tenant-1",
+      }),
+    );
+    expect(repository.job.metadata[QUERY_IMAGE_EXPANSION_METADATA_KEY]).toBe(
+      "Image OCR: invoice 42",
+    );
   });
 
   it("rejects a half-frozen embedding tuple before it can become durable metadata", () => {

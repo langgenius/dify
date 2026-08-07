@@ -9,6 +9,7 @@ import {
 } from "./research-task-request-schemas";
 
 const SPACE_ID = "00000000-0000-4000-8000-000000000001";
+const IMAGE_ID = "00000000-0000-4000-8000-000000000002";
 
 describe("research-task-request-schemas", () => {
   it("validates create and dry-run planning requests with bounded inputs", () => {
@@ -34,6 +35,19 @@ describe("research-task-request-schemas", () => {
         topK: 5,
       }),
     ).toMatchObject({ mode: "fast", topK: 5 });
+
+    expect(
+      CreateResearchTaskSchema.parse({
+        knowledgeSpaceId: SPACE_ID,
+        queryImages: [{ uploadFileId: IMAGE_ID }],
+      }),
+    ).toMatchObject({ queryImages: [{ uploadFileId: IMAGE_ID }] });
+    expect(() => PlanResearchTaskSchema.parse({ knowledgeSpaceId: SPACE_ID })).toThrow(
+      "At least one",
+    );
+    expect(() => CreateResearchTaskSchema.parse({ knowledgeSpaceId: SPACE_ID })).toThrow(
+      "At least one",
+    );
   });
 
   it("validates params and paginated partial/progress query defaults", () => {

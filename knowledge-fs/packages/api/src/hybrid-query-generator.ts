@@ -21,6 +21,7 @@ import {
   multimodalEvidenceAnswerLines,
   multimodalEvidenceFromCitations,
 } from "./multimodal-evidence";
+import type { ResolvedQueryImage } from "./query-images";
 import {
   estimateResearchModelPromptTokens,
   notifyResearchModelCallAfter,
@@ -59,6 +60,7 @@ export interface MultimodalAnswerProviderInput {
   readonly evidence: readonly MultimodalAnswerEvidenceItem[];
   readonly multimodalEvidence: readonly MultimodalEvidenceAttachment[];
   readonly query: string;
+  readonly queryImages?: readonly ResolvedQueryImage[] | undefined;
   readonly tenantId?: string | undefined;
   readonly traceId?: string | undefined;
 }
@@ -109,6 +111,7 @@ export function createHybridQueryGenerator({
   return {
     stream: async function* (input): AsyncGenerator<QueryGenerationEvent> {
       const tenantId = input.subject.tenantId;
+      const retrievalQuery = input.retrievalQuery?.trim() || input.query.trim();
       const retrievalProfileMetadata = queryRetrievalProfileMetadata(input.retrievalProfile);
       const projectionSnapshotMetadata = queryProjectionSnapshotMetadata(input.projectionSnapshot);
       const retrieveStartedAt = Date.now();
@@ -133,20 +136,23 @@ export function createHybridQueryGenerator({
         retrieval = retrievalResultFromResearchCheckpoint(restoredCheckpoint);
       } else {
         const embedStartedAt = Date.now();
-        const resolvedEmbedding = embeddingResolver
-          ? await embeddingResolver.resolve({
-              ...(input.embeddingProfile ? { profile: input.embeddingProfile } : {}),
-              knowledgeSpaceId: input.knowledgeSpaceId,
+        const resolvedEmbedding =
+          retrievalQuery && embeddingResolver
+            ? await embeddingResolver.resolve({
+                ...(input.embeddingProfile ? { profile: input.embeddingProfile } : {}),
+                knowledgeSpaceId: input.knowledgeSpaceId,
+                tenantId,
+              })
+            : null;
+        const queryEmbedding = retrievalQuery
+          ? await embedQueryVector({
+              model: resolvedEmbedding?.model ?? effectiveEmbeddingModel,
+              profile: resolvedEmbedding,
+              provider: resolvedEmbedding?.providerInstance ?? effectiveEmbeddingProvider,
+              query: retrievalQuery,
               tenantId,
             })
-          : null;
-        const queryEmbedding = await embedQueryVector({
-          model: resolvedEmbedding?.model ?? effectiveEmbeddingModel,
-          profile: resolvedEmbedding,
-          provider: resolvedEmbedding?.providerInstance ?? effectiveEmbeddingProvider,
-          query: input.query,
-          tenantId,
-        });
+          : { vector: [] as readonly number[] };
         if (resolvedEmbedding) {
           if (input.embeddingProfile) {
             assertObservedEmbeddingDimension({
@@ -184,6 +190,10 @@ export function createHybridQueryGenerator({
                 onResearchRound: async (checkpoint) => {
                   const bundle = evidenceBundleAssembler.assemble({
                     query: input.query,
+                    ...(input.queryImageMetadata?.length
+                      ? { queryImages: input.queryImageMetadata }
+                      : {}),
+                    ...(retrievalQuery ? { retrievalQuery } : {}),
                     retrieval: checkpoint.result,
                     ...(checkpoint.terminal ? {} : { state: "partial" as const }),
                     traceId: input.traceId,
@@ -198,6 +208,10 @@ export function createHybridQueryGenerator({
                 onResearchSearchCheckpoint: async (boundary) => {
                   const bundle = evidenceBundleAssembler.assemble({
                     query: input.query,
+                    ...(input.queryImageMetadata?.length
+                      ? { queryImages: input.queryImageMetadata }
+                      : {}),
+                    ...(retrievalQuery ? { retrievalQuery } : {}),
                     retrieval: boundary.result,
                     ...(boundary.checkpoint.phase === "complete"
                       ? {}
@@ -213,7 +227,8 @@ export function createHybridQueryGenerator({
             : {}),
           permissionScope: input.permissionScope,
           ...(input.projectionSnapshot ? { projectionSnapshot: input.projectionSnapshot } : {}),
-          query: input.query,
+          query: retrievalQuery,
+          ...(input.resolvedQueryImages?.length ? { queryImages: input.resolvedQueryImages } : {}),
           queryVector: queryEmbedding.vector,
           ...(input.requestedMode ? { requestedMode: input.requestedMode } : {}),
           ...(input.researchModelCallObserver
@@ -251,6 +266,8 @@ export function createHybridQueryGenerator({
       });
       evidenceBundle ??= evidenceBundleAssembler.assemble({
         query: input.query,
+        ...(input.queryImageMetadata?.length ? { queryImages: input.queryImageMetadata } : {}),
+        ...(retrievalQuery ? { retrievalQuery } : {}),
         retrieval,
         traceId: input.traceId,
       });
@@ -298,12 +315,15 @@ export function createHybridQueryGenerator({
         maxItems: maxMultimodalEvidenceItems,
       });
       let generatedAnswer: MultimodalAnswerProviderResult | undefined;
-      if (multimodalAnswerProvider && multimodalEvidence.length > 0) {
+      if (
+        multimodalAnswerProvider &&
+        (multimodalEvidence.length > 0 || (input.resolvedQueryImages?.length ?? 0) > 0)
+      ) {
         const modelCall = {
           callId: `query-answer:${input.traceId}:${input.researchExecutionAttempt ?? 0}:multimodal-extractive`,
           estimatedPromptTokens: estimateResearchModelPromptTokens({
             evidence: retrieval.items.map((item) => evidenceTextFromHybridItem(item)),
-            query: input.query,
+            query: input.query || retrievalQuery,
           }),
           maxOutputTokens: 1_024,
           model: "configured-multimodal-provider",
@@ -319,7 +339,10 @@ export function createHybridQueryGenerator({
               text: evidenceTextFromHybridItem(item),
             })),
             multimodalEvidence,
-            query: input.query,
+            query: input.query || retrievalQuery,
+            ...(input.resolvedQueryImages?.length
+              ? { queryImages: input.resolvedQueryImages }
+              : {}),
             tenantId,
             traceId: input.traceId,
           });

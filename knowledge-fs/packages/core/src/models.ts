@@ -1447,15 +1447,40 @@ export const EvidenceItemSchema = z.object({
 });
 export type EvidenceItem = z.infer<typeof EvidenceItemSchema>;
 
-export const EvidenceBundleSchema = z.object({
-  createdAt: DateTimeSchema,
-  id: UuidSchema,
-  items: z.array(EvidenceItemSchema),
-  missingEvidence: z.array(MissingEvidenceSchema).default([]),
-  query: z.string().min(1),
-  state: z.enum(["answerable", "partial", "not-enough-evidence", "conflict", "permission-limited"]),
-  traceId: UuidSchema.optional(),
+export const QueryImageMetadataSchema = z.object({
+  byteSize: z
+    .number()
+    .int()
+    .positive()
+    .max(10 * 1024 * 1024),
+  mimeType: z.enum(["image/gif", "image/jpeg", "image/png", "image/webp"]),
+  sha256: Sha256Schema,
+  uploadFileId: UuidSchema,
 });
+export type QueryImageMetadata = z.infer<typeof QueryImageMetadataSchema>;
+
+export const EvidenceBundleSchema = z
+  .object({
+    createdAt: DateTimeSchema,
+    id: UuidSchema,
+    items: z.array(EvidenceItemSchema),
+    missingEvidence: z.array(MissingEvidenceSchema).default([]),
+    query: z.string(),
+    queryImages: z.array(QueryImageMetadataSchema).max(4).optional(),
+    retrievalQuery: z.string().min(1).optional(),
+    state: z.enum([
+      "answerable",
+      "partial",
+      "not-enough-evidence",
+      "conflict",
+      "permission-limited",
+    ]),
+    traceId: UuidSchema.optional(),
+  })
+  .refine((bundle) => Boolean(bundle.query.trim()) || (bundle.queryImages?.length ?? 0) > 0, {
+    message: "EvidenceBundle requires query or queryImages",
+    path: ["query"],
+  });
 export type EvidenceBundle = z.infer<typeof EvidenceBundleSchema>;
 
 export const GoldenQuestionSchema = z.object({
@@ -1494,7 +1519,8 @@ export const AnswerTraceSchema = z.object({
       revision: z.number().int().min(1),
     })
     .optional(),
-  query: z.string().min(1),
+  query: z.string(),
+  queryImages: z.array(QueryImageMetadataSchema).max(4).optional(),
   /** Authenticated creator. Legacy traces without it are intentionally unreadable via the API. */
   subjectId: z.string().min(1).max(255).optional(),
   steps: z.array(AnswerTraceStepSchema),

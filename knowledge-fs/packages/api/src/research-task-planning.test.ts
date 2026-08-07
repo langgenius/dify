@@ -105,8 +105,9 @@ describe("research task dry-run planner", () => {
       planner.plan({
         knowledgeSpaceId: "space",
         query: " ",
+        queryImages: [],
       }),
-    ).toThrow("Research task dry-run query is required");
+    ).toThrow("Research task dry-run requires query or queryImages");
     expect(() =>
       planner.plan({
         knowledgeSpaceId: " ",
@@ -161,6 +162,46 @@ describe("research task dry-run planner", () => {
         },
       }),
     ).toThrow("Research task dry-run maxTopK must be at least 1");
+  });
+
+  it("accounts for one image-expansion model call and supports image-only planning", () => {
+    const planner = createResearchTaskDryRunPlanner({
+      retrievalPlanner: {
+        plan: (input) => ({
+          denseTopK: input.topK,
+          ftsTopK: 0,
+          fusionLimit: input.topK,
+          queryLanguage: "other",
+          requestedMode: input.mode ?? "research",
+          rerankCandidateLimit: 0,
+          resolvedMode: "research",
+          strategyVersion: "retrieval-planner-v1",
+          topK: input.topK,
+        }),
+      },
+    });
+    const queryImages = [{ uploadFileId: "00000000-0000-4000-8000-000000000001" }];
+
+    const plan = planner.plan({
+      knowledgeSpaceId: "space",
+      queryImages,
+    });
+
+    expect(plan.query).toBe("");
+    expect(plan.queryImages).toEqual(queryImages);
+    expect(plan.steps.map((step) => step.name)).toEqual([
+      "analyze",
+      "plan",
+      "inspect",
+      "retrieve",
+      "analyze",
+      "generate",
+    ]);
+    expect(plan.estimates.workBounds?.modelCalls).toMatchObject({
+      estimated: 18,
+      max: 42,
+      min: 2,
+    });
   });
 
   it("estimates mode and language-specific cache probability and budget overflow", () => {

@@ -481,6 +481,136 @@ describe("createApiRetriever final rerank wiring", () => {
 });
 
 describe("createApiRetriever dense and visual wiring", () => {
+  it("embeds each query image as a query and fuses independent visual searches", async () => {
+    const dense = vi.fn(async () => []);
+    const fts = vi.fn(async () => []);
+    const visualVectors: (readonly number[])[] = [];
+    const embedImages = vi.fn(async (input) => {
+      expect(input.inputType).toBe("query");
+      expect(input.images).toHaveLength(2);
+      return {
+        dense: [
+          [1, 0],
+          [0, 1],
+        ],
+        metadata: { model: "clip", provider: "dify-model-runtime" as const },
+        model: "clip",
+      };
+    });
+    const retriever = createApiRetriever({
+      embeddingEnabled: false,
+      imageQuery: {
+        mode: "fallback",
+        model: "clip",
+        provider: { embedImages, kind: "dify-model-runtime" },
+      },
+      planner: createRetrievalPlanner({ maxTopK: 100 }),
+      repository: {
+        searchDense: dense,
+        searchFts: fts,
+        searchVisualDense: async (input) => {
+          visualVectors.push(input.queryVector);
+          const suffix = input.queryVector[0] === 1 ? "51" : "52";
+          return [
+            {
+              ...candidateWithId(`018f0d60-7a49-7cc2-9c1b-5b36f18f2c${suffix}`, suffix),
+              source: "visual" as const,
+            },
+          ];
+        },
+      },
+    });
+
+    const result = await retriever.retrieve({
+      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+      limit: 5,
+      mode: "fast",
+      query: "",
+      queryImages: [resolvedQueryImage("01", [1]), resolvedQueryImage("02", [2])],
+      queryVector: [],
+      tenantId: "tenant-1",
+      topK: 10,
+    });
+
+    expect(embedImages).toHaveBeenCalledOnce();
+    expect(visualVectors).toEqual([
+      [1, 0],
+      [0, 1],
+    ]);
+    expect(dense).not.toHaveBeenCalled();
+    expect(fts).not.toHaveBeenCalled();
+    expect(result.items).toHaveLength(2);
+    expect(result.items.every((item) => item.sources.includes("visual"))).toBe(true);
+    expect(result.metrics?.visualEmbeddingCandidates).toBe(2);
+  });
+
+  it("does not transfer an empty image result list's weight to another image", async () => {
+    const retriever = createApiRetriever({
+      embeddingEnabled: false,
+      imageQuery: {
+        mode: "fallback",
+        model: "clip",
+        provider: {
+          embedImages: async () => ({
+            dense: [
+              [1, 0],
+              [0, 1],
+            ],
+            metadata: { model: "clip", provider: "dify-model-runtime" as const },
+            model: "clip",
+          }),
+          kind: "dify-model-runtime",
+        },
+      },
+      planner: createRetrievalPlanner({ maxTopK: 100 }),
+      repository: {
+        searchDense: async () => [],
+        searchFts: async () => [],
+        searchVisualDense: async (input) =>
+          input.queryVector[0] === 1
+            ? [
+                {
+                  ...candidateWithId("018f0d60-7a49-7cc2-9c1b-5b36f18f2c51", "51"),
+                  source: "visual" as const,
+                },
+              ]
+            : [],
+      },
+    });
+
+    const result = await retriever.retrieve({
+      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+      limit: 5,
+      mode: "fast",
+      query: "",
+      queryImages: [resolvedQueryImage("01", [1]), resolvedQueryImage("02", [2])],
+      queryVector: [],
+      topK: 10,
+    });
+
+    expect(result.items[0]?.score).toBe(0.25);
+  });
+
+  it("reports a typed degradation when query-image visual retrieval is unavailable", async () => {
+    const retriever = createApiRetriever({
+      embeddingEnabled: false,
+      planner: createRetrievalPlanner({ maxTopK: 100 }),
+      repository: { searchDense: async () => [], searchFts: async () => [] },
+    });
+
+    const result = await retriever.retrieve({
+      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+      limit: 5,
+      mode: "fast",
+      query: "",
+      queryImages: [resolvedQueryImage("01", [1])],
+      queryVector: [],
+      topK: 10,
+    });
+
+    expect(result.metrics?.degradationFlags).toContain("query-image-visual-leg-unavailable");
+  });
+
   it("passes the fixed publication id to dense, FTS, and visual legs", async () => {
     const publicationId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c43";
     const tenantId = "tenant-1";
@@ -709,6 +839,17 @@ describe("createApiRetriever dense and visual wiring", () => {
     expect(visualEmbedCalls).toBe(0);
   });
 });
+
+function resolvedQueryImage(suffix: string, bytes: number[]) {
+  const body = new Uint8Array(bytes);
+  return {
+    body,
+    byteSize: body.byteLength,
+    mimeType: "image/png" as const,
+    sha256: suffix.padEnd(64, "a"),
+    uploadFileId: `00000000-0000-4000-8000-0000000000${suffix}`,
+  };
+}
 
 describe("createApiRetriever PageIndex outline wiring", () => {
   it("uses saved outlines for research but not deep retrieval", async () => {

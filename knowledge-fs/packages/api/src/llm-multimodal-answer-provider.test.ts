@@ -212,6 +212,60 @@ describe("createContentBlockMultimodalAnswerProvider", () => {
 });
 
 describe("createObjectStorageContentBlockMultimodalAnswerProvider", () => {
+  it("puts query images before evidence images and reserves the byte budget for them", async () => {
+    const adapter = createNodePlatformAdapter({ env: {} });
+    await adapter.objectStorage.putObject({
+      body: new Uint8Array([9, 9, 9]),
+      contentType: "image/png",
+      key: "evidence.png",
+    });
+    const calls: GenerateMultimodalAnswerContentInput[] = [];
+    const provider = createObjectStorageContentBlockMultimodalAnswerProvider({
+      maxImageBytes: 3,
+      maxTotalImageBytes: 3,
+      model: "vision-native-answer",
+      objectStorage: adapter.objectStorage,
+      provider: {
+        generate: async (input) => {
+          calls.push(input);
+          return { text: "grounded" };
+        },
+      },
+    });
+
+    await provider.generate({
+      evidence: [],
+      multimodalEvidence: [
+        {
+          assetRef: { contentType: "image/png", objectKey: "evidence.png" },
+          documentAssetId: "doc-1",
+          modality: "image",
+          parseElementId: "image-1",
+          sectionPath: [],
+        },
+      ],
+      query: "find this image",
+      queryImages: [
+        {
+          body: new Uint8Array([1, 2, 3]),
+          byteSize: 3,
+          mimeType: "image/png",
+          sha256: "a".repeat(64),
+          uploadFileId: "00000000-0000-4000-8000-000000000001",
+        },
+      ],
+    });
+
+    const content = calls[0]?.messages[1]?.content ?? [];
+    const imageBlocks = content.filter((block) => block.type === "image_url");
+    expect(imageBlocks).toEqual([
+      expect.objectContaining({
+        imageUrl: { detail: "auto", url: "data:image/png;base64,AQID" },
+      }),
+    ]);
+    expect(content[1]).toMatchObject({ type: "image_url" });
+  });
+
   it("loads object-backed image attachments as data URL content blocks", async () => {
     const adapter = createNodePlatformAdapter({ env: {} });
     await adapter.objectStorage.putObject({

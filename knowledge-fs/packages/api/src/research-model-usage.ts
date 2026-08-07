@@ -11,7 +11,12 @@ export interface ResearchModelCallDescriptor {
   readonly maxOutputTokens: number;
   readonly model: string;
   readonly provider: string;
-  readonly step: "pageindex.layer" | "pageindex.semantic" | "pageindex.whole-tree" | "query.answer";
+  readonly step:
+    | "pageindex.layer"
+    | "pageindex.semantic"
+    | "pageindex.whole-tree"
+    | "query.answer"
+    | "query.image-expand";
 }
 
 export interface ResearchModelCallCompletion extends ResearchModelCallDescriptor {

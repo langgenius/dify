@@ -510,7 +510,13 @@ export function createBasicHybridRetriever({
         throw new Error("Hybrid retrieval limit must be at least 1");
       }
 
-      validateHybridQueryVector(input.queryVector);
+      const hasTextQuery = input.query.trim().length > 0;
+      const hasQueryImages = (input.queryImages?.length ?? 0) > 0;
+      if (hasTextQuery) {
+        validateHybridQueryVector(input.queryVector);
+      } else if (!hasQueryImages) {
+        throw new Error("Hybrid retrieval query or query images must be provided");
+      }
       const publishedScope = resolvePublishedRetrievalScope(input, strictPublishedReads);
       assertPublishedPermissionScope(input.permissionScope, strictPublishedReads);
       if (
@@ -525,56 +531,66 @@ export function createBasicHybridRetriever({
       const totalStartedAt = now();
       const plan =
         planner?.plan({
+          hasQueryImages,
           mode: input.mode,
           query: input.query,
           topK: input.topK,
           traceId: input.traceId,
         }) ??
         defaultRetrievalPlan({
+          hasQueryImages,
           query: input.query,
           topK: input.topK,
         });
       const degradationFlags: string[] = [];
       const [denseSettled, ftsSettled] = await Promise.allSettled([
-        timed(now, () =>
-          repository.searchDense({
-            denseProjectionModel: input.denseProjectionModel,
-            denseProjectionStatuses: input.denseProjectionStatuses,
-            denseProjectionVersion: input.denseProjectionVersion,
-            filters: input.filters,
-            knowledgeSpaceId: input.knowledgeSpaceId,
-            permissionScope: input.permissionScope,
-            projectionSetCandidateFingerprint: input.projectionSetCandidateFingerprint,
-            projectionSetFingerprint: input.projectionSetFingerprint,
-            ...(publishedScope ? { projectionSetPublicationId: publishedScope.publicationId } : {}),
-            projectionSetReadMode: input.projectionSetReadMode,
-            queryVector: input.queryVector,
-            ...(publishedScope
-              ? { tenantId: publishedScope.tenantId }
-              : input.tenantId
-                ? { tenantId: input.tenantId }
-                : {}),
-            topK: plan.denseTopK,
-          }),
-        ),
-        timed(now, () =>
-          repository.searchFts({
-            filters: input.filters,
-            knowledgeSpaceId: input.knowledgeSpaceId,
-            permissionScope: input.permissionScope,
-            projectionSetCandidateFingerprint: input.projectionSetCandidateFingerprint,
-            projectionSetFingerprint: input.projectionSetFingerprint,
-            ...(publishedScope ? { projectionSetPublicationId: publishedScope.publicationId } : {}),
-            projectionSetReadMode: input.projectionSetReadMode,
-            query: input.query,
-            ...(publishedScope
-              ? { tenantId: publishedScope.tenantId }
-              : input.tenantId
-                ? { tenantId: input.tenantId }
-                : {}),
-            topK: plan.ftsTopK,
-          }),
-        ),
+        hasTextQuery
+          ? timed(now, () =>
+              repository.searchDense({
+                denseProjectionModel: input.denseProjectionModel,
+                denseProjectionStatuses: input.denseProjectionStatuses,
+                denseProjectionVersion: input.denseProjectionVersion,
+                filters: input.filters,
+                knowledgeSpaceId: input.knowledgeSpaceId,
+                permissionScope: input.permissionScope,
+                projectionSetCandidateFingerprint: input.projectionSetCandidateFingerprint,
+                projectionSetFingerprint: input.projectionSetFingerprint,
+                ...(publishedScope
+                  ? { projectionSetPublicationId: publishedScope.publicationId }
+                  : {}),
+                projectionSetReadMode: input.projectionSetReadMode,
+                queryVector: input.queryVector,
+                ...(publishedScope
+                  ? { tenantId: publishedScope.tenantId }
+                  : input.tenantId
+                    ? { tenantId: input.tenantId }
+                    : {}),
+                topK: plan.denseTopK,
+              }),
+            )
+          : Promise.resolve({ durationMs: 0, value: [] }),
+        hasTextQuery
+          ? timed(now, () =>
+              repository.searchFts({
+                filters: input.filters,
+                knowledgeSpaceId: input.knowledgeSpaceId,
+                permissionScope: input.permissionScope,
+                projectionSetCandidateFingerprint: input.projectionSetCandidateFingerprint,
+                projectionSetFingerprint: input.projectionSetFingerprint,
+                ...(publishedScope
+                  ? { projectionSetPublicationId: publishedScope.publicationId }
+                  : {}),
+                projectionSetReadMode: input.projectionSetReadMode,
+                query: input.query,
+                ...(publishedScope
+                  ? { tenantId: publishedScope.tenantId }
+                  : input.tenantId
+                    ? { tenantId: input.tenantId }
+                    : {}),
+                topK: plan.ftsTopK,
+              }),
+            )
+          : Promise.resolve({ durationMs: 0, value: [] }),
       ]);
       const denseResult =
         denseSettled.status === "fulfilled"
@@ -682,7 +698,7 @@ export function createBasicHybridRetriever({
       );
       let rerankResult: { readonly durationMs: number; readonly value: HybridRetrievalItem[] };
 
-      if (reranker && plan.rerankCandidateLimit > 0) {
+      if (hasTextQuery && reranker && plan.rerankCandidateLimit > 0) {
         try {
           rerankResult = await timed(now, () =>
             rerankHybridRetrievalItems({

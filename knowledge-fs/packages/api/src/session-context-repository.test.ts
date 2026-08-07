@@ -144,4 +144,55 @@ describe("createCacheSessionContextRepository", () => {
       expect.objectContaining({ query: "second question" }),
     ]);
   });
+
+  it("records image-only query hashes and keeps validation backward compatible", async () => {
+    const sessions = createCacheSessionContextRepository({
+      cache: createRecordingCache(),
+      generateId: () => "session-images",
+    });
+
+    const result = await sessions.recordQuery({
+      knowledgeSpaceId: "space-a",
+      permissionSnapshot: ["read"],
+      query: "",
+      queryImageHashes: [" hash-a ", "hash-a", "hash-b"],
+      subjectId: "subject-a",
+      tenantId: "tenant-a",
+      traceId: "trace-images",
+    });
+
+    expect(result.context.previousQueries).toEqual([]);
+    expect(result.stored.previousQueries).toEqual([
+      {
+        askedAt: expect.any(String),
+        query: "",
+        queryImageHashes: ["hash-a", "hash-b"],
+        traceId: "trace-images",
+      },
+    ]);
+    const storedHashes = result.stored.previousQueries[0]?.queryImageHashes;
+    expect(storedHashes).toEqual(["hash-a", "hash-b"]);
+
+    await expect(
+      sessions.recordQuery({
+        knowledgeSpaceId: "space-a",
+        permissionSnapshot: [],
+        query: " ",
+        subjectId: "subject-a",
+        tenantId: "tenant-a",
+        traceId: "legacy-empty",
+      }),
+    ).rejects.toThrow("Session context query is required");
+    await expect(
+      sessions.recordQuery({
+        knowledgeSpaceId: "space-a",
+        permissionSnapshot: [],
+        query: " ",
+        queryImageHashes: [],
+        subjectId: "subject-a",
+        tenantId: "tenant-a",
+        traceId: "explicit-empty",
+      }),
+    ).rejects.toThrow("Session context query or queryImageHashes is required");
+  });
 });

@@ -186,6 +186,7 @@ export function createDocumentOutlineRetrievalPath({
     retrieve: async (input) => {
       const requestedLimit = input.limit;
       const plannedRetrieval = planner?.plan({
+        hasQueryImages: (input.queryImages?.length ?? 0) > 0,
         mode: input.mode,
         query: input.query,
         topK: input.topK,

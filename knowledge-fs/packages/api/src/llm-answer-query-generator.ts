@@ -23,6 +23,7 @@ import {
   multimodalEvidenceFromCitations,
 } from "./multimodal-evidence";
 import { ReasoningCapabilityUnavailableError } from "./profile-aware-query-generator";
+import { QUERY_IMAGE_IGNORED_NO_VISION_MODEL } from "./query-images";
 import {
   ResearchModelCallObserverError,
   estimateResearchModelPromptTokens,
@@ -158,6 +159,7 @@ export function createLlmAnswerQueryGenerator({
   return {
     stream: async function* (input): AsyncGenerator<QueryGenerationEvent> {
       const tenantId = input.subject.tenantId;
+      const retrievalQuery = input.retrievalQuery?.trim() || input.query.trim();
       const retrievalProfileMetadata = queryRetrievalProfileMetadata(input.retrievalProfile);
       const projectionSnapshotMetadata = queryProjectionSnapshotMetadata(input.projectionSnapshot);
       const reasoningSelection = input.retrievalProfile?.reasoningModel;
@@ -189,27 +191,29 @@ export function createLlmAnswerQueryGenerator({
         retrieval = retrievalResultFromResearchCheckpoint(restoredCheckpoint);
       } else {
         const embedStartedAt = Date.now();
-        const resolvedEmbedding = embeddingResolver
-          ? await embeddingResolver.resolve({
-              ...(input.embeddingProfile ? { profile: input.embeddingProfile } : {}),
-              knowledgeSpaceId: input.knowledgeSpaceId,
-              tenantId,
-            })
-          : null;
+        const resolvedEmbedding =
+          retrievalQuery && embeddingResolver
+            ? await embeddingResolver.resolve({
+                ...(input.embeddingProfile ? { profile: input.embeddingProfile } : {}),
+                knowledgeSpaceId: input.knowledgeSpaceId,
+                tenantId,
+              })
+            : null;
         const effectiveProvider = resolvedEmbedding?.providerInstance ?? embeddings;
         const queryEmbedding: {
           readonly embeddingModel?: string | undefined;
           readonly vector: readonly number[];
           readonly vectorSpaceId?: string | undefined;
-        } = effectiveProvider
-          ? await embedLlmAnswerQuery({
-              model: resolvedEmbedding?.model ?? embeddingModel ?? "",
-              profile: resolvedEmbedding,
-              provider: effectiveProvider,
-              query: input.query,
-              tenantId,
-            })
-          : { vector: [0] as readonly number[] };
+        } =
+          effectiveProvider && retrievalQuery
+            ? await embedLlmAnswerQuery({
+                model: resolvedEmbedding?.model ?? embeddingModel ?? "",
+                profile: resolvedEmbedding,
+                provider: effectiveProvider,
+                query: retrievalQuery,
+                tenantId,
+              })
+            : { vector: [0] as readonly number[] };
         if (resolvedEmbedding) {
           if (input.embeddingProfile) {
             assertObservedEmbeddingDimension({
@@ -247,6 +251,10 @@ export function createLlmAnswerQueryGenerator({
                 onResearchRound: async (checkpoint) => {
                   const bundle = evidenceBundleAssembler.assemble({
                     query: input.query,
+                    ...(input.queryImageMetadata?.length
+                      ? { queryImages: input.queryImageMetadata }
+                      : {}),
+                    ...(retrievalQuery ? { retrievalQuery } : {}),
                     retrieval: checkpoint.result,
                     ...(checkpoint.terminal ? {} : { state: "partial" as const }),
                     traceId: input.traceId,
@@ -261,6 +269,10 @@ export function createLlmAnswerQueryGenerator({
                 onResearchSearchCheckpoint: async (boundary) => {
                   const bundle = evidenceBundleAssembler.assemble({
                     query: input.query,
+                    ...(input.queryImageMetadata?.length
+                      ? { queryImages: input.queryImageMetadata }
+                      : {}),
+                    ...(retrievalQuery ? { retrievalQuery } : {}),
                     retrieval: boundary.result,
                     ...(boundary.checkpoint.phase === "complete"
                       ? {}
@@ -276,7 +288,8 @@ export function createLlmAnswerQueryGenerator({
             : {}),
           permissionScope: input.permissionScope,
           ...(input.projectionSnapshot ? { projectionSnapshot: input.projectionSnapshot } : {}),
-          query: input.query,
+          query: retrievalQuery,
+          ...(input.resolvedQueryImages?.length ? { queryImages: input.resolvedQueryImages } : {}),
           queryVector: queryEmbedding.vector,
           ...(input.requestedMode ? { requestedMode: input.requestedMode } : {}),
           ...(input.researchModelCallObserver
@@ -314,6 +327,8 @@ export function createLlmAnswerQueryGenerator({
       });
       evidenceBundle ??= evidenceBundleAssembler.assemble({
         query: input.query,
+        ...(input.queryImageMetadata?.length ? { queryImages: input.queryImageMetadata } : {}),
+        ...(retrievalQuery ? { retrievalQuery } : {}),
         retrieval,
         traceId: input.traceId,
       });
@@ -369,13 +384,23 @@ export function createLlmAnswerQueryGenerator({
       // Prefer the VLM answer provider when there is multimodal evidence; on any failure, fall back
       // to the text LLM below (which still receives the visual OCR/caption evidence in its prompt).
       let multimodalAnswerFailure: string | undefined;
+      let queryImageAnswerDegraded =
+        (input.resolvedQueryImages?.length ?? 0) > 0 && !multimodalAnswerProvider;
       const answerStartedAt = Date.now();
-      if (multimodalAnswerProvider && multimodalEvidence.length > 0) {
+      if (queryImageAnswerDegraded) {
+        yield traceStepEvent("query.answer.multimodal", answerStartedAt, "skipped", {
+          degradationReason: QUERY_IMAGE_IGNORED_NO_VISION_MODEL,
+        });
+      }
+      if (
+        multimodalAnswerProvider &&
+        (multimodalEvidence.length > 0 || (input.resolvedQueryImages?.length ?? 0) > 0)
+      ) {
         const multimodalCall = {
           callId: `query-answer:${input.traceId}:${input.researchExecutionAttempt ?? 0}:multimodal`,
           estimatedPromptTokens: estimateResearchModelPromptTokens({
             evidence: retrieval.items.map((item) => evidenceTextFromHybridItem(item)),
-            query: input.query,
+            query: input.query || retrievalQuery,
           }),
           maxOutputTokens: maxOutputTokens ?? 1_024,
           model: answerModel,
@@ -391,7 +416,10 @@ export function createLlmAnswerQueryGenerator({
               text: evidenceTextFromHybridItem(item),
             })),
             multimodalEvidence,
-            query: input.query,
+            query: input.query || retrievalQuery,
+            ...(input.resolvedQueryImages?.length
+              ? { queryImages: input.resolvedQueryImages }
+              : {}),
             ...(tenantId ? { tenantId } : {}),
             ...(input.traceId ? { traceId: input.traceId } : {}),
           });
@@ -436,6 +464,9 @@ export function createLlmAnswerQueryGenerator({
           }
 
           multimodalAnswerFailure = "empty-multimodal-answer";
+          if ((input.resolvedQueryImages?.length ?? 0) > 0) {
+            queryImageAnswerDegraded = true;
+          }
         } catch (error) {
           if (error instanceof ResearchModelCallObserverError) throw error;
           await notifyResearchModelCallAfter(input.researchModelCallObserver, {
@@ -444,6 +475,9 @@ export function createLlmAnswerQueryGenerator({
           });
           multimodalAnswerFailure =
             error instanceof Error ? error.message : "multimodal-answer-failed";
+          if ((input.resolvedQueryImages?.length ?? 0) > 0) {
+            queryImageAnswerDegraded = true;
+          }
         }
 
         if (multimodalAnswerFailure) {
@@ -462,7 +496,7 @@ export function createLlmAnswerQueryGenerator({
       const messages: readonly LlmAnswerMessage[] = [
         { content: ANSWER_SYSTEM_PROMPT, role: "system" },
         {
-          content: `Question: ${input.query}\n\nEvidence:\n${evidenceSection}`,
+          content: `Question: ${input.query || retrievalQuery}\n\nEvidence:\n${evidenceSection}`,
           role: "user",
         },
       ];
@@ -541,6 +575,9 @@ export function createLlmAnswerQueryGenerator({
           ...(projectionSnapshotMetadata ? { projectionSnapshot: projectionSnapshotMetadata } : {}),
           ...(retrievalProfileMetadata ? { retrievalProfile: retrievalProfileMetadata } : {}),
           ...(multimodalAnswerFailure ? { multimodalAnswerFailure } : {}),
+          ...(queryImageAnswerDegraded
+            ? { queryImageDegradationReasons: [QUERY_IMAGE_IGNORED_NO_VISION_MODEL] }
+            : {}),
           ...(multimodalEvidence.length > 0 ? { multimodalEvidence } : {}),
           ...(answerProvider.kind ? { provider: answerProvider.kind } : {}),
           ...(providerFinishReason ? { providerFinishReason } : {}),

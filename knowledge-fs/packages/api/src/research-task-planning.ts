@@ -1,8 +1,11 @@
+import type { QueryImageReference } from "./query-images";
+
 export type ResearchTaskPlanMode = "auto" | "deep" | "fast" | "research";
 export type ResearchTaskResolvedMode = Exclude<ResearchTaskPlanMode, "auto">;
 export type ResearchTaskQueryLanguage = "cjk" | "latin" | "mixed-cjk-latin" | "other";
 
 export interface ResearchTaskRetrievalPlanInput {
+  readonly hasQueryImages?: boolean | undefined;
   readonly mode?: ResearchTaskPlanMode | undefined;
   readonly query: string;
   readonly resolvedMode?: ResearchTaskResolvedMode | undefined;
@@ -43,7 +46,9 @@ export interface ResearchTaskDryRunPlanInput {
   readonly budgetUsd?: number | undefined;
   readonly knowledgeSpaceId: string;
   readonly mode?: ResearchTaskPlanMode | undefined;
-  readonly query: string;
+  readonly query?: string | undefined;
+  readonly queryImageCount?: number | undefined;
+  readonly queryImages?: readonly QueryImageReference[] | undefined;
   readonly resolvedMode?: ResearchTaskResolvedMode | undefined;
   readonly topK?: number | undefined;
   readonly traceId?: string | undefined;
@@ -83,6 +88,7 @@ export interface ResearchTaskDryRunPlan {
   };
   readonly knowledgeSpaceId: string;
   readonly query: string;
+  readonly queryImages?: readonly QueryImageReference[] | undefined;
   readonly retrievalPlan: ResearchTaskRetrievalPlan;
   readonly steps: readonly ResearchTaskDryRunStep[];
   readonly strategyVersion: "research-dry-run-planner-v1";
@@ -154,15 +160,25 @@ export function createResearchTaskDryRunPlanner({
   return {
     plan(input) {
       const knowledgeSpaceId = input.knowledgeSpaceId.trim();
-      const query = input.query.trim();
+      const query = input.query?.trim() ?? "";
+      const queryImages = input.queryImages ?? [];
+      const queryImageCount = input.queryImageCount ?? queryImages.length;
       const topK = input.topK ?? 10;
 
       if (!knowledgeSpaceId) {
         throw new Error("Research task dry-run knowledgeSpaceId is required");
       }
 
-      if (!query) {
-        throw new Error("Research task dry-run query is required");
+      if (!query && queryImageCount === 0) {
+        throw new Error(
+          input.queryImages === undefined && input.queryImageCount === undefined
+            ? "Research task dry-run query is required"
+            : "Research task dry-run requires query or queryImages",
+        );
+      }
+
+      if (!Number.isSafeInteger(queryImageCount) || queryImageCount < 0 || queryImageCount > 4) {
+        throw new Error("Research task dry-run queryImageCount must be between 0 and 4");
       }
 
       if (new TextEncoder().encode(query).byteLength > maxQueryBytes) {
@@ -186,13 +202,14 @@ export function createResearchTaskDryRunPlanner({
 
       const retrievalPlan = retrievalPlanner.plan({
         mode: input.mode ?? "research",
+        hasQueryImages: queryImageCount > 0,
         query,
         ...(input.resolvedMode ? { resolvedMode: input.resolvedMode } : {}),
         topK,
         traceId: input.traceId,
       });
       const retrievalWork = estimateRetrievalWork(retrievalPlan, researchPolicy);
-      const steps = estimateSteps(query, retrievalPlan, retrievalWork, llmPricing);
+      const steps = estimateSteps(query, queryImageCount, retrievalPlan, retrievalWork, llmPricing);
       const inputTokens = steps.reduce((total, step) => total + step.estimatedInputTokens, 0);
       const outputTokens = steps.reduce((total, step) => total + step.estimatedOutputTokens, 0);
       const estimatedCost = roundCurrency(
@@ -202,6 +219,8 @@ export function createResearchTaskDryRunPlanner({
       const p50Latency = steps.reduce((total, step) => total + step.estimatedLatencyMs, 0);
       const p95Latency = Math.ceil(p50Latency * 1.8);
       const budgetUsd = input.budgetUsd;
+      const imageExpansionCalls =
+        queryImageCount > 0 && retrievalPlan.resolvedMode !== "fast" ? 1 : 0;
 
       return {
         budget: {
@@ -231,14 +250,30 @@ export function createResearchTaskDryRunPlanner({
           scannedResources: retrievalWork.scannedResources,
           toolCalls,
           totalTokens: inputTokens + outputTokens,
-          workBounds: retrievalWork.workBounds,
+          workBounds: addEstimatedModelCalls(retrievalWork.workBounds, imageExpansionCalls),
         },
         knowledgeSpaceId,
         query,
+        ...(queryImages.length > 0 ? { queryImages } : {}),
         retrievalPlan,
         steps,
         strategyVersion: "research-dry-run-planner-v1",
       };
+    },
+  };
+}
+
+function addEstimatedModelCalls(
+  bounds: ResearchTaskRetrievalWorkEstimate["workBounds"],
+  calls: number,
+): ResearchTaskRetrievalWorkEstimate["workBounds"] {
+  if (calls === 0) return bounds;
+  return {
+    ...bounds,
+    modelCalls: {
+      estimated: bounds.modelCalls.estimated + calls,
+      max: bounds.modelCalls.max + calls,
+      min: bounds.modelCalls.min + calls,
     },
   };
 }
@@ -273,6 +308,7 @@ export function evaluateResearchTaskLimits(
 
 function estimateSteps(
   query: string,
+  queryImageCount: number,
   retrievalPlan: ResearchTaskRetrievalPlan,
   retrievalWork: ResearchTaskRetrievalWorkEstimate,
   llmPricing: ResearchTaskLlmPricing,
@@ -284,6 +320,22 @@ function estimateSteps(
     : retrievalPlan.fusionLimit;
 
   return [
+    ...(queryImageCount > 0 && retrievalPlan.resolvedMode !== "fast"
+      ? [
+          {
+            estimatedCostUsd: estimateLlmCost(
+              queryTokens + queryImageCount * 1_024,
+              512,
+              llmPricing,
+            ),
+            estimatedInputTokens: queryTokens + queryImageCount * 1_024,
+            estimatedLatencyMs: 800,
+            estimatedOutputTokens: 512,
+            estimatedToolCalls: 1,
+            name: "analyze" as const,
+          },
+        ]
+      : []),
     {
       estimatedCostUsd: estimateLlmCost(queryTokens + 256, 192, llmPricing),
       estimatedInputTokens: queryTokens + 256,

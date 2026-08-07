@@ -69,6 +69,7 @@ describe("createApiVisualEmbeddingOptions", () => {
         ...PLUGIN_ENV,
         // The daemon response below is authoritative; a stale configured value is ignored.
         KNOWLEDGE_VISUAL_EMBEDDING_DIMENSION: "999",
+        KNOWLEDGE_QUERY_IMAGE_RETRIEVAL_ENABLED: "true",
         KNOWLEDGE_VISUAL_EMBEDDING_QUERY_MODE: "primary",
       },
       objectStorage: adapter.objectStorage,
@@ -147,7 +148,48 @@ describe("createApiVisualEmbeddingOptions", () => {
     await expect(options?.queryEmbeddingProvider?.models()).resolves.toMatchObject([
       { dimension: 2, id: "clip-multimodal", provider: "dify-model-runtime" },
     ]);
+
+    await expect(
+      options?.queryImageEmbeddingProvider?.embedImages({
+        images: [
+          {
+            assetRef: { uploadFileId: "00000000-0000-4000-8000-000000000001" },
+            body: new Uint8Array([4, 5, 6]),
+            contentType: "image/png",
+            documentAssetId: "00000000-0000-4000-8000-000000000001",
+            metadata: { queryImage: true },
+            modality: "image",
+            nodeId: "00000000-0000-4000-8000-000000000001",
+            objectKey: "00000000-0000-4000-8000-000000000001",
+            sourceText: "",
+          },
+        ],
+        inputType: "query",
+        model: options.model ?? "",
+        tenantId: "tenant-1",
+      }),
+    ).resolves.toMatchObject({ dense: [[0.1, 0.9]] });
+    const imageQueryPayload = (await requests[2]?.json()) as Record<string, unknown>;
+    expect(imageQueryPayload).toMatchObject({
+      documents: [{ content: "BAUG", content_type: "image" }],
+      input_type: "query",
+    });
     expect(options?.queryMode).toBe("primary");
+  });
+
+  it("keeps query-image embedding disabled when query mode is off", () => {
+    const adapter = createNodePlatformAdapter({ env: {} });
+    const options = createApiVisualEmbeddingOptions({
+      env: {
+        ...PLUGIN_ENV,
+        KNOWLEDGE_QUERY_IMAGE_RETRIEVAL_ENABLED: "true",
+        KNOWLEDGE_VISUAL_EMBEDDING_QUERY_MODE: "off",
+      },
+      objectStorage: adapter.objectStorage,
+    });
+
+    expect(options?.queryImageEmbeddingProvider).toBeUndefined();
+    expect(options?.queryEmbeddingProvider).toBeUndefined();
   });
 
   it("requires a tenantId for image-byte embedding calls", async () => {

@@ -112,6 +112,8 @@ export interface VisualEmbeddingImageInput extends VisualEmbeddingAssetInput {
 
 export interface EmbedVisualImagesInput {
   readonly images: readonly VisualEmbeddingImageInput[];
+  /** Document ingestion is the backward-compatible default; query images use the query lane. */
+  readonly inputType?: "document" | "query" | undefined;
   readonly model: string;
   readonly signal?: AbortSignal | undefined;
   readonly tenantId?: string;

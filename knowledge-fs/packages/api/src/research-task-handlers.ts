@@ -386,6 +386,7 @@ export function registerResearchTaskHandlers({
                 }
               : {}),
           query: body.query,
+          queryImages: body.queryImages ?? [],
           tenantId: subject.tenantId,
           topK: plan.retrievalPlan.topK,
         });
@@ -721,7 +722,10 @@ async function resolveResearchTaskPlan({
 }: {
   readonly allowLegacyProfileFallback: boolean;
   readonly autoRetrievalModeResolver?: AutoRetrievalModeResolver | undefined;
-  readonly body: Pick<PlanResearchTaskBody, "budgetUsd" | "mode" | "query" | "topK">;
+  readonly body: Pick<
+    PlanResearchTaskBody,
+    "budgetUsd" | "mode" | "query" | "queryImages" | "topK"
+  >;
   readonly dryRunResearchPlanner: ResearchTaskDryRunPlanner;
   readonly knowledgeSpaceId: string;
   readonly runtimeSnapshotResolver?: PublishedKnowledgeSpaceRuntimeSnapshotResolver | undefined;
@@ -733,6 +737,9 @@ async function resolveResearchTaskPlan({
   readonly plan: ReturnType<ResearchTaskDryRunPlanner["plan"]>;
   readonly runtimeSnapshotPayload?: ReturnType<typeof toResearchTaskRuntimeSnapshotPayload>;
 }> {
+  const query = body.query?.trim() ?? "";
+  const queryImages = body.queryImages ?? [];
+  const hasQueryImages = queryImages.length > 0;
   if (!runtimeSnapshotResolver) {
     if (!allowLegacyProfileFallback) {
       throw new PublishedProjectionReadUnavailableError({ knowledgeSpaceId, tenantId });
@@ -746,7 +753,8 @@ async function resolveResearchTaskPlan({
     }
     const modeResolution = await resolveRetrievalModeRequest({
       fallbackMode: "research",
-      query: body.query,
+      hasQueryImages,
+      query,
       requestedMode,
       resolver: autoRetrievalModeResolver,
       tenantId,
@@ -758,7 +766,9 @@ async function resolveResearchTaskPlan({
         budgetUsd: body.budgetUsd,
         knowledgeSpaceId,
         mode: requestedMode,
-        query: body.query,
+        query,
+        queryImageCount: queryImages.length,
+        queryImages,
         resolvedMode: modeResolution.resolvedMode,
         topK: body.topK,
         traceId,
@@ -797,7 +807,8 @@ async function resolveResearchTaskPlan({
   const requestedMode = body.mode ?? frozenRuntime.retrievalProfile.defaultMode;
   const modeResolution = await resolveRetrievalModeRequest({
     fallbackMode: frozenRuntime.retrievalProfile.defaultMode,
-    query: body.query,
+    hasQueryImages,
+    query,
     reasoningModel: frozenRuntime.retrievalProfile.reasoningModel,
     requestedMode,
     resolver: autoRetrievalModeResolver,
@@ -808,7 +819,9 @@ async function resolveResearchTaskPlan({
     budgetUsd: body.budgetUsd,
     knowledgeSpaceId,
     mode: requestedMode,
-    query: body.query,
+    query,
+    queryImageCount: queryImages.length,
+    queryImages,
     resolvedMode: modeResolution.resolvedMode,
     topK: body.topK ?? frozenRuntime.retrievalProfile.topK,
     traceId,

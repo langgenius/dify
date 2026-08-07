@@ -29,6 +29,7 @@ import {
   createProfileAwareKnowledgeSpaceManifestRepository,
   createProfileAwareQueryGenerator,
   createPublishedProjectionReadSnapshotResolver,
+  createQueryImageAwareQueryGenerator,
   createResearchAwareQueryGenerator,
   createRetrievalExecutionLeaseCoordinator,
   createRetrievalPlanner,
@@ -75,6 +76,8 @@ import { createApiOnlineDocumentOptions } from "./online-document-options";
 import { createApiOnlineDriveOptions } from "./online-drive-options";
 import { createApiKnowledgeFsOperationalMetrics } from "./operational-metrics";
 import { createApiDocumentParser } from "./parser-options";
+import { createApiQueryImageExpansionProvider } from "./query-image-expansion-options";
+import { createApiQueryImageResolver } from "./query-image-options";
 import { createApiDeploymentReadinessChecks } from "./readiness-options";
 import { createApiRelevanceTriageOptions } from "./relevance-triage-signals";
 import {
@@ -109,6 +112,8 @@ const researchTaskDirectStream = createApiResearchTaskDirectStreamAssembly({
 });
 
 const adapter = createNodePlatformAdapter();
+const queryImageResolver = createApiQueryImageResolver({ env: process.env });
+const queryImageExpansionProvider = createApiQueryImageExpansionProvider(process.env);
 const operationalMetrics = createApiKnowledgeFsOperationalMetrics({
   emit: (metric) => {
     process.stdout.write(`${JSON.stringify(metric)}\n`);
@@ -651,6 +656,16 @@ const retriever = retrievalRepository
       planner: retrievalPlanner,
       metrics: operationalMetrics.retrieval,
       repository: retrievalRepository,
+      ...(visualEmbeddingOptions?.queryImageEmbeddingProvider &&
+      visualEmbeddingOptions.queryMode !== "off"
+        ? {
+            imageQuery: {
+              model: visualEmbeddingOptions.model,
+              mode: visualEmbeddingOptions.queryMode,
+              provider: visualEmbeddingOptions.queryImageEmbeddingProvider,
+            },
+          }
+        : {}),
       // Production retrieval is profile-only. Keep the provider factory, but never expose the
       // optional deployment compatibility provider as an implicit rerank fallback.
       rerankerOptions: rerankerOptions
@@ -730,13 +745,25 @@ const researchAnswerQueryGenerator =
         profileLlmGenerator: profileLlmAnswerQueryGenerator,
       })
     : undefined;
-const interactiveQueryGenerator =
+const baseInteractiveQueryGenerator =
   retrievalEvidenceQueryGenerator && researchAnswerQueryGenerator
     ? createResearchAwareQueryGenerator({
         researchGenerator: researchAnswerQueryGenerator,
         retrievalGenerator: retrievalEvidenceQueryGenerator,
       })
     : undefined;
+const interactiveQueryGenerator = baseInteractiveQueryGenerator
+  ? createQueryImageAwareQueryGenerator({
+      generator: baseInteractiveQueryGenerator,
+      provider: queryImageExpansionProvider,
+    })
+  : undefined;
+const durableResearchAnswerQueryGenerator = researchAnswerQueryGenerator
+  ? createQueryImageAwareQueryGenerator({
+      generator: researchAnswerQueryGenerator,
+      provider: queryImageExpansionProvider,
+    })
+  : undefined;
 const researchProjectionSnapshotResolver = repositoryOptions.projectionSetPublications
   ? createPublishedProjectionReadSnapshotResolver({
       publications: repositoryOptions.projectionSetPublications,
@@ -787,7 +814,7 @@ const researchTaskRuntime =
   databaseRepositories.researchTaskPartialResults &&
   databaseRepositories.researchTaskProgressEvents &&
   repositoryOptions.knowledgeSpaceAccess &&
-  researchAnswerQueryGenerator
+  durableResearchAnswerQueryGenerator
     ? createApiResearchTaskRuntime({
         access: repositoryOptions.knowledgeSpaceAccess,
         adapter,
@@ -795,7 +822,7 @@ const researchTaskRuntime =
           ? { capabilityGrants: databaseRepositories.capabilityGrantProvenance }
           : {}),
         ...(deletionLifecycleFence ? { deletionFence: deletionLifecycleFence } : {}),
-        generator: researchAnswerQueryGenerator,
+        generator: durableResearchAnswerQueryGenerator,
         manifests: knowledgeSpaceManifests,
         metrics: operationalMetrics.durableTasks,
         partials: databaseRepositories.researchTaskPartialResults,
@@ -803,6 +830,7 @@ const researchTaskRuntime =
         ...(researchProjectionSnapshotResolver
           ? { projectionSnapshotResolver: researchProjectionSnapshotResolver }
           : {}),
+        queryImageResolver,
         repository: databaseRepositories.researchTaskDurableRepository,
       })
     : undefined;
@@ -911,6 +939,7 @@ const app = createKnowledgeGateway({
       }
     : {}),
   ...(interactiveQueryGenerator ? { queryGenerator: interactiveQueryGenerator } : {}),
+  queryImageResolver,
   ...(retrievalTestExecutor ? { retrievalTestExecutor } : {}),
   ...(publishedGraph ? { publishedGraph } : {}),
   ...(researchTaskRuntime

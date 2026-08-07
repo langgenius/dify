@@ -1,7 +1,7 @@
 # KnowledgeFS Master Iteration Plan
 
 > Created: 2026-06-24
-> Updated: 2026-08-05
+> Updated: 2026-08-07
 > Source directory: `.harness/docs`
 > Status: current executable master plan
 > Rule: historical plans remain source records; this file is the first document to use
@@ -27,7 +27,7 @@ and how each slice should be accepted and verified.
 | `.harness/docs/pageindex-inspired-outline-iteration-plan.md` | PageIndex-style `DocumentOutline`, section hierarchy, TOC/title/page/offset metadata, outline summaries, KnowledgeFS/MCP surface, research tree search. | Core implemented. Remaining work is quality hardening and regression evaluation. |
 | `.harness/docs/pageindex-research-retrieval-v2-iteration-plan.md` | Document selection, book-like layered Research navigation, Value node queue, interactive/durable policies, degradation, budgets, and human-golden findability. | Active execution plan. Automatic Golden Question generation is explicitly excluded. |
 | `.harness/docs/multimodal-knowledgefs-iteration-plan.md` | `DocumentMultimodalManifest`, table/image/code/page inventory, visual assets, thumbnails, VLM answer support, visual embeddings, Admin browser, evals. | Core functional capability implemented. Remaining work is external QA fixtures, provider conformance, and richer trace UX. |
-| `.harness/docs/image-query-retrieval-iteration-plan.md` | Image-as-query support: query-side image visual embedding (`inputType: "query"`), gateway image transport with typed degradation, query images in VLM answering, decision-gated query image-to-text expansion for deep/research. | Proposed execution plan for multimodal query input. Retrieval-time recognition of document images is explicitly excluded (belongs to ingest-side enrichment reindex). |
+| `.harness/docs/image-query-retrieval-iteration-plan.md` | Image-as-query support: query-side image visual embedding (`inputType: "query"`), gateway image transport with typed degradation, query images in VLM answering, and query image-to-text expansion for deep/research. | Implemented 2026-08-07 for the backend-only scope. Retrieval-time recognition of document images remains explicitly excluded (belongs to ingest-side enrichment reindex). |
 | `.harness/docs/rag-platform-redesign-technical-selection.md` | Architecture source of truth and technology choices. | Updated to reflect this master plan, PageIndex-inspired outlines, native multimodal contracts, and visual indexing. |
 | Dify prototype `/datasets` | Product UX target for dataset list/detail, overview readiness, sources, documents, evidence, quality, settings, agent access, and pipeline surfaces. | Used as the Admin/product parity target before deeper quality-only iteration. |
 

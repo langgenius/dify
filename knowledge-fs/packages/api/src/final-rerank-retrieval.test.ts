@@ -202,6 +202,38 @@ describe("final rerank capability gating", () => {
     expect(rerank).toHaveBeenCalledOnce();
     expect(result.items[0]?.metadata.rerankModel).toBe("legacy-reranker");
   });
+
+  it("plans pure-image requests with and without an injected planner", async () => {
+    const imageInput: RetrieveHybridInput = {
+      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+      limit: 1,
+      mode: "research",
+      query: "",
+      queryImages: [
+        {
+          body: new Uint8Array([1]),
+          byteSize: 1,
+          mimeType: "image/png",
+          sha256: "a".repeat(64),
+          uploadFileId: "00000000-0000-4000-8000-000000000001",
+        },
+      ],
+      queryVector: [],
+      topK: 3,
+    };
+    const withPlanner = createFinalRerankRetrieval({
+      planner: createRetrievalPlanner({ maxTopK: 100 }),
+      retriever: baseRetriever(),
+    });
+    const withDefaultPlan = createFinalRerankRetrieval({ retriever: baseRetriever() });
+
+    await expect(withPlanner.retrieve(imageInput)).resolves.toMatchObject({
+      items: expect.any(Array),
+    });
+    await expect(withDefaultPlan.retrieve(imageInput)).resolves.toMatchObject({
+      items: expect.any(Array),
+    });
+  });
 });
 
 function baseRetriever(): BasicHybridRetriever {

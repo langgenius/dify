@@ -16,6 +16,7 @@ import {
   knowledgeSpaceAccessChannelForCallerKind,
   revalidateKnowledgeSpaceDurablePermission,
 } from "./knowledge-space-authorization";
+import { queryImageReferencesFromMetadata } from "./query-images";
 import type { ResearchTaskJob } from "./research-task-job";
 
 export class DerivedResultOwnerMismatchError extends Error {
@@ -143,6 +144,7 @@ export async function authorizeAgentWorkspaceDerivedResult(input: {
 
 /** Explicit allow-list: broker, lease, ACL provenance, and tenant fencing never become API data. */
 export function toPublicResearchTaskJob(job: ResearchTaskJob) {
+  const queryImages = queryImageReferencesFromMetadata(job.metadata);
   return {
     budgetUsd: job.budgetUsd,
     completedAt: job.completedAt,
@@ -155,6 +157,7 @@ export function toPublicResearchTaskJob(job: ResearchTaskJob) {
     metadata: omitKnowledgeFsReservedMetadata(job.metadata),
     mode: job.mode,
     query: job.query,
+    ...(queryImages.length > 0 ? { queryImages } : {}),
     stage: job.stage,
     topK: job.topK,
     updatedAt: job.updatedAt,

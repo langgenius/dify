@@ -52,12 +52,38 @@ the service:
 | `KNOWLEDGE_DOCUMENT_COMPILATION_RUNTIME` | Durable document worker rollout. |
 | `KNOWLEDGE_FS_CAPABILITY_V2_ENABLED` | Capability-v2 verifier rollout. |
 | `KNOWLEDGE_FS_CAPABILITY_V2_PUBLIC_JWKS` | Public verification key set issued by Dify. |
+| `KNOWLEDGE_QUERY_IMAGE_RETRIEVAL_ENABLED` | Opt in to query-image visual retrieval; requires an enabled visual-embedding provider/index and a query mode other than `off`. |
+| `KNOWLEDGE_QUERY_IMAGE_EXPANSION_TIMEOUT_MS` | Timeout for the single Deep/Research vision expansion call; defaults to 8000 ms. |
 | `UNSTRUCTURED_API_URL` | Parser endpoint for complex formats. |
 | `UNSTRUCTURED_API_KEY` | Optional parser authentication. |
 
 Compose injects `DIFY_INNER_API_URL` and `DIFY_INNER_API_KEY`; do not duplicate them in the
 operator-owned env file. Do not add `MINIO_*`, cloud object-storage credentials, provider API keys,
 `PLUGIN_DAEMON_*`, datasource tokens, or OAuth client secrets.
+
+## Image-query rollout
+
+The public Dify API accepts query images as actor-owned Dify `UploadFile` references. KnowledgeFS
+does not receive storage credentials or persist a second copy of the bytes: Dify validates tenant
+and account ownership, MIME, size, count, and aggregate size, then KnowledgeFS resolves each file
+through the authenticated inner API for the lifetime of one query run.
+
+Image-to-visual retrieval is independently disabled by default. Enable
+`KNOWLEDGE_QUERY_IMAGE_RETRIEVAL_ENABLED=true` only when all of the existing
+`KNOWLEDGE_VISUAL_EMBEDDING_*` settings select the same multimodal embedding space used to build
+the published `visual_vector` projections, and `KNOWLEDGE_VISUAL_EMBEDDING_QUERY_MODE` is
+`fallback` or `primary`. An explicit query mode of `off` remains authoritative.
+
+Fast performs no vision-LLM expansion. Deep and Research perform at most one bounded image-to-text
+expansion through Dify's selected reasoning model; durable Research persists the derived text so
+retry/replay does not repeat that call. Research then uses the derived text for document selection
+and level-by-level PageIndex navigation before final synthesis. Model calls are included in the
+Research dry-run estimate and durable budget accounting.
+
+The request bounds are four images, 10 MiB per image, 32 MiB in aggregate, with MIME restricted to
+PNG, JPEG, WebP, and GIF. Operational traces and terminal metadata use these stable degradation
+reasons: `query-image-visual-leg-unavailable`, `query-image-ignored-no-vision-model`, and
+`query-image-expansion-timeout`.
 
 ## Database release
 

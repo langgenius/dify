@@ -29,6 +29,7 @@ from services.knowledge_fs.object_storage import (
     KnowledgeFSObjectStorageTooLargeError,
     KnowledgeFSObjectStorageUnavailableError,
 )
+from services.knowledge_fs.query_images import KnowledgeFSQueryImageError, load_query_image
 
 _METADATA_HEADER = "X-Knowledge-FS-Metadata"
 _CHECKSUM_HEADER = "X-Knowledge-FS-Checksum-Sha256"
@@ -86,12 +87,59 @@ class KnowledgeFSObjectHealthResponse(ResponseModel):
     ok: bool
 
 
+class KnowledgeFSQueryImageQuery(BaseModel):
+    model_config = ConfigDict(extra="forbid", alias_generator=to_camel, populate_by_name=True)
+
+    upload_file_id: str = Field(min_length=1)
+    tenant_id: str = Field(min_length=1)
+    subject_id: str = Field(min_length=1)
+
+
 register_response_schema_models(
     inner_api_ns,
     KnowledgeFSObjectMetadataResponse,
     KnowledgeFSObjectListResponse,
     KnowledgeFSObjectHealthResponse,
 )
+
+
+@inner_api_ns.route("/knowledge-fs/query-image")
+class KnowledgeFSQueryImageApi(Resource):
+    """Resolve one actor-owned Dify UploadFile for a bounded KnowledgeFS query run."""
+
+    @knowledge_fs_inner_api_only
+    @inner_api_ns.doc(params=query_params_from_model(KnowledgeFSQueryImageQuery))
+    @inner_api_ns.produces(["image/gif", "image/jpeg", "image/png", "image/webp"])
+    def get(self) -> Response:
+        try:
+            query = KnowledgeFSQueryImageQuery.model_validate(request.args.to_dict(flat=True))
+            account_id = _query_image_account_id(query.subject_id)
+            image = load_query_image(
+                tenant_id=query.tenant_id,
+                account_id=account_id,
+                upload_file_id=query.upload_file_id,
+            )
+        except ValidationError as exc:
+            raise _invalid_request_error() from exc
+        except KnowledgeFSQueryImageError as exc:
+            status = (
+                HTTPStatus.NOT_FOUND
+                if exc.code == "QUERY_IMAGE_NOT_FOUND"
+                else HTTPStatus.REQUEST_ENTITY_TOO_LARGE
+                if exc.code in {"QUERY_IMAGE_TOO_LARGE", "QUERY_IMAGE_TOTAL_TOO_LARGE"}
+                else HTTPStatus.BAD_REQUEST
+            )
+            raise KnowledgeFSObjectStorageHttpError(
+                error_code=exc.code.lower(),
+                description=str(exc),
+                status_code=status,
+            ) from exc
+
+        response = Response(image.body, content_type=image.mime_type)
+        response.content_length = image.byte_size
+        response.headers["X-Query-Image-Sha256"] = image.sha256
+        response.headers["X-Query-Image-Upload-File-Id"] = image.upload_file_id
+        return response
 
 
 @inner_api_ns.route("/knowledge-fs/storage/object")
@@ -243,6 +291,14 @@ def _decode_metadata_header(value: str | None) -> dict[str, str]:
         return _metadata_adapter.validate_json(decoded)
     except (BinasciiError, UnicodeEncodeError, ValidationError, json.JSONDecodeError) as exc:
         raise KnowledgeFSObjectStorageInvalidInputError("object metadata header is invalid") from exc
+
+
+def _query_image_account_id(subject_id: str) -> str:
+    prefix = "dify-account:"
+    account_id = subject_id[len(prefix) :].strip() if subject_id.startswith(prefix) else subject_id.strip()
+    if not account_id:
+        raise KnowledgeFSQueryImageError("QUERY_IMAGE_SUBJECT_INVALID", "Query image subject is invalid")
+    return account_id
 
 
 def _metadata_response(metadata: KnowledgeFSObjectMetadata) -> dict[str, object]:

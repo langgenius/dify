@@ -13,6 +13,7 @@ import {
 
 const TRACE_ID = "00000000-0000-4000-8000-000000000001";
 const SPACE_ID = "00000000-0000-4000-8000-000000000002";
+const IMAGE_ID = "00000000-0000-4000-8000-000000000003";
 
 describe("gateway-route-schemas", () => {
   it("validates shared bounded route params and error responses", () => {
@@ -71,6 +72,7 @@ describe("gateway-route-schemas", () => {
       activeEntityIds: [],
       knowledgeSpaceId: SPACE_ID,
       query: "what changed?",
+      queryImages: [],
     });
 
     expect(() =>
@@ -78,6 +80,24 @@ describe("gateway-route-schemas", () => {
         activeDocumentIds: Array.from({ length: 101 }, () => TRACE_ID),
         knowledgeSpaceId: SPACE_ID,
         query: "too many active docs",
+      }),
+    ).toThrow();
+
+    expect(
+      QueryStreamRequestSchema.parse({
+        knowledgeSpaceId: SPACE_ID,
+        queryImages: [{ uploadFileId: IMAGE_ID }],
+      }),
+    ).toMatchObject({ queryImages: [{ uploadFileId: IMAGE_ID }] });
+    expect(() => QueryStreamRequestSchema.parse({ knowledgeSpaceId: SPACE_ID })).toThrow(
+      "At least one",
+    );
+    expect(() =>
+      QueryStreamRequestSchema.parse({
+        knowledgeSpaceId: SPACE_ID,
+        query: "mixed",
+        queryImages: [{ uploadFileId: IMAGE_ID }],
+        unknownImageField: true,
       }),
     ).toThrow();
   });

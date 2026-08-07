@@ -1,5 +1,6 @@
 import type { KnowledgeSpaceRetrievalProfile } from "@knowledge/core";
 import type { PublishedProjectionReadSnapshot } from "./published-projection-read-snapshot";
+import type { ResolvedQueryImage } from "./query-images";
 import type { ResearchModelCallObserver } from "./research-model-usage";
 import type { ResearchRetrievalSearchCheckpoint } from "./research-retrieval-checkpoint";
 import type { ResearchRetrievalExecutionPolicy } from "./research-retrieval-policy";
@@ -102,6 +103,7 @@ export interface RetrieveHybridInput extends SearchDenseInput {
   readonly projectionSetFingerprint?: string | undefined;
   readonly projectionSetReadMode?: ProjectionSetReadMode | undefined;
   readonly query: string;
+  readonly queryImages?: readonly ResolvedQueryImage[] | undefined;
   /** Original request mode, retained only for low-cardinality operational aggregation. */
   readonly requestedMode?: RetrievalMode | undefined;
   /** Internal execution envelope. Public interactive requests omit it and use the safe default. */

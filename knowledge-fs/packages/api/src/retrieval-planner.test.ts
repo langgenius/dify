@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createRetrievalPlanner } from "./retrieval-planner";
+import { createRetrievalPlanner, defaultRetrievalPlan } from "./retrieval-planner";
 import { createInMemoryTraceRecorder } from "./tracing";
 
 describe("retrieval planner", () => {
@@ -200,5 +200,25 @@ describe("retrieval planner", () => {
       "Retrieval planner query must not be empty",
     );
     expect(traces.spans.filter((span) => span.status === "error")).toHaveLength(4);
+  });
+
+  it("plans image-only retrieval while retaining explicit empty-input errors", () => {
+    const planner = createRetrievalPlanner({ maxTopK: 10 });
+
+    expect(planner.plan({ hasQueryImages: true, query: "", topK: 3 })).toEqual(
+      expect.objectContaining({ queryLanguage: "other", topK: 3 }),
+    );
+    expect(defaultRetrievalPlan({ hasQueryImages: true, query: "", topK: 2 })).toEqual(
+      expect.objectContaining({ queryLanguage: "other", topK: 2 }),
+    );
+    expect(() => defaultRetrievalPlan({ query: "", topK: 1 })).toThrow(
+      "Retrieval planner query must not be empty",
+    );
+    expect(() => defaultRetrievalPlan({ query: "valid", topK: 0 })).toThrow(
+      "Retrieval planner topK must be at least 1",
+    );
+    expect(() => planner.plan({ hasQueryImages: false, query: "", topK: 1 })).toThrow(
+      "Retrieval planner query or query images must be provided",
+    );
   });
 });

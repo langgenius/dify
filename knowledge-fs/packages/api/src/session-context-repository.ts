@@ -10,6 +10,7 @@ import {
 export interface SessionPreviousQuery {
   readonly askedAt: string;
   readonly query: string;
+  readonly queryImageHashes?: readonly string[] | undefined;
   readonly traceId: string;
 }
 
@@ -39,6 +40,7 @@ export interface RecordSessionQueryInput {
   readonly retrievalExecution?: { assertActive(): Promise<void> } | undefined;
   readonly permissionSnapshot: readonly string[];
   readonly query: string;
+  readonly queryImageHashes?: readonly string[] | undefined;
   readonly sessionId?: string | undefined;
   readonly subjectId: string;
   readonly tenantId: string;
@@ -127,9 +129,14 @@ export function createCacheSessionContextRepository({
     async recordQuery(input) {
       await input.retrievalExecution?.assertActive();
       const query = input.query.trim();
+      const queryImageHashes = boundedUniqueStrings(input.queryImageHashes ?? [], 4);
 
-      if (!query) {
-        throw new Error("Session context query is required");
+      if (!query && queryImageHashes.length === 0) {
+        throw new Error(
+          input.queryImageHashes === undefined
+            ? "Session context query is required"
+            : "Session context query or queryImageHashes is required",
+        );
       }
 
       if (new TextEncoder().encode(query).byteLength > maxQueryBytes) {
@@ -194,6 +201,7 @@ export function createCacheSessionContextRepository({
           {
             askedAt: timestamp,
             query,
+            ...(queryImageHashes.length > 0 ? { queryImageHashes } : {}),
             traceId: input.traceId,
           },
         ]
@@ -382,6 +390,7 @@ function cloneSessionPreviousQuery(query: SessionPreviousQuery): SessionPrevious
   return {
     askedAt: query.askedAt,
     query: query.query,
+    ...(query.queryImageHashes ? { queryImageHashes: [...query.queryImageHashes] } : {}),
     traceId: query.traceId,
   };
 }

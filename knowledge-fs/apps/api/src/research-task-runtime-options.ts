@@ -9,6 +9,7 @@ import {
   type KnowledgeSpaceManifestRepository,
   type PublishedProjectionReadSnapshotResolver,
   type QueryGenerator,
+  type QueryImageResolver,
   type ResearchTaskDurableRepository,
   type ResearchTaskJobStateMachine,
   type ResearchTaskPartialResultRepository,
@@ -39,6 +40,7 @@ export interface CreateApiResearchTaskRuntimeOptions {
   readonly partials: ResearchTaskPartialResultRepository;
   readonly progress: ResearchTaskProgressRepository;
   readonly projectionSnapshotResolver?: PublishedProjectionReadSnapshotResolver | undefined;
+  readonly queryImageResolver?: QueryImageResolver | undefined;
   readonly repository: ResearchTaskDurableRepository;
 }
 
@@ -79,6 +81,7 @@ export function createApiResearchTaskRuntime({
   partials,
   progress,
   projectionSnapshotResolver,
+  queryImageResolver,
   repository,
 }: CreateApiResearchTaskRuntimeOptions): ApiResearchTaskRuntimeAssembly {
   const workerId = env.RESEARCH_TASK_WORKER_ID?.trim() || `research-task-${process.pid}`;
@@ -124,6 +127,7 @@ export function createApiResearchTaskRuntime({
     ...(metrics ? { metrics } : {}),
     partials,
     ...(projectionSnapshotResolver ? { projectionSnapshotResolver } : {}),
+    ...(queryImageResolver ? { queryImageResolver } : {}),
     repository,
     workerId: `${workerId}:consumer`,
   });

@@ -111,6 +111,38 @@ describe("createAnswerTraceRecorder", () => {
     expect(created[0]).not.toHaveProperty("subjectId");
   });
 
+  it("records image-only provenance and rejects a request with neither modality", async () => {
+    const recorder = createAnswerTraceRecorder({
+      generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f7a04",
+      repository: { create: async (trace) => trace },
+    });
+    const base = {
+      knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c40",
+      mode: "research" as const,
+      permissionSnapshot: answerTracePermissionSnapshot(),
+      query: "",
+      steps: [{ metadata: {}, name: "query.retrieve", status: "ok" as const }],
+      subjectId: "subject-1",
+    };
+
+    await expect(
+      recorder.record({
+        ...base,
+        queryImages: [
+          {
+            byteSize: 1,
+            mimeType: "image/png",
+            sha256: "a".repeat(64),
+            uploadFileId: "00000000-0000-4000-8000-000000000001",
+          },
+        ],
+      }),
+    ).resolves.toMatchObject({ query: "", queryImages: expect.any(Array) });
+    await expect(recorder.record(base)).rejects.toThrow(
+      "AnswerTrace recorder requires query or queryImages",
+    );
+  });
+
   it("reconciles a lost create acknowledgement and fails closed on a different payload", async () => {
     const durable = createInMemoryAnswerTraceRepository({ maxSteps: 5, maxTraces: 5 });
     const traceId = "018f0d60-7a49-7cc2-9c1b-5b36f18f7a02";

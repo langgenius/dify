@@ -13,6 +13,12 @@ import {
   type DurableTaskOperationalMetrics,
   recordDurableTaskOperationalMetric,
 } from "./operational-metrics";
+import {
+  QUERY_IMAGE_REFERENCES_METADATA_KEY,
+  type QueryImageReference,
+  QueryImageReferencesSchema,
+  hasQueryInput,
+} from "./query-images";
 import type { ResearchTaskPlanMode, ResearchTaskResolvedMode } from "./research-task-planning";
 import type { ResearchTaskProgressPublisher } from "./research-task-progress";
 
@@ -82,7 +88,8 @@ export interface StartResearchTaskJobInput {
   /** New durable jobs persist only the concrete pipeline selected at admission. */
   readonly mode?: ResearchTaskResolvedMode | undefined;
   readonly permissionSnapshot?: ResearchTaskPermissionSnapshotReference | undefined;
-  readonly query: string;
+  readonly query?: string | undefined;
+  readonly queryImages?: readonly QueryImageReference[] | undefined;
   readonly subjectId?: string | undefined;
   readonly tenantId: string;
   readonly topK?: number | undefined;
@@ -848,7 +855,8 @@ function validateStartInput(
 } {
   const tenantId = input.tenantId.trim();
   const knowledgeSpaceId = input.knowledgeSpaceId.trim();
-  const query = input.query.trim();
+  const query = input.query?.trim() ?? "";
+  const queryImages = QueryImageReferencesSchema.parse(input.queryImages ?? []);
 
   if (!tenantId) {
     throw new Error("Research task job tenantId is required");
@@ -858,8 +866,12 @@ function validateStartInput(
     throw new Error("Research task job knowledgeSpaceId is required");
   }
 
-  if (!query) {
-    throw new Error("Research task job query is required");
+  if (!hasQueryInput({ query, queryImages })) {
+    throw new Error(
+      input.queryImages === undefined
+        ? "Research task job query is required"
+        : "Research task job requires query or queryImages",
+    );
   }
 
   if (new TextEncoder().encode(query).byteLength > maxQueryBytes) {
@@ -892,12 +904,16 @@ function validateStartInput(
     ...(capabilityGrantId ? { capabilityGrantId } : {}),
     knowledgeSpaceId,
     limits: validateResearchTaskJobLimits(input.limits),
-    metadata: cloneRecord(input.metadata ?? {}),
+    metadata: cloneRecord({
+      ...(input.metadata ?? {}),
+      ...(queryImages.length > 0 ? { [QUERY_IMAGE_REFERENCES_METADATA_KEY]: queryImages } : {}),
+    }),
     mode: validateResearchTaskMode(input.mode),
     ...(input.permissionSnapshot
       ? { permissionSnapshot: validatePermissionSnapshotReference(input.permissionSnapshot) }
       : {}),
     query,
+    queryImages,
     ...(subjectId ? { subjectId } : {}),
     tenantId,
     topK: validateResearchTaskTopK(input.topK),

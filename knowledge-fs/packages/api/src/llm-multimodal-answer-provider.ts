@@ -86,6 +86,11 @@ export interface ContentBlockMultimodalAnswerProviderOptions {
       ) => string | undefined)
     | undefined;
   readonly imageDetail?: "auto" | "high" | "low" | undefined;
+  readonly queryImageUrlResolver?:
+    | ((
+        image: NonNullable<MultimodalAnswerProviderInput["queryImages"]>[number],
+      ) => string | undefined)
+    | undefined;
   readonly maxImageAttachments?: number | undefined;
   readonly maxOutputTokens?: number | undefined;
   readonly model: string;
@@ -173,8 +178,9 @@ export function createObjectStorageContentBlockMultimodalAnswerProvider({
         ...options,
         assetUrlResolver: (attachment) => {
           const asset = objectBackedImageAssetRef({ attachment, preferredVariant });
-          return asset?.objectKey ? dataUrls.get(asset.objectKey) : undefined;
+          return asset?.objectKey ? dataUrls.evidence.get(asset.objectKey) : undefined;
         },
+        queryImageUrlResolver: (image) => dataUrls.query.get(image.uploadFileId),
       });
 
       return provider.generate(input);
@@ -189,6 +195,7 @@ export function createContentBlockMultimodalAnswerProvider({
   maxOutputTokens = 1_000,
   model,
   provider,
+  queryImageUrlResolver = defaultQueryImageUrlResolver,
   temperature = 0,
 }: ContentBlockMultimodalAnswerProviderOptions): MultimodalAnswerProvider {
   if (!model.trim()) {
@@ -214,6 +221,7 @@ export function createContentBlockMultimodalAnswerProvider({
         imageDetail,
         input,
         maxImageAttachments,
+        queryImageUrlResolver,
       });
       const result = await provider.generate({
         maxOutputTokens,
@@ -249,9 +257,29 @@ async function loadObjectBackedImageDataUrls({
   readonly maxTotalImageBytes: number;
   readonly objectStorage: PlatformAdapter["objectStorage"];
   readonly preferredVariant: string;
-}): Promise<ReadonlyMap<string, string>> {
-  const urls = new Map<string, string>();
+}): Promise<{
+  readonly evidence: ReadonlyMap<string, string>;
+  readonly query: ReadonlyMap<string, string>;
+}> {
+  const evidenceUrls = new Map<string, string>();
+  const queryUrls = new Map<string, string>();
   let totalBytes = 0;
+
+  // The user's images define the question and therefore own the byte/attachment budget before
+  // retrieved evidence images. They have already passed the gateway's MIME and checksum checks.
+  for (const image of input.queryImages ?? []) {
+    if (
+      image.body.byteLength > maxImageBytes ||
+      totalBytes + image.body.byteLength > maxTotalImageBytes
+    ) {
+      continue;
+    }
+    totalBytes += image.body.byteLength;
+    queryUrls.set(
+      image.uploadFileId,
+      `data:${image.mimeType};base64,${Buffer.from(image.body).toString("base64")}`,
+    );
+  }
 
   for (const attachment of input.multimodalEvidence) {
     if (!isVisualAttachment(attachment)) {
@@ -259,7 +287,7 @@ async function loadObjectBackedImageDataUrls({
     }
 
     const asset = objectBackedImageAssetRef({ attachment, preferredVariant });
-    if (!asset?.objectKey || urls.has(asset.objectKey)) {
+    if (!asset?.objectKey || evidenceUrls.has(asset.objectKey)) {
       continue;
     }
 
@@ -275,13 +303,13 @@ async function loadObjectBackedImageDataUrls({
     }
 
     totalBytes += body.byteLength;
-    urls.set(
+    evidenceUrls.set(
       asset.objectKey,
       `data:${asset.contentType};base64,${Buffer.from(body).toString("base64")}`,
     );
   }
 
-  return urls;
+  return { evidence: evidenceUrls, query: queryUrls };
 }
 
 function objectBackedImageAssetRef({
@@ -350,6 +378,7 @@ function multimodalContentBlockMessages({
   imageDetail,
   input,
   maxImageAttachments,
+  queryImageUrlResolver,
 }: {
   readonly assetUrlResolver: NonNullable<
     ContentBlockMultimodalAnswerProviderOptions["assetUrlResolver"]
@@ -357,9 +386,23 @@ function multimodalContentBlockMessages({
   readonly imageDetail: NonNullable<ContentBlockMultimodalAnswerProviderOptions["imageDetail"]>;
   readonly input: MultimodalAnswerProviderInput;
   readonly maxImageAttachments: number;
+  readonly queryImageUrlResolver: NonNullable<
+    ContentBlockMultimodalAnswerProviderOptions["queryImageUrlResolver"]
+  >;
 }): readonly LlmMultimodalContentBlockMessage[] {
-  const imageBlocks: LlmMultimodalContentBlock[] = [];
+  const queryImageBlocks: LlmMultimodalContentBlock[] = [];
+  const evidenceImageBlocks: LlmMultimodalContentBlock[] = [];
   const attachmentTextBlocks: LlmMultimodalContentBlock[] = [];
+
+  for (const image of input.queryImages ?? []) {
+    const url = queryImageUrlResolver(image);
+    if (url && queryImageBlocks.length < maxImageAttachments) {
+      queryImageBlocks.push({
+        imageUrl: { detail: imageDetail, url },
+        type: "image_url",
+      });
+    }
+  }
 
   for (const [index, attachment] of input.multimodalEvidence.entries()) {
     const label = `M${index + 1}`;
@@ -370,8 +413,8 @@ function multimodalContentBlockMessages({
       type: "text",
     });
 
-    if (url && imageBlocks.length < maxImageAttachments) {
-      imageBlocks.push({
+    if (url && queryImageBlocks.length + evidenceImageBlocks.length < maxImageAttachments) {
+      evidenceImageBlocks.push({
         imageUrl: { detail: imageDetail, url },
         type: "image_url",
       });
@@ -408,12 +451,21 @@ function multimodalContentBlockMessages({
           ].join("\n"),
           type: "text",
         },
+        ...queryImageBlocks,
         ...attachmentTextBlocks,
-        ...imageBlocks,
+        ...evidenceImageBlocks,
       ],
       role: "user",
     },
   ];
+}
+
+function defaultQueryImageUrlResolver(
+  image: NonNullable<MultimodalAnswerProviderInput["queryImages"]>[number],
+): string | undefined {
+  return image.body.byteLength > 0
+    ? `data:${image.mimeType};base64,${Buffer.from(image.body).toString("base64")}`
+    : undefined;
 }
 
 function defaultAssetUrlResolver(

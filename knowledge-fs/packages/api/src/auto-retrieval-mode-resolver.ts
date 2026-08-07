@@ -97,12 +97,13 @@ export interface RetrievalModeRequestResolution {
   readonly reasonCode?: AutoRetrievalModeReasonCode | undefined;
   readonly requestedMode: "auto" | ResolvedRetrievalMode;
   readonly resolvedMode: ResolvedRetrievalMode;
-  readonly resolver: "explicit" | "fallback" | "llm";
+  readonly resolver: "explicit" | "fallback" | "image-policy" | "llm";
   readonly usage?: AutoRetrievalModeResolution["usage"] | undefined;
 }
 
 export async function resolveRetrievalModeRequest({
   fallbackMode,
+  hasQueryImages = false,
   query,
   reasoningModel,
   requestedMode,
@@ -112,6 +113,7 @@ export async function resolveRetrievalModeRequest({
   traceId,
 }: {
   readonly fallbackMode: ResolvedRetrievalMode;
+  readonly hasQueryImages?: boolean | undefined;
   readonly query: string;
   readonly reasoningModel?: KnowledgeSpaceModelSelection | undefined;
   readonly requestedMode: "auto" | ResolvedRetrievalMode;
@@ -127,6 +129,19 @@ export async function resolveRetrievalModeRequest({
       requestedMode,
       resolvedMode: requestedMode,
       resolver: "explicit",
+    };
+  }
+
+  // Mode classification is text-only. A pure-image auto request must first obtain a vision
+  // expansion, which is part of Research execution; selecting Research here avoids a fake text
+  // query and preserves the promised PageIndex navigation semantics.
+  if (!query.trim() && hasQueryImages) {
+    return {
+      degraded: false,
+      durationMs: 0,
+      requestedMode,
+      resolvedMode: "research",
+      resolver: "image-policy",
     };
   }
 

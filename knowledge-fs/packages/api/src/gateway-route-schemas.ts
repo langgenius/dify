@@ -9,6 +9,7 @@ import {
   CANDIDATE_VISIBILITY_SCAN_BUDGET_EXCEEDED,
   CANDIDATE_VISIBILITY_SCAN_BUDGET_EXCEEDED_MESSAGE,
 } from "./candidate-content-authorization";
+import { QueryImageReferencesSchema, hasQueryInput } from "./query-images";
 
 export const ErrorResponseSchema = z.object({
   code: z.string().optional(),
@@ -90,10 +91,20 @@ export const QueryStreamRequestSchema = z
       .describe(
         "Explicit auto invokes the knowledge space reasoning model once to select fast, deep, or research; omission uses the published defaultMode.",
       ),
-    query: z.string().min(1).max(16_000),
+    query: z.string().max(16_000).optional(),
+    queryImages: QueryImageReferencesSchema.default([]),
     sessionId: z.string().uuid().optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((value, context) => {
+    if (!hasQueryInput(value)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "At least one of query or queryImages is required",
+        path: ["query"],
+      });
+    }
+  });
 
 export const CreateProductionBadCaseSchema = z
   .object({

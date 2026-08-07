@@ -1,7 +1,7 @@
 # Image Query Retrieval Iteration Plan
 
 > Created: 2026-08-07
-> Status: Proposed
+> Status: Implemented 2026-08-07
 > Scope: KnowledgeFS backend, backend tests, contracts, and documentation only. No frontend changes.
 
 ## 1. Decision Summary
@@ -24,13 +24,20 @@ multimodal machinery an image query needs:
   evidence images with a cumulative byte budget (`llm-multimodal-answer-provider.ts`). It has no
   notion of a user-supplied query image.
 
-This plan closes the four gaps that keep an image from being a first-class query input:
+This plan closes the four gaps that keep an image from being a first-class query input. Text and
+images are **alternative query modalities**: a request must contain at least one non-empty
+`query` or one `queryImages` entry, and may contain both when the caller intentionally wants a
+multimodal query.
+
+The four delivery slices are:
 
 1. **IQ1** — query-side image visual embedding (image-to-image / image-to-visual-asset search);
 2. **IQ2** — gateway schema and transport for query images;
 3. **IQ3** — attaching query images to VLM answering;
-4. **IQ4** (decision-gated) — converting the query image to text so conventional legs
-   (FTS, text dense, rerank, page-index) can participate for pure-image queries.
+4. **IQ4** — converting the query image to text so conventional legs (FTS, text dense, rerank,
+   PageIndex) can participate. This is optional for Fast, but required for a pure-image Research
+   query because Research must navigate the document tree rather than silently become a flat
+   visual search.
 
 ## 2. Explicit Non-Goals
 
@@ -53,16 +60,22 @@ This plan closes the four gaps that keep an image from being a first-class query
 ## 3. Guardrails
 
 - Every read stays bound to the immutable publication snapshot and server-issued permission scope.
-- All image byte caps are validated **before** base64 decode/buffering; requests exceeding caps
-  fail with typed 400 errors, never with allocation.
+- Browser-facing requests carry Dify `UploadFile` references, never inline base64. Dify validates
+  tenant/actor ownership, MIME, per-image size, count, and aggregate size before issuing the
+  KnowledgeFS capability. KnowledgeFS resolves bytes through an authenticated Dify inner API and
+  bounds the response while streaming it into memory.
 - Query image MIME allowlist is `image/png`, `image/jpeg`, `image/webp`, `image/gif` — matching
   the formats whose dimensions the ingest asset extractor can already parse. SVG is never accepted.
 - Request schemas stay `.strict()`; new fields are optional so existing clients are unaffected.
-- `api/knowledge-fs-contract.lock.json` is refreshed exactly once (IQ2), not per slice.
+- `api/knowledge-fs-contract.lock.json` is refreshed after the complete reviewed change set. The
+  subtree hash necessarily changes whenever KnowledgeFS production files change; CI must never be
+  bypassed by pinning an intermediate hash.
 - Degradation is typed and observable: an image the pipeline cannot use produces a reason code on
   the trace/SSE stream, never a silent drop and never a hard failure of the text portion.
-- Query image bytes are not persisted in v1; traces record `{sha256, byteSize, mimeType, count}`
-  only. (Replay limitation documented; revisit if trace replay needs the pixels.)
+- Query image bytes are not duplicated in KnowledgeFS. Durable Research jobs persist immutable
+  Dify upload-file references and the derived expansion text; traces record
+  `{uploadFileId, sha256, byteSize, mimeType}` only. This makes retry/replay deterministic while
+  retaining Dify's unified object-storage lifecycle.
 - Behavioral work follows RED -> GREEN -> REFACTOR and keeps package coverage at or above 90%.
 - No internal scheduling values exposed as end-user relevance scores.
 
@@ -71,6 +84,8 @@ This plan closes the four gaps that keep an image from being a first-class query
 - The visual embedding provider must be enabled and the target space must already hold
   `visual_vector` projections for the visual leg to return anything. Spaces without a visual index
   degrade with a typed reason (see IQ0), they do not error.
+- Query-image visual retrieval is controlled by its own feature flag and also requires the visual
+  query provider and a visual index. It does not override an operator's explicit `off` setting.
 - IQ3 requires the multimodal answer provider; IQ4 requires a vision-capable LLM on the space.
   Capability checks reuse the existing model-capability catalog/preflight
   (`capabilities.features` containing `vision`).
@@ -87,35 +102,39 @@ on "emit reason code X" instead of inventing ad-hoc behavior.
 
 **Approach / decisions to ratify.**
 
-1. Transport is **inline base64 in the request body** for v1:
-   `queryImages: [{ data: <base64>, mimeType }]`, max 4 images, max 10 MB decoded per image
-   (aligned with the enrichment default `maxImageBytes`), with a request-level cap accounting for
-   ~1.37x base64 inflation. Rationale: query images are ephemeral, so inline transport avoids
-   upload-session storage lifecycle/GC questions entirely. The alternative (upload-session file
-   reference) is recorded for a future revision if payload sizes demand it.
-2. Mode matrix: the visual leg with an image-derived vector runs in **all** modes (it is one
-   bounded vector search); IQ4 image-to-text expansion runs in **deep/research only**.
-3. When both text and image are present, the image-derived vector owns the visual leg (the image
+1. Transport is an immutable Dify file reference:
+   `queryImages: [{ uploadFileId: <uuid> }]`, max 4 images, max 10 MiB per image and max 32 MiB in
+   aggregate. The existing upload API owns bytes and storage; Dify validates the referenced files
+   before admission and KnowledgeFS resolves them through a bounded inner API.
+2. `query` is optional and `queryImages` is optional, but the request-level invariant is
+   **non-empty query OR at least one image**. Both are accepted. No placeholder or OCR text is
+   written into the user-query field.
+3. Mode matrix: the visual leg with an image-derived vector runs in Fast/Deep and may seed
+   Research. Image-to-text expansion runs in Deep/Research; Research then performs bounded,
+   level-by-level PageIndex traversal and a final LLM synthesis.
+4. When both text and image are present, the image-derived vector owns the visual leg (the image
    is the stronger signal for the visual space); text keeps all its existing legs. No change to
    text-leg behavior.
-4. Degradation reason codes (extending the existing typed-degradation convention):
+5. Multiple query images are searched independently and fused with equal-weight RRF. Their
+   vectors are never averaged because averaging destroys distinct visual intents.
+6. Degradation reason codes (extending the existing typed-degradation convention):
    `query-image-visual-leg-unavailable` (no visual provider / no visual index),
    `query-image-ignored-no-vision-model` (IQ3/IQ4 capability missing),
    `query-image-expansion-timeout` (IQ4 guard fired).
-5. Trace metadata shape for query images (hash/size/mime/count; no bytes).
+7. Trace metadata shape for query images (Dify reference/hash/size/mime; no bytes).
 
 Tasks:
 
 1. Record the decisions above in this plan and in `docs/api-reference.md` draft form.
-2. Define zod validators for `queryImages` with byte/count/MIME caps as pure, unit-testable
-   functions.
+2. Define zod validators for `queryImages` references and Dify-side ownership/MIME/size validators
+   as pure, unit-testable functions.
 3. Define the degradation reason codes and their SSE/trace surfaces.
 4. Add this plan to the consolidated execution index.
 
 Acceptance:
 
-- Validators reject oversized, over-count, and disallowed-MIME payloads in unit tests without
-  decoding image bytes.
+- Validators reject unknown/foreign, oversized, over-count, aggregate-over-limit, malformed, and
+  disallowed-MIME references before model or retrieval work starts.
 - Reason codes are defined in one module consumed by later slices.
 
 ---
@@ -136,11 +155,10 @@ unit-testable without touching the public API surface: the client already suppor
   query-image embedding function on `ApiVisualEmbeddingOptions` that embeds raw query image bytes
   (not object-storage-backed assets) with `inputType: "query"` on the same
   model/pluginId/provider selection.
-- `apps/api/src/retriever-options.ts`: when the retrieval context carries query images, run the
-  visual leg with the image-derived vector **regardless of the configured
-  `KNOWLEDGE_VISUAL_EMBEDDING_QUERY_MODE`** (`fallback` semantics only make sense for
-  text-to-visual; an explicit image must always be searched). Text-derived visual querying stays
-  unchanged when no image is present.
+- `apps/api/src/retriever-options.ts`: when the retrieval context carries query images and the
+  dedicated feature flag plus visual query provider are enabled, run one visual search per image.
+  Honor `KNOWLEDGE_VISUAL_EMBEDDING_QUERY_MODE=off`; explicit operator disablement is authoritative.
+  Text-derived visual querying stays unchanged when no image is present.
 - Fusion: image-leg candidates enter the existing RRF/boost fusion exactly like today's visual-leg
   candidates; candidate enrichment via `document-multimodal-candidate-resolver.ts` is unchanged
   (image-node candidates carry caption/ocrText into final rerank via their text, so the text-only
@@ -151,9 +169,11 @@ unit-testable without touching the public API surface: the client already suppor
 Tasks:
 
 1. Parameterize embedding input type; add query-image embed path with its own byte cap reuse.
-2. Thread query images into the retriever context and visual-leg vector selection.
+2. Thread query images into the retriever context and visual-leg vector selection; fuse multiple
+   image result lists with equal-weight RRF.
 3. Unit tests: `input_type: "query"` reaches the client payload; visual leg runs with image vector
-   under `fallback` and `off` query modes when an image is present; typed degradation when the
+   under enabled `fallback`/`primary` query modes when an image is present; no model call under
+   `off`; typed degradation when the
    provider or index is absent; text-only requests behave byte-identically to today.
 
 Acceptance:
@@ -173,10 +193,12 @@ IQ1 so the route change ships already wired to a working retrieval path.
 
 **Approach.**
 
-- Add optional `queryImages` (IQ0 shape) to `QueryStreamRequestSchema`
+- Make `query` optional, add optional `queryImages` (IQ0 shape), and enforce the at-least-one
+  invariant in `QueryStreamRequestSchema`
   (`gateway-route-schemas.ts`) and to the research-task request schemas
   (`research-task-request-schemas.ts`) so interactive and durable paths accept the same input.
-- Enforce IQ0 validators in the route layer before any decode; decoded bytes flow into the
+- Dify validates references before capability admission. KnowledgeFS resolves the references via
+  the authenticated inner endpoint before opening the SSE stream; bounded bytes flow into the
   retrieval context created by the query handlers.
 - Record trace metadata (hash/size/mime/count) on the AnswerTrace; surface degradation reason
   codes as SSE events.
@@ -187,7 +209,7 @@ Tasks:
 
 1. Schema + validators wired into `query-routes.ts` / research task routes.
 2. Context threading through gateway handlers into retriever/answer stages.
-3. Contract lock refresh and docs.
+3. Dify UploadFile resolver + inner endpoint, contract lock refresh, and docs.
 4. Route tests: optional-field backward compatibility; 400s for each cap violation; a streamed
    answer for a valid image query against a seeded space; research-task acceptance of the same
    payload.
@@ -195,7 +217,7 @@ Tasks:
 Acceptance:
 
 - Existing clients (no `queryImages`) see identical responses.
-- Invalid payloads fail with typed 400s and zero image-byte allocation.
+- Invalid or foreign file references fail with typed 400/404 responses and no model invocation.
 - End-to-end: image-only and text+image queries stream answers with visual-leg evidence.
 
 ---
@@ -213,12 +235,14 @@ adds the user's images to that assembly.
 
 - Extend the multimodal answer provider input with query images; order them **before** evidence
   images in the prompt (the question's subject should anchor the context).
-- Query images count toward the existing cumulative byte budget and `maxImageAttachments` (default
+- Research query images count toward the existing cumulative byte budget and
+  `maxImageAttachments` (default
   8) with precedence over evidence images: budget exhaustion drops evidence images first, query
   images last.
-- If the request carries images but the multimodal answer provider is absent or the model lacks
-  vision, emit `query-image-ignored-no-vision-model` and answer text-only — retrieval performed in
-  IQ1/IQ2 is unaffected.
+- Fast and Deep never invoke the answer LLM. Research attaches query images to the final VLM
+  synthesis. If that provider is absent or lacks vision, emit
+  `query-image-ignored-no-vision-model` and synthesize from the derived text/evidence; retrieval is
+  unaffected.
 
 Tasks:
 
@@ -234,9 +258,9 @@ Acceptance:
 
 ---
 
-### IQ4 — Query image-to-text expansion for deep/research
+### IQ4 — Query image-to-text expansion for Deep/Research
 
-Priority: P2 — decision-gated; do not build before the gate below.
+Priority: P1 for pure-image Research; P2 for optional Deep quality improvements.
 
 **Why.** A pure-image query can only reach nodes that carry a `visual_vector`, and those exist
 only for image-asset projections — text chunks are unreachable. Converting the **user's single
@@ -245,10 +269,9 @@ page-index legs participate. This is categorically different from the rejected
 per-evidence-image recognition: one bounded VLM call on the user's own input, not N repeated
 calls over retrieved documents.
 
-**Why gated.** It adds a VLM round-trip (typically 1–5 s) to deep/research latency, and its value
-depends on how often image queries actually target textual content. Gate: after IQ1–IQ3 have been
-in production, review failed-query clustering and golden-question results for image-bearing
-queries; build IQ4 only if pure-image or mixed queries measurably miss text evidence.
+**Why required for Research.** It adds a bounded VLM round-trip, but a pure-image Research request
+has no semantic text with which to choose documents or navigate title/summary nodes. Without it,
+calling the mode `research` would be misleading. Deep may fail open to visual-only retrieval.
 
 **Approach (when green-lit).**
 
@@ -259,7 +282,13 @@ queries; build IQ4 only if pure-image or mixed queries measurably miss text evid
   (`features` contains `vision`).
 - Hard timeout (default 8 s, env-tunable) with fail-open: on timeout/error, continue with the
   visual leg only and emit `query-image-expansion-timeout`.
-- Expansion output is recorded on the trace for explainability.
+- Persist expansion output on a durable Research job so retry does not repeat the VLM call. Record
+  only derived text and image metadata on the trace.
+- For Research, use the expansion plus any supplied query text for document selection, then perform
+  bounded **level-by-level** PageIndex traversal (the book-reading behavior), followed by at most
+  one bounded supplementary search and final LLM synthesis.
+- Pure-image Research fails with a typed capability error when no vision model can produce the
+  navigation query; it must not silently return an empty tree result or masquerade as Research.
 
 Acceptance:
 
@@ -268,10 +297,11 @@ Acceptance:
 
 ## 6. Sequencing
 
-IQ0 → IQ1 → IQ2 → IQ3 → (evaluation gate) → IQ4.
+IQ0 → IQ1 → IQ2 → IQ4 (Research-required subset) → IQ3 → optional Deep tuning.
 
-IQ1 precedes IQ2 so the embedding path is proven in unit tests before any contract churn; the
-contract lock changes once, in IQ2. IQ3 is independent of IQ4 and ships as soon as IQ2 lands.
+IQ1 precedes IQ2 so the embedding path is proven in unit tests before the public contract changes.
+IQ4 precedes the Research answer attachment because it establishes a valid PageIndex navigation
+query. The contract lock is refreshed only after all reviewed production changes are present.
 
 ## 7. Verification
 
@@ -279,3 +309,20 @@ contract lock changes once, in IQ2. IQ3 is independent of IQ4 and ships as soon 
 - Regression: text-only query snapshots must remain unchanged through every slice.
 - Post-IQ3, extend the multimodal evaluation suite with query-side cases (image query citation
   correctness) as the regression gate before considering IQ4.
+
+## 8. Implementation Result
+
+- IQ0–IQ4 are implemented for the backend-only scope. `query` and `queryImages` are alternative
+  modalities with an at-least-one invariant and support for intentional mixed queries.
+- Dify validates actor-owned UploadFile references and serves bounded bytes through an authenticated
+  inner endpoint; KnowledgeFS persists no duplicate image bytes.
+- Fast/Deep can perform independently fused image-to-visual searches behind the opt-in feature flag.
+  Fast remains free of vision-LLM expansion. Deep and Research perform one bounded expansion, and
+  durable Research checkpoints it for retry/replay.
+- Pure-image Research routes to Research under Auto, uses the expansion for document selection and
+  the existing level-by-level PageIndex path, and performs final synthesis. Missing capabilities
+  fail or degrade with the typed reasons defined in IQ0.
+- Query image metadata reaches EvidenceBundle and AnswerTrace without raw bytes. Dry-run estimates
+  and durable cost accounting include the image-expansion model call.
+- Verification evidence and changed-file scope are recorded in
+  `.harness/changes/2026-08-07-image-query-retrieval.md`.

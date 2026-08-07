@@ -148,6 +148,7 @@ export function createPublishedPageIndexRetrievalPath({
   return {
     retrieve: async (input) => {
       const plan = planner.plan({
+        hasQueryImages: (input.queryImages?.length ?? 0) > 0,
         mode: input.mode,
         query: input.query,
         topK: input.topK,

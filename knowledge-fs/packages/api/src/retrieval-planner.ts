@@ -4,6 +4,7 @@ import type { RetrievalMode, RetrievalPlan } from "./retrieval-types";
 import { type TraceAttributes, type TraceRecorder, createNoopTraceRecorder } from "./tracing";
 
 export interface RetrievalPlanInput {
+  readonly hasQueryImages?: boolean | undefined;
   readonly mode?: RetrievalMode | undefined;
   readonly query: string;
   /** Required when `mode=auto`; auto must be resolved by the asynchronous LLM router first. */
@@ -49,11 +50,17 @@ export function createRetrievalPlanner({
         }
 
         const normalizedQuery = input.query.trim();
-        if (normalizedQuery.length === 0) {
-          throw new Error("Retrieval planner query must not be empty");
+        if (normalizedQuery.length === 0 && !input.hasQueryImages) {
+          throw new Error(
+            input.hasQueryImages === undefined
+              ? "Retrieval planner query must not be empty"
+              : "Retrieval planner query or query images must be provided",
+          );
         }
 
-        const queryLanguage = detectRetrievalQueryLanguage(normalizedQuery);
+        const queryLanguage = normalizedQuery
+          ? detectRetrievalQueryLanguage(normalizedQuery)
+          : "other";
         const resolvedMode = resolvePlannedMode(requestedMode, input.resolvedMode);
         const plan = buildRetrievalPlan({
           maxTopK,
@@ -74,9 +81,11 @@ export function createRetrievalPlanner({
 }
 
 export function defaultRetrievalPlan({
+  hasQueryImages = false,
   query,
   topK,
 }: {
+  readonly hasQueryImages?: boolean | undefined;
   readonly query: string;
   readonly topK: number;
 }): RetrievalPlan {
@@ -85,13 +94,13 @@ export function defaultRetrievalPlan({
   }
 
   const normalizedQuery = query.trim();
-  if (normalizedQuery.length === 0) {
+  if (normalizedQuery.length === 0 && !hasQueryImages) {
     throw new Error("Retrieval planner query must not be empty");
   }
 
   return buildRetrievalPlan({
     maxTopK: topK,
-    queryLanguage: detectRetrievalQueryLanguage(normalizedQuery),
+    queryLanguage: normalizedQuery ? detectRetrievalQueryLanguage(normalizedQuery) : "other",
     requestedMode: "fast",
     resolvedMode: "fast",
     topK,

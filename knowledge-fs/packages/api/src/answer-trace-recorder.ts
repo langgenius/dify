@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { type AnswerTrace, AnswerTraceSchema } from "@knowledge/core";
+import type { QueryImageMetadata } from "./query-images";
 
 import {
   AnswerTraceSemanticConflictError,
@@ -21,6 +22,7 @@ interface RecordAnswerTraceBaseInput {
   readonly knowledgeSpaceId: string;
   readonly mode: AnswerTrace["mode"];
   readonly query: string;
+  readonly queryImages?: readonly QueryImageMetadata[] | undefined;
   readonly steps: readonly RecordAnswerTraceStepInput[];
   readonly traceId?: string | undefined;
 }
@@ -72,6 +74,9 @@ export function createAnswerTraceRecorder({
 
   return {
     record: async (input) => {
+      if (!input.query.trim() && (input.queryImages?.length ?? 0) === 0) {
+        throw new Error("AnswerTrace recorder requires query or queryImages");
+      }
       if (input.steps.length > maxSteps) {
         throw new Error(`AnswerTrace recorder step count exceeds maxSteps=${maxSteps}`);
       }

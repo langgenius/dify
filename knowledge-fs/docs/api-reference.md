@@ -402,10 +402,25 @@ job stores.
 **Description**: Run a knowledge-space query and stream the generated answer as SSE.
 **Auth**: Bearer; scope `knowledge-spaces:read`.
 **Request body** (`application/json`, strict): `knowledgeSpaceId` (uuid, required); `query` (string
-1–16000, required); `mode` (enum `auto|deep|fast|research`, optional; defaults to the published
+1–16000, optional); `queryImages` (array 1–4, optional) where each entry is the strict object
+`{ uploadFileId: uuid }`; `mode` (enum `auto|deep|fast|research`, optional; defaults to the published
 knowledge-space retrieval profile's `defaultMode`, or `fast` for a legacy space without a profile);
 `activeDocumentIds` (uuid[] ≤100, optional, default `[]`); `activeEntityIds` (string[1–200][] ≤100,
 optional, default `[]`); `sessionId` (uuid, optional).
+
+At least one non-empty `query` or one `queryImages` entry is required; callers may supply both.
+`uploadFileId` references an actor-owned Dify `UploadFile` and never carries inline base64. Before
+capability admission Dify rejects foreign/missing files, duplicate ids, unsupported MIME, more than
+four images, an image over 10 MiB, or an aggregate over 32 MiB. Allowed MIME types are `image/png`,
+`image/jpeg`, `image/webp`, and `image/gif`. KnowledgeFS resolves the validated bytes through the
+authenticated Dify inner API and records only id/hash/size/MIME metadata in traces.
+
+Fast never performs image-to-text expansion. With query-image visual retrieval enabled, Fast and
+Deep embed every image with multimodal `inputType: "query"`, search each image independently, and
+combine the equal-weight result lists. Deep additionally performs at most one bounded vision
+expansion so text dense, FTS, and rerank can participate. Research requires that expansion for a
+pure-image request, then performs document selection and bounded PageIndex navigation one outline
+level at a time before its final LLM synthesis. Text-only behavior is unchanged.
 
 `auto` is a public **routing selector**, not a fourth retrieval pipeline. Only an explicit
 `mode: "auto"` invokes the knowledge space's published `reasoningModel` through Dify's model
@@ -442,12 +457,17 @@ Research retrieval lane itself remains a terminal integrity error.
   - `answer.error` `{ error, traceId }`: the terminal failure frame. No `answer.done` follows it.
 - `400` invalid request or retrieval-profile/mode mismatch; `404` space not found; `409` query
   admission rejected while deletion is active; `503` query generation, published runtime snapshot,
-  embedding profile, projection snapshot, or required retrieval capability unavailable; `401`/`403`.
+  embedding profile, projection snapshot, query-image resolver, pure-image Research vision
+  expansion, or required retrieval capability unavailable; `413` query-image count/size limit;
+  `401`/`403`.
 
 `answer.done.metadata` is generator-dependent and can contain `generator`, `mode`, reasoning
 `model`, `provider`, `providerFinishReason`, opaque `providerMetadata`, `topScore`, `citations`, the
 complete `evidenceBundle`, multimodal evidence/answer metadata, and the same `projectionSnapshot`,
 `retrievalProfile`, retrieval `plan`, and retrieval `metrics` persisted in the AnswerTrace.
+For degraded image queries, terminal metadata and/or retrieval metrics contain the stable reason
+codes `query-image-visual-leg-unavailable`, `query-image-ignored-no-vision-model`, or
+`query-image-expansion-timeout`; the same reason is persisted in the trace.
 
 The gateway buffers the terminal `answer.done` frame until the AnswerTrace transaction commits. If
 the trace commit fails, the client receives `answer.error` instead of a false successful terminal
@@ -835,7 +855,13 @@ currently visible.
 ### `POST /research-tasks/plan`
 **Description**: Produce a dry-run plan (cost/latency/retrieval estimates) for a research task without executing.
 **Auth**: Bearer; scope `knowledge-spaces:read`.
-**Body** (`application/json`, strict): `knowledgeSpaceId` (uuid, required); `query` (string 1–16000, required); `mode` (enum `auto|deep|fast|research`, optional); `topK` (int 1–50, optional); `budgetUsd` (number ≥0, optional).
+**Body** (`application/json`, strict): `knowledgeSpaceId` (uuid, required); `query` (string 1–16000,
+optional); `queryImages` (strict `{ uploadFileId: uuid }[]`, 1–4, optional); `mode` (enum
+`auto|deep|fast|research`, optional); `topK` (int 1–50, optional); `budgetUsd` (number ≥0, optional).
+At least one of `query` or `queryImages` is required and both may be supplied. Query-image ownership,
+MIME, and byte bounds are identical to `POST /queries`. Planning validates references but does not
+mark them used or load their bytes. Deep/Research estimates include one image-expansion model call;
+Fast does not.
 
 An omitted `mode` uses the published `defaultMode`. An explicit `auto` is resolved through the
 published reasoning model before the deterministic dry-run planner runs; `retrievalPlan` preserves
@@ -848,7 +874,12 @@ published reasoning model before the deterministic dry-run planner runs; `retrie
 ### `POST /research-tasks`
 **Description**: Create and enqueue an asynchronous research task job.
 **Auth**: Bearer; scope `knowledge-spaces:write`.
-**Body** (`application/json`): `knowledgeSpaceId` (uuid, required); `query` (string 1–16000, required); `mode` (enum `auto|deep|fast|research`, optional); `topK` (int 1–50, optional); `budgetUsd` (number ≥0, optional); `limits` (object, optional) `{ maxRetrievalSteps?, maxScannedResources?, maxToolCalls?, timeoutMs? }`; `metadata` (object, optional); `permissionScope` (object, optional).
+**Body** (`application/json`, strict): `knowledgeSpaceId` (uuid, required); `query` (string 1–16000,
+optional); `queryImages` (strict `{ uploadFileId: uuid }[]`, 1–4, optional); `mode` (enum
+`auto|deep|fast|research`, optional); `topK` (int 1–50, optional); `budgetUsd` (number ≥0, optional);
+`limits` (object, optional) `{ maxRetrievalSteps?, maxScannedResources?, maxToolCalls?, timeoutMs? }`;
+`metadata` (object, optional); `permissionScope` (object, optional). At least one of `query` or
+`queryImages` is required and both may be supplied; image bounds match `POST /queries`.
 
 For an explicit `auto`, creation authorizes the caller, freezes the published publication/profile
 tuple, invokes that profile's reasoning model once, and persists the concrete mode plus bounded
@@ -864,8 +895,16 @@ the saved chapter frontier. If answer synthesis later times out, retry revalidat
 job/query/trace and current access fences, rehydrates the latest immutable evidence checkpoint, and
 skips repeated embedding, completed tree decisions, and evidence opening.
 
+Durable image jobs persist only Dify upload references plus the first successful derived expansion.
+Each execution revalidates access and resolves bounded bytes from Dify storage. Retry/replay reuses
+the expansion, and its model reservation/reconciliation participates in `budgetUsd` enforcement.
+
 **Responses**:
-- `201`: `ResearchTaskJob` `{ id, tenantId, subjectId, knowledgeSpaceId, queueJobId, query, stage: enum(queued|planning|retrieving|analyzing|generating|completed|failed|canceled), limits?, budgetUsd?, cost: { totalUsd, budgetUsd?, budgetExceeded?, entries: [{ step, provider, costUsd, usage, recordedAt: number }] }, error?, createdAt: number, updatedAt: number, completedAt?: number }`.
+- `201`: `ResearchTaskJob` `{ id, tenantId, subjectId, knowledgeSpaceId, queueJobId, query,
+  queryImages?: [{ uploadFileId }], stage:
+  enum(queued|planning|retrieving|analyzing|generating|completed|failed|canceled), limits?,
+  budgetUsd?, cost: { totalUsd, budgetUsd?, budgetExceeded?, entries: [{ step, provider, costUsd,
+  usage, recordedAt: number }] }, error?, createdAt: number, updatedAt: number, completedAt?: number }`.
 - `400`; `404`; `422` limits exceeded `{ error, violations: [{ limit, limitValue, estimatedValue }] }`; `401`/`403`.
 
 ### `GET /research-tasks/{id}`

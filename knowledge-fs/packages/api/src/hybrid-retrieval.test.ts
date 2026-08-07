@@ -333,6 +333,72 @@ describe("createBasicHybridRetriever projection set filtering", () => {
     });
   });
 
+  it("accepts pure-image retrieval without invoking the text retrieval legs", async () => {
+    let searches = 0;
+    const retriever = createBasicHybridRetriever({
+      repository: {
+        searchDense: async () => {
+          searches += 1;
+          return [];
+        },
+        searchFts: async () => {
+          searches += 1;
+          return [];
+        },
+      },
+    });
+
+    const result = await retriever.retrieve({
+      knowledgeSpaceId,
+      limit: 3,
+      query: "",
+      queryImages: [
+        {
+          body: new Uint8Array([1]),
+          byteSize: 1,
+          mimeType: "image/png",
+          sha256: "a".repeat(64),
+          uploadFileId: "00000000-0000-4000-8000-000000000001",
+        },
+      ],
+      queryVector: [],
+      topK: 3,
+    });
+
+    expect(searches).toBe(0);
+    expect(result.items).toEqual([]);
+    expect(result.metrics).toMatchObject({ denseCandidates: 0, ftsCandidates: 0 });
+  });
+
+  it("forwards a direct tenant scope to both text retrieval legs", async () => {
+    const denseInputs: Parameters<HybridRetrievalRepository["searchDense"]>[0][] = [];
+    const ftsInputs: Parameters<HybridRetrievalRepository["searchFts"]>[0][] = [];
+    const retriever = createBasicHybridRetriever({
+      repository: {
+        searchDense: async (input) => {
+          denseInputs.push(input);
+          return [];
+        },
+        searchFts: async (input) => {
+          ftsInputs.push(input);
+          return [];
+        },
+      },
+    });
+
+    await retriever.retrieve({
+      knowledgeSpaceId,
+      limit: 3,
+      query: "invoice",
+      queryVector: [0.1],
+      tenantId,
+      topK: 3,
+    });
+
+    expect(denseInputs[0]).toMatchObject({ tenantId });
+    expect(ftsInputs[0]).toMatchObject({ tenantId });
+  });
+
   it("keeps the planned Fast candidate pool for reranking without a fusion runtime", async () => {
     const candidates = [
       candidate({ nodeId: "node-1", projectionId: "projection-1" }),
