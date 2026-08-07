@@ -19,10 +19,12 @@ import {
   PluginSource,
   TaskStatus,
 } from '@/app/components/plugins/types'
+import { consoleQuery } from '@/service/client'
 import { renderHook } from '@/test/console/render'
 import {
   normalizeInstalledPluginDetail,
   useInstalledPluginList,
+  useInvalidateInstalledPluginList,
   useMutationPluginAutoUpgradeSettings,
   useMutationPluginPermissionSettings,
   usePluginAutoUpgradeSettings,
@@ -67,8 +69,12 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
+const { mockInvalidateAllBuiltInTools } = vi.hoisted(() => ({
+  mockInvalidateAllBuiltInTools: vi.fn(),
+}))
+
 vi.mock('../use-tools', () => ({
-  useInvalidateAllBuiltInTools: () => vi.fn(),
+  useInvalidateAllBuiltInTools: () => mockInvalidateAllBuiltInTools,
 }))
 
 const createQueryClient = () =>
@@ -912,6 +918,102 @@ describe('useRemoveFilteredInstalledPluginPageOnUnmount', () => {
     expect(
       queryClient.getQueryCache().find({ queryKey: cachedQuery.queryKey, exact: true }),
     ).toBeUndefined()
+  })
+})
+
+describe('useInvalidateInstalledPluginList', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('only invalidates every cached query for the requested category', async () => {
+    const queryClient = createQueryClient()
+    mockGet.mockResolvedValue({ plugins: [], has_more: false })
+    const modelInstalledIdsKey = consoleQuery.workspaces.current.plugin.installedIds.get.queryKey({
+      input: { query: { category: PluginCategoryEnum.model } },
+    })
+    const toolInstalledIdsKey = consoleQuery.workspaces.current.plugin.installedIds.get.queryKey({
+      input: { query: { category: PluginCategoryEnum.tool } },
+    })
+    const modelCategoryQueryKey = consoleQuery.workspaces.current.plugin.byCategory.list.get.key({
+      type: 'infinite',
+      input: { params: { category: PluginCategoryEnum.model } },
+    })
+    const toolCategoryQueryKey = consoleQuery.workspaces.current.plugin.byCategory.list.get.key({
+      type: 'infinite',
+      input: { params: { category: PluginCategoryEnum.tool } },
+    })
+
+    queryClient.setQueryData(modelInstalledIdsKey, { plugin_ids: ['langgenius/openai'] })
+    queryClient.setQueryData(toolInstalledIdsKey, { plugin_ids: ['langgenius/google'] })
+
+    const { result: listResult, unmount } = renderHook(
+      () => ({
+        model: useInstalledPluginList({ category: PluginCategoryEnum.model }),
+        filteredModel: useInstalledPluginList({
+          category: PluginCategoryEnum.model,
+          filters: { query: 'openai', language: 'en_US' },
+          pageSize: 30,
+        }),
+        tool: useInstalledPluginList({ category: PluginCategoryEnum.tool }),
+      }),
+      { wrapper: createWrapper(queryClient) },
+    )
+
+    await waitFor(() => {
+      expect(listResult.current.model.isSuccess).toBe(true)
+      expect(listResult.current.filteredModel.isSuccess).toBe(true)
+      expect(listResult.current.tool.isSuccess).toBe(true)
+    })
+
+    unmount()
+    const { result } = renderHook(() => useInvalidateInstalledPluginList(), {
+      wrapper: createWrapper(queryClient),
+    })
+
+    await act(async () => {
+      await result.current(PluginCategoryEnum.model)
+    })
+
+    const modelCategoryQueries = queryClient
+      .getQueryCache()
+      .findAll({ queryKey: modelCategoryQueryKey })
+    const toolCategoryQueries = queryClient
+      .getQueryCache()
+      .findAll({ queryKey: toolCategoryQueryKey })
+
+    expect(modelCategoryQueries).toHaveLength(2)
+    expect(modelCategoryQueries.every((query) => query.state.isInvalidated)).toBe(true)
+    expect(toolCategoryQueries).toHaveLength(1)
+    expect(toolCategoryQueries[0]?.state.isInvalidated).toBe(false)
+    expect(queryClient.getQueryState(modelInstalledIdsKey)?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(toolInstalledIdsKey)?.isInvalidated).toBe(false)
+    expect(mockInvalidateAllBuiltInTools).not.toHaveBeenCalled()
+  })
+
+  it('also invalidates built-in tools for the tool category', async () => {
+    const queryClient = createQueryClient()
+    mockGet.mockResolvedValue({ plugins: [], has_more: false })
+
+    const { result } = renderHook(
+      () => ({
+        invalidate: useInvalidateInstalledPluginList(),
+        model: useInstalledPluginList({ category: PluginCategoryEnum.model }),
+        tool: useInstalledPluginList({ category: PluginCategoryEnum.tool }),
+      }),
+      { wrapper: createWrapper(queryClient) },
+    )
+
+    await waitFor(() => {
+      expect(result.current.model.isSuccess).toBe(true)
+      expect(result.current.tool.isSuccess).toBe(true)
+    })
+
+    await act(async () => {
+      await result.current.invalidate(PluginCategoryEnum.tool)
+    })
+
+    expect(mockInvalidateAllBuiltInTools).toHaveBeenCalledOnce()
   })
 })
 
