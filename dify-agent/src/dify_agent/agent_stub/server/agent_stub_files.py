@@ -102,7 +102,7 @@ class DifyApiAgentStubFileRequestHandler:
     """Call Dify API inner file request endpoints on behalf of the sandbox.
 
     The upload path calls ``/inner/api/agent/files/upload-request`` and injects the
-    authenticated execution context's ``tenant_id``, ``user_id``, and optional
+    authenticated execution context's ``tenant_id``, ``user_id``, ``user_from``, and optional
     ``conversation_id`` along with the requested filename and mimetype. The download path calls
     ``/inner/api/agent/files/download-request`` and injects ``tenant_id``,
     ``user_id``, ``user_from``, and ``invoke_from`` plus the validated public
@@ -143,6 +143,7 @@ class DifyApiAgentStubFileRequestHandler:
         payload = {
             "tenant_id": execution_context.tenant_id,
             "user_id": execution_context.user_id,
+            "user_from": execution_context.user_from,
             "filename": request.filename,
             "mimetype": request.mimetype,
             "conversation_id": execution_context.conversation_id,

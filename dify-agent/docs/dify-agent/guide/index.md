@@ -54,7 +54,6 @@ also reads `.env` and `dify-agent/.env` when present.
 | `DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS` | `3600` | Maximum continuous active time for the RuntimeLease spanning one complete Agent run. Binding resources pause on timeout. This is not a retention TTL. |
 | `DIFY_AGENT_E2B_SHELLCTL_AUTH_TOKEN` | empty | Optional bearer token expected by shellctl inside the E2B template. |
 | `DIFY_AGENT_E2B_SHELLCTL_PORT` | `5004` | shellctl port exposed by the E2B template. |
-| `DIFY_AGENT_SANDBOX_FILE_UPLOAD_MAX_BYTES` | `52428800` | Standalone Dify Agent maximum for whole-file Workspace upload capture; 50 MiB by default. Docker Compose derives it from `PLUGIN_MAX_FILE_SIZE`. |
 | `DIFY_AGENT_SHELL_REDACT_PATTERNS` | empty | JSON array of additional regex patterns redacted from Shell output. |
 | `DIFY_AGENT_STUB_API_BASE_URL` | empty | HTTP(S) Agent Stub API base URL reachable from the Sandbox. It may be the service root or `/agent-stub`. Enables `DIFY_AGENT_STUB_*` env injection for user `shell.run` jobs. |
 | `DIFY_AGENT_SANDBOX_FILES_BASE_URL` | empty | Dify API base URL reachable from the Sandbox for signed `/files/*` upload/download bytes, including Config file and skill pulls. Required when Agent Stub file operations are enabled. May include an ingress path prefix, but not a query or fragment. |
@@ -85,7 +84,6 @@ DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN=replace-with-shellctl-token
 DIFY_AGENT_LOCAL_SANDBOX_MATERIALIZED_HOME_ROOT=/tmp/dify-agent/materialized-homes
 DIFY_AGENT_LOCAL_SANDBOX_WORKSPACE_ROOT=/tmp/dify-agent/workspaces
 DIFY_AGENT_LOCAL_SANDBOX_HOME_SNAPSHOT_ROOT=/tmp/dify-agent/home-snapshots
-DIFY_AGENT_SANDBOX_FILE_UPLOAD_MAX_BYTES=52428800
 DIFY_AGENT_STUB_API_BASE_URL=https://agent.example.com/agent-stub
 DIFY_AGENT_SANDBOX_FILES_BASE_URL=https://dify.example.com
 # This is security-sensitive: it derives the JWE encryption key for Agent Stub bearer tokens.
@@ -124,11 +122,6 @@ accepted only as legacy aliases for the two Local settings. New deployments
 must use `DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT` and
 `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN`. There is no compatibility setting for
 the removed shell-provider selector.
-
-The example above is for a standalone Dify Agent process, where the byte limit
-can be set directly. In a Docker deployment, set `PLUGIN_MAX_FILE_SIZE` in
-`docker/.env`; Compose maps it to
-`DIFY_AGENT_SANDBOX_FILE_UPLOAD_MAX_BYTES` inside `agent_backend`.
 
 The backend selection is deployment-private. Shell-enabled run requests use an
 Execution Context, `dify.runtime`, and `dify.shell` graph. Runtime config carries
