@@ -701,6 +701,19 @@ vi.mock('@/hooks/use-timestamp', () => ({
 }))
 
 vi.mock('@/service/use-tools', () => ({
+  useAllBuiltInTools: () => ({ data: [] }),
+  useAllCustomTools: () => ({ data: [] }),
+  useAllMCPTools: () => ({
+    data: [
+      {
+        icon: '/notion-mcp.svg',
+        id: 'notion',
+        name: 'Notion',
+        plugin_id: 'langgenius/notion',
+      },
+    ],
+  }),
+  useAllWorkflowTools: () => ({ data: [] }),
   useMCPServerDetail: () => ({
     data: mockBuiltInEnvironment.mcpServerDetail,
   }),
@@ -1386,6 +1399,10 @@ describe('AppDeploy', () => {
     expect(precheckAlert).toHaveTextContent('Request approval')
     expect(precheckAlert).toHaveTextContent('Notion MCP')
     expect(precheckAlert).not.toHaveTextContent('node-1')
+    const notionNode = within(precheckAlert).getByText('Notion MCP').closest('li')
+    expect(notionNode?.querySelector<HTMLElement>('[style]')?.style.backgroundImage).toContain(
+      '/notion-mcp.svg',
+    )
     expect(
       within(configurationDialog).getByRole('button', { name: 'common.appMenus.deploy' }),
     ).toBeDisabled()

@@ -1,30 +1,19 @@
 'use client'
 
 import type { UnsupportedNode } from '@dify/contracts/enterprise-app-deploy/types.gen'
+import type { Emoji } from '@/app/components/tools/types'
 import { useTranslation } from 'react-i18next'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { getIconFromMarketPlace } from '@/utils/get-icon'
+import { useGetProviderIcon } from './use-provider-icon'
 
 const WORKFLOW_BLOCK_TYPES = new Set<string>(Object.values(BlockEnum))
-const PROVIDER_ICON_BLOCK_TYPES = new Set<BlockEnum>([
-  BlockEnum.DataSource,
-  BlockEnum.Tool,
-  BlockEnum.TriggerPlugin,
-])
 
 function isWorkflowBlockType(type: string): type is BlockEnum {
   return WORKFLOW_BLOCK_TYPES.has(type)
 }
 
-function providerIcon(node: UnsupportedNode) {
-  if (!isWorkflowBlockType(node.type) || !PROVIDER_ICON_BLOCK_TYPES.has(node.type)) return undefined
-
-  const pluginId = node.provider?.plugin_id
-  return pluginId ? getIconFromMarketPlace(pluginId) : undefined
-}
-
-function UnsupportedNodeIcon({ node }: { node: UnsupportedNode }) {
+function UnsupportedNodeIcon({ node, icon }: { node: UnsupportedNode; icon?: string | Emoji }) {
   if (!isWorkflowBlockType(node.type)) {
     return (
       <span className="flex size-4 shrink-0 items-center justify-center rounded-[5px] bg-components-icon-bg-midnight-solid text-white shadow-xs">
@@ -33,11 +22,12 @@ function UnsupportedNodeIcon({ node }: { node: UnsupportedNode }) {
     )
   }
 
-  return <BlockIcon type={node.type} size="xs" toolIcon={providerIcon(node)} />
+  return <BlockIcon type={node.type} size="xs" toolIcon={icon} />
 }
 
 export function DeploymentPrecheckAlert({ nodes }: { nodes: UnsupportedNode[] }) {
   const { t } = useTranslation('deployments')
+  const getProviderIcon = useGetProviderIcon(nodes)
 
   return (
     <div
@@ -57,7 +47,7 @@ export function DeploymentPrecheckAlert({ nodes }: { nodes: UnsupportedNode[] })
         <ul className="flex flex-col gap-2 py-1">
           {nodes.map((node) => (
             <li key={node.id} className="flex min-w-0 items-center gap-2">
-              <UnsupportedNodeIcon node={node} />
+              <UnsupportedNodeIcon node={node} icon={getProviderIcon(node)} />
               <span className="min-w-0 truncate system-xs-medium text-text-secondary">
                 {node.title}
               </span>
