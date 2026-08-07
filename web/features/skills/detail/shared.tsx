@@ -138,6 +138,7 @@ type ParsedMarkdownContent = {
 }
 
 export type BuilderChatMessage = {
+  attachments?: SkillBuilderAttachment[]
   content: string
   id: string
   progressStages?: string[]
@@ -153,6 +154,7 @@ export type SkillBuilderAttachment = {
   id: string
   mimeType: string
   name: string
+  previewUrl?: string
   size: number
   toolFileId: string
 }

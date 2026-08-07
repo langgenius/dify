@@ -2710,3 +2710,56 @@ def test_build_assistant_attachment_context_includes_text_and_marks_binary() -> 
     assert "# Brief\nUse this." in context
     assert "--- voice.mp3 (audio/mpeg, 4 bytes) ---" in context
     assert "[Binary attachment available as uploaded file metadata only.]" in context
+
+
+def test_build_assistant_image_contents_encodes_images_for_vision_models() -> None:
+    attachments = [
+        SkillAssistAttachmentPayload(
+            tool_file_id="image-file-1",
+            name="logo.png",
+            mime_type="image/png",
+            size=4,
+        ),
+        SkillAssistAttachmentPayload(
+            tool_file_id="brief.md",
+            name="brief.md",
+            mime_type="text/markdown",
+            size=5,
+        ),
+    ]
+
+    with patch(
+        "services.skill_management_service.SkillManagementService._load_assistant_tool_file_bytes",
+        return_value=b"PNG!",
+    ):
+        contents = SkillManagementService._build_assistant_image_contents(
+            tenant_id=TENANT,
+            attachments=attachments,
+        )
+
+    assert len(contents) == 1
+    assert contents[0].format == "png"
+    assert contents[0].mime_type == "image/png"
+    assert contents[0].filename == "logo.png"
+    assert contents[0].base64_data == "UE5HIQ=="
+
+    with patch(
+        "services.skill_management_service.SkillManagementService._load_assistant_tool_file_bytes",
+        return_value=b"PNG!",
+    ):
+        context = SkillManagementService._build_assistant_attachment_context(
+            tenant_id=TENANT,
+            attachments=attachments[:1],
+            vision_enabled=True,
+        )
+
+    assert "Image attachment is provided separately as multimodal content." in context
+
+
+def test_assistant_error_message_exposes_provider_description_without_prefix() -> None:
+    error = RuntimeError("[models] Bad Request Error, You have no credits remaining.")
+
+    assert (
+        SkillManagementService._assistant_error_message(error, fallback="fallback")
+        == "Bad Request Error, You have no credits remaining."
+    )

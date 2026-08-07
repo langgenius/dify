@@ -179,6 +179,36 @@ function SkillBuilderThinkingMessage({
   )
 }
 
+function SkillBuilderMessageAttachments({
+  attachments,
+}: {
+  attachments: SkillBuilderAttachment[]
+}) {
+  return (
+    <div className="flex max-w-full flex-wrap justify-end gap-1.5">
+      {attachments.map((attachment) =>
+        attachment.previewUrl && attachment.mimeType.startsWith('image/') ? (
+          <img
+            key={attachment.id}
+            src={attachment.previewUrl}
+            alt={attachment.name}
+            className="max-h-40 max-w-56 rounded-lg border border-divider-subtle object-contain"
+          />
+        ) : (
+          <div
+            key={attachment.id}
+            className="flex max-w-56 items-center gap-2 rounded-lg border border-divider-subtle bg-background-default px-2.5 py-2 text-left text-text-secondary shadow-xs"
+            title={attachment.name}
+          >
+            <span aria-hidden className="i-ri-file-line size-4 shrink-0 text-text-tertiary" />
+            <span className="truncate system-xs-medium">{attachment.name}</span>
+          </div>
+        ),
+      )}
+    </div>
+  )
+}
+
 const skillBuilderEmptyIconCellOpacities = [
   '0 0 0.093 0.166 0 0 0.155 0',
   '0 0.159 0.145 0.159 0.135 0.179 0.128 0.105',
@@ -430,6 +460,7 @@ export function SkillBuilderPanel({
     }
 
     setIsUploadingAttachment(true)
+    const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined
     try {
       const uploadedFile = await uploadSkillFile(file)
 
@@ -439,11 +470,13 @@ export function SkillBuilderPanel({
           id: uploadedFile.id,
           mimeType: uploadedFile.mime_type || file.type || 'application/octet-stream',
           name: uploadedFile.name || file.name,
+          previewUrl,
           size: uploadedFile.size ?? file.size,
           toolFileId: uploadedFile.id,
         },
       ])
     } catch (error) {
+      if (previewUrl) URL.revokeObjectURL(previewUrl)
       toast.error(
         error instanceof Error
           ? error.message
@@ -456,9 +489,11 @@ export function SkillBuilderPanel({
   }
 
   const removeAttachment = (attachmentId: string) => {
-    setAttachments((currentAttachments) =>
-      currentAttachments.filter((attachment) => attachment.id !== attachmentId),
-    )
+    setAttachments((currentAttachments) => {
+      const attachment = currentAttachments.find((item) => item.id === attachmentId)
+      if (attachment?.previewUrl) URL.revokeObjectURL(attachment.previewUrl)
+      return currentAttachments.filter((item) => item.id !== attachmentId)
+    })
   }
 
   const getBuilderTargetFile = (currentDetail: SkillDetailResponse) => {
@@ -487,6 +522,7 @@ export function SkillBuilderPanel({
       trimmedPrompt || t(($) => $['skillManagement.detail.builder.attachmentOnlyMessage'])
 
     const userMessage: BuilderChatMessage = {
+      attachments: attachedFiles,
       id: `user-${Date.now()}`,
       role: 'user',
       content: requestMessage,
@@ -740,6 +776,9 @@ export function SkillBuilderPanel({
                     key={message.id}
                     className="flex w-full max-w-[720px] flex-col items-end gap-1 self-end pl-8"
                   >
+                    {!!message.attachments?.length && (
+                      <SkillBuilderMessageAttachments attachments={message.attachments} />
+                    )}
                     <div className="flex max-w-72 flex-col items-end rounded-2xl bg-background-default-dimmed px-2 py-2">
                       <Markdown
                         content={message.content}

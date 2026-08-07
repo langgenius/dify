@@ -2199,6 +2199,7 @@ describe('SkillDetailPage', () => {
         name: 'skill.skillManagement.detail.builder.send',
       }),
     )
+    expect(await screen.findByText('guide.md')).toBeInTheDocument()
     expect(
       screen.queryByText('skill.skillManagement.detail.builder.editIntro'),
     ).not.toBeInTheDocument()
@@ -2416,6 +2417,12 @@ describe('SkillDetailPage', () => {
 
   it('uploads image attachments in Skill Builder', async () => {
     const user = userEvent.setup({ applyAccept: false })
+    mocks.uploadSkillFile.mockResolvedValue({
+      id: 'tool-image-1',
+      name: 'image.png',
+      mime_type: 'image/png',
+      size: 5,
+    })
     const { container } = renderSkillDetailPage()
 
     await screen.findByText('skill.skillManagement.detail.builder.title')
@@ -2431,6 +2438,13 @@ describe('SkillDetailPage', () => {
 
     expect(mocks.uploadSkillFile).toHaveBeenCalledWith(expect.any(File))
     expect(toast.error).not.toHaveBeenCalled()
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'skill.skillManagement.detail.builder.send',
+      }),
+    )
+    expect(await screen.findByRole('img', { name: 'image.png' })).toBeInTheDocument()
   })
 
   it('shows unavailable feedback for Skill Builder voice input', async () => {
