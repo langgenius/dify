@@ -1,5 +1,5 @@
+import type { GetWorkspacesCurrentSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { LangGeniusVersionInfo } from './app-context-types'
-import type { ICurrentWorkspaceSummary } from '@/models/common'
 
 export const initialLangGeniusVersionInfo: LangGeniusVersionInfo = {
   current_env: '',
@@ -15,7 +15,7 @@ export const initialLangGeniusVersionInfo: LangGeniusVersionInfo = {
   can_auto_update: false,
 }
 
-export const initialWorkspaceSummary: ICurrentWorkspaceSummary = {
+export const initialWorkspaceSummary: GetWorkspacesCurrentSummaryResponse = {
   id: '',
   name: '',
   plan: null,

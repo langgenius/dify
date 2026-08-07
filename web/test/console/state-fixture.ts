@@ -1,6 +1,6 @@
+import type { GetWorkspacesCurrentSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { createStore } from 'jotai'
 import type { LangGeniusVersionInfo } from '@/context/app-context-types'
-import type { ICurrentWorkspaceSummary } from '@/models/common'
 import { atom } from 'jotai'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 
@@ -13,12 +13,7 @@ export type ConsoleStateFixture = {
     avatar_url?: string | null
     is_password_set?: boolean
   } | null
-  currentWorkspace?:
-    | ({
-        id?: string
-        name?: string
-      } & Partial<ICurrentWorkspaceSummary>)
-    | null
+  currentWorkspace?: Partial<GetWorkspacesCurrentSummaryResponse> | null
   isCurrentWorkspaceManager?: boolean
   isCurrentWorkspaceOwner?: boolean
   isCurrentWorkspaceEditor?: boolean
@@ -54,7 +49,7 @@ const defaultCurrentWorkspace = {
   plan: null,
   credits: null,
   role: 'owner',
-} satisfies ICurrentWorkspaceSummary
+} satisfies GetWorkspacesCurrentSummaryResponse
 
 const defaultLangGeniusVersionInfo = {
   current_env: 'CLOUD',
@@ -77,7 +72,7 @@ const accountProfileMetaAtom = atom({ currentVersion: null, currentEnv: null })
 const refreshUserProfileCallbackAtom = atom({ callback: () => {} })
 const refreshUserProfileAtom = atom(null, (get) => get(refreshUserProfileCallbackAtom).callback())
 
-const currentWorkspaceAtom = atom<ICurrentWorkspaceSummary>(defaultCurrentWorkspace)
+const currentWorkspaceAtom = atom<GetWorkspacesCurrentSummaryResponse>(defaultCurrentWorkspace)
 const currentWorkspaceIdAtom = atom((get) => get(currentWorkspaceAtom).id)
 const isCurrentWorkspaceManagerAtom = atom(false)
 const isCurrentWorkspaceOwnerAtom = atom(false)

@@ -636,7 +636,7 @@ export type CurrentWorkspaceSummaryResponse = {
   id: string
   name: string
   plan: string | null
-  role: string
+  role: TenantAccountRole
 }
 
 export type ToolLabelListResponse = Array<ToolLabel>
@@ -1505,6 +1505,8 @@ export type AccessPolicyRole = {
   role_name: string
   role_tag?: string
 }
+
+export type TenantAccountRole = 'admin' | 'dataset_operator' | 'editor' | 'normal' | 'owner'
 
 export type ToolLabel = {
   icon: string

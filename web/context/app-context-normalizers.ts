@@ -1,10 +1,9 @@
 import type { GetVersionResponse } from '@dify/contracts/api/console/version/types.gen'
 import type { GetWorkspacesCurrentSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { LangGeniusVersionInfo } from './app-context-types'
-import type { ICurrentWorkspaceSummary } from '@/models/common'
 import { initialLangGeniusVersionInfo, initialWorkspaceSummary } from './app-context-defaults'
 
-const workspaceRoles = new Set<ICurrentWorkspaceSummary['role']>([
+const workspaceRoles = new Set<GetWorkspacesCurrentSummaryResponse['role']>([
   'owner',
   'admin',
   'editor',
@@ -28,16 +27,15 @@ export type ProfileMeta = {
 
 function resolveWorkspaceRole(
   role: GetWorkspacesCurrentSummaryResponse['role'],
-): ICurrentWorkspaceSummary['role'] {
-  if (workspaceRoles.has(role as ICurrentWorkspaceSummary['role']))
-    return role as ICurrentWorkspaceSummary['role']
+): GetWorkspacesCurrentSummaryResponse['role'] {
+  if (workspaceRoles.has(role)) return role
 
   return initialWorkspaceSummary.role
 }
 
 export function normalizeCurrentWorkspaceSummary(
   workspace?: GetWorkspacesCurrentSummaryResponse,
-): ICurrentWorkspaceSummary {
+): GetWorkspacesCurrentSummaryResponse {
   if (!workspace) return initialWorkspaceSummary
 
   return {
@@ -50,7 +48,7 @@ export function normalizeCurrentWorkspaceSummary(
 }
 
 export function getWorkspaceRoleFlags(
-  currentWorkspace: ICurrentWorkspaceSummary,
+  currentWorkspace: GetWorkspacesCurrentSummaryResponse,
 ): WorkspaceRoleFlags {
   return {
     isCurrentWorkspaceManager: ['owner', 'admin'].includes(currentWorkspace.role),

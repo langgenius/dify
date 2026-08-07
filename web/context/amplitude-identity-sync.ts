@@ -1,7 +1,7 @@
 'use client'
 
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
-import type { ICurrentWorkspaceSummary } from '@/models/common'
+import type { GetWorkspacesCurrentSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { atom } from 'jotai'
 import { atomEffect } from 'jotai-effect'
 import { setUserId, setUserProperties } from '@/app/components/base/amplitude'
@@ -17,7 +17,7 @@ function buildAmplitudeProperties({
   currentWorkspace,
   userProfile,
 }: {
-  currentWorkspace: ICurrentWorkspaceSummary
+  currentWorkspace: GetWorkspacesCurrentSummaryResponse
   userProfile: GetAccountProfileResponse
 }) {
   const properties: AmplitudeProperties = {

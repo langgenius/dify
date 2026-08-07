@@ -1,4 +1,8 @@
 import type {
+  PostWorkspacesInfoData,
+  PostWorkspacesInfoResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
+import type {
   DefaultModelResponse,
   Model,
   ModelItem,
@@ -7,7 +11,6 @@ import type {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type {
   CommonResponse,
-  ICurrentWorkspace,
   InitValidateStatusResponse,
   SetupStatusResponse,
 } from '@/models/common'
@@ -109,10 +112,10 @@ export const updateWorkspaceInfo = ({
   url,
   body,
 }: {
-  url: string
-  body: Record<string, any>
-}): Promise<ICurrentWorkspace> => {
-  return post<ICurrentWorkspace>(url, { body })
+  url: PostWorkspacesInfoData['url']
+  body: PostWorkspacesInfoData['body']
+}): Promise<PostWorkspacesInfoResponse> => {
+  return post<PostWorkspacesInfoResponse>(url, { body })
 }
 
 type InvitationCheckData = {

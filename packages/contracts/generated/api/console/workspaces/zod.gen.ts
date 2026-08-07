@@ -452,17 +452,6 @@ export const zReplaceBindingsRequest = z.object({
 })
 
 /**
- * CurrentWorkspaceSummaryResponse
- */
-export const zCurrentWorkspaceSummaryResponse = z.object({
-  credits: z.int().nullable(),
-  id: z.string(),
-  name: z.string(),
-  plan: z.string().nullable(),
-  role: z.string(),
-})
-
-/**
  * ApiToolProviderDeletePayload
  */
 export const zApiToolProviderDeletePayload = z.object({
@@ -1233,6 +1222,22 @@ export const zDatasetAccessMatrix = z.object({
 export const zWorkspaceAccessMatrix = z.object({
   items: z.array(zAccessMatrixItem).optional(),
   pagination: zPagination.nullish(),
+})
+
+/**
+ * TenantAccountRole
+ */
+export const zTenantAccountRole = z.enum(['admin', 'dataset_operator', 'editor', 'normal', 'owner'])
+
+/**
+ * CurrentWorkspaceSummaryResponse
+ */
+export const zCurrentWorkspaceSummaryResponse = z.object({
+  credits: z.int().nullable(),
+  id: z.string(),
+  name: z.string(),
+  plan: z.string().nullable(),
+  role: zTenantAccountRole,
 })
 
 /**

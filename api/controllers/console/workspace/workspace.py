@@ -45,7 +45,7 @@ from libs.helper import dump_response, to_timestamp
 from libs.login import login_required
 from libs.pagination import paginate_query
 from machinery.context import RequestContext
-from models.account import Account, Tenant, TenantCustomConfigDict, TenantStatus
+from models.account import Account, Tenant, TenantAccountRole, TenantCustomConfigDict, TenantStatus
 from services.account_service import TenantService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.file_service import FileService
@@ -110,7 +110,7 @@ class TenantInfoResponse(ResponseModel):
 class CurrentWorkspaceSummaryResponse(ResponseModel):
     id: str
     name: str
-    role: str
+    role: TenantAccountRole
     plan: str | None
     credits: int | None = Field(description="Remaining credits in the effective pool; -1 means unlimited.")
 

@@ -16605,7 +16605,7 @@ Model class for credential form schema.
 | id | string |  | Yes |
 | name | string |  | Yes |
 | plan | string |  | Yes |
-| role | string |  | Yes |
+| role | [TenantAccountRole](#tenantaccountrole) |  | Yes |
 
 #### CustomConfigurationResponse
 

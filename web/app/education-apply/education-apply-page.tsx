@@ -1,8 +1,8 @@
 'use client'
 
+import type { GetWorkspacesCurrentSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
 import type { Plan as PlanType } from '@/app/components/billing/type'
-import type { ICurrentWorkspaceSummary } from '@/models/common'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -292,7 +292,7 @@ const EducationApplyAgeContent = () => {
 }
 
 type AppliedEducationWorkspaceBlockProps = {
-  currentWorkspace: ICurrentWorkspaceSummary
+  currentWorkspace: GetWorkspacesCurrentSummaryResponse
   plan: PlanType
   action: ReactNode
   isSwitchingWorkspace: boolean

@@ -1,5 +1,4 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
-import type { GetWorkspacesCurrentSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Role } from './access-control'
 import type { I18nText } from '@/i18n-config/language'
 import type { Model } from '@/types/app'
@@ -27,37 +26,6 @@ export type Member = Pick<GetAccountProfileResponse, 'id' | 'name' | 'email' | '
   roles: Role[]
 }
 
-const ProviderName = {
-  OPENAI: 'openai',
-  AZURE_OPENAI: 'azure_openai',
-  ANTHROPIC: 'anthropic',
-  Replicate: 'replicate',
-  HuggingfaceHub: 'huggingface_hub',
-  MiniMax: 'minimax',
-  Spark: 'spark',
-  Tongyi: 'tongyi',
-  ChatGLM: 'chatglm',
-} as const
-type ProviderName = (typeof ProviderName)[keyof typeof ProviderName]
-type ProviderAzureToken = {
-  openai_api_base?: string
-  openai_api_key?: string
-}
-type ProviderAnthropicToken = {
-  anthropic_api_key?: string
-}
-type Provider = {
-  [Name in ProviderName]: {
-    provider_name: Name
-  } & {
-    provider_type: 'custom' | 'system'
-    is_valid: boolean
-    is_enabled: boolean
-    last_used: string
-    token?: string | ProviderAzureToken | ProviderAnthropicToken
-  }
-}[ProviderName]
-
 export type IWorkspace = {
   id: string
   name: string
@@ -66,26 +34,6 @@ export type IWorkspace = {
   created_at: number
   last_opened_at?: number | null
   current: boolean
-}
-
-export type WorkspaceRole = 'owner' | 'admin' | 'editor' | 'dataset_operator' | 'normal'
-
-export type ICurrentWorkspaceSummary = Omit<GetWorkspacesCurrentSummaryResponse, 'role'> & {
-  role: WorkspaceRole
-}
-
-export type ICurrentWorkspace = Omit<IWorkspace, 'current'> & {
-  role: WorkspaceRole
-  providers: Provider[]
-  trial_credits: number
-  trial_credits_used: number
-  trial_credits_exhausted_at: number
-  next_credit_reset_date: number
-  trial_end_reason?: string
-  custom_config?: {
-    remove_webapp_brand?: boolean
-    replace_webapp_logo?: string
-  }
 }
 
 export type DataSourceNotionPage = {
