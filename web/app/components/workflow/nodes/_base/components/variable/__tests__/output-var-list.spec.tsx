@@ -29,7 +29,8 @@ describe('OutputVarList', () => {
   }
 
   // Render the component and trigger a rename at the given index.
-  // Returns the newOutputs passed to onChange.
+  // Returns the outputs after the rename: the payload passed to onChange, or the outputs
+  // unchanged when the rename was not committed.
   const collectRenameResult = (
     outputs: OutputVar,
     outputKeyOrders: string[],
@@ -53,7 +54,7 @@ describe('OutputVarList', () => {
     const inputs = screen.getAllByRole('textbox')
     fireEvent.change(inputs[renameIndex]!, { target: { value: newName } })
 
-    return captured!
+    return captured ?? outputs
   }
 
   beforeEach(() => {
@@ -84,12 +85,14 @@ describe('OutputVarList', () => {
       expect(newOutputs.var_1).toEqual({ type: 'string', children: null })
     })
 
-    it('should keep outputs key alive when duplicate is renamed back to unique name', () => {
+    it('should keep both entries alive when a name transits an existing one and is then made unique', () => {
       // Step 1: rename var_2 -> var_1 (creates duplicate)
       const outputs = createOutputs({ var_1: 'string', var_2: 'number' })
       const afterFirst = collectRenameResult(outputs, ['var_1', 'var_2'], 1, 'var_1')
 
-      expect(afterFirst.var_2).toBeUndefined()
+      // outputs is keyed by name, so committing this rename would overwrite var_1's entry with
+      // var_2's. The rename is held until the name is unique, so var_2 keeps its own entry.
+      expect(afterFirst.var_2).toBeDefined()
       expect(afterFirst.var_1).toBeDefined()
 
       // Clean up first render before the second to avoid DOM collision
