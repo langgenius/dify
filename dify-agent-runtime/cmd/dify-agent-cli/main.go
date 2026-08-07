@@ -1,5 +1,5 @@
 // dify-agent-cli is the Go replacement for the Python dify-agent CLI.
-// It communicates with the Agent Stub server via HTTP or gRPC to provide
+// It communicates with the Agent Stub server via HTTP to provide
 // connect, file, drive, and config operations inside the sandbox container.
 package main
 
