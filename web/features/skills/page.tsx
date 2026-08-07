@@ -39,6 +39,7 @@ import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { SkillCardTags } from '@/features/tag-management/components/skill-card-tags'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
@@ -68,14 +69,10 @@ function invalidateSkillListQueries(queryClient: QueryClient) {
   })
 }
 
-function SkillIcon({ icon }: { icon?: string }) {
+function SkillIcon() {
   return (
-    <div className="flex size-10 shrink-0 items-center justify-center rounded-[10px] border-[0.5px] border-divider-regular bg-background-default-dodge">
-      {icon ? (
-        <span className="system-lg-medium text-text-secondary">{icon}</span>
-      ) : (
-        <span aria-hidden className="i-ri-box-3-line size-5 text-text-tertiary" />
-      )}
+    <div className="flex size-10 shrink-0 items-center justify-center rounded-[10px] border-[0.5px] border-divider-regular bg-background-default">
+      <span aria-hidden className="i-custom-vender-main-nav-skill size-5 text-text-secondary" />
     </div>
   )
 }
@@ -324,6 +321,7 @@ function SkillCard({
   const { t } = useTranslation('skill')
   const { t: tCommon } = useTranslation('common')
   const { formatTime } = useTimestamp()
+  const { formatTimeFromNow } = useFormatTimeFromNow()
   const queryClient = useQueryClient()
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const duplicateMutation = useMutation(
@@ -343,6 +341,9 @@ function SkillCard({
     skill.updated_at,
     t(($) => $['skillManagement.dateTimeFormat']),
   )
+  const publishedAt = skill.latest_published_at
+    ? formatTimeFromNow(skill.latest_published_at)
+    : undefined
 
   const handleDuplicate = () => {
     if (duplicateMutation.isPending) return
@@ -379,7 +380,7 @@ function SkillCard({
           className="block min-w-0 shrink-0 cursor-pointer outline-hidden"
         >
           <div className="flex items-center gap-3 px-4 pt-4 pb-2">
-            <SkillIcon icon={skill.icon} />
+            <SkillIcon />
             <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
               <h2 className="truncate system-md-semibold text-text-secondary">
                 {skill.display_name}
@@ -412,7 +413,7 @@ function SkillCard({
             <span className="min-w-0 truncate">
               {isDraft
                 ? t(($) => $['skillManagement.editedAt'], { time: updatedAt })
-                : t(($) => $['skillManagement.publishedAt'], { time: updatedAt })}
+                : t(($) => $['skillManagement.publishedAt'], { time: publishedAt })}
             </span>
           </div>
         </div>

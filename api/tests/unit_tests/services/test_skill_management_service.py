@@ -435,19 +435,83 @@ def test_create_assistant_action_stream_applies_file_operations_and_returns_deta
 
     events = [json.loads(chunk.removeprefix("data: ").strip()) for chunk in response]
     assert [event["event"] for event in events] == [
+        "skill_assistant_progress",
+        "skill_assistant_progress",
         "message",
         "skill_assistant_suggestions",
+        "skill_assistant_progress",
+        "skill_assistant_progress",
         "skill_detail_updated",
         "message_end",
     ]
-    assert events[0]["answer"] == "Created the refund policy reference."
-    assert events[1]["suggestions"] == ["Add escalation rules", "Include refund examples"]
-    assert events[2]["operations"] == [{"operation": "upsert_text", "path": "references/refund-policy.md"}]
-    assert any(file["path"] == "references/refund-policy.md" for file in events[2]["detail"]["files"])
+    assert events[2]["answer"] == "Created the refund policy reference."
+    assert events[3]["suggestions"] == ["Add escalation rules", "Include refund examples"]
+    assert events[6]["operations"] == [{"operation": "upsert_text", "path": "references/refund-policy.md"}]
+    assert any(file["path"] == "references/refund-policy.md" for file in events[6]["detail"]["files"])
 
     draft = service.get_skill(tenant_id=TENANT, skill_id=created["id"])
     reference = next(file for file in draft["files"] if file["path"] == "references/refund-policy.md")
     assert reference["content"] == "# Refund Policy\n"
+
+
+def test_new_skill_builder_stays_in_scenario_stage_on_first_turn() -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload())
+    model_output = json.dumps(
+        {
+            "reply": "Created a complete Customer Issue Triage skill.",
+            "suggestions": ["Describe the customer issue trigger"],
+            "operations": [
+                {
+                    "operation": "upsert_text",
+                    "path": "SKILL.md",
+                    "mime_type": "text/markdown",
+                    "content": (
+                        "---\n"
+                        "name: customer-issue-triage\n"
+                        "description: Classify customer feedback into P0-P3 priorities.\n"
+                        "metadata:\n"
+                        "  display-name: Customer Issue Triage\n"
+                        "---\n"
+                        "# Customer Issue Triage\n\n"
+                        "Invented escalation rules and routing thresholds.\n"
+                    ),
+                },
+                {
+                    "operation": "upsert_text",
+                    "path": "references/example.md",
+                    "mime_type": "text/markdown",
+                    "content": "# Example\n",
+                },
+            ],
+        }
+    )
+    model = SimpleNamespace(
+        invoke_llm=lambda **_kwargs: SimpleNamespace(
+            message=SimpleNamespace(get_text_content=lambda: model_output),
+        )
+    )
+    manager = SimpleNamespace(get_model_instance=lambda **_kwargs: model)
+
+    with patch("services.skill_management_service.ModelManager.for_tenant", return_value=manager):
+        events = [
+            json.loads(chunk.removeprefix("data: ").strip())
+            for chunk in service.create_assistant_action_stream(
+                tenant_id=TENANT,
+                user_id=USER,
+                skill_id=created["id"],
+                message="Customer issue triage",
+                model_payload=SkillAssistModelPayload(provider="test", model="test"),
+            )
+        ]
+
+    detail = next(event["detail"] for event in events if event["event"] == "skill_detail_updated")
+    skill_md = next(file for file in detail["files"] if file["path"] == "SKILL.md")
+    assert detail["name"] == created["name"]
+    assert detail["display_name"] == "Untitled skill"
+    assert detail["description"] == "Classify customer feedback into P0-P3 priorities."
+    assert "Invented escalation rules" not in skill_md["content"]
+    assert not any(file["path"] == "references/example.md" for file in detail["files"])
 
 
 def test_create_assistant_action_stream_strips_skill_frontmatter_from_reference_files() -> None:
@@ -544,12 +608,16 @@ def test_create_assistant_action_stream_generates_missing_suggestions() -> None:
 
     events = [json.loads(chunk.removeprefix("data: ").strip()) for chunk in response]
     assert [event["event"] for event in events] == [
+        "skill_assistant_progress",
+        "skill_assistant_progress",
         "message",
         "skill_assistant_suggestions",
+        "skill_assistant_progress",
+        "skill_assistant_progress",
         "skill_detail_updated",
         "message_end",
     ]
-    assert events[1]["suggestions"] == ["Add SLA tiers", "Include refund denial templates"]
+    assert events[3]["suggestions"] == ["Add SLA tiers", "Include refund denial templates"]
 
 
 def test_create_assistant_action_stream_reports_skill_name_database_conflict() -> None:
@@ -609,10 +677,16 @@ def test_create_assistant_action_stream_reports_skill_name_database_conflict() -
         )
 
     events = [json.loads(chunk.removeprefix("data: ").strip()) for chunk in response]
-    assert [event["event"] for event in events] == ["message", "error"]
-    assert events[1]["code"] == "skill_name_conflict"
-    assert events[1]["message"] == 'Skill name "customer-issue-triage" already exists. Please choose a different name.'
-    assert events[1]["details"] == {"name": "customer-issue-triage"}
+    assert [event["event"] for event in events] == [
+        "skill_assistant_progress",
+        "skill_assistant_progress",
+        "message",
+        "skill_assistant_progress",
+        "error",
+    ]
+    assert events[4]["code"] == "skill_name_conflict"
+    assert events[4]["message"] == 'Skill name "customer-issue-triage" already exists. Please choose a different name.'
+    assert events[4]["details"] == {"name": "customer-issue-triage"}
 
 
 def test_sync_assistant_model_config_updates_debugger_draft() -> None:

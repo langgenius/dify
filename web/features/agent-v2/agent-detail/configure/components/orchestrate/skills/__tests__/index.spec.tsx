@@ -846,7 +846,7 @@ describe('AgentSkills', () => {
     })
   })
 
-  it('should mark already bound workspace skills as added and prevent duplicate binding', async () => {
+  it('should hide draft workspace skills and mark published skills as added', async () => {
     const user = userEvent.setup()
     mocks.agentSkillBindingsQueryOptions.mockImplementation((options) => {
       const { input } = options as { input: { params: { agent_id: string } } }
@@ -913,25 +913,16 @@ describe('AgentSkills', () => {
     expect(
       await screen.findByText('agentV2.agentDetail.configure.skills.workspaceSelector.added'),
     ).toBeInTheDocument()
+    expect(screen.queryByText('Draft skill')).not.toBeInTheDocument()
     expect(
-      screen.getByText('agentV2.agentDetail.configure.skills.workspaceSelector.draft'),
-    ).toBeInTheDocument()
+      screen.queryByText('agentV2.agentDetail.configure.skills.workspaceSelector.draft'),
+    ).not.toBeInTheDocument()
 
     const addedSkillButton = screen
       .getByText('agentV2.agentDetail.configure.skills.workspaceSelector.added')
       .closest('button')
-    const draftSkillButton = screen
-      .getByText('agentV2.agentDetail.configure.skills.workspaceSelector.draft')
-      .closest('button')
     expect(addedSkillButton).not.toBeDisabled()
     expect(addedSkillButton).toHaveAttribute('aria-disabled', 'true')
-    expect(draftSkillButton).not.toBeDisabled()
-    expect(draftSkillButton).toHaveAttribute('aria-disabled', 'true')
-
-    await user.hover(draftSkillButton!)
-    expect(await screen.findByText('Draft skill description.')).toBeInTheDocument()
-
-    await user.click(draftSkillButton!)
     await user.click(addedSkillButton!)
 
     expect(mocks.replaceAgentSkillBindingsMutationFn).not.toHaveBeenCalled()

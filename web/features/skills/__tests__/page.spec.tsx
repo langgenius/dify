@@ -99,6 +99,12 @@ vi.mock('@/hooks/use-document-title', () => ({
   default: vi.fn(),
 }))
 
+vi.mock('@/hooks/use-format-time-from-now', () => ({
+  useFormatTimeFromNow: () => ({
+    formatTimeFromNow: () => '2 hours ago',
+  }),
+}))
+
 vi.mock('@/hooks/use-timestamp', () => ({
   default: () => ({
     formatTime: () => '2026-07-22 10:00',
@@ -199,6 +205,7 @@ function createSkill(overrides: Partial<SkillResponse> = {}): SkillResponse {
     tags: ['support'],
     visibility: 'workspace',
     latest_published_version_id: 'version-1',
+    latest_published_at: 1784638400,
     reference_count: 2,
     created_at: 1784631405,
     updated_at: 1784638487,
@@ -304,6 +311,9 @@ describe('SkillsPage', () => {
     expect(screen.getByText('Handle refund requests.')).toBeInTheDocument()
     expect(screen.getByText('support')).toBeInTheDocument()
     expect(screen.getByText('skill.skillManagement.referenceCount:{"count":2}')).toBeInTheDocument()
+    expect(
+      screen.getByText('skill.skillManagement.publishedAt:{"time":"2 hours ago"}'),
+    ).toBeInTheDocument()
   })
 
   it('passes keyword and selected tags to the list query', async () => {
