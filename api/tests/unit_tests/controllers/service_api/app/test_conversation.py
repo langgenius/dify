@@ -494,7 +494,6 @@ class TestConversationService:
         assert hasattr(result, "limit")
         assert hasattr(result, "has_more")
 
-    @pytest.mark.parametrize("sqlite_session", [(Conversation,)], indirect=True)
     def test_rename_returns_conversation(self, sqlite_session: Session):
         """Test rename returns updated conversation."""
         conversation_id = "00000000-0000-0000-0000-000000000001"
@@ -542,7 +541,6 @@ class TestConversationApiController:
             with pytest.raises(NotChatAppError):
                 handler(api, app_model=app_model, end_user=end_user)
 
-    @pytest.mark.parametrize("sqlite_session", [(Conversation,)], indirect=True)
     def test_list_last_not_found(
         self,
         app: Flask,

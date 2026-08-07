@@ -1,6 +1,5 @@
 from collections.abc import Iterator
 from datetime import datetime
-from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
@@ -177,9 +176,10 @@ class TestBannerApi:
         self,
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
+        unbound_session: Session,
     ):
         api = banner_module.BannerApi()
-        session = MagicMock()
+        session = unbound_session
         monkeypatch.setattr(banner_module.db, "session", session)
         monkeypatch.setattr(banner_module.FeatureService, "is_explore_banner_enabled", lambda: False)
 
@@ -187,7 +187,6 @@ class TestBannerApi:
             result = api.get()
 
         assert result == []
-        session.scalars.assert_not_called()
 
     def test_get_banners_rejects_invalid_content(
         self,

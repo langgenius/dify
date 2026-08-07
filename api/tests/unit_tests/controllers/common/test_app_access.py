@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
-
 import pytest
+from sqlalchemy.orm import Session
 
 from controllers.common.app_access import (
     APP_LIST_PERMISSION_KEYS,
@@ -106,28 +105,32 @@ class TestResolveAppAccessFilter:
             lambda tenant_id, account_id: whitelist,
         )
 
-    def test_default_preview_is_unrestricted(self, monkeypatch: pytest.MonkeyPatch):
+    def test_default_preview_is_unrestricted(self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
         self._patch_whitelist(monkeypatch, ResourceWhitelistResources(unrestricted=True))
         permissions = _permissions(app_default_keys=["app.preview"])
 
-        flt = resolve_app_access_filter("tenant-1", "acc-1", session=MagicMock(), permissions=permissions)
+        flt = resolve_app_access_filter("tenant-1", "acc-1", session=unbound_session, permissions=permissions)
 
         assert flt.accessible_app_ids is None
         assert flt.can_manage_own_apps is False
 
-    def test_default_preview_overrides_whitelist_restriction(self, monkeypatch: pytest.MonkeyPatch):
+    def test_default_preview_overrides_whitelist_restriction(
+        self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+    ):
         self._patch_whitelist(monkeypatch, ResourceWhitelistResources(unrestricted=False, resource_ids=["app-9"]))
         permissions = _permissions(
             workspace_keys=["app.full_access", "app.create_and_management"],
         )
 
-        flt = resolve_app_access_filter("tenant-1", "acc-1", session=MagicMock(), permissions=permissions)
+        flt = resolve_app_access_filter("tenant-1", "acc-1", session=unbound_session, permissions=permissions)
 
         # Workspace-level preview grant defeats the whitelist restriction.
         assert flt.accessible_app_ids is None
         assert flt.can_manage_own_apps is True
 
-    def test_override_apps_collected_without_default_preview(self, monkeypatch: pytest.MonkeyPatch):
+    def test_override_apps_collected_without_default_preview(
+        self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+    ):
         self._patch_whitelist(monkeypatch, ResourceWhitelistResources(unrestricted=True))
         permissions = _permissions(
             app_overrides=[
@@ -136,23 +139,23 @@ class TestResolveAppAccessFilter:
             ],
         )
 
-        flt = resolve_app_access_filter("tenant-1", "acc-1", session=MagicMock(), permissions=permissions)
+        flt = resolve_app_access_filter("tenant-1", "acc-1", session=unbound_session, permissions=permissions)
 
         assert flt.accessible_app_ids == {"app-1"}
 
-    def test_whitelist_union_with_override_apps(self, monkeypatch: pytest.MonkeyPatch):
+    def test_whitelist_union_with_override_apps(self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
         self._patch_whitelist(monkeypatch, ResourceWhitelistResources(unrestricted=False, resource_ids=["app-5"]))
         permissions = _permissions(
             app_overrides=[ResourcePermissionKeys(resource_id="app-1", permission_keys=["app.acl.preview"])],
         )
 
-        flt = resolve_app_access_filter("tenant-1", "acc-1", session=MagicMock(), permissions=permissions)
+        flt = resolve_app_access_filter("tenant-1", "acc-1", session=unbound_session, permissions=permissions)
 
         assert flt.accessible_app_ids == {"app-1", "app-5"}
 
-    def test_fetches_permissions_when_not_supplied(self, monkeypatch: pytest.MonkeyPatch):
+    def test_fetches_permissions_when_not_supplied(self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
         self._patch_whitelist(monkeypatch, ResourceWhitelistResources(unrestricted=False, resource_ids=[]))
-        session = MagicMock()
+        session = unbound_session
         captured: dict[str, object] = {}
 
         def get_permissions(tenant_id: str, account_id: str, *, session: object):

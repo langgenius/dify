@@ -615,7 +615,6 @@ class TestHitlServiceApi:
         assert response.data.paused_nodes == ["node-1"]
         assert response.data.reasons == [{"TYPE": "human_input_required", "form_id": "form-1", "expiration_time": 1}]
 
-    @pytest.mark.parametrize("sqlite_session", [(HumanInputForm,)], indirect=True)
     def test_service_api_pause_event_serializes_hitl_reason(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -630,7 +629,7 @@ class TestHitlServiceApi:
             reason=WorkflowStartReason.INITIAL,
         )
 
-        expiration_time = datetime(2024, 1, 1)
+        expiration_time = datetime(2024, 1, 1, tzinfo=UTC)
         _persist_human_input_form(sqlite_session, expiration_time=expiration_time)
 
         monkeypatch.setattr(workflow_response_converter, "db", SimpleNamespace(engine=sqlite_engine))
@@ -693,7 +692,6 @@ class TestHitlServiceApi:
         assert hi_resp.data.expiration_time == int(expiration_time.timestamp())
 
     # Snapshot payload contract
-    @pytest.mark.parametrize("sqlite_session", [(HumanInputForm,)], indirect=True)
     def test_snapshot_events_include_pause_payload_contract(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -703,7 +701,7 @@ class TestHitlServiceApi:
         workflow_run = _build_workflow_run(WorkflowExecutionStatus.PAUSED)
         snapshot = _build_snapshot(WorkflowNodeExecutionStatus.PAUSED)
         resumption_context = _build_resumption_context("task-ctx")
-        expiration_time = datetime(2024, 1, 1)
+        expiration_time = datetime(2024, 1, 1, tzinfo=UTC)
         _persist_human_input_form(sqlite_session, expiration_time=expiration_time)
         monkeypatch.setattr(
             "services.workflow_event_snapshot_service.load_form_dispositions_by_form_id",
