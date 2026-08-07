@@ -94,15 +94,31 @@ function findFirecrawl(providers: Provider[]) {
   return providers.find((provider) => provider.id === FIRECRAWL_PROVIDER_ID)
 }
 
-function findFirecrawlCredential(providers: DatasourceProviderAuthListResponse['result']) {
-  const datasourceProvider = providers.find(
+function findFirecrawlDatasourceProvider(providers: DatasourceProviderAuthListResponse['result']) {
+  return providers.find(
     (provider) =>
       provider.plugin_id === FIRECRAWL_CONFIGURATION.pluginId &&
       provider.provider === FIRECRAWL_CONFIGURATION.provider,
   )
+}
+
+function findFirecrawlCredential(providers: DatasourceProviderAuthListResponse['result']) {
+  const datasourceProvider = findFirecrawlDatasourceProvider(providers)
   return (
     datasourceProvider?.credentials_list.find((credential) => credential.is_default) ??
     datasourceProvider?.credentials_list[0]
+  )
+}
+
+function hasFirecrawlCredential(
+  providers: DatasourceProviderAuthListResponse['result'],
+  credentialId: unknown,
+) {
+  if (typeof credentialId !== 'string') return false
+  return Boolean(
+    findFirecrawlDatasourceProvider(providers)?.credentials_list.some(
+      (credential) => credential.id === credentialId,
+    ),
   )
 }
 
@@ -898,7 +914,8 @@ export function AddSourcePage({
     }),
   )
   const provider = findFirecrawl(providersQuery.data ?? [])
-  const datasourceCredential = findFirecrawlCredential(datasourceAuthQuery.data?.result ?? [])
+  const datasourceProviders = datasourceAuthQuery.data?.result ?? []
+  const datasourceCredential = findFirecrawlCredential(datasourceProviders)
   const difyManagedProvider = provider ? isDifyManagedProvider(provider) : false
   const remoteConnections =
     connectionsQuery.data?.pages.flatMap((page) => sourceConnectionListFromApi(page).items) ?? []
@@ -926,6 +943,12 @@ export function AddSourcePage({
     }
     return localConnection
   }, [connectionOverride, matchingRemoteConnection, provider?.id, remoteConnection])
+  const activeConnection =
+    connection?.status === 'active' &&
+    (!difyManagedProvider ||
+      hasFirecrawlCredential(datasourceProviders, connection.configuration.credentialId))
+      ? connection
+      : undefined
   const supportsDirectConnection = provider
     ? difyManagedProvider
       ? provider.authKinds.includes('endpoint')
@@ -996,7 +1019,7 @@ export function AddSourcePage({
     !queryError &&
     provider?.available &&
     supportsDirectConnection &&
-    connection?.status === 'active',
+    activeConnection,
   )
   const websitePreviewReady =
     sourceDraftResolved &&
@@ -1241,22 +1264,22 @@ export function AddSourcePage({
                     {provider.unavailableReason ?? t(($) => $['newKnowledge.providerUnavailable'])}
                   </p>
                 </div>
-              ) : connection?.status === 'active' && websitePreviewReady ? (
+              ) : activeConnection && websitePreviewReady ? (
                 <WebsiteCrawlPreview
                   key={historyGuardReleaseVersion}
-                  connection={connection}
+                  connection={activeConnection}
                   initialDraft={sourceDraft}
                   knowledgeSpaceId={knowledgeSpaceId}
                   onDraftFinished={clearStoredSourceDraft}
                   providerName={FIRECRAWL_CONNECTION_NAME}
                 />
-              ) : connection?.status === 'active' ? (
+              ) : activeConnection ? (
                 <div className="flex min-h-64 items-center justify-center">
                   <Loading />
                 </div>
               ) : connection?.status === 'provisioning' ? (
                 <ProvisioningConnection onReconcile={reconcileConnection} />
-              ) : connection ? (
+              ) : connection && connection.status !== 'active' ? (
                 <ConnectionProblem
                   connection={connection}
                   knowledgeSpaceId={knowledgeSpaceId}

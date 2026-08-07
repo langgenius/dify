@@ -875,6 +875,49 @@ describe('AddSourcePage', () => {
     expect(clientMock.createConnection).not.toHaveBeenCalled()
   })
 
+  it('treats an active managed connection as unconfigured after its credential is deleted', () => {
+    queryState.providers.data = { items: [difyManagedFirecrawlProvider] }
+    queryState.datasourceAuth.data = {
+      result: [{ ...firecrawlDatasourceAuth, credentials_list: [] }],
+    }
+    queryState.connections.data = {
+      pages: [
+        {
+          items: [
+            {
+              ...connection('active'),
+              authKind: 'endpoint',
+              configuration: {
+                credentialId: 'deleted-firecrawl-credential',
+                datasource: 'crawl',
+                pluginId: 'langgenius/firecrawl_datasource',
+                provider: 'firecrawl',
+                providerKind: 'website',
+              },
+            },
+          ],
+        },
+      ],
+    }
+
+    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+
+    expect(
+      screen.getByText('dataset.newKnowledge.providerNotConfigured:{"provider":"Firecrawl"}'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.configureProvider:{"provider":"Firecrawl"}',
+      }),
+    ).toBeEnabled()
+    expect(
+      screen.queryByRole('textbox', { name: 'dataset.newKnowledge.rootUrl' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }),
+    ).not.toBeInTheDocument()
+  })
+
   it('releases the parent history guard before the crawl preview owns navigation', async () => {
     const user = userEvent.setup()
     const historyBack = vi.spyOn(window.history, 'back').mockImplementation(() => undefined)
