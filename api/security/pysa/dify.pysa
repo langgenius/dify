@@ -1,0 +1,41 @@
+# Flask 3 request payloads originate outside Dify's trust boundary. Keep these
+# models local so the check does not depend on Pysa's optional model bundle.
+@property
+def werkzeug.sansio.request.Request.args() -> TaintSource[UserControlled]: ...
+
+@property
+def werkzeug.wrappers.request.Request.data() -> TaintSource[UserControlled]: ...
+
+@property
+def werkzeug.wrappers.request.Request.files() -> TaintSource[UserControlled]: ...
+
+@property
+def werkzeug.wrappers.request.Request.form() -> TaintSource[UserControlled]: ...
+
+@property
+def werkzeug.wrappers.request.Request.json() -> TaintSource[UserControlled]: ...
+
+def werkzeug.wrappers.request.Request.get_data() -> TaintSource[UserControlled]: ...
+
+def werkzeug.wrappers.request.Request.get_json() -> TaintSource[UserControlled]: ...
+
+# Data returned by a custom API tool originates outside Dify's trust boundary.
+def core.tools.custom_tool.tool.ApiTool.validate_and_parse_response(
+    self,
+    response,
+) -> TaintSource[DataFromInternet]: ...
+
+# Code and templates sent to the sandbox remain security-sensitive sinks. These
+# models let Pysa trace request and external-tool data to Dify's execution edge.
+def core.helper.code_executor.code_executor.CodeExecutor.execute_code(
+    cls,
+    language,
+    preload,
+    code: TaintSink[RemoteCodeExecution],
+): ...
+
+def core.workflow.template_rendering.CodeExecutorJinja2TemplateRenderer.render_template(
+    self,
+    template: TaintSink[ServerSideTemplateInjection],
+    variables,
+): ...
