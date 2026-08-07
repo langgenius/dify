@@ -13,7 +13,7 @@ from typing import ClassVar, Literal
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
-from dify_agent.adapters.shell.protocols import ShellProviderError
+from dify_agent.adapters.shell.protocols import CompleteShellCommandResult, ShellProviderError
 from dify_agent.agent_stub.protocol import is_canonical_dify_file_reference
 from dify_agent.agent_stub.shell_env import ShellAgentStubTokenFactory, build_shell_agent_stub_env
 from dify_agent.protocol import (
@@ -286,10 +286,10 @@ def _python_command(source: str, *args: str) -> str:
     return " ".join(["python3", "-c", shlex.quote(source), *(shlex.quote(arg) for arg in args)])
 
 
-def _require_browse_payload(result: object, *, operation: str) -> dict[str, object]:
-    exit_code = getattr(result, "exit_code", None)
-    output_complete = getattr(result, "output_complete", False)
-    output = getattr(result, "output", "")
+def _require_browse_payload(result: CompleteShellCommandResult, *, operation: str) -> dict[str, object]:
+    exit_code = result.exit_code
+    output_complete = result.output_complete
+    output = result.output
     if exit_code != 0:
         if any(
             name in output

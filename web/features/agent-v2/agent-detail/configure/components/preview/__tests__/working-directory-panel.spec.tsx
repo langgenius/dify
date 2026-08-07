@@ -247,7 +247,7 @@ function mockFileListEntries(
       ? mocks.sandboxFilesQueryOptions
       : mocks.workflowSandboxFilesQueryOptions
   queryOptions.mockImplementation(({ input }: QueryOptionsInput) => ({
-    queryKey: [`${source.type}-sandbox-files`, input],
+    queryKey: [`${source.type}-sandbox-files`, input, entries],
     queryFn: async () => ({
       path: input.query?.path ?? (source.type === 'agent' ? '~/workspace' : '.'),
       entries,
