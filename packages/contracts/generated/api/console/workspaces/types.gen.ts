@@ -227,6 +227,17 @@ export type ModelProviderListResponse = {
   data: Array<ProviderResponse>
 }
 
+export type ModelProviderCreditsResponse = {
+  exhausted_at: number | null
+  is_exhausted: boolean
+  is_unlimited: boolean
+  next_credit_reset_date: number | null
+  pool_type: 'paid' | 'trial' | null
+  quota_limit: number | null
+  quota_used: number | null
+  remaining_credits: number | null
+}
+
 export type ModelProviderSummaryListResponse = {
   data: Array<ModelProviderSummaryResponse>
   plugins: {
@@ -3076,6 +3087,20 @@ export type GetWorkspacesCurrentModelProvidersResponses = {
 
 export type GetWorkspacesCurrentModelProvidersResponse =
   GetWorkspacesCurrentModelProvidersResponses[keyof GetWorkspacesCurrentModelProvidersResponses]
+
+export type GetWorkspacesCurrentModelProvidersCreditsData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/model-providers/credits'
+}
+
+export type GetWorkspacesCurrentModelProvidersCreditsResponses = {
+  200: ModelProviderCreditsResponse
+}
+
+export type GetWorkspacesCurrentModelProvidersCreditsResponse =
+  GetWorkspacesCurrentModelProvidersCreditsResponses[keyof GetWorkspacesCurrentModelProvidersCreditsResponses]
 
 export type GetWorkspacesCurrentModelProvidersSummaryData = {
   body?: never

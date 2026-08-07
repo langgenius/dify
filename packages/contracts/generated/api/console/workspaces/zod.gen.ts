@@ -159,6 +159,20 @@ export const zMemberRoleUpdatePayload = z.object({
 })
 
 /**
+ * ModelProviderCreditsResponse
+ */
+export const zModelProviderCreditsResponse = z.object({
+  exhausted_at: z.int().nullable(),
+  is_exhausted: z.boolean(),
+  is_unlimited: z.boolean(),
+  next_credit_reset_date: z.int().nullable(),
+  pool_type: z.enum(['paid', 'trial']).nullable(),
+  quota_limit: z.int().nullable(),
+  quota_used: z.int().nullable(),
+  remaining_credits: z.int().nullable(),
+})
+
+/**
  * ModelProviderPaymentCheckoutUrlResponse
  */
 export const zModelProviderPaymentCheckoutUrlResponse = z.object({
@@ -3761,6 +3775,11 @@ export const zGetWorkspacesCurrentModelProvidersQuery = z.object({
  * Model providers retrieved successfully
  */
 export const zGetWorkspacesCurrentModelProvidersResponse = zModelProviderListResponse
+
+/**
+ * Model provider credits retrieved successfully
+ */
+export const zGetWorkspacesCurrentModelProvidersCreditsResponse = zModelProviderCreditsResponse
 
 /**
  * Model provider summaries retrieved successfully

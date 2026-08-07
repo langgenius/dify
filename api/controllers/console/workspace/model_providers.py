@@ -4,9 +4,11 @@ from typing import Any, Literal
 from flask import request, send_file
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy.orm import Session
 
 from controllers.common.fields import SimpleResultResponse, ValidationResultResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.wraps import (
     RBACPermission,
@@ -32,6 +34,7 @@ from services.entities.model_provider_entities import (
     ProviderResponse,
 )
 from services.model_provider_service import ModelProviderService
+from services.workspace_service import WorkspaceService
 
 
 class ParserModelList(BaseModel):
@@ -100,6 +103,17 @@ class ModelProviderSummaryListResponse(ResponseModel):
     plugins: dict[str, ModelProviderPluginSummaryResponse]
 
 
+class ModelProviderCreditsResponse(ResponseModel):
+    pool_type: Literal["paid", "trial"] | None
+    quota_limit: int | None = Field(description="Credit limit for the effective pool; -1 means unlimited.")
+    quota_used: int | None
+    remaining_credits: int | None = Field(description="Remaining credits; -1 means unlimited.")
+    is_unlimited: bool
+    is_exhausted: bool
+    exhausted_at: int | None
+    next_credit_reset_date: int | None
+
+
 class ProviderCredentialsResponse(ResponseModel):
     credentials: dict[str, Any] | None = None
 
@@ -124,6 +138,7 @@ register_response_schema_models(
     SimpleResultResponse,
     ModelProviderListResponse,
     ModelProviderSummaryListResponse,
+    ModelProviderCreditsResponse,
     ProviderCredentialsResponse,
     ValidationResultResponse,
     ModelProviderPaymentCheckoutUrlResponse,
@@ -167,6 +182,21 @@ class ModelProviderSummaryListApi(Resource):
             ModelProviderSummaryListResponse,
             {"data": providers, "plugins": plugins},
         )
+
+
+@console_ns.route("/workspaces/current/model-providers/credits")
+class ModelProviderCreditsApi(Resource):
+    @console_ns.response(
+        200, "Model provider credits retrieved successfully", console_ns.models[ModelProviderCreditsResponse.__name__]
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_tenant_id
+    @with_session(write=False)
+    def get(self, session: Session, tenant_id: str):
+        credit_pool = WorkspaceService.get_effective_credit_pool(tenant_id, session=session)
+        return dump_response(ModelProviderCreditsResponse, credit_pool)
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/credentials")
