@@ -155,6 +155,7 @@ const WORKFLOW_DEPLOYMENT_OPTIONS: GetWorkflowDeploymentOptionsResponse = {
   ],
   environment_variable_slots: [
     {
+      configured_value: '2',
       description: 'Server port',
       has_configured_value: true,
       has_last_deployed_value: true,
@@ -162,6 +163,7 @@ const WORKFLOW_DEPLOYMENT_OPTIONS: GetWorkflowDeploymentOptionsResponse = {
       value_type: EnvVarValueType.ENV_VAR_VALUE_TYPE_NUMBER,
     },
     {
+      configured_value: 'sk-123************bc',
       description: 'API credential',
       has_configured_value: true,
       has_last_deployed_value: true,
@@ -173,6 +175,7 @@ const WORKFLOW_DEPLOYMENT_OPTIONS: GetWorkflowDeploymentOptionsResponse = {
       has_configured_value: false,
       has_last_deployed_value: true,
       key: 'name',
+      last_deployed_value: 'environment variable 01',
       value_type: EnvVarValueType.ENV_VAR_VALUE_TYPE_STRING,
     },
   ],
@@ -958,7 +961,17 @@ describe('AppDeploy', () => {
 
     const portSource = within(configurationDialog).getByRole('combobox', { name: /PORT/ })
     expect(portSource).toHaveTextContent('deployments.studio.configureValue')
-    expect(within(configurationDialog).getByRole('textbox', { name: 'PORT' })).toBeDisabled()
+    const portInput = within(configurationDialog).getByRole('textbox', { name: 'PORT' })
+    expect(portInput).toBeDisabled()
+    expect(portInput).toHaveAttribute('placeholder', '2')
+    expect(within(configurationDialog).getByRole('textbox', { name: 'API_KEY' })).toHaveAttribute(
+      'placeholder',
+      'sk-123************bc',
+    )
+    expect(within(configurationDialog).getByRole('textbox', { name: 'name' })).toHaveAttribute(
+      'placeholder',
+      'environment variable 01',
+    )
 
     await user.click(portSource)
     expect(

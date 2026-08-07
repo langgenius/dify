@@ -64,6 +64,12 @@ export function EnvironmentVariableField({
         ? 'number'
         : 'text'
   const sourceLabel = sourceLabels[source] ?? t(($) => $['deployDrawer.envVarSource.literal'])
+  // Secret values arrive masked, so these are safe to show as-is.
+  const sourceValues: Partial<Record<EnvVarValueSource, string>> = {
+    [EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CONFIGURED]: slot.configured_value,
+    [EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYED]: slot.last_deployed_value,
+  }
+  const placeholder = editable ? undefined : (sourceValues[source] ?? sourceLabel)
 
   return (
     <div className="flex flex-col gap-1">
@@ -110,7 +116,7 @@ export function EnvironmentVariableField({
         id={inputId}
         type={inputType}
         value={editable ? customValue : ''}
-        placeholder={editable ? undefined : sourceLabel}
+        placeholder={placeholder}
         disabled={!editable}
         autoComplete="off"
         onChange={(event) => onCustomValueChange(event.target.value)}
