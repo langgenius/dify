@@ -34,17 +34,19 @@ export function EnvironmentVariableField({
 }) {
   const { t } = useTranslation('deployments')
   const sourceLabels: Partial<Record<EnvVarValueSource, string>> = {
-    [EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_DSL]: t(($) => $['studio.configureValue']),
+    [EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CONFIGURED]: t(($) => $['studio.configureValue']),
     [EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CUSTOM]: t(
       ($) => $['deployDrawer.envVarSource.literal'],
     ),
-    [EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_PREVIOUS]: t(
+    [EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYED]: t(
       ($) => $['deployDrawer.envVarSource.lastDeployment'],
     ),
   }
   const availableSources = [
-    ...(slot.has_previous_value ? [EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_PREVIOUS] : []),
-    ...(slot.has_dsl_value ? [EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_DSL] : []),
+    ...(slot.has_last_deployed_value
+      ? [EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYED]
+      : []),
+    ...(slot.has_configured_value ? [EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CONFIGURED] : []),
     EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CUSTOM,
   ]
   const valueTypeLabel =

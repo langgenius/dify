@@ -105,8 +105,8 @@ export const zDeploymentStatus = z.enum([
 
 export const zEnvVarValueSource = z.enum([
   'ENV_VAR_VALUE_SOURCE_UNSPECIFIED',
-  'ENV_VAR_VALUE_SOURCE_DSL',
-  'ENV_VAR_VALUE_SOURCE_PREVIOUS',
+  'ENV_VAR_VALUE_SOURCE_CONFIGURED',
+  'ENV_VAR_VALUE_SOURCE_LAST_DEPLOYED',
   'ENV_VAR_VALUE_SOURCE_CUSTOM',
 ])
 
@@ -194,7 +194,7 @@ export const zCredentialSlot = z.object({
   provider_id: z.string(),
   category: zPluginCategory,
   candidates: z.array(zCredentialCandidate),
-  previous_credential_id: z.string().optional(),
+  last_deployed_credential_id: z.string().optional(),
   icon: z.string().optional(),
   icon_dark: z.string().optional(),
 })
@@ -317,8 +317,10 @@ export const zEnvironmentVariableSlot = z.object({
   key: z.string(),
   value_type: zEnvVarValueType,
   description: z.string(),
-  has_dsl_value: z.boolean(),
-  has_previous_value: z.boolean(),
+  has_configured_value: z.boolean(),
+  has_last_deployed_value: z.boolean(),
+  configured_value: z.string().optional(),
+  last_deployed_value: z.string().optional(),
 })
 
 export const zEnvironmentWebAppSubjectAccountData = z.object({
@@ -414,7 +416,6 @@ export const zError = z.object({
       'APPDEPLOY_VERSION_UNAVAILABLE',
       'APPDEPLOY_CONFLICT',
       'APPDEPLOY_DEPLOYMENT_IN_PROGRESS',
-      'APPDEPLOY_DEPLOYMENT_ALREADY_CURRENT',
       'APPDEPLOY_ALREADY_UNDEPLOYED',
       'APPDEPLOY_REVISION_ALREADY_TERMINAL',
       'APPDEPLOY_NO_IN_FLIGHT_DEPLOYMENT',

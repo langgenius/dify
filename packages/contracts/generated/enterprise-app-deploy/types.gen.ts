@@ -156,8 +156,8 @@ export type DeploymentStatus = (typeof DeploymentStatus)[keyof typeof Deployment
 
 export const EnvVarValueSource = {
   ENV_VAR_VALUE_SOURCE_UNSPECIFIED: 'ENV_VAR_VALUE_SOURCE_UNSPECIFIED',
-  ENV_VAR_VALUE_SOURCE_DSL: 'ENV_VAR_VALUE_SOURCE_DSL',
-  ENV_VAR_VALUE_SOURCE_PREVIOUS: 'ENV_VAR_VALUE_SOURCE_PREVIOUS',
+  ENV_VAR_VALUE_SOURCE_CONFIGURED: 'ENV_VAR_VALUE_SOURCE_CONFIGURED',
+  ENV_VAR_VALUE_SOURCE_LAST_DEPLOYED: 'ENV_VAR_VALUE_SOURCE_LAST_DEPLOYED',
   ENV_VAR_VALUE_SOURCE_CUSTOM: 'ENV_VAR_VALUE_SOURCE_CUSTOM',
 } as const
 
@@ -286,7 +286,7 @@ export type CredentialSlot = {
   provider_id: string
   category: PluginCategory
   candidates: Array<CredentialCandidate>
-  previous_credential_id?: string
+  last_deployed_credential_id?: string
   icon?: string
   icon_dark?: string
 }
@@ -466,8 +466,10 @@ export type EnvironmentVariableSlot = {
   key: string
   value_type: EnvVarValueType
   description: string
-  has_dsl_value: boolean
-  has_previous_value: boolean
+  has_configured_value: boolean
+  has_last_deployed_value: boolean
+  configured_value?: string
+  last_deployed_value?: string
 }
 
 export type EnvironmentWebAppAccessModeUpdate = {
@@ -558,7 +560,6 @@ export type Error = {
     | 'APPDEPLOY_VERSION_UNAVAILABLE'
     | 'APPDEPLOY_CONFLICT'
     | 'APPDEPLOY_DEPLOYMENT_IN_PROGRESS'
-    | 'APPDEPLOY_DEPLOYMENT_ALREADY_CURRENT'
     | 'APPDEPLOY_ALREADY_UNDEPLOYED'
     | 'APPDEPLOY_REVISION_ALREADY_TERMINAL'
     | 'APPDEPLOY_NO_IN_FLIGHT_DEPLOYMENT'
