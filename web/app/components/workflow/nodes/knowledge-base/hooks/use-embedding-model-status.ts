@@ -1,3 +1,4 @@
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type {
   Model,
   ModelItem,
@@ -15,7 +16,7 @@ type UseEmbeddingModelStatusProps = {
 }
 
 type UseEmbeddingModelStatusResult = {
-  providerMeta: ModelProvider | undefined
+  providerMeta: ModelProviderSummaryResponse | ModelProvider | undefined
   modelProvider: Model | undefined
   currentModel: ModelItem | undefined
   status: ReturnType<typeof deriveModelStatus>
