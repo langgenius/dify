@@ -23,8 +23,7 @@ export type ReasoningConfigValue = Record<string, ReasoningConfigInput>
 export const getVarKindType = (type: string, schema?: ToolFormSchema) => {
   if (
     schema &&
-    (toolDeclarativeTypeMatches(schema, 'date-picker') ||
-      toolDeclarativeTypeMatches(schema, 'date'))
+    (toolDeclarativeTypeMatches(schema, 'date-range') || toolDeclarativeTypeMatches(schema, 'date'))
   )
     return VarKindType.constant
 
@@ -38,7 +37,7 @@ export const getVarKindType = (type: string, schema?: ToolFormSchema) => {
       FormTypeEnum.array,
       FormTypeEnum.object,
       FormTypeEnum.date,
-      FormTypeEnum.datePicker,
+      FormTypeEnum.dateRange,
     ].includes(type as FormTypeEnum)
   )
     return VarKindType.constant
@@ -51,8 +50,7 @@ export const getVarKindType = (type: string, schema?: ToolFormSchema) => {
 export const resolveTargetVarType = (type: string, schema?: ToolFormSchema) => {
   if (
     schema &&
-    (toolDeclarativeTypeMatches(schema, 'date-picker') ||
-      toolDeclarativeTypeMatches(schema, 'date'))
+    (toolDeclarativeTypeMatches(schema, 'date-range') || toolDeclarativeTypeMatches(schema, 'date'))
   )
     return VarType.string
 
@@ -189,11 +187,11 @@ export const getFieldFlags = (
   varInput?: ReasoningConfigInputValue,
   schema?: ToolFormSchema,
 ) => {
-  const isDatePicker = schema ? toolDeclarativeTypeMatches(schema, 'date-picker') : false
-  const isDate = schema ? toolDeclarativeTypeMatches(schema, 'date') && !isDatePicker : false
+  const isDateRange = schema ? toolDeclarativeTypeMatches(schema, 'date-range') : false
+  const isDate = schema ? toolDeclarativeTypeMatches(schema, 'date') && !isDateRange : false
   const isString =
     (type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput) &&
-    !isDatePicker &&
+    !isDateRange &&
     !isDate
   const isNumber = type === FormTypeEnum.textNumber
   const isObject = type === FormTypeEnum.object
@@ -217,7 +215,7 @@ export const getFieldFlags = (
     isAppSelector,
     isModelSelector,
     isDate,
-    isDatePicker,
+    isDateRange,
     showTypeSwitch: isNumber || isObject || isArray || isDate,
     isConstant,
     showVariableSelector: isFile || varInput?.type === VarKindType.variable,

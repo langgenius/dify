@@ -20,7 +20,7 @@ export function parseToolDateRangeValue(raw: unknown): ToolDateRangeStored {
       if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed))
         return parseToolDateRangeValue(parsed)
     } catch {
-      // legacy single-day value from earlier date-picker
+      // legacy single-day value from the earlier date-range implementation
     }
     if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) return { start: trimmed, end: undefined }
   }

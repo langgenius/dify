@@ -165,7 +165,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
       isAppSelector,
       isModelSelector,
       isDate,
-      isDatePicker,
+      isDateRange,
       showTypeSwitch,
       isConstant,
       showVariableSelector,
@@ -263,7 +263,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
                 />
               </div>
             )}
-            {isDatePicker && varInput?.type !== VarKindType.variable && (
+            {isDateRange && varInput?.type !== VarKindType.variable && (
               <div className="grow">
                 <ToolDateRangePicker
                   value={varInput?.value}

@@ -23,13 +23,13 @@ describe('reasoning-config-form helpers', () => {
     expect(getVarKindType(FormTypeEnum.textNumber)).toBe(VarKindType.constant)
     expect(getVarKindType(FormTypeEnum.textInput)).toBe(VarKindType.mixed)
     expect(getVarKindType(FormTypeEnum.date)).toBe(VarKindType.constant)
-    expect(getVarKindType(FormTypeEnum.datePicker)).toBe(VarKindType.constant)
+    expect(getVarKindType(FormTypeEnum.dateRange)).toBe(VarKindType.constant)
     expect(getVarKindType(FormTypeEnum.dynamicSelect)).toBeUndefined()
 
     expect(resolveTargetVarType(FormTypeEnum.textInput)).toBe(VarType.string)
     expect(resolveTargetVarType(FormTypeEnum.textNumber)).toBe(VarType.number)
     expect(resolveTargetVarType(FormTypeEnum.date)).toBe(VarType.string)
-    expect(resolveTargetVarType(FormTypeEnum.datePicker)).toBe(VarType.string)
+    expect(resolveTargetVarType(FormTypeEnum.dateRange)).toBe(VarType.string)
     expect(resolveTargetVarType(FormTypeEnum.files)).toBe(VarType.arrayFile)
     expect(resolveTargetVarType(FormTypeEnum.file)).toBe(VarType.file)
     expect(resolveTargetVarType(FormTypeEnum.checkbox)).toBe(VarType.boolean)
@@ -60,10 +60,10 @@ describe('reasoning-config-form helpers', () => {
     expect(dateFilter?.({ type: VarType.file } as never)).toBe(false)
     expect(
       createPickerProps({
-        type: FormTypeEnum.datePicker,
+        type: FormTypeEnum.dateRange,
         value: {},
         language: 'en_US',
-        schema: { type: FormTypeEnum.datePicker } as never,
+        schema: { type: FormTypeEnum.dateRange } as never,
       }).filterVar,
     ).toBeUndefined()
   })

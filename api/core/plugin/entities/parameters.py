@@ -48,7 +48,7 @@ class PluginParameterType(StrEnum):
     ARRAY = CommonParameterType.ARRAY
     OBJECT = CommonParameterType.OBJECT
     DATE = CommonParameterType.DATE
-    DATE_PICKER = CommonParameterType.DATE_PICKER
+    DATE_RANGE = CommonParameterType.DATE_RANGE
 
 
 class MCPServerParameterType(StrEnum):
@@ -95,7 +95,7 @@ class PluginParameter(BaseModel):
 
 
 def as_normal_type(typ: StrEnum):
-    if typ.value == PluginParameterType.DATE_PICKER:
+    if typ.value == PluginParameterType.DATE_RANGE:
         return "object"
     if typ.value in {
         PluginParameterType.SECRET_INPUT,
@@ -139,7 +139,7 @@ def cast_parameter_value(typ: StrEnum, value: Any, /):
                 if value is None or value == "":
                     return ""
                 return _validate_date(value)
-            case PluginParameterType.DATE_PICKER:
+            case PluginParameterType.DATE_RANGE:
                 if value is None or value == "":
                     return {}
                 if isinstance(value, dict):
@@ -147,9 +147,9 @@ def cast_parameter_value(typ: StrEnum, value: Any, /):
                     for key in ("start", "end"):
                         if key not in value or value[key] is None or value[key] == "":
                             continue
-                        out[key] = _validate_date(value[key], f"date-picker {key}")
+                        out[key] = _validate_date(value[key], f"date-range {key}")
                     if out.get("start") and out.get("end") and out["start"] > out["end"]:
-                        raise ValueError("The date-picker start date must not be after the end date.")
+                        raise ValueError("The date-range start date must not be after the end date.")
                     return out
                 if isinstance(value, str):
                     try:
@@ -161,8 +161,8 @@ def cast_parameter_value(typ: StrEnum, value: Any, /):
                     stripped = value.strip()
                     if not stripped:
                         return {}
-                    return {"start": _validate_date(stripped, "date-picker start")}
-                raise ValueError("The date-picker parameter must be a JSON object, JSON string, or empty.")
+                    return {"start": _validate_date(stripped, "date-range start")}
+                raise ValueError("The date-range parameter must be a JSON object, JSON string, or empty.")
 
             case PluginParameterType.BOOLEAN:
                 match value:

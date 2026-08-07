@@ -116,7 +116,7 @@ const FormInputItem: FC<Props> = ({
     isCheckbox,
     isConstant,
     isDate,
-    isDatePicker,
+    isDateRange,
     isDynamicSelect,
     isModelSelector,
     isMultipleSelect,
@@ -360,7 +360,7 @@ const FormInputItem: FC<Props> = ({
           />
         </div>
       )}
-      {isDatePicker && varInput?.type !== VarKindType.variable && (
+      {isDateRange && varInput?.type !== VarKindType.variable && (
         <div className="min-w-0 grow">
           <ToolDateRangePicker
             value={varInput?.value}

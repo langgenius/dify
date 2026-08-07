@@ -17,7 +17,9 @@ def test_common_parameter_type_values_are_stable() -> None:
     assert CommonParameterType.ARRAY.value == "array"
     assert CommonParameterType.OBJECT.value == "object"
     assert CommonParameterType.DATE.value == "date"
-    assert CommonParameterType.DATE_PICKER.value == "date-picker"
+    assert CommonParameterType.DATE_RANGE.value == "date-range"
+    with pytest.raises(ValueError):
+        PluginParameterType("date-picker")
 
 
 def test_cast_date_accepts_only_canonical_calendar_dates() -> None:
@@ -30,13 +32,13 @@ def test_cast_date_accepts_only_canonical_calendar_dates() -> None:
             cast_parameter_value(PluginParameterType.DATE, value)
 
 
-def test_cast_date_picker_validates_optional_range() -> None:
-    assert cast_parameter_value(PluginParameterType.DATE_PICKER, "") == {}
-    assert cast_parameter_value(PluginParameterType.DATE_PICKER, {}) == {}
-    assert cast_parameter_value(PluginParameterType.DATE_PICKER, "2024-01-01") == {"start": "2024-01-01"}
-    assert cast_parameter_value(PluginParameterType.DATE_PICKER, {"end": "2024-01-02"}) == {"end": "2024-01-02"}
+def test_cast_date_range_validates_optional_range() -> None:
+    assert cast_parameter_value(PluginParameterType.DATE_RANGE, "") == {}
+    assert cast_parameter_value(PluginParameterType.DATE_RANGE, {}) == {}
+    assert cast_parameter_value(PluginParameterType.DATE_RANGE, "2024-01-01") == {"start": "2024-01-01"}
+    assert cast_parameter_value(PluginParameterType.DATE_RANGE, {"end": "2024-01-02"}) == {"end": "2024-01-02"}
     assert cast_parameter_value(
-        PluginParameterType.DATE_PICKER,
+        PluginParameterType.DATE_RANGE,
         '{"start":"2024-01-01","end":"2024-01-02"}',
     ) == {"start": "2024-01-01", "end": "2024-01-02"}
 
@@ -49,7 +51,7 @@ def test_cast_date_picker_validates_optional_range() -> None:
         '{"start":"2024-01-02","end":"2024-01-01"}',
     ):
         with pytest.raises(ValueError):
-            cast_parameter_value(PluginParameterType.DATE_PICKER, value)
+            cast_parameter_value(PluginParameterType.DATE_RANGE, value)
 
 
 def test_selector_scope_values_are_stable() -> None:

@@ -50,19 +50,13 @@ const normalizeDeclarativeParamType = (raw: string | undefined): string => {
 
 export const toolDeclarativeTypeMatches = (
   schema: { type?: string; _type?: string },
-  expected: 'date' | 'date-picker',
+  expected: 'date' | 'date-range',
 ): boolean => {
   const candidates = [schema.type, schema._type].filter(
     (value): value is string => typeof value === 'string',
   )
 
-  return candidates.some((candidate) => {
-    const normalized = normalizeDeclarativeParamType(candidate)
-    if (expected === 'date-picker')
-      return normalized === 'date-picker' || normalized === 'datepicker'
-
-    return normalized === 'date'
-  })
+  return candidates.some((candidate) => normalizeDeclarativeParamType(candidate) === expected)
 }
 
 type FormInputState = {
@@ -73,7 +67,7 @@ type FormInputState = {
   isCheckbox: boolean
   isConstant: boolean
   isDate: boolean
-  isDatePicker: boolean
+  isDateRange: boolean
   isDynamicSelect: boolean
   isFile: boolean
   isFiles: boolean
@@ -127,11 +121,11 @@ export const getFormInputState = (
     _type,
   } = schema
 
-  const isDatePicker = toolDeclarativeTypeMatches(schema, 'date-picker')
-  const isDate = toolDeclarativeTypeMatches(schema, 'date') && !isDatePicker
+  const isDateRange = toolDeclarativeTypeMatches(schema, 'date-range')
+  const isDate = toolDeclarativeTypeMatches(schema, 'date') && !isDateRange
   const isString =
     (type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput) &&
-    !isDatePicker &&
+    !isDateRange &&
     !isDate
   const isNumber = type === FormTypeEnum.textNumber
   const isObject = type === FormTypeEnum.object
@@ -158,7 +152,7 @@ export const getFormInputState = (
     isCheckbox,
     isConstant,
     isDate,
-    isDatePicker,
+    isDateRange,
     isDynamicSelect,
     isFile,
     isFiles,
@@ -181,7 +175,7 @@ export const getFormInputState = (
 export const getTargetVarType = (state: FormInputState) => {
   if (state.isString) return VarType.string
   if (state.isNumber) return VarType.number
-  if (state.isDate || state.isDatePicker) return VarType.string
+  if (state.isDate || state.isDateRange) return VarType.string
   if (state.isFile) return state.isFiles ? VarType.arrayFile : VarType.file
   if (state.isSelect && state.isMultipleSelect) return VarType.arrayString
   if (state.isSelect) return VarType.string
@@ -223,7 +217,7 @@ export const getVarKindType = (state: FormInputState) => {
     state.isArray ||
     state.isObject ||
     state.isDate ||
-    state.isDatePicker
+    state.isDateRange
   )
     return VarKindType.constant
   if (state.isString) return VarKindType.mixed

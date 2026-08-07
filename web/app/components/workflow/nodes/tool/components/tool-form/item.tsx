@@ -85,7 +85,7 @@ const ToolFormItem: FC<Props> = ({
     type === FormTypeEnum.textNumber ||
     type === FormTypeEnum.secretInput ||
     type === FormTypeEnum.date ||
-    type === FormTypeEnum.datePicker
+    type === FormTypeEnum.dateRange
   const [isShowSchema, setIsShowSchema] = useState(false)
   return (
     <div className="space-y-0.5 py-1">

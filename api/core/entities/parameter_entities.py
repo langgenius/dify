@@ -17,7 +17,7 @@ class CommonParameterType(StrEnum):
     CHECKBOX = "checkbox"
     ANY = auto()
     DATE = "date"
-    DATE_PICKER = "date-picker"
+    DATE_RANGE = "date-range"
 
     # Dynamic select parameter
     # Once you are not sure about the available options until authorization is done

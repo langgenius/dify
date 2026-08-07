@@ -127,27 +127,28 @@ describe('form-input-item helpers', () => {
   it('should match declarative date types and expose date field state', () => {
     expect(toolDeclarativeTypeMatches({ type: 'date' }, 'date')).toBe(true)
     expect(toolDeclarativeTypeMatches({ _type: 'DATE' }, 'date')).toBe(true)
-    expect(toolDeclarativeTypeMatches({ type: 'date-picker' }, 'date-picker')).toBe(true)
-    expect(toolDeclarativeTypeMatches({ type: 'datepicker' }, 'date-picker')).toBe(true)
-    expect(toolDeclarativeTypeMatches({ type: 'date-picker' }, 'date')).toBe(false)
+    expect(toolDeclarativeTypeMatches({ type: 'date-range' }, 'date-range')).toBe(true)
+    expect(toolDeclarativeTypeMatches({ type: 'DATE_RANGE' }, 'date-range')).toBe(true)
+    expect(toolDeclarativeTypeMatches({ type: 'date-range' }, 'date')).toBe(false)
+    expect(toolDeclarativeTypeMatches({ type: 'date-picker' }, 'date-range')).toBe(false)
 
     const dateState = getFormInputState(createSchema({ type: FormTypeEnum.date }), {
       type: VarKindType.constant,
       value: '2024-01-01',
     })
     expect(dateState.isDate).toBe(true)
-    expect(dateState.isDatePicker).toBe(false)
+    expect(dateState.isDateRange).toBe(false)
     expect(getTargetVarType(dateState)).toBe(VarType.string)
     expect(getVarKindType(dateState)).toBe(VarKindType.constant)
     expect(getFilterVar(dateState)?.({ type: VarType.string } as Var)).toBe(true)
 
-    const pickerState = getFormInputState(createSchema({ type: FormTypeEnum.datePicker }), {
+    const rangeState = getFormInputState(createSchema({ type: FormTypeEnum.dateRange }), {
       type: VarKindType.constant,
       value: '{}',
     })
-    expect(pickerState.isDatePicker).toBe(true)
-    expect(pickerState.isDate).toBe(false)
-    expect(getVarKindType(pickerState)).toBe(VarKindType.constant)
+    expect(rangeState.isDateRange).toBe(true)
+    expect(rangeState.isDate).toBe(false)
+    expect(getVarKindType(rangeState)).toBe(VarKindType.constant)
   })
 
   it('should filter and map visible options using show_on rules', () => {

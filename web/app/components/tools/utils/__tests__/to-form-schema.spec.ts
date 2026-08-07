@@ -28,6 +28,12 @@ describe('to-form-schema utilities', () => {
       expect(toType('boolean')).toBe('checkbox')
     })
 
+    it('uses date-range as the range parameter type', () => {
+      expect(toType('date-range')).toBe('date-range')
+      expect(toType('DATE_RANGE')).toBe('date-range')
+      expect(toType('date-picker')).toBe('date-picker')
+    })
+
     it('returns the original type for unknown types', () => {
       expect(toType('select')).toBe('select')
       expect(toType('secret-input')).toBe('secret-input')

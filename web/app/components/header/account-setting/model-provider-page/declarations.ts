@@ -27,7 +27,7 @@ export enum FormTypeEnum {
   array = 'array',
   dynamicSelect = 'dynamic-select',
   date = 'date',
-  datePicker = 'date-picker',
+  dateRange = 'date-range',
 }
 
 export type FormOption = {
