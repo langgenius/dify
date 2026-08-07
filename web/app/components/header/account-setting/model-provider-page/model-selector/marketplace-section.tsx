@@ -40,7 +40,7 @@ function MarketplaceSection({
         <div className="flex h-5.5 items-center pr-2 pl-4">
           <button
             type="button"
-            className="flex flex-1 cursor-pointer items-center border-0 bg-transparent p-0 text-left system-sm-medium text-text-primary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            className="flex flex-1 cursor-pointer items-center border-0 bg-transparent p-0 text-left system-sm-medium text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
             onClick={() => onMarketplaceCollapsedChange(!marketplaceCollapsed)}
           >
             {t(($) => $['modelProvider.selector.fromMarketplace'], { ns: 'common' })}
@@ -93,7 +93,7 @@ function MarketplaceSection({
             {onOpenMarketplace ? (
               <button
                 type="button"
-                className="flex w-full cursor-pointer items-center gap-0.5 border-0 bg-transparent px-3 py-1.5 text-left outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                className="flex w-full cursor-pointer items-center gap-0.5 border-0 bg-transparent px-3 py-1.5 text-left focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                 onClick={onOpenMarketplace}
               >
                 <span className="flex-1 system-xs-regular text-text-accent">
