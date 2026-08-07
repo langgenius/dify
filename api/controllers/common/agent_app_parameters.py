@@ -3,6 +3,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
 from core.app.apps.agent_app.app_feature_projection import merge_agent_app_features
 from core.app.apps.agent_app.app_variable_projection import agent_app_variables_to_user_input_form
 from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
@@ -34,9 +35,7 @@ def get_published_agent_app_feature_dict_and_user_input_form(
     )
     if agent is None:
         raise AgentAppGeneratorError("Agent App has no bound Agent")
-    # active_config_is_published means the draft has no unpublished edits; the public app
-    # can still read parameters from the active snapshot while a newer draft is pending.
-    if not agent.active_config_snapshot_id:
+    if not agent_has_workflow_callable_active_snapshot(session=session, agent=agent):
         raise AgentAppNotPublishedError("Agent has not been published")
 
     snapshot = session.scalar(

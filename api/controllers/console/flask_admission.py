@@ -13,8 +13,6 @@ from enums.deployment_edition import DeploymentEdition
 from libs.login import current_account_with_tenant, login_required
 from machinery.context import RequestContext
 
-_REQUEST_CONTEXT_KEY = "request_context"
-
 
 def console_account_admission[T, **P, R](
     *,
@@ -36,9 +34,6 @@ def console_account_admission[T, **P, R](
     ) -> Callable[Concatenate[T, P], R | Response]:
         @wraps(view)
         def inject_request_context(self: T, /, *args: P.args, **kwargs: P.kwargs) -> R:
-            if _REQUEST_CONTEXT_KEY in kwargs:
-                raise RuntimeError(f"{_REQUEST_CONTEXT_KEY} is reserved for Console admission")
-
             account_with_tenant = current_account_with_tenant()
             request_context = RequestContext(
                 account_id=account_with_tenant.account.id,

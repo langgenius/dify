@@ -5,7 +5,7 @@ from controllers.common import site as common_site
 from controllers.web import site as site_module
 from extensions.storage.storage_type import StorageType
 from models.model import AppMode, IconType, Site
-from services.feature_service import FeatureModel
+from services.entities.feature_entities import FeatureModel
 
 
 def test_app_site_api_returns_legacy_agent_compatible_mode() -> None:
