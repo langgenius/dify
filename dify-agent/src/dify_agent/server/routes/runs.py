@@ -68,6 +68,7 @@ def create_runs_router(
             created_at=record.created_at,
             updated_at=record.updated_at,
             error=record.error,
+            error_type=record.error_type,
         )
 
     @router.post("/{run_id}/cancel", response_model=CancelRunResponse)
