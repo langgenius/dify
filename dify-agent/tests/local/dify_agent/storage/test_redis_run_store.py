@@ -128,9 +128,7 @@ class FakeRedis:
         if record["status"] != "running":
             return [0, record["status"], ""]
 
-        record.update(
-            {"status": status, "updated_at": updated_at, "error": error, "error_type": error_type}
-        )
+        record.update({"status": status, "updated_at": updated_at, "error": error, "error_type": error_type})
         event_id = self._append_stream_entry(events_key, {"payload": payload})
         self.values[record_key] = json.dumps(record, separators=(",", ":"))
         return [1, status, event_id]
