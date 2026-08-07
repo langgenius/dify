@@ -27,6 +27,7 @@ describe('formatTime', () => {
     [30, '30.00 sec'],
     [60, '1.00 min'],
     [3600, '1.00 h'],
+    [216000, '60.00 h'],
   ])('formats %s seconds as %s', (input, expected) => {
     expect(formatTime(input)).toBe(expected)
   })
