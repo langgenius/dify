@@ -1,7 +1,8 @@
-import type { ReactElement, ReactNode } from 'react'
+import type { ReactElement } from 'react'
 import type { ModelProviderPluginSummary } from '../../index'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { PluginSource } from '@/app/components/plugins/types'
 import { consoleQuery } from '@/service/client'
 import { commonQueryKeys } from '@/service/use-common'
@@ -16,10 +17,12 @@ const mockShowPluginInfo = vi.fn()
 const mockShowDeleteConfirm = vi.fn()
 const mockSetTargetVersion = vi.fn()
 const mockSetVersionPickerOpen = vi.fn()
-const { mockNormalizeInstalledPluginDetail, mockUninstallPlugin } = vi.hoisted(() => ({
-  mockNormalizeInstalledPluginDetail: vi.fn(),
-  mockUninstallPlugin: vi.fn(),
-}))
+const { mockNormalizeInstalledPluginDetail, mockUninstallPlugin, mockUseVersionListOfPlugin } =
+  vi.hoisted(() => ({
+    mockNormalizeInstalledPluginDetail: vi.fn(),
+    mockUninstallPlugin: vi.fn(),
+    mockUseVersionListOfPlugin: vi.fn(),
+  }))
 const mockPluginSettingsAccess = vi.hoisted(() => ({
   canDeletePlugin: true,
   canUpdatePlugin: true,
@@ -85,29 +88,6 @@ vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
   }),
 }))
 
-vi.mock('@/app/components/plugins/update-plugin/plugin-version-picker', () => ({
-  default: ({
-    trigger,
-    onSelect,
-    disabled,
-  }: {
-    trigger: (isOpen: boolean) => ReactNode
-    onSelect: (state: { version: string; unique_identifier: string; isDowngrade?: boolean }) => void
-    disabled?: boolean
-  }) => (
-    <div data-testid="plugin-version-picker" data-disabled={String(Boolean(disabled))}>
-      {trigger(false)}
-      <button
-        type="button"
-        onClick={() =>
-          onSelect({ version: '2.0.0', unique_identifier: 'plugin@2.0.0', isDowngrade: true })
-        }
-      >
-        select version
-      </button>
-    </div>
-  ),
-}))
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: 'light' }),
 }))
@@ -122,6 +102,7 @@ vi.mock('@/service/plugins', () => ({
 
 vi.mock('@/service/use-plugins', () => ({
   normalizeInstalledPluginDetail: mockNormalizeInstalledPluginDetail,
+  useVersionListOfPlugin: mockUseVersionListOfPlugin,
 }))
 
 const createDetail = (overrides: Partial<PluginDetail> = {}): PluginDetail =>
@@ -187,6 +168,20 @@ describe('ProviderCardActions', () => {
       }),
     )
     mockUninstallPlugin.mockResolvedValue({ success: true })
+    mockUseVersionListOfPlugin.mockReturnValue({
+      data: {
+        data: {
+          versions: [
+            {
+              version: '0.9.0',
+              unique_identifier: 'plugin@0.9.0',
+              created_at: 0,
+            },
+          ],
+        },
+      },
+      isLoading: false,
+    })
     mockPluginSettingsAccess.canDeletePlugin = true
     mockPluginSettingsAccess.canUpdatePlugin = true
   })
@@ -305,17 +300,24 @@ describe('ProviderCardActions', () => {
     })
   })
 
-  it('should render version controls for marketplace plugins and handle manual version selection', () => {
+  it('should render version controls for marketplace plugins and handle manual version selection', async () => {
+    const user = userEvent.setup()
+    mockHeaderState = {
+      ...mockHeaderState,
+      versionPicker: {
+        ...mockHeaderState.versionPicker,
+        isShow: true,
+      },
+    }
     render(<ProviderCardActions detail={createDetail()} />)
 
-    expect(screen.getByText('1.0.0')).toBeInTheDocument()
-    expect(screen.getByTestId('plugin-version-picker')).toHaveAttribute('data-disabled', 'false')
+    expect(screen.getByRole('button', { name: '1.0.0' })).not.toBeDisabled()
 
-    fireEvent.click(screen.getByRole('button', { name: 'select version' }))
+    await user.click(screen.getByRole('button', { name: /^0\.9\.0/ }))
 
     expect(mockSetTargetVersion).toHaveBeenCalledWith({
-      version: '2.0.0',
-      unique_identifier: 'plugin@2.0.0',
+      version: '0.9.0',
+      unique_identifier: 'plugin@0.9.0',
       isDowngrade: true,
     })
     expect(mockHandleUpdate).toHaveBeenCalledWith(true)
@@ -396,7 +398,7 @@ describe('ProviderCardActions', () => {
       />,
     )
 
-    expect(screen.getByTestId('plugin-version-picker')).toHaveAttribute('data-disabled', 'true')
+    expect(screen.getByRole('button', { name: '1.0.0' })).toBeDisabled()
     openActionsMenu()
     expect(
       screen.getByRole('menuitem', { name: 'plugin.detailPanel.operation.viewDetail' }),
