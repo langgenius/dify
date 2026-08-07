@@ -66,7 +66,7 @@ class SkillDeletePayload(BaseModel):
 
     confirmation_name: str | None = Field(
         default=None,
-        description="Required when deleting a referenced Skill. Must match the Skill name.",
+        description="Required when deleting a referenced Skill. Must match the Skill display name.",
     )
 
 

@@ -500,11 +500,13 @@ export function SkillBuilderPanel({
     }
 
     updateMessages((currentMessages) => [
-      ...currentMessages.filter(
-        (message) =>
-          message.id !== `assistant-${skillId}-intro` ||
-          currentMessages.some((currentMessage) => currentMessage.role === 'user'),
-      ),
+      ...currentMessages
+        .map((message) => ({ ...message, suggestions: undefined }))
+        .filter(
+          (message) =>
+            message.id !== `assistant-${skillId}-intro` ||
+            currentMessages.some((currentMessage) => currentMessage.role === 'user'),
+        ),
       userMessage,
       assistantMessage,
     ])

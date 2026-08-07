@@ -1,7 +1,17 @@
 'use client'
 
 import type { SkillResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { QueryClient } from '@tanstack/react-query'
 import type { UIEvent } from 'react'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -11,6 +21,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
 import {
   ScrollArea,
   ScrollAreaContent,
@@ -23,7 +34,7 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tansta
 import { useDebounce } from 'ahooks'
 import { useQueryState } from 'nuqs'
 import { useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { SkillCardTags } from '@/features/tag-management/components/skill-card-tags'
@@ -35,9 +46,8 @@ import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { downloadBlob } from '@/utils/download'
-import { invalidateSkillListQueries } from './cache'
 import { fetchSkillArchiveBlob } from './client'
-import { DeleteSkillDialog } from './delete-skill-dialog'
+import { SkillReferencesList, SkillReferencesListSkeleton } from './detail/skill-metadata'
 import { skillKeywordQueryParser, skillQueryParamNames, skillTagQueryParser } from './query-params'
 import { SkillListTagManagementModal } from './skill-list-tag-management-modal'
 
@@ -47,6 +57,18 @@ const placeholderCardIds = Array.from(
 )
 const skeletonRows = ['primary', 'secondary', 'tertiary'] as const
 const SKILLS_PAGE_SIZE = 20
+
+function skillsListQueryKey(type: 'infinite' | 'query') {
+  return consoleQuery.workspaces.current.skills.get.key({ type })
+}
+
+function invalidateSkillListQueries(queryClient: QueryClient) {
+  void queryClient.invalidateQueries({ queryKey: skillsListQueryKey('query') })
+  void queryClient.invalidateQueries({ queryKey: skillsListQueryKey('infinite') })
+  void queryClient.invalidateQueries({
+    queryKey: consoleQuery.workspaces.current.skills.tags.get.key({ type: 'query' }),
+  })
+}
 
 function SkillIcon() {
   return (
@@ -186,6 +208,151 @@ function SkillPlaceholderState({
         </div>
       </div>
     </section>
+  )
+}
+
+function DeleteSkillDialog({
+  open,
+  skill,
+  onOpenChange,
+}: {
+  open: boolean
+  skill: SkillResponse
+  onOpenChange: (open: boolean) => void
+}) {
+  const { t } = useTranslation('skill')
+  const { t: tCommon } = useTranslation('common')
+  const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
+  const queryClient = useQueryClient()
+  const deleteMutation = useMutation(
+    consoleQuery.workspaces.current.skills.bySkillId.delete.mutationOptions(),
+  )
+  const referencesQuery = useQuery({
+    ...consoleQuery.workspaces.current.skills.bySkillId.references.get.queryOptions({
+      input: {
+        params: {
+          skill_id: skill.id,
+        },
+      },
+      enabled: open,
+    }),
+    refetchOnMount: 'always',
+  })
+  const references = referencesQuery.data?.data ?? []
+  const referenceCount = Math.max(skill.reference_count ?? 0, references.length)
+  const description =
+    referenceCount > 0
+      ? t(($) => $['skillManagement.deleteDialog.referencedDescription'], {
+          count: referenceCount,
+        })
+      : t(($) => $['skillManagement.deleteDialog.description'])
+
+  const handleDelete = () => {
+    if (deleteMutation.isPending) return
+
+    deleteMutation.mutate(
+      {
+        params: {
+          skill_id: skill.id,
+        },
+        body: {
+          confirmation_name: referenceCount > 0 ? skill.display_name : skill.name,
+        },
+      },
+      {
+        onSuccess: () => {
+          toast.success(t(($) => $['skillManagement.deleteSuccess']))
+          invalidateSkillListQueries(queryClient)
+          onOpenChange(false)
+        },
+        onError: () => {
+          toast.error(t(($) => $['skillManagement.deleteFailed']))
+        },
+      },
+    )
+  }
+
+  return (
+    <AlertDialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) setConfirmDeleteInput('')
+        onOpenChange(nextOpen)
+      }}
+    >
+      <AlertDialogContent>
+        <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+          <AlertDialogTitle className="truncate title-2xl-semi-bold text-text-primary">
+            {t(($) => $['skillManagement.deleteDialog.title'], { name: skill.display_name })}
+          </AlertDialogTitle>
+          <AlertDialogDescription className="mt-2 system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+            {description}
+          </AlertDialogDescription>
+          {referenceCount > 0 && (
+            <div className="mt-4">
+              {referencesQuery.isPending ? (
+                <SkillReferencesListSkeleton compact />
+              ) : (
+                <SkillReferencesList
+                  compact
+                  maxHeight="max-h-[240px]"
+                  references={references}
+                  testId="skill-delete-reference-list"
+                  visibleLimit={5}
+                />
+              )}
+            </div>
+          )}
+          {referenceCount > 0 && (
+            <Field name="confirm-skill-name" className="mt-2">
+              <FieldLabel className="mb-1 block py-0 system-sm-regular text-text-secondary">
+                <Trans
+                  i18nKey={($) => $['skillManagement.deleteDialog.confirmInputLabel']}
+                  ns="skill"
+                  values={{ skillName: skill.display_name }}
+                  components={{
+                    skillName: (
+                      <span className="system-sm-semibold text-text-primary" translate="no" />
+                    ),
+                  }}
+                />
+              </FieldLabel>
+              <div className="relative">
+                <FieldControl
+                  type="text"
+                  autoComplete="off"
+                  spellCheck={false}
+                  placeholder={t(($) => $['skillManagement.deleteDialog.confirmInputPlaceholder'])}
+                  value={confirmDeleteInput}
+                  onValueChange={setConfirmDeleteInput}
+                  className="border-components-input-border-hover bg-components-input-bg-normal pr-20 focus:border-components-input-border-active focus:bg-components-input-bg-active"
+                />
+                <button
+                  type="button"
+                  onClick={() => setConfirmDeleteInput(skill.display_name)}
+                  className="absolute top-1/2 right-2 -translate-y-1/2 rounded-full bg-black/6 px-2.5 py-1 system-xs-medium text-text-secondary hover:bg-black/10"
+                >
+                  {tCommon(($) => $['operation.fill'])}
+                </button>
+              </div>
+            </Field>
+          )}
+        </div>
+        <AlertDialogActions>
+          <AlertDialogCancelButton disabled={deleteMutation.isPending}>
+            {tCommon(($) => $['operation.cancel'])}
+          </AlertDialogCancelButton>
+          <AlertDialogConfirmButton
+            tone="destructive"
+            loading={deleteMutation.isPending}
+            disabled={referenceCount > 0 && confirmDeleteInput !== skill.display_name}
+            onClick={handleDelete}
+          >
+            {tCommon(($) => $['operation.delete'])}
+          </AlertDialogConfirmButton>
+        </AlertDialogActions>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }
 

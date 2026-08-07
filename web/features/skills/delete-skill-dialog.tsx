@@ -78,7 +78,7 @@ export function DeleteSkillDialog({
           skill_id: skill.id,
         },
         body: {
-          confirmation_name: isReferenced ? skill.name : undefined,
+          confirmation_name: isReferenced ? skill.display_name : undefined,
         },
       },
       {

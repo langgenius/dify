@@ -2414,7 +2414,7 @@ describe('SkillDetailPage', () => {
     expect(sendButton).toBeDisabled()
   })
 
-  it('rejects image attachments in Skill Builder before uploading', async () => {
+  it('uploads image attachments in Skill Builder', async () => {
     const user = userEvent.setup({ applyAccept: false })
     const { container } = renderSkillDetailPage()
 
@@ -2429,10 +2429,8 @@ describe('SkillDetailPage', () => {
       }),
     )
 
-    expect(mocks.uploadSkillFile).not.toHaveBeenCalled()
-    expect(toast.error).toHaveBeenCalledWith(
-      'skill.skillManagement.detail.builder.attachUnsupported',
-    )
+    expect(mocks.uploadSkillFile).toHaveBeenCalledWith(expect.any(File))
+    expect(toast.error).not.toHaveBeenCalled()
   })
 
   it('shows unavailable feedback for Skill Builder voice input', async () => {
