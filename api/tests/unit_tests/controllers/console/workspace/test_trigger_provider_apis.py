@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from inspect import unwrap
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -175,9 +175,15 @@ class TestTriggerSubscriptionBuilderApis:
             patch(
                 "controllers.console.workspace.trigger_providers.TriggerSubscriptionBuilderService.get_subscription_builder_by_id",
                 return_value=subscription_builder(),
-            ),
+            ) as mock_get_builder,
         ):
-            assert method(api, "github", "b1")["id"] == "b1"
+            assert method(api, "t1", mock_user(), "github", "b1")["id"] == "b1"
+        mock_get_builder.assert_called_once_with(
+            tenant_id="t1",
+            user_id="u1",
+            provider_id=ANY,
+            subscription_builder_id="b1",
+        )
 
     def test_verify_builder(self, app: Flask) -> None:
         api = TriggerSubscriptionBuilderVerifyApi()
@@ -215,9 +221,16 @@ class TestTriggerSubscriptionBuilderApis:
             patch(
                 "controllers.console.workspace.trigger_providers.TriggerSubscriptionBuilderService.update_trigger_subscription_builder",
                 return_value=subscription_builder(),
-            ),
+            ) as mock_update_builder,
         ):
-            assert method(api, "t1", "github", "b1")["id"] == "b1"
+            assert method(api, "t1", mock_user(), "github", "b1")["id"] == "b1"
+        mock_update_builder.assert_called_once_with(
+            tenant_id="t1",
+            user_id="u1",
+            provider_id=ANY,
+            subscription_builder_id="b1",
+            subscription_builder_updater=ANY,
+        )
 
     def test_logs(self, app: Flask) -> None:
         api = TriggerSubscriptionBuilderLogsApi()
@@ -228,10 +241,16 @@ class TestTriggerSubscriptionBuilderApis:
             patch(
                 "controllers.console.workspace.trigger_providers.TriggerSubscriptionBuilderService.list_logs",
                 return_value=[request_log()],
-            ),
+            ) as mock_list_logs,
         ):
-            result = method(api, "github", "b1")
+            result = method(api, "t1", mock_user(), "github", "b1")
             assert result["logs"][0]["id"] == "log1"
+        mock_list_logs.assert_called_once_with(
+            tenant_id="t1",
+            user_id="u1",
+            provider_id=ANY,
+            subscription_builder_id="b1",
+        )
 
     def test_build(self, app: Flask) -> None:
         api = TriggerSubscriptionBuilderBuildApi()
@@ -377,10 +396,17 @@ class TestTriggerOAuthApis:
             ),
             patch(
                 "controllers.console.workspace.trigger_providers.TriggerSubscriptionBuilderService.update_trigger_subscription_builder"
-            ),
+            ) as mock_update_builder,
         ):
             resp = method(api, "github")
             assert resp.status_code == 302
+        mock_update_builder.assert_called_once_with(
+            tenant_id="t1",
+            user_id="u1",
+            provider_id=ANY,
+            subscription_builder_id="b1",
+            subscription_builder_updater=ANY,
+        )
 
     def test_oauth_callback_no_oauth_client(self, app: Flask) -> None:
         api = TriggerOAuthCallbackApi()

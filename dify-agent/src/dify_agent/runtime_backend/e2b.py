@@ -30,7 +30,6 @@ from dify_agent.runtime_backend.protocols import (
     ExecutionBindingAllocation,
     ExecutionBindingCreateSpec,
     ExecutionBindingDestroySpec,
-    FileSystem,
     HomeSnapshotCreateSpec,
     RuntimeLayout,
     RuntimeLease,
@@ -357,10 +356,6 @@ class E2BRuntimeLease:
     @property
     def commands(self) -> ShellCommandProtocol:
         return self.data_plane.commands
-
-    @property
-    def files(self) -> FileSystem:
-        return self.data_plane.files
 
 
 async def _wait_for_shellctl_ready(client: ShellctlClientProtocol) -> None:

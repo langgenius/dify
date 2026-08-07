@@ -26,9 +26,16 @@ const AddCustomModel = ({
   provider,
   configurationMethod,
   currentCustomConfigurationModelFixedFields,
+  open: controlledOpen,
+  onOpenChange,
 }: AddCustomModelProps) => {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
+  const [localOpen, setLocalOpen] = useState(false)
+  const open = controlledOpen ?? localOpen
+  const setOpen = (nextOpen: boolean) => {
+    setLocalOpen(nextOpen)
+    onOpenChange?.(nextOpen)
+  }
   const canAddedModels = useCanAddedModels(provider)
   const noModels = !canAddedModels.length
   const { canUseCredential, canCreateCredential } = useCredentialPermissions()

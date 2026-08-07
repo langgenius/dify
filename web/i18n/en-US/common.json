@@ -299,7 +299,6 @@
   "menus.apps": "Studio",
   "menus.datasets": "Knowledge",
   "menus.deployments": "Deployments",
-  "menus.explore": "Explore",
   "menus.exploreMarketplace": "Explore Marketplace",
   "menus.plugins": "Integrations",
   "menus.status": "beta",

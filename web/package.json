@@ -22,6 +22,7 @@
     "i18n:check": "tsx ./scripts/check-i18n.js",
     "i18n:migrate-selectors": "tsx ./scripts/migrate-i18n-selectors.ts",
     "i18n:prune-unused": "tsx ./scripts/prune-unused-i18n.ts",
+    "lint:a11y": "node ./scripts/lint-a11y.mjs",
     "lint:tss": "tsslint --project tsconfig.json",
     "preinstall": "npx only-allow pnpm",
     "start": "node ./scripts/copy-and-start.mjs",

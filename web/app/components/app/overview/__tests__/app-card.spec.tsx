@@ -469,14 +469,13 @@ describe('AppCard', () => {
   })
 
   it('should refresh app detail after confirming access control changes', async () => {
-    const { queryClient } = render(
+    render(
       <AppCard
         appInfo={appInfo}
         onChangeStatus={mockOnChangeStatus}
         onGenerateCode={mockOnGenerateCode}
       />,
     )
-    const setQueryDataSpy = vi.spyOn(queryClient, 'setQueryData')
 
     fireEvent.click(screen.getByText(/(?:^|\.)publishApp\.notSet(?=$|:)/))
     expect(screen.getByTestId('access-control-modal')).toBeInTheDocument()
@@ -486,12 +485,6 @@ describe('AppCard', () => {
     await waitFor(() => {
       expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
     })
-    expect(setQueryDataSpy).toHaveBeenCalledWith(
-      ['apps', 'detail', 'app-1'],
-      expect.objectContaining({
-        access_mode: AccessMode.PUBLIC,
-      }),
-    )
     expect(mockSetAppDetail).toHaveBeenCalledWith(
       expect.objectContaining({
         access_mode: AccessMode.PUBLIC,

@@ -200,15 +200,14 @@ describe('Card Component', () => {
       render(<Card item={mockItem} />)
 
       // Assert
-      // Assert
       expect(screen.getByText('Test Label'))!.toBeInTheDocument()
       expect(screen.queryByText(/Test Author/))!.not.toBeInTheDocument()
       expect(screen.queryByText(/test-name/))!.not.toBeInTheDocument()
       expect(screen.getByText('1.2.0'))!.toBeInTheDocument()
-      expect(screen.getByRole('img', { name: 'Test Label' }))!.toHaveAttribute(
-        'src',
-        'test-icon-url',
-      )
+      const icon = screen.getByRole('img', { name: 'Test Label' })
+      expect(icon).toHaveAttribute('src', 'test-icon-url')
+      expect(icon).toHaveAttribute('loading', 'lazy')
+      expect(icon).toHaveAttribute('decoding', 'async')
       expect(screen.getByText('Credential 1'))!.toBeInTheDocument()
       expect(screen.getByText(/plugin.auth.default/))!.toBeInTheDocument()
 

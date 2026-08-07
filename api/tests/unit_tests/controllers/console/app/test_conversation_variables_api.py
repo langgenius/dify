@@ -16,7 +16,6 @@ from graphon.variables.types import SegmentType
 from models import ConversationVariable
 
 
-@pytest.mark.parametrize("sqlite_session", [(ConversationVariable,)], indirect=True)
 def test_get_conversation_variables_returns_paginated_response(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,

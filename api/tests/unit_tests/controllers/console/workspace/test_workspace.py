@@ -5,14 +5,14 @@ from http import HTTPStatus
 from inspect import unwrap
 from io import BytesIO
 from types import SimpleNamespace
-from unittest.mock import ANY, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
 from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.datastructures import FileStorage
-from werkzeug.exceptions import Unauthorized
+from werkzeug.exceptions import NotFound
 
 import services
 from controllers.common.errors import (
@@ -22,11 +22,13 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
+from controllers.console import console_ns
 from controllers.console.error import AccountNotLinkTenantError
+from controllers.console.workspace.error import CurrentWorkspaceArchivedError
 from controllers.console.workspace.workspace import (
+    CurrentWorkspaceSummaryApi,
     CustomConfigWorkspaceApi,
     SwitchWorkspaceApi,
-    TenantApi,
     TenantInfoResponse,
     TenantListApi,
     WebappLogoWorkspaceApi,
@@ -334,66 +336,59 @@ class TestWorkspaceListApi:
         assert result["has_more"] is True
 
 
-class TestTenantApi:
-    def test_post_active_tenant(self, app: Flask):
-        api = TenantApi()
-        method = unwrap(api.post)
+def test_legacy_current_workspace_routes_are_not_registered():
+    urls = {url for _resource, resource_urls, _route_doc, _kwargs in console_ns.resources for url in resource_urls}
+
+    assert "/workspaces/current" not in urls
+    assert "/info" not in urls
+
+
+class TestCurrentWorkspaceSummaryApi:
+    def test_get_summary(self, app: Flask):
+        api = CurrentWorkspaceSummaryApi()
+        method = unwrap(api.get)
         tenant = make_tenant()
         user = make_account_with_tenant(tenant)
+        session = MagicMock()
+        summary = {
+            "id": tenant.id,
+            "name": tenant.name,
+            "role": "owner",
+            "plan": CloudPlan.SANDBOX,
+            "credits": 180,
+        }
+
         with (
-            app.test_request_context("/workspaces/current"),
+            app.test_request_context("/workspaces/current/summary"),
             patch(
-                "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info", return_value={"id": "t1"}
-            ),
+                "controllers.console.workspace.workspace.WorkspaceService.get_current_workspace_summary",
+                return_value=summary,
+            ) as get_summary,
         ):
-            result, status = method(api, MagicMock(), user)
+            result, status = method(api, session, user)
+
         assert status == HTTPStatus.OK
-        assert result["id"] == "t1"
+        assert result == {
+            "id": tenant.id,
+            "name": tenant.name,
+            "role": "owner",
+            "plan": "sandbox",
+            "credits": 180,
+        }
+        get_summary.assert_called_once_with(tenant, user.id, session=session)
 
-    def test_post_archived_with_switch(self, app: Flask):
-        api = TenantApi()
-        method = unwrap(api.post)
-        archived = make_tenant(status=TenantStatus.ARCHIVE)
-        new_tenant = make_tenant("new")
-        user = make_account_with_tenant(archived)
-        with (
-            app.test_request_context("/workspaces/current"),
-            patch("controllers.console.workspace.workspace.TenantService.get_join_tenants", return_value=[new_tenant]),
-            patch("controllers.console.workspace.workspace.TenantService.switch_tenant") as switch_tenant,
-            patch(
-                "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info", return_value={"id": "new"}
-            ),
-        ):
-            result, status = method(api, MagicMock(), user)
-        assert result["id"] == "new"
-        switch_tenant.assert_called_once_with(user, new_tenant.id, session=ANY)
+    def test_get_archived_tenant_returns_conflict(self, app: Flask):
+        api = CurrentWorkspaceSummaryApi()
+        method = unwrap(api.get)
+        tenant = make_tenant(status=TenantStatus.ARCHIVE)
+        user = make_account_with_tenant(tenant)
 
-    def test_post_archived_no_tenant(self, app: Flask):
-        api = TenantApi()
-        method = unwrap(api.post)
-        user = make_account_with_tenant(make_tenant(status=TenantStatus.ARCHIVE))
-        with (
-            app.test_request_context("/workspaces/current"),
-            patch("controllers.console.workspace.workspace.TenantService.get_join_tenants", return_value=[]),
-        ):
-            with pytest.raises(Unauthorized):
+        with app.test_request_context("/workspaces/current/summary"):
+            with pytest.raises(CurrentWorkspaceArchivedError) as exc_info:
                 method(api, MagicMock(), user)
 
-    def test_post_info_path(self, app: Flask, caplog: pytest.LogCaptureFixture):
-        api = TenantApi()
-        method = unwrap(api.post)
-        tenant = make_tenant()
-        user = make_account_with_tenant(tenant)
-        with (
-            app.test_request_context("/info"),
-            caplog.at_level(logging.WARNING, logger="controllers.console.workspace.workspace"),
-            patch(
-                "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info", return_value={"id": "t1"}
-            ),
-        ):
-            result, status = method(api, MagicMock(), user)
-        assert "Deprecated URL /info was used." in caplog.messages
-        assert status == HTTPStatus.OK
+        assert exc_info.value.code == HTTPStatus.CONFLICT
+        assert exc_info.value.error_code == "current_workspace_archived"
 
 
 class TestTenantInfoResponse:
@@ -467,6 +462,43 @@ class TestSwitchWorkspaceApi:
 
 
 class TestCustomConfigWorkspaceApi:
+    def test_get_workspace_not_found(self, app: Flask, workspace_session: scoped_session[Session]):
+        api = CustomConfigWorkspaceApi()
+        method = unwrap(api.get)
+
+        with app.test_request_context("/workspaces/custom-config"), pytest.raises(NotFound):
+            method(api, workspace_session, "missing")
+
+    def test_get_defaults(self, app: Flask, workspace_session: scoped_session[Session]):
+        api = CustomConfigWorkspaceApi()
+        method = unwrap(api.get)
+        tenant = make_tenant(custom_config={})
+        workspace_session.add(tenant)
+        workspace_session.commit()
+
+        with app.test_request_context("/workspaces/custom-config"):
+            result = method(api, workspace_session, tenant.id)
+
+        assert result == {"remove_webapp_brand": False, "replace_webapp_logo": None}
+
+    def test_get_configured_brand(self, app: Flask, workspace_session: scoped_session[Session]):
+        api = CustomConfigWorkspaceApi()
+        method = unwrap(api.get)
+        tenant = make_tenant(custom_config={"remove_webapp_brand": True, "replace_webapp_logo": "logo-file-id"})
+        workspace_session.add(tenant)
+        workspace_session.commit()
+
+        with (
+            app.test_request_context("/workspaces/custom-config"),
+            patch("controllers.console.workspace.workspace.dify_config.FILES_URL", "https://files.example.com"),
+        ):
+            result = method(api, workspace_session, tenant.id)
+
+        assert result == {
+            "remove_webapp_brand": True,
+            "replace_webapp_logo": f"https://files.example.com/files/workspaces/{tenant.id}/webapp-logo",
+        }
+
     def test_post_success(self, app: Flask, workspace_session: scoped_session[Session]):
         api = CustomConfigWorkspaceApi()
         method = unwrap(api.post)

@@ -1,9 +1,12 @@
-import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
+import type {
+  EducationStatusResponse,
+  GetAccountProfileResponse,
+} from '@dify/contracts/api/console/account/types.gen'
 import type {
   GetSystemFeaturesLicenseResponse,
   GetSystemFeaturesResponse,
 } from '@dify/contracts/api/console/system-features/types.gen'
-import type { PostWorkspacesCurrentResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { GetWorkspacesCurrentSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { QueryClient } from '@tanstack/react-query'
 import type {
   RenderHookOptions,
@@ -45,7 +48,9 @@ type AppDslVersionQueryProvider = {
 }
 
 type CurrentWorkspaceQueryProvider = {
-  post?: QueryKeyProvider
+  summary?: {
+    get?: QueryKeyProvider
+  }
 }
 
 const fallbackTrialModelsQueryKey = ['console', 'trialModels', 'get'] as const
@@ -71,7 +76,7 @@ const getCurrentWorkspaceQueryKey = () => {
     }
   ).workspaces?.current
 
-  return currentWorkspaceQuery?.post?.queryKey() ?? currentWorkspaceQueryKey
+  return currentWorkspaceQuery?.summary?.get?.queryKey() ?? currentWorkspaceQueryKey
 }
 
 /**
@@ -100,6 +105,20 @@ export const seedSystemFeaturesLicense = (
   const data = createSystemFeaturesLicenseFixture(overrides)
   const queryKey = consoleQuery.systemFeatures.license.get.queryOptions().queryKey
   queryClient.setQueryData<GetSystemFeaturesLicenseResponse>(queryKey, data)
+  return data
+}
+
+export const seedEducationStatus = (
+  queryClient: QueryClient,
+  overrides: Partial<EducationStatusResponse> = {},
+): EducationStatusResponse => {
+  const data: EducationStatusResponse = {
+    allow_refresh: false,
+    expire_at: null,
+    is_student: false,
+    ...overrides,
+  }
+  queryClient.setQueryData(consoleQuery.account.education.get.queryOptions().queryKey, data)
   return data
 }
 
@@ -140,7 +159,8 @@ export type ConsoleQueryTestOptions = {
    */
   systemFeatures?: DeepPartial<GetSystemFeaturesResponse> | null
   accountProfile?: Partial<GetAccountProfileResponse> | null
-  currentWorkspace?: Partial<PostWorkspacesCurrentResponse> | null
+  educationStatus?: Partial<EducationStatusResponse>
+  currentWorkspace?: Partial<GetWorkspacesCurrentSummaryResponse> | null
   trialModels?: readonly string[] | null
   workspacePermissionKeys?: readonly string[] | null
   /**
@@ -165,6 +185,7 @@ export const createConsoleQueryWrapper = (
     if (options.accountProfile) seedAccountProfileQuery(queryClient, options.accountProfile)
     else ensureAccountProfileQuery(queryClient, { timezone: 'UTC' })
   }
+  if (options.educationStatus) seedEducationStatus(queryClient, options.educationStatus)
   if (options.currentWorkspace !== null) {
     const queryKey = getCurrentWorkspaceQueryKey()
     if (options.currentWorkspace)
@@ -203,6 +224,7 @@ export const renderWithConsoleQuery = (
   const {
     systemFeatures: sf,
     accountProfile,
+    educationStatus,
     currentWorkspace,
     trialModels,
     workspacePermissionKeys,
@@ -213,6 +235,7 @@ export const renderWithConsoleQuery = (
   const { wrapper, queryClient, systemFeatures } = createConsoleQueryWrapper({
     systemFeatures: sf,
     accountProfile,
+    educationStatus,
     currentWorkspace,
     trialModels,
     workspacePermissionKeys,
@@ -233,6 +256,7 @@ export const renderHookWithConsoleQuery = <Result, Props = void>(
   const {
     systemFeatures: sf,
     accountProfile,
+    educationStatus,
     currentWorkspace,
     trialModels,
     workspacePermissionKeys,
@@ -243,6 +267,7 @@ export const renderHookWithConsoleQuery = <Result, Props = void>(
   const { wrapper, queryClient, systemFeatures } = createConsoleQueryWrapper({
     systemFeatures: sf,
     accountProfile,
+    educationStatus,
     currentWorkspace,
     trialModels,
     workspacePermissionKeys,
