@@ -68,7 +68,6 @@ function CatalogSkeleton() {
       className={`relative grow content-start ${APP_LIST_GRID_CLASS_NAME}`}
       role="status"
       aria-label={t(($) => $.loading, { ns: 'common' })}
-      data-testid="app-list-loading"
     >
       <AppCardSkeleton count={6} />
     </div>

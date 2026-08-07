@@ -13,6 +13,5 @@ export const waitForKnowledgeConsole = async (page: Page, timeout?: number) => {
     options,
   )
   await expect(page.getByRole('heading', { name: 'Knowledge', exact: true })).toBeVisible(options)
-  await expect(page.getByTestId('dataset-list-loading')).toBeHidden(options)
-  await expect(page.getByTestId('knowledge-space-list-loading')).toBeHidden(options)
+  await expect(page.getByRole('status', { name: 'Loading' })).toBeHidden(options)
 }

@@ -29,12 +29,7 @@ export function NewKnowledgeLoadingState() {
   const { t } = useTranslation('common')
 
   return (
-    <div
-      className={KNOWLEDGE_SPACE_GRID_CLASS_NAME}
-      role="status"
-      aria-label={t(($) => $.loading)}
-      data-testid="knowledge-space-list-loading"
-    >
+    <div className={KNOWLEDGE_SPACE_GRID_CLASS_NAME} role="status" aria-label={t(($) => $.loading)}>
       {LOADING_CARD_IDS.map((id) => (
         <div
           key={id}
