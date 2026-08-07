@@ -270,6 +270,15 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
             getattr(route, "path", None) == "/agent-stub/drive/manifest" for route in create_app(settings).routes
         )
         assert any(getattr(route, "path", None) == "/agent-stub/drive/commit" for route in create_app(settings).routes)
+        route_paths = create_app(settings).openapi()["paths"]
+        assert {
+            "/execution-bindings/files/list",
+            "/execution-bindings/files/read",
+            "/execution-bindings/files/download",
+        }.issubset(route_paths)
+        assert "/workspace/files/list" not in route_paths
+        assert "/workspace/files/read" not in route_paths
+        assert "/workspace/files/upload" not in route_paths
 
     assert FakeRunScheduler.created[0].shutdown_called is True
     assert FakeRunScheduler.created[0].dify_api_http_client.is_closed is True
