@@ -184,6 +184,7 @@ def initialize_extensions(app: DifyApp):
         ext_forward_refs,
         ext_hosting_provider,
         ext_import_modules,
+        ext_key_provider,
         ext_logging,
         ext_login,
         ext_logstore,
@@ -219,6 +220,7 @@ def initialize_extensions(app: DifyApp):
         ext_migrate,
         ext_redis,
         ext_storage,
+        ext_key_provider,  # Initialize after storage, since RSAKeyProvider reads private keys from it
         ext_set_secretkey,
         ext_logstore,  # Initialize logstore after storage, before celery
         ext_celery,
