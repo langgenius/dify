@@ -6,7 +6,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useDebounceFn } from 'ahooks'
 import { produce } from 'immer'
 import * as React from 'react'
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
@@ -23,6 +23,11 @@ type Props = Readonly<{
 
 const OutputVarList: FC<Props> = ({ readonly, outputs, outputKeyOrders, onChange, onRemove }) => {
   const { t } = useTranslation()
+
+  // The name being typed into a row while it collides with another row's name. `outputs` is keyed
+  // by variable name, so it cannot hold two rows sharing one name; committing a colliding rename
+  // would overwrite the other row's entry. Only one input can be focused, so one draft is enough.
+  const [draftName, setDraftName] = useState<{ index: number; name: string } | null>(null)
 
   const list = outputKeyOrders.map((key) => {
     return {
@@ -58,11 +63,18 @@ const OutputVarList: FC<Props> = ({ readonly, outputs, outputKeyOrders, onChange
         replaceSpaceWithUnderscoreInVarNameInput(e.target)
         const newKey = e.target.value
 
-        validateVarInput(
-          list.filter((_, itemIndex) => itemIndex !== index),
-          newKey,
-        )
+        const otherVars = list.filter((_, itemIndex) => itemIndex !== index)
+        validateVarInput(otherVars, newKey)
 
+        // Hold a colliding name locally instead of writing it. Typing stays unrestricted, but
+        // `outputs` keeps this row on its current key, so neither entry is overwritten and no
+        // rename is propagated to the nodes referencing either variable.
+        if (otherVars.some((item) => item.variable === newKey)) {
+          setDraftName({ index, name: newKey })
+          return
+        }
+
+        setDraftName(null)
         const newOutputs = produce(outputs, (draft) => {
           draft[newKey] = draft[oldKey]!
           // Only delete old key if no other entry shares this name
@@ -73,6 +85,14 @@ const OutputVarList: FC<Props> = ({ readonly, outputs, outputKeyOrders, onChange
     },
     [list, onChange, outputs, validateVarInput],
   )
+
+  const handleVarNameBlur = useCallback((index: number) => {
+    return () => {
+      // A draft only outlives a keystroke while it collides, so leaving the field discards it
+      // and the input falls back to the name the row still holds in `outputs`.
+      setDraftName((current) => (current?.index === index ? null : current))
+    }
+  }, [])
 
   const handleVarTypeChange = useCallback(
     (index: number) => {
@@ -102,8 +122,9 @@ const OutputVarList: FC<Props> = ({ readonly, outputs, outputKeyOrders, onChange
         <div className="flex items-center space-x-1" key={index}>
           <Input
             readOnly={readonly}
-            value={item.variable}
+            value={draftName?.index === index ? draftName.name : item.variable}
             onChange={handleVarNameChange(index)}
+            onBlur={handleVarNameBlur(index)}
             wrapperClassName="grow"
           />
           <VarTypePicker
