@@ -824,17 +824,25 @@ def test_restore_skill_version_validates_payload(app: Flask, current_user: Accou
     method = unwrap(api.post)
     service = MagicMock()
     service.restore_version.return_value = {
-        "id": "version-2",
-        "skill_id": "skill-1",
-        "version_number": 2,
-        "version_name": "Restored",
-        "publish_note": "Restored",
-        "hash_code": "hash-code",
-        "archive_size": 123,
-        "published_by": "user-1",
-        "published_by_name": "Li Wei",
-        "is_latest": True,
+        "id": "skill-1",
+        "name": "finance-sop",
+        "display_name": "Finance SOP",
+        "icon": "📄",
+        "description": "Finance procedures",
+        "tags": [],
+        "name_manually_edited": False,
+        "visibility": "workspace",
+        "latest_published_version_id": "version-1",
+        "latest_published_version_number": 1,
+        "latest_published_at": 1,
+        "reference_count": 0,
+        "created_by": "user-1",
+        "created_by_name": "Li Wei",
+        "updated_by": "user-1",
+        "updated_by_name": "Li Wei",
         "created_at": 1,
+        "updated_at": 2,
+        "files": [],
     }
 
     with (
@@ -844,7 +852,7 @@ def test_restore_skill_version_validates_payload(app: Flask, current_user: Accou
     ):
         payload = method(api, "tenant-1", current_user, "skill-1")
 
-    assert payload["version_name"] == "Restored"
+    assert payload["latest_published_version_id"] == "version-1"
     call = service.restore_version.call_args.kwargs
     assert call["tenant_id"] == "tenant-1"
     assert call["user_id"] == "user-1"

@@ -5330,9 +5330,9 @@ export const zPostWorkspacesCurrentSkillsBySkillIdRestorePath = z.object({
 })
 
 /**
- * Skill version restored
+ * Skill version restored to draft
  */
-export const zPostWorkspacesCurrentSkillsBySkillIdRestoreResponse = zSkillVersionResponse
+export const zPostWorkspacesCurrentSkillsBySkillIdRestoreResponse = zSkillDetailResponse
 
 export const zGetWorkspacesCurrentSkillsBySkillIdVersionsPath = z.object({
   skill_id: z.string(),

@@ -5272,7 +5272,7 @@ export type PostWorkspacesCurrentSkillsBySkillIdRestoreData = {
 }
 
 export type PostWorkspacesCurrentSkillsBySkillIdRestoreResponses = {
-  200: SkillVersionResponse
+  200: SkillDetailResponse
 }
 
 export type PostWorkspacesCurrentSkillsBySkillIdRestoreResponse =

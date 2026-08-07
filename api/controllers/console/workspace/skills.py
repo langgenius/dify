@@ -732,7 +732,7 @@ class WorkspaceSkillPublishApi(Resource):
 @console_ns.route("/workspaces/current/skills/<string:skill_id>/restore")
 class WorkspaceSkillRestoreApi(Resource):
     @console_ns.expect(console_ns.models[SkillRestorePayload.__name__])
-    @console_ns.response(200, "Skill version restored", console_ns.models[SkillVersionResponse.__name__])
+    @console_ns.response(200, "Skill version restored to draft", console_ns.models[SkillDetailResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -749,7 +749,7 @@ class WorkspaceSkillRestoreApi(Resource):
                 skill_id=skill_id,
                 payload=payload,
             )
-            return dump_response(SkillVersionResponse, result)
+            return dump_response(SkillDetailResponse, result)
         except ValidationError as exc:
             return {"code": "invalid_request", "message": str(exc)}, 400
         except SkillManagementServiceError as exc:
