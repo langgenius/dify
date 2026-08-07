@@ -37,6 +37,7 @@ vi.mock('react-i18next', async () => {
     'common.operation.cancel': 'Cancel',
     'deployments.overview.chip.latest': 'Latest',
     'deployments.deployDrawer.deploying': 'Deploying...',
+    'deployments.deployDrawer.envVars': 'Environment Variables',
     'deployments.studio.accessPoint.goToPublish': 'Go to publish',
     'deployments.studio.allVersions': 'All versions',
     'deployments.studio.chooseVersionToDeploy': 'Choose a version to deploy',
@@ -636,6 +637,16 @@ describe('PublisherEnvironmentFlow', () => {
     await user.click(screen.getByRole('button', { name: 'Back' }))
 
     expect(screen.getByRole('heading', { name: 'Deploy to Staging' })).toBeInTheDocument()
+  })
+
+  it('hides the environment variables section when deployment options have no slots', async () => {
+    const user = userEvent.setup()
+    renderFlow()
+
+    await user.click(screen.getByRole('button', { name: 'Deploy latest' }))
+
+    expect(screen.getByRole('button', { name: 'Deploy' })).toBeEnabled()
+    expect(screen.queryByRole('heading', { name: 'Environment Variables' })).not.toBeInTheDocument()
   })
 
   it('shows unsupported node titles when the latest version fails precheck', async () => {
