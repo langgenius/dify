@@ -1,3 +1,4 @@
+import type { KnowledgeFsDocumentOutlineNodeResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type {
   DocumentRevisionChunk,
   LogicalDocument,
@@ -68,6 +69,20 @@ const revision = (value: number): Exclude<LogicalDocumentRevision, null> => ({
   state: value === 3 ? 'active' : 'superseded',
 })
 
+const outlineNode = (
+  overrides: Partial<KnowledgeFsDocumentOutlineNodeResponse> = {},
+): KnowledgeFsDocumentOutlineNodeResponse => ({
+  children: [],
+  id: 'outline-1',
+  level: 1,
+  metadata: {},
+  section_path: ['Guide'],
+  summary: 'A generated guide summary.',
+  title: 'Guide',
+  toc_source: 'parser-heading',
+  ...overrides,
+})
+
 describe('document detail model', () => {
   it('maps structured chunk metadata and remains compatible with legacy responses', () => {
     const base = {
@@ -123,6 +138,58 @@ describe('document detail model', () => {
     expect(tree.roots[0]?.children[0]?.targetChunkId).toBe('tax-table')
   })
 
+  it('uses the persisted outline hierarchy and hides a legacy HTML title chunk', () => {
+    const titleChunk = chunk({
+      id: 'html-title',
+      ordinal: 0,
+      sectionPath: [],
+      text: 'Guide — Operating safely',
+    })
+    const guideChunk = chunk({
+      id: 'guide',
+      ordinal: 1,
+      sectionPath: ['Guide Operating safely'],
+      text: 'Guide Operating safely\n\nGuide body',
+    })
+    const setupChunk = chunk({
+      id: 'setup',
+      ordinal: 2,
+      sectionPath: ['Guide Operating safely', 'Setup'],
+      text: 'Setup\n\nSetup body',
+    })
+    const tree = buildDocumentChunkTree(
+      [titleChunk, guideChunk, setupChunk],
+      [
+        outlineNode({
+          id: 'legacy-title-root',
+          section_path: ['Guide — Operating safely'],
+          summary: 'Legacy metadata title.',
+          title: 'Guide — Operating safely',
+        }),
+        outlineNode({
+          children: [
+            outlineNode({
+              id: 'setup-node',
+              level: 2,
+              section_path: ['Guide Operating safely', 'Setup'],
+              summary: 'Generated setup summary.',
+              title: 'Setup',
+            }),
+          ],
+          id: 'guide-node',
+          section_path: ['Guide Operating safely'],
+          title: 'Guide Operating safely',
+        }),
+      ],
+    )
+
+    expect(tree.roots.map((node) => node.id)).toEqual(['guide-node'])
+    expect(tree.roots[0]?.children.map((node) => node.id)).toEqual(['setup-node'])
+    expect(tree.displayChunks.map((item) => item.id)).toEqual(['guide', 'setup'])
+    expect(tree.outlineNodesByChunkId.get('setup')?.summary).toBe('Generated setup summary.')
+    expect(tree.outlineSummaryChunkIds.has('setup')).toBe(true)
+  })
+
   it('builds a deterministic parent-child tree and keeps orphans visible', () => {
     const tree = buildDocumentChunkTree([
       chunk({ id: 'child-b', ordinal: 3, parentChunkId: 'parent' }),
@@ -136,6 +203,12 @@ describe('document detail model', () => {
       'child-a',
       'child-b',
     ])
+  })
+
+  it('uses one-based labels for flat chunk ordinals', () => {
+    const tree = buildDocumentChunkTree([chunk({ id: 'first', ordinal: 0 })])
+
+    expect(tree.roots[0]?.label).toBe('#1')
   })
 
   it('breaks cyclic parent links instead of losing every node', () => {
@@ -245,6 +318,20 @@ describe('document detail model', () => {
     expect(chunkContentParts(chunk({ text: 'Standalone content' }))).toEqual({
       body: 'Standalone content',
       heading: '',
+    })
+  })
+
+  it('removes an exact materialized section heading from the displayed chunk body', () => {
+    expect(
+      chunkContentParts(
+        chunk({
+          sectionPath: ['Guide', 'Setup requirements'],
+          text: 'Setup requirements\n\nWorkspace contract details',
+        }),
+      ),
+    ).toEqual({
+      body: 'Workspace contract details',
+      heading: 'Setup requirements',
     })
   })
 })

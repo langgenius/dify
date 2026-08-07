@@ -1054,9 +1054,7 @@ export type KnowledgeFsDocumentRevisionResponse = {
 
 export type KnowledgeFsDocumentOutlineNodeResponse = {
   child_node_ids?: Array<string>
-  children?: Array<{
-    [key: string]: unknown
-  }>
+  children?: Array<KnowledgeFsDocumentOutlineNodeResponse>
   end_offset?: number | null
   end_page?: number | null
   id: string

@@ -190,7 +190,7 @@ describe("parser adapters", () => {
     ]);
   });
 
-  it("parses HTML while ignoring script and style content", async () => {
+  it("parses HTML body content without materializing the metadata title", async () => {
     const parser = createNativeHtmlParser({
       generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2c46",
       now: () => createdAt,
@@ -212,8 +212,9 @@ describe("parser adapters", () => {
     );
 
     expect(artifact.parser).toBe("native-html");
+    expect(artifact.metadata.documentTitle).toBe("Ignored Title");
+    expect(artifact.metadata.parserVersion).toBe("native-html@2");
     expect(artifact.elements.map((element) => element.type)).toEqual([
-      "title",
       "heading",
       "paragraph",
       "list",
@@ -221,7 +222,6 @@ describe("parser adapters", () => {
       "table",
     ]);
     expect(artifact.elements.map((element) => element.text)).toEqual([
-      "Ignored Title",
       "Guide",
       "Read the docs.",
       "Install\nRun",
@@ -229,13 +229,30 @@ describe("parser adapters", () => {
       "A | B\n1 | 2",
     ]);
     expect(artifact.elements.map((element) => element.sectionPath)).toEqual([
-      [],
       ["Guide"],
       ["Guide"],
       ["Guide"],
       ["Guide"],
       ["Guide"],
     ]);
+  });
+
+  it("bounds an HTML metadata title without adding it to body elements", async () => {
+    const parser = createNativeHtmlParser({
+      generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2c47",
+      now: () => createdAt,
+    });
+
+    const artifact = await parser.parse(
+      createParseInput({
+        body: `<html><head><title>${"题".repeat(2_001)}</title></head><body><p>Body</p></body></html>`,
+        filename: "bounded-title.html",
+        mimeType: "text/html",
+      }),
+    );
+
+    expect(Array.from(String(artifact.metadata.documentTitle))).toHaveLength(2_000);
+    expect(artifact.elements.map((element) => element.text)).toEqual(["Body"]);
   });
 
   it("normalizes HTML image references into image parse elements", async () => {

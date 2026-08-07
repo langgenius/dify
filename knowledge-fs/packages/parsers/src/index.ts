@@ -152,6 +152,7 @@ interface MarkdownImageRef {
 
 const defaultMaxElements = 20_000;
 const defaultMaxInputBytes = 10 * 1024 * 1024;
+const defaultMaxDocumentTitleChars = 2_000;
 const defaultMaxResponseBytes = 5 * 1024 * 1024;
 const defaultMaxRetries = 0;
 const defaultMaxRows = 20_000;
@@ -196,16 +197,19 @@ export function createNativeHtmlParser(options: NativeParserOptions = {}): Parse
   return {
     kind: "native-html",
     parse: async (input) => {
-      const parserVersion = options.parserVersion ?? "native-html@1";
+      const parserVersion = options.parserVersion ?? "native-html@2";
       assertInputBounds(input.body, options.maxInputBytes ?? defaultMaxInputBytes);
       const text = decodeUtf8(input.body);
       const document = parseDocument(text, {
         lowerCaseAttributeNames: true,
         lowerCaseTags: true,
       });
-      const elements = htmlNodesToElements((document.children ?? []) as HtmlNode[]);
+      const nodes = (document.children ?? []) as HtmlNode[];
+      const elements = htmlNodesToElements(nodes);
+      const documentTitle = htmlDocumentTitle(nodes);
 
       return createParseArtifact({
+        ...(documentTitle ? { artifactMetadata: { documentTitle } } : {}),
         elements,
         input,
         kind: "native-html",
@@ -428,12 +432,14 @@ function selectParser(
 }
 
 async function createParseArtifact({
+  artifactMetadata,
   elements,
   input,
   kind,
   options,
   parserVersion,
 }: {
+  readonly artifactMetadata?: Readonly<Record<string, unknown>> | undefined;
   readonly elements: readonly ParseElementInput[];
   readonly input: ParseDocumentInput;
   readonly kind: ParserKind;
@@ -464,6 +470,7 @@ async function createParseArtifact({
     elements: materializedElements,
     id,
     metadata: {
+      ...cloneMetadata(artifactMetadata ?? {}),
       filename: input.filename,
       mimeType: input.mimeType,
       parserVersion,
@@ -762,6 +769,18 @@ function htmlNodesToElements(nodes: readonly HtmlNode[]): ParseElementInput[] {
   return elements;
 }
 
+function htmlDocumentTitle(nodes: readonly HtmlNode[]): string | undefined {
+  for (const node of nodes) {
+    if (node.name?.toLowerCase() === "title") {
+      const title = normalizeText(htmlText(node));
+      if (title) return Array.from(title).slice(0, defaultMaxDocumentTitleChars).join("");
+    }
+    const childTitle = htmlDocumentTitle(node.children ?? []);
+    if (childTitle) return childTitle;
+  }
+  return undefined;
+}
+
 function visitHtmlNode(node: HtmlNode, elements: ParseElementInput[], sectionPath: string[]): void {
   const name = node.name?.toLowerCase();
 
@@ -769,8 +788,9 @@ function visitHtmlNode(node: HtmlNode, elements: ParseElementInput[], sectionPat
     return;
   }
 
+  // The HTML document title is metadata, not body content. Emitting it as a parse element creates
+  // a standalone ordinal-zero chunk and a second outline root whenever the body also has an h1.
   if (name === "title") {
-    pushTextElement(elements, "title", htmlText(node), []);
     return;
   }
 

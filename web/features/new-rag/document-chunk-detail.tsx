@@ -1,3 +1,4 @@
+import type { KnowledgeFsDocumentOutlineNodeResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type {
   DocumentRevisionChunk,
   LogicalDocument,
@@ -60,6 +61,8 @@ export function DocumentChunkDetail({
   chunksComplete,
   isLoadingMore,
   locale,
+  outlineNodesByChunkId,
+  outlineSummaryChunkIds,
   revision,
   selectedChunkId,
 }: {
@@ -70,6 +73,8 @@ export function DocumentChunkDetail({
   chunksComplete: boolean
   isLoadingMore: boolean
   locale: string
+  outlineNodesByChunkId: Map<string, KnowledgeFsDocumentOutlineNodeResponse>
+  outlineSummaryChunkIds: Set<string>
   revision?: Exclude<LogicalDocumentRevision, null>
   selectedChunkId?: string
 }) {
@@ -130,6 +135,10 @@ export function DocumentChunkDetail({
             {chunks.map((chunk) => {
               const content = chunkContentParts(chunk)
               const markerLabel = chunkMarkerLabels.get(chunk.id)
+              const outlineNode = outlineNodesByChunkId.get(chunk.id)
+              const outlineSummary = outlineSummaryChunkIds.has(chunk.id)
+                ? outlineNode?.summary?.trim()
+                : undefined
               return (
                 <section
                   key={chunk.id}
@@ -141,10 +150,18 @@ export function DocumentChunkDetail({
                       <div className="flex items-start gap-1">
                         {!content.body && markerLabel && <ChunkMarker label={markerLabel} />}
                         <h3 className="system-sm-semibold wrap-break-word text-text-primary">
-                          {content.heading ||
-                            t(($) => $['newKnowledge.chunkHeading'], { position: chunk.ordinal })}
+                          {outlineNode?.title.trim() ||
+                            content.heading ||
+                            t(($) => $['newKnowledge.chunkHeading'], {
+                              position: chunk.ordinal + 1,
+                            })}
                         </h3>
                       </div>
+                      {outlineSummary && (
+                        <p className="mt-1 text-[13px] leading-5.5 wrap-break-word text-text-tertiary">
+                          {outlineSummary}
+                        </p>
+                      )}
                     </div>
                     <Button
                       aria-label={tCommon(($) => $['operation.copy'])}
