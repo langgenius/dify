@@ -2596,7 +2596,7 @@ def test_publish_and_export_include_binary_tool_files() -> None:
         assert archive.read("assets/policy.pdf") == b"pdfblob"
 
 
-def test_restore_version_replaces_draft_and_creates_new_published_version() -> None:
+def test_restore_version_replaces_draft_without_publishing() -> None:
     captured: list[bytes] = []
 
     class CapturingToolFileManager(_FakeToolFileManager):
@@ -2636,7 +2636,12 @@ def test_restore_version_replaces_draft_and_creates_new_published_version() -> N
         skill_id=created["id"],
         payload=SkillDraftTreePayload(files=[{"path": "SKILL.md", "content": _skill_md(body="# Second")}]),
     )
-    service.publish_skill(tenant_id=TENANT, user_id=USER, skill_id=created["id"], payload=SkillPublishPayload())
+    second = service.publish_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=created["id"],
+        payload=SkillPublishPayload(),
+    )
 
     with patch("services.skill_management_service.storage.load_once", return_value=captured[0]):
         restored = service.restore_version(
@@ -2646,9 +2651,13 @@ def test_restore_version_replaces_draft_and_creates_new_published_version() -> N
             payload=SkillRestorePayload(version_id=first["id"], publish_note="restore first"),
         )
 
-    assert restored["version_number"] == 3
-    files = service.get_skill(tenant_id=TENANT, skill_id=created["id"])["files"]
+    assert restored["latest_published_version_id"] == second["id"]
+    assert restored["latest_published_version_number"] == 2
+    files = restored["files"]
     assert "# First" in files[0]["content"]
+
+    versions = service.list_versions(tenant_id=TENANT, skill_id=created["id"])
+    assert [version["version_number"] for version in versions["data"]] == [2, 1]
 
 
 def test_publish_hash_code_identifies_each_version_even_when_content_matches() -> None:

@@ -2027,11 +2027,6 @@ class SkillManagementService:
         with session_factory.create_session() as session:
             skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
             version = self._require_version(session, skill_id=skill.id, version_id=payload.version_id)
-            skill_snapshot = self._serialize_skill(
-                skill,
-                tags=self._skill_tags_by_id(session, tenant_id=tenant_id, skill_ids=[skill.id]).get(skill.id, []),
-                accounts=self._skill_accounts(session, skill=skill),
-            )
             archive_file_id = version.archive_tool_file_id
 
         archive_bytes = self._load_tool_file_bytes(tenant_id=tenant_id, file_id=archive_file_id)
@@ -2051,15 +2046,9 @@ class SkillManagementService:
             skill.updated_at = naive_utc_now()
             session.commit()
 
-        return self.publish_skill(
-            tenant_id=tenant_id,
-            user_id=user_id,
-            skill_id=str(skill_snapshot["id"]),
-            payload=SkillPublishPayload(
-                publish_note=payload.publish_note,
-                version_name=payload.version_name,
-            ),
-        )
+        # Restore only replaces the editable draft. Publishing remains an explicit
+        # follow-up action so restoring history cannot unexpectedly activate it.
+        return self.get_skill(tenant_id=tenant_id, skill_id=skill_id)
 
     def pull_published_archive(self, *, tenant_id: str, skill_id: str) -> PublishedSkillArchive:
         with session_factory.create_session() as session:
