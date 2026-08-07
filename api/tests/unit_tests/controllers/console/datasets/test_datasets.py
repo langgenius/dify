@@ -834,6 +834,28 @@ class TestDatasetUseCheckApi:
         dataset_use_check.assert_called_once_with(DatasetRef("tenant-1", dataset_id), session)
 
 
+@pytest.mark.parametrize(
+    "api_cls",
+    [DatasetUseCheckApi, DatasetIndexingStatusApi, DatasetErrorDocs, DatasetAutoDisableLogApi],
+)
+def test_dataset_scoped_read_permission_denied(app: Flask, api_cls):
+    api = api_cls()
+    method = unwrap(api.get)
+    dataset = make_dataset(id="dataset-1")
+    session = MagicMock()
+    with (
+        app.test_request_context("/"),
+        patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset),
+        patch.object(
+            DatasetService,
+            "check_dataset_permission",
+            side_effect=services.errors.account.NoPermissionError("no permission"),
+        ),
+    ):
+        with pytest.raises(Forbidden, match="no permission"):
+            method(api, session, "tenant-1", make_account(), "dataset-1")
+
+
 class TestDatasetQueryApi:
     def _query_record(self, index: int = 1) -> DatasetQuery:
         query = DatasetQuery(
