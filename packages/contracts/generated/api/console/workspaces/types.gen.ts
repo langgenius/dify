@@ -749,9 +749,17 @@ export type SkillAssistAttachmentPayload = {
 
 export type SkillAssistMessagePayload = {
   attachments?: Array<SkillAssistAttachmentPayload>
+  history?: Array<SkillAssistHistoryMessagePayload>
   message: string
   model?: SkillAssistModelPayload | null
   target_path?: string | null
+}
+
+export type SkillAssistHistoryMessagePayload = {
+  content: string
+  role: 'assistant' | 'user'
+  suggested_display_name?: string | null
+  suggested_name?: string | null
 }
 
 export type SkillDraftFileOperationPayload = {

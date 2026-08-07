@@ -142,26 +142,54 @@ description, or metadata.display-name. Ordinary Markdown files under references/
 should contain only their own document content unless the user explicitly asks
 for YAML frontmatter in that file.
 
-Use a low-friction progressive flow for a new Skill. Do not complete all four
-authoring stages in one turn. Follow the current authoring stage supplied in the
-request:
-1. Scenario: ask what the Skill handles and how users describe the trigger.
-   Update only the description; do not write the body, create files, or choose a
-   final name.
-2. Workflow: ask about steps, decision points, rules, and thresholds. Update
-   the SKILL.md body only; preserve the placeholder name and display name.
-3. Resources: ask whether scripts, templates, or reference documents are
-   needed. Create only the files the user confirms; preserve the name.
+Use a low-friction progressive flow for a new Skill. The current stage and the
+previous conversation are supplied in the request. Complete only the current
+stage and move forward after the user confirms it; never generate the whole
+SKILL.md, write a final name, or create all resources in the first turn.
+1. Scenario (1-3 turns): ask what the Skill handles and how users describe the
+   trigger. Once the user provides or confirms concrete trigger examples, you
+   MUST emit one upsert_text operation for SKILL.md that updates the
+   frontmatter description. Do not write the body, create files, or choose a
+   final name. Never claim that the description was updated unless that
+   operation is present.
+2. Workflow (2-5 turns): ask about key steps, decision points, rules, and
+   thresholds. Once clear, you MUST emit one upsert_text operation for SKILL.md
+   that updates the body only; preserve the placeholder name and display name.
+   Never claim that workflow content was added unless that operation is present.
+3. Resources (0-2 turns): ask whether scripts, templates, or reference
+   documents are needed. Create only resources the user confirms under
+   scripts/, references/, or assets/. If none are needed, proceed to finalization
+   without inventing files.
 4. Finalize: summarize the completed Skill and suggest a display name and a
-   lowercase kebab-case name. Only at this stage may the name be changed.
-Ask at most one focused question per turn and do not invent missing business
-rules or thresholds. Every reply should include 2-3 short suggested user replies
-that the UI can show as clickable chips. The suggestions must be concrete next
-replies for the current stage, not generic commands.
+   lowercase kebab-case name. Only after the user confirms the name may it be
+   written to SKILL.md.
+Ask at most one focused question per turn, use the previous conversation to
+avoid repeating questions, and do not invent missing business rules or
+thresholds. Every reply should include 2-3 short suggested user replies that
+the UI can show as clickable chips. The suggestions must be concrete next
+replies for the current stage, not generic commands. Suggestions must operate
+on the current Skill only. Never suggest creating, opening, or switching to
+another Skill, because one Builder session cannot create multiple Skills.
+If the user asks you to provide, draft, or propose examples, provide those
+examples yourself in the reply and apply the corresponding operation when the
+stage allows it. Do not ask the user to provide the same examples again.
+Never repeat the current question in a suggestion. Suggestions must move the
+conversation forward, such as reviewing the generated examples, adding a
+channel, or proceeding to the next stage.
+For example, when the user says "Provide 3-5 trigger phrases" and specifies
+chat, email, and phone, immediately return 3-5 concise phrases covering those
+channels. Do not respond with "please provide 3-5 trigger phrases" or ask the
+user to confirm the same requirement. If the generated triggers are sufficient
+for the Scenario stage, apply them to the description in the same response.
+You may infer a proposed name early and return it as suggested_name and
+suggested_display_name. These are hidden planning metadata: never write them
+into SKILL.md or any Skill detail until the Finalize stage and user confirmation.
 
 Respond with JSON only:
 {
   "reply": "short user-facing summary",
+  "suggested_name": "customer-issue-triage",
+  "suggested_display_name": "Customer Issue Triage",
   "suggestions": [
     "Use this for ecommerce refund escalation",
     "Ask me about required inputs first"
@@ -384,6 +412,15 @@ class SkillAssistAttachmentPayload(BaseModel):
     size: int | None = Field(default=None, ge=0)
 
 
+class SkillAssistHistoryMessagePayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    role: Literal["assistant", "user"]
+    content: str = Field(min_length=1, max_length=8_000)
+    suggested_name: str | None = Field(default=None, max_length=128)
+    suggested_display_name: str | None = Field(default=None, max_length=128)
+
+
 class SkillAssistMessagePayload(BaseModel):
     """One user message and optional uploaded context for the Skill Authoring assistant."""
 
@@ -391,6 +428,7 @@ class SkillAssistMessagePayload(BaseModel):
 
     message: str = Field(min_length=1, max_length=8_000)
     attachments: list[SkillAssistAttachmentPayload] = Field(default_factory=list, max_length=_MAX_ASSISTANT_ATTACHMENTS)
+    history: list[SkillAssistHistoryMessagePayload] = Field(default_factory=list, max_length=20)
     model: SkillAssistModelPayload | None = None
     target_path: str | None = None
 
@@ -429,6 +467,8 @@ class SkillAssistActionPlan(BaseModel):
 
     reply: str = Field(default="", max_length=4_000)
     suggestions: list[str] = Field(default_factory=list, max_length=3)
+    suggested_name: str | None = Field(default=None, max_length=128)
+    suggested_display_name: str | None = Field(default=None, max_length=128)
     operations: list[SkillAssistDraftOperationPayload] = Field(default_factory=list, max_length=10)
 
 
@@ -806,6 +846,7 @@ class SkillManagementService:
         skill_id: str,
         message: str,
         attachments: list[SkillAssistAttachmentPayload] | None = None,
+        history: list[SkillAssistHistoryMessagePayload] | None = None,
         model_payload: SkillAssistModelPayload | None = None,
         target_path: str | None = None,
     ) -> Generator[str, None, None]:
@@ -823,10 +864,20 @@ class SkillManagementService:
                     message_id=message_id,
                     message=message,
                     attachments=attachments or [],
+                    history=history or [],
                     model_payload=model_payload,
                     target_path=target_path,
                 )
                 plan = result.plan
+                if plan.suggested_name or plan.suggested_display_name:
+                    yield self._assistant_sse(
+                        {
+                            "event": "skill_assistant_name_suggestion",
+                            "id": message_id,
+                            "name": plan.suggested_name,
+                            "display_name": plan.suggested_display_name,
+                        }
+                    )
                 reply = plan.reply.strip() or "Done."
                 yield self._assistant_sse(
                     {
@@ -923,6 +974,7 @@ class SkillManagementService:
         message_id: str,
         message: str,
         attachments: list[SkillAssistAttachmentPayload],
+        history: list[SkillAssistHistoryMessagePayload],
         model_payload: SkillAssistModelPayload | None,
         target_path: str | None,
     ) -> Generator[str, None, SkillAssistActionResult]:
@@ -945,7 +997,7 @@ class SkillManagementService:
             tenant_id=tenant_id,
             model_payload=model_payload,
         )
-        authoring_stage = self._assistant_authoring_stage(skill=skill, files=files)
+        authoring_stage = self._assistant_authoring_stage(skill=skill, files=files, history=history)
         supports_vision = self._model_supports_vision(model_instance)
         attachment_context = self._build_assistant_attachment_context(
             tenant_id=tenant_id,
@@ -961,6 +1013,17 @@ class SkillManagementService:
         prompt_parts.append(f"<authoring_stage>{authoring_stage}</authoring_stage>")
         if target_path:
             prompt_parts.append(f"<current_editor_path>{target_path}</current_editor_path>")
+        if history:
+            history_text = "\n".join(
+                f"{item.role}: {item.content}"
+                + (
+                    f" [suggested_name={item.suggested_name}, suggested_display_name={item.suggested_display_name}]"
+                    if item.suggested_name or item.suggested_display_name
+                    else ""
+                )
+                for item in history[-12:]
+            )
+            prompt_parts.append(f"<conversation_history>\n{history_text}\n</conversation_history>")
         if attachment_context:
             prompt_parts.append(f"<uploaded_context>\n{attachment_context}\n</uploaded_context>")
         prompt_parts.append(f"User request:\n{message}")
@@ -1097,6 +1160,8 @@ class SkillManagementService:
             stage=authoring_stage,
             skill=skill,
             files=files,
+            user_message=message,
+            history=history,
         )
         if not any(suggestion.strip() for suggestion in plan.suggestions):
             plan = plan.model_copy(
@@ -1222,6 +1287,8 @@ class SkillManagementService:
             "Generate 2-3 concise clickable follow-up replies the user could send next.\n"
             "They must be specific to the user's Skill Builder request and the assistant reply.\n"
             "Do not include generic actions like continue, ok, or looks good.\n"
+            "Only suggest actions for the current Skill. Never suggest creating another Skill, "
+            "starting a new Skill, or switching Skills.\n"
             "Return exactly one JSON object and no markdown fences, prose, or explanation.\n"
             "Required schema: {\"suggestions\": [\"...\", \"...\"]}\n\n"
             f"User request:\n{user_message}\n\n"
@@ -1258,9 +1325,6 @@ class SkillManagementService:
             return []
         if not isinstance(suggestions, list):
             return []
-        return [suggestion.strip() for suggestion in suggestions if isinstance(suggestion, str) and suggestion.strip()][
-            :3
-        ]
 
     def _resolve_assistant_model(
         self,
@@ -1592,6 +1656,14 @@ class SkillManagementService:
             except IntegrityError as exc:
                 session.rollback()
                 raise SkillManagementServiceError("skill_name_conflict", "skill name already exists") from exc
+            logger.info(
+                "skill_assistant_operation_applied skill_id=%s operation=%s path=%s name=%s display_name=%s",
+                skill_id,
+                payload.operation,
+                payload.path,
+                skill.name,
+                skill.display_name,
+            )
             return {
                 **self._serialize_skill(
                     skill,
@@ -2578,16 +2650,23 @@ class SkillManagementService:
         }
 
     @staticmethod
-    def _assistant_authoring_stage(*, skill: Skill, files: list[SkillDraftFile]) -> str:
+    def _assistant_authoring_stage(
+        *,
+        skill: Skill,
+        files: list[SkillDraftFile],
+        history: list[SkillAssistHistoryMessagePayload] | None = None,
+    ) -> str:
         """Return the progressive stage for a newly created, untitled Skill."""
         if not (skill.display_name == _UNTITLED_DISPLAY_NAME and not skill.name_manually_edited):
             return "existing_skill"
 
         skill_md = next((file for file in files if file.path == _SKILL_MD), None)
         content = skill_md.content_text if skill_md is not None else ""
-        has_description = bool(skill.description.strip())
+        has_description = bool(
+            skill.description.strip() and skill.description.strip() != _UNTITLED_SKILL_DESCRIPTION
+        )
         body = _FRONTMATTER_RE.sub("", content, count=1).strip()
-        has_body = bool(body and body != _EMPTY_SKILL_DRAFT_CONTENT.strip())
+        has_body = bool(body and body not in {_EMPTY_SKILL_DRAFT_CONTENT.strip(), _UNTITLED_SKILL_MD_BODY.strip()})
         has_resources = any(file.path != _SKILL_MD for file in files)
 
         if not has_description:
@@ -2595,8 +2674,32 @@ class SkillManagementService:
         if not has_body:
             return "workflow"
         if not has_resources:
+            if SkillManagementService._conversation_declined_resources(history or []):
+                return "finalize"
             return "resources"
         return "finalize"
+
+    @staticmethod
+    def _conversation_declined_resources(history: list[SkillAssistHistoryMessagePayload]) -> bool:
+        """Advance to naming after the user explicitly declines extra resources."""
+        for index in range(len(history) - 1, 0, -1):
+            current = history[index]
+            previous = history[index - 1]
+            if current.role != "user" or previous.role != "assistant":
+                continue
+            assistant_text = previous.content.lower()
+            user_text = current.content.strip().lower()
+            asked_for_resources = any(
+                marker in assistant_text
+                for marker in ("resource", "script", "template", "reference", "资源", "脚本", "模板", "参考")
+            )
+            declined = bool(
+                re.search(r"\b(?:no|none|not needed|don't)\b", user_text)
+                or any(marker in user_text for marker in ("无需", "不需要", "不用", "没有"))
+            )
+            if asked_for_resources and declined:
+                return True
+        return False
 
     @classmethod
     def _constrain_progressive_assistant_plan(
@@ -2606,8 +2709,10 @@ class SkillManagementService:
         stage: str,
         skill: Skill,
         files: list[SkillDraftFile],
+        user_message: str = "",
+        history: list[SkillAssistHistoryMessagePayload] | None = None,
     ) -> SkillAssistActionPlan:
-        if stage in {"existing_skill", "finalize"}:
+        if stage == "existing_skill":
             return plan
 
         skill_md = next((file for file in files if file.path == _SKILL_MD), None)
@@ -2622,6 +2727,19 @@ class SkillManagementService:
                         current_content=current_content,
                         candidate_content=content,
                     )
+                    content = cls._apply_assistant_suggested_identity(
+                        skill=skill,
+                        content=content,
+                        suggested_name=plan.suggested_name,
+                        suggested_display_name=plan.suggested_display_name,
+                    )
+                elif stage == "finalize":
+                    if not cls._user_confirmed_skill_name(user_message, history or []):
+                        content = cls._preserve_assistant_skill_identity(
+                            skill=skill,
+                            current_content=current_content,
+                            candidate_content=content,
+                        )
                 else:
                     content = cls._preserve_assistant_skill_identity(
                         skill=skill,
@@ -2632,7 +2750,84 @@ class SkillManagementService:
             elif stage == "resources" and operation.path != _SKILL_MD:
                 operations.append(operation)
 
+        logger.info(
+            "skill_assistant_plan_constrained skill_id=%s stage=%s suggested_name=%s "
+            "suggested_display_name=%s operations=%s",
+            skill.id,
+            stage,
+            plan.suggested_name,
+            plan.suggested_display_name,
+            [operation.path for operation in operations],
+        )
         return plan.model_copy(update={"operations": operations})
+
+    @classmethod
+    def _apply_assistant_suggested_identity(
+        cls,
+        *,
+        skill: Skill,
+        content: str,
+        suggested_name: str | None,
+        suggested_display_name: str | None,
+    ) -> str:
+        """Materialize a model-proposed identity for an untitled Builder draft."""
+        if not cls._is_placeholder_skill_name(skill.name) or not suggested_name:
+            return content
+
+        try:
+            name = validate_skill_name(suggested_name)
+        except ValueError:
+            return content
+
+        display_name = suggested_display_name or name.replace("-", " ").title()
+        try:
+            frontmatter = cls._parse_frontmatter(content)
+        except SkillManagementServiceError:
+            return content
+        metadata = frontmatter.get("metadata")
+        if not isinstance(metadata, dict):
+            metadata = {}
+        frontmatter["name"] = name
+        metadata["display-name"] = display_name[:128]
+        frontmatter["metadata"] = metadata
+        serialized = yaml.safe_dump(frontmatter, allow_unicode=True, sort_keys=False).rstrip()
+        frontmatter_match = _FRONTMATTER_RE.match(content)
+        if frontmatter_match is None:
+            return content
+        body = content[frontmatter_match.end() :].lstrip("\r\n")
+        return f"---\n{serialized}\n---\n\n{body}" if body else f"---\n{serialized}\n---\n"
+
+    @staticmethod
+    def _user_confirmed_skill_name(
+        message: str,
+        history: list[SkillAssistHistoryMessagePayload],
+    ) -> bool:
+        """Only accept a generated name after an explicit user confirmation."""
+        confirmation_messages = [message, *(item.content for item in history if item.role == "user")]
+        for content in confirmation_messages:
+            normalized = content.strip().lower()
+            if not normalized:
+                continue
+            if re.search(
+                r"\b(?:yes|y|confirm|confirmed|use it|use this|use the suggested name|call it|name it)\b",
+                normalized,
+            ):
+                return True
+            if re.search(r"\b(?:set|use)\b.{0,80}\bname\b", normalized):
+                return True
+            if any(
+                marker in normalized
+                for marker in ("就叫", "叫做", "名称为", "名字为", "改成", "定为", "使用这个名称", "确认名称")
+            ):
+                return True
+
+        asked_for_name = any(
+            item.role == "assistant"
+            and any(marker in item.content.lower() for marker in ("name", "名称", "名字", "命名"))
+            for item in history[-3:]
+        )
+        normalized_message = message.strip().lower()
+        return asked_for_name and not re.search(r"[?？。.!！]", normalized_message) and len(normalized_message) <= 128
 
     @classmethod
     def _assistant_description_only_skill_md(
@@ -3565,7 +3760,7 @@ class SkillManagementService:
                 session = object_session(skill)
                 auto_generated_name = False
                 if (
-                    self._should_auto_sync_name(skill)
+                    self._is_placeholder_skill_name(skill.name)
                     and display_name is not None
                     and display_name != _UNTITLED_DISPLAY_NAME
                     and session is not None
@@ -3598,7 +3793,7 @@ class SkillManagementService:
         saved so the editor, detail payload, and future export all show the same
         generated kebab-case name.
         """
-        if not self._should_auto_sync_name(skill):
+        if not self._is_placeholder_skill_name(skill.name):
             return content
 
         try:
@@ -3635,11 +3830,18 @@ class SkillManagementService:
 
         return re.sub(r"(?m)^name:\s*.*$", f"name: {generated_name}", next_content, count=1)
 
+    @staticmethod
+    def _is_placeholder_skill_name(name: str) -> bool:
+        return name.startswith(f"{_UNTITLED_SKILL_NAME_PREFIX}-")
+
     def _display_name_from_draft_skill_md(self, *, frontmatter: dict[str, Any], content: str) -> str | None:
         display_name = self._display_name_override_from_frontmatter(frontmatter)
         if display_name is not None and display_name != _UNTITLED_DISPLAY_NAME:
             return display_name
-        if display_name is None:
+        name = frontmatter.get("name")
+        if display_name is None and not (
+            isinstance(name, str) and name.strip().startswith(_UNTITLED_SKILL_NAME_PREFIX)
+        ):
             return None
 
         heading = self._first_markdown_heading(content)
@@ -3911,6 +4113,7 @@ class SkillManagementService:
 __all__ = [
     "PublishedSkillArchive",
     "SkillAssistAttachmentPayload",
+    "SkillAssistHistoryMessagePayload",
     "SkillAssistMessagePayload",
     "SkillAssistModelPayload",
     "SkillCreatePayload",

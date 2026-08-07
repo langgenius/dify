@@ -1,5 +1,6 @@
 import type {
   SkillAssistAttachmentPayload,
+  SkillAssistHistoryMessagePayload,
   SkillFileUploadResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type {
@@ -161,8 +162,10 @@ export function sendSkillAssistMessage({
   onUnhandledEvent,
   skillId,
   targetPath,
+  history,
 }: {
   attachments?: SkillAssistAttachmentPayload[]
+  history?: SkillAssistHistoryMessagePayload[]
   getAbortController?: (abortController: AbortController) => void
   message: string
   model?: DefaultModel & {
@@ -181,6 +184,7 @@ export function sendSkillAssistMessage({
     {
       body: {
         attachments,
+        history,
         message,
         model,
         target_path: targetPath,

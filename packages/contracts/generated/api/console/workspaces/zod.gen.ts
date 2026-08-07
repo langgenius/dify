@@ -1528,8 +1528,16 @@ export const zSkillAssistModelPayload = z.object({
  *
  * One user message and optional uploaded context for the Skill Authoring assistant.
  */
+export const zSkillAssistHistoryMessagePayload = z.object({
+  content: z.string().min(1).max(8000),
+  role: z.enum(['assistant', 'user']),
+  suggested_display_name: z.string().max(128).nullish(),
+  suggested_name: z.string().max(128).nullish(),
+})
+
 export const zSkillAssistMessagePayload = z.object({
   attachments: z.array(zSkillAssistAttachmentPayload).max(10).optional(),
+  history: z.array(zSkillAssistHistoryMessagePayload).max(20).optional(),
   message: z.string().min(1).max(8000),
   model: zSkillAssistModelPayload.nullish(),
   target_path: z.string().nullish(),

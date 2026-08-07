@@ -546,6 +546,7 @@ class WorkspaceSkillAssistMessageApi(Resource):
                 user_id=current_user.id,
                 message=payload.message,
                 attachments=payload.attachments,
+                history=payload.history,
                 model_payload=payload.model,
                 target_path=payload.target_path,
             )
