@@ -25,6 +25,7 @@ from dify_agent.protocol.schemas import (
     RunCancelledEventData,
     RunFailedEvent,
     RunFailedEventData,
+    RunFailureType,
     RunStartedEvent,
     RunStatus,
     RunSucceededEvent,
@@ -65,11 +66,13 @@ class InMemoryRunEventSink:
     events: dict[str, list[RunEvent]]
     statuses: dict[str, RunStatus]
     errors: dict[str, str | None]
+    error_types: dict[str, RunFailureType | None]
 
     def __init__(self) -> None:
         self.events = defaultdict(list)
         self.statuses = {}
         self.errors = {}
+        self.error_types = {}
 
     async def append_event(self, event: NonTerminalRunEvent) -> str:
         """Store a non-terminal event and assign a monotonic per-run cursor."""
@@ -84,23 +87,26 @@ class InMemoryRunEventSink:
         if current_status != "running":
             return RunFinalizationResult(applied=False, status=current_status)
 
-        status, error = terminal_event_status_and_error(event)
+        status, error, error_type = terminal_event_status_fields(event)
         event_id = str(len(self.events[event.run_id]) + 1)
         self.events[event.run_id].append(event.model_copy(update={"id": event_id}))
         self.statuses[event.run_id] = status
         self.errors[event.run_id] = error
+        self.error_types[event.run_id] = error_type
         return RunFinalizationResult(applied=True, status=status, event_id=event_id)
 
 
-def terminal_event_status_and_error(event: TerminalRunEvent) -> tuple[RunStatus, str | None]:
+def terminal_event_status_fields(
+    event: TerminalRunEvent,
+) -> tuple[RunStatus, str | None, RunFailureType | None]:
     """Derive the persisted terminal status fields from one typed event."""
     match event:
         case RunSucceededEvent():
-            return "succeeded", None
+            return "succeeded", None, None
         case RunFailedEvent():
-            return "failed", event.data.error
+            return "failed", event.data.error, event.data.error_type
         case RunCancelledEvent():
-            return "cancelled", event.data.message or event.data.reason
+            return "cancelled", event.data.message or event.data.reason, None
 
 
 async def emit_run_event(
@@ -180,11 +186,16 @@ async def emit_run_failed(
     *,
     run_id: str,
     error: str,
+    error_type: RunFailureType | None = None,
     reason: str | None = None,
 ) -> RunFinalizationResult:
     """Finalize a run with a failed terminal event."""
     return await sink.finalize_run(
-        RunFailedEvent(run_id=run_id, data=RunFailedEventData(error=error, reason=reason), created_at=utc_now()),
+        RunFailedEvent(
+            run_id=run_id,
+            data=RunFailedEventData(error=error, error_type=error_type, reason=reason),
+            created_at=utc_now(),
+        ),
     )
 
 
@@ -217,5 +228,5 @@ __all__ = [
     "emit_run_failed",
     "emit_run_started",
     "emit_run_succeeded",
-    "terminal_event_status_and_error",
+    "terminal_event_status_fields",
 ]
