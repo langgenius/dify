@@ -1,16 +1,37 @@
+from contextlib import contextmanager
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from models.knowledge_fs import KnowledgeFSControlSpaceState
 from services.knowledge_fs.product_dto import KnowledgeFSInitialWebsiteSourcePayload
 from services.knowledge_fs.product_remote import KnowledgeFSProductResourceNotFoundError
-from tasks.knowledge_fs_initial_source_tasks import start_initial_website_source_import
+from tasks.knowledge_fs_initial_source_tasks import (
+    KnowledgeFSInitialSourceNotReadyError,
+    import_initial_website_source,
+    start_initial_website_source_import,
+)
 
 
-def test_initial_website_source_import_recrawls_exact_selection_and_configures_sync() -> None:
-    session_context = MagicMock()
-    session_context.__enter__.return_value = object()
-    session_maker = MagicMock(return_value=session_context)
+def _payload(sync_policy: str = "daily") -> KnowledgeFSInitialWebsiteSourcePayload:
+    return KnowledgeFSInitialWebsiteSourcePayload.model_validate(
+        {
+            "kind": "website_crawl",
+            "name": "Dify docs",
+            "provider": "firecrawl",
+            "root_url": "https://docs.dify.ai",
+            "crawl_options": {"include_subpages": True, "limit": 25},
+            "selection": [
+                {"source_url": "https://docs.dify.ai/a", "title": "A"},
+                {"source_url": "https://docs.dify.ai/b", "title": "B"},
+            ],
+            "sync_policy": sync_policy,
+        }
+    )
+
+
+def _facade() -> MagicMock:
     facade = MagicMock()
     facade.list_sources.return_value = SimpleNamespace(data=[], next_cursor=None)
     facade.list_source_providers.return_value = SimpleNamespace(
@@ -33,39 +54,38 @@ def test_initial_website_source_import_recrawls_exact_selection_and_configures_s
     )
     facade.get_source.return_value = SimpleNamespace(version=3)
     facade.get_source_sync_policy.side_effect = KnowledgeFSProductResourceNotFoundError("not found")
+    return facade
 
-    payload = KnowledgeFSInitialWebsiteSourcePayload.model_validate(
-        {
-            "kind": "website_crawl",
-            "name": "Dify docs",
-            "provider": "firecrawl",
-            "root_url": "https://docs.dify.ai",
-            "crawl_options": {"include_subpages": True, "limit": 25},
-            "selection": [
-                {"source_url": "https://docs.dify.ai/a", "title": "A"},
-                {"source_url": "https://docs.dify.ai/b", "title": "B"},
-            ],
-            "sync_policy": "daily",
-        }
-    )
 
+@contextmanager
+def _runtime(
+    facade: MagicMock,
+    *,
+    state: KnowledgeFSControlSpaceState = KnowledgeFSControlSpaceState.ACTIVE,
+    knowledge_space_id: str | None = "space-1",
+):
+    session_context = MagicMock()
+    session_context.__enter__.return_value = object()
+    session_maker = MagicMock(return_value=session_context)
     with (
         patch(
             "tasks.knowledge_fs_initial_source_tasks.session_factory.get_session_maker",
             return_value=session_maker,
         ),
-        patch(
-            "tasks.knowledge_fs_initial_source_tasks.SQLAlchemyKnowledgeFSControlSpaceRepository"
-        ) as repository_type,
+        patch("tasks.knowledge_fs_initial_source_tasks.SQLAlchemyKnowledgeFSControlSpaceRepository") as repository_type,
         patch("tasks.knowledge_fs_initial_source_tasks.get_knowledge_fs_runtime") as get_runtime,
     ):
         repository_type.return_value.get.return_value = SimpleNamespace(
-            state=KnowledgeFSControlSpaceState.ACTIVE,
-            knowledge_space_id="space-1",
+            state=state,
+            knowledge_space_id=knowledge_space_id,
         )
         get_runtime.return_value.facade = facade
+        yield repository_type
 
-        workflow_id = start_initial_website_source_import(
+
+def _start(facade: MagicMock, payload: KnowledgeFSInitialWebsiteSourcePayload) -> str:
+    with _runtime(facade):
+        return start_initial_website_source_import(
             tenant_id="tenant-1",
             account_id="account-1",
             control_space_id="control-1",
@@ -73,9 +93,15 @@ def test_initial_website_source_import_recrawls_exact_selection_and_configures_s
             payload=payload,
         )
 
-    assert workflow_id == "workflow-1"
+
+def test_initial_website_source_import_recrawls_exact_selection_and_configures_daily_sync() -> None:
+    facade = _facade()
+
+    assert _start(facade, _payload()) == "workflow-1"
+
     source_payload = facade.create_source.call_args.kwargs["payload"]
     assert source_payload.status == "disabled"
+    assert source_payload.connection_id == "connection-1"
     assert source_payload.metadata["preview"] is True
     import_payload = facade.import_selected_source_crawl.call_args.kwargs["payload"]
     assert import_payload.source_urls == [
@@ -85,4 +111,187 @@ def test_initial_website_source_import_recrawls_exact_selection_and_configures_s
     sync_payload = facade.update_source_sync_policy.call_args.kwargs["payload"]
     assert sync_payload.mode == "interval"
     assert sync_payload.enabled is True
+    assert sync_payload.expected_revision == 0
     assert sync_payload.expected_source_version == 3
+
+
+def test_initial_website_source_import_reuses_source_across_pages_and_preserves_failure() -> None:
+    facade = _facade()
+    existing_source = SimpleNamespace(
+        id="existing-source",
+        metadata={"clientRequestId": "initial-website-source:operation-1"},
+    )
+    facade.list_sources.side_effect = [
+        SimpleNamespace(
+            data=[SimpleNamespace(id="other", metadata={})],
+            next_cursor="next-source",
+        ),
+        SimpleNamespace(data=[existing_source], next_cursor=None),
+    ]
+    facade.import_selected_source_crawl.return_value = SimpleNamespace(
+        id="failed-workflow",
+        state="failed",
+    )
+
+    assert _start(facade, _payload()) == "failed-workflow"
+    facade.create_source.assert_not_called()
+    facade.list_source_connections.assert_not_called()
+    facade.update_source_sync_policy.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("sync_policy", "expected_mode", "expected_enabled"),
+    [
+        ("manual", "manual", False),
+        ("provider", "provider", True),
+    ],
+)
+def test_initial_website_source_import_configures_remaining_sync_modes(
+    sync_policy: str,
+    expected_mode: str,
+    expected_enabled: bool,
+) -> None:
+    facade = _facade()
+    facade.list_source_connections.side_effect = [
+        SimpleNamespace(
+            data=[SimpleNamespace(id="inactive", provider_id="other", status="disabled")],
+            next_cursor="next-connection",
+        ),
+        SimpleNamespace(
+            data=[
+                SimpleNamespace(
+                    id="connection-2",
+                    provider_id="plugin-daemon-website",
+                    status="active",
+                )
+            ],
+            next_cursor=None,
+        ),
+    ]
+    facade.get_source_sync_policy.side_effect = None
+    facade.get_source_sync_policy.return_value = SimpleNamespace(revision=7)
+
+    assert _start(facade, _payload(sync_policy)) == "workflow-1"
+    sync_payload = facade.update_source_sync_policy.call_args.kwargs["payload"]
+    assert sync_payload.mode == expected_mode
+    assert sync_payload.enabled is expected_enabled
+    assert sync_payload.expected_revision == 7
+
+
+@pytest.mark.parametrize(
+    ("state", "knowledge_space_id", "error_type", "message"),
+    [
+        (
+            KnowledgeFSControlSpaceState.PROVISIONING,
+            None,
+            KnowledgeFSInitialSourceNotReadyError,
+            "still provisioning",
+        ),
+        (
+            KnowledgeFSControlSpaceState.ERROR,
+            None,
+            RuntimeError,
+            "cannot accept",
+        ),
+        (
+            KnowledgeFSControlSpaceState.ACTIVE,
+            None,
+            RuntimeError,
+            "cannot accept",
+        ),
+    ],
+)
+def test_initial_website_source_import_rejects_unavailable_spaces(
+    state: KnowledgeFSControlSpaceState,
+    knowledge_space_id: str | None,
+    error_type: type[Exception],
+    message: str,
+) -> None:
+    facade = _facade()
+    with (
+        _runtime(facade, state=state, knowledge_space_id=knowledge_space_id),
+        pytest.raises(error_type, match=message),
+    ):
+        start_initial_website_source_import(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="control-1",
+            operation_id="operation-1",
+            payload=_payload(),
+        )
+
+
+def test_initial_website_source_import_rejects_missing_control_space() -> None:
+    facade = _facade()
+    with _runtime(facade) as repository_type:
+        repository_type.return_value.get.return_value = None
+        with pytest.raises(RuntimeError, match="control-space was not found"):
+            start_initial_website_source_import(
+                tenant_id="tenant-1",
+                account_id="account-1",
+                control_space_id="control-1",
+                operation_id="operation-1",
+                payload=_payload(),
+            )
+
+
+def test_initial_website_source_import_rejects_unavailable_provider_and_connection() -> None:
+    unavailable_provider = _facade()
+    unavailable_provider.list_source_providers.return_value = SimpleNamespace(data=[])
+    with pytest.raises(RuntimeError, match="provider is unavailable"):
+        _start(unavailable_provider, _payload())
+
+    unavailable_connection = _facade()
+    unavailable_connection.list_source_connections.return_value = SimpleNamespace(
+        data=[SimpleNamespace(id="inactive", provider_id="other", status="disabled")],
+        next_cursor=None,
+    )
+    with pytest.raises(RuntimeError, match="connection is unavailable"):
+        _start(unavailable_connection, _payload())
+
+
+def test_initial_website_source_import_retries_running_workflow() -> None:
+    facade = _facade()
+    facade.import_selected_source_crawl.return_value = SimpleNamespace(
+        id="running-workflow",
+        state="running",
+    )
+
+    with pytest.raises(KnowledgeFSInitialSourceNotReadyError, match="still running"):
+        _start(facade, _payload())
+
+
+def test_initial_website_source_task_returns_result_and_retries_not_ready_error() -> None:
+    serialized_payload = _payload().model_dump(mode="json")
+    with patch(
+        "tasks.knowledge_fs_initial_source_tasks.start_initial_website_source_import",
+        return_value="workflow-1",
+    ):
+        assert (
+            import_initial_website_source.run(
+                tenant_id="tenant-1",
+                account_id="account-1",
+                control_space_id="control-1",
+                operation_id="operation-1",
+                payload=serialized_payload,
+            )
+            == "workflow-1"
+        )
+
+    retry_error = RuntimeError("retry requested")
+    with (
+        patch(
+            "tasks.knowledge_fs_initial_source_tasks.start_initial_website_source_import",
+            side_effect=KnowledgeFSInitialSourceNotReadyError("not ready"),
+        ),
+        patch.object(import_initial_website_source, "retry", side_effect=retry_error) as retry,
+        pytest.raises(RuntimeError, match="retry requested"),
+    ):
+        import_initial_website_source.run(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="control-1",
+            operation_id="operation-1",
+            payload=serialized_payload,
+        )
+    retry.assert_called_once()

@@ -88,10 +88,7 @@ def start_initial_website_source_import(
         )
         if control_space is None:
             raise RuntimeError("KnowledgeFS control-space was not found")
-        if (
-            control_space.state is not KnowledgeFSControlSpaceState.ACTIVE
-            or control_space.knowledge_space_id is None
-        ):
+        if control_space.state is not KnowledgeFSControlSpaceState.ACTIVE or control_space.knowledge_space_id is None:
             if control_space.state is KnowledgeFSControlSpaceState.PROVISIONING:
                 raise KnowledgeFSInitialSourceNotReadyError("KnowledgeFS Space is still provisioning")
             raise RuntimeError(
@@ -119,7 +116,7 @@ def start_initial_website_source_import(
             account_id=account_id,
             control_space_id=control_space_id,
             payload=KnowledgeFSSourceCreatePayload(
-                connection_id=connection.id,
+                connectionId=connection.id,
                 metadata={
                     "clientRequestId": request_id,
                     "crawlOptions": {
@@ -142,7 +139,7 @@ def start_initial_website_source_import(
         control_space_id=control_space_id,
         source_id=source.id,
         payload=KnowledgeFSCrawlImportPayload(
-            source_urls=[selection.source_url for selection in payload.selection],
+            sourceUrls=[selection.source_url for selection in payload.selection],
         ),
         idempotency_key=f"{request_id}:crawl-import",
     )
@@ -171,22 +168,22 @@ def start_initial_website_source_import(
         sync_policy = KnowledgeFSSourceSyncPolicyPayload(
             enabled=False,
             mode="manual",
-            expected_revision=expected_revision,
-            expected_source_version=imported_source.version,
+            expectedRevision=expected_revision,
+            expectedSourceVersion=imported_source.version,
         )
     elif payload.sync_policy == "daily":
         sync_policy = KnowledgeFSSourceSyncPolicyPayload(
             enabled=True,
             mode="interval",
-            expected_revision=expected_revision,
-            expected_source_version=imported_source.version,
+            expectedRevision=expected_revision,
+            expectedSourceVersion=imported_source.version,
         )
     else:
         sync_policy = KnowledgeFSSourceSyncPolicyPayload(
             enabled=True,
             mode="provider",
-            expected_revision=expected_revision,
-            expected_source_version=imported_source.version,
+            expectedRevision=expected_revision,
+            expectedSourceVersion=imported_source.version,
         )
     facade.update_source_sync_policy(
         tenant_id=tenant_id,
