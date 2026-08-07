@@ -16,6 +16,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSDiffQuery,
     KnowledgeFSDiffResponse,
     KnowledgeFSDocumentChunkResponse,
+    KnowledgeFSDocumentOutlineResponse,
     KnowledgeFSDocumentReindexPayload,
     KnowledgeFSFindQuery,
     KnowledgeFSGoldenQuestionPayload,
@@ -288,6 +289,51 @@ def test_document_chunk_preserves_structured_section_metadata() -> None:
     )
     assert legacy_response.kind == "chunk"
     assert legacy_response.section_path == []
+
+
+def test_document_outline_preserves_recursive_nodes_and_serializes_nested_aliases() -> None:
+    response = KnowledgeFSDocumentOutlineResponse.model_validate(
+        {
+            "artifactHash": "artifact-hash",
+            "createdAt": "2026-08-07T10:00:00Z",
+            "documentAssetId": "019f4b4d-3af1-7360-a8b8-0ce7384d23a4",
+            "id": "019f4b4d-3af1-7360-a8b8-0ce7384d23a5",
+            "knowledgeSpaceId": "019f4b4d-3af1-7360-a8b8-0ce7384d23a6",
+            "metadata": {},
+            "nodes": [
+                {
+                    "childNodeIds": ["child-1"],
+                    "children": [
+                        {
+                            "id": "child-1",
+                            "level": 2,
+                            "metadata": {},
+                            "sectionPath": ["Guide", "Setup"],
+                            "summary": "Explains the setup requirements.",
+                            "title": "Setup",
+                            "tocSource": "parser-heading",
+                        }
+                    ],
+                    "id": "root-1",
+                    "level": 1,
+                    "metadata": {},
+                    "sectionPath": ["Guide"],
+                    "summary": "Introduces the guide.",
+                    "title": "Guide",
+                    "tocSource": "parser-heading",
+                }
+            ],
+            "outlineVersion": "document-outline-v1",
+            "parseArtifactId": "019f4b4d-3af1-7360-a8b8-0ce7384d23a7",
+            "version": 1,
+        }
+    )
+
+    payload = response.model_dump(mode="json")
+
+    assert response.nodes[0].children[0].summary == "Explains the setup requirements."
+    assert payload["nodes"][0]["child_node_ids"] == ["child-1"]
+    assert payload["nodes"][0]["children"][0]["section_path"] == ["Guide", "Setup"]
 
 
 @pytest.mark.parametrize(

@@ -1085,7 +1085,7 @@ class KnowledgeFSDocumentOutlineNodeResponse(ResponseModel):
     child_node_ids: list[str] = Field(
         default_factory=list, validation_alias=AliasChoices("child_node_ids", "childNodeIds")
     )
-    children: list[dict[str, object]] = Field(default_factory=list)
+    children: list[KnowledgeFSDocumentOutlineNodeResponse] = Field(default_factory=list)
     end_offset: int | None = Field(default=None, ge=0, validation_alias=AliasChoices("end_offset", "endOffset"))
     end_page: int | None = Field(default=None, ge=1, validation_alias=AliasChoices("end_page", "endPage"))
     id: str

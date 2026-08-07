@@ -1,3 +1,4 @@
+import type { KnowledgeFsDocumentOutlineNodeResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type {
   DocumentRevisionChunk,
   LogicalDocument,
@@ -9,6 +10,7 @@ export type DocumentChunkTreeNode = {
   chunk: DocumentRevisionChunk
   id: string
   label: string
+  outlineNode?: KnowledgeFsDocumentOutlineNodeResponse
   parentId?: string
   targetChunkId: string
 }
@@ -16,6 +18,9 @@ export type DocumentChunkTreeNode = {
 export type DocumentChunkTree = {
   byId: Map<string, DocumentChunkTreeNode>
   chunksById: Map<string, DocumentRevisionChunk>
+  displayChunks: DocumentRevisionChunk[]
+  outlineNodesByChunkId: Map<string, KnowledgeFsDocumentOutlineNodeResponse>
+  outlineSummaryChunkIds: Set<string>
   roots: DocumentChunkTreeNode[]
 }
 
@@ -59,8 +64,19 @@ function cyclicChunkIds(chunksById: Map<string, DocumentRevisionChunk>) {
   return cycleIds
 }
 
-export function buildDocumentChunkTree(chunks: DocumentRevisionChunk[]): DocumentChunkTree {
+export function buildDocumentChunkTree(
+  chunks: DocumentRevisionChunk[],
+  outlineNodes: KnowledgeFsDocumentOutlineNodeResponse[] = [],
+): DocumentChunkTree {
   const sortedChunks = [...chunks].sort(compareChunks)
+  if (outlineNodes.length) {
+    const outlineTree = buildOutlineBackedChunkTree(sortedChunks, outlineNodes)
+    if (outlineTree.roots.length) return outlineTree
+  }
+  return buildChunkDerivedTree(sortedChunks)
+}
+
+function buildChunkDerivedTree(sortedChunks: DocumentRevisionChunk[]): DocumentChunkTree {
   const chunksById = new Map(sortedChunks.map((chunk) => [chunk.id, chunk]))
   const byId = new Map<string, DocumentChunkTreeNode>()
   const roots: DocumentChunkTreeNode[] = []
@@ -101,7 +117,7 @@ export function buildDocumentChunkTree(chunks: DocumentRevisionChunk[]): Documen
       children: [],
       chunk,
       id: chunk.id,
-      label: `#${chunk.ordinal}`,
+      label: `#${chunk.ordinal + 1}`,
       targetChunkId: chunk.id,
     } satisfies DocumentChunkTreeNode
     fallbackByChunkId.set(chunk.id, node)
@@ -122,7 +138,148 @@ export function buildDocumentChunkTree(chunks: DocumentRevisionChunk[]): Documen
   for (const node of byId.values())
     node.children.sort((left, right) => compareChunks(left.chunk, right.chunk))
   roots.sort((left, right) => compareChunks(left.chunk, right.chunk))
-  return { byId, chunksById, roots }
+  return {
+    byId,
+    chunksById,
+    displayChunks: sortedChunks,
+    outlineNodesByChunkId: new Map(),
+    outlineSummaryChunkIds: new Set(),
+    roots,
+  }
+}
+
+function buildOutlineBackedChunkTree(
+  sortedChunks: DocumentRevisionChunk[],
+  sourceRoots: KnowledgeFsDocumentOutlineNodeResponse[],
+): DocumentChunkTree {
+  const outlineRoots = coalesceDuplicateOutlineRoots(sourceRoots)
+  const allOutlineNodes = flattenOutlineNodes(sourceRoots)
+  const outlineTitleKeys = new Set(allOutlineNodes.map((node) => comparableTitle(node.title)))
+  const firstOrdinal = sortedChunks[0]?.ordinal
+  const displayChunks = sortedChunks.filter(
+    (chunk) =>
+      !(
+        chunk.ordinal === firstOrdinal &&
+        !chunk.parentChunkId &&
+        !normalizedSectionPath(chunk.sectionPath).length &&
+        !chunk.text.includes('\n') &&
+        outlineTitleKeys.has(comparableTitle(chunk.text))
+      ),
+  )
+  const chunksById = new Map(displayChunks.map((chunk) => [chunk.id, chunk]))
+  const chunksBySection = new Map<string, DocumentRevisionChunk[]>()
+  const firstChunkBySectionPrefix = new Map<string, DocumentRevisionChunk>()
+  for (const chunk of displayChunks) {
+    const sectionPath = normalizedSectionPath(chunk.sectionPath)
+    if (!sectionPath.length) continue
+    const key = sectionPathKey(sectionPath)
+    const sectionChunks = chunksBySection.get(key) ?? []
+    sectionChunks.push(chunk)
+    chunksBySection.set(key, sectionChunks)
+    for (let depth = 1; depth <= sectionPath.length; depth++) {
+      const prefixKey = sectionPathKey(sectionPath.slice(0, depth))
+      if (!firstChunkBySectionPrefix.has(prefixKey)) firstChunkBySectionPrefix.set(prefixKey, chunk)
+    }
+  }
+
+  const byId = new Map<string, DocumentChunkTreeNode>()
+  const matchedChunkIds = new Set<string>()
+  const outlineNodesByChunkId = new Map<string, KnowledgeFsDocumentOutlineNodeResponse>()
+  const outlineSummaryChunkIds = new Set<string>()
+
+  const buildNode = (
+    outlineNode: KnowledgeFsDocumentOutlineNodeResponse,
+    parentId?: string,
+    parentPath: string[] = [],
+  ): DocumentChunkTreeNode | undefined => {
+    const explicitPath = normalizedSectionPath(outlineNode.section_path ?? [])
+    const path = explicitPath.length ? explicitPath : [...parentPath, outlineNode.title.trim()]
+    const exactChunks = chunksBySection.get(sectionPathKey(path)) ?? []
+    for (const chunk of exactChunks) {
+      matchedChunkIds.add(chunk.id)
+      if (!outlineNodesByChunkId.has(chunk.id)) outlineNodesByChunkId.set(chunk.id, outlineNode)
+    }
+    if (outlineNode.summary?.trim() && exactChunks[0]) outlineSummaryChunkIds.add(exactChunks[0].id)
+
+    const children = (outlineNode.children ?? []).flatMap((child) => {
+      const node = buildNode(child, outlineNode.id, path)
+      return node ? [node] : []
+    })
+    const descendantChunk = firstChunkBySectionPrefix.get(sectionPathKey(path))
+    const chunk = exactChunks[0] ?? children[0]?.chunk ?? descendantChunk
+    if (!chunk) return undefined
+
+    const node = {
+      children,
+      chunk,
+      id: outlineNode.id,
+      label: outlineNode.title,
+      outlineNode,
+      ...(parentId ? { parentId } : {}),
+      targetChunkId: chunk.id,
+    } satisfies DocumentChunkTreeNode
+    byId.set(node.id, node)
+    return node
+  }
+
+  const roots = outlineRoots.flatMap((outlineNode) => {
+    const node = buildNode(outlineNode)
+    return node ? [node] : []
+  })
+  const unmatchedChunks = displayChunks.filter((chunk) => !matchedChunkIds.has(chunk.id))
+  if (unmatchedChunks.length) {
+    const fallbackTree = buildChunkDerivedTree(unmatchedChunks)
+    for (const [id, node] of fallbackTree.byId) if (!byId.has(id)) byId.set(id, node)
+    roots.push(
+      ...fallbackTree.roots.filter((node) => !byId.has(node.id) || byId.get(node.id) === node),
+    )
+  }
+
+  return {
+    byId,
+    chunksById,
+    displayChunks,
+    outlineNodesByChunkId,
+    outlineSummaryChunkIds,
+    roots,
+  }
+}
+
+function normalizedSectionPath(sectionPath: readonly string[]) {
+  return sectionPath.map((segment) => segment.trim()).filter(Boolean)
+}
+
+function sectionPathKey(sectionPath: readonly string[]) {
+  return JSON.stringify(normalizedSectionPath(sectionPath))
+}
+
+function flattenOutlineNodes(nodes: readonly KnowledgeFsDocumentOutlineNodeResponse[]) {
+  const flattened: KnowledgeFsDocumentOutlineNodeResponse[] = []
+  const pending = [...nodes].reverse()
+  while (pending.length) {
+    const node = pending.pop()!
+    flattened.push(node)
+    for (const child of [...(node.children ?? [])].reverse()) pending.push(child)
+  }
+  return flattened
+}
+
+function comparableTitle(value: string) {
+  return value
+    .normalize('NFKC')
+    .toLocaleLowerCase()
+    .replace(/[\p{P}\p{S}\s]+/gu, '')
+}
+
+function coalesceDuplicateOutlineRoots(nodes: readonly KnowledgeFsDocumentOutlineNodeResponse[]) {
+  const branchTitleKeys = new Set(
+    nodes
+      .filter((node) => (node.children?.length ?? 0) > 0)
+      .map((node) => comparableTitle(node.title)),
+  )
+  return nodes.filter(
+    (node) => (node.children?.length ?? 0) > 0 || !branchTitleKeys.has(comparableTitle(node.title)),
+  )
 }
 
 function sectionTreeNodeId(sectionPath: string[]) {
@@ -193,9 +350,18 @@ export function chunkTreeLabel(label: string) {
 }
 
 export function chunkContentParts(chunk: DocumentRevisionChunk) {
+  const heading = chunk.sectionPath.at(-1)?.trim() ?? ''
+  let body = chunk.text
+  if (heading) {
+    const firstLineEnd = body.search(/\r?\n/)
+    const firstLine = firstLineEnd >= 0 ? body.slice(0, firstLineEnd) : body
+    if (firstLine.normalize('NFKC').trim() === heading.normalize('NFKC').trim()) {
+      body = firstLineEnd >= 0 ? body.slice(firstLineEnd).replace(/^(?:\r?\n)+/, '') : ''
+    }
+  }
   return {
-    body: chunk.text,
-    heading: chunk.sectionPath.at(-1)?.trim() ?? '',
+    body,
+    heading,
   }
 }
 

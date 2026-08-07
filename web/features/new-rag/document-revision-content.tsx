@@ -2,14 +2,14 @@
 
 import type { LogicalDocument, LogicalDocumentRevision } from './document-models'
 import { Button } from '@langgenius/dify-ui/button'
-import { useInfiniteQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { DocumentChunkDetail } from './document-chunk-detail'
 import { DocumentChunkTreePanel } from './document-chunk-tree'
 import { buildDocumentChunkTree } from './document-detail-model'
-import { documentChunksQueryOptions } from './document-detail-queries'
+import { documentChunksQueryOptions, documentOutlineQueryOptions } from './document-detail-queries'
 import { documentChunkListFromApi } from './document-models'
 
 export function DocumentRevisionContent({
@@ -110,6 +110,17 @@ function LoadedDocumentRevisionContent({
     [documentId, effectiveRevision, knowledgeSpaceId],
   )
   const chunksQuery = useInfiniteQuery(chunksQueryOptions)
+  const documentAsset =
+    revision ?? (document.active?.revision === effectiveRevision ? document.active : undefined)
+  const outlineQueryOptions = useMemo(
+    () =>
+      documentOutlineQueryOptions({
+        documentAssetId: documentAsset?.documentAssetId,
+        knowledgeSpaceId,
+      }),
+    [documentAsset?.documentAssetId, knowledgeSpaceId],
+  )
+  const outlineQuery = useQuery(outlineQueryOptions)
   const chunks = useMemo(
     () =>
       [
@@ -117,7 +128,13 @@ function LoadedDocumentRevisionContent({
       ].sort((left, right) => left.ordinal - right.ordinal || left.id.localeCompare(right.id)),
     [chunksQuery.data],
   )
-  const tree = useMemo(() => buildDocumentChunkTree(chunks), [chunks])
+  const tree = useMemo(() => {
+    const outline = outlineQuery.data
+    return buildDocumentChunkTree(
+      chunks,
+      outline && outline.version === documentAsset?.documentAssetVersion ? outline.nodes : [],
+    )
+  }, [chunks, documentAsset?.documentAssetVersion, outlineQuery.data])
   const selectedChunk =
     (selectedChunkId ? tree.chunksById.get(selectedChunkId) : undefined) ?? tree.roots[0]?.chunk
 
@@ -140,7 +157,7 @@ function LoadedDocumentRevisionContent({
       <DocumentChunkDetail
         canEdit={canEdit}
         controlSpaceId={knowledgeSpaceId}
-        chunks={chunks}
+        chunks={tree.displayChunks}
         chunksComplete={
           Boolean(chunksQuery.data) &&
           !chunksQuery.error &&
@@ -151,6 +168,8 @@ function LoadedDocumentRevisionContent({
         document={document}
         isLoadingMore={chunksQuery.isFetchingNextPage}
         locale={locale}
+        outlineNodesByChunkId={tree.outlineNodesByChunkId}
+        outlineSummaryChunkIds={tree.outlineSummaryChunkIds}
         revision={revision}
         selectedChunkId={selectedChunk?.id}
       />

@@ -1,3 +1,4 @@
+import type { KnowledgeFsDocumentOutlineResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type {
   BackgroundTask,
   DocumentProcessingTask,
@@ -77,6 +78,13 @@ const chunksQuery = vi.hoisted(() => ({
   hasNextPage: false,
   isFetchNextPageError: false,
   isFetchingNextPage: false,
+  isPending: false,
+  refetch: vi.fn(),
+}))
+
+const outlineQuery = vi.hoisted(() => ({
+  data: undefined as KnowledgeFsDocumentOutlineResponse | undefined,
+  error: null as unknown,
   isPending: false,
   refetch: vi.fn(),
 }))
@@ -227,6 +235,13 @@ const chunksOptions = vi.hoisted(() =>
     queryKind: 'chunks',
   })),
 )
+const outlineOptions = vi.hoisted(() =>
+  vi.fn((options: object) => ({
+    ...options,
+    queryKey: ['knowledge-fs', 'outline', 'space-1', 'asset-1'],
+    queryKind: 'outline',
+  })),
+)
 const documentTasksOptions = vi.hoisted(() =>
   vi.fn((options: Omit<InfiniteOptions, 'queryKind'>) => ({
     ...options,
@@ -352,6 +367,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
       options.mutationKind === 'cancel' ? cancelMutation : reindexMutation,
     useQuery: (options: { queryKey?: readonly unknown[]; queryKind?: string }) => {
       if (options.queryKey?.includes('document-metadata-documents')) return metadataDocumentsQuery
+      if (options.queryKind === 'outline') return outlineQuery
       if (options.queryKind === 'settings')
         return {
           data: {
@@ -407,6 +423,11 @@ vi.mock('@/service/client', () => ({
           },
           documents: {
             byDocumentId: {
+              outline: {
+                get: {
+                  queryOptions: outlineOptions,
+                },
+              },
               revisions: {
                 byRevision: {
                   chunks: {
@@ -587,6 +608,9 @@ describe('DocumentDetailPage', () => {
     chunksQuery.isFetchNextPageError = false
     chunksQuery.isFetchingNextPage = false
     chunksQuery.isPending = false
+    outlineQuery.data = undefined
+    outlineQuery.error = null
+    outlineQuery.isPending = false
     tasksQuery.data = { pages: [{ items: [] }] }
     tasksQuery.error = null
     tasksQuery.hasNextPage = false
@@ -650,6 +674,11 @@ describe('DocumentDetailPage', () => {
         revision: 3,
       },
       query: { cursor: 'next' },
+    })
+    expect(outlineOptions).toHaveBeenCalledWith({
+      input: {
+        params: { control_space_id: 'space-1', document_id: 'asset-1' },
+      },
     })
     expect(infiniteInput(documentTasksOptions.mock.lastCall?.[0])(null)).toEqual({
       params: { control_space_id: 'space-1' },
@@ -727,6 +756,92 @@ describe('DocumentDetailPage', () => {
     expect(screen.getByRole('article')).toHaveTextContent(
       'This first line is source content, not a title.',
     )
+  })
+
+  it('renders the persisted outline tree and summaries while hiding a legacy title chunk', () => {
+    chunksQuery.data = {
+      pages: [
+        {
+          items: [
+            chunk({
+              id: 'html-title',
+              ordinal: 0,
+              sectionPath: [],
+              text: 'Guide — Operating safely',
+            }),
+            chunk({
+              id: 'guide',
+              ordinal: 1,
+              sectionPath: ['Guide Operating safely'],
+              text: 'Guide Operating safely\n\nGuide body',
+            }),
+            chunk({
+              id: 'setup',
+              ordinal: 2,
+              sectionPath: ['Guide Operating safely', 'Setup'],
+              text: 'Setup\n\nSetup body',
+            }),
+          ],
+        },
+      ],
+    }
+    outlineQuery.data = {
+      artifact_hash: 'artifact-hash',
+      created_at: '2026-08-07T10:00:00Z',
+      document_asset_id: 'asset-1',
+      id: 'outline-1',
+      knowledge_space_id: 'space-1',
+      metadata: {},
+      nodes: [
+        {
+          children: [],
+          id: 'legacy-title-root',
+          level: 1,
+          metadata: {},
+          section_path: ['Guide — Operating safely'],
+          summary: 'Legacy title summary.',
+          title: 'Guide — Operating safely',
+          toc_source: 'parser-heading',
+        },
+        {
+          children: [
+            {
+              children: [],
+              id: 'setup-node',
+              level: 2,
+              metadata: {},
+              section_path: ['Guide Operating safely', 'Setup'],
+              summary: 'Generated setup summary.',
+              title: 'Setup',
+              toc_source: 'parser-heading',
+            },
+          ],
+          id: 'guide-node',
+          level: 1,
+          metadata: {},
+          section_path: ['Guide Operating safely'],
+          summary: 'Generated guide summary.',
+          title: 'Guide Operating safely',
+          toc_source: 'parser-heading',
+        },
+      ],
+      outline_version: 'document-outline-v1',
+      parse_artifact_id: 'parse-artifact-1',
+      version: 1,
+    }
+
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    const tree = screen.getByRole('tree')
+    expect(within(tree).getAllByRole('treeitem', { name: 'Guide Operating safely' })).toHaveLength(
+      1,
+    )
+    expect(within(tree).getByRole('treeitem', { name: 'Setup' })).toBeInTheDocument()
+    expect(within(tree).queryByRole('treeitem', { name: '#0' })).not.toBeInTheDocument()
+    expect(screen.getByText('Generated guide summary.')).toBeInTheDocument()
+    expect(screen.getByText('Generated setup summary.')).toBeInTheDocument()
+    expect(screen.getByText('Guide body')).toBeInTheDocument()
+    expect(screen.getByText('Setup body')).toBeInTheDocument()
   })
 
   it('labels flat document chunks by their visible order', () => {

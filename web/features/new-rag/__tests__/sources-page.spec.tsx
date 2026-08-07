@@ -274,7 +274,7 @@ describe('SourcesPage', () => {
     expect(screen.getByRole('status')).toBeInTheDocument()
   })
 
-  it('renders the designed empty state and enters the real add-source route', () => {
+  it('renders the designed empty state and exposes source-type shortcuts', () => {
     sourcesQuery.data = { pages: [{ items: [] }] }
 
     const { container } = render(<SourcesPage knowledgeSpaceId="space-1" />)
@@ -290,6 +290,18 @@ describe('SourcesPage', () => {
       'href',
       '/datasets/new/space-1/sources/new',
     )
+    for (const [name, path] of [
+      ['Firecrawl', '/datasets/new/space-1/sources/new?type=websiteCrawl&provider=Firecrawl'],
+      ['Jina Reader', '/datasets/new/space-1/sources/new?type=websiteCrawl&provider=Jina+Reader'],
+      ['Notion', '/datasets/new/space-1/sources/new?type=onlineDocuments&provider=Notion'],
+      ['Google Drive', '/datasets/new/space-1/sources/new?type=onlineDrive&provider=Google+Drive'],
+      ['Confluence', '/datasets/new/space-1/sources/new?type=onlineDocuments&provider=Confluence'],
+    ] as const) {
+      expect(screen.getByRole('link', { name })).toHaveAttribute('href', path)
+    }
+    expect(
+      screen.getByRole('link', { name: 'dataset.newKnowledge.moreProviders' }),
+    ).toHaveAttribute('href', '/datasets/new/space-1/sources/new')
     for (const [brand, iconClass] of [
       ['firecrawl', 'i-custom-public-common-firecrawl'],
       ['jina', 'i-custom-public-llm-jina'],
@@ -303,6 +315,16 @@ describe('SourcesPage', () => {
       expect(icon?.tagName).toBe('SPAN')
       expect(icon).toHaveClass(iconClass)
     }
+  })
+
+  it('keeps empty-state shortcuts inert without add-source permission', () => {
+    permissionState.workspacePermissionKeys = ['dataset.acl.readonly']
+    sourcesQuery.data = { pages: [{ items: [] }] }
+
+    const { container } = render(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+    expect(container.querySelectorAll('[data-brand]')).toHaveLength(6)
   })
 
   it('renders real source statuses and filters by status and search text', async () => {

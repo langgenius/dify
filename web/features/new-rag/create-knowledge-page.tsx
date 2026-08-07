@@ -357,11 +357,10 @@ export function CreateKnowledgePage() {
             JSON.stringify(sourceDraft),
           )
           replaceAfterHistoryGuard(
-            newKnowledgeAddSourcePath(
-              created.control_space_id,
-              sourceDraft.sourceType,
-              sourceDraftKey,
-            ),
+            newKnowledgeAddSourcePath(created.control_space_id, {
+              draftKey: sourceDraftKey,
+              sourceType: sourceDraft.sourceType,
+            }),
           )
         } catch {
           toast.error(t(($) => $['newKnowledge.addSourceFailed']))

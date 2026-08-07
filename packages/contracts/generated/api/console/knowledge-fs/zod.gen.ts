@@ -982,7 +982,7 @@ export const zKnowledgeFsLogicalDocumentListResponse = z.object({
  */
 export const zKnowledgeFsDocumentOutlineNodeResponse = z.object({
   child_node_ids: z.array(z.string()).optional(),
-  children: z.array(z.record(z.string(), z.unknown())).optional(),
+  children: z.array(z.lazy((): any => zKnowledgeFsDocumentOutlineNodeResponse)).optional(),
   end_offset: z.int().gte(0).nullish(),
   end_page: z.int().gte(1).nullish(),
   id: z.string(),

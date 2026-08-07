@@ -80,6 +80,39 @@ const statusDotStatus: Record<SourceStatus, StatusDotStatus> = {
   error: 'error',
 }
 
+const emptySourceShortcuts = [
+  {
+    brand: 'firecrawl',
+    iconClass: 'i-custom-public-common-firecrawl',
+    provider: 'Firecrawl',
+    sourceType: 'websiteCrawl',
+  },
+  {
+    brand: 'jina',
+    iconClass: 'i-custom-public-llm-jina',
+    provider: 'Jina Reader',
+    sourceType: 'websiteCrawl',
+  },
+  {
+    brand: 'notion',
+    iconClass: 'i-custom-public-common-notion text-text-primary',
+    provider: 'Notion',
+    sourceType: 'onlineDocuments',
+  },
+  {
+    brand: 'google-drive',
+    iconClass: 'i-custom-public-common-google-drive',
+    provider: 'Google Drive',
+    sourceType: 'onlineDrive',
+  },
+  {
+    brand: 'confluence',
+    iconClass: 'i-custom-public-common-confluence',
+    provider: 'Confluence',
+    sourceType: 'onlineDocuments',
+  },
+] as const
+
 function metadataString(metadata: Source['metadata'], key: string) {
   const value = metadata[key]
   return typeof value === 'string' && value.trim() ? value : undefined
@@ -530,16 +563,50 @@ function SourcesEmpty({
 
   return (
     <div className="mt-2.5 flex min-h-0 flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
-      <div aria-hidden className="flex items-center gap-3 opacity-85">
-        <span data-brand="firecrawl" className="i-custom-public-common-firecrawl size-8" />
-        <span data-brand="jina" className="i-custom-public-llm-jina size-8" />
-        <span
-          data-brand="notion"
-          className="i-custom-public-common-notion size-8 text-text-primary"
-        />
-        <span data-brand="google-drive" className="i-custom-public-common-google-drive size-8" />
-        <span data-brand="confluence" className="i-custom-public-common-confluence size-8" />
-        <span data-brand="more" className="i-ri-more-fill size-8 text-text-quaternary" />
+      <div className="flex items-center gap-3 opacity-85">
+        {emptySourceShortcuts.map((shortcut) => {
+          const icon = (
+            <span
+              key={shortcut.brand}
+              aria-hidden
+              data-brand={shortcut.brand}
+              className={`${shortcut.iconClass} size-8`}
+            />
+          )
+          if (!canAddSource) return icon
+          return (
+            <Link
+              key={shortcut.brand}
+              href={newKnowledgeAddSourcePath(knowledgeSpaceId, {
+                provider: shortcut.provider,
+                sourceType: shortcut.sourceType,
+              })}
+              className="inline-flex size-8 rounded-md outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            >
+              {icon}
+              <span className="sr-only">{shortcut.provider}</span>
+            </Link>
+          )
+        })}
+        {canAddSource ? (
+          <Link
+            aria-label={t(($) => $['newKnowledge.moreProviders'])}
+            href={newKnowledgeAddSourcePath(knowledgeSpaceId)}
+            className="inline-flex size-8 rounded-md outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          >
+            <span
+              aria-hidden
+              data-brand="more"
+              className="i-ri-more-fill size-8 text-text-quaternary"
+            />
+          </Link>
+        ) : (
+          <span
+            aria-hidden
+            data-brand="more"
+            className="i-ri-more-fill size-8 text-text-quaternary"
+          />
+        )}
       </div>
       <div className="flex flex-col items-center gap-1.5 pt-1.5">
         <h2 className="title-xl-semi-bold text-text-primary">

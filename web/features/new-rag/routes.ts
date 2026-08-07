@@ -4,6 +4,10 @@ type NewKnowledgeSyncPolicy = 'daily' | 'manual' | 'provider'
 export type NewKnowledgeWebsiteProvider = 'FakeCrawler' | 'Firecrawl' | 'Jina Reader' | 'WaterCrawl'
 export type NewKnowledgeOnlineDocumentsProvider = 'Confluence' | 'Google Docs' | 'Notion'
 export type NewKnowledgeOnlineDriveProvider = 'Amazon S3' | 'Google Drive' | 'OneDrive'
+export type NewKnowledgeSourceProvider =
+  | NewKnowledgeOnlineDocumentsProvider
+  | NewKnowledgeOnlineDriveProvider
+  | NewKnowledgeWebsiteProvider
 
 type NewKnowledgeSourceDraftBase = {
   sourceName: string
@@ -39,17 +43,22 @@ const NEW_KNOWLEDGE_SOURCE_DRAFT_STORAGE_PREFIX = 'new-knowledge-source-draft:'
 
 export function createNewKnowledgeSourceDraft(
   sourceType: NewKnowledgeSourceType,
+  initialProvider?: string,
 ): NewKnowledgeSourceDraft {
   if (sourceType === 'onlineDocuments')
     return {
-      provider: 'Notion',
+      provider: ['Confluence', 'Google Docs', 'Notion'].includes(initialProvider ?? '')
+        ? (initialProvider as NewKnowledgeOnlineDocumentsProvider)
+        : 'Notion',
       sourceName: '',
       sourceType,
       syncPolicy: 'provider',
     }
   if (sourceType === 'onlineDrive')
     return {
-      provider: 'Google Drive',
+      provider: ['Amazon S3', 'Google Drive', 'OneDrive'].includes(initialProvider ?? '')
+        ? (initialProvider as NewKnowledgeOnlineDriveProvider)
+        : 'Google Drive',
       sourceName: '',
       sourceType,
       syncPolicy: 'provider',
@@ -57,7 +66,11 @@ export function createNewKnowledgeSourceDraft(
   return {
     includeSubpages: true,
     maxPages: 100,
-    provider: 'Firecrawl',
+    provider: ['FakeCrawler', 'Firecrawl', 'Jina Reader', 'WaterCrawl'].includes(
+      initialProvider ?? '',
+    )
+      ? (initialProvider as NewKnowledgeWebsiteProvider)
+      : 'Firecrawl',
     rootUrl: '',
     sourceName: '',
     sourceType,
@@ -205,13 +218,19 @@ export const newKnowledgeSettingsPath = (knowledgeSpaceId: string) =>
 export const newKnowledgeDocumentDetailPath = (knowledgeSpaceId: string, documentId: string) =>
   `/datasets/new/${knowledgeSpaceId}/documents/${documentId}`
 
+type NewKnowledgeAddSourcePathOptions = {
+  draftKey?: string
+  provider?: NewKnowledgeSourceProvider
+  sourceType?: NewKnowledgeSourceType
+}
+
 export const newKnowledgeAddSourcePath = (
   knowledgeSpaceId: string,
-  sourceType?: NewKnowledgeSourceType,
-  draftKey?: string,
+  { draftKey, provider, sourceType }: NewKnowledgeAddSourcePathOptions = {},
 ) => {
   const searchParams = new URLSearchParams()
   if (sourceType) searchParams.set('type', sourceType)
+  if (provider) searchParams.set('provider', provider)
   if (draftKey) searchParams.set('draft', draftKey)
   const query = searchParams.toString()
   return `/datasets/new/${knowledgeSpaceId}/sources/new${query ? `?${query}` : ''}`

@@ -1,3 +1,4 @@
+import { skipToken } from '@tanstack/react-query'
 import { consoleQuery } from '@/service/client'
 
 export function documentChunksQueryOptions({
@@ -26,5 +27,27 @@ export function documentChunksQueryOptions({
     }),
     getNextPageParam: (lastPage) => lastPage.next_cursor,
     initialPageParam: null as string | null,
+  })
+}
+
+export function documentOutlineQueryOptions({
+  documentAssetId,
+  knowledgeSpaceId,
+}: {
+  documentAssetId?: string
+  knowledgeSpaceId: string
+}) {
+  const outlineQuery =
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.outline
+
+  return outlineQuery.get.queryOptions({
+    input: documentAssetId
+      ? {
+          params: {
+            control_space_id: knowledgeSpaceId,
+            document_id: documentAssetId,
+          },
+        }
+      : skipToken,
   })
 }

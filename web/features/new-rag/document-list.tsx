@@ -414,7 +414,7 @@ export function DocumentsList({
 
   return (
     <>
-      <div className="flex flex-col gap-2 xl:flex-row xl:items-center">
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
         <Select<DocumentFilter>
           disabled={statusPending}
           value={filter}
@@ -427,7 +427,7 @@ export function DocumentsList({
           <SelectLabel className="sr-only">
             {t(($) => $['newKnowledge.documentFilterLabel'])}
           </SelectLabel>
-          <SelectTrigger className="xl:w-35">
+          <SelectTrigger className="lg:w-35">
             {filter === 'all'
               ? t(($) => $['newKnowledge.allDocumentStatuses'])
               : t(($) => $[`newKnowledge.documentStatus.${filter}`])}
@@ -449,7 +449,7 @@ export function DocumentsList({
         </Select>
         <SearchInput
           aria-label={t(($) => $['newKnowledge.searchDocuments'])}
-          className="xl:w-60"
+          className="lg:w-60"
           value={search}
           onValueChange={(value) => {
             setVisibleDocumentLimit(DOCUMENT_RENDER_BATCH_SIZE)
@@ -493,7 +493,7 @@ export function DocumentsList({
         role="region"
         tabIndex={-1}
       >
-        <table className="w-full table-fixed border-collapse text-left lg:min-w-225 lg:table-auto">
+        <table className="w-full table-fixed border-collapse text-left lg:table-auto">
           <thead className="system-xs-regular text-text-tertiary">
             <tr>
               <th className="py-2 font-normal">
