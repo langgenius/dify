@@ -85,8 +85,16 @@ const SecretKeyModal = ({ isShow = false, appId, canManage, onClose }: ISecretKe
     else invalidateDatasetApiKeys()
   }
 
+  // App keys are returned in full by the backend and masked here for display.
+  // Dataset keys are reveal-once: the backend returns them already masked, so they render as-is.
   const generateToken = (token: string) => {
     return `${token.slice(0, 3)}...${token.slice(-20)}`
+  }
+
+  const getScopeLabel = (datasetIds?: string[]) => {
+    if (!datasetIds || datasetIds.length === 0)
+      return t(($) => $['apiKeyModal.scopeAllDatasets'], { ns: 'appApi' })
+    return t(($) => $['apiKeyModal.scopeCount'], { ns: 'appApi', count: datasetIds.length })
   }
 
   const handleDeleteConfirmOpenChange = (open: boolean) => {
@@ -143,33 +151,46 @@ const SecretKeyModal = ({ isShow = false, appId, canManage, onClose }: ISecretKe
           {!!apiKeysList?.data?.length && (
             <div className="mt-4 flex grow flex-col overflow-hidden">
               <div className="flex h-9 shrink-0 items-center border-b border-divider-regular text-xs font-semibold text-text-tertiary">
-                <div className="w-64 shrink-0 px-3">
+                <div className="min-w-0 flex-[1.8] truncate px-3">
                   {t(($) => $['apiKeyModal.secretKey'], { ns: 'appApi' })}
                 </div>
-                <div className="w-50 shrink-0 px-3">
+                {!appId && (
+                  <div className="min-w-0 flex-[1.3] truncate px-3">
+                    {t(($) => $['apiKeyModal.scope'], { ns: 'appApi' })}
+                  </div>
+                )}
+                <div className="min-w-0 flex-[1.8] truncate px-3">
                   {t(($) => $['apiKeyModal.created'], { ns: 'appApi' })}
                 </div>
-                <div className="w-50 shrink-0 px-3">
+                <div className="min-w-0 flex-[1.8] truncate px-3">
                   {t(($) => $['apiKeyModal.lastUsed'], { ns: 'appApi' })}
                 </div>
-                <div className="grow px-3"></div>
+                <div className="w-24 shrink-0 px-3"></div>
               </div>
-              <div className="grow overflow-auto">
+              <div className="grow overflow-x-hidden overflow-y-auto">
                 {apiKeysList.data.map((api) => (
                   <div
                     className="flex h-9 items-center border-b border-divider-regular text-sm font-normal text-text-secondary"
                     key={api.id}
                   >
-                    <div className="w-64 shrink-0 truncate px-3 font-mono">
-                      {generateToken(api.token)}
+                    <div className="min-w-0 flex-[1.8] truncate px-3 font-mono">
+                      {appId ? generateToken(api.token) : api.token}
                     </div>
-                    <div className="w-50 shrink-0 truncate px-3">
+                    {!appId && (
+                      <div
+                        className="min-w-0 flex-[1.3] truncate px-3"
+                        title={getScopeLabel(api.dataset_ids)}
+                      >
+                        {getScopeLabel(api.dataset_ids)}
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-[1.8] truncate px-3">
                       {formatTime(
                         Number(api.created_at),
                         t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
                       )}
                     </div>
-                    <div className="w-50 shrink-0 truncate px-3">
+                    <div className="min-w-0 flex-[1.8] truncate px-3">
                       {api.last_used_at
                         ? formatTime(
                             Number(api.last_used_at),
@@ -177,8 +198,8 @@ const SecretKeyModal = ({ isShow = false, appId, canManage, onClose }: ISecretKe
                           )
                         : t(($) => $.never, { ns: 'appApi' })}
                     </div>
-                    <div className="flex grow space-x-2 px-3">
-                      <CopyFeedback content={api.token} />
+                    <div className="flex w-24 shrink-0 justify-end space-x-2 px-3">
+                      {appId && <CopyFeedback content={api.token} />}
                       {canManage && (
                         <ActionButton
                           onClick={() => {
@@ -195,18 +216,20 @@ const SecretKeyModal = ({ isShow = false, appId, canManage, onClose }: ISecretKe
               </div>
             </div>
           )}
-          <div className="flex">
-            <Button
-              className={`mt-4 flex shrink-0 ${s.autoWidth}`}
-              onClick={onCreate}
-              disabled={!currentWorkspace.id || !canManage}
-            >
-              <span className="i-heroicons-plus-20-solid flex size-4 shrink-0" />
-              <div className="text-xs font-medium text-text-secondary">
-                {t(($) => $['apiKeyModal.createNewSecretKey'], { ns: 'appApi' })}
-              </div>
-            </Button>
-          </div>
+          {appId && (
+            <div className="flex">
+              <Button
+                className={`mt-4 flex shrink-0 ${s.autoWidth}`}
+                onClick={onCreate}
+                disabled={!currentWorkspace.id || !canManage}
+              >
+                <span className="i-heroicons-plus-20-solid flex size-4 shrink-0" />
+                <div className="text-xs font-medium text-text-secondary">
+                  {t(($) => $['apiKeyModal.createNewSecretKey'], { ns: 'appApi' })}
+                </div>
+              </Button>
+            </div>
+          )}
           <AlertDialog open={showConfirmDelete} onOpenChange={handleDeleteConfirmOpenChange}>
             <AlertDialogContent>
               <div className="flex flex-col gap-2 px-6 pt-6 pb-4">

@@ -56,7 +56,7 @@ def test_list_api_keys_uses_injected_session_and_tenant_id() -> None:
     api_key = SimpleNamespace(
         id="key-1",
         type=ApiTokenType.APP,
-        token="app-token",
+        token="app-1234567890abcdef",
         last_used_at=None,
         created_at=None,
     )
@@ -66,12 +66,15 @@ def test_list_api_keys_uses_injected_session_and_tenant_id() -> None:
 
     session.execute.assert_called_once()
     session.scalars.assert_called_once()
+    # App/agent key lists keep their existing behavior (full token); reveal-once masking
+    # is scoped to dataset keys only.
     assert result == {
         "data": [
             {
                 "id": "key-1",
                 "type": "app",
-                "token": "app-token",
+                "token": "app-1234567890abcdef",
+                "dataset_ids": [],
                 "last_used_at": None,
                 "created_at": None,
             }

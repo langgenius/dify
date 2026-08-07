@@ -201,6 +201,13 @@ vi.mock('@/app/components/develop/secret-key/secret-key-modal', () => ({
     isShow ? <div data-testid="secret-key-modal" /> : null,
 }))
 
+// Mock AddApiKeyModal for the same reason — ServiceApi always mounts it, and it
+// calls dataset service hooks not configured in this test.
+vi.mock('@/app/components/develop/secret-key/add-api-key-modal', () => ({
+  default: ({ isShow }: { isShow: boolean }) =>
+    isShow ? <div data-testid="add-api-key-modal" /> : null,
+}))
+
 // Mock TagManagementModal
 vi.mock('@/features/tag-management/components/tag-management-modal', () => ({
   TagManagementModal: ({ show }: { show: boolean }) =>

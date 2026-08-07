@@ -5,6 +5,7 @@ import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import AddApiKeyModal from '@/app/components/develop/secret-key/add-api-key-modal'
 import SecretKeyModal from '@/app/components/develop/secret-key/secret-key-modal'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { hasPermission } from '@/utils/permission'
@@ -18,6 +19,7 @@ const ServiceApi = ({ apiBaseUrl }: ServiceApiProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [isSecretKeyModalVisible, setIsSecretKeyModalVisible] = useState(false)
+  const [isAddModalVisible, setIsAddModalVisible] = useState(false)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManageSecretKey = hasPermission(workspacePermissionKeys, 'dataset.api_key.manage')
 
@@ -27,6 +29,14 @@ const ServiceApi = ({ apiBaseUrl }: ServiceApiProps) => {
 
   const handleCloseSecretKeyModal = useCallback(() => {
     setIsSecretKeyModalVisible(false)
+  }, [])
+
+  const handleOpenAddModal = useCallback(() => {
+    setIsAddModalVisible(true)
+  }, [])
+
+  const handleCloseAddModal = useCallback(() => {
+    setIsAddModalVisible(false)
   }, [])
 
   return (
@@ -62,6 +72,7 @@ const ServiceApi = ({ apiBaseUrl }: ServiceApiProps) => {
           <Card
             apiBaseUrl={apiBaseUrl}
             onOpenSecretKeyModal={handleOpenSecretKeyModal}
+            onOpenAddModal={handleOpenAddModal}
             canManageSecretKey={canManageSecretKey}
           />
         </PopoverContent>
@@ -71,6 +82,7 @@ const ServiceApi = ({ apiBaseUrl }: ServiceApiProps) => {
         onClose={handleCloseSecretKeyModal}
         canManage={canManageSecretKey}
       />
+      <AddApiKeyModal isShow={isAddModalVisible} onClose={handleCloseAddModal} />
     </div>
   )
 }

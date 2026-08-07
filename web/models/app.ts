@@ -87,6 +87,8 @@ export type UpdateAppModelConfigResponse = { result: string }
 type ApiKeyItemResponse = {
   id: string
   token: string
+  /** Dataset keys only: bound knowledge base ids. Empty = access all knowledge bases. */
+  dataset_ids?: string[]
   last_used_at: string
   created_at: string
 }
@@ -98,6 +100,7 @@ export type ApiKeysListResponse = {
 export type CreateApiKeyResponse = {
   id: string
   token: string
+  dataset_ids?: string[]
   created_at: string
 }
 
