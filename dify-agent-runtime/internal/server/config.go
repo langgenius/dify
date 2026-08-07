@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"time"
+
+	"github.com/langgenius/dify/dify-agent-runtime/internal/envvar"
 )
 
 const (
@@ -25,7 +27,7 @@ const (
 	DefaultPipeMonitorInterval           = 1 * time.Second
 	DefaultPipeReadyTimeout              = 10 * time.Second
 	DefaultSQLiteBusyTimeoutMs           = 5000
-	DefaultAuthTokenEnv                  = "SHELLCTL_AUTH_TOKEN"
+	DefaultAuthTokenEnv                  = envvar.EnvShellctlAuthToken
 	HealthStatus                         = "ok"
 )
 
@@ -54,6 +56,12 @@ type Config struct {
 	SQLiteBusyTimeoutMs          int
 	SanitizePtyCommand           []string
 	RunnerExitCommand            []string
+
+	EgressProxyAddr                 string
+	EgressProxyCADir                string
+	EgressProxyUpstream             string
+	EgressProxySystemCredentialsDir string
+	EgressProxySystemCredentials    string // legacy single-file mode
 }
 
 // DefaultConfig returns a Config with sensible defaults.
@@ -92,7 +100,31 @@ func DefaultConfig() *Config {
 		cfg.AuthToken = os.Getenv(DefaultAuthTokenEnv)
 	}
 
+	if v := os.Getenv(envvar.EnvEgressProxySystemCredentialsDir); v != "" {
+		cfg.EgressProxySystemCredentialsDir = v
+	}
+	if v := os.Getenv(envvar.EnvEgressProxySystemCredentialsFile); v != "" {
+		cfg.EgressProxySystemCredentials = v
+	}
+	if v := os.Getenv(envvar.EnvEgressProxyUpstream); v != "" {
+		cfg.EgressProxyUpstream = v
+	}
+	if v := os.Getenv(envvar.EnvEgressProxyAddr); v != "" {
+		cfg.EgressProxyAddr = v
+	}
+	if v := os.Getenv(envvar.EnvEgressProxyCADir); v != "" {
+		cfg.EgressProxyCADir = v
+	}
+
 	return cfg
+}
+
+// EgressProxyCAPath returns the directory used for the egress proxy CA files.
+func (c *Config) EgressProxyCAPath() string {
+	if c.EgressProxyCADir != "" {
+		return c.EgressProxyCADir
+	}
+	return filepath.Join(c.RuntimeDir, "egressproxy-ca")
 }
 
 // JobsDir returns the path to the jobs artifact directory.

@@ -26,12 +26,14 @@ from shellctl.shared.constants import (
     SHELL_TOOL_HTTP_TIMEOUT_GRACE_SECONDS,
 )
 from shellctl.shared.schemas import (
+    Credential,
     DeleteJobResponse,
     HealthResponse,
     JobInfo,
     JobResult,
     JobStatusView,
     ListJobsResponse,
+    PrepareRequest,
     RunJobRequest,
     TerminalSize,
 )
@@ -142,19 +144,23 @@ class ShellctlClient:
         *,
         cwd: str | None = None,
         env: dict[str, str] | None = None,
+        session_id: str | None = None,
         timeout: float = DEFAULT_TIMEOUT_SECONDS,
         terminal: TerminalSize | None = None,
     ) -> JobResult:
         """Create a new job and wait for initial output or completion.
 
         `cwd` and `env` preset the script's working directory and environment
-        overlay on the server side.
+        overlay on the server side. `session_id` identifies which sandbox
+        session's credentials (registered via `prepare()`) apply to this job's
+        egress traffic; it is required when the egress proxy is enabled.
         """
 
         payload = RunJobRequest(
             script=script,
             cwd=cwd,
             env=env,
+            session_id=session_id,
             terminal=terminal,
             timeout=timeout,
             output_limit=self.output_limit,
@@ -266,6 +272,23 @@ class ShellctlClient:
             timeout=self._terminate_request_timeout(grace_seconds),
         )
         return JobStatusView.model_validate(self._decode_response(response))
+
+    async def prepare(self, session_id: str, credentials: list[Credential]) -> dict[str, Any]:
+        """Register structured credentials with the sandbox credential proxy.
+
+        Credentials are scoped strictly to `session_id`: they are persisted to
+        a session-specific manifest and never affect the system tier or any
+        other sandbox session's credentials. Pass the same `session_id` to
+        `run()` so the egress proxy can resolve them for that job's traffic.
+        """
+
+        payload = PrepareRequest(session_id=session_id, credentials=credentials)
+        response = await self._client.put(
+            "/v1/prepare",
+            json=payload.model_dump(mode="json", exclude_none=True),
+            headers=self._auth_headers(),
+        )
+        return self._decode_response(response)
 
     async def delete(
         self,

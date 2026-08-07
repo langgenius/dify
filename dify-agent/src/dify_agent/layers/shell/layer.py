@@ -29,8 +29,11 @@ from dify_agent.adapters.shell.protocols import (
     ShellCommandResult,
     ShellPromptObservation,
 )
-from dify_agent.agent_stub.protocol import AGENT_STUB_AUTH_JWE_ENV_VAR
-from dify_agent.agent_stub.shell_env import ShellAgentStubTokenFactory, build_shell_agent_stub_env
+from dify_agent.agent_stub.shell_env import (
+    ShellAgentStubTokenFactory,
+    build_shell_agent_stub_credentials,
+    build_shell_agent_stub_env,
+)
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.layers.runtime.layer import DifyRuntimeLayer
 from dify_agent.layers.shell.configs import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
@@ -258,6 +261,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
 
     @override
     async def on_context_create(self) -> None:
+        await self._prepare_credentials()
         bootstrap_script = _workspace_bootstrap_script(self.config)
         if not bootstrap_script:
             return
@@ -510,8 +514,6 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             agent_stub_api_base_url=self.agent_stub_api_base_url,
             agent_stub_drive_ref=self.config.agent_stub_drive_ref,
             execution_context=execution_context,
-            token_factory=self.agent_stub_token_factory,
-            session_id=None,
         )
         if agent_stub_env is None:
             if not require_agent_stub_env:
@@ -520,25 +522,29 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         env.update(agent_stub_env)
         return env
 
+    async def _prepare_credentials(self) -> None:
+        """Register credentials with the sandbox egress proxy (once per session)."""
+        execution_context_layer = self.deps.execution_context
+        execution_context = execution_context_layer.config if execution_context_layer is not None else None
+        if self.agent_stub_api_base_url is None or execution_context is None or self.agent_stub_token_factory is None:
+            return
+        credentials = build_shell_agent_stub_credentials(
+            agent_stub_api_base_url=self.agent_stub_api_base_url,
+            execution_context=execution_context,
+            token_factory=self.agent_stub_token_factory,
+            session_id=None,
+        )
+        await self._require_resource().commands.prepare(credentials)
+
     def _redact_output(self, text: str) -> str:
         """Redact sensitive content from shell output before the model sees it.
 
-        Two layers of redaction are applied:
-
-        1. **Built-in token redaction** — the actual Agent Stub JWE token value
-           is always replaced with ``***``. This is unconditional and cannot be
-           disabled.
-        2. **Pattern redaction** — regex patterns from both server-level
-           ``shell_redact_patterns`` and per-agent ``config.redact_patterns``
-           are applied via ``re.sub`` to mask additional secrets.
+        Regex patterns from both server-level ``shell_redact_patterns`` and
+        per-agent ``config.redact_patterns`` are applied via ``re.sub`` to
+        mask additional secrets.
         """
         if not text:
             return text
-        # Built-in: always redact the JWE token value.
-        env = self._build_shell_command_env(include_agent_stub_env=True)
-        jwe_value = env.get(AGENT_STUB_AUTH_JWE_ENV_VAR)
-        if jwe_value and len(jwe_value) > 8:
-            text = text.replace(jwe_value, "***")
         # Server-level + per-agent regex patterns.
         for pattern in (*self.shell_redact_patterns, *self.config.redact_patterns):
             text = re.sub(pattern, "***", text)

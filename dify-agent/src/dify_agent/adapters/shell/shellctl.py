@@ -20,7 +20,12 @@ import time
 from collections.abc import Awaitable
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Protocol, TypeVar, cast
+from typing import TYPE_CHECKING, Protocol, TypeVar, cast
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from shellctl.shared.schemas import Credential
 
 import httpx2 as httpx
 from shellctl.client import ShellctlClientError
@@ -59,6 +64,7 @@ _TRANSFER_END = "<<<DIFY_SHELL_FILE_END>>>"
 _DOWNLOAD_MISSING_EXIT_CODE = 66
 _WORKSPACE_PAYLOAD_BEGIN = "<<<DIFY_WORKSPACE_BEGIN>>>"
 _WORKSPACE_PAYLOAD_END = "<<<DIFY_WORKSPACE_END>>>"
+_SESSION_ID_SANITIZER = re.compile(r"[^A-Za-z0-9_-]+")
 
 _LIST_WORKSPACE_SCRIPT = r"""
 import base64
@@ -223,8 +229,13 @@ class ShellctlClientProtocol(Protocol):
         *,
         cwd: str | None = None,
         env: dict[str, str] | None = None,
+        session_id: str | None = None,
         timeout: float = _DEFAULT_TIMEOUT_SECONDS,
     ) -> ShellctlJobResult: ...
+
+    async def prepare(self, session_id: str, credentials: list[Credential]) -> object:
+        """prepare the sandbox post creation. called once after the sandbox is created."""
+        ...
 
     async def wait(
         self,
@@ -265,9 +276,24 @@ class ShellctlClientProtocol(Protocol):
 type ShellctlClientFactory = Callable[[], ShellctlClientProtocol]
 
 
+class ShellctlSessionID(str):
+    """Shellctl session id identifies a logical session within the sandbox. This
+    is useful when multiple sessions share one shellctl container in local mode.
+
+    When shellctl runs in isolated sandboxes, each sandbox serves only one session
+    so this becomes trivial.
+    """
+
+    @classmethod
+    def from_handle(cls, handle: str) -> ShellctlSessionID:
+        sanitized = _SESSION_ID_SANITIZER.sub("_", handle)
+        return cls(sanitized or "_")
+
+
 @dataclass(slots=True)
 class ShellctlCommands(ShellCommandProtocol):
     client: ShellctlClientProtocol
+    session_id: ShellctlSessionID
     home_dir: str | None = None
     workspace_dir: str | None = None
 
@@ -286,8 +312,19 @@ class ShellctlCommands(ShellCommandProtocol):
         )
         resolved_env = _lease_env(env, home_dir=self.home_dir)
         return _from_job_result(
-            await _run_client_call(self.client.run(script, cwd=resolved_cwd, env=resolved_env, timeout=timeout))
+            await _run_client_call(
+                self.client.run(
+                    script,
+                    cwd=resolved_cwd,
+                    env=resolved_env,
+                    session_id=self.session_id,
+                    timeout=timeout,
+                )
+            )
         )
+
+    async def prepare(self, credentials: Sequence[Credential]) -> None:
+        await _run_client_call(self.client.prepare(self.session_id, list(credentials)))
 
     async def wait(
         self,
@@ -709,5 +746,6 @@ __all__ = [
     "ShellctlClientProtocol",
     "ShellctlCommands",
     "ShellctlFileTransfer",
+    "ShellctlSessionID",
     "create_default_shellctl_client_factory",
 ]

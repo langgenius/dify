@@ -547,9 +547,9 @@ services:
   # for shellctl, and it can reach agent_backend directly) and
   # `local_sandbox_proxy_network` (so its egress is forced through
   # agent_ssrf_proxy).
-  # All non-agent_backend/localhost traffic goes through the Squid forward proxy
-  # on port 3128, which only allows agent_backend /agent-stub/ and the Dify API
-  # /files/* endpoints (see ssrf_proxy/squid-agent.conf.template).
+  # The in-process egress proxy (127.0.0.1:18080) only handles credential
+  # injection; network-level egress restriction (allowlist/SSRF) is enforced
+  # by agent_ssrf_proxy (Squid), which the egress proxy chains to as upstream.
   local_sandbox:
     image: langgenius/dify-agent-local-sandbox:1.16.1
     restart: always
@@ -558,9 +558,14 @@ services:
         required: false
     environment:
       - SHELLCTL_AUTH_TOKEN=${DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN:-${DIFY_AGENT_SHELLCTL_AUTH_TOKEN:-}}
-      - HTTP_PROXY=http://agent_ssrf_proxy:3128
-      - HTTPS_PROXY=http://agent_ssrf_proxy:3128
+      - SHELLCTL_EGRESSPROXY_ENABLED=${DIFY_AGENT_EGRESSPROXY_ENABLED:-true}
+      - SHELLCTL_EGRESSPROXY_UPSTREAM=http://agent_ssrf_proxy:${SSRF_HTTP_PORT:-3128}
+      - SHELLCTL_EGRESSPROXY_SYSTEM_CREDENTIALS_DIR=/etc/shellctl/credentials
+      - HTTP_PROXY=http://127.0.0.1:18080
+      - HTTPS_PROXY=http://127.0.0.1:18080
       - NO_PROXY=localhost,127.0.0.1
+    volumes:
+      - ./volumes/local_sandbox/credentials:/etc/shellctl/credentials:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5004/healthz"]
       interval: 30s

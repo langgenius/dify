@@ -2,15 +2,27 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/langgenius/dify/dify-agent-runtime/internal/egressproxy"
+	"github.com/langgenius/dify/dify-agent-runtime/internal/envvar"
+	"github.com/langgenius/dify/dify-agent-runtime/internal/providers"
+
+	// Blank imports register provider factories into the providers registry
+	// via their init() functions. Add new providers here.
+
+	_ "github.com/langgenius/dify/dify-agent-runtime/internal/providers/aws"
+	_ "github.com/langgenius/dify/dify-agent-runtime/internal/providers/simple"
 )
 
 // Service is the core job lifecycle manager backed by SQLite and tmux.
@@ -22,14 +34,32 @@ type Service struct {
 	mu           sync.Mutex
 	cancelGC     context.CancelFunc
 	cancelMon    context.CancelFunc
+
+	// Egress proxy (nil when disabled).
+	egressResolver *egressproxy.Resolver
+	egressProxy    *egressproxy.Proxy
+	egressCAFiles  *egressproxy.CAFiles
+	// systemCredentials mirrors the refs loaded into egressResolver's system
+	// tier, kept here (in addition to the resolver) solely so RunJob can
+	// derive placeholder env var names for them; see
+	// systemCredentialPlaceholderEnv. Never holds session credentials.
+	systemCredentials []Credential
+	// sessionCredentials mirrors, per session_id, the refs registered into
+	// egressResolver's session tier via PrepareCredentials, kept here solely
+	// so RunJob can derive placeholder env var names for them; see
+	// sessionCredentialPlaceholderEnv. Guarded by credMu, independently of mu
+	// (which only guards startingJobs).
+	credMu             sync.RWMutex
+	sessionCredentials map[string][]Credential
 }
 
 // NewService creates a new shellctl service.
 func NewService(config *Config) *Service {
 	return &Service{
-		config:       config,
-		tmux:         NewTmuxController(config),
-		startingJobs: make(map[string]bool),
+		config:             config,
+		tmux:               NewTmuxController(config),
+		startingJobs:       make(map[string]bool),
+		sessionCredentials: make(map[string][]Credential),
 	}
 }
 
@@ -38,10 +68,295 @@ func (s *Service) Initialize() error {
 	if err := s.PrepareRuntime(); err != nil {
 		return err
 	}
+	if err := s.initEgressProxy(); err != nil {
+		return fmt.Errorf("egress proxy: %w", err)
+	}
 	if err := s.Reconcile(); err != nil {
 		return err
 	}
 	return s.GCOnce()
+}
+
+// initEgressProxy generates a CA, creates the resolver, and starts the MITM proxy.
+func (s *Service) initEgressProxy() error {
+	upstream := s.config.EgressProxyUpstream
+
+	caDir := s.config.EgressProxyCAPath()
+	caFiles, err := egressproxy.GenerateCA(caDir)
+	if err != nil {
+		return err
+	}
+	s.egressCAFiles = caFiles
+	log.Printf("egressproxy: CA generated in %s", caDir)
+
+	// Best-effort: also install the CA into the system trust store.
+	if err := egressproxy.InstallSystemTrust(caFiles.CertPath); err != nil {
+		log.Printf("egressproxy: system trust install failed (falling back to per-tool env vars): %v", err)
+	} else {
+		log.Printf("egressproxy: CA installed into system trust store")
+	}
+
+	resolver := egressproxy.NewResolver()
+	s.egressResolver = resolver
+
+	// Seed the resolver's system tier with startup-level credentials.
+	switch {
+	case s.config.EgressProxySystemCredentialsDir != "":
+		creds, err := LoadCredentialManifestDir(s.config.EgressProxySystemCredentialsDir)
+		if err != nil {
+			return fmt.Errorf("system credentials dir: %w", err)
+		}
+		resolver.SetSystemCredentials(credentialsToStoredMap(creds))
+		s.systemCredentials = creds
+		log.Printf("egressproxy: loaded %d system credential(s) from dir %s", len(creds), s.config.EgressProxySystemCredentialsDir)
+	case s.config.EgressProxySystemCredentials != "":
+		creds, err := LoadCredentialManifest(s.config.EgressProxySystemCredentials)
+		if err != nil {
+			return fmt.Errorf("system credentials manifest: %w", err)
+		}
+		resolver.SetSystemCredentials(credentialsToStoredMap(creds))
+		s.systemCredentials = creds
+		log.Printf("egressproxy: loaded %d system credential(s) from %s", len(creds), s.config.EgressProxySystemCredentials)
+	}
+
+	proxy, err := egressproxy.NewProxy(&egressproxy.Config{
+		ListenAddr:    s.config.EgressProxyAddr,
+		UpstreamProxy: upstream,
+		CACertPath:    caFiles.CertPath,
+		CAKeyPath:     caFiles.KeyPath,
+		Resolver:      resolver,
+	})
+	if err != nil {
+		return err
+	}
+
+	if err := proxy.Start(); err != nil {
+		return err
+	}
+	s.egressProxy = proxy
+	if upstream == "" {
+		log.Printf("egressproxy: MITM proxy started on %s (direct, no upstream)", proxy.Addr())
+	} else {
+		log.Printf("egressproxy: MITM proxy started on %s (upstream: %s)", proxy.Addr(), upstream)
+	}
+	return nil
+}
+
+// PrepareCredentials registers creds as the complete credential set for one
+// sandbox session (sessionID) and persists them to disk.
+func (s *Service) PrepareCredentials(sessionID string, creds []Credential) error {
+	if s.egressResolver == nil {
+		return NewServerError(409, "egressproxy_disabled", "Egress proxy is not enabled")
+	}
+	if !isValidSessionID(sessionID) {
+		return NewServerError(422, "validation_error", "session_id must be a non-empty string of letters, digits, '-', or '_' (max 128 chars)")
+	}
+
+	path := s.sessionCredentialsPath(sessionID)
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		return fmt.Errorf("create session credentials dir: %w", err)
+	}
+	data, err := json.Marshal(PrepareRequest{SessionID: sessionID, Credentials: creds})
+	if err != nil {
+		return fmt.Errorf("marshal session credentials: %w", err)
+	}
+	if err := writeFileAtomic(path, data, 0600); err != nil {
+		return fmt.Errorf("write session credentials: %w", err)
+	}
+
+	s.egressResolver.SetSessionCredentials(sessionID, credentialsToStoredMap(creds))
+
+	s.credMu.Lock()
+	if s.sessionCredentials == nil {
+		s.sessionCredentials = make(map[string][]Credential)
+	}
+	s.sessionCredentials[sessionID] = creds
+	s.credMu.Unlock()
+	return nil
+}
+
+// sessionCredentialsPath returns the path to sessionID's persisted
+// credential manifest under the runtime's credentials directory.
+func (s *Service) sessionCredentialsPath(sessionID string) string {
+	return filepath.Join(s.config.RuntimeDir, "credentials", "sessions", sessionID+".json")
+}
+
+// validSessionIDPattern restricts session_id to characters safe for use both
+// as a filename component and as Basic-Auth userinfo.
+var validSessionIDPattern = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,128}$`)
+
+// isValidSessionID reports whether sessionID is safe to use as a session key,
+// filename component, and Proxy-Authorization userinfo value.
+func isValidSessionID(sessionID string) bool {
+	return validSessionIDPattern.MatchString(sessionID)
+}
+
+// writeFileAtomic writes data to path via a uniquely-named temp file in the
+// same directory + rename, so concurrent callers for the same path never
+// race on a shared temp filename. Readers never observe a partially written
+// file.
+func writeFileAtomic(path string, data []byte, perm os.FileMode) error {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return err
+	}
+	tmp, err := os.CreateTemp(dir, filepath.Base(path)+".*.tmp")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+	cleanup := func() { _ = os.Remove(tmpName) }
+	wrote := false
+	defer func() {
+		if !wrote {
+			cleanup()
+		}
+	}()
+	if _, err := tmp.Write(data); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	if err := os.Chmod(tmpName, perm); err != nil {
+		return err
+	}
+	if err := os.Rename(tmpName, path); err != nil {
+		return err
+	}
+	wrote = true
+	return nil
+}
+
+// credentialsToStoredMap converts API-level Credential values into the
+// resolver's internal StoredCredential representation, keyed by ref.
+func credentialsToStoredMap(creds []Credential) map[string]*egressproxy.StoredCredential {
+	stored := make(map[string]*egressproxy.StoredCredential, len(creds))
+	for i := range creds {
+		c := &creds[i]
+		stored[c.Ref()] = &egressproxy.StoredCredential{
+			Value:  json.RawMessage(c.Value),
+			Inject: buildInjectionPolicy(c.Inject),
+		}
+	}
+	return stored
+}
+
+// buildInjectionPolicy converts an API-level InjectPolicy into a
+// providers.Policy via the registry. Returns nil if inject is nil.
+func buildInjectionPolicy(inject *InjectPolicy) providers.Policy {
+	if inject == nil {
+		return nil
+	}
+	policy, err := providers.Build(string(inject.Type), inject.Config)
+	if err != nil {
+		log.Printf("egressproxy: build injection policy (type=%s): %v", inject.Type, err)
+		return nil
+	}
+	return policy
+}
+
+// EgressProxyEnv returns the env vars for routing jobs through the egress
+// proxy. Returns nil if the egress proxy is disabled.
+func (s *Service) EgressProxyEnv(sessionID string) map[string]string {
+	if s.egressProxy == nil || s.egressCAFiles == nil {
+		return nil
+	}
+	proxyURL := s.egressProxy.ProxyURLForSession(sessionID)
+	return map[string]string{
+		envvar.EnvHTTPProxy:        proxyURL,
+		envvar.EnvHTTPSProxy:       proxyURL,
+		envvar.EnvHTTPProxyLower:   proxyURL,
+		envvar.EnvHTTPSProxyLower:  proxyURL,
+		envvar.EnvNoProxy:          "localhost,127.0.0.1",
+		envvar.EnvNoProxyLower:     "localhost,127.0.0.1",
+		envvar.EnvSSLCertFile:      s.egressCAFiles.CertPath,
+		envvar.EnvRequestsCABundle: s.egressCAFiles.CertPath,
+		envvar.EnvNodeExtraCACerts: s.egressCAFiles.CertPath,
+		envvar.EnvCURLCABundle:     s.egressCAFiles.CertPath,
+		envvar.EnvGitSSLCAInfo:     s.egressCAFiles.CertPath,
+		envvar.EnvPIPCert:          s.egressCAFiles.CertPath,
+	}
+}
+
+// systemCredentialPlaceholderEnv returns env var names mapped to
+// __secret:provider/name__ placeholders for every system-tier credential,
+// so job scripts can reference system credentials by name without seeing
+// their real values. Session credentials are excluded.
+func (s *Service) systemCredentialPlaceholderEnv() map[string]string {
+	if len(s.systemCredentials) == 0 {
+		return nil
+	}
+	env := make(map[string]string)
+	for _, c := range s.systemCredentials {
+		ph := "__secret:" + c.Ref() + "__"
+		for _, name := range credentialEnvNames(c) {
+			env[name] = ph
+		}
+	}
+	return env
+}
+
+// sessionCredentialPlaceholderEnv returns env var names mapped to
+// __secret:provider/name__ placeholders for every credential registered to
+// sessionID's session. Returns nil for an unknown or empty sessionID.
+func (s *Service) sessionCredentialPlaceholderEnv(sessionID string) map[string]string {
+	if sessionID == "" {
+		return nil
+	}
+	s.credMu.RLock()
+	creds := s.sessionCredentials[sessionID]
+	s.credMu.RUnlock()
+	if len(creds) == 0 {
+		return nil
+	}
+	env := make(map[string]string)
+	for _, c := range creds {
+		ph := "__secret:" + c.Ref() + "__"
+		for _, name := range credentialEnvNames(c) {
+			env[name] = ph
+		}
+	}
+	return env
+}
+
+// credentialEnvNames returns the environment variable names under which a
+// credential's placeholder should be exposed. If EnvNames is set, those are
+// used. Otherwise, if EnvName is set, it is used. Otherwise, a name is
+// derived from Provider and Name.
+func credentialEnvNames(c Credential) []string {
+	if len(c.EnvNames) > 0 {
+		return c.EnvNames
+	}
+	name := c.EnvName
+	if name == "" {
+		name = defaultCredentialEnvName(c.Provider, c.Name)
+	}
+	if name == "" {
+		return nil
+	}
+	return []string{name}
+}
+
+// envNameSanitizer matches runs of characters that cannot appear in a POSIX
+// environment variable name.
+var envNameSanitizer = regexp.MustCompile(`[^A-Za-z0-9]+`)
+
+// defaultCredentialEnvName derives an environment variable name from a
+// credential's provider/name ref (e.g. "github"/"token" -> "GITHUB_TOKEN")
+// when no explicit Credential.EnvName is configured. Returns "" if no valid
+// name can be derived.
+func defaultCredentialEnvName(provider, name string) string {
+	raw := strings.Trim(envNameSanitizer.ReplaceAllString(provider+"_"+name, "_"), "_")
+	if raw == "" {
+		return ""
+	}
+	upper := strings.ToUpper(raw)
+	if upper[0] >= '0' && upper[0] <= '9' {
+		upper = "_" + upper
+	}
+	return upper
 }
 
 // PrepareRuntime sets up directories, DB schema, runner script, and tmux server.
@@ -81,6 +396,9 @@ func (s *Service) Shutdown() {
 	}
 	if s.cancelMon != nil {
 		s.cancelMon()
+	}
+	if s.egressProxy != nil {
+		s.egressProxy.Stop()
 	}
 	if s.db != nil {
 		_ = s.db.Close()
@@ -173,10 +491,48 @@ func (s *Service) RunJob(req *RunJobRequest) (*JobResult, error) {
 		s.cleanupStarting(jobID, jobDir)
 		return nil, err
 	}
+
+	// Merge egress proxy env vars into the job environment.
+	env := req.Env
+	if proxyEnv := s.EgressProxyEnv(req.SessionID); proxyEnv != nil {
+		if env == nil {
+			env = make(map[string]string)
+		}
+		for k, v := range proxyEnv {
+			if _, exists := env[k]; !exists {
+				env[k] = v
+			}
+		}
+	}
+
+	// Session credentials take priority over same-named system placeholders.
+	if placeholderEnv := s.sessionCredentialPlaceholderEnv(req.SessionID); placeholderEnv != nil {
+		if env == nil {
+			env = make(map[string]string)
+		}
+		for k, v := range placeholderEnv {
+			if _, exists := env[k]; !exists {
+				env[k] = v
+			}
+		}
+	}
+
+	// System-tier credential placeholders.
+	if placeholderEnv := s.systemCredentialPlaceholderEnv(); placeholderEnv != nil {
+		if env == nil {
+			env = make(map[string]string)
+		}
+		for k, v := range placeholderEnv {
+			if _, exists := env[k]; !exists {
+				env[k] = v
+			}
+		}
+	}
+
 	envJSON := "{}"
-	if req.Env != nil {
-		pairs := make([]string, 0, len(req.Env))
-		for k, v := range req.Env {
+	if env != nil {
+		pairs := make([]string, 0, len(env))
+		for k, v := range env {
 			pairs = append(pairs, fmt.Sprintf("%q:%q", k, v))
 		}
 		envJSON = "{" + strings.Join(pairs, ",") + "}"

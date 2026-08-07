@@ -67,12 +67,12 @@ func parentMode() {
 	env := os.Environ()
 	// Remove internal shellctl vars from inherited env.
 	env = filterEnv(env, []string{
-		"TMUX",
-		"SHELLCTL_STATE_DIR",
-		"SHELLCTL_RUNTIME_DIR",
-		"SHELLCTL_TMUX_SOCKET",
-		"SHELLCTL_RUNNER",
-		"SHELLCTL_AUTH_TOKEN",
+		envvar.EnvTMUX,
+		envvar.EnvShellctlStateDir,
+		envvar.EnvShellctlRuntimeDir,
+		envvar.EnvShellctlTmuxSocket,
+		envvar.EnvShellctlRunner,
+		envvar.EnvShellctlAuthToken,
 	})
 
 	envOverlay := loadEnvJSON(envPath)
@@ -172,6 +172,13 @@ func childMode() {
 		home := os.Getenv("HOME")
 		jobDir := filepath.Dir(scriptPath)
 		cfg := landlock.ConfigFromEnv(home, cwd, jobDir)
+
+		// Grant read access to the egress proxy CA cert directory, which
+		// lives outside the per-binding HOME that Landlock grants.
+		if caCert := os.Getenv(envvar.EnvSSLCertFile); caCert != "" {
+			cfg.ROPaths = append(cfg.ROPaths, filepath.Dir(caCert))
+		}
+
 		if err := landlock.Restrict(cfg); err != nil {
 			// the landlock is best-effort, so we just log the error whatever it is
 			fmt.Fprintf(os.Stderr, "shellctl-runner: WARNING: %v — running without filesystem isolation\n", err)

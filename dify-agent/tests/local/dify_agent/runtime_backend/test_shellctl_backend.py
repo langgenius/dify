@@ -6,7 +6,7 @@ from typing import cast
 import pytest
 
 from dify_agent.adapters.shell.protocols import ShellCommandResult, ShellCommandStatus
-from dify_agent.adapters.shell.shellctl import ShellctlClientProtocol
+from dify_agent.adapters.shell.shellctl import ShellctlClientProtocol, ShellctlSessionID
 from dify_agent.runtime_backend.protocols import RuntimeLayout
 from dify_agent.runtime_backend.shellctl import (
     create_owned_shellctl_lease,
@@ -55,6 +55,9 @@ class _FakeCommands:
         del script, cwd, env, timeout
         return self.initial
 
+    async def prepare(self, credentials: object) -> None:
+        pass
+
     async def wait(self, job_id: str, *, offset: int, timeout: float) -> ShellCommandResult:
         del job_id, offset, timeout
         if self.wait_error is not None:
@@ -96,6 +99,25 @@ def _result(*, done: bool = True) -> ShellCommandResult:
         offset=2,
         truncated=False,
     )
+
+
+@pytest.mark.parametrize(
+    ("handle", "want"),
+    [
+        ("sandbox-1", "sandbox-1"),
+        ("binding-id:workspace-id", "binding-id_workspace-id"),
+        ("agent.stub-run:workspace.a", "agent_stub-run_workspace_a"),
+        ("", "_"),
+    ],
+)
+def test_session_id_from_handle_sanitizes_disallowed_characters(handle: str, want: str) -> None:
+    # The shellctl runtime restricts session_id to [A-Za-z0-9_-]{1,128} and
+    # additionally treats ':' as the Basic-Auth user:password separator when
+    # the id is embedded in the egress proxy's HTTP_PROXY/HTTPS_PROXY URL, so
+    # handles like local binding refs ("binding_id:workspace_id") must be
+    # sanitized before use as a session_id.
+    assert ShellctlSessionID.from_handle(handle) == want
+    assert str(ShellctlSessionID.from_handle(handle)) == want
 
 
 @pytest.mark.anyio

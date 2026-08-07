@@ -73,7 +73,8 @@ COPY --from=go-builder /bin/dify-agent /usr/local/bin/dify-agent
 RUN useradd --create-home --shell /bin/sh dify \
     && mkdir -p /mnt/drive \
     && chown dify:dify /home \
-    && chown -R dify:dify /home/dify /mnt/drive
+    && chown -R dify:dify /home/dify /mnt/drive \
+    && chown -R dify:dify /usr/local/share/ca-certificates /etc/ssl/certs /etc/ca-certificates.conf
 
 USER dify
 WORKDIR /home/dify

@@ -36,6 +36,7 @@ docker build -f dify-agent-runtime/docker/Dockerfile \
 ```
 docker run -d --name dify-agent-runtime \
   -p 15004:5004 \
+  -e SHELLCTL_EGRESSPROXY_ENABLED=true \
   dify-agent-runtime:latest
 ```
 

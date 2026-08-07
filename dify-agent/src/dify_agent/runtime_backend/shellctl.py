@@ -12,6 +12,7 @@ from dify_agent.adapters.shell.shellctl import (
     ShellctlClientProtocol,
     ShellctlCommands,
     ShellctlFileTransfer,
+    ShellctlSessionID,
     create_default_shellctl_client_factory,
 )
 from dify_agent.runtime_backend.protocols import FileSystem, RuntimeLayout
@@ -74,6 +75,7 @@ def create_shellctl_lease(
         client=client,
         commands=ShellctlCommands(
             client=client,
+            session_id=ShellctlSessionID.from_handle(handle),
             home_dir=layout.home_dir,
             workspace_dir=layout.workspace_dir,
         ),

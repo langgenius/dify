@@ -112,6 +112,94 @@ integration-up:
 		fi; \
 		sleep 2; \
 	done
+	@echo "Setting up egress proxy container + echo backend..."
+	$(eval EGRESS_NET := sandbox-rt-egress-net-$(TEST_ID))
+	docker network create $(EGRESS_NET) > /dev/null
+	$(eval ECHO_CONTAINER := echo-backend-$(TEST_ID))
+	docker run -d --name $(ECHO_CONTAINER) \
+		--network $(EGRESS_NET) --network-alias echo-backend \
+		mendhak/http-https-echo:31
+	$(eval EGRESS_CONTAINER_NAME := sandbox-rt-egress-$(TEST_ID))
+	$(eval EGRESS_HOST_PORT := $(shell python3 -c 'import socket; s=socket.socket(); s.bind(("",0)); print(s.getsockname()[1]); s.close()'))
+	$(eval EGRESS_AUTH_TOKEN := test-token-egress-$(TEST_ID))
+	docker run -d --name $(EGRESS_CONTAINER_NAME) \
+		--network $(EGRESS_NET) \
+		-p $(EGRESS_HOST_PORT):5004 \
+		-e SHELLCTL_AUTH_TOKEN=$(EGRESS_AUTH_TOKEN) \
+		-e SHELLCTL_EGRESSPROXY_ENABLED=true \
+		-e HTTP_PROXY=http://127.0.0.1:18080 \
+		-e HTTPS_PROXY=http://127.0.0.1:18080 \
+		-e NO_PROXY=localhost,127.0.0.1 \
+		$(IMAGE_NAME)
+	@echo 'EGRESS_NET=$(EGRESS_NET)' >> $(STATE_FILE)
+	@echo 'ECHO_CONTAINER=$(ECHO_CONTAINER)' >> $(STATE_FILE)
+	@echo 'EGRESS_CONTAINER_NAME=$(EGRESS_CONTAINER_NAME)' >> $(STATE_FILE)
+	@echo 'EGRESS_HOST_PORT=$(EGRESS_HOST_PORT)' >> $(STATE_FILE)
+	@echo 'EGRESS_AUTH_TOKEN=$(EGRESS_AUTH_TOKEN)' >> $(STATE_FILE)
+	@for i in $$(seq 1 30); do \
+		if curl -sf http://localhost:$(EGRESS_HOST_PORT)/healthz > /dev/null 2>&1; then \
+			echo "Egress proxy runtime is ready on port $(EGRESS_HOST_PORT)"; \
+			break; \
+		fi; \
+		if [ "$$i" -eq 30 ]; then \
+			echo "ERROR: egress proxy runtime not ready after 60s" >&2; \
+			docker logs $(EGRESS_CONTAINER_NAME); \
+			docker rm -f $(EGRESS_CONTAINER_NAME) $(ECHO_CONTAINER) 2>/dev/null; \
+			docker network rm $(EGRESS_NET) 2>/dev/null; \
+			exit 1; \
+		fi; \
+		sleep 2; \
+	done
+	@echo "Setting up upstream squid + egress-proxy-with-upstream container..."
+	@echo "  NOTE: an earlier iteration tried to place this runtime container on"
+	@echo "  a network with no direct path to echo-backend (only reachable via"
+	@echo "  squid-upstream bridging two networks), to force a true end-to-end"
+	@echo "  regression test of hostname passthrough mirroring production's"
+	@echo "  local_sandbox/agent_ssrf_proxy/api topology. That approach was"
+	@echo "  reverted: multi-homing squid-upstream across two docker networks"
+	@echo "  via 'docker network connect' hit a Docker/host networking pitfall"
+	@echo "  (squid answered fine on its primary network but not the secondary"
+	@echo "  one -- asymmetric routing / rp_filter in the Docker Desktop VM),"
+	@echo "  which is an environment limitation unrelated to the proxy code."
+	@echo "  Hostname-passthrough itself is covered reliably (no Docker network"
+	@echo "  involved) by TestProxyUpstreamChainingPreservesHostname in"
+	@echo "  internal/egressproxy/proxy_test.go. This test only verifies that"
+	@echo "  upstream chaining + credential injection work end-to-end."
+	$(eval SQUID_CONTAINER := squid-upstream-$(TEST_ID))
+	docker run -d --name $(SQUID_CONTAINER) \
+		--network $(EGRESS_NET) --network-alias squid-upstream \
+		-v $(CURDIR)/tests/squid-test.conf:/etc/squid/squid.conf:ro \
+		ubuntu/squid:latest
+	$(eval EGRESS_UPSTREAM_CONTAINER_NAME := sandbox-rt-egress-upstream-$(TEST_ID))
+	$(eval EGRESS_UPSTREAM_HOST_PORT := $(shell python3 -c 'import socket; s=socket.socket(); s.bind(("",0)); print(s.getsockname()[1]); s.close()'))
+	$(eval EGRESS_UPSTREAM_AUTH_TOKEN := test-token-egress-upstream-$(TEST_ID))
+	docker run -d --name $(EGRESS_UPSTREAM_CONTAINER_NAME) \
+		--network $(EGRESS_NET) \
+		-p $(EGRESS_UPSTREAM_HOST_PORT):5004 \
+		-e SHELLCTL_AUTH_TOKEN=$(EGRESS_UPSTREAM_AUTH_TOKEN) \
+		-e SHELLCTL_EGRESSPROXY_ENABLED=true \
+		-e SHELLCTL_EGRESSPROXY_UPSTREAM=http://squid-upstream:3128 \
+		-e HTTP_PROXY=http://127.0.0.1:18080 \
+		-e HTTPS_PROXY=http://127.0.0.1:18080 \
+		-e NO_PROXY=localhost,127.0.0.1 \
+		$(IMAGE_NAME)
+	@echo 'SQUID_CONTAINER=$(SQUID_CONTAINER)' >> $(STATE_FILE)
+	@echo 'EGRESS_UPSTREAM_CONTAINER_NAME=$(EGRESS_UPSTREAM_CONTAINER_NAME)' >> $(STATE_FILE)
+	@echo 'EGRESS_UPSTREAM_HOST_PORT=$(EGRESS_UPSTREAM_HOST_PORT)' >> $(STATE_FILE)
+	@echo 'EGRESS_UPSTREAM_AUTH_TOKEN=$(EGRESS_UPSTREAM_AUTH_TOKEN)' >> $(STATE_FILE)
+	@for i in $$(seq 1 30); do \
+		if curl -sf http://localhost:$(EGRESS_UPSTREAM_HOST_PORT)/healthz > /dev/null 2>&1; then \
+			echo "Egress-with-upstream runtime is ready on port $(EGRESS_UPSTREAM_HOST_PORT)"; \
+			break; \
+		fi; \
+		if [ "$$i" -eq 30 ]; then \
+			echo "ERROR: egress-with-upstream runtime not ready after 60s" >&2; \
+			docker logs $(EGRESS_UPSTREAM_CONTAINER_NAME); \
+			docker rm -f $(EGRESS_UPSTREAM_CONTAINER_NAME) $(SQUID_CONTAINER) 2>/dev/null; \
+			exit 1; \
+		fi; \
+		sleep 2; \
+	done
 
 integration-test:
 	@test -f $(STATE_FILE) || { echo "ERROR: run 'make integration-up' first" >&2; exit 1; }
@@ -120,6 +208,10 @@ integration-test:
 	SHELLCTL_TEST_TOKEN=$$AUTH_TOKEN \
 	SHELLCTL_GO_URL_NO_ISOLATION=http://localhost:$$HOST_PORT_NOISO \
 	SHELLCTL_TEST_TOKEN_NO_ISOLATION=$$AUTH_TOKEN_NOISO \
+	SHELLCTL_EGRESS_GO_URL=http://localhost:$$EGRESS_HOST_PORT \
+	SHELLCTL_EGRESS_TEST_TOKEN=$$EGRESS_AUTH_TOKEN \
+	SHELLCTL_EGRESS_UPSTREAM_GO_URL=http://localhost:$$EGRESS_UPSTREAM_HOST_PORT \
+	SHELLCTL_EGRESS_UPSTREAM_TEST_TOKEN=$$EGRESS_UPSTREAM_AUTH_TOKEN \
 	go test -tags=integration -v -count=1 -timeout=300s ./tests/...
 
 integration-logs:
@@ -131,6 +223,11 @@ integration-down:
 		. ./$(STATE_FILE); \
 		docker rm -f $$CONTAINER_NAME 2>/dev/null || true; \
 		docker rm -f $$CONTAINER_NAME_NOISO 2>/dev/null || true; \
+		docker rm -f $$EGRESS_CONTAINER_NAME 2>/dev/null || true; \
+		docker rm -f $$EGRESS_UPSTREAM_CONTAINER_NAME 2>/dev/null || true; \
+		docker rm -f $$SQUID_CONTAINER 2>/dev/null || true; \
+		docker rm -f $$ECHO_CONTAINER 2>/dev/null || true; \
+		docker network rm $$EGRESS_NET 2>/dev/null || true; \
 		rm -f $(STATE_FILE); \
 	fi
 

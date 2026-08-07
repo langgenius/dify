@@ -37,6 +37,42 @@ const (
 	DefaultDriveBase = "/mnt/drive"
 )
 
+// --- Egress Proxy ---
+
+const (
+	// EnvEgressProxyEnabled controls whether the in-process egress proxy is started.
+	EnvEgressProxyEnabled = "SHELLCTL_EGRESSPROXY_ENABLED"
+
+	// EnvEgressProxyAddr overrides the egress proxy listen address (default: 127.0.0.1:18080).
+	EnvEgressProxyAddr = "SHELLCTL_EGRESSPROXY_ADDR"
+
+	// EnvEgressProxyCADir overrides the directory for the auto-generated CA cert/key.
+	EnvEgressProxyCADir = "SHELLCTL_EGRESSPROXY_CA_DIR"
+
+	// EnvEgressProxyCACert is set per-job to the CA cert path for TLS trust.
+	EnvEgressProxyCACert = "SHELLCTL_EGRESSPROXY_CA_CERT"
+
+	// EnvEgressProxyUpstream overrides the upstream proxy URL (empty = direct).
+	// IMPORTANT: always enable this in docker compose environment
+	EnvEgressProxyUpstream = "SHELLCTL_EGRESSPROXY_UPSTREAM"
+
+	// EnvEgressProxySystemCredentialsDir points to a directory of credential
+	// manifest files loaded at startup. All .yaml/.yml/.json files are merged.
+	EnvEgressProxySystemCredentialsDir = "SHELLCTL_EGRESSPROXY_SYSTEM_CREDENTIALS_DIR"
+
+	// EnvEgressProxySystemCredentialsFile is a legacy alias that points to a
+	// single credential manifest file. Prefer EnvEgressProxySystemCredentialsDir.
+	EnvEgressProxySystemCredentialsFile = "SHELLCTL_EGRESSPROXY_SYSTEM_CREDENTIALS_FILE"
+)
+
+const (
+	EnvShellctlStateDir   = "SHELLCTL_STATE_DIR"
+	EnvShellctlRuntimeDir = "SHELLCTL_RUNTIME_DIR"
+	EnvShellctlTmuxSocket = "SHELLCTL_TMUX_SOCKET"
+	EnvShellctlRunner     = "SHELLCTL_RUNNER"
+	EnvShellctlAuthToken  = "SHELLCTL_AUTH_TOKEN"
+)
+
 // PathIsolationEnabled returns whether Landlock filesystem isolation is active.
 func PathIsolationEnabled() bool {
 	v, ok := os.LookupEnv(EnvEnablePathIsolation)

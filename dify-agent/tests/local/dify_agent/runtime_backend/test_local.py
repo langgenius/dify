@@ -2,10 +2,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import shlex
-from typing import Mapping
+from typing import TYPE_CHECKING, Mapping
 
 import pytest
 from shellctl.shared import DeleteJobResponse, JobResult, JobStatusName, JobStatusView
+
+if TYPE_CHECKING:
+    from shellctl.shared.schemas import Credential
 
 from dify_agent.runtime_backend import (
     BindingCreateError,
@@ -22,6 +25,7 @@ class _RunCall:
     commands: tuple[tuple[str, ...], ...]
     cwd: str | None
     env: Mapping[str, str] | None
+    session_id: str | None = None
 
 
 @dataclass(slots=True)
@@ -38,14 +42,15 @@ class _Client:
         script: str,
         *,
         cwd: str | None = None,
-        env: Mapping[str, str] | None = None,
+        env: dict[str, str] | None = None,
+        session_id: str | None = None,
         timeout: float = 10.0,
     ) -> JobResult:
         del timeout
         commands = tuple(
             tuple(shlex.split(line)) for line in script.splitlines() if line.strip() and line.strip() != "set -eu"
         )
-        self.runs.append(_RunCall(commands=commands, cwd=cwd, env=env))
+        self.runs.append(_RunCall(commands=commands, cwd=cwd, env=env, session_id=session_id))
         return JobResult(
             job_id=f"job-{len(self.runs)}",
             status=JobStatusName.EXITED,
@@ -56,6 +61,9 @@ class _Client:
             offset=0,
             truncated=False,
         )
+
+    async def prepare(self, session_id: str, credentials: list[Credential]) -> object:
+        return {}
 
     async def wait(self, job_id: str, *, offset: int, timeout: float = 10.0) -> JobResult:
         raise AssertionError((job_id, offset, timeout))

@@ -127,17 +127,51 @@ class ErrorResponse(ShellctlModel):
     error: ErrorDetail
 
 
+class HTTPHeaderInject(ShellctlModel):
+    """Inject a credential value as an HTTP request header.
+
+    `expr` is a Go text/template string evaluated by the sandbox credential
+    proxy with the resolved credential value available as `{{.Value}}`, e.g.
+    `"Bearer {{.Value}}"` or `"{{.Value}}"`. This mirrors the wire contract of
+    `egressproxy.SimpleHeaderPolicy` in dify-agent-runtime.
+    """
+
+    name: str
+    expr: str = ""
+    domains: list[str] = Field(default_factory=list)
+
+
+class InjectPolicy(ShellctlModel):
+    """Credential injection strategy (discriminated by type)."""
+
+    type: str  # e.g. "http-header"
+    config: HTTPHeaderInject | None = None
+
+
+class Credential(ShellctlModel):
+    """A secret with its identity and optional injection policy."""
+
+    provider: str
+    name: str
+    value: str
+    inject: InjectPolicy | None = None
+
+
 class RunJobRequest(ShellctlModel):
     """HTTP request body for `POST /v1/jobs/run`.
 
     `env` augments the runner's inherited process environment instead of
     replacing it, so callers can preset script-local variables without losing
-    ambient values such as `PATH`.
+    ambient values such as `PATH`. Credentials are never passed here; callers
+    must first register them for a `session_id` via `PUT /v1/prepare`; the
+    egress proxy then proactively injects them into outbound HTTP requests
+    based on each credential's inject policy.
     """
 
     script: str
     cwd: str | None = None
     env: dict[str, str] | None = None
+    session_id: str | None = None
     terminal: TerminalSize | None = None
     timeout: float = Field(default=DEFAULT_TIMEOUT_SECONDS, gt=0, le=SHELL_TOOL_HARD_TIMEOUT_SECONDS)
     output_limit: int = Field(default=DEFAULT_OUTPUT_LIMIT_BYTES, ge=1, le=MAX_OUTPUT_LIMIT_BYTES)
@@ -193,18 +227,42 @@ class TerminateJobRequest(ShellctlModel):
     grace_seconds: float = Field(default=DEFAULT_TERMINATE_GRACE_SECONDS, ge=0, le=SHELL_TOOL_HARD_TIMEOUT_SECONDS)
 
 
+class PrepareRequest(ShellctlModel):
+    """HTTP request body for `PUT /v1/prepare`.
+
+    `session_id` scopes these credentials to one sandbox session: they are
+    persisted server-side to a session-specific file and made visible only to
+    egress traffic from jobs run with the same `session_id` (see
+    `RunJobRequest`). They never affect the system tier or any other session.
+    """
+
+    session_id: str
+    credentials: list[Credential]
+
+
+class PrepareResponse(ShellctlModel):
+    """Response body for `PUT /v1/prepare`."""
+
+    registered: int
+
+
 __all__ = [
     "TERMINAL_JOB_STATUSES",
+    "Credential",
     "DeleteJobResponse",
     "ErrorDetail",
     "ErrorResponse",
+    "HTTPHeaderInject",
     "HealthResponse",
+    "InjectPolicy",
     "InputJobRequest",
     "JobInfo",
     "JobResult",
     "JobStatusName",
     "JobStatusView",
     "ListJobsResponse",
+    "PrepareRequest",
+    "PrepareResponse",
     "RunJobRequest",
     "ShellctlModel",
     "TerminalSize",
