@@ -19,6 +19,7 @@ import mimetypes
 import posixpath
 import re
 import zipfile
+from base64 import b64encode
 from collections.abc import Generator
 from dataclasses import dataclass
 from datetime import datetime
@@ -40,8 +41,14 @@ from core.errors.error import ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.tools.tool_file_manager import ToolFileManager
 from extensions.ext_storage import storage
-from graphon.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
-from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.message_entities import (
+    ImagePromptMessageContent,
+    PromptMessageContentUnionTypes,
+    SystemPromptMessage,
+    TextPromptMessageContent,
+    UserPromptMessage,
+)
+from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
 from graphon.nodes.llm.reasoning import split_reasoning
 from libs.datetime_utils import naive_utc_now
 from models.account import Account
@@ -891,14 +898,17 @@ class SkillManagementService:
                 if details:
                     payload["details"] = details
                 yield self._assistant_sse(payload)
-            except Exception:
+            except Exception as exc:
                 logger.exception("skill_assistant_action_failed skill_id=%s", skill_id)
                 yield self._assistant_sse(
                     {
                         "event": "error",
                         "id": message_id,
                         "code": "skill_assistant_failed",
-                        "message": "the Skill Authoring assistant could not apply its response",
+                        "message": self._assistant_error_message(
+                            exc,
+                            fallback="the Skill Authoring assistant could not apply its response",
+                        ),
                         "status": 422,
                     }
                 )
@@ -930,16 +940,23 @@ class SkillManagementService:
                 )
             )
             context = self._build_assistant_context(skill=skill, files=files)
-            attachment_context = self._build_assistant_attachment_context(
-                tenant_id=tenant_id,
-                attachments=attachments,
-            )
 
         model_instance, model_parameters = self._resolve_assistant_model(
             tenant_id=tenant_id,
             model_payload=model_payload,
         )
         authoring_stage = self._assistant_authoring_stage(skill=skill, files=files)
+        supports_vision = self._model_supports_vision(model_instance)
+        attachment_context = self._build_assistant_attachment_context(
+            tenant_id=tenant_id,
+            attachments=attachments,
+            vision_enabled=supports_vision,
+        )
+        image_contents = (
+            self._build_assistant_image_contents(tenant_id=tenant_id, attachments=attachments)
+            if supports_vision
+            else []
+        )
         prompt_parts = [f"<skill_draft>\n{context}\n</skill_draft>"]
         prompt_parts.append(f"<authoring_stage>{authoring_stage}</authoring_stage>")
         if target_path:
@@ -947,17 +964,23 @@ class SkillManagementService:
         if attachment_context:
             prompt_parts.append(f"<uploaded_context>\n{attachment_context}\n</uploaded_context>")
         prompt_parts.append(f"User request:\n{message}")
+        user_prompt = "\n\n".join(prompt_parts)
+        user_content: str | list[PromptMessageContentUnionTypes] = user_prompt
+        if image_contents:
+            user_content = [TextPromptMessageContent(data=user_prompt), *image_contents]
         prompt_messages = [
             SystemPromptMessage(content=_SKILL_ASSISTANT_SYSTEM_PROMPT),
-            UserPromptMessage(content="\n\n".join(prompt_parts)),
+            UserPromptMessage(content=user_content),
         ]
+        stream_error: Exception | None = None
         try:
             response = model_instance.invoke_llm(
                 prompt_messages=prompt_messages,
                 model_parameters=model_parameters,
                 stream=True,
             )
-        except Exception:
+        except Exception as exc:
+            stream_error = exc
             response = None
 
         raw_text = ""
@@ -979,7 +1002,10 @@ class SkillManagementService:
                 except Exception as exc:
                     raise SkillManagementServiceError(
                         "skill_assistant_failed",
-                        "the Skill Authoring assistant could not generate a response",
+                        self._assistant_error_message(
+                            stream_error or exc,
+                            fallback="the Skill Authoring assistant could not generate a response",
+                        ),
                         status_code=422,
                     ) from exc
             reasoning = self._extract_reasoning_content(response)
@@ -1004,7 +1030,10 @@ class SkillManagementService:
             except Exception as exc:
                 raise SkillManagementServiceError(
                     "skill_assistant_failed",
-                    "the Skill Authoring assistant could not generate a response",
+                    self._assistant_error_message(
+                        stream_error or exc,
+                        fallback="the Skill Authoring assistant could not generate a response",
+                    ),
                     status_code=422,
                 ) from exc
             reasoning = self._extract_reasoning_content(response)
@@ -2680,6 +2709,7 @@ class SkillManagementService:
         *,
         tenant_id: str,
         attachments: list[SkillAssistAttachmentPayload],
+        vision_enabled: bool = False,
     ) -> str:
         """Build bounded context from uploaded Skill Builder attachments."""
         if not attachments:
@@ -2698,7 +2728,11 @@ class SkillManagementService:
                 file_id=attachment.tool_file_id,
             )
             if not SkillManagementService._is_text_payload(filename=attachment.name, mime_type=mime_type):
-                body = "[Binary attachment available as uploaded file metadata only.]"
+                body = (
+                    "[Image attachment is provided separately as multimodal content.]"
+                    if vision_enabled and mime_type.startswith("image/")
+                    else "[Binary attachment available as uploaded file metadata only.]"
+                )
             else:
                 body = payload.decode("utf-8", errors="replace")
                 available_content = remaining - len(header)
@@ -3806,6 +3840,52 @@ class SkillManagementService:
                 ".yml",
             )
         )
+
+    @staticmethod
+    def _model_supports_vision(model_instance: Any) -> bool:
+        try:
+            model_schema = model_instance.get_model_schema()
+        except Exception:
+            return False
+        return bool(model_schema and model_schema.features and ModelFeature.VISION in model_schema.features)
+
+    @staticmethod
+    def _assistant_error_message(exc: Exception, *, fallback: str) -> str:
+        """Expose a bounded provider error without returning a traceback to the client."""
+        description = getattr(exc, "description", None)
+        message = description if isinstance(description, str) and description.strip() else str(exc)
+        message = message.strip()
+        if message.startswith("[models] "):
+            message = message.removeprefix("[models] ").strip()
+        return message[:500] if message else fallback
+
+    @classmethod
+    def _build_assistant_image_contents(
+        cls,
+        *,
+        tenant_id: str,
+        attachments: list[SkillAssistAttachmentPayload],
+    ) -> list[ImagePromptMessageContent]:
+        contents: list[ImagePromptMessageContent] = []
+        for attachment in attachments:
+            mime_type = attachment.mime_type or cls._guess_mime_type(attachment.name)
+            if not mime_type.startswith("image/"):
+                continue
+
+            payload = cls._load_assistant_tool_file_bytes(
+                tenant_id=tenant_id,
+                file_id=attachment.tool_file_id,
+            )
+            extension = posixpath.splitext(attachment.name)[1].lstrip(".") or mime_type.split("/", 1)[1]
+            contents.append(
+                ImagePromptMessageContent(
+                    format=extension,
+                    base64_data=b64encode(payload).decode("ascii"),
+                    mime_type=mime_type,
+                    filename=attachment.name,
+                )
+            )
+        return contents
 
     @staticmethod
     def _load_draft_tool_file_bytes(*, tenant_id: str, file_id: str) -> bytes:
