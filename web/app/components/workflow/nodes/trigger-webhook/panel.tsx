@@ -123,7 +123,13 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({ id, data }) => {
   const { availableVars: upstreamVars, availableNodes: upstreamNodes } = useAvailableVarList(id, {
     onlyLeafNodeVar: false,
     filterVar: (varPayload: Var) => {
-      return [VarType.string, VarType.number, VarType.secret, VarType.arrayNumber, VarType.arrayString].includes(varPayload.type)
+      return [
+        VarType.string,
+        VarType.number,
+        VarType.secret,
+        VarType.arrayNumber,
+        VarType.arrayString,
+      ].includes(varPayload.type)
     },
   })
 
@@ -140,15 +146,14 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({ id, data }) => {
 
   const selfOutputVars: NodeOutPutVar = useMemo(() => {
     const sourceVars = (inputs.variables || []).filter(
-      v => typeof v.label === 'string' && typeof v.variable === 'string',
+      (v) => typeof v.label === 'string' && typeof v.variable === 'string',
     )
 
     // Group variables by their source label
     const groups: Record<string, Var[]> = {}
     sourceVars.forEach((v) => {
-      const groupName = labelToGroupName[v.label as string] || v.label as string
-      if (!groups[groupName])
-        groups[groupName] = []
+      const groupName = labelToGroupName[v.label as string] || (v.label as string)
+      if (!groups[groupName]) groups[groupName] = []
       groups[groupName].push({
         variable: v.variable as string,
         type: (v.value_type as VarType) || VarType.string,
@@ -171,8 +176,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({ id, data }) => {
   }, [id, data.title, inputs.variables, t])
 
   const availableVars: NodeOutPutVar[] = useMemo(() => {
-    if (selfOutputVars.vars.length > 0)
-      return [selfOutputVars, ...upstreamVars]
+    if (selfOutputVars.vars.length > 0) return [selfOutputVars, ...upstreamVars]
     return upstreamVars
   }, [selfOutputVars, upstreamVars])
 
@@ -182,8 +186,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({ id, data }) => {
     const currentNode = getNodeById(id)
     if (currentNode) {
       const alreadyIncluded = upstreamNodes.some((n: Node) => n.id === id)
-      if (!alreadyIncluded)
-        return [currentNode, ...upstreamNodes]
+      if (!alreadyIncluded) return [currentNode, ...upstreamNodes]
     }
     return upstreamNodes
   }, [id, getNodeById, upstreamNodes])

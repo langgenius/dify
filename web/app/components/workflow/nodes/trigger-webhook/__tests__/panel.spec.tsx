@@ -171,15 +171,32 @@ vi.mock('@/app/components/workflow/nodes/_base/hooks/use-available-var-list', ()
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/prompt/editor', () => ({
-  default: ({ value, onChange, placeholder }: { value: string, onChange: (value: string) => void, placeholder: string }) => (
-    <textarea value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)} />
+  default: ({
+    value,
+    onChange,
+    placeholder,
+  }: {
+    value: string
+    onChange: (value: string) => void
+    placeholder: string
+  }) => (
+    <textarea value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
   ),
 }))
 
 vi.mock('@langgenius/dify-ui/number-field', () => {
   const React = require('react')
   return {
-    NumberField: ({ value, min, max, disabled, onValueChange, onValueCommitted, children, className }: any) => {
+    NumberField: ({
+      value,
+      min,
+      max,
+      disabled,
+      onValueChange,
+      onValueCommitted,
+      children,
+      className,
+    }: any) => {
       const ref = React.useRef(value)
       ref.current = value
       return (
