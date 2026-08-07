@@ -34,6 +34,9 @@ const render = (ui: ReactElement, options: RenderOptions = {}, vectorSpaceUsageU
     limit: plan.total.vectorSpace,
     usage_unknown: vectorSpaceUsageUnknown,
   })
+  queryClient.setQueryData(consoleQuery.billing.invoices.get.queryOptions().queryKey, {
+    url: 'https://billing.example.com',
+  })
   const { wrapper } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: 'CLOUD' },
     queryClient,
@@ -71,17 +74,6 @@ vi.mock('@/context/i18n', () => ({
   useGetPricingPageLanguage: () => 'en',
 }))
 
-// ─── Service mocks ──────────────────────────────────────────────────────────
-const mockRefetch = vi.fn().mockResolvedValue({ data: 'https://billing.example.com' })
-vi.mock('@/service/use-billing', () => ({
-  useBillingUrl: () => ({
-    data: 'https://billing.example.com',
-    isFetching: false,
-    refetch: mockRefetch,
-  }),
-  useBindPartnerStackInfo: () => ({ mutateAsync: vi.fn() }),
-}))
-
 vi.mock('@/service/use-education', () => ({
   useEducationVerify: () => ({
     mutateAsync: vi.fn().mockResolvedValue({ token: 'test-token' }),
@@ -95,10 +87,6 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mockRouterPush }),
   usePathname: () => '/billing',
   useSearchParams: () => new URLSearchParams(),
-}))
-
-vi.mock('@/hooks/use-async-window-open', () => ({
-  useAsyncWindowOpen: () => vi.fn(),
 }))
 
 // ─── External component mocks ───────────────────────────────────────────────
