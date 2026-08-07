@@ -1,6 +1,6 @@
 'use client'
 import type { InstalledAppResponse } from '@dify/contracts/api/console/installed-apps/types.gen'
-import * as React from 'react'
+import { useState } from 'react'
 import AppIcon from '@/app/components/base/app-icon'
 import { buildInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import ItemOperation from '@/app/components/explore/item-operation'
@@ -21,6 +21,7 @@ export default function AppNavItem({
   onTogglePin,
   onDelete,
 }: IAppNavItemProps) {
+  const [isPrefetchEnabled, setIsPrefetchEnabled] = useState(false)
   const {
     id,
     is_pinned: isPinned,
@@ -36,6 +37,9 @@ export default function AppNavItem({
     >
       <Link
         href={url}
+        prefetch={isPrefetchEnabled ? null : false}
+        onMouseEnter={() => setIsPrefetchEnabled(true)}
+        onFocus={() => setIsPrefetchEnabled(true)}
         aria-current={isSelected ? 'page' : undefined}
         aria-label={ariaLabel}
         title={name}
