@@ -8,6 +8,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import * as React from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 
@@ -20,6 +21,12 @@ type Props = Readonly<{
 
 const OperationDropdown: FC<Props> = ({ inCard, onOpenChange, onEdit, onRemove }) => {
   const { t } = useTranslation()
+
+  // Defer dialog/alert open until the menu fully closes; otherwise the
+  // dismiss from menu teardown immediately closes the just-opened overlay.
+  const handleDeferredAction = useCallback((action: () => void) => {
+    queueMicrotask(action)
+  }, [])
 
   return (
     <DropdownMenu onOpenChange={onOpenChange}>
@@ -35,7 +42,7 @@ const OperationDropdown: FC<Props> = ({ inCard, onOpenChange, onEdit, onRemove }
         <span aria-hidden className={cn('i-ri-more-fill size-4', inCard && 'size-5')} />
       </DropdownMenuTrigger>
       <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-[160px]">
-        <DropdownMenuItem onClick={onEdit}>
+        <DropdownMenuItem onClick={() => handleDeferredAction(onEdit)}>
           <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
           <div className="ml-2 system-md-regular text-text-secondary">
             {t(($) => $['mcp.operation.edit'], { ns: 'tools' })}
@@ -43,7 +50,7 @@ const OperationDropdown: FC<Props> = ({ inCard, onOpenChange, onEdit, onRemove }
         </DropdownMenuItem>
         <DropdownMenuItem
           className="data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive"
-          onClick={onRemove}
+          onClick={() => handleDeferredAction(onRemove)}
         >
           <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0 text-inherit" />
           <div className="ml-2 system-md-regular text-inherit">

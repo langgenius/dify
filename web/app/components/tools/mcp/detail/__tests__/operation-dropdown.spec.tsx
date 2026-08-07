@@ -58,21 +58,24 @@ describe('OperationDropdown', () => {
   })
 
   describe('Menu Actions', () => {
-    it('should call onEdit when edit option is clicked', () => {
+    it('should call onEdit when edit option is clicked', async () => {
       const onEdit = vi.fn()
       render(<OperationDropdown {...defaultProps} onEdit={onEdit} />)
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
       fireEvent.click(screen.getByText('tools.mcp.operation.edit'))
+      // Actions are deferred so the menu can finish closing before overlays open.
+      await Promise.resolve()
       expect(onEdit).toHaveBeenCalledTimes(1)
     })
 
-    it('should call onRemove when remove option is clicked', () => {
+    it('should call onRemove when remove option is clicked', async () => {
       const onRemove = vi.fn()
       render(<OperationDropdown {...defaultProps} onRemove={onRemove} />)
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
       fireEvent.click(screen.getByText('tools.mcp.operation.remove'))
+      await Promise.resolve()
       expect(onRemove).toHaveBeenCalledTimes(1)
     })
 
