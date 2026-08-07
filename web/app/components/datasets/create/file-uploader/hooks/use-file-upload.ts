@@ -2,11 +2,12 @@
 import type { RefObject } from 'react'
 import type { CustomFile as File, FileItem } from '@/models/datasets'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getFileUploadErrorMessage } from '@/app/components/base/file-uploader/utils'
-import { IS_CE_EDITION } from '@/config'
 import { useLocale } from '@/context/i18n'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { LanguagesSupported } from '@/i18n-config/language'
 import { upload } from '@/service/base'
 import { useFileSupportTypes, useFileUploadConfig } from '@/service/use-common'
@@ -69,6 +70,11 @@ export const useFileUpload = ({
   allowedExtensions,
 }: UseFileUploadOptions): UseFileUploadReturn => {
   const { t } = useTranslation()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
+  const isCloudEdition = deploymentEdition === 'CLOUD'
   const locale = useLocale()
 
   const [dragging, setDragging] = useState(false)
@@ -108,7 +114,10 @@ export const useFileUpload = ({
 
   const fileUploadConfig = useMemo(
     () => ({
-      file_size_limit: fileUploadConfigResponse?.file_size_limit ?? 15,
+      file_size_limit:
+        fileUploadConfigResponse?.knowledge_file_size_limit ??
+        fileUploadConfigResponse?.file_size_limit ??
+        15,
       batch_count_limit: supportBatchUpload
         ? (fileUploadConfigResponse?.batch_count_limit ?? 5)
         : 1,
@@ -219,7 +228,7 @@ export const useFileUpload = ({
       const filesCountLimit = fileUploadConfig.file_upload_limit
       if (!files.length) return false
 
-      if (files.length + fileList.length > filesCountLimit && !IS_CE_EDITION) {
+      if (files.length + fileList.length > filesCountLimit && isCloudEdition) {
         toast.error(
           t(($) => $['stepOne.uploader.validation.filesNumber'], {
             ns: 'datasetCreation',
@@ -239,7 +248,7 @@ export const useFileUpload = ({
       fileListRef.current = newFiles
       uploadMultipleFiles(preparedFiles)
     },
-    [prepareFileList, uploadMultipleFiles, t, fileList, fileUploadConfig],
+    [prepareFileList, uploadMultipleFiles, t, fileList, fileUploadConfig, isCloudEdition],
   )
 
   const traverseFileEntry = useCallback(

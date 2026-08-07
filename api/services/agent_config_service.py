@@ -16,6 +16,7 @@ from __future__ import annotations
 import io
 import urllib.parse
 import zipfile
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
 from operator import itemgetter
@@ -28,7 +29,7 @@ from sqlalchemy.exc import DataError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from core.app.file_access.controller import DatabaseFileAccessController
-from core.db.session_factory import session_factory
+from core.db.session_factory import session_factory as default_session_factory
 from core.tools.tool_file_manager import ToolFileManager
 from extensions.ext_storage import storage
 from factories import file_factory
@@ -114,18 +115,29 @@ class ConfigDownload:
 
 
 class AgentConfigService:
-    """Read and update Agent Soul-backed config assets for one version target."""
+    """Read and update Agent Soul-backed config assets for one version target.
+
+    The service owns the lifecycle of its database sessions. Callers may inject
+    a session creator for an alternate engine; production defaults to the
+    application-wide session factory.
+    """
 
     PREVIEW_MAX_BYTES = 64 * 1024
+
+    _session_factory: Callable[[], Session]
 
     def __init__(
         self,
         *,
         tool_file_manager: ToolFileManager | None = None,
         skill_normalize_service: ConfigSkillNormalizeService | None = None,
+        session_factory: Callable[[], Session] | None = None,
     ) -> None:
+        """Initialize external collaborators and the service-owned session creator."""
+
         self._tool_files = tool_file_manager or ToolFileManager()
         self._skill_normalizer = skill_normalize_service or ConfigSkillNormalizeService()
+        self._session_factory = session_factory or default_session_factory.create_session
 
     def resolve_target(
         self,
@@ -136,7 +148,7 @@ class AgentConfigService:
         config_version_kind: AgentConfigVersionKind,
         user_id: str | None = None,
     ) -> AgentConfigTarget:
-        with session_factory.create_session() as session:
+        with self._session_factory() as session:
             target = self._resolve_target_in_session(
                 session,
                 tenant_id=tenant_id,
@@ -234,7 +246,8 @@ class AgentConfigService:
             user_id=user_id,
         )
         skill = self._require_skill(target.agent_soul, name=name)
-        payload, mime_type = self._load_tool_file_bytes(tenant_id=tenant_id, file_id=skill.file_id)
+        file_id = self._available_skill_file_id(skill)
+        payload, mime_type = self._load_tool_file_bytes(tenant_id=tenant_id, file_id=file_id)
         return ConfigDownload(filename=f"{skill.name}.zip", mime_type=mime_type or "application/zip", payload=payload)
 
     def download_skill_url(
@@ -255,7 +268,8 @@ class AgentConfigService:
             user_id=user_id,
         )
         skill = self._require_skill(target.agent_soul, name=name)
-        url = self._resolve_download_url(tenant_id=tenant_id, file_kind=skill.file_kind, file_id=skill.file_id)
+        file_id = self._available_skill_file_id(skill)
+        url = self._resolve_download_url(tenant_id=tenant_id, file_kind=skill.file_kind, file_id=file_id)
         if url is None:
             raise AgentConfigServiceError("config_skill_not_found", "config skill payload is missing", status_code=404)
         return url
@@ -278,7 +292,8 @@ class AgentConfigService:
             user_id=user_id,
         )
         skill = self._require_skill(target.agent_soul, name=name)
-        archive_bytes, _mime_type = self._load_tool_file_bytes(tenant_id=tenant_id, file_id=skill.file_id)
+        file_id = self._available_skill_file_id(skill)
+        archive_bytes, _mime_type = self._load_tool_file_bytes(tenant_id=tenant_id, file_id=file_id)
         try:
             archive_items, skill_md = self._inspect_skill_archive(archive_bytes)
         except (OSError, ValueError, zipfile.BadZipFile) as exc:
@@ -314,10 +329,11 @@ class AgentConfigService:
             user_id=user_id,
         )
         skill = self._require_skill(target.agent_soul, name=name)
+        file_id = self._available_skill_file_id(skill)
         member_path = self._normalize_archive_member_path(path)
         payload = self._load_skill_archive_member(
             tenant_id=tenant_id,
-            file_id=skill.file_id,
+            file_id=file_id,
             path=member_path,
         )
         return self._preview_bytes(path=member_path, size=len(payload), payload=payload)
@@ -341,10 +357,11 @@ class AgentConfigService:
             user_id=user_id,
         )
         skill = self._require_skill(target.agent_soul, name=name)
+        file_id = self._available_skill_file_id(skill)
         member_path = self._normalize_archive_member_path(path)
         payload = self._load_skill_archive_member(
             tenant_id=tenant_id,
-            file_id=skill.file_id,
+            file_id=file_id,
             path=member_path,
         )
         return ConfigDownload(
@@ -372,10 +389,11 @@ class AgentConfigService:
             user_id=user_id,
         )
         skill = self._require_skill(target.agent_soul, name=name)
+        file_id = self._available_skill_file_id(skill)
         member_path = self._normalize_archive_member_path(path)
         self._load_skill_archive_member(
             tenant_id=tenant_id,
-            file_id=skill.file_id,
+            file_id=file_id,
             path=member_path,
         )
         return member_path
@@ -398,10 +416,11 @@ class AgentConfigService:
             user_id=user_id,
         )
         file_ref = self._require_file(target.agent_soul, name=name)
+        file_id = self._available_file_id(file_ref)
         payload, filename, mime_type = self._load_file_ref_bytes(
             tenant_id=tenant_id,
             file_kind=file_ref.file_kind,
-            file_id=file_ref.file_id,
+            file_id=file_id,
         )
         return ConfigDownload(
             filename=filename or file_ref.name, mime_type=mime_type or "application/octet-stream", payload=payload
@@ -425,7 +444,8 @@ class AgentConfigService:
             user_id=user_id,
         )
         file_ref = self._require_file(target.agent_soul, name=name)
-        url = self._resolve_download_url(tenant_id=tenant_id, file_kind=file_ref.file_kind, file_id=file_ref.file_id)
+        file_id = self._available_file_id(file_ref)
+        url = self._resolve_download_url(tenant_id=tenant_id, file_kind=file_ref.file_kind, file_id=file_id)
         if url is None:
             raise AgentConfigServiceError("config_file_not_found", "config file payload is missing", status_code=404)
         return url
@@ -486,7 +506,7 @@ class AgentConfigService:
         filename: str,
         surface: AgentConfigMutationSurface,
     ) -> dict[str, object]:
-        with session_factory.create_session() as session:
+        with self._session_factory() as session:
             target = self._resolve_target_in_session(
                 session,
                 tenant_id=tenant_id,
@@ -571,7 +591,7 @@ class AgentConfigService:
         config_version_kind: AgentConfigVersionKind,
         upload_file_id: str,
     ) -> dict[str, object]:
-        with session_factory.create_session() as session:
+        with self._session_factory() as session:
             target = self._resolve_target_in_session(
                 session,
                 tenant_id=tenant_id,
@@ -607,7 +627,7 @@ class AgentConfigService:
         payload: ConfigPushPayload,
         surface: AgentConfigMutationSurface,
     ) -> dict[str, object]:
-        with session_factory.create_session() as session:
+        with self._session_factory() as session:
             target = self._resolve_target_in_session(
                 session,
                 tenant_id=tenant_id,
@@ -660,10 +680,11 @@ class AgentConfigService:
             user_id=user_id,
         )
         file_ref = self._require_file(target.agent_soul, name=name)
+        file_id = self._available_file_id(file_ref)
         payload, filename, _mime_type = self._load_file_ref_bytes(
             tenant_id=tenant_id,
             file_kind=file_ref.file_kind,
-            file_id=file_ref.file_id,
+            file_id=file_id,
         )
         return self._preview_bytes(
             path=filename or file_ref.name, size=file_ref.size, payload=payload, field_name="name"
@@ -700,7 +721,7 @@ class AgentConfigService:
         env_text: str,
         surface: AgentConfigMutationSurface,
     ) -> dict[str, object]:
-        with session_factory.create_session() as session:
+        with self._session_factory() as session:
             target = self._resolve_target_in_session(
                 session,
                 tenant_id=tenant_id,
@@ -747,7 +768,7 @@ class AgentConfigService:
         note: str,
         surface: AgentConfigMutationSurface,
     ) -> dict[str, object]:
-        with session_factory.create_session() as session:
+        with self._session_factory() as session:
             target = self._resolve_target_in_session(
                 session,
                 tenant_id=tenant_id,
@@ -1154,6 +1175,7 @@ class AgentConfigService:
             "id": skill.name,
             "name": skill.name,
             "file_id": skill.file_id,
+            "is_missing": skill.is_missing,
             "description": skill.description,
             "size": skill.size,
             "hash": skill.hash,
@@ -1166,6 +1188,7 @@ class AgentConfigService:
             "id": file_ref.name,
             "name": file_ref.name,
             "file_id": file_ref.file_id,
+            "is_missing": file_ref.is_missing,
             "size": file_ref.size,
             "hash": file_ref.hash,
             "mime_type": file_ref.mime_type,
@@ -1284,6 +1307,12 @@ class AgentConfigService:
         normalized = validate_config_skill_name(name)
         for item in agent_soul.config_skills:
             if item.name == normalized:
+                if item.is_missing or not item.file_id:
+                    raise AgentConfigServiceError(
+                        "config_skill_missing",
+                        "config skill must be uploaded before it can be used",
+                        status_code=409,
+                    )
                 return item
         raise AgentConfigServiceError("config_skill_not_found", "config skill not found", status_code=404)
 
@@ -1292,11 +1321,37 @@ class AgentConfigService:
         normalized = validate_config_name(name)
         for item in agent_soul.config_files:
             if item.name == normalized:
+                if item.is_missing or not item.file_id:
+                    raise AgentConfigServiceError(
+                        "config_file_missing",
+                        "config file must be uploaded before it can be used",
+                        status_code=409,
+                    )
                 return item
         raise AgentConfigServiceError("config_file_not_found", "config file not found", status_code=404)
 
+    @staticmethod
+    def _available_skill_file_id(skill: AgentConfigSkillRefConfig) -> str:
+        if skill.is_missing or not skill.file_id:
+            raise AgentConfigServiceError(
+                "config_skill_missing",
+                "config skill must be uploaded before it can be used",
+                status_code=409,
+            )
+        return skill.file_id
+
+    @staticmethod
+    def _available_file_id(file_ref: AgentConfigFileRefConfig) -> str:
+        if file_ref.is_missing or not file_ref.file_id:
+            raise AgentConfigServiceError(
+                "config_file_missing",
+                "config file must be uploaded before it can be used",
+                status_code=409,
+            )
+        return file_ref.file_id
+
     def _load_tool_file_bytes(self, *, tenant_id: str, file_id: str) -> tuple[bytes, str | None]:
-        with session_factory.create_session() as session:
+        with self._session_factory() as session:
             tool_file = session.scalar(select(ToolFile).where(ToolFile.id == file_id, ToolFile.tenant_id == tenant_id))
         if tool_file is None:
             raise AgentConfigServiceError("config_skill_not_found", "config skill payload is missing", status_code=404)
@@ -1309,7 +1364,7 @@ class AgentConfigService:
         file_kind: Literal["upload_file", "tool_file"],
         file_id: str,
     ) -> tuple[bytes, str | None, str | None]:
-        with session_factory.create_session() as session:
+        with self._session_factory() as session:
             if file_kind == "tool_file":
                 tool_file = session.scalar(
                     select(ToolFile).where(ToolFile.id == file_id, ToolFile.tenant_id == tenant_id)

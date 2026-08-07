@@ -1,6 +1,7 @@
 import type { App } from '@/types/app'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { render } from '@/test/console/render'
 import CardView from '../card-view'
 
 const mockAppState = vi.hoisted(() => ({
@@ -16,7 +17,25 @@ const mockUpdateAppSiteStatus = vi.hoisted(() => vi.fn())
 const mockUpdateAppSiteConfig = vi.hoisted(() => vi.fn())
 const mockUpdateAppSiteAccessToken = vi.hoisted(() => vi.fn())
 const mockFetchAppDetail = vi.hoisted(() => vi.fn())
-const mockSetQueryData = vi.hoisted(() => vi.fn())
+const mockInvalidateQueries = vi.hoisted(() => vi.fn())
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQueryClient: () => ({ invalidateQueries: mockInvalidateQueries }),
+  }
+})
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    apps: {
+      get: { key: () => ['console', 'apps', 'get'] },
+      starred: { get: { key: () => ['console', 'apps', 'starred', 'get'] } },
+      recent: { get: { key: () => ['console', 'apps', 'recent', 'get'] } },
+    },
+  },
+}))
 
 vi.mock('@/app/components/app/store', () => ({
   useStore: <T,>(selector: (state: typeof mockAppState) => T): T => selector(mockAppState),
@@ -33,68 +52,29 @@ vi.mock('@/service/apps', () => ({
   updateAppSiteAccessToken: (...args: unknown[]) => mockUpdateAppSiteAccessToken(...args),
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-
-  return {
-    ...actual,
-    useQueryClient: () => ({
-      setQueryData: mockSetQueryData,
-    }),
-  }
-})
-
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => ({
     userProfile: { id: 'user-1' },
     currentWorkspace: { id: 'workspace-1' },
     workspacePermissionKeys: mockAppState.appDetail.permission_keys,
   }))
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
     userProfile: { id: 'user-1' },
     currentWorkspace: { id: 'workspace-1' },
     workspacePermissionKeys: mockAppState.appDetail.permission_keys,
   }))
 })
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     userProfile: { id: 'user-1' },
     currentWorkspace: { id: 'workspace-1' },
     workspacePermissionKeys: mockAppState.appDetail.permission_keys,
   }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: { id: 'user-1' },
-    currentWorkspace: { id: 'workspace-1' },
-    workspacePermissionKeys: mockAppState.appDetail.permission_keys,
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: { id: 'user-1' },
-    currentWorkspace: { id: 'workspace-1' },
-    workspacePermissionKeys: mockAppState.appDetail.permission_keys,
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', () => ({
@@ -215,40 +195,19 @@ describe('CardView ACL edit guards', () => {
       expect(mockUpdateAppSiteAccessToken).toHaveBeenCalledWith({
         url: '/apps/app-1/site/access-token-reset',
       })
+      expect(mockInvalidateQueries).toHaveBeenCalledWith({
+        queryKey: ['console', 'apps', 'get'],
+      })
+      expect(mockInvalidateQueries).toHaveBeenCalledWith({
+        queryKey: ['console', 'apps', 'starred', 'get'],
+      })
+      expect(mockInvalidateQueries).toHaveBeenCalledWith({
+        queryKey: ['console', 'apps', 'recent', 'get'],
+      })
       await waitFor(() => {
         expect(mockFetchAppDetail).toHaveBeenCalled()
       })
       expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
-      expect(mockSetQueryData).toHaveBeenCalledWith(
-        ['apps', 'detail', 'app-1'],
-        expect.objectContaining({
-          site: expect.objectContaining({ title: 'Saved site title' }),
-        }),
-      )
-      expect(mockAppState.setAppDetail).toHaveBeenCalledWith(
-        expect.objectContaining({
-          site: expect.objectContaining({ title: 'Saved site title' }),
-        }),
-      )
-    })
-
-    it('should refresh the Zustand app detail after saving webapp settings', async () => {
-      const user = userEvent.setup()
-      mockAppState.appDetail.permission_keys = ['app.acl.edit']
-
-      render(<CardView appId="app-1" />)
-
-      await user.click(screen.getByRole('button', { name: /save webapp/ }))
-
-      await waitFor(() => {
-        expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
-      })
-      expect(mockSetQueryData).toHaveBeenCalledWith(
-        ['apps', 'detail', 'app-1'],
-        expect.objectContaining({
-          site: expect.objectContaining({ title: 'Saved site title' }),
-        }),
-      )
       expect(mockAppState.setAppDetail).toHaveBeenCalledWith(
         expect.objectContaining({
           site: expect.objectContaining({ title: 'Saved site title' }),

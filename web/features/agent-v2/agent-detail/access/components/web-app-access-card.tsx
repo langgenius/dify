@@ -17,6 +17,7 @@ import { AccessMode } from '@/models/access-control'
 import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
 import { accessSurfaceActionClassName, AccessSurfaceCard } from './access-surface-card'
+import { WebAppAccessControlButton } from './web-app-access-control-button'
 
 export function WebAppAccessCard({
   agent,
@@ -38,7 +39,8 @@ export function WebAppAccessCard({
     site?.app_base_url || (typeof window === 'undefined' ? '' : window.location.origin)
   const webAppUrl = getAgentWebAppUrl(agent)
   const isEnabled = Boolean(agent?.enable_site)
-  const canManageWebApp = Boolean(appId)
+  const accessReady = Boolean(agent?.access_ready)
+  const canManageWebApp = Boolean(appId && accessReady)
   const embeddedConfig =
     appId && accessToken
       ? {
@@ -231,7 +233,7 @@ export function WebAppAccessCard({
           {t(($) => $['agentDetail.access.webApp.actions.launch'])}
         </a>
       ) : (
-        <Button variant="secondary" size="medium" className="gap-1.5 px-3" disabled>
+        <Button variant="secondary" size="medium" className="px-3" disabled>
           <span aria-hidden className="i-ri-external-link-line size-4" />
           {t(($) => $['agentDetail.access.webApp.actions.launch'])}
         </Button>
@@ -239,7 +241,7 @@ export function WebAppAccessCard({
       <Button
         variant="secondary"
         size="medium"
-        className="gap-1.5 px-3"
+        className="px-3"
         disabled={!embeddedConfig}
         onClick={() => setShowEmbeddedModal(true)}
       >
@@ -249,7 +251,7 @@ export function WebAppAccessCard({
       <Button
         variant="secondary"
         size="medium"
-        className="gap-1.5 px-3"
+        className="px-3"
         disabled={!customizeConfig}
         onClick={() => setShowCustomizeModal(true)}
       >
@@ -259,13 +261,14 @@ export function WebAppAccessCard({
       <Button
         variant="secondary"
         size="medium"
-        className="gap-1.5 px-3"
+        className="px-3"
         disabled={!settingsAppInfo || updateSiteMutation.isPending}
         onClick={() => setShowSettingsModal(true)}
       >
         <span aria-hidden className="i-ri-palette-line size-4" />
         {t(($) => $['agentDetail.access.webApp.actions.settings'])}
       </Button>
+      <WebAppAccessControlButton agent={agent} />
       {settingsAppInfo && (
         <SettingsModal
           isChat

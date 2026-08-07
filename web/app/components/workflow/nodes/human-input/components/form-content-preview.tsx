@@ -1,5 +1,4 @@
 'use client'
-import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { FC } from 'react'
 import type { FormInputItem, UserAction } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
@@ -61,12 +60,12 @@ const FormContentPreview: FC<FormContentPreviewProps> = ({
 
   return (
     <div
-      className="fixed top-[112px] z-10 max-h-[calc(100vh-116px)] w-[600px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg py-3 shadow-xl"
+      className="fixed top-28 z-10 max-h-[calc(100vh-116px)] w-150 rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg py-3 shadow-xl"
       style={{
         right: panelWidth + 8,
       }}
     >
-      <div className="flex h-[26px] items-center justify-between px-4">
+      <div className="flex h-6.5 items-center justify-between px-4">
         <Badge uppercase className="border-text-accent-secondary text-text-accent-secondary">
           {t(($) => $[`${i18nPrefix}.formContent.preview`], { ns: 'workflow' })}
         </Badge>
@@ -94,10 +93,7 @@ const FormContentPreview: FC<FormContentPreviewProps> = ({
         />
         <div className="mt-3 flex flex-wrap gap-1 py-1">
           {userActions.map((action: UserAction) => (
-            <Button
-              key={action.id}
-              variant={getButtonStyle(action.button_style) as ButtonProps['variant']}
-            >
+            <Button key={action.id} variant={getButtonStyle(action.button_style)}>
               {action.title}
             </Button>
           ))}

@@ -19,6 +19,7 @@ export type TenantInfoResponse = {
   role?: string | null
   status?: string | null
   trial_credits?: number | null
+  trial_credits_exhausted_at?: number | null
   trial_credits_used?: number | null
   trial_end_reason?: string | null
 }
@@ -90,6 +91,7 @@ export type SnippetImportResponse = {
   imported_dsl_version: string
   snippet_id: string | null
   status: ImportStatus
+  warnings: Array<DslImportWarning>
 }
 
 export type UpdateSnippetPayload = {
@@ -161,15 +163,31 @@ export type EndpointUpdatePayload = {
 }
 
 export type MemberInvitePayload = {
-  emails?: Array<string>
+  emails: Array<string>
   language?: string | null
   role: string
 }
 
 export type MemberInviteResponse = {
-  invitation_results: Array<MemberInviteResultResponse>
-  result: string
+  invitation_results: Array<
+    | ({
+        status: 'success'
+      } & MemberInviteSuccessResponse)
+    | ({
+        status: 'already_member'
+      } & MemberInviteAlreadyMemberResponse)
+    | ({
+        status: 'failed'
+      } & MemberInviteFailedResponse)
+  >
+  result: 'success'
   tenant_id: string
+}
+
+export type MemberInviteErrorResponse = {
+  code: 'invalid_param' | 'invalid_role' | 'limit_exceeded'
+  message: string
+  status: 400
 }
 
 export type OwnerTransferCheckPayload = {
@@ -207,6 +225,24 @@ export type MemberRoleUpdatePayload = {
 
 export type ModelProviderListResponse = {
   data: Array<ProviderResponse>
+}
+
+export type ModelProviderCreditsResponse = {
+  exhausted_at: number | null
+  is_exhausted: boolean
+  is_unlimited: boolean
+  next_credit_reset_date: number | null
+  pool_type: 'paid' | 'trial' | null
+  quota_limit: number | null
+  quota_used: number | null
+  remaining_credits: number | null
+}
+
+export type ModelProviderSummaryListResponse = {
+  data: Array<ModelProviderSummaryResponse>
+  plugins: {
+    [key: string]: ModelProviderPluginSummaryResponse
+  }
 }
 
 export type ModelProviderPaymentCheckoutUrlResponse = {
@@ -399,6 +435,10 @@ export type ParserPluginIdentifiers = {
   plugin_unique_identifiers: Array<string>
 }
 
+export type PluginInstalledIdsResponse = {
+  plugin_ids: Array<string>
+}
+
 export type PluginListResponse = {
   plugins: Array<PluginEntity>
   total: number
@@ -457,6 +497,7 @@ export type PluginTaskResponse = {
 
 export type ParserUninstall = {
   plugin_installation_id: string
+  preserve_credentials?: boolean
 }
 
 export type ParserGithubUpgrade = {
@@ -1077,6 +1118,15 @@ export type SnippetType = 'group' | 'node'
 
 export type ImportStatus = 'completed' | 'completed-with-warnings' | 'failed' | 'pending'
 
+export type DslImportWarning = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  path: string
+}
+
 export type PluginDependency = {
   current_identifier?: string | null
   type: PluginDependencyType
@@ -1128,11 +1178,22 @@ export type EndpointListItemResponse = {
   url: string
 }
 
-export type MemberInviteResultResponse = {
+export type MemberInviteSuccessResponse = {
   email: string
-  message?: string | null
-  status: string
-  url?: string | null
+  status: 'success'
+  url: string
+}
+
+export type MemberInviteAlreadyMemberResponse = {
+  email: string
+  message: string
+  status: 'already_member'
+}
+
+export type MemberInviteFailedResponse = {
+  email: string
+  message: string
+  status: 'failed'
 }
 
 export type ProviderResponse = {
@@ -1151,6 +1212,30 @@ export type ProviderResponse = {
   supported_model_types: Array<ModelType>
   system_configuration: SystemConfigurationResponse
   tenant_id: string
+}
+
+export type ModelProviderSummaryResponse = {
+  configurate_methods: Array<ConfigurateMethod>
+  custom_configuration: ModelProviderCustomConfigurationSummaryResponse
+  description?: I18nObject | null
+  icon_small?: I18nObject | null
+  icon_small_dark?: I18nObject | null
+  is_configured: boolean
+  label: I18nObject
+  plugin_id: string
+  preferred_provider_type: ProviderType
+  provider: string
+  supported_model_types: Array<ModelType>
+  system_configuration: ModelProviderSystemConfigurationSummaryResponse
+}
+
+export type ModelProviderPluginSummaryResponse = {
+  installation_id: string
+  plugin_id: string
+  plugin_unique_identifier: string
+  runtime_type: string
+  source: PluginInstallationSource
+  version: string
 }
 
 export type ModelType = 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
@@ -1691,6 +1776,21 @@ export type SystemConfigurationResponse = {
   quota_configurations?: Array<QuotaConfiguration>
 }
 
+export type ModelProviderCustomConfigurationSummaryResponse = {
+  available_credentials: Array<CredentialConfiguration>
+  current_credential_id?: string | null
+  current_credential_name?: string | null
+  current_credential_usable: boolean
+  has_custom_models: boolean
+  status: CustomConfigurationStatus
+}
+
+export type ModelProviderSystemConfigurationSummaryResponse = {
+  enabled: boolean
+}
+
+export type PluginInstallationSource = 'github' | 'marketplace' | 'package' | 'remote'
+
 export type ModelFeature =
   | 'agent-thought'
   | 'audio'
@@ -1861,8 +1961,6 @@ export type PluginInstallTaskPluginStatus = {
 
 export type PluginInstallTaskStatus = 'failed' | 'pending' | 'running' | 'success'
 
-export type PluginInstallationSource = 'github' | 'marketplace' | 'package' | 'remote'
-
 export type PluginDeclarationResponse = {
   agent_strategy?: {
     [key: string]: unknown
@@ -1961,6 +2059,7 @@ export type ToolParameter = {
   llm_description?: string | null
   max?: number | number | null
   min?: number | number | null
+  multiple?: boolean
   name: string
   options?: Array<PluginParameterOption>
   placeholder?: I18nObject | null
@@ -2883,6 +2982,13 @@ export type PostWorkspacesCurrentMembersInviteEmailData = {
   url: '/workspaces/current/members/invite-email'
 }
 
+export type PostWorkspacesCurrentMembersInviteEmailErrors = {
+  400: MemberInviteErrorResponse
+}
+
+export type PostWorkspacesCurrentMembersInviteEmailError =
+  PostWorkspacesCurrentMembersInviteEmailErrors[keyof PostWorkspacesCurrentMembersInviteEmailErrors]
+
 export type PostWorkspacesCurrentMembersInviteEmailResponses = {
   201: MemberInviteResponse
 }
@@ -2981,6 +3087,34 @@ export type GetWorkspacesCurrentModelProvidersResponses = {
 
 export type GetWorkspacesCurrentModelProvidersResponse =
   GetWorkspacesCurrentModelProvidersResponses[keyof GetWorkspacesCurrentModelProvidersResponses]
+
+export type GetWorkspacesCurrentModelProvidersCreditsData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/model-providers/credits'
+}
+
+export type GetWorkspacesCurrentModelProvidersCreditsResponses = {
+  200: ModelProviderCreditsResponse
+}
+
+export type GetWorkspacesCurrentModelProvidersCreditsResponse =
+  GetWorkspacesCurrentModelProvidersCreditsResponses[keyof GetWorkspacesCurrentModelProvidersCreditsResponses]
+
+export type GetWorkspacesCurrentModelProvidersSummaryData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/model-providers/summary'
+}
+
+export type GetWorkspacesCurrentModelProvidersSummaryResponses = {
+  200: ModelProviderSummaryListResponse
+}
+
+export type GetWorkspacesCurrentModelProvidersSummaryResponse =
+  GetWorkspacesCurrentModelProvidersSummaryResponses[keyof GetWorkspacesCurrentModelProvidersSummaryResponses]
 
 export type GetWorkspacesCurrentModelProvidersByProviderCheckoutUrlData = {
   body?: never
@@ -3528,6 +3662,22 @@ export type PostWorkspacesCurrentPluginInstallPkgResponses = {
 export type PostWorkspacesCurrentPluginInstallPkgResponse =
   PostWorkspacesCurrentPluginInstallPkgResponses[keyof PostWorkspacesCurrentPluginInstallPkgResponses]
 
+export type GetWorkspacesCurrentPluginInstalledIdsData = {
+  body?: never
+  path?: never
+  query: {
+    category: 'agent-strategy' | 'datasource' | 'extension' | 'model' | 'tool' | 'trigger'
+  }
+  url: '/workspaces/current/plugin/installed-ids'
+}
+
+export type GetWorkspacesCurrentPluginInstalledIdsResponses = {
+  200: PluginInstalledIdsResponse
+}
+
+export type GetWorkspacesCurrentPluginInstalledIdsResponse =
+  GetWorkspacesCurrentPluginInstalledIdsResponses[keyof GetWorkspacesCurrentPluginInstalledIdsResponses]
+
 export type GetWorkspacesCurrentPluginListData = {
   body?: never
   path?: never
@@ -3820,7 +3970,9 @@ export type PostWorkspacesCurrentPluginUploadGithubResponse =
   PostWorkspacesCurrentPluginUploadGithubResponses[keyof PostWorkspacesCurrentPluginUploadGithubResponses]
 
 export type PostWorkspacesCurrentPluginUploadPkgData = {
-  body?: never
+  body: {
+    pkg: Blob | File
+  }
   path?: never
   query?: never
   url: '/workspaces/current/plugin/upload/pkg'
@@ -3839,8 +3991,11 @@ export type GetWorkspacesCurrentPluginByCategoryListData = {
     category: string
   }
   query?: {
+    language?: 'en_US' | 'ja_JP' | 'pt_BR' | 'zh_Hans'
     page?: number
     page_size?: number
+    query?: string
+    tags?: Array<string>
   }
   url: '/workspaces/current/plugin/{category}/list'
 }

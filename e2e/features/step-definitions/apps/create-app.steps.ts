@@ -1,8 +1,24 @@
 import type { DifyWorld } from '../../support/world'
 import { Then, When } from '@cucumber/cucumber'
+import { zPostAppsResponse } from '@dify/contracts/api/console/apps/zod.gen'
 import { expect } from '@playwright/test'
 import { openBlankAppCreation } from '../../../support/apps'
 import { createE2EResourceName } from '../../../support/naming'
+
+const appModeByType: Record<string, string> = {
+  Agent: 'agent-chat',
+  Chatbot: 'chat',
+  Chatflow: 'advanced-chat',
+  'Text Generator': 'completion',
+  Workflow: 'workflow',
+}
+
+const getLatestCreatedAppId = (world: DifyWorld) => {
+  const appId = world.createdAppIds.at(-1)
+  if (!appId) throw new Error('No created app ID was recorded from the UI response.')
+
+  return appId
+}
 
 When('I start creating a blank app', async function (this: DifyWorld) {
   await openBlankAppCreation(this.getPage())
@@ -15,25 +31,38 @@ When('I enter a unique E2E app name', async function (this: DifyWorld) {
 })
 
 When('I confirm app creation', async function (this: DifyWorld) {
-  const createButton = this.getPage()
-    .getByRole('button', { name: /^Create(?:\s|$)/ })
-    .last()
+  const page = this.getPage()
+  const createButton = page.getByRole('dialog').getByRole('button', { name: /^Create(?:\s|$)/ })
+  const responsePromise = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      new URL(response.url()).pathname.endsWith('/console/api/apps'),
+  )
 
   await expect(createButton).toBeEnabled()
   await createButton.click()
+
+  const response = await responsePromise
+  expect(response.ok()).toBe(true)
+  const createdApp = zPostAppsResponse.parse(await response.json())
+  if (!createdApp.id) throw new Error('Create app response did not include an app ID.')
+
+  const expectedMode = this.lastSelectedAppType
+    ? appModeByType[this.lastSelectedAppType]
+    : undefined
+  if (expectedMode) expect(createdApp.mode).toBe(expectedMode)
+  this.createdAppIds.push(createdApp.id)
 })
 
 When('I select the {string} app type', async function (this: DifyWorld, appType: string) {
   const dialog = this.getPage().getByRole('dialog')
-  // The modal defaults to ADVANCED_CHAT, so the preview panel immediately renders
-  // <h4>Chatflow</h4> alongside the card's <div>Chatflow</div>.
-  // locator('div').getByText(...) would still match the <h4> because getByText
-  // searches inside each div for any descendant. Use :text-is() instead, which
-  // targets only <div> elements whose own normalised text equals appType exactly.
-  const appTypeCard = dialog.locator(`div:text-is("${appType}")`)
+  const appTypeCard = dialog.getByRole('button', {
+    name: new RegExp(`^${appType.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`),
+  })
 
   await expect(appTypeCard).toBeVisible()
   await appTypeCard.click()
+  this.lastSelectedAppType = appType
 })
 
 When('I expand the beginner app types', async function (this: DifyWorld) {
@@ -45,13 +74,18 @@ When('I expand the beginner app types', async function (this: DifyWorld) {
 })
 
 Then('I should land on the app editor', async function (this: DifyWorld) {
-  await expect(this.getPage()).toHaveURL(/\/app\/[^/]+\/(workflow|configuration)(?:\?.*)?$/)
+  const appId = getLatestCreatedAppId(this)
+  await expect(this.getPage()).toHaveURL(
+    new RegExp(`/app/${appId}/(workflow|configuration)(?:\\?.*)?$`),
+  )
 })
 
 Then('I should land on the workflow editor', async function (this: DifyWorld) {
-  await expect(this.getPage()).toHaveURL(/\/app\/[^/]+\/workflow(?:\?.*)?$/)
+  const appId = getLatestCreatedAppId(this)
+  await expect(this.getPage()).toHaveURL(new RegExp(`/app/${appId}/workflow(?:\\?.*)?$`))
 })
 
 Then('I should land on the app configuration page', async function (this: DifyWorld) {
-  await expect(this.getPage()).toHaveURL(/\/app\/[^/]+\/configuration(?:\?.*)?$/)
+  const appId = getLatestCreatedAppId(this)
+  await expect(this.getPage()).toHaveURL(new RegExp(`/app/${appId}/configuration(?:\\?.*)?$`))
 })

@@ -280,6 +280,7 @@ export const createWorkflowStreamHandlers = ({
   taskId,
 }: CreateWorkflowStreamHandlersParams): IOtherOptions => {
   let tempMessageId = ''
+  let hasStartedResumeStream = false
 
   const finishWithFailure = () => {
     setRespondingFalse()
@@ -341,15 +342,25 @@ export const createWorkflowStreamHandlers = ({
       setWorkflowProcessData(finishWorkflowNode(getWorkflowProcessData(), data))
     },
     onWorkflowFinished: ({ data }) => {
+      const workflowStatus = data.status as WorkflowRunningStatus | undefined
       if (isTimedOut()) {
+        const finishedStatus =
+          workflowStatus === WorkflowRunningStatus.Stopped
+            ? WorkflowRunningStatus.Stopped
+            : workflowStatus === WorkflowRunningStatus.Failed || data.error
+              ? WorkflowRunningStatus.Failed
+              : WorkflowRunningStatus.Succeeded
+        setWorkflowProcessData(
+          applyWorkflowFinishedState(getWorkflowProcessData(), finishedStatus, data.error),
+        )
         notify({
           type: 'warning',
           message: t(($) => $['warningMessage.timeoutExceeded'], { ns: 'appDebug' }),
         })
+        markEnded()
         return
       }
 
-      const workflowStatus = data.status as WorkflowRunningStatus | undefined
       if (workflowStatus === WorkflowRunningStatus.Stopped) {
         setWorkflowProcessData(
           applyWorkflowFinishedState(
@@ -410,8 +421,14 @@ export const createWorkflowStreamHandlers = ({
     },
     onWorkflowPaused: ({ data }) => {
       tempMessageId = data.workflow_run_id
-      // WebApp workflows must keep using the public API namespace after pause/resume.
-      void sseGet(`/workflow/${data.workflow_run_id}/events`, {}, otherOptions)
+      if (!hasStartedResumeStream) {
+        hasStartedResumeStream = true
+        void sseGet(
+          `/workflow/${data.workflow_run_id}/events?include_state_snapshot=true&continue_on_pause=true`,
+          {},
+          otherOptions,
+        )
+      }
       setWorkflowProcessData(applyWorkflowPaused(getWorkflowProcessData()))
     },
   }

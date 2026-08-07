@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
+from configs import dify_config
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.app.wraps import with_session
@@ -23,6 +24,7 @@ from controllers.service_api.app.error import (
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
+    WorkflowVersionExecutionNotAllowedError,
 )
 from controllers.service_api.schema import (
     InputFileList,
@@ -40,13 +42,14 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from core.helper.trace_id_helper import get_external_trace_id, get_trace_session_id, omit_trace_session_id_from_payload
-from extensions.ext_database import db
+from enums.cloud_plan import CloudPlan
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import UUIDStrOrEmpty
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
+from services.billing_service import BillingService
 from services.conversation_service import ConversationService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
@@ -331,6 +334,10 @@ class ChatApi(Resource):
                 "- `model_currently_not_support` : Current model unavailable.\n"
                 "- `completion_request_error` : Text generation failed."
             ),
+            403: (
+                "`workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the "
+                "current plan. Upgrade to a paid plan."
+            ),
             404: "`not_found` : Conversation does not exist.",
             429: (
                 "- `too_many_requests` : Too many concurrent requests for this app.\n"
@@ -348,6 +355,7 @@ class ChatApi(Resource):
             200: "Message sent successfully",
             400: "Bad request - invalid parameters or workflow issues",
             401: "Unauthorized - invalid API token",
+            403: "Forbidden - upgrade to a paid plan to execute a specific workflow version",
             404: "Conversation or workflow not found",
             429: "Rate limit exceeded",
             500: "Internal server error",
@@ -368,6 +376,11 @@ class ChatApi(Resource):
 
         payload = ChatRequestPayload.model_validate(omit_trace_session_id_from_payload(service_api_ns.payload) or {})
 
+        if app_mode == AppMode.ADVANCED_CHAT and payload.workflow_id and dify_config.BILLING_ENABLED:
+            billing_info = BillingService.get_info(app_model.tenant_id, exclude_vector_space=True)
+            if billing_info["enabled"] and billing_info["subscription"]["plan"] == CloudPlan.SANDBOX:
+                raise WorkflowVersionExecutionNotAllowedError()
+
         external_trace_id = get_external_trace_id(request)
         args = payload.model_dump(exclude_none=True)
         trace_session_id = get_trace_session_id(request)
@@ -385,7 +398,7 @@ class ChatApi(Resource):
                     app_model=app_model,
                     conversation_id=payload.conversation_id,
                     user=end_user,
-                    session=db.session(),
+                    session=session,
                 )
 
             response = AppGenerateService.generate(

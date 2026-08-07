@@ -14,13 +14,16 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { useReducer } from 'react'
 import { useTranslation } from 'react-i18next'
+import { resolvePostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
 import { LICENSE_LINK } from '@/constants/link'
 import { languages } from '@/i18n-config/language'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { useOneMoreStep } from '@/service/use-common'
+import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { timezones } from '@/utils/timezone'
+import { basePath } from '@/utils/var'
 import Input from '../components/base/input'
 
 type IState = {
@@ -108,7 +111,7 @@ const OneMoreStep = () => {
         timezone: state.timezone,
       })
       await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
-      router.replace('/')
+      replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
     } catch (error: unknown) {
       if (hasStatus(error) && error.status === 400)
         toast.error(t(($) => $.invalidInvitationCode, { ns: 'login' }))

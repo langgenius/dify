@@ -1,3 +1,4 @@
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
 import type { ModelAndParameter } from '../../types'
 import type {
@@ -158,7 +159,13 @@ describe('ModelParameterTrigger', () => {
     })
     mockUseProviderContext.mockReturnValue(
       createMockProviderContextValue({
-        modelProviders: [createModelProvider()],
+        modelProviders: [
+          {
+            ...createModelProvider(),
+            is_configured: true,
+            plugin_id: 'langgenius/openai',
+          } as unknown as ModelProviderSummaryResponse,
+        ],
       }),
     )
     mockUseCredentialPanelState.mockReturnValue({
@@ -428,21 +435,6 @@ describe('ModelParameterTrigger', () => {
 
       await userEvent.hover(screen.getByLabelText('common.modelProvider.selector.disabled'))
       expect(await screen.findByText('common.modelProvider.selector.disabled')).toBeInTheDocument()
-    })
-
-    it('should apply expanded and warning styles when the trigger is open for a non-active status', () => {
-      const { unmount } = renderComponent()
-      const triggerContent = capturedModalProps?.renderTrigger({
-        open: true,
-        currentProvider: { provider: 'openai' },
-        currentModel: { model: 'gpt-3.5-turbo', status: ModelStatusEnum.noConfigure },
-      })
-
-      unmount()
-      const { container } = render(<>{triggerContent}</>)
-
-      expect(container.firstChild).toHaveClass('bg-state-base-hover')
-      expect(container.firstChild).toHaveClass('bg-[#FFFAEB]!')
     })
   })
 

@@ -72,6 +72,7 @@ export type ICurrentWorkspace = Omit<IWorkspace, 'current'> & {
   providers: Provider[]
   trial_credits: number
   trial_credits_used: number
+  trial_credits_exhausted_at: number
   next_credit_reset_date: number
   trial_end_reason?: string
   custom_config?: {
@@ -124,31 +125,12 @@ export type FileUploadConfigResponse = {
   single_chunk_attachment_limit: number // default is 10, for dataset attachment upload only
   attachment_image_file_size_limit: number // default is 2MB, for dataset attachment upload only
   file_size_limit: number // default is 15MB
+  knowledge_file_size_limit?: number // current workspace's knowledge upload limit in MB
   audio_file_size_limit?: number // default is 50MB
   video_file_size_limit?: number // default is 100MB
+  skill_file_size_limit?: number // default is 50MB
   workflow_file_upload_limit?: number // default is 10
   file_upload_limit: number // default is 5
-}
-
-export type InvitationResult =
-  | {
-      status: 'success'
-      email: string
-      url: string
-    }
-  | {
-      status: 'already_member'
-      email: string
-      message?: string
-    }
-  | {
-      status: 'failed'
-      email: string
-      message: string
-    }
-
-export type InvitationResponse = CommonResponse & {
-  invitation_results: InvitationResult[]
 }
 
 export type CodeBasedExtensionForm = {

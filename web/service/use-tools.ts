@@ -1,6 +1,7 @@
 import type { QueryKey, UseQueryOptions } from '@tanstack/react-query'
 import type {
   Collection,
+  CollectionProviderType,
   MCPServerDetail,
   Tool,
   WorkflowToolProviderResponse,
@@ -10,6 +11,7 @@ import type { AppIconType } from '@/types/app'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CollectionType } from '@/app/components/tools/types'
 import { del, get, post, put } from './base'
+import { consoleClient } from './client'
 import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'tools'
@@ -79,13 +81,13 @@ export const useInvalidateAllMCPTools = () => {
   return useInvalid(useAllMCPToolsKey)
 }
 
-const useInvalidToolsKeyMap: Record<string, QueryKey> = {
+const useInvalidToolsKeyMap: Partial<Record<CollectionProviderType, QueryKey>> = {
   [CollectionType.builtIn]: useAllBuiltInToolsKey,
   [CollectionType.custom]: useAllCustomToolsKey,
   [CollectionType.workflow]: useAllWorkflowToolsKey,
   [CollectionType.mcp]: useAllMCPToolsKey,
 }
-export const useInvalidToolsByType = (type?: CollectionType | string) => {
+export const useInvalidToolsByType = (type?: CollectionProviderType) => {
   const queryKey = type ? useInvalidToolsKeyMap[type] : undefined
   return useInvalid(queryKey)
 }
@@ -249,7 +251,11 @@ export const useRefreshMCPServerCode = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'refresh-mcp-server-code'],
     mutationFn: (appID: string) => {
-      return get<MCPServerDetail>(`apps/${appID}/server/refresh`)
+      return consoleClient.apps.byAppId.server.refresh.post({
+        params: {
+          app_id: appID,
+        },
+      })
     },
   })
 }

@@ -11,6 +11,7 @@ import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
+import { useSearchParams } from '@/next/navigation'
 import { useSendMail } from '@/service/use-common'
 
 type Props = {
@@ -20,6 +21,9 @@ export default function Form({ onSuccess }: Props) {
   const { t } = useTranslation()
   const [email, setEmail] = useState('')
   const locale = useLocale()
+  const searchParams = useSearchParams()
+  const queryString = searchParams.toString()
+  const signinHref = queryString ? `/signin?${queryString}` : '/signin'
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
   const { mutateAsync: submitMail, isPending } = useSendMail()
@@ -78,7 +82,7 @@ export default function Form({ onSuccess }: Props) {
 
       <div className="text-[13px] leading-4 font-medium text-text-secondary">
         <span>{t(($) => $['signup.haveAccount'], { ns: 'login' })}</span>
-        <Link className="text-text-accent" href="/signin">
+        <Link className="text-text-accent" href={signinHref}>
           {t(($) => $['signup.signIn'], { ns: 'login' })}
         </Link>
       </div>

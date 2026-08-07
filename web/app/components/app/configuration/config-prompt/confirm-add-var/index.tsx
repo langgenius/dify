@@ -51,7 +51,7 @@ const ConfirmAddVar: FC<IConfirmAddVarProps> = ({
     >
       <div
         ref={mainContentRef}
-        className="w-[420px] rounded-xl bg-components-panel-bg p-6"
+        className="w-105 rounded-xl bg-components-panel-bg p-6"
         style={{
           boxShadow:
             '0px 12px 16px -4px rgba(16, 24, 40, 0.08), 0px 4px 6px -2px rgba(16, 24, 40, 0.03)',
@@ -65,7 +65,7 @@ const ConfirmAddVar: FC<IConfirmAddVarProps> = ({
             <div className="text-sm font-medium text-text-primary">
               {t(($) => $.autoAddVar, { ns: 'appDebug' })}
             </div>
-            <div className="mt-[15px] flex max-h-[66px] flex-wrap space-x-1 overflow-y-auto px-1">
+            <div className="mt-3.75 flex max-h-16.5 flex-wrap space-x-1 overflow-y-auto px-1">
               {varNameArr.map((name) => (
                 <VarHighlight key={name} name={name} />
               ))}

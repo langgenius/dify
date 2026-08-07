@@ -4,7 +4,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import CreateSnippetDialog from '@/app/components/snippets/create-snippet-dialog'
+import { CreateSnippetDialog } from '@/app/components/snippets/create-snippet-dialog'
 import { useCreateSnippet } from '@/app/components/snippets/hooks/use-create-snippet'
 import ImportSnippetDSLDialog from '@/app/components/snippets/import-snippet-dsl-dialog'
 
@@ -29,9 +29,9 @@ const SnippetCreateButton = () => {
         <PopoverTrigger
           render={
             <Button disabled={isSubmitting}>
-              <span aria-hidden className="mr-0.5 i-ri-add-line size-4" />
+              <span aria-hidden className="i-ri-add-line size-4" />
               <span>{t(($) => $.create)}</span>
-              <span aria-hidden className="ml-0.5 i-ri-arrow-down-s-line size-4" />
+              <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
             </Button>
           }
         />

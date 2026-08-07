@@ -5,8 +5,6 @@ import { Field, FieldItem, FieldLabel } from '../../field'
 import { Fieldset, FieldsetLegend } from '../../fieldset'
 import { CheckboxGroup } from '../index'
 
-const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
-
 describe('CheckboxGroup', () => {
   it('should manage selected values and parent mixed state', async () => {
     function PermissionsDemo() {
@@ -35,7 +33,7 @@ describe('CheckboxGroup', () => {
     await expect.element(parent).toHaveAttribute('data-indeterminate', '')
     await expect.element(write).toHaveAttribute('aria-checked', 'false')
 
-    asHTMLElement(parent.element()).click()
+    await parent.click()
 
     await vi.waitFor(async () => {
       await expect.element(parent).toHaveAttribute('aria-checked', 'true')
@@ -68,7 +66,7 @@ describe('CheckboxGroup', () => {
     const analytics = screen.getByRole('checkbox', { name: 'Analytics' })
     await expect.element(analytics).toHaveAttribute('aria-checked', 'false')
 
-    asHTMLElement(analytics.element()).click()
+    await analytics.click()
 
     expect(onValueChange).toHaveBeenCalledTimes(1)
     expect(onValueChange.mock.calls[0]?.[0]).toEqual(['search', 'analytics'])

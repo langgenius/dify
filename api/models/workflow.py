@@ -25,6 +25,7 @@ from typing_extensions import deprecated
 
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
+from core.workflow.llm_environment_variable import LLMEnvironmentVariable, dump_environment_variable
 from core.workflow.nodes.human_input.pause_reason import (
     HumanInputRequired,
 )
@@ -285,12 +286,18 @@ class Workflow(Base):  # bug
         return workflow
 
     @property
-    def created_by_account(self):
-        return db.session.get(Account, self.created_by)
+    def created_by_account(self) -> Account | None:
+        return self.get_created_by_account(session=db.session())
+
+    def get_created_by_account(self, *, session: orm.Session) -> Account | None:
+        return session.get(Account, self.created_by)
 
     @property
-    def updated_by_account(self):
-        return db.session.get(Account, self.updated_by) if self.updated_by else None
+    def updated_by_account(self) -> Account | None:
+        return self.get_updated_by_account(session=db.session())
+
+    def get_updated_by_account(self, *, session: orm.Session) -> Account | None:
+        return session.get(Account, self.updated_by) if self.updated_by else None
 
     @property
     def kind_or_standard(self) -> str:
@@ -552,6 +559,9 @@ class Workflow(Base):  # bug
         "not if this specific workflow version is the one being used by the tool."
     )
     def tool_published(self) -> bool:
+        return self.get_tool_published(session=db.session())
+
+    def get_tool_published(self, *, session: orm.Session) -> bool:
         """
         DEPRECATED: This property is not accurate for determining if a workflow is published as a tool.
         It only checks if there's a WorkflowToolProvider for the app, not if this specific workflow version
@@ -567,12 +577,12 @@ class Workflow(Base):  # bug
                 WorkflowToolProvider.app_id == self.app_id,
             )
         )
-        return db.session.execute(stmt).scalar_one()
+        return session.execute(stmt).scalar_one()
 
     @property
     def environment_variables(
         self,
-    ) -> Sequence[StringVariable | IntegerVariable | FloatVariable | SecretVariable]:
+    ) -> Sequence[StringVariable | IntegerVariable | FloatVariable | SecretVariable | LLMEnvironmentVariable]:
         # Use workflow.tenant_id to avoid relying on request user in background threads
         tenant_id = self.tenant_id
 
@@ -587,21 +597,21 @@ class Workflow(Base):  # bug
         # decrypt secret variables value
         def decrypt_func(
             var: VariableBase,
-        ) -> StringVariable | IntegerVariable | FloatVariable | SecretVariable:
+        ) -> StringVariable | IntegerVariable | FloatVariable | SecretVariable | LLMEnvironmentVariable:
             match var:
                 case SecretVariable():
                     return var.model_copy(
                         update={"value": encrypter.decrypt_token(tenant_id=tenant_id, token=var.value)}
                     )
-                case StringVariable() | IntegerVariable() | FloatVariable():
+                case StringVariable() | IntegerVariable() | FloatVariable() | LLMEnvironmentVariable():
                     return var
                 case _:
                     # Other variable types are not supported for environment variables
                     raise AssertionError(f"Unexpected variable type for environment variable: {type(var)}")
 
-        decrypted_results: list[SecretVariable | StringVariable | IntegerVariable | FloatVariable] = [
-            decrypt_func(var) for var in results
-        ]
+        decrypted_results: list[
+            SecretVariable | StringVariable | IntegerVariable | FloatVariable | LLMEnvironmentVariable
+        ] = [decrypt_func(var) for var in results]
         return decrypted_results
 
     @environment_variables.setter
@@ -637,7 +647,7 @@ class Workflow(Base):  # bug
 
         encrypted_vars = list(map(encrypt_func, value))
         environment_variables_json = json.dumps(
-            {var.name: var.model_dump() for var in encrypted_vars},
+            {var.name: dump_environment_variable(var) for var in encrypted_vars},
             ensure_ascii=False,
         )
         self._environment_variables = environment_variables_json
@@ -677,7 +687,7 @@ class Workflow(Base):  # bug
         result: WorkflowContentDict = {
             "graph": self.graph_dict,
             "features": self.features_dict,
-            "environment_variables": [var.model_dump(mode="json") for var in environment_variables],
+            "environment_variables": [dump_environment_variable(var, mode="json") for var in environment_variables],
             "conversation_variables": [var.model_dump(mode="json") for var in self.conversation_variables],
             "rag_pipeline_variables": self.rag_pipeline_variables,
         }
@@ -1022,6 +1032,7 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
     node_id: Mapped[str] = mapped_column(String(255))
     node_type: Mapped[str] = mapped_column(String(255))
     title: Mapped[str] = mapped_column(String(255))
+    agent_workspace_binding_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     inputs: Mapped[str | None] = mapped_column(LongText)
     process_data: Mapped[str | None] = mapped_column(LongText)
     outputs: Mapped[str | None] = mapped_column(LongText)
@@ -1444,6 +1455,42 @@ class WorkflowArchiveLog(TypeBase):
             "elapsed_time": self.run_elapsed_time,
             "total_tokens": self.run_total_tokens,
         }
+
+
+class WorkflowRunArchiveBundle(DefaultFieldsDCMixin, TypeBase):
+    """
+    Query index for one immutable V2 workflow-run archive bundle.
+
+    R2 manifest objects remain the recoverable archive source of truth. This table stores the small subset needed to
+    list tenant/month archives and locate bundles without listing object storage online. Missing rows can be rebuilt
+    from existing manifests by a backfill/reconciliation command.
+    """
+
+    __tablename__ = "workflow_run_archive_bundles"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="workflow_run_archive_bundle_pkey"),
+        sa.UniqueConstraint(
+            "tenant_id",
+            "year",
+            "month",
+            "shard",
+            "bundle_id",
+            name="workflow_run_archive_bundle_identity_uq",
+        ),
+        sa.Index("workflow_run_archive_bundle_tenant_month_idx", "tenant_id", "year", "month"),
+        sa.Index("workflow_run_archive_bundle_month_id_idx", "year", "month", "id"),
+        sa.Index("workflow_run_archive_bundle_month_shard_id_idx", "year", "month", "shard", "id"),
+    )
+
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    year: Mapped[int] = mapped_column(sa.Integer, nullable=False)
+    month: Mapped[int] = mapped_column(sa.Integer, nullable=False)
+    shard: Mapped[str] = mapped_column(String(32), nullable=False)
+    bundle_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    workflow_run_count: Mapped[int] = mapped_column(sa.Integer, nullable=False)
+    row_count: Mapped[int] = mapped_column(sa.BigInteger, nullable=False)
+    archive_bytes: Mapped[int] = mapped_column(sa.BigInteger, nullable=False)
+    archived_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
 class ConversationVariable(TypeBase):

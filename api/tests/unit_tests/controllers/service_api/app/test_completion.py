@@ -11,6 +11,7 @@ Focus on:
 - Error types and their mappings
 """
 
+import sys
 import uuid
 from decimal import Decimal
 from inspect import unwrap
@@ -37,15 +38,18 @@ from controllers.service_api.app.error import (
     AppUnavailableError,
     ConversationCompletedError,
     NotChatAppError,
+    WorkflowVersionExecutionNotAllowedError,
 )
 from core.app.apps.agent_app.errors import AgentAppNotPublishedError
 from core.errors.error import QuotaExceededError
+from enums.cloud_plan import CloudPlan
 from graphon.model_runtime.errors.invoke import InvokeError
 from models.base import TypeBase
 from models.enums import ConversationFromSource, EndUserType
 from models.model import App, AppMode, Conversation, EndUser, IconType, Message
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
+from services.billing_service import BillingService
 from services.conversation_service import ConversationService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.conversation import ConversationNotExistsError
@@ -548,6 +552,80 @@ class TestCompletionStopApiController:
 
 
 class TestChatApiController:
+    def test_rejects_sandbox_plan_workflow_version(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch, orm_session: Session
+    ) -> None:
+        completion_module = sys.modules["controllers.service_api.app.completion"]
+        monkeypatch.setattr(completion_module.dify_config, "BILLING_ENABLED", True)
+
+        billing_get_info = Mock(return_value={"enabled": True, "subscription": {"plan": CloudPlan.SANDBOX}})
+        generate = Mock()
+        monkeypatch.setattr(BillingService, "get_info", billing_get_info)
+        monkeypatch.setattr(AppGenerateService, "generate", generate)
+
+        api = ChatApi()
+        handler = unwrap(api.post)
+        app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.ADVANCED_CHAT)
+        workflow_id = str(uuid.uuid4())
+
+        with app.test_request_context(
+            "/chat-messages",
+            method="POST",
+            json={"inputs": {}, "query": "hi", "workflow_id": workflow_id},
+        ):
+            with pytest.raises(WorkflowVersionExecutionNotAllowedError) as exc_info:
+                handler(api, session=orm_session, app_model=app_model, end_user=end_user)
+
+        billing_get_info.assert_called_once_with(app_model.tenant_id, exclude_vector_space=True)
+        generate.assert_not_called()
+        assert exc_info.value.code == 403
+        assert exc_info.value.error_code == "workflow_version_execution_not_allowed"
+
+    @pytest.mark.parametrize(
+        ("billing_config_enabled", "billing_enabled", "plan", "workflow_id"),
+        [
+            (False, True, CloudPlan.SANDBOX, str(uuid.uuid4())),
+            (True, False, CloudPlan.SANDBOX, str(uuid.uuid4())),
+            (True, True, CloudPlan.PROFESSIONAL, str(uuid.uuid4())),
+            (True, True, CloudPlan.SANDBOX, None),
+        ],
+    )
+    def test_allows_default_or_entitled_workflow_version_execution(
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        orm_session: Session,
+        billing_config_enabled: bool,
+        billing_enabled: bool,
+        plan: CloudPlan,
+        workflow_id: str | None,
+    ) -> None:
+        completion_module = sys.modules["controllers.service_api.app.completion"]
+        monkeypatch.setattr(completion_module.dify_config, "BILLING_ENABLED", billing_config_enabled)
+
+        billing_get_info = Mock(return_value={"enabled": billing_enabled, "subscription": {"plan": plan}})
+        generate = Mock(return_value={"result": "ok"})
+        monkeypatch.setattr(BillingService, "get_info", billing_get_info)
+        monkeypatch.setattr(AppGenerateService, "generate", generate)
+        monkeypatch.setattr(completion_module.helper, "compact_generate_response", lambda response: response)
+
+        api = ChatApi()
+        handler = unwrap(api.post)
+        app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.ADVANCED_CHAT)
+        request_json = {"inputs": {}, "query": "hi"}
+        if workflow_id:
+            request_json["workflow_id"] = workflow_id
+
+        with app.test_request_context("/chat-messages", method="POST", json=request_json):
+            response = handler(api, session=orm_session, app_model=app_model, end_user=end_user)
+
+        assert response == {"result": "ok"}
+        generate.assert_called_once()
+        if billing_config_enabled and workflow_id:
+            billing_get_info.assert_called_once_with(app_model.tenant_id, exclude_vector_space=True)
+        else:
+            billing_get_info.assert_not_called()
+
     def test_wrong_mode(self, app: Flask, orm_session: Session) -> None:
         api = ChatApi()
         handler = unwrap(api.post)
@@ -610,11 +688,8 @@ class TestChatApiController:
         # A well-formed but nonexistent conversation_id must fail fast as 404, before the
         # streaming generator is created. Previously the lookup only ran inside the generator,
         # so an invalid id surfaced as a hang instead of a clean error.
-        monkeypatch.setattr(
-            ConversationService,
-            "get_conversation",
-            lambda *_args, **_kwargs: (_ for _ in ()).throw(ConversationNotExistsError()),
-        )
+        get_conversation_mock = Mock(side_effect=ConversationNotExistsError())
+        monkeypatch.setattr(ConversationService, "get_conversation", get_conversation_mock)
 
         generate_mock = Mock(return_value={"text": "unused"})
         monkeypatch.setattr(AppGenerateService, "generate", generate_mock)
@@ -633,6 +708,7 @@ class TestChatApiController:
 
         # The lookup must run before generation, so the generator is never started.
         generate_mock.assert_not_called()
+        assert get_conversation_mock.call_args.kwargs["session"] is orm_session
 
 
 class TestChatStopApiController:

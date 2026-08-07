@@ -1,14 +1,35 @@
 import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
 import type { NotionPage } from '@/models/common'
 import type { CrawlOptions, CrawlResultItem, DataSet, FileItem } from '@/models/datasets'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { Plan } from '@/app/components/billing/type'
 import { DataSourceType } from '@/models/datasets'
+import { consoleQuery } from '@/service/client'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import StepOne from '../index'
 
+let mockPlan = {
+  type: Plan.professional,
+  usage: { vectorSpace: 50, buildApps: 0, documentsUploadQuota: 0, vectorStorageQuota: 0 },
+  total: { vectorSpace: 100, buildApps: 0, documentsUploadQuota: 0, vectorStorageQuota: 0 },
+}
+
+const render = (ui: React.ReactElement, vectorSpaceUsageUnknown = false) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(consoleQuery.features.vectorSpace.get.queryOptions().queryKey, {
+    size: mockPlan.usage.vectorSpace,
+    limit: mockPlan.total.vectorSpace,
+    usage_unknown: vectorSpaceUsageUnknown,
+  })
+  return renderWithConsoleQuery(ui, {
+    systemFeatures: { deployment_edition: 'CLOUD' },
+    queryClient,
+  })
+}
+
 // Mock config for website crawl features
-vi.mock('@/config', () => ({
-  IS_CLOUD_EDITION: false,
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
   ENABLE_WEBSITE_FIRECRAWL: true,
   ENABLE_WEBSITE_JINAREADER: false,
   ENABLE_WEBSITE_WATERCRAWL: false,
@@ -25,27 +46,12 @@ vi.mock('@/context/dataset-detail', () => ({
 }))
 
 // Mock provider context
-let mockPlan = {
-  type: Plan.professional,
-  usage: { vectorSpace: 50, buildApps: 0, documentsUploadQuota: 0, vectorStorageQuota: 0 },
-  total: { vectorSpace: 100, buildApps: 0, documentsUploadQuota: 0, vectorStorageQuota: 0 },
-}
 let mockEnableBilling = false
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
     plan: mockPlan,
     enableBilling: mockEnableBilling,
-  }),
-}))
-
-vi.mock('@/service/use-billing', () => ({
-  useCurrentPlanVectorSpace: () => ({
-    data: {
-      size: mockPlan.usage.vectorSpace,
-      limit: mockPlan.total.vectorSpace,
-    },
-    isFetching: false,
   }),
 }))
 
@@ -234,12 +240,6 @@ describe('StepOne', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<StepOne {...defaultProps} />)
-
-      expect(screen.getByText('datasetCreation.steps.one')).toBeInTheDocument()
-    })
-
     it('should render DataSourceTypeSelector when not editing existing dataset', () => {
       render(<StepOne {...defaultProps} />)
 
@@ -426,12 +426,11 @@ describe('StepOne', () => {
       expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
 
-    it('should show upgrade card when in sandbox plan with files', () => {
+    it('should show upgrade card immediately when in sandbox plan', () => {
       mockEnableBilling = true
       mockPlan.type = Plan.sandbox
-      const files = [createMockFileItem()]
 
-      render(<StepOne {...defaultProps} files={files} />)
+      render(<StepOne {...defaultProps} files={[]} />)
 
       expect(screen.getByTestId('upgrade-card')).toBeInTheDocument()
     })
@@ -459,6 +458,32 @@ describe('StepOne', () => {
       render(<StepOne {...defaultProps} files={files} />)
 
       expect(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i })).toBeDisabled()
+    })
+
+    it('should require sandbox users to retry when vector space usage is unknown', () => {
+      mockEnableBilling = true
+      mockPlan.type = Plan.sandbox
+      mockPlan.usage.vectorSpace = 100
+      mockPlan.total.vectorSpace = 100
+      const files = [createMockFileItem()]
+
+      render(<StepOne {...defaultProps} files={files} />, true)
+
+      expect(screen.queryByTestId('vector-space-full')).not.toBeInTheDocument()
+      expect(screen.getByRole('alert')).toHaveTextContent('billing.plansCommon.unavailable')
+      expect(screen.getByRole('button', { name: 'common.operation.retry' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i })).toBeDisabled()
+    })
+
+    it('should allow paid users to continue when vector space usage is unknown', () => {
+      mockEnableBilling = true
+      mockPlan.type = Plan.professional
+      const files = [createMockFileItem()]
+
+      render(<StepOne {...defaultProps} files={files} />, true)
+
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i })).toBeEnabled()
     })
   })
 

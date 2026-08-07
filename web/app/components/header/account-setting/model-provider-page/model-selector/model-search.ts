@@ -1,5 +1,6 @@
-import type { DefaultModel, Model, ModelItem, TypeWithI18N } from '../declarations'
-import type { ModelSelectorModelPredicate } from './types'
+import type { I18nObject } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { DefaultModel, ModelItem } from '../declarations'
+import type { ModelSelectorModelPredicate, ModelSelectorProvider } from './types'
 import Fuse from 'fuse.js'
 import { supportFunctionCall } from '@/utils/tool-call'
 import { ModelFeatureEnum } from '../declarations'
@@ -29,7 +30,7 @@ type FilterModelSelectorModelsParams = {
   aiCreditVisibleProviders: Set<string>
   defaultModel?: DefaultModel
   inputValue: string
-  installedModelList: Model[]
+  installedModelList: ModelSelectorProvider[]
   modelPredicate?: ModelSelectorModelPredicate
   scopeFeatures: ModelFeatureEnum[]
   searchIndex: ModelSelectorSearchIndex
@@ -62,10 +63,12 @@ const normalizeModelSearchValue = (value: string) =>
 
 const looksLikeModelQuery = (value: string) => /\d/.test(value)
 
-const getLabelSearchValues = (label: TypeWithI18N, language: string) => {
-  if (label[language] !== undefined) return [label[language]]
+const getLabelSearchValues = (label: I18nObject | null | undefined, language: string) => {
+  if (!label) return []
+  const localizedValue = label[language as keyof I18nObject]
+  if (localizedValue) return [localizedValue]
 
-  return Array.from(new Set(Object.values(label)))
+  return Array.from(new Set(Object.values(label).filter((value): value is string => !!value)))
 }
 
 const getProviderKeySearchValues = (provider: string) => {
@@ -87,7 +90,7 @@ const modelSupportsScopeFeatures = (modelItem: ModelItem, scopeFeatures: ModelFe
 }
 
 export const createModelSelectorSearchIndex = (
-  installedModelList: Model[],
+  installedModelList: ModelSelectorProvider[],
   language: string,
 ): ModelSelectorSearchIndex => {
   const providerEntries = installedModelList.map<ProviderSearchEntry>((model) => {
@@ -176,7 +179,7 @@ export const filterModelSelectorModels = ({
 
       return { ...model, models: filteredModels }
     })
-    .filter((model): model is Model => model !== null)
+    .filter((model): model is ModelSelectorProvider => model !== null)
 
   if (defaultModel?.provider) {
     filtered.sort((a, b) => {

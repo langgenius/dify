@@ -1,12 +1,14 @@
 import type { LoopNodeType } from './types'
 import type { OnSelectBlock } from '@/app/components/workflow/types'
-import { cn } from '@langgenius/dify-ui/cn'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiAddLine } from '@remixicon/react'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import BlockSelector from '@/app/components/workflow/block-selector'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useAvailableBlocks, useNodesInteractions, useNodesReadOnly } from '../../hooks'
+import { useAvailableBlocks } from '../../hooks/use-available-blocks'
+import { useNodesInteractions } from '../../hooks/use-nodes-interactions'
+import { useNodesReadOnly } from '../../hooks/use-workflow'
 
 type AddBlockProps = {
   loopNodeId: string
@@ -34,22 +36,15 @@ const AddBlock = ({ loopNodeData }: AddBlockProps) => {
     [handleNodeAdd, loopNodeData.start_node_id],
   )
 
-  const renderTriggerElement = useCallback(
-    (open: boolean) => {
-      return (
-        <div
-          className={cn(
-            'relative inline-flex h-8 cursor-pointer items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 system-sm-medium text-components-button-secondary-text shadow-xs backdrop-blur-[5px] hover:bg-components-button-secondary-bg-hover',
-            `${nodesReadOnly && 'cursor-not-allowed! bg-components-button-secondary-bg-disabled'}`,
-            open && 'bg-components-button-secondary-bg-hover',
-          )}
-        >
-          <RiAddLine className="mr-1 size-4" />
-          {t(($) => $['common.addBlock'], { ns: 'workflow' })}
-        </div>
-      )
-    },
-    [nodesReadOnly, t],
+  const triggerElement = (
+    <Button
+      variant="secondary"
+      size="medium"
+      className="relative data-popup-open:bg-components-button-secondary-bg-hover"
+    >
+      <RiAddLine aria-hidden className="size-4" />
+      {t(($) => $['common.addBlock'], { ns: 'workflow' })}
+    </Button>
   )
 
   return (
@@ -64,8 +59,7 @@ const AddBlock = ({ loopNodeData }: AddBlockProps) => {
           prevNodeId: loopNodeData.start_node_id,
           prevNodeSourceHandle: 'source',
         }}
-        trigger={renderTriggerElement}
-        triggerInnerClassName="inline-flex"
+        trigger={triggerElement}
         popupClassName="min-w-[256px]!"
         availableBlocksTypes={availableNextBlocks}
       />

@@ -1,13 +1,12 @@
 import type { NodeDefault, OnSelectBlock } from '../types'
-import type { BlockClassificationEnum } from './types'
+import type { BlockClassification } from './types'
 import {
   createPreviewCardHandle,
   PreviewCard,
-  PreviewCardContent,
   PreviewCardTrigger,
 } from '@langgenius/dify-ui/preview-card'
 import { groupBy } from 'es-toolkit/compat'
-import { memo, useCallback, useMemo } from 'react'
+import { Fragment, memo, useCallback, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import Badge from '@/app/components/base/badge'
@@ -16,6 +15,7 @@ import { BlockEnum } from '../types'
 import { AgentBlockItem } from './agent-selector'
 import { BLOCK_CLASSIFICATIONS } from './constants'
 import { useBlocks } from './hooks'
+import { BlockSelectorPreviewCardContent } from './preview-card'
 
 type BlocksProps = {
   searchText: string
@@ -36,7 +36,8 @@ const Blocks = ({
   const { t } = useTranslation()
   const store = useStoreApi()
   const blocksFromHooks = useBlocks()
-  const previewCardHandle = useMemo(() => createPreviewCardHandle<BlockPreviewPayload>(), [])
+  const [previewCardHandle] = useState(() => createPreviewCardHandle<BlockPreviewPayload>())
+  const previewDescriptionBaseId = useId()
 
   // Use external blocks if provided, otherwise fallback to hook-based blocks
   const blocks =
@@ -89,7 +90,7 @@ const Blocks = ({
   const isEmpty = Object.values(groups).every((list) => !list.length)
 
   const renderGroup = useCallback(
-    (classification: BlockClassificationEnum) => {
+    (classification: BlockClassification) => {
       const list = [...groups[classification]!].sort((a, b) => {
         if (a.metaData.type === BlockEnum.AgentV2) return -1
         if (b.metaData.type === BlockEnum.AgentV2) return 1
@@ -106,7 +107,7 @@ const Blocks = ({
       return (
         <div key={classification} className="mb-1 last-of-type:mb-0">
           {classification !== '-' && !!filteredList.length && (
-            <div className="flex h-[22px] items-start px-3 text-xs font-medium text-text-tertiary">
+            <div className="flex h-5.5 items-start px-3 text-xs font-medium text-text-tertiary">
               {t(($) => $[`tabs.${classification}`], { ns: 'workflow' })}
             </div>
           )}
@@ -139,50 +140,61 @@ const Blocks = ({
               )
             }
 
+            const previewDescriptionId = block.metaData.description
+              ? `${previewDescriptionBaseId}-${block.metaData.type}`
+              : undefined
+
             return (
-              <PreviewCardTrigger
-                key={block.metaData.type}
-                delay={150}
-                closeDelay={150}
-                handle={previewCardHandle}
-                payload={{ block }}
-                render={
-                  <button
-                    type="button"
-                    className="flex h-8 w-full cursor-pointer items-center rounded-lg px-3 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                    onClick={() => onSelect(block.metaData.type)}
-                  >
-                    <BlockIcon className="mr-2 shrink-0" type={block.metaData.type} />
-                    <span className="min-w-0 grow truncate text-sm text-text-secondary">
-                      {block.metaData.title}
-                    </span>
-                    {block.metaData.type === BlockEnum.LoopEnd && (
-                      <Badge
-                        text={t(($) => $['nodes.loop.loopNode'], { ns: 'workflow' })}
-                        className="ml-2 shrink-0"
-                      />
-                    )}
-                  </button>
-                }
-              />
+              <Fragment key={block.metaData.type}>
+                <PreviewCardTrigger
+                  delay={150}
+                  closeDelay={150}
+                  handle={previewCardHandle}
+                  payload={{ block }}
+                  render={
+                    <button
+                      type="button"
+                      aria-describedby={previewDescriptionId}
+                      className="flex h-8 w-full cursor-pointer items-center rounded-lg px-3 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden"
+                      onClick={() => onSelect(block.metaData.type)}
+                    >
+                      <BlockIcon className="mr-2 shrink-0" type={block.metaData.type} />
+                      <span className="min-w-0 grow truncate text-sm text-text-secondary">
+                        {block.metaData.title}
+                      </span>
+                      {block.metaData.type === BlockEnum.LoopEnd && (
+                        <Badge
+                          text={t(($) => $['nodes.loop.loopNode'], { ns: 'workflow' })}
+                          className="ml-2 shrink-0"
+                        />
+                      )}
+                    </button>
+                  }
+                />
+                {previewDescriptionId && (
+                  <span id={previewDescriptionId} className="sr-only">
+                    {block.metaData.description}
+                  </span>
+                )}
+              </Fragment>
             )
           })}
         </div>
       )
     },
-    [groups, onSelect, previewCardHandle, t, store],
+    [groups, onSelect, previewCardHandle, previewDescriptionBaseId, t, store],
   )
 
   return (
-    <div className="max-h-[480px] max-w-[500px] overflow-y-auto p-1">
+    <div className="max-h-120 max-w-125 overflow-y-auto p-1">
       {isEmpty && (
-        <div className="flex h-[22px] items-center px-3 text-xs font-medium text-text-tertiary">
+        <div className="flex h-5.5 items-center px-3 text-xs font-medium text-text-tertiary">
           {t(($) => $['tabs.noResult'], { ns: 'workflow' })}
         </div>
       )}
       {!isEmpty && BLOCK_CLASSIFICATIONS.map(renderGroup)}
       <PreviewCard handle={previewCardHandle}>
-        {({ payload }) => <BlockPreviewCard payload={payload as BlockPreviewPayload | undefined} />}
+        {({ payload }) => <BlockPreviewCard payload={payload} />}
       </PreviewCard>
     </div>
   )
@@ -198,15 +210,13 @@ function BlockPreviewCard({ payload }: BlockPreviewCardProps) {
   const { block } = payload
 
   return (
-    <PreviewCardContent placement="right" popupClassName="w-[200px] border-none px-3 py-2">
-      <div>
-        <BlockIcon size="md" className="mb-2" type={block.metaData.type} />
-        <div className="mb-1 system-md-medium text-text-primary">{block.metaData.title}</div>
-        <div className="system-xs-regular wrap-break-word text-text-tertiary">
-          {block.metaData.description}
-        </div>
+    <BlockSelectorPreviewCardContent>
+      <BlockIcon size="md" className="mb-2" type={block.metaData.type} />
+      <div className="mb-1 system-md-medium text-text-primary">{block.metaData.title}</div>
+      <div className="system-xs-regular wrap-break-word text-text-tertiary">
+        {block.metaData.description}
       </div>
-    </PreviewCardContent>
+    </BlockSelectorPreviewCardContent>
   )
 }
 

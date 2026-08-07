@@ -42,7 +42,6 @@ class TestAppService:
             mock_model_instance = mock_model_manager.return_value
             mock_model_instance.get_default_model_instance.return_value = None
             mock_model_instance.get_default_provider_model_name.return_value = ("openai", "gpt-3.5-turbo")
-
             yield {
                 "feature_service": mock_feature_service,
                 "enterprise_service": mock_enterprise_service,
@@ -191,7 +190,7 @@ class TestAppService:
         mock_current_user.current_tenant_id = account.current_tenant_id
 
         with patch("services.app_service.current_user", mock_current_user):
-            retrieved_app = app_service.get_app(created_app)
+            retrieved_app = app_service.get_app(created_app, session=db_session_with_containers)
 
         # Verify retrieved app matches created app
         assert retrieved_app.id == created_app.id
@@ -1595,13 +1594,13 @@ class TestAppService:
     def test_get_app_meta_returns_empty_when_workflow_missing(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
-        """Test get_app_meta returns empty tool_icons when workflow is None."""
+        """Test get_app_meta returns empty tool_icons when the workflow ID is absent."""
         from types import SimpleNamespace
 
         from services.app_service import AppService
 
         app_service = AppService()
-        workflow_app = SimpleNamespace(mode="workflow", workflow=None)
+        workflow_app = SimpleNamespace(mode="workflow", workflow_id=None)
 
         meta = app_service.get_app_meta(workflow_app, session=db_session_with_containers)
         assert meta == {"tool_icons": {}}
@@ -1609,13 +1608,13 @@ class TestAppService:
     def test_get_app_meta_returns_empty_when_model_config_missing(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
-        """Test get_app_meta returns empty tool_icons when app_model_config is None."""
+        """Test get_app_meta returns empty tool_icons when the model config ID is absent."""
         from types import SimpleNamespace
 
         from services.app_service import AppService
 
         app_service = AppService()
-        chat_app = SimpleNamespace(mode="chat", app_model_config=None)
+        chat_app = SimpleNamespace(mode="chat", app_model_config_id=None)
 
         meta = app_service.get_app_meta(chat_app, session=db_session_with_containers)
         assert meta == {"tool_icons": {}}

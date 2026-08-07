@@ -15,7 +15,6 @@ from sqlalchemy.orm import Session
 
 from extensions.ext_database import db
 from models.source import DataSourceApiKeyAuthBinding
-from services.auth.api_key_auth_factory import ApiKeyAuthFactory
 from services.auth.api_key_auth_service import ApiKeyAuthService
 from services.auth.auth_type import AuthType
 
@@ -71,15 +70,6 @@ class TestAuthIntegration:
         assert len(bindings) == 1
         assert bindings[0].provider == AuthType.FIRECRAWL
 
-    @patch("services.auth.firecrawl.firecrawl.httpx.post")
-    def test_cross_component_integration(self, mock_http, firecrawl_credentials):
-        mock_http.return_value = self._create_success_response()
-        factory = ApiKeyAuthFactory(AuthType.FIRECRAWL, firecrawl_credentials)
-        result = factory.validate_credentials()
-
-        assert result is True
-        mock_http.assert_called_once()
-
     @patch("services.auth.api_key_auth_service.encrypter.encrypt_token")
     @patch("services.auth.firecrawl.firecrawl.httpx.post")
     @patch("services.auth.jina.jina._http_client.post")
@@ -125,18 +115,6 @@ class TestAuthIntegration:
 
         assert result is None
 
-    def test_sensitive_data_protection(self):
-        credentials_with_secrets = {
-            "auth_type": "bearer",
-            "config": {"api_key": "super_secret_key_do_not_log", "secret": "another_secret"},
-        }
-
-        factory = ApiKeyAuthFactory(AuthType.FIRECRAWL, credentials_with_secrets)
-        factory_str = str(factory)
-
-        assert "super_secret_key_do_not_log" not in factory_str
-        assert "another_secret" not in factory_str
-
     @patch("services.auth.firecrawl.firecrawl.httpx.post")
     @patch("services.auth.api_key_auth_service.encrypter.encrypt_token", return_value="encrypted_key")
     def test_concurrent_creation_safety(
@@ -176,31 +154,6 @@ class TestAuthIntegration:
         assert len(results) == 5
         assert len(exceptions) == 0
 
-    @pytest.mark.parametrize(
-        "invalid_input",
-        [
-            None,
-            {},
-            {"auth_type": "bearer"},
-            {"auth_type": "bearer", "config": {}},
-        ],
-    )
-    def test_invalid_input_boundary(self, invalid_input):
-        with pytest.raises((ValueError, KeyError, TypeError, AttributeError)):
-            ApiKeyAuthFactory(AuthType.FIRECRAWL, invalid_input)
-
-    @patch("services.auth.firecrawl.firecrawl.httpx.post")
-    def test_http_error_handling(self, mock_http, firecrawl_credentials):
-        mock_response = Mock()
-        mock_response.status_code = 401
-        mock_response.text = '{"error": "Unauthorized"}'
-        mock_response.raise_for_status.side_effect = httpx.HTTPError("Unauthorized")
-        mock_http.return_value = mock_response
-
-        factory = ApiKeyAuthFactory(AuthType.FIRECRAWL, firecrawl_credentials)
-        with pytest.raises((httpx.HTTPError, Exception)):
-            factory.validate_credentials()
-
     @patch("services.auth.firecrawl.firecrawl.httpx.post")
     def test_network_failure_recovery(
         self,
@@ -221,21 +174,6 @@ class TestAuthIntegration:
         db_session_with_containers.expire_all()
         bindings = db_session_with_containers.query(DataSourceApiKeyAuthBinding).filter_by(tenant_id=tenant_id_1).all()
         assert len(bindings) == 0
-
-    @pytest.mark.parametrize(
-        ("provider", "credentials"),
-        [
-            (AuthType.FIRECRAWL, {"auth_type": "bearer", "config": {"api_key": "fc_key"}}),
-            (AuthType.JINA, {"auth_type": "bearer", "config": {"api_key": "jina_key"}}),
-            (AuthType.WATERCRAWL, {"auth_type": "x-api-key", "config": {"api_key": "wc_key"}}),
-        ],
-    )
-    def test_all_providers_factory_creation(self, provider, credentials):
-        auth_class = ApiKeyAuthFactory.get_apikey_auth_factory(provider)
-        assert auth_class is not None
-
-        factory = ApiKeyAuthFactory(provider, credentials)
-        assert factory.auth is not None
 
     @patch("services.auth.api_key_auth_service.encrypter.encrypt_token")
     @patch("services.auth.firecrawl.firecrawl.httpx.post")

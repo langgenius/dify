@@ -20,6 +20,7 @@ from controllers.console.datasets.external import (
 )
 from models.account import Account, TenantAccountRole
 from services.dataset_service import DatasetService
+from services.entities.external_knowledge_entities.external_knowledge_entities import ExternalDatasetCreatePayload
 from services.external_knowledge_service import ExternalDatasetService
 from services.hit_testing_service import HitTestingService
 from services.knowledge_service import ExternalDatasetTestService
@@ -62,10 +63,12 @@ def _external_api_dict(api_id: str = "api-1") -> dict:
 
 def _external_api_object(api_id: str = "api-1") -> SimpleNamespace:
     payload = _external_api_dict(api_id)
+    dataset_bindings = [SimpleNamespace(**binding) for binding in payload["dataset_bindings"]]
     return SimpleNamespace(
         **{
             **payload,
-            "dataset_bindings": [SimpleNamespace(**binding) for binding in payload["dataset_bindings"]],
+            "dataset_bindings": dataset_bindings,
+            "get_dataset_bindings": MagicMock(return_value=dataset_bindings),
         }
     )
 
@@ -161,6 +164,7 @@ class TestExternalApiTemplateListApi:
         method = inspect.unwrap(api.get)
 
         api_item = _external_api_object("api-1")
+        session = MagicMock()
 
         with (
             app.test_request_context("/?page=2&limit=1&keyword=vector"),
@@ -170,7 +174,7 @@ class TestExternalApiTemplateListApi:
                 return_value=([api_item], 3),
             ) as get_external_knowledge_apis,
         ):
-            resp, status = method(api, "tenant-1")
+            resp, status = method(api, session, "tenant-1")
 
         assert status == 200
         assert resp == {
@@ -180,7 +184,8 @@ class TestExternalApiTemplateListApi:
             "total": 3,
             "page": 2,
         }
-        get_external_knowledge_apis.assert_called_once_with(2, 1, "tenant-1", "vector")
+        api_item.get_dataset_bindings.assert_called_once_with(session=session)
+        get_external_knowledge_apis.assert_called_once_with(2, 1, "tenant-1", "vector", session=ANY)
 
     def test_post_success_uses_validated_payload_and_returns_template(self, app: Flask, current_user: Account):
         api = ExternalApiTemplateListApi()
@@ -212,6 +217,7 @@ class TestExternalApiTemplateListApi:
 
         assert status == 201
         assert resp == _external_api_dict("api-created")
+        created.get_dataset_bindings.assert_called_once_with(session=session)
         validate_api_list.assert_called_once_with(payload["settings"])
         create_external_knowledge_api.assert_called_once_with(
             tenant_id="tenant-1",
@@ -274,6 +280,7 @@ class TestExternalApiTemplateApi:
 
         assert status == 200
         assert resp == _external_api_dict("api-detail")
+        template.get_dataset_bindings.assert_called_once_with(session=session)
         get_external_knowledge_api.assert_called_once_with(
             external_knowledge_api_id="api-detail", tenant_id="tenant-1", session=session
         )
@@ -322,6 +329,7 @@ class TestExternalApiTemplateApi:
 
         assert status == 200
         assert resp == _external_api_dict("api-updated")
+        updated.get_dataset_bindings.assert_called_once_with(session=session)
         validate_api_list.assert_called_once_with(payload["settings"])
         update_external_knowledge_api.assert_called_once_with(
             tenant_id="tenant-1",
@@ -391,6 +399,10 @@ class TestExternalDatasetCreateApi:
                 "create_external_dataset",
                 return_value=dataset,
             ) as create_external_dataset,
+            patch(
+                "controllers.console.datasets.external.dataset_detail_response_source",
+                return_value=dataset,
+            ) as dataset_response_source,
         ):
             session = MagicMock()
             resp, status = method(api, session, "tenant-1", current_user)
@@ -400,9 +412,10 @@ class TestExternalDatasetCreateApi:
         create_external_dataset.assert_called_once_with(
             tenant_id="tenant-1",
             user_id="user-1",
-            args=payload,
+            args=ExternalDatasetCreatePayload.model_validate(payload),
             session=session,
         )
+        dataset_response_source.assert_called_once_with(dataset, session=session)
 
     def test_create_forbidden(self, app: Flask, current_user: Account):
         current_user.role = TenantAccountRole.NORMAL
@@ -578,7 +591,7 @@ class TestExternalApiTemplateListApiAdvanced:
                 return_value=(templates, 25),
             ) as get_external_knowledge_apis,
         ):
-            resp, status = method(api, "tenant-1")
+            resp, status = method(api, MagicMock(), "tenant-1")
 
         assert status == 200
         assert resp == {
@@ -588,7 +601,7 @@ class TestExternalApiTemplateListApiAdvanced:
             "total": 25,
             "page": 2,
         }
-        get_external_knowledge_apis.assert_called_once_with(2, 3, "tenant-1", None)
+        get_external_knowledge_apis.assert_called_once_with(2, 3, "tenant-1", None, session=ANY)
 
 
 class TestExternalDatasetCreateApiAdvanced:

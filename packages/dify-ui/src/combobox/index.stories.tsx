@@ -362,7 +362,7 @@ const GroupedToolList = () => {
         <ComboboxGroup key={group.label} items={group.items}>
           {groupIndex > 0 && <ComboboxSeparator />}
           <ComboboxGroupLabel>{group.label}</ComboboxGroupLabel>
-          <ComboboxCollection>{(option: Option) => renderOptionItem(option)}</ComboboxCollection>
+          <ComboboxCollection<Option>>{(option) => renderOptionItem(option)}</ComboboxCollection>
         </ComboboxGroup>
       ))}
     </ComboboxList>
@@ -560,7 +560,7 @@ const AsyncDirectoryDemo = () => {
           popupProps={{ 'aria-busy': isPending || undefined }}
         >
           <ComboboxStatus className="border-b border-divider-subtle">{status}</ComboboxStatus>
-          <ComboboxList>{renderOptionItem}</ComboboxList>
+          <ComboboxList<Option>>{renderOptionItem}</ComboboxList>
           <ComboboxEmpty>{emptyMessage}</ComboboxEmpty>
         </ComboboxContent>
       </Combobox>
@@ -671,17 +671,17 @@ const AsyncReviewerDemo = () => {
       >
         <ComboboxInputGroup className="h-auto min-h-8 items-start py-1">
           <ComboboxChips>
-            <ComboboxValue>
-              {(selectedValue: Option[]) => (
+            <ComboboxValue<Option, true>>
+              {(selectedValue) => (
                 <React.Fragment>
-                  {selectedValue.map((item) => (
+                  {selectedValue?.map((item) => (
                     <ComboboxChip key={item.value} aria-label={item.label}>
                       <span className="max-w-32 truncate">{item.label}</span>
                       <ComboboxChipRemove aria-label={`Remove ${item.label}`} />
                     </ComboboxChip>
                   ))}
                   <ComboboxInput
-                    placeholder={selectedValue.length ? '' : 'Search reviewers…'}
+                    placeholder={selectedValue?.length ? '' : 'Search reviewers…'}
                     className="min-w-24 px-1 py-0.5"
                   />
                 </React.Fragment>
@@ -694,7 +694,7 @@ const AsyncReviewerDemo = () => {
           popupProps={{ 'aria-busy': isPending || undefined }}
         >
           <ComboboxStatus className="border-b border-divider-subtle">{status}</ComboboxStatus>
-          <ComboboxList>{renderOptionItem}</ComboboxList>
+          <ComboboxList<Option>>{renderOptionItem}</ComboboxList>
           <ComboboxEmpty>{emptyMessage}</ComboboxEmpty>
         </ComboboxContent>
       </Combobox>
@@ -741,7 +741,7 @@ export const Default: Story = {
           <ComboboxInputTrigger className="mr-0" />
         </ComboboxInputGroup>
         <ComboboxContent>
-          <ComboboxList>{renderSimpleOptionItem}</ComboboxList>
+          <ComboboxList<Option>>{renderSimpleOptionItem}</ComboboxList>
         </ComboboxContent>
       </Combobox>
     </Field>
@@ -766,7 +766,7 @@ export const FormField: Story = {
           <ComboboxInputTrigger className="mr-0" />
         </ComboboxInputGroup>
         <ComboboxContent>
-          <ComboboxList>{renderSimpleOptionItem}</ComboboxList>
+          <ComboboxList<Option>>{renderSimpleOptionItem}</ComboboxList>
         </ComboboxContent>
       </Combobox>
       <FieldDescription>Type to filter, then choose a remembered data source.</FieldDescription>
@@ -784,7 +784,7 @@ export const CompactTriggerWithPopupSearch: Story = {
         </ComboboxTrigger>
         <ComboboxContent>
           <PopupSearchInput label="Search data sources" placeholder="Search sources" />
-          <ComboboxList>{renderOptionItem}</ComboboxList>
+          <ComboboxList<Option>>{renderOptionItem}</ComboboxList>
         </ComboboxContent>
       </Combobox>
     </div>
@@ -816,7 +816,7 @@ export const Sizes: Story = {
               <ComboboxInputTrigger size={size} className="mr-0" />
             </ComboboxInputGroup>
             <ComboboxContent>
-              <ComboboxList>{renderOptionItem}</ComboboxList>
+              <ComboboxList<Option>>{renderOptionItem}</ComboboxList>
             </ComboboxContent>
           </Combobox>
         </Field>
@@ -851,17 +851,17 @@ const MultipleChipsDemo = () => {
       <Combobox items={reviewerOptions} multiple value={value} onValueChange={setValue}>
         <ComboboxInputGroup className="h-auto min-h-8 items-start py-1">
           <ComboboxChips>
-            <ComboboxValue>
-              {(selectedValue: Option[]) => (
+            <ComboboxValue<Option, true>>
+              {(selectedValue) => (
                 <React.Fragment>
-                  {selectedValue.map((item) => (
+                  {selectedValue?.map((item) => (
                     <ComboboxChip key={item.value}>
                       <span className="max-w-32 truncate">{item.label}</span>
                       <ComboboxChipRemove aria-label={`Remove ${item.label}`} />
                     </ComboboxChip>
                   ))}
                   <ComboboxInput
-                    placeholder={selectedValue.length ? '' : 'Assign reviewers…'}
+                    placeholder={selectedValue?.length ? '' : 'Assign reviewers…'}
                     className="min-w-24 px-1 py-0.5"
                   />
                 </React.Fragment>
@@ -870,7 +870,7 @@ const MultipleChipsDemo = () => {
           </ComboboxChips>
         </ComboboxInputGroup>
         <ComboboxContent>
-          <ComboboxList>{renderOptionItem}</ComboboxList>
+          <ComboboxList<Option>>{renderOptionItem}</ComboboxList>
         </ComboboxContent>
       </Combobox>
       <FieldDescription>
@@ -917,7 +917,7 @@ export const EmptyAndStatus: Story = {
         <ComboboxContent>
           <ComboboxStatus>Search workspace connectors</ComboboxStatus>
           <ComboboxEmpty>No connectors found</ComboboxEmpty>
-          <ComboboxList>{renderSimpleOptionItem}</ComboboxList>
+          <ComboboxList<Option>>{renderSimpleOptionItem}</ComboboxList>
         </ComboboxContent>
       </Combobox>
     </Field>
@@ -935,7 +935,7 @@ export const DisabledAndReadOnly: Story = {
           </ComboboxTrigger>
           <ComboboxContent>
             <PopupSearchInput label="Search disabled providers" placeholder="Search providers" />
-            <ComboboxList>{renderOptionItem}</ComboboxList>
+            <ComboboxList<Option>>{renderOptionItem}</ComboboxList>
           </ComboboxContent>
         </Combobox>
       </Field>
@@ -951,7 +951,7 @@ export const DisabledAndReadOnly: Story = {
             <ComboboxInputTrigger className="mr-0" />
           </ComboboxInputGroup>
           <ComboboxContent>
-            <ComboboxList>{renderOptionItem}</ComboboxList>
+            <ComboboxList<Option>>{renderOptionItem}</ComboboxList>
           </ComboboxContent>
         </Combobox>
       </Field>
@@ -972,7 +972,7 @@ const ControlledDemo = () => {
           </ComboboxTrigger>
           <ComboboxContent>
             <PopupSearchInput label="Search app tags" placeholder="Search tags" />
-            <ComboboxList>{renderSimpleOptionItem}</ComboboxList>
+            <ComboboxList<Option>>{renderSimpleOptionItem}</ComboboxList>
           </ComboboxContent>
         </Combobox>
       </div>

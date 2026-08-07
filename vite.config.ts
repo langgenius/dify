@@ -11,7 +11,6 @@ const eslintFix =
 const nonFrontendIgnores = [
   '.agents/**',
   '.devcontainer/**',
-  '.github/**',
   '/*.md',
   'api/**',
   'codecov.yml',
@@ -71,7 +70,7 @@ export default defineConfig({
     sortPackageJson: true,
     sortTailwindcss: {
       functions: ['cn', 'clsx', 'cva', 'tw', 'twMerge'],
-      preserveDuplicates: true,
+      preserveDuplicates: false,
       stylesheet: 'web/app/styles/globals.css',
     },
   },

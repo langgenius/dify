@@ -1,3 +1,5 @@
+import type { RenderOptions } from '@testing-library/react'
+import type { ReactElement } from 'react'
 /**
  * Integration test: Education Verification Flow
  *
@@ -8,70 +10,64 @@
  * Also covers education button visibility based on context flags.
  */
 import type { UsagePlanInfo, UsageResetInfo } from '@/app/components/billing/type'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { defaultPlan } from '@/app/components/billing/config'
 import PlanComp from '@/app/components/billing/plan'
 import { Plan } from '@/app/components/billing/type'
+import { consoleQuery } from '@/service/client'
+import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
+
+let mockProviderCtx: Record<string, unknown> = {}
+let mockConsoleState: Record<string, unknown> = {}
+
+const render = (ui: ReactElement, options: RenderOptions = {}) => {
+  const queryClient = createConsoleQueryClient()
+  const plan = mockProviderCtx.plan as {
+    usage: { vectorSpace: number }
+    total: { vectorSpace: number }
+  }
+  queryClient.setQueryData(consoleQuery.features.vectorSpace.get.queryOptions().queryKey, {
+    size: plan.usage.vectorSpace,
+    limit: plan.total.vectorSpace,
+    usage_unknown: false,
+  })
+  const { wrapper } = createConsoleQueryWrapper({
+    systemFeatures: { deployment_edition: 'CLOUD' },
+    queryClient,
+  })
+  return renderWithConsoleState(ui, { ...options, wrapper })
+}
 
 // ─── Mock state ──────────────────────────────────────────────────────────────
-let mockProviderCtx: Record<string, unknown> = {}
-let mockAppCtx: Record<string, unknown> = {}
 const mockSetShowPricingModal = vi.fn()
-const mockSetShowAccountSettingModal = vi.fn()
 const mockRouterPush = vi.fn()
 const mockMutateAsync = vi.fn()
-const mockSetEducationVerifying = vi.hoisted(() => vi.fn())
-
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    IS_CLOUD_EDITION: true,
-  }
-})
 
 // ─── Context mocks ───────────────────────────────────────────────────────────
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => mockProviderCtx,
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
+vi.mock('@/context/version-state', async () => {
+  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createVersionStateModuleMock(() => mockConsoleState)
 })
 
 vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
     setShowPricingModal: mockSetShowPricingModal,
   }),
-  useModalContextSelector: (selector: (s: Record<string, unknown>) => unknown) =>
-    selector({
-      setShowAccountSettingModal: mockSetShowAccountSettingModal,
-    }),
 }))
 
 // ─── Service mocks ───────────────────────────────────────────────────────────
@@ -88,9 +84,6 @@ vi.mock('@/service/use-billing', () => ({
     isFetching: false,
     refetch: vi.fn(),
   }),
-  useCurrentPlanVectorSpace: () => ({
-    data: undefined,
-  }),
 }))
 
 // ─── Navigation mocks ───────────────────────────────────────────────────────
@@ -102,10 +95,6 @@ vi.mock('@/next/navigation', () => ({
 
 vi.mock('@/hooks/use-async-window-open', () => ({
   useAsyncWindowOpen: () => vi.fn(),
-}))
-
-vi.mock('@/app/education-apply/storage', () => ({
-  useSetEducationVerifying: () => mockSetEducationVerifying,
 }))
 
 // ─── External component mocks ───────────────────────────────────────────────
@@ -164,9 +153,8 @@ const setupContexts = (
     allowRefreshEducationVerify: false,
     ...providerOverrides,
   }
-  mockAppCtx = {
+  mockConsoleState = {
     isCurrentWorkspaceManager: true,
-    workspacePermissionKeys: ['billing.view', 'billing.manage', 'billing.subscription.manage'],
     userProfile: { email: 'student@university.edu' },
     langGeniusVersionInfo: { current_version: '1.0.0' },
     ...appOverrides,
@@ -233,9 +221,13 @@ describe('Education Verification Flow', () => {
 
   // ─── 2. Successful Verification Flow ────────────────────────────────────
   describe('Successful verification flow', () => {
-    it('should navigate to education-apply with token on successful verification', async () => {
+    it('should let non-manager members start education verification', async () => {
       mockMutateAsync.mockResolvedValue({ token: 'edu-token-123' })
-      setupContexts({}, { enableEducationPlan: true, isEducationAccount: false })
+      setupContexts(
+        {},
+        { enableEducationPlan: true, isEducationAccount: false },
+        { isCurrentWorkspaceManager: false },
+      )
       const user = userEvent.setup()
 
       render(<PlanComp loc="test" />)
@@ -246,20 +238,6 @@ describe('Education Verification Flow', () => {
       await waitFor(() => {
         expect(mockMutateAsync).toHaveBeenCalledTimes(1)
         expect(mockRouterPush).toHaveBeenCalledWith('/education-apply?token=edu-token-123')
-      })
-    })
-
-    it('should clear education verifying flag on success', async () => {
-      mockMutateAsync.mockResolvedValue({ token: 'token-xyz' })
-      setupContexts({}, { enableEducationPlan: true, isEducationAccount: false })
-      const user = userEvent.setup()
-
-      render(<PlanComp loc="test" />)
-
-      await user.click(screen.getByText(/toVerified/i))
-
-      await waitFor(() => {
-        expect(mockSetEducationVerifying).toHaveBeenCalledWith(null)
       })
     })
   })

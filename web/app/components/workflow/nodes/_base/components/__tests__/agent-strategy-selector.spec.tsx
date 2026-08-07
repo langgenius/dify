@@ -19,10 +19,6 @@ vi.mock('@tanstack/react-query', () => ({
   useSuspenseQuery: mocks.useSuspenseQuery,
 }))
 
-vi.mock('@/features/system-features/client', () => ({
-  systemFeaturesQueryOptions: () => ({}),
-}))
-
 vi.mock('@/service/use-strategy', () => ({
   useStrategyProviders: mocks.useStrategyProviders,
 }))
@@ -123,7 +119,7 @@ vi.mock('@/app/components/workflow/block-selector/tools', () => ({
   ),
 }))
 
-vi.mock('@/app/components/workflow/block-selector/market-place-plugin/list', () => ({
+vi.mock('@/app/components/workflow/block-selector/marketplace-plugin/list', () => ({
   default: ({ list, searchText }: { list: Array<{ plugin_id: string }>; searchText: string }) => (
     <div data-testid="plugin-list">
       {`${searchText}:${list.map((item) => item.plugin_id).join(',')}`}
@@ -177,59 +173,6 @@ vi.mock('@/next/link', () => ({
       {children}
     </a>
   ),
-}))
-vi.mock('@langgenius/dify-ui/popover', async () => {
-  const React = await import('react')
-  const PopoverContext = React.createContext({
-    open: false,
-    setOpen: (_open: boolean) => {},
-  })
-
-  const Popover = ({
-    children,
-    open: controlledOpen,
-    onOpenChange,
-  }: {
-    children: React.ReactNode
-    open?: boolean
-    onOpenChange?: (open: boolean) => void
-  }) => {
-    const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false)
-    const isControlled = controlledOpen !== undefined
-    const open = isControlled ? !!controlledOpen : uncontrolledOpen
-    const setOpen = (nextOpen: boolean) => {
-      if (!isControlled) setUncontrolledOpen(nextOpen)
-      onOpenChange?.(nextOpen)
-    }
-
-    return <PopoverContext value={{ open, setOpen }}>{children}</PopoverContext>
-  }
-
-  const PopoverTrigger = ({ render }: { render: React.ReactNode }) => {
-    const { open, setOpen } = React.use(PopoverContext)
-    return (
-      <div data-testid="agent-strategy-trigger" onClick={() => setOpen(!open)}>
-        {render}
-      </div>
-    )
-  }
-
-  const PopoverContent = ({ children }: { children: React.ReactNode }) => {
-    const { open } = React.use(PopoverContext)
-    return open ? <div data-testid="agent-strategy-popover">{children}</div> : null
-  }
-
-  return {
-    Popover,
-    PopoverTrigger,
-    PopoverContent,
-  }
-})
-
-vi.mock('@langgenius/dify-ui/tooltip', () => ({
-  Tooltip: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  TooltipTrigger: ({ render }: { render: ReactNode }) => <div>{render}</div>,
-  TooltipContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }))
 
 const createStrategyDetail = (
@@ -289,7 +232,11 @@ describe('AgentStrategySelector', () => {
 
     render(<AgentStrategySelector onChange={vi.fn()} />)
 
-    await user.click(screen.getByTestId('agent-strategy-trigger'))
+    await user.click(
+      screen
+        .getByText(/(?:^|\.)nodes\.agent\.strategy\.selectTip(?=$|:)/)
+        .closest('[aria-haspopup]')!,
+    )
 
     expect(screen.getByText('alpha')).toBeInTheDocument()
     expect(screen.getByText('beta')).toBeInTheDocument()
@@ -319,7 +266,11 @@ describe('AgentStrategySelector', () => {
 
     render(<AgentStrategySelector onChange={onChange} />)
 
-    await user.click(screen.getByTestId('agent-strategy-trigger'))
+    await user.click(
+      screen
+        .getByText(/(?:^|\.)nodes\.agent\.strategy\.selectTip(?=$|:)/)
+        .closest('[aria-haspopup]')!,
+    )
     await user.click(screen.getByRole('button', { name: 'select-alpha' }))
 
     expect(onChange).toHaveBeenCalledWith({
@@ -330,10 +281,11 @@ describe('AgentStrategySelector', () => {
       plugin_unique_identifier: 'provider/alpha',
       meta: { version: '1.0.0' },
     })
-    expect(screen.queryByTestId('agent-strategy-popover')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('tools-list')).not.toBeInTheDocument()
   })
 
-  it('renders the plugin-not-installed warning for external strategies', () => {
+  it('renders the plugin-not-installed warning for external strategies', async () => {
+    const user = userEvent.setup()
     mocks.useStrategyInfo.mockReturnValue({
       strategyStatus: {
         plugin: {
@@ -358,7 +310,11 @@ describe('AgentStrategySelector', () => {
       />,
     )
 
-    expect(screen.getByText(/(?:^|\.)nodes\.agent\.pluginNotInstalled(?=$|:)/)).toBeInTheDocument()
+    await user.hover(document.querySelector('[data-base-ui-tooltip-trigger]')!)
+
+    expect(
+      await screen.findByText(/(?:^|\.)nodes\.agent\.pluginNotInstalled(?=$|:)/),
+    ).toBeInTheDocument()
     expect(
       screen.getByText(/(?:^|\.)nodes\.agent\.pluginNotInstalledDesc(?=$|:)/),
     ).toBeInTheDocument()

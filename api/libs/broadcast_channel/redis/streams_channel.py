@@ -128,11 +128,17 @@ class _StreamsSubscription(Subscription):
                                 data_bytes = data.encode()
                             case bytes() | bytearray():
                                 data_bytes = bytes(data)
-                        if data_bytes is not None:
-                            if data_bytes == SIG_CLOSE:
-                                break
-                            self._queue.put_nowait(data_bytes)
                         last_id = entry_id
+                        if data_bytes is None:
+                            continue
+                        if data_bytes == SIG_CLOSE:
+                            # Close signals share the stream with normal events. Ignore signals
+                            # emitted by another subscription while this one is still open.
+                            with self._lock:
+                                if self._closed:
+                                    break
+                            continue
+                        self._queue.put_nowait(data_bytes)
         finally:
             self._queue.put_nowait(self._SENTINEL)
             with self._lock:

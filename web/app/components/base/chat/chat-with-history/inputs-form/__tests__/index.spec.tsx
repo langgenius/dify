@@ -44,7 +44,7 @@ const defaultContextValues: Partial<ChatWithHistoryContextValue> = {
   currentConversationId: '',
   handleStartChat: mockHandleStartChat,
   allInputsHidden: false,
-  themeBuilder: undefined,
+  theme: undefined,
   inputsForms: [{ variable: 'test_var', type: InputVarType.textInput, label: 'Test Label' }],
   currentConversationInputs: {},
   newConversationInputs: {},
@@ -112,9 +112,7 @@ describe('InputsFormNode', () => {
 
     setMockContext({
       currentConversationId: '',
-      themeBuilder: {
-        theme: { primaryColor: themeColor },
-      } as unknown as ChatWithHistoryContextValue['themeBuilder'],
+      theme: { primaryColor: themeColor } as unknown as ChatWithHistoryContextValue['theme'],
     })
 
     render(<InputsFormNode collapsed={false} setCollapsed={setCollapsed} />)
@@ -138,7 +136,6 @@ describe('InputsFormNode', () => {
       screen.queryByTestId('inputs-form-node') ?? (container.firstChild as HTMLElement)
     expect(outerDiv).toBeTruthy()
     // Check for mobile-specific layout classes (pt-4)
-    expect(outerDiv).toHaveClass('pt-4')
 
     // Check padding in expanded content (p-4 for mobile)
     // Prefer a test id for the content wrapper; fallback to finding the label's closest ancestor

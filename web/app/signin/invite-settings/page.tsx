@@ -12,13 +12,14 @@ import {
 } from '@langgenius/dify-ui/select'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiAccountCircleLine } from '@remixicon/react'
-import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { LICENSE_LINK } from '@/constants/link'
 import { useLocale } from '@/context/i18n'
+import { isLegacyBase401, userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { i18n, setLocaleOnClient } from '@/i18n-config'
 import { languages } from '@/i18n-config/language'
@@ -27,7 +28,10 @@ import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { activateMember } from '@/service/common'
 import { useInvitationCheck } from '@/service/use-common'
+import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { getBrowserTimezone, timezones } from '@/utils/timezone'
+import { basePath } from '@/utils/var'
+import { isInvitationForAccount } from '../utils/invitation-account'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 
 type LanguageSelectOption = {
@@ -65,6 +69,15 @@ export default function InviteSettingsPage() {
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()
   const token = decodeURIComponent(searchParams.get('invite_token') as string)
+  const {
+    data: userResp,
+    isPending: isProfilePending,
+    error: profileError,
+  } = useQuery({
+    ...userProfileQueryOptions(),
+    throwOnError: (err) => !isLegacyBase401(err),
+    refetchOnWindowFocus: false,
+  })
   const locale = useLocale()
   const [name, setName] = useState('')
   const [isActivating, setIsActivating] = useState(false)
@@ -90,11 +103,28 @@ export default function InviteSettingsPage() {
     },
   }
   const { data: checkRes, refetch: recheck } = useInvitationCheck(checkParams.params, !!token)
+  const isInvitationForCurrentAccount = isInvitationForAccount(
+    checkRes?.data?.email,
+    userResp?.profile.email,
+  )
+  const shouldReturnToSignIn =
+    !isProfilePending &&
+    Boolean(
+      checkRes?.is_valid &&
+      (isLegacyBase401(profileError) || (userResp && !isInvitationForCurrentAccount)),
+    )
   const requiresAccountSetup =
     checkRes?.data?.requires_setup ?? checkRes?.data?.account_status === 'pending'
 
+  useEffect(() => {
+    if (!shouldReturnToSignIn) return
+
+    router.replace(`/signin?${searchParams.toString()}`)
+  }, [router, searchParams, shouldReturnToSignIn])
+
   const handleActivate = useCallback(async () => {
     try {
+      if (!isInvitationForCurrentAccount) return
       if (requiresAccountSetup && !name) {
         toast.error(t(($) => $.enterYourName, { ns: 'login' }))
         return
@@ -118,15 +148,14 @@ export default function InviteSettingsPage() {
         // Tokens are now stored in cookies by the backend
         if (requiresAccountSetup) await setLocaleOnClient(language!, false)
         await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
-        const redirectUrl = resolvePostLoginRedirect(searchParams)
-        router.replace(redirectUrl || '/')
+        replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
       }
     } catch {
       recheck()
       setIsActivating(false)
     }
   }, [
-    isActivating,
+    isInvitationForCurrentAccount,
     language,
     name,
     queryClient,
@@ -139,10 +168,10 @@ export default function InviteSettingsPage() {
     t,
   ])
 
-  if (!checkRes) return <Loading />
+  if (isProfilePending || shouldReturnToSignIn || !checkRes) return <Loading />
   if (!checkRes.is_valid) {
     return (
-      <div className="flex flex-col md:w-[400px]">
+      <div className="flex flex-col md:w-100">
         <div className="mx-auto w-full">
           <div className="mb-3 flex size-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle text-2xl font-bold shadow-lg">
             🤷‍♂️

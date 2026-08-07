@@ -12,7 +12,7 @@ from controllers.console.explore.error import NotCompletionAppError
 from controllers.console.explore.wraps import InstalledAppResource
 from controllers.console.wraps import with_current_user
 from extensions.ext_database import db
-from fields.conversation_fields import ResultResponse
+from fields.conversation_fields import MessageResponseSource, ResultResponse
 from fields.message_fields import SavedMessageInfiniteScrollPagination, SavedMessageItem
 from models import Account
 from models.model import InstalledApp
@@ -29,7 +29,8 @@ class SavedMessageListApi(InstalledAppResource):
     @console_ns.response(200, "Success", console_ns.models[SavedMessageInfiniteScrollPagination.__name__])
     @with_current_user
     def get(self, current_user: Account, installed_app: InstalledApp):
-        app_model = installed_app.app
+        session = db.session()
+        app_model = installed_app.app_with_session(session=session)
         if app_model is None:
             raise AppUnavailableError()
         if app_model.mode != "completion":
@@ -38,10 +39,13 @@ class SavedMessageListApi(InstalledAppResource):
         args = SavedMessageListQuery.model_validate(request.args.to_dict())
 
         pagination = SavedMessageService.pagination_by_last_id(
-            app_model, current_user, str(args.last_id) if args.last_id else None, args.limit, session=db.session()
+            app_model, current_user, str(args.last_id) if args.last_id else None, args.limit, session=session
         )
         adapter = TypeAdapter(SavedMessageItem)
-        items = [adapter.validate_python(message, from_attributes=True) for message in pagination.data]
+        items = [
+            adapter.validate_python(MessageResponseSource(message, session=session), from_attributes=True)
+            for message in pagination.data
+        ]
         return SavedMessageInfiniteScrollPagination(
             limit=pagination.limit,
             has_more=pagination.has_more,
@@ -52,7 +56,7 @@ class SavedMessageListApi(InstalledAppResource):
     @console_ns.response(200, "Success", console_ns.models[ResultResponse.__name__])
     @with_current_user
     def post(self, current_user: Account, installed_app: InstalledApp):
-        app_model = installed_app.app
+        app_model = installed_app.app_with_session(session=db.session())
         if app_model is None:
             raise AppUnavailableError()
         if app_model.mode != "completion":
@@ -75,7 +79,7 @@ class SavedMessageApi(InstalledAppResource):
     @console_ns.response(204, "Saved message deleted successfully")
     @with_current_user
     def delete(self, current_user: Account, installed_app: InstalledApp, message_id: UUID):
-        app_model = installed_app.app
+        app_model = installed_app.app_with_session(session=db.session())
         if app_model is None:
             raise AppUnavailableError()
 

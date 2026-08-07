@@ -25,60 +25,50 @@ const mockViewHistory = vi.fn()
 
 let mockNodesReadOnly = false
 let mockTheme: 'light' | 'dark' = 'light'
-const mockAppContextState = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   userProfile: {
     id: '',
     name: '',
   },
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => mockConsoleState)
 })
 
 vi.mock('reactflow', () => ({
   useNodes: () => mockUseNodes(),
 }))
 
-vi.mock('../../hooks', () => ({
+vi.mock('../../hooks/use-workflow', () => ({
   useNodesReadOnly: () => ({ nodesReadOnly: mockNodesReadOnly }),
+}))
+
+vi.mock('../../hooks/use-nodes-interactions', () => ({
   useNodesInteractions: () => ({ handleNodeSelect: mockHandleNodeSelect }),
+}))
+
+vi.mock('../../hooks/use-workflow-run', () => ({
   useWorkflowRun: () => ({
     handleBackupDraft: mockHandleBackupDraft,
     handleLoadBackupDraft: mockHandleLoadBackupDraft,
   }),
+}))
+
+vi.mock('../../hooks/use-nodes-sync-draft', () => ({
   useNodesSyncDraft: () => ({
     handleSyncWorkflowDraft: vi.fn(),
   }),
+}))
+
+vi.mock('../../hooks/use-workflow-refresh-draft', () => ({
   useWorkflowRefreshDraft: () => ({
     handleRefreshWorkflowDraft: mockHandleRefreshWorkflowDraft,
   }),
 }))
 
-vi.mock('@/app/components/rag-pipeline/hooks', () => ({
+vi.mock('@/app/components/rag-pipeline/hooks/use-input-field-panel', () => ({
   useInputFieldPanel: () => ({
     closeAllInputFieldPanels: mockCloseAllInputFieldPanels,
   }),
@@ -147,7 +137,7 @@ vi.mock('../run-and-history', () => ({
 }))
 
 vi.mock('../version-history-button', () => ({
-  default: ({ onClick }: { onClick: () => void }) => (
+  VersionHistoryButton: ({ onClick }: { onClick: () => void }) => (
     <button type="button" onClick={onClick}>
       version-history
     </button>

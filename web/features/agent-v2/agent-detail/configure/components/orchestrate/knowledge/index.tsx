@@ -22,7 +22,7 @@ import { AgentKnowledgeRetrievalDialog } from './dialog'
 
 function KnowledgeRetrievalIcon() {
   return (
-    <span className="flex size-5 shrink-0 items-center justify-center rounded-md border-[0.5px] border-divider-subtle bg-util-colors-green-green-500 p-[3px] text-text-primary-on-surface shadow-xs shadow-shadow-shadow-3">
+    <span className="flex size-5 shrink-0 items-center justify-center rounded-md border-[0.5px] border-divider-subtle bg-util-colors-green-green-500 p-0.75 text-text-primary-on-surface shadow-xs shadow-shadow-shadow-3">
       <span aria-hidden className="i-ri-book-open-line size-3.5" />
     </span>
   )

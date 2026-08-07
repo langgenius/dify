@@ -17,20 +17,22 @@ from core.app.entities.queue_entities import (
     QueueNodeRetryEvent,
     QueueNodeSucceededEvent,
     QueueReasoningChunkEvent,
+    QueueStopEvent,
     QueueTextChunkEvent,
     QueueWorkflowPausedEvent,
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
+from core.workflow.nodes.agent.events import NodeRunAgentLogEvent
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import default_system_variables
 from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import BuiltinNodeTypes
 from graphon.graph_events import (
+    GraphRunAbortedEvent,
     GraphRunPausedEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
-    NodeRunAgentLogEvent,
     NodeRunExceptionEvent,
     NodeRunFailedEvent,
     NodeRunHumanInputFormFilledEvent,
@@ -332,7 +334,6 @@ class TestWorkflowBasedAppRunner:
             variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
             start_at=0.0,
         )
-        graph_runtime_state.register_paused_node("node-1")
         workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(graph_runtime_state=graph_runtime_state))
 
         emails: list[dict] = []
@@ -372,6 +373,23 @@ class TestWorkflowBasedAppRunner:
         paused_event = next(event for event, _ in published if isinstance(event, QueueWorkflowPausedEvent))
         assert paused_event.paused_nodes == ["node-1"]
         assert emails
+
+    def test_handle_graph_aborted_publishes_stopped_terminal(self):
+        published: list[object] = []
+
+        class _QueueManager:
+            def publish(self, event, publish_from):
+                del publish_from
+                published.append(event)
+
+        runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
+        workflow_entry = SimpleNamespace()
+
+        runner._handle_event(workflow_entry, GraphRunAbortedEvent(reason="User requested stop", outputs={}))
+
+        event = published[-1]
+        assert isinstance(event, QueueStopEvent)
+        assert event.get_stop_reason() == "User requested stop"
 
     def test_handle_node_events_publishes_queue_events(self):
         published: list[object] = []

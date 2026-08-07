@@ -33,6 +33,14 @@ const ChangePasswordForm = () => {
       params.set('token', searchParams.get('invite_token') as string)
       return `/activate?${params.toString()}`
     }
+
+    const redirectUrl = searchParams.get('redirect_url')
+    if (redirectUrl) {
+      const params = new URLSearchParams()
+      params.set('redirect_url', redirectUrl)
+      return `/signin?${params.toString()}`
+    }
+
     return '/signin'
   }
 
@@ -81,14 +89,10 @@ const ChangePasswordForm = () => {
 
   return (
     <div
-      className={cn(
-        'flex w-full grow flex-col items-center justify-center',
-        'px-6',
-        'md:px-[108px]',
-      )}
+      className={cn('flex w-full grow flex-col items-center justify-center', 'px-6', 'md:px-27')}
     >
       {!showSuccess && (
-        <div className="flex flex-col md:w-[400px]">
+        <div className="flex flex-col md:w-100">
           <div className="mx-auto w-full">
             <h2 className="title-4xl-semi-bold text-text-primary">
               {t(($) => $.changePassword, { ns: 'login' })}
@@ -165,7 +169,7 @@ const ChangePasswordForm = () => {
         </div>
       )}
       {showSuccess && (
-        <div className="flex flex-col md:w-[400px]">
+        <div className="flex flex-col md:w-100">
           <div className="mx-auto w-full">
             <div className="mb-3 flex size-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle font-bold shadow-lg">
               <RiCheckboxCircleFill className="size-6 text-text-success" />

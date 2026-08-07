@@ -145,6 +145,22 @@ describe('Signup Set Password Page', () => {
       expect(mockReplace).toHaveBeenCalledWith('/')
     })
 
+    it('should return to the requested console page when registration succeeds', async () => {
+      mockUseSearchParams.mockReturnValue(
+        new URLSearchParams(
+          'token=register-token&redirect_url=%2Fapps%3Ftag%3Dworkflow',
+        ) as unknown as ReturnType<typeof useSearchParams>,
+      )
+      mockRegister.mockResolvedValue({ result: 'success', data: {} })
+
+      renderWithQueryClient(<ChangePasswordForm />)
+      fillAndSubmit()
+
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith('/apps?tag=workflow')
+      })
+    })
+
     it('should remember the utm event with slug and clear the utm cookie when a utm_info cookie is present', async () => {
       Cookies.set('utm_info', JSON.stringify({ utm_source: 'community', slug: 'partner-launch' }))
       mockRegister.mockResolvedValue({ result: 'success', data: {} })

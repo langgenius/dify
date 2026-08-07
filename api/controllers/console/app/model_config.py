@@ -4,9 +4,11 @@ from typing import Any, cast
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
@@ -23,7 +25,6 @@ from core.agent.entities import AgentToolEntity
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from events.app_event import app_model_config_was_updated
-from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.login import login_required
 from models.model import App, AppMode, AppModelConfig
@@ -93,14 +94,16 @@ class ModelConfigResource(Resource):
     @account_initialization_required
     @with_current_user_id
     @with_current_tenant_id
+    @with_session
     @get_app_model(mode=[AppMode.AGENT_CHAT, AppMode.CHAT, AppMode.COMPLETION])
-    def post(self, current_tenant_id: str, current_user_id: str, app_model: App):
-        """Modify app model config"""
+    def post(self, session: Session, current_tenant_id: str, current_user_id: str, app_model: App):
+        """Modify the app model config and dataset joins in one request transaction."""
         # validate config
         model_configuration = AppModelConfigService.validate_configuration(
             tenant_id=current_tenant_id,
             config=cast(dict, request.json),
             app_mode=AppMode.value_of(app_model.mode),
+            session=session,
         )
 
         new_app_model_config = AppModelConfig(
@@ -110,9 +113,8 @@ class ModelConfigResource(Resource):
         )
         new_app_model_config = new_app_model_config.from_model_config_dict(model_configuration)
 
-        if app_model.mode == AppMode.AGENT_CHAT or app_model.is_agent:
-            # get original app model config
-            original_app_model_config = db.session.get(AppModelConfig, app_model.app_model_config_id)
+        if app_model.mode == AppMode.AGENT_CHAT or app_model.is_agent_with_session(session=session):
+            original_app_model_config = app_model.app_model_config_with_session(session=session)
             if original_app_model_config is None:
                 raise ValueError("Original app model config not found")
             agent_mode = original_app_model_config.agent_mode_dict
@@ -204,14 +206,17 @@ class ModelConfigResource(Resource):
             # update app model config
             new_app_model_config.agent_mode = json.dumps(agent_mode)
 
-        db.session.add(new_app_model_config)
-        db.session.flush()
+        session.add(new_app_model_config)
+        session.flush()
 
         app_model.app_model_config_id = new_app_model_config.id
         app_model.updated_by = current_user_id
         app_model.updated_at = naive_utc_now()
-        db.session.commit()
 
-        app_model_config_was_updated.send(app_model, app_model_config=new_app_model_config)
+        app_model_config_was_updated.send(
+            app_model,
+            app_model_config=new_app_model_config,
+            session=session,
+        )
 
         return {"result": "success"}

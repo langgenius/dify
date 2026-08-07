@@ -29,6 +29,7 @@ type AppInfoDetailPanelProps = {
   show: boolean
   onClose: () => void
   openModal: (modal: Exclude<AppInfoModalType, null>) => void
+  isExporting: boolean
   exportCheck: () => void
 }
 
@@ -37,6 +38,7 @@ const AppInfoDetailPanel = ({
   show,
   onClose,
   openModal,
+  isExporting,
   exportCheck,
 }: AppInfoDetailPanelProps) => {
   const { t } = useTranslation()
@@ -82,11 +84,12 @@ const AppInfoDetailPanel = ({
               title: t(($) => $.export, { ns: 'app' }),
               icon: <RiFileDownloadLine />,
               onClick: exportCheck,
+              loading: isExporting,
             },
           ]
         : []),
     ],
-    [appACLCapabilities, canCreateApp, t, openModal, exportCheck],
+    [appACLCapabilities, canCreateApp, t, openModal, exportCheck, isExporting],
   )
 
   const secondaryOperations = useMemo<Operation[]>(
@@ -156,7 +159,7 @@ const AppInfoDetailPanel = ({
           </div>
         </div>
         {appDetail.description && (
-          <p className="overflow-wrap-anywhere max-h-[105px] w-full max-w-full overflow-y-auto system-xs-regular wrap-break-word whitespace-normal text-text-tertiary">
+          <p className="overflow-wrap-anywhere max-h-26.25 w-full max-w-full overflow-y-auto system-xs-regular wrap-break-word whitespace-normal text-text-tertiary">
             {appDetail.description}
           </p>
         )}
@@ -176,7 +179,7 @@ const AppInfoDetailPanel = ({
           <Button
             size="medium"
             variant="ghost"
-            className="gap-0.5"
+
             onClick={switchOperation.onClick}
           >
             {switchOperation.icon}

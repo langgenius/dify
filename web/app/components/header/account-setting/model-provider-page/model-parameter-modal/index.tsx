@@ -1,5 +1,5 @@
 import type { FC, ReactNode } from 'react'
-import type { DefaultModel, FormValue, ModelParameterRule } from '../declarations'
+import type { DefaultModel, FormValue, Model, ModelParameterRule } from '../declarations'
 import type { ParameterValue } from './parameter-item'
 import type { TriggerProps } from './types'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
@@ -35,10 +35,12 @@ export type ModelParameterModalProps = {
   onDebugWithMultipleModelChange?: () => void
   renderTrigger?: (v: TriggerProps) => ReactNode
   readonly?: boolean
+  modelSelectorReadonly?: boolean
   isInWorkflow?: boolean
   scope?: string
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
+  modelList?: Model[]
 }
 
 const ModelParameterModal: FC<ModelParameterModalProps> = ({
@@ -54,9 +56,11 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   onDebugWithMultipleModelChange,
   renderTrigger,
   readonly,
+  modelSelectorReadonly,
   isInWorkflow,
   nodesOutputVars,
   availableNodes,
+  modelList,
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -64,6 +68,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   const isRulesLoading = !!provider && !!modelId && isLoading
   const { currentProvider, currentModel, activeTextGenerationModelList } =
     useTextGenerationCurrentProviderAndModelAndModelList({ provider, model: modelId })
+  const selectableModelList = modelList ?? activeTextGenerationModelList
 
   const parameterRules: ModelParameterRule[] = useMemo(() => {
     return parameterRulesData?.data || []
@@ -80,9 +85,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   }
 
   const handleChangeModel = ({ provider, model }: DefaultModel) => {
-    const targetProvider = activeTextGenerationModelList.find(
-      (modelItem) => modelItem.provider === provider,
-    )
+    const targetProvider = selectableModelList.find((modelItem) => modelItem.provider === provider)
     const targetModelItem = targetProvider?.models.find((modelItem) => modelItem.model === model)
     setModel({
       modelId: model,
@@ -126,28 +129,32 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
     >
       {renderTrigger ? (
         <PopoverTrigger
-          render={
+          render={(props, state) => (
             <button
+              {...props}
               type="button"
-              className="block w-full border-none bg-transparent p-0 text-left text-inherit [font:inherit]"
+              className={cn(
+                'block w-full border-none bg-transparent p-0 text-left text-inherit [font:inherit]',
+                props.className,
+              )}
             >
               {renderTrigger({
-                open,
+                open: state.open,
                 currentProvider,
                 currentModel,
                 providerName: provider,
                 modelId,
               })}
             </button>
-          }
+          )}
         />
       ) : (
-        <div className="flex h-8 min-w-[296px] items-center gap-px overflow-hidden rounded-lg">
+        <div className="flex h-8 min-w-74 items-center gap-px overflow-hidden rounded-lg">
           <div className="min-w-0 flex-1">
             <ModelSelector
               defaultModel={provider || modelId ? { provider, model: modelId } : undefined}
-              modelList={activeTextGenerationModelList}
-              readonly={readonly}
+              modelList={selectableModelList}
+              readonly={readonly || modelSelectorReadonly}
               triggerClassName={cn(
                 'h-8! w-full rounded-r-none!',
                 isInWorkflow &&
@@ -172,7 +179,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
       <PopoverContent
         placement={isInWorkflow ? 'left' : renderTrigger ? 'bottom-end' : 'left-start'}
         sideOffset={4}
-        popupClassName={cn(popupClassName, 'w-[400px] rounded-2xl')}
+        popupClassName={cn(popupClassName, 'w-100 rounded-2xl')}
       >
         <div className="relative px-3 pt-3.5 pb-1">
           <div className="pr-8 pl-1 system-xl-semibold text-text-primary">
@@ -182,12 +189,13 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
             <span className="i-ri-close-line size-4 text-text-tertiary" />
           </PopoverClose>
         </div>
-        <div className="max-h-[420px] overflow-y-auto">
+        <div className="max-h-105 overflow-y-auto">
           {renderTrigger && (
             <div className="px-4 pt-2 pb-4">
               <ModelSelector
                 defaultModel={hasSelectedModel ? { provider, model: modelId } : undefined}
-                modelList={activeTextGenerationModelList}
+                modelList={selectableModelList}
+                readonly={modelSelectorReadonly}
                 onSelect={handleChangeModel}
                 onHide={() => setOpen(false)}
               />
@@ -243,7 +251,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
         </div>
         {!hideDebugWithMultipleModel && (
           <div
-            className="flex h-[50px] cursor-pointer items-center justify-between rounded-b-xl border-t border-t-divider-subtle px-4 system-sm-regular text-text-accent"
+            className="flex h-12.5 cursor-pointer items-center justify-between rounded-b-xl border-t border-t-divider-subtle px-4 system-sm-regular text-text-accent"
             onClick={() => onDebugWithMultipleModelChange?.()}
           >
             {debugWithMultipleModel

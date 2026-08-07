@@ -29,9 +29,19 @@ type DatasetCardProps = {
   dataset: DataSet
   onSuccess?: () => void
   onOpenTagManagement?: () => void
+  stepByStepTourActionMenuHighlightPart?: string
+  stepByStepTourActionMenuOpen?: boolean
+  stepByStepTourCardTarget?: string
 }
 
-const DatasetCard = ({ dataset, onSuccess, onOpenTagManagement = () => {} }: DatasetCardProps) => {
+const DatasetCard = ({
+  dataset,
+  onSuccess,
+  onOpenTagManagement = () => {},
+  stepByStepTourActionMenuHighlightPart,
+  stepByStepTourActionMenuOpen,
+  stepByStepTourCardTarget,
+}: DatasetCardProps) => {
   const { t } = useTranslation()
   const { push } = useRouter()
   const currentUserId = useAtomValue(userProfileIdAtom)
@@ -98,10 +108,6 @@ const DatasetCard = ({ dataset, onSuccess, onOpenTagManagement = () => {} }: Dat
     showPreviewOnlyAccessWarning()
   }
 
-  const handleTagAreaClick = (e: MouseEvent) => {
-    e.stopPropagation()
-    e.preventDefault()
-  }
   const cardClassName = cn(
     'group relative col-span-1 flex h-41.5 flex-col overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-[background-color,box-shadow] duration-200 ease-in-out',
     isPreviewOnly
@@ -114,10 +120,10 @@ const DatasetCard = ({ dataset, onSuccess, onOpenTagManagement = () => {} }: Dat
       <div
         role={isPreviewOnly ? 'button' : undefined}
         tabIndex={isPreviewOnly ? 0 : undefined}
-        aria-disabled={isPreviewOnly ? 'true' : undefined}
         aria-label={isPreviewOnly ? dataset.name : undefined}
         className={cardClassName}
         data-disable-nprogress={true}
+        data-step-by-step-tour-target={stepByStepTourCardTarget}
         onClick={handleCardClick}
         onKeyDown={handlePreviewOnlyCardKeyDown}
       >
@@ -128,7 +134,6 @@ const DatasetCard = ({ dataset, onSuccess, onOpenTagManagement = () => {} }: Dat
           datasetId={dataset.id}
           embeddingAvailable={dataset.embedding_available}
           tags={dataset.tags}
-          onClick={handleTagAreaClick}
           onOpenTagManagement={onOpenTagManagement}
           onTagsChange={onSuccess}
           canBindOrUnbindTags={canBindOrUnbindTags}
@@ -141,6 +146,8 @@ const DatasetCard = ({ dataset, onSuccess, onOpenTagManagement = () => {} }: Dat
             handleExportPipeline={handleExportPipeline}
             detectIsUsedByApp={detectIsUsedByApp}
             openAccessConfig={openAccessConfig}
+            stepByStepTourHighlightPart={stepByStepTourActionMenuHighlightPart}
+            stepByStepTourOpen={stepByStepTourActionMenuOpen}
           />
         )}
       </div>

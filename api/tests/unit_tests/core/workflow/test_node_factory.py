@@ -3,6 +3,8 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch, sentinel
 
 import pytest
+from sqlalchemy import Engine
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
 from core.plugin.impl.model import PluginModelClient
@@ -22,7 +24,34 @@ from graphon.nodes.llm.entities import LLMNodeData
 from graphon.nodes.llm.node import LLMNode
 from graphon.nodes.llm.runtime_protocols import LLMPollingCapableProtocol
 from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
-from graphon.variables.segments import ArrayObjectSegment, StringSegment
+from graphon.variables.segments import ArrayObjectSegment, ObjectSegment, StringSegment
+from models.base import TypeBase
+from models.model import AppMode, Conversation, ConversationFromSource
+
+
+@pytest.fixture
+def memory_session_maker(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> sessionmaker[Session]:
+    """Bind node memory lookup to an explicit SQLite session factory."""
+
+    TypeBase.metadata.create_all(sqlite_engine, tables=[Conversation.__table__])
+    session_maker = sessionmaker(sqlite_engine, expire_on_commit=False)
+    monkeypatch.setattr(node_factory.session_factory, "create_session", session_maker)
+    return session_maker
+
+
+def _persist_conversation(session_maker: sessionmaker[Session]) -> None:
+    with session_maker.begin() as session:
+        session.add(
+            Conversation(
+                id="conversation-id",
+                app_id="app-id",
+                mode=AppMode.ADVANCED_CHAT,
+                name="Conversation",
+                _inputs={},
+                from_source=ConversationFromSource.API,
+                from_end_user_id="end-user-id",
+            )
+        )
 
 
 def _assert_constructor_node_data(data, *, node_id: str, node_type: NodeType, version: str = "1") -> None:
@@ -134,27 +163,7 @@ class TestFetchMemory:
 
         assert result is None
 
-    def test_returns_none_when_conversation_does_not_exist(self, monkeypatch: pytest.MonkeyPatch):
-        class FakeSelect:
-            def where(self, *_args):
-                return self
-
-        class FakeSession:
-            def __init__(self, *_args, **_kwargs):
-                pass
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, *_args):
-                return False
-
-            def scalar(self, _stmt):
-                return None
-
-        monkeypatch.setattr(node_factory, "session_factory", SimpleNamespace(create_session=FakeSession))
-        monkeypatch.setattr(node_factory, "select", MagicMock(return_value=FakeSelect()))
-
+    def test_returns_none_when_conversation_does_not_exist(self, memory_session_maker: sessionmaker[Session]):
         result = node_factory.fetch_memory(
             conversation_id="conversation-id",
             app_id="app-id",
@@ -164,30 +173,12 @@ class TestFetchMemory:
 
         assert result is None
 
-    def test_builds_token_buffer_memory_for_existing_conversation(self, monkeypatch: pytest.MonkeyPatch):
-        conversation = sentinel.conversation
+    def test_builds_token_buffer_memory_for_existing_conversation(
+        self, monkeypatch: pytest.MonkeyPatch, memory_session_maker: sessionmaker[Session]
+    ):
         memory = sentinel.memory
-
-        class FakeSelect:
-            def where(self, *_args):
-                return self
-
-        class FakeSession:
-            def __init__(self, *_args, **_kwargs):
-                pass
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, *_args):
-                return False
-
-            def scalar(self, _stmt):
-                return conversation
-
+        _persist_conversation(memory_session_maker)
         token_buffer_memory = MagicMock(return_value=memory)
-        monkeypatch.setattr(node_factory, "session_factory", SimpleNamespace(create_session=FakeSession))
-        monkeypatch.setattr(node_factory, "select", MagicMock(return_value=FakeSelect()))
         monkeypatch.setattr(node_factory, "TokenBufferMemory", token_buffer_memory)
 
         result = node_factory.fetch_memory(
@@ -198,35 +189,22 @@ class TestFetchMemory:
         )
 
         assert result is memory
-        token_buffer_memory.assert_called_once_with(
-            conversation=conversation,
-            model_instance=sentinel.model_instance,
-        )
+        loaded_conversation = token_buffer_memory.call_args.kwargs["conversation"]
+        assert isinstance(loaded_conversation, Conversation)
+        assert loaded_conversation.id == "conversation-id"
+        assert token_buffer_memory.call_args.kwargs["model_instance"] is sentinel.model_instance
 
-    def test_uses_configured_session_factory_without_flask_app_context(self, monkeypatch: pytest.MonkeyPatch):
-        class FakeSelect:
-            def where(self, *_args):
-                return self
-
-        class FakeSession:
-            def __enter__(self):
-                return self
-
-            def __exit__(self, *_args):
-                return False
-
-            def scalar(self, _stmt):
-                return sentinel.conversation
-
+    def test_uses_configured_session_factory_without_flask_app_context(
+        self, monkeypatch: pytest.MonkeyPatch, memory_session_maker: sessionmaker[Session]
+    ):
         class RaisingDB:
             @property
             def engine(self):
                 raise RuntimeError("Working outside of application context.")
 
         token_buffer_memory = MagicMock(return_value=sentinel.memory)
+        _persist_conversation(memory_session_maker)
         monkeypatch.setattr(node_factory, "db", RaisingDB(), raising=False)
-        monkeypatch.setattr(node_factory, "session_factory", SimpleNamespace(create_session=FakeSession))
-        monkeypatch.setattr(node_factory, "select", MagicMock(return_value=FakeSelect()))
         monkeypatch.setattr(node_factory, "TokenBufferMemory", token_buffer_memory)
 
         result = node_factory.fetch_memory(
@@ -342,6 +320,19 @@ class TestDifyNodeFactoryInit:
         assert isinstance(factory, node_factory.DifyNodeFactory)
         graph_init_context.to_graph_init_params.assert_called_once_with()
         init.assert_called_once_with(
+            graph_init_params=sentinel.graph_init_params,
+            graph_runtime_state=sentinel.graph_runtime_state,
+        )
+
+    def test_with_runtime_state_rebinds_factory(self):
+        factory = object.__new__(node_factory.DifyNodeFactory)
+        factory.graph_init_params = sentinel.graph_init_params
+
+        with patch.object(node_factory, "DifyNodeFactory", return_value=sentinel.factory) as factory_cls:
+            rebound = factory.with_runtime_state(sentinel.graph_runtime_state)
+
+        assert rebound is sentinel.factory
+        factory_cls.assert_called_once_with(
             graph_init_params=sentinel.graph_init_params,
             graph_runtime_state=sentinel.graph_runtime_state,
         )
@@ -726,6 +717,119 @@ class TestDifyNodeFactoryCreateNode:
             request_metadata={"app_id": "app-id"},
         )
         assert kwargs["model_instance"] is wrapped_model_instance
+
+    def test_resolve_llm_model_reference_uses_shared_model_and_parameters(self, factory):
+        node_data = LLMNodeData.model_validate(
+            {
+                "type": BuiltinNodeTypes.LLM,
+                "title": "LLM",
+                "model": {
+                    "provider": "old-provider",
+                    "name": "old-model",
+                    "mode": "chat",
+                    "completion_params": {"temperature": 0.2},
+                },
+                "model_selector": ["env", "for_summarize"],
+                "prompt_template": [{"role": "system", "text": "x"}],
+                "context": {"enabled": False, "variable_selector": []},
+                "vision": {"enabled": False},
+            }
+        )
+        factory.graph_runtime_state.variable_pool.get.return_value = ObjectSegment(
+            value={
+                "provider": "new-provider",
+                "name": "new-model",
+                "mode": "chat",
+                "completion_params": {"temperature": 0.8},
+            }
+        )
+
+        result = factory._resolve_llm_model_reference(node_data)
+
+        assert result.model.provider == "new-provider"
+        assert result.model.name == "new-model"
+        assert result.model.mode == node_data.model.mode
+        assert result.model.completion_params == {"temperature": 0.8}
+        factory.graph_runtime_state.variable_pool.get.assert_called_once_with(("env", "for_summarize"))
+
+    def test_resolve_llm_model_reference_keeps_node_parameters_for_legacy_variable(self, factory):
+        node_data = LLMNodeData.model_validate(
+            {
+                "type": BuiltinNodeTypes.LLM,
+                "title": "LLM",
+                "model": {
+                    "provider": "old-provider",
+                    "name": "old-model",
+                    "mode": "chat",
+                    "completion_params": {"temperature": 0.2},
+                },
+                "model_selector": ["env", "for_summarize"],
+                "prompt_template": [{"role": "system", "text": "x"}],
+                "context": {"enabled": False, "variable_selector": []},
+                "vision": {"enabled": False},
+            }
+        )
+        factory.graph_runtime_state.variable_pool.get.return_value = ObjectSegment(
+            value={"provider": "new-provider", "name": "new-model", "mode": "chat"}
+        )
+
+        result = factory._resolve_llm_model_reference(node_data)
+
+        assert result.model.completion_params == {"temperature": 0.2}
+
+    def test_resolve_llm_model_reference_rejects_mode_mismatch(self, factory):
+        node_data = LLMNodeData.model_validate(
+            {
+                "type": BuiltinNodeTypes.LLM,
+                "title": "LLM",
+                "model": {"provider": "provider", "name": "model", "mode": "chat"},
+                "model_selector": ["env", "shared_model"],
+                "prompt_template": [{"role": "system", "text": "x"}],
+                "context": {"enabled": False, "variable_selector": []},
+                "vision": {"enabled": False},
+            }
+        )
+        factory.graph_runtime_state.variable_pool.get.return_value = ObjectSegment(
+            value={"provider": "provider", "name": "model", "mode": "completion"}
+        )
+
+        with pytest.raises(ValueError, match="uses mode 'completion'.*uses mode 'chat'"):
+            factory._resolve_llm_model_reference(node_data)
+
+    def test_resolve_llm_model_reference_rejects_missing_variable(self, factory):
+        node_data = LLMNodeData.model_validate(
+            {
+                "type": BuiltinNodeTypes.LLM,
+                "title": "LLM",
+                "model": {"provider": "provider", "name": "model", "mode": "chat"},
+                "model_selector": ["env", "shared_model"],
+                "prompt_template": [{"role": "system", "text": "x"}],
+                "context": {"enabled": False, "variable_selector": []},
+                "vision": {"enabled": False},
+            }
+        )
+        factory.graph_runtime_state.variable_pool.get.return_value = None
+
+        with pytest.raises(ValueError, match="shared_model.*not found"):
+            factory._resolve_llm_model_reference(node_data)
+
+    def test_resolve_llm_model_reference_keeps_static_model_for_legacy_non_environment_selector(self, factory):
+        node_data = LLMNodeData.model_validate(
+            {
+                "type": BuiltinNodeTypes.LLM,
+                "title": "LLM",
+                "model": {"provider": "provider", "name": "model", "mode": "chat"},
+                "model_selector": ["conversation", "shared_model"],
+                "prompt_template": [{"role": "system", "text": "x"}],
+                "context": {"enabled": False, "variable_selector": []},
+                "vision": {"enabled": False},
+            }
+        )
+
+        result = factory._resolve_llm_model_reference(node_data)
+
+        assert result is node_data
+        factory.graph_runtime_state.variable_pool.get.assert_not_called()
 
     def test_build_llm_compatible_node_init_kwargs_uses_polling_wrapper_for_polling_llm_node(self, factory):
         node_data = LLMNodeData.model_validate(

@@ -4,6 +4,7 @@ import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema
 import type { SchemaRoot } from '@/app/components/workflow/nodes/llm/types'
 import type { NodeOutPutVar, ValueSelector } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Input } from '@langgenius/dify-ui/input'
 import {
   Select,
   SelectContent,
@@ -14,12 +15,10 @@ import {
 } from '@langgenius/dify-ui/select'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { RiArrowRightUpLine, RiBracesLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
-import Input from '@/app/components/base/input'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { AppSelector } from '@/app/components/plugins/plugin-detail-panel/app-selector'
@@ -42,7 +41,7 @@ import {
   updateVariableSelectorValue,
   updateVariableTypeValue,
 } from './reasoning-config-form.helpers'
-import SchemaModal from './schema-modal'
+import { SchemaModal } from './schema-modal'
 
 export type ReasoningConfigValue = ReasoningConfigValueShape
 
@@ -174,7 +173,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
       <div key={variable} className="space-y-0.5">
         <div className="flex items-center justify-between py-2 system-sm-semibold text-text-secondary">
           <div className="flex items-center">
-            <span className={cn('max-w-[140px] truncate code-sm-semibold text-text-secondary')}>
+            <span className={cn('max-w-35 truncate code-sm-semibold text-text-secondary')}>
               {fieldTitle}
             </span>
             {required && <span className="ml-1 text-red-500">*</span>}
@@ -195,7 +194,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
                       className="ml-0.5 cursor-pointer rounded-sm border-0 bg-transparent p-px text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
                       onClick={() => showSchema(input_schema as SchemaRoot, fieldTitle!)}
                     >
-                      <RiBracesLine className="size-3.5" />
+                      <span aria-hidden className="i-ri-braces-line size-3.5" />
                     </button>
                   }
                 />
@@ -205,10 +204,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
               </Tooltip>
             )}
           </div>
-          <div
-            className="flex cursor-pointer items-center gap-1 rounded-md border border-divider-subtle bg-background-default-lighter px-2 py-1 hover:bg-state-base-hover"
-            onClick={() => handleAutomatic(variable, !auto, type)}
-          >
+          <label className="flex cursor-pointer items-center gap-1 rounded-md border border-divider-subtle bg-background-default-lighter px-2 py-1 hover:bg-state-base-hover">
             <span className="system-xs-medium text-text-secondary">
               {t(($) => $['detailPanel.toolSelector.auto'], { ns: 'plugin' })}
             </span>
@@ -217,7 +213,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
               checked={!!auto}
               onCheckedChange={(val) => handleAutomatic(variable, val, type)}
             />
-          </div>
+          </label>
         </div>
         {auto === 0 && (
           <div className={cn('gap-1', !(isShowJSONEditor && isConstant) && 'flex')}>
@@ -335,7 +331,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
             className="inline-flex items-center text-xs text-text-accent"
           >
             {t(($) => $.howToGet, { ns: 'tools' })}
-            <RiArrowRightUpLine className="ml-1 size-3" />
+            <span aria-hidden className="ml-1 i-ri-arrow-right-up-line size-3" />
           </a>
         )}
       </div>

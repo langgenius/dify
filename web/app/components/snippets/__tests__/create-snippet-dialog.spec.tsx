@@ -3,15 +3,43 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { expectLoadingButton } from '@/test/button'
-import CreateSnippetDialog from '../create-snippet-dialog'
+import { CreateSnippetDialog } from '../create-snippet-dialog'
 
 let capturedKeyPressHandler: (() => void) | undefined
+let capturedHotkey: string | undefined
+let capturedHotkeyOptions:
+  | {
+      enabled?: boolean
+      ignoreInputs?: boolean
+      preventDefault?: boolean
+      stopPropagation?: boolean
+      target?: React.RefObject<HTMLElement | null>
+    }
+  | undefined
 
-vi.mock('ahooks', () => ({
-  useKeyPress: (_keys: string[], handler: () => void) => {
-    capturedKeyPressHandler = handler
-  },
-}))
+vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
+  return {
+    ...actual,
+    useHotkey: (
+      hotkey: string,
+      handler: () => void,
+      options?: {
+        enabled?: boolean
+        ignoreInputs?: boolean
+        preventDefault?: boolean
+        stopPropagation?: boolean
+        target?: React.RefObject<HTMLElement | null>
+      },
+    ) => {
+      capturedHotkey = hotkey
+      capturedKeyPressHandler = () => {
+        if (options?.enabled !== false) handler()
+      }
+      capturedHotkeyOptions = options
+    },
+  }
+})
 
 const selectedGraph: SnippetCanvasData = {
   nodes: [],
@@ -32,6 +60,8 @@ describe('CreateSnippetDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     capturedKeyPressHandler = undefined
+    capturedHotkey = undefined
+    capturedHotkeyOptions = undefined
   })
 
   it('should submit trimmed snippet values with the selected graph and input fields', async () => {
@@ -178,6 +208,14 @@ describe('CreateSnippetDialog', () => {
         name: 'Keyboard snippet',
       }),
     )
+    expect(capturedHotkeyOptions).toMatchObject({
+      enabled: true,
+      ignoreInputs: false,
+      preventDefault: false,
+      stopPropagation: false,
+    })
+    expect(capturedHotkeyOptions?.target?.current).toBe(screen.getByRole('dialog'))
+    expect(capturedHotkey).toBe('Mod+Enter')
   })
 
   it('should disable form controls while submitting', () => {

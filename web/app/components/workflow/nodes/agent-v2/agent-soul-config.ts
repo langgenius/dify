@@ -7,21 +7,20 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { debounce } from 'es-toolkit/compat'
 import isEqual from 'fast-deep-equal'
 import { useStore as useJotaiStore, useSetAtom } from 'jotai'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
-import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
 import {
   agentSoulConfigToFormState,
   formStateToAgentSoulConfig,
 } from '@/features/agent-v2/agent-composer/conversions'
 import {
   agentComposerDraftAtom,
-  agentComposerOriginalConfigAtom,
-  agentComposerOriginalDraftAtom,
+  agentComposerSavedDraftAtom,
   isAgentComposerDirtyAtom,
 } from '@/features/agent-v2/agent-composer/store'
 import { consoleQuery } from '@/service/client'
 import { FlowType } from '@/types/common'
+import { useSerialAsyncCallback } from '../../hooks/use-serial-async-callback'
 
 const DRAFT_AUTOSAVE_WAIT = 5000
 
@@ -77,16 +76,17 @@ export function useWorkflowInlineAgentConfigureSync({
   const queryClient = useQueryClient()
   const configsMap = useHooksStore((state) => state.configsMap)
   const store = useJotaiStore()
-  const setOriginalConfig = useSetAtom(agentComposerOriginalConfigAtom)
-  const setOriginalDraft = useSetAtom(agentComposerOriginalDraftAtom)
-  const [draftSavedAt, setDraftSavedAt] = useState<number | undefined>(undefined)
+  const setSavedDraft = useSetAtom(agentComposerSavedDraftAtom)
   const baseConfigRef = useRef(baseConfig)
   const currentModelRef = useRef(currentModel)
   const enabledRef = useRef(enabled)
   const onDraftSavedRef = useRef(onDraftSaved)
   const lastAutosavedDraftKeyRef = useRef<string | undefined>(undefined)
-  const saveComposerMutation = useMutation(
+  const { mutateAsync: saveAppComposer } = useMutation(
     consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions(),
+  )
+  const { mutateAsync: saveSnippetComposer } = useMutation(
+    consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions(),
   )
 
   baseConfigRef.current = baseConfig
@@ -106,35 +106,63 @@ export function useWorkflowInlineAgentConfigureSync({
 
   const saveComposer = useSerialAsyncCallback(
     async (configSnapshot: AgentSoulConfig): Promise<WorkflowAgentComposerResponse | undefined> => {
-      if (!configsMap?.flowId || configsMap.flowType !== FlowType.appFlow) return
+      if (
+        !configsMap?.flowId ||
+        (configsMap.flowType !== FlowType.appFlow && configsMap.flowType !== FlowType.snippet)
+      )
+        return
 
       const savedDraftKey = JSON.stringify(configSnapshot)
-      const composerState = await saveComposerMutation.mutateAsync({
-        params: {
-          app_id: configsMap.flowId,
-          node_id: nodeId,
-        },
-        body: {
-          variant: 'workflow',
-          save_strategy: 'node_job_only',
-          agent_soul: configSnapshot,
-        },
-      })
+      const body = {
+        variant: 'workflow' as const,
+        save_strategy: 'node_job_only' as const,
+        agent_soul: configSnapshot,
+      }
+      const composerState =
+        configsMap.flowType === FlowType.snippet
+          ? await saveSnippetComposer({
+              params: {
+                snippet_id: configsMap.flowId,
+                node_id: nodeId,
+              },
+              body,
+            })
+          : await saveAppComposer({
+              params: {
+                app_id: configsMap.flowId,
+                node_id: nodeId,
+              },
+              body,
+            })
 
-      queryClient.setQueryData(
-        consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
-          input: {
-            params: {
-              app_id: configsMap.flowId,
-              node_id: nodeId,
+      if (configsMap.flowType === FlowType.snippet) {
+        queryClient.setQueryData(
+          consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey(
+            {
+              input: {
+                params: {
+                  snippet_id: configsMap.flowId,
+                  node_id: nodeId,
+                },
+              },
             },
-          },
-        }),
-        composerState,
-      )
-      setOriginalConfig(composerState.agent_soul)
-      setOriginalDraft(agentSoulConfigToFormState(composerState.agent_soul))
-      setDraftSavedAt(Date.now())
+          ),
+          composerState,
+        )
+      } else {
+        queryClient.setQueryData(
+          consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
+            input: {
+              params: {
+                app_id: configsMap.flowId,
+                node_id: nodeId,
+              },
+            },
+          }),
+          composerState,
+        )
+      }
+      setSavedDraft(agentSoulConfigToFormState(composerState.agent_soul))
       lastAutosavedDraftKeyRef.current = savedDraftKey
       onDraftSavedRef.current?.(composerState)
       return composerState
@@ -197,7 +225,6 @@ export function useWorkflowInlineAgentConfigureSync({
   }, [autoSaveEnabled, debouncedSaveDraft])
 
   return {
-    draftSavedAt,
     saveAgentSoulConfig,
     saveDraft,
   }

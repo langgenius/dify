@@ -13,39 +13,50 @@ from core.rag.models.document import AttachmentDocument, Document
 
 class _ForwardingBaseIndexProcessor(BaseIndexProcessor):
     @override
-    def extract(self, extract_setting, **kwargs):
-        return super().extract(extract_setting, **kwargs)
+    def extract(self, extract_setting, *, session, **kwargs):
+        return super().extract(extract_setting, session=session, **kwargs)
 
     @override
-    def transform(self, documents, current_user=None, **kwargs):
-        return super().transform(documents, current_user=current_user, **kwargs)
+    def transform(self, documents, current_user=None, *, session, **kwargs):
+        return super().transform(documents, current_user=current_user, session=session, **kwargs)
 
     @override
-    def generate_summary_preview(self, tenant_id, preview_texts, summary_index_setting, doc_language=None):
+    def generate_summary_preview(self, tenant_id, preview_texts, summary_index_setting, doc_language=None, *, session):
         return super().generate_summary_preview(
             tenant_id=tenant_id,
             preview_texts=preview_texts,
             summary_index_setting=summary_index_setting,
             doc_language=doc_language,
+            session=session,
         )
 
     @override
-    def load(self, dataset, documents, multimodal_documents=None, with_keywords=True, **kwargs):
+    def load(
+        self,
+        dataset,
+        documents,
+        multimodal_documents=None,
+        with_keywords=True,
+        *,
+        session,
+        **kwargs,
+    ):
         return super().load(
             dataset=dataset,
             documents=documents,
             multimodal_documents=multimodal_documents,
             with_keywords=with_keywords,
+            session=session,
             **kwargs,
         )
 
     @override
-    def clean(self, dataset, node_ids, with_keywords=True, **kwargs):
-        return super().clean(dataset=dataset, node_ids=node_ids, with_keywords=with_keywords, **kwargs)
+    def clean(self, dataset, node_ids, with_keywords=True, *, session, **kwargs):
+        return super().clean(dataset=dataset, node_ids=node_ids, with_keywords=with_keywords, session=session, **kwargs)
 
     @override
-    def index(self, dataset, document, chunks):
-        return super().index(dataset=dataset, document=document, chunks=chunks)
+    def index(self, dataset, document, chunks, session):
+        return super().index(dataset=dataset, document=document, chunks=chunks, session=session)
 
     @override
     def format_preview(self, chunks):
@@ -59,17 +70,19 @@ class TestBaseIndexProcessor:
 
     def test_abstract_methods_raise_not_implemented(self, processor: _ForwardingBaseIndexProcessor) -> None:
         with pytest.raises(NotImplementedError):
-            processor.extract(Mock())
+            processor.extract(Mock(), session=Mock())
         with pytest.raises(NotImplementedError):
-            processor.transform([])
+            processor.transform([], session=Mock())
         with pytest.raises(NotImplementedError):
-            processor.generate_summary_preview("tenant", [PreviewDetail(content="c")], {"enable": False})
+            processor.generate_summary_preview(
+                "tenant", [PreviewDetail(content="c")], {"enable": False}, session=Mock()
+            )
         with pytest.raises(NotImplementedError):
-            processor.load(Mock(), [])
+            processor.load(Mock(), [], session=Mock())
         with pytest.raises(NotImplementedError):
-            processor.clean(Mock(), None)
+            processor.clean(Mock(), None, session=Mock())
         with pytest.raises(NotImplementedError):
-            processor.index(Mock(), Mock(), {})
+            processor.index(Mock(), Mock(), {}, Mock())
         with pytest.raises(NotImplementedError):
             processor.format_preview([])
 
@@ -112,7 +125,7 @@ class TestBaseIndexProcessor:
 
     def test_get_content_files_without_images_returns_empty(self, processor: _ForwardingBaseIndexProcessor) -> None:
         document = Document(page_content="no image markdown", metadata={"document_id": "doc-1", "dataset_id": "ds-1"})
-        assert processor._get_content_files(document) == []
+        assert processor._get_content_files(document, session=Mock()) == []
 
     def test_get_content_files_handles_all_sources_and_duplicates(
         self, processor: _ForwardingBaseIndexProcessor
@@ -133,14 +146,14 @@ class TestBaseIndexProcessor:
         scalars_result.all.return_value = [upload_a, upload_b, upload_tool, upload_remote]
         db_session = Mock()
         db_session.scalars.return_value = scalars_result
+        current_user = Mock()
 
         with (
             patch.object(processor, "_extract_markdown_images", return_value=images),
             patch.object(processor, "_download_tool_file", return_value="tool-upload-id") as mock_tool_download,
             patch.object(processor, "_download_image", return_value="remote-upload-id") as mock_image_download,
-            patch("core.rag.index_processor.index_processor_base.db.session", db_session),
         ):
-            files = processor._get_content_files(document, current_user=Mock())
+            files = processor._get_content_files(document, current_user=current_user, session=db_session)
 
         assert len(files) == 5
         assert all(isinstance(file, AttachmentDocument) for file in files)
@@ -149,7 +162,11 @@ class TestBaseIndexProcessor:
         assert files[0].metadata["dataset_id"] == "ds-1"
         assert files[0].metadata["doc_id"] == "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
         assert files[1].metadata["doc_id"] == "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
-        mock_tool_download.assert_called_once()
+        mock_tool_download.assert_called_once_with(
+            "cccccccc-cccc-cccc-cccc-cccccccccccc",
+            current_user,
+            session=db_session,
+        )
         mock_image_download.assert_called_once()
 
     def test_get_content_files_skips_tool_and_remote_download_without_user(
@@ -159,7 +176,7 @@ class TestBaseIndexProcessor:
         images = ["/files/tools/cccccccc-cccc-cccc-cccc-cccccccccccc.png", "https://example.com/remote.png"]
 
         with patch.object(processor, "_extract_markdown_images", return_value=images):
-            files = processor._get_content_files(document, current_user=None)
+            files = processor._get_content_files(document, current_user=None, session=Mock())
 
         assert files == []
 
@@ -173,9 +190,8 @@ class TestBaseIndexProcessor:
 
         with (
             patch.object(processor, "_extract_markdown_images", return_value=images),
-            patch("core.rag.index_processor.index_processor_base.db.session", db_session),
         ):
-            files = processor._get_content_files(document)
+            files = processor._get_content_files(document, session=db_session)
 
         assert files == []
 
@@ -258,15 +274,13 @@ class TestBaseIndexProcessor:
         db_session = Mock()
         db_session.get.return_value = None
 
-        with patch("core.rag.index_processor.index_processor_base.db.session", db_session):
-            assert processor._download_tool_file("tool-id", current_user=Mock()) is None
+        assert processor._download_tool_file("tool-id", current_user=Mock(), session=db_session) is None
 
     def test_download_tool_file_uploads_file_when_found(self, processor: _ForwardingBaseIndexProcessor) -> None:
         tool_file = SimpleNamespace(file_key="k1", name="tool.png", mimetype="image/png")
         db_session = Mock()
         db_session.get.return_value = tool_file
         mock_db = Mock()
-        mock_db.session = db_session
         mock_db.engine = Mock()
         upload_result = SimpleNamespace(id="upload-id")
 
@@ -276,7 +290,7 @@ class TestBaseIndexProcessor:
             patch("services.file_service.FileService") as mock_file_service,
         ):
             mock_file_service.return_value.upload_file.return_value = upload_result
-            result = processor._download_tool_file("tool-id", current_user=Mock())
+            result = processor._download_tool_file("tool-id", current_user=Mock(), session=db_session)
 
         assert result == "upload-id"
         mock_load.assert_called_once_with("k1")

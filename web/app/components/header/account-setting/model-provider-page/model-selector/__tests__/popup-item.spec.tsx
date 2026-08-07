@@ -1,9 +1,12 @@
 import type { ReactElement, ReactNode } from 'react'
 import type { DefaultModel, Model, ModelItem } from '../../declarations'
+import type { ModelSelectorPreviewPayload } from '../popup-item'
 import { Combobox } from '@langgenius/dify-ui/combobox'
 import { createPreviewCardHandle } from '@langgenius/dify-ui/preview-card'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { commonQueryKeys } from '@/service/use-common'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import {
   ConfigurationMethodEnum,
   CustomConfigurationStatusEnum,
@@ -87,46 +90,22 @@ vi.mock('@/context/provider-context', () => ({
   useProviderContext: mockUseProviderContext,
 }))
 
-const mockUseAppContext = vi.hoisted(() => vi.fn())
+const mockConsoleStateReader = vi.hoisted(() => vi.fn())
 const mockWorkspacePermissionKeys = vi.hoisted(() => ({
   value: ['credential.use', 'credential.create', 'credential.manage'],
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys.value,
   }))
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys.value,
   }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 const makeModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
@@ -161,7 +140,7 @@ const makeProvider = (overrides: Record<string, unknown> = {}) => ({
 })
 
 const previewCardProps = () => ({
-  previewCardHandle: createPreviewCardHandle(),
+  previewCardHandle: createPreviewCardHandle<ModelSelectorPreviewPayload>(),
   onPreviewCardClose: vi.fn(),
 })
 
@@ -172,7 +151,11 @@ const createComboboxNode = (node: ReactElement, onValueChange = vi.fn()) => (
 )
 
 const renderWithCombobox = (node: ReactElement, onValueChange = vi.fn()) => {
-  return render(createComboboxNode(node, onValueChange))
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(commonQueryKeys.modelProviderDetails, {
+    data: [makeProvider()],
+  })
+  return renderWithConsoleQuery(createComboboxNode(node, onValueChange), { queryClient })
 }
 
 describe('PopupItem', () => {
@@ -183,7 +166,7 @@ describe('PopupItem', () => {
     mockUseProviderContext.mockReturnValue({
       modelProviders: [makeProvider()],
     })
-    mockUseAppContext.mockReturnValue({
+    mockConsoleStateReader.mockReturnValue({
       currentWorkspace: { trial_credits: 200, trial_credits_used: 0 },
     })
     mockCredentialPanelState.mockReturnValue({
@@ -229,7 +212,7 @@ describe('PopupItem', () => {
     const onPreviewCardClose = vi.fn()
     renderWithCombobox(
       <PopupItem
-        previewCardHandle={createPreviewCardHandle()}
+        previewCardHandle={createPreviewCardHandle<ModelSelectorPreviewPayload>()}
         onPreviewCardClose={onPreviewCardClose}
         model={makeModel()}
         onHide={vi.fn()}
@@ -317,7 +300,7 @@ describe('PopupItem', () => {
     ).toBeInTheDocument()
   })
 
-  it('should open model modal when clicking add on unconfigured model', () => {
+  it('should open model modal when clicking add on unconfigured model', async () => {
     const onValueChange = vi.fn()
     const { rerender } = renderWithCombobox(
       <PopupItem
@@ -329,10 +312,14 @@ describe('PopupItem', () => {
     )
 
     fireEvent.click(screen.getByText('GPT-4'))
-    fireEvent.click(screen.getByText('COMMON.OPERATION.ADD'))
+    const addButton = screen.getByRole('button', { name: 'COMMON.OPERATION.ADD' })
+    expect(addButton.closest('[aria-disabled="true"]')).toBeNull()
+    fireEvent.click(addButton)
 
     expect(onValueChange).not.toHaveBeenCalled()
-    expect(mockSetShowModelModal).toHaveBeenCalled()
+    await waitFor(() => {
+      expect(mockSetShowModelModal).toHaveBeenCalled()
+    })
 
     const call = mockSetShowModelModal.mock.calls[0]![0] as { onSaveCallback?: () => void }
     call.onSaveCallback?.()
@@ -358,6 +345,9 @@ describe('PopupItem', () => {
     )
 
     fireEvent.click(screen.getByText('COMMON.OPERATION.ADD'))
+    await waitFor(() => {
+      expect(mockSetShowModelModal).toHaveBeenCalledTimes(2)
+    })
     const call2 = mockSetShowModelModal.mock.calls.at(-1)?.[0] as
       | { onSaveCallback?: () => void }
       | undefined
@@ -496,7 +486,7 @@ describe('PopupItem', () => {
         }),
       ],
     })
-    mockUseAppContext.mockReturnValue({
+    mockConsoleStateReader.mockReturnValue({
       currentWorkspace: { trial_credits: 100, trial_credits_used: 100 },
     })
     mockCredentialPanelState.mockReturnValue({
@@ -515,18 +505,18 @@ describe('PopupItem', () => {
     expect(screen.getByText(/modelProvider\.selector\.creditsExhausted/))!.toBeInTheDocument()
   })
 
-  it('should close the dropdown through dropdown content callbacks', () => {
+  it('should close the dropdown through dropdown content callbacks', async () => {
     const onHide = vi.fn()
 
     renderWithCombobox(<PopupItem {...previewCardProps()} model={makeModel()} onHide={onHide} />)
 
     fireEvent.click(screen.getByRole('button', { name: /my-api-key/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'close dropdown' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'close dropdown' }))
 
     expect(onHide).toHaveBeenCalled()
   })
 
-  it('should keep the credential dropdown enabled for manage-only users', () => {
+  it('should keep the credential dropdown enabled for manage-only users', async () => {
     mockWorkspacePermissionKeys.value = ['credential.manage']
 
     renderWithCombobox(<PopupItem {...previewCardProps()} model={makeModel()} onHide={vi.fn()} />)
@@ -537,6 +527,6 @@ describe('PopupItem', () => {
 
     fireEvent.click(trigger)
 
-    expect(screen.getByRole('button', { name: 'close dropdown' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'close dropdown' })).toBeInTheDocument()
   })
 })

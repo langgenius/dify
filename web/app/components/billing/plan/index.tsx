@@ -2,23 +2,20 @@
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { RiBook2Line, RiFileEditLine, RiGroupLine } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useUnmountedRef } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
-import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ApiAggregate, TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
 import UsageInfo from '@/app/components/billing/usage-info'
-import { useSetEducationVerifying } from '@/app/education-apply/storage'
 import VerifyStateModal from '@/app/education-apply/verify-state-modal'
-import { IS_CLOUD_EDITION } from '@/config'
 import { userProfileEmailAtom } from '@/context/account-state'
-import { useModalContextSelector } from '@/context/modal-context'
-import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
-import { usePathname, useRouter } from '@/next/navigation'
+import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useRouter } from '@/next/navigation'
 import { useEducationVerify } from '@/service/use-education'
-import { BillingPermission, hasPermission } from '@/utils/permission'
 import { getDaysUntilEndOfMonth } from '@/utils/time'
 import Loading from '../../base/icons/src/public/thought/Loading'
 import { NUM_INFINITE } from '../config'
@@ -35,10 +32,14 @@ type Props = Readonly<{
 
 const PlanComp: FC<Props> = ({ loc }) => {
   const { t } = useTranslation()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
+  const isCloudEdition = deploymentEdition === 'CLOUD'
   const router = useRouter()
-  const path = usePathname()
   const userProfileEmail = useAtomValue(userProfileEmailAtom)
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const { plan, enableEducationPlan, allowRefreshEducationVerify, isEducationAccount } =
     useProviderContext()
   const isAboutToExpire = allowRefreshEducationVerify
@@ -59,16 +60,12 @@ const PlanComp: FC<Props> = ({ loc }) => {
 
   const [showModal, setShowModal] = React.useState(false)
   const { handleEducationDiscount, isEducationDiscountLoading } = useEducationDiscount()
-  const canManageBilling = hasPermission(workspacePermissionKeys, BillingPermission.Manage)
   const { mutateAsync, isPending } = useEducationVerify()
-  const setShowAccountSettingModal = useModalContextSelector((s) => s.setShowAccountSettingModal)
-  const setEducationVerifying = useSetEducationVerifying()
   const unmountedRef = useUnmountedRef()
   const handleVerify = () => {
     if (isPending) return
     mutateAsync()
       .then((res) => {
-        setEducationVerifying(null)
         if (unmountedRef.current) return
         router.push(`/education-apply?token=${res.token}`)
       })
@@ -76,10 +73,6 @@ const PlanComp: FC<Props> = ({ loc }) => {
         setShowModal(true)
       })
   }
-  useEffect(() => {
-    // setShowAccountSettingModal would prevent navigation
-    if (path.startsWith('/education-apply')) setShowAccountSettingModal(null)
-  }, [path, setShowAccountSettingModal])
   return (
     <div className="relative rounded-2xl border-[0.5px] border-effects-highlight-lightmode-off bg-background-section-burn">
       <div className="p-6 pb-2">
@@ -99,31 +92,29 @@ const PlanComp: FC<Props> = ({ loc }) => {
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1">
-            {IS_CLOUD_EDITION &&
-              enableEducationPlan &&
-              (!isEducationAccount || isAboutToExpire) && (
-                <Button variant="ghost" onClick={handleVerify} disabled={isPending}>
-                  <span className="mr-1 i-ri-graduation-cap-line size-4" />
-                  {t(($) => $.toVerified, { ns: 'education' })}
-                  {isPending && <Loading className="ml-1 animate-spin-slow" />}
-                </Button>
-              )}
-            {IS_CLOUD_EDITION &&
+            {isCloudEdition && enableEducationPlan && (!isEducationAccount || isAboutToExpire) && (
+              <Button variant="ghost" onClick={handleVerify} disabled={isPending}>
+                <span className="i-ri-graduation-cap-line size-4" />
+                {t(($) => $.toVerified, { ns: 'education' })}
+                {isPending && <Loading className="animate-spin-slow" />}
+              </Button>
+            )}
+            {isCloudEdition &&
               enableEducationPlan &&
               isEducationAccount &&
               type === Plan.sandbox &&
-              canManageBilling && (
+              isCurrentWorkspaceManager && (
                 <Button
                   variant="ghost"
                   onClick={handleEducationDiscount}
                   disabled={isEducationDiscountLoading}
                 >
-                  <span className="mr-1 i-ri-graduation-cap-line size-4" />
+                  <span className="i-ri-graduation-cap-line size-4" />
                   {t(($) => $.useEducationDiscount, { ns: 'education' })}
-                  {isEducationDiscountLoading && <Loading className="ml-1 animate-spin-slow" />}
+                  {isEducationDiscountLoading && <Loading className="animate-spin-slow" />}
                 </Button>
               )}
-            {IS_CLOUD_EDITION && !isEnterprisePlan && (
+            {isCloudEdition && !isEnterprisePlan && (
               <UpgradeBtn className="shrink-0" isPlain={type === Plan.team} isShort loc={loc} />
             )}
           </div>

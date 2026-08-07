@@ -6,6 +6,7 @@ import * as z from 'zod'
  * AgentApiAccessResponse
  */
 export const zAgentApiAccessResponse = z.object({
+  access_ready: z.boolean(),
   api_key_count: z.int(),
   api_rph: z.int(),
   api_rpm: z.int(),
@@ -196,7 +197,6 @@ export const zAgentPublishPayload = z.object({
  * SandboxInfoResponse
  */
 export const zSandboxInfoResponse = z.object({
-  session_id: z.string(),
   workspace_cwd: z.string(),
 })
 
@@ -215,7 +215,8 @@ export const zSandboxReadResponse = z.object({
  * AgentSandboxUploadPayload
  */
 export const zAgentSandboxUploadPayload = z.object({
-  conversation_id: z.string().min(1),
+  caller_id: z.string().min(1),
+  caller_type: z.enum(['build_draft', 'conversation']),
   path: z.string().min(1),
 })
 
@@ -289,6 +290,36 @@ export const zDeletedTool = z.object({
 })
 
 /**
+ * AppModelConfigResponse
+ */
+export const zAppModelConfigResponse = z.object({
+  agent_mode: z.unknown().nullish(),
+  annotation_reply: z.unknown().nullish(),
+  chat_prompt_config: z.unknown().nullish(),
+  completion_prompt_config: z.unknown().nullish(),
+  created_at: z.int().nullish(),
+  created_by: z.string().nullish(),
+  dataset_configs: z.unknown().nullish(),
+  dataset_query_variable: z.string().nullish(),
+  external_data_tools: z.unknown().nullish(),
+  file_upload: z.unknown().nullish(),
+  model: z.unknown().nullish(),
+  more_like_this: z.unknown().nullish(),
+  opening_statement: z.string().nullish(),
+  pre_prompt: z.string().nullish(),
+  prompt_type: z.string().nullish(),
+  retriever_resource: z.unknown().nullish(),
+  sensitive_word_avoidance: z.unknown().nullish(),
+  speech_to_text: z.unknown().nullish(),
+  suggested_questions: z.unknown().nullish(),
+  suggested_questions_after_answer: z.unknown().nullish(),
+  text_to_speech: z.unknown().nullish(),
+  updated_at: z.int().nullish(),
+  updated_by: z.string().nullish(),
+  user_input_form: z.unknown().nullish(),
+})
+
+/**
  * AppDetailSiteResponse
  */
 export const zAppDetailSiteResponse = z.object({
@@ -337,6 +368,47 @@ export const zWorkflowPartial = z.object({
   id: z.string(),
   updated_at: z.int().nullish(),
   updated_by: z.string().nullish(),
+})
+
+/**
+ * AgentAppDetailWithSite
+ */
+export const zAgentAppDetailWithSite = z.object({
+  access_mode: z.string().nullish(),
+  access_ready: z.boolean().optional().default(false),
+  api_base_url: z.string().nullish(),
+  app_id: z.string().nullish(),
+  backing_app_id: z.string().nullish(),
+  bound_agent_id: z.string().nullish(),
+  created_at: z.int().nullish(),
+  created_by: z.string().nullish(),
+  debug_conversation_has_messages: z.boolean().optional().default(false),
+  debug_conversation_id: z.string().nullish(),
+  debug_conversation_message_count: z.int().optional().default(0),
+  deleted_tools: z.array(zDeletedTool).optional(),
+  description: z.string().nullish(),
+  enable_api: z.boolean(),
+  enable_site: z.boolean(),
+  hidden_app_backed: z.boolean().optional().default(false),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: z.string().nullish(),
+  icon_url: z.string().nullable(),
+  id: z.string(),
+  maintainer: z.string().nullish(),
+  max_active_requests: z.int().nullish(),
+  mode: z.string(),
+  model_config: zAppModelConfigResponse.nullish(),
+  name: z.string(),
+  permission_keys: z.array(z.string()).optional(),
+  role: z.string().nullish(),
+  site: zAppDetailSiteResponse.nullish(),
+  tags: z.array(zTag).optional(),
+  tracing: z.unknown().nullish(),
+  updated_at: z.int().nullish(),
+  updated_by: z.string().nullish(),
+  use_icon_as_answer_icon: z.boolean().nullish(),
+  workflow: zWorkflowPartial.nullish(),
 })
 
 /**
@@ -461,6 +533,7 @@ export const zAgentConfigFileItemResponse = z.object({
   file_id: z.string().nullish(),
   hash: z.string().nullish(),
   id: z.string(),
+  is_missing: z.boolean().optional().default(false),
   mime_type: z.string().nullish(),
   name: z.string(),
   size: z.int().nullish(),
@@ -498,6 +571,7 @@ export const zAgentConfigSkillItemResponse = z.object({
   file_id: z.string().nullish(),
   hash: z.string().nullish(),
   id: z.string(),
+  is_missing: z.boolean().optional().default(false),
   mime_type: z.string().nullish(),
   name: z.string(),
   size: z.int().nullish(),
@@ -760,40 +834,6 @@ export const zAgentLogListResponse = z.object({
   total: z.int(),
 })
 
-/**
- * AgentLogMessageItemResponse
- */
-export const zAgentLogMessageItemResponse = z.object({
-  answer: z.string(),
-  answer_tokens: z.int(),
-  conversation_id: z.string(),
-  created_at: z.int().nullish(),
-  currency: z.string(),
-  error: z.string().nullish(),
-  from_account_id: z.string().nullish(),
-  from_end_user_id: z.string().nullish(),
-  id: z.string(),
-  latency: z.number(),
-  message_id: z.string(),
-  message_tokens: z.int(),
-  query: z.string(),
-  status: z.string(),
-  total_price: z.string(),
-  total_tokens: z.int(),
-  updated_at: z.int().nullish(),
-})
-
-/**
- * AgentLogMessageListResponse
- */
-export const zAgentLogMessageListResponse = z.object({
-  data: z.array(zAgentLogMessageItemResponse),
-  has_more: z.boolean(),
-  limit: z.int(),
-  page: z.int(),
-  total: z.int(),
-})
-
 export const zJsonValue = z
   .union([
     z.string(),
@@ -983,6 +1023,7 @@ export const zAgentAppPartial = z.object({
   permission_keys: z.array(z.string()).optional(),
   published_reference_count: z.int().optional().default(0),
   published_references: z.array(zAgentAppPublishedReferenceResponse).optional(),
+  reference_count: z.int().nullish(),
   role: z.string().nullish(),
   tags: z.array(zTag).optional(),
   updated_at: z.int().nullish(),
@@ -1000,64 +1041,6 @@ export const zAgentAppPagination = z.object({
   limit: z.int(),
   page: z.int(),
   total: z.int(),
-})
-
-/**
- * LLMMode
- *
- * Enum class for large language model mode.
- */
-export const zLlmMode = z.enum(['chat', 'completion'])
-
-/**
- * ModelConfig
- */
-export const zModelConfig = z.object({
-  completion_params: z.record(z.string(), z.unknown()).optional(),
-  mode: zLlmMode,
-  name: z.string(),
-  provider: z.string(),
-})
-
-/**
- * AgentAppDetailWithSite
- */
-export const zAgentAppDetailWithSite = z.object({
-  access_mode: z.string().nullish(),
-  active_config_is_published: z.boolean().optional().default(false),
-  api_base_url: z.string().nullish(),
-  app_id: z.string().nullish(),
-  backing_app_id: z.string().nullish(),
-  bound_agent_id: z.string().nullish(),
-  created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
-  debug_conversation_has_messages: z.boolean().optional().default(false),
-  debug_conversation_id: z.string().nullish(),
-  debug_conversation_message_count: z.int().optional().default(0),
-  deleted_tools: z.array(zDeletedTool).optional(),
-  description: z.string().nullish(),
-  enable_api: z.boolean(),
-  enable_site: z.boolean(),
-  hidden_app_backed: z.boolean().optional().default(false),
-  icon: z.string().nullish(),
-  icon_background: z.string().nullish(),
-  icon_type: z.string().nullish(),
-  icon_url: z.string().nullable(),
-  id: z.string(),
-  maintainer: z.string().nullish(),
-  max_active_requests: z.int().nullish(),
-  mode: z.string(),
-  model_config: zModelConfig.nullish(),
-  name: z.string(),
-  permission_keys: z.array(z.string()).optional(),
-  role: z.string().nullish(),
-  site: zAppDetailSiteResponse.nullish(),
-  tags: z.array(zTag).optional(),
-  tracing: z.unknown().nullish(),
-  updated_at: z.int().nullish(),
-  updated_by: z.string().nullish(),
-  use_icon_as_answer_icon: z.boolean().nullish(),
-  workflow: zWorkflowPartial.nullish(),
 })
 
 /**
@@ -1134,6 +1117,7 @@ export const zAgentInviteOptionResponse = z.object({
   published_node_reference_count: z.int().optional().default(0),
   published_reference_count: z.int().optional().default(0),
   published_references: z.array(zAgentPublishedReferenceResponse).optional(),
+  reference_count: z.int().nullish(),
   role: z.string().optional().default(''),
   scope: zAgentScope,
   source: zAgentSource,
@@ -1191,9 +1175,10 @@ export const zAppVariableConfig = z.object({
  * Stable Agent Soul reference to one config file payload.
  */
 export const zAgentConfigFileRefConfig = z.object({
-  file_id: z.string().min(1).max(255),
+  file_id: z.string().max(255).optional().default(''),
   file_kind: z.enum(['tool_file', 'upload_file']),
   hash: z.string().nullish(),
+  is_missing: z.boolean().optional().default(false),
   mime_type: z.string().nullish(),
   name: z.string().min(1).max(255),
   size: z.int().nullish(),
@@ -1206,9 +1191,10 @@ export const zAgentConfigFileRefConfig = z.object({
  */
 export const zAgentConfigSkillRefConfig = z.object({
   description: z.string().optional().default(''),
-  file_id: z.string().min(1).max(255),
+  file_id: z.string().max(255).optional().default(''),
   file_kind: z.literal('tool_file').optional().default('tool_file'),
   hash: z.string().nullish(),
+  is_missing: z.boolean().optional().default(false),
   mime_type: z.string().nullish().default('application/zip'),
   name: z.string().min(1).max(255),
   size: z.int().nullish(),
@@ -1345,6 +1331,51 @@ export const zAgentSuggestedQuestionsAfterAnswerFeatureConfig = z.object({
   enabled: z.boolean().optional().default(false),
   model: zAgentSuggestedQuestionsAfterAnswerModelConfig.nullish(),
   prompt: z.string().nullish(),
+})
+
+/**
+ * AgentLogFeedbackResponse
+ */
+export const zAgentLogFeedbackResponse = z.object({
+  content: z.string().nullish(),
+  from_source: z.enum(['admin', 'user']),
+  rating: z.enum(['dislike', 'like']),
+})
+
+/**
+ * AgentLogMessageItemResponse
+ */
+export const zAgentLogMessageItemResponse = z.object({
+  answer: z.string(),
+  answer_tokens: z.int(),
+  conversation_id: z.string(),
+  created_at: z.int().nullish(),
+  currency: z.string(),
+  error: z.string().nullish(),
+  feedback_enabled: z.boolean().optional().default(false),
+  feedbacks: z.array(zAgentLogFeedbackResponse).optional(),
+  from_account_id: z.string().nullish(),
+  from_end_user_id: z.string().nullish(),
+  id: z.string(),
+  latency: z.number(),
+  message_id: z.string(),
+  message_tokens: z.int(),
+  query: z.string(),
+  status: z.string(),
+  total_price: z.string(),
+  total_tokens: z.int(),
+  updated_at: z.int().nullish(),
+})
+
+/**
+ * AgentLogMessageListResponse
+ */
+export const zAgentLogMessageListResponse = z.object({
+  data: z.array(zAgentLogMessageItemResponse),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
 })
 
 /**
@@ -1520,6 +1551,7 @@ export const zAgentStatisticSummaryEnvelopeResponse = z.object({
  */
 export const zAgentConfigRevisionOperation = z.enum([
   'create_version',
+  'import_package',
   'publish_draft',
   'restore_version',
   'save_current_version',
@@ -1712,10 +1744,10 @@ export const zDeclaredArrayItem = z.object({
             description: z.string().nullish(),
             type: z.enum(['array', 'boolean', 'file', 'number', 'object', 'string']).optional(),
           })
-          .optional(),
+          .nullish(),
         children: z.array(z.record(z.string(), z.unknown())).optional(),
         description: z.string().nullish(),
-        file: z.record(z.string(), z.unknown()).optional(),
+        file: z.record(z.string(), z.unknown()).nullish(),
         name: z.string(),
         required: z.boolean().optional(),
         type: z.enum(['array', 'boolean', 'file', 'number', 'object', 'string']),
@@ -2059,6 +2091,21 @@ export const zAgentSoulDifyToolCredentialRef = z.object({
 })
 
 /**
+ * ToolProviderType
+ *
+ * Enum class for tool provider
+ */
+export const zToolProviderType = z.enum([
+  'api',
+  'app',
+  'builtin',
+  'dataset-retrieval',
+  'mcp',
+  'plugin',
+  'workflow',
+])
+
+/**
  * AgentSoulDifyToolConfig
  *
  * One Dify tool configured on Agent Soul.
@@ -2080,7 +2127,7 @@ export const zAgentSoulDifyToolConfig = z.object({
   plugin_id: z.string().max(255).nullish(),
   provider: z.string().max(255).nullish(),
   provider_id: z.string().max(255).nullish(),
-  provider_type: z.string().optional().default('plugin'),
+  provider_type: zToolProviderType,
   runtime_parameters: z
     .record(
       z.string(),
@@ -2166,10 +2213,10 @@ export const zDeclaredOutputConfig = z.object({
             description: z.string().nullish(),
             type: z.enum(['array', 'boolean', 'file', 'number', 'object', 'string']).optional(),
           })
-          .optional(),
+          .nullish(),
         children: z.array(z.record(z.string(), z.unknown())).optional(),
         description: z.string().nullish(),
-        file: z.record(z.string(), z.unknown()).optional(),
+        file: z.record(z.string(), z.unknown()).nullish(),
         name: z.string(),
         required: z.boolean().optional(),
         type: z.enum(['array', 'boolean', 'file', 'number', 'object', 'string']),
@@ -2452,6 +2499,7 @@ export const zComposerSavePayload = z.object({
  * AgentAppComposerResponse
  */
 export const zAgentAppComposerResponse = z.object({
+  active_config_is_published: z.boolean(),
   active_config_snapshot: zAgentConfigSnapshotSummaryResponse.nullish(),
   agent: zAgentComposerAgentResponse,
   agent_soul: zAgentSoulConfig,
@@ -2486,7 +2534,7 @@ export const zAgentConfigSnapshotDetailResponse = z.object({
  * ValueSourceType
  *
  * ValueSourceType records whether the value comes from a static setting
- * in form definiton, or a variable while the workflow is running.
+ * in form definition, or a variable while the workflow is running.
  */
 export const zValueSourceType = z.enum(['constant', 'variable'])
 
@@ -2633,6 +2681,7 @@ export const zAgentAppPartialWritable = z.object({
   permission_keys: z.array(z.string()).optional(),
   published_reference_count: z.int().optional().default(0),
   published_references: z.array(zAgentAppPublishedReferenceResponse).optional(),
+  reference_count: z.int().nullish(),
   role: z.string().nullish(),
   tags: z.array(zTag).optional(),
   updated_at: z.int().nullish(),
@@ -2687,7 +2736,7 @@ export const zAppDetailSiteResponseWritable = z.object({
  */
 export const zAgentAppDetailWithSiteWritable = z.object({
   access_mode: z.string().nullish(),
-  active_config_is_published: z.boolean().optional().default(false),
+  access_ready: z.boolean().optional().default(false),
   api_base_url: z.string().nullish(),
   app_id: z.string().nullish(),
   backing_app_id: z.string().nullish(),
@@ -2709,7 +2758,7 @@ export const zAgentAppDetailWithSiteWritable = z.object({
   maintainer: z.string().nullish(),
   max_active_requests: z.int().nullish(),
   mode: z.string(),
-  model_config: zModelConfig.nullish(),
+  model_config: zAppModelConfigResponse.nullish(),
   name: z.string(),
   permission_keys: z.array(z.string()).optional(),
   role: z.string().nullish(),
@@ -2851,7 +2900,7 @@ export const zDeleteAgentByAgentIdApiKeysByApiKeyIdResponse = z.void()
 
 export const zPostAgentByAgentIdAudioToTextBody = z.object({
   draft_type: z.enum(['debug_build', 'draft']).optional().default('draft'),
-  file: z.custom<Blob | File>(),
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
 })
 
 export const zPostAgentByAgentIdAudioToTextPath = z.object({
@@ -3101,7 +3150,7 @@ export const zGetAgentByAgentIdConfigSkillsQuery = z.object({
 export const zGetAgentByAgentIdConfigSkillsResponse = zAgentConfigSkillListResponse
 
 export const zPostAgentByAgentIdConfigSkillsUploadBody = z.object({
-  file: z.custom<Blob | File>(),
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
 })
 
 export const zPostAgentByAgentIdConfigSkillsUploadPath = z.object({
@@ -3427,7 +3476,8 @@ export const zGetAgentByAgentIdSandboxPath = z.object({
 })
 
 export const zGetAgentByAgentIdSandboxQuery = z.object({
-  conversation_id: z.string().min(1),
+  caller_id: z.string().min(1),
+  caller_type: z.enum(['build_draft', 'conversation']),
 })
 
 /**
@@ -3440,7 +3490,8 @@ export const zGetAgentByAgentIdSandboxFilesPath = z.object({
 })
 
 export const zGetAgentByAgentIdSandboxFilesQuery = z.object({
-  conversation_id: z.string().min(1),
+  caller_id: z.string().min(1),
+  caller_type: z.enum(['build_draft', 'conversation']),
   path: z.string().optional().default('.'),
 })
 
@@ -3454,7 +3505,8 @@ export const zGetAgentByAgentIdSandboxFilesReadPath = z.object({
 })
 
 export const zGetAgentByAgentIdSandboxFilesReadQuery = z.object({
-  conversation_id: z.string().min(1),
+  caller_id: z.string().min(1),
+  caller_type: z.enum(['build_draft', 'conversation']),
   path: z.string().min(1),
 })
 
@@ -3475,7 +3527,7 @@ export const zPostAgentByAgentIdSandboxFilesUploadPath = z.object({
 export const zPostAgentByAgentIdSandboxFilesUploadResponse = zSandboxUploadResponse
 
 export const zPostAgentByAgentIdSkillsUploadBody = z.object({
-  file: z.custom<Blob | File>(),
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
 })
 
 export const zPostAgentByAgentIdSkillsUploadPath = z.object({

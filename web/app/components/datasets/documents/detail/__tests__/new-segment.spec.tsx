@@ -49,7 +49,7 @@ vi.mock('@/service/knowledge/use-segment', () => ({
 }))
 
 vi.mock('../completed/common/action-buttons', () => ({
-  default: ({
+  ActionButtons: ({
     handleCancel,
     handleSave,
     loading,
@@ -193,12 +193,6 @@ describe('NewSegmentModal', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(<NewSegmentModal {...defaultProps} />)
-
-      expect(container.firstChild)!.toBeInTheDocument()
-    })
-
     it('should render title text', () => {
       render(<NewSegmentModal {...defaultProps} />)
 

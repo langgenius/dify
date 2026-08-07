@@ -17,7 +17,7 @@ type Props = Readonly<{
   onShowChange: (isShow: boolean) => void
   pluginID: string
   currentVersion: string
-  trigger: React.ReactNode
+  trigger: (open: boolean) => React.ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number
@@ -48,7 +48,7 @@ const PluginVersionPicker: FC<Props> = ({
   const format = t(($) => $.dateTimeFormat, { ns: 'appLog' }).split(' ')[0]
   const { formatDate } = useTimestamp()
 
-  const { data: res } = useVersionListOfPlugin(pluginID)
+  const { data: res, isLoading } = useVersionListOfPlugin(pluginID, isShow && !disabled)
 
   const handleSelect = useCallback(
     ({
@@ -76,10 +76,19 @@ const PluginVersionPicker: FC<Props> = ({
     >
       <PopoverTrigger
         disabled={disabled}
-        className={cn('inline-flex cursor-pointer items-center', disabled && 'cursor-default')}
-      >
-        {trigger}
-      </PopoverTrigger>
+        render={(props, state) => (
+          <button
+            {...props}
+            type="button"
+            className={cn(
+              'inline-flex cursor-pointer items-center data-disabled:cursor-default',
+              props.className,
+            )}
+          >
+            {trigger(state.open)}
+          </button>
+        )}
+      />
 
       <PopoverContent
         placement={placement}
@@ -91,35 +100,49 @@ const PluginVersionPicker: FC<Props> = ({
           {t(($) => $['detailPanel.switchVersion'], { ns: 'plugin' })}
         </div>
         <div className="relative max-h-[224px] overflow-y-auto">
-          {res?.data.versions.map((version) => (
+          {isLoading ? (
             <div
-              key={version.unique_identifier}
-              className={cn(
-                'flex cursor-pointer items-center rounded-lg px-2 py-1 hover:bg-state-base-hover',
-                currentVersion === version.version &&
-                  'cursor-default opacity-30 hover:bg-transparent',
-              )}
-              onClick={() =>
-                handleSelect({
-                  version: version.version,
-                  unique_identifier: version.unique_identifier,
-                  isDowngrade: isEarlierThanVersion(version.version, currentVersion),
-                })
-              }
+              role="status"
+              aria-label={t(($) => $.loading, { ns: 'common' })}
+              className="flex h-12 items-center justify-center"
             >
-              <div className="flex min-h-5 min-w-0 grow items-center gap-1 px-1">
-                <div className="min-w-0 grow truncate system-sm-medium text-text-secondary">
-                  {version.version}
-                </div>
-                {currentVersion === version.version && (
-                  <Badge className="shrink-0" variant="dimm" text="CURRENT" />
-                )}
-                <div className="shrink-0 system-xs-regular text-text-tertiary">
-                  {formatDate(version.created_at, format!)}
-                </div>
-              </div>
+              <span
+                aria-hidden
+                className="i-ri-loader-2-line size-4 animate-spin text-text-tertiary"
+              />
             </div>
-          ))}
+          ) : (
+            res?.data.versions.map((version) => (
+              <button
+                key={version.unique_identifier}
+                type="button"
+                disabled={currentVersion === version.version}
+                className={cn(
+                  'flex w-full cursor-pointer items-center rounded-lg border-0 px-2 py-1 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-default disabled:hover:bg-transparent',
+                  currentVersion === version.version && 'cursor-default opacity-30',
+                )}
+                onClick={() =>
+                  handleSelect({
+                    version: version.version,
+                    unique_identifier: version.unique_identifier,
+                    isDowngrade: isEarlierThanVersion(version.version, currentVersion),
+                  })
+                }
+              >
+                <div className="flex min-h-5 min-w-0 grow items-center gap-1 px-1">
+                  <div className="min-w-0 grow truncate system-sm-medium text-text-secondary">
+                    {version.version}
+                  </div>
+                  {currentVersion === version.version && (
+                    <Badge className="shrink-0" variant="dimm" text="CURRENT" />
+                  )}
+                  <div className="shrink-0 system-xs-regular text-text-tertiary">
+                    {formatDate(version.created_at, format!)}
+                  </div>
+                </div>
+              </button>
+            ))
+          )}
         </div>
       </PopoverContent>
     </Popover>

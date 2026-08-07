@@ -8,7 +8,90 @@ root_packages =
     extensions
     factories
     libs
+    machinery
     models
+    repositories
     tasks
     services
 include_external_packages = True
+
+[importlinter:contract:no-direct-rsa-imports]
+# Note: `libs` itself is deliberately excluded from source_modules -- import-linter's
+# `forbidden` contract cannot check a package against its own descendant (libs.rsa lives
+# inside libs). Sibling modules under libs/ importing libs.rsa are not covered by this
+# contract; the realistic risk this guards against is application/service code reaching
+# past the key provider abstraction, which is fully covered below.
+name = Only the key provider abstraction may import libs.rsa directly
+type = forbidden
+source_modules =
+    core
+    constants
+    context
+    configs
+    controllers
+    extensions
+    factories
+    models
+    tasks
+    services
+forbidden_modules =
+    libs.rsa
+allow_indirect_imports = True
+
+[importlinter:contract:machinery-framework-boundary]
+name = API machinery is framework neutral
+type = forbidden
+source_modules =
+    machinery
+forbidden_modules =
+    controllers
+    extensions
+    flask
+    models
+    sqlalchemy
+    werkzeug
+
+[importlinter:contract:workspace-query-service-boundary]
+name = Workspace query application service is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.workspace_query_service
+forbidden_modules =
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    werkzeug
+
+[importlinter:contract:feature-query-service-boundary]
+name = Feature query application service is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.feature_query_service
+forbidden_modules =
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    werkzeug
+
+[importlinter:contract:workspace-member-query-service-boundary]
+name = Workspace member query application service is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.workspace_member_query_service
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    services.enterprise
+    services.workspace_member_role_resolver
+    sqlalchemy
+    werkzeug

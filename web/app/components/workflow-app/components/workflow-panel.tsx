@@ -6,7 +6,7 @@ import Panel from '@/app/components/workflow/panel'
 import CommentsPanel from '@/app/components/workflow/panel/comments-panel'
 import { useStore } from '@/app/components/workflow/store'
 import dynamic from '@/next/dynamic'
-import { useIsChatMode } from '../hooks'
+import { useIsChatMode } from '../hooks/use-is-chat-mode'
 
 const MessageLogModal = dynamic(() => import('@/app/components/base/message-log-modal'), {
   ssr: false,

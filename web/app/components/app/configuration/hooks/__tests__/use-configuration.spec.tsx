@@ -1,11 +1,25 @@
 /* oxlint-disable typescript/no-explicit-any */
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import { updateAppModelConfig } from '@/service/apps'
+import { consoleQuery } from '@/service/client'
+import { createQueryClientWrapper } from '@/test/console/query-client'
+import { renderHook as renderHookWithConsoleState } from '@/test/console/render'
+import { createTestQueryClient } from '@/test/query-client'
 import { AppModeEnum, ModelModeType } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import { useConfiguration } from '../use-configuration'
 
-const mockSetShowAccountSettingModal = vi.fn()
+const renderHook = (callback: () => ReturnType<typeof useConfiguration>) => {
+  const queryClient = createTestQueryClient()
+  return {
+    ...renderHookWithConsoleState(callback, {
+      wrapper: createQueryClientWrapper(queryClient),
+    }),
+    queryClient,
+  }
+}
+
+const mockSetSettingsDestination = vi.fn()
 const mockSetShowAppConfigureFeaturesModal = vi.fn()
 const mockSetDetailSidebarMode = vi.fn()
 const mockHandleMultipleModelConfigsChange = vi.fn()
@@ -44,50 +58,27 @@ vi.mock('ahooks', async () => {
   }
 })
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => ({
     currentWorkspace: { id: 'workspace-1' },
     isLoadingCurrentWorkspace: false,
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: ['app.create_and_management'],
   }))
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
     currentWorkspace: { id: 'workspace-1' },
     isLoadingCurrentWorkspace: false,
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: ['app.create_and_management'],
   }))
 })
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    currentWorkspace: { id: 'workspace-1' },
-    isLoadingCurrentWorkspace: false,
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: ['app.create_and_management'],
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    currentWorkspace: { id: 'workspace-1' },
-    isLoadingCurrentWorkspace: false,
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: ['app.create_and_management'],
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     currentWorkspace: { id: 'workspace-1' },
     isLoadingCurrentWorkspace: false,
     userProfile: { id: 'user-1' },
@@ -95,18 +86,10 @@ vi.mock('@/context/system-features-state', async (importOriginal) => {
   }))
 })
 
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
 })
-
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowAccountSettingModal: mockSetShowAccountSettingModal,
-  }),
-}))
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
@@ -299,7 +282,18 @@ describe('useConfiguration', () => {
   })
 
   it('should update model parameters and publish the current configuration', async () => {
-    const { result } = renderHook(() => useConfiguration())
+    const { result, queryClient } = renderHook(() => useConfiguration())
+    const detailQueryKey = consoleQuery.apps.byAppId.get.queryKey({
+      input: { params: { app_id: 'app-1' } },
+    })
+    queryClient.setQueryData(detailQueryKey, {
+      enable_api: false,
+      enable_site: false,
+      icon_url: null,
+      id: 'app-1',
+      mode: 'chat',
+      name: 'Cached app',
+    })
 
     await waitFor(() => {
       expect(result.current.showLoading).toBe(false)
@@ -331,6 +325,7 @@ describe('useConfiguration', () => {
         url: '/apps/app-1/model-config',
       }),
     )
+    expect(queryClient.getQueryState(detailQueryKey)?.isInvalidated).toBe(true)
   })
 
   it('should block publishing when app release permission is missing', async () => {
@@ -522,7 +517,7 @@ describe('useConfiguration', () => {
     expect(mockFormattingChangedDispatcher).toHaveBeenCalled()
     expect(mockHandleMultipleModelConfigsChange).toHaveBeenCalled()
     expect(mockSetDetailSidebarMode).toHaveBeenCalledWith('collapse')
-    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'provider' })
+    expect(mockSetSettingsDestination).toHaveBeenCalledWith('provider')
     expect(mockSetConversationHistoriesRole).toHaveBeenCalledWith({
       assistant_prefix: 'bot',
       user_prefix: 'user',

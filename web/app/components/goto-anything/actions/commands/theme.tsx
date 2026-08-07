@@ -1,7 +1,5 @@
 import type { CommandSearchResult } from '../types'
 import type { SlashCommandHandler } from './types'
-import { RiComputerLine, RiMoonLine, RiSunLine } from '@remixicon/react'
-import * as React from 'react'
 import { getI18n } from 'react-i18next'
 import { registerCommands, unregisterCommands } from './command-bus'
 
@@ -15,19 +13,19 @@ const THEME_ITEMS = [
     id: 'system',
     titleKey: 'gotoAnything.actions.themeSystem',
     descKey: 'gotoAnything.actions.themeSystemDesc',
-    icon: <RiComputerLine className="size-4 text-text-tertiary" />,
+    iconClassName: 'i-ri-computer-line',
   },
   {
     id: 'light',
     titleKey: 'gotoAnything.actions.themeLight',
     descKey: 'gotoAnything.actions.themeLightDesc',
-    icon: <RiSunLine className="size-4 text-text-tertiary" />,
+    iconClassName: 'i-ri-sun-line',
   },
   {
     id: 'dark',
     titleKey: 'gotoAnything.actions.themeDark',
     descKey: 'gotoAnything.actions.themeDarkDesc',
-    icon: <RiMoonLine className="size-4 text-text-tertiary" />,
+    iconClassName: 'i-ri-moon-line',
   },
 ] as const
 
@@ -50,7 +48,7 @@ const buildThemeCommands = (query: string, locale?: string): CommandSearchResult
     type: 'command' as const,
     icon: (
       <div className="flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg">
-        {item.icon}
+        <span aria-hidden className={`${item.iconClassName} size-4 text-text-tertiary`} />
       </div>
     ),
     data: { command: 'theme.set', args: { value: item.id } },
@@ -66,7 +64,7 @@ export const themeCommand: SlashCommandHandler<ThemeDeps> = {
   description: 'Switch between light and dark themes',
   mode: 'submenu', // Explicitly set submenu mode
 
-  async search(args: string, locale: string = 'en') {
+  search(args: string, locale: string = 'en') {
     // Return theme options directly, regardless of parameters
     return buildThemeCommands(args, locale)
   },

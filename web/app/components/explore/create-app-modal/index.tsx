@@ -1,4 +1,5 @@
 'use client'
+import type { Hotkey } from '@tanstack/react-hotkeys'
 import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
@@ -44,6 +45,8 @@ export type CreateAppModalProps = {
 }
 
 type CreateAppPayload = Parameters<CreateAppModalProps['onConfirm']>[0]
+
+const SUBMIT_APP_HOTKEY = 'Mod+Enter' satisfies Hotkey
 
 const CreateAppModal = ({
   show = false,
@@ -118,7 +121,7 @@ const CreateAppModal = ({
   const { run: handleSubmit } = useDebounceFn(submit, { wait: 300 })
 
   useHotkey(
-    'Mod+Enter',
+    SUBMIT_APP_HOTKEY,
     () => {
       handleSubmit()
     },
@@ -227,7 +230,7 @@ const CreateAppModal = ({
           <div className="flex flex-row-reverse">
             <Button
               disabled={(!isEditModal && isAppsFull) || !name.trim() || confirmDisabled}
-              className="ml-2 w-24 gap-1"
+              className="ml-2 w-24"
               variant="primary"
               onClick={handleSubmit}
             >
@@ -237,7 +240,7 @@ const CreateAppModal = ({
                   : t(($) => $['operation.save'], { ns: 'common' })}
               </span>
               <KbdGroup>
-                {['Mod', 'Enter'].map((key) => (
+                {SUBMIT_APP_HOTKEY.split('+').map((key) => (
                   <Kbd key={key} color="white">
                     {formatForDisplay(key)}
                   </Kbd>

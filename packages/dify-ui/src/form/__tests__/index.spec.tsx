@@ -2,8 +2,6 @@ import { render } from 'vitest-browser-react'
 import { Field, FieldControl, FieldLabel } from '../../field'
 import { Form } from '../index'
 
-const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
-
 describe('Form primitive', () => {
   it('should render a native named form and merge custom class names', async () => {
     const screen = await render(
@@ -32,7 +30,7 @@ describe('Form primitive', () => {
       </Form>,
     )
 
-    asHTMLElement(screen.getByRole('button', { name: 'Save' }).element()).click()
+    await screen.getByRole('button', { name: 'Save' }).click()
 
     expect(onFormSubmit).toHaveBeenCalledTimes(1)
     expect(onFormSubmit.mock.calls[0]?.[0]).toMatchObject({

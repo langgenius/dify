@@ -1,4 +1,4 @@
-import type { WorkflowGenPlan } from '@/service/debug'
+import type { WorkflowGenPlan } from '@/service/workflow-generator'
 import { render, screen } from '@testing-library/react'
 import GenerationPlan from '../generation-plan'
 
@@ -7,7 +7,9 @@ describe('GenerationPlan', () => {
   // the user sees real progress rather than a bare spinner.
   it('shows the planning state while the plan is null', () => {
     render(<GenerationPlan plan={null} />)
-    expect(screen.getByText(/workflowGenerator\.phases\.planning/i)).toBeInTheDocument()
+    const status = screen.getByRole('status')
+    expect(status).toHaveTextContent(/workflowGenerator\.phases\.planning/i)
+    expect(status.parentElement).toHaveAttribute('aria-busy', 'true')
   })
 
   // Once the plan streams in, the outline (node purposes + identity) renders and
@@ -29,7 +31,7 @@ describe('GenerationPlan', () => {
     expect(screen.getByText('URL Summarizer')).toBeInTheDocument()
     expect(screen.getByText('capture the URL')).toBeInTheDocument()
     expect(screen.getByText('summarize the page')).toBeInTheDocument()
-    expect(screen.getByText(/workflowGenerator\.phases\.building/i)).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent(/workflowGenerator\.phases\.building/i)
     // The planning-only state must be gone once a plan is present.
     expect(screen.queryByText(/workflowGenerator\.phases\.planning/i)).not.toBeInTheDocument()
   })

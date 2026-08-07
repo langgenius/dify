@@ -59,22 +59,18 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 const mockOnClose = vi.fn()
 const mockOnSave = vi.fn()
 const mockSetShowPricingModal = vi.fn()
-const mockSetShowAccountSettingModal = vi.fn()
 const mockUseProviderContext = vi.fn<() => ProviderContextState>()
 
 const buildModalContext = (): ModalContextState => ({
-  setShowAccountSettingModal: mockSetShowAccountSettingModal,
+  hasBlockingModalOpen: false,
   setShowModerationSettingModal: vi.fn(),
   setShowExternalDataToolModal: vi.fn(),
   setShowPricingModal: mockSetShowPricingModal,
   setShowAnnotationFullModal: vi.fn(),
   setShowModelModal: vi.fn(),
   setShowExternalKnowledgeAPIModal: vi.fn(),
-  setShowModelLoadBalancingModal: vi.fn(),
   setShowOpeningModal: vi.fn(),
   setShowUpdatePluginModal: vi.fn(),
-  setShowEducationExpireNoticeModal: vi.fn(),
-  setShowTriggerEventsLimitModal: vi.fn(),
 })
 
 vi.mock('@/context/modal-context', () => ({
@@ -134,7 +130,6 @@ describe('SettingsModal', () => {
     mockOnClose.mockClear()
     mockOnSave.mockClear()
     mockSetShowPricingModal.mockClear()
-    mockSetShowAccountSettingModal.mockClear()
     mockUseProviderContext.mockReturnValue({
       ...baseProviderContextValue,
       enableBilling: true,
@@ -422,7 +417,6 @@ describe('SettingsModal', () => {
     fireEvent.click((await screen.findAllByText('billing.upgradeBtn.encourageShort'))[0]!)
 
     expect(mockSetShowPricingModal).toHaveBeenCalled()
-    expect(mockSetShowAccountSettingModal).not.toHaveBeenCalled()
   })
 
   it('should hide the upgrade badge for non-sandbox plans', async () => {

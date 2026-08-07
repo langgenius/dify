@@ -7,7 +7,10 @@ import {
 import { useProviderContext } from '@/context/provider-context'
 import { useInvalidDataSourceListAuth } from '@/service/use-datasource'
 import { useInvalidDataSourceList } from '@/service/use-pipeline'
-import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
+import {
+  useInvalidateCheckInstalled,
+  useInvalidateInstalledPluginList,
+} from '@/service/use-plugins'
 import { useInvalidateStrategyProviders } from '@/service/use-strategy'
 import {
   useInvalidateAllBuiltInTools,
@@ -18,7 +21,7 @@ import { useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
 import { PluginCategoryEnum } from '../../types'
 
 type PluginCategoryPayload = {
-  category: PluginCategoryEnum | string
+  category: PluginCategoryEnum
 }
 
 const SYSTEM_MODEL_TYPES = [
@@ -31,6 +34,7 @@ const SYSTEM_MODEL_TYPES = [
 
 const useRefreshPluginList = () => {
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
+  const invalidateCheckInstalled = useInvalidateCheckInstalled()
   const { mutate: refetchLLMModelList } = useModelList(ModelTypeEnum.textGeneration)
   const { mutate: refetchEmbeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
   const { mutate: refetchRerankModelList } = useModelList(ModelTypeEnum.rerank)
@@ -56,7 +60,9 @@ const useRefreshPluginList = () => {
       refreshAllType?: boolean,
     ) => {
       // installed list
-      invalidateInstalledPluginList()
+      if (refreshAllType || !manifest) invalidateInstalledPluginList()
+      else invalidateInstalledPluginList(manifest.category)
+      invalidateCheckInstalled()
 
       // tool page, tool select
       if ((manifest && PluginCategoryEnum.tool.includes(manifest.category)) || refreshAllType) {

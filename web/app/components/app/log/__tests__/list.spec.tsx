@@ -1,10 +1,8 @@
 /* oxlint-disable typescript/no-explicit-any */
 import type { ReactNode } from 'react'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
-import {
-  AccountProfileQueryProvider,
-  createAccountProfileQueryClient,
-} from '@/test/account-profile-query'
+import { createAccountProfileQueryClient } from '@/test/console/account-profile'
+import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
 import ConversationList from '../list'
@@ -99,12 +97,14 @@ vi.mock('@/app/components/base/copy-icon', () => ({
 vi.mock('@/app/components/app/text-generate/item', () => ({
   default: ({
     content,
+    hideLogAction,
     onFeedback,
   }: {
     content: string
+    hideLogAction?: boolean
     onFeedback: (value: { rating: string; content?: string }) => Promise<boolean>
   }) => (
-    <div data-testid="text-generation">
+    <div data-testid="text-generation" data-hide-log-action={String(hideLogAction)}>
       <div>{content}</div>
       <button onClick={() => void onFeedback({ rating: 'like', content: 'great' })}>
         completion-feedback
@@ -122,6 +122,7 @@ vi.mock('@/app/components/base/chat/chat', () => ({
     onAnnotationRemoved,
     switchSibling,
     hideLogModal,
+    showPromptLog,
   }: {
     chatList: Array<{ id: string }>
     onFeedback: (mid: string, value: { rating: string; content?: string }) => Promise<boolean>
@@ -136,8 +137,13 @@ vi.mock('@/app/components/base/chat/chat', () => ({
     onAnnotationRemoved: (index: number) => Promise<boolean>
     switchSibling: (siblingMessageId: string) => void
     hideLogModal?: boolean
+    showPromptLog?: boolean
   }) => (
-    <div data-testid="chat-panel" data-hide-log-modal={String(hideLogModal)}>
+    <div
+      data-testid="chat-panel"
+      data-hide-log-modal={String(hideLogModal)}
+      data-show-prompt-log={String(showPromptLog)}
+    >
       <div>{chatList.length}</div>
       <button onClick={() => void onFeedback('message-1', { rating: 'like', content: 'nice' })}>
         chat-feedback
@@ -258,9 +264,9 @@ const renderConversationList = ({
 } = {}) => {
   const queryClient = createAccountProfileQueryClient({ timezone: 'Asia/Shanghai' })
   return renderWithNuqs(
-    <AccountProfileQueryProvider queryClient={queryClient}>
+    <QueryClientTestProvider queryClient={queryClient}>
       <ConversationList appDetail={appDetail} logs={logs} onRefresh={mockOnRefresh} />
-    </AccountProfileQueryProvider>,
+    </QueryClientTestProvider>,
     { searchParams },
   )
 }
@@ -418,6 +424,41 @@ describe('ConversationList', () => {
     })
   })
 
+  it.each([
+    ['chatbot', AppModeEnum.CHAT, 'false'],
+    ['agent', AppModeEnum.AGENT_CHAT, 'false'],
+    ['chatflow', AppModeEnum.ADVANCED_CHAT, 'true'],
+  ])('should expose run details only for %s conversation answers', async (_, mode, expected) => {
+    mockChatConversationDetail = {
+      id: 'conversation-1',
+      created_at: 1710000000,
+      model_config: {
+        model: 'gpt-4o',
+        configs: {
+          introduction: 'Hello there',
+        },
+        user_input_form: [],
+      },
+      message: {
+        inputs: {},
+      },
+    }
+    mockFetchChatMessages.mockResolvedValue({
+      data: [createChatMessage('message-1')],
+      has_more: false,
+    })
+
+    renderConversationList({
+      appDetail: { id: 'app-1', mode } as any,
+      searchParams: '?conversation_id=conversation-1',
+    })
+
+    expect(await screen.findByTestId('chat-panel')).toHaveAttribute(
+      'data-show-prompt-log',
+      expected,
+    )
+  })
+
   it('should mount agent log modals from the detail panel instead of the nested chat layout', async () => {
     mockChatConversationDetail = {
       id: 'conversation-1',
@@ -511,6 +552,7 @@ describe('ConversationList', () => {
     })
 
     expect(screen.getByTestId('var-panel')).toHaveTextContent('query:Question')
+    expect(screen.getByTestId('text-generation')).toHaveAttribute('data-hide-log-action', 'true')
     expect(screen.getByTestId('prompt-log-modal')).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('completion-feedback'))

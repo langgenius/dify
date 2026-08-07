@@ -9,7 +9,6 @@ import type {
   CommonResponse,
   ICurrentWorkspace,
   InitValidateStatusResponse,
-  InvitationResponse,
   SetupStatusResponse,
 } from '@/models/common'
 import { del, get, patch, post } from './base'
@@ -69,15 +68,6 @@ export const updateUserProfile = ({
   return post<CommonResponse>(url, { body })
 }
 
-export const inviteMember = ({
-  url,
-  body,
-}: {
-  url: string
-  body: Record<string, any>
-}): Promise<InvitationResponse> => {
-  return post<InvitationResponse>(url, { body })
-}
 export const deleteMemberOrCancelInvitation = ({
   url,
 }: {
@@ -233,9 +223,10 @@ export const uploadRemoteFileInfo = (
   url: string,
   isPublic?: boolean,
   silent?: boolean,
+  uploadEndpoint?: string,
 ): Promise<{ id: string; name: string; size: number; mime_type: string; url: string }> => {
   return post<{ id: string; name: string; size: number; mime_type: string; url: string }>(
-    '/remote-files/upload',
+    uploadEndpoint || '/remote-files/upload',
     { body: { url } },
     { isPublicAPI: isPublic, silent },
   )

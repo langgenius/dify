@@ -173,6 +173,15 @@ export type DeviceTokenResponse = {
   workspaces?: Array<WorkspacePayload>
 }
 
+export type DslImportWarning = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  path: string
+}
+
 export type ErrorBody = {
   code: string
   details?: Array<ErrorDetail> | null
@@ -252,6 +261,7 @@ export type Import = {
   imported_dsl_version?: string
   permission_keys?: Array<string>
   status: ImportStatus
+  warnings?: Array<DslImportWarning>
 }
 
 export type ImportStatus = 'completed' | 'completed-with-warnings' | 'failed' | 'pending'

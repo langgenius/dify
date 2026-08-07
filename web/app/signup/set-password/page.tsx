@@ -9,6 +9,7 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { rememberRegistrationSuccess } from '@/app/components/base/amplitude/registration-tracking'
 import Input from '@/app/components/base/input'
+import { resolvePostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
 import { validPassword } from '@/config'
 import { useLocale } from '@/context/i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
@@ -16,7 +17,9 @@ import { consoleQuery } from '@/service/client'
 import { useMailRegister } from '@/service/use-common'
 import { rememberCreateAppExternalAttribution } from '@/utils/create-app-tracking'
 import { sendGAEvent } from '@/utils/gtag'
+import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { getBrowserTimezone } from '@/utils/timezone'
+import { basePath } from '@/utils/var'
 
 const parseUtmInfo = () => {
   const utmInfoStr = Cookies.get('utm_info')
@@ -88,22 +91,29 @@ const ChangePasswordForm = () => {
 
         toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
         await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
-        router.replace('/')
+        replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
       }
     } catch (error) {
       console.error(error)
     }
-  }, [password, token, valid, confirmPassword, register, locale, queryClient, router, t])
+  }, [
+    password,
+    token,
+    valid,
+    confirmPassword,
+    register,
+    locale,
+    queryClient,
+    router,
+    searchParams,
+    t,
+  ])
 
   return (
     <div
-      className={cn(
-        'flex w-full grow flex-col items-center justify-center',
-        'px-6',
-        'md:px-[108px]',
-      )}
+      className={cn('flex w-full grow flex-col items-center justify-center', 'px-6', 'md:px-27')}
     >
-      <div className="flex flex-col md:w-[400px]">
+      <div className="flex flex-col md:w-100">
         <div className="mx-auto w-full">
           <h2 className="title-4xl-semi-bold text-text-primary">
             {t(($) => $.changePassword, { ns: 'login' })}

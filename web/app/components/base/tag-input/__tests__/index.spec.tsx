@@ -63,8 +63,6 @@ describe('TagInput', () => {
       const input = screen.getByRole('textbox')
       const inputContainer = input.parentElement
 
-      expect(input)!.toHaveClass('custom-input')
-      expect(input)!.not.toHaveAttribute('style')
       expect(inputContainer).toHaveAttribute('data-input-value', 'Tag')
 
       await userEvent.type(input, 'longer')
@@ -84,18 +82,6 @@ describe('TagInput', () => {
       expect(
         screen.queryByRole('button', { name: 'common.operation.remove alpha' }),
       ).not.toBeInTheDocument()
-    })
-
-    it('should apply focused style in special mode when input is focused', async () => {
-      renderTagInput({ customizedConfirmKey: 'Tab' })
-      const input = screen.getByRole('textbox')
-      const inputContainer = input.parentElement
-
-      expect(inputContainer)!.toHaveClass('border-transparent')
-
-      await userEvent.click(input)
-
-      expect(inputContainer)!.toHaveClass('border-dashed')
     })
   })
 

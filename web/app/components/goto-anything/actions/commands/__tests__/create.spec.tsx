@@ -1,12 +1,5 @@
 import { executeCommand } from '../command-bus'
 import { createCommand } from '../create'
-
-// Stub the icon imports — these are React components we don't render here.
-vi.mock('@remixicon/react', () => ({
-  RiChat3Line: () => null,
-  RiNodeTree: () => null,
-  RiSparkling2Line: () => null,
-}))
 // We spy on the store at module scope so the `create.open` handler that
 // register() pushes into the command bus can be observed by the tests.
 const mockOpenGenerator = vi.fn()

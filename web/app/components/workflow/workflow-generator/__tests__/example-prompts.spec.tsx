@@ -1,9 +1,9 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { fetchWorkflowInstructionSuggestions } from '@/service/debug'
+import { fetchWorkflowInstructionSuggestions } from '@/service/workflow-generator'
 import ExamplePrompts from '../example-prompts'
 
-vi.mock('@/service/debug', () => ({
+vi.mock('@/service/workflow-generator', () => ({
   fetchWorkflowInstructionSuggestions: vi.fn(),
 }))
 
@@ -172,7 +172,9 @@ describe('ExamplePrompts', () => {
       expect(mockFetch).toHaveBeenCalledTimes(1)
 
       mockFetch.mockResolvedValue({ suggestions: ['second set'] })
-      await user.click(screen.getByTestId('workflow-gen-suggestions-refresh'))
+      await user.click(
+        screen.getByRole('button', { name: /workflowGenerator\.examples\.refresh/i }),
+      )
 
       expect(await screen.findByRole('button', { name: 'second set' })).toBeInTheDocument()
       expect(mockFetch).toHaveBeenCalledTimes(2)

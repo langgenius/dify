@@ -68,7 +68,7 @@ function EmojiPickerInner({ emoji, background, onSelect, className }: IEmojiPick
       </div>
       <Divider className="my-3" />
 
-      <div className="max-h-[200px] w-full overflow-x-hidden overflow-y-auto px-3">
+      <div className="max-h-50 w-full overflow-x-hidden overflow-y-auto px-3">
         {isSearching && (
           <>
             <div key="category-search" className="flex flex-col">

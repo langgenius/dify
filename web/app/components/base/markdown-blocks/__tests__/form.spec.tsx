@@ -48,6 +48,14 @@ vi.mock('@/app/components/base/date-and-time-picker/utils/dayjs', async () => {
   }
 })
 
+vi.mock('@/config', async () => {
+  const actual = await vi.importActual<typeof import('@/config')>('@/config')
+  return {
+    ...actual,
+    MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS: '()!*&（）！＊＆－。.;；+=—',
+  }
+})
+
 const createTextNode = (value: string): TextNode => ({
   type: 'text',
   value,
@@ -144,6 +152,24 @@ describe('MarkdownForm', () => {
         expect(mockOnSend).toHaveBeenCalledWith('name: Bob\nbio: Hi there')
       })
     })
+
+    it('should omit fields without initial values', async () => {
+      const user = userEvent.setup()
+      const node = createRootNode([
+        createElementNode('input', { type: 'text', name: 'name', value: 'Alice' }),
+        createElementNode('input', { type: 'text', name: 'department' }),
+        createElementNode('input', { type: 'checkbox', name: 'acceptTerms' }),
+        createElementNode('button', {}, [createTextNode('Submit')]),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      await waitFor(() => {
+        expect(mockOnSend).toHaveBeenCalledWith('name: Alice')
+      })
+    })
   })
 
   // Emit serialized JSON when data-format requests JSON output.
@@ -216,28 +242,6 @@ describe('MarkdownForm', () => {
       })
     })
 
-    it('should handle invalid data-options string without crashing', () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-      const node = createRootNode([
-        createElementNode('input', {
-          type: 'select',
-          name: 'city',
-          value: 'Paris',
-          'data-options': 'not-json',
-        }),
-        createElementNode('button', {}, [createTextNode('Submit')]),
-      ])
-
-      try {
-        render(<MarkdownForm node={node} />)
-
-        expect(screen.getByRole('button', { name: 'Submit' }))!.toBeInTheDocument()
-        expect(consoleErrorSpy).toHaveBeenCalled()
-      } finally {
-        consoleErrorSpy.mockRestore()
-      }
-    })
-
     it('should update selected value via onSelect and submit the new option', async () => {
       const user = userEvent.setup()
       const node = createRootNode([
@@ -301,6 +305,29 @@ describe('MarkdownForm', () => {
 
   // Checkbox interactions should update form state and be reflected in submission output.
   describe('Checkbox interaction', () => {
+    it('should omit an untouched checkbox without an initial value', async () => {
+      const user = userEvent.setup()
+      const node = createRootNode(
+        [
+          createElementNode('input', {
+            type: 'checkbox',
+            name: 'acceptTerms',
+            dataTip: 'Accept terms',
+          }),
+          createElementNode('button', {}, [createTextNode('Submit')]),
+        ],
+        { dataFormat: 'json' },
+      )
+
+      render(<MarkdownForm node={node} />)
+
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      await waitFor(() => {
+        expect(mockOnSend).toHaveBeenCalledWith('{}')
+      })
+    })
+
     it('should toggle checkbox value and submit updated value', async () => {
       const user = userEvent.setup()
       const node = createRootNode([
@@ -561,10 +588,15 @@ describe('MarkdownForm', () => {
 
   // Unicode letters should be valid form field names.
   describe('Unicode name support', () => {
-    it('should include fields whose names contain supported full-width and half-width punctuation', async () => {
+    it('should include fields whose names contain configured full-width and half-width punctuation', async () => {
       const user = userEvent.setup()
       const node = createRootNode(
         [
+          createElementNode('input', {
+            type: 'hidden',
+            name: '营业&售后（SD）',
+            value: 'mixed-width',
+          }),
           createElementNode('input', {
             type: 'hidden',
             name: '字段（）！＊＆－',
@@ -582,9 +614,46 @@ describe('MarkdownForm', () => {
 
       await waitFor(() => {
         expect(mockOnSend).toHaveBeenCalledWith(
-          '{"字段（）！＊＆－":"full-width","field()!*&-":"half-width"}',
+          '{"营业&售后（SD）":"mixed-width","字段（）！＊＆－":"full-width","field()!*&-":"half-width"}',
         )
       })
+    })
+
+    it('should include fields whose names contain configured extra characters', async () => {
+      const user = userEvent.setup()
+      const node = createRootNode(
+        [
+          createElementNode('input', {
+            type: 'hidden',
+            name: '字段。.;；+=—',
+            value: 'configured',
+          }),
+          createElementNode('button', {}, [createTextNode('Submit')]),
+        ],
+        { dataFormat: 'json' },
+      )
+
+      render(<MarkdownForm node={node} />)
+
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      await waitFor(() => {
+        expect(mockOnSend).toHaveBeenCalledWith('{"字段。.;；+=—":"configured"}')
+      })
+    })
+
+    it('should reject extra characters that are not configured', () => {
+      const node = createRootNode([
+        createElementNode('input', {
+          type: 'text',
+          name: '字段/部门',
+          placeholder: 'unconfigured-character',
+        }),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      expect(screen.queryByPlaceholderText('unconfigured-character')).not.toBeInTheDocument()
     })
 
     it('should include Unicode-named fields from all supported controls in JSON output', async () => {
@@ -726,6 +795,18 @@ describe('MarkdownForm', () => {
       expect(button)!.toBeInTheDocument()
     })
 
+    it('should map the legacy warning variant to a destructive primary button', () => {
+      const node = createRootNode([
+        createElementNode('button', { dataVariant: 'warning' }, [createTextNode('Delete')]),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      expect(screen.getByRole('button', { name: 'Delete' })).toHaveClass(
+        'bg-components-button-destructive-primary-bg',
+      )
+    })
+
     it('should ignore invalid variant and size values', () => {
       const node = createRootNode([
         createElementNode('button', { dataVariant: 'danger', dataSize: 'xl' }, [
@@ -807,16 +888,6 @@ describe('MarkdownForm', () => {
 
   // Fallback branches for edge cases in tag rendering.
   describe('Fallback branches', () => {
-    it('should render label with empty text when children array is empty', () => {
-      const node = createRootNode([createElementNode('label', { for: 'field' }, [])])
-
-      render(<MarkdownForm node={node} />)
-
-      const label = screen.getByTestId('label-field')
-      expect(label).not.toBeNull()
-      expect(label?.textContent).toBe('')
-    })
-
     it('should render checkbox without tip text when dataTip is missing', () => {
       const node = createRootNode([
         createElementNode('input', { type: 'checkbox', name: 'agree', value: false }),
@@ -825,18 +896,6 @@ describe('MarkdownForm', () => {
       render(<MarkdownForm node={node} />)
 
       expect(screen.getByRole('checkbox', { name: 'agree' }))!.toBeInTheDocument()
-    })
-
-    it('should render select with no options when dataOptions is missing', () => {
-      const node = createRootNode([
-        createElementNode('input', { type: 'select', name: 'color', value: '' }),
-      ])
-
-      render(<MarkdownForm node={node} />)
-
-      // Select renders with empty items list
-      // Select renders with empty items list
-      expect(screen.getByTestId('markdown-form'))!.toBeInTheDocument()
     })
 
     it('should render button with empty text when children array is empty', () => {

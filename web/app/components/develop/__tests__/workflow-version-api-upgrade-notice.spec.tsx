@@ -1,6 +1,9 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { Plan } from '@/app/components/billing/type'
-import WorkflowVersionApiUpgradeNotice from '../workflow-version-api-upgrade-notice'
+import {
+  WorkflowVersionApiContent,
+  WorkflowVersionApiUpgradeNotice,
+} from '../workflow-version-api-upgrade-notice'
 
 let mockPlanType = Plan.professional
 let mockEnableBilling = true
@@ -125,5 +128,52 @@ describe('WorkflowVersionApiUpgradeNotice', () => {
     expect(
       within(modal).getByText('billing.upgrade.workflowVersionRun.description'),
     ).toBeInTheDocument()
+  })
+})
+
+describe('WorkflowVersionApiContent', () => {
+  beforeEach(() => {
+    mockPlanType = Plan.professional
+    mockEnableBilling = true
+    mockIsFetchedPlan = true
+  })
+
+  it('should hide content while the billing plan is loading', () => {
+    mockIsFetchedPlan = false
+
+    render(<WorkflowVersionApiContent>paid API details</WorkflowVersionApiContent>)
+
+    expect(screen.queryByText('paid API details')).not.toBeInTheDocument()
+  })
+
+  it('should hide content for sandbox plans', () => {
+    mockPlanType = Plan.sandbox
+
+    const { container } = render(
+      <>
+        <h2>paid API</h2>
+        <WorkflowVersionApiContent>paid API details</WorkflowVersionApiContent>
+        <hr />
+      </>,
+    )
+
+    expect(screen.queryByText('paid API details')).not.toBeInTheDocument()
+    expect(container.querySelector('h2 + [aria-hidden="true"] + hr')).toBeInTheDocument()
+  })
+
+  it('should show content for paid plans', () => {
+    render(<WorkflowVersionApiContent>paid API details</WorkflowVersionApiContent>)
+
+    expect(screen.getByText('paid API details')).toBeInTheDocument()
+  })
+
+  it('should show content when billing is disabled', () => {
+    mockPlanType = Plan.sandbox
+    mockEnableBilling = false
+    mockIsFetchedPlan = false
+
+    render(<WorkflowVersionApiContent>paid API details</WorkflowVersionApiContent>)
+
+    expect(screen.getByText('paid API details')).toBeInTheDocument()
   })
 })

@@ -6,7 +6,6 @@ import type { ModelParameterModalProps } from '@/app/components/header/account-s
 import type { Inputs } from '@/models/debug'
 import type { ModelConfig as BackendModelConfig, VisionFile, VisionSettings } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiAddLine, RiEqualizer2Line, RiSparklingFill } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
@@ -20,6 +19,7 @@ import { useContext } from 'use-context-selector'
 import { useShallow } from 'zustand/react/shallow'
 import ChatUserInput from '@/app/components/app/configuration/debug/chat-user-input'
 import PromptValuePanel from '@/app/components/app/configuration/prompt-value-panel'
+import { toast } from '@/app/components/app/configuration/toast'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
@@ -305,6 +305,7 @@ const Debug: FC<IDebug> = ({
       onError() {
         setRespondingFalse()
       },
+      onNotifyError: (message) => toast.error(message),
     })
   }
 
@@ -427,12 +428,12 @@ const Debug: FC<IDebug> = ({
                   }
                   disabled={multipleModelConfigs.length >= 4 || !canTestAndRun}
                 >
-                  <RiAddLine className="mr-1 size-3.5" />
+                  <RiAddLine className="size-3.5" />
                   {t(($) => $['modelProvider.addModel'], { ns: 'common' })}(
                   {multipleModelConfigs.length}
                   /4)
                 </Button>
-                <div className="mx-2 h-[14px] w-px bg-divider-regular" />
+                <div className="mx-2 h-3.5 w-px bg-divider-regular" />
               </>
             ) : null}
             {mode !== AppModeEnum.COMPLETION && (
@@ -471,7 +472,7 @@ const Debug: FC<IDebug> = ({
                       </TooltipContent>
                     </Tooltip>
                     {expanded && (
-                      <div className="absolute right-[5px] bottom-[-14px] z-10 h-3 w-3 rotate-45 border-t-[0.5px] border-l-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg" />
+                      <div className="absolute right-1.25 -bottom-3.5 z-10 h-3 w-3 rotate-45 border-t-[0.5px] border-l-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg" />
                     )}
                   </div>
                 )}
@@ -534,8 +535,8 @@ const Debug: FC<IDebug> = ({
           {(!modelConfig.provider || !isAPIKeySet) && <HasNotSetAPIKEY onSetting={onSetting} />}
           {/* No model selected */}
           {modelConfig.provider && isAPIKeySet && !modelConfig.model_id && (
-            <div className="flex grow flex-col items-center justify-center pb-[120px]">
-              <div className="flex w-full max-w-[400px] flex-col gap-2 px-4 py-4">
+            <div className="flex grow flex-col items-center justify-center pb-30">
+              <div className="flex w-full max-w-100 flex-col gap-2 px-4 py-4">
                 <div className="flex h-10 w-10 items-center justify-center rounded-[10px]">
                   <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg p-1 shadow-lg backdrop-blur-[5px]">
                     <span className="i-ri-brain-2-line size-5 text-text-tertiary" />

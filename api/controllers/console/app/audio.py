@@ -127,6 +127,7 @@ def _transcribe_audio_to_text(
     *,
     app_model: App,
     file: FileStorage | None,
+    session: Session,
     agent_soul: AgentSoulConfig | None = None,
 ) -> dict[str, str]:
     try:
@@ -134,6 +135,7 @@ def _transcribe_audio_to_text(
             response = AudioService.transcript_asr(
                 app_model=app_model,
                 file=file,
+                session=session,
                 end_user=None,
             )
         else:
@@ -141,6 +143,7 @@ def _transcribe_audio_to_text(
                 app_model=app_model,
                 agent_soul=agent_soul,
                 file=file,
+                session=session,
                 end_user=None,
             )
         return dump_response(AudioTranscriptResponse, response)
@@ -194,7 +197,11 @@ class ChatMessageAudioApi(Resource):
     @account_initialization_required
     @get_app_model(mode=_CONSOLE_AUDIO_TRANSCRIPT_APP_MODES)
     def post(self, app_model: App):
-        return _transcribe_audio_to_text(app_model=app_model, file=request.files.get("file"))
+        return _transcribe_audio_to_text(
+            app_model=app_model,
+            file=request.files.get("file"),
+            session=db.session(),
+        )
 
 
 @console_ns.route("/agent/<uuid:agent_id>/audio-to-text")
@@ -228,7 +235,11 @@ class AgentChatMessageAudioApi(Resource):
         agent_id: UUID,
     ):
         payload = AgentAudioTranscriptFormPayload.model_validate(request.form.to_dict(flat=True))
-        app_model = resolve_agent_runtime_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
+        app_model = resolve_agent_runtime_app_model(
+            session=session,
+            tenant_id=current_tenant_id,
+            agent_id=agent_id,
+        )
         # Agent routes expose Agent ids, while APP RBAC is keyed by the resolved runtime App id.
         enforce_rbac_access(
             tenant_id=current_tenant_id,
@@ -248,6 +259,7 @@ class AgentChatMessageAudioApi(Resource):
             app_model=app_model,
             agent_soul=agent_soul,
             file=request.files.get("file"),
+            session=session,
         )
 
 

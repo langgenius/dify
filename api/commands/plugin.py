@@ -9,6 +9,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.engine import CursorResult
 
 from configs import dify_config
+from core.db.session_factory import session_factory
 from core.helper import encrypter
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.plugin import PluginInstaller
@@ -578,9 +579,6 @@ def install_rag_pipeline_plugins(input_file, output_file, workers):
     """
     click.echo(click.style("Installing rag pipeline plugins", fg="yellow"))
     plugin_migration = PluginMigration()
-    plugin_migration.install_rag_pipeline_plugins(
-        input_file,
-        output_file,
-        workers,
-    )
+    with session_factory.create_session() as session:
+        plugin_migration.install_rag_pipeline_plugins(input_file, output_file, workers, session=session)
     click.echo(click.style("Installing rag pipeline plugins successfully", fg="green"))

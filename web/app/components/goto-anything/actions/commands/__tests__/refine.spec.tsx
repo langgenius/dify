@@ -1,10 +1,5 @@
 import { executeCommand } from '../command-bus'
 import { refineCommand } from '../refine'
-
-// Stub the icon import — it's a React component we don't render here.
-vi.mock('@remixicon/react', () => ({
-  RiSparkling2Line: () => null,
-}))
 // Spy on the generator store so we can observe what /refine opens it with.
 const mockOpenGenerator = vi.fn()
 vi.mock('@/app/components/workflow/workflow-generator/store', () => ({

@@ -1,7 +1,7 @@
+import type { EnvironmentVariableItemResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { AppInfoModalType } from './use-app-info-actions'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
-import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import type { App, AppSSO } from '@/types/app'
 import {
   AlertDialog,
@@ -36,11 +36,12 @@ type AppInfoModalsProps = {
   appDetail: App & Partial<AppSSO>
   activeModal: AppInfoModalType
   closeModal: () => void
-  secretEnvList: EnvironmentVariable[]
-  setSecretEnvList: (list: EnvironmentVariable[]) => void
+  secretEnvList: EnvironmentVariableItemResponse[]
+  setSecretEnvList: (list: EnvironmentVariableItemResponse[]) => void
   onEdit: CreateAppModalProps['onConfirm']
   onCopy: DuplicateAppModalProps['onConfirm']
   onExport: (include?: boolean) => Promise<void>
+  isExporting: boolean
   exportCheck: () => void
   handleConfirmExport: () => Promise<void>
   onConfirmDelete: () => void
@@ -55,13 +56,13 @@ const AppInfoModals = ({
   onEdit,
   onCopy,
   onExport,
+  isExporting,
   exportCheck,
   handleConfirmExport,
   onConfirmDelete,
 }: AppInfoModalsProps) => {
   const { t } = useTranslation()
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
-  const [isConfirmingExport, setIsConfirmingExport] = useState(false)
   const [isSecretExporting, setIsSecretExporting] = useState(false)
   const isDeleteConfirmDisabled = confirmDeleteInput !== appDetail.name
   const exportDialogMode =
@@ -72,17 +73,6 @@ const AppInfoModals = ({
     setConfirmDeleteInput('')
     closeModal()
   }
-
-  const handleExportWarningConfirm = useCallback(async () => {
-    if (isConfirmingExport) return
-
-    setIsConfirmingExport(true)
-    try {
-      await handleConfirmExport()
-    } finally {
-      setIsConfirmingExport(false)
-    }
-  }, [handleConfirmExport, isConfirmingExport])
 
   const handleExportDialogClose = useCallback(() => {
     if (exportDialogMode === 'secret') {
@@ -95,23 +85,17 @@ const AppInfoModals = ({
 
   const handleExportDialogOpenChange = useCallback(
     (open: boolean) => {
-      if (open || isConfirmingExport || isSecretExporting) return
+      if (open || isExporting || isSecretExporting) return
 
       handleExportDialogClose()
     },
-    [handleExportDialogClose, isConfirmingExport, isSecretExporting],
+    [handleExportDialogClose, isExporting, isSecretExporting],
   )
 
   return (
     <>
       {activeModal === 'switch' && (
-        <SwitchAppModal
-          inAppDetail
-          show
-          appDetail={appDetail}
-          onClose={closeModal}
-          onSuccess={closeModal}
-        />
+        <SwitchAppModal inAppDetail show appDetail={appDetail} onClose={closeModal} />
       )}
       {activeModal === 'edit' && (
         <CreateAppModal
@@ -188,7 +172,7 @@ const AppInfoModals = ({
                   <button
                     type="button"
                     onClick={() => setConfirmDeleteInput(appDetail.name)}
-                    className="absolute top-1/2 right-2 -translate-y-1/2 rounded-full bg-black/[0.06] px-2.5 py-1 system-xs-medium text-text-secondary hover:bg-black/[0.1]"
+                    className="absolute top-1/2 right-2 -translate-y-1/2 rounded-full bg-black/6 px-2.5 py-1 system-xs-medium text-text-secondary hover:bg-black/10"
                   >
                     {t(($) => $['operation.fill'], { ns: 'common' })}
                   </button>
@@ -234,11 +218,10 @@ const AppInfoModals = ({
                 </AlertDialogCancelButton>
                 <AlertDialogConfirmButton
                   tone="default"
-                  loading={isConfirmingExport}
-                  disabled={isConfirmingExport}
-                  onClick={handleExportWarningConfirm}
+                  loading={isExporting}
+                  onClick={handleConfirmExport}
                 >
-                  {isConfirmingExport
+                  {isExporting
                     ? t(($) => $['operation.exporting'], { ns: 'common' })
                     : t(($) => $['operation.confirm'], { ns: 'common' })}
                 </AlertDialogConfirmButton>
