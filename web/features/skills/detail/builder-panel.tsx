@@ -35,6 +35,9 @@ import {
   isTextFile,
   setSkillDetailCache,
   skillBuilderAttachmentAccept,
+  skillBuilderMaxAttachmentBytes,
+  skillBuilderMaxAttachments,
+  skillBuilderMaxImageAttachmentBytes,
 } from './shared'
 
 const skillBuilderProgressStages = [
@@ -407,6 +410,19 @@ export function SkillBuilderPanel({
 
   const handleAttachmentChange = async (file: File | undefined) => {
     if (!file || isUploadingAttachment) return
+    if (attachments.length >= skillBuilderMaxAttachments) {
+      toast.error(t(($) => $['skillManagement.detail.builder.attachLimit']))
+      if (attachmentInputRef.current) attachmentInputRef.current.value = ''
+      return
+    }
+    const maxBytes = file.type.startsWith('image/')
+      ? skillBuilderMaxImageAttachmentBytes
+      : skillBuilderMaxAttachmentBytes
+    if (file.size > maxBytes) {
+      toast.error(t(($) => $['skillManagement.detail.builder.attachTooLarge']))
+      if (attachmentInputRef.current) attachmentInputRef.current.value = ''
+      return
+    }
     if (!isAllowedSkillBuilderAttachment(file)) {
       toast.error(t(($) => $['skillManagement.detail.builder.attachUnsupported']))
       if (attachmentInputRef.current) attachmentInputRef.current.value = ''
