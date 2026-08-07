@@ -17,6 +17,7 @@ from controllers.console.wraps import (
     RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    model_validate,
     setup_required,
     with_current_tenant_id,
     with_current_user,
@@ -147,14 +148,14 @@ class TagListApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    def post(self, current_user: Account):
+    @model_validate(TagBasePayload)
+    def post(self, req_data: TagBasePayload, current_user: Account):
         # Allow users with edit permission, or dataset editors (including dataset operators).
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
-        payload = TagBasePayload.model_validate(console_ns.payload or {})
-        _enforce_snippet_tag_rbac_if_needed(payload.type)
-        tag = TagService.save_tags(SaveTagPayload(name=payload.name, type=payload.type), db.session())
+        _enforce_snippet_tag_rbac_if_needed(req_data.type)
+        tag = TagService.save_tags(SaveTagPayload(name=req_data.name, type=req_data.type), db.session())
 
         return dump_response(TagResponse, {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": 0}), 200
 
@@ -167,15 +168,15 @@ class TagUpdateDeleteApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    def patch(self, current_user: Account, tag_id: UUID):
+    @model_validate(TagUpdateRequestPayload)
+    def patch(self, req_data: TagUpdateRequestPayload, current_user: Account, tag_id: UUID):
         tag_id_str = str(tag_id)
         # The role of the current user in the ta table must be admin, owner, or editor
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
-        payload = TagUpdateRequestPayload.model_validate(console_ns.payload or {})
         _enforce_snippet_tag_rbac_by_tag_id(tag_id_str)
-        tag = TagService.update_tags(UpdateTagPayload(name=payload.name), tag_id_str, db.session())
+        tag = TagService.update_tags(UpdateTagPayload(name=req_data.name), tag_id_str, db.session())
 
         binding_count = TagService.get_tag_binding_count(tag_id_str, db.session())
 
