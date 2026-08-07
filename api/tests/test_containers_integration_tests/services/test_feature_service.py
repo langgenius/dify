@@ -6,15 +6,15 @@ from sqlalchemy.orm import Session
 
 from enums.cloud_plan import CloudPlan
 from enums.deployment_edition import DeploymentEdition
-from services.feature_service import (
+from services.entities.feature_entities import (
     FeatureModel,
-    FeatureService,
     KnowledgeRateLimitModel,
     LicenseModel,
     LicenseStatus,
     SSOProtocol,
     SystemFeatureModel,
 )
+from services.feature_service import FeatureService
 
 
 class TestFeatureService:
@@ -1428,7 +1428,7 @@ class TestFeatureService:
         - Proper handling of disabled limits
         - Return value correctness for different scenarios
         """
-        from services.feature_service import LicenseLimitationModel
+        from services.entities.feature_entities import LicenseLimitationModel
 
         # Test case 1: Limit disabled
         disabled_limit = LicenseLimitationModel(enabled=False, size=5, limit=10)
