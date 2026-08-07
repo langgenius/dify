@@ -8,7 +8,7 @@ from flask import Flask
 
 from controllers.web.feature import SystemFeatureApi
 from enums.deployment_edition import DeploymentEdition
-from services.feature_service import SystemFeatureModel
+from services.entities.feature_entities import SystemFeatureModel
 
 
 class TestSystemFeatureApi:

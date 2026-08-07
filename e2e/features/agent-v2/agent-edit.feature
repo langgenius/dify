@@ -17,7 +17,7 @@ Feature: Agent v2 Agent Edit page
     And the Agent Builder preseeded Agent "E2E New Agent Builder Full Config" includes the core fixture configuration
     And the preseeded Agent v2 "E2E New Agent Builder Full Config" has been published via API
     When I duplicate the preseeded Agent v2 "E2E New Agent Builder Full Config" from the Agent Roster
-    Then the duplicated Agent v2 should inherit the full-config fixture from "E2E New Agent Builder Full Config"
+    Then the duplicated Agent v2 should inherit the full-config fixture from "E2E New Agent Builder Full Config" without inheriting its publication state
     When I open the Agent v2 configure page
     And I fill the Agent v2 prompt editor with the updated E2E prompt
     Then the Agent v2 configuration should be saved automatically
