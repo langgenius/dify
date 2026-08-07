@@ -967,7 +967,7 @@ describe('CreateKnowledgePage', () => {
               title: 'Getting started',
             },
           ],
-          sync_policy: 'provider',
+          sync_policy: 'daily',
         },
       }),
     })
@@ -1224,7 +1224,7 @@ describe('CreateKnowledgePage', () => {
       rootUrl: 'https://docs.dify.ai',
       sourceName: 'Dify docs',
       sourceType: 'websiteCrawl',
-      syncPolicy: 'provider',
+      syncPolicy: 'daily',
     })
   })
 

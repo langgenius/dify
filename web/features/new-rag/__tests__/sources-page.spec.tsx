@@ -1,4 +1,4 @@
-import type { Source } from '../source-models'
+import type { Source, SourceSyncPolicy } from '../source-models'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import datasetTranslations from '@/i18n/en-US/dataset.json'
@@ -16,10 +16,26 @@ const sourceApiResponse = vi.hoisted(() => (source: Source) => ({
   credential_configured: source.credentialConfigured ?? null,
   id: source.id,
   knowledge_space_id: source.knowledgeSpaceId,
+  last_synced_at: source.lastSyncedAt ?? null,
   metadata: source.metadata,
   name: source.name,
   permission_scope: source.permissionScope ?? [],
   status: source.status,
+  sync_policy: source.syncPolicy
+    ? {
+        created_at: source.syncPolicy.createdAt,
+        custom_interval_seconds: source.syncPolicy.customIntervalSeconds ?? null,
+        enabled: source.syncPolicy.enabled,
+        expected_source_version: source.syncPolicy.expectedSourceVersion,
+        id: source.syncPolicy.id,
+        knowledge_space_id: source.syncPolicy.knowledgeSpaceId,
+        mode: source.syncPolicy.mode,
+        next_run_at: source.syncPolicy.nextRunAt ?? null,
+        revision: source.syncPolicy.revision,
+        source_id: source.syncPolicy.sourceId,
+        updated_at: source.syncPolicy.updatedAt,
+      }
+    : null,
   type: source.type,
   updated_at: source.updatedAt,
   uri: source.uri,
@@ -93,7 +109,6 @@ const workflowState = vi.hoisted(() => ({
       }
     | undefined,
 }))
-
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const original = await importOriginal<typeof import('@tanstack/react-query')>()
   return {
@@ -109,18 +124,18 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
           }
         : undefined,
     }),
-    useQuery: (options: { queryKey?: unknown[] }) =>
-      options.queryKey?.[1] === 'source-workflow'
-        ? { data: workflowState.data }
-        : {
-            data: {
-              configuration_state: settingsState.configurationState,
-              embedding: null,
-              retrieval: null,
-              revision: 1,
-            },
-            refetch: settingsState.refetch,
-          },
+    useQuery: (options: { queryKey?: unknown[] }) => {
+      if (options.queryKey?.[1] === 'source-workflow') return { data: workflowState.data }
+      return {
+        data: {
+          configuration_state: settingsState.configurationState,
+          embedding: null,
+          retrieval: null,
+          revision: 1,
+        },
+        refetch: settingsState.refetch,
+      }
+    },
     useQueryClient: () => ({ invalidateQueries: invalidateQueriesMock }),
   }
 })
@@ -503,7 +518,7 @@ describe('SourcesPage', () => {
     )
 
     const openSource = screen.getByRole('menuitem', {
-      name: 'dataset.newKnowledge.editSource',
+      name: 'dataset.newKnowledge.openSource',
     })
     expect(openSource).toHaveAttribute('href', 'https://docs.example.com')
     expect(openSource).toHaveAttribute('target', '_blank')
@@ -534,7 +549,7 @@ describe('SourcesPage', () => {
       }),
     )
     expect(
-      screen.getByRole('menuitem', { name: 'dataset.newKnowledge.editSource' }),
+      screen.getByRole('menuitem', { name: 'dataset.newKnowledge.openSource' }),
     ).toHaveAttribute(
       'href',
       'https://s3.console.aws.amazon.com/s3/buckets/private-bucket?prefix=Product+documentation%2F%E6%96%87%E6%A1%A3',
@@ -577,7 +592,7 @@ describe('SourcesPage', () => {
     )
 
     expect(
-      screen.getByRole('menuitem', { name: 'dataset.newKnowledge.editSource' }),
+      screen.getByRole('menuitem', { name: 'dataset.newKnowledge.openSource' }),
     ).toBeInTheDocument()
     expect(
       screen.queryByRole('menuitem', { name: 'dataset.newKnowledge.syncNow' }),
@@ -636,6 +651,7 @@ describe('SourcesPage', () => {
         ),
       ).toBeInTheDocument(),
     )
+    await waitFor(() => expect(invalidateQueriesMock).toHaveBeenCalledTimes(2))
     const options = infiniteOptionsMock.mock.lastCall?.[0]
     expect(options).toBeDefined()
     if (!options) throw new Error('Expected source infinite query options')
@@ -646,7 +662,7 @@ describe('SourcesPage', () => {
         },
       }),
     ).toBe(false)
-    expect(invalidateQueriesMock).toHaveBeenCalledWith({ queryKey: ['sources'] })
+    expect(invalidateQueriesMock).toHaveBeenLastCalledWith({ queryKey: ['sources'] })
   })
 
   it('prompts for model setup before syncing a source', async () => {
@@ -715,7 +731,19 @@ describe('SourcesPage', () => {
 
   it('uses the returned source version while the list replica is stale', async () => {
     const user = userEvent.setup()
-    sourcesQuery.data = { pages: [{ items: [source({})] }] }
+    const syncPolicy: SourceSyncPolicy = {
+      createdAt: '2026-07-20T10:00:00Z',
+      customIntervalSeconds: 86400,
+      enabled: true,
+      expectedSourceVersion: 3,
+      id: 'policy-1',
+      knowledgeSpaceId: 'space-1',
+      mode: 'interval',
+      revision: 1,
+      sourceId: 'source-1',
+      updatedAt: '2026-07-20T10:00:00Z',
+    }
+    sourcesQuery.data = { pages: [{ items: [source({ syncPolicy })] }] }
     clientMock.patchSource
       .mockResolvedValueOnce(
         source({
@@ -745,6 +773,11 @@ describe('SourcesPage', () => {
         'dataset.newKnowledge.sourceStatus.disabled',
       ),
     ).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
+        'dataset.newKnowledge.syncPolicyDaily',
+      ),
+    ).toBeInTheDocument()
     await user.click(
       screen.getByRole('button', {
         name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
@@ -758,6 +791,70 @@ describe('SourcesPage', () => {
         params: { control_space_id: 'space-1', source_id: 'source-1' },
       }),
     )
+  })
+
+  it('uses fresh list enrichment after an optimistic source update catches up', async () => {
+    const user = userEvent.setup()
+    const dailyPolicy: SourceSyncPolicy = {
+      createdAt: '2026-07-20T10:00:00Z',
+      enabled: true,
+      expectedSourceVersion: 3,
+      id: 'policy-1',
+      knowledgeSpaceId: 'space-1',
+      mode: 'interval',
+      revision: 1,
+      sourceId: 'source-1',
+      updatedAt: '2026-07-20T10:00:00Z',
+    }
+    const updatedSource = source({
+      status: 'disabled',
+      updatedAt: '2026-07-20T10:01:00Z',
+      version: 4,
+    })
+    sourcesQuery.data = { pages: [{ items: [source({ syncPolicy: dailyPolicy })] }] }
+    clientMock.patchSource.mockResolvedValue(updatedSource)
+
+    const view = render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+      }),
+    )
+    await user.click(screen.getByRole('menuitem', { name: 'dataset.newKnowledge.disableSource' }))
+    await waitFor(() =>
+      expect(
+        within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
+          'dataset.newKnowledge.syncPolicyDaily',
+        ),
+      ).toBeInTheDocument(),
+    )
+
+    sourcesQuery.data = {
+      pages: [
+        {
+          items: [
+            {
+              ...updatedSource,
+              lastSyncedAt: '2026-07-20T10:02:00Z',
+              syncPolicy: {
+                ...dailyPolicy,
+                enabled: false,
+                expectedSourceVersion: 4,
+                mode: 'manual',
+                revision: 2,
+                updatedAt: '2026-07-20T10:02:00Z',
+              },
+            },
+          ],
+        },
+      ],
+    }
+    view.rerender(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    const row = screen.getByRole('row', { name: /Product documentation/ })
+    expect(within(row).getByText('dataset.newKnowledge.syncPolicyManual')).toBeInTheDocument()
+    expect(within(row).queryByText('dataset.newKnowledge.syncPolicyDaily')).not.toBeInTheDocument()
+    expect(within(row).queryByText('—')).not.toBeInTheDocument()
   })
 
   it('requires confirmation before removing a source', async () => {
@@ -951,6 +1048,66 @@ describe('SourcesPage', () => {
     expect(screen.getByText('dataset.newKnowledge.sourceType.web')).toBeInTheDocument()
   })
 
+  it('restores legacy website provider metadata and shows policy and last sync details', () => {
+    const syncPolicy: SourceSyncPolicy = {
+      createdAt: '2026-07-20T10:00:00Z',
+      customIntervalSeconds: 86400,
+      enabled: true,
+      expectedSourceVersion: 3,
+      id: 'policy-1',
+      knowledgeSpaceId: 'space-1',
+      mode: 'interval',
+      revision: 1,
+      sourceId: 'source-1',
+      updatedAt: '2026-07-20T10:00:00Z',
+    }
+    sourcesQuery.data = {
+      pages: [
+        {
+          items: [
+            source({
+              lastSyncedAt: '2026-07-20T10:00:00Z',
+              metadata: {
+                preview: false,
+                providerId: 'plugin-daemon-website-firecrawl',
+              },
+              syncPolicy,
+            }),
+          ],
+        },
+      ],
+    }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    const row = screen.getByRole('row', { name: /Product documentation/ })
+    expect(within(row).getByText('Firecrawl')).toBeInTheDocument()
+    expect(within(row).getByText('dataset.newKnowledge.syncPolicyDaily')).toBeInTheDocument()
+    expect(within(row).queryByText('—')).not.toBeInTheDocument()
+  })
+
+  it('does not report ordinary source updates as successful syncs', () => {
+    const syncPolicy: SourceSyncPolicy = {
+      createdAt: '2026-07-20T10:00:00Z',
+      enabled: true,
+      expectedSourceVersion: 3,
+      id: 'policy-1',
+      knowledgeSpaceId: 'space-1',
+      mode: 'interval',
+      revision: 1,
+      sourceId: 'source-1',
+      updatedAt: '2026-07-20T10:00:00Z',
+    }
+    sourcesQuery.data = {
+      pages: [{ items: [source({ metadata: { preview: false }, syncPolicy })] }],
+    }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    const row = screen.getByRole('row', { name: /Product documentation/ })
+    expect(within(row).getByText('—')).toBeInTheDocument()
+  })
+
   it('keeps read-only source viewing while hiding mutation and add-source actions', async () => {
     const user = userEvent.setup()
     permissionState.workspacePermissionKeys = ['dataset.acl.readonly']
@@ -968,7 +1125,7 @@ describe('SourcesPage', () => {
       }),
     )
     expect(
-      screen.getByRole('menuitem', { name: 'dataset.newKnowledge.editSource' }),
+      screen.getByRole('menuitem', { name: 'dataset.newKnowledge.openSource' }),
     ).toBeInTheDocument()
     expect(
       screen.queryByRole('menuitem', { name: 'dataset.newKnowledge.syncNow' }),

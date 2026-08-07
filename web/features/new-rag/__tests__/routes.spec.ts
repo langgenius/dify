@@ -39,6 +39,10 @@ describe('New RAG routes', () => {
     expect(createNewKnowledgeSourceDraft('onlineDrive', 'Confluence').provider).toBe('Google Drive')
   })
 
+  it('defaults website crawls to a daily sync policy', () => {
+    expect(createNewKnowledgeSourceDraft('websiteCrawl').syncPolicy).toBe('daily')
+  })
+
   it('rejects repeated search parameters instead of selecting an ambiguous value', () => {
     expect(singleSearchParam(['websiteCrawl', 'onlineDrive'])).toBeUndefined()
     expect(singleSearchParam('websiteCrawl')).toBe('websiteCrawl')

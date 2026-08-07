@@ -15,6 +15,7 @@ import {
   type SourceCredentialService,
   type SourceCredentialTester,
   type SourceDocumentMaterializer,
+  type SourceProductWorkflowRepository,
   type SourceRepository,
   type SourceSecretStore,
   type WebsiteCrawlConnector,
@@ -1391,6 +1392,10 @@ describe("source handlers without optional collaborators", () => {
     onlineDocumentConnector?: OnlineDocumentConnector;
     onlineDriveConnector?: OnlineDriveConnector;
     sourceDocumentMaterializer?: SourceDocumentMaterializer;
+    sourceProductWorkflows?: Pick<
+      SourceProductWorkflowRepository,
+      "listLatestSyncCompletions" | "listSyncPolicies"
+    >;
     sources?: SourceRepository;
     websiteCrawlConnector?: WebsiteCrawlConnector;
   }
@@ -1440,6 +1445,9 @@ describe("source handlers without optional collaborators", () => {
       ...(options.sourceDocumentMaterializer
         ? { sourceDocumentMaterializer: options.sourceDocumentMaterializer }
         : {}),
+      ...(options.sourceProductWorkflows
+        ? { sourceProductWorkflows: options.sourceProductWorkflows }
+        : {}),
       sources,
       spaces,
       ...(options.websiteCrawlConnector
@@ -1468,6 +1476,66 @@ describe("source handlers without optional collaborators", () => {
 
     return { sourceId: source.id, spaceId: space.id };
   }
+
+  it("enriches a source list with product sync details in bulk lookups", async () => {
+    const listSyncPolicies = vi.fn();
+    const listLatestSyncCompletions = vi.fn();
+    const bare = createBareApp({
+      sourceProductWorkflows: { listLatestSyncCompletions, listSyncPolicies },
+    });
+    const { sourceId, spaceId } = await seedSource(bare, "web");
+    listSyncPolicies.mockResolvedValue([
+      {
+        accessChannel: "interactive",
+        createdAt: "2026-07-14T00:00:00.000Z",
+        enabled: true,
+        expectedSourceVersion: 1,
+        id: "00000000-0000-4000-8000-000000000111",
+        knowledgeSpaceId: spaceId,
+        mode: "provider",
+        permissionSnapshotId: "permission-1",
+        permissionSnapshotRevision: 1,
+        requestedBySubjectId: "u1",
+        requiredPermissionScope: [],
+        revision: 1,
+        sourceId,
+        tenantId: "tenant-1",
+        updatedAt: "2026-07-14T00:00:00.000Z",
+      },
+    ]);
+    listLatestSyncCompletions.mockResolvedValue([
+      { completedAt: "2026-07-14T01:00:00.000Z", sourceId },
+    ]);
+
+    const response = await bare.app.request(`/knowledge-spaces/${spaceId}/sources`);
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      items: [
+        {
+          id: sourceId,
+          lastSyncedAt: "2026-07-14T01:00:00.000Z",
+          syncPolicy: {
+            enabled: true,
+            mode: "provider",
+            sourceId,
+          },
+        },
+      ],
+    });
+    expect(listSyncPolicies).toHaveBeenCalledOnce();
+    expect(listSyncPolicies).toHaveBeenCalledWith({
+      knowledgeSpaceId: spaceId,
+      sourceIds: [sourceId],
+      tenantId: "tenant-1",
+    });
+    expect(listLatestSyncCompletions).toHaveBeenCalledOnce();
+    expect(listLatestSyncCompletions).toHaveBeenCalledWith({
+      knowledgeSpaceId: spaceId,
+      sourceIds: [sourceId],
+      tenantId: "tenant-1",
+    });
+  });
 
   it("enforces handler-local space, authorization, and candidate-scope fences", async () => {
     const bare = createBareApp();

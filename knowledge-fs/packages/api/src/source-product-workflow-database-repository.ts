@@ -34,11 +34,13 @@ import {
   type SourceBulkWorkflowItem,
   type SourceCrawlPreviewPage,
   type SourceProductWorkflowRepository,
+  type SourceSyncCompletionRecord,
   type SourceSyncPolicyRecord,
   SourceWorkflowError,
   type SourceWorkflowFence,
   type SourceWorkflowRun,
   type SourceWorkflowState,
+  nextSourceWorkflowMaterializationGeneration,
   nextSyncPolicyRunAt,
 } from "./source-product-workflow";
 
@@ -817,6 +819,7 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
           lastErrorMessage: undefined,
           leaseExpiresAt: undefined,
           leaseToken: undefined,
+          payload: nextSourceWorkflowMaterializationGeneration(current.payload),
           progressCompleted: 0,
           progressFailed: 0,
           progressSkipped: 0,
@@ -1135,6 +1138,41 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
     },
     getSyncPolicy: ({ knowledgeSpaceId, sourceId, tenantId }) =>
       getPolicy(database, database, { knowledgeSpaceId, sourceId, tenantId }, false),
+    listSyncPolicies: async ({ knowledgeSpaceId, sourceIds, tenantId }) => {
+      const ids = validatedSourceBatchIds(sourceIds);
+      if (ids.length === 0) return [];
+      const params: DatabaseQueryValue[] = [tenantId, knowledgeSpaceId, ...ids];
+      const placeholders = ids.map((_, index) => p(database, index + 3)).join(", ");
+      const result = await database.execute({
+        maxRows: ids.length,
+        operation: "select",
+        params,
+        sql: `SELECT * FROM ${q(database, policyTable)} WHERE ${q(database, "tenant_id")} = ${p(database, 1)} AND ${q(database, "knowledge_space_id")} = ${p(database, 2)} AND ${q(database, "source_id")} IN (${placeholders});`,
+        tableName: policyTable,
+      });
+      return result.rows.map(mapPolicy);
+    },
+    listLatestSyncCompletions: async ({ knowledgeSpaceId, sourceIds, tenantId }) => {
+      const ids = validatedSourceBatchIds(sourceIds);
+      if (ids.length === 0) return [];
+      const params: DatabaseQueryValue[] = [
+        tenantId,
+        knowledgeSpaceId,
+        "sync",
+        "completed",
+        "zero_results",
+        ...ids,
+      ];
+      const placeholders = ids.map((_, index) => p(database, index + 6)).join(", ");
+      const result = await database.execute({
+        maxRows: ids.length,
+        operation: "select",
+        params,
+        sql: `SELECT ${q(database, "source_id")}, MAX(${q(database, "completed_at")}) AS ${q(database, "completed_at")} FROM ${q(database, runTable)} WHERE ${q(database, "tenant_id")} = ${p(database, 1)} AND ${q(database, "knowledge_space_id")} = ${p(database, 2)} AND ${q(database, "kind")} = ${p(database, 3)} AND ${q(database, "run_state")} IN (${p(database, 4)}, ${p(database, 5)}) AND ${q(database, "source_id")} IN (${placeholders}) AND ${q(database, "completed_at")} IS NOT NULL GROUP BY ${q(database, "source_id")};`,
+        tableName: runTable,
+      });
+      return result.rows.map(mapSyncCompletion);
+    },
     enqueueDueSyncRuns: ({ limit, maxExecutionAttempts, now }) => {
       if (!Number.isSafeInteger(limit) || limit < 1 || limit > maxClaimBatchSize) {
         throw new Error(`Source sync due enqueue limit must be 1-${maxClaimBatchSize}`);
@@ -2325,6 +2363,19 @@ function isCapabilitySyncPolicy(
   policy: SourceSyncPolicyRecord,
 ): policy is CapabilitySourceSyncPolicyRecord {
   return typeof policy.capabilityGrantId === "string";
+}
+
+function validatedSourceBatchIds(sourceIds: readonly string[]): readonly string[] {
+  const ids = [...new Set(sourceIds)];
+  if (ids.length > 200) throw new Error("Source workflow batch must contain at most 200 ids");
+  return ids;
+}
+
+function mapSyncCompletion(row: DatabaseRow): SourceSyncCompletionRecord {
+  return {
+    completedAt: stringColumn(row, "completed_at"),
+    sourceId: stringColumn(row, "source_id"),
+  };
 }
 
 function resultPage<T>(rows: readonly T[], limit: number, cursor: (item: T) => string) {

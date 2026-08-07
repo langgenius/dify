@@ -38,6 +38,7 @@ import {
   type SourceWorkflowFence,
   type SourceWorkflowRun,
   providerItemIdentity,
+  sourceWorkflowMaterializationGeneration,
 } from "./source-product-workflow";
 import type { SourceProviderCatalog } from "./source-provider-catalog";
 import type { SourceRepository } from "./source-repository";
@@ -1188,6 +1189,7 @@ async function materializeCandidates(
   candidates: readonly PendingLogicalRevision[],
 ): Promise<void> {
   const run = execution.run();
+  const materializationGeneration = sourceWorkflowMaterializationGeneration(run.payload);
   const compensationScope = {
     knowledgeSpaceId: run.knowledgeSpaceId,
     sourceId: source.id,
@@ -1207,7 +1209,13 @@ async function materializeCandidates(
           },
           items: candidates.map((candidate) => ({
             contentHash: candidate.contentHash,
-            itemKey: candidate.providerItemId,
+            // Explicit retries advance the durable generation because failed bound assets are
+            // permanently tombstoned. Generation zero preserves the legacy identity so an
+            // in-flight run reclaimed during a rolling upgrade can still reuse its existing asset.
+            itemKey:
+              materializationGeneration === 0
+                ? candidate.providerItemId
+                : `${materializationGeneration}:${candidate.providerItemId}`,
             runId: run.id,
           })),
           signal,

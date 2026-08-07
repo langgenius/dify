@@ -1752,6 +1752,92 @@ describe("database source-product workflow repository edge coverage", () => {
     ).toBe(true);
   });
 
+  it("lists source sync policies in one tenant- and space-scoped query", async () => {
+    const calls: DatabaseExecuteInput[] = [];
+    const database = testDatabase("postgres", async (input) => {
+      calls.push(input);
+      return input.tableName === "source_sync_policies"
+        ? {
+            rows: [syncPolicyRow(), syncPolicyRow({ id: "sync-policy-b", source_id: "source-b" })],
+            rowsAffected: 2,
+          }
+        : empty();
+    });
+    const repository = createDatabaseSourceProductWorkflowRepository({ database });
+
+    await expect(
+      repository.listSyncPolicies({
+        knowledgeSpaceId,
+        sourceIds: [sourceId, "source-b", sourceId],
+        tenantId,
+      }),
+    ).resolves.toEqual([syncPolicy(), syncPolicy({ id: "sync-policy-b", sourceId: "source-b" })]);
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({
+      maxRows: 2,
+      operation: "select",
+      params: [tenantId, knowledgeSpaceId, sourceId, "source-b"],
+      tableName: "source_sync_policies",
+    });
+    expect(calls[0]?.sql).toContain('"source_id" IN ($3, $4)');
+    await expect(
+      repository.listSyncPolicies({ knowledgeSpaceId, sourceIds: [], tenantId }),
+    ).resolves.toEqual([]);
+    expect(calls).toHaveLength(1);
+  });
+
+  it("lists the latest successful sync timestamp for each requested source", async () => {
+    const calls: DatabaseExecuteInput[] = [];
+    const database = testDatabase("postgres", async (input) => {
+      calls.push(input);
+      return input.tableName === "source_workflow_runs"
+        ? {
+            rows: [
+              { completed_at: "2026-07-14T12:30:00.000Z", source_id: sourceId },
+              { completed_at: "2026-07-14T12:45:00.000Z", source_id: "source-b" },
+            ],
+            rowsAffected: 2,
+          }
+        : empty();
+    });
+    const repository = createDatabaseSourceProductWorkflowRepository({ database });
+
+    await expect(
+      repository.listLatestSyncCompletions({
+        knowledgeSpaceId,
+        sourceIds: [sourceId, "source-b", sourceId],
+        tenantId,
+      }),
+    ).resolves.toEqual([
+      { completedAt: "2026-07-14T12:30:00.000Z", sourceId },
+      { completedAt: "2026-07-14T12:45:00.000Z", sourceId: "source-b" },
+    ]);
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({
+      maxRows: 2,
+      operation: "select",
+      params: [
+        tenantId,
+        knowledgeSpaceId,
+        "sync",
+        "completed",
+        "zero_results",
+        sourceId,
+        "source-b",
+      ],
+      tableName: "source_workflow_runs",
+    });
+    expect(calls[0]?.sql).toContain('"source_id" IN ($6, $7)');
+    expect(calls[0]?.sql).toContain('MAX("completed_at")');
+    expect(calls[0]?.sql).toContain('"run_state" IN ($4, $5)');
+    await expect(
+      repository.listLatestSyncCompletions({ knowledgeSpaceId, sourceIds: [], tenantId }),
+    ).resolves.toEqual([]);
+    expect(calls).toHaveLength(1);
+  });
+
   it("persists an exact Capability source-policy binding without legacy ACL provenance", async () => {
     const calls: DatabaseExecuteInput[] = [];
     const database = testDatabase("postgres", async (input) => {

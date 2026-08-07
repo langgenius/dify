@@ -7,8 +7,10 @@ import { WebsiteCrawlPreview } from '../website-crawl-preview'
 const clientMock = vi.hoisted(() => ({
   cancel: vi.fn(),
   createSource: vi.fn(),
+  deleteSource: vi.fn(),
   getPages: vi.fn(),
   getRun: vi.fn(),
+  getSource: vi.fn(),
   listSources: vi.fn(),
   retry: vi.fn(),
   startPreview: vi.fn(),
@@ -80,12 +82,14 @@ vi.mock('../crawl-selection-form', () => ({
     busy,
     initialSelectedPageIds,
     onCancel,
+    onInteractionLockChange,
     onRecrawl,
     pages,
   }: {
     busy?: boolean
     initialSelectedPageIds?: readonly string[]
     onCancel: () => void
+    onInteractionLockChange?: (locked: boolean) => void
     onRecrawl: () => void
     pages: Array<{ pageId: string; title?: string }>
   }) => (
@@ -107,6 +111,9 @@ vi.mock('../crawl-selection-form', () => ({
       </button>
       <button type="button" onClick={onCancel}>
         dataset.newKnowledge.cancelAddSource
+      </button>
+      <button type="button" onClick={() => onInteractionLockChange?.(true)}>
+        dataset.newKnowledge.addSource
       </button>
     </div>
   ),
@@ -134,6 +141,8 @@ vi.mock('@/service/client', () => ({
           },
           sources: {
             bySourceId: {
+              delete: async (input: unknown) => clientMock.deleteSource(input),
+              get: async (input: unknown) => sourceApiResponse(await clientMock.getSource(input)),
               crawlPreview: {
                 post: async (input: unknown) =>
                   workflowApiResponse(await clientMock.startPreview(input)),
@@ -170,6 +179,7 @@ const source = (metadata: Source['metadata'] = {}): Source => ({
   type: 'web',
   updatedAt: '2026-07-20T10:00:00Z',
   uri: 'https://docs.dify.ai/',
+  version: 1,
 })
 
 const run = (state: string, overrides: Partial<SourceWorkflowRun> = {}): SourceWorkflowRun => ({
@@ -210,6 +220,8 @@ describe('WebsiteCrawlPreview', () => {
     for (const mock of Object.values(clientMock)) mock.mockReset()
     clientMock.cancel.mockResolvedValue(run('canceled'))
     clientMock.createSource.mockResolvedValue(source())
+    clientMock.deleteSource.mockResolvedValue({})
+    clientMock.getSource.mockResolvedValue(source())
     clientMock.startPreview.mockResolvedValue(run('running'))
     clientMock.getRun.mockResolvedValue(
       run('preview_ready', {
@@ -268,6 +280,7 @@ describe('WebsiteCrawlPreview', () => {
           crawlOptions: { includeSubpages: true, limit: 100 },
           preview: true,
           providerId: 'plugin-daemon-website',
+          providerName: 'Firecrawl',
         },
         name: 'Dify docs',
         status: 'disabled',
@@ -289,6 +302,182 @@ describe('WebsiteCrawlPreview', () => {
     expect(
       screen.queryByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }),
     ).not.toBeInTheDocument()
+  })
+
+  it('invalidates a successful preview when its root URL changes', async () => {
+    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    const user = await fillValidForm()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    await screen.findByText('Getting started')
+
+    const rootUrl = screen.getByLabelText(/^dataset\.newKnowledge\.rootUrl/)
+    expect(rootUrl).toBeEnabled()
+    await user.clear(rootUrl)
+
+    expect(screen.queryByText('Getting started')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }),
+    ).toBeDisabled()
+  })
+
+  it('deletes the previous provisional source before previewing a changed configuration', async () => {
+    clientMock.createSource.mockResolvedValueOnce(source()).mockResolvedValueOnce({
+      ...source(),
+      id: 'source-2',
+      uri: 'https://example.com/',
+    })
+    clientMock.startPreview
+      .mockResolvedValueOnce(run('running'))
+      .mockResolvedValueOnce(run('running', { id: 'run-2', sourceId: 'source-2' }))
+    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    const user = await fillValidForm()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    await screen.findByText('Getting started')
+
+    const rootUrl = screen.getByLabelText(/^dataset\.newKnowledge\.rootUrl/)
+    await user.clear(rootUrl)
+    await user.type(rootUrl, 'https://example.com')
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+
+    await waitFor(() => expect(clientMock.deleteSource).toHaveBeenCalledOnce())
+    expect(clientMock.deleteSource).toHaveBeenCalledWith({
+      body: { expectedRevision: 1 },
+      headers: { 'Idempotency-Key': expect.any(String) },
+      params: { control_space_id: 'space-1', source_id: 'source-1' },
+      query: { documents: 'cascade' },
+    })
+    await waitFor(() => expect(clientMock.createSource).toHaveBeenCalledTimes(2))
+    expect(clientMock.deleteSource.mock.invocationCallOrder[0]).toBeLessThan(
+      clientMock.createSource.mock.invocationCallOrder[1]!,
+    )
+    await waitFor(() => expect(clientMock.startPreview).toHaveBeenCalledTimes(2))
+    expect(clientMock.startPreview).toHaveBeenLastCalledWith({
+      headers: { 'Idempotency-Key': expect.any(String) },
+      params: { control_space_id: 'space-1', source_id: 'source-2' },
+    })
+  })
+
+  it('deletes an uncommitted provisional source when the setup is unmounted', async () => {
+    const view = render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    const user = await fillValidForm()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    await screen.findByText('Getting started')
+
+    view.unmount()
+
+    await waitFor(() => expect(clientMock.deleteSource).toHaveBeenCalledOnce())
+    expect(clientMock.deleteSource).toHaveBeenCalledWith({
+      body: { expectedRevision: 1 },
+      headers: { 'Idempotency-Key': expect.any(String) },
+      params: { control_space_id: 'space-1', source_id: 'source-1' },
+      query: { documents: 'cascade' },
+    })
+  })
+
+  it('retries a conflicted delete only while the source remains the same provisional draft', async () => {
+    clientMock.deleteSource.mockRejectedValueOnce({ status: 409 }).mockResolvedValueOnce({})
+    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    const user = await fillValidForm()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    await screen.findByText('Getting started')
+    const clientRequestId = clientMock.createSource.mock.calls[0]?.[0].body.metadata.clientRequestId
+    clientMock.getSource.mockResolvedValue({
+      ...source({ clientRequestId, preview: true }),
+      version: 2,
+    })
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }))
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.discardSourceChangesConfirm' }),
+    )
+
+    await waitFor(() => expect(clientMock.deleteSource).toHaveBeenCalledTimes(2))
+    expect(clientMock.deleteSource).toHaveBeenNthCalledWith(1, {
+      body: { expectedRevision: 1 },
+      headers: { 'Idempotency-Key': expect.any(String) },
+      params: { control_space_id: 'space-1', source_id: 'source-1' },
+      query: { documents: 'cascade' },
+    })
+    expect(clientMock.deleteSource).toHaveBeenNthCalledWith(2, {
+      body: { expectedRevision: 2 },
+      headers: { 'Idempotency-Key': expect.any(String) },
+      params: { control_space_id: 'space-1', source_id: 'source-1' },
+      query: { documents: 'cascade' },
+    })
+    expect(clientMock.deleteSource.mock.calls[0]?.[0].headers['Idempotency-Key']).not.toBe(
+      clientMock.deleteSource.mock.calls[1]?.[0].headers['Idempotency-Key'],
+    )
+    await waitFor(() =>
+      expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/sources'),
+    )
+  })
+
+  it('does not delete a provisional source that was concurrently activated', async () => {
+    clientMock.deleteSource.mockRejectedValueOnce({ status: 409 })
+    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    const user = await fillValidForm()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    await screen.findByText('Getting started')
+    const clientRequestId = clientMock.createSource.mock.calls[0]?.[0].body.metadata.clientRequestId
+    clientMock.getSource.mockResolvedValue({
+      ...source({ clientRequestId, preview: false }),
+      status: 'active',
+      version: 2,
+    })
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }))
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.discardSourceChangesConfirm' }),
+    )
+
+    await waitFor(() => expect(clientMock.getSource).toHaveBeenCalledOnce())
+    expect(clientMock.deleteSource).toHaveBeenCalledOnce()
+    expect(clientMock.deleteSource).toHaveBeenCalledWith({
+      body: { expectedRevision: 1 },
+      headers: { 'Idempotency-Key': expect.any(String) },
+      params: { control_space_id: 'space-1', source_id: 'source-1' },
+      query: { documents: 'cascade' },
+    })
+    expect(routerMock.push).not.toHaveBeenCalled()
+    expect(screen.getByText('dataset.newKnowledge.crawlFailedDescription')).toBeInTheDocument()
+  })
+
+  it('locks the surrounding setup and keeps pending feedback visible while crawling', async () => {
+    const onInteractionLockChange = vi.fn()
+    clientMock.getRun.mockReturnValue(new Promise<SourceWorkflowRun>(() => {}))
+
+    render(
+      <WebsiteCrawlPreview
+        connection={connection}
+        knowledgeSpaceId="space-1"
+        onInteractionLockChange={onInteractionLockChange}
+      />,
+    )
+    const user = await fillValidForm()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+
+    await waitFor(() => expect(onInteractionLockChange).toHaveBeenLastCalledWith(true))
+    const crawling = screen.getByRole('button', { name: 'dataset.newKnowledge.crawling' })
+    expect(crawling).toHaveAttribute('aria-disabled', 'true')
+    expect(crawling.querySelector('[aria-hidden="true"]')).toBeInTheDocument()
+  })
+
+  it('keeps the surrounding setup locked while the selected pages are submitted', async () => {
+    const onInteractionLockChange = vi.fn()
+    render(
+      <WebsiteCrawlPreview
+        connection={connection}
+        knowledgeSpaceId="space-1"
+        onInteractionLockChange={onInteractionLockChange}
+      />,
+    )
+    const user = await fillValidForm()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    await screen.findByText('Getting started')
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' }))
+
+    await waitFor(() => expect(onInteractionLockChange).toHaveBeenLastCalledWith(true))
   })
 
   it('cancels a preview-ready workflow and starts a fresh run when re-crawling', async () => {
@@ -411,6 +600,10 @@ describe('WebsiteCrawlPreview', () => {
       body: { reason: 'user_requested' },
       params: { control_space_id: 'space-1', run_id: 'run-1' },
     })
+    await waitFor(() => expect(clientMock.deleteSource).toHaveBeenCalledOnce())
+    expect(clientMock.cancel.mock.invocationCallOrder[0]).toBeLessThan(
+      clientMock.deleteSource.mock.invocationCallOrder[0]!,
+    )
     await waitFor(() =>
       expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/sources'),
     )

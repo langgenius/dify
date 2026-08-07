@@ -2007,6 +2007,23 @@ export const zKnowledgeFsSourcePagesQuery = z.object({
 })
 
 /**
+ * KnowledgeFSSourceSyncPolicyResponse
+ */
+export const zKnowledgeFsSourceSyncPolicyResponse = z.object({
+  created_at: z.iso.datetime(),
+  custom_interval_seconds: z.int().nullish(),
+  enabled: z.boolean(),
+  expected_source_version: z.int().gte(1),
+  id: z.string(),
+  knowledge_space_id: z.string(),
+  mode: z.enum(['custom', 'interval', 'manual', 'provider']),
+  next_run_at: z.iso.datetime().nullish(),
+  revision: z.int().gte(1),
+  source_id: z.string(),
+  updated_at: z.iso.datetime(),
+})
+
+/**
  * KnowledgeFSSourceResponse
  */
 export const zKnowledgeFsSourceResponse = z.object({
@@ -2015,10 +2032,12 @@ export const zKnowledgeFsSourceResponse = z.object({
   credential_configured: z.boolean().nullish(),
   id: z.string(),
   knowledge_space_id: z.string(),
+  last_synced_at: z.iso.datetime().nullish(),
   metadata: z.record(z.string(), z.unknown()),
   name: z.string(),
   permission_scope: z.array(z.string()),
   status: z.enum(['active', 'disabled', 'error', 'syncing']),
+  sync_policy: zKnowledgeFsSourceSyncPolicyResponse.nullish(),
   type: z.enum(['connector', 'object-storage', 'upload', 'web']),
   updated_at: z.iso.datetime(),
   uri: z.string(),

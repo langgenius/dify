@@ -413,6 +413,36 @@ describe("in-memory source product workflow repository", () => {
     ).resolves.toEqual([expect.objectContaining({ id: "d-bulk", state: "running" })]);
   });
 
+  it("keeps the materialization generation stable when an expired lease is reclaimed", async () => {
+    let leaseSequence = 0;
+    const repository = createInMemorySourceProductWorkflowRepository({
+      generateLeaseToken: () => `lease-reclaim-${++leaseSequence}`,
+    });
+    await repository.start(runRecord("lease-reclaim"));
+
+    const firstClaim = requiredClaim(
+      await repository.claim({
+        leaseExpiresAt: "2026-03-01T00:01:00.000Z",
+        limit: 1,
+        now: createdAt,
+        workerId: "worker-a",
+      }),
+      "lease-reclaim",
+    );
+    const reclaimed = requiredClaim(
+      await repository.claim({
+        leaseExpiresAt: "2026-03-01T00:03:00.000Z",
+        limit: 1,
+        now: "2026-03-01T00:02:00.000Z",
+        workerId: "worker-b",
+      }),
+      "lease-reclaim",
+    );
+
+    expect(firstClaim).toMatchObject({ executionAttempts: 1, payload: {} });
+    expect(reclaimed).toMatchObject({ executionAttempts: 2, payload: firstClaim.payload });
+  });
+
   it("enforces lease fences and terminal transition rules", async () => {
     const repository = createInMemorySourceProductWorkflowRepository({
       generateLeaseToken: () => "lease-fence",
@@ -677,7 +707,11 @@ describe("in-memory source product workflow repository", () => {
       now: "2026-03-01T00:02:00.000Z",
       runId: queued.id,
     });
-    expect(retriedCanceled).toMatchObject({ progressCompleted: 0, state: "queued" });
+    expect(retriedCanceled).toMatchObject({
+      payload: { __materializationGeneration: 1 },
+      progressCompleted: 0,
+      state: "queued",
+    });
 
     const claimed = requiredClaim(
       await repository.claim({
@@ -707,7 +741,11 @@ describe("in-memory source product workflow repository", () => {
         requestedBySubjectId: "retrying-subject",
         runId: failed.id,
       }),
-    ).resolves.toMatchObject({ lastErrorCode: undefined, state: "queued" });
+    ).resolves.toMatchObject({
+      lastErrorCode: undefined,
+      payload: { __materializationGeneration: 2 },
+      state: "queued",
+    });
 
     const exhausted = await repository.start(
       runRecord("attempts-exhausted", { maxExecutionAttempts: 1 }),
@@ -1004,6 +1042,20 @@ describe("in-memory source product workflow repository", () => {
     await expect(
       repository.getSyncPolicy({ knowledgeSpaceId, sourceId: provider.sourceId, tenantId }),
     ).resolves.toEqual(revised);
+    await expect(
+      repository.listSyncPolicies({
+        knowledgeSpaceId,
+        sourceIds: ["missing", provider.sourceId, provider.sourceId],
+        tenantId,
+      }),
+    ).resolves.toEqual([revised]);
+    await expect(
+      repository.listSyncPolicies({
+        knowledgeSpaceId,
+        sourceIds: [provider.sourceId],
+        tenantId: "other-tenant",
+      }),
+    ).resolves.toEqual([]);
 
     await repository.upsertSyncPolicy(
       policyRecord("policy-custom", {
@@ -1085,6 +1137,26 @@ describe("in-memory source product workflow repository", () => {
     await expect(
       repository.getSyncPolicy({ knowledgeSpaceId, sourceId: "source-interval", tenantId }),
     ).resolves.toMatchObject({ nextRunAt: "2026-03-02T00:00:00.000Z", revision: 2 });
+  });
+
+  it("lists successful sync timestamps in the requested tenant and space", async () => {
+    const repository = createInMemorySourceProductWorkflowRepository();
+    await terminalRun(repository, "zero-result-sync", "zero_results");
+
+    await expect(
+      repository.listLatestSyncCompletions({
+        knowledgeSpaceId,
+        sourceIds: ["missing", "source-memory", "source-memory"],
+        tenantId,
+      }),
+    ).resolves.toEqual([{ completedAt: createdAt, sourceId: "source-memory" }]);
+    await expect(
+      repository.listLatestSyncCompletions({
+        knowledgeSpaceId,
+        sourceIds: ["source-memory"],
+        tenantId: "other-tenant",
+      }),
+    ).resolves.toEqual([]);
   });
 });
 

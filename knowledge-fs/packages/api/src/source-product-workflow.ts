@@ -91,6 +91,32 @@ export interface SourceWorkflowRun {
   readonly workerId?: string | undefined;
 }
 
+const SOURCE_WORKFLOW_MATERIALIZATION_GENERATION_KEY = "__materializationGeneration";
+
+export function sourceWorkflowMaterializationGeneration(
+  payload: Readonly<Record<string, JobPayload>>,
+): number {
+  const value = payload[SOURCE_WORKFLOW_MATERIALIZATION_GENERATION_KEY];
+  if (value === undefined) return 0;
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) {
+    throw new SourceWorkflowError(
+      "SOURCE_WORKFLOW_PAYLOAD_INVALID",
+      "Source workflow materialization generation is invalid",
+    );
+  }
+  return value;
+}
+
+export function nextSourceWorkflowMaterializationGeneration(
+  payload: Readonly<Record<string, JobPayload>>,
+): Readonly<Record<string, JobPayload>> {
+  return {
+    ...payload,
+    [SOURCE_WORKFLOW_MATERIALIZATION_GENERATION_KEY]:
+      sourceWorkflowMaterializationGeneration(payload) + 1,
+  };
+}
+
 export interface SourceWorkflowFence {
   readonly leaseToken: string;
   readonly rowVersion: number;
@@ -132,6 +158,11 @@ export interface SourceWorkflowPage<T> {
 export interface SourceWorkflowRecentCursor {
   readonly createdAt: string;
   readonly id: string;
+}
+
+export interface SourceSyncCompletionRecord {
+  readonly completedAt: string;
+  readonly sourceId: string;
 }
 
 export type SourceBulkAction = "sync" | "disable" | "remove";
@@ -364,6 +395,16 @@ export interface SourceProductWorkflowRepository {
     readonly limit: number;
     readonly now: string;
   }): Promise<SourceWorkflowPage<SourceSyncPolicyRecord>>;
+  listSyncPolicies(input: {
+    readonly knowledgeSpaceId: string;
+    readonly sourceIds: readonly string[];
+    readonly tenantId: string;
+  }): Promise<readonly SourceSyncPolicyRecord[]>;
+  listLatestSyncCompletions(input: {
+    readonly knowledgeSpaceId: string;
+    readonly sourceIds: readonly string[];
+    readonly tenantId: string;
+  }): Promise<readonly SourceSyncCompletionRecord[]>;
   getSyncPolicy(input: {
     readonly knowledgeSpaceId: string;
     readonly sourceId: string;

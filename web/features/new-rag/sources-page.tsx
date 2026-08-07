@@ -1,7 +1,7 @@
 'use client'
 
 import type { StatusDotStatus } from '@langgenius/dify-ui/status-dot'
-import type { Source } from './source-models'
+import type { Source, SourceSyncPolicy } from './source-models'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -40,6 +40,7 @@ import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { SearchInput } from '@/app/components/base/search-input'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { hasPermission } from '@/utils/permission'
@@ -118,6 +119,43 @@ function metadataString(metadata: Source['metadata'], key: string) {
   return typeof value === 'string' && value.trim() ? value : undefined
 }
 
+function metadataRecord(metadata: Source['metadata'], key: string) {
+  const value = metadata[key]
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined
+}
+
+function sourceProviderName(source: Source) {
+  const explicitName = metadataString(source.metadata, 'providerName')
+  if (explicitName) return explicitName
+
+  const providerId = metadataString(source.metadata, 'providerId')?.toLocaleLowerCase()
+  if (!providerId) return undefined
+  if (providerId === 'plugin-daemon-website') return 'Firecrawl'
+  if (providerId.includes('firecrawl')) return 'Firecrawl'
+  if (providerId.includes('jina')) return 'Jina Reader'
+  if (providerId.includes('watercrawl')) return 'WaterCrawl'
+  if (providerId.includes('fakecrawler')) return 'FakeCrawler'
+  return undefined
+}
+
+function sourceLastSyncAt(source: Source) {
+  const syncMetadata = metadataRecord(source.metadata, 'sync')
+  return (
+    source.lastSyncedAt ??
+    metadataString(source.metadata, 'lastSyncedAt') ??
+    (syncMetadata ? metadataString(syncMetadata, 'lastRunAt') : undefined)
+  )
+}
+
+function sourceSyncPolicyTranslationKey(policy: SourceSyncPolicy) {
+  if (!policy.enabled || policy.mode === 'manual') return 'newKnowledge.syncPolicyManual' as const
+  if (policy.mode === 'provider') return 'newKnowledge.syncPolicyProvider' as const
+  if (policy.mode === 'interval') return 'newKnowledge.syncPolicyDaily' as const
+  return 'newKnowledge.syncPolicyCustom' as const
+}
+
 function isPreviewDraft(source: Source) {
   return source.metadata.preview === true && source.status === 'disabled'
 }
@@ -157,8 +195,15 @@ function getCurrentSource(source: Source, sourceOverride?: Source) {
   const sourceVersion = source.version ?? -1
   const overrideVersion = sourceOverride.version ?? -1
   if (sourceVersion > overrideVersion) return source
-  if (sourceVersion < overrideVersion) return sourceOverride
-  return source.updatedAt > sourceOverride.updatedAt ? source : sourceOverride
+  const currentSource =
+    sourceVersion < overrideVersion || source.updatedAt <= sourceOverride.updatedAt
+      ? sourceOverride
+      : source
+  return {
+    ...currentSource,
+    lastSyncedAt: source.lastSyncedAt ?? sourceOverride.lastSyncedAt,
+    syncPolicy: source.syncPolicy ?? sourceOverride.syncPolicy,
+  }
 }
 
 type SourceAction = 'remove' | 'sync' | 'toggle'
@@ -217,7 +262,7 @@ function SourceActions({
             <DropdownMenuLinkItem
               render={
                 <a
-                  aria-label={t(($) => $['newKnowledge.editSource'])}
+                  aria-label={t(($) => $['newKnowledge.openSource'])}
                   href={sourceUri}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -225,8 +270,8 @@ function SourceActions({
               }
               className="mb-px h-7 gap-2 px-2 system-sm-medium"
             >
-              <span aria-hidden className="i-ri-edit-line size-4" />
-              {t(($) => $['newKnowledge.editSource'])}
+              <span aria-hidden className="i-ri-external-link-line size-4" />
+              {t(($) => $['newKnowledge.openSource'])}
             </DropdownMenuLinkItem>
           )}
           {canEdit && (
@@ -319,6 +364,7 @@ function SourceRow({
 }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
+  const { formatTimeFromNow } = useFormatTimeFromNow()
   const queryClient = useQueryClient()
   const [pendingAction, setPendingAction] = useState<SourceAction>()
   const [acceptedSyncRun, setAcceptedSyncRun] = useState<ReturnType<typeof sourceWorkflowFromApi>>()
@@ -342,12 +388,29 @@ function SourceRow({
   const syncWorkflow = syncWorkflowQuery.data
     ? sourceWorkflowFromApi(syncWorkflowQuery.data)
     : acceptedSyncRun
+  const syncWorkflowId = syncWorkflow?.id
+  const syncWorkflowState = syncWorkflow?.state
+
+  useEffect(() => {
+    if (!syncWorkflowState || sourceWorkflowStatus(syncWorkflowState) === 'syncing') return
+    void queryClient.invalidateQueries({
+      queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.get.key(),
+    })
+  }, [queryClient, syncWorkflowId, syncWorkflowState])
+
   const visibleSource = syncWorkflow
     ? { ...source, status: sourceWorkflowStatus(syncWorkflow.state) }
     : source
-  const providerName = metadataString(source.metadata, 'providerName')
-  const syncPolicy = metadataString(source.metadata, 'syncPolicy')
-  const lastSync = metadataString(source.metadata, 'lastSyncedAt')
+  const providerName = sourceProviderName(source)
+  const sourceSyncPolicy = source.syncPolicy
+  const syncPolicy = sourceSyncPolicy
+    ? t(($) => $[sourceSyncPolicyTranslationKey(sourceSyncPolicy)])
+    : metadataString(source.metadata, 'syncPolicy')
+  const lastSyncAt = sourceLastSyncAt(source)
+  const lastSyncTimestamp = lastSyncAt ? Date.parse(lastSyncAt) : Number.NaN
+  const lastSync = Number.isNaN(lastSyncTimestamp)
+    ? undefined
+    : formatTimeFromNow(lastSyncTimestamp)
   const typeLabel =
     source.type === 'connector' &&
     (providerName === 'Notion' || providerName === 'Google Docs' || providerName === 'Confluence')
@@ -435,7 +498,12 @@ function SourceRow({
             params: { control_space_id: knowledgeSpaceId, source_id: source.id },
           }),
         ),
-      onSourceChange,
+      (updatedSource) =>
+        onSourceChange({
+          ...updatedSource,
+          lastSyncedAt: updatedSource.lastSyncedAt ?? source.lastSyncedAt,
+          syncPolicy: updatedSource.syncPolicy ?? source.syncPolicy,
+        }),
     )
 
   const removeSource = () =>
@@ -456,14 +524,14 @@ function SourceRow({
   return (
     <tr
       className={cn(
-        'border-t border-divider-subtle',
+        'h-[50px] border-t border-divider-subtle',
         visibleSource.status === 'disabled' && '[&>td:not(:first-child)]:opacity-60',
       )}
     >
-      <td className="w-7 py-2 pr-3">
+      <td className="py-2 pr-3 whitespace-nowrap">
         <Checkbox aria-label={source.name} checked={checked} onCheckedChange={onCheckedChange} />
       </td>
-      <td className="min-w-0 py-2 pr-3 sm:min-w-64">
+      <td className="min-w-0 py-2 pr-3">
         <div className="flex min-w-0 items-center gap-2.5">
           <span aria-hidden className={cn('size-4.5 shrink-0 text-text-tertiary', sourceIcon)} />
           <div className="min-w-0">
@@ -471,11 +539,13 @@ function SourceRow({
           </div>
         </div>
       </td>
-      <td className="hidden w-45 py-2 pr-3 sm:table-cell">
-        <p className="system-xs-regular text-text-secondary">{providerName ?? typeLabel}</p>
-        {providerName && <p className="system-2xs-regular text-text-tertiary">{typeLabel}</p>}
+      <td className="py-2 pr-3 whitespace-nowrap">
+        <div className="flex flex-col gap-0.5">
+          <p className="system-xs-regular text-text-primary">{providerName ?? typeLabel}</p>
+          {providerName && <p className="system-xs-regular text-text-tertiary">{typeLabel}</p>}
+        </div>
       </td>
-      <td className="w-24 py-2 pr-3 sm:w-35">
+      <td className="py-2 pr-3 whitespace-nowrap">
         <span
           className={cn(
             'inline-flex items-center gap-1.5 system-xs-medium text-text-primary',
@@ -492,12 +562,12 @@ function SourceRow({
           {t(($) => $[`newKnowledge.sourceStatus.${visibleSource.status}`])}
         </span>
       </td>
-      <td className="hidden w-30 py-2 pr-3 system-xs-regular text-text-secondary lg:table-cell">
+      <td className="py-2 pr-3 system-xs-regular whitespace-nowrap text-text-secondary">
         {syncPolicy ?? '—'}
       </td>
       <td
         className={cn(
-          'hidden w-40 py-2 pr-3 system-xs-regular lg:table-cell',
+          'py-2 pr-3 system-xs-regular whitespace-nowrap',
           visibleSource.status === 'error' ? 'text-text-destructive' : 'text-text-secondary',
         )}
       >
@@ -524,7 +594,7 @@ function SourceRow({
           (lastSync ?? '—')
         )}
       </td>
-      <td className="w-20 py-2 text-right">
+      <td className="py-2 text-right whitespace-nowrap">
         <div className="flex items-center justify-end gap-1">
           {canSync && visibleSource.status === 'error' && (
             <Button
@@ -776,7 +846,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
         <SourcesEmpty canAddSource={canManageSources} knowledgeSpaceId={knowledgeSpaceId} />
       ) : (
         <>
-          <div className="mt-6 flex flex-col gap-2 sm:flex-row">
+          <div className="mt-8.5 flex flex-col gap-2 sm:flex-row">
             <Select<SourceFilter>
               value={filter}
               onValueChange={(value) => {
@@ -826,11 +896,11 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
               </Link>
             )}
           </div>
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full table-fixed border-collapse text-left lg:min-w-225 lg:table-auto">
+          <div className="mt-2.5 overflow-x-auto pt-3">
+            <table className="w-full table-auto border-collapse text-left">
               <thead className="system-2xs-medium text-text-tertiary uppercase">
-                <tr>
-                  <th className="w-7 pr-3 pb-2">
+                <tr className="h-9">
+                  <th className="py-2.5 pr-3 whitespace-nowrap">
                     <Checkbox
                       aria-label={tCommon(($) => $['operation.selectAll'])}
                       checked={allFilteredSourcesSelected}
@@ -855,7 +925,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                           ? 'descending'
                           : 'none'
                     }
-                    className="pb-2 font-medium"
+                    className="py-2.5 font-medium"
                   >
                     <Button
                       variant="ghost"
@@ -877,17 +947,22 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                       )}
                     </Button>
                   </th>
-                  <th className="hidden pb-2 font-medium sm:table-cell">
+                  <th className="py-2.5 font-medium whitespace-nowrap">
                     {t(($) => $['metadata.createMetadata.type'])}
                   </th>
-                  <th className="pb-2 font-medium">{t(($) => $['newKnowledge.statusColumn'])}</th>
-                  <th className="hidden pb-2 font-medium lg:table-cell">
+                  <th className="py-2.5 font-medium whitespace-nowrap">
+                    {t(($) => $['newKnowledge.statusColumn'])}
+                  </th>
+                  <th className="py-2.5 font-medium whitespace-nowrap">
                     {t(($) => $['newKnowledge.syncPolicyColumn'])}
                   </th>
-                  <th className="hidden pb-2 font-medium lg:table-cell">
+                  <th className="py-2.5 font-medium whitespace-nowrap">
                     {t(($) => $['newKnowledge.lastSyncColumn'])}
                   </th>
-                  <th aria-label={t(($) => $['newKnowledge.actionsColumn'])} />
+                  <th
+                    className="whitespace-nowrap"
+                    aria-label={t(($) => $['newKnowledge.actionsColumn'])}
+                  />
                 </tr>
               </thead>
               <tbody>

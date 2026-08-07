@@ -519,33 +519,6 @@ export const zKnowledgeFsSourceCreatePayload = z.object({
 })
 
 /**
- * KnowledgeFSSourceResponse
- */
-export const zKnowledgeFsSourceResponse = z.object({
-  connection_id: z.string().nullish(),
-  created_at: z.iso.datetime(),
-  credential_configured: z.boolean().nullish(),
-  id: z.string(),
-  knowledge_space_id: z.string(),
-  metadata: z.record(z.string(), z.unknown()),
-  name: z.string(),
-  permission_scope: z.array(z.string()),
-  status: z.enum(['active', 'disabled', 'error', 'syncing']),
-  type: z.enum(['connector', 'object-storage', 'upload', 'web']),
-  updated_at: z.iso.datetime(),
-  uri: z.string(),
-  version: z.int().gte(1),
-})
-
-/**
- * KnowledgeFSSourceListResponse
- */
-export const zKnowledgeFsSourceListResponse = z.object({
-  data: z.array(zKnowledgeFsSourceResponse),
-  next_cursor: z.string().nullish(),
-})
-
-/**
  * KnowledgeFSSourceDeletePayload
  */
 export const zKnowledgeFsSourceDeletePayload = z.object({
@@ -584,6 +557,35 @@ export const zKnowledgeFsSourceSyncPolicyResponse = z.object({
   revision: z.int().gte(1),
   source_id: z.string(),
   updated_at: z.iso.datetime(),
+})
+
+/**
+ * KnowledgeFSSourceResponse
+ */
+export const zKnowledgeFsSourceResponse = z.object({
+  connection_id: z.string().nullish(),
+  created_at: z.iso.datetime(),
+  credential_configured: z.boolean().nullish(),
+  id: z.string(),
+  knowledge_space_id: z.string(),
+  last_synced_at: z.iso.datetime().nullish(),
+  metadata: z.record(z.string(), z.unknown()),
+  name: z.string(),
+  permission_scope: z.array(z.string()),
+  status: z.enum(['active', 'disabled', 'error', 'syncing']),
+  sync_policy: zKnowledgeFsSourceSyncPolicyResponse.nullish(),
+  type: z.enum(['connector', 'object-storage', 'upload', 'web']),
+  updated_at: z.iso.datetime(),
+  uri: z.string(),
+  version: z.int().gte(1),
+})
+
+/**
+ * KnowledgeFSSourceListResponse
+ */
+export const zKnowledgeFsSourceListResponse = z.object({
+  data: z.array(zKnowledgeFsSourceResponse),
+  next_cursor: z.string().nullish(),
 })
 
 /**

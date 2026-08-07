@@ -15,10 +15,12 @@ export type Source = {
   credentialConfigured?: boolean
   id: string
   knowledgeSpaceId: string
+  lastSyncedAt?: string
   metadata: Record<string, unknown>
   name: string
   permissionScope?: string[]
   status: 'active' | 'syncing' | 'error' | 'disabled'
+  syncPolicy?: SourceSyncPolicy
   type: 'upload' | 'object-storage' | 'connector' | 'web'
   updatedAt: string
   uri: string
@@ -115,10 +117,12 @@ export function sourceFromApi(source: KnowledgeFsSourceResponse): Source {
     credentialConfigured: source.credential_configured ?? undefined,
     id: source.id,
     knowledgeSpaceId: source.knowledge_space_id,
+    lastSyncedAt: source.last_synced_at ?? undefined,
     metadata: source.metadata,
     name: source.name,
     permissionScope: source.permission_scope,
     status: source.status,
+    syncPolicy: source.sync_policy ? sourceSyncPolicyFromApi(source.sync_policy) : undefined,
     type: source.type,
     updatedAt: source.updated_at,
     uri: source.uri,

@@ -237,6 +237,7 @@ function renderSelectionForm(
   previewPages = pages,
   initialSyncMode?: 'custom' | 'interval' | 'manual' | 'provider',
   initialSelectedPageIds?: readonly string[],
+  onInteractionLockChange = vi.fn(),
 ) {
   const queryClient = new QueryClient({
     defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
@@ -253,6 +254,7 @@ function renderSelectionForm(
         initialSyncMode={initialSyncMode}
         knowledgeSpaceId="space-1"
         onCancel={onCancel}
+        onInteractionLockChange={onInteractionLockChange}
         onRecrawl={onRecrawl}
         onSubmissionUncertainChange={onSubmissionUncertainChange}
         onSubmitted={vi.fn()}
@@ -268,6 +270,7 @@ function renderSelectionForm(
   )
   return {
     ...view,
+    onInteractionLockChange,
     onRecrawl,
     onSubmissionUncertainChange,
     onWorkflowPending,
@@ -482,6 +485,24 @@ describe('CrawlSelectionForm', () => {
       }),
     )
     expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/sources')
+  })
+
+  it('locks the surrounding setup for the full submission transaction', async () => {
+    const policyRequest = deferred<SourceSyncPolicy>()
+    clientMock.updatePolicy.mockReturnValue(policyRequest.promise)
+    const user = userEvent.setup()
+    const { onInteractionLockChange } = renderSelectionForm()
+
+    await user.click(await screen.findByRole('checkbox', { name: 'Getting started' }))
+    await selectSyncPolicy(user, 'manual')
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' }))
+
+    await waitFor(() => expect(onInteractionLockChange).toHaveBeenLastCalledWith(true))
+    expect(clientMock.selectPages).not.toHaveBeenCalled()
+
+    policyRequest.resolve(policy({ enabled: false, mode: 'manual', revision: 3 }))
+    await waitFor(() => expect(clientMock.selectPages).toHaveBeenCalledOnce())
+    await waitFor(() => expect(onInteractionLockChange).toHaveBeenLastCalledWith(false))
   })
 
   it.each(['complete', 'success'])(

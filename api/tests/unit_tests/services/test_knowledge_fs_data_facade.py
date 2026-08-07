@@ -170,7 +170,39 @@ class RecordingRemote:
                 "retrieval": None,
                 "revision": 2,
             }
-        if request.operation_id in {"listSources", "listResearchTasks", "listTraces"}:
+        if request.operation_id == "listSources":
+            return {
+                "items": [
+                    {
+                        "connectionId": None,
+                        "createdAt": "2030-01-01T00:00:00Z",
+                        "id": "source-1",
+                        "knowledgeSpaceId": "space-1",
+                        "lastSyncedAt": "2030-01-01T01:00:00Z",
+                        "metadata": {},
+                        "name": "Docs",
+                        "permissionScope": [],
+                        "status": "active",
+                        "syncPolicy": {
+                            "createdAt": "2030-01-01T00:00:00Z",
+                            "enabled": True,
+                            "expectedSourceVersion": 1,
+                            "id": "policy-1",
+                            "knowledgeSpaceId": "space-1",
+                            "mode": "provider",
+                            "revision": 1,
+                            "sourceId": "source-1",
+                            "updatedAt": "2030-01-01T00:00:00Z",
+                        },
+                        "type": "web",
+                        "updatedAt": "2030-01-01T00:00:00Z",
+                        "uri": "https://example.test/docs",
+                        "version": 1,
+                    }
+                ],
+                "nextCursor": None,
+            }
+        if request.operation_id in {"listResearchTasks", "listTraces"}:
             return {"items": [], "nextCursor": None}
         if request.operation_id == "createSource":
             return {
@@ -944,7 +976,10 @@ def test_basic_product_facade_resolves_control_space_then_uses_exact_kfs_routes(
     assert settings.revision == 2
     assert updated.settings.embedding is not None
     assert updated.settings.embedding.plugin_id == "plugin-1"
-    assert sources.data == []
+    assert len(sources.data) == 1
+    assert sources.data[0].last_synced_at == datetime(2030, 1, 1, 1, tzinfo=UTC)
+    assert sources.data[0].sync_policy is not None
+    assert sources.data[0].sync_policy.mode == "provider"
     assert source.knowledge_space_id == "space-1"
     assert tasks.data == []
     assert traces.data == []
