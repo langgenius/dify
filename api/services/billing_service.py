@@ -105,6 +105,7 @@ class _BillingQuota(TypedDict):
 class _VectorSpaceQuota(TypedDict):
     size: float
     limit: int
+    usage_unknown: NotRequired[bool]
 
 
 class _KnowledgeRateLimit(TypedDict):

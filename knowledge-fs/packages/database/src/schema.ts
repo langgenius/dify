@@ -3395,8 +3395,8 @@ const tables = [
       {
         expression: {
           postgres:
-            '"target_revision" >= 1 AND ("capability_grant_id" IS NOT NULL OR "permission_snapshot_revision" >= 1) AND "row_version" >= 1 AND "execution_attempts" >= 0 AND "max_execution_attempts" >= 1 AND "execution_attempts" <= "max_execution_attempts" AND ("active_slot" IS NULL OR "active_slot" = 1)',
-          tidb: "`target_revision` >= 1 AND (`capability_grant_id` IS NOT NULL OR `permission_snapshot_revision` >= 1) AND `row_version` >= 1 AND `execution_attempts` >= 0 AND `max_execution_attempts` >= 1 AND `execution_attempts` <= `max_execution_attempts` AND (`active_slot` IS NULL OR `active_slot` = 1)",
+            '(("target_type" = \'logical_document\' AND "target_revision" >= 0) OR ("target_type" <> \'logical_document\' AND "target_revision" >= 1)) AND ("capability_grant_id" IS NOT NULL OR "permission_snapshot_revision" >= 1) AND "row_version" >= 1 AND "execution_attempts" >= 0 AND "max_execution_attempts" >= 1 AND "execution_attempts" <= "max_execution_attempts" AND ("active_slot" IS NULL OR "active_slot" = 1)',
+          tidb: "((`target_type` = 'logical_document' AND `target_revision` >= 0) OR (`target_type` <> 'logical_document' AND `target_revision` >= 1)) AND (`capability_grant_id` IS NOT NULL OR `permission_snapshot_revision` >= 1) AND `row_version` >= 1 AND `execution_attempts` >= 0 AND `max_execution_attempts` >= 1 AND `execution_attempts` <= `max_execution_attempts` AND (`active_slot` IS NULL OR `active_slot` = 1)",
         },
         name: "deletion_jobs_positive_ck",
       },
@@ -3512,8 +3512,9 @@ const tables = [
       },
       {
         expression: {
-          postgres: '"target_revision" >= 1 AND "row_version" >= 1',
-          tidb: "`target_revision` >= 1 AND `row_version` >= 1",
+          postgres:
+            '(("target_type" = \'logical_document\' AND "target_revision" >= 0) OR ("target_type" <> \'logical_document\' AND "target_revision" >= 1)) AND "row_version" >= 1',
+          tidb: "((`target_type` = 'logical_document' AND `target_revision` >= 0) OR (`target_type` <> 'logical_document' AND `target_revision` >= 1)) AND `row_version` >= 1",
         },
         name: "deletion_tombstones_positive_ck",
       },

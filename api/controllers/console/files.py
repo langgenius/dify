@@ -30,6 +30,7 @@ from fields.file_fields import FileResponse, UploadConfig
 from libs.helper import dump_response
 from libs.login import login_required
 from models import Account, UploadFile
+from services.feature_service import FeatureService
 from services.file_service import FileService
 
 from . import console_ns
@@ -58,7 +59,7 @@ FILE_UPLOAD_PARAMS = {
 
 def upload_file_from_request(*, current_user: Account, resource_tenant_id: str | None = None) -> UploadFile:
     """Validate the multipart request and persist the file under the requested resource tenant."""
-    source_str = request.form.get("source")
+    source_str = request.args.get("source") or request.form.get("source")
     source: Literal["datasets"] | None = "datasets" if source_str == "datasets" else None
 
     if "file" not in request.files:
@@ -76,6 +77,12 @@ def upload_file_from_request(*, current_user: Account, resource_tenant_id: str |
     if source not in ("datasets", None):
         source = None
 
+    default_file_size_limit = (
+        FeatureService.get_knowledge_file_size_limit(resource_tenant_id or current_user.current_tenant_id)
+        if source == "datasets"
+        else None
+    )
+
     try:
         return FileService(db.engine).upload_file(
             filename=file.filename,
@@ -84,6 +91,7 @@ def upload_file_from_request(*, current_user: Account, resource_tenant_id: str |
             user=current_user,
             tenant_id=resource_tenant_id,
             source=source,
+            default_file_size_limit=default_file_size_limit,
         )
     except services.errors.file.FileTooLargeError as file_too_large_error:
         raise FileTooLargeError(file_too_large_error.description)
@@ -99,9 +107,11 @@ class FileApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[UploadConfig.__name__])
-    def get(self):
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str):
         config = UploadConfig(
             file_size_limit=dify_config.UPLOAD_FILE_SIZE_LIMIT,
+            knowledge_file_size_limit=FeatureService.get_knowledge_file_size_limit(current_tenant_id),
             batch_count_limit=dify_config.UPLOAD_FILE_BATCH_LIMIT,
             file_upload_limit=dify_config.BATCH_UPLOAD_LIMIT,
             image_file_size_limit=dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT,

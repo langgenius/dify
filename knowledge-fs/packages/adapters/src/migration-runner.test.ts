@@ -43,6 +43,8 @@ const researchTaskFinalAnswersMigrationId = "0033_research_task_final_answers";
 const knowledgeSpaceEmojiIconsMigrationId = "0034_knowledge_space_emoji_icons";
 const researchTaskAnswerStreamingMigrationId = "0035_research_task_answer_streaming";
 const pageIndexFindabilityMigrationId = "0036_page_index_findability";
+const logicalDocumentZeroRevisionDeletionMigrationId =
+  "0037_logical_document_zero_revision_deletion";
 const migrationsAfterDurableDeletion = [
   versionedSpaceProfilesMigrationId,
   profilePublicationBindingsMigrationId,
@@ -63,6 +65,7 @@ const migrationsAfterDurableDeletion = [
   knowledgeSpaceEmojiIconsMigrationId,
   researchTaskAnswerStreamingMigrationId,
   pageIndexFindabilityMigrationId,
+  logicalDocumentZeroRevisionDeletionMigrationId,
 ] as const;
 const migrationsAfterTidbBaselineRepair = [
   spaceAccessControlMigrationId,

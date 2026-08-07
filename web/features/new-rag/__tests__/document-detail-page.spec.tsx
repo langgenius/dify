@@ -184,7 +184,11 @@ const taskApiResponse = vi.hoisted(() => (item: BackgroundTask) => ({
   id: item.id,
   knowledge_space_id: item.knowledgeSpaceId,
   operation: item.operation ?? 'document_processing',
+  progress_completed:
+    item.progressCompleted ?? (item.state === 'succeeded' ? (item.progressTotal ?? 1) : 0),
+  progress_failed: item.progressFailed ?? 0,
   progress_percent: item.progressPercent,
+  progress_total: item.progressTotal ?? 1,
   source_id: item.sourceId ?? null,
   state:
     item.state === 'succeeded'
@@ -1420,11 +1424,9 @@ describe('DocumentDetailPage', () => {
     const taskDrawer = screen.getByRole('dialog', {
       name: 'dataset.newKnowledge.backgroundTasks',
     })
-    expect(within(taskDrawer).getAllByText(/dataset\.newKnowledge\.processDocument/)).toHaveLength(
-      2,
-    )
+    expect(within(taskDrawer).getAllByText(/dataset\.newKnowledge\.addDocument/)).toHaveLength(2)
     expect(
-      within(taskDrawer).getByText('dataset.newKnowledge.overview.operation.document_reindex'),
+      within(taskDrawer).getByText('dataset.newKnowledge.reindexDocuments · 1'),
     ).toBeInTheDocument()
   })
 

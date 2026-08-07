@@ -5,6 +5,7 @@ import type {
   NewKnowledgeOnlineDriveProvider,
   NewKnowledgeSourceDraft,
   NewKnowledgeWebsiteProvider,
+  NewKnowledgeWebsiteSourceDraft,
 } from './routes'
 import type { CrawlPreviewPage } from './source-models'
 import type { CrawlResultItem } from '@/models/datasets'
@@ -53,6 +54,12 @@ const DEFAULT_MAX_PAGES = 100
 const CRAWL_POLL_INTERVAL_MS = 1500
 
 type LocalCrawlState = 'error' | 'idle' | 'running' | 'stopped' | 'success'
+
+export type WebsiteCrawlPreviewSelection = {
+  draft: NewKnowledgeWebsiteSourceDraft
+  pages: CrawlPreviewPage[]
+  selectedPageIds: string[]
+}
 
 function crawlPages(response: Record<string, unknown>): CrawlResultItem[] {
   if (!Array.isArray(response.data)) return []
@@ -185,11 +192,13 @@ export function CreateSourceSetup({
   disabled,
   draft,
   onDraftChange,
+  onWebsitePreviewSelectionChange,
   onSourceTypeChange,
 }: {
   disabled: boolean
   draft: NewKnowledgeSourceDraft
   onDraftChange: (draft: NewKnowledgeSourceDraft) => void
+  onWebsitePreviewSelectionChange?: (selection?: WebsiteCrawlPreviewSelection) => void
   onSourceTypeChange: (sourceType: NewKnowledgeSourceDraft['sourceType']) => void
 }) {
   const { t } = useTranslation('dataset')
@@ -225,6 +234,7 @@ export function CreateSourceSetup({
     stopPreview('idle')
     setPreviewPages([])
     setSelectedPageIds(new Set())
+    onWebsitePreviewSelectionChange?.(undefined)
   }
   const updateDraft = (nextDraft: NewKnowledgeSourceDraft) => {
     onDraftChange(nextDraft)
@@ -296,6 +306,31 @@ export function CreateSourceSetup({
       if (crawlAttemptRef.current === attempt) setCrawlState('error')
     }
   }
+
+  const updateSelectedPageIds = (pageIds: Set<string>) => {
+    setSelectedPageIds(pageIds)
+    if (draft.sourceType !== 'websiteCrawl' || crawlState !== 'success' || !selectionPages.length) {
+      onWebsitePreviewSelectionChange?.(undefined)
+      return
+    }
+    onWebsitePreviewSelectionChange?.({
+      draft,
+      pages: selectionPages,
+      selectedPageIds: [...pageIds],
+    })
+  }
+
+  useEffect(() => {
+    if (draft.sourceType !== 'websiteCrawl' || crawlState !== 'success' || !selectionPages.length) {
+      onWebsitePreviewSelectionChange?.(undefined)
+      return
+    }
+    onWebsitePreviewSelectionChange?.({
+      draft,
+      pages: selectionPages,
+      selectedPageIds: [...selectedPageIds],
+    })
+  }, [crawlState, draft, onWebsitePreviewSelectionChange, selectedPageIds, selectionPages])
 
   return (
     <div className="mx-4 mb-4 space-y-4 border-t border-divider-subtle pt-4">
@@ -559,7 +594,7 @@ export function CreateSourceSetup({
               <CrawlPreviewPageSelection
                 disabled={disabled}
                 onRecrawl={() => void startPreview()}
-                onSelectionChange={setSelectedPageIds}
+                onSelectionChange={updateSelectedPageIds}
                 pages={selectionPages}
                 rootUrl={previewRootUrl}
                 selectedPageIds={selectedPageIds}

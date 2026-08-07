@@ -75,7 +75,8 @@ function NormalForm() {
     userResp?.profile.email,
   )
   const hasSocialLogin = systemFeatures.enable_social_oauth_login
-  const hasSsoLogin = Boolean(systemFeatures.sso_enforced_for_signin)
+  const ssoProtocol = systemFeatures.sso_enforced_for_signin_protocol
+  const hasSsoLogin = systemFeatures.sso_enforced_for_signin && ssoProtocol !== null
   const hasEmailCodeLogin = systemFeatures.enable_email_code_login
   const hasEmailPasswordLogin = systemFeatures.enable_email_password_login
   const hasEmailLogin = hasEmailCodeLogin || hasEmailPasswordLogin
@@ -214,7 +215,7 @@ function NormalForm() {
             {hasSocialLogin && <SocialAuth />}
             {hasSsoLogin && (
               <div className="w-full">
-                <SSOAuth protocol={systemFeatures.sso_enforced_for_signin_protocol} />
+                <SSOAuth protocol={ssoProtocol} />
               </div>
             )}
           </div>

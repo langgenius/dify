@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { render } from '@/test/console/render'
 import { QualityPage } from '../quality/quality-page'
@@ -13,8 +13,8 @@ const serviceMock = vi.hoisted(() => ({
   getBadCase: vi.fn(),
   getBadCases: vi.fn(),
   getGolden: vi.fn(),
-  matchEvidence: vi.fn(),
   getTraceReference: vi.fn(),
+  matchEvidence: vi.fn(),
   updateBadCase: vi.fn(),
   updateGolden: vi.fn(),
 }))
@@ -222,6 +222,46 @@ describe('QualityPage', () => {
     })
   })
 
+  it('submits comma-separated tags', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByText('What is the refund policy?')
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.qualityPage.addGolden' }),
+    )
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.qualityPage.questionPlaceholder'),
+      'New question',
+    )
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.qualityPage.annotationPlaceholder'),
+      'Expected answer',
+    )
+    const dialog = screen.getByRole('dialog')
+    const tagsInput = within(dialog).getByPlaceholderText(
+      'dataset.newKnowledge.qualityPage.tagsPlaceholder',
+    )
+    await user.type(tagsInput, 'billing, sso')
+
+    expect(tagsInput).toHaveValue('billing, sso')
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.qualityPage.save' }))
+
+    await waitFor(() =>
+      expect(serviceMock.createGolden.mock.calls[0]?.[0]).toEqual({
+        body: {
+          annotation: 'Expected answer',
+          evidence_text: '',
+          expected_evidence_ids: [],
+          match_policy: 'all',
+          question: 'New question',
+          tags: ['billing', 'sso'],
+        },
+        params: { control_space_id: 'space-1' },
+      }),
+    )
+  })
+
   it('matches a human-readable evidence passage and stores the selected node id', async () => {
     serviceMock.matchEvidence.mockResolvedValue({
       candidates: [
@@ -347,6 +387,23 @@ describe('QualityPage', () => {
       screen.getByText('dataset.newKnowledge.qualityPage.annotationRequired'),
     ).toBeInTheDocument()
     expect(serviceMock.createGolden).not.toHaveBeenCalled()
+
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.qualityPage.questionPlaceholder'),
+      'New question',
+    )
+    expect(
+      screen.getByText('dataset.newKnowledge.qualityPage.questionRequired'),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.qualityPage.save' }))
+    expect(
+      screen.queryByText('dataset.newKnowledge.qualityPage.questionRequired'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByText('dataset.newKnowledge.qualityPage.annotationRequired'),
+    ).toBeInTheDocument()
+    expect(serviceMock.createGolden).not.toHaveBeenCalled()
   })
 
   it('reveals the full annotation and submits edits through the update contract', async () => {
@@ -370,6 +427,14 @@ describe('QualityPage', () => {
     const annotationInput = screen.getByPlaceholderText(
       'dataset.newKnowledge.qualityPage.annotationPlaceholder',
     )
+    const tagsInput = screen.getByPlaceholderText(
+      'dataset.newKnowledge.qualityPage.tagsPlaceholder',
+    )
+    expect(tagsInput).toHaveValue('billing')
+    await user.click(tagsInput)
+    expect(tagsInput).toHaveFocus()
+    await user.clear(tagsInput)
+    await user.type(tagsInput, 'billing, sso')
     await user.clear(annotationInput)
     await user.type(annotationInput, 'Updated expected answer')
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.qualityPage.save' }))
@@ -383,7 +448,7 @@ describe('QualityPage', () => {
             expected_evidence_ids: [],
             match_policy: 'all',
             question: 'What is the refund policy?',
-            tags: ['billing'],
+            tags: ['billing', 'sso'],
           },
           params: { control_space_id: 'space-1', question_id: 'golden-1' },
         },

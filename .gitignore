@@ -145,6 +145,9 @@ dmypy.json
 pyrightconfig.json
 !api/pyrightconfig.json
 
+# import-linter
+.import_linter_cache/
+
 # Pyre type checker
 .pyre/
 .idea/'

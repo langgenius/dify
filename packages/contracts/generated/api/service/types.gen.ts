@@ -722,6 +722,8 @@ export type DocumentStatusResponse = {
   completed_at: number | null
   completed_segments?: number | null
   error: string | null
+  error_code?: string | null
+  estimated_vector_space_mb?: number | null
   id: string
   indexing_status: string
   parsing_completed_at: number | null
@@ -730,6 +732,7 @@ export type DocumentStatusResponse = {
   splitting_completed_at: number | null
   stopped_at: number | null
   total_segments?: number | null
+  vector_space_limit_mb?: number | null
 }
 
 export type DocumentTextCreatePayload = {
@@ -3147,6 +3150,7 @@ export type PostDatasetsByDatasetIdDocumentCreateByFileErrors = {
   400: unknown
   401: unknown
   403: unknown
+  413: unknown
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByFileResponses = {
@@ -3194,6 +3198,7 @@ export type PostDatasetsByDatasetIdDocumentCreateByFile2Errors = {
   400: unknown
   401: unknown
   403: unknown
+  413: unknown
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByFile2Responses = {
@@ -3414,6 +3419,7 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
   401: unknown
   403: unknown
   404: unknown
+  413: unknown
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdResponses = {
@@ -3699,6 +3705,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileErrors = {
   401: unknown
   403: unknown
   404: unknown
+  413: unknown
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponses = {
@@ -3750,6 +3757,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Errors = {
   401: unknown
   403: unknown
   404: unknown
+  413: unknown
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Responses = {

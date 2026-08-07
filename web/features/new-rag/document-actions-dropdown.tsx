@@ -23,7 +23,7 @@ import { Input } from '@langgenius/dify-ui/input'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-export type DocumentAction = 'remove' | 'rename' | 'toggle-source'
+export type DocumentAction = 'remove' | 'rename' | 'retry' | 'toggle-source'
 
 export function DocumentActionsDropdown({
   canEdit,
@@ -32,10 +32,13 @@ export function DocumentActionsDropdown({
   onRemove,
   onRename,
   onReindex,
+  onRetry,
   onToggleSource,
   pendingAction,
   removeDisabled,
   reindexDisabled,
+  retryDisabled,
+  showRetry,
   sourceDisabled,
   toggleSourceDisabled,
   unavailableReasonId,
@@ -46,10 +49,13 @@ export function DocumentActionsDropdown({
   onRemove: () => Promise<boolean>
   onRename: (title: string) => Promise<boolean>
   onReindex: () => void
+  onRetry: () => Promise<boolean>
   onToggleSource: () => Promise<boolean>
   pendingAction?: DocumentAction
   removeDisabled: boolean
   reindexDisabled: boolean
+  retryDisabled: boolean
+  showRetry: boolean
   sourceDisabled: boolean
   toggleSourceDisabled: boolean
   unavailableReasonId: string
@@ -104,13 +110,23 @@ export function DocumentActionsDropdown({
             {tCommon(($) => $['operation.rename'])}
           </DropdownMenuItem>
           <DropdownMenuItem
-            aria-describedby={reindexDisabled ? unavailableReasonId : undefined}
+            aria-describedby={
+              (showRetry ? retryDisabled : reindexDisabled) ? unavailableReasonId : undefined
+            }
             className="mb-px h-7 gap-2 px-2 system-sm-medium"
-            disabled={!canEdit || busy || reindexDisabled}
-            onClick={onReindex}
+            disabled={!canEdit || busy || (showRetry ? retryDisabled : reindexDisabled)}
+            onClick={() => {
+              if (showRetry) void onRetry()
+              else onReindex()
+            }}
           >
-            <span aria-hidden className="i-ri-loop-left-line size-4" />
-            {t(($) => $['newKnowledge.reindexDocument'])}
+            <span
+              aria-hidden
+              className={showRetry ? 'i-ri-restart-line size-4' : 'i-ri-loop-left-line size-4'}
+            />
+            {t(($) =>
+              showRetry ? $['newKnowledge.retryTask'] : $['newKnowledge.reindexDocument'],
+            )}
           </DropdownMenuItem>
           <DropdownMenuItem
             aria-describedby={toggleSourceDisabled ? unavailableReasonId : undefined}

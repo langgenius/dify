@@ -20,6 +20,7 @@ from controllers.console.datasets.external import (
 )
 from models.account import Account, TenantAccountRole
 from services.dataset_service import DatasetService
+from services.entities.external_knowledge_entities.external_knowledge_entities import ExternalDatasetCreatePayload
 from services.external_knowledge_service import ExternalDatasetService
 from services.hit_testing_service import HitTestingService
 from services.knowledge_service import ExternalDatasetTestService
@@ -411,7 +412,7 @@ class TestExternalDatasetCreateApi:
         create_external_dataset.assert_called_once_with(
             tenant_id="tenant-1",
             user_id="user-1",
-            args=payload,
+            args=ExternalDatasetCreatePayload.model_validate(payload),
             session=session,
         )
         dataset_response_source.assert_called_once_with(dataset, session=session)

@@ -60,6 +60,7 @@ from services.dataset_ref_service import DatasetRefService
 from services.dataset_service import DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig, ProcessRule, RetrievalModel
 from services.file_service import FileService
+from services.vector_space_admission_service import get_vector_space_admission_error_fields
 from tasks.generate_summary_index_task import generate_summary_index_task
 
 from ..app.error import (
@@ -935,6 +936,7 @@ class DocumentBatchIndexingStatusApi(DocumentResource):
                 "completed_at": document.completed_at,
                 "paused_at": document.paused_at,
                 "error": document.error,
+                **get_vector_space_admission_error_fields(document.error),
                 "stopped_at": document.stopped_at,
                 "completed_segments": completed_segments,
                 "total_segments": total_segments,
@@ -995,6 +997,7 @@ class DocumentIndexingStatusApi(DocumentResource):
             "completed_at": document.completed_at,
             "paused_at": document.paused_at,
             "error": document.error,
+            **get_vector_space_admission_error_fields(document.error),
             "stopped_at": document.stopped_at,
             "completed_segments": completed_segments,
             "total_segments": total_segments,

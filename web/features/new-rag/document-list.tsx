@@ -110,9 +110,11 @@ const DocumentRow = memo(
     onRename,
     onSelectedChange,
     onReindex,
+    onRetry,
     onToggleSource,
     pendingAction,
     readOnlyReasonId,
+    retryable,
     selected,
     selectionDisabled,
     source,
@@ -128,9 +130,11 @@ const DocumentRow = memo(
     onRename: (documentId: string, title: string) => Promise<boolean>
     onSelectedChange: (documentId: string) => void
     onReindex: (documentId: string) => void
+    onRetry: (documentId: string) => Promise<boolean>
     onToggleSource: (documentId: string) => Promise<boolean>
     pendingAction?: DocumentAction
     readOnlyReasonId?: string
+    retryable: boolean
     selected: boolean
     selectionDisabled: boolean
     source?: string
@@ -176,7 +180,7 @@ const DocumentRow = memo(
             )}
           </div>
         </td>
-        <td className="hidden w-52.5 pr-6 align-middle system-xs-regular text-text-secondary lg:table-cell">
+        <td className="hidden w-58.5 pr-6 align-middle system-xs-regular text-text-secondary lg:table-cell">
           {sourcePending ? (
             <span className="inline-flex items-center gap-2">
               <span
@@ -191,7 +195,7 @@ const DocumentRow = memo(
             </span>
           )}
         </td>
-        <td className="w-24 pr-2 align-middle sm:w-60 sm:pr-6">
+        <td className="w-24 pr-2 align-middle sm:w-66 sm:pr-6">
           {statusPending ? (
             <span className="inline-flex items-center gap-2">
               <span
@@ -218,7 +222,7 @@ const DocumentRow = memo(
             </span>
           )}
         </td>
-        <td className="hidden w-37.5 pr-6 align-middle system-xs-regular text-text-tertiary lg:table-cell">
+        <td className="hidden w-43.5 pr-6 align-middle system-xs-regular text-text-tertiary lg:table-cell">
           {Number.isNaN(updatedTime) ? document.updatedAt : formatTimeFromNow(updatedTime)}
         </td>
         <td className="w-10 align-middle">
@@ -228,10 +232,13 @@ const DocumentRow = memo(
             onRemove={() => onRemove(document.id)}
             onRename={(title) => onRename(document.id, title)}
             onReindex={() => onReindex(document.id)}
+            onRetry={() => onRetry(document.id)}
             onToggleSource={() => onToggleSource(document.id)}
             pendingAction={pendingAction}
             removeDisabled={document.status === 'deleting'}
             reindexDisabled={selectionDisabled || status === 'disabled'}
+            retryDisabled={selectionDisabled || !retryable}
+            showRetry={status === 'failed'}
             sourceDisabled={sourceRecord?.status === 'disabled'}
             toggleSourceDisabled={!sourceRecord || sourceRecord.version === undefined}
             unavailableReasonId={`${titleId}-actions-unavailable`}
@@ -311,6 +318,7 @@ export function DocumentsList({
   onRemoveDocument,
   onRenameDocument,
   onReindexDocument,
+  onRetryDocument,
   onSearchChange,
   onSelectAll,
   onSelectDocument,
@@ -318,6 +326,7 @@ export function DocumentsList({
   pendingDocumentAction,
   readOnlyReasonId,
   resultsIncomplete,
+  retryableDocumentIds,
   search,
   selectionDisabled,
   selectedDocumentIds,
@@ -357,6 +366,7 @@ export function DocumentsList({
   onRemoveDocument: (documentId: string) => Promise<boolean>
   onRenameDocument: (documentId: string, title: string) => Promise<boolean>
   onReindexDocument: (documentId: string) => void
+  onRetryDocument: (documentId: string) => Promise<boolean>
   onSearchChange: (search: string) => void
   onSelectAll: () => void
   onSelectDocument: (documentId: string) => void
@@ -364,6 +374,7 @@ export function DocumentsList({
   pendingDocumentAction?: { action: DocumentAction; documentId: string }
   readOnlyReasonId?: string
   resultsIncomplete: boolean
+  retryableDocumentIds: Set<string>
   search: string
   selectionDisabled: boolean
   selectedDocumentIds: Set<string>
@@ -403,7 +414,7 @@ export function DocumentsList({
 
   return (
     <>
-      <div className="mt-4 flex flex-col gap-2 xl:flex-row xl:items-center">
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
         <Select<DocumentFilter>
           disabled={statusPending}
           value={filter}
@@ -416,7 +427,7 @@ export function DocumentsList({
           <SelectLabel className="sr-only">
             {t(($) => $['newKnowledge.documentFilterLabel'])}
           </SelectLabel>
-          <SelectTrigger className="xl:w-36">
+          <SelectTrigger className="lg:w-35">
             {filter === 'all'
               ? t(($) => $['newKnowledge.allDocumentStatuses'])
               : t(($) => $[`newKnowledge.documentStatus.${filter}`])}
@@ -438,7 +449,7 @@ export function DocumentsList({
         </Select>
         <SearchInput
           aria-label={t(($) => $['newKnowledge.searchDocuments'])}
-          className="xl:w-60"
+          className="lg:w-60"
           value={search}
           onValueChange={(value) => {
             setVisibleDocumentLimit(DOCUMENT_RENDER_BATCH_SIZE)
@@ -478,14 +489,14 @@ export function DocumentsList({
         ref={resultsContainerRef}
         aria-labelledby="new-knowledge-documents-title"
         aria-busy={completingResults || isFetchingNextPage || sourcesPending || tasksPending}
-        className="mt-4 overflow-x-auto rounded-lg outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+        className="overflow-x-auto rounded-lg outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
         role="region"
         tabIndex={-1}
       >
-        <table className="w-full table-fixed border-collapse text-left lg:min-w-225 lg:table-auto">
-          <thead className="system-2xs-medium text-text-tertiary uppercase">
+        <table className="w-full table-fixed border-collapse text-left lg:table-auto">
+          <thead className="system-xs-regular text-text-tertiary">
             <tr>
-              <th className="pb-2 font-medium">
+              <th className="py-2 font-normal">
                 <Checkbox
                   checked={allSelected}
                   indeterminate={someSelected && !allSelected}
@@ -501,19 +512,22 @@ export function DocumentsList({
                   onCheckedChange={onSelectAll}
                 />
               </th>
-              <th className="py-2.5 pr-6 font-medium">
+              <th className="py-2 pr-6 font-normal">
                 {t(($) => $['newKnowledge.documentColumn'])}
               </th>
-              <th className="hidden w-52.5 py-2.5 pr-6 font-medium lg:table-cell">
+              <th className="hidden w-58.5 py-2 pr-6 font-normal lg:table-cell">
                 {t(($) => $['newKnowledge.sourceColumn'])}
               </th>
-              <th className="w-24 py-2.5 pr-2 font-medium sm:w-60 sm:pr-6">
+              <th className="w-24 py-2 pr-2 font-normal sm:w-66 sm:pr-6">
                 {t(($) => $['newKnowledge.statusColumn'])}
               </th>
-              <th className="hidden w-37.5 py-2.5 pr-6 font-medium lg:table-cell">
+              <th className="hidden w-43.5 py-2 pr-6 font-normal lg:table-cell">
                 {t(($) => $['newKnowledge.updatedColumn'])}
               </th>
-              <th className="w-10 py-2.5" aria-label={t(($) => $['newKnowledge.actionsColumn'])} />
+              <th
+                className="w-10 py-2 font-normal"
+                aria-label={t(($) => $['newKnowledge.actionsColumn'])}
+              />
             </tr>
           </thead>
           <tbody>
@@ -527,6 +541,7 @@ export function DocumentsList({
                 onRename={onRenameDocument}
                 onSelectedChange={onSelectDocument}
                 onReindex={onReindexDocument}
+                onRetry={onRetryDocument}
                 onToggleSource={onToggleDocumentSource}
                 pendingAction={
                   pendingDocumentAction?.documentId === document.id
@@ -540,6 +555,7 @@ export function DocumentsList({
                       ? PARTIAL_RESULTS_DESCRIPTION_ID
                       : undefined
                 }
+                retryable={retryableDocumentIds.has(document.id)}
                 selected={selectedDocumentIds.has(document.id)}
                 selectionDisabled={!canEdit || selectionDisabled}
                 source={
@@ -590,7 +606,7 @@ export function DocumentsList({
           </div>
         )}
       </div>
-      <p className="mt-4 flex min-h-4 items-center gap-1.5 system-xs-regular text-text-tertiary">
+      <p className="flex min-h-4 items-center gap-1.5 system-xs-regular text-text-tertiary">
         <span aria-hidden className="i-ri-information-2-line size-3.5" />
         {t(($) => $['newKnowledge.lastReadyRevisionHint'])}
       </p>
@@ -673,51 +689,78 @@ export function DocumentBulkActions({
 }) {
   const { t } = useTranslation('dataset')
   return (
-    <div className="pointer-events-none fixed right-0 bottom-[calc(1.75rem+env(safe-area-inset-bottom,0px))] left-0 z-20 flex justify-center pr-[calc(1rem+env(safe-area-inset-right,0px))] pl-[calc(1rem+env(safe-area-inset-left,0px))] sm:left-(--new-rag-sidebar-width,0px)">
-      <div
-        aria-label={t(($) => $['newKnowledge.bulkDocumentActions'])}
-        className="pointer-events-auto flex max-w-full min-w-0 items-center gap-2 overflow-x-auto rounded-[14px] border border-divider-subtle bg-components-panel-bg py-2.5 pr-2.5 pl-4 shadow-[0_12px_32px_-6px_rgba(15,23,41,0.16),0_2px_6px_rgba(15,23,41,0.06)]"
-        role="group"
-        onBlurCapture={onBlurCapture}
-        onFocusCapture={onFocusCapture}
-      >
-        <span className="shrink-0 system-sm-medium text-text-primary">
-          {t(($) => $['newKnowledge.documentsSelected'], { count: selectedCount })}
-        </span>
-        <span aria-hidden className="h-5 w-px shrink-0 bg-divider-regular" />
-        <Button
-          aria-describedby={disabled ? 'document-reindex-unavailable' : undefined}
-          aria-busy={reindexing}
-          className="shrink-0"
-          disabled={disabled}
-          loading={reindexing}
-          size="small"
-          onClick={onReindex}
+    <>
+      <div className="pointer-events-none fixed right-0 bottom-[calc(1.75rem+env(safe-area-inset-bottom,0px))] left-0 z-20 flex justify-center pr-[calc(1rem+env(safe-area-inset-right,0px))] pl-[calc(1rem+env(safe-area-inset-left,0px))] sm:left-(--new-rag-sidebar-width,0px)">
+        <div
+          aria-label={t(($) => $['newKnowledge.bulkDocumentActions'])}
+          className="pointer-events-auto flex max-w-full min-w-0 items-center gap-2 overflow-x-auto rounded-[14px] border border-divider-subtle bg-components-panel-bg py-2.5 pr-2.5 pl-4 shadow-[0_12px_32px_-6px_rgba(15,23,41,0.16),0_2px_6px_rgba(15,23,41,0.06)]"
+          role="group"
+          onBlurCapture={onBlurCapture}
+          onFocusCapture={onFocusCapture}
         >
-          {t(($) => $['newKnowledge.reindexDocuments'])}
-        </Button>
-        {disabled && disabledReason && (
-          <span
-            id="document-reindex-unavailable"
-            className="max-w-44 shrink-0 system-2xs-regular text-text-tertiary"
-            role="status"
+          <span className="shrink-0 system-sm-medium text-text-primary">
+            {t(($) => $['newKnowledge.documentsSelected'], { count: selectedCount })}
+          </span>
+          <span aria-hidden className="h-5 w-px shrink-0 bg-divider-regular" />
+          <Button
+            aria-describedby={disabled ? 'document-reindex-unavailable' : undefined}
+            aria-busy={reindexing}
+            className="shrink-0"
+            disabled={disabled}
+            loading={reindexing}
+            size="small"
+            onClick={onReindex}
           >
             {t(($) => $['newKnowledge.reindexDocuments'])}
-            {' · '}
-            {disabledReason}
-          </span>
-        )}
-        <Button
-          variant="ghost"
-          size="small"
-          aria-label={t(($) => $['newKnowledge.clearDocumentSelection'])}
-          className="size-6.5 shrink-0 px-0"
-          onClick={onClear}
-        >
-          <span aria-hidden className="i-ri-close-line size-3.5" />
-        </Button>
+          </Button>
+          {disabled && disabledReason && (
+            <span
+              id="document-reindex-unavailable"
+              className="max-w-44 shrink-0 system-2xs-regular text-text-tertiary"
+              role="status"
+            >
+              {t(($) => $['newKnowledge.reindexDocuments'])}
+              {' · '}
+              {disabledReason}
+            </span>
+          )}
+          <Button
+            aria-describedby="document-download-unavailable"
+            className="shrink-0"
+            disabled
+            size="small"
+          >
+            {t(($) => $['newKnowledge.downloadDocuments'])}
+          </Button>
+          <Button
+            aria-describedby="document-delete-unavailable"
+            className="shrink-0"
+            disabled
+            size="small"
+            tone="destructive"
+            variant="secondary"
+          >
+            {t(($) => $['newKnowledge.deleteDocuments'])}
+          </Button>
+          <Button
+            variant="ghost"
+            size="small"
+            aria-label={t(($) => $['newKnowledge.clearDocumentSelection'])}
+            className="size-6.5 shrink-0 px-0"
+            disabled={reindexing}
+            onClick={onClear}
+          >
+            <span aria-hidden className="i-ri-close-line size-3.5" />
+          </Button>
+        </div>
       </div>
-    </div>
+      <span id="document-download-unavailable" className="sr-only">
+        {t(($) => $['newKnowledge.documentActionsUnavailable'])}
+      </span>
+      <span id="document-delete-unavailable" className="sr-only">
+        {t(($) => $['newKnowledge.documentActionsUnavailable'])}
+      </span>
+    </>
   )
 }
 
