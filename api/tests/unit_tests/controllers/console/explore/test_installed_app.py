@@ -960,7 +960,9 @@ def test_sqlite_patch_persists_pin_and_noop_payload(
         patch.object(module.db, "session", database),
     ):
         assert (
-            unwrap(api.patch)(api, module.InstalledAppUpdatePayload.model_validate({"is_pinned": True}), installed)["result"]
+            unwrap(api.patch)(api, module.InstalledAppUpdatePayload.model_validate({"is_pinned": True}), installed)[
+                "result"
+            ]
             == "success"
         )
     database.expire_all()
@@ -973,4 +975,7 @@ def test_sqlite_patch_persists_pin_and_noop_payload(
         payload_patch({}),
         patch.object(module.db, "session", database),
     ):
-        assert unwrap(api.patch)(api, module.InstalledAppUpdatePayload.model_validate({}), installed)["result"] == "success"
+        assert (
+            unwrap(api.patch)(api, module.InstalledAppUpdatePayload.model_validate({}), installed)["result"]
+            == "success"
+        )
