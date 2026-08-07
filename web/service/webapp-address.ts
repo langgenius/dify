@@ -1,18 +1,23 @@
 const WEB_APP_ROUTE_SEGMENTS = new Set(['agent', 'chat', 'chatbot', 'completion', 'workflow'])
 const WEB_APP_SIGNIN_SEGMENTS = new Set(['webapp-signin', 'check-code', 'login'])
 
-export type WebAppAddress = {
-  kind: 'default' | 'environment'
-  code: string
-}
+export type WebAppAddress =
+  | {
+      kind: 'default'
+      code: string
+    }
+  | {
+      kind: 'environment'
+      code: string
+    }
 
 const normalizePath = (path: string) => (path.startsWith('/') ? path : `/${path}`)
 
 export const parseWebAppAddress = (pathname: string): WebAppAddress | null => {
   const segments = pathname.split('/').filter(Boolean)
-  if (segments[0] === 'env' && WEB_APP_ROUTE_SEGMENTS.has(segments[1] ?? '')) {
-    const [, , code, ...rest] = segments
-    if (!code || rest.length > 0) return null
+  if (segments[0] === 'env') {
+    const [, route, code, ...rest] = segments
+    if (!route || !code || rest.length > 0 || !WEB_APP_ROUTE_SEGMENTS.has(route)) return null
     return { kind: 'environment', code }
   }
 
