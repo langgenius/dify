@@ -56,6 +56,12 @@ vi.mock('react-i18next', async () => {
   })
 })
 
+vi.mock('@/hooks/use-format-time-from-now', () => ({
+  useFormatTimeFromNow: () => ({
+    formatTimeFromNow: (time: number) => `relative:${time}`,
+  }),
+}))
+
 function publishedWorkflowVersion({
   id,
   name,
@@ -149,7 +155,7 @@ function createDeployment({
     },
     deployment: {
       current_version: deployed ? currentVersion : undefined,
-      deployed_at: new Date().toISOString(),
+      deployed_at: Math.floor(Date.now() / 1000),
       deployed_by: {
         display_name: 'Evan',
         id: 'user-1',
@@ -369,7 +375,7 @@ function captureDeploymentRequests() {
               ...currentDeployment.deployment,
               ...(deploymentSubmitted && {
                 latest_operation: {
-                  activity_at: '2026-07-31T00:00:00Z',
+                  activity_at: 1_785_456_000,
                   id: 'operation-staging',
                   operator: {
                     display_name: 'Evan',
@@ -445,6 +451,18 @@ async function expectDeploymentRequest(
 }
 
 describe('PublisherEnvironmentFlow', () => {
+  it('formats deployed_at as a Unix timestamp in seconds', () => {
+    const deployment = createDeployment()
+    const deployedAt = deployment.deployment?.deployed_at
+    if (deployedAt === undefined) throw new Error('Expected a deployed environment fixture')
+
+    renderFlow(deployment)
+
+    expect(
+      screen.getByText(`Published relative:${deployedAt * 1000} by Evan`),
+    ).toBeInTheDocument()
+  })
+
   it('shows the publish action when an undeployed environment has no published versions', async () => {
     const user = userEvent.setup()
     const onGoToPublish = vi.fn()
@@ -556,7 +574,7 @@ describe('PublisherEnvironmentFlow', () => {
       status: DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING,
     })
     deployment.deployment!.latest_operation = {
-      activity_at: '2026-07-31T00:00:00Z',
+      activity_at: 1_785_456_000,
       id: 'operation-staging',
       operator: {
         display_name: 'Evan',

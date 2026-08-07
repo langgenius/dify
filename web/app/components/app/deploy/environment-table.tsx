@@ -89,7 +89,7 @@ function ActivityCell({ activity }: { activity?: EnvironmentDeploymentOperation 
       <div className="truncate system-xs-regular text-text-tertiary">
         {t(($) => $['studio.activity.meta'], {
           name: activity.operator.display_name,
-          time: formatTimeFromNow(Date.parse(activity.activity_at)),
+          time: formatTimeFromNow(activity.activity_at * 1000),
         })}
       </div>
     </div>

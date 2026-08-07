@@ -259,8 +259,8 @@ export const zEnvironmentApiKey = z.object({
   id: z.string(),
   type: z.string(),
   token: z.string(),
-  last_used_at: z.string().optional(),
-  created_at: z.string(),
+  last_used_at: z.number().optional(),
+  created_at: z.number(),
 })
 
 export const zEnvironmentDeployedAppAttempt = z.object({
@@ -268,6 +268,7 @@ export const zEnvironmentDeployedAppAttempt = z.object({
   type: zDeploymentOperationType,
   outcome: zDeploymentOperationOutcome,
   failureCode: zDeploymentOperationFailureCode.optional(),
+  failureMessage: z.string().optional(),
   requestedAt: z.iso.datetime(),
   finalizedAt: z.iso.datetime().optional(),
 })
@@ -738,7 +739,7 @@ export const zWorkflowVersion = z.object({
     .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
     .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
     .optional(),
-  created_at: z.iso.datetime().optional(),
+  created_at: z.number().optional(),
   created_by: zSimpleAccount.optional(),
 })
 
@@ -752,6 +753,7 @@ export const zDeploymentOperation = z.object({
   environment: zNamedRef,
   version: zWorkflowVersion,
   failureCode: zDeploymentOperationFailureCode.optional(),
+  failureMessage: z.string().optional(),
   requestedAt: z.iso.datetime(),
   finalizedAt: z.iso.datetime().optional(),
   durationMilliseconds: z.string().optional(),
@@ -775,7 +777,7 @@ export const zEnvironmentDeploymentOperation = z.object({
   status: zDeploymentOperationStatus,
   target_version: zWorkflowVersion.optional(),
   operator: zOperator,
-  activity_at: z.iso.datetime(),
+  activity_at: z.number(),
 })
 
 export const zEnvironmentDeploymentState = z.object({
@@ -786,7 +788,7 @@ export const zEnvironmentDeploymentState = z.object({
     .min(0, { error: 'Invalid value: Expected uint32 to be >= 0' })
     .max(4294967295, { error: 'Invalid value: Expected uint32 to be <= 4294967295' })
     .optional(),
-  deployed_at: z.iso.datetime().optional(),
+  deployed_at: z.number().optional(),
   deployed_by: zOperator.optional(),
   latest_operation: zEnvironmentDeploymentOperation.optional(),
 })

@@ -326,6 +326,7 @@ export type DeploymentOperation = {
   environment: NamedRef
   version: WorkflowVersion
   failureCode?: DeploymentOperationFailureCode
+  failureMessage?: string
   requestedAt: string
   finalizedAt?: string
   durationMilliseconds?: string
@@ -379,8 +380,8 @@ export type EnvironmentApiKey = {
   id: string
   type: string
   token: string
-  last_used_at?: string
-  created_at: string
+  last_used_at?: number
+  created_at: number
 }
 
 export type EnvironmentDeployedApp = {
@@ -400,6 +401,7 @@ export type EnvironmentDeployedAppAttempt = {
   type: DeploymentOperationType
   outcome: DeploymentOperationOutcome
   failureCode?: DeploymentOperationFailureCode
+  failureMessage?: string
   requestedAt: string
   finalizedAt?: string
 }
@@ -423,14 +425,14 @@ export type EnvironmentDeploymentOperation = {
   status: DeploymentOperationStatus
   target_version?: WorkflowVersion
   operator: Operator
-  activity_at: string
+  activity_at: number
 }
 
 export type EnvironmentDeploymentState = {
   status: DeploymentStatus
   current_version?: WorkflowVersion
   versions_behind?: number
-  deployed_at?: string
+  deployed_at?: number
   deployed_by?: Operator
   latest_operation?: EnvironmentDeploymentOperation
 }
@@ -852,7 +854,7 @@ export type WorkflowVersion = {
   id: string
   marked_comment?: string
   version_number?: number
-  created_at?: string
+  created_at?: number
   created_by?: SimpleAccount
 }
 

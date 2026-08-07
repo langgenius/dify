@@ -33,7 +33,7 @@ import {
 } from '../state'
 
 const APP_ID = 'app-1'
-const ACTIVITY_AT = '2026-07-25T01:00:00.000Z'
+const ACTIVITY_AT = 1_784_941_200
 const VERSION_DESCRIPTION =
   'Fixed several critical bugs affecting data synchronization and optimized page loading speed. Enhanced system stability and user experience through backend improvements.'
 const OPERATOR = {
@@ -679,6 +679,7 @@ vi.mock('react-i18next', async () => {
       'After confirmation, this environment will enter the undeploying state and actions will be temporarily disabled.',
     'deployments.status.RUNTIME_INSTANCE_STATUS_READY': 'Running',
     'deployments.studio.activity.deploySucceeded': 'Deploy {{target}} succeeded',
+    'deployments.studio.activity.meta': '{{name}} · {{time}}',
     'deployments.studio.environmentsInUse': '{{used}} of {{total}} environments in use',
     'deployments.studio.updatedAtBy': 'Updated at {{time}} by {{name}}',
     'workflow.common.publishedBy': 'Published {{time}} by {{author}}',
@@ -687,7 +688,8 @@ vi.mock('react-i18next', async () => {
 
 vi.mock('@/hooks/use-format-time-from-now', () => ({
   useFormatTimeFromNow: () => ({
-    formatTimeFromNow: () => '17 days ago',
+    formatTimeFromNow: (time: number) =>
+      time === ACTIVITY_AT * 1000 ? 'activity time' : '17 days ago',
   }),
 }))
 
@@ -783,6 +785,7 @@ describe('AppDeploy', () => {
     expect(canaryRow.getByRole('button', { name: 'Sprint-42' })).toBeInTheDocument()
     expect(canaryRow.getByText('Running')).toBeInTheDocument()
     expect(canaryRow.getByText('Deploy Sprint-42 succeeded')).toBeInTheDocument()
+    expect(canaryRow.getByText('Evan · activity time')).toBeInTheDocument()
     expect(
       canaryRow.getByRole('link', {
         name: 'agentV2.agentDetail.access.webApp.title · agentV2.agentDetail.access.status.inService',

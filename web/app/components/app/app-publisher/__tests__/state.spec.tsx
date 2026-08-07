@@ -229,7 +229,7 @@ function environmentDeploymentResponse({
               }
             : undefined,
         latest_operation: {
-          activity_at: '2026-07-31T00:00:00Z',
+          activity_at: 1_785_456_000,
           id: operationId,
           operator: {
             display_name: 'Evan',

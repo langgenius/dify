@@ -136,11 +136,9 @@ export function PublisherEnvironmentSummarySection({
       ? deployedVersion.id === latestVersion.id
       : deploymentState?.versions_behind === 0),
   )
-  const deployedAt = deploymentState?.deployed_at
-    ? Date.parse(deploymentState.deployed_at)
+  const publishedAt = deploymentState?.deployed_at
+    ? deploymentState.deployed_at * 1000
     : undefined
-  const publishedAt =
-    deployedAt !== undefined && Number.isFinite(deployedAt) ? deployedAt : undefined
   const publishedBy = deploymentState?.deployed_by?.display_name
   const showNoPublishedVersionState = !isEnvironmentInUse && latestVersion === null
 

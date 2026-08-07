@@ -11,7 +11,7 @@ import s from './style.module.css'
 type ISecretKeyGenerateModalProps = {
   isShow: boolean
   onClose: () => void
-  newKey?: CreateApiKeyResponse
+  newKey?: Pick<CreateApiKeyResponse, 'token'>
   className?: string
 }
 
