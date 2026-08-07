@@ -158,6 +158,7 @@ def test_agent_stub_file_download_route_forwards_authenticated_request() -> None
     class FakeHandler:
         async def create_download_request(self, *, principal, request):
             assert principal.execution_context.user_id == "user-1"
+            assert request.file is not None
             assert request.file.transfer_method == "tool_file"
             return AgentStubFileDownloadResponse(
                 filename="report.pdf",
