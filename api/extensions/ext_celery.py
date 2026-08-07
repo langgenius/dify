@@ -183,6 +183,7 @@ def init_app(app: DifyApp) -> Celery:
     from services.knowledge_fs.lifecycle_readiness import get_configured_knowledge_fs_lifecycle_worker_readiness
 
     if get_configured_knowledge_fs_lifecycle_worker_readiness().ready:
+        imports.append("tasks.knowledge_fs_initial_source_tasks")
         imports.append("tasks.knowledge_fs_lifecycle_tasks")
         beat_schedule["knowledge_fs_lifecycle_worker"] = {
             "task": "tasks.knowledge_fs_lifecycle_tasks.run_knowledge_fs_lifecycle_worker",

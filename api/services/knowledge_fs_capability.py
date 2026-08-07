@@ -736,6 +736,13 @@ KNOWLEDGE_FS_CAPABILITY_OPERATIONS: Final[Mapping[str, KnowledgeFSCapabilityOper
             "/knowledge-spaces/{id}/source-workflows/{runId}/selection",
             "job",
         ),
+        "createSourceCrawlImportWorkflow": KnowledgeFSCapabilityOperation(
+            "source_workflows.crawl_import.create",
+            _STANDARD_CALLERS,
+            "POST",
+            "/knowledge-spaces/{id}/sources/{sourceId}/crawl-import",
+            "source",
+        ),
         "crawlKnowledgeSpaceSource": KnowledgeFSCapabilityOperation(
             "sources.crawl",
             _STANDARD_CALLERS,

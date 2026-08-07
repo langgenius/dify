@@ -536,6 +536,13 @@ export const zKnowledgeFsSourceUpdatePayload = z.object({
 })
 
 /**
+ * KnowledgeFSCrawlImportPayload
+ */
+export const zKnowledgeFsCrawlImportPayload = z.object({
+  sourceUrls: z.array(z.string()).min(1).max(200),
+})
+
+/**
  * KnowledgeFSSourceSyncPolicyResponse
  */
 export const zKnowledgeFsSourceSyncPolicyResponse = z.object({
@@ -1513,6 +1520,35 @@ export const zKnowledgeFsUploadSessionCompletePayload = z.object({
 })
 
 /**
+ * KnowledgeFSInitialWebsiteCrawlOptionsPayload
+ */
+export const zKnowledgeFsInitialWebsiteCrawlOptionsPayload = z.object({
+  include_subpages: z.boolean().optional().default(true),
+  limit: z.int().gte(1).lte(200).optional().default(100),
+})
+
+/**
+ * KnowledgeFSInitialWebsiteSelectionPayload
+ */
+export const zKnowledgeFsInitialWebsiteSelectionPayload = z.object({
+  source_url: z.string().min(1).max(4096),
+  title: z.string().max(500).nullish(),
+})
+
+/**
+ * KnowledgeFSInitialWebsiteSourcePayload
+ */
+export const zKnowledgeFsInitialWebsiteSourcePayload = z.object({
+  crawl_options: zKnowledgeFsInitialWebsiteCrawlOptionsPayload,
+  kind: z.literal('website_crawl'),
+  name: z.string().min(1).max(200),
+  provider: z.literal('firecrawl'),
+  root_url: z.string().min(1).max(4096),
+  selection: z.array(zKnowledgeFsInitialWebsiteSelectionPayload).min(1).max(200),
+  sync_policy: z.enum(['daily', 'manual', 'provider']).optional().default('provider'),
+})
+
+/**
  * KnowledgeFSRerankIntent
  */
 export const zKnowledgeFsRerankIntent = z.object({
@@ -1552,6 +1588,7 @@ export const zKnowledgeFsSpaceCreatePayload = z.object({
     .regex(/^(?:builtin:)?[+a-z0-9_-]{1,64}$/)
     .nullish(),
   idempotency_key: z.string().min(1).max(255).nullish(),
+  initial_source: zKnowledgeFsInitialWebsiteSourcePayload.nullish(),
   name: z.string().min(1).max(40),
   retrieval: zKnowledgeFsRetrievalProfileIntent.nullish(),
   slug: z
@@ -3175,6 +3212,24 @@ export const zPatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPath = z.ob
  */
 export const zPatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponse =
   zKnowledgeFsSourceResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImportBody =
+  zKnowledgeFsCrawlImportPayload
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImportHeaders = z.object({
+  'Idempotency-Key': z.string().min(8).max(255),
+})
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImportPath = z.object({
+  control_space_id: z.string(),
+  source_id: z.string(),
+})
+
+/**
+ * KnowledgeFS selected website crawl import accepted
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImportResponse =
+  zKnowledgeFsSourceWorkflowResponse
 
 export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlPreviewHeaders = z.object({
   'Idempotency-Key': z.string().min(8).max(255),

@@ -1,5 +1,6 @@
 import type {
   KnowledgeFsControlSpaceVisibility,
+  KnowledgeFsInitialWebsiteSourcePayload,
   KnowledgeFsModelIntent,
   KnowledgeFsSpaceCreatePayload,
   KnowledgeFsSpaceCreateResponse,
@@ -19,6 +20,7 @@ type CreateKnowledgeValues = {
   existingKnowledge?: KnowledgeFsSpaceCreateResponse
   description: string
   idempotencyKey: string
+  initialSource?: KnowledgeFsInitialWebsiteSourcePayload
   name: string
   onCreated: (knowledgeSpace: KnowledgeFsSpaceCreateResponse) => void
   visibility: KnowledgeVisibility
@@ -129,6 +131,7 @@ export async function createKnowledge(
         body: {
           description: values.description || undefined,
           idempotency_key: values.idempotencyKey,
+          initial_source: values.initialSource,
           ...modelConfiguration,
           name: values.name,
           slug: knowledgeSlug(values.name, values.idempotencyKey),

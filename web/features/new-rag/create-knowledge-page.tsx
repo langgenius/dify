@@ -43,7 +43,7 @@ import { useTranslation } from 'react-i18next'
 import { datasetDefaultPermissionKeysAtom } from '@/context/permission-state'
 import { knowledgeFsUploadEnabledAtom, rbacEnabledAtom } from '@/features/system-features/state'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { consoleClient, consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/client'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { KnowledgeIllustration, StartMode } from './components/create-knowledge-dialog-parts'
 import { CreateKnowledgeExitDialog } from './components/create-knowledge-exit-dialog'
@@ -69,228 +69,6 @@ import {
   newKnowledgeSettingsPath,
   newKnowledgeSourceDraftStorageKey,
 } from './routes'
-import {
-  crawlPreviewPageListFromApi,
-  sourceConnectionListFromApi,
-  sourceFromApi,
-  sourceProviderListFromApi,
-  sourceSyncPolicyFromApi,
-  sourceWorkflowFromApi,
-} from './source-models'
-
-const FIRECRAWL_PROVIDER_ID = 'plugin-daemon-website'
-const CONNECTION_PAGE_SIZE = 200
-const PAGE_SIZE = 200
-const MAX_CURSOR_PAGES = 100
-const IMPORT_POLL_INTERVAL_MS = 1000
-const IMPORT_POLL_ATTEMPTS = 120
-const SUCCESS_STATES = new Set(['complete', 'completed', 'preview_ready', 'success', 'succeeded'])
-const IMPORT_SUCCESS_STATES = new Set(['complete', 'completed', 'success', 'succeeded'])
-const TERMINAL_STATES = new Set([
-  ...IMPORT_SUCCESS_STATES,
-  'canceled',
-  'cancelled',
-  'error',
-  'exhausted',
-  'failed',
-  'superseded',
-  'timed_out',
-  'timeout',
-  'zero_results',
-])
-
-function normalizedState(state: string) {
-  return state.trim().toLowerCase().replaceAll('-', '_').replaceAll(' ', '_')
-}
-
-function requestStatus(error: unknown) {
-  if (error instanceof Response) return error.status
-  if (!error || typeof error !== 'object') return undefined
-  if ('status' in error && typeof error.status === 'number') return error.status
-  if ('data' in error && error.data && typeof error.data === 'object' && 'status' in error.data)
-    return typeof error.data.status === 'number' ? error.data.status : undefined
-}
-
-async function waitForWorkflowTerminal(knowledgeSpaceId: string, runId: string) {
-  for (let attempt = 0; attempt < IMPORT_POLL_ATTEMPTS; attempt += 1) {
-    const run = sourceWorkflowFromApi(
-      await consoleClient.knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.get({
-        params: { control_space_id: knowledgeSpaceId, run_id: runId },
-      }),
-    )
-    if (
-      TERMINAL_STATES.has(normalizedState(run.state)) ||
-      SUCCESS_STATES.has(normalizedState(run.state))
-    )
-      return run
-    await new Promise((resolve) => setTimeout(resolve, IMPORT_POLL_INTERVAL_MS))
-  }
-  throw new Error('Source workflow did not reach a terminal state')
-}
-
-async function listWorkflowPages(knowledgeSpaceId: string, runId: string) {
-  const pages = new Map<string, ReturnType<typeof crawlPreviewPageListFromApi>['items'][number]>()
-  const seenCursors = new Set<string>()
-  let cursor: string | undefined
-  let pageCount = 0
-  do {
-    pageCount += 1
-    if (pageCount > MAX_CURSOR_PAGES) throw new Error('Workflow page cursor limit exceeded')
-    const response = crawlPreviewPageListFromApi(
-      await consoleClient.knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.pages.get({
-        params: { control_space_id: knowledgeSpaceId, run_id: runId },
-        query: { ...(cursor ? { cursor } : {}), limit: PAGE_SIZE },
-      }),
-    )
-    for (const page of response.items) pages.set(page.pageId, page)
-    const nextCursor = response.nextCursor
-    if (!nextCursor || seenCursors.has(nextCursor)) break
-    seenCursors.add(nextCursor)
-    cursor = nextCursor
-  } while (cursor)
-  return [...pages.values()]
-}
-
-async function findFirecrawlConnection(knowledgeSpaceId: string) {
-  const providers = sourceProviderListFromApi(
-    await consoleClient.knowledgeFs.spaces.byControlSpaceId.sourceProviders.get({
-      params: { control_space_id: knowledgeSpaceId },
-    }),
-  )
-  const provider = providers.find((candidate) => candidate.id === FIRECRAWL_PROVIDER_ID)
-  if (!provider) throw new Error('Firecrawl provider is unavailable')
-
-  const connections = []
-  let cursor: string | undefined
-  const seenCursors = new Set<string>()
-  do {
-    const response = sourceConnectionListFromApi(
-      await consoleClient.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get({
-        params: { control_space_id: knowledgeSpaceId },
-        query: { limit: CONNECTION_PAGE_SIZE, ...(cursor ? { cursor } : {}) },
-      }),
-    )
-    connections.push(...response.items)
-    const nextCursor = response.nextCursor
-    if (!nextCursor || seenCursors.has(nextCursor)) break
-    seenCursors.add(nextCursor)
-    cursor = nextCursor
-  } while (cursor)
-
-  const connection = connections.find(
-    (candidate) => candidate.providerId === provider.id && candidate.status === 'active',
-  )
-  if (!connection) throw new Error('Firecrawl connection is unavailable')
-  return { connection, provider }
-}
-
-async function importSelectedWebsitePages(
-  knowledgeSpaceId: string,
-  selection: WebsiteCrawlPreviewSelection,
-) {
-  const { connection, provider } = await findFirecrawlConnection(knowledgeSpaceId)
-  const source = sourceFromApi(
-    await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.post({
-      body: {
-        connectionId: connection.id,
-        metadata: {
-          clientRequestId: createRequestId(),
-          crawlOptions: {
-            includeSubpages: selection.draft.includeSubpages,
-            limit: selection.draft.maxPages,
-          },
-          preview: true,
-          providerId: provider.id,
-        },
-        name: selection.draft.sourceName.trim(),
-        status: 'disabled',
-        type: 'web',
-        uri: selection.draft.rootUrl,
-      },
-      params: { control_space_id: knowledgeSpaceId },
-    }),
-  )
-  if (!source.version) throw new Error('Source has no version')
-  const previewRun = sourceWorkflowFromApi(
-    await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.crawlPreview.post({
-      headers: { 'Idempotency-Key': createRequestId() },
-      params: { control_space_id: knowledgeSpaceId, source_id: source.id },
-    }),
-  )
-  const terminalPreviewRun = await waitForWorkflowTerminal(knowledgeSpaceId, previewRun.id)
-  if (!SUCCESS_STATES.has(normalizedState(terminalPreviewRun.state)))
-    throw new Error('Source crawl preview failed')
-  const kfsPages = await listWorkflowPages(knowledgeSpaceId, previewRun.id)
-  const selectedUrls = new Set(
-    selection.pages
-      .filter((page) => selection.selectedPageIds.includes(page.pageId))
-      .map((page) => page.sourceUrl),
-  )
-  const pageIds = kfsPages
-    .filter((page) => selectedUrls.has(page.sourceUrl))
-    .map((page) => page.pageId)
-  if (!pageIds.length) throw new Error('Selected preview pages were not found in KnowledgeFS')
-
-  const finalSource = sourceFromApi(
-    await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch({
-      body: {
-        expectedVersion: source.version,
-        metadata: {
-          clientRequestId: createRequestId(),
-          crawlOptions: {
-            includeSubpages: selection.draft.includeSubpages,
-            limit: selection.draft.maxPages,
-          },
-          preview: false,
-          providerId: provider.id,
-        },
-        name: selection.draft.sourceName.trim(),
-        status: 'active',
-      },
-      params: { control_space_id: knowledgeSpaceId, source_id: source.id },
-    }),
-  )
-  const importRun = sourceWorkflowFromApi(
-    await consoleClient.knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.selection.post({
-      body: { pageIds },
-      headers: { 'Idempotency-Key': createRequestId() },
-      params: { control_space_id: knowledgeSpaceId, run_id: previewRun.id },
-    }),
-  )
-  const terminalImportRun = await waitForWorkflowTerminal(knowledgeSpaceId, importRun.id)
-  if (!IMPORT_SUCCESS_STATES.has(normalizedState(terminalImportRun.state)))
-    throw new Error('Source import failed')
-  const importedSource = sourceFromApi(
-    await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.get({
-      params: { control_space_id: knowledgeSpaceId, source_id: source.id },
-    }),
-  )
-  if (!importedSource.version) throw new Error('Imported source has no version')
-  const mode =
-    selection.draft.syncPolicy === 'manual'
-      ? ({ enabled: false, mode: 'manual' } as const)
-      : selection.draft.syncPolicy === 'daily'
-        ? ({ enabled: true, mode: 'interval' } as const)
-        : ({ enabled: true, mode: 'provider' } as const)
-  let expectedRevision = 0
-  try {
-    expectedRevision = sourceSyncPolicyFromApi(
-      await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.syncPolicy.get({
-        params: { control_space_id: knowledgeSpaceId, source_id: finalSource.id },
-      }),
-    ).revision
-  } catch (error) {
-    if (requestStatus(error) !== 404) throw error
-  }
-  await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.syncPolicy.put({
-    body: {
-      ...mode,
-      expectedRevision,
-      expectedSourceVersion: importedSource.version,
-    },
-    params: { control_space_id: knowledgeSpaceId, source_id: source.id },
-  })
-}
 
 function normalizeStartMode(value: string | null): NewKnowledgeStartMode {
   if (value === 'source' || value === 'upload') return value
@@ -504,10 +282,38 @@ export function CreateKnowledgePage() {
     idempotencyKeyRef.current ??= createRequestId()
     setSubmissionLocked(true)
     try {
+      const latestWebsitePreviewSelection =
+        websitePreviewSelectionRef.current ?? websitePreviewSelection
+      const initialSource =
+        startMode === 'source' &&
+        sourceDraft.sourceType === 'websiteCrawl' &&
+        latestWebsitePreviewSelection?.draft.sourceType === 'websiteCrawl' &&
+        latestWebsitePreviewSelection.selectedPageIds.length > 0
+          ? {
+              crawl_options: {
+                include_subpages: latestWebsitePreviewSelection.draft.includeSubpages,
+                limit: latestWebsitePreviewSelection.draft.maxPages,
+              },
+              kind: 'website_crawl' as const,
+              name: latestWebsitePreviewSelection.draft.sourceName.trim(),
+              provider: 'firecrawl' as const,
+              root_url: latestWebsitePreviewSelection.draft.rootUrl,
+              selection: latestWebsitePreviewSelection.pages
+                .filter((page) =>
+                  latestWebsitePreviewSelection.selectedPageIds.includes(page.pageId),
+                )
+                .map((page) => ({
+                  source_url: page.sourceUrl,
+                  ...(page.title ? { title: page.title } : {}),
+                })),
+              sync_policy: latestWebsitePreviewSelection.draft.syncPolicy,
+            }
+          : undefined
       const result = await createMutation.mutateAsync({
         existingKnowledge: createdKnowledge,
         description: normalizedDescription,
         idempotencyKey: idempotencyKeyRef.current,
+        initialSource,
         name: normalizedName,
         onCreated: (knowledgeSpace) => {
           setCreatedKnowledge(knowledgeSpace)
@@ -540,28 +346,8 @@ export function CreateKnowledgePage() {
       }
 
       if (startMode === 'source') {
-        const latestWebsitePreviewSelection =
-          websitePreviewSelectionRef.current ?? websitePreviewSelection
-        if (
-          sourceDraft.sourceType === 'websiteCrawl' &&
-          latestWebsitePreviewSelection?.draft.sourceType === 'websiteCrawl' &&
-          latestWebsitePreviewSelection.selectedPageIds.length > 0
-        ) {
-          try {
-            await importSelectedWebsitePages(
-              created.control_space_id,
-              latestWebsitePreviewSelection,
-            )
-            await queryClient.invalidateQueries({
-              queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.get.key(),
-            })
-            await queryClient.invalidateQueries({
-              queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.get.key(),
-            })
-            replaceAfterHistoryGuard(newKnowledgeDetailPath(created.control_space_id))
-          } catch {
-            toast.error(t(($) => $['newKnowledge.addSourceFailed']))
-          }
+        if (initialSource) {
+          replaceAfterHistoryGuard(newKnowledgeDetailPath(created.control_space_id))
           return
         }
         try {

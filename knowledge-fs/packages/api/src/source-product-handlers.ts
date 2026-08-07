@@ -13,6 +13,7 @@ import {
   completeSourceOAuthRoute,
   createSourceBulkWorkflowRoute,
   createSourceConnectionRoute,
+  createSourceCrawlImportWorkflowRoute,
   createSourceCrawlPreviewWorkflowRoute,
   createSourceImportWorkflowRoute,
   createSourceSyncWorkflowRoute,
@@ -352,6 +353,28 @@ export function registerSourceProductHandlers(input: {
             idempotencyKey: headers["Idempotency-Key"],
             knowledgeSpaceId: params.id,
             sourceIds: body.sourceIds,
+          }),
+        ),
+        202,
+      );
+    } catch (error) {
+      return workflowFailure(context, error);
+    }
+  });
+
+  register(createSourceCrawlImportWorkflowRoute, async (context) => {
+    const params = context.req.valid("param");
+    const headers = context.req.valid("header");
+    const body = context.req.valid("json");
+    try {
+      return context.json(
+        toPublicSourceWorkflowRun(
+          await input.workflows.createCrawlImport({
+            ...principal(context),
+            idempotencyKey: headers["Idempotency-Key"],
+            knowledgeSpaceId: params.id,
+            sourceId: params.sourceId,
+            sourceUrls: body.sourceUrls,
           }),
         ),
         202,

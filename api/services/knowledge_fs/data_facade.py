@@ -24,6 +24,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSBulkJobResponse,
     KnowledgeFSCatQuery,
     KnowledgeFSCatResponse,
+    KnowledgeFSCrawlImportPayload,
     KnowledgeFSCrawlPreviewPageListResponse,
     KnowledgeFSCrawlPreviewSelectionPayload,
     KnowledgeFSDiffQuery,
@@ -1306,6 +1307,28 @@ class KnowledgeFSDataFacade:
             operation_id="previewSourceCrawl",
             resource_id=source_id,
             path_parameters=(("sourceId", source_id),),
+            headers=(("Idempotency-Key", idempotency_key),),
+        )
+        return KnowledgeFSSourceWorkflowResponse.model_validate(raw)
+
+    def import_selected_source_crawl(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        source_id: str,
+        payload: KnowledgeFSCrawlImportPayload,
+        idempotency_key: str,
+    ) -> KnowledgeFSSourceWorkflowResponse:
+        raw = self._interactive_child(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="importSelectedSourceCrawl",
+            resource_id=source_id,
+            path_parameters=(("sourceId", source_id),),
+            payload=payload,
             headers=(("Idempotency-Key", idempotency_key),),
         )
         return KnowledgeFSSourceWorkflowResponse.model_validate(raw)

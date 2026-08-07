@@ -306,6 +306,39 @@ export const createSourceCrawlPreviewWorkflowRoute = createRoute({
   },
 });
 
+export const createSourceCrawlImportWorkflowRoute = createRoute({
+  method: "post",
+  operationId: "createSourceCrawlImportWorkflow",
+  path: "/knowledge-spaces/{id}/sources/{sourceId}/crawl-import",
+  request: {
+    params: SourceParams,
+    headers: SourceImportIdempotencyHeader,
+    body: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: z
+            .object({
+              sourceUrls: z.array(z.string().url().max(4096)).min(1).max(200),
+            })
+            .strict(),
+        },
+      },
+    },
+  },
+  responses: {
+    202: {
+      content: { "application/json": { schema: SourceWorkflowRunResponseSchema } },
+      description: "Durable selected website crawl import accepted",
+    },
+    400: ErrorResponse,
+    404: ErrorResponse,
+    409: ErrorResponse,
+    401: UnauthorizedResponse,
+    403: ForbiddenResponse,
+  },
+});
+
 const OnlineDocumentImportItem = z
   .object({
     etag: z.string().max(1024).optional(),

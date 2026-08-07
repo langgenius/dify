@@ -267,7 +267,11 @@ export function createSourceProductWorkflowRuntime(input: {
           if (await processBulk(input, execution, bulkChildPollMs)) return "deferred";
           break;
         case "crawl-import":
-          await processCrawlImport(input, execution, requiredSource(source));
+          if (selectedSourceUrls(run).length > 0) {
+            await processSelectedCrawlImport(input, execution, requiredSource(source));
+          } else {
+            await processCrawlImport(input, execution, requiredSource(source));
+          }
           break;
       }
       if (
@@ -611,8 +615,11 @@ async function activateImportedPreviewSource(
   const run = execution.run();
   if (
     !source ||
-    run.kind !== "crawl-preview" ||
-    selectedPageIds(run).length === 0 ||
+    !(
+      (run.kind === "crawl-preview" && selectedPageIds(run).length > 0) ||
+      (run.kind === "crawl-import" &&
+        (selectedSourceUrls(run).length > 0 || selectedPageIds(run).length > 0))
+    ) ||
     source.status !== "disabled" ||
     source.metadata.preview !== true
   ) {
@@ -736,6 +743,71 @@ async function processCrawlImport(
   if (previewPages.length !== selected.size) {
     throw runtimeError("SOURCE_CRAWL_PAGE_NOT_FOUND", "Selected crawl page is unavailable");
   }
+  await importCrawlPages(input, execution, source, previewPages);
+}
+
+async function processSelectedCrawlImport(
+  input: Parameters<typeof createSourceProductWorkflowRuntime>[0],
+  execution: RuntimeExecution,
+  source: Source,
+): Promise<void> {
+  const requestedUrls = new Set(selectedSourceUrls(execution.run()));
+  const previewState = await processCrawlPreview(input, execution, source);
+  if (previewState === "zero_results") {
+    throw runtimeError("SOURCE_CRAWL_PAGE_NOT_FOUND", "Selected crawl page is unavailable");
+  }
+
+  const matched = new Map<string, SourceCrawlPreviewPage>();
+  let cursor: string | undefined;
+  do {
+    const page = await input.repository.listCrawlPages({
+      ...(cursor ? { cursor } : {}),
+      limit: 200,
+      runId: execution.run().id,
+    });
+    for (const candidate of page.items) {
+      if (!requestedUrls.has(candidate.sourceUrl)) continue;
+      if (matched.has(candidate.sourceUrl)) {
+        throw runtimeError(
+          "SOURCE_CRAWL_PAGE_AMBIGUOUS",
+          "Selected crawl page matched more than one result",
+        );
+      }
+      matched.set(candidate.sourceUrl, candidate);
+    }
+    cursor = page.nextCursor;
+  } while (cursor);
+
+  if (matched.size !== requestedUrls.size) {
+    throw runtimeError("SOURCE_CRAWL_PAGE_NOT_FOUND", "Selected crawl page is unavailable");
+  }
+  await execution.mutate((current) =>
+    input.repository.checkpoint({
+      checkpoint: "selection-frozen",
+      fence: fence(current),
+      now: iso((input.now ?? Date.now)()),
+      progressCompleted: 0,
+      progressFailed: 0,
+      progressSkipped: 0,
+      progressTotal: requestedUrls.size,
+      state: "importing",
+    }),
+  );
+  await importCrawlPages(
+    input,
+    execution,
+    source,
+    [...requestedUrls].map((sourceUrl) => matched.get(sourceUrl)!),
+  );
+}
+
+async function importCrawlPages(
+  input: Parameters<typeof createSourceProductWorkflowRuntime>[0],
+  execution: RuntimeExecution,
+  source: Source,
+  previewPages: readonly SourceCrawlPreviewPage[],
+): Promise<void> {
+  const run = execution.run();
   const completedBefore = Math.min(run.progressCompleted, previewPages.length);
   for (const [index, page] of previewPages.entries()) {
     if (index < completedBefore) continue;
@@ -2998,6 +3070,20 @@ function selectedPageIds(run: SourceWorkflowRun): readonly string[] {
   if (value === undefined) return [];
   if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) {
     throw runtimeError("SOURCE_WORKFLOW_PAYLOAD_INVALID", "Crawl selection payload is invalid");
+  }
+  return value as string[];
+}
+
+function selectedSourceUrls(run: SourceWorkflowRun): readonly string[] {
+  const value = run.payload.selectedSourceUrls;
+  if (value === undefined) return [];
+  if (
+    !Array.isArray(value) ||
+    value.length < 1 ||
+    value.length > 200 ||
+    value.some((item) => typeof item !== "string" || !item.trim() || item.length > 4_096)
+  ) {
+    throw runtimeError("SOURCE_WORKFLOW_PAYLOAD_INVALID", "Crawl source URL selection is invalid");
   }
   return value as string[];
 }

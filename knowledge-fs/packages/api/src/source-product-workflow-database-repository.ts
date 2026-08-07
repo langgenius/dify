@@ -443,7 +443,7 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
     appendCrawlPages: ({ fence, now, pages }) =>
       database.transaction(async (tx) => {
         const { run: current } = await requireFenced(database, tx, fence, now);
-        if (current.kind !== "crawl-preview") invalidState();
+        if (current.kind !== "crawl-preview" && current.kind !== "crawl-import") invalidState();
         for (const page of pages) {
           const columns = [
             "id",

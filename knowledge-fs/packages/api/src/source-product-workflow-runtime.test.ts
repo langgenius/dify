@@ -837,6 +837,111 @@ describe("source-product workflow provider imports", () => {
     expect(deleteRun).toHaveBeenCalledOnce();
   });
 
+  it("fails a selected URL crawl import when the second crawl does not contain every URL", async () => {
+    const source = sourceRecord("selected-url-crawl-import", { type: "web" });
+    const fixture = await createFixture({
+      contentStore: {
+        deleteRun: vi.fn(async () => ({ deleted: 0, hasMore: false })),
+        get: vi.fn(async () => null),
+        put: vi.fn(async () => "staged/selected-url"),
+      },
+      inventory: [],
+      run: providerRun(source.id, "crawl-import", {
+        selectedSourceUrls: [
+          "https://example.test/selected",
+          "https://example.test/missing",
+        ],
+      }),
+      source,
+      websiteCrawl: {
+        crawl: vi.fn(async () => ({
+          pages: [
+            {
+              content: "selected",
+              sourceUrl: "https://example.test/selected",
+              title: "Selected",
+            },
+          ],
+        })),
+      },
+    });
+
+    await expect(fixture.runtime.tick()).resolves.toMatchObject({ completed: 0, failed: 1 });
+    await expect(fixture.getRun()).resolves.toMatchObject({
+      lastErrorCode: "SOURCE_CRAWL_PAGE_NOT_FOUND",
+      state: "failed",
+    });
+  });
+
+  it("imports only the selected URLs from the second crawl", async () => {
+    const source = sourceRecord("selected-url-crawl-success", {
+      metadata: { preview: true },
+      status: "disabled",
+      type: "web",
+    });
+    const bodies = new Map<string, Uint8Array>();
+    const materialize = vi.fn(
+      async ({ documents, workflowExecution }: MaterializeSourceDocumentsInput) => ({
+        documents: documents.map((document, index) => ({
+          documentAssetId: `asset-${index}`,
+          documentAssetVersion: 1,
+          filename: document.filename,
+          mimeType: document.mimeType,
+          sizeBytes: document.body.byteLength,
+          workflowOwnership: workflowExecution?.items[index],
+        })),
+        failed: [],
+      }),
+    );
+    const fixture = await createFixture({
+      contentStore: {
+        deleteRun: vi.fn(async () => ({ deleted: bodies.size, hasMore: false })),
+        get: vi.fn(async ({ contentObjectKey }) => bodies.get(contentObjectKey) ?? null),
+        put: vi.fn(async ({ body, pageId }) => {
+          const key = `staged/${pageId}`;
+          bodies.set(key, body);
+          return key;
+        }),
+      },
+      inventory: [],
+      materializer: {
+        compensate: vi.fn(async () => undefined),
+        materialize,
+      },
+      run: providerRun(source.id, "crawl-import", {
+        selectedSourceUrls: ["https://example.test/selected"],
+      }),
+      source,
+      websiteCrawl: {
+        crawl: vi.fn(async () => ({
+          pages: [
+            {
+              content: "selected body",
+              sourceUrl: "https://example.test/selected",
+              title: "Selected",
+            },
+            {
+              content: "unselected body",
+              sourceUrl: "https://example.test/unselected",
+              title: "Unselected",
+            },
+          ],
+        })),
+      },
+    });
+
+    await expect(fixture.runtime.tick()).resolves.toMatchObject({ completed: 1, failed: 0 });
+    expect(materialize).toHaveBeenCalledOnce();
+    expect(materialize.mock.calls[0]?.[0].documents).toEqual([
+      expect.objectContaining({ filename: expect.stringMatching(/^Selected-.*\.md$/) }),
+    ]);
+    await expect(fixture.getRun()).resolves.toMatchObject({
+      progressCompleted: 1,
+      progressTotal: 1,
+      state: "completed",
+    });
+  });
+
   it("fails bounded crawl imports for invalid cleanup, incomplete cleanup, and missing content", async () => {
     const invalidCleanup = await createSelectedCrawlFixture({ maxCleanupBatchesPerRun: 0 });
     await expect(invalidCleanup.runtime.tick()).resolves.toMatchObject({ failed: 1 });
