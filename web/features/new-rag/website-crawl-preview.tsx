@@ -56,6 +56,10 @@ type PreviewDraft = {
   clientRequestId: string
   configurationKey: string
   creationAttempted?: boolean
+  deletionRequest?: {
+    idempotencyKey: string
+    sourceVersion: number
+  }
   previewRequestId: string
   source?: Source
 }
@@ -124,6 +128,38 @@ async function cancelSourceWorkflow(knowledgeSpaceId: string, runId: string) {
       body: { reason: 'user_requested' },
       params: { control_space_id: knowledgeSpaceId, run_id: runId },
     }),
+  )
+}
+
+async function deleteProvisionalSource(
+  knowledgeSpaceId: string,
+  source: Source,
+  idempotencyKey: string,
+) {
+  if (!source.version) throw new Error('Provisional source has no version')
+  await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.delete({
+    body: { expectedRevision: source.version },
+    headers: { 'Idempotency-Key': idempotencyKey },
+    params: { control_space_id: knowledgeSpaceId, source_id: source.id },
+    query: { documents: 'cascade' },
+  })
+}
+
+async function getSource(knowledgeSpaceId: string, sourceId: string) {
+  return sourceFromApi(
+    await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.get({
+      params: { control_space_id: knowledgeSpaceId, source_id: sourceId },
+    }),
+  )
+}
+
+function isSameProvisionalSource(draft: PreviewDraft, source: Source) {
+  return (
+    source.id === draft.source?.id &&
+    source.type === 'web' &&
+    source.status === 'disabled' &&
+    source.metadata.preview === true &&
+    source.metadata.clientRequestId === draft.clientRequestId
   )
 }
 
@@ -293,13 +329,19 @@ const CrawlPageList = memo(
 
     return (
       <ul
-        className={cn('max-h-64 overflow-y-auto', !loading && 'divide-y divide-divider-subtle')}
+        className={cn(
+          'max-h-64 overflow-y-auto',
+          loading ? 'flex min-h-0 flex-1 flex-col gap-3.5' : 'divide-y divide-divider-subtle',
+        )}
         aria-live="polite"
       >
         {pages.map((page) => (
           <li
             key={page.pageId}
-            className="flex items-start gap-2.5 px-4 py-2.5 [contain-intrinsic-size:auto_40px] [content-visibility:auto]"
+            className={cn(
+              'flex items-start gap-2.5 [contain-intrinsic-size:auto_40px] [content-visibility:auto]',
+              loading ? 'py-1' : 'px-4 py-2.5',
+            )}
           >
             <Checkbox
               aria-label={page.title || page.sourceUrl}
@@ -319,17 +361,32 @@ const CrawlPageList = memo(
           </li>
         ))}
         {loading &&
-          [0, 1, 2, 3].map((placeholder) => (
+          [
+            { id: 'short', sourceWidth: 'w-22.5', titleWidth: 'w-37.5' },
+            { id: 'medium', sourceWidth: 'w-26', titleWidth: 'w-42.5' },
+            { id: 'long', sourceWidth: 'w-29.5', titleWidth: 'w-47.5' },
+            { id: 'longest', sourceWidth: 'w-33', titleWidth: 'w-52.5' },
+          ].map(({ id, sourceWidth, titleWidth }) => (
             <li
-              key={`placeholder-${placeholder}`}
+              key={id}
               data-testid="crawl-page-skeleton"
               aria-hidden
-              className="flex items-start gap-2.5 px-4 py-2.5"
+              className="flex h-8 shrink-0 items-center gap-2.5 py-1"
             >
-              <span className="size-4 animate-pulse rounded bg-background-section" />
-              <span className="min-w-0 flex-1 space-y-1.5">
-                <span className="block h-3 w-2/3 animate-pulse rounded bg-background-section" />
-                <span className="block h-2.5 w-full animate-pulse rounded bg-background-section" />
+              <span className="size-4 animate-pulse rounded bg-util-colors-gray-gray-200" />
+              <span className="flex min-w-0 flex-1 flex-col gap-1.5">
+                <span
+                  className={cn(
+                    'block h-2.5 animate-pulse rounded bg-util-colors-gray-gray-200',
+                    titleWidth,
+                  )}
+                />
+                <span
+                  className={cn(
+                    'block h-2 animate-pulse rounded bg-background-section-burn',
+                    sourceWidth,
+                  )}
+                />
               </span>
             </li>
           ))}
@@ -360,12 +417,14 @@ export function WebsiteCrawlPreview({
   initialDraft,
   knowledgeSpaceId,
   onDraftFinished,
+  onInteractionLockChange,
   providerName = 'Firecrawl',
 }: {
   connection: ConnectionReference
   initialDraft?: NewKnowledgeWebsiteSourceDraft
   knowledgeSpaceId: string
   onDraftFinished?: () => void
+  onInteractionLockChange?: (locked: boolean) => void
   providerName?: string
 }) {
   const { t } = useTranslation('dataset')
@@ -397,6 +456,7 @@ export function WebsiteCrawlPreview({
   const [discardError, setDiscardError] = useState(false)
   const [workflowUncertain, setWorkflowUncertain] = useState(false)
   const [selectionUncertain, setSelectionUncertain] = useState(false)
+  const [selectionInteractionLocked, setSelectionInteractionLocked] = useState(false)
   const workflowStatusUncertainRef = useRef(false)
   const selectionUncertainRef = useRef(false)
   const draftRef = useRef<PreviewDraft | undefined>(undefined)
@@ -421,6 +481,58 @@ export function WebsiteCrawlPreview({
   const pendingNavigationRef = useRef<PendingNavigation | undefined>(undefined)
   const historyGuardRef = useRef<string | undefined>(undefined)
   const historyGuardCompletionRef = useRef<(() => void) | undefined>(undefined)
+
+  const deletePreviewDraftSource = useCallback(
+    async (draft: PreviewDraft) => {
+      if (!draft.source) return
+      let source = draft.source
+      const clearDraft = () => {
+        if (draftRef.current === draft) draftRef.current = undefined
+      }
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        if (!source.version) throw new Error('Provisional source has no version')
+        if (draft.deletionRequest?.sourceVersion !== source.version) {
+          draft.deletionRequest = {
+            idempotencyKey: createRequestId(),
+            sourceVersion: source.version,
+          }
+        }
+        try {
+          await deleteProvisionalSource(
+            knowledgeSpaceId,
+            source,
+            draft.deletionRequest.idempotencyKey,
+          )
+          clearDraft()
+          return
+        } catch (error) {
+          if (responseStatus(error) === 404) {
+            clearDraft()
+            return
+          }
+          if (responseStatus(error) === 409 && attempt === 0) {
+            let refreshedSource: Source
+            try {
+              refreshedSource = await getSource(knowledgeSpaceId, source.id)
+            } catch (refreshError) {
+              if (responseStatus(refreshError) === 404) {
+                clearDraft()
+                return
+              }
+              throw refreshError
+            }
+            if (!isSameProvisionalSource(draft, refreshedSource)) throw error
+            source = refreshedSource
+            draft.source = refreshedSource
+            draft.deletionRequest = undefined
+            continue
+          }
+          throw error
+        }
+      }
+    },
+    [knowledgeSpaceId],
+  )
 
   const resetPreviewPages = useCallback(() => {
     pageMapRef.current.clear()
@@ -474,16 +586,27 @@ export function WebsiteCrawlPreview({
         : undefined,
     [includeSubpages, normalizedLimit, normalizedURL, sourceName],
   )
+  const currentConfigurationKey = configuration ? configurationKey(configuration) : undefined
+  const previewConfigurationMatches = Boolean(
+    currentConfigurationKey && draftRef.current?.configurationKey === currentConfigurationKey,
+  )
   const active = Boolean(run && !isTerminal(run.state))
   const successfulPreview = Boolean(
-    run && isSuccessful(run.state) && pagesLoaded && pages.length > 0,
+    run &&
+    isSuccessful(run.state) &&
+    pagesLoaded &&
+    pages.length > 0 &&
+    previewConfigurationMatches,
+  )
+  const staleSuccessfulPreview = Boolean(
+    run && isSuccessful(run.state) && pagesLoaded && !previewConfigurationMatches,
   )
   const uncertainOperation = workflowUncertain || selectionUncertain
   const shouldPoll = Boolean(
     run && !starting && !stopping && !pollPaused && (active || !pagesLoaded),
   )
   const runId = run?.id
-  const locked = starting || stopping || active || successfulPreview || uncertainOperation
+  const locked = starting || stopping || active || uncertainOperation || selectionInteractionLocked
   const dirty = Boolean(
     rootUrl || sourceName || run || !includeSubpages || pageLimit !== DEFAULT_PAGE_LIMIT,
   )
@@ -493,6 +616,34 @@ export function WebsiteCrawlPreview({
     count: completedCount,
     host,
   })
+
+  useEffect(() => {
+    onInteractionLockChange?.(locked)
+  }, [locked, onInteractionLockChange])
+
+  useEffect(
+    () => () => {
+      onInteractionLockChange?.(false)
+      if (submittedRef.current) return
+      discardRequestedRef.current = true
+      void (async () => {
+        try {
+          await pendingWorkflowPromiseRef.current
+        } catch {
+          // Continue best-effort cleanup even if the in-flight workflow request rejected.
+        }
+        if (submittedRef.current) return
+        const draft = draftRef.current
+        if (!draft) return
+        try {
+          await deletePreviewDraftSource(draft)
+        } catch {
+          // A route or provider switch cannot surface cleanup errors after this owner unmounts.
+        }
+      })()
+    },
+    [deletePreviewDraftSource, onInteractionLockChange],
+  )
   const togglePreviewPage = useCallback((pageId: string) => {
     setSelectedPageIds((current) => {
       const next = new Set(current)
@@ -645,6 +796,7 @@ export function WebsiteCrawlPreview({
                 },
                 preview: true,
                 providerId: connection.providerId,
+                providerName,
               },
               name: nextConfiguration.name,
               status: 'disabled',
@@ -671,7 +823,7 @@ export function WebsiteCrawlPreview({
       }
       return draft
     },
-    [connection.id, connection.providerId, knowledgeSpaceId, updateWorkflowUncertain],
+    [connection.id, connection.providerId, knowledgeSpaceId, providerName, updateWorkflowUncertain],
   )
 
   const startPreview = useCallback(
@@ -687,6 +839,11 @@ export function WebsiteCrawlPreview({
         let draft: PreviewDraft | undefined
         const existingUncertainWorkflow = uncertainWorkflowRef.current
         try {
+          const nextConfigurationKey = configurationKey(nextConfiguration)
+          const previousDraft = draftRef.current
+          if (previousDraft?.source && previousDraft.configurationKey !== nextConfigurationKey) {
+            await deletePreviewDraftSource(previousDraft)
+          }
           draft = await ensureProvisionalSource(nextConfiguration)
           if (!draft.source) throw new Error('Provisional source is missing')
           if (discardRequestedRef.current) return undefined
@@ -733,6 +890,7 @@ export function WebsiteCrawlPreview({
       return request
     },
     [
+      deletePreviewDraftSource,
       ensureProvisionalSource,
       knowledgeSpaceId,
       resetPreviewPages,
@@ -1025,7 +1183,13 @@ export function WebsiteCrawlPreview({
     requestError === 'POLL_FAILED' ||
     (run && isFailed(run.state)),
   )
-  const showZero = Boolean(run && isSuccessful(run.state) && pagesLoaded && pages.length === 0)
+  const showZero = Boolean(
+    run &&
+    isSuccessful(run.state) &&
+    pagesLoaded &&
+    pages.length === 0 &&
+    previewConfigurationMatches,
+  )
   const showSuccess = successfulPreview
   const showCanceled = Boolean(run && isCanceled(run.state))
   const errorCode = run?.lastErrorCode ?? requestError
@@ -1081,6 +1245,17 @@ export function WebsiteCrawlPreview({
       setDiscardError(true)
       return
     }
+    const previewDraft = draftRef.current
+    if (previewDraft) {
+      try {
+        await deletePreviewDraftSource(previewDraft)
+      } catch {
+        discardRequestedRef.current = false
+        setDiscarding(false)
+        setDiscardError(true)
+        return
+      }
+    }
     pendingCancelRunRef.current = undefined
     retryPredecessorRef.current = undefined
     submittedRef.current = true
@@ -1115,7 +1290,7 @@ export function WebsiteCrawlPreview({
       </p>
       <Form onFormSubmit={handleSubmit}>
         <Fieldset disabled={locked} className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2">
             <Field name="rootUrl" invalid={urlTouched && !normalizedURL} className="gap-1.5">
               <FieldLabel>
                 {t(($) => $['newKnowledge.rootUrl'])}
@@ -1162,7 +1337,7 @@ export function WebsiteCrawlPreview({
             onOpenChange={setOptionsExpanded}
             className="overflow-hidden rounded-lg border border-components-option-card-option-border bg-background-default"
           >
-            <CollapsibleTrigger className="h-9 min-h-9 justify-start rounded-none px-3">
+            <CollapsibleTrigger className="h-8.5 min-h-8.5 justify-start rounded-none px-3">
               <span
                 aria-hidden
                 className="i-ri-arrow-right-s-line size-4 text-text-tertiary transition-transform group-data-panel-open:rotate-90 motion-reduce:transition-none"
@@ -1234,7 +1409,7 @@ export function WebsiteCrawlPreview({
               !configuration ||
               (locked && requestError !== 'POLL_FAILED' && !canReconcileUncertainOperation)
             }
-            loading={starting}
+            loading={starting || (active && !pollPaused)}
           >
             {primaryLabel}
           </Button>
@@ -1242,10 +1417,10 @@ export function WebsiteCrawlPreview({
       </Form>
 
       <div className="mt-4">
-        {!run && !requestError && <EmptyPreview />}
+        {(!run || staleSuccessfulPreview) && !requestError && <EmptyPreview />}
         {run && active && !pollPaused && (
-          <div className="overflow-hidden rounded-xl border border-divider-deep bg-background-default-subtle">
-            <div className="flex flex-wrap items-center gap-2 px-4 py-3">
+          <div className="flex h-60 flex-col gap-3.5 overflow-hidden rounded-xl border border-divider-deep bg-background-default-subtle p-3.75">
+            <div className="flex h-6 shrink-0 items-center gap-2">
               <span
                 aria-hidden
                 className="i-ri-loader-4-line size-4 animate-spin text-text-accent"
@@ -1262,7 +1437,7 @@ export function WebsiteCrawlPreview({
                 type="button"
                 variant="ghost-accent"
                 size="small"
-                className="ml-auto shrink-0 px-0"
+                className="ml-auto shrink-0"
                 disabled={stopping}
                 onClick={() => void stop()}
               >
@@ -1281,7 +1456,7 @@ export function WebsiteCrawlPreview({
                 max={run.progressTotal}
                 value={Math.min(completedCount, run.progressTotal)}
                 aria-label={t(($) => $['newKnowledge.crawlProgress'], { host })}
-                className="block h-1 w-full accent-state-accent-solid"
+                className="sr-only"
               />
             )}
             <CrawlPageList
@@ -1302,6 +1477,7 @@ export function WebsiteCrawlPreview({
             initialSelectedPageIds={[...selectedPageIds]}
             knowledgeSpaceId={knowledgeSpaceId}
             onCancel={cancel}
+            onInteractionLockChange={setSelectionInteractionLocked}
             onRecrawl={handlePrimaryAction}
             onSubmissionUncertainChange={updateSelectionUncertain}
             onSubmitted={() =>
@@ -1382,7 +1558,7 @@ export function WebsiteCrawlPreview({
         )}
       </div>
       {!showSuccess && (
-        <div className="mt-5 flex justify-end gap-2 border-t border-divider-subtle pt-5">
+        <div className="mt-5 flex justify-end gap-3 border-t border-divider-subtle pt-4.75">
           <Button type="button" onClick={cancel}>
             {t(($) => $['newKnowledge.cancelAddSource'])}
           </Button>

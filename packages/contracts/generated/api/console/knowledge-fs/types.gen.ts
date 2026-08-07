@@ -729,12 +729,14 @@ export type KnowledgeFsSourceResponse = {
   credential_configured?: boolean | null
   id: string
   knowledge_space_id: string
+  last_synced_at?: string | null
   metadata: {
     [key: string]: unknown
   }
   name: string
   permission_scope: Array<string>
   status: 'active' | 'disabled' | 'error' | 'syncing'
+  sync_policy?: KnowledgeFsSourceSyncPolicyResponse | null
   type: 'connector' | 'object-storage' | 'upload' | 'web'
   updated_at: string
   uri: string

@@ -175,9 +175,11 @@ function getSupportedAuthKinds(provider: Provider, credentialId?: string) {
 }
 
 function SourceTypeSelector({
+  disabled = false,
   value,
   onChange,
 }: {
+  disabled?: boolean
   value: SourceType
   onChange: (value: SourceType) => void
 }) {
@@ -189,12 +191,13 @@ function SourceTypeSelector({
   ]
 
   return (
-    <Fieldset>
+    <Fieldset disabled={disabled}>
       <FieldsetLegend className="mb-1.5 py-0 system-xs-medium leading-3.75">
         {t(($) => $['newKnowledge.sourceTypeLabel'])}
       </FieldsetLegend>
       <RadioGroup<SourceType>
         value={value}
+        disabled={disabled}
         className="grid grid-cols-1 gap-0.5 rounded-lg bg-background-section p-0.5 sm:grid-cols-3"
         onValueChange={onChange}
       >
@@ -218,10 +221,12 @@ function SourceTypeSelector({
 }
 
 function ProviderSelector({
+  disabled = false,
   onMoreProviders,
   provider,
   onChange,
 }: {
+  disabled?: boolean
   onMoreProviders: () => void
   provider: NewKnowledgeWebsiteProvider
   onChange: (provider: NewKnowledgeWebsiteProvider) => void
@@ -229,7 +234,7 @@ function ProviderSelector({
   const { t } = useTranslation('dataset')
 
   return (
-    <Fieldset>
+    <Fieldset disabled={disabled}>
       <div className="mb-1.5 flex items-center justify-between gap-3">
         <FieldsetLegend className="py-0 system-xs-medium">
           {t(($) => $['newKnowledge.providerLabel'])}
@@ -238,7 +243,8 @@ function ProviderSelector({
           type="button"
           variant="ghost-accent"
           size="small"
-          className="h-auto gap-0.5 px-0"
+          className="gap-0.5 px-2.75"
+          disabled={disabled}
           onClick={onMoreProviders}
         >
           {t(($) => $['newKnowledge.moreProviders'])}
@@ -247,6 +253,7 @@ function ProviderSelector({
       </div>
       <RadioGroup<NewKnowledgeWebsiteProvider>
         value={provider}
+        disabled={disabled}
         className="grid grid-cols-2 gap-2 sm:grid-cols-4"
         onValueChange={onChange}
       >
@@ -826,6 +833,7 @@ export function AddSourcePage({
   const [exitOpen, setExitOpen] = useState(false)
   const [discarding, setDiscarding] = useState(false)
   const [discardError, setDiscardError] = useState(false)
+  const [websiteSetupLocked, setWebsiteSetupLocked] = useState(false)
   const [historyGuardReleaseVersion, setHistoryGuardReleaseVersion] = useState(0)
   const historyGuardArmedRef = useRef(false)
   const historyGuardReleaseRef = useRef(false)
@@ -1198,7 +1206,7 @@ export function AddSourcePage({
 
   return (
     <>
-      <main className="min-h-full w-full min-w-0 flex-1 px-4 py-6 sm:px-8 sm:py-8">
+      <main className="h-full min-h-0 w-full min-w-0 flex-1 overflow-y-auto px-4 py-6 sm:px-8 sm:py-8">
         <header>
           <h2 className="system-xl-semibold text-text-primary">
             {t(($) => $['newKnowledge.addSource'])}
@@ -1209,6 +1217,7 @@ export function AddSourcePage({
         </header>
         <div className="mt-4.5 flex w-full max-w-160 flex-col gap-4">
           <SourceTypeSelector
+            disabled={websiteSetupLocked}
             value={sourceType}
             onChange={(value) => {
               sourceDraftsRef.current[sourceDraft.sourceType] = sourceDraft
@@ -1220,6 +1229,7 @@ export function AddSourcePage({
           {sourceDraft.sourceType === 'websiteCrawl' ? (
             <>
               <ProviderSelector
+                disabled={websiteSetupLocked}
                 provider={sourceDraft.provider}
                 onMoreProviders={() => requestNavigation(buildIntegrationPath('data-source'))}
                 onChange={(provider) => {
@@ -1271,6 +1281,7 @@ export function AddSourcePage({
                   initialDraft={sourceDraft}
                   knowledgeSpaceId={knowledgeSpaceId}
                   onDraftFinished={clearStoredSourceDraft}
+                  onInteractionLockChange={setWebsiteSetupLocked}
                   providerName={FIRECRAWL_CONNECTION_NAME}
                 />
               ) : activeConnection ? (

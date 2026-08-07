@@ -7,6 +7,7 @@ import {
   currentCandidateGrants,
 } from "./candidate-content-authorization";
 import {
+  SourceSyncPolicyResponseSchema,
   mergeSourceMetadataPatch,
   redactSourceMetadata,
   toSourceResponse,
@@ -36,6 +37,7 @@ import type {
   SourceDocumentMaterializer,
 } from "./source-document-materializer";
 import { safeSourceOperationError, sourceOperationFailureMetadata } from "./source-operation-error";
+import type { SourceProductWorkflowRepository } from "./source-product-workflow";
 import {
   SourceCapacityExceededError,
   type SourceCursor,
@@ -73,6 +75,9 @@ export interface RegisterSourceHandlersOptions {
   readonly sourceConnections?: SourceConnectionService | undefined;
   readonly sourceCredentials?: SourceCredentialService | undefined;
   readonly sourceDocumentMaterializer?: SourceDocumentMaterializer | undefined;
+  readonly sourceProductWorkflows?:
+    | Pick<SourceProductWorkflowRepository, "listLatestSyncCompletions" | "listSyncPolicies">
+    | undefined;
   readonly sources: SourceRepository;
   readonly spaces: KnowledgeSpaceRepository;
   readonly websiteCrawlConnector?: WebsiteCrawlConnector | undefined;
@@ -89,6 +94,7 @@ export function registerSourceHandlers({
   sourceConnections,
   sourceCredentials,
   sourceDocumentMaterializer,
+  sourceProductWorkflows,
   sources,
   spaces,
   websiteCrawlConnector,
@@ -220,9 +226,39 @@ export function registerSourceHandlers({
       throw error;
     }
 
+    const sourceIds = result.items.map((source) => source.id);
+    const [syncPolicies, syncCompletions] = sourceProductWorkflows
+      ? await Promise.all([
+          sourceProductWorkflows.listSyncPolicies({
+            knowledgeSpaceId: params.id,
+            sourceIds,
+            tenantId: subject.tenantId,
+          }),
+          sourceProductWorkflows.listLatestSyncCompletions({
+            knowledgeSpaceId: params.id,
+            sourceIds,
+            tenantId: subject.tenantId,
+          }),
+        ])
+      : [[], []];
+    const syncPoliciesBySourceId = new Map(
+      syncPolicies.map((policy) => [policy.sourceId, SourceSyncPolicyResponseSchema.parse(policy)]),
+    );
+    const lastSyncedAtBySourceId = new Map(
+      syncCompletions.map((completion) => [completion.sourceId, completion.completedAt]),
+    );
+
     return context.json(
       {
-        items: result.items.map((source) => toSourceResponse(source)),
+        items: result.items.map((source) => {
+          const lastSyncedAt = lastSyncedAtBySourceId.get(source.id);
+          const syncPolicy = syncPoliciesBySourceId.get(source.id);
+          return {
+            ...toSourceResponse(source),
+            ...(lastSyncedAt ? { lastSyncedAt } : {}),
+            ...(syncPolicy ? { syncPolicy } : {}),
+          };
+        }),
         ...(result.nextCursor ? { nextCursor: result.nextCursor.id } : {}),
       },
       200,

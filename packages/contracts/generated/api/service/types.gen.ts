@@ -1669,16 +1669,32 @@ export type KnowledgeFsSourceResponse = {
   credential_configured?: boolean | null
   id: string
   knowledge_space_id: string
+  last_synced_at?: string | null
   metadata: {
     [key: string]: unknown
   }
   name: string
   permission_scope: Array<string>
   status: 'active' | 'disabled' | 'error' | 'syncing'
+  sync_policy?: KnowledgeFsSourceSyncPolicyResponse | null
   type: 'connector' | 'object-storage' | 'upload' | 'web'
   updated_at: string
   uri: string
   version: number
+}
+
+export type KnowledgeFsSourceSyncPolicyResponse = {
+  created_at: string
+  custom_interval_seconds?: number | null
+  enabled: boolean
+  expected_source_version: number
+  id: string
+  knowledge_space_id: string
+  mode: 'custom' | 'interval' | 'manual' | 'provider'
+  next_run_at?: string | null
+  revision: number
+  source_id: string
+  updated_at: string
 }
 
 export type KnowledgeFsSourceUpdatePayload = {

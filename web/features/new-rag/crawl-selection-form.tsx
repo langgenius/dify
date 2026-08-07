@@ -29,7 +29,7 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useId, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
@@ -276,8 +276,8 @@ export function CrawlPreviewPageSelection({
           </Button>
         )}
       </div>
-      <div className="mt-3 overflow-hidden rounded-xl border border-divider-regular">
-        <label className="flex cursor-pointer items-center gap-2.5 border-b border-divider-subtle bg-background-section px-3 py-2.5 system-xs-medium text-text-secondary">
+      <div className="mt-3 flex h-79 flex-col overflow-hidden rounded-xl border border-divider-regular">
+        <label className="flex shrink-0 cursor-pointer items-center gap-2.5 border-b border-divider-subtle bg-background-section px-3 py-2.5 system-xs-medium text-text-secondary">
           <Checkbox
             checked={allSelected}
             indeterminate={someSelected && !allSelected}
@@ -286,7 +286,7 @@ export function CrawlPreviewPageSelection({
           />
           {t(($) => $['newKnowledge.selectAll'])}
         </label>
-        <ul className="max-h-70 divide-y divide-divider-subtle overflow-y-auto">
+        <ul className="min-h-0 flex-1 divide-y divide-divider-subtle overflow-y-auto">
           {pages.map((page, index) => {
             const skipReason = pageSkipReasons.get(page.pageId)
             const selectable = !skipReason
@@ -345,6 +345,7 @@ function ReadyCrawlSelectionForm({
   initialSyncMode,
   knowledgeSpaceId,
   onCancel,
+  onInteractionLockChange,
   onRecrawl,
   onSubmissionUncertainChange,
   onSubmitted,
@@ -363,6 +364,7 @@ function ReadyCrawlSelectionForm({
   initialSyncMode?: SyncMode
   knowledgeSpaceId: string
   onCancel: () => void
+  onInteractionLockChange?: (locked: boolean) => void
   onRecrawl: () => void
   onSubmissionUncertainChange: (uncertain: boolean) => void
   onSubmitted: () => Promise<void> | void
@@ -458,6 +460,18 @@ function ReadyCrawlSelectionForm({
   const formBusy = busy || submitting
   const submissionLocked = formBusy || policyUncertain || selectionUncertain
   const selectionLocked = submissionLocked || workflowUncertain
+
+  useEffect(() => {
+    onInteractionLockChange?.(submissionLocked)
+  }, [onInteractionLockChange, submissionLocked])
+
+  useEffect(
+    () => () => {
+      onInteractionLockChange?.(false)
+    },
+    [onInteractionLockChange],
+  )
+
   const updateSelectionUncertain = (uncertain: boolean) => {
     setSelectionUncertain(uncertain)
     onSubmissionUncertainChange(uncertain)
@@ -726,6 +740,7 @@ export function CrawlSelectionForm({
   initialSyncMode,
   knowledgeSpaceId,
   onCancel,
+  onInteractionLockChange,
   onRecrawl,
   onSubmissionUncertainChange,
   onSubmitted,
@@ -743,6 +758,7 @@ export function CrawlSelectionForm({
   initialSyncMode?: SyncMode
   knowledgeSpaceId: string
   onCancel: () => void
+  onInteractionLockChange?: (locked: boolean) => void
   onRecrawl: () => void
   onSubmissionUncertainChange: (uncertain: boolean) => void
   onSubmitted: () => Promise<void> | void
@@ -821,6 +837,7 @@ export function CrawlSelectionForm({
       initialSyncMode={initialSyncMode}
       knowledgeSpaceId={knowledgeSpaceId}
       onCancel={onCancel}
+      onInteractionLockChange={onInteractionLockChange}
       onRecrawl={onRecrawl}
       onSubmissionUncertainChange={onSubmissionUncertainChange}
       onSubmitted={onSubmitted}

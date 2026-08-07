@@ -1376,6 +1376,24 @@ class KnowledgeFSSourceCreatePayload(BaseModel):
         return self
 
 
+class KnowledgeFSSourceSyncPolicyResponse(ResponseModel):
+    created_at: datetime = Field(validation_alias=AliasChoices("created_at", "createdAt"))
+    custom_interval_seconds: int | None = Field(
+        default=None, validation_alias=AliasChoices("custom_interval_seconds", "customIntervalSeconds")
+    )
+    enabled: bool
+    expected_source_version: int = Field(
+        ge=1, validation_alias=AliasChoices("expected_source_version", "expectedSourceVersion")
+    )
+    id: str
+    knowledge_space_id: str = Field(validation_alias=AliasChoices("knowledge_space_id", "knowledgeSpaceId"))
+    mode: Literal["provider", "manual", "interval", "custom"]
+    next_run_at: datetime | None = Field(default=None, validation_alias=AliasChoices("next_run_at", "nextRunAt"))
+    revision: int = Field(ge=1)
+    source_id: str = Field(validation_alias=AliasChoices("source_id", "sourceId"))
+    updated_at: datetime = Field(validation_alias=AliasChoices("updated_at", "updatedAt"))
+
+
 class KnowledgeFSSourceResponse(ResponseModel):
     id: str
     connection_id: str | None = Field(default=None, validation_alias=AliasChoices("connection_id", "connectionId"))
@@ -1384,10 +1402,16 @@ class KnowledgeFSSourceResponse(ResponseModel):
     )
     created_at: datetime = Field(validation_alias=AliasChoices("created_at", "createdAt"))
     knowledge_space_id: str = Field(validation_alias=AliasChoices("knowledge_space_id", "knowledgeSpaceId"))
+    last_synced_at: datetime | None = Field(
+        default=None, validation_alias=AliasChoices("last_synced_at", "lastSyncedAt")
+    )
     metadata: dict[str, object]
     name: str
     permission_scope: list[str] = Field(validation_alias=AliasChoices("permission_scope", "permissionScope"))
     status: Literal["active", "disabled", "error", "syncing"]
+    sync_policy: KnowledgeFSSourceSyncPolicyResponse | None = Field(
+        default=None, validation_alias=AliasChoices("sync_policy", "syncPolicy")
+    )
     type: Literal["connector", "object-storage", "upload", "web"]
     updated_at: datetime = Field(validation_alias=AliasChoices("updated_at", "updatedAt"))
     uri: str
@@ -1574,24 +1598,6 @@ class KnowledgeFSSourceConnectionRefreshPayload(BaseModel):
     expected_version: int = Field(ge=1, alias="expectedVersion")
 
     model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
-
-
-class KnowledgeFSSourceSyncPolicyResponse(ResponseModel):
-    created_at: datetime = Field(validation_alias=AliasChoices("created_at", "createdAt"))
-    custom_interval_seconds: int | None = Field(
-        default=None, validation_alias=AliasChoices("custom_interval_seconds", "customIntervalSeconds")
-    )
-    enabled: bool
-    expected_source_version: int = Field(
-        ge=1, validation_alias=AliasChoices("expected_source_version", "expectedSourceVersion")
-    )
-    id: str
-    knowledge_space_id: str = Field(validation_alias=AliasChoices("knowledge_space_id", "knowledgeSpaceId"))
-    mode: Literal["provider", "manual", "interval", "custom"]
-    next_run_at: datetime | None = Field(default=None, validation_alias=AliasChoices("next_run_at", "nextRunAt"))
-    revision: int = Field(ge=1)
-    source_id: str = Field(validation_alias=AliasChoices("source_id", "sourceId"))
-    updated_at: datetime = Field(validation_alias=AliasChoices("updated_at", "updatedAt"))
 
 
 class KnowledgeFSSourceSyncPolicyPayload(BaseModel):

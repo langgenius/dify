@@ -74,7 +74,7 @@ export function createNewKnowledgeSourceDraft(
     rootUrl: '',
     sourceName: '',
     sourceType,
-    syncPolicy: 'provider',
+    syncPolicy: 'daily',
   }
 }
 

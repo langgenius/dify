@@ -1,5 +1,6 @@
 import { createRoute, z } from "@hono/zod-openapi";
 
+import { SourceSyncPolicyResponseSchema } from "./core-resource-response-schemas";
 import { ForbiddenResponse, UnauthorizedResponse } from "./gateway-openapi-contracts";
 import { ErrorResponseSchema } from "./gateway-route-schemas";
 import { SourceWorkflowRunResponseSchema } from "./source-routes";
@@ -48,19 +49,6 @@ const Connection = z.object({
   status: z.enum(["provisioning", "active", "expired", "error", "revoked"]),
   updatedAt: z.string(),
   version: z.number().int(),
-});
-const SyncPolicy = z.object({
-  createdAt: z.string(),
-  customIntervalSeconds: z.number().int().optional(),
-  enabled: z.boolean(),
-  expectedSourceVersion: z.number().int().min(1),
-  id: z.string().uuid(),
-  knowledgeSpaceId: z.string().uuid(),
-  mode: z.enum(["provider", "manual", "interval", "custom"]),
-  nextRunAt: z.string().optional(),
-  revision: z.number().int().min(1),
-  sourceId: z.string().uuid(),
-  updatedAt: z.string(),
 });
 const BulkWorkflowItem = z.object({
   action: z.enum(["sync", "disable", "remove"]),
@@ -389,7 +377,7 @@ export const getSourceSyncPolicyRoute = createRoute({
   request: { params: SourceParams },
   responses: {
     200: {
-      content: { "application/json": { schema: SyncPolicy } },
+      content: { "application/json": { schema: SourceSyncPolicyResponseSchema } },
       description: "Source sync policy",
     },
     404: ErrorResponse,
@@ -423,7 +411,7 @@ export const putSourceSyncPolicyRoute = createRoute({
   },
   responses: {
     200: {
-      content: { "application/json": { schema: SyncPolicy } },
+      content: { "application/json": { schema: SourceSyncPolicyResponseSchema } },
       description: "Source sync policy updated",
     },
     400: ErrorResponse,

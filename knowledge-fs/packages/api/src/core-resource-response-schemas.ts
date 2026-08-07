@@ -53,6 +53,21 @@ export const KnowledgeSpaceCreationResponseSchema = KnowledgeSpaceSchema.extend(
     "validation-failed",
   ]),
 }).openapi("KnowledgeSpaceCreationResponse");
+export const SourceSyncPolicyResponseSchema = z
+  .object({
+    createdAt: z.string(),
+    customIntervalSeconds: z.number().int().optional(),
+    enabled: z.boolean(),
+    expectedSourceVersion: z.number().int().min(1),
+    id: z.string().uuid(),
+    knowledgeSpaceId: z.string().uuid(),
+    mode: z.enum(["provider", "manual", "interval", "custom"]),
+    nextRunAt: z.string().optional(),
+    revision: z.number().int().min(1),
+    sourceId: z.string().uuid(),
+    updatedAt: z.string(),
+  })
+  .openapi("SourceSyncPolicy");
 export const SourceResponseSchema = SourceSchema.omit({ credentialRef: true })
   .extend({
     credentialConfigured: z
@@ -62,6 +77,8 @@ export const SourceResponseSchema = SourceSchema.omit({ credentialRef: true })
     metadata: z
       .record(z.unknown())
       .describe("Source metadata with credentials and other secret-bearing fields removed"),
+    lastSyncedAt: z.string().optional(),
+    syncPolicy: SourceSyncPolicyResponseSchema.optional(),
   })
   .openapi("Source");
 

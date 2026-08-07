@@ -12,6 +12,7 @@ import {
   SourceWorkflowError,
   type SourceWorkflowFence,
   type SourceWorkflowRun,
+  nextSourceWorkflowMaterializationGeneration,
   nextSyncPolicyRunAt,
 } from "./source-product-workflow";
 
@@ -438,6 +439,7 @@ export function createInMemorySourceProductWorkflowRepository(input?: {
         leaseToken: undefined,
         permissionSnapshotId,
         permissionSnapshotRevision,
+        payload: nextSourceWorkflowMaterializationGeneration(run.payload),
         progressCompleted: 0,
         progressFailed: 0,
         progressSkipped: 0,
@@ -627,6 +629,38 @@ export function createInMemorySourceProductWorkflowRepository(input?: {
       const policy = policies.get(`${tenantId}\0${knowledgeSpaceId}\0${sourceId}`);
       return policy ? clonePolicy(policy) : null;
     },
+    listSyncPolicies: async ({ knowledgeSpaceId, sourceIds, tenantId }) => {
+      const ids = validatedSourceBatchIds(sourceIds);
+      return ids.flatMap((sourceId) => {
+        const policy = policies.get(`${tenantId}\0${knowledgeSpaceId}\0${sourceId}`);
+        return policy ? [clonePolicy(policy)] : [];
+      });
+    },
+    listLatestSyncCompletions: async ({ knowledgeSpaceId, sourceIds, tenantId }) => {
+      const ids = validatedSourceBatchIds(sourceIds);
+      const latestBySourceId = new Map<string, string>();
+      const requestedSourceIds = new Set(ids);
+      for (const run of runs.values()) {
+        if (
+          run.tenantId !== tenantId ||
+          run.knowledgeSpaceId !== knowledgeSpaceId ||
+          run.kind !== "sync" ||
+          (run.state !== "completed" && run.state !== "zero_results") ||
+          !run.sourceId ||
+          !run.completedAt ||
+          !requestedSourceIds.has(run.sourceId)
+        ) {
+          continue;
+        }
+        const current = latestBySourceId.get(run.sourceId);
+        if (!current || run.completedAt > current)
+          latestBySourceId.set(run.sourceId, run.completedAt);
+      }
+      return ids.flatMap((sourceId) => {
+        const completedAt = latestBySourceId.get(sourceId);
+        return completedAt ? [{ completedAt, sourceId }] : [];
+      });
+    },
     enqueueDueSyncRuns: async ({ limit, maxExecutionAttempts, now }) => {
       if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1_000) {
         throw new Error("Source sync due enqueue limit must be 1-1000");
@@ -681,6 +715,12 @@ export function createInMemorySourceProductWorkflowRepository(input?: {
       return page(list, limit, (item) => item.id, clonePolicy);
     },
   };
+}
+
+function validatedSourceBatchIds(sourceIds: readonly string[]): readonly string[] {
+  const ids = [...new Set(sourceIds)];
+  if (ids.length > 200) throw new Error("Source workflow batch must contain at most 200 ids");
+  return ids;
 }
 
 function page<T>(

@@ -10,6 +10,7 @@ import type {
   SourceDocumentInput,
   SourceDocumentMaterializer,
 } from "./source-document-materializer";
+import { createSourceWorkflowDocumentAssetId } from "./source-document-workflow-ownership";
 import type { PublishSourceLogicalRevisionInput } from "./source-logical-revision-publisher";
 import {
   type NewSourceWorkflowRun,
@@ -278,6 +279,55 @@ describe("source-product workflow provider imports", () => {
     expect(fixture.publish).toHaveBeenCalledTimes(2);
     expect(deleteRun).toHaveBeenCalledTimes(2);
     expect(source).toMatchObject({ metadata: { preview: false }, status: "active", version: 2 });
+  });
+
+  it("advances materialization ownership generation when an explicit retry must avoid tombstones", async () => {
+    const ownerships: NonNullable<
+      MaterializeSourceDocumentsInput["workflowExecution"]
+    >["items"][number][] = [];
+    const materializer: SourceDocumentMaterializer = {
+      compensate: vi.fn(async () => undefined),
+      materialize: vi.fn(async ({ documents, workflowExecution }) => {
+        const ownership = workflowExecution?.items[0];
+        if (!ownership) throw new Error("workflow ownership is missing");
+        ownerships.push(ownership);
+        if (ownerships.length === 1) throw new Error("first materialization failed");
+        const documentAssetId = createSourceWorkflowDocumentAssetId(ownership);
+        return {
+          documents: documents.map((document: SourceDocumentInput) => ({
+            documentAssetId,
+            documentAssetVersion: 1,
+            filename: document.filename,
+            mimeType: document.mimeType,
+            objectKey: `objects/${documentAssetId}`,
+            sizeBytes: document.body.byteLength,
+            workflowOwnership: ownership,
+          })),
+          failed: [],
+        };
+      }),
+    };
+    const fixture = await createSelectedCrawlFixture({ materializer });
+
+    await expect(fixture.runtime.tick()).resolves.toMatchObject({ completed: 0, failed: 1 });
+    await fixture.repository.retry({
+      accessChannel: "interactive",
+      now: nowIso,
+      permissionSnapshotId: "permission-retry",
+      permissionSnapshotRevision: 1,
+      requestedBySubjectId: "editor-source",
+      runId: fixture.run.id,
+    });
+    await expect(fixture.runtime.tick()).resolves.toMatchObject({ completed: 1, failed: 0 });
+
+    expect(ownerships).toHaveLength(2);
+    const [firstOwnership, secondOwnership] = ownerships;
+    if (!firstOwnership || !secondOwnership) throw new Error("retry ownership is missing");
+    expect(firstOwnership.runId).toBe(secondOwnership.runId);
+    expect(secondOwnership.itemKey).toBe(`1:${firstOwnership.itemKey}`);
+    expect(createSourceWorkflowDocumentAssetId(firstOwnership)).not.toBe(
+      createSourceWorkflowDocumentAssetId(secondOwnership),
+    );
   });
 
   it("imports online-document records with and without optional identity metadata", async () => {
@@ -2521,6 +2571,7 @@ describe("source-product workflow runtime authorization and recovery", () => {
 async function createSelectedCrawlFixture(input: {
   readonly cleanupHasMore?: boolean | undefined;
   readonly contentAvailable?: boolean | undefined;
+  readonly materializer?: SourceDocumentMaterializer | undefined;
   readonly maxCleanupBatchesPerRun?: number | undefined;
 }) {
   const body = new TextEncoder().encode("selected crawl body");
@@ -2535,6 +2586,7 @@ async function createSelectedCrawlFixture(input: {
       put: vi.fn(async () => "staged/selected-crawl"),
     },
     inventory: [],
+    materializer: input.materializer,
     maxCleanupBatchesPerRun: input.maxCleanupBatchesPerRun,
     run: providerRun(source.id, "crawl-preview", {}),
     source,

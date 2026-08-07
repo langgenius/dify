@@ -2102,6 +2102,7 @@ export function createKnowledgeGateway({
     ...(sourceCredentialTester ? { sourceCredentialTester } : {}),
     ...(sourceCredentials ? { sourceCredentials } : {}),
     ...(sourceProduct ? { sourceConnections: sourceProduct.connections } : {}),
+    ...(sourceProduct ? { sourceProductWorkflows: sourceProduct.repository } : {}),
     legacyMutationEndpointsEnabled: sourceProduct === undefined,
     sourceDocumentMaterializer,
     sources: sourceRepository,
