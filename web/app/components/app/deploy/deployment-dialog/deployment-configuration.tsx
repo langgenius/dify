@@ -303,7 +303,6 @@ export function DeploymentConfiguration({
     : undefined
   const deployMutation = useDeployWorkflow({
     appId,
-    environmentId: request.environmentId,
     invalidateAppEnvironmentsOnSuccess,
     onSuccess: (response) => {
       onDeploymentStarted?.(response.operation.id)

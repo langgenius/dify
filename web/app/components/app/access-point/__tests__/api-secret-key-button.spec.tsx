@@ -1,3 +1,4 @@
+import type { SecretKeyScope } from '@/app/components/develop/secret-key/secret-key-modal'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { render } from '@/test/console/render'
@@ -26,19 +27,18 @@ vi.mock('@/service/use-apps', () => ({
 
 vi.mock('@/app/components/develop/secret-key/secret-key-modal', () => ({
   default: ({
-    appId,
     canManage,
-    environmentId,
     isShow,
+    scope,
   }: {
-    appId?: string
     canManage: boolean
-    environmentId?: string
     isShow: boolean
+    scope: SecretKeyScope
   }) =>
     isShow ? (
       <div role="dialog" aria-label="API key management">
-        {appId}:{environmentId}:{String(canManage)}
+        {scope.type === 'dataset' ? '' : scope.appId}:
+        {scope.type === 'environment' ? scope.environmentId : ''}:{String(canManage)}
       </div>
     ) : null,
 }))

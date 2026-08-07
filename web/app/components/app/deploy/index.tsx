@@ -6,7 +6,6 @@ import type {
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { DeploymentDialogRequest } from './deployment-dialog/types'
 import type { DeploymentVersion } from './version'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -14,7 +13,6 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { BuiltInEnvironmentCard } from './built-in-environment-card'
@@ -22,6 +20,7 @@ import { DeploymentDialog } from './deployment-dialog'
 import { EnvironmentTable } from './environment-table'
 import { AppDeployStateBoundary, latestAppWorkflowVersionAtom } from './state'
 import { useRefreshAppEnvironmentsAfterDeploymentPolling } from './use-refresh-app-environments-after-deployment-polling'
+import { useUndeployWorkflow } from './use-undeploy-workflow'
 
 function toDialogVersion(version: WorkflowVersion, defaultName: string): DeploymentVersion {
   return {
@@ -37,37 +36,8 @@ function AppDeployContent({ appId }: { appId: string }) {
   const { t: tWorkflow } = useTranslation('workflow')
   const [deploymentRequest, setDeploymentRequest] = useState<DeploymentDialogRequest>()
   const latestVersion = useAtomValue(latestAppWorkflowVersionAtom)
-  const queryClient = useQueryClient()
   useRefreshAppEnvironmentsAfterDeploymentPolling(appId)
-  const { mutateAsync: undeployWorkflow } = useMutation(
-    consoleQuery.enterprise.appDeploy.deploymentService.undeployWorkflow.mutationOptions({
-      onSuccess: async () => {
-        const appEnvironmentsQuery =
-          consoleQuery.enterprise.appDeploy.deploymentService.listAppEnvironments.queryOptions({
-            input: {
-              params: {
-                app_id: appId,
-              },
-            },
-          })
-        const environmentDeploymentsQuery =
-          consoleQuery.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryOptions(
-            {
-              input: {
-                params: {
-                  app_id: appId,
-                },
-              },
-            },
-          )
-
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: appEnvironmentsQuery.queryKey }),
-          queryClient.invalidateQueries({ queryKey: environmentDeploymentsQuery.queryKey }),
-        ])
-      },
-    }),
-  )
+  const undeployWorkflow = useUndeployWorkflow(appId)
 
   const handleRedeploy = (deployment: EnvironmentDeployment) => {
     const deploymentState = deployment.deployment
@@ -94,19 +64,6 @@ function AppDeployContent({ appId }: { appId: string }) {
         tWorkflow(($) => $['versionHistory.defaultName']),
       ),
       kind: 'redeploy',
-    })
-  }
-
-  const handleUndeploy = async (deployment: EnvironmentDeployment) => {
-    const workflowId = deployment.deployment?.current_version?.id
-    if (!workflowId) return
-
-    await undeployWorkflow({
-      params: {
-        app_id: appId,
-        environment_id: deployment.environment.id,
-        workflow_id: workflowId,
-      },
     })
   }
 
@@ -162,7 +119,7 @@ function AppDeployContent({ appId }: { appId: string }) {
               })
             }}
             onRedeploy={handleRedeploy}
-            onUndeploy={handleUndeploy}
+            onUndeploy={undeployWorkflow}
           />
         </div>
       </main>
