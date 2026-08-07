@@ -61,7 +61,22 @@ def _facade() -> MagicMock:
         id="workflow-1",
         state="completed",
     )
-    facade.get_source.return_value = SimpleNamespace(version=3)
+    facade.get_source.return_value = SimpleNamespace(
+        metadata={
+            "clientRequestId": "initial-website-source:operation-1",
+            "preview": True,
+        },
+        status="disabled",
+        version=3,
+    )
+    facade.update_source.return_value = SimpleNamespace(
+        metadata={
+            "clientRequestId": "initial-website-source:operation-1",
+            "preview": False,
+        },
+        status="active",
+        version=4,
+    )
     facade.get_source_sync_policy.side_effect = KnowledgeFSProductResourceNotFoundError("not found")
     return facade
 
@@ -124,11 +139,18 @@ def test_initial_website_source_import_recrawls_exact_selection_and_configures_d
         "https://docs.dify.ai/a",
         "https://docs.dify.ai/b",
     ]
+    source_update_payload = facade.update_source.call_args.kwargs["payload"]
+    assert source_update_payload.expected_version == 3
+    assert source_update_payload.metadata == {
+        "clientRequestId": "initial-website-source:operation-1",
+        "preview": False,
+    }
+    assert source_update_payload.status == "active"
     sync_payload = facade.update_source_sync_policy.call_args.kwargs["payload"]
     assert sync_payload.mode == "interval"
     assert sync_payload.enabled is True
     assert sync_payload.expected_revision == 0
-    assert sync_payload.expected_source_version == 3
+    assert sync_payload.expected_source_version == 4
 
 
 def test_initial_website_source_import_reuses_source_across_pages_and_preserves_failure() -> None:
@@ -152,6 +174,7 @@ def test_initial_website_source_import_reuses_source_across_pages_and_preserves_
     assert _start(facade, _payload()) == "failed-workflow"
     facade.create_source.assert_not_called()
     facade.list_source_connections.assert_not_called()
+    facade.update_source.assert_not_called()
     facade.update_source_sync_policy.assert_not_called()
 
 
@@ -193,6 +216,25 @@ def test_initial_website_source_import_configures_remaining_sync_modes(
     assert sync_payload.mode == expected_mode
     assert sync_payload.enabled is expected_enabled
     assert sync_payload.expected_revision == 7
+    assert sync_payload.expected_source_version == 4
+
+
+def test_initial_website_source_import_does_not_recommit_active_source_after_retry() -> None:
+    facade = _facade()
+    facade.get_source.return_value = SimpleNamespace(
+        metadata={
+            "clientRequestId": "initial-website-source:operation-1",
+            "preview": False,
+        },
+        status="active",
+        version=4,
+    )
+
+    assert _start(facade, _payload()) == "workflow-1"
+
+    facade.update_source.assert_not_called()
+    sync_payload = facade.update_source_sync_policy.call_args.kwargs["payload"]
+    assert sync_payload.expected_source_version == 4
 
 
 @pytest.mark.parametrize(

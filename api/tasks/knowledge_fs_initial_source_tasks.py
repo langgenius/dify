@@ -17,6 +17,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSSourceConnectionCreatePayload,
     KnowledgeFSSourceCreatePayload,
     KnowledgeFSSourceSyncPolicyPayload,
+    KnowledgeFSSourceUpdatePayload,
 )
 from services.knowledge_fs.product_remote import KnowledgeFSProductResourceNotFoundError
 from services.knowledge_fs.runtime import get_knowledge_fs_runtime
@@ -219,6 +220,20 @@ def start_initial_website_source_import(
         control_space_id=control_space_id,
         source_id=source.id,
     )
+    if imported_source.status == "active" and imported_source.metadata.get("preview") is False:
+        committed_source = imported_source
+    else:
+        committed_source = facade.update_source(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            source_id=source.id,
+            payload=KnowledgeFSSourceUpdatePayload(
+                expectedVersion=imported_source.version,
+                metadata={**imported_source.metadata, "preview": False},
+                status="active",
+            ),
+        )
     try:
         current_policy = facade.get_source_sync_policy(
             tenant_id=tenant_id,
@@ -234,21 +249,21 @@ def start_initial_website_source_import(
             enabled=False,
             mode="manual",
             expectedRevision=expected_revision,
-            expectedSourceVersion=imported_source.version,
+            expectedSourceVersion=committed_source.version,
         )
     elif payload.sync_policy == "daily":
         sync_policy = KnowledgeFSSourceSyncPolicyPayload(
             enabled=True,
             mode="interval",
             expectedRevision=expected_revision,
-            expectedSourceVersion=imported_source.version,
+            expectedSourceVersion=committed_source.version,
         )
     else:
         sync_policy = KnowledgeFSSourceSyncPolicyPayload(
             enabled=True,
             mode="provider",
             expectedRevision=expected_revision,
-            expectedSourceVersion=imported_source.version,
+            expectedSourceVersion=committed_source.version,
         )
     facade.update_source_sync_policy(
         tenant_id=tenant_id,
