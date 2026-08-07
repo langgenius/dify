@@ -11,7 +11,7 @@ from core.db.session_factory import get_session_maker
 from core.schemas.schema_manager import SchemaManager
 from enums.deployment_edition import DeploymentEdition
 from extensions.ext_redis import RedisClientWrapper, redis_client
-from repositories.setup_repository import SetupRepository
+from repositories.installation_state_repository import InstallationStateRepository
 from repositories.workspace_member_query_repository import WorkspaceMemberQueryRepository
 from repositories.workspace_query_repository import WorkspaceQueryRepository
 from services.schema_definition_service import SchemaDefinitionService
@@ -39,10 +39,11 @@ def build_application_services(
     deployment_edition: DeploymentEdition,
     redis: RedisClientWrapper,
 ) -> ApplicationServices:
+    installation_state = InstallationStateRepository(client=database_client)
     return ApplicationServices(
         schema_definitions=SchemaDefinitionService(source_factory=SchemaManager),
         setup=SetupService(
-            state=SetupRepository(client=database_client),
+            state=installation_state,
             accounts=RegisterServiceAccountProvisioner(client=database_client),
             lock=RedisSetupLock(client=redis),
             setup_required=deployment_edition != DeploymentEdition.CLOUD,
