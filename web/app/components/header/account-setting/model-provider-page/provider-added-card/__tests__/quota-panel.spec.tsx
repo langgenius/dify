@@ -8,6 +8,7 @@ let mockWorkspaceData:
   | {
       trial_credits: number
       trial_credits_used: number
+      is_unlimited?: boolean
       trial_credits_exhausted_at?: number
       next_credit_reset_date: number
     }
@@ -75,16 +76,20 @@ vi.mock('@/app/components/base/icons/src/public/llm', () => {
 
 vi.mock('../use-trial-credits', () => ({
   useTrialCredits: () => {
-    const totalCredits = Math.max(mockWorkspaceData?.trial_credits ?? 0, 0)
+    const isUnlimited = mockWorkspaceData?.is_unlimited ?? false
+    const rawTotalCredits = mockWorkspaceData?.trial_credits ?? 0
     const rawUsedCredits = mockWorkspaceData?.trial_credits_used ?? 0
-    const normalizedUsedCredits = Math.max(rawUsedCredits, 0)
-    const usedCredits = Math.min(normalizedUsedCredits, totalCredits)
-    const credits = Math.max(totalCredits - usedCredits, 0)
+    const totalCredits = isUnlimited ? rawTotalCredits : Math.max(rawTotalCredits, 0)
+    const usedCredits = isUnlimited
+      ? rawUsedCredits
+      : Math.min(Math.max(rawUsedCredits, 0), totalCredits)
+    const credits = isUnlimited ? -1 : Math.max(totalCredits - usedCredits, 0)
     return {
       credits,
       usedCredits,
       totalCredits,
-      isExhausted: credits <= 0,
+      isUnlimited,
+      isExhausted: !isUnlimited && credits <= 0,
       isLoading: mockWorkspaceIsPending && !mockWorkspaceData,
       exhaustedAt: mockWorkspaceData?.trial_credits_exhausted_at,
       nextCreditResetDate: mockWorkspaceData?.next_credit_reset_date,
@@ -227,6 +232,22 @@ describe('QuotaPanel', () => {
     expect(screen.getByText('/')).toHaveClass('font-normal', 'text-text-tertiary')
     expect(screen.getByText('/')).not.toHaveClass('system-xl-semibold', 'text-text-destructive')
     expect(screen.queryByText(/modelProvider\.resetDate/)).not.toBeInTheDocument()
+  })
+
+  it('should show unlimited credits instead of backend sentinel values', () => {
+    mockWorkspaceData = {
+      trial_credits: -1,
+      trial_credits_used: 999,
+      is_unlimited: true,
+      next_credit_reset_date: 0,
+    }
+
+    renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
+
+    expect(screen.getByText('common.license.unlimited')).toBeInTheDocument()
+    expect(screen.queryByText('999')).not.toBeInTheDocument()
+    expect(screen.queryByText('-1')).not.toBeInTheDocument()
+    expect(screen.queryByText(/modelProvider\.used/)).not.toBeInTheDocument()
   })
 
   it('should open install modal when clicking an unsupported trial provider', async () => {
