@@ -2,12 +2,10 @@ from __future__ import annotations
 
 from inspect import unwrap
 from types import SimpleNamespace
-from unittest.mock import MagicMock
 
 import pytest
 from dify_agent.client import DifyAgentClientError, DifyAgentHTTPError, DifyAgentTimeoutError
 from dify_agent.protocol import BindingFileListResponse, BindingFileReadResponse
-from sqlalchemy.orm import Session
 
 from controllers.console import agent_app_sandbox as module
 from models.model import App, AppMode, IconType
@@ -17,6 +15,9 @@ from services.agent_app_sandbox_service import AgentSandboxDownload, AgentSandbo
 class _AgentAppService:
     def __init__(self) -> None:
         self.calls: list[tuple[str, str, str, str, str, str, str, str]] = []
+
+    def resolve_app_id(self, *, tenant_id: str, agent_id: str) -> str:
+        return "app-1"
 
     def get_info(
         self,
@@ -77,6 +78,9 @@ class _AgentAppService:
 class _WorkflowService:
     def __init__(self) -> None:
         self.calls: list[tuple[str, ...]] = []
+
+    def resolve_app_id(self, *, tenant_id: str, app_id: str) -> str:
+        return app_id
 
     def list_files(
         self,
@@ -160,25 +164,18 @@ def test_handle_maps_sandbox_and_agent_backend_errors() -> None:
         module._handle(RuntimeError("boom"))
 
 
-def test_agent_app_sandbox_resources_proxy_service(monkeypatch: pytest.MonkeyPatch, unbound_session: Session) -> None:
+def test_agent_app_sandbox_resources_proxy_service(monkeypatch: pytest.MonkeyPatch) -> None:
     service = _AgentAppService()
-    session = unbound_session
     account = SimpleNamespace(id="account-1")
-    resolver = MagicMock(return_value=_app_model())
     monkeypatch.setattr(module, "AgentAppSandboxService", lambda: service)
-    monkeypatch.setattr(module, "resolve_agent_runtime_app_model", resolver)
     monkeypatch.setattr(
         module,
         "query_params_from_request",
         lambda model: SimpleNamespace(caller_type="build_draft", caller_id="build-1", path="sub/report.txt"),
     )
-    download_context = MagicMock()
-    download_session = download_context.__enter__.return_value
-    monkeypatch.setattr(module.session_factory, "create_session", lambda: download_context)
-
-    info = unwrap(module.AgentAppSandboxInfoResource.get)(object(), session, account, "tenant-1", "agent-1")
-    listing = unwrap(module.AgentAppSandboxListResource.get)(object(), session, account, "tenant-1", "agent-1")
-    preview = unwrap(module.AgentAppSandboxReadResource.get)(object(), session, account, "tenant-1", "agent-1")
+    info = unwrap(module.AgentAppSandboxInfoResource.get)(object(), account, "tenant-1", "agent-1")
+    listing = unwrap(module.AgentAppSandboxListResource.get)(object(), account, "tenant-1", "agent-1")
+    preview = unwrap(module.AgentAppSandboxReadResource.get)(object(), account, "tenant-1", "agent-1")
     req_data = module.AgentSandboxDownloadPayload.model_validate(
         {"caller_type": "build_draft", "caller_id": "build-1", "path": "report.txt"}
     )
@@ -194,14 +191,13 @@ def test_agent_app_sandbox_resources_proxy_service(monkeypatch: pytest.MonkeyPat
         ("read", "tenant-1", "app-1", "agent-1", "build_draft", "build-1", "account-1", "sub/report.txt"),
         ("download", "tenant-1", "app-1", "agent-1", "build_draft", "build-1", "account-1", "report.txt"),
     ]
-    assert all(call.kwargs["session"] is session for call in resolver.call_args_list[:3])
-    assert resolver.call_args_list[3].kwargs["session"] is download_session
 
 
-def test_agent_app_sandbox_resource_returns_normalized_errors(
-    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
-) -> None:
+def test_agent_app_sandbox_resource_returns_normalized_errors(monkeypatch: pytest.MonkeyPatch) -> None:
     class FailingService:
+        def resolve_app_id(self, **kwargs):
+            return "app-1"
+
         def get_info(self, **kwargs):
             raise AgentSandboxInspectorError("no_active_binding", "no active binding", status_code=404)
 
@@ -209,20 +205,18 @@ def test_agent_app_sandbox_resource_returns_normalized_errors(
             raise AgentSandboxInspectorError("no_active_binding", "no active binding", status_code=404)
 
     monkeypatch.setattr(module, "AgentAppSandboxService", FailingService)
-    session = unbound_session
     account = SimpleNamespace(id="account-1")
-    monkeypatch.setattr(module, "resolve_agent_runtime_app_model", MagicMock(return_value=_app_model()))
     monkeypatch.setattr(
         module,
         "query_params_from_request",
         lambda model: SimpleNamespace(caller_type="conversation", caller_id="conv-1", path="."),
     )
 
-    assert unwrap(module.AgentAppSandboxInfoResource.get)(object(), session, account, "tenant-1", "agent-1") == (
+    assert unwrap(module.AgentAppSandboxInfoResource.get)(object(), account, "tenant-1", "agent-1") == (
         {"code": "no_active_binding", "message": "no active binding"},
         404,
     )
-    assert unwrap(module.AgentAppSandboxListResource.get)(object(), session, account, "tenant-1", "agent-1") == (
+    assert unwrap(module.AgentAppSandboxListResource.get)(object(), account, "tenant-1", "agent-1") == (
         {"code": "no_active_binding", "message": "no active binding"},
         404,
     )
@@ -237,9 +231,6 @@ def test_workflow_agent_sandbox_resources_proxy_service(monkeypatch: pytest.Monk
         lambda model: SimpleNamespace(node_execution_id="execution-1", path="out.txt"),
     )
     app_model = _app_model()
-    download_context = MagicMock()
-    download_context.__enter__.return_value.scalar.return_value = app_model
-    monkeypatch.setattr(module.session_factory, "create_session", lambda: download_context)
 
     listing = unwrap(module.WorkflowAgentSandboxListResource.get)(
         object(), "tenant-1", app_model, "run-1", "agent-node"
@@ -263,55 +254,3 @@ def test_workflow_agent_sandbox_resources_proxy_service(monkeypatch: pytest.Monk
         ("read", "tenant-1", "app-1", "run-1", "agent-node", "out.txt"),
         ("download", "tenant-1", "app-1", "run-1", "agent-node", "account-1", "download.txt"),
     ]
-
-
-def test_download_route_session_scopes_exit_before_service_calls(monkeypatch: pytest.MonkeyPatch) -> None:
-    events: list[str] = []
-
-    class RecordingContext:
-        def __init__(self, session: MagicMock, label: str) -> None:
-            self.session = session
-            self.label = label
-
-        def __enter__(self) -> MagicMock:
-            return self.session
-
-        def __exit__(self, *_args: object) -> None:
-            events.append(f"{self.label}-exit")
-
-    agent_session = MagicMock()
-    workflow_session = MagicMock()
-    workflow_session.scalar.return_value = _app_model()
-    contexts = iter(
-        [
-            RecordingContext(agent_session, "agent-app"),
-            RecordingContext(workflow_session, "workflow-app"),
-        ]
-    )
-    monkeypatch.setattr(module.session_factory, "create_session", lambda: next(contexts))
-    monkeypatch.setattr(module, "resolve_agent_runtime_app_model", lambda **_kwargs: _app_model())
-
-    class RecordingAgentService(_AgentAppService):
-        def download_file(self, **kwargs) -> AgentSandboxDownload:
-            events.append("agent-download")
-            return super().download_file(**kwargs)
-
-    class RecordingWorkflowService(_WorkflowService):
-        def download_file(self, **kwargs) -> AgentSandboxDownload:
-            events.append("workflow-download")
-            return super().download_file(**kwargs)
-
-    monkeypatch.setattr(module, "AgentAppSandboxService", RecordingAgentService)
-    monkeypatch.setattr(module, "WorkflowAgentSandboxService", RecordingWorkflowService)
-    account = SimpleNamespace(id="account-1")
-    agent_payload = module.AgentSandboxDownloadPayload(
-        caller_type="build_draft", caller_id="build-1", path="report.txt"
-    )
-    workflow_payload = module.WorkflowAgentSandboxDownloadPayload(node_execution_id="execution-1", path="report.txt")
-
-    unwrap(module.AgentAppSandboxDownloadResource.post)(object(), agent_payload, account, "tenant-1", "agent-1")
-    unwrap(module.WorkflowAgentSandboxDownloadResource.post)(
-        object(), workflow_payload, "tenant-1", account, "app-1", "run-1", "agent-node"
-    )
-
-    assert events == ["agent-app-exit", "agent-download", "workflow-app-exit", "workflow-download"]

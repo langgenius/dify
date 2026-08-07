@@ -31,7 +31,7 @@ from models.agent import (
     AgentWorkspaceBinding,
     AgentWorkspaceOwnerType,
 )
-from models.model import App, Conversation
+from models.model import App, AppMode, Conversation
 from models.workflow import WorkflowNodeExecutionModel
 from services.agent.roster_service import AgentRosterService
 from services.agent.workspace_service import AgentWorkspaceService, WorkspaceOwnerScope
@@ -75,6 +75,15 @@ class _ResolvedBinding:
 class AgentAppSandboxService:
     def __init__(self, *, client_factory: Callable[[], Client] | None = None) -> None:
         self._client_factory = client_factory or _default_client_factory
+
+    @staticmethod
+    def resolve_app_id(*, tenant_id: str, agent_id: str) -> str:
+        with session_factory.create_session() as session:
+            app = AgentRosterService(session).get_agent_runtime_app_model(
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+            )
+            return app.id
 
     def get_info(
         self,
@@ -262,6 +271,18 @@ class AgentAppSandboxService:
 class WorkflowAgentSandboxService:
     def __init__(self, *, client_factory: Callable[[], Client] | None = None) -> None:
         self._client_factory = client_factory or _default_client_factory
+
+    @staticmethod
+    def resolve_app_id(*, tenant_id: str, app_id: str) -> str | None:
+        with session_factory.create_session() as session:
+            return session.scalar(
+                select(App.id).where(
+                    App.id == app_id,
+                    App.tenant_id == tenant_id,
+                    App.status == "normal",
+                    App.mode.in_((AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value)),
+                )
+            )
 
     def list_files(
         self,

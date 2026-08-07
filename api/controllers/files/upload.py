@@ -4,7 +4,6 @@ from flask import request
 from flask_restx import Resource
 from flask_restx.api import HTTPStatus
 from pydantic import BaseModel, Field
-from sqlalchemy import select
 from werkzeug.exceptions import Forbidden
 
 import services
@@ -13,7 +12,7 @@ from core.tools.signature import verify_plugin_file_signature
 from core.tools.tool_file_manager import ToolFileManager, resolve_extension
 from core.workflow.file_reference import build_file_reference
 from fields.file_fields import FileResponse
-from models import Account, TenantAccountJoin
+from services.account_service import TenantService
 
 from ..common.errors import (
     FileTooLargeError,
@@ -87,16 +86,14 @@ class PluginUploadFileApi(Resource):
             if args.user_id is None:
                 raise Forbidden("Invalid request.")
             with session_factory.create_session() as session:
-                owner_id = session.scalar(
-                    select(Account.id)
-                    .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
-                    .where(
-                        Account.id == args.user_id,
-                        TenantAccountJoin.tenant_id == tenant_id,
-                    )
+                is_tenant_member = TenantService.account_belongs_to_tenant(
+                    args.user_id,
+                    tenant_id,
+                    session=session,
                 )
-            if owner_id is None:
+            if not is_tenant_member:
                 raise Forbidden("Invalid request.")
+            owner_id = args.user_id
         else:
             owner_id = get_user(tenant_id, args.user_id).id
 

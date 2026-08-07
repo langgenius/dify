@@ -13,8 +13,6 @@ from uuid import UUID
 from dify_agent.client import DifyAgentClientError, DifyAgentHTTPError, DifyAgentTimeoutError
 from flask_restx import Resource
 from pydantic import BaseModel, Field
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from controllers.common.schema import (
     query_params_from_model,
@@ -22,9 +20,7 @@ from controllers.common.schema import (
     register_response_schema_models,
     register_schema_models,
 )
-from controllers.common.session import with_session
 from controllers.console import console_ns
-from controllers.console.agent.app_helpers import resolve_agent_runtime_app_model
 from controllers.console.app.error import AppNotFoundError
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
@@ -34,7 +30,6 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
-from core.db.session_factory import session_factory
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.login import login_required
@@ -150,8 +145,6 @@ def _handle(exc: Exception) -> tuple[dict[str, object], int]:
     raise exc
 
 
-# Agent GET resources retain only scalar ``app_id`` and end their read
-# transaction before sandbox-service work can reach Dify Agent.
 @console_ns.route("/agent/<uuid:agent_id>/sandbox")
 class AgentAppSandboxInfoResource(Resource):
     @console_ns.doc("get_agent_app_sandbox_info")
@@ -163,14 +156,12 @@ class AgentAppSandboxInfoResource(Resource):
     @account_initialization_required
     @with_current_tenant_id
     @with_current_user
-    @with_session(write=False)
-    def get(self, session: Session, current_user: Account, tenant_id: str, agent_id: UUID):
-        app_model = resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
-        app_id = app_model.id
-        session.rollback()
+    def get(self, current_user: Account, tenant_id: str, agent_id: UUID):
+        service = AgentAppSandboxService()
+        app_id = service.resolve_app_id(tenant_id=tenant_id, agent_id=str(agent_id))
         query = query_params_from_request(AgentSandboxInfoQuery)
         try:
-            result = AgentAppSandboxService().get_info(
+            result = service.get_info(
                 tenant_id=tenant_id,
                 app_id=app_id,
                 agent_id=str(agent_id),
@@ -194,14 +185,12 @@ class AgentAppSandboxListResource(Resource):
     @account_initialization_required
     @with_current_tenant_id
     @with_current_user
-    @with_session(write=False)
-    def get(self, session: Session, current_user: Account, tenant_id: str, agent_id: UUID):
-        app_model = resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
-        app_id = app_model.id
-        session.rollback()
+    def get(self, current_user: Account, tenant_id: str, agent_id: UUID):
+        service = AgentAppSandboxService()
+        app_id = service.resolve_app_id(tenant_id=tenant_id, agent_id=str(agent_id))
         query = query_params_from_request(AgentSandboxListQuery)
         try:
-            result = AgentAppSandboxService().list_files(
+            result = service.list_files(
                 tenant_id=tenant_id,
                 app_id=app_id,
                 agent_id=str(agent_id),
@@ -226,14 +215,12 @@ class AgentAppSandboxReadResource(Resource):
     @account_initialization_required
     @with_current_tenant_id
     @with_current_user
-    @with_session(write=False)
-    def get(self, session: Session, current_user: Account, tenant_id: str, agent_id: UUID):
-        app_model = resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
-        app_id = app_model.id
-        session.rollback()
+    def get(self, current_user: Account, tenant_id: str, agent_id: UUID):
+        service = AgentAppSandboxService()
+        app_id = service.resolve_app_id(tenant_id=tenant_id, agent_id=str(agent_id))
         query = query_params_from_request(AgentSandboxFileQuery)
         try:
-            result = AgentAppSandboxService().read_file(
+            result = service.read_file(
                 tenant_id=tenant_id,
                 app_id=app_id,
                 agent_id=str(agent_id),
@@ -266,9 +253,10 @@ class AgentAppSandboxDownloadResource(Resource):
         tenant_id: str,
         agent_id: UUID,
     ):
-        app_id = _resolve_agent_download_app_id(tenant_id=tenant_id, agent_id=agent_id)
+        service = AgentAppSandboxService()
+        app_id = service.resolve_app_id(tenant_id=tenant_id, agent_id=str(agent_id))
         try:
-            result = AgentAppSandboxService().download_file(
+            result = service.download_file(
                 tenant_id=tenant_id,
                 app_id=app_id,
                 agent_id=str(agent_id),
@@ -377,9 +365,12 @@ class WorkflowAgentSandboxDownloadResource(Resource):
         workflow_run_id: UUID,
         node_id: str,
     ):
-        resolved_app_id = _resolve_workflow_download_app_id(tenant_id=tenant_id, app_id=app_id)
+        service = WorkflowAgentSandboxService()
+        resolved_app_id = service.resolve_app_id(tenant_id=tenant_id, app_id=str(app_id))
+        if resolved_app_id is None:
+            raise AppNotFoundError()
         try:
-            result = WorkflowAgentSandboxService().download_file(
+            result = service.download_file(
                 tenant_id=tenant_id,
                 app_id=resolved_app_id,
                 workflow_run_id=str(workflow_run_id),
@@ -391,24 +382,3 @@ class WorkflowAgentSandboxDownloadResource(Resource):
         except Exception as exc:
             return _handle(exc)
         return result.model_dump()
-
-
-def _resolve_agent_download_app_id(*, tenant_id: str, agent_id: UUID) -> str:
-    with session_factory.create_session() as session:
-        app_model = resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
-        return app_model.id
-
-
-def _resolve_workflow_download_app_id(*, tenant_id: str, app_id: UUID) -> str:
-    with session_factory.create_session() as session:
-        app_model = session.scalar(
-            select(App).where(
-                App.id == str(app_id),
-                App.tenant_id == tenant_id,
-                App.status == "normal",
-                App.mode.in_((AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value)),
-            )
-        )
-        if app_model is None:
-            raise AppNotFoundError()
-        return app_model.id

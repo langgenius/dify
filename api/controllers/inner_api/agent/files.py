@@ -6,7 +6,6 @@ from typing import Literal
 
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, ValidationError
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -20,7 +19,6 @@ from core.plugin.entities.request import RequestDownloadFileMapping, RequestRequ
 from core.tools.signature import bind_file_uri, get_signed_file_uri_for_plugin
 from fields.base import ResponseModel
 from libs.exception import BaseHTTPException
-from models import Account, TenantAccountJoin
 from services.account_service import TenantService
 from services.file_request_service import FileRequestService
 
@@ -117,16 +115,9 @@ class AgentFileUploadRequestApi(Resource):
             )
         try:
             if payload.user_from == "account":
-                owner_id = session.scalar(
-                    select(Account.id)
-                    .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
-                    .where(
-                        Account.id == payload.user_id,
-                        TenantAccountJoin.tenant_id == tenant.id,
-                    )
-                )
-                if owner_id is None:
+                if not TenantService.account_belongs_to_tenant(payload.user_id, tenant.id, session=session):
                     raise ValueError("account not found")
+                owner_id = payload.user_id
             else:
                 owner_id = get_user(tenant.id, payload.user_id).id
             upload_uri = get_signed_file_uri_for_plugin(
