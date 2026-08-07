@@ -1,10 +1,23 @@
 /* oxlint-disable typescript/no-explicit-any */
 import { act, waitFor } from '@testing-library/react'
 import { updateAppModelConfig } from '@/service/apps'
-import { renderHook } from '@/test/console/render'
+import { consoleQuery } from '@/service/client'
+import { createQueryClientWrapper } from '@/test/console/query-client'
+import { renderHook as renderHookWithConsoleState } from '@/test/console/render'
+import { createTestQueryClient } from '@/test/query-client'
 import { AppModeEnum, ModelModeType } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import { useConfiguration } from '../use-configuration'
+
+const renderHook = (callback: () => ReturnType<typeof useConfiguration>) => {
+  const queryClient = createTestQueryClient()
+  return {
+    ...renderHookWithConsoleState(callback, {
+      wrapper: createQueryClientWrapper(queryClient),
+    }),
+    queryClient,
+  }
+}
 
 const mockSetSettingsDestination = vi.fn()
 const mockSetShowAppConfigureFeaturesModal = vi.fn()
@@ -269,7 +282,18 @@ describe('useConfiguration', () => {
   })
 
   it('should update model parameters and publish the current configuration', async () => {
-    const { result } = renderHook(() => useConfiguration())
+    const { result, queryClient } = renderHook(() => useConfiguration())
+    const detailQueryKey = consoleQuery.apps.byAppId.get.queryKey({
+      input: { params: { app_id: 'app-1' } },
+    })
+    queryClient.setQueryData(detailQueryKey, {
+      enable_api: false,
+      enable_site: false,
+      icon_url: null,
+      id: 'app-1',
+      mode: 'chat',
+      name: 'Cached app',
+    })
 
     await waitFor(() => {
       expect(result.current.showLoading).toBe(false)
@@ -301,6 +325,7 @@ describe('useConfiguration', () => {
         url: '/apps/app-1/model-config',
       }),
     )
+    expect(queryClient.getQueryState(detailQueryKey)?.isInvalidated).toBe(true)
   })
 
   it('should block publishing when app release permission is missing', async () => {

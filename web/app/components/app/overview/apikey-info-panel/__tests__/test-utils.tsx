@@ -39,9 +39,12 @@ const mockUseProviderContext = actualUseProviderContext as MockedFunction<
 // Default mock data
 const defaultProviderContext = {
   modelProviders: [],
+  modelProviderPlugins: {},
   refreshModelProviders: async () => {},
   isLoadingModelProviders: false,
+  isSuccessModelProviders: false,
   textGenerationModelList: [],
+  supportRetrievalMethods: [],
   isAPIKeySet: false,
   plan: defaultPlan,
   isFetchedPlan: false,
@@ -50,6 +53,7 @@ const defaultProviderContext = {
   onPlanInfoChanged: noop,
   enableReplaceWebAppLogo: false,
   modelLoadBalancingEnabled: false,
+  datasetOperatorEnabled: false,
   enableEducationPlan: false,
   isEducationWorkspace: false,
   isEducationAccount: false,

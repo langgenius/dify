@@ -7,9 +7,9 @@ import {
   renderWithConsoleQuery,
   seedSystemFeaturesLicense,
 } from '@/test/console/query-data'
-import LicenseNav from '../index'
+import LicenseBadge from '../index'
 
-const renderLicenseNav = (license?: Parameters<typeof seedSystemFeaturesLicense>[1]) => {
+const renderLicenseBadge = (license?: Parameters<typeof seedSystemFeaturesLicense>[1]) => {
   const queryClient = createConsoleQueryClient()
   if (license) seedSystemFeaturesLicense(queryClient, license)
   else {
@@ -18,10 +18,10 @@ const renderLicenseNav = (license?: Parameters<typeof seedSystemFeaturesLicense>
       queryFn: () => new Promise(() => {}),
     })
   }
-  return renderWithConsoleQuery(<LicenseNav />, { queryClient })
+  return renderWithConsoleQuery(<LicenseBadge />, { queryClient })
 }
 
-describe('LicenseNav', () => {
+describe('LicenseBadge', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers()
@@ -34,38 +34,69 @@ describe('LicenseNav', () => {
   })
 
   it('should render nothing while license detail is loading', () => {
-    const { container } = renderLicenseNav()
+    const { container } = renderLicenseBadge()
     expect(container).toBeEmptyDOMElement()
   })
 
   it('should render nothing when license status is NONE', () => {
-    const { container } = renderLicenseNav({})
+    const { container } = renderLicenseBadge({})
     expect(container).toBeEmptyDOMElement()
   })
 
   it('should render Enterprise badge when license status is ACTIVE', () => {
-    renderLicenseNav({ status: zLicenseStatus.enum.active })
+    renderLicenseBadge({ status: zLicenseStatus.enum.active })
     expect(screen.getByText('Enterprise')).toBeInTheDocument()
   })
 
   it('should render singular expiring message when license expires in 0 days', () => {
     const expiredAt = dayjs().add(2, 'hours').toISOString()
-    renderLicenseNav({ status: zLicenseStatus.enum.expiring, expired_at: expiredAt })
+    renderLicenseBadge({
+      status: zLicenseStatus.enum.expiring,
+      expired_at: expiredAt,
+      license_expiry_notice_enabled: true,
+    })
     expect(screen.getByText(/license\.expiring/)).toBeInTheDocument()
     expect(screen.getByText(/count":0/)).toBeInTheDocument()
   })
 
   it('should render singular expiring message when license expires in 1 day', () => {
     const tomorrow = dayjs().add(1, 'day').add(1, 'hour').toISOString()
-    renderLicenseNav({ status: zLicenseStatus.enum.expiring, expired_at: tomorrow })
+    renderLicenseBadge({
+      status: zLicenseStatus.enum.expiring,
+      expired_at: tomorrow,
+      license_expiry_notice_enabled: true,
+    })
     expect(screen.getByText(/license\.expiring/)).toBeInTheDocument()
     expect(screen.getByText(/count":1/)).toBeInTheDocument()
   })
 
   it('should render plural expiring message when license expires in 5 days', () => {
     const fiveDaysLater = dayjs().add(5, 'day').add(1, 'hour').toISOString()
-    renderLicenseNav({ status: zLicenseStatus.enum.expiring, expired_at: fiveDaysLater })
+    renderLicenseBadge({
+      status: zLicenseStatus.enum.expiring,
+      expired_at: fiveDaysLater,
+      license_expiry_notice_enabled: true,
+    })
     expect(screen.getByText(/license\.expiring_plural/)).toBeInTheDocument()
     expect(screen.getByText(/count":5/)).toBeInTheDocument()
+  })
+
+  it('should fall back to the Enterprise badge when the expiry notice is disabled', () => {
+    const fiveDaysLater = dayjs().add(5, 'day').add(1, 'hour').toISOString()
+    renderLicenseBadge({
+      status: zLicenseStatus.enum.expiring,
+      expired_at: fiveDaysLater,
+      license_expiry_notice_enabled: false,
+    })
+    expect(screen.queryByText(/license\.expiring/)).not.toBeInTheDocument()
+    expect(screen.getByText('Enterprise')).toBeInTheDocument()
+  })
+
+  it('should keep rendering the Enterprise badge for an active license when the expiry notice is disabled', () => {
+    renderLicenseBadge({
+      status: zLicenseStatus.enum.active,
+      license_expiry_notice_enabled: false,
+    })
+    expect(screen.getByText('Enterprise')).toBeInTheDocument()
   })
 })

@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import type { Role } from '@/models/access-control'
-import type { ICurrentWorkspace, Member } from '@/models/common'
+import type { Member } from '@/models/common'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -227,7 +227,7 @@ describe('MembersPage', () => {
 
     setConsoleState({
       userProfile: { email: 'owner@example.com' },
-      currentWorkspace: { name: 'Test Workspace', role: 'owner' } as ICurrentWorkspace,
+      currentWorkspace: { name: 'Test Workspace', role: 'owner' },
       isCurrentWorkspaceOwner: true,
       isCurrentWorkspaceManager: true,
       workspacePermissionKeys: ['workspace.member.manage'],
@@ -346,7 +346,7 @@ describe('MembersPage', () => {
   it('should hide manager controls for non-owner non-manager users', () => {
     setConsoleState({
       userProfile: { email: 'admin@example.com' },
-      currentWorkspace: { name: 'Test Workspace', role: 'admin' } as ICurrentWorkspace,
+      currentWorkspace: { name: 'Test Workspace', role: 'admin' },
       isCurrentWorkspaceOwner: false,
       isCurrentWorkspaceManager: false,
     } as unknown as ConsoleStateFixture)
@@ -459,7 +459,7 @@ describe('MembersPage', () => {
   it('should show invite button when user is manager but not owner', () => {
     setConsoleState({
       userProfile: { email: 'admin@example.com' },
-      currentWorkspace: { name: 'Test Workspace', role: 'admin' } as ICurrentWorkspace,
+      currentWorkspace: { name: 'Test Workspace', role: 'admin' },
       isCurrentWorkspaceOwner: false,
       isCurrentWorkspaceManager: true,
       workspacePermissionKeys: ['workspace.member.manage'],
@@ -474,7 +474,7 @@ describe('MembersPage', () => {
   it('should allow admins to operate other non-owner members only', () => {
     setConsoleState({
       userProfile: { email: 'admin@example.com' },
-      currentWorkspace: { name: 'Test Workspace', role: 'admin' } as ICurrentWorkspace,
+      currentWorkspace: { name: 'Test Workspace', role: 'admin' },
       isCurrentWorkspaceOwner: false,
       isCurrentWorkspaceManager: true,
       workspacePermissionKeys: ['workspace.member.manage'],
@@ -580,7 +580,7 @@ describe('MembersPage', () => {
   it('should render role badge names from account roles', () => {
     setConsoleState({
       userProfile: { email: 'admin@example.com' },
-      currentWorkspace: { name: 'Test Workspace', role: 'admin' } as ICurrentWorkspace,
+      currentWorkspace: { name: 'Test Workspace', role: 'admin' },
       isCurrentWorkspaceOwner: false,
       isCurrentWorkspaceManager: false,
     } as unknown as ConsoleStateFixture)
@@ -651,7 +651,7 @@ describe('MembersPage', () => {
     const user = userEvent.setup()
     setConsoleState({
       userProfile: { email: 'admin@example.com' },
-      currentWorkspace: { name: 'Test Workspace', role: 'admin' } as ICurrentWorkspace,
+      currentWorkspace: { name: 'Test Workspace', role: 'admin' },
       isCurrentWorkspaceOwner: false,
       isCurrentWorkspaceManager: true,
       workspacePermissionKeys: ['workspace.member.manage'],

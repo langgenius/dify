@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from configs import dify_config
 from constants.model_template import default_app_templates
 from core.agent.entities import AgentToolEntity
+from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.tools.tool_manager import ToolManager
@@ -38,7 +39,7 @@ from models.agent import (
 from models.model import App, AppMode, AppModelConfig, IconType, Site, load_annotation_reply_config
 from models.tools import ApiToolProvider
 from models.workflow import Workflow
-from services.agent.errors import AgentNameConflictError
+from services.agent.errors import AgentAccessNotReadyError, AgentNameConflictError
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.workspace_service import AgentWorkspaceService
@@ -915,6 +916,30 @@ class AppService:
 
         return app
 
+    @staticmethod
+    def is_agent_app_access_ready(app: App, *, session: Session) -> bool:
+        """Return whether an Agent App has a publish-visible active snapshot."""
+
+        if app.mode != AppMode.AGENT:
+            return True
+        agent = session.scalar(
+            select(Agent)
+            .where(
+                Agent.tenant_id == app.tenant_id,
+                Agent.app_id == app.id,
+                Agent.scope == AgentScope.ROSTER,
+                Agent.source.in_(APP_BACKED_AGENT_SOURCES),
+                Agent.status == AgentStatus.ACTIVE,
+            )
+            .limit(1)
+        )
+        return bool(agent and agent_has_workflow_callable_active_snapshot(session=session, agent=agent))
+
+    @classmethod
+    def ensure_agent_app_access_ready(cls, app: App, *, session: Session) -> None:
+        if not cls.is_agent_app_access_ready(app, session=session):
+            raise AgentAccessNotReadyError()
+
     def update_app_site_status(self, app: App, enable_site: bool, *, session: Session) -> App:
         """
         Update app site status
@@ -922,6 +947,8 @@ class AppService:
         :param enable_site: enable site status
         :return: App instance
         """
+        if enable_site:
+            self.ensure_agent_app_access_ready(app, session=session)
         if enable_site == app.enable_site:
             return app
         assert current_user is not None
@@ -941,6 +968,8 @@ class AppService:
         :param enable_api: enable api status
         :return: App instance
         """
+        if enable_api:
+            self.ensure_agent_app_access_ready(app, session=session)
         if enable_api == app.enable_api:
             return app
         assert current_user is not None
