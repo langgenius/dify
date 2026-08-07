@@ -30,7 +30,8 @@ from models.account import AccountStatus
 from models.dataset import RateLimitLog
 from models.model import DifySetup
 from services.billing_service import BillingService
-from services.feature_service import FeatureService, LicenseStatus
+from services.entities.feature_entities import LicenseStatus
+from services.feature_service import FeatureService
 from services.operation_service import OperationService, UtmInfo
 
 from .error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
