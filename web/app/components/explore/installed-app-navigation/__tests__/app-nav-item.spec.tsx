@@ -22,6 +22,7 @@ vi.mock('@/next/link', () => ({
 }))
 
 const baseProps = {
+  ariaLabel: 'My App',
   app: {
     id: 'app-123',
     app_owner_tenant_id: 'tenant-1',
@@ -69,11 +70,11 @@ describe('AppNavItem', () => {
       expect(link).toHaveAttribute('href', '/installed/app-123')
       expect(link).toHaveAttribute('aria-label', 'My App')
       expect(link).not.toHaveAttribute('aria-current')
-      expect(link).not.toHaveAttribute('data-prefetch')
+      expect(link).toHaveAttribute('data-prefetch', 'false')
     })
 
     it('should use a contextual accessible name when ariaLabel is provided', () => {
-      render(<AppNavItem {...baseProps} variant="mainNav" ariaLabel="Open My App web app" />)
+      render(<AppNavItem {...baseProps} ariaLabel="Open My App web app" />)
 
       const link = screen.getByRole('link', { name: 'Open My App web app' })
 
@@ -82,9 +83,9 @@ describe('AppNavItem', () => {
       expect(screen.getByText('My App')).toBeInTheDocument()
     })
 
-    it('should enable prefetch after pointer intent when requested', async () => {
+    it('should enable prefetch after pointer intent', async () => {
       const user = userEvent.setup()
-      render(<AppNavItem {...baseProps} prefetchOnIntent />)
+      render(<AppNavItem {...baseProps} />)
 
       const link = screen.getByRole('link', { name: 'My App' })
 
@@ -95,9 +96,9 @@ describe('AppNavItem', () => {
       expect(link).toHaveAttribute('data-prefetch', 'auto')
     })
 
-    it('should enable prefetch after keyboard focus when requested', async () => {
+    it('should enable prefetch after keyboard focus', async () => {
       const user = userEvent.setup()
-      render(<AppNavItem {...baseProps} prefetchOnIntent />)
+      render(<AppNavItem {...baseProps} />)
 
       const link = screen.getByRole('link', { name: 'My App' })
 

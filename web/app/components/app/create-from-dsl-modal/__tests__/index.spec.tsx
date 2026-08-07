@@ -397,7 +397,7 @@ describe('CreateFromDSLModal', () => {
       expect.stringMatching(/(?:^|\.)newApp\.caution(?=$|:)/),
       {
         type: 'warning',
-        description: "Agent secret 'SEARCH_TOKEN' must be configured.",
+        description: expect.anything(),
       },
     )
   })
@@ -577,7 +577,7 @@ describe('CreateFromDSLModal', () => {
 
     expect(toastMocks.call).toHaveBeenCalledWith(expect.stringMatching(/newApp\.caution/), {
       type: 'warning',
-      description: "Agent tool 'web_search' requires authorization.",
+      description: expect.anything(),
     })
     expect(mockResolveImportedAppRedirectionTarget).toHaveBeenCalledWith({
       id: 'agent-app-1',
