@@ -1243,19 +1243,17 @@ class SkillManagementService:
 
     @staticmethod
     def _extract_direct_reasoning_from_mapping(value: dict[str, object]) -> str | None:
-        raw_reasoning = (
-            value.get("reasoning_content")
-            or value.get("reasoning")
-            or value.get("reasoningContent")
-        )
+        raw_reasoning = value.get("reasoning_content") or value.get("reasoning") or value.get("reasoningContent")
         return raw_reasoning if isinstance(raw_reasoning, str) else None
 
     @staticmethod
     def _extract_reasoning_from_dump(value: object) -> str:
         match value:
-            case {"reasoning_content": str(reasoning)} | {"reasoning": str(reasoning)} | {
-                "reasoningContent": str(reasoning)
-            }:
+            case (
+                {"reasoning_content": str(reasoning)}
+                | {"reasoning": str(reasoning)}
+                | {"reasoningContent": str(reasoning)}
+            ):
                 return reasoning
             case {"data": str(text)} | {"content": str(text)}:
                 _clean_text, reasoning = split_reasoning(text, "separated")
@@ -1290,7 +1288,7 @@ class SkillManagementService:
             "Only suggest actions for the current Skill. Never suggest creating another Skill, "
             "starting a new Skill, or switching Skills.\n"
             "Return exactly one JSON object and no markdown fences, prose, or explanation.\n"
-            "Required schema: {\"suggestions\": [\"...\", \"...\"]}\n\n"
+            'Required schema: {"suggestions": ["...", "..."]}\n\n'
             f"User request:\n{user_message}\n\n"
             f"Assistant reply:\n{assistant_reply}"
         )
@@ -2662,9 +2660,7 @@ class SkillManagementService:
 
         skill_md = next((file for file in files if file.path == _SKILL_MD), None)
         content = skill_md.content_text if skill_md is not None else ""
-        has_description = bool(
-            skill.description.strip() and skill.description.strip() != _UNTITLED_SKILL_DESCRIPTION
-        )
+        has_description = bool(skill.description.strip() and skill.description.strip() != _UNTITLED_SKILL_DESCRIPTION)
         body = _FRONTMATTER_RE.sub("", content, count=1).strip()
         has_body = bool(body and body not in {_EMPTY_SKILL_DRAFT_CONTENT.strip(), _UNTITLED_SKILL_MD_BODY.strip()})
         has_resources = any(file.path != _SKILL_MD for file in files)

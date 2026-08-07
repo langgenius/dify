@@ -166,6 +166,20 @@ export const zMemberRoleUpdatePayload = z.object({
 })
 
 /**
+ * ModelProviderCreditsResponse
+ */
+export const zModelProviderCreditsResponse = z.object({
+  exhausted_at: z.int().nullable(),
+  is_exhausted: z.boolean(),
+  is_unlimited: z.boolean(),
+  next_credit_reset_date: z.int().nullable(),
+  pool_type: z.enum(['paid', 'trial']).nullable(),
+  quota_limit: z.int().nullable(),
+  quota_used: z.int().nullable(),
+  remaining_credits: z.int().nullable(),
+})
+
+/**
  * ModelProviderPaymentCheckoutUrlResponse
  */
 export const zModelProviderPaymentCheckoutUrlResponse = z.object({
@@ -288,6 +302,13 @@ export const zParserGithubInstall = z.object({
  */
 export const zParserPluginIdentifiers = z.object({
   plugin_unique_identifiers: z.array(z.string()),
+})
+
+/**
+ * PluginInstalledIdsResponse
+ */
+export const zPluginInstalledIdsResponse = z.object({
+  plugin_ids: z.array(z.string()),
 })
 
 /**
@@ -724,6 +745,14 @@ export const zTriggerProviderErrorResponse = z.object({
 })
 
 /**
+ * WorkspaceCustomConfigResponse
+ */
+export const zWorkspaceCustomConfigResponse = z.object({
+  remove_webapp_brand: z.boolean().nullish(),
+  replace_webapp_logo: z.string().nullish(),
+})
+
+/**
  * WorkspaceCustomConfigPayload
  */
 export const zWorkspaceCustomConfigPayload = z.object({
@@ -770,49 +799,6 @@ export const zTenantListItemResponse = z.object({
  */
 export const zTenantListResponse = z.object({
   workspaces: z.array(zTenantListItemResponse),
-})
-
-/**
- * WorkspaceCustomConfigResponse
- */
-export const zWorkspaceCustomConfigResponse = z.object({
-  remove_webapp_brand: z.boolean().nullish(),
-  replace_webapp_logo: z.string().nullish(),
-})
-
-/**
- * TenantInfoResponse
- */
-export const zTenantInfoResponse = z.object({
-  created_at: z.int().nullish(),
-  custom_config: zWorkspaceCustomConfigResponse.nullish(),
-  id: z.string(),
-  in_trial: z.boolean().nullish(),
-  name: z.string().nullish(),
-  next_credit_reset_date: z.int().nullish(),
-  plan: z.string().nullish(),
-  role: z.string().nullish(),
-  status: z.string().nullish(),
-  trial_credits: z.int().nullish(),
-  trial_credits_exhausted_at: z.int().nullish(),
-  trial_credits_used: z.int().nullish(),
-  trial_end_reason: z.string().nullish(),
-})
-
-/**
- * WorkspaceTenantResultResponse
- */
-export const zWorkspaceTenantResultResponse = z.object({
-  result: z.string(),
-  tenant: zTenantInfoResponse,
-})
-
-/**
- * SwitchWorkspaceResponse
- */
-export const zSwitchWorkspaceResponse = z.object({
-  new_tenant: zTenantInfoResponse,
-  result: z.string(),
 })
 
 /**
@@ -1514,6 +1500,16 @@ export const zSkillAssistAttachmentPayload = z.object({
 })
 
 /**
+ * SkillAssistHistoryMessagePayload
+ */
+export const zSkillAssistHistoryMessagePayload = z.object({
+  content: z.string().min(1).max(8000),
+  role: z.enum(['assistant', 'user']),
+  suggested_display_name: z.string().max(128).nullish(),
+  suggested_name: z.string().max(128).nullish(),
+})
+
+/**
  * SkillAssistModelPayload
  */
 export const zSkillAssistModelPayload = z.object({
@@ -1528,13 +1524,6 @@ export const zSkillAssistModelPayload = z.object({
  *
  * One user message and optional uploaded context for the Skill Authoring assistant.
  */
-export const zSkillAssistHistoryMessagePayload = z.object({
-  content: z.string().min(1).max(8000),
-  role: z.enum(['assistant', 'user']),
-  suggested_display_name: z.string().max(128).nullish(),
-  suggested_name: z.string().max(128).nullish(),
-})
-
 export const zSkillAssistMessagePayload = z.object({
   attachments: z.array(zSkillAssistAttachmentPayload).max(10).optional(),
   history: z.array(zSkillAssistHistoryMessagePayload).max(20).optional(),
@@ -1613,6 +1602,22 @@ export const zSkillReferenceResponse = z.object({
  */
 export const zSkillReferenceListResponse = z.object({
   data: z.array(zSkillReferenceResponse).optional(),
+})
+
+/**
+ * TenantAccountRole
+ */
+export const zTenantAccountRole = z.enum(['admin', 'dataset_operator', 'editor', 'normal', 'owner'])
+
+/**
+ * CurrentWorkspaceSummaryResponse
+ */
+export const zCurrentWorkspaceSummaryResponse = z.object({
+  credits: z.int().nullable(),
+  id: z.string(),
+  name: z.string(),
+  plan: z.string().nullable(),
+  role: zTenantAccountRole,
 })
 
 /**
@@ -1925,6 +1930,41 @@ export const zTriggerProviderSubscriptionListResponse = z.array(
 )
 
 /**
+ * TenantInfoResponse
+ */
+export const zTenantInfoResponse = z.object({
+  created_at: z.int().nullish(),
+  custom_config: zWorkspaceCustomConfigResponse.nullish(),
+  id: z.string(),
+  in_trial: z.boolean().nullish(),
+  name: z.string().nullish(),
+  next_credit_reset_date: z.int().nullish(),
+  plan: z.string().nullish(),
+  role: z.string().nullish(),
+  status: z.string().nullish(),
+  trial_credits: z.int().nullish(),
+  trial_credits_exhausted_at: z.int().nullish(),
+  trial_credits_used: z.int().nullish(),
+  trial_end_reason: z.string().nullish(),
+})
+
+/**
+ * WorkspaceTenantResultResponse
+ */
+export const zWorkspaceTenantResultResponse = z.object({
+  result: z.string(),
+  tenant: zTenantInfoResponse,
+})
+
+/**
+ * SwitchWorkspaceResponse
+ */
+export const zSwitchWorkspaceResponse = z.object({
+  new_tenant: zTenantInfoResponse,
+  result: z.string(),
+})
+
+/**
  * PluginDependencyType
  */
 export const zPluginDependencyType = z.enum(['github', 'marketplace', 'package'])
@@ -1982,6 +2022,30 @@ export const zConfigurateMethod = z.enum(['customizable-model', 'predefined-mode
  * ProviderType
  */
 export const zProviderType = z.enum(['custom', 'system'])
+
+/**
+ * ModelProviderSystemConfigurationSummaryResponse
+ */
+export const zModelProviderSystemConfigurationSummaryResponse = z.object({
+  enabled: z.boolean(),
+})
+
+/**
+ * PluginInstallationSource
+ */
+export const zPluginInstallationSource = z.enum(['github', 'marketplace', 'package', 'remote'])
+
+/**
+ * ModelProviderPluginSummaryResponse
+ */
+export const zModelProviderPluginSummaryResponse = z.object({
+  installation_id: z.string(),
+  plugin_id: z.string(),
+  plugin_unique_identifier: z.string(),
+  runtime_type: z.string(),
+  source: zPluginInstallationSource,
+  version: z.string(),
+})
 
 /**
  * ModelFeature
@@ -2174,6 +2238,46 @@ export const zAvailableModelListResponse = z.object({
 })
 
 /**
+ * ModelProviderCustomConfigurationSummaryResponse
+ */
+export const zModelProviderCustomConfigurationSummaryResponse = z.object({
+  available_credentials: z.array(zCredentialConfiguration),
+  current_credential_id: z.string().nullish(),
+  current_credential_name: z.string().nullish(),
+  current_credential_usable: z.boolean(),
+  has_custom_models: z.boolean(),
+  status: zCustomConfigurationStatus,
+})
+
+/**
+ * ModelProviderSummaryResponse
+ *
+ * Fields required to render the collapsed model-provider list.
+ */
+export const zModelProviderSummaryResponse = z.object({
+  configurate_methods: z.array(zConfigurateMethod),
+  custom_configuration: zModelProviderCustomConfigurationSummaryResponse,
+  description: zI18nObject.nullish(),
+  icon_small: zI18nObject.nullish(),
+  icon_small_dark: zI18nObject.nullish(),
+  is_configured: z.boolean(),
+  label: zI18nObject,
+  plugin_id: z.string(),
+  preferred_provider_type: zProviderType,
+  provider: z.string(),
+  supported_model_types: z.array(zModelType),
+  system_configuration: zModelProviderSystemConfigurationSummaryResponse,
+})
+
+/**
+ * ModelProviderSummaryListResponse
+ */
+export const zModelProviderSummaryListResponse = z.object({
+  data: z.array(zModelProviderSummaryResponse),
+  plugins: z.record(z.string(), zModelProviderPluginSummaryResponse),
+})
+
+/**
  * TenantPluginAutoUpgradeStrategySetting
  */
 export const zTenantPluginAutoUpgradeStrategySetting = z.enum(['disabled', 'fix_only', 'latest'])
@@ -2317,11 +2421,6 @@ export const zPluginTasksResponse = z.object({
 export const zPluginTaskResponse = z.object({
   task: zPluginInstallTask,
 })
-
-/**
- * PluginInstallationSource
- */
-export const zPluginInstallationSource = z.enum(['github', 'marketplace', 'package', 'remote'])
 
 /**
  * PluginBundleDependencyType
@@ -3836,11 +3935,6 @@ export const zAccountWithRoleListResponseWritable = z.object({
  */
 export const zGetWorkspacesResponse = zTenantListResponse
 
-/**
- * Success
- */
-export const zPostWorkspacesCurrentResponse = zTenantInfoResponse
-
 export const zGetWorkspacesCurrentAgentProviderByProviderNamePath = z.object({
   provider_name: z.string(),
 })
@@ -4148,6 +4242,16 @@ export const zGetWorkspacesCurrentModelProvidersQuery = z.object({
  * Model providers retrieved successfully
  */
 export const zGetWorkspacesCurrentModelProvidersResponse = zModelProviderListResponse
+
+/**
+ * Model provider credits retrieved successfully
+ */
+export const zGetWorkspacesCurrentModelProvidersCreditsResponse = zModelProviderCreditsResponse
+
+/**
+ * Model provider summaries retrieved successfully
+ */
+export const zGetWorkspacesCurrentModelProvidersSummaryResponse = zModelProviderSummaryListResponse
 
 export const zGetWorkspacesCurrentModelProvidersByProviderCheckoutUrlPath = z.object({
   provider: z.string(),
@@ -4524,6 +4628,15 @@ export const zPostWorkspacesCurrentPluginInstallPkgBody = zParserPluginIdentifie
  */
 export const zPostWorkspacesCurrentPluginInstallPkgResponse = zPluginInstallTaskStartResponse
 
+export const zGetWorkspacesCurrentPluginInstalledIdsQuery = z.object({
+  category: z.enum(['agent-strategy', 'datasource', 'extension', 'model', 'tool', 'trigger']),
+})
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentPluginInstalledIdsResponse = zPluginInstalledIdsResponse
+
 export const zGetWorkspacesCurrentPluginListQuery = z.object({
   page: z.int().gte(1).optional().default(1),
   page_size: z.int().gte(1).lte(256).optional().default(256),
@@ -4694,8 +4807,11 @@ export const zGetWorkspacesCurrentPluginByCategoryListPath = z.object({
 })
 
 export const zGetWorkspacesCurrentPluginByCategoryListQuery = z.object({
+  language: z.enum(['en_US', 'ja_JP', 'pt_BR', 'zh_Hans']).optional().default('en_US'),
   page: z.int().gte(1).optional().default(1),
   page_size: z.int().gte(1).lte(256).optional().default(256),
+  query: z.string().max(256).optional().default(''),
+  tags: z.array(z.string()).max(128).optional(),
 })
 
 /**
@@ -5388,6 +5504,11 @@ export const zPatchWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdResponse =
   zSkillVersionResponse
 
 /**
+ * Success
+ */
+export const zGetWorkspacesCurrentSummaryResponse = zCurrentWorkspaceSummaryResponse
+
+/**
  * Tool labels retrieved successfully
  */
 export const zGetWorkspacesCurrentToolLabelsResponse = zToolLabelListResponse
@@ -5939,6 +6060,11 @@ export const zPostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsU
  * Trigger providers retrieved successfully
  */
 export const zGetWorkspacesCurrentTriggersResponse = zTriggerProviderListResponse
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCustomConfigResponse = zWorkspaceCustomConfigResponse
 
 export const zPostWorkspacesCustomConfigBody = zWorkspaceCustomConfigPayload
 
