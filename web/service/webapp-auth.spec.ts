@@ -8,7 +8,8 @@ vi.mock('./base', () => ({
   postPublic: vi.fn(),
 }))
 
-const { getWebAppPassport, setWebAppPassport, webAppLoginStatus } = await import('./webapp-auth')
+const { getWebAppPassport, setWebAppAccessToken, setWebAppPassport, webAppLoginStatus } =
+  await import('./webapp-auth')
 
 describe('webAppLoginStatus', () => {
   beforeEach(() => {
@@ -50,6 +51,27 @@ describe('webAppLoginStatus', () => {
 
     await expect(webAppLoginStatus('workflow-app', AccessMode.PUBLIC)).resolves.toEqual({
       userLoggedIn: true,
+      appLoggedIn: false,
+    })
+  })
+
+  it('treats an sso verified environment with a webapp access token as logged in', async () => {
+    window.history.replaceState({}, '', '/env/workflow/workflow-app')
+    getPublicMock.mockResolvedValue({ logged_in: false, app_logged_in: false })
+    setWebAppAccessToken('web-sso-token')
+
+    await expect(webAppLoginStatus('workflow-app', AccessMode.EXTERNAL_MEMBERS)).resolves.toEqual({
+      userLoggedIn: true,
+      appLoggedIn: false,
+    })
+  })
+
+  it('requires a webapp access token for an sso verified environment', async () => {
+    window.history.replaceState({}, '', '/env/workflow/workflow-app')
+    getPublicMock.mockResolvedValue({ logged_in: true, app_logged_in: false })
+
+    await expect(webAppLoginStatus('workflow-app', AccessMode.EXTERNAL_MEMBERS)).resolves.toEqual({
+      userLoggedIn: false,
       appLoggedIn: false,
     })
   })

@@ -35,6 +35,17 @@ type isWebAppLogin = {
   app_logged_in: boolean
 }
 
+function environmentUserLoggedIn(accessMode: AccessMode, difyLoggedIn: boolean) {
+  switch (accessMode) {
+    case AccessMode.PUBLIC:
+      return true
+    case AccessMode.EXTERNAL_MEMBERS:
+      return Boolean(getWebAppAccessToken())
+    default:
+      return difyLoggedIn
+  }
+}
+
 export async function webAppLoginStatus(
   shareCode: string,
   accessMode: AccessMode,
@@ -51,7 +62,7 @@ export async function webAppLoginStatus(
   )
   return {
     userLoggedIn:
-      address?.kind === 'environment' && accessMode === AccessMode.PUBLIC ? true : logged_in,
+      address?.kind === 'environment' ? environmentUserLoggedIn(accessMode, logged_in) : logged_in,
     appLoggedIn: app_logged_in,
   }
 }
