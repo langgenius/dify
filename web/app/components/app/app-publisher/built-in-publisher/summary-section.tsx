@@ -1,22 +1,18 @@
 import type { CSSProperties, ReactNode } from 'react'
-import type { ModelAndParameter } from '../configuration/debug/types'
-import type { AppPublisherProps } from './index'
+import type { ModelAndParameter } from '../../configuration/debug/types'
+import type { AppPublisherProps } from '../types'
 import type { PublishWorkflowParams, VersionHistory } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { useTranslation } from 'react-i18next'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
-import { AppModeEnum } from '@/types/app'
-import { APP_PUBLISH_HOTKEY } from './hotkeys'
-import PublishWithMultipleModel from './publish-with-multiple-model'
-import SuggestedAction from './suggested-action'
-import WorkflowToolAction from './workflow-tool-action'
+import { APP_PUBLISH_HOTKEY } from '../hotkeys'
+import PublishWithMultipleModel from '../publish-with-multiple-model'
+import { PublisherTimelineMarker } from '../shared/timeline-marker'
 
-type SummarySectionProps = Pick<
+type PublisherSummarySectionProps = Pick<
   AppPublisherProps,
   | 'debugWithMultipleModel'
   | 'draftUpdatedAt'
@@ -37,60 +33,7 @@ type SummarySectionProps = Pick<
   versionInfo?: VersionHistory | null
 }
 
-type ActionsSectionProps = Pick<
-  AppPublisherProps,
-  'hasHumanInputNode' | 'hasTriggerNode' | 'publishedAt' | 'toolPublished' | 'workflowToolAvailable'
-> & {
-  appDetail:
-    | {
-        id?: string
-        icon?: string
-        icon_type?: string | null
-        icon_background?: string | null
-        description?: string
-        mode?: AppModeEnum
-        name?: string
-      }
-    | null
-    | undefined
-  appURL: string
-  disabledFunctionButton: boolean
-  disabledFunctionTooltip?: string
-  handleOpenRunConfig?: (url: string) => void
-  marketplaceActionDisabled?: boolean
-  publishingToMarketplace?: boolean
-  showDeployAction?: boolean
-  showMarketplaceAction?: boolean
-  showRunConfig?: boolean
-  workflowToolIsLoading: boolean
-  workflowToolMessage?: string
-  workflowToolOutdated?: boolean
-  onConfigureWorkflowTool: () => void
-  onPublishToMarketplace?: () => void
-}
-
-export const PublisherTimelineMarker = ({ position }: { position: 'top' | 'bottom' }) => (
-  <span
-    className={cn(
-      'relative flex w-4 shrink-0 items-start p-1',
-      position === 'top' ? 'self-stretch' : 'h-4',
-    )}
-  >
-    <span
-      aria-hidden
-      className="relative z-1 size-2 rounded-full border-2 border-text-quaternary bg-components-panel-bg"
-    />
-    <span
-      aria-hidden
-      className={cn(
-        'absolute left-1/2 w-0.5 -translate-x-1/2 bg-divider-subtle',
-        position === 'top' ? 'top-3.5 -bottom-3.5' : '-top-3.5 h-4',
-      )}
-    />
-  </span>
-)
-
-export const PublisherSummarySection = ({
+export function PublisherSummarySection({
   debugWithMultipleModel = false,
   draftUpdatedAt,
   environmentTabs,
@@ -107,7 +50,7 @@ export const PublisherSummarySection = ({
   startNodeLimitExceeded = false,
   upgradeHighlightStyle,
   versionInfo,
-}: SummarySectionProps) => {
+}: PublisherSummarySectionProps) {
   const { t } = useTranslation()
   const hasPublishedVersion = Boolean(publishedAt)
   const resolvedHasUnpublishedChanges = hasUnpublishedChanges ?? !hasPublishedVersion
@@ -295,131 +238,6 @@ export const PublisherSummarySection = ({
           )}
         </p>
       </div>
-    </div>
-  )
-}
-
-export const PublisherActionsSection = ({
-  appDetail,
-  appURL,
-  disabledFunctionButton,
-  disabledFunctionTooltip,
-  handleOpenRunConfig,
-  hasHumanInputNode = false,
-  hasTriggerNode = false,
-  marketplaceActionDisabled = false,
-  publishedAt,
-  publishingToMarketplace = false,
-  showDeployAction = false,
-  showMarketplaceAction = false,
-  showRunConfig = false,
-  toolPublished = false,
-  workflowToolAvailable = true,
-  workflowToolIsLoading,
-  workflowToolMessage,
-  workflowToolOutdated = false,
-  onConfigureWorkflowTool,
-  onPublishToMarketplace,
-}: ActionsSectionProps) => {
-  const { t } = useTranslation()
-
-  const appId = appDetail?.id
-  const hasPublishedVersion = Boolean(publishedAt)
-  const showOpenWebApp = !hasTriggerNode
-  const showDeploy = Boolean(showDeployAction && appId)
-  const showWorkflowTool =
-    appDetail?.mode === AppModeEnum.WORKFLOW && !hasHumanInputNode && !hasTriggerNode
-  const navigationDisabled = !hasPublishedVersion || !appId
-  const workflowToolDisabled =
-    !hasPublishedVersion || !workflowToolAvailable || (toolPublished && workflowToolIsLoading)
-
-  return (
-    <div className="flex flex-col border-t-[0.5px] border-t-divider-regular p-3">
-      {showOpenWebApp && (
-        <Tooltip disabled={!disabledFunctionTooltip}>
-          <TooltipTrigger
-            render={
-              <div
-                className={cn(
-                  'flex w-full',
-                  disabledFunctionButton && 'cursor-not-allowed *:pointer-events-none',
-                )}
-              />
-            }
-          >
-            <SuggestedAction
-              className="flex-1"
-              disabled={disabledFunctionButton}
-              description={
-                disabledFunctionButton && disabledFunctionTooltip
-                  ? disabledFunctionTooltip
-                  : t(($) => $['common.openWebAppDescription'], { ns: 'workflow' })
-              }
-              external
-              focusableWhenDisabled={Boolean(disabledFunctionTooltip)}
-              link={appURL}
-              icon={<span className="i-ri-planet-line size-4" />}
-              actionButton={
-                showRunConfig && handleOpenRunConfig
-                  ? {
-                      ariaLabel: t(($) => $['operation.config'], { ns: 'common' }),
-                      icon: <span className="i-ri-settings-2-line size-4" />,
-                      onClick: () => handleOpenRunConfig(appURL),
-                    }
-                  : undefined
-              }
-            >
-              {t(($) => $['common.openWebApp'], { ns: 'workflow' })}
-            </SuggestedAction>
-          </TooltipTrigger>
-          <TooltipContent role="tooltip">{disabledFunctionTooltip}</TooltipContent>
-        </Tooltip>
-      )}
-      <SuggestedAction
-        disabled={navigationDisabled}
-        description={t(($) => $['common.accessPointDescription'], { ns: 'workflow' })}
-        link={appId ? `/app/${appId}/access-point` : undefined}
-        icon={<span className="i-custom-vender-agent-v2-access-point size-4" />}
-      >
-        {t(($) => $['appMenus.accessPoint'], { ns: 'common' })}
-      </SuggestedAction>
-      {showDeploy && (
-        <SuggestedAction
-          disabled={navigationDisabled}
-          description={t(($) => $['common.deployDescription'], { ns: 'workflow' })}
-          link={`/app/${appId}/deploy`}
-          icon={<span className="i-ri-instance-line size-4" />}
-        >
-          {t(($) => $['appMenus.deploy'], { ns: 'common' })}
-        </SuggestedAction>
-      )}
-      {showMarketplaceAction && (
-        <SuggestedAction
-          disabled={marketplaceActionDisabled || publishingToMarketplace || !onPublishToMarketplace}
-          description={t(($) => $['common.publishToMarketplaceDescription'], {
-            ns: 'workflow',
-          })}
-          icon={<span className="i-ri-store-2-line size-4" />}
-          onClick={onPublishToMarketplace}
-        >
-          {publishingToMarketplace
-            ? t(($) => $['common.publishingToMarketplace'], { ns: 'workflow' })
-            : t(($) => $['common.publishToMarketplace'], { ns: 'workflow' })}
-        </SuggestedAction>
-      )}
-      {showWorkflowTool && (
-        <>
-          <div aria-hidden className="m-1 h-px bg-divider-subtle" />
-          <WorkflowToolAction
-            disabled={workflowToolDisabled}
-            isLoading={workflowToolIsLoading}
-            message={workflowToolMessage}
-            outdated={workflowToolOutdated}
-            published={toolPublished}
-            onConfigure={onConfigureWorkflowTool}
-          />
-        </>
-      )}
     </div>
   )
 }

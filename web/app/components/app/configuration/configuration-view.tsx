@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { ConfigurationViewModel } from './hooks/use-configuration'
+import type { ConfigurationViewModel } from './hooks/configuration-view-model'
 import type { InstallBundleCompleteCallback } from '@/app/components/plugins/install-plugin/install-bundle'
 import { CodeBracketIcon } from '@heroicons/react/20/solid'
 import {

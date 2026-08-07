@@ -4,7 +4,8 @@ import { fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
-import { PublisherActionsSection, PublisherSummarySection } from '../sections'
+import { PublisherActionsSection } from '../built-in-publisher/actions-section'
+import { PublisherSummarySection } from '../built-in-publisher/summary-section'
 
 vi.mock('../publish-with-multiple-model', () => ({
   default: ({

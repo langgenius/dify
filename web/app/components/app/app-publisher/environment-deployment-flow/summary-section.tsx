@@ -1,98 +1,14 @@
-'use client'
-
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { ReactNode } from 'react'
 import type { DeploymentVersion } from '@/app/components/app/deploy/version'
 import { DeploymentStatus } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
-import SuggestedAction from '@/app/components/app/app-publisher/suggested-action'
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
-import { PublisherDeployingMarker } from './publisher-deploying-marker'
-import { PublisherTimelineMarker } from './sections'
-
-type PublisherEnvironmentSummarySectionProps = {
-  deployment?: EnvironmentDeployment
-  deploymentActionsDisabled: boolean
-  environmentTabs: ReactNode
-  isEnvironmentInUse: boolean
-  latestVersion?: DeploymentVersion | null
-  onDeployLatest: () => void
-  onDeployOtherVersion: () => void
-  onGoToPublish: () => void
-  onShowAllVersions: () => void
-}
-
-type PublisherEnvironmentActionsSectionProps = {
-  appId?: string
-  deployment?: EnvironmentDeployment
-  environmentId: string
-}
-
-function environmentHref(path: string, appId: string, environmentId: string) {
-  return `/app/${appId}/${path}?environment=${encodeURIComponent(environmentId)}`
-}
-
-function PublisherLatestVersionRow({
-  deployingVersionName,
-  disabled,
-  isDeploying,
-  latestVersion,
-  onShowAllVersions,
-}: {
-  deployingVersionName?: string
-  disabled: boolean
-  isDeploying: boolean
-  latestVersion?: DeploymentVersion | null
-  onShowAllVersions: () => void
-}) {
-  const { t } = useTranslation()
-
-  return (
-    <div className="flex items-center gap-1 py-0.5 pr-0.5 pl-1">
-      {isDeploying ? <PublisherDeployingMarker /> : <PublisherTimelineMarker position="bottom" />}
-      <p
-        role={isDeploying ? 'status' : undefined}
-        className={cn(
-          'min-w-0 flex-1 truncate',
-          isDeploying
-            ? 'system-xs-medium text-text-accent'
-            : 'system-xs-regular text-text-tertiary',
-        )}
-      >
-        {isDeploying ? (
-          deployingVersionName ? (
-            t(($) => $['studio.publisher.deployingVersion'], {
-              ns: 'deployments',
-              version: deployingVersionName,
-            })
-          ) : (
-            t(($) => $['deployDrawer.deploying'], { ns: 'deployments' })
-          )
-        ) : (
-          <>
-            <span className="capitalize">
-              {t(($) => $['overview.chip.latest'], { ns: 'deployments' })}
-            </span>
-            {latestVersion ? `: ${latestVersion.name}` : ''}
-          </>
-        )}
-      </p>
-      <button
-        type="button"
-        disabled={disabled}
-        className="flex shrink-0 items-center gap-0.5 rounded system-xs-regular text-text-tertiary outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:text-text-disabled"
-        onClick={onShowAllVersions}
-      >
-        {t(($) => $['studio.allVersions'], { ns: 'deployments' })}
-        <span aria-hidden className="i-ri-arrow-right-s-line size-3.5" />
-      </button>
-    </div>
-  )
-}
+import { PublisherTimelineMarker } from '../shared/timeline-marker'
+import { PublisherLatestVersionRow } from './latest-version-row'
 
 export function PublisherEnvironmentSummarySection({
   deployment,
@@ -104,7 +20,17 @@ export function PublisherEnvironmentSummarySection({
   onDeployOtherVersion,
   onGoToPublish,
   onShowAllVersions,
-}: PublisherEnvironmentSummarySectionProps) {
+}: {
+  deployment?: EnvironmentDeployment
+  deploymentActionsDisabled: boolean
+  environmentTabs: ReactNode
+  isEnvironmentInUse: boolean
+  latestVersion?: DeploymentVersion | null
+  onDeployLatest: () => void
+  onDeployOtherVersion: () => void
+  onGoToPublish: () => void
+  onShowAllVersions: () => void
+}) {
   const { t } = useTranslation()
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const deploymentState = deployment?.deployment
@@ -276,38 +202,6 @@ export function PublisherEnvironmentSummarySection({
           onShowAllVersions={onShowAllVersions}
         />
       )}
-    </div>
-  )
-}
-
-export function PublisherEnvironmentActionsSection({
-  appId,
-  deployment,
-  environmentId,
-}: PublisherEnvironmentActionsSectionProps) {
-  const { t } = useTranslation()
-  const actionsDisabled = !appId || !deployment
-  const accessPointHref = appId ? environmentHref('access-point', appId, environmentId) : undefined
-  const deployHref = appId ? environmentHref('deploy', appId, environmentId) : undefined
-
-  return (
-    <div className="flex flex-col border-t-[0.5px] border-t-divider-regular p-3">
-      <SuggestedAction
-        disabled={actionsDisabled}
-        description={t(($) => $['common.accessPointDescription'], { ns: 'workflow' })}
-        link={accessPointHref}
-        icon={<span className="i-custom-vender-agent-v2-access-point size-4" />}
-      >
-        {t(($) => $['appMenus.accessPoint'], { ns: 'common' })}
-      </SuggestedAction>
-      <SuggestedAction
-        disabled={actionsDisabled}
-        description={t(($) => $['common.deployDescription'], { ns: 'workflow' })}
-        link={deployHref}
-        icon={<span className="i-ri-instance-line size-4" />}
-      >
-        {t(($) => $['appMenus.deploy'], { ns: 'common' })}
-      </SuggestedAction>
     </div>
   )
 }

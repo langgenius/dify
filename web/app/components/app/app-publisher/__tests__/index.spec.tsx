@@ -176,8 +176,7 @@ vi.mock('@/app/components/tools/workflow-tool', () => ({
   ),
 }))
 
-vi.mock('../sections', () => ({
-  PublisherTimelineMarker: () => <span data-testid="publisher-timeline-marker" />,
+vi.mock('../built-in-publisher/summary-section', () => ({
   PublisherSummarySection: (props: Record<string, any>) => {
     sectionProps.summary = props
     return (
@@ -189,7 +188,9 @@ vi.mock('../sections', () => ({
       </div>
     )
   },
-  PublisherAccessSection: () => <div>publisher-access-control</div>,
+}))
+
+vi.mock('../built-in-publisher/actions-section', () => ({
   PublisherActionsSection: (props: Record<string, any>) => {
     sectionProps.actions = props
     return (

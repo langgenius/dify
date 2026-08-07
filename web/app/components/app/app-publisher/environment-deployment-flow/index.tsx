@@ -7,13 +7,11 @@ import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { EnvironmentDeploymentFlow } from '@/app/components/app/deploy/environment-deployment-flow'
 import {
-  PublisherEnvironmentActionsSection,
-  PublisherEnvironmentSummarySection,
-} from './environment-sections'
-import {
   publisherEnvironmentDeploymentPollingAtom,
   startPublisherEnvironmentDeploymentPollingAtom,
-} from './state'
+} from '../state'
+import { PublisherEnvironmentActionsSection } from './actions-section'
+import { PublisherEnvironmentSummarySection } from './summary-section'
 
 type PublisherEnvironmentFlowProps = {
   appId?: string
