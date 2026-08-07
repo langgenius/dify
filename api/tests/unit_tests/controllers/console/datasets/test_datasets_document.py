@@ -1434,15 +1434,16 @@ class TestDocumentListAdvancedCases:
         payload = {"doc_type": "contract", "doc_metadata": {"amount": 5000, "currency": "USD", "invalid_field": "x"}}
         schema = {"amount": int, "currency": str}
         session = MagicMock()
+        req_data = DocumentMetadataUpdatePayload.model_validate(payload)
         with (
-            app.test_request_context("/", json=payload),
+            app.test_request_context("/"),
             patch.object(api, "get_document", return_value=doc),
             patch(
                 "controllers.console.datasets.datasets_document.DocumentService.DOCUMENT_METADATA_SCHEMA",
                 {"contract": schema},
             ),
         ):
-            response, status = method(api, session, tenant_id, user, "ds-1", "doc-1")
+            response, status = method(api, req_data, session, tenant_id, user, "ds-1", "doc-1")
             assert status == 200
             assert doc.doc_metadata == {"amount": 5000, "currency": "USD"}
 
