@@ -172,7 +172,7 @@ def test_load_batches_document_response_queries(
 
     select_count = 0
 
-    def count_selects(_conn, _cursor, statement, _parameters, _context, _executemany) -> None:
+    def count_selects(_conn, _cursor, statement: str, _parameters, _context, _executemany) -> None:
         nonlocal select_count
         if statement.lstrip().upper().startswith("SELECT"):
             select_count += 1
@@ -190,9 +190,12 @@ def test_load_batches_document_response_queries(
         assert prefetch.completed_segment_counts[document_id] == 1
         assert prefetch.total_segment_counts[document_id] == 1
         assert prefetch.data_source_details[document_id]["upload_file"]["name"] == "source.txt"
-        assert prefetch.process_rule_dicts[document_id]["id"] == process_rule.id
-        assert prefetch.metadata_details[document_id] is not None
-        assert prefetch.metadata_details[document_id][0]["value"] == f"author-{document_id}"
+        process_rule_dict = prefetch.process_rule_dicts[document_id]
+        assert process_rule_dict is not None
+        assert process_rule_dict["id"] == process_rule.id
+        metadata_details = prefetch.metadata_details[document_id]
+        assert metadata_details is not None
+        assert metadata_details[0]["value"] == f"author-{document_id}"
 
 
 def test_load_preserves_invalid_data_source_info_error() -> None:
@@ -207,7 +210,8 @@ def test_load_preserves_invalid_data_source_info_error() -> None:
     )
     document.data_source_info = "not-json"
     session = MagicMock()
-    session.execute.return_value.all.return_value = []
+    empty_rows: list[tuple[object, ...]] = []
+    session.execute.return_value.all.return_value = empty_rows
 
     with pytest.raises(json.JSONDecodeError):
         DocumentResponsePrefetch.load([document], session=session)
