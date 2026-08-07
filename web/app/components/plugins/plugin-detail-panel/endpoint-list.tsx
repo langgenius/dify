@@ -49,7 +49,7 @@ const EndpointListContent = ({ declaration, detail }: EndpointListContentProps) 
   const { mutate: createEndpoint } = useCreateEndpoint({
     onSuccess: async () => {
       await invalidateEndpointList(detail.plugin_id)
-      invalidateInstalledPluginList()
+      invalidateInstalledPluginList(detail.declaration.category)
       hideEndpointModal()
     },
     onError: () => {
@@ -129,7 +129,7 @@ const EndpointListContent = ({ declaration, detail }: EndpointListContentProps) 
             data={item}
             handleChange={() => {
               invalidateEndpointList(detail.plugin_id)
-              invalidateInstalledPluginList()
+              invalidateInstalledPluginList(detail.declaration.category)
             }}
             pluginDetail={detail}
           />

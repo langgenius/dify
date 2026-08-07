@@ -85,17 +85,6 @@ vi.mock('@/next/navigation', () => ({
   usePathname: () => '/test',
 }))
 
-vi.mock('@langgenius/dify-ui/dialog', () => ({
-  Dialog: ({ children, open }: { children: React.ReactNode; open?: boolean }) =>
-    open === false ? null : <>{children}</>,
-  DialogContent: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="modal">{children}</div>
-  ),
-  DialogTitle: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="modal-title">{children}</div>
-  ),
-}))
-
 describe('Sidebar Index', () => {
   const mockContextValue = {
     isInstalledApp: false,

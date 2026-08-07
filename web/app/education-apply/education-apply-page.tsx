@@ -102,7 +102,7 @@ const EducationApplyAgeContent = () => {
   }
   const renderBackToDifyButton = () => (
     <Button variant="ghost-accent" onClick={handleReturnHome}>
-      <span className="mr-1 i-ri-arrow-left-line size-4" />
+      <span className="i-ri-arrow-left-line size-4" />
       {t(($) => $['applied.noPaymentPermission.returnHome'], { ns: 'education' })}
     </Button>
   )

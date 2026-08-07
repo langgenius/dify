@@ -6,6 +6,7 @@ import * as z from 'zod'
  * AgentApiAccessResponse
  */
 export const zAgentApiAccessResponse = z.object({
+  access_ready: z.boolean(),
   api_key_count: z.int(),
   api_rph: z.int(),
   api_rpm: z.int(),
@@ -374,6 +375,7 @@ export const zWorkflowPartial = z.object({
  */
 export const zAgentAppDetailWithSite = z.object({
   access_mode: z.string().nullish(),
+  access_ready: z.boolean().optional().default(false),
   api_base_url: z.string().nullish(),
   app_id: z.string().nullish(),
   backing_app_id: z.string().nullish(),
@@ -826,40 +828,6 @@ export const zAgentLogConversationItemResponse = z.object({
  */
 export const zAgentLogListResponse = z.object({
   data: z.array(zAgentLogConversationItemResponse),
-  has_more: z.boolean(),
-  limit: z.int(),
-  page: z.int(),
-  total: z.int(),
-})
-
-/**
- * AgentLogMessageItemResponse
- */
-export const zAgentLogMessageItemResponse = z.object({
-  answer: z.string(),
-  answer_tokens: z.int(),
-  conversation_id: z.string(),
-  created_at: z.int().nullish(),
-  currency: z.string(),
-  error: z.string().nullish(),
-  from_account_id: z.string().nullish(),
-  from_end_user_id: z.string().nullish(),
-  id: z.string(),
-  latency: z.number(),
-  message_id: z.string(),
-  message_tokens: z.int(),
-  query: z.string(),
-  status: z.string(),
-  total_price: z.string(),
-  total_tokens: z.int(),
-  updated_at: z.int().nullish(),
-})
-
-/**
- * AgentLogMessageListResponse
- */
-export const zAgentLogMessageListResponse = z.object({
-  data: z.array(zAgentLogMessageItemResponse),
   has_more: z.boolean(),
   limit: z.int(),
   page: z.int(),
@@ -1363,6 +1331,51 @@ export const zAgentSuggestedQuestionsAfterAnswerFeatureConfig = z.object({
   enabled: z.boolean().optional().default(false),
   model: zAgentSuggestedQuestionsAfterAnswerModelConfig.nullish(),
   prompt: z.string().nullish(),
+})
+
+/**
+ * AgentLogFeedbackResponse
+ */
+export const zAgentLogFeedbackResponse = z.object({
+  content: z.string().nullish(),
+  from_source: z.enum(['admin', 'user']),
+  rating: z.enum(['dislike', 'like']),
+})
+
+/**
+ * AgentLogMessageItemResponse
+ */
+export const zAgentLogMessageItemResponse = z.object({
+  answer: z.string(),
+  answer_tokens: z.int(),
+  conversation_id: z.string(),
+  created_at: z.int().nullish(),
+  currency: z.string(),
+  error: z.string().nullish(),
+  feedback_enabled: z.boolean().optional().default(false),
+  feedbacks: z.array(zAgentLogFeedbackResponse).optional(),
+  from_account_id: z.string().nullish(),
+  from_end_user_id: z.string().nullish(),
+  id: z.string(),
+  latency: z.number(),
+  message_id: z.string(),
+  message_tokens: z.int(),
+  query: z.string(),
+  status: z.string(),
+  total_price: z.string(),
+  total_tokens: z.int(),
+  updated_at: z.int().nullish(),
+})
+
+/**
+ * AgentLogMessageListResponse
+ */
+export const zAgentLogMessageListResponse = z.object({
+  data: z.array(zAgentLogMessageItemResponse),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
 })
 
 /**
@@ -2723,6 +2736,7 @@ export const zAppDetailSiteResponseWritable = z.object({
  */
 export const zAgentAppDetailWithSiteWritable = z.object({
   access_mode: z.string().nullish(),
+  access_ready: z.boolean().optional().default(false),
   api_base_url: z.string().nullish(),
   app_id: z.string().nullish(),
   backing_app_id: z.string().nullish(),

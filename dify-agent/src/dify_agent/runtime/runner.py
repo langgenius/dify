@@ -40,6 +40,7 @@ from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.messages import AgentStreamEvent, PartDeltaEvent, PartStartEvent, TextPart, TextPartDelta
 from pydantic_ai.output import OutputSpec
 from pydantic_ai.tools import DeferredToolRequests, DeferredToolResults
+from pydantic_ai.usage import UsageLimits
 
 from agenton.compositor import CompositorSessionSnapshot, LayerConfigInput, LayerProviderInput
 from agenton.layers.types import PydanticAITool
@@ -79,6 +80,7 @@ from dify_agent.runtime.user_prompt_validation import EMPTY_USER_PROMPTS_ERROR, 
 
 
 _AGENT_OUTPUT_ADAPTER = TypeAdapter(object)
+_MAX_AGENT_STEPS_PER_RUN = 100
 
 
 @runtime_checkable
@@ -199,9 +201,6 @@ class AgentRunRunner:
         """Execute the run and emit the documented event sequence."""
         if self.is_cancelled():
             return
-        await self.sink.update_status(self.run_id, "running")
-        if self.is_cancelled():
-            return
         _ = await emit_run_started(self.sink, run_id=self.run_id)
 
         try:
@@ -210,9 +209,10 @@ class AgentRunRunner:
             if self.is_cancelled():
                 return
             message, reason = _run_failed_error_payload(exc)
-            _ = await emit_run_failed(self.sink, run_id=self.run_id, error=message, reason=reason)
-            await self.sink.update_status(self.run_id, "failed", message)
-            raise
+            finalization = await emit_run_failed(self.sink, run_id=self.run_id, error=message, reason=reason)
+            if finalization.applied:
+                raise
+            return
 
         if self.is_cancelled():
             return
@@ -227,7 +227,6 @@ class AgentRunRunner:
             session_snapshot=outcome.session_snapshot,
             usage=outcome.usage,
         )
-        await self.sink.update_status(self.run_id, "succeeded")
 
     async def _run_agent(self) -> RunSuccessOutcome:
         """Run the normalized request through the model path.
@@ -327,6 +326,7 @@ class AgentRunRunner:
                     message_history=message_history,
                     deferred_tool_results=deferred_tool_results,
                     event_stream_handler=handle_events,
+                    usage_limits=UsageLimits(request_limit=_MAX_AGENT_STEPS_PER_RUN),
                 )
                 complete_usage = model.accumulated_usage if isinstance(model, _HasAccumulatedUsage) else None
                 usage = _serialize_agent_usage(complete_usage if complete_usage is not None else _result_usage(result))

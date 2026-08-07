@@ -82,8 +82,6 @@ vi.mock('@/hooks/use-oauth', () => ({
   openOAuthPopup: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
-
 const mockConsoleState = vi.hoisted(() => ({
   userProfile: { id: 'test-user', name: 'Test User', email: 'test@example.com', avatar_url: '' },
   workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'] as string[],
@@ -203,13 +201,10 @@ describe('Authorized Component', () => {
         { wrapper: createWrapper() },
       )
 
-      const trigger = screen.getByTestId('popover-trigger')
-      expect(trigger).not.toHaveAttribute('data-popup-open')
       expect(screen.getByText('Closed'))!.toBeInTheDocument()
 
       fireEvent.click(screen.getByTestId('custom-trigger'))
 
-      expect(trigger).toHaveAttribute('data-popup-open', '')
       expect(screen.getByText('Open')).toBeInTheDocument()
     })
 

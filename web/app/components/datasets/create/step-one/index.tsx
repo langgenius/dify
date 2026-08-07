@@ -13,6 +13,7 @@ import NotionConnector from '@/app/components/base/notion-connector'
 import { NotionPageSelector } from '@/app/components/base/notion-page-selector'
 import { Plan } from '@/app/components/billing/type'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
+import VectorSpaceUnavailable from '@/app/components/billing/vector-space-unavailable'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useProviderContext } from '@/context/provider-context'
 import { DataSourceType } from '@/models/datasets'
@@ -135,12 +136,21 @@ const StepOne = ({
   const allFileLoaded = files.length > 0 && files.every((file) => file.file.id)
   const hasNotion = notionPages.length > 0
   const shouldCheckVectorSpace = enableBilling && (allFileLoaded || hasNotion)
-  const { data: vectorSpace, isFetching: isFetchingVectorSpacePlan } = useQuery(
+  const {
+    data: vectorSpace,
+    isFetching: isFetchingVectorSpacePlan,
+    refetch: refetchVectorSpace,
+  } = useQuery(
     consoleQuery.features.vectorSpace.get.queryOptions({ enabled: shouldCheckVectorSpace }),
   )
   const isCheckingVectorSpace = shouldCheckVectorSpace && !vectorSpace && isFetchingVectorSpacePlan
+  const isVectorSpaceUnavailable =
+    shouldCheckVectorSpace && plan.type === Plan.sandbox && !!vectorSpace?.usage_unknown
   const isVectorSpaceFull =
-    !!vectorSpace && vectorSpace.limit > 0 && vectorSpace.size >= vectorSpace.limit
+    !!vectorSpace &&
+    !vectorSpace.usage_unknown &&
+    vectorSpace.limit > 0 &&
+    vectorSpace.size >= vectorSpace.limit
   const isShowVectorSpaceFull = (allFileLoaded || hasNotion) && isVectorSpaceFull && enableBilling
   const supportBatchUpload = !enableBilling || plan.type !== Plan.sandbox
 
@@ -157,8 +167,8 @@ const StepOne = ({
     if (!files.length) return true
     if (files.some((file) => !file.file.id)) return true
     if (isCheckingVectorSpace) return true
-    return isShowVectorSpaceFull
-  }, [files, isCheckingVectorSpace, isShowVectorSpaceFull])
+    return isShowVectorSpaceFull || isVectorSpaceUnavailable
+  }, [files, isCheckingVectorSpace, isShowVectorSpaceFull, isVectorSpaceUnavailable])
 
   // Clear previews when switching data source type
   const handleClearPreviews = useCallback(
@@ -230,8 +240,16 @@ const StepOne = ({
                       <VectorSpaceFull />
                     </div>
                   )}
+                  {isVectorSpaceUnavailable && (
+                    <div className="mb-4 max-w-160">
+                      <VectorSpaceUnavailable
+                        isRetrying={isFetchingVectorSpacePlan}
+                        onRetry={() => void refetchVectorSpace()}
+                      />
+                    </div>
+                  )}
                   <NextStepButton disabled={fileNextDisabled} onClick={onStepChange} />
-                  {enableBilling && plan.type === Plan.sandbox && files.length > 0 && (
+                  {enableBilling && plan.type === Plan.sandbox && (
                     <div className="mt-5">
                       <div className="mb-4 h-px bg-divider-subtle" />
                       <UpgradeCard />
@@ -265,8 +283,18 @@ const StepOne = ({
                           <VectorSpaceFull />
                         </div>
                       )}
+                      {isVectorSpaceUnavailable && (
+                        <div className="mb-4 max-w-160">
+                          <VectorSpaceUnavailable
+                            isRetrying={isFetchingVectorSpacePlan}
+                            onRetry={() => void refetchVectorSpace()}
+                          />
+                        </div>
+                      )}
                       <NextStepButton
-                        disabled={isShowVectorSpaceFull || !notionPages.length}
+                        disabled={
+                          isShowVectorSpaceFull || isVectorSpaceUnavailable || !notionPages.length
+                        }
                         onClick={onStepChange}
                       />
                     </>

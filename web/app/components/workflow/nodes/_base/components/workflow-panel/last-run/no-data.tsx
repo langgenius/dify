@@ -21,7 +21,7 @@ const NoData: FC<Props> = ({ canSingleRun, onSingleRun }) => {
       </div>
       {canSingleRun && (
         <Button className="flex" size="small" onClick={onSingleRun}>
-          <RiPlayLine className="mr-1 size-3.5" />
+          <RiPlayLine className="size-3.5" />
           <div>{t(($) => $['debug.noData.runThisNode'], { ns: 'workflow' })}</div>
         </Button>
       )}

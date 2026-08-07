@@ -50,8 +50,6 @@ vi.mock('@tanstack/react-query', () => ({
   })),
 }))
 
-vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
-
 describe('ApiBasedExtensionSelector', () => {
   const mockOnChange = vi.fn()
 
@@ -93,18 +91,12 @@ describe('ApiBasedExtensionSelector', () => {
     it('should open dropdown when clicked', async () => {
       // Act
       render(<ApiBasedExtensionSelector value="" onChange={mockOnChange} />)
-      const popoverTrigger = screen.getByTestId('popover-trigger')
       const trigger = screen.getByText('common.apiBasedExtension.selector.placeholder')
-      const arrow = trigger.parentElement?.querySelector('[aria-hidden="true"]')
-      expect(popoverTrigger).not.toHaveAttribute('data-popup-open')
-      expect(arrow).toHaveClass('opacity-60')
 
       fireEvent.click(trigger)
 
       // Assert
       // Assert
-      expect(popoverTrigger).toHaveAttribute('data-popup-open', '')
-      expect(arrow).not.toHaveClass('opacity-60')
       expect(
         await screen.findByText('common.apiBasedExtension.selector.title'),
       )!.toBeInTheDocument()

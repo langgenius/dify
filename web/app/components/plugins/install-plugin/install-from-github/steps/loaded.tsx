@@ -2,7 +2,6 @@
 
 import type { Plugin, PluginDeclaration, UpdateFromGitHubPayload } from '../../../types'
 import { Button } from '@langgenius/dify-ui/button'
-import { RiLoader2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -24,7 +23,7 @@ type LoadedProps = {
   selectedPackage: string
   onBack: () => void
   onStartToInstall?: () => void
-  onInstalled: (notRefresh?: boolean) => void
+  onInstalled: (notRefresh?: boolean) => void | Promise<void>
   onFailed: (message?: string) => void
 }
 
@@ -112,7 +111,7 @@ const Loaded: React.FC<LoadedProps> = ({
         }
       }
       if (isInstalled) {
-        onInstalled()
+        await onInstalled()
         return
       }
 
@@ -124,7 +123,7 @@ const Loaded: React.FC<LoadedProps> = ({
         onFailed(error)
         return
       }
-      onInstalled(true)
+      await onInstalled(true)
     } catch (e) {
       if (typeof e === 'string') {
         onFailed(e)
@@ -164,11 +163,11 @@ const Loaded: React.FC<LoadedProps> = ({
         )}
         <Button
           variant="primary"
-          className="flex min-w-18 space-x-0.5"
+          className="min-w-18"
           onClick={handleInstall}
-          disabled={isInstalling || isLoading}
+          disabled={isLoading}
+          loading={isInstalling}
         >
-          {isInstalling && <RiLoader2Line className="size-4 animate-spin-slow" />}
           <span>
             {t(($) => $[`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`], {
               ns: 'plugin',
