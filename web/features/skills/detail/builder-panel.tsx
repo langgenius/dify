@@ -990,10 +990,17 @@ export function SkillBuilderPanel({
                       isSending ||
                       isUploadingAttachment
                     }
-                    loading={isSending}
                     onClick={() => handleSend()}
                   >
-                    <span aria-hidden className="i-ri-send-plane-2-fill size-4" />
+                    <span
+                      aria-hidden
+                      className={cn(
+                        isSending
+                          ? 'i-ri-loader-2-line animate-spin motion-reduce:animate-none'
+                          : 'i-ri-send-plane-2-fill',
+                        'size-4',
+                      )}
+                    />
                   </Button>
                 </div>
               </div>
