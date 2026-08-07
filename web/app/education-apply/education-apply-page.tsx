@@ -7,7 +7,6 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { noop } from 'es-toolkit/function'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
@@ -19,7 +18,6 @@ import { currentWorkspaceAtom, isCurrentWorkspaceManagerAtom } from '@/context/w
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
-import { useEducationAdd, useInvalidateEducationStatus } from '@/service/use-education'
 import { DifyLogo } from '../components/base/logo/dify-logo'
 import AppliedEducationContent from './applied-education-content'
 import RoleSelector from './role-selector'
@@ -40,11 +38,17 @@ const EducationApplyAgeContent = () => {
   const [inSchoolChecked, setInSchoolChecked] = useState(false)
   const [hasSubmittedEducation, setHasSubmittedEducation] = useState(false)
   const [isOpeningBillingPortal, setIsOpeningBillingPortal] = useState(false)
-  const { isPending, mutateAsync: educationAdd } = useEducationAdd({ onSuccess: noop })
-  const { onPlanInfoChanged, isEducationAccount, plan } = useProviderContext()
+  const { isPending, mutateAsync: educationAdd } = useMutation(
+    consoleQuery.account.education.post.mutationOptions(),
+  )
+  const { onPlanInfoChanged, plan } = useProviderContext()
+  const { data: isEducationAccount = false } = useQuery(
+    consoleQuery.account.education.get.queryOptions({
+      select: ({ is_student }) => is_student ?? false,
+    }),
+  )
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
-  const updateEducationStatus = useInvalidateEducationStatus()
   const docLink = useDocLink()
   const { handleEducationDiscount } = useEducationDiscount()
   const router = useRouter()
@@ -62,13 +66,14 @@ const EducationApplyAgeContent = () => {
   })()
   const handleSubmit = () => {
     educationAdd({
-      token: token || '',
-      role,
-      institution: schoolName,
+      body: {
+        token: token || '',
+        role,
+        institution: schoolName,
+      },
     }).then((res) => {
       if (res.message === 'success') {
         onPlanInfoChanged()
-        updateEducationStatus()
         setHasSubmittedEducation(true)
       } else {
         toast.error(t(($) => $.submitError, { ns: 'education' }))

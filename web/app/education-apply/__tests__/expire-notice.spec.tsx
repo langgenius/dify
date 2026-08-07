@@ -14,9 +14,7 @@ const mockPricingModal = vi.hoisted(() => ({ isOpen: false }))
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
-    allowRefreshEducationVerify: mockEducationStatus.allowRefresh,
-    educationAccountExpireAt: mockEducationStatus.expireAt,
-    isLoadingEducationAccountInfo: mockEducationStatus.isLoading,
+    enableEducationPlan: true,
   }),
 }))
 
@@ -40,6 +38,12 @@ vi.mock('@/next/dynamic', () => ({
 const renderNotice = (accountId = 'user-1') => {
   const { wrapper } = createConsoleQueryWrapper({
     accountProfile: { id: accountId, timezone: 'UTC' },
+    educationStatus: mockEducationStatus.isLoading
+      ? undefined
+      : {
+          allow_refresh: mockEducationStatus.allowRefresh,
+          expire_at: mockEducationStatus.expireAt,
+        },
   })
 
   return render(<EducationExpireNotice />, { wrapper })

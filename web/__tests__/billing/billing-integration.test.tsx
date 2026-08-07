@@ -17,11 +17,16 @@ import { Plan } from '@/app/components/billing/type'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
 import { consoleQuery } from '@/service/client'
-import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
+import {
+  createConsoleQueryClient,
+  createConsoleQueryWrapper,
+  seedEducationStatus,
+} from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
 
 let mockProviderCtx: Record<string, unknown> = {}
 let mockConsoleState: Record<string, unknown> = {}
+let mockEducationStatus = { is_student: false, allow_refresh: false, expire_at: null }
 
 const render = (ui: ReactElement, options: RenderOptions = {}, vectorSpaceUsageUnknown = false) => {
   const queryClient = createConsoleQueryClient()
@@ -37,6 +42,7 @@ const render = (ui: ReactElement, options: RenderOptions = {}, vectorSpaceUsageU
   queryClient.setQueryData(consoleQuery.billing.invoices.get.queryOptions().queryKey, {
     url: 'https://billing.example.com',
   })
+  seedEducationStatus(queryClient, mockEducationStatus)
   const { wrapper } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: 'CLOUD' },
     queryClient,
@@ -119,14 +125,19 @@ const createPlanData = (overrides: PlanOverrides = {}) => ({
 const setupProviderContext = (
   planOverrides: PlanOverrides = {},
   extra: Record<string, unknown> = {},
+  educationStatus: Partial<typeof mockEducationStatus> = {},
 ) => {
+  mockEducationStatus = {
+    is_student: false,
+    allow_refresh: false,
+    expire_at: null,
+    ...educationStatus,
+  }
   mockProviderCtx = {
     plan: createPlanData(planOverrides),
     enableBilling: true,
     isFetchedPlan: true,
     enableEducationPlan: false,
-    isEducationAccount: false,
-    allowRefreshEducationVerify: false,
     ...extra,
   }
 }
@@ -350,13 +361,7 @@ describe('Plan Type Display Integration', () => {
   })
 
   it('should show education verify button when enableEducationPlan is true and not yet verified', () => {
-    setupProviderContext(
-      { type: Plan.sandbox },
-      {
-        enableEducationPlan: true,
-        isEducationAccount: false,
-      },
-    )
+    setupProviderContext({ type: Plan.sandbox }, { enableEducationPlan: true })
 
     render(<PlanComp loc="test" />)
 
@@ -366,10 +371,8 @@ describe('Plan Type Display Integration', () => {
   it('should show education discount to managers without billing permission keys', () => {
     setupProviderContext(
       { type: Plan.sandbox },
-      {
-        enableEducationPlan: true,
-        isEducationAccount: true,
-      },
+      { enableEducationPlan: true },
+      { is_student: true },
     )
     setupConsoleState({ isCurrentWorkspaceManager: true, workspacePermissionKeys: [] })
 
@@ -381,10 +384,8 @@ describe('Plan Type Display Integration', () => {
   it('should hide education discount from non-manager members', () => {
     setupProviderContext(
       { type: Plan.sandbox },
-      {
-        enableEducationPlan: true,
-        isEducationAccount: true,
-      },
+      { enableEducationPlan: true },
+      { is_student: true },
     )
     setupConsoleState({
       isCurrentWorkspaceManager: false,

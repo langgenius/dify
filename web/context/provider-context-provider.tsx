@@ -21,7 +21,6 @@ import {
   useModelListByType,
   useSupportRetrievalMethods,
 } from '@/service/use-common'
-import { useEducationStatus } from '@/service/use-education'
 import { ProviderContext } from './provider-context'
 
 type ProviderContextProviderProps = {
@@ -88,12 +87,6 @@ export const ProviderContextProvider = ({ children }: ProviderContextProviderPro
 
   const [enableEducationPlan, setEnableEducationPlan] = useState(false)
   const [isEducationWorkspace, setIsEducationWorkspace] = useState(false)
-  const {
-    data: educationAccountInfo,
-    isLoading: isLoadingEducationAccountInfo,
-    isFetching: isFetchingEducationAccountInfo,
-    isFetchedAfterMount: isEducationDataFetchedAfterMount,
-  } = useEducationStatus(!enableEducationPlan)
   const [isAllowTransferWorkspace, setIsAllowTransferWorkspace] = useState(false)
   const [
     isAllowPublishAsCustomKnowledgePipelineTemplate,
@@ -192,17 +185,6 @@ export const ProviderContextProvider = ({ children }: ProviderContextProviderPro
         datasetOperatorEnabled,
         enableEducationPlan,
         isEducationWorkspace,
-        isEducationAccount: isEducationDataFetchedAfterMount
-          ? (educationAccountInfo?.is_student ?? false)
-          : false,
-        allowRefreshEducationVerify: isEducationDataFetchedAfterMount
-          ? (educationAccountInfo?.allow_refresh ?? false)
-          : false,
-        educationAccountExpireAt: isEducationDataFetchedAfterMount
-          ? (educationAccountInfo?.expire_at ?? null)
-          : null,
-        isLoadingEducationAccountInfo,
-        isFetchingEducationAccountInfo,
         webappCopyrightEnabled,
         licenseLimit,
         refreshLicenseLimit: fetchPlan,
