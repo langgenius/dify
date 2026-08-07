@@ -10,6 +10,9 @@ const mockUseFeatures = vi.fn()
 const mockUseTextGeneration = vi.fn()
 const mockUseEventEmitterContextContext = vi.fn()
 const mockPromptVariablesToUserInputsForm = vi.fn()
+const { mockToastError } = vi.hoisted(() => ({
+  mockToastError: vi.fn(),
+}))
 
 let capturedTextGenerationProps: {
   content: string
@@ -37,6 +40,12 @@ vi.mock('@/app/components/base/features/hooks', () => ({
 
 vi.mock('@/app/components/base/text-generation/hooks', () => ({
   useTextGeneration: () => mockUseTextGeneration(),
+}))
+
+vi.mock('@/app/components/app/configuration/toast', () => ({
+  toast: {
+    error: mockToastError,
+  },
 }))
 
 vi.mock('@/context/event-emitter', () => ({
@@ -377,7 +386,16 @@ describe('TextGenerationItem', () => {
         expect.objectContaining({
           inputs: { name: 'World' },
         }),
+        expect.objectContaining({
+          onNotifyError: expect.any(Function),
+        }),
       )
+
+      const callbacks = handleSend.mock.calls[0]![2] as {
+        onNotifyError: (message: string) => void
+      }
+      callbacks.onNotifyError('Base model not found')
+      expect(mockToastError).toHaveBeenCalledWith('Base model not found')
     })
 
     it('should ignore other event types', () => {
@@ -434,6 +452,7 @@ describe('TextGenerationItem', () => {
             }),
           }),
         }),
+        expect.objectContaining({ onNotifyError: expect.any(Function) }),
       )
     })
 
@@ -474,6 +493,7 @@ describe('TextGenerationItem', () => {
             }),
           ],
         }),
+        expect.objectContaining({ onNotifyError: expect.any(Function) }),
       )
     })
 
@@ -512,6 +532,7 @@ describe('TextGenerationItem', () => {
         expect.not.objectContaining({
           files: expect.anything(),
         }),
+        expect.objectContaining({ onNotifyError: expect.any(Function) }),
       )
     })
 
@@ -536,6 +557,7 @@ describe('TextGenerationItem', () => {
         expect.not.objectContaining({
           files: expect.anything(),
         }),
+        expect.objectContaining({ onNotifyError: expect.any(Function) }),
       )
     })
 
@@ -560,6 +582,7 @@ describe('TextGenerationItem', () => {
         expect.not.objectContaining({
           files: expect.anything(),
         }),
+        expect.objectContaining({ onNotifyError: expect.any(Function) }),
       )
     })
   })
@@ -607,6 +630,7 @@ describe('TextGenerationItem', () => {
             }),
           }),
         }),
+        expect.objectContaining({ onNotifyError: expect.any(Function) }),
       )
     })
 

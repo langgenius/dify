@@ -51,11 +51,12 @@ def test_multiple_retrieve_preserves_otel_context_in_dataset_thread(
 ) -> None:
     """Per-dataset retrieval spans must remain in the workflow node trace."""
     retrieval = DatasetRetrieval()
-    dataset = MagicMock(spec=Dataset)
-    dataset.id = str(uuid4())
-    dataset.indexing_technique = "high_quality"
-    dataset.embedding_model = "text-embedding-3-small"
-    dataset.embedding_model_provider = "openai"
+    dataset = Dataset(
+        id=str(uuid4()),
+        indexing_technique="high_quality",
+        embedding_model="text-embedding-3-small",
+        embedding_model_provider="openai",
+    )
     observed_trace_ids: list[int] = []
 
     def record_active_trace(**_kwargs: object) -> None:

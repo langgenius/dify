@@ -167,7 +167,7 @@ export function Uploader({
             aria-labelledby={fileNameId}
             aria-describedby={fileMetadataId}
             className={cn(
-              'group flex items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+              'group flex items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
               'hover:bg-components-panel-on-panel-item-bg-hover',
             )}
           >

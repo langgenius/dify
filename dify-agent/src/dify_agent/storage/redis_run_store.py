@@ -26,6 +26,8 @@ from dify_agent.server.schemas import RunRecord, new_run_id
 from dify_agent.server.settings import DEFAULT_RUN_RETENTION_SECONDS
 from dify_agent.storage.redis_keys import run_events_key, run_record_key
 
+_TERMINAL_RUN_EVENT_TYPES = {"run_succeeded", "run_failed", "run_cancelled"}
+
 
 class RunNotFoundError(LookupError):
     """Raised when a requested run record does not exist."""
@@ -190,7 +192,7 @@ class RedisRunStore(RunEventSink):
         return RunEventsResponse(run_id=run_id, events=events, next_cursor=next_cursor)
 
     async def iter_events(self, run_id: str, *, after: str = "0-0") -> AsyncIterator[RunEvent]:
-        """Yield replayed and future events for SSE clients."""
+        """Yield replayed and future events through the first terminal event."""
         await self.get_run(run_id)
         cursor = after
         while True:
@@ -199,6 +201,8 @@ class RedisRunStore(RunEventSink):
                 if event.id is not None:
                     cursor = event.id
                 yield event
+                if event.type in _TERMINAL_RUN_EVENT_TYPES:
+                    return
             if not page.events:
                 break
         while True:
@@ -211,6 +215,8 @@ class RedisRunStore(RunEventSink):
                     if event.id is not None:
                         cursor = event.id
                     yield event
+                    if event.type in _TERMINAL_RUN_EVENT_TYPES:
+                        return
 
     @staticmethod
     def _decode_event(run_id: str, raw_id: object, fields: dict[object, object]) -> RunEvent:

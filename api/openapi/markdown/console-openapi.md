@@ -7037,13 +7037,6 @@ Request body:
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ConsoleHumanInputFormSubmitResponse](#consolehumaninputformsubmitresponse)<br> |
 
-### [POST] /info
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TenantInfoResponse](#tenantinforesponse)<br> |
-
 ### [GET] /installed-apps
 #### Parameters
 
@@ -10069,13 +10062,6 @@ Returns information about why and where the workflow is paused.
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [TenantListResponse](#tenantlistresponse)<br> |
 
-### [POST] /workspaces/current
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TenantInfoResponse](#tenantinforesponse)<br> |
-
 ### [GET] /workspaces/current/agent-provider/{provider_name}
 Get specific agent provider details
 
@@ -10596,6 +10582,20 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Model providers retrieved successfully | **application/json**: [ModelProviderListResponse](#modelproviderlistresponse)<br> |
+
+### [GET] /workspaces/current/model-providers/credits
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Model provider credits retrieved successfully | **application/json**: [ModelProviderCreditsResponse](#modelprovidercreditsresponse)<br> |
+
+### [GET] /workspaces/current/model-providers/summary
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Model provider summaries retrieved successfully | **application/json**: [ModelProviderSummaryListResponse](#modelprovidersummarylistresponse)<br> |
 
 ### [GET] /workspaces/current/model-providers/{provider}/checkout-url
 #### Parameters
@@ -11142,6 +11142,19 @@ Returns permission flags that control workspace features like member invitations
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginInstallTaskStartResponse](#plugininstalltaskstartresponse)<br> |
 
+### [GET] /workspaces/current/plugin/installed-ids
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| category | query | Plugin category to include | Yes | string, <br>**Available values:** "agent-strategy", "datasource", "extension", "model", "tool", "trigger" |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PluginInstalledIdsResponse](#plugininstalledidsresponse)<br> |
+
 ### [GET] /workspaces/current/plugin/list
 #### Parameters
 
@@ -11400,8 +11413,11 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| language | query | Language used for localized label and description search | No | string, <br>**Available values:** "en_US", "ja_JP", "pt_BR", "zh_Hans", <br>**Default:** en_US |
 | page | query | Page number | No | integer, <br>**Default:** 1 |
 | page_size | query | Page size (1-256) | No | integer, <br>**Default:** 256 |
+| query | query | Case-insensitive search query | No | string |
+| tags | query | Match any plugin tag | No | [ string ] |
 | category | path |  | Yes | string |
 
 #### Responses
@@ -12000,6 +12016,14 @@ Returns permission flags that control workspace features like member invitations
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [WorkspaceAccessMatrix](#workspaceaccessmatrix)<br> |
+
+### [GET] /workspaces/current/summary
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [CurrentWorkspaceSummaryResponse](#currentworkspacesummaryresponse)<br> |
+| 409 | Current workspace is archived |  |
 
 ### [GET] /workspaces/current/tool-labels
 #### Responses
@@ -12808,6 +12832,13 @@ Returns permission flags that control workspace features like member invitations
 | ---- | ----------- | ------ |
 | 200 | Trigger providers retrieved successfully | **application/json**: [TriggerProviderListResponse](#triggerproviderlistresponse)<br> |
 
+### [GET] /workspaces/custom-config
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [WorkspaceCustomConfigResponse](#workspacecustomconfigresponse)<br> |
+
 ### [POST] /workspaces/custom-config
 #### Request Body
 
@@ -13248,6 +13279,7 @@ Model class for AI model.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| access_ready | boolean |  | Yes |
 | api_key_count | integer |  | Yes |
 | api_rph | integer |  | Yes |
 | api_rpm | integer |  | Yes |
@@ -13313,6 +13345,7 @@ Model class for AI model.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | access_mode | string |  | No |
+| access_ready | boolean |  | No |
 | api_base_url | string |  | No |
 | app_id | string |  | No |
 | backing_app_id | string |  | No |
@@ -16587,6 +16620,16 @@ Model class for credential form schema.
 | ---- | ---- | ----------- | -------- |
 | CredentialType | string |  |  |
 
+#### CurrentWorkspaceSummaryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credits | integer | Remaining credits in the effective pool; -1 means unlimited. | Yes |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| plan | string |  | Yes |
+| role | [TenantAccountRole](#tenantaccountrole) |  | Yes |
+
 #### CustomConfigurationResponse
 
 Model class for provider custom configuration response.
@@ -18081,6 +18124,13 @@ Built-in tool icons are URL strings; API-based tool icons are provider-defined p
 
 #### ExternalDatasetCreatePayload
 
+Validated fields required to create an external dataset binding.
+
+The console controller owns HTTP concerns, but the service also needs this
+contract when creating the tenant-scoped dataset and external knowledge
+binding. Keep it outside controllers so service imports do not depend on
+Flask blueprint initialization.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | description | string |  | No |
@@ -18887,6 +18937,7 @@ Enum class for large language model mode.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | expired_at | string |  | Yes |
+| license_expiry_notice_enabled | boolean |  | Yes |
 | seats | [LicenseLimitationModel](#licenselimitationmodel) |  | Yes |
 | status | [LicenseStatus](#licensestatus) |  | Yes |
 | workspaces | [LicenseLimitationModel](#licenselimitationmodel) |  | Yes |
@@ -19372,6 +19423,30 @@ Enum class for model property key.
 | ---- | ---- | ----------- | -------- |
 | ModelPropertyKey | string | Enum class for model property key. |  |
 
+#### ModelProviderCreditsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| exhausted_at | integer |  | Yes |
+| is_exhausted | boolean |  | Yes |
+| is_unlimited | boolean |  | Yes |
+| next_credit_reset_date | integer |  | Yes |
+| pool_type | string |  | Yes |
+| quota_limit | integer | Credit limit for the effective pool; -1 means unlimited. | Yes |
+| quota_used | integer |  | Yes |
+| remaining_credits | integer | Remaining credits; -1 means unlimited. | Yes |
+
+#### ModelProviderCustomConfigurationSummaryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| available_credentials | [ [CredentialConfiguration](#credentialconfiguration) ] |  | Yes |
+| current_credential_id | string |  | No |
+| current_credential_name | string |  | No |
+| current_credential_usable | boolean |  | Yes |
+| has_custom_models | boolean | Whether custom model configuration exists, including saved model credentials. | Yes |
+| status | [CustomConfigurationStatus](#customconfigurationstatus) |  | Yes |
+
 #### ModelProviderListResponse
 
 | Name | Type | Description | Required |
@@ -19383,6 +19458,49 @@ Enum class for model property key.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | payment_link | string |  | Yes |
+
+#### ModelProviderPluginSummaryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| installation_id | string |  | Yes |
+| plugin_id | string |  | Yes |
+| plugin_unique_identifier | string |  | Yes |
+| runtime_type | string |  | Yes |
+| source | [PluginInstallationSource](#plugininstallationsource) |  | Yes |
+| version | string |  | Yes |
+
+#### ModelProviderSummaryListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ModelProviderSummaryResponse](#modelprovidersummaryresponse) ] |  | Yes |
+| plugins | object |  | Yes |
+
+#### ModelProviderSummaryResponse
+
+Fields required to render the collapsed model-provider list.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| configurate_methods | [ [ConfigurateMethod](#configuratemethod) ] |  | Yes |
+| custom_configuration | [ModelProviderCustomConfigurationSummaryResponse](#modelprovidercustomconfigurationsummaryresponse) |  | Yes |
+| description | [I18nObject](#i18nobject) |  | No |
+| icon_small | [I18nObject](#i18nobject) |  | No |
+| icon_small_dark | [I18nObject](#i18nobject) |  | No |
+| is_configured | boolean |  | Yes |
+| label | [I18nObject](#i18nobject) |  | Yes |
+| plugin_id | string |  | Yes |
+| preferred_provider_type | [ProviderType](#providertype) |  | Yes |
+| provider | string |  | Yes |
+| supported_model_types | [ [ModelType](#modeltype) ] |  | Yes |
+| system_configuration | [ModelProviderSystemConfigurationSummaryResponse](#modelprovidersystemconfigurationsummaryresponse) |  | Yes |
+
+#### ModelProviderSystemConfigurationSummaryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | Yes |
 
 #### ModelSelectorScope
 
@@ -20373,8 +20491,11 @@ Shared permission levels for resources (datasets, credentials, etc.)
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| language | string, <br>**Available values:** "en_US", "ja_JP", "pt_BR", "zh_Hans", <br>**Default:** en_US | Language used for localized label and description search<br>*Enum:* `"en_US"`, `"ja_JP"`, `"pt_BR"`, `"zh_Hans"` | No |
 | page | integer, <br>**Default:** 1 | Page number | No |
 | page_size | integer, <br>**Default:** 256 | Page size (1-256) | No |
+| query | string | Case-insensitive search query | No |
+| tags | [ string ] | Match any plugin tag | No |
 
 #### PluginCategoryListResponse
 
@@ -20574,6 +20695,18 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | plugins | [ [PluginInstallationItemResponse](#plugininstallationitemresponse) ] |  | Yes |
+
+#### PluginInstalledIdsQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| category | [PluginCategory](#plugincategory) | Plugin category to include | Yes |
+
+#### PluginInstalledIdsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| plugin_ids | [ string ] |  | Yes |
 
 #### PluginListResponse
 
@@ -21383,6 +21516,12 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | instruction | string | Structured output generation instruction | Yes |
 | model_config | [ModelConfig](#modelconfig) | Model configuration | Yes |
 
+#### SSOProtocol
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| SSOProtocol | string |  |  |
+
 #### SandboxFileEntryResponse
 
 | Name | Type | Description | Required |
@@ -22159,7 +22298,7 @@ Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
 | plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | Yes |
 | rbac_enabled | boolean |  | Yes |
 | sso_enforced_for_signin | boolean |  | Yes |
-| sso_enforced_for_signin_protocol | string |  | Yes |
+| sso_enforced_for_signin_protocol | [SSOProtocol](#ssoprotocol) |  | Yes |
 | webapp_auth | [WebAppAuthModel](#webappauthmodel) |  | Yes |
 
 #### SystemParameters
@@ -23125,7 +23264,7 @@ in form definition, or a variable while the workflow is running.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| protocol | string |  | Yes |
+| protocol | [SSOProtocol](#ssoprotocol) |  | Yes |
 
 #### WebhookTriggerResponse
 

@@ -41,7 +41,7 @@ export const useMarketplaceCollectionsAndPlugins = () => {
     },
     [],
   )
-  const isLoading = !!queryParams && (isFetching || isPending)
+  const isLoading = !!queryParams && (isPending || (isFetching && !data))
 
   return {
     marketplaceCollections: marketplaceCollectionsOverride ?? data?.marketplaceCollections,
@@ -73,14 +73,14 @@ export const useMarketplacePluginsByCollectionId = (
 
   return {
     plugins: data || [],
-    isLoading: !!collectionId && (isFetching || isPending),
+    isLoading: !!collectionId && (isPending || (isFetching && !data)),
     isSuccess,
   }
 }
 /**
  * @deprecated Use useMarketplacePlugins from query.ts instead
  */
-export const useMarketplacePlugins = () => {
+export const useMarketplacePlugins = (enabled = true) => {
   const queryClient = useQueryClient()
   const [queryParams, setQueryParams] = useState<PluginsSearchParams>()
 
@@ -150,7 +150,7 @@ export const useMarketplacePlugins = () => {
       return loaded < (lastPage.total || 0) ? nextPage : undefined
     },
     initialPageParam: 1,
-    enabled: !!queryParams,
+    enabled: enabled && !!queryParams,
     staleTime: 1000 * 60 * 5,
     gcTime: 1000 * 60 * 10,
     retry: false,
@@ -187,6 +187,7 @@ export const useMarketplacePlugins = () => {
       : undefined
   const total = hasQuery && hasData ? marketplacePluginsQuery.data.pages?.[0]?.total : undefined
   const isPluginsLoading =
+    enabled &&
     hasQuery &&
     (marketplacePluginsQuery.isPending ||
       (marketplacePluginsQuery.isFetching && !marketplacePluginsQuery.data))

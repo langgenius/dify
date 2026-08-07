@@ -494,7 +494,7 @@ class TestDatasourceNodeRunApiPost:
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.PipelineGenerator")
     @patch(
         "controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user",
-        new_callable=lambda: Mock(spec=Account),
+        new_callable=lambda: Account(name="Test Account", email="test@example.com"),
     )
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.RagPipelineService")
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.db")
@@ -570,7 +570,7 @@ class TestPipelineRunApiPost:
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.PipelineGenerateService")
     @patch(
         "controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user",
-        new_callable=lambda: Mock(spec=Account),
+        new_callable=lambda: Account(name="Test Account", email="test@example.com"),
     )
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.RagPipelineService")
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.service_api_ns")
