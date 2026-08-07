@@ -1,4 +1,4 @@
-"""Persistence models for Human Input v2 contacts, delivery, and approval runtime.
+"""Persistence models for Human Input v2 contacts, IM intake, delivery, and approval runtime.
 
 The models intentionally use logical references instead of database foreign keys.
 Every relationship therefore requires an explicit eager-loading strategy, and
@@ -71,6 +71,7 @@ from core.human_input_v2.entities import (
 from core.human_input_v2.entities import (
     IMSyncRunStatus as _IMSyncRunStatus,
 )
+from core.human_input_v2.im_message_inbox import IM_INBOX_PROVIDER_METADATA_MAX_LENGTH, InboxProcessingStatus
 from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
 
 from .base import DefaultFieldsDCMixin, TypeBase
@@ -643,6 +644,94 @@ class HumanInputIMIntegration(DefaultFieldsDCMixin, TypeBase):
         viewonly=True,
         lazy="raise",
         init=False,
+    )
+
+
+class IMMessageInbox(DefaultFieldsDCMixin, TypeBase):
+    """Authenticated event facts plus one renewable fenced processing lease."""
+
+    __tablename__ = "im_message_inbox"
+    __table_args__ = (
+        sa.UniqueConstraint(
+            "provider",
+            "provider_tenant_id",
+            "provider_event_id",
+            name="im_message_inbox_provider_event_uq",
+        ),
+        sa.CheckConstraint(
+            "attempt_count >= 0",
+            name="im_message_inbox_attempt_count_nonnegative",
+        ),
+        sa.CheckConstraint(
+            # Pending work must remain unowned so any eligible worker can claim it.
+            "(status = 'pending' AND claim_token IS NULL AND lease_expires_at IS NULL) OR "
+            # Active work needs complete lease ownership for fencing and recovery.
+            "(status = 'processing' AND claim_token IS NOT NULL AND lease_expires_at IS NOT NULL) OR "
+            # Finalized work must release ownership so stale workers cannot retain a claim.
+            "(status IN ('succeeded', 'ignored', 'failed') AND claim_token IS NULL AND lease_expires_at IS NULL)",
+            name=sa.schema.conv("im_message_inbox_processing_state_valid"),
+        ),
+        sa.Index("im_message_inbox_processing_lease_idx", "status", "lease_expires_at", "id"),
+        sa.Index("im_message_inbox_status_created_idx", "status", "created_at", "id"),
+        {"comment": "Durable authenticated IM event intake and processing backlog."},
+    )
+
+    integration_id: Mapped[str] = mapped_column(
+        StringUUID,
+        nullable=False,
+        kw_only=True,
+        comment="Logical local Integration routing identifier without physical ownership.",
+    )
+    provider: Mapped[_IMProvider] = mapped_column(
+        EnumText(_IMProvider), nullable=False, kw_only=True, comment="Authenticated Provider discriminator."
+    )
+    provider_tenant_id: Mapped[str] = mapped_column(
+        sa.String(IM_INBOX_PROVIDER_METADATA_MAX_LENGTH),
+        nullable=False,
+        kw_only=True,
+        comment="Stable authenticated Provider tenant identifier.",
+    )
+    provider_event_id: Mapped[str | None] = mapped_column(
+        sa.String(IM_INBOX_PROVIDER_METADATA_MAX_LENGTH),
+        nullable=True,
+        default=None,
+        kw_only=True,
+        comment="Real Provider event ID when supplied.",
+    )
+    provider_event_time: Mapped[datetime | None] = mapped_column(
+        sa.DateTime, nullable=True, default=None, kw_only=True, comment="Provider event timestamp when supplied."
+    )
+    received_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, kw_only=True, comment="Dify receive timestamp for this delivery."
+    )
+    provider_event_type: Mapped[str | None] = mapped_column(
+        sa.String(IM_INBOX_PROVIDER_METADATA_MAX_LENGTH),
+        nullable=True,
+        default=None,
+        kw_only=True,
+        comment="Provider-owned event discriminator.",
+    )
+    raw_payload: Mapped[str] = mapped_column(
+        LongText, nullable=False, kw_only=True, comment="Authenticated Provider-native payload."
+    )
+    status: Mapped[InboxProcessingStatus] = mapped_column(
+        EnumText(InboxProcessingStatus),
+        nullable=False,
+        default=InboxProcessingStatus.PENDING,
+        kw_only=True,
+        comment="Current processing lifecycle state.",
+    )
+    attempt_count: Mapped[int] = mapped_column(
+        sa.Integer, nullable=False, default=0, kw_only=True, comment="Number of acquired processing leases."
+    )
+    claim_token: Mapped[str | None] = mapped_column(
+        sa.String(64), nullable=True, default=None, kw_only=True, comment="Opaque current lease fencing token."
+    )
+    lease_expires_at: Mapped[datetime | None] = mapped_column(
+        sa.DateTime, nullable=True, default=None, kw_only=True, comment="Current processing lease expiry."
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(
+        sa.DateTime, nullable=True, default=None, kw_only=True, comment="Terminal transition timestamp."
     )
 
 

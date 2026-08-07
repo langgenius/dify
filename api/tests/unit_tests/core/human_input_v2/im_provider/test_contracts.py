@@ -1,12 +1,15 @@
 from __future__ import annotations
 
-from dataclasses import FrozenInstanceError
+from dataclasses import FrozenInstanceError, fields
+from datetime import datetime
 
 import pytest
 from pydantic import ValidationError
 
+from core.human_input_v2 import im_provider
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_provider import (
+    AuthenticatedIMEvent,
     CredentialTestSuccess,
     Directory,
     DirectoryEntry,
@@ -62,3 +65,33 @@ def test_event_stream_contract_exposes_owner_managed_lifecycle() -> None:
     assert not hasattr(IMEventStream, "run")
     assert issubclass(IMStreamStartError, Exception)
     assert issubclass(IMStreamStopError, Exception)
+
+
+def test_authenticated_event_preserves_provider_payload_verbatim() -> None:
+    payload = ' {"type":"card.action","nested":{"value":1}}\n'
+
+    event = AuthenticatedIMEvent(
+        provider=IMProvider.SLACK,
+        provider_tenant_id="tenant-1",
+        event_id="event-1",
+        event_type="card.action",
+        occurred_at=datetime(2026, 8, 2, 8),
+        received_at=datetime(2026, 8, 2, 8, 0, 1),
+        payload=payload,
+    )
+
+    assert tuple(field.name for field in fields(event)) == (
+        "provider",
+        "provider_tenant_id",
+        "event_id",
+        "event_type",
+        "occurred_at",
+        "received_at",
+        "payload",
+    )
+    assert event.payload == payload
+
+
+def test_provider_contract_does_not_export_superseded_inbox_types() -> None:
+    assert not hasattr(im_provider, "ProviderNativePayload")
+    assert not hasattr(im_provider, "IMEventSink")

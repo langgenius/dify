@@ -12,6 +12,7 @@ from pydantic import (
     PositiveInt,
     computed_field,
     field_validator,
+    model_validator,
 )
 from pydantic_settings import BaseSettings
 
@@ -1323,6 +1324,22 @@ class IndexingConfig(BaseSettings):
     )
 
 
+class IMMessageInboxConfig(BaseSettings):
+    """Bounded attempt and renewable-lease policy for durable IM intake."""
+
+    IM_MESSAGE_INBOX_MAXIMUM_ATTEMPTS: PositiveInt = Field(default=5)
+    IM_MESSAGE_INBOX_LEASE_DURATION_SECONDS: PositiveInt = Field(default=60)
+    IM_MESSAGE_INBOX_HEARTBEAT_INTERVAL_SECONDS: PositiveInt = Field(default=20)
+    IM_MESSAGE_INBOX_RECOVERY_BATCH_SIZE: PositiveInt = Field(default=100)
+    IM_MESSAGE_INBOX_RECOVERY_INTERVAL_SECONDS: PositiveInt = Field(default=30)
+
+    @model_validator(mode="after")
+    def _validate_im_message_inbox_policy(self) -> "IMMessageInboxConfig":
+        if self.IM_MESSAGE_INBOX_HEARTBEAT_INTERVAL_SECONDS >= self.IM_MESSAGE_INBOX_LEASE_DURATION_SECONDS:
+            raise ValueError("IM message inbox heartbeat interval must be shorter than its lease duration")
+        return self
+
+
 class MultiModalTransferConfig(BaseSettings):
     MULTIMODAL_SEND_FORMAT: Literal["base64", "url"] = Field(
         description="Format for sending files in multimodal contexts ('base64' or 'url'), default is base64",
@@ -1630,6 +1647,7 @@ class FeatureConfig(
     HomepageConfig,
     HttpConfig,
     InnerAPIConfig,
+    IMMessageInboxConfig,
     IndexingConfig,
     LoggingConfig,
     MailConfig,

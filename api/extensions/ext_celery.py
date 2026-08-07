@@ -176,11 +176,17 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.app_generate.resume_agent_app_task",  # ENG-635: Agent v2 chat ask_human resume
         "tasks.workflow_run_archive_download_tasks",  # workflow-run archive download preparation
         "tasks.human_input_v2_delivery_tasks",
+        "tasks.im_message_inbox_tasks",  # durable IM inbox processing and recovery
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
 
     # if you add a new task, please add the switch to CeleryScheduleTasksConfig
-    beat_schedule: dict[str, CeleryBeatScheduleEntry] = {}
+    beat_schedule: dict[str, CeleryBeatScheduleEntry] = {
+        "im_message_inbox_recovery": {
+            "task": "im_message_inbox.recover",
+            "schedule": timedelta(seconds=dify_config.IM_MESSAGE_INBOX_RECOVERY_INTERVAL_SECONDS),
+        }
+    }
     beat_schedule["human_input_v2_delivery_publisher"] = {
         "task": ("tasks.human_input_v2_delivery_tasks.publish_due_human_input_v2_delivery_attempts_task"),
         "schedule": timedelta(minutes=1),
