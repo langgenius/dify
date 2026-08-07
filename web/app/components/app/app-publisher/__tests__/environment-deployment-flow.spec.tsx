@@ -458,9 +458,7 @@ describe('PublisherEnvironmentFlow', () => {
 
     renderFlow(deployment)
 
-    expect(
-      screen.getByText(`Published relative:${deployedAt * 1000} by Evan`),
-    ).toBeInTheDocument()
+    expect(screen.getByText(`Published relative:${deployedAt * 1000} by Evan`)).toBeInTheDocument()
   })
 
   it('shows the publish action when an undeployed environment has no published versions', async () => {
