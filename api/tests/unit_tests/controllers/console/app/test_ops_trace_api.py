@@ -106,9 +106,10 @@ def test_trace_config_mutations_require_edit_permission(
 
 
 @pytest.mark.parametrize(
-    ("method_name", "path", "payload", "service_method_name", "service_result"),
+    ("api_class", "method_name", "path", "payload", "service_method_name", "service_result"),
     [
         (
+            ops_trace_module.TraceAppConfigApi,
             "post",
             "/console/api/apps/app-123/trace-config",
             {"tracing_provider": "mlflow", "tracing_config": {"endpoint": "https://trace.example.com"}},
@@ -116,6 +117,7 @@ def test_trace_config_mutations_require_edit_permission(
             {"id": "trace-config-1"},
         ),
         (
+            ops_trace_module.TraceAppConfigApi,
             "patch",
             "/console/api/apps/app-123/trace-config",
             {"tracing_provider": "mlflow", "tracing_config": {"endpoint": "https://trace.example.com"}},
@@ -123,17 +125,27 @@ def test_trace_config_mutations_require_edit_permission(
             True,
         ),
         (
+            ops_trace_module.TraceAppConfigApi,
             "delete",
             "/console/api/apps/app-123/trace-config?tracing_provider=mlflow",
             None,
             "delete_tracing_app_config",
             True,
         ),
+        (
+            ops_trace_module.TraceAppConfigListApi,
+            "get",
+            "/console/api/apps/app-123/trace-configs",
+            None,
+            "get_tracing_app_configs",
+            {"configured_providers": [], "configs": None},
+        ),
     ],
 )
-def test_trace_config_mutations_require_rbac_permission(
+def test_trace_config_endpoints_require_rbac_permission(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
+    api_class: type[ops_trace_module.TraceAppConfigApi] | type[ops_trace_module.TraceAppConfigListApi],
     method_name: str,
     path: str,
     payload: dict[str, object] | None,
@@ -173,6 +185,6 @@ def test_trace_config_mutations_require_rbac_permission(
     with app.test_request_context(path, method=method_name.upper(), json=payload):
         with _patch_payload(payload):
             with pytest.raises(Forbidden):
-                getattr(ops_trace_module.TraceAppConfigApi(), method_name)(app_id="app-123")
+                getattr(api_class(), method_name)(app_id="app-123")
 
     service_mock.assert_not_called()

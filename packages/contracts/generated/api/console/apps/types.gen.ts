@@ -787,6 +787,13 @@ export type TraceConfigPayload = {
   tracing_provider: string
 }
 
+export type TraceAppConfigListResponse = {
+  configs?: Array<TraceAppConfigResponse> | null
+  configured_providers?: Array<string>
+  enabled?: boolean
+  tracing_provider?: string | null
+}
+
 export type ParserEnable = {
   enable_trigger: boolean
   trigger_id: string
@@ -5458,6 +5465,24 @@ export type PostAppsByAppIdTraceConfigResponses = {
 
 export type PostAppsByAppIdTraceConfigResponse =
   PostAppsByAppIdTraceConfigResponses[keyof PostAppsByAppIdTraceConfigResponses]
+
+export type GetAppsByAppIdTraceConfigsData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: {
+    include_config?: boolean
+  }
+  url: '/apps/{app_id}/trace-configs'
+}
+
+export type GetAppsByAppIdTraceConfigsResponses = {
+  200: TraceAppConfigListResponse
+}
+
+export type GetAppsByAppIdTraceConfigsResponse =
+  GetAppsByAppIdTraceConfigsResponses[keyof GetAppsByAppIdTraceConfigsResponses]
 
 export type PostAppsByAppIdTriggerEnableData = {
   body: ParserEnable

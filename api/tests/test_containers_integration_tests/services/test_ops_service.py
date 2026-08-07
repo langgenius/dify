@@ -193,6 +193,39 @@ class TestOpsService:
         assert result is not None
         assert result["tracing_config"]["project_url"] == "https://api.langfuse.com/"
 
+    # ── get_tracing_app_configs ───────────────────────────────────
+
+    def test_get_tracing_app_configs_summary_does_not_decrypt(
+        self, db_session_with_containers: Session, mock_external_service_dependencies, mock_ops_trace_manager
+    ):
+        app, _ = self._create_app(db_session_with_containers, mock_external_service_dependencies)
+        self._insert_trace_config(db_session_with_containers, app.id, "langfuse")
+        self._insert_trace_config(db_session_with_containers, app.id, "mlflow")
+
+        result = OpsService.get_tracing_app_configs(app.id, include_config=False, session=db_session_with_containers)
+
+        assert result == {
+            "configured_providers": ["langfuse", "mlflow"],
+            "configs": None,
+        }
+        mock_ops_trace_manager.decrypt_tracing_config.assert_not_called()
+
+    def test_get_tracing_app_configs_returns_all_obfuscated_configs(
+        self, db_session_with_containers: Session, mock_external_service_dependencies, mock_ops_trace_manager
+    ):
+        app, _ = self._create_app(db_session_with_containers, mock_external_service_dependencies)
+        self._insert_trace_config(db_session_with_containers, app.id, "langfuse")
+        self._insert_trace_config(db_session_with_containers, app.id, "mlflow")
+        mock_ops_trace_manager.decrypt_tracing_config.return_value = {"secret": "decrypted"}
+        mock_ops_trace_manager.obfuscated_decrypt_token.return_value = {"secret": "********"}
+
+        result = OpsService.get_tracing_app_configs(app.id, include_config=True, session=db_session_with_containers)
+
+        assert result["configured_providers"] == ["langfuse", "mlflow"]
+        assert [config["tracing_provider"] for config in result["configs"]] == ["langfuse", "mlflow"]
+        assert all(config["tracing_config"]["secret"] == "********" for config in result["configs"])
+        assert mock_ops_trace_manager.decrypt_tracing_config.call_count == 2
+
     # ── create_tracing_app_config ──────────────────────────────────────
 
     def test_create_tracing_app_config_invalid_provider(self, db_session_with_containers: Session):

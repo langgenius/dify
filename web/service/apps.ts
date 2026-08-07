@@ -5,7 +5,6 @@ import type {
   DSLImportMode,
   DSLImportResponse,
   TracingConfig,
-  TracingStatus,
   UpdateAppModelConfigResponse,
   UpdateAppSiteCodeResponse,
   WebhookTriggerResponse,
@@ -251,10 +250,6 @@ export const createApikey = ({
 }
 
 // Tracing
-export const fetchTracingStatus = ({ appId }: { appId: string }): Promise<TracingStatus> => {
-  return get<TracingStatus>(`/apps/${appId}/trace`)
-}
-
 export const updateTracingStatus = ({
   appId,
   body,
@@ -278,20 +273,6 @@ export const fetchWebhookUrl = ({
     { params: { node_id: nodeId } },
     { silent: true },
   )
-}
-
-export const fetchTracingConfig = ({
-  appId,
-  provider,
-}: {
-  appId: string
-  provider: TracingProvider
-}): Promise<TracingConfig & { has_not_configured: true }> => {
-  return get<TracingConfig & { has_not_configured: true }>(`/apps/${appId}/trace-config`, {
-    params: {
-      tracing_provider: provider,
-    },
-  })
 }
 
 export const addTracingConfig = ({
