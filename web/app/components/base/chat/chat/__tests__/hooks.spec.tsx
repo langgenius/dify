@@ -437,6 +437,7 @@ describe('useChat', () => {
 
     it('should call ssePost and handle data correctly on success', async () => {
       let callbacks: HookCallbacks
+      const onNotifyError = vi.fn()
 
       vi.mocked(ssePost).mockImplementation(async (url, params, options) => {
         callbacks = options as HookCallbacks
@@ -445,10 +446,14 @@ describe('useChat', () => {
       const { result } = renderHook(() => useChat())
 
       act(() => {
-        result.current.handleSend('test-url', { query: 'hello' }, {})
+        result.current.handleSend('test-url', { query: 'hello' }, { onNotifyError })
       })
 
-      expect(ssePost).toHaveBeenCalled()
+      expect(ssePost).toHaveBeenCalledWith(
+        'test-url',
+        expect.any(Object),
+        expect.objectContaining({ onNotifyError }),
+      )
       expect(result.current.isResponding).toBe(true)
 
       // Simulate typical SSE lifecycle
@@ -1445,6 +1450,7 @@ describe('useChat', () => {
   describe('handleResume', () => {
     it('should call sseGet to resume a node and handle complex tracing', async () => {
       let callbacks: HookCallbacks
+      const onNotifyError = vi.fn()
 
       vi.mocked(sseGet).mockImplementation(async (url, params, options) => {
         callbacks = options as HookCallbacks
@@ -1485,13 +1491,13 @@ describe('useChat', () => {
       )
 
       act(() => {
-        result.current.handleResume('m-1', 'wr-1', { isPublicAPI: true })
+        result.current.handleResume('m-1', 'wr-1', { isPublicAPI: true, onNotifyError })
       })
 
       expect(sseGet).toHaveBeenCalledWith(
         '/workflow/wr-1/events?include_state_snapshot=true&continue_on_pause=true',
         expect.any(Object),
-        expect.any(Object),
+        expect.objectContaining({ onNotifyError }),
       )
 
       act(() => {

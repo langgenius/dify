@@ -143,7 +143,7 @@ def test_device_error_redirect_drops_malformed_user_code():
 
 
 def _ee_features():
-    from services.feature_service import LicenseStatus
+    from services.entities.feature_entities import LicenseStatus
 
     m = MagicMock()
     m.license.status = LicenseStatus.ACTIVE

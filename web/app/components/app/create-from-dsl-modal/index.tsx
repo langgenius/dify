@@ -21,7 +21,6 @@ import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { userProfileIdAtom } from '@/context/account-state'
@@ -29,8 +28,7 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
-import { consoleClient, consoleQuery } from '@/service/client'
-import { useInvalidateAppList } from '@/service/use-apps'
+import { consoleQuery } from '@/service/client'
 import { AppModeEnum as AppMode } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
@@ -99,6 +97,9 @@ function CreateFromDSLModal({
   const [currentFile, setCurrentFile] = useState<File | undefined>(droppedFile)
   const [currentTab, setCurrentTab] = useState(activeTab)
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null)
+  const { mutateAsync: requestImport } = useMutation(
+    consoleQuery.apps.imports.post.mutationOptions(),
+  )
   const importMutation = useMutation({
     mutationFn: async (source: ImportSource) => {
       const body =
@@ -112,15 +113,13 @@ function CreateFromDSLModal({
               yaml_url: source.url,
             } satisfies AppImportPayload)
 
-      return consoleClient.apps.imports.post({ body })
+      return requestImport({ body })
     },
   })
   const confirmImportMutation = useMutation(
     consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions(),
   )
   const { handleCheckPluginDependencies } = usePluginDependencies()
-  const setNeedRefresh = useSetNeedRefreshAppList()
-  const invalidateAppList = useInvalidateAppList()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
@@ -149,9 +148,6 @@ function CreateFromDSLModal({
             : undefined,
       },
     )
-    setNeedRefresh('1')
-    invalidateAppList()
-
     if (!response.app_id || !appMode) return
 
     await handleCheckPluginDependencies(response.app_id)

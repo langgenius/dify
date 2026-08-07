@@ -188,7 +188,7 @@ class PipelineGenerator(BaseAppGenerator):
                 datasource_type=datasource_type,
                 datasource_info=datasource_info,
                 dataset_id=dataset.id,
-                original_document_id=args.get("original_document_id"),
+                original_document_id=None if is_retry else args.get("original_document_id"),
                 start_node_id=start_node_id,
                 batch=batch,
                 document_id=document_id,

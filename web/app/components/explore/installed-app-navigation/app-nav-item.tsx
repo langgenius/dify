@@ -1,7 +1,7 @@
 'use client'
 import type { InstalledAppResponse } from '@dify/contracts/api/console/installed-apps/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
-import * as React from 'react'
+import { useState } from 'react'
 import AppIcon from '@/app/components/base/app-icon'
 import { buildInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import ItemOperation from '@/app/components/explore/item-operation'
@@ -10,6 +10,7 @@ import Link from '@/next/link'
 type IAppNavItemProps = {
   variant?: 'default' | 'mainNav'
   ariaLabel?: string
+  prefetchOnIntent?: boolean
   app: InstalledAppResponse
   isSelected: boolean
   onTogglePin: (id: string, isPinned: boolean) => void
@@ -19,11 +20,13 @@ type IAppNavItemProps = {
 export default function AppNavItem({
   variant = 'default',
   ariaLabel,
+  prefetchOnIntent = false,
   app: installedApp,
   isSelected,
   onTogglePin,
   onDelete,
 }: IAppNavItemProps) {
+  const [isPrefetchEnabled, setIsPrefetchEnabled] = useState(false)
   const {
     id,
     is_pinned: isPinned,
@@ -47,6 +50,9 @@ export default function AppNavItem({
     >
       <Link
         href={url}
+        prefetch={prefetchOnIntent ? (isPrefetchEnabled ? null : false) : undefined}
+        onMouseEnter={prefetchOnIntent ? () => setIsPrefetchEnabled(true) : undefined}
+        onFocus={prefetchOnIntent ? () => setIsPrefetchEnabled(true) : undefined}
         aria-current={isSelected ? 'page' : undefined}
         aria-label={ariaLabel ?? name}
         title={name}

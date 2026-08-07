@@ -192,8 +192,10 @@ its Binding and Workspace are one Sandbox. It also rejects binding-only destroy.
 Neither path creates a fallback Workspace or switches backends.
 
 `DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS` limits continuous active time for an E2B
-resource. Runtime resources pause on timeout. It is not a retention TTL and
-does not delete paused resources or immutable snapshots.
+resource to one hour. The limit covers the complete Agent run held by one
+RuntimeLease rather than an individual tool call. Runtime resources pause on
+timeout. It is not a retention TTL and does not delete paused resources or
+immutable snapshots.
 
 See the [Shell layer](../../user-manual/shell-layer/index.md) for request
 composition and the [Operations Guide](../../guide/index.md) for Local and E2B
