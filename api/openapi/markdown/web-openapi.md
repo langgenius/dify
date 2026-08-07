@@ -1566,6 +1566,7 @@ Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
 | enable_email_password_login | boolean, <br>**Default:** true |  | Yes |
 | enable_explore_banner | boolean |  | Yes |
 | enable_learn_app | boolean, <br>**Default:** true |  | Yes |
+| enable_license_expiry_notice | boolean, <br>**Default:** true |  | Yes |
 | enable_marketplace | boolean |  | Yes |
 | enable_social_oauth_login | boolean |  | Yes |
 | enable_step_by_step_tour | boolean |  | Yes |

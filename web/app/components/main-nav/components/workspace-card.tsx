@@ -16,7 +16,7 @@ import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
-import LicenseNav from '@/app/components/header/license-env'
+import LicenseBadge from '@/app/components/header/license-badge'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useModalContext } from '@/context/modal-context'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -287,7 +287,7 @@ export function WorkspaceCard() {
   const renderWorkspaceStatus = () => {
     if (deploymentEdition === 'CLOUD')
       return workspacePlan ? <WorkspacePlanBadge plan={workspacePlan} /> : null
-    if (deploymentEdition === 'ENTERPRISE') return <LicenseNav />
+    if (deploymentEdition === 'ENTERPRISE') return <LicenseBadge />
     return null
   }
 

@@ -57,6 +57,7 @@ const baseSystemFeatures = {
   enable_learn_app: true,
   enable_step_by_step_tour: false,
   knowledge_fs_enabled: false,
+  enable_license_expiry_notice: true,
 } satisfies GetSystemFeaturesResponse
 
 const baseSystemFeaturesLicense = {
