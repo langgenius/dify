@@ -342,7 +342,7 @@ function SkillCard({
     t(($) => $['skillManagement.dateTimeFormat']),
   )
   const publishedAt = skill.latest_published_at
-    ? formatTimeFromNow(skill.latest_published_at)
+    ? formatTimeFromNow(skill.latest_published_at * 1000)
     : undefined
 
   const handleDuplicate = () => {
