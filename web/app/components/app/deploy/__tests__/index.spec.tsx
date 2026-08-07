@@ -22,15 +22,15 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/client'
+import {
+  appWorkflowQueryOptions,
+  appWorkflowVersionsInfiniteQueryOptions,
+} from '@/service/workflow-queries'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppACLPermission } from '@/utils/permission'
 import AppDeploy from '..'
 import { EnvironmentTable } from '../environment-table'
-import {
-  AppDeployStateBoundary,
-  getEnvironmentDeploymentActions,
-  latestPublishedWorkflowQueryOptions,
-} from '../state'
+import { AppDeployStateBoundary, getEnvironmentDeploymentActions } from '../state'
 
 const APP_ID = 'app-1'
 const ACTIVITY_AT = 1_784_941_200
@@ -135,7 +135,7 @@ const WORKFLOW_DEPLOYMENT_OPTIONS: GetWorkflowDeploymentOptionsResponse = {
         },
       ],
       category: PluginCategory.PLUGIN_CATEGORY_MODEL,
-      previous_credential_id: 'enterprise',
+      last_deployed_credential_id: 'enterprise',
       provider_id: 'moonshot',
     },
     {
@@ -149,30 +149,33 @@ const WORKFLOW_DEPLOYMENT_OPTIONS: GetWorkflowDeploymentOptionsResponse = {
         },
       ],
       category: PluginCategory.PLUGIN_CATEGORY_TOOL,
-      previous_credential_id: 'github-oauth',
+      last_deployed_credential_id: 'github-oauth',
       provider_id: 'github',
     },
   ],
   environment_variable_slots: [
     {
+      configured_value: '2',
       description: 'Server port',
-      has_dsl_value: true,
-      has_previous_value: true,
+      has_configured_value: true,
+      has_last_deployed_value: true,
       key: 'PORT',
       value_type: EnvVarValueType.ENV_VAR_VALUE_TYPE_NUMBER,
     },
     {
+      configured_value: 'sk-123************bc',
       description: 'API credential',
-      has_dsl_value: true,
-      has_previous_value: true,
+      has_configured_value: true,
+      has_last_deployed_value: true,
       key: 'API_KEY',
       value_type: EnvVarValueType.ENV_VAR_VALUE_TYPE_SECRET,
     },
     {
       description: '',
-      has_dsl_value: false,
-      has_previous_value: true,
+      has_configured_value: false,
+      has_last_deployed_value: true,
       key: 'name',
+      last_deployed_value: 'environment variable 01',
       value_type: EnvVarValueType.ENV_VAR_VALUE_TYPE_STRING,
     },
   ],
@@ -508,21 +511,8 @@ const appEnvironmentDeploymentsQueryOptions =
       },
     },
   })
-const latestPublishedWorkflowQuery = latestPublishedWorkflowQueryOptions(APP_ID)
-const appWorkflowVersionsInfiniteQueryOptions =
-  consoleQuery.apps.byAppId.workflows.get.infiniteOptions({
-    input: (pageParam) => ({
-      params: {
-        app_id: APP_ID,
-      },
-      query: {
-        limit: 10,
-        page: Number(pageParam),
-      },
-    }),
-    getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
-    initialPageParam: 1,
-  })
+const latestPublishedWorkflowQuery = appWorkflowQueryOptions(APP_ID)
+const appWorkflowVersionsQuery = appWorkflowVersionsInfiniteQueryOptions(APP_ID)
 
 function workflowDeploymentPrecheckQueryOptions(workflowId: string) {
   return consoleQuery.enterprise.appDeploy.deploymentService.precheckWorkflowDeployment.queryOptions(
@@ -642,7 +632,7 @@ function render(
     latestPublishedWorkflowQuery.queryKey,
     mockBuiltInEnvironment.publishedWorkflow,
   )
-  queryClient.setQueryData(appWorkflowVersionsInfiniteQueryOptions.queryKey, {
+  queryClient.setQueryData(appWorkflowVersionsQuery.queryKey, {
     pageParams: [1],
     pages: [
       {
@@ -701,6 +691,19 @@ vi.mock('@/hooks/use-timestamp', () => ({
 }))
 
 vi.mock('@/service/use-tools', () => ({
+  useAllBuiltInTools: () => ({ data: [] }),
+  useAllCustomTools: () => ({ data: [] }),
+  useAllMCPTools: () => ({
+    data: [
+      {
+        icon: '/notion-mcp.svg',
+        id: 'notion',
+        name: 'Notion',
+        plugin_id: 'langgenius/notion',
+      },
+    ],
+  }),
+  useAllWorkflowTools: () => ({ data: [] }),
   useMCPServerDetail: () => ({
     data: mockBuiltInEnvironment.mcpServerDetail,
   }),
@@ -958,7 +961,17 @@ describe('AppDeploy', () => {
 
     const portSource = within(configurationDialog).getByRole('combobox', { name: /PORT/ })
     expect(portSource).toHaveTextContent('deployments.studio.configureValue')
-    expect(within(configurationDialog).getByRole('textbox', { name: 'PORT' })).toBeDisabled()
+    const portInput = within(configurationDialog).getByRole('textbox', { name: 'PORT' })
+    expect(portInput).toBeDisabled()
+    expect(portInput).toHaveAttribute('placeholder', '2')
+    expect(within(configurationDialog).getByRole('textbox', { name: 'API_KEY' })).toHaveAttribute(
+      'placeholder',
+      'sk-123************bc',
+    )
+    expect(within(configurationDialog).getByRole('textbox', { name: 'name' })).toHaveAttribute(
+      'placeholder',
+      'environment variable 01',
+    )
 
     await user.click(portSource)
     expect(
@@ -1126,11 +1139,11 @@ describe('AppDeploy', () => {
         },
         {
           key: 'API_KEY',
-          value_source: EnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL,
+          value_source: EnvVarValueSource.ENV_VAR_VALUE_SOURCE_CONFIGURED,
         },
         {
           key: 'name',
-          value_source: EnvVarValueSource.ENV_VAR_VALUE_SOURCE_PREVIOUS,
+          value_source: EnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYED,
         },
       ],
     })
@@ -1386,6 +1399,10 @@ describe('AppDeploy', () => {
     expect(precheckAlert).toHaveTextContent('Request approval')
     expect(precheckAlert).toHaveTextContent('Notion MCP')
     expect(precheckAlert).not.toHaveTextContent('node-1')
+    const notionNode = within(precheckAlert).getByText('Notion MCP').closest('li')
+    expect(notionNode?.querySelector<HTMLElement>('[style]')?.style.backgroundImage).toContain(
+      '/notion-mcp.svg',
+    )
     expect(
       within(configurationDialog).getByRole('button', { name: 'common.appMenus.deploy' }),
     ).toBeDisabled()

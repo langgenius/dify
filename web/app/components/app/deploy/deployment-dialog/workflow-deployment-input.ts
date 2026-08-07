@@ -13,10 +13,12 @@ export function credentialSlotKey(slot: CredentialSlot) {
 
 export function defaultCredentialId(slot: CredentialSlot) {
   if (
-    slot.previous_credential_id &&
-    slot.candidates.some((candidate) => candidate.credential_id === slot.previous_credential_id)
+    slot.last_deployed_credential_id &&
+    slot.candidates.some(
+      (candidate) => candidate.credential_id === slot.last_deployed_credential_id,
+    )
   ) {
-    return slot.previous_credential_id
+    return slot.last_deployed_credential_id
   }
 
   return slot.candidates.length === 1 ? slot.candidates[0]?.credential_id : undefined
@@ -25,17 +27,17 @@ export function defaultCredentialId(slot: CredentialSlot) {
 export function defaultEnvironmentVariableSelection(
   slot: EnvironmentVariableSlot,
 ): DeploymentConfigurationValues['environmentVariables'][string] {
-  if (slot.has_dsl_value) {
+  if (slot.has_configured_value) {
     return {
       customValue: '',
-      source: EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_DSL,
+      source: EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CONFIGURED,
     }
   }
 
-  if (slot.has_previous_value) {
+  if (slot.has_last_deployed_value) {
     return {
       customValue: '',
-      source: EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_PREVIOUS,
+      source: EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYED,
     }
   }
 

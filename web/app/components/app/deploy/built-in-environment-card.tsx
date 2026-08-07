@@ -9,10 +9,10 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import { BlockEnum, isTriggerNode } from '@/app/components/workflow/types'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useMCPServerDetail } from '@/service/use-tools'
+import { appWorkflowQueryOptions } from '@/service/workflow-queries'
 import { ACCESS_POINT_ORDER, getAccessPointHref } from './access-point'
 import { AccessPointIcon } from './access-point-icon'
 import { DeploymentStatus } from './deployment-status'
-import { latestPublishedWorkflowQueryOptions } from './state'
 import { VersionLabel } from './version-label'
 
 function Divider() {
@@ -24,7 +24,7 @@ export function BuiltInEnvironmentCard() {
   const { formatTime } = useTimestamp()
   const appDetail = useAppStore((state) => state.appDetail)
   const appId = appDetail?.id ?? ''
-  const { data: publishedWorkflow } = useQuery(latestPublishedWorkflowQueryOptions(appId || null))
+  const { data: publishedWorkflow } = useQuery(appWorkflowQueryOptions(appId || null))
   const { data: mcpServerDetail } = useMCPServerDetail(appId, Boolean(appId))
   const publishedNodes = Array.isArray(publishedWorkflow?.graph.nodes)
     ? (publishedWorkflow.graph.nodes as Node[])

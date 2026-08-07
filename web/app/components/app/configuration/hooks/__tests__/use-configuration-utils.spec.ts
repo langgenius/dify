@@ -12,13 +12,12 @@ import {
 } from '@/types/app'
 import {
   buildConfigurationDatasetConfigs,
-  buildPublishBody,
-  buildPublishedConfig,
   createDatasetSelectHandler,
-  createModelChangeHandler,
-  createPublishHandler,
-  loadConfigurationState,
-} from '../use-configuration-utils'
+} from '../configuration-lifecycle/dataset'
+import { loadConfigurationState } from '../configuration-lifecycle/load'
+import { createModelChangeHandler } from '../configuration-lifecycle/model'
+import { buildPublishBody, createPublishHandler } from '../configuration-lifecycle/publish'
+import { buildPublishedConfig } from '../configuration-lifecycle/published-config'
 
 const mockFetchAppDetailDirect = vi.fn()
 const mockFetchDatasets = vi.fn()

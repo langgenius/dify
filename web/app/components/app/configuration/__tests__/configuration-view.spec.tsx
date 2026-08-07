@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react'
-import type { ConfigurationViewModel } from '../hooks/use-configuration'
+import type { ConfigurationViewModel } from '../hooks/configuration-view-model'
 import type AppPublisher from '@/app/components/app/app-publisher/features-wrapper'
 import type { InstallBundleCompleteCallback } from '@/app/components/plugins/install-plugin/install-bundle'
 import type { Plugin } from '@/app/components/plugins/types'

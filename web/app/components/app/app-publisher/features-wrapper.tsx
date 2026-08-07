@@ -1,8 +1,8 @@
 import type {
   AppPublisherProps,
   AppPublisherPublishParams,
-} from '@/app/components/app/app-publisher'
-import type { ConfigurationPublishConfig } from '@/app/components/app/configuration/hooks/use-configuration-utils'
+} from '@/app/components/app/app-publisher/types'
+import type { ConfigurationPublishConfig } from '@/app/components/app/configuration/hooks/configuration-lifecycle/types'
 import type { Features, FileUpload } from '@/app/components/base/features/types'
 import {
   AlertDialog,

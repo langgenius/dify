@@ -36,6 +36,7 @@ from services.agent_config_service import (
     AgentConfigServiceError,
     AgentConfigTarget,
     AgentConfigVersionKind,
+    ConfigDownloadRequest,
     ConfigPushPayload,
     ConfigPushSkillItem,
 )
@@ -223,6 +224,29 @@ def test_resolve_target_requires_user_for_build_draft(sqlite_session: Session) -
     assert exc_info.value.code == "missing_user_id"
 
 
+@pytest.mark.parametrize("sqlite_session", [AGENT_CONFIG_TABLES], indirect=True)
+def test_resolve_target_hides_build_draft_from_another_user(sqlite_session: Session) -> None:
+    _persist_target(
+        sqlite_session,
+        _draft(
+            version_id=BUILD_DRAFT,
+            draft_type=AgentConfigDraftType.DEBUG_BUILD,
+            account_id=USER,
+        ),
+    )
+
+    with pytest.raises(AgentConfigServiceError) as exc_info:
+        _service(sqlite_session).resolve_target(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            config_version_id=BUILD_DRAFT,
+            config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
+            user_id=END_USER,
+        )
+
+    assert (exc_info.value.code, exc_info.value.status_code) == ("config_version_not_found", 404)
+
+
 @pytest.mark.parametrize(
     ("agent_tenant_id", "expected_code"),
     [
@@ -371,6 +395,146 @@ def test_push_accepts_tenant_scoped_tool_file_sources_from_different_upload_owne
     persisted_source = sqlite_session.get(ToolFile, TOOL_FILE)
     assert persisted_source is not None
     assert persisted_source.user_id == END_USER
+
+
+@pytest.mark.parametrize("sqlite_session", [(*AGENT_CONFIG_TABLES, ToolFile)], indirect=True)
+def test_request_download_signs_config_tool_files_without_rechecking_end_user_owner(
+    sqlite_session: Session,
+) -> None:
+    soul = _soul(
+        config_files=[AgentConfigFileRefConfig(name="guide.txt", file_kind="tool_file", file_id=TOOL_FILE)],
+        config_skills=[AgentConfigSkillRefConfig(name="alpha", file_id=SKILL_FILE)],
+    )
+    _persist_target(
+        sqlite_session,
+        _draft(
+            version_id=BUILD_DRAFT,
+            draft_type=AgentConfigDraftType.DEBUG_BUILD,
+            account_id=USER,
+            soul=soul,
+        ),
+    )
+    guide = ToolFile(
+        tenant_id=TENANT,
+        user_id=END_USER,
+        conversation_id=None,
+        size=7,
+        mimetype="text/plain",
+        file_key="tool-files/guide.txt",
+        name="guide.txt",
+    )
+    guide.id = TOOL_FILE
+    skill = ToolFile(
+        tenant_id=TENANT,
+        user_id=END_USER,
+        conversation_id=None,
+        size=123,
+        mimetype="application/zip",
+        file_key="tool-files/alpha.zip",
+        name="alpha.zip",
+    )
+    skill.id = SKILL_FILE
+    sqlite_session.add_all([guide, skill])
+    sqlite_session.commit()
+    service = _service(sqlite_session)
+
+    file_download = service.request_download(
+        tenant_id=TENANT,
+        agent_id=AGENT,
+        config_version_id=BUILD_DRAFT,
+        config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
+        kind="file",
+        name="guide.txt",
+        user_id=USER,
+    )
+    skill_download = service.request_download(
+        tenant_id=TENANT,
+        agent_id=AGENT,
+        config_version_id=BUILD_DRAFT,
+        config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
+        kind="skill",
+        name="alpha",
+        user_id=USER,
+    )
+
+    assert (file_download.filename, file_download.mime_type, file_download.size) == ("guide.txt", "text/plain", 7)
+    assert file_download.download_uri.startswith(f"/files/tools/{TOOL_FILE}.txt?")
+    assert "as_attachment=true" in file_download.download_uri
+    assert (skill_download.filename, skill_download.mime_type, skill_download.size) == (
+        "alpha.zip",
+        "application/zip",
+        123,
+    )
+    assert skill_download.download_uri.startswith(f"/files/tools/{SKILL_FILE}.zip?")
+
+
+@pytest.mark.parametrize("sqlite_session", [(*AGENT_CONFIG_TABLES, UploadFile)], indirect=True)
+def test_request_download_signs_tenant_scoped_config_upload_file(sqlite_session: Session) -> None:
+    soul = _soul(
+        config_files=[AgentConfigFileRefConfig(name="guide.txt", file_kind="upload_file", file_id=UPLOAD_FILE)]
+    )
+    _persist_target(sqlite_session, _draft(soul=soul))
+    upload_file = UploadFile(
+        tenant_id=TENANT,
+        storage_type=StorageType.LOCAL,
+        key="uploads/guide.txt",
+        name="source-name.txt",
+        size=7,
+        extension="txt",
+        mime_type="text/plain",
+        created_by_role=CreatorUserRole.END_USER,
+        created_by=END_USER,
+        created_at=datetime(2025, 1, 1),
+        used=False,
+    )
+    upload_file.id = UPLOAD_FILE
+    sqlite_session.add(upload_file)
+    sqlite_session.commit()
+
+    result = _service(sqlite_session).request_download(
+        tenant_id=TENANT,
+        agent_id=AGENT,
+        config_version_id=DRAFT,
+        config_version_kind=AgentConfigVersionKind.DRAFT,
+        kind="file",
+        name="guide.txt",
+        user_id=USER,
+    )
+
+    assert (result.filename, result.mime_type, result.size) == ("guide.txt", "text/plain", 7)
+    assert result.download_uri.startswith(f"/files/{UPLOAD_FILE}/file-preview?")
+    assert "as_attachment=true" in result.download_uri
+
+
+@pytest.mark.parametrize("sqlite_session", [(*AGENT_CONFIG_TABLES, ToolFile)], indirect=True)
+def test_request_download_rejects_config_source_from_another_tenant(sqlite_session: Session) -> None:
+    soul = _soul(config_files=[AgentConfigFileRefConfig(name="guide.txt", file_kind="tool_file", file_id=TOOL_FILE)])
+    _persist_target(sqlite_session, _draft(soul=soul))
+    source = ToolFile(
+        tenant_id=OTHER_TENANT,
+        user_id=END_USER,
+        conversation_id=None,
+        size=7,
+        mimetype="text/plain",
+        file_key="tool-files/guide.txt",
+        name="guide.txt",
+    )
+    source.id = TOOL_FILE
+    sqlite_session.add(source)
+    sqlite_session.commit()
+
+    with pytest.raises(AgentConfigServiceError) as exc_info:
+        _service(sqlite_session).request_download(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            config_version_id=DRAFT,
+            config_version_kind=AgentConfigVersionKind.DRAFT,
+            kind="file",
+            name="guide.txt",
+            user_id=USER,
+        )
+
+    assert (exc_info.value.code, exc_info.value.status_code) == ("config_file_not_found", 404)
 
 
 @pytest.mark.parametrize("sqlite_session", [AGENT_CONFIG_TABLES], indirect=True)
@@ -644,7 +808,7 @@ def test_manifest_uses_items_shape_without_download_urls() -> None:
 
 
 @pytest.mark.parametrize("sqlite_session", [AGENT_CONFIG_TABLES], indirect=True)
-def test_manifest_preserves_missing_config_assets_and_pull_rejects_them(sqlite_session: Session) -> None:
+def test_manifest_preserves_missing_config_assets_and_download_rejects_them(sqlite_session: Session) -> None:
     soul = _soul(
         config_skills=[{"name": "alpha", "file_id": "", "is_missing": True}],
         config_files=[{"name": "guide.txt", "file_kind": "upload_file", "file_id": "", "is_missing": True}],
@@ -664,20 +828,22 @@ def test_manifest_preserves_missing_config_assets_and_pull_rejects_them(sqlite_s
     assert manifest["skills"]["items"][0]["is_missing"] is True  # type: ignore[index]
     assert manifest["files"]["items"][0]["is_missing"] is True  # type: ignore[index]
     with pytest.raises(AgentConfigServiceError) as skill_error:
-        service.pull_skill(
+        service.request_download(
             tenant_id=TENANT,
             agent_id=AGENT,
             config_version_id=DRAFT,
             config_version_kind=AgentConfigVersionKind.DRAFT,
+            kind="skill",
             name="alpha",
             user_id=USER,
         )
     with pytest.raises(AgentConfigServiceError) as file_error:
-        service.pull_file(
+        service.request_download(
             tenant_id=TENANT,
             agent_id=AGENT,
             config_version_id=DRAFT,
             config_version_kind=AgentConfigVersionKind.DRAFT,
+            kind="file",
             name="guide.txt",
             user_id=USER,
         )
@@ -827,24 +993,19 @@ def test_resolve_skill_file_member_path_requires_existing_member() -> None:
     assert exc_info.value.status_code == 404
 
 
-def test_download_url_helpers_use_shared_url_resolution() -> None:
+def test_download_url_helpers_bind_shared_download_request_to_console_origin() -> None:
     service = AgentConfigService()
-    target = _target(
-        kind=AgentConfigVersionKind.BUILD_DRAFT,
-        writable=True,
-        soul=_soul(
-            config_skills=[AgentConfigSkillRefConfig(name="alpha", file_id="tool-file-1")],
-            config_files=[AgentConfigFileRefConfig(name="guide.txt", file_kind="upload_file", file_id="upload-file-1")],
-        ),
-    )
 
     with (
-        patch.object(service, "resolve_target", return_value=target),
         patch.object(
             service,
-            "_resolve_download_url",
-            side_effect=["https://example.com/alpha.zip", "https://example.com/guide.txt"],
+            "request_download",
+            side_effect=[
+                ConfigDownloadRequest("alpha.zip", "application/zip", 10, "/files/alpha.zip?sign=1"),
+                ConfigDownloadRequest("guide.txt", "text/plain", 20, "/files/guide.txt?sign=2"),
+            ],
         ),
+        patch(f"{MODULE}.dify_config.FILES_URL", "https://example.com"),
     ):
         assert (
             service.download_skill_url(
@@ -855,7 +1016,7 @@ def test_download_url_helpers_use_shared_url_resolution() -> None:
                 name="alpha",
                 user_id=USER,
             )
-            == "https://example.com/alpha.zip"
+            == "https://example.com/files/alpha.zip?sign=1"
         )
         assert (
             service.download_file_url(
@@ -866,5 +1027,5 @@ def test_download_url_helpers_use_shared_url_resolution() -> None:
                 name="guide.txt",
                 user_id=USER,
             )
-            == "https://example.com/guide.txt"
+            == "https://example.com/files/guide.txt?sign=2"
         )

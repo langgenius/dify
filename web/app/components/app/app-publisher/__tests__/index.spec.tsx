@@ -6,13 +6,10 @@ import {
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import {
-  appWorkflowVersionsInfiniteQueryOptions,
-  latestPublishedWorkflowQueryOptions,
-} from '@/app/components/app/deploy/state'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { AccessMode } from '@/models/access-control'
 import { consoleQuery } from '@/service/client'
+import { appWorkflowVersionsInfiniteQueryOptions } from '@/service/workflow-queries'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
@@ -104,10 +101,6 @@ vi.mock('@/service/apps', () => ({
 }))
 
 vi.mock('@/service/use-workflow', () => ({
-  appWorkflowQueryOptions: (appId: string) => ({
-    queryKey: ['workflow', 'publish', appId],
-    queryFn: () => mockFetchPublishedWorkflow(appId),
-  }),
   useAppWorkflow: () => ({
     data: mockPublishedWorkflow,
     ...mockPublishedWorkflowQueryState,
@@ -115,6 +108,18 @@ vi.mock('@/service/use-workflow', () => ({
   useInvalidateAppWorkflow: () => mockInvalidateAppWorkflow,
   useUpdateWorkflow: () => ({ mutate: mockUpdateWorkflow }),
 }))
+
+vi.mock('@/service/workflow-queries', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@/service/workflow-queries')>()
+
+  return {
+    ...original,
+    appWorkflowQueryOptions: (appId: string) => ({
+      queryKey: ['workflow', 'publish', appId],
+      queryFn: () => mockFetchPublishedWorkflow(appId),
+    }),
+  }
+})
 
 vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', () => ({
   collaborationManager: {
@@ -176,8 +181,7 @@ vi.mock('@/app/components/tools/workflow-tool', () => ({
   ),
 }))
 
-vi.mock('../sections', () => ({
-  PublisherTimelineMarker: () => <span data-testid="publisher-timeline-marker" />,
+vi.mock('../built-in-publisher/summary-section', () => ({
   PublisherSummarySection: (props: Record<string, any>) => {
     sectionProps.summary = props
     return (
@@ -189,7 +193,9 @@ vi.mock('../sections', () => ({
       </div>
     )
   },
-  PublisherAccessSection: () => <div>publisher-access-control</div>,
+}))
+
+vi.mock('../built-in-publisher/actions-section', () => ({
   PublisherActionsSection: (props: Record<string, any>) => {
     sectionProps.actions = props
     return (
@@ -323,12 +329,9 @@ describe('AppPublisher', () => {
     await user.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
     await user.click(screen.getByText('publisher-summary-publish'))
 
-    const latestPublishedWorkflowQuery = latestPublishedWorkflowQueryOptions('app-1')
     const workflowVersionsQuery = appWorkflowVersionsInfiniteQueryOptions('app-1')
     await waitFor(() => {
-      expect(invalidateQueries).toHaveBeenCalledWith({
-        queryKey: latestPublishedWorkflowQuery.queryKey,
-      })
+      expect(mockInvalidateAppWorkflow).toHaveBeenCalledWith('app-1')
       expect(invalidateQueries).toHaveBeenCalledWith({
         queryKey: workflowVersionsQuery.queryKey,
       })

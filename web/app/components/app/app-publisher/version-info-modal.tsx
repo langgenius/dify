@@ -1,5 +1,5 @@
+import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
-import type { VersionHistory } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next'
 
 type VersionInfoModalProps = {
   isOpen: boolean
-  versionInfo?: VersionHistory
+  versionInfo?: Pick<WorkflowResponse, 'id' | 'marked_comment' | 'marked_name'>
   onClose: () => void
   onPublish: (params: { title: string; releaseNotes: string; id?: string }) => void
 }

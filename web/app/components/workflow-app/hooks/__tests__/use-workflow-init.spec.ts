@@ -72,14 +72,17 @@ vi.mock('../use-workflow-template', () => ({
 }))
 
 vi.mock('@/service/use-workflow', () => ({
-  appWorkflowQueryOptions: (appId: string) => ({
-    queryKey: ['workflow', 'publish', appId],
-    queryFn: () => mockFetchPublishedWorkflow(`/apps/${appId}/workflows/publish`),
-  }),
   useWorkflowConfig: (_url: string, onSuccess: (config: Record<string, unknown>) => void) => {
     if (workflowConfigState.data) onSuccess(workflowConfigState.data)
     return workflowConfigState
   },
+}))
+
+vi.mock('@/service/workflow-queries', () => ({
+  appWorkflowQueryOptions: (appId: string) => ({
+    queryKey: ['workflow', 'publish', appId],
+    queryFn: () => mockFetchPublishedWorkflow(`/apps/${appId}/workflows/publish`),
+  }),
 }))
 
 const mockFetchWorkflowDraft = vi.fn()

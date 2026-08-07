@@ -107,6 +107,7 @@ function DeploymentConfigurationContent({
   const unsupportedNodes = precheck?.unsupported_nodes ?? []
   const showPrecheckAlert = !isPrechecking && !precheckError && isPrecheckBlocked
   const showConfiguration = Boolean(deploymentOptions)
+  const environmentVariableSlots = deploymentOptions?.environment_variable_slots ?? []
 
   return (
     <>
@@ -203,54 +204,57 @@ function DeploymentConfigurationContent({
               })}
             </section>
 
-            <section
-              className={cn(
-                'flex flex-col gap-4 border-t border-divider-regular py-4',
-                horizontalPaddingClassName,
-              )}
-            >
-              <SectionHeading
-                title={t(($) => $['deployDrawer.envVars'])}
-                description={t(($) => $['studio.environmentVariablesDescription'])}
-              />
-              {deploymentOptions?.environment_variable_slots.map((slot) => {
-                const selection =
-                  values.environmentVariables[slot.key] ?? defaultEnvironmentVariableSelection(slot)
+            {environmentVariableSlots.length > 0 ? (
+              <section
+                className={cn(
+                  'flex flex-col gap-4 border-t border-divider-regular py-4',
+                  horizontalPaddingClassName,
+                )}
+              >
+                <SectionHeading
+                  title={t(($) => $['deployDrawer.envVars'])}
+                  description={t(($) => $['studio.environmentVariablesDescription'])}
+                />
+                {environmentVariableSlots.map((slot) => {
+                  const selection =
+                    values.environmentVariables[slot.key] ??
+                    defaultEnvironmentVariableSelection(slot)
 
-                return (
-                  <EnvironmentVariableField
-                    key={slot.key}
-                    slot={slot}
-                    source={selection.source}
-                    customValue={selection.customValue}
-                    onSourceChange={(source) =>
-                      onValuesChange((current) => ({
-                        ...current,
-                        environmentVariables: {
-                          ...current.environmentVariables,
-                          [slot.key]: {
-                            ...selection,
-                            source,
+                  return (
+                    <EnvironmentVariableField
+                      key={slot.key}
+                      slot={slot}
+                      source={selection.source}
+                      customValue={selection.customValue}
+                      onSourceChange={(source) =>
+                        onValuesChange((current) => ({
+                          ...current,
+                          environmentVariables: {
+                            ...current.environmentVariables,
+                            [slot.key]: {
+                              ...selection,
+                              source,
+                            },
                           },
-                        },
-                      }))
-                    }
-                    onCustomValueChange={(customValue) =>
-                      onValuesChange((current) => ({
-                        ...current,
-                        environmentVariables: {
-                          ...current.environmentVariables,
-                          [slot.key]: {
-                            ...selection,
-                            customValue,
+                        }))
+                      }
+                      onCustomValueChange={(customValue) =>
+                        onValuesChange((current) => ({
+                          ...current,
+                          environmentVariables: {
+                            ...current.environmentVariables,
+                            [slot.key]: {
+                              ...selection,
+                              customValue,
+                            },
                           },
-                        },
-                      }))
-                    }
-                  />
-                )
-              })}
-            </section>
+                        }))
+                      }
+                    />
+                  )
+                })}
+              </section>
+            ) : null}
           </>
         )}
       </div>

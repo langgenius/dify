@@ -20,6 +20,7 @@ import AccessControl from '@/app/components/app/app-access-control'
 import CustomizeModal from '@/app/components/app/overview/customize'
 import EmbeddedModal from '@/app/components/app/overview/embedded'
 import SettingsModal from '@/app/components/app/overview/settings'
+import { WorkflowLaunchDialog } from '@/app/components/app/overview/workflow-launch-dialog'
 import AppIcon from '@/app/components/base/app-icon'
 import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects } from '@/service/access-control/use-app-access-control'
@@ -29,7 +30,6 @@ import { getAccessPointStatus } from './access-point-status'
 import { AccessPointUrl } from './access-point-url'
 import { getBuiltInAccessUrls, getHiddenStartInputs } from './utils'
 import { WebAppAccessControlEntry } from './web-app-access-control'
-import { AccessPointWorkflowLaunchDialog } from './workflow-launch-dialog'
 
 const ACCESS_MODE_ICON_MAP: Record<AccessMode, string> = {
   [AccessMode.ORGANIZATION]: 'i-ri-building-line',
@@ -245,13 +245,12 @@ export function WebAppAccessPointCard({
           }}
         />
       )}
-      {showWorkflowLaunch && (
-        <AccessPointWorkflowLaunchDialog
-          hiddenVariables={hiddenLaunchVariables}
-          targetUrl={webAppUrl}
-          onClose={() => setShowWorkflowLaunch(false)}
-        />
-      )}
+      <WorkflowLaunchDialog
+        hiddenVariables={hiddenLaunchVariables}
+        open={showWorkflowLaunch}
+        targetUrl={webAppUrl}
+        onOpenChange={setShowWorkflowLaunch}
+      />
       <AlertDialog open={showRegenerate} onOpenChange={(open) => !open && setShowRegenerate(false)}>
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">

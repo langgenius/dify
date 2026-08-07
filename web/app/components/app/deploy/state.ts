@@ -1,10 +1,7 @@
 'use client'
 
-import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { ReactNode } from 'react'
-import type { DeploymentVersion } from './version'
-import type { VersionEnvironment } from '@/types/workflow'
 import {
   DeploymentOperationStatus,
   DeploymentOperationType,
@@ -15,11 +12,14 @@ import { atom } from 'jotai'
 import { atomWithInfiniteQuery, atomWithQuery } from 'jotai-tanstack-query'
 import { selectAtom, useHydrateAtoms } from 'jotai/utils'
 import { useTranslation } from 'react-i18next'
-import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { consoleQuery } from '@/service/client'
+import {
+  appWorkflowQueryOptions,
+  appWorkflowVersionsInfiniteQueryOptions,
+} from '@/service/workflow-queries'
+import { toDeploymentVersion } from './version'
 
 const DEPLOYMENT_STATUS_POLLING_INTERVAL = 3000
-const WORKFLOW_VERSIONS_PAGE_SIZE = 10
 
 type EnvironmentDeploymentActionKind =
   | 'changeVersion'
@@ -58,36 +58,8 @@ export function AppDeployStateBoundary({
   return children
 }
 
-function toDeploymentVersion(
-  workflow: WorkflowResponse & { environments?: VersionEnvironment[] },
-  defaultName: string,
-  latestWorkflowId?: string,
-): DeploymentVersion {
-  return {
-    description: workflow.marked_comment || undefined,
-    id: workflow.id,
-    latest: workflow.id === latestWorkflowId,
-    name: getWorkflowVersionName(workflow, defaultName),
-    publishedAt: workflow.created_at * 1000,
-    publishedBy: workflow.created_by?.name,
-    tags: workflow.environments?.map((environment) => environment.name) ?? [],
-  }
-}
-
-export function latestPublishedWorkflowQueryOptions(appId: string | null) {
-  return consoleQuery.apps.byAppId.workflows.publish.get.queryOptions({
-    input: appId
-      ? {
-          params: {
-            app_id: appId,
-          },
-        }
-      : skipToken,
-  })
-}
-
 const latestPublishedWorkflowQueryAtom = atomWithQuery((get) => {
-  return latestPublishedWorkflowQueryOptions(get(appDeployAppIdAtom))
+  return appWorkflowQueryOptions(get(appDeployAppIdAtom))
 })
 
 const latestPublishedWorkflowAtom = selectAtom(
@@ -101,24 +73,6 @@ export const latestAppWorkflowVersionAtom = atom((get) => {
 
   return toDeploymentVersion(workflow, get(defaultWorkflowVersionNameAtom), workflow.id)
 })
-
-export function appWorkflowVersionsInfiniteQueryOptions(appId: string | null) {
-  return consoleQuery.apps.byAppId.workflows.get.infiniteOptions({
-    input: appId
-      ? (pageParam) => ({
-          params: {
-            app_id: appId,
-          },
-          query: {
-            limit: WORKFLOW_VERSIONS_PAGE_SIZE,
-            page: Number(pageParam),
-          },
-        })
-      : skipToken,
-    getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
-    initialPageParam: 1,
-  })
-}
 
 const appWorkflowVersionsQueryAtom = atomWithInfiniteQuery((get) => {
   return appWorkflowVersionsInfiniteQueryOptions(get(appDeployAppIdAtom))

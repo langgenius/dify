@@ -3,6 +3,7 @@ import type {
   WorkflowAgentComposerResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactNode, Ref } from 'react'
+import type { AgentBuildDraftChangeSummary } from '@/features/agent-v2/agent-detail/configure/components/orchestrate/build-draft-changes-context'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
@@ -79,6 +80,7 @@ vi.mock(
   '@/features/agent-v2/agent-detail/configure/components/orchestrate/build-draft-bar',
   () => ({
     AgentBuildDraftBar: (props: {
+      changeSummary?: AgentBuildDraftChangeSummary
       changesCount: number
       disabled?: boolean
       onApply: () => void
@@ -86,6 +88,9 @@ vi.mock(
     }) => (
       <div role="region" aria-label="build-draft-bar">
         <span>{`changes:${props.changesCount}`}</span>
+        <span>
+          {`summary:${props.changeSummary?.files.map((file) => file.name).join(',') ?? 'none'}`}
+        </span>
         <button type="button" disabled={props.disabled} onClick={props.onApply}>
           apply build draft
         </button>
@@ -1073,6 +1078,9 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       })
 
       expect(await screen.findByRole('region', { name: 'build-draft-bar' })).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'build-draft-bar' })).toHaveTextContent(
+        'summary:build_note.md',
+      )
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent(
         'build:inline-debug-conversation-1',
       )
