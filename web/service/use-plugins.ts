@@ -762,7 +762,33 @@ export const useRemoveFilteredInstalledPluginPageOnUnmount = (
 export const useInvalidateInstalledPluginList = () => {
   const queryClient = useQueryClient()
   const invalidateAllBuiltInTools = useInvalidateAllBuiltInTools()
-  return (_category?: PluginCategoryEnum) => {
+  return (category?: PluginCategoryEnum) => {
+    if (category) {
+      const invalidateCategoryPluginList = queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key({
+          type: 'infinite',
+          input: { params: { category } },
+        }),
+      })
+      const invalidateCategoryInstalledIds = queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.plugin.installedIds.get.key({
+          type: 'query',
+          input: { query: { category } },
+        }),
+      })
+
+      if (category === PluginCategoryEnum.tool)
+        return Promise.all([
+          invalidateCategoryPluginList,
+          invalidateCategoryInstalledIds,
+          invalidateAllBuiltInTools(),
+        ]).then(() => undefined)
+
+      return Promise.all([invalidateCategoryPluginList, invalidateCategoryInstalledIds]).then(
+        () => undefined,
+      )
+    }
+
     return Promise.all([
       queryClient.invalidateQueries({
         queryKey: consoleQuery.workspaces.current.plugin.list.get.key(),
@@ -1423,7 +1449,10 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
     )
     const taskAllFailed = lastData?.tasks.every((task) => task.status === TaskStatus.failed)
     if (taskDone && lastData?.tasks.length && !taskAllFailed)
-      refreshPluginList(category ? { category: category as PluginCategoryEnum } : undefined, !category)
+      refreshPluginList(
+        category ? { category: category as PluginCategoryEnum } : undefined,
+        !category,
+      )
   }, [category, data, isRefetching, refreshPluginList])
 
   const handleRefetch = useCallback(() => {
