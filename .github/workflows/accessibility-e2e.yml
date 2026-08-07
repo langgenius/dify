@@ -25,7 +25,6 @@ on:
         options:
           - aa
           - a
-          - both
 
 permissions:
   contents: read
