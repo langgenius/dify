@@ -1,6 +1,8 @@
 from types import SimpleNamespace
 from unittest.mock import Mock
 
+from sqlalchemy.orm import Session
+
 from fields.dataset_fields import DatasetDetailResponse, dataset_detail_response_source
 
 
@@ -184,8 +186,8 @@ def test_dataset_detail_expands_missing_weighted_score_nested_fields():
     }
 
 
-def test_dataset_detail_response_source_uses_caller_session_for_database_fields():
-    session = Mock()
+def test_dataset_detail_response_source_uses_caller_session_for_database_fields(unbound_session: Session):
+    session = unbound_session
     getter_mocks = {
         "get_app_count": Mock(return_value=3),
         "get_document_count": Mock(return_value=4),

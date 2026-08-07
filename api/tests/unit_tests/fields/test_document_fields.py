@@ -1,10 +1,12 @@
 from unittest.mock import MagicMock
 
+from sqlalchemy.orm import Session
+
 from fields.document_fields import DocumentWithSession
 
 
-def test_document_with_session_uses_explicit_getters() -> None:
-    session = MagicMock()
+def test_document_with_session_uses_explicit_getters(unbound_session: Session) -> None:
+    session = unbound_session
     document = MagicMock()
     document.get_data_source_detail_dict.return_value = {"source": "detail"}
     document.get_hit_count.return_value = 3
