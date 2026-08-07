@@ -20,6 +20,7 @@ from controllers.console.app.error import (
     UnsupportedAudioTypeError,
 )
 from controllers.console.explore.wraps import InstalledAppResource
+from controllers.console.wraps import model_validate
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeError
@@ -100,16 +101,15 @@ class ChatAudioApi(InstalledAppResource):
 class ChatTextApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[TextToAudioPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[AudioBinaryResponse.__name__])
-    def post(self, installed_app: InstalledApp):
+    @model_validate(TextToAudioPayload)
+    def post(self, req_data: TextToAudioPayload, installed_app: InstalledApp):
         app_model = installed_app.app_with_session(session=db.session())
         if app_model is None:
             raise AppUnavailableError()
         try:
-            payload = TextToAudioPayload.model_validate(console_ns.payload or {})
-
-            message_id = payload.message_id
-            text = payload.text
-            voice = payload.voice
+            message_id = req_data.message_id
+            text = req_data.text
+            voice = req_data.voice
             message_ref = None
             if message_id:
                 current_user, _ = current_account_with_tenant()
