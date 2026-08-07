@@ -172,22 +172,16 @@ def test_agent_app_sandbox_resources_proxy_service(monkeypatch: pytest.MonkeyPat
         "query_params_from_request",
         lambda model: SimpleNamespace(caller_type="build_draft", caller_id="build-1", path="sub/report.txt"),
     )
-    monkeypatch.setattr(
-        module,
-        "request",
-        SimpleNamespace(
-            get_json=lambda silent=True: {
-                "caller_type": "build_draft",
-                "caller_id": "build-1",
-                "path": "report.txt",
-            }
-        ),
-    )
 
     info = unwrap(module.AgentAppSandboxInfoResource.get)(object(), session, account, "tenant-1", "agent-1")
     listing = unwrap(module.AgentAppSandboxListResource.get)(object(), session, account, "tenant-1", "agent-1")
     preview = unwrap(module.AgentAppSandboxReadResource.get)(object(), session, account, "tenant-1", "agent-1")
-    upload = unwrap(module.AgentAppSandboxUploadResource.post)(object(), session, account, "tenant-1", "agent-1")
+    req_data = module.AgentSandboxUploadPayload.model_validate(
+        {"caller_type": "build_draft", "caller_id": "build-1", "path": "report.txt"}
+    )
+    upload = unwrap(module.AgentAppSandboxUploadResource.post)(
+        object(), req_data, session, account, "tenant-1", "agent-1"
+    )
 
     assert info == {"workspace_cwd": "."}
     assert listing["path"] == "sub/report.txt"
@@ -240,11 +234,6 @@ def test_workflow_agent_sandbox_resources_proxy_service(monkeypatch: pytest.Monk
         "query_params_from_request",
         lambda model: SimpleNamespace(node_execution_id="execution-1", path="out.txt"),
     )
-    monkeypatch.setattr(
-        module,
-        "request",
-        SimpleNamespace(get_json=lambda silent=True: {"node_execution_id": "execution-1", "path": "upload.txt"}),
-    )
     app_model = _app_model()
 
     listing = unwrap(module.WorkflowAgentSandboxListResource.get)(
@@ -253,8 +242,11 @@ def test_workflow_agent_sandbox_resources_proxy_service(monkeypatch: pytest.Monk
     preview = unwrap(module.WorkflowAgentSandboxReadResource.get)(
         object(), "tenant-1", app_model, "run-1", "agent-node"
     )
+    req_data = module.WorkflowAgentSandboxUploadPayload.model_validate(
+        {"node_execution_id": "execution-1", "path": "upload.txt"}
+    )
     upload = unwrap(module.WorkflowAgentSandboxUploadResource.post)(
-        object(), "tenant-1", app_model, "run-1", "agent-node"
+        object(), req_data, "tenant-1", app_model, "run-1", "agent-node"
     )
 
     assert listing["path"] == "out.txt"

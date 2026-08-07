@@ -11,7 +11,6 @@ from typing import Literal
 from uuid import UUID
 
 from dify_agent.client import DifyAgentClientError, DifyAgentHTTPError, DifyAgentTimeoutError
-from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -28,6 +27,7 @@ from controllers.console.agent.app_helpers import resolve_agent_runtime_app_mode
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     account_initialization_required,
+    model_validate,
     setup_required,
     with_current_tenant_id,
     with_current_user,
@@ -242,18 +242,25 @@ class AgentAppSandboxUploadResource(Resource):
     @with_current_tenant_id
     @with_current_user
     @with_session(write=False)
-    def post(self, session: Session, current_user: Account, tenant_id: str, agent_id: UUID):
+    @model_validate(AgentSandboxUploadPayload)
+    def post(
+        self,
+        req_data: AgentSandboxUploadPayload,
+        session: Session,
+        current_user: Account,
+        tenant_id: str,
+        agent_id: UUID,
+    ):
         app_model = resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
-        payload = AgentSandboxUploadPayload.model_validate(request.get_json(silent=True) or {})
         try:
             result = AgentAppSandboxService().upload_file(
                 tenant_id=tenant_id,
                 app_id=app_model.id,
                 agent_id=str(agent_id),
-                caller_type=payload.caller_type,
-                caller_id=payload.caller_id,
+                caller_type=req_data.caller_type,
+                caller_id=req_data.caller_id,
                 account_id=current_user.id,
-                path=payload.path,
+                path=req_data.path,
             )
         except Exception as exc:
             return _handle(exc)
@@ -345,16 +352,23 @@ class WorkflowAgentSandboxUploadResource(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @with_current_tenant_id
-    def post(self, tenant_id: str, app_model: App, workflow_run_id: UUID, node_id: str):
-        payload = WorkflowAgentSandboxUploadPayload.model_validate(request.get_json(silent=True) or {})
+    @model_validate(WorkflowAgentSandboxUploadPayload)
+    def post(
+        self,
+        req_data: WorkflowAgentSandboxUploadPayload,
+        tenant_id: str,
+        app_model: App,
+        workflow_run_id: UUID,
+        node_id: str,
+    ):
         try:
             result = WorkflowAgentSandboxService().upload_file(
                 tenant_id=tenant_id,
                 app_id=app_model.id,
                 workflow_run_id=str(workflow_run_id),
                 node_id=node_id,
-                node_execution_id=payload.node_execution_id,
-                path=payload.path,
+                node_execution_id=req_data.node_execution_id,
+                path=req_data.path,
                 session=db.session(),
             )
         except Exception as exc:
