@@ -50,7 +50,7 @@ class AppDeployFileIdentity(BaseModel):
     app_id: str
     environment_id: str
     subject_id: str
-    subject_type: Literal["anonymous", "account"]
+    subject_type: Literal["anonymous", "account", "external"]
 
 
 class AppDeployRemoteFileUploadPayload(BaseModel):

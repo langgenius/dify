@@ -72,7 +72,9 @@ def test_app_deploy_identity_uses_environment_scoped_end_user_session(app: Flask
     session.add.assert_not_called()
 
 
-@pytest.mark.parametrize(("subject_type", "is_anonymous"), [("anonymous", True), ("account", False)])
+@pytest.mark.parametrize(
+    ("subject_type", "is_anonymous"), [("anonymous", True), ("account", False), ("external", False)]
+)
 def test_app_deploy_identity_does_not_reuse_another_end_user_type(
     app: Flask, subject_type: str, is_anonymous: bool
 ) -> None:
