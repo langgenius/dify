@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, call, patch
 import pytest
 
 from enums.cloud_plan import CloudPlan
+from models.account import Tenant
 from services.credit_pool_service import CreditPoolBalance
 from services.workspace_service import WorkspaceService
 
@@ -77,7 +78,7 @@ def test_get_effective_credit_pool_exposes_exhausted_trial_pool() -> None:
 
 
 def test_get_current_workspace_summary_sandbox_uses_trial_only() -> None:
-    tenant = SimpleNamespace(id="tenant-1", name="Workspace")
+    tenant = Tenant(name="Workspace")
     membership = SimpleNamespace(role="owner")
     session = MagicMock()
     session.scalar.return_value = membership
@@ -114,7 +115,7 @@ def test_get_current_workspace_summary_sandbox_uses_trial_only() -> None:
 
 
 def test_get_current_workspace_summary_falls_back_from_exhausted_paid_pool() -> None:
-    tenant = SimpleNamespace(id="tenant-1", name="Workspace")
+    tenant = Tenant(name="Workspace")
     session = MagicMock()
     session.scalar.return_value = SimpleNamespace(role="admin")
     paid_pool = CreditPoolBalance(
@@ -154,7 +155,7 @@ def test_get_current_workspace_summary_falls_back_from_exhausted_paid_pool() -> 
 
 
 def test_get_current_workspace_summary_billing_disabled_skips_billing_and_credits() -> None:
-    tenant = SimpleNamespace(id="tenant-1", name="Workspace")
+    tenant = Tenant(name="Workspace")
     session = MagicMock()
     session.scalar.return_value = SimpleNamespace(role="editor")
     config = SimpleNamespace(BILLING_ENABLED=False)
