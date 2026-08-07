@@ -7,6 +7,7 @@ import pytest
 from core.entities.model_entities import ModelStatus
 from core.entities.provider_entities import CredentialConfiguration
 from core.plugin.entities.plugin import PluginInstallationSource
+from core.plugin.entities.plugin_daemon import PluginModelProviderBinding
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import FetchFrom, ModelType, ParameterRule, ParameterType
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod
@@ -59,6 +60,26 @@ def _build_provider_configuration(
         ),
         system_configuration=SimpleNamespace(enabled=False, current_quota_type=None, quota_configurations=[]),
         is_custom_configuration_available=lambda: custom_config_available,
+    )
+
+
+def _build_model_provider_binding(
+    source: PluginInstallationSource,
+    *,
+    installation_id: str = "installation-1",
+    plugin_id: str = "langgenius/openai",
+    plugin_unique_identifier: str = "langgenius/openai:1.0.0@checksum",
+    verified: bool = True,
+) -> PluginModelProviderBinding:
+    return PluginModelProviderBinding(
+        provider="openai",
+        installation_id=installation_id,
+        plugin_id=plugin_id,
+        plugin_unique_identifier=plugin_unique_identifier,
+        runtime_type="remote" if source == PluginInstallationSource.Remote else "local",
+        source=source,
+        version="1.0.0",
+        verified=verified,
     )
 
 
@@ -120,6 +141,7 @@ class TestModelProviderServiceConfiguration:
             runtime_type="local",
             source=PluginInstallationSource.Marketplace,
             version="1.2.3",
+            verified=True,
         )
         state = _ProviderSummaryState(
             has_custom_provider=True,
@@ -157,7 +179,11 @@ class TestModelProviderServiceConfiguration:
             "_load_provider_summary_states",
             MagicMock(return_value={provider.provider: state}),
         )
-        monkeypatch.setattr(service, "_is_system_provider_enabled", MagicMock(return_value=False))
+        monkeypatch.setattr(
+            service_module.ext_hosting_provider.hosting_configuration,
+            "provider_map",
+            {provider.provider: SimpleNamespace(enabled=True, quotas=[SimpleNamespace()])},
+        )
 
         providers, plugins = service.get_provider_summary_list(tenant_id="tenant-1")
 
@@ -178,11 +204,108 @@ class TestModelProviderServiceConfiguration:
         assert providers[0].custom_configuration.has_custom_models is True
         assert providers[0].custom_configuration.current_credential_name == "Production"
         assert providers[0].custom_configuration.current_credential_usable is True
-        assert providers[0].system_configuration.enabled is False
+        assert providers[0].system_configuration.enabled is True
         assert plugins["langgenius/openai"].installation_id == "installation-1"
         assert plugins["langgenius/openai"].version == "1.2.3"
         assert call_order == ["bindings", "providers"]
         manager_constructor.assert_not_called()
+
+    def test_get_provider_summary_list_enables_system_only_for_verified_hosted_non_package_bindings(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        marketplace_binding = _build_model_provider_binding(PluginInstallationSource.Marketplace)
+        package_binding = _build_model_provider_binding(
+            PluginInstallationSource.Package,
+            installation_id="installation-package",
+            plugin_id="langgenius/package",
+            plugin_unique_identifier="langgenius/package:1.0.0@checksum",
+        )
+        unhosted_binding = _build_model_provider_binding(
+            PluginInstallationSource.Marketplace,
+            installation_id="installation-unhosted",
+            plugin_id="langgenius/unhosted",
+            plugin_unique_identifier="langgenius/unhosted:1.0.0@checksum",
+        )
+        remote_binding = _build_model_provider_binding(
+            PluginInstallationSource.Remote,
+            installation_id="installation-remote",
+            plugin_id="langgenius/remote",
+            plugin_unique_identifier="langgenius/remote:1.0.0@checksum",
+        )
+        unverified_binding = _build_model_provider_binding(
+            PluginInstallationSource.Marketplace,
+            installation_id="installation-unverified",
+            plugin_id="langgenius/unverified",
+            plugin_unique_identifier="langgenius/unverified:1.0.0@checksum",
+            verified=False,
+        )
+        bindings = [
+            marketplace_binding,
+            package_binding,
+            unhosted_binding,
+            remote_binding,
+            unverified_binding,
+        ]
+        provider_entities = [
+            SimpleNamespace(
+                provider=f"{binding.plugin_id}/openai",
+                label=I18nObject(en_US=binding.plugin_id),
+                description=None,
+                icon_small=None,
+                icon_small_dark=None,
+                supported_model_types=[ModelType.LLM],
+                configurate_methods=[],
+            )
+            for binding in bindings
+        ]
+        monkeypatch.setattr(
+            service_module.ext_hosting_provider.hosting_configuration,
+            "provider_map",
+            {
+                "langgenius/openai/openai": SimpleNamespace(enabled=True, quotas=[SimpleNamespace()]),
+                "langgenius/package/openai": SimpleNamespace(enabled=True, quotas=[SimpleNamespace()]),
+                "langgenius/remote/openai": SimpleNamespace(enabled=True, quotas=[SimpleNamespace()]),
+                "langgenius/unverified/openai": SimpleNamespace(enabled=True, quotas=[SimpleNamespace()]),
+            },
+        )
+        monkeypatch.setattr(
+            service_module.PluginService,
+            "list_model_provider_bindings",
+            MagicMock(return_value=bindings),
+        )
+        monkeypatch.setattr(
+            service_module.PluginService,
+            "fetch_plugin_model_providers",
+            MagicMock(return_value=provider_entities),
+        )
+        monkeypatch.setattr(ModelProviderService, "_load_provider_summary_states", MagicMock(return_value={}))
+        monkeypatch.setattr(service_module, "is_filtered", MagicMock(return_value=False))
+
+        providers, _ = ModelProviderService().get_provider_summary_list("tenant-1")
+
+        assert {provider.provider: provider.system_configuration.enabled for provider in providers} == {
+            "langgenius/openai/openai": True,
+            "langgenius/package/openai": False,
+            "langgenius/unhosted/openai": False,
+            "langgenius/remote/openai": True,
+            "langgenius/unverified/openai": False,
+        }
+
+    def test_model_provider_binding_without_verified_field_fails_closed(self) -> None:
+        binding = PluginModelProviderBinding.model_validate(
+            {
+                "provider": "openai",
+                "installation_id": "installation-1",
+                "plugin_id": "langgenius/openai",
+                "plugin_unique_identifier": "langgenius/openai:1.0.0@checksum",
+                "runtime_type": "local",
+                "source": "marketplace",
+                "version": "1.0.0",
+            }
+        )
+
+        assert binding.verified is False
 
     def test_get_provider_summary_list_returns_all_unique_provider_metadata(
         self, monkeypatch: pytest.MonkeyPatch
@@ -214,6 +337,7 @@ class TestModelProviderServiceConfiguration:
             runtime_type="local",
             source=service_module.PluginInstallationSource.Marketplace,
             version="1.0.0",
+            verified=False,
         )
         embedding_binding = SimpleNamespace(
             provider="embedding",
@@ -223,6 +347,7 @@ class TestModelProviderServiceConfiguration:
             runtime_type="local",
             source=service_module.PluginInstallationSource.Marketplace,
             version="1.0.0",
+            verified=False,
         )
         monkeypatch.setattr(
             service_module.PluginService,
@@ -235,7 +360,6 @@ class TestModelProviderServiceConfiguration:
             MagicMock(return_value=[llm_provider, llm_provider, embedding_provider]),
         )
         monkeypatch.setattr(service, "_load_provider_summary_states", MagicMock(return_value={}))
-        monkeypatch.setattr(service, "_is_system_provider_enabled", MagicMock(return_value=False))
         monkeypatch.setattr(service_module, "is_filtered", MagicMock(return_value=False))
 
         providers, plugins = service.get_provider_summary_list(tenant_id="tenant-1")

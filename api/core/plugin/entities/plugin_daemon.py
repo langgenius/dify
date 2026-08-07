@@ -112,6 +112,7 @@ class PluginModelProviderBinding(BaseModel):
     runtime_type: str
     source: PluginInstallationSource
     version: str
+    verified: bool = False
 
 
 class PluginTextEmbeddingNumTokensResponse(BaseModel):
