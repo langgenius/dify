@@ -35,11 +35,6 @@ export type ProviderContextState = {
   datasetOperatorEnabled: boolean
   enableEducationPlan: boolean
   isEducationWorkspace: boolean
-  isEducationAccount: boolean
-  allowRefreshEducationVerify: boolean
-  educationAccountExpireAt: number | null
-  isLoadingEducationAccountInfo: boolean
-  isFetchingEducationAccountInfo: boolean
   webappCopyrightEnabled: boolean
   licenseLimit: {
     workspace_members: {
@@ -72,11 +67,6 @@ export const baseProviderContextValue: ProviderContextState = {
   datasetOperatorEnabled: false,
   enableEducationPlan: false,
   isEducationWorkspace: false,
-  isEducationAccount: false,
-  allowRefreshEducationVerify: false,
-  educationAccountExpireAt: null,
-  isLoadingEducationAccountInfo: false,
-  isFetchingEducationAccountInfo: false,
   webappCopyrightEnabled: false,
   licenseLimit: {
     workspace_members: {

@@ -382,6 +382,26 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
   {
     path: ['console'],
     experimental_defaults: {
+      account: {
+        education: {
+          get: {
+            queryOptions: {
+              retry: false,
+            },
+          },
+          post: {
+            mutationOptions: {
+              onSuccess: (data, _variables, _onMutateResult, context) => {
+                if (data.message !== 'success') return
+
+                void context.client.invalidateQueries({
+                  queryKey: consoleQuery.account.education.get.key(),
+                })
+              },
+            },
+          },
+        },
+      },
       apps: {
         post: {
           mutationOptions: {
