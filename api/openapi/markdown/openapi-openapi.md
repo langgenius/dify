@@ -648,6 +648,14 @@ mode is a closed enum of listable app types.
 | ---- | ---- | ----------- | -------- |
 | leaked_dependencies | [ [PluginDependency](#plugindependency) ] |  | No |
 
+#### DeploymentEdition
+
+Enum representing the deployment edition of the platform.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DeploymentEdition | string | Enum representing the deployment edition of the platform. |  |
+
 #### DeviceCodeRequest
 
 | Name | Type | Description | Required |
@@ -974,7 +982,7 @@ Meta endpoint payload for `GET /openapi/v1/_version` — no auth required.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| edition | string, <br>**Available values:** "CLOUD", "SELF_HOSTED" | *Enum:* `"CLOUD"`, `"SELF_HOSTED"` | Yes |
+| edition | [DeploymentEdition](#deploymentedition) |  | Yes |
 | version | string |  | Yes |
 
 #### SessionListQuery

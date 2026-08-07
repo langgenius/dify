@@ -162,7 +162,6 @@ class LoginApi(Resource):
             AccountService.add_login_error_rate_limit(normalized_email)
             _log_console_login_failure(email=normalized_email, reason=LoginFailureReason.INVALID_CREDENTIALS)
             raise AuthenticationFailedError() from exc
-        # SELF_HOSTED only have one workspace
         tenants = TenantService.get_join_tenants(account, session=db.session())
         if len(tenants) == 0:
             if (
