@@ -101,6 +101,9 @@ const SideBar = () => {
   }
 
   const pinnedAppsCount = installedApps.filter(({ is_pinned }) => is_pinned).length
+  const canLoadMore = Boolean(
+    installedAppsQuery.hasNextPage && !installedAppsQuery.isFetching && !installedAppsQuery.error,
+  )
   const webAppsLabelId = React.useId()
   const installedAppItems = installedApps.map((installedApp, index) => (
     <React.Fragment key={installedApp.id}>
@@ -205,13 +208,12 @@ const SideBar = () => {
                     {installedAppItems}
                     {installedAppsQuery.isFetchingNextPage && <InstalledAppPaginationSkeleton />}
                     <InfiniteScrollSentinel
-                      canFetchNextPage={installedAppsQuery.hasNextPage && !installedAppsQuery.error}
+                      canLoadMore={canLoadMore}
                       fetchNextPage={() =>
                         installedAppsQuery.fetchNextPage({
                           cancelRefetch: false,
                         })
                       }
-                      isFetchingNextPage={installedAppsQuery.isFetchingNextPage}
                       scrollRootRef={scrollRef}
                     />
                   </ScrollAreaContent>
@@ -230,13 +232,12 @@ const SideBar = () => {
               {installedAppItems}
               {installedAppsQuery.isFetchingNextPage && <InstalledAppPaginationSkeleton />}
               <InfiniteScrollSentinel
-                canFetchNextPage={installedAppsQuery.hasNextPage && !installedAppsQuery.error}
+                canLoadMore={canLoadMore}
                 fetchNextPage={() =>
                   installedAppsQuery.fetchNextPage({
                     cancelRefetch: false,
                   })
                 }
-                isFetchingNextPage={installedAppsQuery.isFetchingNextPage}
                 scrollRootRef={scrollRef}
               />
             </div>
