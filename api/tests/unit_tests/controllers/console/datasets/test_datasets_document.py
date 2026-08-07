@@ -22,13 +22,17 @@ from controllers.console.datasets.datasets_document import (
     DocumentIndexingStatusApi,
     DocumentMetadataApi,
     DocumentMetadataUpdatePayload,
+    DocumentPauseApi,
     DocumentPipelineExecutionLogApi,
     DocumentProcessingApi,
+    DocumentRecoverApi,
     DocumentRenameApi,
+    DocumentResource,
     DocumentRetryApi,
     DocumentStatusApi,
     DocumentSummaryStatusApi,
     GetProcessRuleApi,
+    WebsiteDocumentSyncApi,
 )
 from controllers.console.datasets.error import (
     DocumentAlreadyFinishedError,
@@ -498,6 +502,45 @@ class TestDatasetInitApi:
         assert response["batch"] == "batch-init"
 
 
+class TestDocumentResource:
+    def test_get_document_resolves_owner_chain(self, dataset):
+        api = DocumentResource()
+        session = MagicMock()
+        user = MagicMock()
+        document = MagicMock()
+        dataset_ref = MagicMock()
+        document_ref = MagicMock()
+
+        with (
+            patch(
+                "controllers.console.datasets.datasets_document.DatasetService.get_dataset_for_tenant",
+                return_value=dataset,
+            ) as get_dataset,
+            patch(
+                "controllers.console.datasets.datasets_document.DatasetService.check_dataset_permission"
+            ) as check_permission,
+            patch(
+                "controllers.console.datasets.datasets_document.DatasetRefService.create_dataset_ref",
+                return_value=dataset_ref,
+            ) as create_dataset_ref,
+            patch(
+                "controllers.console.datasets.datasets_document.DatasetRefService.create_document_ref_from_id",
+                return_value=document_ref,
+            ) as create_document_ref,
+            patch(
+                "controllers.console.datasets.datasets_document.DatasetRefService.get_document_by_ref",
+                return_value=document,
+            ) as get_document,
+        ):
+            assert api.get_document(session, "ds-1", "doc-1", user, "tenant-1") is document
+
+        get_dataset.assert_called_once_with("ds-1", "tenant-1", session=session)
+        check_permission.assert_called_once_with(dataset, user, session)
+        create_dataset_ref.assert_called_once_with(dataset)
+        create_document_ref.assert_called_once_with(dataset_ref, "doc-1")
+        get_document.assert_called_once_with(document_ref, session=session)
+
+
 class TestDocumentApi:
     def test_get_success(self, app: Flask, patch_tenant):
         api = DocumentApi()
@@ -824,21 +867,79 @@ class TestDocumentRetryApi:
         retry_mock.assert_called_once_with("ds-1", [], ANY)
 
 
+class TestDocumentPauseRecoverApi:
+    @pytest.mark.parametrize(
+        ("api_type", "service_method"),
+        [(DocumentPauseApi, "pause_document"), (DocumentRecoverApi, "recover_document")],
+    )
+    def test_patch_uses_scoped_document(self, app: Flask, patch_tenant, api_type, service_method):
+        api = api_type()
+        method = unwrap(api.patch)
+        user, tenant_id = patch_tenant
+        session = MagicMock()
+        document = MagicMock()
+
+        with (
+            app.test_request_context("/"),
+            patch.object(api, "get_document", return_value=document) as get_document,
+            patch("controllers.console.datasets.datasets_document.DocumentService.check_archived", return_value=False),
+            patch(
+                f"controllers.console.datasets.datasets_document.DocumentService.{service_method}"
+            ) as process_document,
+        ):
+            response, status = method(api, session, tenant_id, user, "ds-1", "doc-1")
+
+        assert (response, status) == ("", 204)
+        get_document.assert_called_once_with(session, "ds-1", "doc-1", user, tenant_id)
+        process_document.assert_called_once_with(document, session)
+
+
+class TestWebsiteDocumentSyncApi:
+    def test_get_uses_scoped_dataset_and_document(self, app: Flask, patch_tenant, dataset):
+        api = WebsiteDocumentSyncApi()
+        method = unwrap(api.get)
+        user, tenant_id = patch_tenant
+        session = MagicMock()
+        document = MagicMock(data_source_type="website_crawl")
+
+        with (
+            app.test_request_context("/"),
+            patch(
+                "controllers.console.datasets.datasets_document.DatasetService.get_dataset_for_tenant",
+                return_value=dataset,
+            ) as get_dataset,
+            patch.object(api, "get_document", return_value=document) as get_document,
+            patch("controllers.console.datasets.datasets_document.DocumentService.check_archived", return_value=False),
+            patch(
+                "controllers.console.datasets.datasets_document.DocumentService.sync_website_document"
+            ) as sync_document,
+        ):
+            response, status = method(api, session, tenant_id, user, "ds-1", "doc-1")
+
+        assert status == 200
+        assert response["result"] == "success"
+        get_dataset.assert_called_once_with("ds-1", tenant_id, session=session)
+        get_document.assert_called_once_with(session, dataset.id, "doc-1", user, tenant_id)
+        sync_document.assert_called_once_with(dataset, document, session)
+
+
 class TestDocumentPipelineExecutionLogApi:
-    def test_get_log_success(self, app: Flask, patch_tenant, patch_dataset):
+    def test_get_log_success(self, app: Flask, patch_tenant):
         api = DocumentPipelineExecutionLogApi()
         method = unwrap(api.get)
+        user, tenant_id = patch_tenant
         log = MagicMock(datasource_info="{}", datasource_type="file", input_data={}, datasource_node_id="n1")
+        document = MagicMock(id="trusted-doc")
         session = MagicMock()
         session.scalar.return_value = log
         with (
             app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets_document.DocumentService.get_document", return_value=MagicMock()
-            ),
+            patch.object(api, "get_document", return_value=document) as get_document,
         ):
-            response, status = method(api, session, "ds-1", "doc-1")
+            response, status = method(api, session, tenant_id, user, "ds-1", "doc-1")
         assert status == 200
+        get_document.assert_called_once_with(session, "ds-1", "doc-1", user, tenant_id)
+        assert "trusted-doc" in session.scalar.call_args.args[0].compile().params.values()
 
 
 class TestDocumentGenerateSummaryApi:

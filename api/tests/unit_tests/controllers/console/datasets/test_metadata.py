@@ -199,11 +199,11 @@ class TestDocumentMetadataEditApi:
         with (
             app.test_request_context("/"),
             patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
-            patch.object(DatasetService, "get_dataset", return_value=dataset),
+            patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset),
             patch.object(DatasetService, "check_dataset_permission"),
             patch.object(MetadataOperationData, "model_validate", return_value=MagicMock()),
             patch.object(MetadataService, "update_documents_metadata"),
         ):
-            result, status = method(api, MagicMock(), current_user, dataset_id)
+            result, status = method(api, MagicMock(), dataset.tenant_id, current_user, dataset_id)
         assert status == 204
         assert result == ""

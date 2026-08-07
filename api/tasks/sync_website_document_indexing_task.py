@@ -10,28 +10,40 @@ from core.indexing_runner import IndexingRunner
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
-from models.dataset import Dataset, Document, DocumentSegment
+from models.dataset import Dataset, DocumentSegment
 from models.enums import IndexingStatus
+from services.dataset_ref_service import DatasetRefService
 from services.feature_service import FeatureService
 
 logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="dataset")
-def sync_website_document_indexing_task(dataset_id: str, document_id: str):
+def sync_website_document_indexing_task(tenant_id: str, dataset_id: str, document_id: str):
     """
     Async process document
+    :param tenant_id:
     :param dataset_id:
     :param document_id:
 
-    Usage: sync_website_document_indexing_task.delay(dataset_id, document_id)
+    Usage: sync_website_document_indexing_task.delay(tenant_id, dataset_id, document_id)
     """
     start_at = time.perf_counter()
 
     with session_factory.create_session() as session:
-        dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
+        dataset = session.scalar(
+            select(Dataset).where(Dataset.id == dataset_id, Dataset.tenant_id == tenant_id).limit(1)
+        )
         if dataset is None:
             raise ValueError("Dataset not found")
+        dataset_ref = DatasetRefService.create_dataset_ref(dataset)
+        document_ref = DatasetRefService.create_document_ref_from_id(dataset_ref, document_id)
+        document = DatasetRefService.get_document_by_ref(document_ref, session=session)
+        if document is None:
+            logger.info(click.style(f"Document not found: {document_id}", fg="yellow"))
+            return
+        if document.data_source_type != "website_crawl":
+            raise ValueError("Document is not a website document")
 
         sync_indexing_cache_key = f"document_{document_id}_is_sync"
         # check document limit
@@ -46,9 +58,7 @@ def sync_website_document_indexing_task(dataset_id: str, document_id: str):
                         "your subscription."
                     )
         except Exception as e:
-            document = session.scalar(
-                select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
-            )
+            document = DatasetRefService.get_document_by_ref(document_ref, session=session)
             if document:
                 document.indexing_status = IndexingStatus.ERROR
                 document.error = str(e)
@@ -59,27 +69,33 @@ def sync_website_document_indexing_task(dataset_id: str, document_id: str):
             return
 
         logger.info(click.style(f"Start sync website document: {document_id}", fg="green"))
-        document = session.scalar(
-            select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
-        )
-        if not document:
-            logger.info(click.style(f"Document not found: {document_id}", fg="yellow"))
-            return
         try:
             # clean old data
             index_processor = IndexProcessorFactory(document.doc_form).init_index_processor()
 
-            segments = session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document_id)).all()
+            segments = session.scalars(
+                select(DocumentSegment).where(
+                    DocumentSegment.tenant_id == tenant_id,
+                    DocumentSegment.dataset_id == dataset_id,
+                    DocumentSegment.document_id == document_id,
+                )
+            ).all()
             if segments:
                 index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
                 # delete from vector index
-                index_processor.clean(
-                    dataset, index_node_ids, with_keywords=True, delete_child_chunks=True, session=session
-                )
+                if index_node_ids:
+                    index_processor.clean(
+                        dataset, index_node_ids, with_keywords=True, delete_child_chunks=True, session=session
+                    )
 
             segment_ids = [segment.id for segment in segments]
             if segment_ids:
-                segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.id.in_(segment_ids))
+                segment_delete_stmt = delete(DocumentSegment).where(
+                    DocumentSegment.id.in_(segment_ids),
+                    DocumentSegment.tenant_id == tenant_id,
+                    DocumentSegment.dataset_id == dataset_id,
+                    DocumentSegment.document_id == document_id,
+                )
                 session.execute(segment_delete_stmt)
             session.commit()
 
@@ -95,9 +111,7 @@ def sync_website_document_indexing_task(dataset_id: str, document_id: str):
             redis_client.delete(sync_indexing_cache_key)
         except Exception as ex:
             session.rollback()
-            document = session.scalar(
-                select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
-            )
+            document = DatasetRefService.get_document_by_ref(document_ref, session=session)
             if document:
                 document.indexing_status = IndexingStatus.ERROR
                 document.error = str(ex)

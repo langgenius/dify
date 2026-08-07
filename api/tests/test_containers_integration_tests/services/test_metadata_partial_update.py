@@ -9,8 +9,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from models import Account, Tenant
-from models.dataset import Dataset, DatasetMetadataBinding, Document
-from models.enums import DataSourceType, DocumentCreatedFrom
+from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding, Document
+from models.enums import DatasetMetadataType, DataSourceType, DocumentCreatedFrom
 from services.entities.knowledge_entities.knowledge_entities import (
     DocumentMetadataOperation,
     MetadataDetail,
@@ -54,6 +54,19 @@ def _create_document(
     return document
 
 
+def _create_metadata(db_session: Session, *, dataset: Dataset, created_by: str, name: str) -> DatasetMetadata:
+    metadata = DatasetMetadata(
+        tenant_id=dataset.tenant_id,
+        dataset_id=dataset.id,
+        type=DatasetMetadataType.STRING,
+        name=name,
+        created_by=created_by,
+    )
+    db_session.add(metadata)
+    db_session.commit()
+    return metadata
+
+
 class TestMetadataPartialUpdate:
     @pytest.fixture
     def tenant_id(self) -> str:
@@ -87,10 +100,12 @@ class TestMetadataPartialUpdate:
             doc_metadata={"existing_key": "existing_value"},
         )
 
-        meta_id = str(uuid4())
+        metadata = _create_metadata(
+            db_session_with_containers, dataset=dataset, created_by=current_account.id, name="new_key"
+        )
         operation = DocumentMetadataOperation(
             document_id=document.id,
-            metadata_list=[MetadataDetail(id=meta_id, name="new_key", value="new_value")],
+            metadata_list=[MetadataDetail(id=metadata.id, name=metadata.name, value="new_value")],
             partial_update=True,
         )
         metadata_args = MetadataOperationData(operation_data=[operation])
@@ -120,10 +135,12 @@ class TestMetadataPartialUpdate:
             doc_metadata={"existing_key": "existing_value"},
         )
 
-        meta_id = str(uuid4())
+        metadata = _create_metadata(
+            db_session_with_containers, dataset=dataset, created_by=current_account.id, name="new_key"
+        )
         operation = DocumentMetadataOperation(
             document_id=document.id,
-            metadata_list=[MetadataDetail(id=meta_id, name="new_key", value="new_value")],
+            metadata_list=[MetadataDetail(id=metadata.id, name=metadata.name, value="new_value")],
             partial_update=False,
         )
         metadata_args = MetadataOperationData(operation_data=[operation])
@@ -154,12 +171,14 @@ class TestMetadataPartialUpdate:
             doc_metadata={"existing_key": "existing_value"},
         )
 
-        meta_id = str(uuid4())
+        metadata = _create_metadata(
+            db_session_with_containers, dataset=dataset, created_by=current_account.id, name="existing_key"
+        )
         existing_binding = DatasetMetadataBinding(
             tenant_id=tenant_id,
             dataset_id=dataset.id,
             document_id=document.id,
-            metadata_id=meta_id,
+            metadata_id=metadata.id,
             created_by=user_id,
         )
         db_session_with_containers.add(existing_binding)
@@ -167,7 +186,7 @@ class TestMetadataPartialUpdate:
 
         operation = DocumentMetadataOperation(
             document_id=document.id,
-            metadata_list=[MetadataDetail(id=meta_id, name="existing_key", value="existing_value")],
+            metadata_list=[MetadataDetail(id=metadata.id, name=metadata.name, value="existing_value")],
             partial_update=True,
         )
         metadata_args = MetadataOperationData(operation_data=[operation])
@@ -180,7 +199,7 @@ class TestMetadataPartialUpdate:
         bindings = db_session_with_containers.scalars(
             select(DatasetMetadataBinding).where(
                 DatasetMetadataBinding.document_id == document.id,
-                DatasetMetadataBinding.metadata_id == meta_id,
+                DatasetMetadataBinding.metadata_id == metadata.id,
             )
         ).all()
         assert len(bindings) == 1
@@ -200,10 +219,12 @@ class TestMetadataPartialUpdate:
             doc_metadata={"existing_key": "existing_value"},
         )
 
-        meta_id = str(uuid4())
+        metadata = _create_metadata(
+            db_session_with_containers, dataset=dataset, created_by=current_account.id, name="key"
+        )
         operation = DocumentMetadataOperation(
             document_id=document.id,
-            metadata_list=[MetadataDetail(id=meta_id, name="key", value="value")],
+            metadata_list=[MetadataDetail(id=metadata.id, name=metadata.name, value="value")],
             partial_update=True,
         )
         metadata_args = MetadataOperationData(operation_data=[operation])
