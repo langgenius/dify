@@ -68,6 +68,17 @@ def _has_dataset_list_permission(permission_keys: list[str]) -> bool:
     return any(permission_key in DATASET_LIST_PERMISSION_KEYS for permission_key in permission_keys)
 
 
+def _get_accessible_dataset(dataset_id: UUID, tenant_id: str, current_user: Account, session: Session) -> Dataset:
+    dataset = DatasetService.get_dataset_for_tenant(str(dataset_id), tenant_id, session=session)
+    if dataset is None:
+        raise NotFound("Dataset not found.")
+    try:
+        DatasetService.check_dataset_permission(dataset, current_user, session)
+    except services.errors.account.NoPermissionError as e:
+        raise Forbidden(str(e))
+    return dataset
+
+
 def _validate_indexing_technique(value: str | None) -> str | None:
     if value is None:
         return value
@@ -817,17 +828,8 @@ class DatasetUseCheckApi(Resource):
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
     @with_session(write=False)
     def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID):
-        dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset_for_tenant(dataset_id_str, current_tenant_id, session=session)
-        if dataset is None:
-            raise NotFound("Dataset not found.")
-        try:
-            DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
-            raise Forbidden(str(e))
-
-        dataset_ref = DatasetRefService.create_dataset_ref(dataset)
-        dataset_is_using = DatasetService.dataset_use_check(dataset_ref, session)
+        dataset = _get_accessible_dataset(dataset_id, current_tenant_id, current_user, session)
+        dataset_is_using = DatasetService.dataset_use_check(DatasetRefService.create_dataset_ref(dataset), session)
         return UsageCheckResponse(is_using=dataset_is_using).model_dump(mode="json"), 200
 
 
@@ -1043,14 +1045,7 @@ class DatasetIndexingStatusApi(Resource):
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
     @with_session(write=False)
     def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID):
-        dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset_for_tenant(dataset_id_str, current_tenant_id, session=session)
-        if dataset is None:
-            raise NotFound("Dataset not found.")
-        try:
-            DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
-            raise Forbidden(str(e))
+        dataset = _get_accessible_dataset(dataset_id, current_tenant_id, current_user, session)
 
         documents = session.scalars(
             select(Document).where(Document.dataset_id == dataset.id, Document.tenant_id == dataset.tenant_id)
@@ -1206,19 +1201,13 @@ class DatasetEnableApiApi(Resource):
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @with_session
     def post(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID, status: str):
-        dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset_for_tenant(dataset_id_str, current_tenant_id, session=session)
-        if dataset is None:
-            raise NotFound("Dataset not found.")
-        try:
-            DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
-            raise Forbidden(str(e))
+        dataset = _get_accessible_dataset(dataset_id, current_tenant_id, current_user, session)
         if not current_user.is_dataset_editor:
             raise Forbidden()
 
-        dataset_ref = DatasetRefService.create_dataset_ref(dataset)
-        DatasetService.update_dataset_api_status(dataset_ref, status == "enable", session)
+        DatasetService.update_dataset_api_status(
+            DatasetRefService.create_dataset_ref(dataset), status == "enable", session
+        )
 
         return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
@@ -1289,16 +1278,10 @@ class DatasetErrorDocs(Resource):
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
     @with_session(write=False)
     def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID):
-        dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset_for_tenant(dataset_id_str, current_tenant_id, session=session)
-        if dataset is None:
-            raise NotFound("Dataset not found.")
-        try:
-            DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
-            raise Forbidden(str(e))
-        dataset_ref = DatasetRefService.create_dataset_ref(dataset)
-        results = DocumentService.get_error_documents_by_dataset_ref(dataset_ref, session)
+        dataset = _get_accessible_dataset(dataset_id, current_tenant_id, current_user, session)
+        results = DocumentService.get_error_documents_by_dataset_ref(
+            DatasetRefService.create_dataset_ref(dataset), session
+        )
 
         return dump_response(ErrorDocsResponse, {"data": results, "total": len(results)}), 200
 
@@ -1355,14 +1338,8 @@ class DatasetAutoDisableLogApi(Resource):
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
     @with_session(write=False)
     def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID):
-        dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset_for_tenant(dataset_id_str, current_tenant_id, session=session)
-        if dataset is None:
-            raise NotFound("Dataset not found.")
-        try:
-            DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
-            raise Forbidden(str(e))
-        dataset_ref = DatasetRefService.create_dataset_ref(dataset)
-        auto_disable_logs = DatasetService.get_dataset_auto_disable_logs(dataset_ref, session)
+        dataset = _get_accessible_dataset(dataset_id, current_tenant_id, current_user, session)
+        auto_disable_logs = DatasetService.get_dataset_auto_disable_logs(
+            DatasetRefService.create_dataset_ref(dataset), session
+        )
         return dump_response(AutoDisableLogsResponse, auto_disable_logs), 200

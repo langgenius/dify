@@ -58,13 +58,11 @@ def sync_website_document_indexing_task(tenant_id: str, dataset_id: str, documen
                         "your subscription."
                     )
         except Exception as e:
-            document = DatasetRefService.get_document_by_ref(document_ref, session=session)
-            if document:
-                document.indexing_status = IndexingStatus.ERROR
-                document.error = str(e)
-                document.stopped_at = naive_utc_now()
-                session.add(document)
-                session.commit()
+            document.indexing_status = IndexingStatus.ERROR
+            document.error = str(e)
+            document.stopped_at = naive_utc_now()
+            session.add(document)
+            session.commit()
             redis_client.delete(sync_indexing_cache_key)
             return
 

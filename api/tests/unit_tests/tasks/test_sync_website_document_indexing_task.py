@@ -1,26 +1,13 @@
 import uuid
 from unittest.mock import MagicMock, patch
 
-import pytest
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
-from core.db import session_factory as session_factory_module
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom
 from tasks.sync_website_document_indexing_task import sync_website_document_indexing_task
-
-pytestmark = pytest.mark.parametrize("sqlite_session", [(Dataset, Document, DocumentSegment)], indirect=True)
-
-
-@pytest.fixture(autouse=True)
-def _bind_task_session(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
-    monkeypatch.setattr(
-        session_factory_module,
-        "_session_maker",
-        sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False),
-    )
 
 
 def _dataset(tenant_id: str) -> Dataset:

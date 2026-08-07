@@ -309,8 +309,7 @@ class DocumentMetadataEditServiceApi(DatasetApiResource):
     @with_session
     def post(self, session: Session, tenant_id, dataset_id: UUID):
         """Update metadata for multiple documents."""
-        dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset_for_tenant(dataset_id_str, str(tenant_id), session=session)
+        dataset = DatasetService.get_dataset_for_tenant(str(dataset_id), str(tenant_id), session=session)
         if dataset is None:
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user, session)

@@ -46,6 +46,7 @@ from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import Dataset
 from models.dataset import Document as DatasetDocument
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
+from services.dataset_ref_service import DatasetRef, DocumentRef
 from services.vector_space_admission_service import (
     VECTOR_SPACE_ADMISSION_ERROR_CODE,
     format_vector_space_admission_error,
@@ -508,8 +509,6 @@ class TestDocumentResource:
         session = MagicMock()
         user = MagicMock()
         document = MagicMock()
-        dataset_ref = MagicMock()
-        document_ref = MagicMock()
 
         with (
             patch(
@@ -520,14 +519,6 @@ class TestDocumentResource:
                 "controllers.console.datasets.datasets_document.DatasetService.check_dataset_permission"
             ) as check_permission,
             patch(
-                "controllers.console.datasets.datasets_document.DatasetRefService.create_dataset_ref",
-                return_value=dataset_ref,
-            ) as create_dataset_ref,
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetRefService.create_document_ref_from_id",
-                return_value=document_ref,
-            ) as create_document_ref,
-            patch(
                 "controllers.console.datasets.datasets_document.DatasetRefService.get_document_by_ref",
                 return_value=document,
             ) as get_document,
@@ -536,9 +527,10 @@ class TestDocumentResource:
 
         get_dataset.assert_called_once_with("ds-1", "tenant-1", session=session)
         check_permission.assert_called_once_with(dataset, user, session)
-        create_dataset_ref.assert_called_once_with(dataset)
-        create_document_ref.assert_called_once_with(dataset_ref, "doc-1")
-        get_document.assert_called_once_with(document_ref, session=session)
+        get_document.assert_called_once_with(
+            DocumentRef(dataset=DatasetRef(tenant_id="tenant-1", dataset_id="ds-1"), document_id="doc-1"),
+            session=session,
+        )
 
 
 class TestDocumentApi:
