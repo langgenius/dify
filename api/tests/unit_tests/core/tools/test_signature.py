@@ -187,6 +187,36 @@ def test_get_signed_file_uri_for_plugin_and_verify_roundtrip(monkeypatch: pytest
     )
 
 
+def test_plugin_upload_signature_binds_account_user_from(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("core.tools.signature.time.time", lambda: 1700000000)
+    monkeypatch.setattr("core.tools.signature.os.urandom", lambda _: b"\x09" * 16)
+    monkeypatch.setattr("core.tools.signature.dify_config.SECRET_KEY", "unit-secret")
+    monkeypatch.setattr("core.tools.signature.dify_config.FILES_ACCESS_TIMEOUT", 60)
+
+    uri = get_signed_file_uri_for_plugin(
+        filename="report.pdf",
+        mimetype="application/pdf",
+        tenant_id="tenant-id",
+        user_id="account-id",
+        user_from="account",
+    )
+    query = parse_qs(urlparse(uri).query)
+
+    assert query["user_from"] == ["account"]
+    signed = {
+        "filename": "report.pdf",
+        "mimetype": "application/pdf",
+        "tenant_id": "tenant-id",
+        "user_id": "account-id",
+        "timestamp": query["timestamp"][0],
+        "nonce": query["nonce"][0],
+        "sign": query["sign"][0],
+    }
+    assert verify_plugin_file_signature(**signed, user_from="account") is True
+    assert verify_plugin_file_signature(**signed, user_from="end-user") is False
+    assert verify_plugin_file_signature(**signed) is False
+
+
 def test_verify_plugin_file_signature_rejects_invalid_signatures(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("core.tools.signature.time.time", lambda: 1700000000)
     monkeypatch.setattr("core.tools.signature.os.urandom", lambda _: b"\x07" * 16)

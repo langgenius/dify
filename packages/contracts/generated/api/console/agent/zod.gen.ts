@@ -201,6 +201,22 @@ export const zSandboxInfoResponse = z.object({
 })
 
 /**
+ * AgentSandboxDownloadPayload
+ */
+export const zAgentSandboxDownloadPayload = z.object({
+  caller_id: z.string().min(1),
+  caller_type: z.enum(['build_draft', 'conversation']),
+  path: z.string().min(1),
+})
+
+/**
+ * SandboxDownloadResponse
+ */
+export const zSandboxDownloadResponse = z.object({
+  url: z.string(),
+})
+
+/**
  * SandboxReadResponse
  */
 export const zSandboxReadResponse = z.object({
@@ -209,22 +225,6 @@ export const zSandboxReadResponse = z.object({
   size: z.int().nullish(),
   text: z.string().nullish(),
   truncated: z.boolean(),
-})
-
-/**
- * AgentSandboxUploadPayload
- */
-export const zAgentSandboxUploadPayload = z.object({
-  caller_id: z.string().min(1),
-  caller_type: z.enum(['build_draft', 'conversation']),
-  path: z.string().min(1),
-})
-
-/**
- * SandboxUploadResponse
- */
-export const zSandboxUploadResponse = z.object({
-  url: z.string(),
 })
 
 /**
@@ -3500,6 +3500,17 @@ export const zGetAgentByAgentIdSandboxFilesQuery = z.object({
  */
 export const zGetAgentByAgentIdSandboxFilesResponse = zSandboxListResponse
 
+export const zPostAgentByAgentIdSandboxFilesDownloadBody = zAgentSandboxDownloadPayload
+
+export const zPostAgentByAgentIdSandboxFilesDownloadPath = z.object({
+  agent_id: z.uuid(),
+})
+
+/**
+ * Download URL returned
+ */
+export const zPostAgentByAgentIdSandboxFilesDownloadResponse = zSandboxDownloadResponse
+
 export const zGetAgentByAgentIdSandboxFilesReadPath = z.object({
   agent_id: z.uuid(),
 })
@@ -3514,17 +3525,6 @@ export const zGetAgentByAgentIdSandboxFilesReadQuery = z.object({
  * Preview returned
  */
 export const zGetAgentByAgentIdSandboxFilesReadResponse = zSandboxReadResponse
-
-export const zPostAgentByAgentIdSandboxFilesUploadBody = zAgentSandboxUploadPayload
-
-export const zPostAgentByAgentIdSandboxFilesUploadPath = z.object({
-  agent_id: z.uuid(),
-})
-
-/**
- * Uploaded
- */
-export const zPostAgentByAgentIdSandboxFilesUploadResponse = zSandboxUploadResponse
 
 export const zPostAgentByAgentIdSkillsUploadBody = z.object({
   file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),

@@ -445,18 +445,18 @@ export function AgentWorkingDirectoryPanel({
     },
     retry: false,
   })
-  const agentSandboxUploadMutation = useMutation(
-    consoleQuery.agent.byAgentId.sandbox.files.upload.post.mutationOptions(),
+  const agentSandboxDownloadMutation = useMutation(
+    consoleQuery.agent.byAgentId.sandbox.files.download.post.mutationOptions(),
   )
-  const workflowSandboxUploadMutation = useMutation(
-    consoleQuery.apps.byAppId.workflowRuns.byWorkflowRunId.agentNodes.byNodeId.sandbox.files.upload.post.mutationOptions(),
+  const workflowSandboxDownloadMutation = useMutation(
+    consoleQuery.apps.byAppId.workflowRuns.byWorkflowRunId.agentNodes.byNodeId.sandbox.files.download.post.mutationOptions(),
   )
-  const { mutateAsync: uploadAgentSandboxFile } = agentSandboxUploadMutation
+  const { mutateAsync: downloadAgentSandboxFile } = agentSandboxDownloadMutation
   const isImagePreviewFile = selectedWorkingDirectoryFile?.icon === 'image'
   const selectedWorkingDirectoryFilePath = selectedWorkingDirectoryFile?.id
-  const { mutateAsync: uploadWorkflowSandboxFile } = workflowSandboxUploadMutation
+  const { mutateAsync: downloadWorkflowSandboxFile } = workflowSandboxDownloadMutation
   const isFileDownloadPending =
-    agentSandboxUploadMutation.isPending || workflowSandboxUploadMutation.isPending
+    agentSandboxDownloadMutation.isPending || workflowSandboxDownloadMutation.isPending
   const isFileReadLoading =
     !!selectedWorkingDirectoryFile && !isImagePreviewFile && fileReadQuery.isPending
   const imagePreviewQuery = useQuery({
@@ -476,7 +476,7 @@ export function AgentWorkingDirectoryPanel({
         throw new Error('Missing selected working directory file')
 
       if (source.type === 'agent') {
-        return consoleClient.agent.byAgentId.sandbox.files.upload.post({
+        return consoleClient.agent.byAgentId.sandbox.files.download.post({
           params: {
             agent_id: source.agentId,
           },
@@ -488,7 +488,7 @@ export function AgentWorkingDirectoryPanel({
         })
       }
 
-      return consoleClient.apps.byAppId.workflowRuns.byWorkflowRunId.agentNodes.byNodeId.sandbox.files.upload.post(
+      return consoleClient.apps.byAppId.workflowRuns.byWorkflowRunId.agentNodes.byNodeId.sandbox.files.download.post(
         {
           params: {
             app_id: source.appId,
@@ -511,7 +511,7 @@ export function AgentWorkingDirectoryPanel({
       if (source.type === 'agent') {
         setDownloadActionLoadingTarget(action)
         try {
-          const result = await uploadAgentSandboxFile({
+          const result = await downloadAgentSandboxFile({
             params: {
               agent_id: source.agentId,
             },
@@ -523,6 +523,8 @@ export function AgentWorkingDirectoryPanel({
           })
           downloadUrl({ url: result.url, fileName: selectedWorkingDirectoryFile.name })
           toast.success(tCommon(($) => $['operation.downloadSuccess']))
+        } catch {
+          // The generated client reports the mutation failure through its shared error handler.
         } finally {
           setDownloadActionLoadingTarget(null)
         }
@@ -531,7 +533,7 @@ export function AgentWorkingDirectoryPanel({
 
       setDownloadActionLoadingTarget(action)
       try {
-        const result = await uploadWorkflowSandboxFile({
+        const result = await downloadWorkflowSandboxFile({
           params: {
             app_id: source.appId,
             workflow_run_id: source.workflowRunId,
@@ -544,6 +546,8 @@ export function AgentWorkingDirectoryPanel({
         })
         downloadUrl({ url: result.url, fileName: selectedWorkingDirectoryFile.name })
         toast.success(tCommon(($) => $['operation.downloadSuccess']))
+      } catch {
+        // The generated client reports the mutation failure through its shared error handler.
       } finally {
         setDownloadActionLoadingTarget(null)
       }
@@ -553,8 +557,8 @@ export function AgentWorkingDirectoryPanel({
       selectedWorkingDirectoryFile,
       source,
       tCommon,
-      uploadAgentSandboxFile,
-      uploadWorkflowSandboxFile,
+      downloadAgentSandboxFile,
+      downloadWorkflowSandboxFile,
     ],
   )
 
