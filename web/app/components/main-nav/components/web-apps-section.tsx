@@ -124,6 +124,7 @@ const WebAppsSectionContent = () => {
     <AppNavItem
       key={installedApp.id}
       variant="mainNav"
+      prefetchOnIntent
       app={installedApp}
       ariaLabel={t(($) => $['mainNav.webApps.openApp'], {
         ns: 'common',
