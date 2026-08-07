@@ -1,4 +1,5 @@
 import {
+  createNewKnowledgeSourceDraft,
   newKnowledgeAddSourcePath,
   newKnowledgeRetrievalTestPath,
   newKnowledgeSettingsPath,
@@ -17,9 +18,25 @@ describe('New RAG routes', () => {
   })
 
   it('keeps source details out of the add-source URL', () => {
-    expect(newKnowledgeAddSourcePath('space-1', 'websiteCrawl', 'opaque-draft-key')).toBe(
-      '/datasets/new/space-1/sources/new?type=websiteCrawl&draft=opaque-draft-key',
-    )
+    expect(
+      newKnowledgeAddSourcePath('space-1', {
+        draftKey: 'opaque-draft-key',
+        sourceType: 'websiteCrawl',
+      }),
+    ).toBe('/datasets/new/space-1/sources/new?type=websiteCrawl&draft=opaque-draft-key')
+  })
+
+  it('builds a provider-specific add-source URL', () => {
+    expect(
+      newKnowledgeAddSourcePath('space-1', {
+        provider: 'Jina Reader',
+        sourceType: 'websiteCrawl',
+      }),
+    ).toBe('/datasets/new/space-1/sources/new?type=websiteCrawl&provider=Jina+Reader')
+  })
+
+  it('falls back when a provider does not belong to the selected source type', () => {
+    expect(createNewKnowledgeSourceDraft('onlineDrive', 'Confluence').provider).toBe('Google Drive')
   })
 
   it('rejects repeated search parameters instead of selecting an ambiguous value', () => {

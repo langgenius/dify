@@ -776,11 +776,13 @@ function ProvisioningConnection({
 
 export function AddSourcePage({
   initialSourceDraft,
+  initialSourceProvider,
   initialSourceType,
   knowledgeSpaceId,
   sourceDraftKey,
 }: {
   initialSourceDraft?: NewKnowledgeSourceDraft
+  initialSourceProvider?: string
   initialSourceType?: string
   knowledgeSpaceId: string
   sourceDraftKey?: string
@@ -790,11 +792,18 @@ export function AddSourcePage({
   const queryClient = useQueryClient()
   const initialDraftRef = useRef<NewKnowledgeSourceDraft>(
     initialSourceDraft ??
-      createNewKnowledgeSourceDraft(normalizeSourceType(initialSourceType ?? null)),
+      createNewKnowledgeSourceDraft(
+        normalizeSourceType(initialSourceType ?? null),
+        initialSourceProvider,
+      ),
   )
   const [sourceDraft, setSourceDraft] = useState<NewKnowledgeSourceDraft>(initialDraftRef.current)
   const sourceDraftBaselineRef = useRef(
-    JSON.stringify(createNewKnowledgeSourceDraft(initialDraftRef.current.sourceType)),
+    JSON.stringify(
+      initialSourceProvider && !initialSourceDraft
+        ? initialDraftRef.current
+        : createNewKnowledgeSourceDraft(initialDraftRef.current.sourceType),
+    ),
   )
   const [sourceDraftResolved, setSourceDraftResolved] = useState(!sourceDraftKey)
   const [connectionDraftDirty, setConnectionDraftDirty] = useState(false)
@@ -834,7 +843,11 @@ export function AddSourcePage({
       }
       if (active) {
         const nextDraft =
-          draft ?? createNewKnowledgeSourceDraft(normalizeSourceType(initialSourceType ?? null))
+          draft ??
+          createNewKnowledgeSourceDraft(
+            normalizeSourceType(initialSourceType ?? null),
+            initialSourceProvider,
+          )
         sourceDraftsRef.current[nextDraft.sourceType] = nextDraft
         setSourceDraft(nextDraft)
         setSourceDraftResolved(true)
@@ -843,7 +856,7 @@ export function AddSourcePage({
     return () => {
       active = false
     }
-  }, [initialSourceType, sourceDraftKey])
+  }, [initialSourceProvider, initialSourceType, sourceDraftKey])
   const clearStoredSourceDraft = useCallback(() => {
     if (!sourceDraftKey) return
     try {

@@ -1272,6 +1272,22 @@ describe('AddSourcePage', () => {
     expect(screen.getByRole('status')).toHaveTextContent('dataset.newKnowledge.notionNotConnected')
   })
 
+  it.each([
+    ['websiteCrawl', 'Jina Reader'],
+    ['onlineDocuments', 'Confluence'],
+    ['onlineDrive', 'OneDrive'],
+  ] as const)('restores the %s provider from a shortcut URL', (initialSourceType, provider) => {
+    render(
+      <AddSourcePage
+        initialSourceProvider={provider}
+        initialSourceType={initialSourceType}
+        knowledgeSpaceId="space-1"
+      />,
+    )
+
+    expect(screen.getByRole('radio', { name: provider })).toBeChecked()
+  })
+
   it('disables the final Add source action while its backend dependency is missing', async () => {
     const user = userEvent.setup()
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
