@@ -96,7 +96,7 @@ DIFY_AGENT_SERVER_SECRET_KEY=replace-with-unpadded-base64url-for-32-random-bytes
 HTTP URLs may be either the service root or the explicit `/agent-stub` root.
 The server normalizes a service root and rejects unrelated paths. The separate
 Sandbox file base must point to the Dify API ingress serving `/files/*`; it is
-used for CLI upload/download bytes even when Agent Stub control calls use gRPC.
+used for CLI upload/download bytes, including Config file and skill pulls.
 
 After `dify-agent file upload <path>` succeeds, the CLI prints JSON such as:
 
