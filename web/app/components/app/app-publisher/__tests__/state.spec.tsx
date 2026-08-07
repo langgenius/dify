@@ -7,6 +7,7 @@ import { screen, render as testingLibraryRender, waitFor } from '@testing-librar
 import userEvent from '@testing-library/user-event'
 import { Provider, useAtomValue, useSetAtom } from 'jotai'
 import { createQueryAtomTestStore } from '@/test/query-atom'
+import { useRefreshAppEnvironmentsAfterPublisherDeploymentPolling } from '../hooks/use-refresh-app-environments-after-deployment-polling'
 import {
   addPublisherEnvironmentAtom,
   appPublisherEnvironmentsAtom,
@@ -18,7 +19,6 @@ import {
   selectedPublisherEnvironmentIdAtom,
   startPublisherEnvironmentDeploymentPollingAtom,
 } from '../state'
-import { useRefreshAppEnvironmentsAfterPublisherDeploymentPolling } from '../use-refresh-app-environments-after-deployment-polling'
 
 type QueryOptions = {
   enabled?: boolean
@@ -36,6 +36,8 @@ type QueryOptions = {
           }
         }
       }
+      fetchFailureCount?: number
+      status?: 'error' | 'pending' | 'success'
     }
   }) => false | number
 }
@@ -227,7 +229,7 @@ function environmentDeploymentResponse({
               }
             : undefined,
         latest_operation: {
-          activity_at: '2026-07-31T00:00:00Z',
+          activity_at: 1_785_456_000,
           id: operationId,
           operator: {
             display_name: 'Evan',
@@ -387,21 +389,39 @@ describe('app publisher environment state', () => {
         },
       }),
     ).toBe(3000)
+  })
 
-    const discoveryRequestCount = queryMocks.deploymentListRequest.mock.calls.length
-    const detailRequestCount = getDeploymentRequestCount('development')
-    await user.click(screen.getByRole('button', { name: 'Close publisher' }))
-    await waitFor(() => {
-      expect(getLatestDeploymentQueryOptions()?.enabled).toBe(false)
+  it('stops automatic status polling while the deployment query is failing', async () => {
+    const user = userEvent.setup()
+    const response = environmentDeploymentResponse({
+      deploymentStatus: DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING,
+      operationId: 'operation-staging',
+      operationStatus: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS,
     })
+    renderState()
 
-    await user.click(screen.getByRole('button', { name: 'Open publisher' }))
-    await waitFor(() => {
-      expect(queryMocks.deploymentListRequest.mock.calls.length).toBeGreaterThan(
-        discoveryRequestCount,
-      )
-      expect(getDeploymentRequestCount('development')).toBeGreaterThan(detailRequestCount)
-    })
+    await screen.findByText('Joined: staging')
+    await user.click(screen.getByRole('button', { name: 'Select staging' }))
+
+    const refetchInterval = getDeploymentQueryOptions('staging')?.refetchInterval
+    expect(refetchInterval).toBeTypeOf('function')
+    expect(
+      refetchInterval?.({
+        state: {
+          data: response,
+          fetchFailureCount: 1,
+          status: 'success',
+        },
+      }),
+    ).toBe(false)
+    expect(
+      refetchInterval?.({
+        state: {
+          data: response,
+          status: 'error',
+        },
+      }),
+    ).toBe(false)
   })
 
   it('queries deployment details only after selecting an in-use non-built-in environment', async () => {
@@ -422,6 +442,20 @@ describe('app publisher environment state', () => {
       })
     })
     expect(await screen.findByText('Deployment: Release staging')).toBeInTheDocument()
+  })
+
+  it('resets the selected environment to built-in when the publisher reopens', async () => {
+    const user = userEvent.setup()
+    renderState()
+
+    await screen.findByText('Joined: staging')
+    await user.click(screen.getByRole('button', { name: 'Select staging' }))
+    expect(screen.getByText('Selected: staging')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Close publisher' }))
+    await user.click(screen.getByRole('button', { name: 'Open publisher' }))
+
+    expect(screen.getByText('Selected: built-in')).toBeInTheDocument()
   })
 
   it('refreshes environments when a selected deployment has succeeded', async () => {
@@ -484,7 +518,7 @@ describe('app publisher environment state', () => {
     expect(queryMocks.environmentRequest).toHaveBeenCalledTimes(2)
   })
 
-  it('scopes polling to the open selected environment and re-evaluates it after switching back', async () => {
+  it('scopes polling to the selected environment and clears it when the publisher closes', async () => {
     const user = userEvent.setup()
     queryMocks.environmentRequest.mockResolvedValue(appEnvironments(true))
     queryMocks.deploymentRequest.mockImplementation(
@@ -567,25 +601,6 @@ describe('app publisher environment state', () => {
     await waitFor(() => {
       expect(getLatestDeploymentQueryOptions()?.enabled).toBe(false)
     })
-
-    const closedStagingRequestCount = getDeploymentRequestCount('staging')
-    await user.click(screen.getByRole('button', { name: 'Open publisher' }))
-
-    await waitFor(() => {
-      const reopenedStagingRequestCount = getDeploymentRequestCount('staging')
-      expect(reopenedStagingRequestCount).toBeGreaterThan(closedStagingRequestCount)
-    })
-    expect(
-      getDeploymentQueryOptions('staging')?.refetchInterval?.({
-        state: {
-          data: environmentDeploymentResponse({
-            deploymentStatus: DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING,
-            operationId: 'operation-staging',
-            operationStatus: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS,
-          }),
-        },
-      }),
-    ).toBe(3000)
   })
 
   it('resets open state and active polling when the last publisher subscriber unmounts', async () => {

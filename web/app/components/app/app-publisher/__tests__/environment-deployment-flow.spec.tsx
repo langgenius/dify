@@ -19,6 +19,7 @@ import {
   renderWithConsoleQuery as render,
 } from '@/test/console/query-data'
 import { PublisherEnvironmentFlow } from '../environment-deployment-flow'
+import { useRefreshAppEnvironmentsAfterPublisherDeploymentPolling } from '../hooks/use-refresh-app-environments-after-deployment-polling'
 import {
   appPublisherEnvironmentsAtom,
   appPublisherOpenAtom,
@@ -26,7 +27,6 @@ import {
   publisherEnvironmentDeploymentPollingAtom,
   selectedPublisherEnvironmentIdAtom,
 } from '../state'
-import { useRefreshAppEnvironmentsAfterPublisherDeploymentPolling } from '../use-refresh-app-environments-after-deployment-polling'
 
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
@@ -36,6 +36,7 @@ vi.mock('react-i18next', async () => {
     'common.operation.back': 'Back',
     'common.operation.cancel': 'Cancel',
     'deployments.overview.chip.latest': 'Latest',
+    'deployments.deployDrawer.deploying': 'Deploying...',
     'deployments.studio.accessPoint.goToPublish': 'Go to publish',
     'deployments.studio.allVersions': 'All versions',
     'deployments.studio.chooseVersionToDeploy': 'Choose a version to deploy',
@@ -48,11 +49,18 @@ vi.mock('react-i18next', async () => {
     'deployments.studio.accessPoint.noPublishedTitle': 'No published versions yet',
     'deployments.studio.publisher.noPublishedDescription':
       'Publish the app before deploying it to an environment.',
+    'deployments.studio.publisher.deployingVersion': 'Deploying: {{version}}',
     'deployments.studio.publisher.notDeployedYet': 'Not deployed yet',
     'deployments.versions.deployTo': 'Deploy to {{name}}',
     'workflow.common.publishedBy': 'Published {{time}} by {{author}}',
   })
 })
+
+vi.mock('@/hooks/use-format-time-from-now', () => ({
+  useFormatTimeFromNow: () => ({
+    formatTimeFromNow: (time: number) => `relative:${time}`,
+  }),
+}))
 
 function publishedWorkflowVersion({
   id,
@@ -147,7 +155,7 @@ function createDeployment({
     },
     deployment: {
       current_version: deployed ? currentVersion : undefined,
-      deployed_at: new Date().toISOString(),
+      deployed_at: Math.floor(Date.now() / 1000),
       deployed_by: {
         display_name: 'Evan',
         id: 'user-1',
@@ -268,7 +276,10 @@ function seedPublishedWorkflowQueries(queryClient: QueryClient) {
   })
 }
 
-function renderFlow(deployment = createDeployment()) {
+function renderFlow(
+  deployment = createDeployment(),
+  { isDeploymentError = false }: { isDeploymentError?: boolean } = {},
+) {
   const queryClient = createFlowQueryClient(deployment.environment.id)
 
   return render(
@@ -279,7 +290,7 @@ function renderFlow(deployment = createDeployment()) {
       environmentName={deployment.environment.display_name}
       environmentTabs={<div>Environment tabs</div>}
       isEnvironmentInUse
-      isDeploymentError={false}
+      isDeploymentError={isDeploymentError}
       isDeploymentLoading={false}
       latestVersion={latestVersion}
       onGoToPublish={vi.fn()}
@@ -364,7 +375,7 @@ function captureDeploymentRequests() {
               ...currentDeployment.deployment,
               ...(deploymentSubmitted && {
                 latest_operation: {
-                  activity_at: '2026-07-31T00:00:00Z',
+                  activity_at: 1_785_456_000,
                   id: 'operation-staging',
                   operator: {
                     display_name: 'Evan',
@@ -440,6 +451,16 @@ async function expectDeploymentRequest(
 }
 
 describe('PublisherEnvironmentFlow', () => {
+  it('formats deployed_at as a Unix timestamp in seconds', () => {
+    const deployment = createDeployment()
+    const deployedAt = deployment.deployment?.deployed_at
+    if (deployedAt === undefined) throw new Error('Expected a deployed environment fixture')
+
+    renderFlow(deployment)
+
+    expect(screen.getByText(`Published relative:${deployedAt * 1000} by Evan`)).toBeInTheDocument()
+  })
+
   it('shows the publish action when an undeployed environment has no published versions', async () => {
     const user = userEvent.setup()
     const onGoToPublish = vi.fn()
@@ -531,7 +552,9 @@ describe('PublisherEnvironmentFlow', () => {
     (status) => {
       renderFlow(createDeployment({ deployed: false, status }))
 
-      expect(screen.getByRole('button', { name: 'Deploy latest' })).toBeDisabled()
+      const deployButtonName =
+        status === DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING ? 'Deploying...' : 'Deploy latest'
+      expect(screen.getByRole('button', { name: deployButtonName })).toBeDisabled()
       expect(screen.getByRole('button', { name: 'All versions' })).toBeDisabled()
       expect(screen.getByRole('link', { name: 'Access Point' })).toHaveAttribute(
         'href',
@@ -543,6 +566,50 @@ describe('PublisherEnvironmentFlow', () => {
       )
     },
   )
+
+  it('keeps the deployment target and progress controls when a deploying status refresh fails', () => {
+    const deployment = createDeployment({
+      status: DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING,
+    })
+    deployment.deployment!.latest_operation = {
+      activity_at: 1_785_456_000,
+      id: 'operation-staging',
+      operator: {
+        display_name: 'Evan',
+        id: 'user-1',
+        type: OperatorType.OPERATOR_TYPE_ACCOUNT,
+      },
+      status: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS,
+      target_version: {
+        id: latestVersion.id,
+        marked_comment: latestVersion.description ?? '',
+        marked_name: latestVersion.name,
+        version: latestVersion.name,
+      },
+      type: DeploymentOperationType.DEPLOYMENT_OPERATION_TYPE_DEPLOY,
+    }
+
+    renderFlow(deployment, { isDeploymentError: true })
+
+    expect(screen.getByRole('button', { name: 'Deploying...' })).toBeDisabled()
+    expect(screen.getByText(`Deploying: ${latestVersion.name}`)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'All versions' })).toBeDisabled()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Deploy latest' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Deploy other version' })).not.toBeInTheDocument()
+  })
+
+  it('keeps current and latest version information when a status refresh fails outside deployment', () => {
+    renderFlow(createDeployment(), { isDeploymentError: true })
+
+    expect(screen.getByText('Sprint-42')).toBeInTheDocument()
+    expect(screen.getByText('Latest').parentElement).toHaveTextContent(
+      `Latest: ${latestVersion.name}`,
+    )
+    expect(screen.getByRole('button', { name: 'Deploy latest' })).toBeEnabled()
+    expect(screen.queryByText('Deploying...')).not.toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
 
   it.each([
     DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYED,

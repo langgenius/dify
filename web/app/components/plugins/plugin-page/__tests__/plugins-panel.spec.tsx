@@ -1,6 +1,6 @@
 import type { PluginDetail } from '../../types'
 import type { Collection } from '@/app/components/tools/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   getStepByStepTourTargetSelector,
@@ -22,8 +22,12 @@ const mockSetFilters = vi.fn()
 const mockSetCurrentPluginID = vi.fn()
 const mockLoadNextPage = vi.fn()
 const mockInvalidateInstalledPluginList = vi.fn()
+const mockRemoveFilteredInstalledPluginPageOnUnmount = vi.fn()
 const mockUseInstalledPluginList = vi.fn()
 const mockPluginListWithLatestVersion = vi.fn<() => PluginDetail[]>(() => [])
+const intersectionObserverCallbacks: IntersectionObserverCallback[] = []
+const mockObserve = vi.fn()
+const mockDisconnect = vi.fn()
 
 vi.mock('@tanstack/react-query', () => ({
   queryOptions: (options: unknown) => options,
@@ -34,8 +38,11 @@ vi.mock('@/i18n-config', () => ({
 }))
 
 vi.mock('@/service/use-plugins', () => ({
+  normalizePluginCategoryListLanguage: (locale: string) => locale,
   useInstalledPluginList: (...args: unknown[]) => mockUseInstalledPluginList(...args),
   useInvalidateInstalledPluginList: () => mockInvalidateInstalledPluginList,
+  useRemoveFilteredInstalledPluginPageOnUnmount: (...args: unknown[]) =>
+    mockRemoveFilteredInstalledPluginPageOnUnmount(...args),
 }))
 
 vi.mock('../../hooks', () => ({
@@ -160,7 +167,7 @@ vi.mock('@/app/components/integrations/tool-provider-card', () => ({
   ),
 }))
 
-vi.mock('@/app/components/integrations/hooks/use-tool-marketplace-panel', () => ({
+vi.mock('@/app/components/tools/marketplace/use-tool-marketplace-panel', () => ({
   useToolMarketplacePanel: () => ({
     isMarketplaceArrowVisible: true,
     marketplaceContext: {},
@@ -265,6 +272,18 @@ describe('PluginsPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers()
+    intersectionObserverCallbacks.length = 0
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class {
+        constructor(callback: IntersectionObserverCallback) {
+          intersectionObserverCallbacks.push(callback)
+        }
+
+        observe = mockObserve
+        disconnect = mockDisconnect
+      },
+    )
     mockState.filters = { categories: [], tags: [], searchQuery: '' }
     mockState.currentPluginID = undefined
     mockUseInstalledPluginList.mockReturnValue({
@@ -279,6 +298,7 @@ describe('PluginsPanel', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+    vi.unstubAllGlobals()
   })
 
   it('renders the loading state while the plugin list is pending', () => {
@@ -351,23 +371,49 @@ describe('PluginsPanel', () => {
     expect(screen.getByTestId('plugin-list')).not.toHaveTextContent('tool-plugin')
   })
 
-  it('loads the scoped plugin category list whenever an integrations category panel mounts', () => {
-    render(<PluginsPanel contentInset="compact" fixedCategory={PluginCategoryEnum.trigger} />)
+  it.each([
+    PluginCategoryEnum.tool,
+    PluginCategoryEnum.trigger,
+    PluginCategoryEnum.agent,
+    PluginCategoryEnum.extension,
+  ])('loads %s Integration Plugins in Studio-sized pages', (category) => {
+    render(<PluginsPanel contentInset="compact" fixedCategory={category} />)
 
-    expect(mockUseInstalledPluginList).toHaveBeenCalledWith(false, 100, {
-      category: PluginCategoryEnum.trigger,
-      refetchOnMount: 'always',
-    })
+    expect(mockUseInstalledPluginList).toHaveBeenCalledWith(
+      expect.objectContaining({
+        category,
+        gcTime: 10 * 60 * 1000,
+        pageSize: 30,
+        staleTime: 5 * 60 * 1000,
+      }),
+    )
+    expect(mockUseInstalledPluginList.mock.calls.at(-1)?.[0]).not.toHaveProperty('refetchOnMount')
+  })
+
+  it('configures filtered cache cleanup for an Integration category panel', () => {
+    render(<PluginsPanel fixedCategory={PluginCategoryEnum.tool} />)
+
+    expect(mockRemoveFilteredInstalledPluginPageOnUnmount).toHaveBeenCalledWith(
+      PluginCategoryEnum.tool,
+      30,
+      expect.any(Object),
+    )
+  })
+
+  it('does not configure filtered cache cleanup for the standalone Plugin page', () => {
+    render(<PluginsPanel />)
+
+    expect(mockRemoveFilteredInstalledPluginPageOnUnmount).toHaveBeenCalledWith(
+      undefined,
+      30,
+      undefined,
+    )
   })
 
   it('loads the scoped tool plugin category list when fixed to tool plugins', () => {
     render(<PluginsPanel contentInset="compact" fixedCategory={PluginCategoryEnum.tool} />)
 
     expect(screen.getByTestId('filter-management')).toHaveAttribute('data-hide-tag-filter', 'false')
-    expect(mockUseInstalledPluginList).toHaveBeenCalledWith(false, 100, {
-      category: PluginCategoryEnum.tool,
-      refetchOnMount: 'always',
-    })
   })
 
   it('filters tool plugins, builtin tools, and marketplace suggestions by selected tags', () => {
@@ -709,6 +755,56 @@ describe('PluginsPanel', () => {
       tags: [],
       searchQuery: 'beta',
     })
+  })
+
+  it.each([
+    PluginCategoryEnum.tool,
+    PluginCategoryEnum.trigger,
+    PluginCategoryEnum.agent,
+    PluginCategoryEnum.extension,
+  ])('automatically loads more %s Plugins near the list end once per intersection', (category) => {
+    mockPluginListWithLatestVersion.mockReturnValue([
+      createPlugin('category-plugin', 'Category Plugin', [], category),
+    ])
+    mockUseInstalledPluginList.mockReturnValue({
+      data: { plugins: [] },
+      isLoading: false,
+      isFetching: false,
+      isLastPage: false,
+      loadNextPage: mockLoadNextPage,
+    })
+
+    render(<PluginsPanel fixedCategory={category} />)
+
+    expect(intersectionObserverCallbacks).toHaveLength(1)
+
+    act(() => {
+      intersectionObserverCallbacks[0]?.(
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      )
+      intersectionObserverCallbacks[0]?.(
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      )
+    })
+
+    expect(mockLoadNextPage).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not observe the Tool Plugin list while the next page is loading', () => {
+    mockPluginListWithLatestVersion.mockReturnValue([createPlugin('tool-plugin', 'Tool Plugin')])
+    mockUseInstalledPluginList.mockReturnValue({
+      data: { plugins: [] },
+      isLoading: false,
+      isFetching: true,
+      isLastPage: false,
+      loadNextPage: mockLoadNextPage,
+    })
+
+    render(<PluginsPanel fixedCategory={PluginCategoryEnum.tool} />)
+
+    expect(intersectionObserverCallbacks).toHaveLength(0)
   })
 
   it('renders the empty state and keeps the current plugin detail in sync', () => {

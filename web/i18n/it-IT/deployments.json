@@ -358,6 +358,7 @@
   "studio.lastActivity": "Ultima attività",
   "studio.liveVersion": "Versione attiva",
   "studio.moreEnvironments": "Altri ambienti",
+  "studio.publisher.deployingVersion": "Distribuzione in corso: {{version}}",
   "studio.publisher.noPublishedDescription": "Pubblica la bozza per distribuirla qui.",
   "studio.publisher.notDeployedYet": "Non ancora distribuito",
   "studio.retryVersion": "Riprova {{version}}",

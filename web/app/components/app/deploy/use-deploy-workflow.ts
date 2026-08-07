@@ -6,23 +6,24 @@ import { consoleQuery } from '@/service/client'
 
 export function useDeployWorkflow({
   appId,
-  environmentId,
   invalidateAppEnvironmentsOnSuccess = true,
   onSuccess,
 }: {
   appId?: string
-  environmentId: string
   invalidateAppEnvironmentsOnSuccess?: boolean
   onSuccess?: (response: DeployWorkflowResponse) => Promise<void> | void
 }) {
   const queryClient = useQueryClient()
+  const mutationOptions =
+    consoleQuery.enterprise.appDeploy.deploymentService.deployWorkflow.mutationOptions()
 
-  return useMutation(
-    consoleQuery.enterprise.appDeploy.deploymentService.deployWorkflow.mutationOptions({
-      context: { silent: true },
-      onSuccess: async (response) => {
-        if (!appId) return
+  return useMutation({
+    ...mutationOptions,
+    onSuccess: async (response, variables, onMutateResult, context) => {
+      await mutationOptions.onSuccess?.(response, variables, onMutateResult, context)
+      if (!appId) return
 
+      if (invalidateAppEnvironmentsOnSuccess) {
         const appEnvironmentsQuery =
           consoleQuery.enterprise.appDeploy.deploymentService.listAppEnvironments.queryOptions({
             input: {
@@ -31,40 +32,10 @@ export function useDeployWorkflow({
               },
             },
           })
-        const environmentDeploymentsQuery =
-          consoleQuery.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryOptions(
-            {
-              input: {
-                params: {
-                  app_id: appId,
-                },
-              },
-            },
-          )
-        const environmentDeploymentQuery =
-          consoleQuery.enterprise.appDeploy.deploymentService.getEnvironmentDeployment.queryOptions(
-            {
-              input: {
-                params: {
-                  app_id: appId,
-                  environment_id: environmentId,
-                },
-              },
-            },
-          )
+        await queryClient.invalidateQueries({ queryKey: appEnvironmentsQuery.queryKey })
+      }
 
-        const invalidations = [
-          queryClient.invalidateQueries({ queryKey: environmentDeploymentsQuery.queryKey }),
-          queryClient.invalidateQueries({ queryKey: environmentDeploymentQuery.queryKey }),
-        ]
-        if (invalidateAppEnvironmentsOnSuccess)
-          invalidations.push(
-            queryClient.invalidateQueries({ queryKey: appEnvironmentsQuery.queryKey }),
-          )
-
-        await Promise.all(invalidations)
-        await onSuccess?.(response)
-      },
-    }),
-  )
+      await onSuccess?.(response)
+    },
+  })
 }

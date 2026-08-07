@@ -6,6 +6,10 @@ import {
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
+import {
+  appWorkflowVersionsInfiniteQueryOptions,
+  latestPublishedWorkflowQueryOptions,
+} from '@/app/components/app/deploy/state'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { AccessMode } from '@/models/access-control'
 import { consoleQuery } from '@/service/client'
@@ -22,11 +26,9 @@ const render = (ui: React.ReactElement) =>
 
 const mockOnPublish = vi.fn()
 const mockOnToggle = vi.fn()
-const mockSetAppDetail = vi.fn()
 const mockTrackEvent = vi.fn()
 const mockRefetch = vi.fn()
 const mockUseGetUserCanAccessApp = vi.fn()
-const mockFetchAppDetail = vi.fn()
 const mockToastError = vi.fn()
 const mockToastSuccess = vi.fn()
 const mockWindowOpen = vi.fn()
@@ -42,7 +44,6 @@ let mockPublishedWorkflowQueryState = {
 
 const sectionProps = vi.hoisted(() => ({
   summary: null as null | Record<string, any>,
-  access: null as null | Record<string, any>,
   actions: null as null | Record<string, any>,
 }))
 const hotkeyMocks = vi.hoisted(() => ({
@@ -71,16 +72,8 @@ vi.mock('@tanstack/react-hotkeys', () => ({
 }))
 
 vi.mock('@/app/components/app/store', () => ({
-  useStore: (
-    selector: (state: {
-      appDetail: Record<string, any> | null
-      setAppDetail: typeof mockSetAppDetail
-    }) => unknown,
-  ) =>
-    selector({
-      appDetail: mockAppDetail,
-      setAppDetail: mockSetAppDetail,
-    }),
+  useStore: (selector: (state: { appDetail: Record<string, any> | null }) => unknown) =>
+    selector({ appDetail: mockAppDetail }),
 }))
 
 vi.mock('@/hooks/use-format-time-from-now', () => ({
@@ -107,7 +100,6 @@ vi.mock('@/service/access-control/use-app-access-control', () => ({
 const mockPublishToCreatorsPlatform = vi.fn()
 
 vi.mock('@/service/apps', () => ({
-  fetchAppDetail: (...args: unknown[]) => mockFetchAppDetail(...args),
   publishToCreatorsPlatform: (...args: unknown[]) => mockPublishToCreatorsPlatform(...args),
 }))
 
@@ -175,26 +167,6 @@ vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: (...args: unknown[]) => mockTrackEvent(...args),
 }))
 
-vi.mock('../../app-access-control', () => {
-  const MockAccessControl = ({
-    onConfirm,
-    onClose,
-  }: {
-    onConfirm: () => Promise<void>
-    onClose: () => void
-  }) => (
-    <div data-testid="access-control">
-      <button onClick={() => void onConfirm()}>confirm-access-control</button>
-      <button onClick={onClose}>close-access-control</button>
-    </div>
-  )
-
-  return {
-    default: MockAccessControl,
-    AccessControl: MockAccessControl,
-  }
-})
-
 vi.mock('@/app/components/tools/workflow-tool', () => ({
   WorkflowToolDrawer: ({ onHide }: { onHide: () => void }) => (
     <div data-testid="workflow-tool-drawer">
@@ -217,10 +189,7 @@ vi.mock('../sections', () => ({
       </div>
     )
   },
-  PublisherAccessSection: (props: Record<string, any>) => {
-    sectionProps.access = props
-    return <button onClick={props.onClick}>publisher-access-control</button>
-  },
+  PublisherAccessSection: () => <div>publisher-access-control</div>,
   PublisherActionsSection: (props: Record<string, any>) => {
     sectionProps.actions = props
     return (
@@ -250,7 +219,6 @@ describe('AppPublisher', () => {
     hotkeyMocks.handlers.length = 0
     collaborationMocks.handler = undefined
     sectionProps.summary = null
-    sectionProps.access = null
     sectionProps.actions = null
     mockPublishedWorkflow = null
     mockPublishedWorkflowQueryState = {
@@ -272,10 +240,6 @@ describe('AppPublisher', () => {
         access_token: 'token-1',
       },
     }
-    mockFetchAppDetail.mockResolvedValue({
-      id: 'app-1',
-      access_mode: AccessMode.PUBLIC,
-    })
     Object.defineProperty(window, 'open', {
       configurable: true,
       writable: true,
@@ -300,6 +264,14 @@ describe('AppPublisher', () => {
     expect(mockRefetch).not.toHaveBeenCalled()
   })
 
+  it('should not render Web app access control in the publish popover', () => {
+    render(<AppPublisher publishedAt={Date.now()} />)
+
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
+
+    expect(screen.queryByText('publisher-access-control')).not.toBeInTheDocument()
+  })
+
   it('should publish and track the publish event', async () => {
     mockOnPublish.mockResolvedValue(undefined)
 
@@ -319,6 +291,73 @@ describe('AppPublisher', () => {
         }),
       )
     })
+  })
+
+  it('should refresh deployment workflow versions after publishing when multi-environment deployment is available', async () => {
+    const user = userEvent.setup()
+    const queryClient = createConsoleQueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    mockAppDetail = {
+      ...mockAppDetail,
+      mode: AppModeEnum.WORKFLOW,
+      permission_keys: [AppACLPermission.Deploy],
+    }
+    mockOnPublish.mockResolvedValue(undefined)
+    const environmentsQuery =
+      consoleQuery.enterprise.appDeploy.deploymentService.listAppEnvironments.queryOptions({
+        enabled: true,
+        input: {
+          params: {
+            app_id: 'app-1',
+          },
+        },
+      })
+    queryClient.setQueryDefaults(environmentsQuery.queryKey, { staleTime: Infinity })
+    queryClient.setQueryData(environmentsQuery.queryKey, { data: [] })
+
+    renderWithConsoleQuery(
+      <AppPublisher hasUnpublishedChanges publishedAt={Date.now()} onPublish={mockOnPublish} />,
+      { queryClient },
+    )
+
+    await user.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
+    await user.click(screen.getByText('publisher-summary-publish'))
+
+    const latestPublishedWorkflowQuery = latestPublishedWorkflowQueryOptions('app-1')
+    const workflowVersionsQuery = appWorkflowVersionsInfiniteQueryOptions('app-1')
+    await waitFor(() => {
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: latestPublishedWorkflowQuery.queryKey,
+      })
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: workflowVersionsQuery.queryKey,
+      })
+    })
+  })
+
+  it('should not refresh deployment workflow versions after publishing without multi-environment deployment', async () => {
+    const user = userEvent.setup()
+    const queryClient = createConsoleQueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    mockAppDetail = {
+      ...mockAppDetail,
+      mode: AppModeEnum.WORKFLOW,
+      permission_keys: [],
+    }
+    mockOnPublish.mockResolvedValue(undefined)
+
+    renderWithConsoleQuery(
+      <AppPublisher hasUnpublishedChanges publishedAt={Date.now()} onPublish={mockOnPublish} />,
+      { queryClient },
+    )
+
+    await user.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
+    await user.click(screen.getByText('publisher-summary-publish'))
+
+    await waitFor(() => {
+      expect(mockOnPublish).toHaveBeenCalledTimes(1)
+    })
+    expect(invalidateQueries).not.toHaveBeenCalled()
   })
 
   it('should edit the current workflow version from the publish summary', () => {
@@ -571,7 +610,7 @@ describe('AppPublisher', () => {
     expect(screen.getByText('publisher-summary-publish')).toBeInTheDocument()
   })
 
-  it('stops the selected environment query when closed and checks it again when reopened', async () => {
+  it('returns to the built-in environment when reopened', async () => {
     const user = userEvent.setup()
     const queryClient = createConsoleQueryClient()
     const detailRequests: Request[] = []
@@ -662,19 +701,22 @@ describe('AppPublisher', () => {
     await waitFor(() => {
       expect(detailRequests.length).toBeGreaterThan(0)
     })
+    expect(screen.getByRole('button', { name: 'Staging' })).toHaveAttribute('aria-current', 'true')
 
     await user.click(publishButton)
 
     expect(publishButton).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByRole('button', { name: 'Staging' })).not.toBeInTheDocument()
-    const requestsBeforeReopen = detailRequests.length
 
     await user.click(publishButton)
     expect(publishButton).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByRole('button', { name: 'Staging' })).toBeInTheDocument()
-    await waitFor(() => {
-      expect(detailRequests.length).toBeGreaterThan(requestsBeforeReopen)
-    })
+    expect(
+      screen.getByRole('button', { name: /nodes\.common\.memories\.builtIn/ }),
+    ).toHaveAttribute('aria-current', 'true')
+    expect(screen.getByRole('button', { name: 'Staging' })).not.toHaveAttribute(
+      'aria-current',
+      'true',
+    )
   })
 
   it('should collect hidden inputs before opening the web app from its config action', async () => {
@@ -753,43 +795,6 @@ describe('AppPublisher', () => {
 
     expect(screen.queryByTestId('workflow-tool-drawer')).not.toBeInTheDocument()
     expect(sectionProps.actions?.workflowToolAvailable).toBe(false)
-  })
-
-  it('should close access control through its child callback', async () => {
-    render(<AppPublisher publishedAt={Date.now()} />)
-
-    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
-    fireEvent.click(screen.getByText('publisher-access-control'))
-    expect(screen.getByTestId('access-control'))!.toBeInTheDocument()
-    fireEvent.click(screen.getByText('close-access-control'))
-    expect(screen.queryByTestId('access-control')).not.toBeInTheDocument()
-  })
-
-  it('should refresh app detail after access control confirmation', async () => {
-    const { queryClient } = render(<AppPublisher publishedAt={Date.now()} />)
-    const setQueryDataSpy = vi.spyOn(queryClient, 'setQueryData')
-
-    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
-    fireEvent.click(screen.getByText('publisher-access-control'))
-
-    expect(screen.getByTestId('access-control'))!.toBeInTheDocument()
-
-    fireEvent.click(screen.getByText('confirm-access-control'))
-
-    await waitFor(() => {
-      expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
-    })
-    expect(setQueryDataSpy).toHaveBeenCalledWith(
-      ['apps', 'detail', 'app-1'],
-      expect.objectContaining({
-        access_mode: AccessMode.PUBLIC,
-      }),
-    )
-    expect(mockSetAppDetail).toHaveBeenCalledWith(
-      expect.objectContaining({
-        access_mode: AccessMode.PUBLIC,
-      }),
-    )
   })
 
   it('should ignore the trigger when the publish button is disabled', () => {
@@ -992,21 +997,6 @@ describe('AppPublisher', () => {
     expect(
       screen.queryByText(/(?:^|\.)common\.publishToMarketplace(?=$|:)/),
     ).not.toBeInTheDocument()
-  })
-
-  it('should keep access control open when app detail is unavailable during confirmation', async () => {
-    mockAppDetail = null
-
-    render(<AppPublisher publishedAt={Date.now()} />)
-
-    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
-    fireEvent.click(screen.getByText('publisher-access-control'))
-    fireEvent.click(screen.getByText('confirm-access-control'))
-
-    await waitFor(() => {
-      expect(mockFetchAppDetail).not.toHaveBeenCalled()
-    })
-    expect(screen.getByTestId('access-control'))!.toBeInTheDocument()
   })
 
   it('should not infer an app mode when app detail is unavailable', async () => {

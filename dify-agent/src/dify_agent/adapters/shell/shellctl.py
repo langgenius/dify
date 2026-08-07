@@ -24,6 +24,7 @@ from typing import Protocol, TypeVar, cast
 
 import httpx2 as httpx
 from shellctl.client import ShellctlClientError
+from shellctl.shared import HealthResponse
 
 from dify_agent.adapters.shell.protocols import (
     ShellCommandProtocol,
@@ -214,6 +215,8 @@ class ShellctlJobStatus(Protocol):
 
 
 class ShellctlClientProtocol(Protocol):
+    async def health(self) -> HealthResponse: ...
+
     async def run(
         self,
         script: str,

@@ -1,6 +1,5 @@
 'use client'
 
-import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { WorkflowVersion } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import {
   Popover,
@@ -14,17 +13,12 @@ import { useTranslation } from 'react-i18next'
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 
-type VersionLabelWorkflowVersion = WorkflowVersion & {
-  created_at?: WorkflowResponse['created_at']
-  created_by?: WorkflowResponse['created_by']
-}
-
 export function VersionLabel({
   version,
   versionsBehind,
   isLatest,
 }: {
-  version?: VersionLabelWorkflowVersion
+  version?: WorkflowVersion
   versionsBehind?: number
   isLatest?: boolean
 }) {

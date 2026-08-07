@@ -76,7 +76,7 @@ function renderCard(
       canEdit
       canDeploy
       canManageAccess
-      showAccessControl={false}
+      showAccessControl
       onChangeStatus={vi.fn().mockResolvedValue(undefined)}
       onRefreshApp={vi.fn().mockResolvedValue(undefined)}
       onRegenerate={vi.fn().mockResolvedValue(undefined)}
@@ -126,6 +126,15 @@ const workflowWithHiddenInput: NonNullable<PublishedWorkflow> = {
 describe('WebAppAccessPointCard', () => {
   afterEach(() => {
     vi.restoreAllMocks()
+  })
+
+  it('shows the current access mode without a redundant section label', () => {
+    renderCard(AppModeEnum.CHAT)
+
+    expect(screen.queryByText(/publishApp\.title/)).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /accessControlDialog\.accessItems\.anyone/ }),
+    ).toBeEnabled()
   })
 
   it.each([AppModeEnum.WORKFLOW, AppModeEnum.COMPLETION])(

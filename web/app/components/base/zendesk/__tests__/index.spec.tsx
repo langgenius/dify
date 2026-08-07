@@ -32,22 +32,13 @@ vi.mock('@/config', () => ({
   },
 }))
 
-vi.mock('@/context/query-client-server', () => ({
-  getQueryClientServer: () => queryClient,
-}))
-
-vi.mock('@/service/server', () => ({
-  serverConsoleQuery: {
-    systemFeatures: {
-      get: {
-        queryOptions: vi.fn(() => ({
-          queryKey: systemFeaturesQueryKey,
-          queryFn: getSystemFeatures,
-          retry: false,
-        })),
-      },
-    },
-  },
+vi.mock('@/features/system-features/server', () => ({
+  getSystemFeaturesQueryClient: () => queryClient,
+  systemFeaturesServerQueryOptions: vi.fn(() => ({
+    queryKey: systemFeaturesQueryKey,
+    queryFn: getSystemFeatures,
+    retry: false,
+  })),
 }))
 
 // Mock next/headers

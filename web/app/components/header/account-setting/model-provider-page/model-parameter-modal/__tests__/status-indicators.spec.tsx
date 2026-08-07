@@ -1,13 +1,17 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { withSelectorKey } from '@/test/i18n-mock'
 import StatusIndicators from '../status-indicators'
 
 let installedPlugins = [{ name: 'demo-plugin', plugin_unique_identifier: 'demo@1.0.0' }]
+const mockUseInstalledPluginList = vi.fn((_options: unknown) => ({
+  data: { plugins: installedPlugins },
+}))
 
 vi.mock('@/service/use-plugins', () => ({
-  useInstalledPluginList: () => ({ data: { plugins: installedPlugins } }),
+  useInstalledPluginList: (options: unknown) => mockUseInstalledPluginList(options),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/switch-plugin-version', () => ({
@@ -22,6 +26,7 @@ describe('StatusIndicators', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     installedPlugins = [{ name: 'demo-plugin', plugin_unique_identifier: 'demo@1.0.0' }]
+    mockUseInstalledPluginList.mockReturnValue({ data: { plugins: installedPlugins } })
   })
 
   const getPopoverTrigger = (name: string) => {
@@ -42,6 +47,10 @@ describe('StatusIndicators', () => {
       />,
     )
     expect(container).toBeEmptyDOMElement()
+    expect(mockUseInstalledPluginList).toHaveBeenLastCalledWith({
+      category: PluginCategoryEnum.model,
+      enabled: false,
+    })
   })
 
   it('should render deprecated tooltip when provider model is disabled and in model list', async () => {
@@ -56,6 +65,10 @@ describe('StatusIndicators', () => {
         t={t}
       />,
     )
+    expect(mockUseInstalledPluginList).toHaveBeenLastCalledWith({
+      category: PluginCategoryEnum.model,
+      enabled: false,
+    })
 
     await user.hover(getPopoverTrigger('nodes.agent.modelSelectorTooltips.deprecated'))
 
@@ -76,6 +89,10 @@ describe('StatusIndicators', () => {
         t={t}
       />,
     )
+    expect(mockUseInstalledPluginList).toHaveBeenLastCalledWith({
+      category: PluginCategoryEnum.model,
+      enabled: false,
+    })
 
     await user.hover(getPopoverTrigger('nodes.agent.modelNotSupport.title'))
 
@@ -95,6 +112,10 @@ describe('StatusIndicators', () => {
     )
 
     expect(screen.getByText('SwitchVersion:demo@1.0.0')).toBeInTheDocument()
+    expect(mockUseInstalledPluginList).toHaveBeenLastCalledWith({
+      category: PluginCategoryEnum.model,
+      enabled: true,
+    })
   })
 
   it('should render nothing when needsConfiguration is true even with disabled and modelProvider', () => {
@@ -109,6 +130,10 @@ describe('StatusIndicators', () => {
       />,
     )
     expect(container).toBeEmptyDOMElement()
+    expect(mockUseInstalledPluginList).toHaveBeenLastCalledWith({
+      category: PluginCategoryEnum.model,
+      enabled: false,
+    })
   })
 
   it('should render SwitchVersion with empty identifier when plugin is not in installed list', () => {

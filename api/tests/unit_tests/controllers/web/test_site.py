@@ -5,7 +5,7 @@ from controllers.common import site as common_site
 from controllers.web import site as site_module
 from extensions.storage.storage_type import StorageType
 from models.model import AppMode, IconType, Site
-from services.feature_service import FeatureModel
+from services.entities.feature_entities import FeatureModel
 
 
 def test_app_site_api_returns_legacy_agent_compatible_mode() -> None:
@@ -15,7 +15,7 @@ def test_app_site_api_returns_legacy_agent_compatible_mode() -> None:
     app_model.tenant = MagicMock(id="tenant-id", status="normal")
     app_model.mode_compatible_with_agent_with_session.return_value = AppMode.AGENT_CHAT
     end_user = MagicMock(id="end-user-id")
-    site = MagicMock(spec=Site)
+    site = Site()
     response = MagicMock()
     response.model_dump.return_value = {"mode": AppMode.AGENT_CHAT}
 
@@ -43,9 +43,10 @@ def test_app_site_api_returns_legacy_agent_compatible_mode() -> None:
 
 
 def test_build_site_icon_url_uses_s3_presigned_url() -> None:
-    site = MagicMock(spec=Site)
-    site.icon_type = IconType.IMAGE
-    site.icon = "11111111-1111-4111-8111-111111111111"
+    site = Site(
+        icon_type=IconType.IMAGE,
+        icon="11111111-1111-4111-8111-111111111111",
+    )
 
     with (
         patch.object(dify_config, "EDITION", "CLOUD"),
@@ -70,9 +71,10 @@ def test_build_site_icon_url_uses_s3_presigned_url() -> None:
 
 
 def test_build_site_icon_url_keeps_preview_url_for_self_hosted_s3() -> None:
-    site = MagicMock(spec=Site)
-    site.icon_type = IconType.IMAGE
-    site.icon = "11111111-1111-4111-8111-111111111111"
+    site = Site(
+        icon_type=IconType.IMAGE,
+        icon="11111111-1111-4111-8111-111111111111",
+    )
 
     with (
         patch.object(dify_config, "EDITION", "SELF_HOSTED"),
@@ -87,9 +89,10 @@ def test_build_site_icon_url_keeps_preview_url_for_self_hosted_s3() -> None:
 
 
 def test_build_site_icon_url_keeps_preview_url_for_non_s3_storage() -> None:
-    site = MagicMock(spec=Site)
-    site.icon_type = IconType.IMAGE
-    site.icon = "11111111-1111-4111-8111-111111111111"
+    site = Site(
+        icon_type=IconType.IMAGE,
+        icon="11111111-1111-4111-8111-111111111111",
+    )
 
     with (
         patch.object(dify_config, "EDITION", "CLOUD"),

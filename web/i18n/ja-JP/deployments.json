@@ -358,6 +358,7 @@
   "studio.lastActivity": "最近のアクティビティ",
   "studio.liveVersion": "稼働中のバージョン",
   "studio.moreEnvironments": "その他の環境",
+  "studio.publisher.deployingVersion": "デプロイ中：{{version}}",
   "studio.publisher.noPublishedDescription": "下書きを公開して、ここにデプロイしてください。",
   "studio.publisher.notDeployedYet": "まだデプロイされていません",
   "studio.retryVersion": "{{version}} を再試行",

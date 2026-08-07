@@ -26,7 +26,7 @@ const environmentDeploymentPollingByAppIdAtom = atom<
   Record<string, PublisherEnvironmentDeploymentPolling>
 >({})
 
-export const clearPublisherEnvironmentDeploymentPollingAtom = atom(null, (get, set) => {
+const clearPublisherEnvironmentDeploymentPollingAtom = atom(null, (get, set) => {
   const appId = get(appPublisherAppIdAtom)
   if (!appId) return
 
@@ -41,7 +41,23 @@ export const clearPublisherEnvironmentDeploymentPollingAtom = atom(null, (get, s
 
 export const appPublisherOpenAtom = atom(
   (get) => get(appPublisherOpenStateAtom),
-  (_get, set, open: boolean) => {
+  (get, set, open: boolean) => {
+    const isReopening = open && !get(appPublisherOpenStateAtom)
+    if (isReopening && get(appPublisherEnvironmentQueryEnabledAtom)) {
+      const appId = get(appPublisherAppIdAtom)
+      const selectedEnvironmentId = appId
+        ? (get(selectedEnvironmentByAppIdAtom)[appId] ?? BUILT_IN_ENVIRONMENT_ID)
+        : BUILT_IN_ENVIRONMENT_ID
+
+      if (appId && selectedEnvironmentId !== BUILT_IN_ENVIRONMENT_ID) {
+        set(clearPublisherEnvironmentDeploymentPollingAtom)
+        set(selectedEnvironmentByAppIdAtom, (current) => ({
+          ...current,
+          [appId]: BUILT_IN_ENVIRONMENT_ID,
+        }))
+      }
+    }
+
     set(appPublisherOpenStateAtom, open)
     if (!open) set(clearPublisherEnvironmentDeploymentPollingAtom)
   },
@@ -99,16 +115,6 @@ export const appPublisherEnvironmentsAtom = atom(
     get(appPublisherEnvironmentsDataAtom)?.filter(
       (environment) => environment.id !== BUILT_IN_ENVIRONMENT_ID,
     ) ?? [],
-)
-
-export const appPublisherEnvironmentsIsLoadingAtom = selectAtom(
-  appPublisherEnvironmentsQueryAtom,
-  (query) => query.isLoading,
-)
-
-export const appPublisherEnvironmentsIsErrorAtom = selectAtom(
-  appPublisherEnvironmentsQueryAtom,
-  (query) => query.isError,
 )
 
 export const selectedPublisherEnvironmentIdAtom = atom(
@@ -306,6 +312,8 @@ const selectedEnvironmentDeploymentQueryAtom = atomWithQuery((get) => {
         : skipToken,
     enabled: shouldFetch,
     refetchInterval: (query) => {
+      if (query.state.status === 'error' || query.state.fetchFailureCount > 0) return false
+
       const deployment = query.state.data?.environment_deployment
       if (polling?.environmentId !== environmentId)
         return isEnvironmentDeploymentInProgress(deployment)

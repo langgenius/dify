@@ -56,10 +56,11 @@ export function ApiSecretKeyButton({
       </Button>
 
       <SecretKeyModal
-        appId={appId}
-        environmentId={environmentId}
         canManage={canManage}
         isShow={modalOpen}
+        scope={
+          environmentId ? { type: 'environment', appId, environmentId } : { type: 'app', appId }
+        }
         onClose={() => setModalOpen(false)}
       />
     </>

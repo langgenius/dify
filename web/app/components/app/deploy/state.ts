@@ -21,7 +21,7 @@ import { consoleQuery } from '@/service/client'
 const DEPLOYMENT_STATUS_POLLING_INTERVAL = 3000
 const WORKFLOW_VERSIONS_PAGE_SIZE = 10
 
-export type EnvironmentDeploymentActionKind =
+type EnvironmentDeploymentActionKind =
   | 'changeVersion'
   | 'deployLatest'
   | 'redeploy'
@@ -102,9 +102,7 @@ export const latestAppWorkflowVersionAtom = atom((get) => {
   return toDeploymentVersion(workflow, get(defaultWorkflowVersionNameAtom), workflow.id)
 })
 
-const appWorkflowVersionsQueryAtom = atomWithInfiniteQuery((get) => {
-  const appId = get(appDeployAppIdAtom)
-
+export function appWorkflowVersionsInfiniteQueryOptions(appId: string | null) {
   return consoleQuery.apps.byAppId.workflows.get.infiniteOptions({
     input: appId
       ? (pageParam) => ({
@@ -120,6 +118,10 @@ const appWorkflowVersionsQueryAtom = atomWithInfiniteQuery((get) => {
     getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
     initialPageParam: 1,
   })
+}
+
+const appWorkflowVersionsQueryAtom = atomWithInfiniteQuery((get) => {
+  return appWorkflowVersionsInfiniteQueryOptions(get(appDeployAppIdAtom))
 })
 
 const appWorkflowVersionsDataAtom = selectAtom(appWorkflowVersionsQueryAtom, (query) => query.data)

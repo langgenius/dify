@@ -19,7 +19,7 @@ export type FeatureStoreState = FeaturesState & FeaturesAction & FeaturesModal
 
 export type FeaturesStore = ReturnType<typeof createFeaturesStore>
 
-export type SetFeaturesOptions = {
+type SetFeaturesOptions = {
   silent?: boolean
 }
 

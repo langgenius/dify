@@ -358,6 +358,7 @@
   "studio.lastActivity": "Última actividad",
   "studio.liveVersion": "Versión activa",
   "studio.moreEnvironments": "Más entornos",
+  "studio.publisher.deployingVersion": "Desplegando: {{version}}",
   "studio.publisher.noPublishedDescription": "Publica tu borrador para desplegarlo aquí.",
   "studio.publisher.notDeployedYet": "Aún no se ha desplegado",
   "studio.retryVersion": "Reintentar {{version}}",

@@ -110,7 +110,6 @@ export function ContinueWorkItem({ app }: ContinueWorkItemProps) {
           type="button"
           aria-labelledby={`${appNameId} ${appModeId}`}
           aria-describedby={appMetadataId}
-          aria-disabled="true"
           className="absolute inset-0 z-10 cursor-not-allowed touch-manipulation appearance-none rounded-xl border-0 bg-transparent p-0 outline-hidden focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
           onClick={showPreviewOnlyAccessWarning}
         />

@@ -8,15 +8,12 @@ import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
-import Loading from '@/app/components/base/loading'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { AppModeEnum } from '@/types/app'
 import { APP_PUBLISH_HOTKEY } from './hotkeys'
 import PublishWithMultipleModel from './publish-with-multiple-model'
 import SuggestedAction from './suggested-action'
-import { ACCESS_MODE_MAP } from './utils'
 import WorkflowToolAction from './workflow-tool-action'
 
 type SummarySectionProps = Pick<
@@ -38,14 +35,6 @@ type SummarySectionProps = Pick<
   onEditVersion?: () => void
   upgradeHighlightStyle: CSSProperties
   versionInfo?: VersionHistory | null
-}
-
-type AccessSectionProps = {
-  enabled: boolean
-  isAppAccessSet: boolean
-  isLoading: boolean
-  accessMode?: keyof typeof ACCESS_MODE_MAP
-  onClick: () => void
 }
 
 type ActionsSectionProps = Pick<
@@ -78,25 +67,6 @@ type ActionsSectionProps = Pick<
   workflowToolOutdated?: boolean
   onConfigureWorkflowTool: () => void
   onPublishToMarketplace?: () => void
-}
-
-export const AccessModeDisplay = ({ mode }: { mode?: keyof typeof ACCESS_MODE_MAP }) => {
-  const { t } = useTranslation()
-
-  if (!mode || !ACCESS_MODE_MAP[mode]) return null
-
-  const { icon, label } = ACCESS_MODE_MAP[mode]
-
-  return (
-    <>
-      <span className={`${icon} size-4 shrink-0 text-text-secondary`} />
-      <div className="grow truncate">
-        <span className="system-sm-medium text-text-secondary">
-          {t(($) => $[`accessControlDialog.accessItems.${label}`], { ns: 'app' })}
-        </span>
-      </div>
-    </>
-  )
 }
 
 export const PublisherTimelineMarker = ({ position }: { position: 'top' | 'bottom' }) => (
@@ -326,60 +296,6 @@ export const PublisherSummarySection = ({
         </p>
       </div>
     </div>
-  )
-}
-
-export const PublisherAccessSection = ({
-  enabled,
-  isAppAccessSet,
-  isLoading,
-  accessMode,
-  onClick,
-}: AccessSectionProps) => {
-  const { t } = useTranslation()
-
-  if (isLoading)
-    return (
-      <div className="py-2">
-        <Loading />
-      </div>
-    )
-
-  return (
-    <>
-      <Divider className="my-0" />
-      {enabled && (
-        <div className="p-4 pt-3">
-          <div className="flex h-6 items-center">
-            <p className="system-xs-medium text-text-tertiary">
-              {t(($) => $['publishApp.title'], { ns: 'app' })}
-            </p>
-          </div>
-          <button
-            type="button"
-            className="flex h-8 w-full cursor-pointer items-center gap-x-0.5 rounded-lg border-0 bg-components-input-bg-normal py-1 pr-2 pl-2.5 text-left outline-hidden hover:bg-primary-50 hover:text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-            onClick={onClick}
-          >
-            <div className="flex grow items-center gap-x-1.5 overflow-hidden pr-1">
-              <AccessModeDisplay mode={accessMode} />
-            </div>
-            {!isAppAccessSet && (
-              <p className="shrink-0 system-xs-regular text-text-tertiary">
-                {t(($) => $['publishApp.notSet'], { ns: 'app' })}
-              </p>
-            )}
-            <div className="flex size-4 shrink-0 items-center justify-center">
-              <span className="i-ri-arrow-right-s-line size-4 text-text-quaternary" />
-            </div>
-          </button>
-          {!isAppAccessSet && (
-            <p className="mt-1 system-xs-regular text-text-warning">
-              {t(($) => $['publishApp.notSetDesc'], { ns: 'app' })}
-            </p>
-          )}
-        </div>
-      )}
-    </>
   )
 }
 

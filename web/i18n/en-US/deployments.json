@@ -358,6 +358,7 @@
   "studio.lastActivity": "Last activity",
   "studio.liveVersion": "Live version",
   "studio.moreEnvironments": "More environments",
+  "studio.publisher.deployingVersion": "Deploying: {{version}}",
   "studio.publisher.noPublishedDescription": "Publish your draft to deploy it here.",
   "studio.publisher.notDeployedYet": "Not deployed yet",
   "studio.retryVersion": "Retry {{version}}",

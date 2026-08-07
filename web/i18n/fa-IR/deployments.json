@@ -358,6 +358,7 @@
   "studio.lastActivity": "آخرین فعالیت",
   "studio.liveVersion": "نسخه فعال",
   "studio.moreEnvironments": "محیط‌های بیشتر",
+  "studio.publisher.deployingVersion": "در حال استقرار: {{version}}",
   "studio.publisher.noPublishedDescription": "پیش‌نویس خود را منتشر کنید تا آن را اینجا استقرار دهید.",
   "studio.publisher.notDeployedYet": "هنوز مستقر نشده است",
   "studio.retryVersion": "تلاش دوباره برای {{version}}",

@@ -1,5 +1,6 @@
 'use client'
 
+import type { WorkflowVersion } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { Node } from '@/app/components/workflow/types'
 import { DeploymentStatus as DeploymentStatusEnum } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { useQuery } from '@tanstack/react-query'
@@ -39,6 +40,17 @@ export function BuiltInEnvironmentCard() {
   }
   const publishedBy = publishedWorkflow?.created_by?.name ?? appDetail?.author_name ?? '--'
   const updatedBy = publishedWorkflow?.updated_by?.name ?? publishedBy
+  const publishedVersion: WorkflowVersion | undefined = publishedWorkflow
+    ? {
+        created_at: publishedWorkflow.created_at,
+        created_by: publishedWorkflow.created_by ?? undefined,
+        id: publishedWorkflow.id,
+        marked_comment: publishedWorkflow.marked_comment,
+        marked_name: publishedWorkflow.marked_name,
+        version: publishedWorkflow.version,
+        version_number: publishedWorkflow.version_number ?? undefined,
+      }
+    : undefined
 
   return (
     <section
@@ -65,7 +77,7 @@ export function BuiltInEnvironmentCard() {
             <div className="system-2xs-medium-uppercase text-text-tertiary">
               {t(($) => $['studio.liveVersion'])}
             </div>
-            <VersionLabel version={publishedWorkflow} isLatest />
+            <VersionLabel version={publishedVersion} isLatest />
           </div>
           <Divider />
           <div className="flex flex-col gap-1">

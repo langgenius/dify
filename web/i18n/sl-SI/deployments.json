@@ -358,6 +358,7 @@
   "studio.lastActivity": "Zadnja dejavnost",
   "studio.liveVersion": "Aktivna različica",
   "studio.moreEnvironments": "Več okolij",
+  "studio.publisher.deployingVersion": "Uvajanje: {{version}}",
   "studio.publisher.noPublishedDescription": "Objavite osnutek, da ga boste lahko uvedli tukaj.",
   "studio.publisher.notDeployedYet": "Še ni uvedeno",
   "studio.retryVersion": "Poskusi znova za {{version}}",

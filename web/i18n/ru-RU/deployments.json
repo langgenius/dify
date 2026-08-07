@@ -358,6 +358,7 @@
   "studio.lastActivity": "Последняя активность",
   "studio.liveVersion": "Активная версия",
   "studio.moreEnvironments": "Другие среды",
+  "studio.publisher.deployingVersion": "Развертывание: {{version}}",
   "studio.publisher.noPublishedDescription": "Опубликуйте черновик, чтобы развернуть его здесь.",
   "studio.publisher.notDeployedYet": "Еще не развернуто",
   "studio.retryVersion": "Повторить {{version}}",

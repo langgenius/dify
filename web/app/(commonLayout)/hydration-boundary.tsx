@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
-import { makeQueryClient } from '@/context/query-client-server'
+import { getQueryClient } from '@/app/get-query-client'
 import { serverUserProfileQueryOptions } from '@/features/account-profile/server'
 import { headers } from '@/next/headers'
 import { redirect } from '@/next/navigation'
@@ -55,7 +55,7 @@ const handleProfileError = async (error: unknown) => {
 }
 
 export async function CommonLayoutHydrationBoundary({ children }: { children: ReactNode }) {
-  const queryClient = makeQueryClient()
+  const queryClient = getQueryClient()
   const accountProfileUrl = resolveServerConsoleApiUrl(ACCOUNT_PROFILE_PATH)
 
   if (accountProfileUrl) {
@@ -65,7 +65,7 @@ export async function CommonLayoutHydrationBoundary({ children }: { children: Re
       await Promise.all([
         queryClient.fetchQuery(serverUserProfileQueryOptions()),
         queryClient.prefetchQuery(
-          serverConsoleQuery.workspaces.current.post.queryOptions({
+          serverConsoleQuery.workspaces.current.summary.get.queryOptions({
             context,
             retry: false,
           }),

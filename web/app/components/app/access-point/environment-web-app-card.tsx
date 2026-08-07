@@ -1,6 +1,5 @@
 'use client'
 
-import type { EnvironmentAccessMode } from './environment-web-app-utils'
 import type { AccessPointAppInfo } from './utils'
 import {
   AlertDialog,
@@ -21,20 +20,19 @@ import SettingsModal from '@/app/components/app/overview/settings'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import AppIcon from '@/app/components/base/app-icon'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { AccessMode } from '@/models/access-control'
+import { AccessMode, isAccessMode } from '@/models/access-control'
 import { consoleQuery } from '@/service/client'
 import { AccessPointCard } from './access-point-card'
 import { AccessPointUrl } from './access-point-url'
 import { EnvironmentAccessControl } from './environment-access-control'
-import {
-  getEnvironmentWebAppUrl,
-  normalizeEnvironmentAccessMode,
-} from './environment-web-app-utils'
+import { getEnvironmentWebAppUrl } from './environment-web-app-utils'
 import { useBuiltInAccessPointActions } from './use-built-in-actions'
+import { WebAppAccessControlEntry } from './web-app-access-control'
 
-const ACCESS_MODE_ICON_MAP: Record<EnvironmentAccessMode, string> = {
+const ACCESS_MODE_ICON_MAP: Record<AccessMode, string> = {
   [AccessMode.ORGANIZATION]: 'i-ri-building-line',
   [AccessMode.SPECIFIC_GROUPS_MEMBERS]: 'i-ri-lock-line',
+  [AccessMode.EXTERNAL_MEMBERS]: 'i-ri-verified-badge-line',
   [AccessMode.PUBLIC]: 'i-ri-global-line',
 }
 
@@ -72,12 +70,13 @@ export function EnvironmentWebAppCard({
     })
   const siteQuery = useQuery(siteQueryOptions)
   const site = siteQuery.data
+  const siteAccessMode = site?.access_mode
   const apiQuery = useQuery(
     consoleQuery.enterprise.appDeploy.accessService.getEnvironmentApi.queryOptions({
       input: { params },
     }),
   )
-  const accessMode = normalizeEnvironmentAccessMode(site?.access_mode)
+  const accessMode = isAccessMode(siteAccessMode) ? siteAccessMode : AccessMode.ORGANIZATION
   const subjectsQueryOptions =
     consoleQuery.enterprise.appDeploy.accessService.getEnvironmentWebAppSubjects.queryOptions({
       input: { params },
@@ -132,7 +131,9 @@ export function EnvironmentWebAppCard({
       ? t(($) => $['accessControlDialog.accessItems.organization'], { ns: 'app' })
       : accessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS
         ? t(($) => $['accessControlDialog.accessItems.specific'], { ns: 'app' })
-        : t(($) => $['accessControlDialog.accessItems.anyone'], { ns: 'app' })
+        : accessMode === AccessMode.EXTERNAL_MEMBERS
+          ? t(($) => $['accessControlDialog.accessItems.external'], { ns: 'app' })
+          : t(($) => $['accessControlDialog.accessItems.anyone'], { ns: 'app' })
   const handleEnabledChange = (enabled: boolean) => {
     if (!canManage) return
 
@@ -221,44 +222,14 @@ export function EnvironmentWebAppCard({
           onRegenerate={() => setShowRegenerate(true)}
         />
         {systemFeatures.webapp_auth.enabled && (
-          <div className="px-4 pb-3">
-            {siteQuery.isSuccess ? (
-              <button
-                type="button"
-                className="flex h-9 w-full items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal py-1 pr-2 pl-2.5 text-left outline-hidden hover:bg-components-input-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:hover:bg-components-input-bg-normal"
-                disabled={!canManage}
-                onClick={() => setShowAccess(true)}
-              >
-                <span className="flex min-w-0 flex-1 items-center gap-x-1.5 pr-1">
-                  <span
-                    aria-hidden
-                    className={`${ACCESS_MODE_ICON_MAP[accessMode]} size-4 shrink-0 text-text-tertiary`}
-                  />
-                  <span className="truncate system-xs-regular text-text-tertiary">
-                    {accessLabel}
-                  </span>
-                </span>
-                {!accessConfigured && (
-                  <span className="shrink-0 system-xs-regular text-text-tertiary">
-                    {t(($) => $['publishApp.notSet'], { ns: 'app' })}
-                  </span>
-                )}
-                <span
-                  aria-hidden
-                  className="i-ri-arrow-right-s-line size-4 shrink-0 text-text-quaternary"
-                />
-              </button>
-            ) : (
-              <div className="flex h-9 w-full items-center gap-2 rounded-lg border-[0.5px] border-divider-subtle bg-components-input-bg-normal px-2.5">
-                <span aria-hidden className="i-ri-global-line size-4 shrink-0 text-text-disabled" />
-                <span className="h-2 w-[42%] rounded-full bg-text-quaternary opacity-10" />
-                <span
-                  aria-hidden
-                  className="ml-auto i-ri-arrow-right-s-line size-4 shrink-0 text-text-disabled"
-                />
-              </div>
-            )}
-          </div>
+          <WebAppAccessControlEntry
+            accessConfigured={accessConfigured}
+            accessIcon={ACCESS_MODE_ICON_MAP[accessMode]}
+            accessLabel={accessLabel}
+            available={siteQuery.isSuccess}
+            disabled={!canManage}
+            onClick={() => setShowAccess(true)}
+          />
         )}
       </AccessPointCard>
 

@@ -1,19 +1,22 @@
-import type { EnvironmentVariableItemResponse } from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  AppDetailWithSite,
+  EnvironmentVariableItemResponse,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { Dispatch, SetStateAction } from 'react'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
+import type { App } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useExportAppDsl, useExportWorkflowAppDsl } from '@/app/components/app/use-export-app-dsl'
-import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import { copyApp, deleteApp, fetchAppDetail, updateAppInfo } from '@/service/apps'
-import { appDetailQueryKeyPrefix, useInvalidateAppList } from '@/service/use-apps'
+import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 
@@ -38,6 +41,36 @@ type AppInfoUiState = {
 
 const emptySecretEnvList: EnvironmentVariableItemResponse[] = []
 
+type AppMetadata = Pick<
+  App,
+  | 'description'
+  | 'icon'
+  | 'icon_background'
+  | 'icon_type'
+  | 'icon_url'
+  | 'max_active_requests'
+  | 'name'
+  | 'updated_at'
+  | 'use_icon_as_answer_icon'
+>
+
+const updateCachedAppMetadata = (cachedApp: AppDetailWithSite | undefined, app: AppMetadata) => {
+  if (!cachedApp) return cachedApp
+
+  return {
+    ...cachedApp,
+    description: app.description,
+    icon: app.icon,
+    icon_background: app.icon_background,
+    icon_type: app.icon_type,
+    icon_url: app.icon_url,
+    max_active_requests: app.max_active_requests,
+    name: app.name,
+    updated_at: app.updated_at,
+    use_icon_as_answer_icon: app.use_icon_as_answer_icon,
+  }
+}
+
 const createInitialUiState = (resetKey?: string): AppInfoUiState => ({
   resetKey,
   activeModal: null,
@@ -59,7 +92,6 @@ export function useAppInfoActions({ resetKey }: UseAppInfoActionsParams) {
   const { onPlanInfoChanged } = useProviderContext()
   const appDetail = useAppStore((state) => state.appDetail)
   const setAppDetail = useAppStore((state) => state.setAppDetail)
-  const invalidateAppList = useInvalidateAppList()
   const { exportAppDsl, isExporting: isAppDslExporting } = useExportAppDsl()
   const { exportWorkflowAppDsl, isExporting: isWorkflowAppDslExporting } = useExportWorkflowAppDsl()
   const isExporting = isAppDslExporting || isWorkflowAppDslExporting
@@ -108,8 +140,6 @@ export function useAppInfoActions({ resetKey }: UseAppInfoActionsParams) {
     setActiveModal(null)
   }, [setActiveModal])
 
-  const setNeedRefresh = useSetNeedRefreshAppList()
-
   const emitAppMetaUpdate = useCallback(() => {
     if (!appDetail?.id) return
 
@@ -140,7 +170,15 @@ export function useAppInfoActions({ resetKey }: UseAppInfoActionsParams) {
           try {
             const res = await fetchAppDetail({ url: '/apps', id: appDetail.id })
             if (disposed) return
-            queryClient.setQueryData([...appDetailQueryKeyPrefix, appDetail.id], res)
+            queryClient.setQueryData(
+              consoleQuery.apps.byAppId.get.queryKey({
+                input: { params: { app_id: appDetail.id } },
+              }),
+              (cachedApp) => updateCachedAppMetadata(cachedApp, res),
+            )
+            void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
+            void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.starred.get.key() })
+            void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.recent.get.key() })
             setAppDetail({ ...res })
           } catch (error) {
             console.error('failed to refresh app detail from collaboration update:', error)
@@ -182,7 +220,15 @@ export function useAppInfoActions({ resetKey }: UseAppInfoActionsParams) {
           t(($) => $.editDone, { ns: 'app' }),
           { type: 'success' },
         )
-        queryClient.setQueryData([...appDetailQueryKeyPrefix, app.id], app)
+        queryClient.setQueryData(
+          consoleQuery.apps.byAppId.get.queryKey({
+            input: { params: { app_id: appDetail.id } },
+          }),
+          (cachedApp) => updateCachedAppMetadata(cachedApp, app),
+        )
+        void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
+        void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.starred.get.key() })
+        void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.recent.get.key() })
         setAppDetail(app)
         emitAppMetaUpdate()
       } catch {
@@ -192,7 +238,7 @@ export function useAppInfoActions({ resetKey }: UseAppInfoActionsParams) {
         )
       }
     },
-    [appDetail, closeModal, queryClient, setAppDetail, t, emitAppMetaUpdate],
+    [appDetail, closeModal, setAppDetail, t, emitAppMetaUpdate, queryClient],
   )
 
   const onCopy: DuplicateAppModalProps['onConfirm'] = useCallback(
@@ -212,7 +258,9 @@ export function useAppInfoActions({ resetKey }: UseAppInfoActionsParams) {
           t(($) => $['newApp.appCreated'], { ns: 'app' }),
           { type: 'success' },
         )
-        setNeedRefresh('1')
+        void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
+        void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.starred.get.key() })
+        void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.recent.get.key() })
         onPlanInfoChanged()
         getRedirection(newApp, replace, { isRbacEnabled })
       } catch {
@@ -222,7 +270,7 @@ export function useAppInfoActions({ resetKey }: UseAppInfoActionsParams) {
         )
       }
     },
-    [appDetail, closeModal, isRbacEnabled, onPlanInfoChanged, replace, setNeedRefresh, t],
+    [appDetail, closeModal, isRbacEnabled, onPlanInfoChanged, queryClient, replace, t],
   )
 
   const onExport = useCallback(
@@ -264,7 +312,9 @@ export function useAppInfoActions({ resetKey }: UseAppInfoActionsParams) {
         t(($) => $.appDeleted, { ns: 'app' }),
         { type: 'success' },
       )
-      invalidateAppList()
+      void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
+      void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.starred.get.key() })
+      void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.recent.get.key() })
       onPlanInfoChanged()
       setAppDetail()
       replace('/apps')
@@ -275,7 +325,7 @@ export function useAppInfoActions({ resetKey }: UseAppInfoActionsParams) {
       )
     }
     closeModal()
-  }, [appDetail, closeModal, invalidateAppList, onPlanInfoChanged, replace, setAppDetail, t])
+  }, [appDetail, closeModal, onPlanInfoChanged, queryClient, replace, setAppDetail, t])
 
   return {
     appDetail,

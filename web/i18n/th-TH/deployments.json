@@ -358,6 +358,7 @@
   "studio.lastActivity": "กิจกรรมล่าสุด",
   "studio.liveVersion": "เวอร์ชันที่ใช้งาน",
   "studio.moreEnvironments": "สภาพแวดล้อมเพิ่มเติม",
+  "studio.publisher.deployingVersion": "กำลังปรับใช้: {{version}}",
   "studio.publisher.noPublishedDescription": "เผยแพร่ฉบับร่างของคุณเพื่อปรับใช้ที่นี่",
   "studio.publisher.notDeployedYet": "ยังไม่ได้ปรับใช้",
   "studio.retryVersion": "ลอง {{version}} อีกครั้ง",

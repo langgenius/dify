@@ -358,6 +358,7 @@
   "studio.lastActivity": "Dernière activité",
   "studio.liveVersion": "Version active",
   "studio.moreEnvironments": "Plus d’environnements",
+  "studio.publisher.deployingVersion": "Déploiement en cours : {{version}}",
   "studio.publisher.noPublishedDescription": "Publiez votre brouillon pour le déployer ici.",
   "studio.publisher.notDeployedYet": "Pas encore déployé",
   "studio.retryVersion": "Réessayer {{version}}",

@@ -2,8 +2,8 @@ import type {
   StepByStepTourStatePatchPayload,
   StepByStepTourStateResponse,
 } from '@dify/contracts/api/console/onboarding/types.gen'
+import type { GetWorkspacesCurrentSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { StepByStepTourSessionState, StepByStepTourTaskId } from '../types'
-import type { ICurrentWorkspace } from '@/models/common'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
@@ -33,8 +33,6 @@ type StepByStepTourFixtureState = StepByStepTourSessionState & {
   updatedAt?: string | null
 }
 
-type WorkspaceRole = ICurrentWorkspace['role']
-
 const mockRouterPush = vi.fn()
 const mockTrackEvent = vi.hoisted(() => vi.fn())
 let mockPathname = '/apps'
@@ -54,7 +52,7 @@ const mockIsCurrentWorkspaceManager = vi.hoisted(() => ({
   value: true,
 }))
 const mockCurrentWorkspaceRole = vi.hoisted(() => ({
-  value: 'owner' as WorkspaceRole,
+  value: 'owner' as GetWorkspacesCurrentSummaryResponse['role'],
 }))
 const mockEnableLearnApp = vi.hoisted(() => ({
   value: true,
@@ -404,13 +402,7 @@ function getMockAppContextState() {
       id: 'workspace-1',
       name: 'Solar Studio',
       plan: Plan.sandbox,
-      status: 'normal',
       role: mockCurrentWorkspaceRole.value,
-      created_at: 0,
-      providers: [],
-      trial_credits: 0,
-      trial_credits_used: 0,
-      next_credit_reset_date: 0,
     },
     isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager.value,
     workspacePermissionKeys: mockWorkspacePermissionKeys.value,

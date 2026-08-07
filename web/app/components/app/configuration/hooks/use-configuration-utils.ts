@@ -14,9 +14,9 @@ import type {
   UserInputFormItem,
   VisionSettings,
 } from '@/types/app'
-import { toast } from '@langgenius/dify-ui/toast'
 import { clone } from 'es-toolkit/object'
 import { produce } from 'immer'
+import { toast } from '@/app/components/app/configuration/toast'
 import {
   getMultipleRetrievalConfig,
   getSelectedDatasetsMode,

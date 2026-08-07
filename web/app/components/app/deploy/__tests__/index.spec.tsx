@@ -18,6 +18,7 @@ import {
   OperatorType,
   PluginCategory,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
+import { toast } from '@langgenius/dify-ui/toast'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/client'
@@ -32,7 +33,7 @@ import {
 } from '../state'
 
 const APP_ID = 'app-1'
-const ACTIVITY_AT = '2026-07-25T01:00:00.000Z'
+const ACTIVITY_AT = 1_784_941_200
 const VERSION_DESCRIPTION =
   'Fixed several critical bugs affecting data synchronization and optimized page loading speed. Enhanced system stability and user experience through backend improvements.'
 const OPERATOR = {
@@ -678,6 +679,7 @@ vi.mock('react-i18next', async () => {
       'After confirmation, this environment will enter the undeploying state and actions will be temporarily disabled.',
     'deployments.status.RUNTIME_INSTANCE_STATUS_READY': 'Running',
     'deployments.studio.activity.deploySucceeded': 'Deploy {{target}} succeeded',
+    'deployments.studio.activity.meta': '{{name}} · {{time}}',
     'deployments.studio.environmentsInUse': '{{used}} of {{total}} environments in use',
     'deployments.studio.updatedAtBy': 'Updated at {{time}} by {{name}}',
     'workflow.common.publishedBy': 'Published {{time}} by {{author}}',
@@ -686,7 +688,8 @@ vi.mock('react-i18next', async () => {
 
 vi.mock('@/hooks/use-format-time-from-now', () => ({
   useFormatTimeFromNow: () => ({
-    formatTimeFromNow: () => '17 days ago',
+    formatTimeFromNow: (time: number) =>
+      time === ACTIVITY_AT * 1000 ? 'activity time' : '17 days ago',
   }),
 }))
 
@@ -725,8 +728,15 @@ vi.mock('@/context/permission-state', async () => {
   return createPermissionStateModuleMock(() => mockConsoleState)
 })
 
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: {
+    error: vi.fn(),
+  },
+}))
+
 describe('AppDeploy', () => {
   beforeEach(() => {
+    vi.clearAllMocks()
     appPermissionKeys = [AppACLPermission.Deploy]
     mockBuiltInEnvironment.appDetail.enable_api = false
     mockBuiltInEnvironment.appDetail.enable_site = true
@@ -775,6 +785,7 @@ describe('AppDeploy', () => {
     expect(canaryRow.getByRole('button', { name: 'Sprint-42' })).toBeInTheDocument()
     expect(canaryRow.getByText('Running')).toBeInTheDocument()
     expect(canaryRow.getByText('Deploy Sprint-42 succeeded')).toBeInTheDocument()
+    expect(canaryRow.getByText('Evan · activity time')).toBeInTheDocument()
     expect(
       canaryRow.getByRole('link', {
         name: 'agentV2.agentDetail.access.webApp.title · agentV2.agentDetail.access.status.inService',
@@ -1236,6 +1247,43 @@ describe('AppDeploy', () => {
         new URL(request.url).pathname.endsWith('/enterprise/app-deploy/apps/app-1/environments'),
       ),
     ).toHaveLength(1)
+  })
+
+  it('shows deploy API failures through the fetch toast without an inline configuration error', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const request = input instanceof Request ? input : new Request(input, init)
+
+      if (request.url.includes('/deployment:deploy')) {
+        return new Response(JSON.stringify({ message: 'Deployment service unavailable' }), {
+          headers: { 'Content-Type': 'application/json' },
+          status: 502,
+        })
+      }
+
+      throw new Error(`Unexpected request: ${request.method} ${request.url}`)
+    })
+    render(<AppDeploy />)
+
+    await user.click(screen.getByRole('button', { name: 'common.appMenus.deploy' }))
+    await user.click(screen.getByRole('menuitem', { name: /Dev/ }))
+    const versionDialog = await screen.findByRole('dialog', {
+      name: 'deployments.versions.deployTo:{"name":"Dev"}',
+    })
+    await user.click(within(versionDialog).getByRole('button', { name: /Release 6/ }))
+
+    const configurationDialog = await screen.findByRole('dialog', {
+      name: 'deployments.studio.deployConfiguration',
+    })
+    await user.click(
+      within(configurationDialog).getByRole('button', { name: 'common.appMenus.deploy' }),
+    )
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Deployment service unavailable')
+    })
+    expect(configurationDialog).toBeInTheDocument()
+    expect(within(configurationDialog).queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('refreshes all environments after deployment polling finishes', async () => {

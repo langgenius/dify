@@ -1,7 +1,6 @@
 'use client'
 
 import type { EnvironmentWebAppSubject } from '@dify/contracts/enterprise-app-deploy/types.gen'
-import type { EnvironmentAccessMode } from './environment-web-app-utils'
 import type {
   AccessControlSubjects,
   AccessControlSubjectsStatus,
@@ -15,7 +14,6 @@ import { AccessControlForm } from '@/app/components/app/app-access-control/acces
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode, SubjectType } from '@/models/access-control'
 import { consoleQuery } from '@/service/client'
-import { ENVIRONMENT_ACCESS_MODES } from './environment-web-app-utils'
 
 const EMPTY_SUBJECTS: AccessControlSubjects = {
   groups: [],
@@ -25,7 +23,7 @@ const EMPTY_SUBJECTS: AccessControlSubjects = {
 type EnvironmentAccessControlProps = {
   appId: string
   environmentId: string
-  accessMode: EnvironmentAccessMode
+  accessMode: AccessMode
   canManage: boolean
   onClose: () => void
   onConfirm: () => void
@@ -91,12 +89,16 @@ function EnvironmentAccessControlContainer({
     ),
   )
   const publicAccessDisabled = !systemFeatures.webapp_auth.allow_public_access
+  const externalMembersTipHidden =
+    systemFeatures.webapp_auth.enabled &&
+    (systemFeatures.webapp_auth.allow_sso ||
+      systemFeatures.webapp_auth.allow_email_password_login ||
+      systemFeatures.webapp_auth.allow_email_code_login)
 
   const handleConfirm = async () => {
     if (
       !canManage ||
       updateAccessModeMutation.isPending ||
-      !isEnvironmentAccessMode(accessMode) ||
       (accessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS && subjectsStatus !== 'success') ||
       (accessMode === AccessMode.PUBLIC && publicAccessDisabled)
     )
@@ -131,10 +133,9 @@ function EnvironmentAccessControlContainer({
       accessMode={accessMode}
       subjects={subjects}
       subjectsStatus={subjectsStatus}
-      supportedModes={ENVIRONMENT_ACCESS_MODES}
       updatePending={updateAccessModeMutation.isPending}
       publicAccessDisabled={publicAccessDisabled}
-      externalMembersTipHidden
+      externalMembersTipHidden={externalMembersTipHidden}
       onAccessModeChange={setAccessMode}
       onSubjectsChange={setSubjectsDraft}
       onRetrySubjects={() => void subjectsQuery.refetch()}
@@ -142,10 +143,6 @@ function EnvironmentAccessControlContainer({
       onConfirm={() => void handleConfirm()}
     />
   )
-}
-
-function isEnvironmentAccessMode(accessMode: AccessMode): accessMode is EnvironmentAccessMode {
-  return ENVIRONMENT_ACCESS_MODES.some((mode) => mode === accessMode)
 }
 
 function normalizeEnvironmentSubjects(subjects: EnvironmentWebAppSubject[]) {

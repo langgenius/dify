@@ -358,6 +358,7 @@
   "studio.lastActivity": "Aktivitas terakhir",
   "studio.liveVersion": "Versi aktif",
   "studio.moreEnvironments": "Lingkungan lainnya",
+  "studio.publisher.deployingVersion": "Menerapkan: {{version}}",
   "studio.publisher.noPublishedDescription": "Publikasikan draf Anda agar dapat diterapkan di sini.",
   "studio.publisher.notDeployedYet": "Belum diterapkan",
   "studio.retryVersion": "Coba lagi {{version}}",

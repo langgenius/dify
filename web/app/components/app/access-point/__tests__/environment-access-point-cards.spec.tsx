@@ -131,10 +131,6 @@ vi.mock('@/app/components/app/overview/settings', () => ({
 }))
 
 vi.mock('../environment-access-control', () => ({
-  normalizeEnvironmentAccessMode: (accessMode?: string) => {
-    if (accessMode === 'private' || accessMode === 'public') return accessMode
-    return 'private_all'
-  },
   EnvironmentAccessControl: (props: {
     appId: string
     environmentId: string
@@ -245,6 +241,21 @@ describe('environment access point cards', () => {
     expect(screen.queryByRole('button', { name: /embedIntoSite/ })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /customize\.entry/ })).toBeEnabled()
     expect(screen.getByRole('button', { name: /settings\.settings/ })).toBeEnabled()
+  })
+
+  it('renders authenticated external users as the environment Web app access mode', async () => {
+    mocks.getSite.mockResolvedValue({
+      ...site,
+      access_mode: 'sso_verified',
+    })
+
+    renderCard(<EnvironmentWebAppCard appId="app-1" environmentId="staging" canEdit canManage />)
+
+    expect(
+      await screen.findByRole('button', {
+        name: /accessControlDialog\.accessItems\.external/,
+      }),
+    ).toBeEnabled()
   })
 
   it('shows the environment Web app query as loading instead of failed', () => {

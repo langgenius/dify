@@ -358,6 +358,7 @@
   "studio.lastActivity": "Ostatnia aktywność",
   "studio.liveVersion": "Wersja aktywna",
   "studio.moreEnvironments": "Więcej środowisk",
+  "studio.publisher.deployingVersion": "Wdrażanie: {{version}}",
   "studio.publisher.noPublishedDescription": "Opublikuj wersję roboczą, aby wdrożyć ją tutaj.",
   "studio.publisher.notDeployedYet": "Jeszcze nie wdrożono",
   "studio.retryVersion": "Ponów {{version}}",

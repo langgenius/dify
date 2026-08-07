@@ -1201,6 +1201,10 @@ class TestAppDslService:
         )
         assert imported_agent is not None
         assert imported_agent.active_config_is_published is False
+        imported_app = db_session_with_containers.get(App, result.app_id)
+        assert imported_app is not None
+        assert imported_app.enable_site is False
+        assert imported_app.enable_api is False
         draft = db_session_with_containers.scalar(
             select(AgentConfigDraft).where(
                 AgentConfigDraft.agent_id == imported_agent.id,

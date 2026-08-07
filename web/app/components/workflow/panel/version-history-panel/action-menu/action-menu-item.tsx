@@ -35,15 +35,15 @@ const ActionMenuItem: FC<ActionMenuItemProps> = ({ item, onClick, isDestructive 
     >
       <div
         className={cn(
-          'min-w-0 flex-1 system-md-regular whitespace-nowrap text-text-primary',
-          item.description && 'flex flex-col gap-y-0.5 px-1 py-0.5 text-text-secondary',
+          'min-w-0 flex-1 px-1 py-0.5 system-md-regular whitespace-nowrap text-text-primary',
+          item.description && 'flex flex-col gap-y-0.5 text-text-secondary',
           isDestructive && 'text-inherit',
         )}
       >
         <div className="w-full truncate">{item.name}</div>
         {item.description && (
           <div
-            className="w-full max-w-[152px] truncate system-2xs-regular text-text-tertiary"
+            className="w-full max-w-38 truncate system-2xs-regular text-text-tertiary"
             title={item.description}
           >
             {item.description}
