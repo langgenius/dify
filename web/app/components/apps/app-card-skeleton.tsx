@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 
 type AppCardSkeletonProps = {
@@ -12,10 +13,16 @@ type AppCardSkeletonProps = {
  * Matches the visual layout of AppCard component.
  */
 export const AppCardSkeleton = React.memo(({ count = 6 }: AppCardSkeletonProps) => {
+  const { t } = useTranslation('common')
   const skeletonKeys = Array.from({ length: count }, (_, index) => `app-card-skeleton-${index}`)
 
   return (
-    <>
+    <div
+      className="contents"
+      role="status"
+      aria-label={t(($) => $.loading)}
+      data-testid="app-list-loading"
+    >
       {skeletonKeys.map((key) => (
         <div
           key={key}
@@ -36,7 +43,7 @@ export const AppCardSkeleton = React.memo(({ count = 6 }: AppCardSkeletonProps) 
           </SkeletonContainer>
         </div>
       ))}
-    </>
+    </div>
   )
 })
 

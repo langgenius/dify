@@ -11,8 +11,8 @@ const wcagTagsByLevel = {
   AA: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'],
 } satisfies Record<WcagLevel, string[]>
 
-const formatViolations = (violations: AxeResults['violations']) =>
-  violations
+const formatFindings = (findings: AxeResults['violations']) =>
+  findings
     .map(
       (violation) =>
         `${violation.id} (${violation.impact ?? 'unknown impact'}): ${violation.help}\n${violation.helpUrl}\n${violation.nodes.map((node) => `  - ${node.target.join(' > ')}${node.failureSummary ? `\n    ${node.failureSummary.replaceAll('\n', '\n    ')}` : ''}`).join('\n')}`,
@@ -23,16 +23,28 @@ const checkCurrentPage = async (world: DifyWorld, level: WcagLevel) => {
   const results = await new AxeBuilder({ page: world.getPage() })
     .withTags(wcagTagsByLevel[level])
     .analyze()
-  const formattedViolations = formatViolations(results.violations)
+  const formattedViolations = formatFindings(results.violations)
+  const formattedIncomplete = formatFindings(results.incomplete)
 
   if (results.violations.length > 0) {
     world.attach(
       `WCAG Level ${level} violations for ${results.url}:\n\n${formattedViolations}`,
       'text/plain',
     )
+  }
+
+  if (results.incomplete.length > 0) {
+    world.attach(
+      `WCAG Level ${level} items requiring manual review for ${results.url}:\n\n${formattedIncomplete}`,
+      'text/plain',
+    )
+  }
+
+  if (results.violations.length > 0 || results.incomplete.length > 0)
     world.attach(
       JSON.stringify(
         {
+          incomplete: results.incomplete,
           level,
           url: results.url,
           violations: results.violations,
@@ -42,21 +54,16 @@ const checkCurrentPage = async (world: DifyWorld, level: WcagLevel) => {
       ),
       'application/json',
     )
-  }
 
   expect(results.violations, formattedViolations).toEqual([])
 }
 
 Then(
-  'the current page should have no automatically detectable WCAG Level A violations',
-  async function (this: DifyWorld) {
-    await checkCurrentPage(this, 'A')
-  },
-)
+  'the current page should have no automatically detectable WCAG Level {word} violations',
+  async function (this: DifyWorld, level: string) {
+    if (!Object.hasOwn(wcagTagsByLevel, level))
+      throw new Error(`Unsupported WCAG level "${level}". Expected A or AA.`)
 
-Then(
-  'the current page should have no automatically detectable WCAG Level AA violations',
-  async function (this: DifyWorld) {
-    await checkCurrentPage(this, 'AA')
+    await checkCurrentPage(this, level as WcagLevel)
   },
 )

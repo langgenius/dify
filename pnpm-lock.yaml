@@ -683,6 +683,9 @@ importers:
       '@tanstack/eslint-plugin-query':
         specifier: 'catalog:'
         version: 5.101.4(@typescript/typescript6@6.0.2)(eslint@10.8.0(jiti@2.7.0)(supports-color@10.2.2))(supports-color@10.2.2)
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.9.5
       '@typescript-eslint/parser':
         specifier: 'catalog:'
         version: 8.65.0(@typescript/typescript6@6.0.2)(eslint@10.8.0(jiti@2.7.0)(supports-color@10.2.2))(supports-color@10.2.2)
@@ -703,7 +706,7 @@ importers:
         version: 3.2.3(eslint@10.8.0(jiti@2.7.0)(supports-color@10.2.2))
       eslint-plugin-better-tailwindcss:
         specifier: 'catalog:'
-        version: 4.7.0(@typescript/typescript6@6.0.2)(eslint@10.8.0(jiti@2.7.0)(supports-color@10.2.2))(oxlint@1.75.0(oxlint-tsgolint@7.0.2001)(vite-plus@0.2.6(@types/node@26.0.1)(@typescript/typescript6@6.0.2)(@vitest/browser-playwright@4.1.10)(@vitest/coverage-v8@4.1.10)(@voidzero-dev/vite-plus-core@0.2.6(@types/node@26.0.1)(@typescript/typescript6@6.0.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))(esbuild@0.28.1)(happy-dom@20.11.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0)))(tailwindcss@4.3.3)
+        version: 4.7.0(@typescript/typescript6@6.0.2)(eslint@10.8.0(jiti@2.7.0)(supports-color@10.2.2))(oxlint@1.75.0(oxlint-tsgolint@7.0.2001)(vite-plus@0.2.6(@types/node@25.9.5)(@typescript/typescript6@6.0.2)(@vitest/browser-playwright@4.1.10)(@vitest/coverage-v8@4.1.10)(@voidzero-dev/vite-plus-core@0.2.6(@types/node@25.9.5)(@typescript/typescript6@6.0.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))(esbuild@0.28.1)(happy-dom@20.11.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0)))(tailwindcss@4.3.3)
       eslint-plugin-command:
         specifier: 'catalog:'
         version: 3.5.3(@typescript-eslint/typescript-estree@8.65.0(@typescript/typescript6@6.0.2)(supports-color@10.2.2))(@typescript-eslint/utils@8.65.0(@typescript/typescript6@6.0.2)(eslint@10.8.0(jiti@2.7.0)(supports-color@10.2.2))(supports-color@10.2.2))(eslint@10.8.0(jiti@2.7.0)(supports-color@10.2.2))
@@ -739,7 +742,7 @@ importers:
         version: 3.1.1(eslint@10.8.0(jiti@2.7.0)(supports-color@10.2.2))
       eslint-plugin-storybook:
         specifier: 'catalog:'
-        version: 10.5.4(@typescript/typescript6@6.0.2)(eslint@10.8.0(jiti@2.7.0)(supports-color@10.2.2))(storybook@10.5.4(@types/react@19.2.17)(react@19.2.8)(vite-plus@0.2.6(@types/node@26.0.1)(@typescript/typescript6@6.0.2)(@vitest/browser-playwright@4.1.10)(@vitest/coverage-v8@4.1.10)(@voidzero-dev/vite-plus-core@0.2.6(@types/node@26.0.1)(@typescript/typescript6@6.0.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))(esbuild@0.28.1)(happy-dom@20.11.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0)))(supports-color@10.2.2)
+        version: 10.5.4(@typescript/typescript6@6.0.2)(eslint@10.8.0(jiti@2.7.0)(supports-color@10.2.2))(storybook@10.5.4(@types/react@19.2.17)(react@19.2.8)(vite-plus@0.2.6(@types/node@25.9.5)(@typescript/typescript6@6.0.2)(@vitest/browser-playwright@4.1.10)(@vitest/coverage-v8@4.1.10)(@voidzero-dev/vite-plus-core@0.2.6(@types/node@25.9.5)(@typescript/typescript6@6.0.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))(esbuild@0.28.1)(happy-dom@20.11.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0)))(supports-color@10.2.2)
       eslint-plugin-toml:
         specifier: 'catalog:'
         version: 1.5.0(eslint@10.8.0(jiti@2.7.0)(supports-color@10.2.2))(supports-color@10.2.2)
@@ -757,10 +760,10 @@ importers:
         version: '@typescript/typescript6@6.0.2'
       vite:
         specifier: npm:@voidzero-dev/vite-plus-core@0.2.6
-        version: '@voidzero-dev/vite-plus-core@0.2.6(@types/node@26.0.1)(@typescript/typescript6@6.0.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0)'
+        version: '@voidzero-dev/vite-plus-core@0.2.6(@types/node@25.9.5)(@typescript/typescript6@6.0.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0)'
       vite-plus:
         specifier: 'catalog:'
-        version: 0.2.6(@types/node@26.0.1)(@typescript/typescript6@6.0.2)(@vitest/browser-playwright@4.1.10)(@vitest/coverage-v8@4.1.10)(@voidzero-dev/vite-plus-core@0.2.6(@types/node@26.0.1)(@typescript/typescript6@6.0.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))(esbuild@0.28.1)(happy-dom@20.11.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0)
+        version: 0.2.6(@types/node@25.9.5)(@typescript/typescript6@6.0.2)(@vitest/browser-playwright@4.1.10)(@vitest/coverage-v8@4.1.10)(@voidzero-dev/vite-plus-core@0.2.6(@types/node@25.9.5)(@typescript/typescript6@6.0.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))(esbuild@0.28.1)(happy-dom@20.11.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0)
 
   cli:
     dependencies:
@@ -1753,16 +1756,16 @@ packages:
   '@amplitude/targeting@0.3.8':
     resolution: {integrity: sha512-UsQSOgFdVgI2RtAX81inlf7qxAGcGPB4zuEoIYczBndzNiBZV8Xq5cxpLbpI9e07/NK3jbLtxrho3pvq+UB7XA==}
 
-  '@axe-core/playwright@4.12.1':
-    resolution: {integrity: sha512-rMd7xriptqKpP+w5265i4Hdkv2X5kbu6uiBi/B2I7uf3hieRBM3qDCfaKPtxfiYb2mKXfF+yLODJwIx+Jv1GDw==}
-    peerDependencies:
-      playwright-core: '>= 1.0.0'
-
   '@antfu/install-pkg@1.1.0':
     resolution: {integrity: sha512-MGQsmw10ZyI+EJo45CdSER4zEb+p31LpDAFp2Z3gkSd1yqVZGi0Ebx++YTEMonJy4oChEMLsxZ64j8FH6sSqtQ==}
 
   '@antfu/utils@8.1.1':
     resolution: {integrity: sha512-Mex9nXf9vR6AhcXmMrlz/HVgYYZpVGJ6YlPgwl7UnaFpnshXs6EK/oa5Gpf3CzENMjkvEx2tQtntGnb7UtSTOQ==}
+
+  '@axe-core/playwright@4.12.1':
+    resolution: {integrity: sha512-rMd7xriptqKpP+w5265i4Hdkv2X5kbu6uiBi/B2I7uf3hieRBM3qDCfaKPtxfiYb2mKXfF+yLODJwIx+Jv1GDw==}
+    peerDependencies:
+      playwright-core: '>= 1.0.0'
 
   '@babel/code-frame@7.29.7':
     resolution: {integrity: sha512-Aup7aUOfpbAUg2ROOJN6Iw5f9DMBlzu0mIkm/malLQFN/YQgO48wCj0Kxa3sEHJvPVFg7siR+qRInwXd2qhQKw==}
@@ -8954,7 +8957,6 @@ packages:
       '@vitest/ui': 4.1.10
       happy-dom: '*'
       jsdom: '*'
-      vite: ^6.0.0 || ^7.0.0 || ^8.0.0
     peerDependenciesMeta:
       '@edge-runtime/vm':
         optional: true
@@ -9336,17 +9338,17 @@ snapshots:
       idb: 8.0.0
       tslib: 2.8.1
 
-  '@axe-core/playwright@4.12.1(playwright-core@1.62.0)':
-    dependencies:
-      axe-core: 4.12.1
-      playwright-core: 1.62.0
-
   '@antfu/install-pkg@1.1.0':
     dependencies:
       package-manager-detector: 1.6.0
       tinyexec: 1.2.4
 
   '@antfu/utils@8.1.1': {}
+
+  '@axe-core/playwright@4.12.1(playwright-core@1.62.0)':
+    dependencies:
+      axe-core: 4.12.1
+      playwright-core: 1.62.0
 
   '@babel/code-frame@7.29.7':
     dependencies:
@@ -13623,7 +13625,7 @@ snapshots:
     dependencies:
       eslint: 10.8.0(jiti@2.7.0)(supports-color@10.2.2)
 
-  eslint-plugin-better-tailwindcss@4.7.0(@typescript/typescript6@6.0.2)(eslint@10.8.0(jiti@2.7.0)(supports-color@10.2.2))(oxlint@1.75.0(oxlint-tsgolint@7.0.2001)(vite-plus@0.2.6(@types/node@26.0.1)(@typescript/typescript6@6.0.2)(@vitest/browser-playwright@4.1.10)(@vitest/coverage-v8@4.1.10)(@voidzero-dev/vite-plus-core@0.2.6(@types/node@26.0.1)(@typescript/typescript6@6.0.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))(esbuild@0.28.1)(happy-dom@20.11.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0)))(tailwindcss@4.3.3):
+  eslint-plugin-better-tailwindcss@4.7.0(@typescript/typescript6@6.0.2)(eslint@10.8.0(jiti@2.7.0)(supports-color@10.2.2))(oxlint@1.75.0(oxlint-tsgolint@7.0.2001)(vite-plus@0.2.6(@types/node@25.9.5)(@typescript/typescript6@6.0.2)(@vitest/browser-playwright@4.1.10)(@vitest/coverage-v8@4.1.10)(@voidzero-dev/vite-plus-core@0.2.6(@types/node@25.9.5)(@typescript/typescript6@6.0.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))(esbuild@0.28.1)(happy-dom@20.11.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0)))(tailwindcss@4.3.3):
     dependencies:
       '@eslint/css-tree': 4.0.5
       '@valibot/to-json-schema': 1.7.1(valibot@1.4.2(@typescript/typescript6@6.0.2))
@@ -13636,7 +13638,7 @@ snapshots:
       valibot: 1.4.2(@typescript/typescript6@6.0.2)
     optionalDependencies:
       eslint: 10.8.0(jiti@2.7.0)(supports-color@10.2.2)
-      oxlint: 1.75.0(oxlint-tsgolint@7.0.2001)(vite-plus@0.2.6(@types/node@26.0.1)(@typescript/typescript6@6.0.2)(@vitest/browser-playwright@4.1.10)(@vitest/coverage-v8@4.1.10)(@voidzero-dev/vite-plus-core@0.2.6(@types/node@26.0.1)(@typescript/typescript6@6.0.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))(esbuild@0.28.1)(happy-dom@20.11.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))
+      oxlint: 1.75.0(oxlint-tsgolint@7.0.2001)(vite-plus@0.2.6(@types/node@25.9.5)(@typescript/typescript6@6.0.2)(@vitest/browser-playwright@4.1.10)(@vitest/coverage-v8@4.1.10)(@voidzero-dev/vite-plus-core@0.2.6(@types/node@25.9.5)(@typescript/typescript6@6.0.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))(esbuild@0.28.1)(happy-dom@20.11.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))
     transitivePeerDependencies:
       - '@eslint/css'
       - typescript
@@ -13872,12 +13874,12 @@ snapshots:
       regexp-ast-analysis: 0.7.1
       scslre: 0.3.0
 
-  eslint-plugin-storybook@10.5.4(@typescript/typescript6@6.0.2)(eslint@10.8.0(jiti@2.7.0)(supports-color@10.2.2))(storybook@10.5.4(@types/react@19.2.17)(react@19.2.8)(vite-plus@0.2.6(@types/node@26.0.1)(@typescript/typescript6@6.0.2)(@vitest/browser-playwright@4.1.10)(@vitest/coverage-v8@4.1.10)(@voidzero-dev/vite-plus-core@0.2.6(@types/node@26.0.1)(@typescript/typescript6@6.0.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))(esbuild@0.28.1)(happy-dom@20.11.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0)))(supports-color@10.2.2):
+  eslint-plugin-storybook@10.5.4(@typescript/typescript6@6.0.2)(eslint@10.8.0(jiti@2.7.0)(supports-color@10.2.2))(storybook@10.5.4(@types/react@19.2.17)(react@19.2.8)(vite-plus@0.2.6(@types/node@25.9.5)(@typescript/typescript6@6.0.2)(@vitest/browser-playwright@4.1.10)(@vitest/coverage-v8@4.1.10)(@voidzero-dev/vite-plus-core@0.2.6(@types/node@25.9.5)(@typescript/typescript6@6.0.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))(esbuild@0.28.1)(happy-dom@20.11.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0)))(supports-color@10.2.2):
     dependencies:
       '@typescript-eslint/types': 8.64.0
       '@typescript-eslint/utils': 8.64.0(@typescript/typescript6@6.0.2)(eslint@10.8.0(jiti@2.7.0)(supports-color@10.2.2))(supports-color@10.2.2)
       eslint: 10.8.0(jiti@2.7.0)(supports-color@10.2.2)
-      storybook: 10.5.4(@types/react@19.2.17)(react@19.2.8)(vite-plus@0.2.6(@types/node@26.0.1)(@typescript/typescript6@6.0.2)(@vitest/browser-playwright@4.1.10)(@vitest/coverage-v8@4.1.10)(@voidzero-dev/vite-plus-core@0.2.6(@types/node@26.0.1)(@typescript/typescript6@6.0.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))(esbuild@0.28.1)(happy-dom@20.11.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))
+      storybook: 10.5.4(@types/react@19.2.17)(react@19.2.8)(vite-plus@0.2.6(@types/node@25.9.5)(@typescript/typescript6@6.0.2)(@vitest/browser-playwright@4.1.10)(@vitest/coverage-v8@4.1.10)(@voidzero-dev/vite-plus-core@0.2.6(@types/node@25.9.5)(@typescript/typescript6@6.0.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))(esbuild@0.28.1)(happy-dom@20.11.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))
     transitivePeerDependencies:
       - supports-color
       - typescript
@@ -17391,7 +17393,6 @@ snapshots:
       tinyexec: 1.2.4
       tinyglobby: 0.2.17
       tinyrainbow: 3.1.0
-      vite: '@voidzero-dev/vite-plus-core@0.2.6(@types/node@25.9.5)(@typescript/typescript6@6.0.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0)'
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 25.9.5
@@ -17401,6 +17402,7 @@ snapshots:
       happy-dom: 20.11.1
     transitivePeerDependencies:
       - msw
+      - vite
 
   vitest@4.1.10(@types/node@25.9.5)(@vitest/browser-playwright@4.1.10)(@vitest/browser-preview@4.1.10)(@vitest/coverage-v8@4.1.10)(@voidzero-dev/vite-plus-core@0.2.6(@types/node@25.9.5)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(typescript@7.0.2)(yaml@2.9.0))(happy-dom@20.11.1):
     dependencies:
@@ -17422,7 +17424,6 @@ snapshots:
       tinyexec: 1.2.4
       tinyglobby: 0.2.17
       tinyrainbow: 3.1.0
-      vite: '@voidzero-dev/vite-plus-core@0.2.6(@types/node@25.9.5)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(typescript@7.0.2)(yaml@2.9.0)'
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 25.9.5
@@ -17432,6 +17433,7 @@ snapshots:
       happy-dom: 20.11.1
     transitivePeerDependencies:
       - msw
+      - vite
 
   vitest@4.1.10(@types/node@26.0.1)(@vitest/browser-playwright@4.1.10)(@vitest/browser-preview@4.1.10)(@vitest/coverage-v8@4.1.10)(@voidzero-dev/vite-plus-core@0.2.6(@types/node@26.0.1)(@typescript/typescript6@6.0.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))(happy-dom@20.11.1):
     dependencies:
@@ -17453,7 +17455,6 @@ snapshots:
       tinyexec: 1.2.4
       tinyglobby: 0.2.17
       tinyrainbow: 3.1.0
-      vite: '@voidzero-dev/vite-plus-core@0.2.6(@types/node@26.0.1)(@typescript/typescript6@6.0.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0)'
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 26.0.1
@@ -17463,6 +17464,7 @@ snapshots:
       happy-dom: 20.11.1
     transitivePeerDependencies:
       - msw
+      - vite
 
   vscode-uri@3.1.0: {}
 

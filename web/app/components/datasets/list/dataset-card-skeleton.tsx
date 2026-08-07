@@ -6,7 +6,13 @@ type DatasetCardSkeletonProps = {
 }
 
 const DatasetCardSkeleton = ({ label, count = 6 }: DatasetCardSkeletonProps) => (
-  <div className="contents" role="status" aria-label={label} aria-live="polite">
+  <div
+    className="contents"
+    role="status"
+    aria-label={label}
+    aria-live="polite"
+    data-testid="dataset-list-loading"
+  >
     {Array.from({ length: count }, (_, index) => (
       <div
         key={index}

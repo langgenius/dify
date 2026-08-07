@@ -9,7 +9,7 @@ Run commands from the repository root. Install dependencies and browsers once wi
 - Existing initialized instance: `pnpm -C e2e e2e`
 - Standalone automated WCAG Level A scan: `pnpm -C e2e e2e:accessibility:a`
 - Standalone automated WCAG Level AA scan: `pnpm -C e2e e2e:accessibility:aa`
-- One-page automated WCAG scan: `pnpm -C e2e exec tsx ./scripts/run-cucumber.ts --full -- --tags "@wcag-a and @wcag-page-studio"` (replace the level and page tag as needed)
+- One-page automated WCAG scan: `pnpm -C e2e exec tsx ./scripts/run-cucumber.ts --full -- --tags "@axe and @wcag-a and @wcag-page-studio"` (replace the level and page tag as needed)
 - Reset, initialize, and run deterministic scenarios: `pnpm -C e2e e2e:full`
 - Prepare and run scenarios backed by shared fixtures: `E2E_START_AGENT_BACKEND=1 pnpm -C e2e e2e:prepared`
 - Tagged subset: `pnpm -C e2e e2e -- --tags @smoke`
@@ -39,7 +39,7 @@ An uninitialized instance is installed and authenticated lazily; an initialized 
 ## Tags And External Runtime
 
 - Default scenarios use shared authenticated storage state. `@unauthenticated` creates a clean context; `@authenticated` is an intent and selection tag only.
-- `@axe` identifies standalone automated WCAG scans and is excluded from the default functional suite and normal CI commands. `@wcag-a` and `@wcag-aa` select the independent level-specific scans. Page selectors use `@wcag-page-<slug>` and correspond to the folders under `features/accessibility/`. The accessibility workflow has no push trigger. Manual runs accept page and level choices; selecting both levels creates separate WCAG A and AA jobs.
+- `@axe` identifies standalone automated WCAG scans and is excluded from the default functional suite and normal CI commands. `@wcag-a` and `@wcag-aa` qualify the independent level-specific scans, and commands selecting either level must also select `@axe`. Page selectors use `@wcag-page-<slug>` and are attached to the matching Examples blocks under `features/accessibility/`. The accessibility workflow is an opt-in manual audit rather than a regression gate. The PR author should run the AA/all path before merge when changing the audit workflow, page matrix, or readiness contracts.
 - `@prepared` requires the prepared fixtures; the post-merge seed profile includes them.
 - `@external-model` and `@external-tool` identify scenarios that call real external runtimes. Deterministic commands exclude these tags; external commands are opt-in.
 - `@microphone` uses the checked-in fake audio fixture and an isolated Chromium context.
