@@ -1,30 +1,25 @@
-import type { PostWorkspacesCurrentResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { GetWorkspacesCurrentSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { QueryClient, QueryKey } from '@tanstack/react-query'
 
 export const currentWorkspaceQueryKey = [
-  ['console', 'workspaces', 'current', 'post'],
+  ['console', 'workspaces', 'current', 'summary', 'get'],
   { type: 'query' },
 ] as const
 
 const createCurrentWorkspaceFixture = (
-  overrides: Partial<PostWorkspacesCurrentResponse> = {},
-): PostWorkspacesCurrentResponse => ({
+  overrides: Partial<GetWorkspacesCurrentSummaryResponse> = {},
+): GetWorkspacesCurrentSummaryResponse => ({
   id: 'workspace-1',
   name: 'Workspace',
-  plan: '',
+  plan: null,
   role: 'owner',
-  status: '',
-  created_at: 0,
-  trial_credits: 0,
-  trial_credits_used: 0,
-  trial_credits_exhausted_at: 0,
-  next_credit_reset_date: 0,
+  credits: null,
   ...overrides,
 })
 
 export const seedCurrentWorkspaceQuery = (
   queryClient: QueryClient,
-  workspace: Partial<PostWorkspacesCurrentResponse> = {},
+  workspace: Partial<GetWorkspacesCurrentSummaryResponse> = {},
   queryKey: QueryKey = currentWorkspaceQueryKey,
 ) => {
   const data = createCurrentWorkspaceFixture(workspace)
@@ -34,10 +29,10 @@ export const seedCurrentWorkspaceQuery = (
 
 export const ensureCurrentWorkspaceQuery = (
   queryClient: QueryClient,
-  workspace: Partial<PostWorkspacesCurrentResponse> = {},
+  workspace: Partial<GetWorkspacesCurrentSummaryResponse> = {},
   queryKey: QueryKey = currentWorkspaceQueryKey,
 ) => {
-  const existingWorkspace = queryClient.getQueryData<PostWorkspacesCurrentResponse>(queryKey)
+  const existingWorkspace = queryClient.getQueryData<GetWorkspacesCurrentSummaryResponse>(queryKey)
   if (existingWorkspace === undefined)
     return seedCurrentWorkspaceQuery(queryClient, workspace, queryKey)
 

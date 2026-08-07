@@ -7037,13 +7037,6 @@ Request body:
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ConsoleHumanInputFormSubmitResponse](#consolehumaninputformsubmitresponse)<br> |
 
-### [POST] /info
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TenantInfoResponse](#tenantinforesponse)<br> |
-
 ### [GET] /installed-apps
 #### Parameters
 
@@ -10069,13 +10062,6 @@ Returns information about why and where the workflow is paused.
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [TenantListResponse](#tenantlistresponse)<br> |
 
-### [POST] /workspaces/current
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TenantInfoResponse](#tenantinforesponse)<br> |
-
 ### [GET] /workspaces/current/agent-provider/{provider_name}
 Get specific agent provider details
 
@@ -12031,6 +12017,14 @@ Returns permission flags that control workspace features like member invitations
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [WorkspaceAccessMatrix](#workspaceaccessmatrix)<br> |
 
+### [GET] /workspaces/current/summary
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [CurrentWorkspaceSummaryResponse](#currentworkspacesummaryresponse)<br> |
+| 409 | Current workspace is archived |  |
+
 ### [GET] /workspaces/current/tool-labels
 #### Responses
 
@@ -12837,6 +12831,13 @@ Returns permission flags that control workspace features like member invitations
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger providers retrieved successfully | **application/json**: [TriggerProviderListResponse](#triggerproviderlistresponse)<br> |
+
+### [GET] /workspaces/custom-config
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [WorkspaceCustomConfigResponse](#workspacecustomconfigresponse)<br> |
 
 ### [POST] /workspaces/custom-config
 #### Request Body
@@ -16618,6 +16619,16 @@ Model class for credential form schema.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | CredentialType | string |  |  |
+
+#### CurrentWorkspaceSummaryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credits | integer | Remaining credits in the effective pool; -1 means unlimited. | Yes |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| plan | string |  | Yes |
+| role | [TenantAccountRole](#tenantaccountrole) |  | Yes |
 
 #### CustomConfigurationResponse
 

@@ -3,7 +3,7 @@ import type {
   GetSystemFeaturesLicenseResponse,
   GetSystemFeaturesResponse,
 } from '@dify/contracts/api/console/system-features/types.gen'
-import type { PostWorkspacesCurrentResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { GetWorkspacesCurrentSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { QueryClient } from '@tanstack/react-query'
 import type {
   RenderHookOptions,
@@ -45,7 +45,9 @@ type AppDslVersionQueryProvider = {
 }
 
 type CurrentWorkspaceQueryProvider = {
-  post?: QueryKeyProvider
+  summary?: {
+    get?: QueryKeyProvider
+  }
 }
 
 const fallbackTrialModelsQueryKey = ['console', 'trialModels', 'get'] as const
@@ -71,7 +73,7 @@ const getCurrentWorkspaceQueryKey = () => {
     }
   ).workspaces?.current
 
-  return currentWorkspaceQuery?.post?.queryKey() ?? currentWorkspaceQueryKey
+  return currentWorkspaceQuery?.summary?.get?.queryKey() ?? currentWorkspaceQueryKey
 }
 
 /**
@@ -140,7 +142,7 @@ export type ConsoleQueryTestOptions = {
    */
   systemFeatures?: DeepPartial<GetSystemFeaturesResponse> | null
   accountProfile?: Partial<GetAccountProfileResponse> | null
-  currentWorkspace?: Partial<PostWorkspacesCurrentResponse> | null
+  currentWorkspace?: Partial<GetWorkspacesCurrentSummaryResponse> | null
   trialModels?: readonly string[] | null
   workspacePermissionKeys?: readonly string[] | null
   /**
