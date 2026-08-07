@@ -28,6 +28,7 @@ from controllers.console.datasets.datasets_document import (
     DocumentStatusApi,
     DocumentSummaryStatusApi,
     GetProcessRuleApi,
+    document_with_segments_responses,
 )
 from controllers.console.datasets.error import (
     DocumentAlreadyFinishedError,
@@ -50,8 +51,11 @@ from services.vector_space_admission_service import (
 def make_serializable_document(**overrides):
     attrs = {
         "id": "doc-1",
+        "tenant_id": "tenant-1",
+        "dataset_id": "ds-1",
         "position": 1,
         "data_source_type": "upload_file",
+        "data_source_info": '{"upload_file_id": "file-1"}',
         "data_source_info_dict": {"upload_file_id": "file-1"},
         "data_source_detail_dict": {},
         "dataset_process_rule_id": None,
@@ -70,7 +74,9 @@ def make_serializable_document(**overrides):
         "word_count": None,
         "hit_count": 0,
         "doc_form": "text_model",
+        "doc_metadata": None,
         "doc_metadata_details": None,
+        "updated_at": None,
         "summary_index_status": None,
         "need_summary": False,
         "process_rule_dict": None,
@@ -146,6 +152,15 @@ def make_document_detail(**overrides):
     document.get_hit_count.return_value = attrs["hit_count"]
     document.get_segment_count.return_value = attrs["segment_count"]
     return document
+
+
+def test_document_with_segments_response_keeps_existing_segment_counts_without_prefetch() -> None:
+    document = make_serializable_document(completed_segments=4, total_segments=7)
+
+    response = document_with_segments_responses([document], session=MagicMock())[0]
+
+    assert response.completed_segments == 4
+    assert response.total_segments == 7
 
 
 def make_dataset(**overrides):
@@ -327,7 +342,7 @@ class TestDatasetDocumentListApi:
         doc = make_serializable_document()
         pagination = MagicMock(items=[doc], total=1)
         session = MagicMock()
-        session.scalar.return_value = 2
+        session.execute.return_value.all.return_value = [("doc-1", 2, 2, 2)]
         with (
             app.test_request_context("/?fetch=true"),
             patch("controllers.console.datasets.datasets_document.paginate_query", return_value=pagination),
@@ -383,10 +398,10 @@ class TestDatasetDocumentListApi:
         assert response["data"][0]["id"] == "doc-1"
         assert "completed_segments" not in response["data"][0]
         assert "total_segments" not in response["data"][0]
-        document.get_data_source_detail_dict.assert_called_once_with(session=session)
-        document.get_dataset_process_rule.assert_called_once_with(session=session)
-        document.get_doc_metadata_details.assert_called_once_with(session=session)
-        document.get_hit_count.assert_called_once_with(session=session)
+        document.get_data_source_detail_dict.assert_not_called()
+        document.get_dataset_process_rule.assert_not_called()
+        document.get_doc_metadata_details.assert_not_called()
+        document.get_hit_count.assert_not_called()
 
     def test_post_success(self, app: Flask, patch_tenant, patch_dataset, patch_permission):
         api = DatasetDocumentListApi()
