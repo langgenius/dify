@@ -100,6 +100,7 @@ The scripts resolve paths relative to their location, so you can run them from a
    uv run ruff check --fix ./   # Fix linting issues
    uv run ruff format ./        # Format code
    uv run pyrefly check         # Type checking
+   PYREFLY_CONFIG=pyrefly.pysa.toml uv run pyre analyze  # Pysa security analysis
    ```
 
 ## Generate TS stub
