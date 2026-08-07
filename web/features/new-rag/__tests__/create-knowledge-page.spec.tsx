@@ -8,11 +8,24 @@ import { newKnowledgeSourceDraftStorageKey } from '../routes'
 const serviceMock = vi.hoisted(() => ({
   create: vi.fn(),
   createCrawl: vi.fn(),
+  createKfsSource: vi.fn(),
+  getKfsSource: vi.fn(),
   getCrawlStatus: vi.fn(),
   getDefaultModel: vi.fn(),
+  getSyncPolicy: vi.fn(),
+  getWorkflow: vi.fn(),
+  listConnections: vi.fn(),
+  listProviders: vi.fn(),
+  listWorkflowPages: vi.fn(),
+  selectWorkflowPages: vi.fn(),
+  startKfsCrawlPreview: vi.fn(),
+  updateKfsSource: vi.fn(),
+  updateSyncPolicy: vi.fn(),
   upload: vi.fn(),
   uploadBulk: vi.fn(),
   listKey: vi.fn(() => ['console', 'knowledgeFs', 'listKnowledgeSpaces']),
+  sourcesKey: vi.fn(() => ['console', 'knowledgeFs', 'sources']),
+  documentsKey: vi.fn(() => ['console', 'knowledgeFs', 'documents']),
 }))
 
 const routerMock = vi.hoisted(() => ({
@@ -71,6 +84,39 @@ vi.mock('@/service/client', () => ({
   consoleClient: {
     knowledgeFs: {
       spaces: {
+        byControlSpaceId: {
+          sourceConnections: {
+            get: serviceMock.listConnections,
+          },
+          sourceProviders: {
+            get: serviceMock.listProviders,
+          },
+          sourceWorkflows: {
+            byRunId: {
+              get: serviceMock.getWorkflow,
+              pages: {
+                get: serviceMock.listWorkflowPages,
+              },
+              selection: {
+                post: serviceMock.selectWorkflowPages,
+              },
+            },
+          },
+          sources: {
+            bySourceId: {
+              crawlPreview: {
+                post: serviceMock.startKfsCrawlPreview,
+              },
+              get: serviceMock.getKfsSource,
+              patch: serviceMock.updateKfsSource,
+              syncPolicy: {
+                get: serviceMock.getSyncPolicy,
+                put: serviceMock.updateSyncPolicy,
+              },
+            },
+            post: serviceMock.createKfsSource,
+          },
+        },
         post: serviceMock.create,
       },
     },
@@ -88,6 +134,18 @@ vi.mock('@/service/client', () => ({
         get: {
           key: serviceMock.listKey,
         },
+        byControlSpaceId: {
+          documents: {
+            get: {
+              key: serviceMock.documentsKey,
+            },
+          },
+          sources: {
+            get: {
+              key: serviceMock.sourcesKey,
+            },
+          },
+        },
       },
     },
   },
@@ -104,6 +162,45 @@ const createdKnowledge = {
   operation_id: 'operation-1',
   state: 'provisioning' as const,
 }
+
+const kfsSourceResponse = (overrides: Record<string, unknown> = {}) => ({
+  connection_id: 'firecrawl-connection-1',
+  created_at: '2026-08-06T10:00:00Z',
+  credential_configured: true,
+  id: 'source-1',
+  knowledge_space_id: createdKnowledge.control_space_id,
+  metadata: {},
+  name: 'Dify docs',
+  permission_scope: [],
+  status: 'disabled',
+  type: 'web',
+  updated_at: '2026-08-06T10:00:00Z',
+  uri: 'https://docs.dify.ai',
+  version: 1,
+  ...overrides,
+})
+
+const workflowResponse = (overrides: Record<string, unknown> = {}) => ({
+  canceled_at: null,
+  checkpoint: 'complete',
+  completed_at: '2026-08-06T10:01:00Z',
+  created_at: '2026-08-06T10:00:00Z',
+  cursor: null,
+  execution_attempts: 1,
+  id: 'run-1',
+  knowledge_space_id: createdKnowledge.control_space_id,
+  kind: 'crawl-preview',
+  last_error_code: null,
+  max_execution_attempts: 3,
+  progress_completed: 1,
+  progress_failed: 0,
+  progress_skipped: 0,
+  progress_total: 1,
+  source_id: 'source-1',
+  state: 'completed',
+  updated_at: '2026-08-06T10:01:00Z',
+  ...overrides,
+})
 
 vi.mock('../knowledge-fs-upload', () => ({
   uploadKnowledgeFsDocuments: async (
@@ -154,6 +251,8 @@ describe('CreateKnowledgePage', () => {
     globalThis.sessionStorage.clear()
     serviceMock.create.mockResolvedValue(createdKnowledge)
     serviceMock.createCrawl.mockResolvedValue({ job_id: 'crawl-job-1' })
+    serviceMock.createKfsSource.mockResolvedValue(kfsSourceResponse())
+    serviceMock.getKfsSource.mockResolvedValue(kfsSourceResponse({ status: 'active', version: 3 }))
     serviceMock.getCrawlStatus.mockResolvedValue({
       data: [
         {
@@ -164,6 +263,73 @@ describe('CreateKnowledgePage', () => {
         },
       ],
       status: 'completed',
+    })
+    serviceMock.getSyncPolicy.mockRejectedValue({ status: 404 })
+    serviceMock.getWorkflow.mockResolvedValue(workflowResponse())
+    serviceMock.listConnections.mockResolvedValue({
+      data: [
+        {
+          auth_kind: 'endpoint',
+          configuration: {},
+          created_at: '2026-08-06T10:00:00Z',
+          error_code: null,
+          expires_at: null,
+          id: 'firecrawl-connection-1',
+          knowledge_space_id: createdKnowledge.control_space_id,
+          name: 'Firecrawl',
+          provider_id: 'plugin-daemon-website',
+          scopes: [],
+          status: 'active',
+          updated_at: '2026-08-06T10:00:00Z',
+          version: 1,
+        },
+      ],
+      next_cursor: null,
+    })
+    serviceMock.listProviders.mockResolvedValue({
+      data: [
+        {
+          auth_kinds: ['endpoint'],
+          available: true,
+          capabilities: ['website-crawl'],
+          configuration: [],
+          display_name: 'Firecrawl',
+          id: 'plugin-daemon-website',
+          unavailable_reason: null,
+        },
+      ],
+    })
+    serviceMock.listWorkflowPages.mockResolvedValue({
+      data: [
+        {
+          description: 'Getting started',
+          etag: null,
+          page_id: 'kfs-page-1',
+          source_url: 'https://docs.dify.ai/getting-started',
+          title: 'Getting started',
+        },
+      ],
+      next_cursor: null,
+    })
+    serviceMock.selectWorkflowPages.mockResolvedValue(
+      workflowResponse({ id: 'import-run-1', kind: 'import', state: 'completed' }),
+    )
+    serviceMock.startKfsCrawlPreview.mockResolvedValue(workflowResponse())
+    serviceMock.updateKfsSource.mockResolvedValue(
+      kfsSourceResponse({ status: 'active', version: 2 }),
+    )
+    serviceMock.updateSyncPolicy.mockResolvedValue({
+      created_at: '2026-08-06T10:00:00Z',
+      custom_interval_seconds: null,
+      enabled: true,
+      expected_source_version: 3,
+      id: 'policy-1',
+      knowledge_space_id: createdKnowledge.control_space_id,
+      mode: 'provider',
+      next_run_at: null,
+      revision: 1,
+      source_id: 'source-1',
+      updated_at: '2026-08-06T10:00:00Z',
     })
     serviceMock.getDefaultModel.mockImplementation(({ query }: { query: { model_type: string } }) =>
       Promise.resolve({
@@ -755,6 +921,59 @@ describe('CreateKnowledgePage', () => {
     expect(screen.getByRole('checkbox', { name: 'dataset.newKnowledge.selectAll' })).toBeEnabled()
     expect(screen.getByRole('checkbox', { name: 'Getting started' })).toBeEnabled()
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.reCrawl' })).toBeEnabled()
+  })
+
+  it('imports selected crawled website pages after creating the knowledge space', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'source'
+    renderPage()
+    await fillRequiredFields(user)
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.rootUrlPlaceholder'),
+      'https://docs.dify.ai',
+    )
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
+      'Dify docs',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    await user.click(await screen.findByRole('checkbox', { name: 'Getting started' }))
+    await waitFor(() =>
+      expect(screen.getByText(/^dataset\.newKnowledge\.pagesSelected/)).toHaveTextContent('1'),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+
+    await waitFor(() =>
+      expect(routerMock.replace).toHaveBeenCalledWith(
+        '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/sources',
+      ),
+    )
+    expect(routerMock.replace).not.toHaveBeenCalledWith(expect.stringContaining('/sources/new'))
+    expect(serviceMock.createKfsSource).toHaveBeenCalledWith({
+      body: expect.objectContaining({
+        connectionId: 'firecrawl-connection-1',
+        name: 'Dify docs',
+        status: 'disabled',
+        type: 'web',
+        uri: 'https://docs.dify.ai',
+      }),
+      params: { control_space_id: createdKnowledge.control_space_id },
+    })
+    expect(serviceMock.selectWorkflowPages).toHaveBeenCalledWith({
+      body: { pageIds: ['kfs-page-1'] },
+      headers: { 'Idempotency-Key': 'a9c36c57-2d84-44d6-a36d-841f0d92a179' },
+      params: { control_space_id: createdKnowledge.control_space_id, run_id: 'run-1' },
+    })
+    expect(serviceMock.updateSyncPolicy).toHaveBeenCalledWith({
+      body: expect.objectContaining({
+        enabled: true,
+        expectedRevision: 0,
+        expectedSourceVersion: 3,
+        mode: 'provider',
+      }),
+      params: { control_space_id: createdKnowledge.control_space_id, source_id: 'source-1' },
+    })
   })
 
   it('falls back to direct navigation when releasing the history guard does not emit popstate', async () => {
