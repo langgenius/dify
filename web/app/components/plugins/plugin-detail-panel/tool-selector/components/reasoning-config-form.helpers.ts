@@ -3,7 +3,6 @@ import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { produce } from 'immer'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { toolDeclarativeTypeMatches } from '@/app/components/workflow/nodes/_base/components/form-input-item.helpers'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import { VarType } from '@/app/components/workflow/types'
 
@@ -57,7 +56,11 @@ export const createFilterVar = (type: string) => {
   if (type === FormTypeEnum.textNumber)
     return (varPayload: Var) => varPayload.type === VarType.number
 
-  if (type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput)
+  if (
+    type === FormTypeEnum.textInput ||
+    type === FormTypeEnum.secretInput ||
+    type === FormTypeEnum.date
+  )
     return (varPayload: Var) =>
       [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
 
@@ -168,17 +171,10 @@ export const updateVariableSelectorValue = (
   })
 }
 
-export const getFieldFlags = (
-  type: string,
-  varInput?: ReasoningConfigInputValue,
-  schema?: ToolFormSchema,
-) => {
-  const isDateRange = schema ? toolDeclarativeTypeMatches(schema, 'date-range') : false
-  const isDate = schema ? toolDeclarativeTypeMatches(schema, 'date') && !isDateRange : false
-  const isString =
-    (type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput) &&
-    !isDateRange &&
-    !isDate
+export const getFieldFlags = (type: string, varInput?: ReasoningConfigInputValue) => {
+  const isDateRange = type === FormTypeEnum.dateRange
+  const isDate = type === FormTypeEnum.date
+  const isString = type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput
   const isNumber = type === FormTypeEnum.textNumber
   const isObject = type === FormTypeEnum.object
   const isArray = type === FormTypeEnum.array
@@ -220,11 +216,7 @@ export const createPickerProps = ({
   schema: ToolFormSchema
 }) => {
   return {
-    filterVar:
-      schema && toolDeclarativeTypeMatches(schema, 'date')
-        ? (varPayload: Var) =>
-            [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
-        : createFilterVar(type),
+    filterVar: createFilterVar(type),
     schema: schema as Partial<CredentialFormSchema>,
     targetVarType: resolveTargetVarType(type),
     selectItems: schema.options ? getVisibleSelectOptions(schema.options, value, language) : [],

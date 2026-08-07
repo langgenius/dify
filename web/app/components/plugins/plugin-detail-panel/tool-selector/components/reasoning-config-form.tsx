@@ -164,7 +164,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
       showTypeSwitch,
       isConstant,
       showVariableSelector,
-    } = getFieldFlags(type, varInput, schema)
+    } = getFieldFlags(type, varInput)
     const pickerProps = createPickerProps({
       type,
       value,

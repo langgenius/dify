@@ -48,12 +48,12 @@ describe('reasoning-config-form helpers', () => {
     expect(fileFilter?.({ type: VarType.arrayFile } as never)).toBe(true)
   })
 
-  it('creates date field variable filters when schema declares date', () => {
+  it('creates variable filters for date fields', () => {
     const dateFilter = createPickerProps({
-      type: FormTypeEnum.textInput,
+      type: FormTypeEnum.date,
       value: {},
       language: 'en_US',
-      schema: { _type: 'date' } as never,
+      schema: { type: FormTypeEnum.date } as never,
     }).filterVar
     expect(dateFilter?.({ type: VarType.string } as never)).toBe(true)
     expect(dateFilter?.({ type: VarType.number } as never)).toBe(true)
@@ -173,6 +173,23 @@ describe('reasoning-config-form helpers', () => {
         isShowJSONEditor: true,
         showTypeSwitch: true,
         isConstant: true,
+      }),
+    )
+
+    expect(getFieldFlags(FormTypeEnum.date)).toEqual(
+      expect.objectContaining({
+        isDate: true,
+        isDateRange: false,
+        isString: false,
+        showTypeSwitch: true,
+      }),
+    )
+    expect(getFieldFlags(FormTypeEnum.dateRange)).toEqual(
+      expect.objectContaining({
+        isDate: false,
+        isDateRange: true,
+        isString: false,
+        showTypeSwitch: false,
       }),
     )
 
