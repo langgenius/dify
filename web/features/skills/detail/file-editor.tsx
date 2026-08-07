@@ -34,7 +34,7 @@ import {
   ReferenceFilesPicker,
   VersionActionBar,
 } from './markdown-editor'
-import { SkillPublishBar } from './publish-bar'
+import { SkillPublishBar, SkillPublishBottomActions } from './publish-bar'
 import {
   addMarkdownMetadata,
   findBrokenMarkdownReferenceRangeAtCaret,
@@ -1368,8 +1368,8 @@ export function FileEditor({
         )}
       </div>
       {!readonly && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-3 z-20 flex justify-center px-4">
-          <div className="relative flex max-w-[calc(100%-2rem)] justify-center">
+        <SkillPublishBottomActions>
+          <div className="flex max-w-[calc(100%-2rem)] flex-col items-center justify-end">
             <SkillPublishConfirmPanel
               loading={publishing}
               onCancel={() => {
@@ -1386,9 +1386,8 @@ export function FileEditor({
               skillId={skillId}
             />
             <div
-              className={cn(publishConfirmOpen && 'pointer-events-none')}
+              className={cn(publishConfirmOpen && 'hidden')}
               aria-hidden={publishConfirmOpen || undefined}
-              style={{ visibility: publishConfirmOpen ? 'hidden' : undefined }}
             >
               <SkillPublishBar
                 metaLabel={publishMetaText}
@@ -1398,7 +1397,7 @@ export function FileEditor({
               />
             </div>
           </div>
-        </div>
+        </SkillPublishBottomActions>
       )}
       {readonly && selectedVersion && (
         <VersionActionBar

@@ -20,6 +20,18 @@ type SkillPublishBarProps = {
   state: SkillPublishState
 }
 
+export function SkillPublishBottomActions({ children }: { children: ReactNode }) {
+  return (
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex flex-col items-center justify-end px-4 pt-4 pb-2">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-0 bg-linear-to-t from-components-panel-bg to-components-panel-bg-transparent mask-[linear-gradient(to_top,black,transparent)] backdrop-blur-[2px] [-webkit-mask-image:linear-gradient(to_top,black,transparent)]"
+      />
+      <div className="relative z-10 flex w-full flex-col items-center justify-end">{children}</div>
+    </div>
+  )
+}
+
 export function SkillPublishShortcut() {
   return (
     <KbdGroup aria-hidden>

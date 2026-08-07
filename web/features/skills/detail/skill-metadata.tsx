@@ -417,7 +417,7 @@ export function SkillReferencesList({
       data-scrollable={isScrollable ? true : undefined}
       className={cn(
         compact
-          ? 'flex flex-col gap-px rounded-xl border border-divider-subtle p-1'
+          ? 'flex flex-col gap-px rounded-xl border border-divider-subtle p-[3px]'
           : 'w-max max-w-[480px] space-y-0.5 py-1',
         isScrollable && `${maxHeight} overflow-y-auto`,
       )}
@@ -470,13 +470,17 @@ export function SkillPublishConfirmPanel({
     <div
       role="dialog"
       aria-labelledby="skill-publish-confirm-title"
-      className="pointer-events-auto absolute right-0 bottom-[calc(100%+10px)] z-50 flex w-96 max-w-[calc(100vw-32px)] flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg shadow-shadow-shadow-5"
+      data-open
+      className="pointer-events-auto relative flex w-96 max-w-[calc(100vw-32px)] flex-col overflow-hidden rounded-xl bg-components-panel-bg-blur shadow-lg inset-ring-[0.5px] shadow-shadow-shadow-5 inset-ring-components-panel-border backdrop-blur-[5px]"
     >
-      <div className="px-4 pt-4 pb-2">
-        <h2 id="skill-publish-confirm-title" className="system-xl-semibold text-text-primary">
+      <div className="px-3 pt-3.5 pb-1">
+        <h2
+          id="skill-publish-confirm-title"
+          className="px-1 pr-8 system-xl-semibold text-text-primary"
+        >
           {t(($) => $['skillManagement.detail.publishReferencesTitle'])}
         </h2>
-        <p className="mt-1 system-xs-regular text-util-colors-warning-warning-600">
+        <p className="mt-0.5 px-1 system-xs-regular text-util-colors-warning-warning-600">
           {t(($) => $['skillManagement.detail.publishReferencesDescription'], {
             count: referenceCount,
           })}
