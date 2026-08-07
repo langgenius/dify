@@ -58,6 +58,7 @@ def _install_features(monkeypatch: pytest.MonkeyPatch, enabled: bool) -> None:
 def _make_account(account_id: str = "u1") -> Account:
     account = Account(name="Test User", email="test@example.com")
     account.id = account_id
+    account._current_tenant = MagicMock(id="tenant-1")
     return account
 
 
@@ -343,14 +344,13 @@ class TestAppImportConfirmApi:
             "current_account_with_tenant",
             lambda: (_make_account(), "tenant-1"),
         )
-        monkeypatch.setattr(
-            app_import_module.redis_client,
-            "get",
-            lambda *_args, **_kwargs: (
+        redis_get = MagicMock(
+            return_value=(
                 b'{"import_mode":"yaml-content","yaml_content":"app: {}","app_id":null,'
                 b'"name":null,"description":null,"icon_type":null,"icon":null,"icon_background":null}'
-            ),
+            )
         )
+        monkeypatch.setattr(app_import_module.redis_client, "get", redis_get)
         monkeypatch.setattr(app_import_module.dify_config, "RBAC_ENABLED", True)
         app_id = _install_persisting_service_result(
             monkeypatch,
@@ -370,6 +370,7 @@ class TestAppImportConfirmApi:
         _assert_app_persistence(sqlite_app_engine, app_id, persisted=True)
         assert status == 200
         assert response["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
+        redis_get.assert_called_once_with("app_import_info:import-1")
 
     def test_import_confirm_does_not_attach_permission_keys_when_overwriting_existing_app(
         self,
