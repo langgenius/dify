@@ -492,7 +492,7 @@ describe('SkillsPage', () => {
     expect(screen.queryByText('common.operation.export')).not.toBeInTheDocument()
   })
 
-  it('confirms deletion with the skill name and refreshes list data', async () => {
+  it('requires the display name before deleting a referenced skill', async () => {
     const user = userEvent.setup()
     renderSkillsPage()
 
@@ -516,7 +516,21 @@ describe('SkillsPage', () => {
     )
     expect(within(dialog).getByTestId('skill-delete-reference-list')).toBeInTheDocument()
 
-    await user.click(within(dialog).getByRole('button', { name: 'common.operation.delete' }))
+    const confirmationInput = within(dialog).getByPlaceholderText(
+      'skill.skillManagement.deleteDialog.confirmInputPlaceholder',
+    )
+    const confirmButton = within(dialog).getByRole('button', {
+      name: 'common.operation.confirm',
+    })
+    expect(confirmButton).toBeDisabled()
+
+    await user.type(confirmationInput, 'refund-approval')
+    expect(confirmButton).toBeDisabled()
+
+    await user.clear(confirmationInput)
+    await user.type(confirmationInput, 'Refund approval')
+    expect(confirmButton).toBeEnabled()
+    await user.click(confirmButton)
 
     await waitFor(() => {
       expect(mocks.deleteSkillMutationFn).toHaveBeenCalledWith(
@@ -532,6 +546,45 @@ describe('SkillsPage', () => {
       )
     })
     expect(toast.success).toHaveBeenCalledWith('skill.skillManagement.deleteSuccess')
+  })
+
+  it('deletes an unreferenced skill without display-name confirmation', async () => {
+    const user = userEvent.setup()
+    mocks.skills = [createSkill({ reference_count: 0 })]
+    mocks.skillPages = [mocks.skills]
+    mocks.skillReferences = []
+    renderSkillsPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.moreActions:{"name":"Refund approval"}',
+      }),
+    )
+    await user.click(await screen.findByText('common.operation.delete'))
+    const dialog = await screen.findByRole('alertdialog')
+
+    expect(
+      within(dialog).queryByPlaceholderText(
+        'skill.skillManagement.deleteDialog.confirmInputPlaceholder',
+      ),
+    ).not.toBeInTheDocument()
+    const deleteButton = within(dialog).getByRole('button', { name: 'common.operation.delete' })
+    await waitFor(() => expect(deleteButton).toBeEnabled())
+    await user.click(deleteButton)
+
+    await waitFor(() => {
+      expect(mocks.deleteSkillMutationFn).toHaveBeenCalledWith(
+        {
+          body: {
+            confirmation_name: undefined,
+          },
+          params: {
+            skill_id: 'skill-1',
+          },
+        },
+        expect.anything(),
+      )
+    })
   })
 
   it('loads references in the delete confirmation when the list reference count is stale', async () => {

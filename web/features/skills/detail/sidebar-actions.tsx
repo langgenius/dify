@@ -2,15 +2,6 @@
 
 import type { SkillDetailResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import {
-  AlertDialog,
-  AlertDialogActions,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from '@langgenius/dify-ui/alert-dialog'
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -18,129 +9,15 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { downloadBlob } from '@/utils/download'
+import { invalidateSkillListQueries } from '../cache'
 import { fetchSkillArchiveBlob } from '../client'
-import { SkillReferencesList, SkillReferencesListSkeleton } from './skill-metadata'
-
-function invalidateSkillListQueries(queryClient: ReturnType<typeof useQueryClient>) {
-  void queryClient.invalidateQueries({
-    queryKey: consoleQuery.workspaces.current.skills.get.key({ type: 'query' }),
-  })
-  void queryClient.invalidateQueries({
-    queryKey: consoleQuery.workspaces.current.skills.get.key({ type: 'infinite' }),
-  })
-  void queryClient.invalidateQueries({
-    queryKey: consoleQuery.workspaces.current.skills.tags.get.key({ type: 'query' }),
-  })
-}
-
-function SkillDetailDeleteDialog({
-  detail,
-  onOpenChange,
-  open,
-}: {
-  detail: SkillDetailResponse
-  onOpenChange: (open: boolean) => void
-  open: boolean
-}) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
-  const queryClient = useQueryClient()
-  const router = useRouter()
-  const deleteMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.delete.mutationOptions(),
-  )
-  const referencesQuery = useQuery({
-    ...consoleQuery.workspaces.current.skills.bySkillId.references.get.queryOptions({
-      input: {
-        params: {
-          skill_id: detail.id,
-        },
-      },
-    }),
-    enabled: open,
-    refetchOnMount: 'always',
-  })
-  const references = referencesQuery.data?.data ?? []
-  const referenceCount = Math.max(detail.reference_count ?? 0, references.length)
-  const description =
-    referenceCount > 0
-      ? t(($) => $['skillManagement.deleteDialog.referencedDescription'], {
-          count: referenceCount,
-        })
-      : t(($) => $['skillManagement.deleteDialog.description'])
-
-  const handleDelete = () => {
-    if (deleteMutation.isPending) return
-
-    deleteMutation.mutate(
-      {
-        params: {
-          skill_id: detail.id,
-        },
-        body: {
-          confirmation_name: detail.name,
-        },
-      },
-      {
-        onSuccess: () => {
-          toast.success(t(($) => $['skillManagement.deleteSuccess']))
-          invalidateSkillListQueries(queryClient)
-          onOpenChange(false)
-          router.push('/skills')
-        },
-        onError: () => {
-          toast.error(t(($) => $['skillManagement.deleteFailed']))
-        },
-      },
-    )
-  }
-
-  return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="p-6">
-        <AlertDialogTitle className="truncate title-2xl-semi-bold text-text-primary">
-          {t(($) => $['skillManagement.deleteDialog.title'], { name: detail.display_name })}
-        </AlertDialogTitle>
-        <AlertDialogDescription className="mt-2 system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-          {description}
-        </AlertDialogDescription>
-        {referenceCount > 0 && (
-          <div className="mt-4">
-            {referencesQuery.isPending ? (
-              <SkillReferencesListSkeleton compact />
-            ) : (
-              <SkillReferencesList
-                compact
-                maxHeight="max-h-[240px]"
-                references={references}
-                testId="skill-delete-reference-list"
-                visibleLimit={5}
-              />
-            )}
-          </div>
-        )}
-        <AlertDialogActions className="p-0 pt-6">
-          <AlertDialogCancelButton disabled={deleteMutation.isPending}>
-            {tCommon(($) => $['operation.cancel'])}
-          </AlertDialogCancelButton>
-          <AlertDialogConfirmButton
-            tone="destructive"
-            loading={deleteMutation.isPending}
-            onClick={handleDelete}
-          >
-            {tCommon(($) => $['operation.delete'])}
-          </AlertDialogConfirmButton>
-        </AlertDialogActions>
-      </AlertDialogContent>
-    </AlertDialog>
-  )
-}
+import { DeleteSkillDialog } from '../delete-skill-dialog'
 
 export function SkillDetailSidebarActions({
   detail,
@@ -152,6 +29,7 @@ export function SkillDetailSidebarActions({
   const { t } = useTranslation('skill')
   const { t: tCommon } = useTranslation('common')
   const queryClient = useQueryClient()
+  const router = useRouter()
   const [deleteOpen, setDeleteOpen] = useState(false)
   const duplicateMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.duplicate.post.mutationOptions(),
@@ -235,7 +113,12 @@ export function SkillDetailSidebarActions({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <SkillDetailDeleteDialog detail={detail} open={deleteOpen} onOpenChange={setDeleteOpen} />
+      <DeleteSkillDialog
+        skill={detail}
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        onDeleted={() => router.push('/skills')}
+      />
     </>
   )
 }

@@ -4,6 +4,8 @@
   "skillManagement.createFailed": "Skill 建立失敗。",
   "skillManagement.createSuccess": "Skill 已建立。",
   "skillManagement.dateTimeFormat": "YYYY-MM-DD HH:mm",
+  "skillManagement.deleteDialog.confirmInputLabel": "請在下方輸入框中輸入 <skillName>{{skillName}}</skillName> 以確認：",
+  "skillManagement.deleteDialog.confirmInputPlaceholder": "輸入 Skill Display Name…",
   "skillManagement.deleteDialog.description": "該 Skill 將從 workspace 中移除。引用它的 Agent 可能失去對應能力。",
   "skillManagement.deleteDialog.title": "刪除 {{name}}？",
   "skillManagement.deleteFailed": "Skill 刪除失敗。",

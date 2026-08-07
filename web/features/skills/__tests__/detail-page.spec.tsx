@@ -1800,8 +1800,9 @@ describe('SkillDetailPage', () => {
     })
   })
 
-  it('confirms deletion from the sidebar More menu and returns to Skills', async () => {
+  it('requires the display name before deleting a referenced skill from the sidebar', async () => {
     const user = userEvent.setup()
+    mocks.skillDetail = createSkillDetail({ reference_count: 1 })
     mocks.deleteSkillMutationFn.mockResolvedValue({})
     renderSkillDetailPage()
 
@@ -1815,7 +1816,18 @@ describe('SkillDetailPage', () => {
     expect(
       screen.getByText('skill.skillManagement.deleteDialog.title:{"name":"Untitled skill"}'),
     ).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+    const dialog = screen.getByRole('alertdialog')
+    const confirmationInput = within(dialog).getByPlaceholderText(
+      'skill.skillManagement.deleteDialog.confirmInputPlaceholder',
+    )
+    const confirmButton = within(dialog).getByRole('button', {
+      name: 'common.operation.confirm',
+    })
+    expect(confirmButton).toBeDisabled()
+
+    await user.type(confirmationInput, 'Untitled skill')
+    expect(confirmButton).toBeEnabled()
+    await user.click(confirmButton)
 
     await waitFor(() => {
       expect(mocks.deleteSkillMutationFn).toHaveBeenCalledWith(

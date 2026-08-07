@@ -4,6 +4,8 @@
   "skillManagement.createFailed": "Failed to create skill.",
   "skillManagement.createSuccess": "Skill created.",
   "skillManagement.dateTimeFormat": "MMM D, YYYY HH:mm",
+  "skillManagement.deleteDialog.confirmInputLabel": "Pour confirmer, saisissez <skillName>{{skillName}}</skillName> dans le champ ci-dessous :",
+  "skillManagement.deleteDialog.confirmInputPlaceholder": "Saisissez le nom d’affichage du Skill…",
   "skillManagement.deleteDialog.description": "This skill will be removed from the workspace. Agents that reference it may lose access to this capability.",
   "skillManagement.deleteDialog.title": "Delete {{name}}?",
   "skillManagement.deleteFailed": "Failed to delete skill.",
