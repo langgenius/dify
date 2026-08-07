@@ -6037,11 +6037,6 @@
       "count": 1
     }
   },
-  "web/service/use-education.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/service/use-endpoints.ts": {
     "no-restricted-imports": {
       "count": 1
