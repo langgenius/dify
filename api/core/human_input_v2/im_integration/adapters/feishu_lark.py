@@ -56,7 +56,8 @@ from core.human_input_v2.im_provider import (
     IMDynamicCardMessaging,
     IMEventConsumer,
     IMMessaging,
-    IMStreamRunError,
+    IMStreamStartError,
+    IMStreamStopError,
     IMWebhookHandler,
     MessageAccepted,
     MessageReference,
@@ -1299,7 +1300,9 @@ class _FeishuLarkEventStream:
     def start(self) -> None:
         with self._condition:
             if self._start_claimed:
-                raise IMStreamRunError(f"This {_provider_name(self._provider)} event stream has already been started.")
+                raise IMStreamStartError(
+                    f"This {_provider_name(self._provider)} event stream has already been started."
+                )
             self._start_claimed = True
             self._start_in_progress = True
             self._state = "starting"
@@ -1322,7 +1325,9 @@ class _FeishuLarkEventStream:
             return
         except Exception:
             self._finish_failed_start()
-            raise IMStreamRunError(f"The {_provider_name(self._provider)} event stream could not be started.") from None
+            raise IMStreamStartError(
+                f"The {_provider_name(self._provider)} event stream could not be started."
+            ) from None
 
     def stop(self) -> None:
         with self._condition:
@@ -1396,7 +1401,7 @@ class _FeishuLarkEventStream:
 
     def _raise_if_close_failed(self) -> None:
         if self._close_failed:
-            raise IMStreamRunError(f"The {_provider_name(self._provider)} event stream could not be stopped.")
+            raise IMStreamStopError(f"The {_provider_name(self._provider)} event stream could not be stopped.")
 
     def _handle_delivery(self, sdk_event: Mapping[str, object], acknowledge: Callable[[], None]) -> None:
         with self._condition:

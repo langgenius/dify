@@ -52,7 +52,8 @@ from core.human_input_v2.im_provider import (
     DirectoryReadFailure,
     DynamicCardMessagingError,
     EventAcceptance,
-    IMStreamRunError,
+    IMStreamStartError,
+    IMStreamStopError,
     MessageAccepted,
     MessageSendingError,
     NormalizedCardIntent,
@@ -1936,9 +1937,9 @@ def test_stream_failure_stop_and_late_callback_boundaries_are_one_shot(
     adapter = FeishuIMProviderAdapter(_secure_credentials())
 
     failed_stream = adapter.create_stream_handler(_Consumer())
-    with pytest.raises(IMStreamRunError, match="could not be started"):
+    with pytest.raises(IMStreamStartError, match="could not be started"):
         failed_stream.start()
-    with pytest.raises(IMStreamRunError, match="already been started"):
+    with pytest.raises(IMStreamStartError, match="already been started"):
         failed_stream.start()
     assert clients[0].stop_calls == 1
 
@@ -1947,9 +1948,9 @@ def test_stream_failure_stop_and_late_callback_boundaries_are_one_shot(
     running_stream.start()
     assert clients[1].emit({"header": {}}) == 0
     assert clients[1].emit(_event_payload()) == 0
-    with pytest.raises(IMStreamRunError, match="could not be stopped"):
+    with pytest.raises(IMStreamStopError, match="could not be stopped"):
         running_stream.stop()
-    with pytest.raises(IMStreamRunError, match="could not be stopped"):
+    with pytest.raises(IMStreamStopError, match="could not be stopped"):
         running_stream.stop()
     assert clients[1].stop_calls == 1
     assert clients[1].emit(_event_payload()) == 0
@@ -1957,6 +1958,6 @@ def test_stream_failure_stop_and_late_callback_boundaries_are_one_shot(
 
     stopped_before_start = adapter.create_stream_handler(_Consumer())
     stopped_before_start.stop()
-    with pytest.raises(IMStreamRunError, match="already been started"):
+    with pytest.raises(IMStreamStartError, match="already been started"):
         stopped_before_start.start()
     assert len(clients) == 2

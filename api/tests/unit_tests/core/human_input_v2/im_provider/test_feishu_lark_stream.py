@@ -16,7 +16,12 @@ from core.human_input_v2.im_integration.adapters.feishu_lark import (
     LarkIMIntegrationCredentials,
     LarkIMProviderAdapter,
 )
-from core.human_input_v2.im_provider import AuthenticatedIMEvent, EventAcceptance, IMStreamRunError
+from core.human_input_v2.im_provider import (
+    AuthenticatedIMEvent,
+    EventAcceptance,
+    IMStreamStartError,
+    IMStreamStopError,
+)
 
 
 class _UnusedGateway:
@@ -330,7 +335,7 @@ def test_factory_is_lazy_and_start_returns_only_after_sdk_ready(
 
     assert trace == ["sdk-start", "sdk-ready"]
     assert len(clients) == 1
-    with pytest.raises(IMStreamRunError):
+    with pytest.raises(IMStreamStartError):
         stream.start()
     assert len(clients) == 1
     stream.stop()
@@ -758,7 +763,7 @@ def test_stop_surfaces_operator_safe_error_when_sdk_close_fails(monkeypatch: pyt
     stream = _adapter(monkeypatch, IMProvider.FEISHU).create_stream_handler(_RecordingConsumer(trace))
     stream.start()
 
-    with pytest.raises(IMStreamRunError) as stop_error:
+    with pytest.raises(IMStreamStopError) as stop_error:
         stream.stop()
 
     assert sensitive_marker not in str(stop_error.value)
@@ -778,13 +783,13 @@ def test_failed_close_propagates_to_concurrent_and_repeated_stop_calls(monkeypat
     )
     stream = _adapter(monkeypatch, IMProvider.FEISHU).create_stream_handler(_RecordingConsumer(trace))
     stream.start()
-    errors: list[IMStreamRunError | None] = [None, None]
+    errors: list[IMStreamStopError | None] = [None, None]
     returned = [threading.Event(), threading.Event()]
 
     def stop_stream(index: int) -> None:
         try:
             stream.stop()
-        except IMStreamRunError as error:
+        except IMStreamStopError as error:
             errors[index] = error
         finally:
             returned[index].set()
@@ -808,7 +813,7 @@ def test_failed_close_propagates_to_concurrent_and_repeated_stop_calls(monkeypat
     assert len({str(error) for error in safe_errors}) == 1
     assert all(sensitive_marker not in str(error) for error in safe_errors)
 
-    with pytest.raises(IMStreamRunError) as repeated_error:
+    with pytest.raises(IMStreamStopError) as repeated_error:
         stream.stop()
 
     assert str(repeated_error.value) == str(safe_errors[0])
@@ -828,12 +833,12 @@ def test_stop_during_start_closes_client_and_both_calls_finish(monkeypatch: pyte
         ),
     )
     stream = _adapter(monkeypatch, IMProvider.FEISHU).create_stream_handler(_RecordingConsumer(trace))
-    start_errors: list[IMStreamRunError] = []
+    start_errors: list[IMStreamStartError] = []
 
     def start_stream() -> None:
         try:
             stream.start()
-        except IMStreamRunError as error:
+        except IMStreamStartError as error:
             start_errors.append(error)
 
     start_thread = threading.Thread(target=start_stream)
@@ -900,13 +905,13 @@ def test_stop_waits_when_failed_start_claims_a_slow_sdk_close(monkeypatch: pytes
     stream = _adapter(monkeypatch, IMProvider.FEISHU).create_stream_handler(_RecordingConsumer(trace))
     condition = ResumeStopAfterCloseClaim()
     stream._condition = condition
-    start_errors: list[IMStreamRunError] = []
+    start_errors: list[IMStreamStartError] = []
     stop_returned = threading.Event()
 
     def start_stream() -> None:
         try:
             stream.start()
-        except IMStreamRunError as error:
+        except IMStreamStartError as error:
             start_errors.append(error)
             trace.append("start-error")
 
@@ -948,7 +953,7 @@ def test_stop_before_start_prevents_client_construction(monkeypatch: pytest.Monk
     stream = _adapter(monkeypatch, IMProvider.FEISHU).create_stream_handler(_RecordingConsumer(trace))
 
     stream.stop()
-    with pytest.raises(IMStreamRunError):
+    with pytest.raises(IMStreamStartError):
         stream.start()
 
     assert clients == []
@@ -1007,13 +1012,13 @@ def test_start_failure_closes_partial_client_and_is_operator_safe(monkeypatch: p
     )
     stream = _adapter(monkeypatch, IMProvider.FEISHU).create_stream_handler(_RecordingConsumer(trace))
 
-    with pytest.raises(IMStreamRunError) as stream_error:
+    with pytest.raises(IMStreamStartError) as stream_error:
         stream.start()
 
     assert sensitive_marker not in str(stream_error.value)
     assert clients[0].stop_calls == 1
     assert trace == ["sdk-start", "sdk-stop"]
-    with pytest.raises(IMStreamRunError):
+    with pytest.raises(IMStreamStartError):
         stream.start()
     assert len(clients) == 1
 

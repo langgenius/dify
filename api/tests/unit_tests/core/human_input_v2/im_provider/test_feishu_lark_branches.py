@@ -20,7 +20,14 @@ from core.human_input_v2.im_integration.adapters.feishu_lark import (
     LarkIMIntegrationCredentials,
     LarkIMProviderAdapter,
 )
-from core.human_input_v2.im_provider import CorrelationToken, MessageReference, NormalizedCardIntent, WebhookRequest
+from core.human_input_v2.im_provider import (
+    CorrelationToken,
+    IMStreamStartError,
+    IMStreamStopError,
+    MessageReference,
+    NormalizedCardIntent,
+    WebhookRequest,
+)
 
 
 class _CallRecorder:
@@ -55,6 +62,12 @@ def test_stream_factory_returns_private_concrete_type_without_stream_contract_st
     source = inspect.getsource(adapter_module)
     assert "def run(" not in source
     assert ".run(signal" not in source
+
+
+def test_stream_errors_use_integrated_provider_contract_split() -> None:
+    assert adapter_module.IMStreamStartError is IMStreamStartError
+    assert adapter_module.IMStreamStopError is IMStreamStopError
+    assert not hasattr(adapter_module, "IMStreamRunError")
 
 
 class _ClientBuilder:
