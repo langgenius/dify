@@ -472,7 +472,7 @@
   "nodes.agent.task.mention": "Mention",
   "nodes.agent.task.placeholder": "Describe what this agent should do...",
   "nodes.agent.task.tooltip": "Additional prompt to help agent handle this very node. Use / to make explicit reference to variables.\nIf configured properly, you could be able to trust your agent to figure things out itself.",
-  "nodes.agent.toolNotAuthorizedTooltip": "{{tool}} Not Authorized",
+  "nodes.agent.toolNotAuthorizedTooltip": "{{tool}} is not authorized",
   "nodes.agent.toolNotInstallTooltip": "{{tool}} is not installed",
   "nodes.agent.toolbox": "toolbox",
   "nodes.agent.tools": "Tools",

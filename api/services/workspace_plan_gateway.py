@@ -1,4 +1,4 @@
-"""Compatibility adapters for the workspace-list application service."""
+"""Deployment-aware plan gateway for workspace queries."""
 
 import logging
 from collections.abc import Mapping, Sequence
@@ -14,8 +14,8 @@ from services.workspace_query_service import WorkspacePlanGateway
 logger = logging.getLogger(__name__)
 
 
-class LegacyWorkspacePlanGateway(WorkspacePlanGateway):
-    """Preserve the current deployment-specific Billing/Feature behavior."""
+class DeploymentWorkspacePlanGateway(WorkspacePlanGateway):
+    """Resolve workspace plans using deployment-specific Billing and Feature sources."""
 
     @override
     def resolve_many(self, workspace_ids: Sequence[str]) -> Mapping[str, str]:
@@ -30,7 +30,7 @@ class LegacyWorkspacePlanGateway(WorkspacePlanGateway):
         is_saas = dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and dify_config.BILLING_ENABLED
         bulk_plans = BillingService.get_plan_bulk(ids) if is_saas else {}
         if is_saas and not bulk_plans:
-            logger.warning("get_plan_bulk returned empty result, falling back to legacy feature path")
+            logger.warning("get_plan_bulk returned empty result, falling back to FeatureService")
 
         resolved: dict[str, str] = {}
         for workspace_id in ids:

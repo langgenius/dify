@@ -21,7 +21,7 @@ from core.provider_manager import ProviderConfigurationCacheSource, ProviderMana
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
 from models.provider import Provider, ProviderCredential, ProviderType, TenantPreferredModelProvider
-from services.feature_service import PluginInstallationPermissionModel, PluginInstallationScope
+from services.entities.feature_entities import PluginInstallationPermissionModel, PluginInstallationScope
 
 MODULE = "core.plugin.plugin_service"
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
