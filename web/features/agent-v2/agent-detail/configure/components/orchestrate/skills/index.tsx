@@ -228,7 +228,10 @@ function WorkspaceSkillSelector({
     }),
   })
   const boundSkillIdSet = useMemo(() => new Set(boundSkillIds), [boundSkillIds])
-  const skills = skillsQuery.data?.pages.flatMap((page) => page.data ?? []) ?? []
+  const skills =
+    skillsQuery.data?.pages
+      .flatMap((page) => page.data ?? [])
+      .filter((skill) => Boolean(skill.latest_published_version_id)) ?? []
   const previewSkill = skills.find((skill) => skill.id === previewSkillId) ?? skills[0]
   const hasNextPage = skillsQuery.hasNextPage ?? false
   const isFetchingNextPage = skillsQuery.isFetchingNextPage

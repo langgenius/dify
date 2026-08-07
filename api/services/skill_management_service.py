@@ -134,13 +134,22 @@ description, or metadata.display-name. Ordinary Markdown files under references/
 should contain only their own document content unless the user explicitly asks
 for YAML frontmatter in that file.
 
-Use a low-friction progressive flow. If the user's intent is clear enough,
-create or revise a useful draft immediately instead of blocking on questions.
-If important details are missing, make conservative assumptions and mention at
-most one optional clarification in the reply. Every reply should include 2-3
-short suggested user replies that the UI can show as clickable chips. The
-suggestions must be concrete next refinements the user could choose, not generic
-commands.
+Use a low-friction progressive flow for a new Skill. Do not complete all four
+authoring stages in one turn. Follow the current authoring stage supplied in the
+request:
+1. Scenario: ask what the Skill handles and how users describe the trigger.
+   Update only the description; do not write the body, create files, or choose a
+   final name.
+2. Workflow: ask about steps, decision points, rules, and thresholds. Update
+   the SKILL.md body only; preserve the placeholder name and display name.
+3. Resources: ask whether scripts, templates, or reference documents are
+   needed. Create only the files the user confirms; preserve the name.
+4. Finalize: summarize the completed Skill and suggest a display name and a
+   lowercase kebab-case name. Only at this stage may the name be changed.
+Ask at most one focused question per turn and do not invent missing business
+rules or thresholds. Every reply should include 2-3 short suggested user replies
+that the UI can show as clickable chips. The suggestions must be concrete next
+replies for the current stage, not generic commands.
 
 Respond with JSON only:
 {
@@ -922,7 +931,9 @@ class SkillManagementService:
             tenant_id=tenant_id,
             model_payload=model_payload,
         )
+        authoring_stage = self._assistant_authoring_stage(skill=skill, files=files)
         prompt_parts = [f"<skill_draft>\n{context}\n</skill_draft>"]
+        prompt_parts.append(f"<authoring_stage>{authoring_stage}</authoring_stage>")
         if target_path:
             prompt_parts.append(f"<current_editor_path>{target_path}</current_editor_path>")
         if attachment_context:
@@ -1044,6 +1055,12 @@ class SkillManagementService:
                 status_code=422,
                 details={"raw_response": raw_text[:2_000]},
             ) from exc
+        plan = self._constrain_progressive_assistant_plan(
+            plan=plan,
+            stage=authoring_stage,
+            skill=skill,
+            files=files,
+        )
         if not any(suggestion.strip() for suggestion in plan.suggestions):
             plan = plan.model_copy(
                 update={
@@ -2533,6 +2550,111 @@ class SkillManagementService:
             "is_latest": latest_version_id == version.id,
             "created_at": int(version.created_at.timestamp()),
         }
+
+    @staticmethod
+    def _assistant_authoring_stage(*, skill: Skill, files: list[SkillDraftFile]) -> str:
+        """Return the progressive stage for a newly created, untitled Skill."""
+        if not (skill.display_name == _UNTITLED_DISPLAY_NAME and not skill.name_manually_edited):
+            return "existing_skill"
+
+        skill_md = next((file for file in files if file.path == _SKILL_MD), None)
+        content = skill_md.content_text if skill_md is not None else ""
+        has_description = bool(skill.description.strip())
+        body = _FRONTMATTER_RE.sub("", content, count=1).strip()
+        has_body = bool(body and body != _EMPTY_SKILL_DRAFT_CONTENT.strip())
+        has_resources = any(file.path != _SKILL_MD for file in files)
+
+        if not has_description:
+            return "scenario"
+        if not has_body:
+            return "workflow"
+        if not has_resources:
+            return "resources"
+        return "finalize"
+
+    @classmethod
+    def _constrain_progressive_assistant_plan(
+        cls,
+        *,
+        plan: SkillAssistActionPlan,
+        stage: str,
+        skill: Skill,
+        files: list[SkillDraftFile],
+    ) -> SkillAssistActionPlan:
+        if stage in {"existing_skill", "finalize"}:
+            return plan
+
+        skill_md = next((file for file in files if file.path == _SKILL_MD), None)
+        current_content = skill_md.content_text if skill_md is not None else _EMPTY_SKILL_DRAFT_CONTENT
+        operations: list[SkillAssistDraftOperationPayload] = []
+        for operation in plan.operations:
+            if operation.path == _SKILL_MD and operation.operation == "upsert_text":
+                content = operation.content or current_content
+                if stage == "scenario":
+                    content = cls._assistant_description_only_skill_md(
+                        skill=skill,
+                        current_content=current_content,
+                        candidate_content=content,
+                    )
+                else:
+                    content = cls._preserve_assistant_skill_identity(
+                        skill=skill,
+                        current_content=current_content,
+                        candidate_content=content,
+                    )
+                operations.append(operation.model_copy(update={"content": content}))
+            elif stage == "resources" and operation.path != _SKILL_MD:
+                operations.append(operation)
+
+        return plan.model_copy(update={"operations": operations})
+
+    @classmethod
+    def _assistant_description_only_skill_md(
+        cls,
+        *,
+        skill: Skill,
+        current_content: str,
+        candidate_content: str,
+    ) -> str:
+        try:
+            frontmatter = cls._parse_frontmatter(candidate_content)
+        except SkillManagementServiceError:
+            return current_content
+        description = frontmatter.get("description")
+        if not isinstance(description, str) or not description.strip():
+            return current_content
+        return cls._build_skill_md(
+            name=skill.name,
+            description=description.strip()[:_MAX_SKILL_DESCRIPTION_LENGTH],
+            display_name=skill.display_name,
+            body=_EMPTY_SKILL_DRAFT_CONTENT,
+        )
+
+    @classmethod
+    def _preserve_assistant_skill_identity(
+        cls,
+        *,
+        skill: Skill,
+        current_content: str,
+        candidate_content: str,
+    ) -> str:
+        try:
+            frontmatter_match = _FRONTMATTER_RE.match(candidate_content)
+            if frontmatter_match is None:
+                return current_content
+            frontmatter = cls._parse_frontmatter(candidate_content)
+        except SkillManagementServiceError:
+            return current_content
+
+        metadata = frontmatter.get("metadata")
+        if not isinstance(metadata, dict):
+            metadata = {}
+        metadata["display-name"] = skill.display_name
+        frontmatter["name"] = skill.name
+        frontmatter["metadata"] = metadata
+        serialized = yaml.safe_dump(frontmatter, allow_unicode=True, sort_keys=False).rstrip()
+        body = candidate_content[frontmatter_match.end() :].lstrip("\r\n")
+        return f"---\n{serialized}\n---\n\n{body}" if body else f"---\n{serialized}\n---\n"
 
     @staticmethod
     def _build_assistant_context(*, skill: Skill, files: list[SkillDraftFile]) -> str:
