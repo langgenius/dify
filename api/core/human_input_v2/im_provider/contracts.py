@@ -81,6 +81,26 @@ class MSTeamsIMIntegrationCredentials(_ResolvedIMIntegrationCredentials):
     )
 
 
+class WeComIMIntegrationCredentials(_ResolvedIMIntegrationCredentials):
+    """Resolved WeCom credentials bound for one adapter lifetime."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+    provider: Literal[IMProvider.WE_COM] = Field(description="WeCom credential discriminator.")
+    corp_id: str = Field(min_length=1, pattern=r"\S", description="WeCom corporation identifier.")
+    agent_id: str = Field(
+        min_length=1,
+        pattern=r"^[1-9][0-9]*$",
+        description="WeCom application agent identifier.",
+    )
+    secret: str = Field(
+        min_length=1,
+        pattern=r"\S",
+        repr=False,
+        description="Resolved WeCom application secret.",
+    )
+
+
 ProviderUserId = NewType("ProviderUserId", str)
 CorrelationToken = NewType("CorrelationToken", str)
 
@@ -373,6 +393,7 @@ __all__ = [
     "ReplacementErrorKind",
     "SlackIMIntegrationCredentials",
     "StaticCardIntent",
+    "WeComIMIntegrationCredentials",
     "WebhookRequest",
     "WebhookResponse",
 ]

@@ -172,7 +172,7 @@ class WeComIMIntegrationEncryptedCredentials(_ImmutableJSONModel):
     )
     corp_id: str = Field(description="WeCom corporation identifier.")
     agent_id: str = Field(description="WeCom agent identifier.")
-    encrypted_secret: str = Field(description="Encrypted WeCom application secret.")
+    encrypted_secret: str = Field(repr=False, description="Encrypted WeCom application secret.")
 
 
 class ResendEmailProviderEncryptedCredentials(_ImmutableJSONModel):

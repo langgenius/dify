@@ -313,6 +313,7 @@ class WeComIMIntegrationCredentials(_RequestModel):
     corp_id: str = Field(description="WeCom corporation identifier.")
     agent_id: str = Field(description="WeCom agent identifier.")
     secret: str | PreserveOriginalValue = Field(
+        repr=False,
         description="WeCom application secret. This field will be masked in response"
     )
 

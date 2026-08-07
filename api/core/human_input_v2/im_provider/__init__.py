@@ -35,6 +35,7 @@ from .contracts import (
     StaticCardIntent,
     WebhookRequest,
     WebhookResponse,
+    WeComIMIntegrationCredentials,
 )
 
 __all__ = [
@@ -70,6 +71,7 @@ __all__ = [
     "ReplacementErrorKind",
     "SlackIMIntegrationCredentials",
     "StaticCardIntent",
+    "WeComIMIntegrationCredentials",
     "WebhookRequest",
     "WebhookResponse",
 ]
