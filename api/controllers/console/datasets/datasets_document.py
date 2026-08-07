@@ -128,13 +128,13 @@ class DocumentWithSegmentsSession(DocumentWithSession):
     def completed_segments(self) -> int | None:
         if self.prefetch is not None and self.prefetch.include_segment_counts:
             return self.prefetch.completed_segment_counts.get(str(self.document.id), 0)
-        return getattr(self.document, "completed_segments", None)
+        return None
 
     @property
     def total_segments(self) -> int | None:
         if self.prefetch is not None and self.prefetch.include_segment_counts:
             return self.prefetch.total_segment_counts.get(str(self.document.id), 0)
-        return getattr(self.document, "total_segments", None)
+        return None
 
 
 def document_with_segments_responses(

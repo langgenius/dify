@@ -28,7 +28,6 @@ from controllers.console.datasets.datasets_document import (
     DocumentStatusApi,
     DocumentSummaryStatusApi,
     GetProcessRuleApi,
-    document_with_segments_responses,
 )
 from controllers.console.datasets.error import (
     DocumentAlreadyFinishedError,
@@ -152,15 +151,6 @@ def make_document_detail(**overrides):
     document.get_hit_count.return_value = attrs["hit_count"]
     document.get_segment_count.return_value = attrs["segment_count"]
     return document
-
-
-def test_document_with_segments_response_keeps_existing_segment_counts_without_prefetch() -> None:
-    document = make_serializable_document(completed_segments=4, total_segments=7)
-
-    response = document_with_segments_responses([document], session=MagicMock())[0]
-
-    assert response.completed_segments == 4
-    assert response.total_segments == 7
 
 
 def make_dataset(**overrides):
