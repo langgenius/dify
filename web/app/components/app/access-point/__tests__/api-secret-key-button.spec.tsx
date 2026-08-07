@@ -1,29 +1,29 @@
+import type { ApiKeyList } from '@dify/contracts/api/console/apps/types.gen'
+import type { ReactElement } from 'react'
 import type { SecretKeyScope } from '@/app/components/develop/secret-key/secret-key-modal'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { render } from '@/test/console/render'
+import { consoleQuery } from '@/service/client'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { ApiSecretKeyButton } from '../api-secret-key-button'
 
-const mocks = vi.hoisted(() => ({
-  appApiKeysArgs: [] as unknown[][],
-  apiKeysQuery: {
-    data: {
-      data: [
-        { id: 'key-1', token: 'app-a', created_at: '1', last_used_at: '1' },
-        { id: 'key-2', token: 'app-b', created_at: '2', last_used_at: '2' },
-      ],
-    },
-    isError: false,
-    isPending: false,
-  },
-}))
+const appApiKeys: ApiKeyList = {
+  data: [
+    { id: 'key-1', token: 'app-a', type: 'app', created_at: 1, last_used_at: 1 },
+    { id: 'key-2', token: 'app-b', type: 'app', created_at: 2, last_used_at: 2 },
+  ],
+}
 
-vi.mock('@/service/use-apps', () => ({
-  useAppApiKeys: (...args: unknown[]) => {
-    mocks.appApiKeysArgs.push(args)
-    return mocks.apiKeysQuery
-  },
-}))
+const render = (ui: ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.apps.byResourceId.apiKeys.get.queryKey({
+      input: { params: { resource_id: 'app-1' } },
+    }),
+    appApiKeys,
+  )
+  return renderWithConsoleQuery(ui, { queryClient })
+}
 
 vi.mock('@/app/components/develop/secret-key/secret-key-modal', () => ({
   default: ({
@@ -44,10 +44,6 @@ vi.mock('@/app/components/develop/secret-key/secret-key-modal', () => ({
 }))
 
 describe('ApiSecretKeyButton', () => {
-  beforeEach(() => {
-    mocks.appApiKeysArgs.length = 0
-  })
-
   it('shows the current API key count and opens key management', async () => {
     const user = userEvent.setup()
     render(<ApiSecretKeyButton appId="app-1" canManage />)
@@ -72,7 +68,6 @@ describe('ApiSecretKeyButton', () => {
       name: 'appApi.apiKeyModal.apiSecretKey 5',
     })
     expect(button).toBeEnabled()
-    expect(mocks.appApiKeysArgs[0]?.[0]).toBeUndefined()
 
     await user.click(button)
 

@@ -27,11 +27,7 @@ export function useDeploymentConfigurationQueries({
   )
   const precheck = precheckQuery.data
   const precheckPassed =
-    precheckQuery.isSuccess &&
-    !precheckQuery.isFetching &&
-    Boolean(precheck?.deployable) &&
-    precheck?.unsupported_nodes.length === 0 &&
-    precheck?.unsupported_tool_providers.length === 0
+    precheckQuery.isSuccess && !precheckQuery.isFetching && precheck?.unsupported_nodes.length === 0
 
   const deploymentOptionsQuery = useQuery(
     consoleQuery.enterprise.appDeploy.deploymentService.getWorkflowDeploymentOptions.queryOptions({
@@ -52,7 +48,10 @@ export function useDeploymentConfigurationQueries({
   const isPrechecking = Boolean(appId) && (precheckQuery.isLoading || precheckQuery.isFetching)
   const isLoadingDeploymentOptions =
     precheckPassed && (deploymentOptionsQuery.isLoading || deploymentOptionsQuery.isFetching)
-  const isPrecheckBlocked = precheckQuery.isSuccess && !precheckPassed
+  const isPrecheckBlocked =
+    precheckQuery.isSuccess &&
+    !precheckQuery.isFetching &&
+    Boolean(precheck?.unsupported_nodes.length)
   const deploymentOptionsReady =
     precheckPassed && deploymentOptionsQuery.isSuccess && !deploymentOptionsQuery.isFetching
 

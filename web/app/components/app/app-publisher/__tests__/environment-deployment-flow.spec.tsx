@@ -8,7 +8,7 @@ import {
   EnvironmentStatus,
   OperatorType,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider, useAtomValue, useSetAtom } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
@@ -46,6 +46,10 @@ vi.mock('react-i18next', async () => {
       'Select credentials and complete environment variable values before deployment.',
     'deployments.studio.deployLatest': 'Deploy latest',
     'deployments.studio.deployOtherVersion': 'Deploy other version',
+    'deployments.studio.precheck.description': 'It contains node types that are not yet supported:',
+    'deployments.studio.precheck.supportMessage':
+      'Support for these node types is coming in a future release.',
+    'deployments.studio.precheck.title': "This version can't be deployed to this environment",
     'deployments.studio.accessPoint.noPublishedTitle': 'No published versions yet',
     'deployments.studio.publisher.noPublishedDescription':
       'Publish the app before deploying it to an environment.',
@@ -202,9 +206,7 @@ function createFlowQueryClient(environmentId: string, environmentInUse = false) 
 
     queryClient.setQueryDefaults(precheckQuery.queryKey, { staleTime: Infinity })
     queryClient.setQueryData(precheckQuery.queryKey, {
-      deployable: true,
       unsupported_nodes: [],
-      unsupported_tool_providers: [],
     })
     queryClient.setQueryDefaults(deploymentOptionsQuery.queryKey, { staleTime: Infinity })
     queryClient.setQueryData(deploymentOptionsQuery.queryKey, {
@@ -634,6 +636,49 @@ describe('PublisherEnvironmentFlow', () => {
     await user.click(screen.getByRole('button', { name: 'Back' }))
 
     expect(screen.getByRole('heading', { name: 'Deploy to Staging' })).toBeInTheDocument()
+  })
+
+  it('shows unsupported node titles when the latest version fails precheck', async () => {
+    const user = userEvent.setup()
+    const view = renderFlow()
+    const precheckQuery =
+      consoleQuery.enterprise.appDeploy.deploymentService.precheckWorkflowDeployment.queryOptions({
+        input: {
+          params: {
+            app_id: 'app-1',
+            workflow_id: latestVersion.id,
+          },
+        },
+        retry: false,
+      })
+    view.queryClient.setQueryData(precheckQuery.queryKey, {
+      unsupported_nodes: [
+        {
+          id: 'knowledge-node',
+          title: 'Knowledge Retrieval',
+          type: 'knowledge-retrieval',
+        },
+        {
+          id: 'notion-node',
+          provider: {
+            plugin_id: 'langgenius/notion',
+            provider_id: 'notion',
+            provider_name: 'Notion',
+            provider_type: 'mcp',
+          },
+          title: 'Notion MCP',
+          type: 'tool',
+        },
+      ],
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Deploy latest' }))
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent("This version can't be deployed to this environment")
+    expect(within(alert).getByText('Knowledge Retrieval')).toBeInTheDocument()
+    expect(within(alert).getByText('Notion MCP')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Deploy' })).toBeDisabled()
   })
 
   it('submits the latest version through the deployment API', async () => {

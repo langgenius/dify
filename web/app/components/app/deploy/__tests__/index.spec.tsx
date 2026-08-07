@@ -112,9 +112,7 @@ const PUBLISHED_WORKFLOW_VERSIONS = [
 ]
 
 const SUCCESSFUL_WORKFLOW_DEPLOYMENT_PRECHECK = {
-  deployable: true,
   unsupported_nodes: [],
-  unsupported_tool_providers: [],
 }
 
 const WORKFLOW_DEPLOYMENT_OPTIONS: GetWorkflowDeploymentOptionsResponse = {
@@ -1350,9 +1348,24 @@ describe('AppDeploy', () => {
       'dev',
     )
     view.queryClient.setQueryData(precheckQuery.queryKey, {
-      deployable: false,
-      unsupported_nodes: [{ id: 'node-1', type: 'human-input' }],
-      unsupported_tool_providers: [],
+      unsupported_nodes: [
+        {
+          id: 'node-1',
+          title: 'Request approval',
+          type: 'human-input',
+        },
+        {
+          id: 'node-2',
+          provider: {
+            plugin_id: 'langgenius/notion',
+            provider_id: 'notion',
+            provider_name: 'Notion',
+            provider_type: 'mcp',
+          },
+          title: 'Notion MCP',
+          type: 'tool',
+        },
+      ],
     })
     view.queryClient.removeQueries({
       exact: true,
@@ -1369,9 +1382,10 @@ describe('AppDeploy', () => {
     const configurationDialog = await screen.findByRole('dialog', {
       name: 'deployments.studio.deployConfiguration',
     })
-    expect(await within(configurationDialog).findByRole('alert')).toHaveTextContent(
-      'human-input · node-1',
-    )
+    const precheckAlert = await within(configurationDialog).findByRole('alert')
+    expect(precheckAlert).toHaveTextContent('Request approval')
+    expect(precheckAlert).toHaveTextContent('Notion MCP')
+    expect(precheckAlert).not.toHaveTextContent('node-1')
     expect(
       within(configurationDialog).getByRole('button', { name: 'common.appMenus.deploy' }),
     ).toBeDisabled()

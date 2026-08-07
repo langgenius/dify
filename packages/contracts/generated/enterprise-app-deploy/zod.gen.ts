@@ -667,23 +667,22 @@ export const zUndeployWorkflowResponse = z.object({
   operation: zDeploymentOperationReceipt,
 })
 
+export const zUnsupportedNodeProvider = z.object({
+  plugin_id: z.string(),
+  provider_id: z.string(),
+  provider_type: z.string(),
+  provider_name: z.string(),
+})
+
 export const zUnsupportedNode = z.object({
   id: z.string(),
   type: z.string(),
-})
-
-export const zUnsupportedToolProvider = z.object({
-  node_id: z.string(),
-  provider_type: z.string(),
-  provider_id: z.string(),
-  provider_name: z.string(),
-  tool_name: z.string(),
+  title: z.string(),
+  provider: zUnsupportedNodeProvider.optional(),
 })
 
 export const zPrecheckWorkflowDeploymentResponse = z.object({
-  deployable: z.boolean(),
   unsupported_nodes: z.array(zUnsupportedNode),
-  unsupported_tool_providers: z.array(zUnsupportedToolProvider),
 })
 
 export const zUpdateEnvironmentDeployedAppCpuRequest = z.object({

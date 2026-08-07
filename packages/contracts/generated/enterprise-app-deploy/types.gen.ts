@@ -711,9 +711,7 @@ export type Operator = {
 }
 
 export type PrecheckWorkflowDeploymentResponse = {
-  deployable: boolean
   unsupported_nodes: Array<UnsupportedNode>
-  unsupported_tool_providers: Array<UnsupportedToolProvider>
 }
 
 export type PrepareAppDeletionRequest = {
@@ -804,14 +802,15 @@ export type UndeployWorkflowResponse = {
 export type UnsupportedNode = {
   id: string
   type: string
+  title: string
+  provider?: UnsupportedNodeProvider
 }
 
-export type UnsupportedToolProvider = {
-  node_id: string
-  provider_type: string
+export type UnsupportedNodeProvider = {
+  plugin_id: string
   provider_id: string
+  provider_type: string
   provider_name: string
-  tool_name: string
 }
 
 export type UpdateEnvironmentDeployedAppCpuRequest = {
