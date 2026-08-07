@@ -9,9 +9,7 @@ import {
 } from '@/test/console/query-data'
 import LicenseBadge from '../index'
 
-const renderLicenseBadge = (
-  license?: Parameters<typeof seedSystemFeaturesLicense>[1],
-) => {
+const renderLicenseBadge = (license?: Parameters<typeof seedSystemFeaturesLicense>[1]) => {
   const queryClient = createConsoleQueryClient()
   if (license) seedSystemFeaturesLicense(queryClient, license)
   else {
