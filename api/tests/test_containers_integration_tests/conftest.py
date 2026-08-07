@@ -41,7 +41,7 @@ SANDBOX_TEST_IMAGE_ENV = "DIFY_SANDBOX_TEST_IMAGE"
 class _CloserProtocol(Protocol):
     """_Closer is any type which implement the close() method."""
 
-    def close(self):
+    def close(self) -> None:
         """close the current object, release any external resouece (file, transaction, connection etc.)
         associated with it.
         """
@@ -67,7 +67,7 @@ class DifyTestContainers:
     caches, and search engines.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize container management with default configurations."""
         self.network: Network | None = None
         self.postgres: PostgresContainer | None = None
@@ -77,7 +77,7 @@ class DifyTestContainers:
         self._containers_started = False
         logger.info("DifyTestContainers initialized - ready to manage test containers")
 
-    def start_containers_with_env(self):
+    def start_containers_with_env(self) -> None:
         """
         Start all required containers for integration testing.
 
@@ -199,6 +199,8 @@ class DifyTestContainers:
         # Get container internal network addresses
         postgres_container_name = self.postgres.get_wrapped_container().name
         redis_container_name = self.redis.get_wrapped_container().name
+        assert postgres_container_name is not None
+        assert redis_container_name is not None
 
         self.dify_plugin_daemon.env = {
             "DB_HOST": postgres_container_name,  # Use container name for internal network communication
@@ -251,7 +253,7 @@ class DifyTestContainers:
         self._containers_started = True
         logger.info("All test containers started successfully")
 
-    def stop_containers(self):
+    def stop_containers(self) -> None:
         """
         Stop and clean up all test containers.
 
@@ -290,7 +292,7 @@ def _get_migration_dir() -> Path:
     return conftest_dir.parent.parent / "migrations"
 
 
-def _get_engine_url(engine: Engine):
+def _get_engine_url(engine: Engine) -> str:
     try:
         return engine.url.render_as_string(hide_password=False).replace("%", "%%")
     except AttributeError:
@@ -409,7 +411,7 @@ def set_up_containers_and_env() -> Generator[DifyTestContainers, None, None]:
 
 
 @pytest.fixture(scope="session")
-def flask_app_with_containers(set_up_containers_and_env) -> Flask:
+def flask_app_with_containers(set_up_containers_and_env: DifyTestContainers) -> Flask:
     """
     Session-scoped Flask application fixture using test containers.
 
@@ -422,6 +424,7 @@ def flask_app_with_containers(set_up_containers_and_env) -> Flask:
     Returns:
         Flask: Configured Flask application
     """
+    assert set_up_containers_and_env is _container_manager
     logger.info("=== Creating session-scoped Flask application ===")
     app = _create_app_with_containers()
     logger.info("Session-scoped Flask application created successfully")
@@ -552,6 +555,7 @@ def isolate_container_database(request: pytest.FixtureRequest) -> Generator[None
         return
 
     app = request.getfixturevalue("flask_app_with_containers")
+    assert isinstance(app, Flask)
     try:
         _truncate_container_database(app)
     finally:
@@ -559,7 +563,7 @@ def isolate_container_database(request: pytest.FixtureRequest) -> Generator[None
 
 
 @pytest.fixture(scope="package", autouse=True)
-def mock_ssrf_proxy_requests():
+def mock_ssrf_proxy_requests() -> Generator[None, None, None]:
     """
     Avoid outbound network during containerized tests by stubbing SSRF proxy helpers.
     """
@@ -568,7 +572,7 @@ def mock_ssrf_proxy_requests():
 
     import httpx
 
-    def _fake_request(method, url, **kwargs):
+    def _fake_request(method: str, url: str, **_kwargs: object) -> httpx.Response:
         request = httpx.Request(method=method, url=url)
         return httpx.Response(200, request=request, content=b"")
 

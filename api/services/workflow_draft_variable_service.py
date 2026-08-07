@@ -1,11 +1,11 @@
 import dataclasses
 import json
 import logging
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, Sequence, Set
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, ClassVar, NotRequired, TypedDict
+from typing import Any, ClassVar, NotRequired, TypedDict, cast, override
 
 from sqlalchemy import Engine, delete, orm, select
 from sqlalchemy.dialects.mysql import insert as mysql_insert
@@ -107,6 +107,7 @@ class DraftVarLoader(VariableLoader):
     def _selector_to_tuple(self, selector: Sequence[str]) -> tuple[str, str]:
         return (selector[0], selector[1])
 
+    @override
     def load_variables(self, selectors: list[list[str]]) -> list[VariableBase]:
         if not selectors:
             return []
@@ -124,10 +125,11 @@ class DraftVarLoader(VariableLoader):
         # can be safely accessed before any offloading logic is applied.
         for draft_var in draft_vars:
             value = draft_var.get_value()
-            if isinstance(value, FileSegment):
-                files.append(value.value)
-            elif isinstance(value, ArrayFileSegment):
-                files.extend(value.value)
+            match value:
+                case FileSegment():
+                    files.append(value.value)
+                case ArrayFileSegment():
+                    files.extend(value.value)
         with Session(bind=self._engine) as session:
             storage_key_loader = StorageKeyLoader(
                 session,
@@ -271,12 +273,20 @@ class WorkflowDraftVariableService:
         )
 
     def list_variables_without_values(
-        self, app_id: str, page: int, limit: int, user_id: str
+        self,
+        app_id: str,
+        page: int,
+        limit: int,
+        user_id: str,
+        *,
+        exclude_node_ids: Set[str] | None = None,
     ) -> WorkflowDraftVariableList:
         criteria = [
             WorkflowDraftVariable.app_id == app_id,
             WorkflowDraftVariable.user_id == user_id,
         ]
+        if exclude_node_ids:
+            criteria.append(WorkflowDraftVariable.node_id.notin_(list(exclude_node_ids)))
         total = None
         base_stmt = select(WorkflowDraftVariable).where(*criteria)
         if page == 1:
@@ -740,6 +750,7 @@ class _InsertionDict(TypedDict):
     file_id: str | None
     visible: NotRequired[bool]
     editable: NotRequired[bool]
+    is_default_value: NotRequired[bool]
     created_at: NotRequired[datetime]
     updated_at: NotRequired[datetime]
     description: NotRequired[str]
@@ -769,6 +780,8 @@ def _model_to_insertion_dict(model: WorkflowDraftVariable) -> _InsertionDict:
         d["updated_at"] = model.updated_at
     if model.description is not None:
         d["description"] = model.description
+    if model.is_default_value is not None:
+        d["is_default_value"] = model.is_default_value
     return d
 
 
@@ -810,6 +823,8 @@ _FILENAME_TRANS_TABLE = _make_filename_trans_table()
 
 
 class DraftVariableSaver:
+    """Persist draft outputs under the tenant that owns the app or pipeline."""
+
     # _DUMMY_OUTPUT_IDENTITY is a placeholder output for workflow nodes.
     # Its sole possible value is `None`.
     #
@@ -828,6 +843,10 @@ class DraftVariableSaver:
 
     # Database session used for persisting draft variables.
     _session: Session
+
+    # Resource owner tenant. An account's current tenant may be unset or point elsewhere
+    # when draft variables are persisted by an asynchronous workflow execution.
+    _tenant_id: str
 
     # The application ID associated with the draft variables.
     # This should match the `Workflow.app_id` of the workflow to which the current node belongs.
@@ -854,6 +873,7 @@ class DraftVariableSaver:
     def __init__(
         self,
         session: Session,
+        tenant_id: str,
         app_id: str,
         node_id: str,
         node_type: NodeType,
@@ -865,18 +885,13 @@ class DraftVariableSaver:
         # WorkflowNodeExecutionModel/WorkflowNodeExecution, not their `node_execution_id`
         # field. These are distinct database fields with different purposes.
         self._session = session
+        self._tenant_id = tenant_id
         self._app_id = app_id
         self._node_id = node_id
         self._node_type = node_type
         self._node_execution_id = node_execution_id
         self._user = user
         self._enclosing_node_id = enclosing_node_id
-
-    def _resolve_app_tenant_id(self) -> str:
-        tenant_id = self._session.scalar(select(App.tenant_id).where(App.id == self._app_id))
-        if not tenant_id:
-            raise ValueError(f"Unable to resolve tenant_id for app {self._app_id}")
-        return tenant_id
 
     def _create_dummy_output_variable(self):
         return WorkflowDraftVariable.new_node_variable(
@@ -936,11 +951,10 @@ class DraftVariableSaver:
                 if name == SystemVariableKey.FILES:
                     # Here we know the type of variable must be `array[file]`, we
                     # just rebuild files from the serialized payload.
-                    tenant_id = self._resolve_app_tenant_id()
                     files = [
                         build_file_from_stored_mapping(
                             file_mapping=v,
-                            tenant_id=tenant_id,
+                            tenant_id=self._tenant_id,
                         )
                         for v in value
                     ]
@@ -1060,9 +1074,10 @@ class DraftVariableSaver:
             original_length = len(value_seg.value)
 
         # Prepare content for storage
+        original_content_serialized: str
         if isinstance(value_seg, StringSegment):
             # For string types, store as plain text
-            original_content_serialized = value_seg.value
+            original_content_serialized = cast(str, value_seg.value)
             content_type = "text/plain"
             filename = f"{self._generate_filename(name)}.txt"
         else:
@@ -1082,8 +1097,8 @@ class DraftVariableSaver:
             content=original_content_serialized.encode(),
             mimetype=content_type,
             user=self._user,
+            tenant_id=self._tenant_id,
         )
-        assert self._user.current_tenant_id
         # Create WorkflowDraftVariableFile record
         variable_file = WorkflowDraftVariableFile(
             upload_file_id=upload_file.id,
@@ -1091,7 +1106,7 @@ class DraftVariableSaver:
             length=original_length,
             value_type=value_seg.value_type,
             app_id=self._app_id,
-            tenant_id=self._user.current_tenant_id,
+            tenant_id=self._tenant_id,
             user_id=self._user.id,
         )
         variable_file.id = str(uuidv7())

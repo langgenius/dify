@@ -1,7 +1,7 @@
-import { Flags } from '../../../../framework/flags.js'
-import { DifyCommand } from '../../../_shared/dify-command.js'
-import { httpRetryFlag } from '../../../_shared/global-flags.js'
-import { runDevicesList } from '../_shared/devices.js'
+import { DifyCommand } from '@/commands/_shared/dify-command'
+import { httpRetryFlag } from '@/commands/_shared/global-flags'
+import { runDevicesList } from '@/commands/auth/devices/_shared/devices'
+import { Flags } from '@/framework/flags'
 
 export default class DevicesList extends DifyCommand {
   static override description = 'List active sessions for the current bearer'
@@ -14,9 +14,9 @@ export default class DevicesList extends DifyCommand {
 
   static override flags = {
     'http-retry': httpRetryFlag,
-    'json': Flags.boolean({ description: 'emit JSON', default: false }),
-    'page': Flags.integer({ description: 'page number', default: 1 }),
-    'limit': Flags.string({ description: 'page size [1..200]' }),
+    json: Flags.boolean({ description: 'emit JSON', default: false }),
+    page: Flags.integer({ description: 'page number', default: 1 }),
+    limit: Flags.string({ description: 'page size [1..200]' }),
   }
 
   async run(argv: string[]): Promise<void> {
@@ -25,7 +25,7 @@ export default class DevicesList extends DifyCommand {
     const ctx = await this.authedCtx({ retryFlag: flags['http-retry'], format })
     await runDevicesList({
       io: ctx.io,
-      bundle: ctx.bundle,
+      tokenId: ctx.active.ctx.token_id ?? '',
       http: ctx.http,
       json: flags.json,
       page: flags.page,

@@ -20,7 +20,7 @@ export type TagBindingRemovePayload = {
   type: TagType
 }
 
-export type TagType = 'app' | 'knowledge'
+export type TagType = 'app' | 'knowledge' | 'snippet'
 
 export type PostTagBindingsData = {
   body: TagBindingPayload
@@ -46,5 +46,5 @@ export type PostTagBindingsRemoveResponses = {
   200: SimpleResultResponse
 }
 
-export type PostTagBindingsRemoveResponse
-  = PostTagBindingsRemoveResponses[keyof PostTagBindingsRemoveResponses]
+export type PostTagBindingsRemoveResponse =
+  PostTagBindingsRemoveResponses[keyof PostTagBindingsRemoveResponses]

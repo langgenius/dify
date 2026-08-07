@@ -6,9 +6,12 @@ lookup through the real Testcontainers PostgreSQL session factory instead of a
 patched session_factory mock.
 """
 
+from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
+from _pytest.logging import LogCaptureFixture
+from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
 from models.account import Account
@@ -26,14 +29,16 @@ def _create_account(db_session: Session, *, email: str = "user@example.com") -> 
 
 
 @pytest.fixture
-def mock_external_dependencies(mocker):
+def mock_external_dependencies(mocker: MockerFixture) -> tuple[MagicMock, MagicMock]:
     billing_service = mocker.patch("tasks.delete_account_task.BillingService")
     mail_task = mocker.patch("tasks.delete_account_task.send_deletion_success_task")
     return billing_service, mail_task
 
 
 def test_billing_enabled_account_exists_calls_billing_and_sends_email(
-    db_session_with_containers: Session, mock_external_dependencies, mocker
+    db_session_with_containers: Session,
+    mock_external_dependencies: tuple[MagicMock, MagicMock],
+    mocker: MockerFixture,
 ) -> None:
     billing_service, mail_task = mock_external_dependencies
     account = _create_account(db_session_with_containers, email="a@b.com")
@@ -46,7 +51,9 @@ def test_billing_enabled_account_exists_calls_billing_and_sends_email(
 
 
 def test_billing_disabled_account_exists_sends_email_only(
-    db_session_with_containers: Session, mock_external_dependencies, mocker
+    db_session_with_containers: Session,
+    mock_external_dependencies: tuple[MagicMock, MagicMock],
+    mocker: MockerFixture,
 ) -> None:
     billing_service, mail_task = mock_external_dependencies
     account = _create_account(db_session_with_containers, email="x@y.com")
@@ -58,7 +65,9 @@ def test_billing_disabled_account_exists_sends_email_only(
     mail_task.delay.assert_called_once_with(account.email)
 
 
-def test_billing_enabled_account_not_found_calls_billing_no_email(mock_external_dependencies, mocker, caplog) -> None:
+def test_billing_enabled_account_not_found_calls_billing_no_email(
+    mock_external_dependencies: tuple[MagicMock, MagicMock], mocker: MockerFixture, caplog: LogCaptureFixture
+) -> None:
     billing_service, mail_task = mock_external_dependencies
     account_id = str(uuid4())
     mocker.patch("tasks.delete_account_task.dify_config.BILLING_ENABLED", True)
@@ -71,7 +80,9 @@ def test_billing_enabled_account_not_found_calls_billing_no_email(mock_external_
 
 
 def test_billing_delete_raises_propagates_and_no_email(
-    db_session_with_containers: Session, mock_external_dependencies, mocker
+    db_session_with_containers: Session,
+    mock_external_dependencies: tuple[MagicMock, MagicMock],
+    mocker: MockerFixture,
 ) -> None:
     billing_service, mail_task = mock_external_dependencies
     account = _create_account(db_session_with_containers, email="err@example.com")

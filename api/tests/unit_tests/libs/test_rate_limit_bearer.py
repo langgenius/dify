@@ -11,6 +11,8 @@ from werkzeug.exceptions import TooManyRequests
 from libs.helper import RateLimiter
 from libs.rate_limit import (
     LIMIT_BEARER_PER_TOKEN,
+    RateLimit,
+    RateLimitScope,
     enforce_bearer_rate_limit,
 )
 
@@ -67,8 +69,17 @@ def test_enforce_bearer_rate_limit_raises_429_with_retry_after(mock_build):
     mock_build.return_value = limiter
     with pytest.raises(TooManyRequests) as exc:
         enforce_bearer_rate_limit("hash-1")
-    headers = dict(exc.value.get_response().headers)
-    assert headers.get("Retry-After") == "23"
-    body = exc.value.get_response().get_json() or {}
-    assert body.get("error") == "rate_limited"
-    assert body.get("retry_after_ms") == 23000
+    # Header-only TooManyRequests: the canonical ErrorBody (code "too_many_requests") is built
+    # later by the openapi formatter; here we only assert the advisory header rides along.
+    assert dict(exc.value.headers).get("Retry-After") == "23"
+
+
+@patch("libs.rate_limit._build_limiter")
+def test_enforce_bearer_rate_limit_disabled_when_limit_is_zero(mock_build, monkeypatch: pytest.MonkeyPatch):
+    # 0 disables the limit — short-circuit before building/consulting a limiter.
+    monkeypatch.setattr(
+        "libs.rate_limit.LIMIT_BEARER_PER_TOKEN",
+        RateLimit(limit=0, window=timedelta(minutes=1), scopes=(RateLimitScope.TOKEN_ID,)),
+    )
+    enforce_bearer_rate_limit("hash-1")
+    mock_build.assert_not_called()

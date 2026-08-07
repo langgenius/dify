@@ -34,11 +34,11 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from enum import IntEnum, StrEnum
-from typing import Protocol, cast
+from typing import Protocol, cast, override
 
 import sqlalchemy as sa
 from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, defer
 from sqlalchemy.sql import select
 
 from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
@@ -337,9 +337,11 @@ class _ThreadSafeLineWriter(io.TextIOBase):
         self._lock = threading.Lock()
         self._local = threading.local()
 
+    @override
     def writable(self) -> bool:
         return True
 
+    @override
     def write(self, text: str) -> int:
         if not text:
             return 0
@@ -356,6 +358,7 @@ class _ThreadSafeLineWriter(io.TextIOBase):
         self._buffer = remainder
         return len(text)
 
+    @override
     def flush(self) -> None:
         buffered_text = self._buffer
         if buffered_text:
@@ -744,6 +747,7 @@ class Migration:
         with _session_factory(self._engine) as session:
             stmt = (
                 select(ProviderModel, raw_model_type)
+                .options(defer(ProviderModel.model_type))
                 .where(
                     ProviderModel.tenant_id == self._tenant_id,
                     sa.type_coerce(ProviderModel.model_type, sa.String()).in_(self._selected_legacy_values()),
@@ -784,6 +788,7 @@ class Migration:
         raw_model_type = sa.type_coerce(ProviderModel.model_type, sa.String()).label(_RAW_MODEL_TYPE_COLUMN)
         stmt = (
             select(ProviderModel, raw_model_type)
+            .options(defer(ProviderModel.model_type))
             .where(
                 ProviderModel.tenant_id == candidate.row.tenant_id,
                 ProviderModel.provider_name == candidate.row.provider_name,
@@ -980,6 +985,7 @@ class Migration:
         with _session_factory(self._engine) as session:
             stmt = (
                 select(TenantDefaultModel, raw_model_type)
+                .options(defer(TenantDefaultModel.model_type))
                 .where(
                     TenantDefaultModel.tenant_id == self._tenant_id,
                     sa.type_coerce(TenantDefaultModel.model_type, sa.String()).in_(self._selected_legacy_values()),
@@ -1020,6 +1026,7 @@ class Migration:
         raw_model_type = sa.type_coerce(TenantDefaultModel.model_type, sa.String()).label(_RAW_MODEL_TYPE_COLUMN)
         stmt = (
             select(TenantDefaultModel, raw_model_type)
+            .options(defer(TenantDefaultModel.model_type))
             .where(
                 TenantDefaultModel.tenant_id == candidate.row.tenant_id,
                 sa.type_coerce(TenantDefaultModel.model_type, sa.String()).in_(
@@ -1190,6 +1197,7 @@ class Migration:
         with _session_factory(self._engine) as session:
             stmt = (
                 select(ProviderModelSetting, raw_model_type)
+                .options(defer(ProviderModelSetting.model_type))
                 .where(
                     ProviderModelSetting.tenant_id == self._tenant_id,
                     sa.type_coerce(ProviderModelSetting.model_type, sa.String()).in_(self._selected_legacy_values()),
@@ -1230,6 +1238,7 @@ class Migration:
         raw_model_type = sa.type_coerce(ProviderModelSetting.model_type, sa.String()).label(_RAW_MODEL_TYPE_COLUMN)
         stmt = (
             select(ProviderModelSetting, raw_model_type)
+            .options(defer(ProviderModelSetting.model_type))
             .where(
                 ProviderModelSetting.tenant_id == candidate.row.tenant_id,
                 ProviderModelSetting.provider_name == candidate.row.provider_name,
@@ -1434,6 +1443,7 @@ class Migration:
         with _session_factory(self._engine) as session:
             stmt = (
                 select(LoadBalancingModelConfig, raw_model_type)
+                .options(defer(LoadBalancingModelConfig.model_type))
                 .where(
                     LoadBalancingModelConfig.tenant_id == self._tenant_id,
                     LoadBalancingModelConfig.name == "__inherit__",
@@ -1482,6 +1492,7 @@ class Migration:
         raw_model_type = sa.type_coerce(LoadBalancingModelConfig.model_type, sa.String()).label(_RAW_MODEL_TYPE_COLUMN)
         stmt = (
             select(LoadBalancingModelConfig, raw_model_type)
+            .options(defer(LoadBalancingModelConfig.model_type))
             .where(
                 LoadBalancingModelConfig.tenant_id == candidate.row.tenant_id,
                 LoadBalancingModelConfig.provider_name == candidate.row.provider_name,
@@ -1614,6 +1625,7 @@ class Migration:
         with _session_factory(self._engine) as session:
             stmt = (
                 select(LoadBalancingModelConfig, raw_model_type)
+                .options(defer(LoadBalancingModelConfig.model_type))
                 .where(
                     LoadBalancingModelConfig.tenant_id == self._tenant_id,
                     sa.type_coerce(LoadBalancingModelConfig.model_type, sa.String()).in_(
@@ -1657,9 +1669,13 @@ class Migration:
         lock_rows: bool,
     ) -> _RowWithRawModelType[LoadBalancingModelConfig] | None:
         raw_model_type = sa.type_coerce(LoadBalancingModelConfig.model_type, sa.String()).label(_RAW_MODEL_TYPE_COLUMN)
-        stmt = select(LoadBalancingModelConfig, raw_model_type).where(
-            LoadBalancingModelConfig.id == candidate.row.id,
-            LoadBalancingModelConfig.tenant_id == self._tenant_id,
+        stmt = (
+            select(LoadBalancingModelConfig, raw_model_type)
+            .options(defer(LoadBalancingModelConfig.model_type))
+            .where(
+                LoadBalancingModelConfig.id == candidate.row.id,
+                LoadBalancingModelConfig.tenant_id == self._tenant_id,
+            )
         )
         if lock_rows:
             stmt = stmt.with_for_update()
@@ -1815,6 +1831,7 @@ class Migration:
         with _session_factory(self._engine) as session:
             stmt = (
                 select(ProviderModelCredential, raw_model_type)
+                .options(defer(ProviderModelCredential.model_type))
                 .where(
                     ProviderModelCredential.tenant_id == self._tenant_id,
                     sa.type_coerce(ProviderModelCredential.model_type, sa.String()).in_(self._selected_legacy_values()),
@@ -1855,6 +1872,7 @@ class Migration:
         raw_model_type = sa.type_coerce(ProviderModelCredential.model_type, sa.String()).label(_RAW_MODEL_TYPE_COLUMN)
         stmt = (
             select(ProviderModelCredential, raw_model_type)
+            .options(defer(ProviderModelCredential.model_type))
             .where(
                 ProviderModelCredential.tenant_id == candidate.row.tenant_id,
                 ProviderModelCredential.provider_name == candidate.row.provider_name,
@@ -2144,6 +2162,7 @@ class Migration:
 
         stmt = (
             select(ProviderModel)
+            .options(defer(ProviderModel.model_type))
             .where(
                 ProviderModel.tenant_id == self._tenant_id,
                 ProviderModel.credential_id.in_(loser_ids),
@@ -2179,6 +2198,7 @@ class Migration:
 
         stmt = (
             select(LoadBalancingModelConfig)
+            .options(defer(LoadBalancingModelConfig.model_type))
             .where(
                 LoadBalancingModelConfig.tenant_id == self._tenant_id,
                 LoadBalancingModelConfig.credential_id.in_(loser_ids),
@@ -2292,9 +2312,14 @@ class Migration:
 
     def _row_to_dict(self, row: TypeBase, *, raw_model_type: str | None = None) -> dict[str, object]:
         mapper = sa.inspect(row).mapper
-        row_dict = {column.key: row.__dict__[column.key] for column in mapper.column_attrs}
-        if raw_model_type is not None and "model_type" in row_dict:
-            row_dict["model_type"] = raw_model_type
+        row_dict = {
+            column.key: (
+                raw_model_type
+                if column.key == "model_type" and raw_model_type is not None
+                else row.__dict__[column.key]
+            )
+            for column in mapper.column_attrs
+        }
         return _normalize_log_mapping(row_dict)
 
     def _log_row_deleted[T: TypeBase](

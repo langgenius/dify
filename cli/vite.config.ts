@@ -1,9 +1,16 @@
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite-plus'
 import { resolveBuildInfo } from './scripts/lib/resolve-buildinfo.js'
 
 const buildInfo = resolveBuildInfo()
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+      '@test': fileURLToPath(new URL('./test', import.meta.url)),
+    },
+  },
   pack: {
     entry: ['src/index.ts', 'src/commands/**/*.ts', 'src/framework/**/*.ts'],
     format: ['esm'],
@@ -27,6 +34,7 @@ export default defineConfig({
     environment: 'node',
     setupFiles: ['./test/setup.ts'],
     include: ['test/**/*.test.ts', 'src/**/*.test.ts', 'scripts/**/*.test.ts'],
+    exclude: ['**/node_modules/**', '**/dist/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'text-summary', 'json'],

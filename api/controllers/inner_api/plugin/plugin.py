@@ -1,5 +1,8 @@
 from flask_restx import Resource
+from sqlalchemy.orm import Session
 
+from configs import dify_config
+from controllers.console.app.wraps import with_session
 from controllers.console.wraps import setup_required
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.plugin.wraps import get_user_tenant, plugin_data
@@ -25,14 +28,17 @@ from core.plugin.entities.request import (
     RequestInvokeTextEmbedding,
     RequestInvokeTool,
     RequestInvokeTTS,
+    RequestRequestDownloadFile,
     RequestRequestUploadFile,
 )
 from core.tools.entities.tool_entities import ToolProviderType
-from core.tools.signature import get_signed_file_url_for_plugin
+from core.tools.signature import bind_file_uri, get_signed_file_uri_for_plugin
+from extensions.ext_database import db
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.helper import length_prefixed_response
 from models import Account, Tenant
 from models.model import EndUser
+from services.file_request_service import FileRequestService
 
 
 @inner_api_ns.route("/invoke/llm")
@@ -233,10 +239,12 @@ class PluginInvokeToolApi(Resource):
             404: "Service not available",
         }
     )
-    def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeTool):
+    @with_session
+    def post(self, session: Session, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeTool):
         def generator():
             return PluginToolBackwardsInvocation.convert_to_event_stream(
                 PluginToolBackwardsInvocation.invoke_tool(
+                    session=session,
                     tenant_id=tenant_model.id,
                     user_id=user_model.id,
                     tool_type=ToolProviderType.value_of(payload.tool_type),
@@ -331,8 +339,10 @@ class PluginInvokeAppApi(Resource):
             404: "Service not available",
         }
     )
-    def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeApp):
+    @with_session
+    def post(self, session: Session, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeApp):
         response = PluginAppBackwardsInvocation.invoke_app(
+            session=session,
             app_id=payload.app_id,
             user_id=user_model.id,
             tenant_id=tenant_model.id,
@@ -420,13 +430,61 @@ class PluginUploadFileRequestApi(Resource):
     )
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestRequestUploadFile):
         # generate signed url
-        url = get_signed_file_url_for_plugin(
+        uri = get_signed_file_uri_for_plugin(
             filename=payload.filename,
             mimetype=payload.mimetype,
             tenant_id=tenant_model.id,
             user_id=user_model.id,
+            conversation_id=payload.conversation_id,
         )
+        url = bind_file_uri(uri, dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL)
         return BaseBackwardsInvocationResponse(data={"url": url}).model_dump()
+
+
+@inner_api_ns.route("/download/file/request")
+class PluginDownloadFileRequestApi(Resource):
+    @setup_required
+    @plugin_inner_api_only
+    @plugin_data(payload_type=RequestRequestDownloadFile)
+    @inner_api_ns.doc("plugin_download_file_request")
+    @inner_api_ns.doc(description="Request signed URL for file download through plugin interface")
+    @inner_api_ns.doc(
+        responses={
+            200: "Signed URL generated successfully",
+            401: "Unauthorized - invalid API key",
+            404: "Service not available",
+        }
+    )
+    def post(self, payload: RequestRequestDownloadFile):
+        """Adapt a shared file request result to the Plugin backward contract.
+
+        ``FileRequestService`` rebuilds the caller's ``FileAccessScope`` and
+        resolves one origin-free signed URI. This controller binds that URI to
+        the Plugin-selected external or internal files base URL, then returns
+        the existing backward-invocation envelope.
+        """
+        tenant_model = db.session.get(Tenant, payload.tenant_id)
+        if tenant_model is None:
+            raise ValueError("tenant not found")
+
+        result = FileRequestService().request_download(
+            tenant_id=tenant_model.id,
+            user_id=payload.user_id,
+            user_from=payload.user_from,
+            invoke_from=payload.invoke_from,
+            file_mapping=payload.file.model_dump(mode="python", exclude_none=True),
+        )
+        base_url = (
+            dify_config.FILES_URL if payload.for_external else (dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL)
+        )
+        return BaseBackwardsInvocationResponse(
+            data={
+                "filename": result.filename,
+                "mime_type": result.mime_type,
+                "size": result.size,
+                "download_url": bind_file_uri(result.download_uri, base_url),
+            }
+        ).model_dump()
 
 
 @inner_api_ns.route("/fetch/app/info")

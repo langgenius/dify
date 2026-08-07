@@ -1,12 +1,21 @@
-import type { Emoji, WorkflowToolProviderOutputParameter, WorkflowToolProviderParameter, WorkflowToolProviderRequest, WorkflowToolProviderResponse } from '@/app/components/tools/types'
+import type {
+  Emoji,
+  WorkflowToolProviderOutputParameter,
+  WorkflowToolProviderParameter,
+  WorkflowToolProviderRequest,
+  WorkflowToolProviderResponse,
+} from '@/app/components/tools/types'
 import type { InputVar, Variable } from '@/app/components/workflow/types'
 import type { PublishWorkflowParams } from '@/types/workflow'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useAppContext } from '@/context/app-context'
 import { createWorkflowToolProvider, saveWorkflowToolProvider } from '@/service/tools'
-import { useInvalidateAllWorkflowTools, useInvalidateWorkflowToolDetailByAppID, useWorkflowToolDetailByAppID } from '@/service/use-tools'
+import {
+  useInvalidateAllWorkflowTools,
+  useInvalidateWorkflowToolDetailByAppID,
+  useWorkflowToolDetailByAppID,
+} from '@/service/use-tools'
 
 // region Pure helpers
 
@@ -18,27 +27,22 @@ export function isParametersOutdated(
   detail: WorkflowToolProviderResponse | undefined,
   inputs: InputVar[] | undefined,
 ): boolean {
-  if (!detail)
-    return false
-  if (detail.tool.parameters.length !== (inputs?.length ?? 0))
-    return true
+  if (!detail) return false
+  if (detail.tool.parameters.length !== (inputs?.length ?? 0)) return true
 
   for (const item of inputs || []) {
-    const param = detail.tool.parameters.find(p => p.name === item.variable)
-    if (!param)
-      return true
-    if (param.required !== item.required)
-      return true
+    const param = detail.tool.parameters.find((p) => p.name === item.variable)
+    if (!param) return true
+    if (param.required !== item.required) return true
     const needsStringType = item.type === 'paragraph' || item.type === 'text-input'
-    if (needsStringType && param.type !== 'string')
-      return true
+    if (needsStringType && param.type !== 'string') return true
   }
 
   return false
 }
 
 function buildNewParameters(inputs?: InputVar[]): WorkflowToolProviderParameter[] {
-  return (inputs || []).map(item => ({
+  return (inputs || []).map((item) => ({
     name: item.variable,
     description: '',
     form: 'llm',
@@ -52,7 +56,7 @@ function buildExistingParameters(
   detail: WorkflowToolProviderResponse,
 ): WorkflowToolProviderParameter[] {
   return (inputs || []).map((item) => {
-    const matched = detail.tool.parameters.find(p => p.name === item.variable)
+    const matched = detail.tool.parameters.find((p) => p.name === item.variable)
     return {
       name: item.variable,
       required: item.required,
@@ -64,7 +68,7 @@ function buildExistingParameters(
 }
 
 function buildNewOutputParameters(outputs?: Variable[]): WorkflowToolProviderOutputParameter[] {
-  return (outputs || []).map(item => ({
+  return (outputs || []).map((item) => ({
     name: item.variable,
     description: '',
     type: item.value_type,
@@ -119,10 +123,12 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
   } = options
 
   const { t } = useTranslation()
-  const { isCurrentWorkspaceManager } = useAppContext()
 
   // Data fetching via React Query
-  const { data: detail, isLoading } = useWorkflowToolDetailByAppID(workflowAppId, enabled && published)
+  const { data: detail, isLoading } = useWorkflowToolDetailByAppID(
+    workflowAppId,
+    enabled && published,
+  )
 
   // Invalidation functions (store in ref for stable effect dependency)
   const invalidateDetail = useInvalidateWorkflowToolDetailByAppID()
@@ -133,15 +139,11 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
 
   // Refetch when detailNeedUpdate becomes true
   useEffect(() => {
-    if (enabled && detailNeedUpdate)
-      invalidateDetailRef.current(workflowAppId)
+    if (enabled && detailNeedUpdate) invalidateDetailRef.current(workflowAppId)
   }, [detailNeedUpdate, enabled, workflowAppId])
 
   // Computed values
-  const outdated = useMemo(
-    () => isParametersOutdated(detail, inputs),
-    [detail, inputs],
-  )
+  const outdated = useMemo(() => isParametersOutdated(detail, inputs), [detail, inputs])
 
   const payload = useMemo(() => {
     const hasPublishedDetail = published && detail?.tool
@@ -180,18 +182,20 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
       invalidateAllWorkflowTools()
       onRefreshData?.()
       invalidateDetail(workflowAppId)
-      toast.success(t('api.actionSuccess', { ns: 'common' }))
+      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
       onConfigured?.()
-    }
-    catch (e) {
+    } catch (e) {
       toast.error((e as Error).message)
     }
   }
 
-  const handleUpdate = async (data: WorkflowToolProviderRequest & Partial<{
-    workflow_app_id: string
-    workflow_tool_id: string
-  }>) => {
+  const handleUpdate = async (
+    data: WorkflowToolProviderRequest &
+      Partial<{
+        workflow_app_id: string
+        workflow_tool_id: string
+      }>,
+  ) => {
     try {
       await handlePublish()
       await saveWorkflowToolProvider(data)
@@ -199,8 +203,7 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
       invalidateAllWorkflowTools()
       invalidateDetail(workflowAppId)
       onConfigured?.()
-    }
-    catch (e) {
+    } catch (e) {
       toast.error((e as Error).message)
     }
   }
@@ -209,7 +212,6 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
     isLoading,
     outdated,
     payload,
-    isCurrentWorkspaceManager,
     handleCreate,
     handleUpdate,
   }

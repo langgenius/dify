@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { RadioGroup } from '@langgenius/dify-ui/radio'
 import { RiDatabase2Line, RiFileList3Line, RiRocketLine } from '@remixicon/react'
 import { useState } from 'react'
 import RadioCard from '.'
@@ -11,7 +11,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Radio card for rich single-choice options. Put selectable cards inside `RadioGroup`; the card passes radio props through to `RadioRoot` and uses `RadioControl` for the visual dot.',
+        component:
+          'Radio card for rich single-choice options. Put selectable cards inside `RadioGroup`; the card passes radio props through to `RadioItem` and uses `RadioControl` for the visual dot.',
       },
     },
   },
@@ -59,7 +60,7 @@ function SelectableCardsDemo() {
       onValueChange={setSelected}
       className="w-110 flex-col items-stretch gap-2"
     >
-      {options.map(option => (
+      {options.map((option) => (
         <RadioCard
           key={option.value}
           value={option.value}
@@ -87,12 +88,12 @@ export const StaticInfoCard: Story = {
         iconBgClassName="bg-indigo-100"
         title="Current Retrieval Method"
         description="This card summarizes the active method and is not a selectable radio option."
-        chosenConfig={(
+        chosenConfig={
           <div className="flex gap-6 system-xs-regular text-text-tertiary">
             <span>Top K: 5</span>
             <span>Score: 0.8</span>
           </div>
-        )}
+        }
       />
     </div>
   ),

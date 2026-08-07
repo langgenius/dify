@@ -289,6 +289,7 @@ class TestFeedbackExportApi:
 
         # Verify service was called with correct parameters
         mock_export_feedbacks.assert_called_once_with(
+            mock.ANY,
             app_id=mock_app_model.id,
             from_source=FeedbackFromSource.USER,
             rating=FeedbackRating.DISLIKE,

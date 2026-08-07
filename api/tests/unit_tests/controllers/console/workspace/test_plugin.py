@@ -1,4 +1,7 @@
 import io
+from datetime import datetime
+from inspect import unwrap
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -9,12 +12,14 @@ from werkzeug.exceptions import Forbidden
 from controllers.console.workspace.plugin import (
     PluginAssetApi,
     PluginAutoUpgradeExcludePluginApi,
+    PluginCategoryListApi,
+    PluginChangeAutoUpgradeApi,
     PluginChangePermissionApi,
-    PluginChangePreferencesApi,
     PluginDebuggingKeyApi,
     PluginDeleteAllInstallTaskItemsApi,
     PluginDeleteInstallTaskApi,
     PluginDeleteInstallTaskItemApi,
+    PluginFetchAutoUpgradeApi,
     PluginFetchDynamicSelectOptionsApi,
     PluginFetchDynamicSelectOptionsWithCredentialsApi,
     PluginFetchInstallTaskApi,
@@ -22,8 +27,8 @@ from controllers.console.workspace.plugin import (
     PluginFetchManifestApi,
     PluginFetchMarketplacePkgApi,
     PluginFetchPermissionApi,
-    PluginFetchPreferencesApi,
     PluginIconApi,
+    PluginInstalledIdsApi,
     PluginInstallFromGithubApi,
     PluginInstallFromMarketplaceApi,
     PluginInstallFromPkgApi,
@@ -37,23 +42,309 @@ from controllers.console.workspace.plugin import (
     PluginUploadFromBundleApi,
     PluginUploadFromGithubApi,
     PluginUploadFromPkgApi,
+    _list_hardcoded_builtin_tool_providers,
 )
+from core.plugin.entities.parameters import PluginParameterOption
+from core.plugin.entities.plugin import PluginCategory, PluginDeclaration, PluginEntity, PluginInstallation
+from core.plugin.entities.plugin_daemon import PluginInstallTask
 from core.plugin.impl.exc import PluginDaemonClientSideError
-from models.account import TenantPluginAutoUpgradeStrategy, TenantPluginPermission
+from core.plugin.plugin_service import PluginService
+from core.tools.entities.api_entities import ToolProviderApiEntity
+from core.tools.entities.common_entities import I18nObject
+from core.tools.entities.tool_entities import ToolProviderType
+from models.account import (
+    Account,
+    TenantAccountRole,
+    TenantPluginAutoUpgradeCategory,
+    TenantPluginAutoUpgradeMode,
+    TenantPluginAutoUpgradeStrategySetting,
+    TenantPluginDebugPermission,
+    TenantPluginInstallPermission,
+)
 
 
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
+def _plugin_category_list_item(category: str = "tool") -> dict[str, Any]:
+    now = datetime(2023, 1, 1, 0, 0, 0)
+    return {
+        "id": "entity-1",
+        "created_at": now,
+        "updated_at": now,
+        "tenant_id": "t1",
+        "endpoints_setups": 0,
+        "endpoints_active": 0,
+        "runtime_type": "remote",
+        "source": "marketplace",
+        "meta": {},
+        "plugin_id": "test-author/test-plugin",
+        "plugin_unique_identifier": "test-author/test-plugin:1.0.0@checksum",
+        "version": "1.0.0",
+        "checksum": "checksum",
+        "name": "test-plugin",
+        "installation_id": "entity-1",
+        "declaration": {
+            "version": "1.0.0",
+            "author": "test-author",
+            "name": "test-plugin",
+            "description": {"en_US": "Test plugin"},
+            "icon": "icon.svg",
+            "label": {"en_US": "Test Plugin"},
+            "category": category,
+            "created_at": now,
+            "resource": {"memory": 268435456, "permission": None},
+            "plugins": {"tools": ["provider/test.yaml"]},
+            "meta": {"version": "1.0.0"},
+            "tool": {
+                "identity": {
+                    "author": "test-author",
+                    "name": "test-plugin",
+                    "description": {"en_US": "Test plugin"},
+                    "icon": "icon.svg",
+                    "label": {"en_US": "Test Plugin"},
+                }
+            },
+        },
+    }
+
+
+def _builtin_tool_provider_item() -> dict[str, Any]:
+    return {
+        "id": "builtin",
+        "author": "dify",
+        "name": "builtin",
+        "plugin_id": "",
+        "plugin_unique_identifier": "",
+        "description": {"en_US": "Builtin tool provider"},
+        "icon": "icon.svg",
+        "icon_dark": "",
+        "label": {"en_US": "Builtin"},
+        "type": "builtin",
+        "team_credentials": {},
+        "is_team_authorization": False,
+        "allow_delete": True,
+        "tools": [],
+        "labels": [],
+    }
+
+
+def _plugin_declaration_payload() -> dict[str, Any]:
+    return {
+        "version": "1.2.3",
+        "author": "langgenius",
+        "name": "demo_plugin",
+        "description": {"en_US": "Demo plugin"},
+        "icon": "icon.svg",
+        "icon_dark": None,
+        "label": {"en_US": "Demo Plugin"},
+        "created_at": "2024-01-02T03:04:05",
+        "resource": {"memory": 268435456, "permission": None},
+        "plugins": {"tools": ["provider/demo.yaml"]},
+        "tags": ["search", "demo"],
+        "repo": "https://github.com/langgenius/demo",
+        "verified": True,
+        "meta": {"minimum_dify_version": "0.15.0", "version": "1.2.3"},
+    }
+
+
+def _expected_i18n(en_us: str) -> dict[str, str]:
+    return {"en_US": en_us, "zh_Hans": en_us, "pt_BR": en_us, "ja_JP": en_us}
+
+
+def _expected_plugin_declaration_dump() -> dict[str, Any]:
+    return {
+        "version": "1.2.3",
+        "author": "langgenius",
+        "name": "demo_plugin",
+        "description": _expected_i18n("Demo plugin"),
+        "icon": "icon.svg",
+        "icon_dark": None,
+        "label": _expected_i18n("Demo Plugin"),
+        "category": "extension",
+        "created_at": "2024-01-02T03:04:05",
+        "resource": {"memory": 268435456, "permission": None},
+        "plugins": {
+            "tools": ["provider/demo.yaml"],
+            "models": [],
+            "endpoints": [],
+            "datasources": [],
+            "triggers": [],
+        },
+        "tags": ["search", "demo"],
+        "repo": "https://github.com/langgenius/demo",
+        "verified": True,
+        "tool": None,
+        "model": None,
+        "endpoint": None,
+        "agent_strategy": None,
+        "datasource": None,
+        "trigger": None,
+        "meta": {"minimum_dify_version": "0.15.0", "version": "1.2.3"},
+    }
+
+
+def _plugin_installation_payload() -> dict[str, Any]:
+    return {
+        "id": "installation-row-1",
+        "created_at": "2024-01-02T03:04:05",
+        "updated_at": "2024-01-03T04:05:06",
+        "tenant_id": "tenant-1",
+        "endpoints_setups": 2,
+        "endpoints_active": 1,
+        "runtime_type": "remote",
+        "source": "marketplace",
+        "meta": {"from": "marketplace"},
+        "plugin_id": "langgenius/demo_plugin",
+        "plugin_unique_identifier": "langgenius/demo_plugin:1.2.3@sha256:abc",
+        "version": "1.2.3",
+        "checksum": "sha256:abc",
+        "declaration": _plugin_declaration_payload(),
+    }
+
+
+def _plugin_entity_payload() -> dict[str, Any]:
+    return {
+        **_plugin_installation_payload(),
+        "name": "demo_plugin",
+        "installation_id": "installation-row-1",
+    }
+
+
+def _plugin_declaration() -> PluginDeclaration:
+    return PluginDeclaration.model_validate(_plugin_declaration_payload())
+
+
+def _plugin_installation() -> PluginInstallation:
+    return PluginInstallation.model_validate(_plugin_installation_payload())
+
+
+def _plugin_entity() -> PluginEntity:
+    return PluginEntity.model_validate(_plugin_entity_payload())
+
+
+def _expected_plugin_installation_dump() -> dict[str, Any]:
+    return {
+        "id": "installation-row-1",
+        "created_at": "2024-01-02T03:04:05",
+        "updated_at": "2024-01-03T04:05:06",
+        "tenant_id": "tenant-1",
+        "endpoints_setups": 2,
+        "endpoints_active": 1,
+        "runtime_type": "remote",
+        "source": "marketplace",
+        "meta": {"from": "marketplace"},
+        "plugin_id": "langgenius/demo_plugin",
+        "plugin_unique_identifier": "langgenius/demo_plugin:1.2.3@sha256:abc",
+        "version": "1.2.3",
+        "checksum": "sha256:abc",
+        "declaration": _expected_plugin_declaration_dump(),
+    }
+
+
+def _expected_plugin_entity_dump() -> dict[str, Any]:
+    return {
+        **_expected_plugin_installation_dump(),
+        "name": "demo_plugin",
+        "installation_id": "installation-row-1",
+    }
+
+
+def _plugin_task_payload() -> dict[str, Any]:
+    return {
+        "id": "task-1",
+        "created_at": "2024-02-03T04:05:06",
+        "updated_at": "2024-02-03T04:06:07",
+        "status": "running",
+        "total_plugins": 2,
+        "completed_plugins": 1,
+        "plugins": [
+            {
+                "plugin_unique_identifier": "langgenius/demo_plugin:1.2.3@sha256:abc",
+                "plugin_id": "langgenius/demo_plugin",
+                "status": "success",
+                "message": "installed",
+                "icon": "icon.svg",
+                "labels": {"en_US": "Demo Plugin"},
+                "source": "marketplace",
+            }
+        ],
+    }
+
+
+def _plugin_task() -> PluginInstallTask:
+    return PluginInstallTask.model_validate(_plugin_task_payload())
+
+
+def _expected_plugin_task_dump() -> dict[str, Any]:
+    return {
+        "id": "task-1",
+        "created_at": "2024-02-03T04:05:06",
+        "updated_at": "2024-02-03T04:06:07",
+        "status": "running",
+        "total_plugins": 2,
+        "completed_plugins": 1,
+        "plugins": [
+            {
+                "plugin_unique_identifier": "langgenius/demo_plugin:1.2.3@sha256:abc",
+                "plugin_id": "langgenius/demo_plugin",
+                "status": "success",
+                "message": "installed",
+                "icon": "icon.svg",
+                "labels": _expected_i18n("Demo Plugin"),
+                "source": "marketplace",
+            }
+        ],
+    }
+
+
+def _latest_plugin_cache() -> PluginService.LatestPluginCache:
+    return PluginService.LatestPluginCache(
+        plugin_id="langgenius/demo_plugin",
+        version="1.3.0",
+        unique_identifier="langgenius/demo_plugin:1.3.0@sha256:def",
+        status="active",
+        deprecated_reason="",
+        alternative_plugin_id="",
+    )
+
+
+def _expected_latest_plugin_cache_dump() -> dict[str, str]:
+    return {
+        "plugin_id": "langgenius/demo_plugin",
+        "version": "1.3.0",
+        "unique_identifier": "langgenius/demo_plugin:1.3.0@sha256:def",
+        "status": "active",
+        "deprecated_reason": "",
+        "alternative_plugin_id": "",
+    }
+
+
+def _dynamic_option() -> PluginParameterOption:
+    return PluginParameterOption.model_validate(
+        {
+            "value": 101,
+            "label": {"en_US": "Dataset 101"},
+            "icon": None,
+        }
+    )
+
+
+def _expected_dynamic_option_dump() -> dict[str, Any]:
+    return {
+        "value": "101",
+        "label": _expected_i18n("Dataset 101"),
+        "icon": None,
+    }
+
+
+def _account(role: TenantAccountRole = TenantAccountRole.OWNER) -> Account:
+    account = Account(name="Test User", email="u1@example.com")
+    account.id = "u1"
+    account.role = role
+    return account
 
 
 @pytest.fixture
 def user():
-    u = MagicMock()
-    u.id = "u1"
-    u.is_admin_or_owner = True
-    return u
+    return _account()
 
 
 @pytest.fixture
@@ -66,17 +357,24 @@ class TestPluginListLatestVersionsApi:
         api = PluginListLatestVersionsApi()
         method = unwrap(api.post)
 
-        payload = {"plugin_ids": ["p1"]}
+        payload = {"plugin_ids": ["langgenius/demo_plugin", "langgenius/missing_plugin"]}
+        versions = {
+            "langgenius/demo_plugin": _latest_plugin_cache(),
+            "langgenius/missing_plugin": None,
+        }
 
         with (
             app.test_request_context("/", json=payload),
-            patch(
-                "controllers.console.workspace.plugin.PluginService.list_latest_versions", return_value={"p1": "1.0"}
-            ),
+            patch("controllers.console.workspace.plugin.PluginService.list_latest_versions", return_value=versions),
         ):
             result = method(api)
 
-        assert "versions" in result
+        assert result == {
+            "versions": {
+                "langgenius/demo_plugin": _expected_latest_plugin_cache_dump(),
+                "langgenius/missing_plugin": None,
+            }
+        }
 
     def test_daemon_error(self, app: Flask):
         api = PluginListLatestVersionsApi()
@@ -102,10 +400,9 @@ class TestPluginDebuggingKeyApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch("controllers.console.workspace.plugin.PluginService.get_debugging_key", return_value="k"),
         ):
-            result = method(api)
+            result = method(api, "t1")
 
         assert result["key"] == "k"
 
@@ -115,13 +412,12 @@ class TestPluginDebuggingKeyApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.get_debugging_key",
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api)
+            result = method(api, "t1")
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -130,16 +426,153 @@ class TestPluginListApi:
         api = PluginListApi()
         method = unwrap(api.get)
 
-        mock_list = MagicMock(list=[{"id": 1}], total=1)
+        plugins_with_total = MagicMock(list=[_plugin_entity()], total=1)
 
         with (
             app.test_request_context("/?page=1&page_size=10"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
-            patch("controllers.console.workspace.plugin.PluginService.list_with_total", return_value=mock_list),
+            patch(
+                "controllers.console.workspace.plugin.PluginService.list_with_total",
+                return_value=plugins_with_total,
+            ) as mock_list_with_total,
         ):
-            result = method(api)
+            result = method(api, "t1", "u1")
 
-        assert result["total"] == 1
+        assert result == {"plugins": [_expected_plugin_entity_dump()], "total": 1}
+        mock_list_with_total.assert_called_once_with("t1", "u1", 1, 10)
+
+
+class TestPluginCategoryListApi:
+    def test_plugin_category_list(self, app: Flask):
+        api = PluginCategoryListApi()
+        method = unwrap(api.get)
+        plugin_item = _plugin_category_list_item()
+        builtin_item = _builtin_tool_provider_item()
+        mock_list = MagicMock(list=[plugin_item], has_more=True)
+
+        with (
+            app.test_request_context("/?page=2&page_size=10&query=weather&tags=search&tags=rag&language=zh_Hans"),
+            patch(
+                "controllers.console.workspace.plugin.PluginService.list_by_category", return_value=mock_list
+            ) as list_mock,
+            patch(
+                "controllers.console.workspace.plugin._list_hardcoded_builtin_tool_providers",
+                return_value=[builtin_item],
+            ) as builtin_mock,
+        ):
+            result = method(api, "t1", "tool")
+
+        list_mock.assert_called_once_with(
+            "t1",
+            "tool",
+            2,
+            10,
+            query="weather",
+            tags=["search", "rag"],
+            language="zh_Hans",
+        )
+        assert result["plugins"][0]["id"] == "entity-1"
+        assert result["plugins"][0]["plugin_unique_identifier"] == "test-author/test-plugin:1.0.0@checksum"
+        assert result["builtin_tools"][0]["id"] == "builtin"
+        assert result["builtin_tools"][0]["type"] == "builtin"
+        assert result["has_more"] is True
+        assert "total" not in result
+        builtin_mock.assert_called_once_with(
+            "t1",
+            query="weather",
+            tags=["search", "rag"],
+            language="zh_Hans",
+        )
+
+    def test_builtin_tool_providers_use_the_category_list_filters(self):
+        search_provider = ToolProviderApiEntity(
+            id="search-provider",
+            author="dify",
+            name="search-provider",
+            description=I18nObject(en_US="Search provider", zh_Hans="搜索工具"),
+            icon="icon.svg",
+            label=I18nObject(en_US="Search", zh_Hans="搜索"),
+            type=ToolProviderType.BUILT_IN,
+            labels=["search"],
+        )
+        rag_provider = ToolProviderApiEntity(
+            id="rag-provider",
+            author="dify",
+            name="rag-provider",
+            description=I18nObject(en_US="RAG provider", zh_Hans="知识库工具"),
+            icon="icon.svg",
+            label=I18nObject(en_US="RAG", zh_Hans="知识库"),
+            type=ToolProviderType.BUILT_IN,
+            labels=["rag"],
+        )
+
+        with (
+            patch("controllers.console.workspace.plugin.ToolManager.list_default_builtin_providers", return_value=[]),
+            patch(
+                "controllers.console.workspace.plugin.ToolManager.list_hardcoded_providers",
+                return_value=[MagicMock(), MagicMock()],
+            ),
+            patch("controllers.console.workspace.plugin.is_filtered", return_value=False),
+            patch(
+                "controllers.console.workspace.plugin.ToolTransformService.builtin_provider_to_user_provider",
+                side_effect=[search_provider, rag_provider],
+            ),
+            patch("controllers.console.workspace.plugin.ToolTransformService.repack_provider"),
+            patch(
+                "controllers.console.workspace.plugin.BuiltinToolProviderSort.sort",
+                side_effect=lambda providers: providers,
+            ),
+        ):
+            result = _list_hardcoded_builtin_tool_providers(
+                "t1",
+                query="搜索",
+                tags=["search", "weather"],
+                language="zh_Hans",
+            )
+
+        assert [provider["id"] for provider in result] == ["search-provider"]
+
+    def test_non_tool_category_does_not_include_builtin_tools(self, app: Flask):
+        api = PluginCategoryListApi()
+        method = unwrap(api.get)
+        mock_list = MagicMock(list=[_plugin_category_list_item(category="datasource")], has_more=False)
+
+        with (
+            app.test_request_context("/?page=1&page_size=10"),
+            patch("controllers.console.workspace.plugin.PluginService.list_by_category", return_value=mock_list),
+            patch("controllers.console.workspace.plugin._list_hardcoded_builtin_tool_providers") as builtin_mock,
+        ):
+            result = method(api, "t1", "datasource")
+
+        assert result["plugins"][0]["id"] == "entity-1"
+        assert result["builtin_tools"] == []
+        assert result["has_more"] is False
+        builtin_mock.assert_not_called()
+
+    def test_invalid_category(self, app: Flask):
+        api = PluginCategoryListApi()
+        method = unwrap(api.get)
+
+        with (
+            app.test_request_context("/?page=1&page_size=10"),
+        ):
+            result = method(api, "t1", "unknown")
+
+        assert result == ({"code": "invalid_param", "message": "invalid plugin category"}, 400)
+
+    def test_daemon_error(self, app: Flask):
+        api = PluginCategoryListApi()
+        method = unwrap(api.get)
+
+        with (
+            app.test_request_context("/?page=1&page_size=10"),
+            patch(
+                "controllers.console.workspace.plugin.PluginService.list_by_category",
+                side_effect=PluginDaemonClientSideError("error"),
+            ),
+        ):
+            result = method(api, "t1", "tool")
+
+        assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginIconApi:
@@ -163,10 +596,9 @@ class TestPluginAssetApi:
 
         with (
             app.test_request_context("/?plugin_unique_identifier=p&file_name=a.bin"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch("controllers.console.workspace.plugin.PluginService.extract_asset", return_value=b"x"),
         ):
-            response = method(api)
+            response = method(api, "t1")
 
         assert response.mimetype == "application/octet-stream"
 
@@ -182,10 +614,9 @@ class TestPluginUploadFromPkgApi:
 
         with (
             app.test_request_context("/", data=data, content_type="multipart/form-data"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch("controllers.console.workspace.plugin.PluginService.upload_pkg", return_value={"ok": True}),
         ):
-            result = method(api)
+            result = method(api, "t1")
 
         assert result["ok"] is True
 
@@ -199,12 +630,11 @@ class TestPluginUploadFromPkgApi:
 
         with (
             app.test_request_context("/", data=data, content_type="multipart/form-data"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch("controllers.console.workspace.plugin.dify_config.PLUGIN_MAX_PACKAGE_SIZE", 0),
             patch("controllers.console.workspace.plugin.PluginService.upload_pkg") as upload_pkg_mock,
         ):
             with pytest.raises(ValueError) as exc_info:
-                method(api)
+                method(api, "t1")
             assert "File size exceeds the maximum allowed size" in str(exc_info.value)
 
         upload_pkg_mock.assert_not_called()
@@ -219,31 +649,38 @@ class TestPluginInstallFromPkgApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.install_from_local_pkg", return_value={"ok": True}
             ),
         ):
-            result = method(api)
+            result = method(api, "t1")
 
         assert result["ok"] is True
 
 
 class TestPluginUninstallApi:
-    def test_uninstall(self, app: Flask):
+    @pytest.mark.parametrize("preserve_credentials", [False, True])
+    def test_uninstall(self, app: Flask, preserve_credentials: bool):
         api = PluginUninstallApi()
         method = unwrap(api.post)
 
-        payload = {"plugin_installation_id": "x"}
+        payload = {
+            "plugin_installation_id": "x",
+            "preserve_credentials": preserve_credentials,
+        }
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
-            patch("controllers.console.workspace.plugin.PluginService.uninstall", return_value=True),
+            patch("controllers.console.workspace.plugin.PluginService.uninstall", return_value=True) as uninstall_mock,
         ):
-            result = method(api)
+            result = method(api, "t1")
 
         assert result["success"] is True
+        uninstall_mock.assert_called_once_with(
+            "t1",
+            "x",
+            preserve_credentials=preserve_credentials,
+        )
 
 
 class TestPluginChangePermissionApi:
@@ -251,37 +688,35 @@ class TestPluginChangePermissionApi:
         api = PluginChangePermissionApi()
         method = unwrap(api.post)
 
-        user = MagicMock(is_admin_or_owner=False)
+        user = _account(TenantAccountRole.NORMAL)
 
         payload = {
-            "install_permission": TenantPluginPermission.InstallPermission.EVERYONE,
-            "debug_permission": TenantPluginPermission.DebugPermission.EVERYONE,
+            "install_permission": TenantPluginInstallPermission.EVERYONE,
+            "debug_permission": TenantPluginDebugPermission.EVERYONE,
         }
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(user, "t1")),
         ):
             with pytest.raises(Forbidden):
-                method(api)
+                method(api, "t1", user)
 
     def test_change_permission_success(self, app: Flask):
         api = PluginChangePermissionApi()
         method = unwrap(api.post)
 
-        user = MagicMock(is_admin_or_owner=True)
+        user = _account()
 
         payload = {
-            "install_permission": TenantPluginPermission.InstallPermission.EVERYONE,
-            "debug_permission": TenantPluginPermission.DebugPermission.EVERYONE,
+            "install_permission": TenantPluginInstallPermission.EVERYONE,
+            "debug_permission": TenantPluginDebugPermission.EVERYONE,
         }
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(user, "t1")),
             patch("controllers.console.workspace.plugin.PluginPermissionService.change_permission", return_value=True),
         ):
-            result = method(api)
+            result = method(api, "t1", user)
 
         assert result["success"] is True
 
@@ -293,10 +728,9 @@ class TestPluginFetchPermissionApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch("controllers.console.workspace.plugin.PluginPermissionService.get_permission", return_value=None),
         ):
-            result = method(api)
+            result = method(api, "t1")
 
         assert result["install_permission"] is not None
 
@@ -308,15 +742,14 @@ class TestPluginFetchDynamicSelectOptionsApi:
 
         with (
             app.test_request_context("/?plugin_id=p&provider=x&action=y&parameter=z&provider_type=tool"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(user, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginParameterService.get_dynamic_select_options",
-                return_value=[1, 2],
+                return_value=[_dynamic_option()],
             ),
         ):
-            result = method(api)
+            result = method(api, "t1", user)
 
-        assert result["options"] == [1, 2]
+        assert result == {"options": [_expected_dynamic_option_dump()]}
 
 
 class TestPluginReadmeApi:
@@ -326,32 +759,30 @@ class TestPluginReadmeApi:
 
         with (
             app.test_request_context("/?plugin_unique_identifier=p"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch("controllers.console.workspace.plugin.PluginService.fetch_plugin_readme", return_value="readme"),
         ):
-            result = method(api)
+            result = method(api, "t1")
 
         assert result["readme"] == "readme"
 
 
 class TestPluginListInstallationsFromIdsApi:
-    def test_success(self, app: Flask):
+    def test_success(self, app: Flask, user):
         api = PluginListInstallationsFromIdsApi()
         method = unwrap(api.post)
 
-        payload = {"plugin_ids": ["p1", "p2"]}
+        payload = {"plugin_ids": ["langgenius/demo_plugin"]}
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.list_installations_from_ids",
-                return_value=[{"id": "p1"}],
+                return_value=[_plugin_installation()],
             ),
         ):
-            result = method(api)
+            result = method(api, "t1")
 
-        assert "plugins" in result
+        assert result == {"plugins": [_expected_plugin_installation_dump()]}
 
     def test_daemon_error(self, app: Flask):
         api = PluginListInstallationsFromIdsApi()
@@ -361,18 +792,50 @@ class TestPluginListInstallationsFromIdsApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.list_installations_from_ids",
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api)
+            result = method(api, "t1")
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
-class TestPluginUploadFromGithubApi:
+class TestPluginInstalledIdsApi:
     def test_success(self, app: Flask):
+        api = PluginInstalledIdsApi()
+        method = unwrap(api.get)
+
+        with (
+            app.test_request_context("/?category=tool"),
+            patch(
+                "controllers.console.workspace.plugin.PluginService.list_installed_plugin_ids",
+                return_value=["langgenius/openai", "langgenius/anthropic"],
+            ) as list_installed_plugin_ids,
+        ):
+            result = method(api, "t1")
+
+        assert result == {"plugin_ids": ["langgenius/openai", "langgenius/anthropic"]}
+        list_installed_plugin_ids.assert_called_once_with("t1", PluginCategory.Tool)
+
+    def test_daemon_error(self, app: Flask):
+        api = PluginInstalledIdsApi()
+        method = unwrap(api.get)
+
+        with (
+            app.test_request_context("/?category=tool"),
+            patch(
+                "controllers.console.workspace.plugin.PluginService.list_installed_plugin_ids",
+                side_effect=PluginDaemonClientSideError("error"),
+            ),
+        ):
+            result = method(api, "t1")
+
+        assert result == ({"code": "plugin_error", "message": "error"}, 400)
+
+
+class TestPluginUploadFromGithubApi:
+    def test_success(self, app: Flask, user):
         api = PluginUploadFromGithubApi()
         method = unwrap(api.post)
 
@@ -380,12 +843,11 @@ class TestPluginUploadFromGithubApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.upload_pkg_from_github", return_value={"ok": True}
             ),
         ):
-            result = method(api)
+            result = method(api, "t1")
 
         assert result["ok"] is True
 
@@ -397,13 +859,12 @@ class TestPluginUploadFromGithubApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.upload_pkg_from_github",
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api)
+            result = method(api, "t1")
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -424,10 +885,9 @@ class TestPluginUploadFromBundleApi:
                 data={"bundle": file},
                 content_type="multipart/form-data",
             ),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch("controllers.console.workspace.plugin.PluginService.upload_bundle", return_value={"ok": True}),
         ):
-            result = method(api)
+            result = method(api, "t1")
 
         assert result["ok"] is True
 
@@ -447,12 +907,11 @@ class TestPluginUploadFromBundleApi:
                 data={"bundle": file},
                 content_type="multipart/form-data",
             ),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch("controllers.console.workspace.plugin.dify_config.PLUGIN_MAX_BUNDLE_SIZE", 0),
             patch("controllers.console.workspace.plugin.PluginService.upload_bundle") as upload_bundle_mock,
         ):
             with pytest.raises(ValueError) as exc_info:
-                method(api)
+                method(api, "t1")
             assert "File size exceeds the maximum allowed size" in str(exc_info.value)
 
         upload_bundle_mock.assert_not_called()
@@ -472,10 +931,9 @@ class TestPluginInstallFromGithubApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch("controllers.console.workspace.plugin.PluginService.install_from_github", return_value={"ok": True}),
         ):
-            result = method(api)
+            result = method(api, "t1")
 
         assert result["ok"] is True
 
@@ -492,13 +950,12 @@ class TestPluginInstallFromGithubApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.install_from_github",
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api)
+            result = method(api, "t1")
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -511,13 +968,12 @@ class TestPluginInstallFromMarketplaceApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.install_from_marketplace_pkg",
                 return_value={"ok": True},
             ),
         ):
-            result = method(api)
+            result = method(api, "t1")
 
         assert result["ok"] is True
 
@@ -529,13 +985,12 @@ class TestPluginInstallFromMarketplaceApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.install_from_marketplace_pkg",
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api)
+            result = method(api, "t1")
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -546,12 +1001,14 @@ class TestPluginFetchMarketplacePkgApi:
 
         with (
             app.test_request_context("/?plugin_unique_identifier=p"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
-            patch("controllers.console.workspace.plugin.PluginService.fetch_marketplace_pkg", return_value={"m": 1}),
+            patch(
+                "controllers.console.workspace.plugin.PluginService.fetch_marketplace_pkg",
+                return_value=_plugin_declaration(),
+            ),
         ):
-            result = method(api)
+            result = method(api, "t1")
 
-        assert "manifest" in result
+        assert result == {"manifest": _expected_plugin_declaration_dump()}
 
     def test_daemon_error(self, app: Flask):
         api = PluginFetchMarketplacePkgApi()
@@ -559,13 +1016,12 @@ class TestPluginFetchMarketplacePkgApi:
 
         with (
             app.test_request_context("/?plugin_unique_identifier=p"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.fetch_marketplace_pkg",
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api)
+            result = method(api, "t1")
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -574,17 +1030,15 @@ class TestPluginFetchManifestApi:
         api = PluginFetchManifestApi()
         method = unwrap(api.get)
 
-        manifest = MagicMock()
-        manifest.model_dump.return_value = {"x": 1}
+        manifest = _plugin_declaration()
 
         with (
             app.test_request_context("/?plugin_unique_identifier=p"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch("controllers.console.workspace.plugin.PluginService.fetch_plugin_manifest", return_value=manifest),
         ):
-            result = method(api)
+            result = method(api, "t1")
 
-        assert "manifest" in result
+        assert result == {"manifest": _expected_plugin_declaration_dump()}
 
     def test_daemon_error(self, app: Flask):
         api = PluginFetchManifestApi()
@@ -592,13 +1046,12 @@ class TestPluginFetchManifestApi:
 
         with (
             app.test_request_context("/?plugin_unique_identifier=p"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.fetch_plugin_manifest",
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api)
+            result = method(api, "t1")
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -609,12 +1062,14 @@ class TestPluginFetchInstallTasksApi:
 
         with (
             app.test_request_context("/?page=1&page_size=10"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
-            patch("controllers.console.workspace.plugin.PluginService.fetch_install_tasks", return_value=[{"id": 1}]),
+            patch(
+                "controllers.console.workspace.plugin.PluginService.fetch_install_tasks",
+                return_value=[_plugin_task()],
+            ),
         ):
-            result = method(api)
+            result = method(api, "t1")
 
-        assert "tasks" in result
+        assert result == {"tasks": [_expected_plugin_task_dump()]}
 
     def test_daemon_error(self, app: Flask):
         api = PluginFetchInstallTasksApi()
@@ -622,13 +1077,12 @@ class TestPluginFetchInstallTasksApi:
 
         with (
             app.test_request_context("/?page=1&page_size=10"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.fetch_install_tasks",
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api)
+            result = method(api, "t1")
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -639,12 +1093,11 @@ class TestPluginFetchInstallTaskApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
-            patch("controllers.console.workspace.plugin.PluginService.fetch_install_task", return_value={"id": "x"}),
+            patch("controllers.console.workspace.plugin.PluginService.fetch_install_task", return_value=_plugin_task()),
         ):
-            result = method(api, "x")
+            result = method(api, "t1", "x")
 
-        assert "task" in result
+        assert result == {"task": _expected_plugin_task_dump()}
 
     def test_daemon_error(self, app: Flask):
         api = PluginFetchInstallTaskApi()
@@ -652,13 +1105,12 @@ class TestPluginFetchInstallTaskApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.fetch_install_task",
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, "t")
+            result = method(api, "t1", "t")
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -669,10 +1121,9 @@ class TestPluginDeleteInstallTaskApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch("controllers.console.workspace.plugin.PluginService.delete_install_task", return_value=True),
         ):
-            result = method(api, "x")
+            result = method(api, "t1", "x")
 
         assert result["success"] is True
 
@@ -682,13 +1133,12 @@ class TestPluginDeleteInstallTaskApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.delete_install_task",
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, "t")
+            result = method(api, "t1", "t")
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -699,12 +1149,11 @@ class TestPluginDeleteAllInstallTaskItemsApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.delete_all_install_task_items", return_value=True
             ),
         ):
-            result = method(api)
+            result = method(api, "t1")
 
         assert result["success"] is True
 
@@ -714,13 +1163,12 @@ class TestPluginDeleteAllInstallTaskItemsApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.delete_all_install_task_items",
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api)
+            result = method(api, "t1")
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -731,10 +1179,9 @@ class TestPluginDeleteInstallTaskItemApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch("controllers.console.workspace.plugin.PluginService.delete_install_task_item", return_value=True),
         ):
-            result = method(api, "task1", "item1")
+            result = method(api, "t1", "task1", "item1")
 
         assert result["success"] is True
 
@@ -744,18 +1191,17 @@ class TestPluginDeleteInstallTaskItemApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.delete_install_task_item",
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, "task1", "item1")
+            result = method(api, "t1", "task1", "item1")
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginUpgradeFromMarketplaceApi:
-    def test_success(self, app: Flask):
+    def test_success(self, app: Flask, user):
         api = PluginUpgradeFromMarketplaceApi()
         method = unwrap(api.post)
 
@@ -766,13 +1212,12 @@ class TestPluginUpgradeFromMarketplaceApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.upgrade_plugin_with_marketplace",
                 return_value={"ok": True},
             ),
         ):
-            result = method(api)
+            result = method(api, "t1")
 
         assert result["ok"] is True
 
@@ -787,13 +1232,12 @@ class TestPluginUpgradeFromMarketplaceApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.upgrade_plugin_with_marketplace",
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api)
+            result = method(api, "t1")
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -812,13 +1256,12 @@ class TestPluginUpgradeFromGithubApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.upgrade_plugin_with_github",
                 return_value={"ok": True},
             ),
         ):
-            result = method(api)
+            result = method(api, "t1")
 
         assert result["ok"] is True
 
@@ -836,22 +1279,19 @@ class TestPluginUpgradeFromGithubApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.upgrade_plugin_with_github",
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api)
+            result = method(api, "t1")
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginFetchDynamicSelectOptionsWithCredentialsApi:
-    def test_success(self, app: Flask):
+    def test_success(self, app: Flask, user):
         api = PluginFetchDynamicSelectOptionsWithCredentialsApi()
         method = unwrap(api.post)
-
-        user = MagicMock(id="u1", is_admin_or_owner=True)
 
         payload = {
             "plugin_id": "p",
@@ -864,21 +1304,18 @@ class TestPluginFetchDynamicSelectOptionsWithCredentialsApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(user, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginParameterService.get_dynamic_select_options_with_credentials",
-                return_value=[1],
+                return_value=[_dynamic_option()],
             ),
         ):
-            result = method(api)
+            result = method(api, "t1", user)
 
-        assert result["options"] == [1]
+        assert result == {"options": [_expected_dynamic_option_dump()]}
 
-    def test_daemon_error(self, app: Flask):
+    def test_daemon_error(self, app: Flask, user):
         api = PluginFetchDynamicSelectOptionsWithCredentialsApi()
         method = unwrap(api.post)
-
-        user = MagicMock(id="u1", is_admin_or_owner=True)
 
         payload = {
             "plugin_id": "p",
@@ -891,32 +1328,28 @@ class TestPluginFetchDynamicSelectOptionsWithCredentialsApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(user, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginParameterService.get_dynamic_select_options_with_credentials",
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api)
+            result = method(api, "t1", user)
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
-class TestPluginChangePreferencesApi:
+class TestPluginChangeAutoUpgradeApi:
     def test_success(self, app: Flask):
-        api = PluginChangePreferencesApi()
+        api = PluginChangeAutoUpgradeApi()
         method = unwrap(api.post)
 
-        user = MagicMock(is_admin_or_owner=True)
+        user = _account()
 
         payload = {
-            "permission": {
-                "install_permission": TenantPluginPermission.InstallPermission.EVERYONE,
-                "debug_permission": TenantPluginPermission.DebugPermission.EVERYONE,
-            },
+            "category": TenantPluginAutoUpgradeCategory.TOOL.value,
             "auto_upgrade": {
-                "strategy_setting": TenantPluginAutoUpgradeStrategy.StrategySetting.FIX_ONLY,
+                "strategy_setting": TenantPluginAutoUpgradeStrategySetting.FIX_ONLY,
                 "upgrade_time_of_day": 0,
-                "upgrade_mode": TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE,
+                "upgrade_mode": TenantPluginAutoUpgradeMode.EXCLUDE,
                 "exclude_plugins": [],
                 "include_plugins": [],
             },
@@ -924,29 +1357,27 @@ class TestPluginChangePreferencesApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(user, "t1")),
-            patch("controllers.console.workspace.plugin.PluginPermissionService.change_permission", return_value=True),
-            patch("controllers.console.workspace.plugin.PluginAutoUpgradeService.change_strategy", return_value=True),
+            patch(
+                "controllers.console.workspace.plugin.PluginAutoUpgradeService.change_strategy", return_value=True
+            ) as change,
         ):
-            result = method(api)
+            result = method(api, "t1", user)
 
         assert result["success"] is True
+        change.assert_called_once()
 
-    def test_permission_fail(self, app: Flask):
-        api = PluginChangePreferencesApi()
+    def test_success_with_model_category_auto_upgrade(self, app: Flask):
+        api = PluginChangeAutoUpgradeApi()
         method = unwrap(api.post)
 
-        user = MagicMock(is_admin_or_owner=True)
+        user = _account()
 
         payload = {
-            "permission": {
-                "install_permission": TenantPluginPermission.InstallPermission.EVERYONE,
-                "debug_permission": TenantPluginPermission.DebugPermission.EVERYONE,
-            },
+            "category": TenantPluginAutoUpgradeCategory.MODEL.value,
             "auto_upgrade": {
-                "strategy_setting": TenantPluginAutoUpgradeStrategy.StrategySetting.FIX_ONLY,
-                "upgrade_time_of_day": 0,
-                "upgrade_mode": TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE,
+                "strategy_setting": TenantPluginAutoUpgradeStrategySetting.LATEST,
+                "upgrade_time_of_day": 3600,
+                "upgrade_mode": TenantPluginAutoUpgradeMode.ALL,
                 "exclude_plugins": [],
                 "include_plugins": [],
             },
@@ -954,46 +1385,95 @@ class TestPluginChangePreferencesApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(user, "t1")),
-            patch("controllers.console.workspace.plugin.PluginPermissionService.change_permission", return_value=False),
+            patch(
+                "controllers.console.workspace.plugin.PluginAutoUpgradeService.change_strategy", return_value=True
+            ) as change,
         ):
-            result = method(api)
+            result = method(api, "t1", user)
+
+        assert result["success"] is True
+        change.assert_called_once()
+        assert change.call_args.kwargs["category"] == TenantPluginAutoUpgradeCategory.MODEL
+
+    def test_auto_upgrade_fail(self, app: Flask):
+        api = PluginChangeAutoUpgradeApi()
+        method = unwrap(api.post)
+
+        user = MagicMock(is_admin_or_owner=True)
+
+        payload = {
+            "category": TenantPluginAutoUpgradeCategory.TOOL.value,
+            "auto_upgrade": {
+                "strategy_setting": TenantPluginAutoUpgradeStrategySetting.FIX_ONLY,
+                "upgrade_time_of_day": 0,
+                "upgrade_mode": TenantPluginAutoUpgradeMode.EXCLUDE,
+                "exclude_plugins": [],
+                "include_plugins": [],
+            },
+        }
+
+        with (
+            app.test_request_context("/", json=payload),
+            patch("controllers.console.workspace.plugin.PluginAutoUpgradeService.change_strategy", return_value=False),
+        ):
+            result = method(api, "t1", user)
 
         assert result["success"] is False
 
 
-class TestPluginFetchPreferencesApi:
+class TestPluginFetchAutoUpgradeApi:
     def test_success(self, app: Flask):
-        api = PluginFetchPreferencesApi()
+        api = PluginFetchAutoUpgradeApi()
         method = unwrap(api.get)
 
-        permission = MagicMock(
-            install_permission=TenantPluginPermission.InstallPermission.EVERYONE,
-            debug_permission=TenantPluginPermission.DebugPermission.EVERYONE,
-        )
-
         auto_upgrade = MagicMock(
-            strategy_setting=TenantPluginAutoUpgradeStrategy.StrategySetting.FIX_ONLY,
+            category=TenantPluginAutoUpgradeCategory.TOOL,
+            strategy_setting=TenantPluginAutoUpgradeStrategySetting.FIX_ONLY,
             upgrade_time_of_day=1,
-            upgrade_mode=TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE,
+            upgrade_mode=TenantPluginAutoUpgradeMode.EXCLUDE,
             exclude_plugins=[],
             include_plugins=[],
         )
 
         with (
-            app.test_request_context("/"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
+            app.test_request_context(f"/?category={TenantPluginAutoUpgradeCategory.TOOL.value}"),
             patch(
-                "controllers.console.workspace.plugin.PluginPermissionService.get_permission", return_value=permission
-            ),
-            patch(
-                "controllers.console.workspace.plugin.PluginAutoUpgradeService.get_strategy", return_value=auto_upgrade
+                "controllers.console.workspace.plugin.PluginAutoUpgradeService.get_strategy",
+                return_value=auto_upgrade,
             ),
         ):
-            result = method(api)
+            result = method(api, "t1")
 
-        assert "permission" in result
-        assert "auto_upgrade" in result
+        assert result["category"] == TenantPluginAutoUpgradeCategory.TOOL
+        assert result["auto_upgrade"]["upgrade_time_of_day"] == 1
+
+    def test_returns_disabled_settings_when_strategy_is_missing(self, app: Flask):
+        api = PluginFetchAutoUpgradeApi()
+        method = unwrap(api.get)
+
+        with (
+            app.test_request_context(f"/?category={TenantPluginAutoUpgradeCategory.MODEL.value}"),
+            patch(
+                "controllers.console.workspace.plugin.PluginAutoUpgradeService.get_strategy",
+                return_value=None,
+            ),
+            patch(
+                "controllers.console.workspace.plugin.PluginAutoUpgradeService.default_upgrade_time_of_day",
+                return_value=78300,
+            ),
+        ):
+            result = method(api, "t1")
+
+        assert result == {
+            "category": TenantPluginAutoUpgradeCategory.MODEL,
+            "auto_upgrade": {
+                "strategy_setting": TenantPluginAutoUpgradeStrategySetting.DISABLED,
+                "upgrade_time_of_day": 78300,
+                "upgrade_mode": TenantPluginAutoUpgradeMode.EXCLUDE,
+                "exclude_plugins": [],
+                "include_plugins": [],
+            },
+        }
 
 
 class TestPluginAutoUpgradeExcludePluginApi:
@@ -1001,14 +1481,13 @@ class TestPluginAutoUpgradeExcludePluginApi:
         api = PluginAutoUpgradeExcludePluginApi()
         method = unwrap(api.post)
 
-        payload = {"plugin_id": "p"}
+        payload = {"plugin_id": "p", "category": TenantPluginAutoUpgradeCategory.TOOL.value}
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch("controllers.console.workspace.plugin.PluginAutoUpgradeService.exclude_plugin", return_value=True),
         ):
-            result = method(api)
+            result = method(api, "t1")
 
         assert result["success"] is True
 
@@ -1016,13 +1495,12 @@ class TestPluginAutoUpgradeExcludePluginApi:
         api = PluginAutoUpgradeExcludePluginApi()
         method = unwrap(api.post)
 
-        payload = {"plugin_id": "p"}
+        payload = {"plugin_id": "p", "category": TenantPluginAutoUpgradeCategory.TOOL.value}
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch("controllers.console.workspace.plugin.PluginAutoUpgradeService.exclude_plugin", return_value=False),
         ):
-            result = method(api)
+            result = method(api, "t1")
 
         assert result["success"] is False

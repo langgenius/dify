@@ -2,7 +2,7 @@ import logging
 import os
 import uuid
 from datetime import UTC, datetime, timedelta
-from typing import Any, cast
+from typing import Any, cast, override
 
 import wandb
 import weave
@@ -78,6 +78,7 @@ class WeaveDataTrace(BaseTraceInstance):
             logger.debug("Weave get run url failed: %s", str(e))
             raise ValueError(f"Weave get run url failed: {str(e)}")
 
+    @override
     def trace(self, trace_info: BaseTraceInfo):
         logger.debug("Trace info: %s", trace_info)
         match trace_info:
@@ -158,6 +159,7 @@ class WeaveDataTrace(BaseTraceInstance):
 
         workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=session_factory,
+            tenant_id=trace_info.tenant_id,
             user=service_account,
             app_id=app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,

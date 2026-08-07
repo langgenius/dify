@@ -19,6 +19,7 @@ from graphon.model_runtime.entities import (
 )
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
 from graphon.runtime import VariablePool
+from graphon.variables.template_resolution import convert_template
 
 
 class AdvancedPromptTransform(PromptTransform):
@@ -50,32 +51,33 @@ class AdvancedPromptTransform(PromptTransform):
     ) -> list[PromptMessage]:
         prompt_messages = []
 
-        if isinstance(prompt_template, CompletionModelPromptTemplate):
-            prompt_messages = self._get_completion_model_prompt_messages(
-                prompt_template=prompt_template,
-                inputs=inputs,
-                query=query,
-                files=files,
-                context=context,
-                memory_config=memory_config,
-                memory=memory,
-                model_config=model_config,
-                model_instance=model_instance,
-                image_detail_config=image_detail_config,
-            )
-        elif isinstance(prompt_template, list) and all(isinstance(item, ChatModelMessage) for item in prompt_template):
-            prompt_messages = self._get_chat_model_prompt_messages(
-                prompt_template=prompt_template,
-                inputs=inputs,
-                query=query,
-                files=files,
-                context=context,
-                memory_config=memory_config,
-                memory=memory,
-                model_config=model_config,
-                model_instance=model_instance,
-                image_detail_config=image_detail_config,
-            )
+        match prompt_template:
+            case CompletionModelPromptTemplate():
+                prompt_messages = self._get_completion_model_prompt_messages(
+                    prompt_template=prompt_template,
+                    inputs=inputs,
+                    query=query,
+                    files=files,
+                    context=context,
+                    memory_config=memory_config,
+                    memory=memory,
+                    model_config=model_config,
+                    model_instance=model_instance,
+                    image_detail_config=image_detail_config,
+                )
+            case list() if all(isinstance(item, ChatModelMessage) for item in prompt_template):
+                prompt_messages = self._get_chat_model_prompt_messages(
+                    prompt_template=prompt_template,
+                    inputs=inputs,
+                    query=query,
+                    files=files,
+                    context=context,
+                    memory_config=memory_config,
+                    memory=memory,
+                    model_config=model_config,
+                    model_instance=model_instance,
+                    image_detail_config=image_detail_config,
+                )
 
         return prompt_messages
 
@@ -170,7 +172,7 @@ class AdvancedPromptTransform(PromptTransform):
                             if k.startswith("#"):
                                 vp.add(k[1:-1].split("."), v)
                         raw_prompt = raw_prompt.replace("{{#context#}}", context or "")
-                        prompt = vp.convert_template(raw_prompt).text
+                        prompt = convert_template(vp, raw_prompt).text
                     else:
                         parser = PromptTemplateParser(template=raw_prompt, with_variable_tmpl=self.with_variable_tmpl)
                         prompt_inputs: Mapping[str, str] = {k: inputs[k] for k in parser.variable_keys if k in inputs}

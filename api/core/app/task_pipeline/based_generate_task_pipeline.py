@@ -4,6 +4,7 @@ import time
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from clients.agent_backend.errors import AgentBackendError
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import (
     AppGenerateEntity,
@@ -24,14 +25,19 @@ from models.model import Message
 logger = logging.getLogger(__name__)
 
 
-class BasedGenerateTaskPipeline:
+class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
     """
     BasedGenerateTaskPipeline is a class that generate stream output and state management for Application.
+
+    The type parameter preserves the concrete application generate entity for
+    subclasses after the shared initializer stores it on ``_application_generate_entity``.
     """
+
+    _application_generate_entity: AppGenerateEntityT
 
     def __init__(
         self,
-        application_generate_entity: AppGenerateEntity,
+        application_generate_entity: AppGenerateEntityT,
         queue_manager: AppQueueManager,
         stream: bool,
     ):
@@ -49,7 +55,7 @@ class BasedGenerateTaskPipeline:
         match e:
             case InvokeAuthorizationError():
                 err = InvokeAuthorizationError("Incorrect API key provided")
-            case InvokeError() | ValueError():
+            case InvokeError() | ValueError() | AgentBackendError():
                 err = e
             case _:
                 description = getattr(e, "description", None)

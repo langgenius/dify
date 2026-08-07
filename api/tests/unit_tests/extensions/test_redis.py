@@ -69,6 +69,10 @@ class TestGetBaseRedisParams:
         mock_config.REDIS_SOCKET_TIMEOUT = 5.0
         mock_config.REDIS_SOCKET_CONNECT_TIMEOUT = 5.0
         mock_config.REDIS_HEALTH_CHECK_INTERVAL = 30
+        mock_config.REDIS_KEEPALIVE = True
+        mock_config.REDIS_KEEPALIVE_IDLE = 60
+        mock_config.REDIS_KEEPALIVE_INTERVAL = 10
+        mock_config.REDIS_KEEPALIVE_COUNT = 3
 
         params = _get_base_redis_params()
 
@@ -77,6 +81,8 @@ class TestGetBaseRedisParams:
         assert params["socket_timeout"] == 5.0
         assert params["socket_connect_timeout"] == 5.0
         assert params["health_check_interval"] == 30
+        assert params["socket_keepalive"] is True
+        assert isinstance(params["socket_keepalive_options"], dict)
         # Existing params still present
         assert params["db"] == 0
         assert params["encoding"] == "utf-8"
@@ -192,9 +198,13 @@ class TestRedisClientWrapperKeyPrefix:
 
             wrapper.hset("hash:key", "field", "value")
             wrapper.hgetall("hash:key")
+            wrapper.hkeys("hash:key")
+            wrapper.hexists("hash:key", "field")
 
         mock_client.hset.assert_called_once_with("enterprise-a:hash:key", "field", "value")
         mock_client.hgetall.assert_called_once_with("enterprise-a:hash:key")
+        mock_client.hkeys.assert_called_once_with("enterprise-a:hash:key")
+        mock_client.hexists.assert_called_once_with("enterprise-a:hash:key", "field")
 
     def test_wrapper_zadd_prefixes_sorted_set_name(self):
         mock_client = MagicMock()

@@ -1,7 +1,8 @@
 import logging
 import time
 import uuid
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from typing import Any
 
 import httpx
 from httpx import DigestAuth
@@ -24,7 +25,7 @@ _tidb_http_client: httpx.Client = get_pooled_http_client(
 
 class TidbService:
     @staticmethod
-    def extract_qdrant_endpoint(cluster_response: dict) -> str | None:
+    def extract_qdrant_endpoint(cluster_response: Mapping[str, Any]) -> str | None:
         """Extract the qdrant endpoint URL from a Get Cluster API response.
 
         Reads ``endpoints.public.host`` (e.g. ``gateway01.xx.tidbcloud.com``),

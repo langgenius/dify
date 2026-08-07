@@ -17,6 +17,18 @@ register_response_schema_models(service_api_ns, EndUserDetail)
 class EndUserApi(Resource):
     """Resource for retrieving end user details by ID."""
 
+    @service_api_ns.doc(
+        summary="Get End User Info",
+        description=(
+            "Retrieve an end user by ID. Useful when other APIs return an end-user ID (e.g., "
+            "`created_by` from [Upload File](/api-reference/files/upload-file))."
+        ),
+        tags=["End Users"],
+        responses={
+            200: "End user retrieved successfully.",
+            404: "`end_user_not_found` : End user not found.",
+        },
+    )
     @service_api_ns.doc("get_end_user")
     @service_api_ns.doc(description="Get an end user by ID")
     @service_api_ns.doc(

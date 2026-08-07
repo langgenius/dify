@@ -49,9 +49,21 @@ def make_message():
     msg.query = "hello"
     msg.re_sign_file_url_answer = ""
     msg.user_feedback = MagicMock(rating=None)
+    msg.inputs_with_session.return_value = msg.inputs
+    msg.user_feedback_with_session.return_value = msg.user_feedback
+    msg.total_price = None
+    msg.currency = None
     msg.status = "normal"
     msg.error = None
     return msg
+
+
+def make_installed_app(mode: str | None = None):
+    app_model = MagicMock(mode=mode)
+    installed_app = MagicMock()
+    installed_app.app = app_model
+    installed_app.app_with_session.return_value = app_model
+    return installed_app
 
 
 class TestMessageListApi:
@@ -59,8 +71,7 @@ class TestMessageListApi:
         api = module.MessageListApi()
         method = unwrap(api.get)
 
-        installed_app = MagicMock()
-        installed_app.app = MagicMock(mode="chat")
+        installed_app = make_installed_app(mode="chat")
 
         pagination = MagicMock(
             limit=20,
@@ -89,8 +100,7 @@ class TestMessageListApi:
         api = module.MessageListApi()
         method = unwrap(api.get)
 
-        installed_app = MagicMock()
-        installed_app.app = MagicMock(mode="completion")
+        installed_app = make_installed_app(mode="completion")
 
         with pytest.raises(NotChatAppError):
             method(MagicMock(), installed_app)
@@ -99,8 +109,7 @@ class TestMessageListApi:
         api = module.MessageListApi()
         method = unwrap(api.get)
 
-        installed_app = MagicMock()
-        installed_app.app = MagicMock(mode="chat")
+        installed_app = make_installed_app(mode="chat")
 
         with (
             app.test_request_context(
@@ -120,8 +129,7 @@ class TestMessageListApi:
         api = module.MessageListApi()
         method = unwrap(api.get)
 
-        installed_app = MagicMock()
-        installed_app.app = MagicMock(mode="chat")
+        installed_app = make_installed_app(mode="chat")
 
         with (
             app.test_request_context(
@@ -143,8 +151,7 @@ class TestMessageFeedbackApi:
         api = module.MessageFeedbackApi()
         method = unwrap(api.post)
 
-        installed_app = MagicMock()
-        installed_app.app = MagicMock()
+        installed_app = make_installed_app()
 
         with (
             app.test_request_context("/", json={"rating": "like"}),
@@ -161,8 +168,7 @@ class TestMessageFeedbackApi:
         api = module.MessageFeedbackApi()
         method = unwrap(api.post)
 
-        installed_app = MagicMock()
-        installed_app.app = MagicMock()
+        installed_app = make_installed_app()
 
         with (
             app.test_request_context("/", json={}),
@@ -181,8 +187,7 @@ class TestMessageMoreLikeThisApi:
         api = module.MessageMoreLikeThisApi()
         method = unwrap(api.get)
 
-        installed_app = MagicMock()
-        installed_app.app = MagicMock(mode="completion")
+        installed_app = make_installed_app(mode="completion")
 
         with (
             app.test_request_context(
@@ -200,7 +205,7 @@ class TestMessageMoreLikeThisApi:
                 return_value=("ok", 200),
             ),
         ):
-            resp = method(MagicMock(), installed_app, "mid")
+            resp = method(MagicMock(), MagicMock(), installed_app, "mid")
 
         assert resp == ("ok", 200)
 
@@ -208,18 +213,16 @@ class TestMessageMoreLikeThisApi:
         api = module.MessageMoreLikeThisApi()
         method = unwrap(api.get)
 
-        installed_app = MagicMock()
-        installed_app.app = MagicMock(mode="chat")
+        installed_app = make_installed_app(mode="chat")
 
         with pytest.raises(NotCompletionAppError):
-            method(MagicMock(), installed_app, "mid")
+            method(MagicMock(), MagicMock(), installed_app, "mid")
 
     def test_more_like_this_disabled(self, app: Flask):
         api = module.MessageMoreLikeThisApi()
         method = unwrap(api.get)
 
-        installed_app = MagicMock()
-        installed_app.app = MagicMock(mode="completion")
+        installed_app = make_installed_app(mode="completion")
 
         with (
             app.test_request_context(
@@ -233,14 +236,13 @@ class TestMessageMoreLikeThisApi:
             ),
         ):
             with pytest.raises(AppMoreLikeThisDisabledError):
-                method(MagicMock(), installed_app, "mid")
+                method(MagicMock(), MagicMock(), installed_app, "mid")
 
     def test_message_not_exists_more_like_this(self, app: Flask):
         api = module.MessageMoreLikeThisApi()
         method = unwrap(api.get)
 
-        installed_app = MagicMock()
-        installed_app.app = MagicMock(mode="completion")
+        installed_app = make_installed_app(mode="completion")
 
         with (
             app.test_request_context(
@@ -254,14 +256,13 @@ class TestMessageMoreLikeThisApi:
             ),
         ):
             with pytest.raises(NotFound):
-                method(MagicMock(), installed_app, "mid")
+                method(MagicMock(), MagicMock(), installed_app, "mid")
 
     def test_provider_not_init_more_like_this(self, app: Flask):
         api = module.MessageMoreLikeThisApi()
         method = unwrap(api.get)
 
-        installed_app = MagicMock()
-        installed_app.app = MagicMock(mode="completion")
+        installed_app = make_installed_app(mode="completion")
 
         with (
             app.test_request_context(
@@ -275,14 +276,13 @@ class TestMessageMoreLikeThisApi:
             ),
         ):
             with pytest.raises(ProviderNotInitializeError):
-                method(MagicMock(), installed_app, "mid")
+                method(MagicMock(), MagicMock(), installed_app, "mid")
 
     def test_quota_exceeded_more_like_this(self, app: Flask):
         api = module.MessageMoreLikeThisApi()
         method = unwrap(api.get)
 
-        installed_app = MagicMock()
-        installed_app.app = MagicMock(mode="completion")
+        installed_app = make_installed_app(mode="completion")
 
         with (
             app.test_request_context(
@@ -296,14 +296,13 @@ class TestMessageMoreLikeThisApi:
             ),
         ):
             with pytest.raises(ProviderQuotaExceededError):
-                method(MagicMock(), installed_app, "mid")
+                method(MagicMock(), MagicMock(), installed_app, "mid")
 
     def test_model_not_support_more_like_this(self, app: Flask):
         api = module.MessageMoreLikeThisApi()
         method = unwrap(api.get)
 
-        installed_app = MagicMock()
-        installed_app.app = MagicMock(mode="completion")
+        installed_app = make_installed_app(mode="completion")
 
         with (
             app.test_request_context(
@@ -317,14 +316,13 @@ class TestMessageMoreLikeThisApi:
             ),
         ):
             with pytest.raises(ProviderModelCurrentlyNotSupportError):
-                method(MagicMock(), installed_app, "mid")
+                method(MagicMock(), MagicMock(), installed_app, "mid")
 
     def test_invoke_error_more_like_this(self, app: Flask):
         api = module.MessageMoreLikeThisApi()
         method = unwrap(api.get)
 
-        installed_app = MagicMock()
-        installed_app.app = MagicMock(mode="completion")
+        installed_app = make_installed_app(mode="completion")
 
         with (
             app.test_request_context(
@@ -338,14 +336,13 @@ class TestMessageMoreLikeThisApi:
             ),
         ):
             with pytest.raises(CompletionRequestError):
-                method(MagicMock(), installed_app, "mid")
+                method(MagicMock(), MagicMock(), installed_app, "mid")
 
     def test_unexpected_error_more_like_this(self, app: Flask):
         api = module.MessageMoreLikeThisApi()
         method = unwrap(api.get)
 
-        installed_app = MagicMock()
-        installed_app.app = MagicMock(mode="completion")
+        installed_app = make_installed_app(mode="completion")
 
         with (
             app.test_request_context(
@@ -359,7 +356,7 @@ class TestMessageMoreLikeThisApi:
             ),
         ):
             with pytest.raises(InternalServerError):
-                method(MagicMock(), installed_app, "mid")
+                method(MagicMock(), MagicMock(), installed_app, "mid")
 
 
 class TestMessageSuggestedQuestionApi:
@@ -367,8 +364,7 @@ class TestMessageSuggestedQuestionApi:
         api = module.MessageSuggestedQuestionApi()
         method = unwrap(api.get)
 
-        installed_app = MagicMock()
-        installed_app.app = MagicMock(mode="chat")
+        installed_app = make_installed_app(mode="chat")
 
         with (
             patch.object(
@@ -385,8 +381,7 @@ class TestMessageSuggestedQuestionApi:
         api = module.MessageSuggestedQuestionApi()
         method = unwrap(api.get)
 
-        installed_app = MagicMock()
-        installed_app.app = MagicMock(mode="completion")
+        installed_app = make_installed_app(mode="completion")
 
         with pytest.raises(NotChatAppError):
             method(MagicMock(), installed_app, "mid")
@@ -395,8 +390,7 @@ class TestMessageSuggestedQuestionApi:
         api = module.MessageSuggestedQuestionApi()
         method = unwrap(api.get)
 
-        installed_app = MagicMock()
-        installed_app.app = MagicMock(mode="chat")
+        installed_app = make_installed_app(mode="chat")
 
         with (
             patch.object(
@@ -412,8 +406,7 @@ class TestMessageSuggestedQuestionApi:
         api = module.MessageSuggestedQuestionApi()
         method = unwrap(api.get)
 
-        installed_app = MagicMock()
-        installed_app.app = MagicMock(mode="chat")
+        installed_app = make_installed_app(mode="chat")
 
         with (
             patch.object(
@@ -429,8 +422,7 @@ class TestMessageSuggestedQuestionApi:
         api = module.MessageSuggestedQuestionApi()
         method = unwrap(api.get)
 
-        installed_app = MagicMock()
-        installed_app.app = MagicMock(mode="chat")
+        installed_app = make_installed_app(mode="chat")
 
         with (
             patch.object(
@@ -446,8 +438,7 @@ class TestMessageSuggestedQuestionApi:
         api = module.MessageSuggestedQuestionApi()
         method = unwrap(api.get)
 
-        installed_app = MagicMock()
-        installed_app.app = MagicMock(mode="chat")
+        installed_app = make_installed_app(mode="chat")
 
         with (
             patch.object(
@@ -463,8 +454,7 @@ class TestMessageSuggestedQuestionApi:
         api = module.MessageSuggestedQuestionApi()
         method = unwrap(api.get)
 
-        installed_app = MagicMock()
-        installed_app.app = MagicMock(mode="chat")
+        installed_app = make_installed_app(mode="chat")
 
         with (
             patch.object(
@@ -480,8 +470,7 @@ class TestMessageSuggestedQuestionApi:
         api = module.MessageSuggestedQuestionApi()
         method = unwrap(api.get)
 
-        installed_app = MagicMock()
-        installed_app.app = MagicMock(mode="chat")
+        installed_app = make_installed_app(mode="chat")
 
         with (
             patch.object(
@@ -497,8 +486,7 @@ class TestMessageSuggestedQuestionApi:
         api = module.MessageSuggestedQuestionApi()
         method = unwrap(api.get)
 
-        installed_app = MagicMock()
-        installed_app.app = MagicMock(mode="chat")
+        installed_app = make_installed_app(mode="chat")
 
         with (
             patch.object(
@@ -514,8 +502,7 @@ class TestMessageSuggestedQuestionApi:
         api = module.MessageSuggestedQuestionApi()
         method = unwrap(api.get)
 
-        installed_app = MagicMock()
-        installed_app.app = MagicMock(mode="chat")
+        installed_app = make_installed_app(mode="chat")
 
         with (
             patch.object(

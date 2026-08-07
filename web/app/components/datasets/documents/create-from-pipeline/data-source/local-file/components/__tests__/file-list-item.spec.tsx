@@ -2,7 +2,7 @@ import type { FileListItemProps } from '../file-list-item'
 import type { CustomFile as File, FileItem } from '@/models/datasets'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { PROGRESS_ERROR, PROGRESS_NOT_STARTED } from '../../constants'
+import { PROGRESS_ERROR } from '../../constants'
 import FileListItem from '../file-list-item'
 
 // Mock theme hook - can be changed per test
@@ -19,12 +19,22 @@ vi.mock('@/types/app', () => ({
 // Mock SimplePieChart with dynamic import handling
 vi.mock('@/next/dynamic', () => ({
   default: () => {
-    const DynamicComponent = ({ percentage, stroke, fill }: { percentage: number, stroke: string, fill: string }) => (
-      <div data-testid="pie-chart" data-percentage={percentage} data-stroke={stroke} data-fill={fill}>
-        Pie Chart:
-        {' '}
-        {percentage}
-        %
+    const DynamicComponent = ({
+      percentage,
+      stroke,
+      fill,
+    }: {
+      percentage: number
+      stroke: string
+      fill: string
+    }) => (
+      <div
+        data-testid="pie-chart"
+        data-percentage={percentage}
+        data-stroke={stroke}
+        data-fill={fill}
+      >
+        Pie Chart: {percentage}%
       </div>
     )
     DynamicComponent.displayName = 'SimplePieChart'
@@ -34,7 +44,7 @@ vi.mock('@/next/dynamic', () => ({
 
 // Mock DocumentFileIcon
 vi.mock('@/app/components/datasets/common/document-file-icon', () => ({
-  default: ({ name, extension, size }: { name: string, extension: string, size: string }) => (
+  default: ({ name, extension, size }: { name: string; extension: string; size: string }) => (
     <div data-testid="document-icon" data-name={name} data-extension={extension} data-size={size}>
       Document Icon
     </div>
@@ -42,18 +52,19 @@ vi.mock('@/app/components/datasets/common/document-file-icon', () => ({
 }))
 
 describe('FileListItem', () => {
-  const createMockFile = (overrides: Partial<File> = {}): File => ({
-    name: 'test-document.pdf',
-    size: 1024 * 100, // 100KB
-    type: 'application/pdf',
-    lastModified: Date.now(),
-    ...overrides,
-  } as File)
+  const createMockFile = (overrides: Partial<File> = {}): File =>
+    ({
+      name: 'test-document.pdf',
+      size: 1024 * 100, // 100KB
+      type: 'application/pdf',
+      lastModified: Date.now(),
+      ...overrides,
+    }) as File
 
   const createMockFileItem = (overrides: Partial<FileItem> = {}): FileItem => ({
     fileID: 'file-123',
     file: createMockFile(overrides.file as Partial<File>),
-    progress: PROGRESS_NOT_STARTED,
+    progress: 100,
     ...overrides,
   })
 
@@ -97,7 +108,6 @@ describe('FileListItem', () => {
       // Extension is rendered in lowercase but styled with uppercase CSS
       const extensionSpan = screen.getByText('pdf')
       expect(extensionSpan).toBeInTheDocument()
-      expect(extensionSpan).toHaveClass('uppercase')
     })
 
     it('should render file size', () => {
@@ -139,13 +149,6 @@ describe('FileListItem', () => {
 
       expect(screen.queryByTestId('pie-chart')).not.toBeInTheDocument()
     })
-
-    it('should not show progress chart when not started (-1)', () => {
-      const fileItem = createMockFileItem({ progress: PROGRESS_NOT_STARTED })
-      render(<FileListItem {...defaultProps} fileItem={fileItem} />)
-
-      expect(screen.queryByTestId('pie-chart')).not.toBeInTheDocument()
-    })
   })
 
   describe('error state', () => {
@@ -155,21 +158,6 @@ describe('FileListItem', () => {
 
       const errorIcon = container.querySelector('.text-text-destructive')
       expect(errorIcon).toBeInTheDocument()
-    })
-
-    it('should apply error styling to container', () => {
-      const fileItem = createMockFileItem({ progress: PROGRESS_ERROR })
-      const { container } = render(<FileListItem {...defaultProps} fileItem={fileItem} />)
-
-      const item = container.firstChild as HTMLElement
-      expect(item).toHaveClass('border-state-destructive-border', 'bg-state-destructive-hover')
-    })
-
-    it('should not show error styling when not in error state', () => {
-      const { container } = render(<FileListItem {...defaultProps} />)
-
-      const item = container.firstChild as HTMLElement
-      expect(item).not.toHaveClass('border-state-destructive-border')
     })
   })
 
@@ -211,7 +199,9 @@ describe('FileListItem', () => {
     it('should call onRemove when delete button is clicked', () => {
       const onRemove = vi.fn()
       const fileItem = createMockFileItem()
-      const { container } = render(<FileListItem {...defaultProps} fileItem={fileItem} onRemove={onRemove} />)
+      const { container } = render(
+        <FileListItem {...defaultProps} fileItem={fileItem} onRemove={onRemove} />,
+      )
 
       const deleteButton = container.querySelector('.cursor-pointer')!
       fireEvent.click(deleteButton)
@@ -223,7 +213,9 @@ describe('FileListItem', () => {
     it('should stop propagation when delete button is clicked', () => {
       const onPreview = vi.fn()
       const onRemove = vi.fn()
-      const { container } = render(<FileListItem {...defaultProps} onPreview={onPreview} onRemove={onRemove} />)
+      const { container } = render(
+        <FileListItem {...defaultProps} onPreview={onPreview} onRemove={onRemove} />,
+      )
 
       const deleteButton = container.querySelector('.cursor-pointer')!
       fireEvent.click(deleteButton)
@@ -323,20 +315,6 @@ describe('FileListItem', () => {
   })
 
   describe('styling', () => {
-    it('should have proper shadow styling', () => {
-      const { container } = render(<FileListItem {...defaultProps} />)
-
-      const item = container.firstChild as HTMLElement
-      expect(item).toHaveClass('shadow-xs')
-    })
-
-    it('should have proper border styling', () => {
-      const { container } = render(<FileListItem {...defaultProps} />)
-
-      const item = container.firstChild as HTMLElement
-      expect(item).toHaveClass('border', 'border-components-panel-border')
-    })
-
     it('should truncate long file names', () => {
       const longFileName = 'this-is-a-very-long-file-name-that-should-be-truncated.pdf'
       const fileItem = createMockFileItem({

@@ -1,20 +1,14 @@
 ## Frontend Workflow
 
-- Refer to the `./docs/test.md` and `./docs/lint.md` for detailed frontend workflow instructions.
+- Read `docs/test.md` only for frontend test work and `docs/lint.md` only when running or changing static checks.
+- Use the repo-local `how-to-write-component` skill when implementation requires component ownership, state, data-flow, effect, or interaction-boundary decisions. Do not load it for test-only, copy-only, or styling-only changes.
+- Use `frontend-code-review` only for explicit frontend review or audit requests, including test reviews. Use `frontend-testing` when writing or changing Vitest or React Testing Library tests.
 
-## Overlay Components (Mandatory)
+## Package Contracts
 
-- `../packages/dify-ui/README.md` is the permanent contract for overlay primitives, portals, root `isolation: isolate`, and the `z-50` / `z-60` layering.
-- `./docs/overlay.md` records the current web overlay best practices.
-- In new or modified code, use only overlay primitives from `@langgenius/dify-ui/*`.
-- Do not introduce overlay imports from `@/app/components/base/*`; when touching existing callers, migrate them.
-
-## Design Token Mapping
-
-- When translating Figma designs to code, read `../packages/dify-ui/AGENTS.md` for the Figma `--radius/*` token to Tailwind `rounded-*` class mapping. The two scales are offset by one step.
-
-## Automated Test Generation
-
-- Use `./docs/test.md` as the canonical instruction set for generating frontend automated tests.
-- When proposing or saving tests, re-read that document and follow every requirement.
-- All frontend tests MUST also comply with the `frontend-testing` skill. Treat the skill as a mandatory constraint, not optional guidance.
+- User-facing strings must use `web/i18n/en-US/` keys. When adding or renaming a key, update every supported locale with the correct localized value.
+- For new backend calls and migrated surfaces, use generated `consoleQuery` / `consoleClient` APIs from `@/service/client`. Do not add handwritten REST helpers or DTO mirrors, mock-backed app state, or direct edits to generated contracts.
+- Prefer `@langgenius/dify-ui/*` primitives, data attributes, and design tokens. Preserve a visible focus indicator on the final focusable element.
+- Follow `docs/overlay.md` for overlay selection and migration. Migrate a legacy overlay only when the current behavior change actually involves that overlay boundary.
+- For custom SVG icons, follow `../packages/iconify-collections/README.md`; do not add generated React icons under `app/components/base/icons/src/`.
+- `docs/test.md` is the single source of truth for frontend automated-test policy. Skills may route and execute that policy but must not redefine it.

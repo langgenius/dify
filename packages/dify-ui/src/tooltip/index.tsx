@@ -1,12 +1,10 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import type * as React from 'react'
 import type { Placement } from '../placement'
 import { Tooltip as BaseTooltip } from '@base-ui/react/tooltip'
 import { cn } from '../cn'
 import { parsePlacement } from '../placement'
-
-export type { Placement }
 
 /**
  * Tooltip is an **ephemeral hint** tied to a trigger (typically an icon button,
@@ -27,12 +25,16 @@ export type { Placement }
  *
  * If you need interactive affordances (buttons, links, forms) use `Popover`.
  */
-export const TooltipProvider = BaseTooltip.Provider
-export const Tooltip = BaseTooltip.Root
-export const TooltipTrigger = BaseTooltip.Trigger
+const TooltipProvider = BaseTooltip.Provider
+const Tooltip = BaseTooltip.Root
+const TooltipTrigger = BaseTooltip.Trigger
+
+type TooltipProviderProps = BaseTooltip.Provider.Props
+type TooltipProps<Payload = unknown> = BaseTooltip.Root.Props<Payload>
+type TooltipTriggerProps<Payload = unknown> = BaseTooltip.Trigger.Props<Payload>
 
 type TooltipContentProps = {
-  children: ReactNode
+  children: React.ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number
@@ -40,7 +42,7 @@ type TooltipContentProps = {
   className?: string
 } & Omit<BaseTooltip.Popup.Props, 'children' | 'className'>
 
-export function TooltipContent({
+function TooltipContent({
   children,
   placement = 'top',
   sideOffset = 8,
@@ -62,7 +64,7 @@ export function TooltipContent({
       >
         <BaseTooltip.Popup
           className={cn(
-            'max-w-[300px] rounded-md bg-components-panel-bg px-3 py-2 text-left system-xs-regular wrap-break-word text-text-tertiary shadow-lg',
+            'max-w-75 rounded-md bg-components-panel-bg px-3 py-2 text-start system-xs-regular wrap-break-word text-text-tertiary shadow-lg',
             'origin-(--transform-origin) transition-opacity data-ending-style:opacity-0 data-instant:transition-none data-starting-style:opacity-0 motion-reduce:transition-none',
             className,
           )}
@@ -74,3 +76,7 @@ export function TooltipContent({
     </BaseTooltip.Portal>
   )
 }
+
+export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger }
+
+export type { TooltipContentProps, TooltipProps, TooltipProviderProps, TooltipTriggerProps }

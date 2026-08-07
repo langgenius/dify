@@ -4,12 +4,13 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import * as React from 'react'
 import { CreateContent } from './create-content'
 
-type Props = {
+type Props = Readonly<{
   open: boolean
   setOpen: (open: boolean) => void
   trigger: React.ReactNode
   popupLeft?: number
-} & CreateContentProps
+}> &
+  CreateContentProps
 
 export function CreateMetadataModal({
   open,
@@ -18,25 +19,27 @@ export function CreateMetadataModal({
   popupLeft = 20,
   ...createContentProps
 }: Props) {
-  const triggerElement = React.isValidElement(trigger)
-    ? trigger
-    : <button type="button">{trigger}</button>
+  const triggerElement = React.isValidElement(trigger) ? (
+    trigger
+  ) : (
+    <button type="button">{trigger}</button>
+  )
 
   return (
-    <Popover
-      open={open}
-      onOpenChange={setOpen}
-    >
-      <PopoverTrigger render={triggerElement as React.ReactElement} />
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger render={triggerElement} />
       <PopoverContent
         placement="left-start"
         sideOffset={popupLeft}
         alignOffset={-38}
         popupClassName="w-[320px]"
       >
-        <CreateContent {...createContentProps} onClose={() => setOpen(false)} onBack={() => setOpen(false)} />
+        <CreateContent
+          {...createContentProps}
+          onClose={() => setOpen(false)}
+          onBack={() => setOpen(false)}
+        />
       </PopoverContent>
     </Popover>
-
   )
 }

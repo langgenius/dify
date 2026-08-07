@@ -74,11 +74,16 @@ class SummaryIndex:
             def process_segment(segment_id: str) -> None:
                 """Process a single segment in a thread with a fresh DB session."""
                 with session_factory.create_session() as session:
+                    dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
+                    if dataset is None:
+                        return
                     segment = session.scalar(select(DocumentSegment).where(DocumentSegment.id == segment_id).limit(1))
                     if segment is None:
                         return
                     try:
-                        SummaryIndexService.generate_and_vectorize_summary(segment, dataset, summary_index_setting)
+                        SummaryIndexService.generate_and_vectorize_summary(
+                            segment, dataset, summary_index_setting, session=session
+                        )
                     except Exception:
                         logger.exception(
                             "Failed to generate summary for segment %s",

@@ -3,11 +3,11 @@ import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { act, render, waitFor } from '@testing-library/react'
 import { $getRoot } from 'lexical'
 import { CustomTextNode } from '../custom-text/node'
-import { CaptureEditorPlugin } from '../test-utils'
 import UpdateBlock, {
   PROMPT_EDITOR_INSERT_QUICKLY,
   PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER,
 } from '../update-block'
+import { CaptureEditorPlugin } from './test-utils'
 
 const { mockUseEventEmitterContextContext } = vi.hoisted(() => ({
   mockUseEventEmitterContextContext: vi.fn(),
@@ -41,19 +41,17 @@ const selectRootEnd = (editor: LexicalEditor) => {
   })
 }
 
-const setup = (props?: {
-  instanceId?: string
-  withEventEmitter?: boolean
-}) => {
+const setup = (props?: { instanceId?: string; withEventEmitter?: boolean }) => {
   const callbacks: Array<(event: TestEvent) => void> = []
 
-  const eventEmitter = props?.withEventEmitter === false
-    ? null
-    : {
-        useSubscription: vi.fn((callback: (event: TestEvent) => void) => {
-          callbacks.push(callback)
-        }),
-      }
+  const eventEmitter =
+    props?.withEventEmitter === false
+      ? null
+      : {
+          useSubscription: vi.fn((callback: (event: TestEvent) => void) => {
+            callbacks.push(callback)
+          }),
+        }
 
   mockUseEventEmitterContextContext.mockReturnValue({ eventEmitter })
 
@@ -79,7 +77,7 @@ const setup = (props?: {
 
   const emit = (event: TestEvent) => {
     act(() => {
-      callbacks.forEach(callback => callback(event))
+      callbacks.forEach((callback) => callback(event))
     })
   }
 

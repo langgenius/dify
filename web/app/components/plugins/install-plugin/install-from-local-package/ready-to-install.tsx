@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { PluginDeclaration } from '../../types'
+import type { PluginCategoryEnum, PluginDeclaration } from '../../types'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { InstallStep } from '../../types'
@@ -8,7 +8,7 @@ import Installed from '../base/installed'
 import useRefreshPluginList from '../hooks/use-refresh-plugin-list'
 import Install from './steps/install'
 
-type Props = {
+type Props = Readonly<{
   step: InstallStep
   onStepChange: (step: InstallStep) => void
   onStartToInstall: () => void
@@ -17,8 +17,9 @@ type Props = {
   uniqueIdentifier: string | null
   manifest: PluginDeclaration | null
   errorMsg: string | null
+  installContextCategory?: PluginCategoryEnum
   onError: (errorMsg: string) => void
-}
+}>
 
 const ReadyToInstall: FC<Props> = ({
   step,
@@ -29,48 +30,52 @@ const ReadyToInstall: FC<Props> = ({
   uniqueIdentifier,
   manifest,
   errorMsg,
+  installContextCategory,
   onError,
 }) => {
   const { refreshPluginList } = useRefreshPluginList()
 
-  const handleInstalled = useCallback((notRefresh?: boolean) => {
-    onStepChange(InstallStep.installed)
-    if (!notRefresh)
-      refreshPluginList(manifest)
-    setIsInstalling(false)
-  }, [manifest, onStepChange, refreshPluginList, setIsInstalling])
+  const handleInstalled = useCallback(
+    (notRefresh?: boolean) => {
+      onStepChange(InstallStep.installed)
+      if (!notRefresh) refreshPluginList(manifest)
+      setIsInstalling(false)
+    },
+    [manifest, onStepChange, refreshPluginList, setIsInstalling],
+  )
 
-  const handleFailed = useCallback((errorMsg?: string) => {
-    onStepChange(InstallStep.installFailed)
-    setIsInstalling(false)
-    if (errorMsg)
-      onError(errorMsg)
-  }, [onError, onStepChange, setIsInstalling])
+  const handleFailed = useCallback(
+    (errorMsg?: string) => {
+      onStepChange(InstallStep.installFailed)
+      setIsInstalling(false)
+      if (errorMsg) onError(errorMsg)
+    },
+    [onError, onStepChange, setIsInstalling],
+  )
 
   return (
     <>
-      {
-        step === InstallStep.readyToInstall && (
-          <Install
-            uniqueIdentifier={uniqueIdentifier!}
-            payload={manifest!}
-            onCancel={onClose}
-            onInstalled={handleInstalled}
-            onFailed={handleFailed}
-            onStartToInstall={onStartToInstall}
-          />
-        )
-      }
-      {
-        ([InstallStep.uploadFailed, InstallStep.installed, InstallStep.installFailed].includes(step)) && (
-          <Installed
-            payload={manifest}
-            isFailed={[InstallStep.uploadFailed, InstallStep.installFailed].includes(step)}
-            errMsg={errorMsg}
-            onCancel={onClose}
-          />
-        )
-      }
+      {step === InstallStep.readyToInstall && (
+        <Install
+          uniqueIdentifier={uniqueIdentifier!}
+          payload={manifest!}
+          onCancel={onClose}
+          onInstalled={handleInstalled}
+          onFailed={handleFailed}
+          onStartToInstall={onStartToInstall}
+        />
+      )}
+      {[InstallStep.uploadFailed, InstallStep.installed, InstallStep.installFailed].includes(
+        step,
+      ) && (
+        <Installed
+          payload={manifest}
+          isFailed={[InstallStep.uploadFailed, InstallStep.installFailed].includes(step)}
+          errMsg={errorMsg}
+          installContextCategory={installContextCategory}
+          onCancel={onClose}
+        />
+      )}
     </>
   )
 }

@@ -1,311 +1,204 @@
 'use client'
 
-import type { FC } from 'react'
-import type { AppListQuery } from '@/contract/console/apps'
-import { Checkbox } from '@langgenius/dify-ui/checkbox'
-import { cn } from '@langgenius/dify-ui/cn'
-import { keepPreviousData, useInfiniteQuery, useSuspenseQuery } from '@tanstack/react-query'
+import type { GetAppsData } from '@dify/contracts/api/console/apps/types.gen'
+import type { AppListCreationDialog } from './app-list-creation-modals'
+import type { AppListUrlQuery } from './query-params'
+import type { App } from '@/models/explore'
+import type { TryAppSelection } from '@/types/try-app'
+import {
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import { useDebounce } from 'ahooks'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
-import TabSliderNew from '@/app/components/base/tab-slider-new'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
-import { useAppContext } from '@/context/app-context'
-import { TagFilter } from '@/features/tag-management/components/tag-filter'
+import { useAtomValue } from 'jotai'
+import { useQueryStates } from 'nuqs'
+import { useCallback, useId, useMemo, useRef, useState } from 'react'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { CheckModal } from '@/hooks/use-pay'
-import dynamic from '@/next/dynamic'
-import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
-import { AppModeEnum } from '@/types/app'
-import AppCard from './app-card'
-import { AppCardSkeleton } from './app-card-skeleton'
+import { hasPermission } from '@/utils/permission'
+import { AppListCatalog } from './app-list-catalog'
+import { AppListCreationModals } from './app-list-creation-modals'
+import { AppListHeader } from './app-list-header'
+import { AppListTagManagementModal } from './app-list-tag-management-modal'
 import { APP_LIST_SEARCH_DEBOUNCE_MS } from './constants'
-import Empty from './empty'
-import Footer from './footer'
-import { isAppListCategory, useAppsQueryState } from './hooks/use-apps-query-state'
 import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
-import { useWorkflowOnlineUsers } from './hooks/use-workflow-online-users'
-import NewAppCard from './new-app-card'
+import { appListQueryParsers } from './query-params'
 
-const TagManagementModal = dynamic(() => import('@/features/tag-management/components/tag-management-modal').then(mod => mod.TagManagementModal), {
-  ssr: false,
-})
-const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-from-dsl-modal'), {
-  ssr: false,
-})
+type AppListQuery = NonNullable<GetAppsData['query']>
+type AppListSortBy = NonNullable<AppListQuery['sort_by']>
+type AppListCategory = AppListUrlQuery['category']
 
-type Props = {
-  controlRefreshList?: number
-}
-const List: FC<Props> = ({
-  controlRefreshList = 0,
-}) => {
-  const { t } = useTranslation()
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, isLoadingCurrentWorkspace } = useAppContext()
-  const searchParams = useSearchParams()
-  const pathname = usePathname()
-  const { replace } = useRouter()
+type Props = Readonly<{
+  onCreateLearnDify?: (app: App) => void
+  onTryLearnDify?: (params: TryAppSelection) => void
+}>
 
-  // eslint-disable-next-line react/use-state -- custom URL query hook, not React.useState
-  const {
-    query: { category, keywords, isCreatedByMe },
-    setCategory,
-    setKeywords,
-    setIsCreatedByMe,
-  } = useAppsQueryState()
+export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+
+  const [urlQuery, setUrlQuery] = useQueryStates(appListQueryParsers)
+  const { category, keywords } = urlQuery
+  const [creatorIDs, setCreatorIDs] = useState<string[]>([])
   const [tagIDs, setTagIDs] = useState<string[]>([])
+  const [sortBy, setSortBy] = useState<AppListSortBy>('last_modified')
   const debouncedKeywords = useDebounce(keywords, { wait: APP_LIST_SEARCH_DEBOUNCE_MS })
-  const newAppCardRef = useRef<HTMLDivElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
+  const dropZoneRef = useRef<HTMLDivElement>(null)
+  const scrollViewportRef = useRef<HTMLDivElement>(null)
+  const titleId = useId()
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
-  const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(false)
-  const [droppedDSLFile, setDroppedDSLFile] = useState<File | undefined>()
+  const [creationDialog, setCreationDialog] = useState<AppListCreationDialog>(null)
+  const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
+  const hasActiveFilters =
+    category !== 'all' ||
+    tagIDs.length > 0 ||
+    keywords.trim().length > 0 ||
+    debouncedKeywords.trim().length > 0 ||
+    creatorIDs.length > 0
 
-  const handleDSLFileDropped = useCallback((file: File) => {
-    setDroppedDSLFile(file)
-    setShowCreateFromDSLModal(true)
-  }, [])
+  const handleDSLFileDropped = useCallback(
+    (file: File) => {
+      if (!canCreateApp) return
+
+      setCreationDialog({ type: 'dsl', droppedFile: file })
+    },
+    [canCreateApp],
+  )
 
   const { dragging } = useDSLDragDrop({
     onDSLFileDropped: handleDSLFileDropped,
-    containerRef,
-    enabled: isCurrentWorkspaceEditor,
+    dropZoneRef,
+    enabled: canCreateApp,
   })
 
-  useEffect(() => {
-    if (!searchParams.has('tagIDs'))
-      return
-
-    const params = new URLSearchParams(searchParams.toString())
-    params.delete('tagIDs')
-    const query = params.toString()
-    replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
-  }, [pathname, replace, searchParams])
-
-  const appListQuery = useMemo<AppListQuery>(() => ({
-    page: 1,
-    limit: 30,
-    name: debouncedKeywords,
-    ...(tagIDs.length ? { tag_ids: tagIDs } : {}),
-    ...(isCreatedByMe ? { is_created_by_me: isCreatedByMe } : {}),
-    ...(category !== 'all' ? { mode: category } : {}),
-  }), [category, debouncedKeywords, isCreatedByMe, tagIDs])
-
-  const {
-    data,
-    isLoading,
-    isFetching,
-    isFetchingNextPage,
-    fetchNextPage,
-    hasNextPage,
-    error,
-    refetch,
-  } = useInfiniteQuery({
-    ...consoleQuery.apps.list.infiniteOptions({
-      input: pageParam => ({
-        query: {
-          ...appListQuery,
-          page: Number(pageParam),
-        },
-      }),
-      getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
-      initialPageParam: 1,
-      placeholderData: keepPreviousData,
+  const appListQuery = useMemo<AppListQuery>(
+    () => ({
+      page: 1,
+      limit: 30,
+      name: debouncedKeywords,
+      sort_by: sortBy,
+      ...(tagIDs.length ? { tag_ids: tagIDs } : {}),
+      ...(creatorIDs.length ? { creator_ids: creatorIDs } : {}),
+      ...(category !== 'all' ? { mode: category } : {}),
     }),
-    enabled: !isCurrentWorkspaceDatasetOperator,
-    refetchInterval: systemFeatures.enable_collaboration_mode ? 10000 : false,
-  })
+    [category, creatorIDs, debouncedKeywords, sortBy, tagIDs],
+  )
 
-  useEffect(() => {
-    if (controlRefreshList > 0) {
-      refetch()
-    }
-  }, [controlRefreshList, refetch])
+  const resetCatalogScroll = () => {
+    scrollViewportRef.current?.scrollTo({ top: 0 })
+  }
+  const changeCategory = (nextCategory: AppListCategory) => {
+    resetCatalogScroll()
+    void setUrlQuery({ category: nextCategory })
+  }
+  const changeTagIDs = (nextTagIDs: string[]) => {
+    resetCatalogScroll()
+    setTagIDs(nextTagIDs)
+  }
+  const changeKeywords = (nextKeywords: string) => {
+    resetCatalogScroll()
+    void setUrlQuery({ keywords: nextKeywords })
+  }
+  const changeCreatorIDs = (nextCreatorIDs: string[]) => {
+    resetCatalogScroll()
+    setCreatorIDs(nextCreatorIDs)
+  }
+  const changeSortBy = (nextSortBy: AppListSortBy) => {
+    resetCatalogScroll()
+    setSortBy(nextSortBy)
+  }
 
-  const anchorRef = useRef<HTMLDivElement>(null)
-  const options = [
-    { value: 'all', text: t('types.all', { ns: 'app' }), icon: <span className="mr-1 i-ri-apps-2-line h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.WORKFLOW, text: t('types.workflow', { ns: 'app' }), icon: <span className="mr-1 i-ri-exchange-2-line h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.ADVANCED_CHAT, text: t('types.advanced', { ns: 'app' }), icon: <span className="mr-1 i-ri-message-3-line h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.CHAT, text: t('types.chatbot', { ns: 'app' }), icon: <span className="mr-1 i-ri-message-3-line h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.AGENT_CHAT, text: t('types.agent', { ns: 'app' }), icon: <span className="mr-1 i-ri-robot-3-line h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.COMPLETION, text: t('types.completion', { ns: 'app' }), icon: <span className="mr-1 i-ri-file-4-line h-[14px] w-[14px]" /> },
-  ]
-
-  useEffect(() => {
-    if (localStorage.getItem(NEED_REFRESH_APP_LIST_KEY) === '1') {
-      localStorage.removeItem(NEED_REFRESH_APP_LIST_KEY)
-      refetch()
-    }
-  }, [refetch])
-
-  useEffect(() => {
-    if (isCurrentWorkspaceDatasetOperator)
-      return
-    const hasMore = hasNextPage ?? true
-    let observer: IntersectionObserver | undefined
-
-    if (error) {
-      if (observer)
-        observer.disconnect()
-      return
-    }
-
-    if (anchorRef.current && containerRef.current) {
-      // Calculate dynamic rootMargin: clamps to 100-200px range, using 20% of container height as the base value for better responsiveness
-      const containerHeight = containerRef.current.clientHeight
-      const dynamicMargin = Math.max(100, Math.min(containerHeight * 0.2, 200)) // Clamps to 100-200px range, using 20% of container height as the base value
-
-      observer = new IntersectionObserver((entries) => {
-        if (entries[0]!.isIntersecting && !isLoading && !isFetchingNextPage && !error && hasMore)
-          fetchNextPage()
-      }, {
-        root: containerRef.current,
-        rootMargin: `${dynamicMargin}px`,
-        threshold: 0.1, // Trigger when 10% of the anchor element is visible
-      })
-      observer.observe(anchorRef.current)
-    }
-    return () => observer?.disconnect()
-  }, [isLoading, isFetchingNextPage, fetchNextPage, error, hasNextPage, isCurrentWorkspaceDatasetOperator])
-
-  const handleCreatedByMeChange = useCallback((checked: boolean) => {
-    setIsCreatedByMe(checked)
-  }, [setIsCreatedByMe])
-
-  const pages = useMemo(() => data?.pages ?? [], [data?.pages])
-  const apps = useMemo(() => pages.flatMap(({ data: pageApps }) => pageApps), [pages])
-
-  const workflowOnlineUserAppIds = useMemo(() => {
-    const appIds = new Set<string>()
-    apps.forEach((app) => {
-      if (app.mode === AppModeEnum.WORKFLOW || app.mode === AppModeEnum.ADVANCED_CHAT)
-        appIds.add(app.id)
-    })
-    return Array.from(appIds)
-  }, [apps])
-
-  const {
-    onlineUsersMap: workflowOnlineUsersMap,
-  } = useWorkflowOnlineUsers({
-    appIds: workflowOnlineUserAppIds,
-    enabled: systemFeatures.enable_collaboration_mode,
-  })
-
-  const hasAnyApp = (pages[0]?.total ?? 0) > 0
-  // Show skeleton during initial load or when refetching with no previous data
-  const showSkeleton = isLoading || (isFetching && pages.length === 0)
+  const openCreateBlankModal = useCallback(() => {
+    if (canCreateApp) setCreationDialog({ type: 'blank' })
+  }, [canCreateApp])
+  const openCreateTemplateDialog = useCallback(() => {
+    if (canCreateApp) setCreationDialog({ type: 'template' })
+  }, [canCreateApp])
+  const openCreateFromDSLModal = useCallback(() => {
+    if (canCreateApp) setCreationDialog({ type: 'dsl' })
+  }, [canCreateApp])
+  const openTagManagement = useCallback(() => setShowTagManagementModal(true), [])
 
   return (
     <>
-      <div ref={containerRef} className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">
+      <div
+        ref={dropZoneRef}
+        className="relative flex h-0 min-h-0 shrink-0 grow flex-col bg-background-body"
+      >
         {dragging && (
-          <div className="absolute inset-0 z-50 m-0.5 rounded-2xl border-2 border-dashed border-components-dropzone-border-accent bg-[rgba(21,90,239,0.14)] p-2">
-          </div>
+          <div className="absolute inset-0 z-50 m-0.5 rounded-2xl border-2 border-dashed border-components-dropzone-border-accent bg-[rgba(21,90,239,0.14)] p-2"></div>
         )}
 
-        <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pt-7 pb-5">
-          <TabSliderNew
-            value={category}
-            onChange={(nextValue) => {
-              if (isAppListCategory(nextValue))
-                setCategory(nextValue)
-            }}
-            options={options}
-          />
-          <div className="flex items-center gap-2">
-            <label className="mr-2 flex h-7 items-center space-x-2">
-              <Checkbox checked={isCreatedByMe} onCheckedChange={handleCreatedByMeChange} />
-              <div className="text-sm font-normal text-text-secondary">
-                {t('showMyCreatedAppsOnly', { ns: 'app' })}
-              </div>
-            </label>
-            <TagFilter type="app" value={tagIDs} onChange={setTagIDs} onOpenTagManagement={() => setShowTagManagementModal(true)} />
-            <Input
-              showLeftIcon
-              showClearIcon
-              wrapperClassName="w-[200px]"
-              value={keywords}
-              onChange={e => setKeywords(e.target.value)}
-              onClear={() => setKeywords('')}
-            />
-          </div>
-        </div>
-        <div className={cn(
-          'relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 2k:grid-cols-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5',
-          !hasAnyApp && 'overflow-hidden',
-        )}
-        >
-          {(isCurrentWorkspaceEditor || isLoadingCurrentWorkspace) && (
-            <NewAppCard
-              ref={newAppCardRef}
-              isLoading={isLoadingCurrentWorkspace}
-              onSuccess={refetch}
-              selectedAppType={category}
-              className={cn(!hasAnyApp && 'z-10')}
-            />
-          )}
-          {showSkeleton
-            ? <AppCardSkeleton count={6} />
-            : hasAnyApp
-              ? apps.map(app => (
-                  <AppCard
-                    key={app.id}
-                    app={app}
-                    onlineUsers={workflowOnlineUsersMap[app.id] ?? []}
-                    onRefresh={refetch}
-                    onOpenTagManagement={() => setShowTagManagementModal(true)}
-                  />
-                ))
-              : <Empty />}
-          {isFetchingNextPage && (
-            <AppCardSkeleton count={3} />
-          )}
+        <AppListHeader
+          titleId={titleId}
+          category={category}
+          tagIDs={tagIDs}
+          keywords={keywords}
+          creatorIDs={creatorIDs}
+          sortBy={sortBy}
+          onCategoryChange={changeCategory}
+          onTagIDsChange={changeTagIDs}
+          onKeywordsChange={changeKeywords}
+          onCreatorIDsChange={changeCreatorIDs}
+          onSortByChange={changeSortBy}
+          onCreateBlank={openCreateBlankModal}
+          onCreateTemplate={openCreateTemplateDialog}
+          onImportDSL={openCreateFromDSLModal}
+          onOpenTagManagement={openTagManagement}
+          showCreateButton={canCreateApp}
+        />
+
+        <div className="relative min-h-0 grow">
+          <ScrollArea className="size-full overflow-hidden">
+            <ScrollAreaViewport
+              ref={scrollViewportRef}
+              role="region"
+              aria-labelledby={titleId}
+              className="overscroll-contain"
+              style={{ overflowX: 'hidden' }}
+            >
+              <ScrollAreaContent
+                className="flex min-h-full w-full max-w-full min-w-0 flex-col"
+                style={{ minWidth: 0 }}
+              >
+                <AppListCatalog
+                  appListQuery={appListQuery}
+                  canCreateApp={canCreateApp}
+                  dragging={dragging}
+                  hasActiveFilters={hasActiveFilters}
+                  onCreateBlank={openCreateBlankModal}
+                  onCreateLearnDify={onCreateLearnDify}
+                  onCreateTemplate={openCreateTemplateDialog}
+                  onImportDSL={openCreateFromDSLModal}
+                  onOpenTagManagement={openTagManagement}
+                  onTryLearnDify={onTryLearnDify}
+                  scrollViewportRef={scrollViewportRef}
+                />
+              </ScrollAreaContent>
+            </ScrollAreaViewport>
+            <ScrollAreaScrollbar>
+              <ScrollAreaThumb />
+            </ScrollAreaScrollbar>
+          </ScrollArea>
         </div>
 
-        {isCurrentWorkspaceEditor && (
-          <div
-            className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}
-            role="region"
-            aria-label={t('newApp.dropDSLToCreateApp', { ns: 'app' })}
-          >
-            <span className="i-ri-drag-drop-line size-4" />
-            <span className="system-xs-regular">{t('newApp.dropDSLToCreateApp', { ns: 'app' })}</span>
-          </div>
-        )}
-        {!systemFeatures.branding.enabled && (
-          <Footer />
-        )}
         <CheckModal />
-        <div ref={anchorRef} className="h-0"> </div>
-        <TagManagementModal
-          type="app"
+        <AppListTagManagementModal
           show={showTagManagementModal}
           onClose={() => setShowTagManagementModal(false)}
-          onTagsChange={refetch}
         />
       </div>
 
-      {showCreateFromDSLModal && (
-        <CreateFromDSLModal
-          show={showCreateFromDSLModal}
-          onClose={() => {
-            setShowCreateFromDSLModal(false)
-            setDroppedDSLFile(undefined)
-          }}
-          onSuccess={() => {
-            setShowCreateFromDSLModal(false)
-            setDroppedDSLFile(undefined)
-            refetch()
-          }}
-          droppedFile={droppedDSLFile}
-        />
-      )}
+      <AppListCreationModals
+        canCreateApp={canCreateApp}
+        category={category}
+        dialog={creationDialog}
+        onClose={() => setCreationDialog(null)}
+        onOpenBlank={openCreateBlankModal}
+        onOpenTemplate={openCreateTemplateDialog}
+      />
     </>
   )
 }
-
-export default List

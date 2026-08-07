@@ -9,7 +9,13 @@ from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 
 def _execution_context_layer() -> DifyExecutionContextLayer:
     return DifyExecutionContextLayer.from_config_with_settings(
-        DifyExecutionContextLayerConfig(tenant_id="tenant-1", user_id="user-1", invoke_from="workflow_run"),
+        DifyExecutionContextLayerConfig(
+            tenant_id="tenant-1",
+            user_id="user-1",
+            user_from="account",
+            agent_mode="workflow_run",
+            invoke_from="service-api",
+        ),
         daemon_url="http://plugin-daemon",
         daemon_api_key="daemon-secret",
     )
@@ -89,7 +95,9 @@ def test_execution_context_layer_lifecycle_does_not_manage_http_client() -> None
                     "execution_context": DifyExecutionContextLayerConfig(
                         tenant_id="tenant-1",
                         user_id="user-1",
-                        invoke_from="workflow_run",
+                        user_from="account",
+                        agent_mode="workflow_run",
+                        invoke_from="service-api",
                     )
                 }
             ) as run:

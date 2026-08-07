@@ -13,7 +13,7 @@ from controllers.common.errors import (
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import with_current_user
-from core.helper import ssrf_proxy
+from core.file import remote_fetcher
 from extensions.ext_database import db
 from fields.file_fields import FileWithSignedUrl, RemoteFileInfo
 from graphon.file import helpers as file_helpers
@@ -36,14 +36,69 @@ class GetRemoteFileInfo(Resource):
     @login_required
     def get(self, url: str):
         decoded_url = helpers.decode_remote_url(url, request.query_string)
-        resp = ssrf_proxy.head(decoded_url)
+        resp = remote_fetcher.make_request("HEAD", decoded_url)
         if resp.status_code != httpx.codes.OK:
-            resp = ssrf_proxy.get(decoded_url, timeout=3)
+            resp = remote_fetcher.make_request("GET", decoded_url, timeout=3)
         resp.raise_for_status()
         return RemoteFileInfo(
             file_type=resp.headers.get("Content-Type", "application/octet-stream"),
             file_length=int(resp.headers.get("Content-Length", 0)),
         ).model_dump(mode="json")
+
+
+def upload_remote_file_from_request(
+    *,
+    current_user: Account,
+    resource_tenant_id: str | None = None,
+) -> FileWithSignedUrl:
+    """Validate the JSON request, fetch its remote file, and persist it under the requested tenant."""
+    payload = RemoteFileUploadPayload.model_validate(console_ns.payload)
+    url = payload.url
+
+    # Try to fetch remote file metadata/content first
+    try:
+        resp = remote_fetcher.make_request("HEAD", url=url)
+        if resp.status_code != httpx.codes.OK:
+            resp = remote_fetcher.make_request("GET", url=url, timeout=3, follow_redirects=True)
+        if resp.status_code != httpx.codes.OK:
+            # Normalize into a user-friendly error message expected by tests
+            raise RemoteFileUploadError(f"Failed to fetch file from {url}: {resp.text}")
+    except httpx.RequestError as e:
+        raise RemoteFileUploadError(f"Failed to fetch file from {url}: {str(e)}")
+
+    file_info = helpers.guess_file_info_from_response(resp)
+
+    # Enforce file size limit with 400 (Bad Request) per tests' expectation
+    if not FileService.is_file_size_within_limit(extension=file_info.extension, file_size=file_info.size):
+        raise FileTooLargeError()
+
+    # Load content if needed
+    content = resp.content if resp.request.method == "GET" else remote_fetcher.make_request("GET", url).content
+
+    try:
+        upload_file = FileService(db.engine).upload_file(
+            filename=file_info.filename,
+            content=content,
+            mimetype=file_info.mimetype,
+            user=current_user,
+            tenant_id=resource_tenant_id,
+            source_url=url,
+        )
+    except services.errors.file.FileTooLargeError as file_too_large_error:
+        raise FileTooLargeError(file_too_large_error.description)
+    except services.errors.file.UnsupportedFileTypeError:
+        raise UnsupportedFileTypeError()
+
+    return FileWithSignedUrl(
+        id=upload_file.id,
+        name=upload_file.name,
+        size=upload_file.size,
+        extension=upload_file.extension,
+        url=file_helpers.get_signed_file_url(upload_file_id=upload_file.id),
+        mime_type=upload_file.mime_type,
+        created_by=upload_file.created_by,
+        created_at=int(upload_file.created_at.timestamp()),
+    )
 
 
 @console_ns.route("/remote-files/upload")
@@ -53,53 +108,8 @@ class RemoteFileUpload(Resource):
     @login_required
     @with_current_user
     def post(self, current_user: Account):
-        payload = RemoteFileUploadPayload.model_validate(console_ns.payload)
-        url = payload.url
-
-        # Try to fetch remote file metadata/content first
-        try:
-            resp = ssrf_proxy.head(url=url)
-            if resp.status_code != httpx.codes.OK:
-                resp = ssrf_proxy.get(url=url, timeout=3, follow_redirects=True)
-            if resp.status_code != httpx.codes.OK:
-                # Normalize into a user-friendly error message expected by tests
-                raise RemoteFileUploadError(f"Failed to fetch file from {url}: {resp.text}")
-        except httpx.RequestError as e:
-            raise RemoteFileUploadError(f"Failed to fetch file from {url}: {str(e)}")
-
-        file_info = helpers.guess_file_info_from_response(resp)
-
-        # Enforce file size limit with 400 (Bad Request) per tests' expectation
-        if not FileService.is_file_size_within_limit(extension=file_info.extension, file_size=file_info.size):
-            raise FileTooLargeError()
-
-        # Load content if needed
-        content = resp.content if resp.request.method == "GET" else ssrf_proxy.get(url).content
-
-        try:
-            upload_file = FileService(db.engine).upload_file(
-                filename=file_info.filename,
-                content=content,
-                mimetype=file_info.mimetype,
-                user=current_user,
-                source_url=url,
-            )
-        except services.errors.file.FileTooLargeError as file_too_large_error:
-            raise FileTooLargeError(file_too_large_error.description)
-        except services.errors.file.UnsupportedFileTypeError:
-            raise UnsupportedFileTypeError()
-
-        # Success: return created resource with 201 status
+        remote_file = upload_remote_file_from_request(current_user=current_user)
         return (
-            FileWithSignedUrl(
-                id=upload_file.id,
-                name=upload_file.name,
-                size=upload_file.size,
-                extension=upload_file.extension,
-                url=file_helpers.get_signed_file_url(upload_file_id=upload_file.id),
-                mime_type=upload_file.mime_type,
-                created_by=upload_file.created_by,
-                created_at=int(upload_file.created_at.timestamp()),
-            ).model_dump(mode="json"),
+            remote_file.model_dump(mode="json"),
             201,
         )

@@ -1,3 +1,4 @@
+import type { WorkflowTranslate } from './parallel'
 import type { NodeTracing } from '@/types/workflow'
 import { cloneDeep } from 'es-toolkit/object'
 import { BlockEnum } from '../../../types'
@@ -8,35 +9,48 @@ import { addChildrenToLoopNode } from './loop'
 import formatParallelNode from './parallel'
 import formatRetryNode from './retry'
 
-const formatIterationAndLoopNode = (list: NodeTracing[], t: any) => {
+const formatIterationAndLoopNode = (list: NodeTracing[], t: WorkflowTranslate) => {
   const clonedList = cloneDeep(list)
 
   // Identify all loop and iteration nodes
   const loopNodeIds = clonedList
-    .filter(item => item.node_type === BlockEnum.Loop)
-    .map(item => item.node_id)
+    .filter((item) => item.node_type === BlockEnum.Loop)
+    .map((item) => item.node_id)
 
   const iterationNodeIds = clonedList
-    .filter(item => item.node_type === BlockEnum.Iteration)
-    .map(item => item.node_id)
+    .filter((item) => item.node_type === BlockEnum.Iteration)
+    .map((item) => item.node_id)
 
   // Identify all child nodes for both loop and iteration
   const loopChildrenNodeIds = clonedList
-    .filter(item => item.execution_metadata?.loop_id && loopNodeIds.includes(item.execution_metadata.loop_id))
-    .map(item => item.node_id)
+    .filter(
+      (item) =>
+        item.execution_metadata?.loop_id && loopNodeIds.includes(item.execution_metadata.loop_id),
+    )
+    .map((item) => item.node_id)
 
   const iterationChildrenNodeIds = clonedList
-    .filter(item => item.execution_metadata?.iteration_id && iterationNodeIds.includes(item.execution_metadata.iteration_id))
-    .map(item => item.node_id)
+    .filter(
+      (item) =>
+        item.execution_metadata?.iteration_id &&
+        iterationNodeIds.includes(item.execution_metadata.iteration_id),
+    )
+    .map((item) => item.node_id)
 
   // Filter out child nodes as they will be included in their parent nodes
   const result = clonedList
-    .filter(item => !loopChildrenNodeIds.includes(item.node_id) && !iterationChildrenNodeIds.includes(item.node_id))
+    .filter(
+      (item) =>
+        !loopChildrenNodeIds.includes(item.node_id) &&
+        !iterationChildrenNodeIds.includes(item.node_id),
+    )
     .map((item) => {
       // Process Loop nodes
       if (item.node_type === BlockEnum.Loop) {
-        const childrenNodes = clonedList.filter(child => child.execution_metadata?.loop_id === item.node_id)
-        const error = childrenNodes.find(child => child.status === 'failed')
+        const childrenNodes = clonedList.filter(
+          (child) => child.execution_metadata?.loop_id === item.node_id,
+        )
+        const error = childrenNodes.find((child) => child.status === 'failed')
         if (error) {
           item.status = 'failed'
           item.error = error.error
@@ -54,8 +68,10 @@ const formatIterationAndLoopNode = (list: NodeTracing[], t: any) => {
 
       // Process Iteration nodes
       if (item.node_type === BlockEnum.Iteration) {
-        const childrenNodes = clonedList.filter(child => child.execution_metadata?.iteration_id === item.node_id)
-        const error = childrenNodes.find(child => child.status === 'failed')
+        const childrenNodes = clonedList.filter(
+          (child) => child.execution_metadata?.iteration_id === item.node_id,
+        )
+        const error = childrenNodes.find((child) => child.status === 'failed')
         if (error) {
           item.status = 'failed'
           item.error = error.error
@@ -77,12 +93,12 @@ const formatIterationAndLoopNode = (list: NodeTracing[], t: any) => {
   return result
 }
 
-const formatToTracingNodeList = (list: NodeTracing[], t: any) => {
+const formatToTracingNodeList = (list: NodeTracing[], t: WorkflowTranslate) => {
   const allItems = cloneDeep([...list]).sort((a, b) => a.index - b.index)
   /*
-  * First handle not change list structure node
-  * Because Handle struct node will put the node in different
-  */
+   * First handle not change list structure node
+   * Because Handle struct node will put the node in different
+   */
   const formattedAgentList = formatAgentNode(allItems)
   const formattedHumanInputList = formatHumanInputNode(formattedAgentList) // Keep only latest status for human-input nodes
   const formattedRetryList = formatRetryNode(formattedHumanInputList) // retry one node

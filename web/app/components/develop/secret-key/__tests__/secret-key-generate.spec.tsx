@@ -1,12 +1,10 @@
-import type { CreateApiKeyResponse } from '@/models/app'
+import type { ApiKeyItem } from '@dify/contracts/api/console/apps/types.gen'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import SecretKeyGenerateModal from '../secret-key-generate'
 
-const createMockApiKey = (token: string): CreateApiKeyResponse => ({
-  id: 'mock-id',
+const createMockApiKey = (token: string): Pick<ApiKeyItem, 'token'> => ({
   token,
-  created_at: '2024-01-01T00:00:00Z',
 })
 
 async function renderModal(ui: React.ReactElement) {
@@ -51,12 +49,13 @@ describe('SecretKeyGenerateModal', () => {
 
     it('should render the close icon', async () => {
       await renderModal(<SecretKeyGenerateModal {...defaultProps} />)
-      const closeIcon = document.body.querySelector('svg.cursor-pointer')
-      expect(closeIcon).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeInTheDocument()
     })
 
     it('should render InputCopy component', async () => {
-      await renderModal(<SecretKeyGenerateModal {...defaultProps} newKey={createMockApiKey('test-token-123')} />)
+      await renderModal(
+        <SecretKeyGenerateModal {...defaultProps} newKey={createMockApiKey('test-token-123')} />,
+      )
       expect(screen.getByText('test-token-123')).toBeInTheDocument()
     })
   })
@@ -70,7 +69,9 @@ describe('SecretKeyGenerateModal', () => {
 
   describe('newKey prop', () => {
     it('should display the token when newKey is provided', async () => {
-      await renderModal(<SecretKeyGenerateModal {...defaultProps} newKey={createMockApiKey('sk-abc123xyz')} />)
+      await renderModal(
+        <SecretKeyGenerateModal {...defaultProps} newKey={createMockApiKey('sk-abc123xyz')} />,
+      )
       expect(screen.getByText('sk-abc123xyz')).toBeInTheDocument()
     })
 
@@ -86,7 +87,9 @@ describe('SecretKeyGenerateModal', () => {
 
     it('should display long tokens correctly', async () => {
       const longToken = `sk-${'a'.repeat(100)}`
-      await renderModal(<SecretKeyGenerateModal {...defaultProps} newKey={createMockApiKey(longToken)} />)
+      await renderModal(
+        <SecretKeyGenerateModal {...defaultProps} newKey={createMockApiKey(longToken)} />,
+      )
       expect(screen.getByText(longToken)).toBeInTheDocument()
     })
   })
@@ -97,12 +100,7 @@ describe('SecretKeyGenerateModal', () => {
       const onClose = vi.fn()
       await renderModal(<SecretKeyGenerateModal {...defaultProps} onClose={onClose} />)
 
-      const closeIcon = document.body.querySelector('svg.cursor-pointer')
-      expect(closeIcon).toBeInTheDocument()
-
-      await act(async () => {
-        await user.click(closeIcon!)
-      })
+      await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       expect(onClose).toHaveBeenCalled()
     })
@@ -121,65 +119,11 @@ describe('SecretKeyGenerateModal', () => {
     })
   })
 
-  describe('className prop', () => {
-    it('should apply custom className', async () => {
-      await renderModal(
-        <SecretKeyGenerateModal {...defaultProps} className="custom-modal-class" />,
-      )
-      const modal = document.body.querySelector('.custom-modal-class')
-      expect(modal).toBeInTheDocument()
-    })
-
-    it('should apply shrink-0 class', async () => {
-      await renderModal(
-        <SecretKeyGenerateModal {...defaultProps} className="shrink-0" />,
-      )
-      const modal = document.body.querySelector('.shrink-0')
-      expect(modal).toBeInTheDocument()
-    })
-  })
-
   describe('modal styling', () => {
     it('should have px-8 padding', async () => {
       await renderModal(<SecretKeyGenerateModal {...defaultProps} />)
       const modal = document.body.querySelector('.px-8')
       expect(modal).toBeInTheDocument()
-    })
-  })
-
-  describe('close icon styling', () => {
-    it('should have cursor-pointer class on close icon', async () => {
-      await renderModal(<SecretKeyGenerateModal {...defaultProps} />)
-      const closeIcon = document.body.querySelector('svg.cursor-pointer')
-      expect(closeIcon).toBeInTheDocument()
-    })
-  })
-
-  describe('header section', () => {
-    it('should have flex justify-end on close container', async () => {
-      await renderModal(<SecretKeyGenerateModal {...defaultProps} />)
-      const closeIcon = document.body.querySelector('svg.cursor-pointer')
-      const closeContainer = closeIcon?.parentElement
-      expect(closeContainer).toBeInTheDocument()
-      expect(closeContainer?.className).toContain('flex')
-      expect(closeContainer?.className).toContain('justify-end')
-    })
-
-    it('should have negative margin on close container', async () => {
-      await renderModal(<SecretKeyGenerateModal {...defaultProps} />)
-      const closeIcon = document.body.querySelector('svg.cursor-pointer')
-      const closeContainer = closeIcon?.parentElement
-      expect(closeContainer).toBeInTheDocument()
-      expect(closeContainer?.className).toContain('-mr-2')
-      expect(closeContainer?.className).toContain('-mt-6')
-    })
-
-    it('should have bottom margin on close container', async () => {
-      await renderModal(<SecretKeyGenerateModal {...defaultProps} />)
-      const closeIcon = document.body.querySelector('svg.cursor-pointer')
-      const closeContainer = closeIcon?.parentElement
-      expect(closeContainer).toBeInTheDocument()
-      expect(closeContainer?.className).toContain('mb-4')
     })
   })
 
@@ -217,12 +161,16 @@ describe('SecretKeyGenerateModal', () => {
 
   describe('InputCopy section', () => {
     it('should render InputCopy with token value', async () => {
-      await renderModal(<SecretKeyGenerateModal {...defaultProps} newKey={createMockApiKey('test-token')} />)
+      await renderModal(
+        <SecretKeyGenerateModal {...defaultProps} newKey={createMockApiKey('test-token')} />,
+      )
       expect(screen.getByText('test-token')).toBeInTheDocument()
     })
 
     it('should have w-full class on InputCopy', async () => {
-      await renderModal(<SecretKeyGenerateModal {...defaultProps} newKey={createMockApiKey('test')} />)
+      await renderModal(
+        <SecretKeyGenerateModal {...defaultProps} newKey={createMockApiKey('test')} />,
+      )
       const inputText = screen.getByText('test')
       const inputContainer = inputText.closest('.w-full')
       expect(inputContainer).toBeInTheDocument()

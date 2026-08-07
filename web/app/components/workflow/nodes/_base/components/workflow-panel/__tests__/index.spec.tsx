@@ -11,22 +11,34 @@ const mockHandleNodeDataUpdate = vi.fn()
 const mockHandleNodeDataUpdateWithSyncDraft = vi.fn()
 const mockSaveStateToHistory = vi.fn()
 const mockSetDetail = vi.fn()
-const mockSetShowAccountSettingModal = vi.fn()
+const mockSetSettingsDestination = vi.fn()
 const mockHandleSingleRun = vi.fn()
 const mockHandleStop = vi.fn()
 const mockHandleRunWithParams = vi.fn()
 let mockShowMessageLogModal = false
-let mockBuiltInTools = [{
-  id: 'provider/tool',
-  name: 'Tool',
-  type: 'builtin',
-  allow_delete: true,
-}]
+let mockNodesReadOnly = false
+let mockCanRun = true
+let mockBuiltInTools = [
+  {
+    id: 'provider/tool',
+    name: 'Tool',
+    type: 'builtin',
+    allow_delete: true,
+  },
+]
 let mockTriggerPlugins: Array<Record<string, unknown>> = []
 
 const mockLogsState = {
   showSpecialResultPanel: false,
 }
+
+const createMockSingleRunParams = () => ({
+  forms: [],
+  onStop: vi.fn(),
+  runningStatus: NodeRunningStatus.Succeeded,
+  existVarValuesInForms: [],
+  filteredExistVarForms: [],
+})
 
 const mockLastRunState = {
   isShowSingleRun: false,
@@ -43,13 +55,7 @@ const mockLastRunState = {
   setIsRunAfterSingleRun: vi.fn(),
   setTabType: vi.fn(),
   handleAfterCustomSingleRun: vi.fn(),
-  singleRunParams: {
-    forms: [],
-    onStop: vi.fn(),
-    runningStatus: NodeRunningStatus.Succeeded,
-    existVarValuesInForms: [],
-    filteredExistVarForms: [],
-  },
+  singleRunParams: createMockSingleRunParams(),
   nodeInfo: { id: 'node-1' },
   setRunInputData: vi.fn(),
   handleStop: () => mockHandleStop(),
@@ -59,29 +65,33 @@ const mockLastRunState = {
   getFilteredExistVarForms: vi.fn(() => []),
 }
 
-const createDataSourceCollection = (overrides: Partial<ToolWithProvider> = {}): ToolWithProvider => ({
-  id: 'source-1',
-  name: 'Source',
-  author: 'Author',
-  description: { en_US: 'Source description', zh_Hans: 'Source description' },
-  icon: 'source-icon',
-  label: { en_US: 'Source', zh_Hans: 'Source' },
-  type: 'datasource',
-  team_credentials: {},
-  is_team_authorization: false,
-  allow_delete: false,
-  labels: [],
-  plugin_id: 'source-1',
-  tools: [],
-  meta: {} as ToolWithProvider['meta'],
-  ...overrides,
-}) as ToolWithProvider
+const createDataSourceCollection = (overrides: Partial<ToolWithProvider> = {}): ToolWithProvider =>
+  ({
+    id: 'source-1',
+    name: 'Source',
+    author: 'Author',
+    description: { en_US: 'Source description', zh_Hans: 'Source description' },
+    icon: 'source-icon',
+    label: { en_US: 'Source', zh_Hans: 'Source' },
+    type: 'datasource',
+    team_credentials: {},
+    is_team_authorization: false,
+    allow_delete: false,
+    labels: [],
+    plugin_id: 'source-1',
+    tools: [],
+    meta: {} as ToolWithProvider['meta'],
+    ...overrides,
+  }) as ToolWithProvider
 
 vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: { showMessageLogModal: boolean, appDetail: { id: string } }) => unknown) => selector({
-    showMessageLogModal: mockShowMessageLogModal,
-    appDetail: { id: 'app-1' },
-  }),
+  useStore: (
+    selector: (state: { showMessageLogModal: boolean; appDetail: { id: string } }) => unknown,
+  ) =>
+    selector({
+      showMessageLogModal: mockShowMessageLogModal,
+      appDetail: { id: 'app-1' },
+    }),
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
@@ -94,47 +104,119 @@ vi.mock('@/app/components/plugins/plugin-detail-panel/store', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useAvailableBlocks: () => ({ availableNextBlocks: [] }),
-  useEdgesInteractions: () => ({
-    handleEdgeDeleteByDeleteBranch: vi.fn(),
-  }),
-  useNodeDataUpdate: () => ({
-    handleNodeDataUpdate: mockHandleNodeDataUpdate,
-    handleNodeDataUpdateWithSyncDraft: mockHandleNodeDataUpdateWithSyncDraft,
-  }),
-  useNodesInteractions: () => ({
-    handleNodeSelect: mockHandleNodeSelect,
-  }),
-  useNodesMetaData: () => ({
-    nodesMap: {
-      [BlockEnum.Tool]: { defaultRunInputData: {}, metaData: { helpLinkUri: '' } },
-      [BlockEnum.DataSource]: { defaultRunInputData: {}, metaData: { helpLinkUri: '' } },
+vi.mock('../../../../../hooks/use-available-blocks', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../../hooks/use-available-blocks')>()
+
+  return {
+    ...actual,
+    useAvailableBlocks: () => ({ availableNextBlocks: [] }),
+  }
+})
+
+vi.mock('../../../../../hooks/use-edges-interactions', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../../../../../hooks/use-edges-interactions')>()
+
+  return {
+    ...actual,
+    useEdgesInteractions: () => ({
+      handleEdgeDeleteByDeleteBranch: vi.fn(),
+    }),
+  }
+})
+
+vi.mock('../../../../../hooks/use-node-data-update', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../../hooks/use-node-data-update')>()
+
+  return {
+    ...actual,
+    useNodeDataUpdate: () => ({
+      handleNodeDataUpdate: mockHandleNodeDataUpdate,
+      handleNodeDataUpdateWithSyncDraft: mockHandleNodeDataUpdateWithSyncDraft,
+    }),
+  }
+})
+
+vi.mock('../../../../../hooks/use-nodes-interactions', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../../../../../hooks/use-nodes-interactions')>()
+
+  return {
+    ...actual,
+    useNodesInteractions: () => ({
+      handleNodeSelect: mockHandleNodeSelect,
+    }),
+  }
+})
+
+vi.mock('../../../../../hooks/use-nodes-meta-data', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../../hooks/use-nodes-meta-data')>()
+
+  return {
+    ...actual,
+    useNodesMetaData: () => ({
+      nodesMap: {
+        [BlockEnum.Tool]: { defaultRunInputData: {}, metaData: { helpLinkUri: '' } },
+        [BlockEnum.DataSource]: { defaultRunInputData: {}, metaData: { helpLinkUri: '' } },
+      },
+    }),
+  }
+})
+
+vi.mock('../../../../../hooks/use-tool-icon', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../../hooks/use-tool-icon')>()
+
+  return {
+    ...actual,
+    useToolIcon: () => undefined,
+  }
+})
+
+vi.mock('../../../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useNodesReadOnly: () => ({
+      nodesReadOnly: mockNodesReadOnly,
+    }),
+  }
+})
+
+vi.mock('../../../../../hooks/use-workflow-history', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../../hooks/use-workflow-history')>()
+
+  return {
+    ...actual,
+    useWorkflowHistory: () => ({
+      saveStateToHistory: mockSaveStateToHistory,
+    }),
+    WorkflowHistoryEvent: {
+      NodeTitleChange: 'NodeTitleChange',
+      NodeDescriptionChange: 'NodeDescriptionChange',
     },
-  }),
-  useNodesReadOnly: () => ({
-    nodesReadOnly: false,
-  }),
-  useToolIcon: () => undefined,
-  useWorkflowHistory: () => ({
-    saveStateToHistory: mockSaveStateToHistory,
-  }),
-  WorkflowHistoryEvent: {
-    NodeTitleChange: 'NodeTitleChange',
-    NodeDescriptionChange: 'NodeDescriptionChange',
-  },
-}))
+  }
+})
 
 vi.mock('@/app/components/workflow/hooks-store', () => ({
-  useHooksStore: (selector: (state: { configsMap: { flowId: string, flowType: string } }) => unknown) => selector({
-    configsMap: {
-      flowId: 'flow-1',
-      flowType: 'app',
-    },
-  }),
+  useHooksStore: (
+    selector: (state: {
+      configsMap: { flowId: string; flowType: string }
+      accessControl: { canRun: boolean }
+    }) => unknown,
+  ) =>
+    selector({
+      configsMap: {
+        flowId: 'flow-1',
+        flowType: 'app',
+      },
+      accessControl: {
+        canRun: mockCanRun,
+      },
+    }),
 }))
 
-vi.mock('@/app/components/workflow/hooks/use-inspect-vars-crud', () => ({
+vi.mock('../../../../../hooks/use-inspect-vars-crud', () => ({
   default: () => ({
     appendNodeInspectVars: vi.fn(),
   }),
@@ -156,11 +238,10 @@ vi.mock('@/service/use-triggers', () => ({
   }),
 }))
 
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowAccountSettingModal: mockSetShowAccountSettingModal,
-  }),
-}))
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+})
 
 vi.mock('@/app/components/workflow/utils', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/app/components/workflow/utils')>()
@@ -186,18 +267,27 @@ vi.mock('../last-run/use-last-run', () => ({
 
 vi.mock('@/app/components/plugins/plugin-auth', () => ({
   PluginAuth: ({ children }: PropsWithChildren) => <div>{children}</div>,
-  AuthorizedInNode: ({ onAuthorizationItemClick }: { onAuthorizationItemClick?: (credentialId: string) => void }) => (
+  AuthorizedInNode: ({
+    onAuthorizationItemClick,
+  }: {
+    onAuthorizationItemClick?: (credentialId: string) => void
+  }) => (
     <button onClick={() => onAuthorizationItemClick?.('credential-1')}>authorized-in-node</button>
   ),
-  PluginAuthInDataSourceNode: ({ children, onJumpToDataSourcePage }: PropsWithChildren<{ onJumpToDataSourcePage?: () => void }>) => (
+  PluginAuthInDataSourceNode: ({
+    children,
+    onJumpToDataSourcePage,
+  }: PropsWithChildren<{ onJumpToDataSourcePage?: () => void }>) => (
     <div>
       <button onClick={onJumpToDataSourcePage}>jump-to-datasource</button>
       {children}
     </div>
   ),
-  AuthorizedInDataSourceNode: ({ onJumpToDataSourcePage }: { onJumpToDataSourcePage?: () => void }) => (
-    <button onClick={onJumpToDataSourcePage}>authorized-in-datasource-node</button>
-  ),
+  AuthorizedInDataSourceNode: ({
+    onJumpToDataSourcePage,
+  }: {
+    onJumpToDataSourcePage?: () => void
+  }) => <button onClick={onJumpToDataSourcePage}>authorized-in-datasource-node</button>,
   AuthCategory: { tool: 'tool' },
 }))
 
@@ -226,7 +316,9 @@ vi.mock('../before-run-form', () => ({
 }))
 
 vi.mock('../before-run-form/panel-wrap', () => ({
-  default: ({ children }: PropsWithChildren<{ nodeName: string, onHide: () => void }>) => <div>{children}</div>,
+  default: ({ children }: PropsWithChildren<{ nodeName: string; onHide: () => void }>) => (
+    <div>{children}</div>
+  ),
 }))
 
 vi.mock('../error-handle/error-handle-on-panel', () => ({
@@ -250,11 +342,19 @@ vi.mock('../retry/retry-on-panel', () => ({
 }))
 
 vi.mock('../title-description-input', () => ({
-  TitleInput: ({ value, onBlur }: { value: string, onBlur: (value: string) => void }) => (
-    <input aria-label="title-input" defaultValue={value} onBlur={event => onBlur(event.target.value)} />
+  TitleInput: ({ value, onBlur }: { value: string; onBlur: (value: string) => void }) => (
+    <input
+      aria-label="title-input"
+      defaultValue={value}
+      onBlur={(event) => onBlur(event.target.value)}
+    />
   ),
-  DescriptionInput: ({ value, onChange }: { value: string, onChange: (value: string) => void }) => (
-    <textarea aria-label="description-input" defaultValue={value} onChange={event => onChange(event.target.value)} />
+  DescriptionInput: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => (
+    <textarea
+      aria-label="description-input"
+      defaultValue={value}
+      onChange={(event) => onChange(event.target.value)}
+    />
   ),
 }))
 
@@ -268,28 +368,25 @@ vi.mock('../last-run', () => ({
   }) => (
     <div>
       <div>{isPaused ? 'paused' : 'active'}</div>
-      <button onClick={() => updateNodeRunningStatus?.(NodeRunningStatus.Running)}>last-run-update-status</button>
+      <button onClick={() => updateNodeRunningStatus?.(NodeRunningStatus.Running)}>
+        last-run-update-status
+      </button>
       <div>last-run-panel</div>
     </div>
   ),
 }))
 
-vi.mock('../tab', () => ({
-  __esModule: true,
-  TabType: { settings: 'settings', lastRun: 'lastRun' },
-  default: ({ value, onChange }: { value: string, onChange: (value: string) => void }) => (
-    <div>
-      <button onClick={() => onChange('settings')}>settings-tab</button>
-      <button onClick={() => onChange('lastRun')}>last-run-tab</button>
-      <span>{value}</span>
-    </div>
-  ),
-}))
-
 vi.mock('../trigger-subscription', () => ({
-  TriggerSubscription: ({ children, onSubscriptionChange }: PropsWithChildren<{ onSubscriptionChange?: (value: { id: string }, callback?: () => void) => void }>) => (
+  TriggerSubscription: ({
+    children,
+    onSubscriptionChange,
+  }: PropsWithChildren<{
+    onSubscriptionChange?: (value: { id: string }, callback?: () => void) => void
+  }>) => (
     <div>
-      <button onClick={() => onSubscriptionChange?.({ id: 'subscription-1' }, vi.fn())}>change-subscription</button>
+      <button onClick={() => onSubscriptionChange?.({ id: 'subscription-1' }, vi.fn())}>
+        change-subscription
+      </button>
       {children}
     </div>
   ),
@@ -308,20 +405,25 @@ describe('workflow-panel index', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockShowMessageLogModal = false
-    mockBuiltInTools = [{
-      id: 'provider/tool',
-      name: 'Tool',
-      type: 'builtin',
-      allow_delete: true,
-    }]
+    mockNodesReadOnly = false
+    mockCanRun = true
+    mockBuiltInTools = [
+      {
+        id: 'provider/tool',
+        name: 'Tool',
+        type: 'builtin',
+        allow_delete: true,
+      },
+    ]
     mockTriggerPlugins = []
     mockLogsState.showSpecialResultPanel = false
     mockLastRunState.isShowSingleRun = false
     mockLastRunState.tabType = 'settings'
+    mockLastRunState.singleRunParams = createMockSingleRunParams()
   })
 
   it('should render the settings panel and wire title, description, run, and close actions', async () => {
-    const { container } = renderWorkflowComponent(
+    renderWorkflowComponent(
       <BasePanel id="node-1" data={createData() as never}>
         <div>panel-child</div>
       </BasePanel>,
@@ -341,7 +443,9 @@ describe('workflow-panel index', () => {
     expect(screen.getByText('authorized-in-node')).toBeInTheDocument()
 
     fireEvent.blur(screen.getByDisplayValue('Tool Node'), { target: { value: 'Updated title' } })
-    fireEvent.change(screen.getByDisplayValue('Node description'), { target: { value: 'Updated description' } })
+    fireEvent.change(screen.getByDisplayValue('Node description'), {
+      target: { value: 'Updated description' },
+    })
 
     await waitFor(() => {
       expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalled()
@@ -351,14 +455,55 @@ describe('workflow-panel index', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'workflow.panel.runThisStep' }))
 
-    const clickableItems = container.querySelectorAll('.cursor-pointer')
-    fireEvent.click(clickableItems[clickableItems.length - 1] as HTMLElement)
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
     expect(mockHandleSingleRun).toHaveBeenCalledTimes(1)
     expect(mockHandleNodeSelect).toHaveBeenCalledWith('node-1', true)
-    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ credential_id: 'credential-1' }),
-    }))
+    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ credential_id: 'credential-1' }),
+      }),
+    )
+  })
+
+  it('should hide the single-run action when nodes are readonly even with run permission', () => {
+    mockNodesReadOnly = true
+
+    renderWorkflowComponent(
+      <BasePanel id="node-1" data={createData() as never}>
+        <div>panel-child</div>
+      </BasePanel>,
+      {
+        initialStoreState: {
+          nodePanelWidth: 480,
+          otherPanelWidth: 200,
+        },
+      },
+    )
+
+    expect(
+      screen.queryByRole('button', { name: 'workflow.panel.runThisStep' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('should hide the single-run action when run permission is missing', () => {
+    mockCanRun = false
+
+    renderWorkflowComponent(
+      <BasePanel id="node-1" data={createData() as never}>
+        <div>panel-child</div>
+      </BasePanel>,
+      {
+        initialStoreState: {
+          nodePanelWidth: 480,
+          otherPanelWidth: 200,
+        },
+      },
+    )
+
+    expect(
+      screen.queryByRole('button', { name: 'workflow.panel.runThisStep' }),
+    ).not.toBeInTheDocument()
   })
 
   it('should render the special result panel when logs request it', () => {
@@ -395,6 +540,7 @@ describe('workflow-panel index', () => {
     )
 
     expect(screen.getByText('last-run-panel')).toBeInTheDocument()
+    expect(screen.getByRole('tabpanel')).toHaveClass('flex', 'flex-1', 'flex-col')
   })
 
   it('should render the plain tab layout and allow last-run status updates', async () => {
@@ -417,12 +563,14 @@ describe('workflow-panel index', () => {
     fireEvent.click(screen.getByText('last-run-update-status'))
 
     await waitFor(() => {
-      expect(mockHandleNodeDataUpdate).toHaveBeenCalledWith(expect.objectContaining({
-        id: 'node-plain',
-        data: expect.objectContaining({
-          _singleRunningStatus: NodeRunningStatus.Running,
+      expect(mockHandleNodeDataUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'node-plain',
+          data: expect.objectContaining({
+            _singleRunningStatus: NodeRunningStatus.Running,
+          }),
         }),
-      }))
+      )
     })
   })
 
@@ -430,7 +578,10 @@ describe('workflow-panel index', () => {
     mockLastRunState.tabType = 'lastRun'
 
     const { rerender } = renderWorkflowComponent(
-      <BasePanel id="node-pause" data={createData({ _singleRunningStatus: NodeRunningStatus.Running }) as never}>
+      <BasePanel
+        id="node-pause"
+        data={createData({ _singleRunningStatus: NodeRunningStatus.Running }) as never}
+      >
         <div>panel-child</div>
       </BasePanel>,
       {
@@ -444,7 +595,10 @@ describe('workflow-panel index', () => {
     expect(screen.getByText('active')).toBeInTheDocument()
 
     rerender(
-      <BasePanel id="node-pause" data={createData({ _isSingleRun: true, _singleRunningStatus: undefined }) as never}>
+      <BasePanel
+        id="node-pause"
+        data={createData({ _isSingleRun: true, _singleRunningStatus: undefined }) as never}
+      >
         <div>panel-child</div>
       </BasePanel>,
     )
@@ -472,9 +626,38 @@ describe('workflow-panel index', () => {
     expect(screen.getByText('data-source-before-run-form')).toBeInTheDocument()
   })
 
+  it('should keep the settings panel visible when single-run params have no forms', () => {
+    mockLastRunState.isShowSingleRun = true
+    mockLastRunState.singleRunParams = {} as ReturnType<typeof createMockSingleRunParams>
+
+    renderWorkflowComponent(
+      <BasePanel id="node-agent" data={createData({ type: BlockEnum.Agent }) as never}>
+        <div>panel-child</div>
+      </BasePanel>,
+      {
+        initialStoreState: {
+          nodePanelWidth: 480,
+          otherPanelWidth: 200,
+        },
+      },
+    )
+
+    expect(screen.queryByText('before-run-form')).not.toBeInTheDocument()
+    expect(screen.getByText('panel-child')).toBeInTheDocument()
+  })
+
   it('should render data source authorization controls and jump to the settings modal', () => {
     renderWorkflowComponent(
-      <BasePanel id="node-1" data={createData({ type: BlockEnum.DataSource, plugin_id: 'source-1', provider_type: 'remote' }) as never}>
+      <BasePanel
+        id="node-1"
+        data={
+          createData({
+            type: BlockEnum.DataSource,
+            plugin_id: 'source-1',
+            provider_type: 'online_document',
+          }) as never
+        }
+      >
         <div>panel-child</div>
       </BasePanel>,
       {
@@ -488,7 +671,7 @@ describe('workflow-panel index', () => {
 
     fireEvent.click(screen.getByText('authorized-in-datasource-node'))
 
-    expect(mockSetShowAccountSettingModal).toHaveBeenCalled()
+    expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
   })
 
   it('should react to pending single run actions', () => {
@@ -530,21 +713,26 @@ describe('workflow-panel index', () => {
   })
 
   it('should load trigger plugin details when the selected node is a trigger plugin', async () => {
-    mockTriggerPlugins = [{
-      id: 'trigger-1',
-      name: 'trigger-name',
-      plugin_id: 'plugin-id',
-      plugin_unique_identifier: 'plugin-uid',
-      label: {
-        en_US: 'Trigger Name',
+    mockTriggerPlugins = [
+      {
+        id: 'trigger-1',
+        name: 'trigger-name',
+        plugin_id: 'plugin-id',
+        plugin_unique_identifier: 'plugin-uid',
+        label: {
+          en_US: 'Trigger Name',
+        },
+        declaration: {},
+        subscription_schema: [],
+        subscription_constructor: {},
       },
-      declaration: {},
-      subscription_schema: [],
-      subscription_constructor: {},
-    }]
+    ]
 
     renderWorkflowComponent(
-      <BasePanel id="node-1" data={createData({ type: BlockEnum.TriggerPlugin, plugin_id: 'plugin-id' }) as never}>
+      <BasePanel
+        id="node-1"
+        data={createData({ type: BlockEnum.TriggerPlugin, plugin_id: 'plugin-id' }) as never}
+      >
         <div>panel-child</div>
       </BasePanel>,
       {
@@ -556,10 +744,12 @@ describe('workflow-panel index', () => {
     )
 
     await waitFor(() => {
-      expect(mockSetDetail).toHaveBeenCalledWith(expect.objectContaining({
-        id: 'trigger-1',
-        name: 'Trigger Name',
-      }))
+      expect(mockSetDetail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'trigger-1',
+          name: 'Trigger Name',
+        }),
+      )
     })
 
     fireEvent.click(screen.getByText('change-subscription'))
@@ -573,7 +763,10 @@ describe('workflow-panel index', () => {
     mockShowMessageLogModal = true
 
     const { container } = renderWorkflowComponent(
-      <BasePanel id="node-1" data={createData({ _singleRunningStatus: NodeRunningStatus.Running }) as never}>
+      <BasePanel
+        id="node-1"
+        data={createData({ _singleRunningStatus: NodeRunningStatus.Running }) as never}
+      >
         <div>panel-child</div>
       </BasePanel>,
       {
@@ -588,7 +781,9 @@ describe('workflow-panel index', () => {
     expect(root.style.right).toBe('240px')
     expect(root.className).toContain('absolute')
 
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.debug.variableInspect.trigger.stop' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'workflow.debug.variableInspect.trigger.stop' }),
+    )
 
     expect(mockHandleStop).toHaveBeenCalledTimes(1)
   })

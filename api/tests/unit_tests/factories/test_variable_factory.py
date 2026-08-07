@@ -7,6 +7,7 @@ import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
+from core.workflow.llm_environment_variable import LLMEnvironmentVariable, dump_environment_variable
 from factories import variable_factory
 from factories.variable_factory import TypeMismatchError, build_segment, build_segment_with_type
 from graphon.file import File, FileTransferMethod, FileType
@@ -60,6 +61,57 @@ def test_secret_variable():
     test_data = {"value_type": "secret", "name": "test_secret", "value": "secret_value"}
     result = variable_factory.build_conversation_variable_from_mapping(test_data)
     assert isinstance(result, SecretVariable)
+
+
+def test_llm_environment_variable():
+    result = variable_factory.build_environment_variable_from_mapping(
+        {
+            "value_type": "llm",
+            "name": "for_summarize",
+            "value": {
+                "provider": "langgenius/openai/openai",
+                "name": "gpt-4o-mini",
+                "mode": "chat",
+                "completion_params": {"temperature": 0.8},
+            },
+        }
+    )
+
+    assert isinstance(result, LLMEnvironmentVariable)
+    assert result.value_type == SegmentType.OBJECT
+    assert result.selector == ["env", "for_summarize"]
+    dumped = dump_environment_variable(result, mode="json")
+    assert dumped["value_type"] == "llm"
+    assert dumped["value"]["completion_params"] == {"temperature": 0.8}
+
+
+def test_llm_environment_variable_normalizes_selector_to_name():
+    result = variable_factory.build_environment_variable_from_mapping(
+        {
+            "value_type": "llm",
+            "name": "for_summarize",
+            "selector": ["env", "different_name"],
+            "value": {"provider": "langgenius/openai/openai", "name": "gpt-4o-mini", "mode": "chat"},
+        }
+    )
+
+    assert result.selector == ["env", "for_summarize"]
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        {"provider": "provider", "name": "model"},
+        {"provider": "provider", "name": "model", "mode": "embedding"},
+        {"provider": "", "name": "model", "mode": "chat"},
+        {"provider": "provider", "name": "model", "mode": "chat", "completion_params": []},
+    ],
+)
+def test_llm_environment_variable_rejects_invalid_model_selection(value):
+    with pytest.raises(VariableError, match="invalid LLM environment variable"):
+        variable_factory.build_environment_variable_from_mapping(
+            {"value_type": "llm", "name": "shared_model", "value": value}
+        )
 
 
 def test_invalid_value_type():
@@ -196,6 +248,19 @@ def test_variable_cannot_large_than_200_kb():
                 "value_type": "string",
                 "name": "test_text",
                 "value": "a" * 1024 * 201,
+            }
+        )
+
+
+def test_conversation_variable_description_cannot_exceed_255_chars():
+    with pytest.raises(VariableError, match="description of variable 'test_text' is too long"):
+        variable_factory.build_conversation_variable_from_mapping(
+            {
+                "id": str(uuid4()),
+                "value_type": "string",
+                "name": "test_text",
+                "value": "value",
+                "description": "a" * 256,
             }
         )
 

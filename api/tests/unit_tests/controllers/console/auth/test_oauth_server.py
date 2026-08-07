@@ -1,17 +1,12 @@
 from __future__ import annotations
 
+from inspect import unwrap
 from unittest.mock import patch
 
-from controllers.console.auth.oauth_server import OAuthServerUserAuthorizeApi
+from controllers.console.auth.oauth_server import OAuthServerUserAccountApi, OAuthServerUserAuthorizeApi
 from models import Account
 from models.account import AccountStatus, TenantAccountRole
 from models.model import OAuthProviderApp
-
-
-def _unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
 
 
 def _make_account() -> Account:
@@ -38,7 +33,7 @@ def _make_oauth_provider_app() -> OAuthProviderApp:
 
 def test_oauth_authorize_uses_injected_current_user() -> None:
     api = OAuthServerUserAuthorizeApi()
-    method = _unwrap(api.post)
+    method = unwrap(api.post)
     account = _make_account()
     oauth_provider_app = _make_oauth_provider_app()
 
@@ -50,3 +45,13 @@ def test_oauth_authorize_uses_injected_current_user() -> None:
 
     sign_oauth_authorization_code.assert_called_once_with("client-1", "account-1")
     assert response == {"code": "authorization-code"}
+
+
+def test_oauth_account_returns_stable_account_id() -> None:
+    api = OAuthServerUserAccountApi()
+    method = unwrap(api.post)
+    account = _make_account()
+
+    response = method(api, _make_oauth_provider_app(), account)
+
+    assert response["id"] == "account-1"

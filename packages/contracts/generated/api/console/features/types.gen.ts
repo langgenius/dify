@@ -22,9 +22,15 @@ export type FeatureModel = {
   model_load_balancing_enabled: boolean
   next_credit_reset_date: number
   trigger_event: Quota
-  vector_space: LimitationModel
+  vector_space: LimitationModel | null
   webapp_copyright_enabled: boolean
   workspace_members: LicenseLimitationModel
+}
+
+export type VectorSpaceLimitationModel = {
+  limit: number
+  size: number
+  usage_unknown?: boolean
 }
 
 export type LimitationModel = {
@@ -84,8 +90,8 @@ export type GetFeaturesVectorSpaceData = {
 }
 
 export type GetFeaturesVectorSpaceResponses = {
-  200: LimitationModel
+  200: VectorSpaceLimitationModel
 }
 
-export type GetFeaturesVectorSpaceResponse
-  = GetFeaturesVectorSpaceResponses[keyof GetFeaturesVectorSpaceResponses]
+export type GetFeaturesVectorSpaceResponse =
+  GetFeaturesVectorSpaceResponses[keyof GetFeaturesVectorSpaceResponses]

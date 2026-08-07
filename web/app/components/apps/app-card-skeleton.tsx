@@ -12,12 +12,14 @@ type AppCardSkeletonProps = {
  * Matches the visual layout of AppCard component.
  */
 export const AppCardSkeleton = React.memo(({ count = 6 }: AppCardSkeletonProps) => {
+  const skeletonKeys = Array.from({ length: count }, (_, index) => `app-card-skeleton-${index}`)
+
   return (
     <>
-      {Array.from({ length: count }).map((_, index) => (
+      {skeletonKeys.map((key) => (
         <div
-          key={index}
-          className="h-[160px] rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg p-4"
+          key={key}
+          className="h-40 overflow-hidden rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg p-4 shadow-xs"
         >
           <SkeletonContainer className="h-full">
             <SkeletonRow>
@@ -37,5 +39,3 @@ export const AppCardSkeleton = React.memo(({ count = 6 }: AppCardSkeletonProps) 
     </>
   )
 })
-
-AppCardSkeleton.displayName = 'AppCardSkeleton'

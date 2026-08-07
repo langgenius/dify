@@ -2,7 +2,7 @@ import json
 import logging
 import time
 import uuid
-from typing import Any
+from typing import Any, override
 
 import numpy as np
 from pydantic import BaseModel, model_validator
@@ -82,6 +82,7 @@ class BaiduVector(BaseVector):
         self._client = self._init_client(config)
         self._db = self._init_database()
 
+    @override
     def get_type(self) -> str:
         return VectorType.BAIDU
 
@@ -92,10 +93,12 @@ class BaiduVector(BaseVector):
         }
         return result
 
+    @override
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         self._create_table(len(embeddings[0]))
         self.add_texts(texts, embeddings)
 
+    @override
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         total_count = len(documents)
         batch_size = 1000
@@ -116,23 +119,27 @@ class BaiduVector(BaseVector):
                 rows.append(row)
             table.upsert(rows=rows)
 
+    @override
     def text_exists(self, id: str) -> bool:
         res = self._db.table(self._collection_name).query(primary_key={VDBField.PRIMARY_KEY: id})
         if res and res.code == 0:
             return True
         return False
 
+    @override
     def delete_by_ids(self, ids: list[str]):
         if not ids:
             return
         quoted_ids = [f"'{id}'" for id in ids]
         self._db.table(self._collection_name).delete(filter=f"{VDBField.PRIMARY_KEY} IN({', '.join(quoted_ids)})")
 
+    @override
     def delete_by_metadata_field(self, key: str, value: str):
         # Escape double quotes in value to prevent injection
         escaped_value = value.replace('"', '\\"')
         self._db.table(self._collection_name).delete(filter=f'metadata["{key}"] = "{escaped_value}"')
 
+    @override
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         query_vector = [float(val) if isinstance(val, np.float64) else val for val in query_vector]
         document_ids_filter = kwargs.get("document_ids_filter")
@@ -154,6 +161,7 @@ class BaiduVector(BaseVector):
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
         return self._get_search_res(res, score_threshold)
 
+    @override
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         # document ids filter
         document_ids_filter = kwargs.get("document_ids_filter")
@@ -189,6 +197,7 @@ class BaiduVector(BaseVector):
                 docs.append(doc)
         return docs
 
+    @override
     def delete(self):
         try:
             self._db.drop_table(table_name=self._collection_name)
@@ -368,6 +377,7 @@ class BaiduVector(BaseVector):
 
 
 class BaiduVectorFactory(AbstractVectorFactory):
+    @override
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> BaiduVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]

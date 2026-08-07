@@ -16,6 +16,7 @@ class TestAppTaskService:
             (AppMode.CHAT, False),
             (AppMode.COMPLETION, False),
             (AppMode.AGENT_CHAT, False),
+            (AppMode.AGENT, False),
             (AppMode.CHANNEL, False),
             (AppMode.RAG_PIPELINE, False),
             (AppMode.ADVANCED_CHAT, True),

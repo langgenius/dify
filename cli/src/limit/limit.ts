@@ -1,5 +1,5 @@
-import { newError } from '../errors/base.js'
-import { ErrorCode } from '../errors/codes.js'
+import { newError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
 
 export const LIMIT_MIN = 1
 export const LIMIT_MAX = 200
@@ -9,10 +9,7 @@ const INTEGER_PATTERN = /^-?\d+$/
 
 export function parseLimit(raw: string, source: string): number {
   if (!INTEGER_PATTERN.test(raw)) {
-    throw newError(
-      ErrorCode.UsageInvalidFlag,
-      `${source}: ${JSON.stringify(raw)} is not a number`,
-    )
+    throw newError(ErrorCode.UsageInvalidFlag, `${source}: ${JSON.stringify(raw)} is not a number`)
   }
   const n = Number(raw)
   if (n < LIMIT_MIN || n > LIMIT_MAX) {

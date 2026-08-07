@@ -7,7 +7,7 @@ from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound
 
 from controllers.common.controller_schemas import ConversationRenamePayload
-from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.web import web_ns
 from controllers.web.error import NotChatAppError
 from controllers.web.wraps import WebApiResource
@@ -15,6 +15,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from fields.conversation_fields import (
     ConversationInfiniteScrollPagination,
+    ConversationResponseSource,
     ResultResponse,
     SimpleConversation,
 )
@@ -40,37 +41,14 @@ class ConversationListQuery(BaseModel):
 
 
 register_schema_models(web_ns, ConversationListQuery, ConversationRenamePayload)
-register_response_schema_models(web_ns, ResultResponse)
+register_response_schema_models(web_ns, ConversationInfiniteScrollPagination, ResultResponse, SimpleConversation)
 
 
 @web_ns.route("/conversations")
 class ConversationListApi(WebApiResource):
     @web_ns.doc("Get Conversation List")
     @web_ns.doc(description="Retrieve paginated list of conversations for a chat application.")
-    @web_ns.doc(
-        params={
-            "last_id": {"description": "Last conversation ID for pagination", "type": "string", "required": False},
-            "limit": {
-                "description": "Number of conversations to return (1-100)",
-                "type": "integer",
-                "required": False,
-                "default": 20,
-            },
-            "pinned": {
-                "description": "Filter by pinned status",
-                "type": "string",
-                "enum": ["true", "false"],
-                "required": False,
-            },
-            "sort_by": {
-                "description": "Sort order",
-                "type": "string",
-                "enum": ["created_at", "-created_at", "updated_at", "-updated_at"],
-                "required": False,
-                "default": "-updated_at",
-            },
-        }
-    )
+    @web_ns.doc(params=query_params_from_model(ConversationListQuery))
     @web_ns.doc(
         responses={
             200: "Success",
@@ -81,9 +59,10 @@ class ConversationListApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
+    @web_ns.response(200, "Success", web_ns.models[ConversationInfiniteScrollPagination.__name__])
     def get(self, app_model: App, end_user: EndUser):
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         raw_args = request.args.to_dict()
@@ -102,7 +81,13 @@ class ConversationListApi(WebApiResource):
                     sort_by=query.sort_by,
                 )
                 adapter = TypeAdapter(SimpleConversation)
-                conversations = [adapter.validate_python(item, from_attributes=True) for item in pagination.data]
+                conversations = [
+                    adapter.validate_python(
+                        ConversationResponseSource(item, session=session),
+                        from_attributes=True,
+                    )
+                    for item in pagination.data
+                ]
                 return ConversationInfiniteScrollPagination(
                     limit=pagination.limit,
                     has_more=pagination.has_more,
@@ -129,12 +114,12 @@ class ConversationApi(WebApiResource):
     )
     def delete(self, app_model: App, end_user: EndUser, c_id: UUID):
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         conversation_id = str(c_id)
         try:
-            ConversationService.delete(app_model, conversation_id, end_user)
+            ConversationService.delete(app_model, conversation_id, end_user, session=db.session())
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
         return "", 204
@@ -166,9 +151,11 @@ class ConversationRenameApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
+    @web_ns.response(200, "Conversation renamed successfully", web_ns.models[SimpleConversation.__name__])
+    @web_ns.expect(web_ns.models[ConversationRenamePayload.__name__])
     def post(self, app_model: App, end_user: EndUser, c_id: UUID):
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         conversation_id = str(c_id)
@@ -176,12 +163,13 @@ class ConversationRenameApi(WebApiResource):
         payload = ConversationRenamePayload.model_validate(web_ns.payload or {})
 
         try:
+            session = db.session()
             conversation = ConversationService.rename(
-                app_model, conversation_id, end_user, payload.name, payload.auto_generate
+                app_model, conversation_id, end_user, payload.name, payload.auto_generate, session=session
             )
             return (
                 TypeAdapter(SimpleConversation)
-                .validate_python(conversation, from_attributes=True)
+                .validate_python(ConversationResponseSource(conversation, session=session), from_attributes=True)
                 .model_dump(mode="json")
             )
         except ConversationNotExistsError:
@@ -206,13 +194,13 @@ class ConversationPinApi(WebApiResource):
     @web_ns.response(200, "Conversation pinned successfully", web_ns.models[ResultResponse.__name__])
     def patch(self, app_model: App, end_user: EndUser, c_id: UUID):
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         conversation_id = str(c_id)
 
         try:
-            WebConversationService.pin(app_model, conversation_id, end_user)
+            WebConversationService.pin(app_model, conversation_id, end_user, db.session())
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 
@@ -237,10 +225,10 @@ class ConversationUnPinApi(WebApiResource):
     @web_ns.response(200, "Conversation unpinned successfully", web_ns.models[ResultResponse.__name__])
     def patch(self, app_model: App, end_user: EndUser, c_id: UUID):
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         conversation_id = str(c_id)
-        WebConversationService.unpin(app_model, conversation_id, end_user)
+        WebConversationService.unpin(app_model, conversation_id, end_user, db.session())
 
         return ResultResponse(result="success").model_dump(mode="json")

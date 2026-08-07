@@ -74,6 +74,87 @@ class TestWorkflowVariablesConfigManagerConvert:
         with pytest.raises(ValueError):
             WorkflowVariablesConfigManager.convert(mock_workflow)
 
+    def test_convert_normalizes_json_schema_string_to_dict(self, mock_workflow, mock_variable_entity):
+        """Regression test for #36766: json_schema stored as a JSON string."""
+        import json
+
+        schema_dict = {"type": "object", "properties": {"name": {"type": "string"}}}
+        input_variables = [
+            {
+                "variable": "profile",
+                "label": "Profile",
+                "type": "json_object",
+                "json_schema": json.dumps(schema_dict),
+            }
+        ]
+        mock_workflow.user_input_form.return_value = input_variables
+        mock_variable_entity.model_validate.side_effect = lambda x: x
+
+        # Act
+        result = WorkflowVariablesConfigManager.convert(mock_workflow)
+
+        # Assert — the string was deserialized before reaching model_validate
+        assert result[0]["json_schema"] == schema_dict
+        assert isinstance(result[0]["json_schema"], dict)
+
+    def test_convert_normalizes_json_schema_dict_passthrough(self, mock_workflow, mock_variable_entity):
+        """json_schema already a dict should pass through unchanged."""
+        schema_dict = {"type": "object", "properties": {"age": {"type": "number"}}}
+        input_variables = [
+            {
+                "variable": "profile",
+                "label": "Profile",
+                "type": "json_object",
+                "json_schema": schema_dict,
+            }
+        ]
+        mock_workflow.user_input_form.return_value = input_variables
+        mock_variable_entity.model_validate.side_effect = lambda x: x
+
+        # Act
+        result = WorkflowVariablesConfigManager.convert(mock_workflow)
+
+        # Assert
+        assert result[0]["json_schema"] == schema_dict
+
+    def test_convert_normalizes_json_schema_none_passthrough(self, mock_workflow, mock_variable_entity):
+        """json_schema=None should pass through unchanged."""
+        input_variables = [
+            {
+                "variable": "name",
+                "label": "Name",
+                "type": "text-input",
+                "json_schema": None,
+            }
+        ]
+        mock_workflow.user_input_form.return_value = input_variables
+        mock_variable_entity.model_validate.side_effect = lambda x: x
+
+        # Act
+        result = WorkflowVariablesConfigManager.convert(mock_workflow)
+
+        # Assert
+        assert result[0]["json_schema"] is None
+
+    def test_convert_normalizes_json_schema_invalid_string_passthrough(self, mock_workflow, mock_variable_entity):
+        """Invalid JSON string should be left as-is for Pydantic to reject."""
+        input_variables = [
+            {
+                "variable": "profile",
+                "label": "Profile",
+                "type": "json_object",
+                "json_schema": "{invalid-json",
+            }
+        ]
+        mock_workflow.user_input_form.return_value = input_variables
+        mock_variable_entity.model_validate.side_effect = lambda x: x
+
+        # Act
+        result = WorkflowVariablesConfigManager.convert(mock_workflow)
+
+        # Assert — string left as-is
+        assert result[0]["json_schema"] == "{invalid-json"
+
 
 # =============================
 # Test convert_rag_pipeline_variable

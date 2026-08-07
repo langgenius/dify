@@ -26,10 +26,7 @@ logger = logging.getLogger(__name__)
 class ScheduleService:
     @staticmethod
     def create_schedule(
-        session: Session,
-        tenant_id: str,
-        app_id: str,
-        config: ScheduleConfig,
+        tenant_id: str, app_id: str, config: ScheduleConfig, *, session: Session
     ) -> WorkflowSchedulePlan:
         """
         Create a new schedule with validated configuration.
@@ -63,11 +60,7 @@ class ScheduleService:
         return schedule
 
     @staticmethod
-    def update_schedule(
-        session: Session,
-        schedule_id: str,
-        updates: SchedulePlanUpdate,
-    ) -> WorkflowSchedulePlan:
+    def update_schedule(schedule_id: str, updates: SchedulePlanUpdate, *, session: Session) -> WorkflowSchedulePlan:
         """
         Update an existing schedule with validated configuration.
 
@@ -110,10 +103,7 @@ class ScheduleService:
         return schedule
 
     @staticmethod
-    def delete_schedule(
-        session: Session,
-        schedule_id: str,
-    ) -> None:
+    def delete_schedule(schedule_id: str, *, session: Session) -> None:
         """
         Delete a schedule plan.
 
@@ -129,7 +119,7 @@ class ScheduleService:
         session.flush()
 
     @staticmethod
-    def get_tenant_owner(session: Session, tenant_id: str) -> Account:
+    def get_tenant_owner(tenant_id: str, *, session: Session) -> Account:
         """
         Returns an account to execute scheduled workflows on behalf of the tenant.
         Prioritizes owner over admin to ensure proper authorization hierarchy.
@@ -157,10 +147,7 @@ class ScheduleService:
             raise AccountNotFoundError(f"Account not found for tenant: {tenant_id}")
 
     @staticmethod
-    def update_next_run_at(
-        session: Session,
-        schedule_id: str,
-    ) -> datetime:
+    def update_next_run_at(schedule_id: str, *, session: Session) -> datetime:
         """
         Advances the schedule to its next execution time after a successful trigger.
         Uses current time as base to prevent missing executions during delays.

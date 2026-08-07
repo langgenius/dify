@@ -8,7 +8,6 @@ from sqlalchemy.orm import Session
 
 from models.model import App, RecommendedApp, Site
 from services.recommend_app.database.database_retrieval import DatabaseRecommendAppRetrieval
-from services.recommend_app.recommend_app_type import RecommendAppType
 
 
 def _create_app(db_session: Session, *, tenant_id: str, is_public: bool = True) -> App:
@@ -51,6 +50,7 @@ def _create_recommended_app(
     categories: list[str] | None = None,
     language: str = "en-US",
     is_listed: bool = True,
+    is_learn_dify: bool = False,
     position: int = 1,
 ) -> RecommendedApp:
     rec = RecommendedApp(
@@ -62,37 +62,13 @@ def _create_recommended_app(
         categories=[category] if categories is None else categories,
         language=language,
         is_listed=is_listed,
+        is_learn_dify=is_learn_dify,
         position=position,
     )
     rec.id = str(uuid4())
     db_session.add(rec)
     db_session.commit()
     return rec
-
-
-class TestDatabaseRecommendAppRetrieval:
-    def test_get_type(self):
-        assert DatabaseRecommendAppRetrieval().get_type() == RecommendAppType.DATABASE
-
-    def test_get_recommended_apps_delegates(self):
-        with patch.object(
-            DatabaseRecommendAppRetrieval,
-            "fetch_recommended_apps_from_db",
-            return_value={"recommended_apps": [], "categories": []},
-        ) as mock_fetch:
-            result = DatabaseRecommendAppRetrieval().get_recommended_apps_and_categories("en-US")
-            mock_fetch.assert_called_once_with("en-US")
-            assert result == {"recommended_apps": [], "categories": []}
-
-    def test_get_recommend_app_detail_delegates(self):
-        with patch.object(
-            DatabaseRecommendAppRetrieval,
-            "fetch_recommended_app_detail_from_db",
-            return_value={"id": "app-1"},
-        ) as mock_fetch:
-            result = DatabaseRecommendAppRetrieval().get_recommend_app_detail("app-1")
-            mock_fetch.assert_called_once_with("app-1")
-            assert result == {"id": "app-1"}
 
 
 class TestFetchRecommendedAppsFromDb:
@@ -110,7 +86,9 @@ class TestFetchRecommendedAppsFromDb:
 
         db_session_with_containers.expire_all()
 
-        result = DatabaseRecommendAppRetrieval.fetch_recommended_apps_from_db("en-US")
+        result = DatabaseRecommendAppRetrieval.fetch_recommended_apps_from_db(
+            "en-US", session=db_session_with_containers
+        )
 
         app_ids = {r["app_id"] for r in result["recommended_apps"]}
         assert app1.id in app_ids
@@ -133,7 +111,9 @@ class TestFetchRecommendedAppsFromDb:
 
         db_session_with_containers.expire_all()
 
-        result = DatabaseRecommendAppRetrieval.fetch_recommended_apps_from_db("en-US")
+        result = DatabaseRecommendAppRetrieval.fetch_recommended_apps_from_db(
+            "en-US", session=db_session_with_containers
+        )
 
         recommended_app = next(item for item in result["recommended_apps"] if item["app_id"] == created_app.id)
         assert recommended_app["categories"] == ["writing", "assistant"]
@@ -158,7 +138,9 @@ class TestFetchRecommendedAppsFromDb:
 
         db_session_with_containers.expire_all()
 
-        result = DatabaseRecommendAppRetrieval.fetch_recommended_apps_from_db("en-US")
+        result = DatabaseRecommendAppRetrieval.fetch_recommended_apps_from_db(
+            "en-US", session=db_session_with_containers
+        )
 
         recommended_app = next(item for item in result["recommended_apps"] if item["app_id"] == created_app.id)
         assert "category" not in recommended_app
@@ -175,7 +157,9 @@ class TestFetchRecommendedAppsFromDb:
 
         db_session_with_containers.expire_all()
 
-        result = DatabaseRecommendAppRetrieval.fetch_recommended_apps_from_db("fr-FR")
+        result = DatabaseRecommendAppRetrieval.fetch_recommended_apps_from_db(
+            "fr-FR", session=db_session_with_containers
+        )
 
         app_ids = {r["app_id"] for r in result["recommended_apps"]}
         assert app1.id in app_ids
@@ -188,7 +172,9 @@ class TestFetchRecommendedAppsFromDb:
 
         db_session_with_containers.expire_all()
 
-        result = DatabaseRecommendAppRetrieval.fetch_recommended_apps_from_db("en-US")
+        result = DatabaseRecommendAppRetrieval.fetch_recommended_apps_from_db(
+            "en-US", session=db_session_with_containers
+        )
 
         app_ids = {r["app_id"] for r in result["recommended_apps"]}
         assert app1.id not in app_ids
@@ -200,15 +186,82 @@ class TestFetchRecommendedAppsFromDb:
 
         db_session_with_containers.expire_all()
 
-        result = DatabaseRecommendAppRetrieval.fetch_recommended_apps_from_db("en-US")
+        result = DatabaseRecommendAppRetrieval.fetch_recommended_apps_from_db(
+            "en-US", session=db_session_with_containers
+        )
 
         app_ids = {r["app_id"] for r in result["recommended_apps"]}
         assert app1.id not in app_ids
 
+    def test_fetch_learn_dify_apps_uses_flag_not_categories(
+        self,
+        flask_app_with_containers,
+        db_session_with_containers: Session,
+    ):
+        tenant_id = str(uuid4())
+        learn_dify_app = _create_app(db_session_with_containers, tenant_id=tenant_id)
+        _create_site(db_session_with_containers, app_id=learn_dify_app.id)
+        _create_recommended_app(
+            db_session_with_containers,
+            app_id=learn_dify_app.id,
+            category="workflow",
+            categories=["Workflow"],
+            is_learn_dify=True,
+        )
+
+        category_only_app = _create_app(db_session_with_containers, tenant_id=tenant_id)
+        _create_site(db_session_with_containers, app_id=category_only_app.id)
+        _create_recommended_app(
+            db_session_with_containers,
+            app_id=category_only_app.id,
+            category="Learn Dify",
+            categories=["Learn Dify"],
+            is_learn_dify=False,
+        )
+
+        db_session_with_containers.expire_all()
+
+        result = DatabaseRecommendAppRetrieval.fetch_learn_dify_apps_from_db(
+            "en-US", session=db_session_with_containers
+        )
+
+        app_ids = {r["app_id"] for r in result["recommended_apps"]}
+        assert learn_dify_app.id in app_ids
+        assert category_only_app.id not in app_ids
+        recommended_app = next(item for item in result["recommended_apps"] if item["app_id"] == learn_dify_app.id)
+        assert recommended_app["categories"] == ["Workflow"]
+
+    def test_fetch_learn_dify_apps_falls_back_to_default_language(
+        self,
+        flask_app_with_containers,
+        db_session_with_containers: Session,
+    ):
+        tenant_id = str(uuid4())
+        learn_dify_app = _create_app(db_session_with_containers, tenant_id=tenant_id)
+        _create_site(db_session_with_containers, app_id=learn_dify_app.id)
+        _create_recommended_app(
+            db_session_with_containers,
+            app_id=learn_dify_app.id,
+            categories=["Workflow"],
+            is_learn_dify=True,
+            language="en-US",
+        )
+
+        db_session_with_containers.expire_all()
+
+        result = DatabaseRecommendAppRetrieval.fetch_learn_dify_apps_from_db(
+            "fr-FR", session=db_session_with_containers
+        )
+
+        app_ids = {r["app_id"] for r in result["recommended_apps"]}
+        assert learn_dify_app.id in app_ids
+
 
 class TestFetchRecommendedAppDetailFromDb:
     def test_returns_none_when_not_listed(self, flask_app_with_containers: Flask, db_session_with_containers: Session):
-        result = DatabaseRecommendAppRetrieval.fetch_recommended_app_detail_from_db(str(uuid4()))
+        result = DatabaseRecommendAppRetrieval.fetch_recommended_app_detail_from_db(
+            str(uuid4()), session=db_session_with_containers
+        )
 
         assert result is None
 
@@ -221,7 +274,9 @@ class TestFetchRecommendedAppDetailFromDb:
 
         db_session_with_containers.expire_all()
 
-        result = DatabaseRecommendAppRetrieval.fetch_recommended_app_detail_from_db(app1.id)
+        result = DatabaseRecommendAppRetrieval.fetch_recommended_app_detail_from_db(
+            app1.id, session=db_session_with_containers
+        )
 
         assert result is None
 
@@ -237,7 +292,9 @@ class TestFetchRecommendedAppDetailFromDb:
 
         db_session_with_containers.expire_all()
 
-        result = DatabaseRecommendAppRetrieval.fetch_recommended_app_detail_from_db(app1.id)
+        result = DatabaseRecommendAppRetrieval.fetch_recommended_app_detail_from_db(
+            app1.id, session=db_session_with_containers
+        )
 
         assert result is not None
         assert result["id"] == app1.id

@@ -4,7 +4,7 @@ import Cookies from 'js-cookie'
 import { useEffect, useRef } from 'react'
 import { useSearchParams } from '@/next/navigation'
 import { sendGAEvent } from '@/utils/gtag'
-import { trackEvent } from './base/amplitude'
+import { rememberRegistrationSuccess } from './base/amplitude/registration-tracking'
 
 const OAUTH_NEW_USER_PARAM = 'oauth_new_user'
 
@@ -23,8 +23,7 @@ export function OAuthRegistrationAnalytics() {
   const handledParamRef = useRef<string | null>(null)
 
   useEffect(() => {
-    if (oauthNewUserParam === null || handledParamRef.current === oauthNewUserParam)
-      return
+    if (oauthNewUserParam === null || handledParamRef.current === oauthNewUserParam) return
 
     handledParamRef.current = oauthNewUserParam
     const oauthNewUser = oauthNewUserParam === 'true'
@@ -38,20 +37,18 @@ export function OAuthRegistrationAnalytics() {
     if (utmInfoStr) {
       try {
         const parsed: unknown = JSON.parse(utmInfoStr)
-        if (isRecord(parsed))
-          utmInfo = parsed
-      }
-      catch (e) {
+        if (isRecord(parsed)) utmInfo = parsed
+      } catch (e) {
         console.error('Failed to parse utm_info cookie:', e)
       }
     }
 
     const eventName = utmInfo ? 'user_registration_success_with_utm' : 'user_registration_success'
 
-    trackEvent(eventName, {
-      method: 'oauth',
-      ...utmInfo,
-    })
+    // Defer the Amplitude event until the user ID is attached. The app context
+    // external sync replays it after setUserId runs. Firing it here would record it under an
+    // anonymous Amplitude profile (no user ID set yet).
+    rememberRegistrationSuccess({ method: 'oauth', utmInfo })
 
     sendGAEvent(eventName, {
       method: 'oauth',

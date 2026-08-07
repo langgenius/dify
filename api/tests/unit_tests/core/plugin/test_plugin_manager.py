@@ -17,7 +17,7 @@ import pytest
 from packaging.version import Version
 from requests import HTTPError
 
-from core.plugin.entities.bundle import PluginBundleDependency
+from core.plugin.entities.bundle import PluginBundleDependency, PluginBundleDependencyType
 from core.plugin.entities.plugin import (
     MissingPluginDependency,
     PluginCategory,
@@ -29,10 +29,12 @@ from core.plugin.entities.plugin import (
 )
 from core.plugin.entities.plugin_daemon import (
     PluginDecodeResponse,
+    PluginInstalledIdsDaemonResponse,
     PluginInstallTask,
     PluginInstallTaskStartResponse,
     PluginInstallTaskStatus,
     PluginListResponse,
+    PluginListWithoutTotalResponse,
     PluginReadmeResponse,
     PluginVerification,
 )
@@ -123,6 +125,35 @@ class TestPluginDiscovery:
             assert call_args[1]["params"]["page_size"] == 5
             assert result.total == 10
 
+    def test_list_plugins_by_category(self, plugin_installer, mock_plugin_entity):
+        """Test category plugin listing without total."""
+        mock_response = PluginListWithoutTotalResponse(list=[mock_plugin_entity], has_more=True)
+
+        with patch.object(
+            plugin_installer, "_request_with_plugin_daemon_response", return_value=mock_response
+        ) as mock_request:
+            result = plugin_installer.list_plugins_by_category(
+                "test-tenant",
+                category=PluginCategory.Tool,
+                page=2,
+                page_size=10,
+                query="weather",
+                tags=["search", "rag"],
+                language="zh_Hans",
+            )
+
+            mock_request.assert_called_once()
+            call_args = mock_request.call_args
+            assert call_args.args[1] == "plugin/test-tenant/management/tool/list"
+            assert call_args.args[2] is PluginListWithoutTotalResponse
+            assert call_args.kwargs["params"]["page"] == 2
+            assert call_args.kwargs["params"]["page_size"] == 10
+            assert call_args.kwargs["params"]["query"] == "weather"
+            assert call_args.kwargs["params"]["tags"] == ["search", "rag"]
+            assert call_args.kwargs["params"]["language"] == "zh_Hans"
+            assert result.list == [mock_plugin_entity]
+            assert result.has_more is True
+
     def test_list_plugins_empty_result(self, plugin_installer):
         """Test plugin listing when no plugins are installed."""
         # Arrange: Mock empty response
@@ -134,6 +165,23 @@ class TestPluginDiscovery:
 
             # Assert: Verify empty list is returned
             assert len(result) == 0
+
+    def test_list_installed_plugin_ids(self, plugin_installer):
+        """The lightweight ID endpoint is unpaginated and does not request plugin details."""
+        mock_response = PluginInstalledIdsDaemonResponse(plugin_ids=["langgenius/openai", "langgenius/anthropic"])
+
+        with patch.object(
+            plugin_installer, "_request_with_plugin_daemon_response", return_value=mock_response
+        ) as mock_request:
+            result = plugin_installer.list_installed_plugin_ids("test-tenant", PluginCategory.Tool)
+
+        mock_request.assert_called_once_with(
+            "GET",
+            "plugin/test-tenant/management/installation/ids",
+            PluginInstalledIdsDaemonResponse,
+            params={"category": "tool"},
+        )
+        assert result == ["langgenius/openai", "langgenius/anthropic"]
 
     def test_fetch_plugin_by_identifier_found(self, plugin_installer):
         """Test fetching a plugin by its unique identifier when it exists."""
@@ -560,11 +608,11 @@ class TestDependencyResolution:
         bundle_data = b"mock-bundle-data"
         mock_dependencies = [
             PluginBundleDependency(
-                type=PluginBundleDependency.Type.Marketplace,
+                type=PluginBundleDependencyType.Marketplace,
                 value=PluginBundleDependency.Marketplace(organization="org1", plugin="plugin1", version="1.0.0"),
             ),
             PluginBundleDependency(
-                type=PluginBundleDependency.Type.Github,
+                type=PluginBundleDependencyType.Github,
                 value=PluginBundleDependency.Github(
                     repo_address="https://github.com/org/repo",
                     repo="org/repo",
@@ -582,8 +630,8 @@ class TestDependencyResolution:
 
             # Assert: Verify dependencies were extracted
             assert len(result) == 2
-            assert result[0].type == PluginBundleDependency.Type.Marketplace
-            assert result[1].type == PluginBundleDependency.Type.Github
+            assert result[0].type == PluginBundleDependencyType.Marketplace
+            assert result[1].type == PluginBundleDependencyType.Github
             mock_request.assert_called_once()
 
     def test_fetch_missing_dependencies(self, plugin_installer):
@@ -1108,7 +1156,7 @@ class TestPluginBundleOperations:
         bundle_data = b"mock-marketplace-bundle"
         mock_dependencies = [
             PluginBundleDependency(
-                type=PluginBundleDependency.Type.Marketplace,
+                type=PluginBundleDependencyType.Marketplace,
                 value=PluginBundleDependency.Marketplace(
                     organization="langgenius", plugin="search-tool", version="1.2.0"
                 ),
@@ -1121,7 +1169,7 @@ class TestPluginBundleOperations:
 
             # Assert: Verify marketplace dependency was extracted
             assert len(result) == 1
-            assert result[0].type == PluginBundleDependency.Type.Marketplace
+            assert result[0].type == PluginBundleDependencyType.Marketplace
             assert isinstance(result[0].value, PluginBundleDependency.Marketplace)
             assert result[0].value.organization == "langgenius"
             assert result[0].value.plugin == "search-tool"
@@ -1137,7 +1185,7 @@ class TestPluginBundleOperations:
         bundle_data = b"mock-github-bundle"
         mock_dependencies = [
             PluginBundleDependency(
-                type=PluginBundleDependency.Type.Github,
+                type=PluginBundleDependencyType.Github,
                 value=PluginBundleDependency.Github(
                     repo_address="https://github.com/example/plugin",
                     repo="example/plugin",
@@ -1153,7 +1201,7 @@ class TestPluginBundleOperations:
 
             # Assert: Verify GitHub dependency was extracted
             assert len(result) == 1
-            assert result[0].type == PluginBundleDependency.Type.Github
+            assert result[0].type == PluginBundleDependencyType.Github
             assert isinstance(result[0].value, PluginBundleDependency.Github)
             assert result[0].value.repo == "example/plugin"
             assert result[0].value.release == "v2.0.0"
@@ -1183,7 +1231,7 @@ class TestPluginBundleOperations:
 
         mock_dependencies = [
             PluginBundleDependency(
-                type=PluginBundleDependency.Type.Package,
+                type=PluginBundleDependencyType.Package,
                 value=PluginBundleDependency.Package(
                     unique_identifier="org/bundled-plugin/1.5.0", manifest=mock_manifest
                 ),
@@ -1196,7 +1244,7 @@ class TestPluginBundleOperations:
 
             # Assert: Verify package dependency was extracted with manifest
             assert len(result) == 1
-            assert result[0].type == PluginBundleDependency.Type.Package
+            assert result[0].type == PluginBundleDependencyType.Package
             assert isinstance(result[0].value, PluginBundleDependency.Package)
             assert result[0].value.unique_identifier == "org/bundled-plugin/1.5.0"
             assert result[0].value.manifest.name == "bundled-plugin"
@@ -1212,11 +1260,11 @@ class TestPluginBundleOperations:
         bundle_data = b"mock-mixed-bundle"
         mock_dependencies = [
             PluginBundleDependency(
-                type=PluginBundleDependency.Type.Marketplace,
+                type=PluginBundleDependencyType.Marketplace,
                 value=PluginBundleDependency.Marketplace(organization="org1", plugin="plugin1", version="1.0.0"),
             ),
             PluginBundleDependency(
-                type=PluginBundleDependency.Type.Github,
+                type=PluginBundleDependencyType.Github,
                 value=PluginBundleDependency.Github(
                     repo_address="https://github.com/org2/plugin2",
                     repo="org2/plugin2",
@@ -1232,8 +1280,8 @@ class TestPluginBundleOperations:
 
             # Assert: Verify all dependency types were extracted
             assert len(result) == 2
-            assert result[0].type == PluginBundleDependency.Type.Marketplace
-            assert result[1].type == PluginBundleDependency.Type.Github
+            assert result[0].type == PluginBundleDependencyType.Marketplace
+            assert result[1].type == PluginBundleDependencyType.Github
 
 
 class TestPluginTaskStatusTransitions:

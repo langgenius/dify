@@ -2,8 +2,9 @@
 
 Agenton core composes reusable stateless layer graph plans, creates a fresh
 ``CompositorRun`` for each invocation, hydrates and advances serializable layer
-``runtime_state`` through run slots, and emits session snapshots. It intentionally
-does not own resources, handles, clients, cleanup callbacks, or any other
+``runtime_state`` through run slots, enters each layer's active-scope
+``resource_context()``, and emits session snapshots. It intentionally never
+serializes resources, handles, clients, cleanup callbacks, or any other
 non-serializable runtime object.
 
 Each ``Compositor`` stores only graph nodes and layer providers. Every enter call

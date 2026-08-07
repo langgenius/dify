@@ -4,29 +4,52 @@ import hmac
 import os
 import time
 import urllib.parse
+from urllib.parse import urlsplit
 
 from configs import dify_config
+
+
+def bind_file_uri(uri: str, base_url: str) -> str:
+    """Bind a Dify-owned file URI to one caller-selected origin.
+
+    Explicit remote HTTP(S) URLs are already complete and pass through. Other
+    values must be origin-free ``/files/...`` URIs.
+    """
+
+    parsed = urlsplit(uri)
+    if parsed.scheme in {"http", "https"} and parsed.netloc:
+        return uri
+    if (
+        parsed.scheme
+        or parsed.netloc
+        or parsed.fragment
+        or uri.startswith("//")
+        or not parsed.path.startswith("/files/")
+    ):
+        raise ValueError("file URI must be an absolute HTTP(S) URL or a /files/ URI")
+    return f"{base_url}{uri}"
 
 
 def _secret_key() -> bytes:
     return dify_config.SECRET_KEY.encode()
 
 
-def sign_tool_file(tool_file_id: str, extension: str, for_external: bool = True) -> str:
-    """
-    sign file to get a temporary url for plugin access
-    """
-    # Use internal URL for plugin/tool file access in Docker environments, unless for_external is True
-    base_url = dify_config.FILES_URL if for_external else (dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL)
-    file_preview_url = f"{base_url}/files/tools/{tool_file_id}{extension}"
-
+def sign_tool_file_uri(tool_file_id: str, extension: str) -> str:
+    """Sign a ToolFile path without selecting a network origin."""
     timestamp = str(int(time.time()))
     nonce = os.urandom(16).hex()
     data_to_sign = f"file-preview|{tool_file_id}|{timestamp}|{nonce}"
     sign = hmac.new(_secret_key(), data_to_sign.encode(), hashlib.sha256).digest()
     encoded_sign = base64.urlsafe_b64encode(sign).decode()
 
-    return f"{file_preview_url}?timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
+    return f"/files/tools/{tool_file_id}{extension}?timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
+
+
+def sign_tool_file(tool_file_id: str, extension: str, for_external: bool = True) -> str:
+    """Sign a ToolFile URL for the browser or an internal Dify service."""
+
+    base_url = dify_config.FILES_URL if for_external else (dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL)
+    return bind_file_uri(sign_tool_file_uri(tool_file_id, extension), base_url)
 
 
 def sign_upload_file_preview_url(upload_file_id: str, extension: str) -> str:
@@ -64,34 +87,43 @@ def verify_tool_file_signature(file_id: str, timestamp: str, nonce: str, sign: s
     return current_time - int(timestamp) <= dify_config.FILES_ACCESS_TIMEOUT
 
 
-def get_signed_file_url_for_plugin(filename: str, mimetype: str, tenant_id: str, user_id: str) -> str:
-    """Build the signed upload URL used by the plugin-facing file upload endpoint."""
+def get_signed_file_uri_for_plugin(
+    filename: str, mimetype: str, tenant_id: str, user_id: str, conversation_id: str | None = None
+) -> str:
+    """Build a signed plugin-upload URI without selecting a network origin."""
 
-    base_url = dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL
-    upload_url = f"{base_url}/files/upload/for-plugin"
     timestamp = str(int(time.time()))
     nonce = os.urandom(16).hex()
-    data_to_sign = f"upload|{filename}|{mimetype}|{tenant_id}|{user_id}|{timestamp}|{nonce}"
+    data_to_sign = f"upload|{filename}|{mimetype}|{tenant_id}|{user_id}|{conversation_id or ''}|{timestamp}|{nonce}"
     sign = hmac.new(_secret_key(), data_to_sign.encode(), hashlib.sha256).digest()
     encoded_sign = base64.urlsafe_b64encode(sign).decode()
-    query = urllib.parse.urlencode(
-        {
-            "timestamp": timestamp,
-            "nonce": nonce,
-            "sign": encoded_sign,
-            "user_id": user_id,
-            "tenant_id": tenant_id,
-        }
-    )
-    return f"{upload_url}?{query}"
+    query_params = {
+        "timestamp": timestamp,
+        "nonce": nonce,
+        "sign": encoded_sign,
+        "user_id": user_id,
+        "tenant_id": tenant_id,
+    }
+    if conversation_id:
+        query_params["conversation_id"] = conversation_id
+    query = urllib.parse.urlencode(query_params)
+    return f"/files/upload/for-plugin?{query}"
 
 
 def verify_plugin_file_signature(
-    *, filename: str, mimetype: str, tenant_id: str, user_id: str, timestamp: str, nonce: str, sign: str
+    *,
+    filename: str,
+    mimetype: str,
+    tenant_id: str,
+    user_id: str,
+    conversation_id: str | None = None,
+    timestamp: str,
+    nonce: str,
+    sign: str,
 ) -> bool:
     """Verify the signature used by the plugin-facing file upload endpoint."""
 
-    data_to_sign = f"upload|{filename}|{mimetype}|{tenant_id}|{user_id}|{timestamp}|{nonce}"
+    data_to_sign = f"upload|{filename}|{mimetype}|{tenant_id}|{user_id}|{conversation_id or ''}|{timestamp}|{nonce}"
     recalculated_sign = hmac.new(_secret_key(), data_to_sign.encode(), hashlib.sha256).digest()
     recalculated_encoded_sign = base64.urlsafe_b64encode(recalculated_sign).decode()
 

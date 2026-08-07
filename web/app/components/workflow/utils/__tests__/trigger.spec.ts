@@ -59,11 +59,7 @@ describe('getTriggerCheckParams', () => {
   })
 
   it('should match provider by name and extract parameters', () => {
-    const result = getTriggerCheckParams(
-      createTriggerData(),
-      [createTriggerProvider()],
-      'en_US',
-    )
+    const result = getTriggerCheckParams(createTriggerData(), [createTriggerProvider()], 'en_US')
 
     expect(result.isReadyForCheckValid).toBe(true)
     expect(result.triggerInputsSchema).toEqual([
@@ -73,32 +69,26 @@ describe('getTriggerCheckParams', () => {
   })
 
   it('should use the requested language for labels', () => {
-    const result = getTriggerCheckParams(
-      createTriggerData(),
-      [createTriggerProvider()],
-      'zh_Hans',
-    )
+    const result = getTriggerCheckParams(createTriggerData(), [createTriggerProvider()], 'zh_Hans')
 
     expect(result.triggerInputsSchema[0]!.label).toBe('频道')
   })
 
   it('should fall back to en_US when language label is missing', () => {
-    const result = getTriggerCheckParams(
-      createTriggerData(),
-      [createTriggerProvider()],
-      'ja_JP',
-    )
+    const result = getTriggerCheckParams(createTriggerData(), [createTriggerProvider()], 'ja_JP')
 
     expect(result.triggerInputsSchema[0]!.label).toBe('Channel')
   })
 
   it('should fall back to parameter name when no labels exist', () => {
     const provider = createTriggerProvider({
-      events: [{
-        name: 'on_message',
-        label: { en_US: 'On Message' },
-        parameters: [{ name: 'raw_param' }],
-      }],
+      events: [
+        {
+          name: 'on_message',
+          label: { en_US: 'On Message' },
+          parameters: [{ name: 'raw_param' }],
+        },
+      ],
     } as Partial<TriggerWithProvider>)
 
     const result = getTriggerCheckParams(createTriggerData(), [provider], 'en_US')
@@ -107,7 +97,10 @@ describe('getTriggerCheckParams', () => {
   })
 
   it('should match provider by provider_id', () => {
-    const trigger = createTriggerData({ provider_name: 'different-name', provider_id: 'provider-1' })
+    const trigger = createTriggerData({
+      provider_name: 'different-name',
+      provider_id: 'provider-1',
+    })
     const provider = createTriggerProvider({ name: 'other-name', id: 'provider-1' })
 
     const result = getTriggerCheckParams(trigger, [provider], 'en_US')

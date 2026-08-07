@@ -254,7 +254,7 @@ Your task is to convert simple user descriptions into properly formatted JSON Sc
 }
 
 ### Example 4:
-**User Input:** I need album schema, the ablum has songs, and each song has name, duration, and artist.
+**User Input:** I need album schema, the album has songs, and each song has name, duration, and artist.
 **JSON Schema Output:**
 {
     "type": "object",
@@ -273,7 +273,7 @@ Your task is to convert simple user descriptions into properly formatted JSON Sc
                     "duration": {
                         "type": "string"
                     },
-                    "aritst": {
+                    "artist": {
                         "type": "string"
                     }
                 },
@@ -281,7 +281,7 @@ Your task is to convert simple user descriptions into properly formatted JSON Sc
                     "name",
                     "id",
                     "duration",
-                    "aritst"
+                    "artist"
                 ]
             }
         }

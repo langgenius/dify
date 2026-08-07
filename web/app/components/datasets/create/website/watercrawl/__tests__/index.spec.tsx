@@ -6,6 +6,17 @@ import { checkWatercrawlTaskStatus, createWatercrawlTask } from '@/service/datas
 import { sleep } from '@/utils'
 import WaterCrawl from '../index'
 
+const { mockRouterPush, mockSetSettingsDestination } = vi.hoisted(() => ({
+  mockRouterPush: vi.fn(),
+  mockSetSettingsDestination: vi.fn(),
+}))
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({
+    push: mockRouterPush,
+  }),
+}))
+
 vi.mock('@/service/datasets', () => ({
   createWatercrawlTask: vi.fn(),
   checkWatercrawlTaskStatus: vi.fn(),
@@ -15,17 +26,15 @@ vi.mock('@/utils', () => ({
   sleep: vi.fn(() => Promise.resolve()),
 }))
 
-// Mock modal context
-const mockSetShowAccountSettingModal = vi.fn()
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowAccountSettingModal: mockSetShowAccountSettingModal,
-  }),
-}))
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+})
 
 // Mock i18n context
 vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path?: string) => path ? `https://docs.dify.ai/en${path}` : 'https://docs.dify.ai/en/',
+  useDocLink: () => (path?: string) =>
+    path ? `https://docs.dify.ai/en${path}` : 'https://docs.dify.ai/en/',
 }))
 
 // Note: limit and max_depth are typed as `number | string` in CrawlOptions
@@ -72,20 +81,14 @@ describe('WaterCrawl', () => {
 
   // Tests for initial component rendering
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const props = createDefaultProps()
-
-      render(<WaterCrawl {...props} />)
-
-      expect(screen.getByText('datasetCreation.stepOne.website.watercrawlTitle'))!.toBeInTheDocument()
-    })
-
     it('should render header with configuration button', () => {
       const props = createDefaultProps()
 
       render(<WaterCrawl {...props} />)
 
-      expect(screen.getByText('datasetCreation.stepOne.website.configureWatercrawl'))!.toBeInTheDocument()
+      expect(
+        screen.getByText('datasetCreation.stepOne.website.configureWatercrawl'),
+      )!.toBeInTheDocument()
     })
 
     it('should render URL input field', () => {
@@ -145,7 +148,9 @@ describe('WaterCrawl', () => {
 
       if (limitLabel) {
         // The limit input is a number input (spinbutton role) within the same container
-        const limitInput = limitLabel.closest('div')?.parentElement?.querySelector('input[type="number"]')
+        const limitInput = limitLabel
+          .closest('div')
+          ?.parentElement?.querySelector('input[type="number"]')
 
         if (limitInput) {
           await user.clear(limitInput)
@@ -153,8 +158,7 @@ describe('WaterCrawl', () => {
 
           expect(onCrawlOptionsChange).toHaveBeenCalled()
         }
-      }
-      else {
+      } else {
         // Options might not be visible, just verify component renders
         // Options might not be visible, just verify component renders
         expect(screen.getByText('datasetCreation.stepOne.website.options'))!.toBeInTheDocument()
@@ -206,9 +210,12 @@ describe('WaterCrawl', () => {
     it('should transition from init to running state when run is clicked', async () => {
       const mockCreateTask = createWatercrawlTask as Mock
       let resolvePromise: () => void
-      mockCreateTask.mockImplementation(() => new Promise((resolve) => {
-        resolvePromise = () => resolve({ job_id: 'test-job' })
-      }))
+      mockCreateTask.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolvePromise = () => resolve({ job_id: 'test-job' })
+          }),
+      )
 
       const props = createDefaultProps()
 
@@ -319,7 +326,9 @@ describe('WaterCrawl', () => {
 
       // Assert - options should be folded after crawl starts
       await waitFor(() => {
-        expect(screen.queryByText('datasetCreation.stepOne.website.crawlSubPage')).not.toBeInTheDocument()
+        expect(
+          screen.queryByText('datasetCreation.stepOne.website.crawlSubPage'),
+        ).not.toBeInTheDocument()
       })
     })
   })
@@ -350,7 +359,12 @@ describe('WaterCrawl', () => {
 
     it('should update controlFoldOptions when step changes', async () => {
       const mockCreateTask = createWatercrawlTask as Mock
-      mockCreateTask.mockImplementation(() => new Promise(() => { /* pending */ }))
+      mockCreateTask.mockImplementation(
+        () =>
+          new Promise(() => {
+            /* pending */
+          }),
+      )
 
       const props = createDefaultProps()
 
@@ -380,13 +394,15 @@ describe('WaterCrawl', () => {
       const configButton = screen.getByText('datasetCreation.stepOne.website.configureWatercrawl')
       fireEvent.click(configButton)
 
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledTimes(1)
+      expect(mockSetSettingsDestination).toHaveBeenCalledTimes(1)
+      expect(mockRouterPush).not.toHaveBeenCalled()
 
       // Rerender and click again
       rerender(<WaterCrawl {...props} />)
       fireEvent.click(configButton)
 
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledTimes(2)
+      expect(mockSetSettingsDestination).toHaveBeenCalledTimes(2)
+      expect(mockRouterPush).not.toHaveBeenCalled()
     })
 
     it('should memoize checkValid callback based on crawlOptions', async () => {
@@ -430,9 +446,8 @@ describe('WaterCrawl', () => {
       const configButton = screen.getByText('datasetCreation.stepOne.website.configureWatercrawl')
       await userEvent.click(configButton)
 
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-        payload: 'data-source',
-      })
+      expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
+      expect(mockRouterPush).not.toHaveBeenCalled()
     })
 
     it('should handle URL input and run button click', async () => {
@@ -552,7 +567,9 @@ describe('WaterCrawl', () => {
       // Assert - options should be hidden
       // Assert - options should be hidden
       // Assert - options should be hidden
-      expect(screen.queryByText('datasetCreation.stepOne.website.crawlSubPage')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('datasetCreation.stepOne.website.crawlSubPage'),
+      ).not.toBeInTheDocument()
 
       await userEvent.click(optionsHeader)
 
@@ -669,7 +686,9 @@ describe('WaterCrawl', () => {
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
-        expect(screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle'))!.toBeInTheDocument()
+        expect(
+          screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle'),
+        )!.toBeInTheDocument()
       })
 
       expect(screen.getByText('Crawl failed due to network error'))!.toBeInTheDocument()
@@ -692,7 +711,9 @@ describe('WaterCrawl', () => {
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
-        expect(screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle'))!.toBeInTheDocument()
+        expect(
+          screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle'),
+        )!.toBeInTheDocument()
       })
     })
 
@@ -707,7 +728,8 @@ describe('WaterCrawl', () => {
         current: 100,
         total: 100,
         data: Array.from({ length: 100 }, (_, i) =>
-          createCrawlResultItem({ source_url: `https://example.com/${i}` })),
+          createCrawlResultItem({ source_url: `https://example.com/${i}` }),
+        ),
       })
 
       const props = createDefaultProps({
@@ -743,17 +765,10 @@ describe('WaterCrawl', () => {
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
-        expect(screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle'))!.toBeInTheDocument()
+        expect(
+          screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle'),
+        )!.toBeInTheDocument()
       })
-    })
-  })
-
-  // Component Memoization Tests
-  describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      // Assert - React.memo components have $$typeof Symbol(react.memo)
-      expect(WaterCrawl.$$typeof?.toString()).toBe('Symbol(react.memo)')
-      expect((WaterCrawl as unknown as { type: unknown }).type).toBeDefined()
     })
   })
 
@@ -880,7 +895,9 @@ describe('WaterCrawl', () => {
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
-        expect(screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle'))!.toBeInTheDocument()
+        expect(
+          screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle'),
+        )!.toBeInTheDocument()
       })
 
       consoleSpy.mockRestore()
@@ -904,7 +921,9 @@ describe('WaterCrawl', () => {
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
-        expect(screen.getByText('datasetCreation.stepOne.website.unknownError'))!.toBeInTheDocument()
+        expect(
+          screen.getByText('datasetCreation.stepOne.website.unknownError'),
+        )!.toBeInTheDocument()
       })
     })
 
@@ -995,7 +1014,12 @@ describe('WaterCrawl', () => {
       const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'zero-current-job' })
-      mockCheckStatus.mockImplementation(() => new Promise(() => { /* never resolves */ }))
+      mockCheckStatus.mockImplementation(
+        () =>
+          new Promise(() => {
+            /* never resolves */
+          }),
+      )
 
       const props = createDefaultProps({
         crawlOptions: createDefaultCrawlOptions({ limit: 10 }),
@@ -1017,7 +1041,12 @@ describe('WaterCrawl', () => {
       const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'zero-total-job' })
-      mockCheckStatus.mockImplementation(() => new Promise(() => { /* never resolves */ }))
+      mockCheckStatus.mockImplementation(
+        () =>
+          new Promise(() => {
+            /* never resolves */
+          }),
+      )
 
       const props = createDefaultProps({
         crawlOptions: createDefaultCrawlOptions({ limit: '0' }),
@@ -1066,7 +1095,12 @@ describe('WaterCrawl', () => {
       const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'no-total-job' })
-      mockCheckStatus.mockImplementation(() => new Promise(() => { /* never resolves */ }))
+      mockCheckStatus.mockImplementation(
+        () =>
+          new Promise(() => {
+            /* never resolves */
+          }),
+      )
 
       const props = createDefaultProps({
         crawlOptions: createDefaultCrawlOptions({ limit: 15 }),
@@ -1095,7 +1129,12 @@ describe('WaterCrawl', () => {
           total: 0,
           data: [],
         })
-        .mockImplementationOnce(() => new Promise(() => { /* never resolves */ }))
+        .mockImplementationOnce(
+          () =>
+            new Promise(() => {
+              /* never resolves */
+            }),
+        )
 
       const props = createDefaultProps({
         crawlOptions: createDefaultCrawlOptions({ limit: 5 }),
@@ -1360,7 +1399,12 @@ describe('WaterCrawl', () => {
       const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'progress-job' })
-      mockCheckStatus.mockImplementation(() => new Promise(() => { /* pending */ }))
+      mockCheckStatus.mockImplementation(
+        () =>
+          new Promise(() => {
+            /* pending */
+          }),
+      )
 
       const props = createDefaultProps({
         crawlOptions: createDefaultCrawlOptions({ limit: 10 }),
@@ -1440,7 +1484,9 @@ describe('WaterCrawl', () => {
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
-        expect(screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle'))!.toBeInTheDocument()
+        expect(
+          screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle'),
+        )!.toBeInTheDocument()
       })
     })
 
@@ -1465,14 +1511,16 @@ describe('WaterCrawl', () => {
           current: 5,
           total: 10,
           data: Array.from({ length: 5 }, (_, i) =>
-            createCrawlResultItem({ source_url: `https://page${i + 1}.com` })),
+            createCrawlResultItem({ source_url: `https://page${i + 1}.com` }),
+          ),
         })
         .mockResolvedValueOnce({
           status: 'completed',
           current: 10,
           total: 10,
           data: Array.from({ length: 10 }, (_, i) =>
-            createCrawlResultItem({ source_url: `https://page${i + 1}.com` })),
+            createCrawlResultItem({ source_url: `https://page${i + 1}.com` }),
+          ),
         })
 
       const props = createDefaultProps({
@@ -1493,9 +1541,7 @@ describe('WaterCrawl', () => {
       // Final result should be selected
       await waitFor(() => {
         expect(onCheckedCrawlResultChange).toHaveBeenLastCalledWith(
-          expect.arrayContaining([
-            expect.objectContaining({ source_url: 'https://page1.com' }),
-          ]),
+          expect.arrayContaining([expect.objectContaining({ source_url: 'https://page1.com' })]),
         )
       })
     })
@@ -1609,11 +1655,13 @@ describe('WaterCrawl', () => {
         current: 1,
         total: 1,
         time_consuming: 1.2,
-        data: [createCrawlResultItem({
-          title: 'Preview Page',
-          markdown: '# Preview Content',
-          source_url: 'https://preview.com/page',
-        })],
+        data: [
+          createCrawlResultItem({
+            title: 'Preview Page',
+            markdown: '# Preview Content',
+            source_url: 'https://preview.com/page',
+          }),
+        ],
       })
 
       const props = createDefaultProps({

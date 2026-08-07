@@ -58,6 +58,12 @@ class WorkspacesLimitExceeded(BaseHTTPException):
     code = 400
 
 
+class SeatsLimitExceeded(BaseHTTPException):
+    error_code = "limit_exceeded"
+    description = "Unable to create account because the licensed seats limit was exceeded"
+    code = 400
+
+
 class AccountBannedError(BaseHTTPException):
     error_code = "account_banned"
     description = "Account is banned."

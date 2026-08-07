@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import type { IterationNodeType } from '../types'
 import type { PanelProps } from '@/types/workflow'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -6,7 +5,6 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ErrorHandleMode } from '@/app/components/workflow/types'
 import { BlockEnum, VarType } from '../../../types'
-import AddBlock from '../add-block'
 import Node from '../node'
 import Panel from '../panel'
 import useConfig from '../use-config'
@@ -34,32 +32,6 @@ vi.mock('reactflow', async () => {
   }
 })
 
-vi.mock('@/app/components/workflow/block-selector', () => ({
-  __esModule: true,
-  default: ({
-    trigger,
-    onSelect,
-    availableBlocksTypes = [],
-    disabled,
-  }: {
-    trigger?: (open: boolean) => ReactNode
-    onSelect?: (type: BlockEnum) => void
-    availableBlocksTypes?: BlockEnum[]
-    disabled?: boolean
-  }) => (
-    <div>
-      {trigger ? <div>{trigger(false)}</div> : null}
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => onSelect?.(availableBlocksTypes[0] ?? BlockEnum.Code)}
-      >
-        select-block
-      </button>
-    </div>
-  ),
-}))
-
 vi.mock('../../iteration-start', () => ({
   IterationStartNodeDumb: () => <div>iteration-start-node</div>,
 }))
@@ -70,13 +42,19 @@ vi.mock('../use-interactions', () => ({
   }),
 }))
 
-vi.mock('../../../hooks', () => ({
+vi.mock('../../../hooks/use-available-blocks', () => ({
   useAvailableBlocks: () => ({
     availableNextBlocks: [BlockEnum.Code],
   }),
+}))
+
+vi.mock('../../../hooks/use-nodes-interactions', () => ({
   useNodesInteractions: () => ({
     handleNodeAdd: mockHandleNodeAdd,
   }),
+}))
+
+vi.mock('../../../hooks/use-workflow', () => ({
   useNodesReadOnly: () => ({
     nodesReadOnly: mockNodesReadOnly,
   }),
@@ -94,10 +72,8 @@ vi.mock('../../_base/components/variable/var-reference-picker', () => ({
     <button
       type="button"
       onClick={() => {
-        if (availableVars)
-          onChange(['child-node', 'text'], 'variable', { type: VarType.string })
-        else
-          onChange(['node-1', 'items'], 'variable', { type: VarType.arrayString })
+        if (availableVars) onChange(['child-node', 'text'], 'variable', { type: VarType.string })
+        else onChange(['node-1', 'items'], 'variable', { type: VarType.arrayString })
       }}
     >
       {availableVars ? 'pick-output-var' : 'pick-input-var'}
@@ -131,7 +107,9 @@ const createData = (overrides: Partial<IterationNodeType> = {}): IterationNodeTy
   ...overrides,
 })
 
-const createConfigResult = (overrides: Partial<ReturnType<typeof useConfig>> = {}): ReturnType<typeof useConfig> => ({
+const createConfigResult = (
+  overrides: Partial<ReturnType<typeof useConfig>> = {},
+): ReturnType<typeof useConfig> => ({
   readOnly: false,
   inputs: createData(),
   filterInputVar: () => true,
@@ -162,27 +140,6 @@ describe('iteration path', () => {
     mockUseConfig.mockReturnValue(createConfigResult())
   })
 
-  it('should add the next block from the iteration start node', async () => {
-    const user = userEvent.setup()
-
-    render(
-      <AddBlock
-        iterationNodeId="iteration-node"
-        iterationNodeData={createData()}
-      />,
-    )
-
-    await user.click(screen.getByRole('button', { name: 'select-block' }))
-
-    expect(mockHandleNodeAdd).toHaveBeenCalledWith({
-      nodeType: BlockEnum.Code,
-      pluginDefaultValue: undefined,
-    }, {
-      prevNodeId: 'start-node',
-      prevNodeSourceHandle: 'source',
-    })
-  })
-
   it('should render candidate iteration nodes and show the parallel warning once', () => {
     render(
       <Node
@@ -197,7 +154,7 @@ describe('iteration path', () => {
     )
 
     expect(screen.getByText('iteration-start-node')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'select-block' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'workflow.common.addBlock' })).toBeInTheDocument()
     expect(screen.getByTestId('iteration-background-iteration-node')).toBeInTheDocument()
     expect(mockHandleNodeIterationRerender).toHaveBeenCalledWith('iteration-node')
     expect(mockToastWarning).toHaveBeenCalledWith('workflow.nodes.iteration.answerNodeWarningDesc')
@@ -212,59 +169,59 @@ describe('iteration path', () => {
     const changeErrorResponseMode = vi.fn()
     const changeFlattenOutput = vi.fn()
 
-    mockUseConfig.mockReturnValueOnce(createConfigResult({
-      inputs: createData({
-        is_parallel: true,
-        flatten_output: false,
+    mockUseConfig.mockReturnValueOnce(
+      createConfigResult({
+        inputs: createData({
+          is_parallel: true,
+          flatten_output: false,
+        }),
+        handleInputChange,
+        handleOutputVarChange,
+        changeParallel,
+        changeParallelNums,
+        changeErrorResponseMode,
+        changeFlattenOutput,
       }),
-      handleInputChange,
-      handleOutputVarChange,
-      changeParallel,
-      changeParallelNums,
-      changeErrorResponseMode,
-      changeFlattenOutput,
-    }))
-
-    render(
-      <Panel
-        id="iteration-node"
-        data={createData()}
-        panelProps={panelProps}
-      />,
     )
+
+    render(<Panel id="iteration-node" data={createData()} panelProps={panelProps} />)
 
     await user.click(screen.getByRole('button', { name: 'pick-input-var' }))
     await user.click(screen.getByRole('button', { name: 'pick-output-var' }))
     await user.click(screen.getAllByRole('switch')[0]!)
     fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '7' } })
     await user.click(screen.getByRole('combobox'))
-    await user.click(screen.getByRole('option', { name: 'workflow.nodes.iteration.ErrorMethod.continueOnError' }))
+    await user.click(
+      screen.getByRole('option', { name: 'workflow.nodes.iteration.ErrorMethod.continueOnError' }),
+    )
     await user.click(screen.getAllByRole('switch')[1]!)
 
-    expect(handleInputChange).toHaveBeenCalledWith(['node-1', 'items'], 'variable', { type: VarType.arrayString })
-    expect(handleOutputVarChange).toHaveBeenCalledWith(['child-node', 'text'], 'variable', { type: VarType.string })
+    expect(handleInputChange).toHaveBeenCalledWith(['node-1', 'items'], 'variable', {
+      type: VarType.arrayString,
+    })
+    expect(handleOutputVarChange).toHaveBeenCalledWith(['child-node', 'text'], 'variable', {
+      type: VarType.string,
+    })
     expect(changeParallel).toHaveBeenCalledWith(false)
     expect(changeParallelNums).toHaveBeenCalledWith(7)
-    expect(changeErrorResponseMode).toHaveBeenCalledWith(expect.objectContaining({
-      value: ErrorHandleMode.ContinueOnError,
-    }))
+    expect(changeErrorResponseMode).toHaveBeenCalledWith(
+      expect.objectContaining({
+        value: ErrorHandleMode.ContinueOnError,
+      }),
+    )
     expect(changeFlattenOutput).toHaveBeenCalledWith(true)
   })
 
   it('should hide parallel controls when parallel mode is disabled', () => {
-    mockUseConfig.mockReturnValueOnce(createConfigResult({
-      inputs: createData({
-        is_parallel: false,
+    mockUseConfig.mockReturnValueOnce(
+      createConfigResult({
+        inputs: createData({
+          is_parallel: false,
+        }),
       }),
-    }))
-
-    render(
-      <Panel
-        id="iteration-node"
-        data={createData()}
-        panelProps={panelProps}
-      />,
     )
+
+    render(<Panel id="iteration-node" data={createData()} panelProps={panelProps} />)
 
     expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument()
   })

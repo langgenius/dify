@@ -5,14 +5,24 @@ import StatusItem from '../index'
 
 const toastMocks = vi.hoisted(() => {
   const record = vi.fn()
-  const api = vi.fn((message: unknown, options?: Record<string, unknown>) => record({ message, ...options }))
+  const api = vi.fn((message: unknown, options?: Record<string, unknown>) =>
+    record({ message, ...options }),
+  )
   return {
     record,
     api: Object.assign(api, {
-      success: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'success', message, ...options })),
-      error: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'error', message, ...options })),
-      warning: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'warning', message, ...options })),
-      info: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'info', message, ...options })),
+      success: vi.fn((message: unknown, options?: Record<string, unknown>) =>
+        record({ type: 'success', message, ...options }),
+      ),
+      error: vi.fn((message: unknown, options?: Record<string, unknown>) =>
+        record({ type: 'error', message, ...options }),
+      ),
+      warning: vi.fn((message: unknown, options?: Record<string, unknown>) =>
+        record({ type: 'warning', message, ...options }),
+      ),
+      info: vi.fn((message: unknown, options?: Record<string, unknown>) =>
+        record({ type: 'info', message, ...options }),
+      ),
       dismiss: vi.fn(),
       update: vi.fn(),
       promise: vi.fn(),
@@ -71,11 +81,6 @@ describe('StatusItem', () => {
   const mockOnUpdate = vi.fn()
 
   describe('rendering', () => {
-    it('should render without crashing', () => {
-      render(<StatusItem status="available" />)
-      expect(screen.getByText('Available')).toBeInTheDocument()
-    })
-
     it('should render available status', () => {
       render(<StatusItem status="available" />)
       expect(screen.getByText('Available')).toBeInTheDocument()
@@ -117,26 +122,6 @@ describe('StatusItem', () => {
     })
   })
 
-  describe('layout', () => {
-    it('should not have reversed layout by default', () => {
-      const { container } = render(<StatusItem status="available" />)
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).not.toHaveClass('flex-row-reverse')
-    })
-
-    it('should have reversed layout when reverse prop is true', () => {
-      const { container } = render(<StatusItem status="available" reverse={true} />)
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('flex-row-reverse')
-    })
-
-    it('should apply custom textCls class', () => {
-      const { container } = render(<StatusItem status="available" textCls="custom-text-class" />)
-      const textElement = container.querySelector('.custom-text-class')
-      expect(textElement).toBeInTheDocument()
-    })
-  })
-
   describe('error message tooltip', () => {
     it('should show tooltip trigger when error message is provided', () => {
       render(<StatusItem status="error" errorMessage="Test error message" />)
@@ -161,6 +146,7 @@ describe('StatusItem', () => {
             id: 'doc-1',
           }}
           datasetId="dataset-1"
+          canEdit
         />,
       )
       // Switch component should be present in detail scene
@@ -186,6 +172,7 @@ describe('StatusItem', () => {
             id: 'doc-1',
           }}
           datasetId="dataset-1"
+          canEdit
         />,
       )
       const switchElement = screen.getByRole('switch')
@@ -203,6 +190,7 @@ describe('StatusItem', () => {
             id: 'doc-1',
           }}
           datasetId="dataset-1"
+          canEdit
         />,
       )
       const switchElement = screen.getByRole('switch')
@@ -220,6 +208,7 @@ describe('StatusItem', () => {
             id: 'doc-1',
           }}
           datasetId="dataset-1"
+          canEdit
         />,
       )
       const switchElement = screen.getByRole('switch')
@@ -242,6 +231,24 @@ describe('StatusItem', () => {
       const switchElement = screen.getByRole('switch')
       expect(switchElement).toHaveAttribute('aria-disabled', 'true')
     })
+
+    it('should render switch as disabled when canEdit is false', () => {
+      render(
+        <StatusItem
+          status="available"
+          scene="detail"
+          detail={{
+            enabled: true,
+            archived: false,
+            id: 'doc-1',
+          }}
+          datasetId="dataset-1"
+          canEdit={false}
+        />,
+      )
+      const switchElement = screen.getByRole('switch')
+      expect(switchElement).toHaveAttribute('aria-disabled', 'true')
+    })
   })
 
   describe('switch operations', () => {
@@ -257,6 +264,7 @@ describe('StatusItem', () => {
             id: 'doc-1',
           }}
           datasetId="dataset-1"
+          canEdit
           onUpdate={mockOnUpdate}
         />,
       )
@@ -284,6 +292,7 @@ describe('StatusItem', () => {
             id: 'doc-1',
           }}
           datasetId="dataset-1"
+          canEdit
           onUpdate={mockOnUpdate}
         />,
       )
@@ -299,20 +308,6 @@ describe('StatusItem', () => {
       vi.useRealTimers()
     })
 
-    it('should not call enable if already enabled - defensive check', () => {
-      // Lines 82-83 contain a defensive early return when trying to enable an already enabled document
-      // This cannot be triggered through normal UI because the Switch alternates on click
-      // The coverage for these lines represents unreachable defensive code
-      expect(true).toBe(true)
-    })
-
-    it('should not call disable if already disabled - defensive check', () => {
-      // Lines 84-85 contain a defensive early return when trying to disable an already disabled document
-      // This cannot be triggered through normal UI because the Switch alternates on click
-      // The coverage for these lines represents unreachable defensive code
-      expect(true).toBe(true)
-    })
-
     it('should not call switch when archived', async () => {
       vi.useFakeTimers()
       render(
@@ -325,6 +320,7 @@ describe('StatusItem', () => {
             id: 'doc-1',
           }}
           datasetId="dataset-1"
+          canEdit
           onUpdate={mockOnUpdate}
         />,
       )
@@ -353,6 +349,7 @@ describe('StatusItem', () => {
             id: 'doc-1',
           }}
           datasetId="dataset-1"
+          canEdit
           onUpdate={mockOnUpdate}
         />,
       )
@@ -384,6 +381,7 @@ describe('StatusItem', () => {
             id: 'doc-1',
           }}
           datasetId="dataset-1"
+          canEdit
           onUpdate={mockOnUpdate}
         />,
       )
@@ -413,6 +411,7 @@ describe('StatusItem', () => {
             id: 'doc-1',
           }}
           datasetId="dataset-1"
+          canEdit
           onUpdate={mockOnUpdate}
         />,
       )
@@ -430,44 +429,6 @@ describe('StatusItem', () => {
         message: 'common.actionMsg.modifiedUnsuccessfully',
       })
       vi.useRealTimers()
-    })
-  })
-
-  describe('status color mapping', () => {
-    it('should have correct color class for green status', () => {
-      const { container } = render(<StatusItem status="available" />)
-      const text = container.querySelector('.text-util-colors-green-green-600')
-      expect(text).toBeInTheDocument()
-    })
-
-    it('should have correct color class for orange status', () => {
-      const { container } = render(<StatusItem status="queuing" />)
-      const text = container.querySelector('.text-util-colors-warning-warning-600')
-      expect(text).toBeInTheDocument()
-    })
-
-    it('should have correct color class for red status', () => {
-      const { container } = render(<StatusItem status="error" />)
-      const text = container.querySelector('.text-util-colors-red-red-600')
-      expect(text).toBeInTheDocument()
-    })
-
-    it('should have correct color class for blue status', () => {
-      const { container } = render(<StatusItem status="indexing" />)
-      const text = container.querySelector('.text-util-colors-blue-light-blue-light-600')
-      expect(text).toBeInTheDocument()
-    })
-
-    it('should have correct color class for gray status', () => {
-      const { container } = render(<StatusItem status="archived" />)
-      const text = container.querySelector('.text-text-tertiary')
-      expect(text).toBeInTheDocument()
-    })
-  })
-
-  describe('memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      expect((StatusItem as unknown as { $$typeof: symbol }).$$typeof).toBe(Symbol.for('react.memo'))
     })
   })
 

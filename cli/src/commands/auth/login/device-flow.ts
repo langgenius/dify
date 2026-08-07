@@ -1,7 +1,7 @@
-import type { CodeResponse, PollRequest, PollResult, PollSuccess } from '../../../api/oauth-device.js'
-import { DEFAULT_CLIENT_ID } from '../../../api/oauth-device.js'
-import { BaseError } from '../../../errors/base.js'
-import { ErrorCode } from '../../../errors/codes.js'
+import type { CodeResponse, PollRequest, PollResult, PollSuccess } from '@/api/oauth-device'
+import { DEFAULT_CLIENT_ID } from '@/api/oauth-device'
+import { BaseError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
 
 export const DEFAULT_INTERVAL_MS = 5_000
 export const MAX_INTERVAL_MS = 60_000
@@ -28,8 +28,7 @@ export async function awaitAuthorization(
   code: CodeResponse,
   opts: AwaitOptions,
 ): Promise<PollSuccess> {
-  if (code.device_code === '')
-    throw expired()
+  if (code.device_code === '') throw expired()
 
   const baseInterval = code.interval > 0 ? code.interval * 1000 : DEFAULT_INTERVAL_MS
   let interval = baseInterval
@@ -39,8 +38,7 @@ export async function awaitAuthorization(
   }
 
   while (true) {
-    if (opts.clock.isCancelled())
-      throw expired()
+    if (opts.clock.isCancelled()) throw expired()
     const result = await pollWithRetry(api, req, opts.clock)
     switch (result.status) {
       case 'approved':
@@ -64,8 +62,7 @@ export async function awaitAuthorization(
         })
     }
     await opts.clock.sleepMs(interval)
-    if (opts.clock.isCancelled())
-      throw expired()
+    if (opts.clock.isCancelled()) throw expired()
   }
 }
 
@@ -77,10 +74,8 @@ async function pollWithRetry(
   let backoff = POLL_RETRY_INITIAL_MS
   for (let attempt = 1; attempt <= POLL_RETRY_ATTEMPTS; attempt++) {
     const result = await api.pollOnce(req)
-    if (result.status !== 'retry_5xx')
-      return result
-    if (attempt === POLL_RETRY_ATTEMPTS)
-      break
+    if (result.status !== 'retry_5xx') return result
+    if (attempt === POLL_RETRY_ATTEMPTS) break
     await clock.sleepMs(backoff)
     backoff = Math.min(backoff * 2, POLL_RETRY_CAP_MS)
   }
@@ -98,7 +93,7 @@ export function realClock(): Clock {
   const cancelled = false
   return {
     async sleepMs(ms) {
-      await new Promise<void>(r => setTimeout(r, ms))
+      await new Promise<void>((r) => setTimeout(r, ms))
     },
     isCancelled() {
       return cancelled

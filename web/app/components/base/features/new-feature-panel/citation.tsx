@@ -8,47 +8,43 @@ import FeatureCard from '@/app/components/base/features/new-feature-panel/featur
 import { FeatureEnum } from '@/app/components/base/features/types'
 import { Citations } from '@/app/components/base/icons/src/vender/features'
 
-type Props = {
+type Props = Readonly<{
   disabled?: boolean
   onChange?: OnFeaturesChange
-}
+}>
 
-const Citation = ({
-  disabled,
-  onChange,
-}: Props) => {
+const Citation = ({ disabled, onChange }: Props) => {
   const { t } = useTranslation()
-  const features = useFeatures(s => s.features)
+  const features = useFeatures((s) => s.features)
   const featuresStore = useFeaturesStore()
 
-  const handleChange = useCallback((type: FeatureEnum, enabled: boolean) => {
-    const {
-      features,
-      setFeatures,
-    } = featuresStore!.getState()
+  const handleChange = useCallback(
+    (type: FeatureEnum, enabled: boolean) => {
+      const { features, setFeatures } = featuresStore!.getState()
 
-    const newFeatures = produce(features, (draft) => {
-      draft[type] = {
-        ...draft[type],
-        enabled,
-      }
-    })
-    setFeatures(newFeatures)
-    if (onChange)
-      onChange(newFeatures)
-  }, [featuresStore, onChange])
+      const newFeatures = produce(features, (draft) => {
+        draft[type] = {
+          ...draft[type],
+          enabled,
+        }
+      })
+      setFeatures(newFeatures)
+      if (onChange) onChange(newFeatures)
+    },
+    [featuresStore, onChange],
+  )
 
   return (
     <FeatureCard
-      icon={(
+      icon={
         <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-warning-warning-500 p-1 shadow-xs">
           <Citations className="size-4 text-text-primary-on-surface" />
         </div>
-      )}
-      title={t('feature.citation.title', { ns: 'appDebug' })}
+      }
+      title={t(($) => $['feature.citation.title'], { ns: 'appDebug' })}
       value={!!features.citation?.enabled}
-      description={t('feature.citation.description', { ns: 'appDebug' })!}
-      onChange={state => handleChange(FeatureEnum.citation, state)}
+      description={t(($) => $['feature.citation.description'], { ns: 'appDebug' })!}
+      onChange={(state) => handleChange(FeatureEnum.citation, state)}
       disabled={disabled}
     />
   )

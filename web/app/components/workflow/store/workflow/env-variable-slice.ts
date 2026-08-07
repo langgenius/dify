@@ -17,17 +17,16 @@ export const createEnvVariableSlice: StateCreator<EnvVariableSliceShape> = (set)
     showChatVariablePanel: false,
     showGlobalVariablePanel: false,
   }
-  return ({
+  return {
     showEnvPanel: false,
-    setShowEnvPanel: showEnvPanel => set(() => {
-      if (showEnvPanel)
-        return { ...hideAllPanel, showEnvPanel: true }
-      else
-        return { showEnvPanel: false }
-    }),
+    setShowEnvPanel: (showEnvPanel) =>
+      set(() => {
+        if (showEnvPanel) return { ...hideAllPanel, showEnvPanel: true }
+        else return { showEnvPanel: false }
+      }),
     environmentVariables: [],
-    setEnvironmentVariables: environmentVariables => set(() => ({ environmentVariables })),
+    setEnvironmentVariables: (environmentVariables) => set(() => ({ environmentVariables })),
     envSecrets: {},
-    setEnvSecrets: envSecrets => set(() => ({ envSecrets })),
-  })
+    setEnvSecrets: (envSecrets) => set(() => ({ envSecrets })),
+  }
 }

@@ -1,14 +1,60 @@
-import base64
-import hashlib
-import hmac
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
+from sqlalchemy.orm import Session
 
 from core.datasource.datasource_file_manager import DatasourceFileManager
+from extensions.storage.storage_type import StorageType
+from models.enums import CreatorUserRole
 from models.model import MessageFile, UploadFile
 from models.tools import ToolFile
+
+
+def _upload_file(id: str, *, key: str, mime_type: str) -> UploadFile:
+    upload_file = UploadFile(
+        tenant_id="tenant-1",
+        storage_type=StorageType.LOCAL,
+        key=key,
+        name="file.png",
+        size=4,
+        extension=".png",
+        mime_type=mime_type,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="user-1",
+        created_at=datetime.now(UTC).replace(tzinfo=None),
+        used=False,
+    )
+    upload_file.id = id
+    return upload_file
+
+
+def _tool_file(id: str, *, key: str = "tool_key", mimetype: str = "image/png") -> ToolFile:
+    tool_file = ToolFile(
+        tenant_id="tenant-1",
+        user_id="user-1",
+        conversation_id=None,
+        file_key=key,
+        mimetype=mimetype,
+        name="tool.png",
+        size=4,
+    )
+    tool_file.id = id
+    return tool_file
+
+
+def _message_file(id: str, *, url: str | None) -> MessageFile:
+    message_file = MessageFile(
+        message_id="message-1",
+        type="image",
+        transfer_method="remote_url",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="user-1",
+        url=url,
+    )
+    message_file.id = id
+    return message_file
 
 
 class TestDatasourceFileManager:
@@ -34,39 +80,10 @@ class TestDatasourceFileManager:
         assert f"nonce={mock_urandom.return_value.hex()}" in signed_url
         assert "sign=" in signed_url
 
-    @patch("core.datasource.datasource_file_manager.time.time")
-    @patch("core.datasource.datasource_file_manager.dify_config")
-    def test_verify_file(self, mock_config, mock_time):
-        # Setup
-        mock_config.SECRET_KEY = "test_secret"
-        mock_config.FILES_ACCESS_TIMEOUT = 300
-        mock_time.return_value = 1700000000
-
-        datasource_file_id = "file_id_123"
-        timestamp = "1699999800"  # 200 seconds ago
-        nonce = "some_nonce"
-
-        # Manually calculate sign
-        data_to_sign = f"file-preview|{datasource_file_id}|{timestamp}|{nonce}"
-        secret_key = b"test_secret"
-        sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
-        encoded_sign = base64.urlsafe_b64encode(sign).decode()
-
-        # Execute & Verify Success
-        assert DatasourceFileManager.verify_file(datasource_file_id, timestamp, nonce, encoded_sign) is True
-
-        # Verify Failure - Wrong Sign
-        assert DatasourceFileManager.verify_file(datasource_file_id, timestamp, nonce, "wrong_sign") is False
-
-        # Verify Failure - Timeout
-        mock_time.return_value = 1700000500  # 700 seconds after timestamp (300 is timeout)
-        assert DatasourceFileManager.verify_file(datasource_file_id, timestamp, nonce, encoded_sign) is False
-
-    @patch("core.datasource.datasource_file_manager.db")
     @patch("core.datasource.datasource_file_manager.storage")
     @patch("core.datasource.datasource_file_manager.uuid4")
     @patch("core.datasource.datasource_file_manager.dify_config")
-    def test_create_file_by_raw(self, mock_config, mock_uuid, mock_storage, mock_db):
+    def test_create_file_by_raw(self, mock_config, mock_uuid, mock_storage, sqlite_session: Session):
         # Setup
         mock_uuid.return_value = MagicMock(hex="unique_hex")
         mock_config.STORAGE_TYPE = "local"
@@ -94,14 +111,14 @@ class TestDatasourceFileManager:
         assert upload_file.key == f"datasources/{tenant_id}/unique_hex.png"
 
         mock_storage.save.assert_called_once_with(upload_file.key, file_binary)
-        mock_db.session.add.assert_called_once()
-        mock_db.session.commit.assert_called_once()
+        persisted_file = sqlite_session.get(UploadFile, upload_file.id)
+        assert persisted_file is not None
+        assert persisted_file.key == upload_file.key
 
-    @patch("core.datasource.datasource_file_manager.db")
     @patch("core.datasource.datasource_file_manager.storage")
     @patch("core.datasource.datasource_file_manager.uuid4")
     @patch("core.datasource.datasource_file_manager.dify_config")
-    def test_create_file_by_raw_filename_no_extension(self, mock_config, mock_uuid, mock_storage, mock_db):
+    def test_create_file_by_raw_filename_no_extension(self, mock_config, mock_uuid, mock_storage):
         # Setup
         mock_uuid.return_value = MagicMock(hex="unique_hex")
         mock_config.STORAGE_TYPE = "local"
@@ -124,12 +141,11 @@ class TestDatasourceFileManager:
         # Verify
         assert upload_file.name == "test.png"  # Should append extension
 
-    @patch("core.datasource.datasource_file_manager.db")
     @patch("core.datasource.datasource_file_manager.storage")
     @patch("core.datasource.datasource_file_manager.uuid4")
     @patch("core.datasource.datasource_file_manager.dify_config")
     @patch("core.datasource.datasource_file_manager.guess_extension")
-    def test_create_file_by_raw_unknown_extension(self, mock_guess_ext, mock_config, mock_uuid, mock_storage, mock_db):
+    def test_create_file_by_raw_unknown_extension(self, mock_guess_ext, mock_config, mock_uuid, mock_storage):
         # Setup
         mock_guess_ext.return_value = None  # Cannot guess
         mock_uuid.return_value = MagicMock(hex="unique_hex")
@@ -148,11 +164,10 @@ class TestDatasourceFileManager:
         assert upload_file.extension == ".bin"
         assert upload_file.name == "unique_hex.bin"
 
-    @patch("core.datasource.datasource_file_manager.db")
     @patch("core.datasource.datasource_file_manager.storage")
     @patch("core.datasource.datasource_file_manager.uuid4")
     @patch("core.datasource.datasource_file_manager.dify_config")
-    def test_create_file_by_raw_no_filename(self, mock_config, mock_uuid, mock_storage, mock_db):
+    def test_create_file_by_raw_no_filename(self, mock_config, mock_uuid, mock_storage):
         # Setup
         mock_uuid.return_value = MagicMock(hex="unique_hex")
         mock_config.STORAGE_TYPE = "local"
@@ -170,37 +185,37 @@ class TestDatasourceFileManager:
         assert upload_file.name == "unique_hex.pdf"
         assert upload_file.extension == ".pdf"
 
-    @patch("core.datasource.datasource_file_manager.ssrf_proxy")
-    @patch("core.datasource.datasource_file_manager.db")
+    @patch("core.datasource.datasource_file_manager.remote_fetcher")
     @patch("core.datasource.datasource_file_manager.storage")
     @patch("core.datasource.datasource_file_manager.uuid4")
-    def test_create_file_by_url_mimetype_from_guess(self, mock_uuid, mock_storage, mock_db, mock_ssrf):
+    def test_create_file_by_url_mimetype_from_guess(self, mock_uuid, mock_storage, mock_ssrf):
         # Setup
         mock_uuid.return_value = MagicMock(hex="unique_hex")
         mock_response = MagicMock()
         mock_response.content = b"bits"
         mock_response.headers = {}  # No content-type in headers
-        mock_ssrf.get.return_value = mock_response
+        mock_ssrf.make_request.return_value = mock_response
 
         # Execute
         tool_file = DatasourceFileManager.create_file_by_url(
-            user_id="user_123", tenant_id="tenant_456", file_url="https://example.com/photo.png"
+            user_id="user_123",
+            tenant_id="tenant_456",
+            file_url="https://example.com/photo.png",
         )
 
         # Verify
         assert tool_file.mimetype == "image/png"  # Guessed from .png in URL
 
-    @patch("core.datasource.datasource_file_manager.ssrf_proxy")
-    @patch("core.datasource.datasource_file_manager.db")
+    @patch("core.datasource.datasource_file_manager.remote_fetcher")
     @patch("core.datasource.datasource_file_manager.storage")
     @patch("core.datasource.datasource_file_manager.uuid4")
-    def test_create_file_by_url_mimetype_default(self, mock_uuid, mock_storage, mock_db, mock_ssrf):
+    def test_create_file_by_url_mimetype_default(self, mock_uuid, mock_storage, mock_ssrf):
         # Setup
         mock_uuid.return_value = MagicMock(hex="unique_hex")
         mock_response = MagicMock()
         mock_response.content = b"bits"
         mock_response.headers = {}
-        mock_ssrf.get.return_value = mock_response
+        mock_ssrf.make_request.return_value = mock_response
 
         # Execute
         tool_file = DatasourceFileManager.create_file_by_url(
@@ -212,21 +227,22 @@ class TestDatasourceFileManager:
         # Verify
         assert tool_file.mimetype == "application/octet-stream"
 
-    @patch("core.datasource.datasource_file_manager.ssrf_proxy")
-    @patch("core.datasource.datasource_file_manager.db")
+    @patch("core.datasource.datasource_file_manager.remote_fetcher")
     @patch("core.datasource.datasource_file_manager.storage")
     @patch("core.datasource.datasource_file_manager.uuid4")
-    def test_create_file_by_url_success(self, mock_uuid, mock_storage, mock_db, mock_ssrf):
+    def test_create_file_by_url_success(self, mock_uuid, mock_storage, mock_ssrf):
         # Setup
         mock_uuid.return_value = MagicMock(hex="unique_hex")
         mock_response = MagicMock()
         mock_response.content = b"downloaded bits"
         mock_response.headers = {"Content-Type": "image/jpeg"}
-        mock_ssrf.get.return_value = mock_response
+        mock_ssrf.make_request.return_value = mock_response
 
         # Execute
         tool_file = DatasourceFileManager.create_file_by_url(
-            user_id="user_123", tenant_id="tenant_456", file_url="https://example.com/photo.jpg"
+            user_id="user_123",
+            tenant_id="tenant_456",
+            file_url="https://example.com/photo.jpg",
         )
 
         # Verify
@@ -235,10 +251,10 @@ class TestDatasourceFileManager:
         assert tool_file.file_key == "tools/tenant_456/unique_hex.jpg"
         mock_storage.save.assert_called_once()
 
-    @patch("core.datasource.datasource_file_manager.ssrf_proxy")
+    @patch("core.datasource.datasource_file_manager.remote_fetcher")
     def test_create_file_by_url_timeout(self, mock_ssrf):
         # Setup
-        mock_ssrf.get.side_effect = httpx.TimeoutException("Timeout")
+        mock_ssrf.make_request.side_effect = httpx.TimeoutException("Timeout")
 
         # Execute & Verify
         with pytest.raises(ValueError, match="timeout when downloading file"):
@@ -246,106 +262,59 @@ class TestDatasourceFileManager:
                 user_id="user_123", tenant_id="tenant_456", file_url="https://example.com/large.file"
             )
 
-    @patch("core.datasource.datasource_file_manager.db")
     @patch("core.datasource.datasource_file_manager.storage")
-    def test_get_file_binary(self, mock_storage, mock_db):
-        # Setup
-        mock_upload_file = MagicMock(spec=UploadFile)
-        mock_upload_file.key = "some_key"
-        mock_upload_file.mime_type = "image/png"
-
-        mock_db.session.get.return_value = mock_upload_file
+    def test_get_file_binary(self, mock_storage, sqlite_session: Session):
+        sqlite_session.add(_upload_file("file_id", key="some_key", mime_type="image/png"))
+        sqlite_session.commit()
 
         mock_storage.load_once.return_value = b"file content"
 
-        # Execute
         result = DatasourceFileManager.get_file_binary("file_id")
 
         # Verify
         assert result == (b"file content", "image/png")
 
-        # Case: Not found
-        mock_db.session.get.return_value = None
         assert DatasourceFileManager.get_file_binary("unknown") is None
 
-    @patch("core.datasource.datasource_file_manager.db")
     @patch("core.datasource.datasource_file_manager.storage")
-    def test_get_file_binary_by_message_file_id(self, mock_storage, mock_db):
-        # Setup
-        mock_message_file = MagicMock(spec=MessageFile)
-        mock_message_file.url = "http://localhost/files/tools/tool_id.png"
-
-        mock_tool_file = MagicMock(spec=ToolFile)
-        mock_tool_file.file_key = "tool_key"
-        mock_tool_file.mimetype = "image/png"
-
-        def mock_get(model, id):
-            if model == MessageFile:
-                return mock_message_file
-            elif model == ToolFile:
-                return mock_tool_file
-            return None
-
-        mock_db.session.get.side_effect = mock_get
+    def test_get_file_binary_by_message_file_id(self, mock_storage, sqlite_session: Session):
+        sqlite_session.add_all(
+            [
+                _message_file("msg_file_id", url="http://localhost/files/tools/tool_id.png"),
+                _tool_file("tool_id"),
+            ]
+        )
+        sqlite_session.commit()
         mock_storage.load_once.return_value = b"tool content"
 
-        # Execute
         result = DatasourceFileManager.get_file_binary_by_message_file_id("msg_file_id")
 
         # Verify
         assert result == (b"tool content", "image/png")
 
-    @patch("core.datasource.datasource_file_manager.db")
     @patch("core.datasource.datasource_file_manager.storage")
-    def test_get_file_binary_by_message_file_id_with_extension(self, mock_storage, mock_db):
-        # Test that it correctly parses tool_id even with extension in URL
-        mock_message_file = MagicMock(spec=MessageFile)
-        mock_message_file.url = "http://localhost/files/tools/abcdef.png"
-
-        mock_tool_file = MagicMock(spec=ToolFile)
-        mock_tool_file.id = "abcdef"
-        mock_tool_file.file_key = "tk"
-        mock_tool_file.mimetype = "image/png"
-
-        def mock_get(model, id):
-            if model == MessageFile:
-                return mock_message_file
-            return mock_tool_file
-
-        mock_db.session.get.side_effect = mock_get
+    def test_get_file_binary_by_message_file_id_with_extension(self, mock_storage, sqlite_session: Session):
+        sqlite_session.add_all(
+            [_message_file("m", url="http://localhost/files/tools/abcdef.png"), _tool_file("abcdef", key="tk")]
+        )
+        sqlite_session.commit()
         mock_storage.load_once.return_value = b"bits"
 
         result = DatasourceFileManager.get_file_binary_by_message_file_id("m")
         assert result == (b"bits", "image/png")
 
-    @patch("core.datasource.datasource_file_manager.db")
     @patch("core.datasource.datasource_file_manager.storage")
-    def test_get_file_binary_by_message_file_id_failures(self, mock_storage, mock_db):
-        # Case 1: Message file not found
-        mock_db.session.get.return_value = None
+    def test_get_file_binary_by_message_file_id_failures(self, mock_storage, sqlite_session: Session):
         assert DatasourceFileManager.get_file_binary_by_message_file_id("none") is None
 
-        # Case 2: Message file found but tool file not found
-        mock_message_file = MagicMock(spec=MessageFile)
-        mock_message_file.url = None
-
-        def mock_get_v2(model, id):
-            if model == MessageFile:
-                return mock_message_file
-            return None
-
-        mock_db.session.get.side_effect = mock_get_v2
+        sqlite_session.add(_message_file("msg_id", url=None))
+        sqlite_session.commit()
         assert DatasourceFileManager.get_file_binary_by_message_file_id("msg_id") is None
 
-    @patch("core.datasource.datasource_file_manager.db")
     @patch("core.datasource.datasource_file_manager.storage")
-    def test_get_file_generator_by_upload_file_id(self, mock_storage, mock_db):
-        # Setup
-        mock_upload_file = MagicMock(spec=UploadFile)
-        mock_upload_file.key = "upload_key"
-        mock_upload_file.mime_type = "text/plain"
-
-        mock_db.session.get.return_value = mock_upload_file
+    def test_get_file_generator_by_upload_file_id(self, mock_storage, sqlite_session: Session):
+        sqlite_session.add(_upload_file("upload_id", key="upload_key", mime_type="text/plain"))
+        sqlite_session.commit()
 
         mock_storage.load_stream.return_value = iter([b"chunk1", b"chunk2"])
 
@@ -356,8 +325,6 @@ class TestDatasourceFileManager:
         assert mimetype == "text/plain"
         assert list(stream) == [b"chunk1", b"chunk2"]
 
-        # Case: Not found
-        mock_db.session.get.return_value = None
         stream, mimetype = DatasourceFileManager.get_file_generator_by_upload_file_id("none")
         assert stream is None
         assert mimetype is None

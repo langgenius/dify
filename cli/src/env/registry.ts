@@ -1,5 +1,5 @@
-import { parseLimit } from '../limit/limit.js'
-import { getEnv } from '../sys/index.js'
+import { parseLimit } from '@/limit/limit'
+import { getEnv } from '@/sys/index'
 
 export type EnvVar = {
   readonly name: string
@@ -50,7 +50,7 @@ export const ENV_REGISTRY: readonly EnvVar[] = [...REGISTRY_UNSORTED].sort((a, b
   a.name.localeCompare(b.name),
 )
 
-const BY_NAME = new Map(ENV_REGISTRY.map(e => [e.name, e]))
+const BY_NAME = new Map(ENV_REGISTRY.map((e) => [e.name, e]))
 
 export function lookupEnv(name: string): EnvVar | undefined {
   return BY_NAME.get(name)
@@ -61,7 +61,6 @@ export { getEnv }
 export function resolveEnv(name: string): unknown {
   const entry = lookupEnv(name)
   const raw = getEnv(name) ?? entry?.default
-  if (raw === undefined)
-    return undefined
+  if (raw === undefined) return undefined
   return entry?.parse ? entry.parse(raw) : raw
 }

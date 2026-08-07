@@ -1,6 +1,4 @@
-import { act } from '@testing-library/react'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
-import { emitWorkflowCommand, WorkflowCommand } from '../../shortcuts/commands'
 import { useWorkflowHotkeys } from '../../shortcuts/use-workflow-hotkeys'
 
 type KeyPressRegistration = {
@@ -50,7 +48,6 @@ const mockHandleModeHand = vi.hoisted(() => vi.fn())
 const mockHandleModePointer = vi.hoisted(() => vi.fn())
 const mockHandleModeComment = vi.hoisted(() => vi.fn())
 const mockHandleLayout = vi.hoisted(() => vi.fn())
-const mockHandleToggleMaximizeCanvas = vi.hoisted(() => vi.fn())
 const mockUseKeyHold = vi.hoisted(() => vi.fn(() => false))
 
 vi.mock('@tanstack/react-hotkeys', () => {
@@ -111,12 +108,6 @@ vi.mock('../use-nodes-sync-draft', () => ({
   }),
 }))
 
-vi.mock('../use-workflow-canvas-maximize', () => ({
-  useWorkflowCanvasMaximize: () => ({
-    handleToggleMaximizeCanvas: mockHandleToggleMaximizeCanvas,
-  }),
-}))
-
 vi.mock('../use-workflow-panel-interactions', () => ({
   useWorkflowMoveMode: () => ({
     handleModeHand: mockHandleModeHand,
@@ -132,19 +123,22 @@ vi.mock('../use-workflow-organize', () => ({
   }),
 }))
 
-const createKeyboardEvent = (target: HTMLElement = document.body) => ({
-  preventDefault: vi.fn(),
-  stopPropagation: vi.fn(),
-  target,
-}) as unknown as KeyboardEvent
+const createKeyboardEvent = (target: HTMLElement = document.body) =>
+  ({
+    preventDefault: vi.fn(),
+    stopPropagation: vi.fn(),
+    target,
+  }) as unknown as KeyboardEvent
 
-const createSelectionMock = (commonAncestorContainer: Node): Selection => ({
-  isCollapsed: false,
-  rangeCount: 1,
-  getRangeAt: () => ({
-    commonAncestorContainer,
-  } as unknown as Range),
-} as unknown as Selection)
+const createSelectionMock = (commonAncestorContainer: Node): Selection =>
+  ({
+    isCollapsed: false,
+    rangeCount: 1,
+    getRangeAt: () =>
+      ({
+        commonAncestorContainer,
+      }) as unknown as Range,
+  }) as unknown as Selection
 
 const findRegistration = (matcher: (registration: KeyPressRegistration) => boolean) => {
   const registration = keyPressRegistrations.find(matcher)
@@ -153,27 +147,25 @@ const findRegistration = (matcher: (registration: KeyPressRegistration) => boole
 }
 
 const isEditableTarget = (target: EventTarget | null) => {
-  return target instanceof HTMLInputElement
-    || target instanceof HTMLTextAreaElement
-    || target instanceof HTMLSelectElement
-    || (target instanceof HTMLElement && target.isContentEditable)
+  return (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement ||
+    (target instanceof HTMLElement && target.isContentEditable)
+  )
 }
 
 const triggerShortcut = (
   registration: KeyPressRegistration,
   event: KeyboardEvent = createKeyboardEvent(),
 ) => {
-  if (registration.options?.enabled === false)
-    return
+  if (registration.options?.enabled === false) return
 
-  if (registration.options?.ignoreInputs !== false && isEditableTarget(event.target))
-    return
+  if (registration.options?.ignoreInputs !== false && isEditableTarget(event.target)) return
 
-  if (registration.options?.preventDefault !== false)
-    event.preventDefault()
+  if (registration.options?.preventDefault !== false) event.preventDefault()
 
-  if (registration.options?.stopPropagation !== false)
-    event.stopPropagation()
+  if (registration.options?.stopPropagation !== false) event.stopPropagation()
 
   registration.handler(event)
 }
@@ -189,7 +181,7 @@ describe('useShortcuts', () => {
   it('deletes selected nodes and edges only outside editable inputs', () => {
     renderWorkflowHook(() => useWorkflowHotkeys())
 
-    const deleteShortcut = findRegistration(registration => registration.keyFilter === 'Delete')
+    const deleteShortcut = findRegistration((registration) => registration.keyFilter === 'Delete')
     expect(deleteShortcut.options?.meta).toEqual(
       expect.objectContaining({ scope: 'workflow-canvas' }),
     )
@@ -211,11 +203,13 @@ describe('useShortcuts', () => {
   it('runs layout and zoom shortcuts through the workflow actions', () => {
     renderWorkflowHook(() => useWorkflowHotkeys())
 
-    const layoutShortcut = findRegistration(registration => registration.keyFilter === 'Mod+O')
-    const fitViewShortcut = findRegistration(registration => registration.keyFilter === 'Mod+1')
-    const halfZoomShortcut = findRegistration(registration => registration.keyFilter === 'Shift+5')
-    const zoomOutShortcut = findRegistration(registration => registration.keyFilter === 'Mod+-')
-    const zoomInShortcut = findRegistration(registration => registration.keyFilter === 'Mod+=')
+    const layoutShortcut = findRegistration((registration) => registration.keyFilter === 'Mod+O')
+    const fitViewShortcut = findRegistration((registration) => registration.keyFilter === 'Mod+1')
+    const halfZoomShortcut = findRegistration(
+      (registration) => registration.keyFilter === 'Shift+5',
+    )
+    const zoomOutShortcut = findRegistration((registration) => registration.keyFilter === 'Mod+-')
+    const zoomInShortcut = findRegistration((registration) => registration.keyFilter === 'Mod+=')
 
     triggerShortcut(layoutShortcut)
     triggerShortcut(fitViewShortcut)
@@ -250,7 +244,7 @@ describe('useShortcuts', () => {
 
     renderWorkflowHook(() => useWorkflowHotkeys())
 
-    const copyShortcut = findRegistration(registration => registration.keyFilter === 'Mod+C')
+    const copyShortcut = findRegistration((registration) => registration.keyFilter === 'Mod+C')
     const event = createKeyboardEvent()
     triggerShortcut(copyShortcut, event)
 
@@ -260,8 +254,8 @@ describe('useShortcuts', () => {
     getSelectionSpy.mockRestore()
   })
 
-  it('dims while shift is held, undims when released, and responds to zen toggle events', () => {
-    const { rerender, unmount } = renderWorkflowHook(() => useWorkflowHotkeys())
+  it('dims while shift is held and undims when released', () => {
+    const { rerender } = renderWorkflowHook(() => useWorkflowHotkeys())
 
     mockUseKeyHold.mockReturnValue(true)
     rerender()
@@ -271,18 +265,6 @@ describe('useShortcuts', () => {
 
     expect(mockDimOtherNodes).toHaveBeenCalledTimes(1)
     expect(mockUndimAllNodes).toHaveBeenCalledTimes(1)
-
-    act(() => {
-      emitWorkflowCommand(WorkflowCommand.ToggleCanvasMaximize)
-    })
-    expect(mockHandleToggleMaximizeCanvas).toHaveBeenCalledTimes(1)
-
-    unmount()
-
-    act(() => {
-      emitWorkflowCommand(WorkflowCommand.ToggleCanvasMaximize)
-    })
-    expect(mockHandleToggleMaximizeCanvas).toHaveBeenCalledTimes(1)
   })
 
   it('does not dim when shift is held inside editable inputs', () => {

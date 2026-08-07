@@ -2,7 +2,6 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import {
   zDeleteAccountSessionsBySessionIdPath,
   zDeleteAccountSessionsBySessionIdResponse,
@@ -10,19 +9,30 @@ import {
   zDeleteWorkspacesByWorkspaceIdMembersByMemberIdPath,
   zDeleteWorkspacesByWorkspaceIdMembersByMemberIdResponse,
   zGetAccountResponse,
+  zGetAccountSessionsQuery,
   zGetAccountSessionsResponse,
-  zGetAppsByAppIdDescribePath,
-  zGetAppsByAppIdDescribeQuery,
-  zGetAppsByAppIdDescribeResponse,
-  zGetAppsByAppIdFormHumanInputByFormTokenPath,
-  zGetAppsByAppIdFormHumanInputByFormTokenResponse,
+  zGetAppsByAppIdDependenciesCheckPath,
+  zGetAppsByAppIdDependenciesCheckResponse,
+  zGetAppsByAppIdDslPath,
+  zGetAppsByAppIdDslQuery,
+  zGetAppsByAppIdDslResponse,
+  zGetAppsByAppIdHumanInputFormsByFormTokenPath,
+  zGetAppsByAppIdHumanInputFormsByFormTokenResponse,
+  zGetAppsByAppIdPath,
+  zGetAppsByAppIdQuery,
+  zGetAppsByAppIdResponse,
   zGetAppsByAppIdTasksByTaskIdEventsPath,
+  zGetAppsByAppIdTasksByTaskIdEventsQuery,
   zGetAppsByAppIdTasksByTaskIdEventsResponse,
   zGetAppsQuery,
   zGetAppsResponse,
   zGetHealthResponse,
   zGetOauthDeviceLookupQuery,
   zGetOauthDeviceLookupResponse,
+  zGetPermittedExternalAppsByAppIdPath,
+  zGetPermittedExternalAppsByAppIdQuery,
+  zGetPermittedExternalAppsByAppIdResponse,
+  zGetPermittedExternalAppsQuery,
   zGetPermittedExternalAppsResponse,
   zGetVersionResponse,
   zGetWorkspacesByWorkspaceIdMembersPath,
@@ -31,11 +41,14 @@ import {
   zGetWorkspacesByWorkspaceIdPath,
   zGetWorkspacesByWorkspaceIdResponse,
   zGetWorkspacesResponse,
-  zPostAppsByAppIdFilesUploadPath,
-  zPostAppsByAppIdFilesUploadResponse,
-  zPostAppsByAppIdFormHumanInputByFormTokenBody,
-  zPostAppsByAppIdFormHumanInputByFormTokenPath,
-  zPostAppsByAppIdFormHumanInputByFormTokenResponse,
+  zPatchWorkspacesByWorkspaceIdMembersByMemberIdBody,
+  zPatchWorkspacesByWorkspaceIdMembersByMemberIdPath,
+  zPatchWorkspacesByWorkspaceIdMembersByMemberIdResponse,
+  zPostAppsByAppIdFilesPath,
+  zPostAppsByAppIdFilesResponse,
+  zPostAppsByAppIdHumanInputFormsByFormTokenSubmitBody,
+  zPostAppsByAppIdHumanInputFormsByFormTokenSubmitPath,
+  zPostAppsByAppIdHumanInputFormsByFormTokenSubmitResponse,
   zPostAppsByAppIdRunBody,
   zPostAppsByAppIdRunPath,
   zPostAppsByAppIdRunResponse,
@@ -49,26 +62,20 @@ import {
   zPostOauthDeviceDenyResponse,
   zPostOauthDeviceTokenBody,
   zPostOauthDeviceTokenResponse,
+  zPostWorkspacesByWorkspaceIdAppsImportsBody,
+  zPostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmPath,
+  zPostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmResponse,
+  zPostWorkspacesByWorkspaceIdAppsImportsPath,
+  zPostWorkspacesByWorkspaceIdAppsImportsResponse,
   zPostWorkspacesByWorkspaceIdMembersBody,
   zPostWorkspacesByWorkspaceIdMembersPath,
   zPostWorkspacesByWorkspaceIdMembersResponse,
   zPostWorkspacesByWorkspaceIdSwitchPath,
   zPostWorkspacesByWorkspaceIdSwitchResponse,
-  zPutWorkspacesByWorkspaceIdMembersByMemberIdRoleBody,
-  zPutWorkspacesByWorkspaceIdMembersByMemberIdRolePath,
-  zPutWorkspacesByWorkspaceIdMembersByMemberIdRoleResponse,
 } from './zod.gen'
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const get = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getHealth',
@@ -132,6 +139,7 @@ export const get3 = oc
     path: '/account/sessions',
     tags: ['openapi'],
   })
+  .input(z.object({ query: zGetAccountSessionsQuery.optional() }))
   .output(zGetAccountSessionsResponse)
 
 export const sessions = {
@@ -155,32 +163,38 @@ export const account = {
   sessions,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const get5 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
-    operationId: 'getAppsByAppIdDescribe',
-    path: '/apps/{app_id}/describe',
+    operationId: 'getAppsByAppIdDependenciesCheck',
+    path: '/apps/{app_id}/dependencies:check',
     tags: ['openapi'],
   })
-  .input(
-    z.object({
-      params: zGetAppsByAppIdDescribePath,
-      query: zGetAppsByAppIdDescribeQuery.optional(),
-    }),
-  )
-  .output(zGetAppsByAppIdDescribeResponse)
+  .input(z.object({ params: zGetAppsByAppIdDependenciesCheckPath }))
+  .output(zGetAppsByAppIdDependenciesCheckResponse)
 
-export const describe = {
+export const check = {
   get: get5,
+}
+
+export const dependencies = {
+  check,
+}
+
+export const get6 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppsByAppIdDsl',
+    path: '/apps/{app_id}/dsl',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zGetAppsByAppIdDslPath, query: zGetAppsByAppIdDslQuery.optional() }))
+  .output(zGetAppsByAppIdDslResponse)
+
+export const dsl = {
+  get: get6,
 }
 
 /**
@@ -191,145 +205,91 @@ export const post = oc
     description: 'Upload a file to use as an input variable when running the app',
     inputStructure: 'detailed',
     method: 'POST',
-    operationId: 'postAppsByAppIdFilesUpload',
-    path: '/apps/{app_id}/files/upload',
+    operationId: 'postAppsByAppIdFiles',
+    path: '/apps/{app_id}/files',
     successStatus: 201,
     tags: ['openapi'],
   })
-  .input(z.object({ params: zPostAppsByAppIdFilesUploadPath }))
-  .output(zPostAppsByAppIdFilesUploadResponse)
+  .input(z.object({ params: zPostAppsByAppIdFilesPath }))
+  .output(zPostAppsByAppIdFilesResponse)
 
-export const upload = {
+export const files = {
   post,
 }
 
-export const files = {
-  upload,
-}
-
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
-export const get6 = oc
-  .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getAppsByAppIdFormHumanInputByFormToken',
-    path: '/apps/{app_id}/form/human_input/{form_token}',
-    tags: ['openapi'],
-  })
-  .input(z.object({ params: zGetAppsByAppIdFormHumanInputByFormTokenPath }))
-  .output(zGetAppsByAppIdFormHumanInputByFormTokenResponse)
-
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const post2 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
-    operationId: 'postAppsByAppIdFormHumanInputByFormToken',
-    path: '/apps/{app_id}/form/human_input/{form_token}',
+    operationId: 'postAppsByAppIdHumanInputFormsByFormTokenSubmit',
+    path: '/apps/{app_id}/human-input-forms/{form_token}:submit',
     tags: ['openapi'],
   })
   .input(
     z.object({
-      body: zPostAppsByAppIdFormHumanInputByFormTokenBody,
-      params: zPostAppsByAppIdFormHumanInputByFormTokenPath,
+      body: zPostAppsByAppIdHumanInputFormsByFormTokenSubmitBody,
+      params: zPostAppsByAppIdHumanInputFormsByFormTokenSubmitPath,
     }),
   )
-  .output(zPostAppsByAppIdFormHumanInputByFormTokenResponse)
+  .output(zPostAppsByAppIdHumanInputFormsByFormTokenSubmitResponse)
 
-export const byFormToken = {
-  get: get6,
+export const submit = {
   post: post2,
 }
 
-export const humanInput = {
+export const get7 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppsByAppIdHumanInputFormsByFormToken',
+    path: '/apps/{app_id}/human-input-forms/{form_token}',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zGetAppsByAppIdHumanInputFormsByFormTokenPath }))
+  .output(zGetAppsByAppIdHumanInputFormsByFormTokenResponse)
+
+export const byFormToken = {
+  get: get7,
+  submit,
+}
+
+export const humanInputForms = {
   byFormToken,
 }
 
-export const form = {
-  humanInput,
-}
-
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
-export const post3 = oc
+export const get8 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postAppsByAppIdRun',
-    path: '/apps/{app_id}/run',
-    tags: ['openapi'],
-  })
-  .input(z.object({ body: zPostAppsByAppIdRunBody, params: zPostAppsByAppIdRunPath }))
-  .output(zPostAppsByAppIdRunResponse)
-
-export const run = {
-  post: post3,
-}
-
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
-export const get7 = oc
-  .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByAppIdTasksByTaskIdEvents',
     path: '/apps/{app_id}/tasks/{task_id}/events',
     tags: ['openapi'],
   })
-  .input(z.object({ params: zGetAppsByAppIdTasksByTaskIdEventsPath }))
+  .input(
+    z.object({
+      params: zGetAppsByAppIdTasksByTaskIdEventsPath,
+      query: zGetAppsByAppIdTasksByTaskIdEventsQuery.optional(),
+    }),
+  )
   .output(zGetAppsByAppIdTasksByTaskIdEventsResponse)
 
 export const events = {
-  get: get7,
+  get: get8,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
-export const post4 = oc
+export const post3 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsByAppIdTasksByTaskIdStop',
-    path: '/apps/{app_id}/tasks/{task_id}/stop',
+    path: '/apps/{app_id}/tasks/{task_id}:stop',
     tags: ['openapi'],
   })
   .input(z.object({ params: zPostAppsByAppIdTasksByTaskIdStopPath }))
   .output(zPostAppsByAppIdTasksByTaskIdStopResponse)
 
 export const stop = {
-  post: post4,
+  post: post3,
 }
 
 export const byTaskId = {
@@ -341,15 +301,43 @@ export const tasks = {
   byTaskId,
 }
 
-export const byAppId = {
-  describe,
-  files,
-  form,
-  run,
-  tasks,
+export const post4 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAppsByAppIdRun',
+    path: '/apps/{app_id}:run',
+    tags: ['openapi'],
+  })
+  .input(z.object({ body: zPostAppsByAppIdRunBody, params: zPostAppsByAppIdRunPath }))
+  .output(zPostAppsByAppIdRunResponse)
+
+export const run = {
+  post: post4,
 }
 
-export const get8 = oc
+export const get9 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppsByAppId',
+    path: '/apps/{app_id}',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zGetAppsByAppIdPath, query: zGetAppsByAppIdQuery.optional() }))
+  .output(zGetAppsByAppIdResponse)
+
+export const byAppId = {
+  get: get9,
+  dependencies,
+  dsl,
+  files,
+  humanInputForms,
+  tasks,
+  run,
+}
+
+export const get10 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -361,7 +349,7 @@ export const get8 = oc
   .output(zGetAppsResponse)
 
 export const apps = {
-  get: get8,
+  get: get10,
   byAppId,
 }
 
@@ -410,7 +398,7 @@ export const deny = {
   post: post7,
 }
 
-export const get9 = oc
+export const get11 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -422,19 +410,11 @@ export const get9 = oc
   .output(zGetOauthDeviceLookupResponse)
 
 export const lookup = {
-  get: get9,
+  get: get11,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const post8 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postOauthDeviceToken',
@@ -460,7 +440,27 @@ export const oauth = {
   device,
 }
 
-export const get10 = oc
+export const get12 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getPermittedExternalAppsByAppId',
+    path: '/permitted-external-apps/{app_id}',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      params: zGetPermittedExternalAppsByAppIdPath,
+      query: zGetPermittedExternalAppsByAppIdQuery.optional(),
+    }),
+  )
+  .output(zGetPermittedExternalAppsByAppIdResponse)
+
+export const byAppId2 = {
+  get: get12,
+}
+
+export const get13 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -468,30 +468,56 @@ export const get10 = oc
     path: '/permitted-external-apps',
     tags: ['openapi'],
   })
+  .input(z.object({ query: zGetPermittedExternalAppsQuery.optional() }))
   .output(zGetPermittedExternalAppsResponse)
 
 export const permittedExternalApps = {
-  get: get10,
+  get: get13,
+  byAppId: byAppId2,
 }
 
-export const put = oc
+export const post9 = oc
   .route({
     inputStructure: 'detailed',
-    method: 'PUT',
-    operationId: 'putWorkspacesByWorkspaceIdMembersByMemberIdRole',
-    path: '/workspaces/{workspace_id}/members/{member_id}/role',
+    method: 'POST',
+    operationId: 'postWorkspacesByWorkspaceIdAppsImportsByImportIdConfirm',
+    path: '/workspaces/{workspace_id}/apps/imports/{import_id}:confirm',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zPostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmPath }))
+  .output(zPostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmResponse)
+
+export const confirm = {
+  post: post9,
+}
+
+export const byImportId = {
+  confirm,
+}
+
+export const post10 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkspacesByWorkspaceIdAppsImports',
+    path: '/workspaces/{workspace_id}/apps/imports',
     tags: ['openapi'],
   })
   .input(
     z.object({
-      body: zPutWorkspacesByWorkspaceIdMembersByMemberIdRoleBody,
-      params: zPutWorkspacesByWorkspaceIdMembersByMemberIdRolePath,
+      body: zPostWorkspacesByWorkspaceIdAppsImportsBody,
+      params: zPostWorkspacesByWorkspaceIdAppsImportsPath,
     }),
   )
-  .output(zPutWorkspacesByWorkspaceIdMembersByMemberIdRoleResponse)
+  .output(zPostWorkspacesByWorkspaceIdAppsImportsResponse)
 
-export const role = {
-  put,
+export const imports = {
+  post: post10,
+  byImportId,
+}
+
+export const apps2 = {
+  imports,
 }
 
 export const delete3 = oc
@@ -505,12 +531,28 @@ export const delete3 = oc
   .input(z.object({ params: zDeleteWorkspacesByWorkspaceIdMembersByMemberIdPath }))
   .output(zDeleteWorkspacesByWorkspaceIdMembersByMemberIdResponse)
 
+export const patch = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchWorkspacesByWorkspaceIdMembersByMemberId',
+    path: '/workspaces/{workspace_id}/members/{member_id}',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPatchWorkspacesByWorkspaceIdMembersByMemberIdBody,
+      params: zPatchWorkspacesByWorkspaceIdMembersByMemberIdPath,
+    }),
+  )
+  .output(zPatchWorkspacesByWorkspaceIdMembersByMemberIdResponse)
+
 export const byMemberId = {
   delete: delete3,
-  role,
+  patch,
 }
 
-export const get11 = oc
+export const get14 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -526,7 +568,7 @@ export const get11 = oc
   )
   .output(zGetWorkspacesByWorkspaceIdMembersResponse)
 
-export const post9 = oc
+export const post11 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -544,27 +586,27 @@ export const post9 = oc
   .output(zPostWorkspacesByWorkspaceIdMembersResponse)
 
 export const members = {
-  get: get11,
-  post: post9,
+  get: get14,
+  post: post11,
   byMemberId,
 }
 
-export const post10 = oc
+export const post12 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postWorkspacesByWorkspaceIdSwitch',
-    path: '/workspaces/{workspace_id}/switch',
+    path: '/workspaces/{workspace_id}:switch',
     tags: ['openapi'],
   })
   .input(z.object({ params: zPostWorkspacesByWorkspaceIdSwitchPath }))
   .output(zPostWorkspacesByWorkspaceIdSwitchResponse)
 
 export const switch_ = {
-  post: post10,
+  post: post12,
 }
 
-export const get12 = oc
+export const get15 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -576,12 +618,13 @@ export const get12 = oc
   .output(zGetWorkspacesByWorkspaceIdResponse)
 
 export const byWorkspaceId = {
-  get: get12,
+  get: get15,
+  apps: apps2,
   members,
   switch: switch_,
 }
 
-export const get13 = oc
+export const get16 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -592,7 +635,7 @@ export const get13 = oc
   .output(zGetWorkspacesResponse)
 
 export const workspaces = {
-  get: get13,
+  get: get16,
   byWorkspaceId,
 }
 

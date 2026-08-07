@@ -1,6 +1,7 @@
 import base64
 import contextlib
 import logging
+from typing import override
 
 from bs4 import BeautifulSoup
 
@@ -23,6 +24,7 @@ class UnstructuredEmailExtractor(BaseExtractor):
         self._api_url = api_url
         self._api_key = api_key
 
+    @override
     def extract(self) -> list[Document]:
         if self._api_url:
             from unstructured.partition.api import partition_via_api

@@ -1,26 +1,26 @@
 name: autofix.ci
 on:
   pull_request:
-    branches: ["main"]
+    branches: ['main']
   merge_group:
-    branches: ["main"]
+    branches: ['main']
     types: [checks_requested]
   push:
-    branches: ["main"]
+    branches: ['main']
 permissions:
   contents: read
 
 jobs:
   autofix:
     if: github.repository == 'langgenius/dify'
-    runs-on: depot-ubuntu-24.04
+    runs-on: depot-ubuntu-24.04-4
     steps:
       - name: Complete merge group check
         if: github.event_name == 'merge_group'
         run: echo "autofix.ci updates pull request branches, not merge group refs."
 
       - if: github.event_name != 'merge_group'
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Check Docker Compose inputs
         if: github.event_name != 'merge_group'
@@ -39,11 +39,21 @@ jobs:
         with:
           files: |
             web/**
+            cli/**
+            e2e/**
             packages/**
+            sdks/nodejs-client/**
             package.json
             pnpm-lock.yaml
             pnpm-workspace.yaml
             .nvmrc
+            vite.config.ts
+            lint.config.ts
+            eslint.config.mjs
+            oxlint-suppressions.json
+            eslint-suppressions.json
+            .vscode/**
+            .github/**
       - name: Check api inputs
         if: github.event_name != 'merge_group'
         id: api-changes
@@ -51,13 +61,34 @@ jobs:
         with:
           files: |
             api/**
-      - if: github.event_name != 'merge_group'
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+      - name: Check frontend contract inputs
+        if: github.event_name != 'merge_group'
+        id: frontend-contract-changes
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
         with:
-          python-version: "3.11"
+          files: |
+            api/**
+            packages/contracts/openapi-ts.api.config.ts
+            packages/contracts/package.json
+            packages/contracts/openapi/**
+            pnpm-lock.yaml
+            pnpm-workspace.yaml
+      - name: Check dify-agent inputs
+        if: github.event_name != 'merge_group'
+        id: dify-agent-changes
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
+        with:
+          files: |
+            dify-agent/**/*.py
+            dify-agent/pyproject.toml
+            dify-agent/uv.lock
+      - if: github.event_name != 'merge_group'
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.11'
 
       - if: github.event_name != 'merge_group'
-        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
 
       - name: Generate Docker Compose
         if: github.event_name != 'merge_group' && steps.docker-compose-changes.outputs.any_changed == 'true'
@@ -75,6 +106,17 @@ jobs:
           uv run ruff check --fix .
           # Format code
           uv run ruff format ..
+
+      - if: github.event_name != 'merge_group' && steps.dify-agent-changes.outputs.any_changed == 'true'
+        run: |
+          cd dify-agent
+          uv sync --dev
+          # fmt first to avoid line too long
+          uv run ruff format .
+          # Fix lint errors
+          uv run ruff check --fix .
+          # Format code
+          uv run ruff format .
 
       - name: count migration progress
         if: github.event_name != 'merge_group' && steps.api-changes.outputs.any_changed == 'true'
@@ -123,13 +165,16 @@ jobs:
           uv run dev/generate_swagger_markdown_docs.py --swagger-dir ../packages/contracts/openapi --markdown-dir openapi/markdown --keep-swagger-json
 
       - name: Generate frontend contracts
-        if: github.event_name != 'merge_group' && steps.api-changes.outputs.any_changed == 'true'
-        run: pnpm --dir packages/contracts gen-api-contract-from-openapi
+        if: github.event_name != 'merge_group' && steps.frontend-contract-changes.outputs.any_changed == 'true'
+        run: pnpm --dir packages/contracts gen-api-contract
 
-      - name: ESLint autofix
+      - name: ESLint fallback autofix
         if: github.event_name != 'merge_group' && steps.web-changes.outputs.any_changed == 'true'
-        run: |
-          vp exec eslint --concurrency=2 --prune-suppressions --quiet || true
+        run: pnpm lint:eslint:fix --quiet || true
+
+      - name: Vite+ static autofix
+        if: github.event_name != 'merge_group' && (steps.web-changes.outputs.any_changed == 'true' || steps.frontend-contract-changes.outputs.any_changed == 'true')
+        run: vp check --fix || true
 
       - if: github.event_name != 'merge_group'
         uses: autofix-ci/action@c5b2d67aa2274e7b5a18224e8171550871fc7e4a # v1.3.4

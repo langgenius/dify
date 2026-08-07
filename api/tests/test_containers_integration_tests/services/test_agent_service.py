@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from models import Account, AppMode, CreatorUserRole
-from models.enums import ConversationFromSource, MessageFileBelongsTo
+from models.enums import ConversationFromSource, EndUserType, MessageFileBelongsTo
 from models.model import AppModelConfig, Conversation, EndUser, Message, MessageAgentThought
 from services.account_service import AccountService, TenantService
 from services.agent_service import AgentService
@@ -114,8 +114,9 @@ class TestAgentService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create app with realistic data
@@ -131,7 +132,7 @@ class TestAgentService:
         )
 
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_args, account)
+        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
 
         # Update the app model config to set agent_mode for agent-chat mode
         if app.mode == AppMode.AGENT_CHAT and app.app_model_config:
@@ -294,7 +295,7 @@ class TestAgentService:
         agent_thoughts = self._create_test_agent_thoughts(db_session_with_containers, message)
 
         # Execute the method under test
-        result = AgentService.get_agent_logs(app, conversation.id, message.id)
+        result = AgentService.get_agent_logs(app, conversation.id, message.id, db_session_with_containers)
 
         # Verify the result structure
         assert result is not None
@@ -354,7 +355,7 @@ class TestAgentService:
 
         # Execute the method under test with non-existent conversation
         with pytest.raises(ValueError, match="Conversation not found"):
-            AgentService.get_agent_logs(app, fake.uuid4(), fake.uuid4())
+            AgentService.get_agent_logs(app, fake.uuid4(), fake.uuid4(), db_session_with_containers)
 
     def test_get_agent_logs_message_not_found(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -370,7 +371,7 @@ class TestAgentService:
 
         # Execute the method under test with non-existent message
         with pytest.raises(ValueError, match="Message not found"):
-            AgentService.get_agent_logs(app, conversation.id, fake.uuid4())
+            AgentService.get_agent_logs(app, conversation.id, fake.uuid4(), db_session_with_containers)
 
     def test_get_agent_logs_with_end_user(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -388,7 +389,7 @@ class TestAgentService:
             id=fake.uuid4(),
             tenant_id=app.tenant_id,
             app_id=app.id,
-            type="web_app",
+            type=EndUserType.BROWSER,
             is_anonymous=False,
             session_id=fake.uuid4(),
             name=fake.name(),
@@ -451,7 +452,7 @@ class TestAgentService:
         db_session_with_containers.commit()
 
         # Execute the method under test
-        result = AgentService.get_agent_logs(app, conversation.id, message.id)
+        result = AgentService.get_agent_logs(app, conversation.id, message.id, db_session_with_containers)
 
         # Verify the result
         assert result is not None
@@ -523,7 +524,7 @@ class TestAgentService:
         db_session_with_containers.commit()
 
         # Execute the method under test
-        result = AgentService.get_agent_logs(app, conversation.id, message.id)
+        result = AgentService.get_agent_logs(app, conversation.id, message.id, db_session_with_containers)
 
         # Verify the result
         assert result is not None
@@ -568,7 +569,7 @@ class TestAgentService:
         db_session_with_containers.commit()
 
         # Execute the method under test
-        result = AgentService.get_agent_logs(app, conversation.id, message.id)
+        result = AgentService.get_agent_logs(app, conversation.id, message.id, db_session_with_containers)
 
         # Verify the result
         assert result is not None
@@ -592,7 +593,7 @@ class TestAgentService:
         conversation, message = self._create_test_conversation_and_message(db_session_with_containers, app, account)
 
         # Execute the method under test
-        result = AgentService.get_agent_logs(app, conversation.id, message.id)
+        result = AgentService.get_agent_logs(app, conversation.id, message.id, db_session_with_containers)
 
         # Verify the result
         assert result is not None
@@ -654,7 +655,7 @@ class TestAgentService:
 
         # Execute the method under test
         with pytest.raises(ValueError, match="App model config not found"):
-            AgentService.get_agent_logs(app, conversation.id, message.id)
+            AgentService.get_agent_logs(app, conversation.id, message.id, db_session_with_containers)
 
     def test_get_agent_logs_agent_config_not_found(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -673,7 +674,7 @@ class TestAgentService:
 
         # Execute the method under test
         with pytest.raises(ValueError, match="Agent config not found"):
-            AgentService.get_agent_logs(app, conversation.id, message.id)
+            AgentService.get_agent_logs(app, conversation.id, message.id, db_session_with_containers)
 
     def test_list_agent_providers_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -803,7 +804,7 @@ class TestAgentService:
         db_session_with_containers.commit()
 
         # Execute the method under test
-        result = AgentService.get_agent_logs(app, conversation.id, message.id)
+        result = AgentService.get_agent_logs(app, conversation.id, message.id, db_session_with_containers)
 
         # Verify the result
         assert result is not None
@@ -898,7 +899,7 @@ class TestAgentService:
         db_session_with_containers.commit()
 
         # Execute the method under test
-        result = AgentService.get_agent_logs(app, conversation.id, message.id)
+        result = AgentService.get_agent_logs(app, conversation.id, message.id, db_session_with_containers)
 
         # Verify the result
         assert result is not None
@@ -926,7 +927,7 @@ class TestAgentService:
         mock_external_service_dependencies["current_user"].timezone = "Asia/Shanghai"
 
         # Execute the method under test
-        result = AgentService.get_agent_logs(app, conversation.id, message.id)
+        result = AgentService.get_agent_logs(app, conversation.id, message.id, db_session_with_containers)
 
         # Verify the result
         assert result is not None
@@ -967,7 +968,7 @@ class TestAgentService:
         db_session_with_containers.commit()
 
         # Execute the method under test
-        result = AgentService.get_agent_logs(app, conversation.id, message.id)
+        result = AgentService.get_agent_logs(app, conversation.id, message.id, db_session_with_containers)
 
         # Verify the result
         assert result is not None
@@ -1008,7 +1009,7 @@ class TestAgentService:
         db_session_with_containers.commit()
 
         # Execute the method under test
-        result = AgentService.get_agent_logs(app, conversation.id, message.id)
+        result = AgentService.get_agent_logs(app, conversation.id, message.id, db_session_with_containers)
 
         # Verify the result - should handle malformed JSON gracefully
         assert result is not None

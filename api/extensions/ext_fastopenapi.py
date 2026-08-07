@@ -26,7 +26,7 @@ def init_app(app: DifyApp) -> None:
         docs_url=docs_url,
         redoc_url=redoc_url,
         openapi_url=openapi_url,
-        openapi_version="3.0.0",
+        openapi_version="3.1.0",
         title="Dify API (FastOpenAPI PoC)",
         version="1.0",
         description="FastOpenAPI proof of concept for Dify API",

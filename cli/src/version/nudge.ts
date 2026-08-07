@@ -1,7 +1,7 @@
 import type { ServerVersionResponse } from '@dify/contracts/api/openapi/types.gen'
-import type { NudgeStore } from '../cache/nudge-store.js'
-import { colorScheme } from '../sys/io/color.js'
-import { difyCompat, evaluateCompat } from './compat.js'
+import type { NudgeStore } from '@/cache/nudge-store'
+import { colorScheme } from '@/sys/io/color'
+import { difyCompat, evaluateCompat } from './compat'
 
 // Formats whose stdout is structured data (json/yaml) or a single name token —
 // any stderr banner from us would pollute machine parsing. Default text format
@@ -28,31 +28,27 @@ export type NudgeDeps = {
 // before any I/O so the happy path costs nothing in steady state.
 export async function maybeNudgeCompat(host: string, deps: NudgeDeps): Promise<void> {
   try {
-    if (!deps.isTty)
-      return
-    if (SUPPRESSED_FORMATS.has(deps.format))
-      return
-    if (!deps.store.canWarn(host, deps.now?.()))
-      return
+    if (!deps.isTty) return
+    if (SUPPRESSED_FORMATS.has(deps.format)) return
+    if (!deps.store.canWarn(host, deps.now?.())) return
 
     let server: ServerVersionResponse
     try {
       server = await deps.probe(host)
-    }
-    catch {
+    } catch {
       return
     }
 
     const verdict = evaluateCompat(server.version)
-    if (verdict.status !== 'unsupported')
-      return
+    // Only "too new" is a soft nudge here; "too old" is hard-failed up front by
+    // enforceDifyVersion, so the command never reaches this path for it.
+    if (verdict.status !== 'too_new') return
 
     deps.emit(formatBanner(deps.clientVersion, server.version, deps.color === true))
     await deps.store.markWarned(host, deps.now?.()).catch(() => {
       // disk failure must not propagate; the user already saw the banner.
     })
-  }
-  catch {
+  } catch {
     // belt-and-braces: any unexpected throw must not affect the business command
   }
 }
@@ -60,9 +56,9 @@ export async function maybeNudgeCompat(host: string, deps: NudgeDeps): Promise<v
 function formatBanner(clientVersion: string, serverVersion: string, color: boolean): string {
   const { yellow } = colorScheme(color)
   const { minDify, maxDify } = difyCompat
-  const line
-    = `warning: difyctl ${clientVersion} may be incompatible with server `
-      + `${serverVersion} (tested: ${minDify}..${maxDify}). `
-      + 'Run `difyctl version` for details.'
+  const line =
+    `warning: difyctl ${clientVersion} may be incompatible with server ` +
+    `${serverVersion} (tested: ${minDify}..${maxDify}). ` +
+    'Run `difyctl version` for details.'
   return `${yellow(line)}\n`
 }

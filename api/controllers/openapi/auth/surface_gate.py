@@ -74,12 +74,13 @@ def accept_subjects(*accepted: SubjectType) -> Callable[[F], F]:
 
 
 def _coerce_subject_type(raw: object) -> SubjectType | None:
-    if raw is None:
-        return None
-    if isinstance(raw, SubjectType):
-        return raw
-    if isinstance(raw, str):
-        return SubjectType(raw)
+    match raw:
+        case None:
+            return None
+        case SubjectType():
+            return raw
+        case str():
+            return SubjectType(raw)
     return None
 
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -12,7 +13,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerat
 from core.workflow.system_variables import default_system_variables
 from graphon.entities.graph_config import NodeConfigDictAdapter
 from graphon.runtime import GraphRuntimeState, VariablePool
-from models.workflow import Workflow
+from models.workflow import Workflow, WorkflowKind
 
 
 def _make_graph_state():
@@ -51,16 +52,18 @@ def test_run_uses_single_node_execution_branch(
     app_generate_entity.task_id = "task-id"
     app_generate_entity.call_depth = 0
     app_generate_entity.trace_manager = None
+    app_generate_entity.extras = {"trace_session_id": "session-1"}
     app_generate_entity.single_iteration_run = single_iteration_run
     app_generate_entity.single_loop_run = single_loop_run
 
-    workflow = MagicMock(spec=Workflow)
-    workflow.tenant_id = "tenant"
-    workflow.app_id = "app"
-    workflow.id = "workflow"
-    workflow.type = "workflow"
-    workflow.version = "v1"
-    workflow.graph_dict = {"nodes": [], "edges": []}
+    workflow = Workflow(
+        tenant_id="tenant",
+        app_id="app",
+        id="workflow",
+        type="workflow",
+        version="v1",
+        graph=json.dumps({"nodes": [], "edges": []}),
+    )
     workflow.environment_variables = []
 
     runner = WorkflowAppRunner(
@@ -101,6 +104,7 @@ def test_run_uses_single_node_execution_branch(
         single_iteration_run=single_iteration_run,
         single_loop_run=single_loop_run,
         user_id="user",
+        trace_session_id="session-1",
     )
     init_graph.assert_not_called()
 
@@ -110,31 +114,35 @@ def test_run_uses_single_node_execution_branch(
     assert entry_kwargs["graph_runtime_state"] is graph_runtime_state
 
 
-def test_single_node_run_validates_target_node_config(monkeypatch) -> None:
+def test_single_node_run_validates_target_node_config(monkeypatch: pytest.MonkeyPatch) -> None:
     runner = WorkflowBasedAppRunner(
         queue_manager=MagicMock(spec=AppQueueManager),
         variable_loader=MagicMock(),
         app_id="app",
     )
 
-    workflow = MagicMock(spec=Workflow)
-    workflow.id = "workflow"
-    workflow.tenant_id = "tenant"
-    workflow.graph_dict = {
-        "nodes": [
+    workflow = Workflow(
+        id="workflow",
+        tenant_id="tenant",
+        graph=json.dumps(
             {
-                "id": "loop-node",
-                "data": {
-                    "type": "loop",
-                    "title": "Loop",
-                    "loop_count": 1,
-                    "break_conditions": [],
-                    "logical_operator": "and",
-                },
+                "nodes": [
+                    {
+                        "id": "loop-node",
+                        "data": {
+                            "type": "loop",
+                            "title": "Loop",
+                            "loop_count": 1,
+                            "start_node_id": "loop-start",
+                            "break_conditions": [],
+                            "logical_operator": "and",
+                        },
+                    }
+                ],
+                "edges": [],
             }
-        ],
-        "edges": [],
-    }
+        ),
+    )
 
     _, _, graph_runtime_state = _make_graph_state()
     seen_configs: list[object] = []
@@ -163,3 +171,72 @@ def test_single_node_run_validates_target_node_config(monkeypatch) -> None:
         )
 
     assert seen_configs == [workflow.graph_dict["nodes"][0]]
+
+
+def test_run_adds_inputs_with_snippet_compatible_start_aliases() -> None:
+    app_config = MagicMock()
+    app_config.app_id = "app"
+    app_config.tenant_id = "tenant"
+    app_config.workflow_id = "workflow"
+
+    app_generate_entity = MagicMock(spec=WorkflowAppGenerateEntity)
+    app_generate_entity.app_config = app_config
+    app_generate_entity.inputs = {"question": "hello"}
+    app_generate_entity.files = []
+    app_generate_entity.user_id = "user"
+    app_generate_entity.invoke_from = InvokeFrom.SERVICE_API
+    app_generate_entity.workflow_execution_id = "execution-id"
+    app_generate_entity.task_id = "task-id"
+    app_generate_entity.call_depth = 0
+    app_generate_entity.trace_manager = None
+    app_generate_entity.extras = {}
+    app_generate_entity.single_iteration_run = None
+    app_generate_entity.single_loop_run = None
+
+    workflow = Workflow(
+        tenant_id="tenant",
+        app_id="app",
+        id="workflow",
+        type="workflow",
+        version="v1",
+        graph=json.dumps({"nodes": [], "edges": []}),
+        kind=WorkflowKind.SNIPPET,
+    )
+    workflow.environment_variables = []
+
+    runner = WorkflowAppRunner(
+        application_generate_entity=app_generate_entity,
+        queue_manager=MagicMock(spec=AppQueueManager),
+        variable_loader=MagicMock(),
+        workflow=workflow,
+        system_user_id="system-user",
+        workflow_execution_repository=MagicMock(),
+        workflow_node_execution_repository=MagicMock(),
+    )
+
+    mock_workflow_entry = MagicMock()
+    mock_workflow_entry.graph_engine = MagicMock()
+    mock_workflow_entry.graph_engine.layer = MagicMock()
+    mock_workflow_entry.run.return_value = iter([])
+
+    with (
+        patch("core.app.apps.workflow.app_runner.RedisChannel"),
+        patch("core.app.apps.workflow.app_runner.redis_client"),
+        patch("core.app.apps.workflow.app_runner.WorkflowEntry", return_value=mock_workflow_entry),
+        patch("core.app.apps.workflow.app_runner.build_system_variables", return_value={}),
+        patch("core.app.apps.workflow.app_runner.build_bootstrap_variables", return_value=[]),
+        patch("core.app.apps.workflow.app_runner.add_variables_to_pool"),
+        patch("core.app.apps.workflow.app_runner.get_default_root_node_id", return_value="root-node"),
+        patch(
+            "core.app.apps.workflow.app_runner.get_compatible_start_aliases", return_value=("legacy-start",)
+        ) as aliases,
+        patch("core.app.apps.workflow.app_runner.add_node_inputs_to_pool") as add_inputs,
+        patch.object(runner, "_init_graph", return_value=MagicMock()),
+    ):
+        runner.run()
+
+    aliases.assert_called_once_with(workflow_kind="snippet", root_node_id="root-node")
+    add_inputs.assert_called_once()
+    assert add_inputs.call_args.kwargs["node_id"] == "root-node"
+    assert add_inputs.call_args.kwargs["inputs"] == {"question": "hello"}
+    assert add_inputs.call_args.kwargs["aliases"] == ("legacy-start",)

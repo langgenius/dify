@@ -30,16 +30,30 @@ from uuid import UUID
 from flask import Response
 from flask_restx import Resource
 
+from controllers.common.fields import EventStreamResponse
+from controllers.common.schema import register_response_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
+    account_initialization_required,
+    rbac_permission_required,
+    setup_required,
+)
+from extensions.ext_database import db
 from libs.exception import BaseHTTPException
 from libs.login import login_required
 from models import App, AppMode
 from services.workflow import inspector_events
 from services.workflow.node_output_inspector_service import (
+    CheckResultView,
     NodeOutputInspectorError,
     NodeOutputInspectorService,
+    NodeOutputsView,
+    NodeOutputView,
+    OutputPreviewView,
+    WorkflowRunSnapshotView,
 )
 
 logger = logging.getLogger(__name__)
@@ -53,6 +67,16 @@ _HEARTBEAT_EVERY_TICKS = 15
 # event (engine crashed, redis dropped the message), force-close after this
 # many ticks (= seconds).
 _STREAM_HARD_TIMEOUT_TICKS = 1800  # 30 min
+
+register_response_schema_models(
+    console_ns,
+    EventStreamResponse,
+    CheckResultView,
+    NodeOutputView,
+    NodeOutputsView,
+    WorkflowRunSnapshotView,
+    OutputPreviewView,
+)
 
 
 def _service() -> NodeOutputInspectorService:
@@ -69,7 +93,9 @@ def _serve_snapshot(app_model: App, run_id: UUID) -> dict:
     Flask request context.
     """
     try:
-        snapshot = _service().snapshot_workflow_run(app_model=app_model, workflow_run_id=str(run_id))
+        snapshot = _service().snapshot_workflow_run(
+            app_model=app_model, workflow_run_id=str(run_id), session=db.session()
+        )
     except NodeOutputInspectorError as error:
         raise _InspectorNotFound(error) from error
     return snapshot.model_dump(mode="json")
@@ -82,6 +108,7 @@ def _serve_node_detail(app_model: App, run_id: UUID, node_id: str) -> dict:
             app_model=app_model,
             workflow_run_id=str(run_id),
             node_id=node_id,
+            session=db.session(),
         )
     except NodeOutputInspectorError as error:
         raise _InspectorNotFound(error) from error
@@ -96,6 +123,7 @@ def _serve_output_preview(app_model: App, run_id: UUID, node_id: str, output_nam
             workflow_run_id=str(run_id),
             node_id=node_id,
             output_name=output_name,
+            session=db.session(),
         )
     except NodeOutputInspectorError as error:
         raise _InspectorNotFound(error) from error
@@ -124,10 +152,12 @@ class WorkflowDraftRunNodeOutputsApi(Resource):
     @console_ns.doc("get_workflow_draft_run_node_outputs")
     @console_ns.doc(description="Snapshot of every node's declared outputs for a draft workflow run.")
     @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
+    @console_ns.response(200, "Workflow run node outputs", console_ns.models[WorkflowRunSnapshotView.__name__])
     @console_ns.response(404, "Workflow run not found")
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, run_id: UUID):
         return _serve_snapshot(app_model, run_id)
@@ -146,10 +176,12 @@ class WorkflowDraftRunNodeOutputDetailApi(Resource):
             "node_id": "Node ID inside the workflow graph",
         }
     )
+    @console_ns.response(200, "Workflow run node output detail", console_ns.models[NodeOutputsView.__name__])
     @console_ns.response(404, "Workflow run / node not found")
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, run_id: UUID, node_id: str):
         return _serve_node_detail(app_model, run_id, node_id)
@@ -171,10 +203,12 @@ class WorkflowDraftRunNodeOutputPreviewApi(Resource):
             "output_name": "Declared output name as exposed by Composer",
         }
     )
+    @console_ns.response(200, "Workflow run node output preview", console_ns.models[OutputPreviewView.__name__])
     @console_ns.response(404, "Workflow run / node / output not found")
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, run_id: UUID, node_id: str, output_name: str):
         return _serve_output_preview(app_model, run_id, node_id, output_name)
@@ -216,7 +250,7 @@ def _stream_inspector_events(app_model: App, run_id: UUID) -> Iterator[str]:
     # if the run is gone (raised before yielding any bytes, so Flask turns it
     # into the normal HTTP 404 path).
     try:
-        snapshot = service.snapshot_workflow_run(app_model=app_model, workflow_run_id=run_id_str)
+        snapshot = service.snapshot_workflow_run(app_model=app_model, workflow_run_id=run_id_str, session=db.session())
     except NodeOutputInspectorError as error:
         raise _InspectorNotFound(error) from error
 
@@ -279,6 +313,7 @@ def _stream_inspector_events(app_model: App, run_id: UUID) -> Iterator[str]:
                 app_model=app_model,
                 workflow_run_id=run_id_str,
                 node_id=message.node_id,
+                session=db.session(),
             )
         except NodeOutputInspectorError:
             # Node may not appear in the graph yet (race with persistence); skip.
@@ -309,10 +344,16 @@ class WorkflowDraftRunNodeOutputEventsApi(Resource):
     @console_ns.doc("stream_workflow_draft_run_node_output_events")
     @console_ns.doc(description="Server-Sent Events stream of inspector deltas for a draft workflow run.")
     @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
+    @console_ns.response(
+        200,
+        "Workflow run node output event stream",
+        console_ns.models[EventStreamResponse.__name__],
+    )
     @console_ns.response(404, "Workflow run not found")
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, run_id: UUID):
         return Response(
@@ -338,10 +379,12 @@ class WorkflowPublishedRunNodeOutputsApi(Resource):
     @console_ns.doc("get_workflow_published_run_node_outputs")
     @console_ns.doc(description="Snapshot of every node's declared outputs for a published workflow run.")
     @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
+    @console_ns.response(200, "Workflow run node outputs", console_ns.models[WorkflowRunSnapshotView.__name__])
     @console_ns.response(404, "Workflow run not found")
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, run_id: UUID):
         return _serve_snapshot(app_model, run_id)
@@ -360,10 +403,12 @@ class WorkflowPublishedRunNodeOutputDetailApi(Resource):
             "node_id": "Node ID inside the workflow graph",
         }
     )
+    @console_ns.response(200, "Workflow run node output detail", console_ns.models[NodeOutputsView.__name__])
     @console_ns.response(404, "Workflow run / node not found")
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, run_id: UUID, node_id: str):
         return _serve_node_detail(app_model, run_id, node_id)
@@ -386,10 +431,12 @@ class WorkflowPublishedRunNodeOutputPreviewApi(Resource):
             "output_name": "Declared output name as exposed by Composer",
         }
     )
+    @console_ns.response(200, "Workflow run node output preview", console_ns.models[OutputPreviewView.__name__])
     @console_ns.response(404, "Workflow run / node / output not found")
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, run_id: UUID, node_id: str, output_name: str):
         return _serve_output_preview(app_model, run_id, node_id, output_name)
@@ -402,10 +449,16 @@ class WorkflowPublishedRunNodeOutputEventsApi(Resource):
     @console_ns.doc("stream_workflow_published_run_node_output_events")
     @console_ns.doc(description="Server-Sent Events stream of inspector deltas for a published workflow run.")
     @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
+    @console_ns.response(
+        200,
+        "Workflow run node output event stream",
+        console_ns.models[EventStreamResponse.__name__],
+    )
     @console_ns.response(404, "Workflow run not found")
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, run_id: UUID):
         return Response(

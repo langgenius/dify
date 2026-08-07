@@ -1,30 +1,41 @@
 import type { ReactElement } from 'react'
-import type { AppContextValue } from '@/context/app-context'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { contactSalesUrl, defaultPlan } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'
-import {
-  initialLangGeniusVersionInfo,
-  initialWorkspaceInfo,
-  useAppContext,
-  userProfilePlaceholder,
-} from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
+import { consoleQuery } from '@/service/client'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import CustomPage from '../index'
 
-const render = (ui: ReactElement) => renderWithSystemFeatures(ui, {
-  systemFeatures: {
-    branding: {
-      enabled: true,
-      workspace_logo: 'https://example.com/workspace-logo.png',
-    },
-  },
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+  }
 })
+
+const render = (ui: ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(consoleQuery.workspaces.customConfig.get.queryKey(), {
+    remove_webapp_brand: false,
+    replace_webapp_logo: null,
+  })
+
+  return renderWithConsoleQuery(ui, {
+    queryClient,
+    systemFeatures: {
+      deployment_edition: 'CLOUD',
+      branding: {
+        enabled: true,
+        workspace_logo: 'https://example.com/workspace-logo.png',
+      },
+    },
+  })
+}
 
 const { mockToast } = vi.hoisted(() => {
   const mockToast = Object.assign(vi.fn(), {
@@ -38,27 +49,18 @@ const { mockToast } = vi.hoisted(() => {
   })
   return { mockToast }
 })
-
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
 }))
 vi.mock('@/context/modal-context', () => ({
   useModalContext: vi.fn(),
 }))
-vi.mock('@/context/app-context', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/context/app-context')>()
-  return {
-    ...actual,
-    useAppContext: vi.fn(),
-  }
-})
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: mockToast,
 }))
 
 const mockUseProviderContext = vi.mocked(useProviderContext)
 const mockUseModalContext = vi.mocked(useModalContext)
-const mockUseAppContext = vi.mocked(useAppContext)
 
 const createProviderContext = ({
   enableBilling = false,
@@ -76,27 +78,6 @@ const createProviderContext = ({
   })
 }
 
-const createAppContextValue = (): AppContextValue => ({
-  userProfile: userProfilePlaceholder,
-  mutateUserProfile: vi.fn(),
-  currentWorkspace: {
-    ...initialWorkspaceInfo,
-    custom_config: {
-      replace_webapp_logo: 'https://example.com/replace.png',
-      remove_webapp_brand: false,
-    },
-  },
-  isCurrentWorkspaceManager: true,
-  isCurrentWorkspaceOwner: false,
-  isCurrentWorkspaceEditor: false,
-  isCurrentWorkspaceDatasetOperator: false,
-  mutateCurrentWorkspace: vi.fn(),
-  langGeniusVersionInfo: initialLangGeniusVersionInfo,
-  useSelector: vi.fn() as unknown as AppContextValue['useSelector'],
-  isLoadingCurrentWorkspace: false,
-  isValidatingCurrentWorkspace: false,
-})
-
 describe('CustomPage', () => {
   const setShowPricingModal = vi.fn()
 
@@ -107,7 +88,6 @@ describe('CustomPage', () => {
     mockUseModalContext.mockReturnValue({
       setShowPricingModal,
     } as unknown as ReturnType<typeof useModalContext>)
-    mockUseAppContext.mockReturnValue(createAppContextValue())
   })
 
   // Integration coverage for the page and its child custom brand section.
@@ -123,10 +103,12 @@ describe('CustomPage', () => {
 
     it('should show the upgrade banner and open pricing modal for sandbox billing', async () => {
       const user = userEvent.setup()
-      mockUseProviderContext.mockReturnValue(createProviderContext({
-        enableBilling: true,
-        planType: Plan.sandbox,
-      }))
+      mockUseProviderContext.mockReturnValue(
+        createProviderContext({
+          enableBilling: true,
+          planType: Plan.sandbox,
+        }),
+      )
 
       render(<CustomPage />)
 
@@ -139,10 +121,12 @@ describe('CustomPage', () => {
     })
 
     it('should show the contact link for professional workspaces', () => {
-      mockUseProviderContext.mockReturnValue(createProviderContext({
-        enableBilling: true,
-        planType: Plan.professional,
-      }))
+      mockUseProviderContext.mockReturnValue(
+        createProviderContext({
+          enableBilling: true,
+          planType: Plan.professional,
+        }),
+      )
 
       render(<CustomPage />)
 
@@ -154,10 +138,12 @@ describe('CustomPage', () => {
     })
 
     it('should show the contact link for team workspaces', () => {
-      mockUseProviderContext.mockReturnValue(createProviderContext({
-        enableBilling: true,
-        planType: Plan.team,
-      }))
+      mockUseProviderContext.mockReturnValue(
+        createProviderContext({
+          enableBilling: true,
+          planType: Plan.team,
+        }),
+      )
 
       render(<CustomPage />)
 
@@ -166,10 +152,12 @@ describe('CustomPage', () => {
     })
 
     it('should hide both billing sections when billing is disabled', () => {
-      mockUseProviderContext.mockReturnValue(createProviderContext({
-        enableBilling: false,
-        planType: Plan.sandbox,
-      }))
+      mockUseProviderContext.mockReturnValue(
+        createProviderContext({
+          enableBilling: false,
+          planType: Plan.sandbox,
+        }),
+      )
 
       render(<CustomPage />)
 

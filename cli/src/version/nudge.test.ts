@@ -1,13 +1,13 @@
 import type { ServerVersionResponse } from '@dify/contracts/api/openapi/types.gen'
-import type { NudgeStore } from '../cache/nudge-store.js'
+import type { NudgeStore } from '@/cache/nudge-store'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { loadNudgeStore } from '../cache/nudge-store.js'
-import { ENV_CACHE_DIR } from '../store/dir.js'
-import { CACHE_NUDGE, getCache } from '../store/manager.js'
-import { maybeNudgeCompat } from './nudge.js'
+import { loadNudgeStore } from '@/cache/nudge-store'
+import { ENV_CACHE_DIR } from '@/store/dir'
+import { CACHE_NUDGE, getCache } from '@/store/manager'
+import { maybeNudgeCompat } from './nudge'
 
 const HOST = 'https://cloud.dify.ai'
 const NOW = new Date('2026-05-20T12:00:00.000Z')
@@ -23,14 +23,16 @@ function emitterSpy() {
   return { emit: (line: string) => lines.push(line), lines }
 }
 
-function baseDeps(overrides: Partial<{
-  store: NudgeStore
-  probe: Probe
-  emit: (line: string) => void
-  isTty: boolean
-  format: string
-  clientVersion: string
-}> & { store: NudgeStore } & { probe: Probe } & { emit: (line: string) => void }) {
+function baseDeps(
+  overrides: Partial<{
+    store: NudgeStore
+    probe: Probe
+    emit: (line: string) => void
+    isTty: boolean
+    format: string
+    clientVersion: string
+  }> & { store: NudgeStore } & { probe: Probe } & { emit: (line: string) => void },
+) {
   return {
     isTty: true,
     format: '',
@@ -52,10 +54,8 @@ describe('maybeNudgeCompat', () => {
     store = await loadNudgeStore({ store: getCache(CACHE_NUDGE), now: fixedNow })
   })
   afterEach(async () => {
-    if (prevCacheDir === undefined)
-      delete process.env[ENV_CACHE_DIR]
-    else
-      process.env[ENV_CACHE_DIR] = prevCacheDir
+    if (prevCacheDir === undefined) delete process.env[ENV_CACHE_DIR]
+    else process.env[ENV_CACHE_DIR] = prevCacheDir
     await rm(dir, { recursive: true, force: true })
   })
 
@@ -121,7 +121,9 @@ describe('maybeNudgeCompat', () => {
   })
 
   it('does not warn when server version yields unknown verdict', async () => {
-    const probe = vi.fn(async () => ({ version: '', edition: 'SELF_HOSTED' } as ServerVersionResponse))
+    const probe = vi.fn(
+      async () => ({ version: '', edition: 'SELF_HOSTED' }) as ServerVersionResponse,
+    )
     const { emit, lines } = emitterSpy()
 
     await maybeNudgeCompat(HOST, baseDeps({ store, probe, emit }))
@@ -161,8 +163,12 @@ describe('maybeNudgeCompat', () => {
 
   it('never throws even when every dependency explodes', async () => {
     const explodingStore: NudgeStore = {
-      canWarn: () => { throw new Error('canWarn boom') },
-      markWarned: async () => { throw new Error('markWarned boom') },
+      canWarn: () => {
+        throw new Error('canWarn boom')
+      },
+      markWarned: async () => {
+        throw new Error('markWarned boom')
+      },
     }
     const probe: Probe = async () => {
       throw new Error('probe boom')
@@ -171,10 +177,15 @@ describe('maybeNudgeCompat', () => {
       throw new Error('emit boom')
     }
 
-    await expect(maybeNudgeCompat(HOST, baseDeps({
-      store: explodingStore,
-      probe,
-      emit,
-    }))).resolves.toBeUndefined()
+    await expect(
+      maybeNudgeCompat(
+        HOST,
+        baseDeps({
+          store: explodingStore,
+          probe,
+          emit,
+        }),
+      ),
+    ).resolves.toBeUndefined()
   })
 })

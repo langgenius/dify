@@ -3,9 +3,9 @@ import type { FC } from 'react'
 import type { AgentIteration } from '@/models/log'
 import Iteration from './iteration'
 
-type TracingPanelProps = {
+type TracingPanelProps = Readonly<{
   list: AgentIteration[]
-}
+}>
 
 const TracingPanel: FC<TracingPanelProps> = ({ list }) => {
   return (

@@ -14,7 +14,7 @@ vi.mock('@/app/components/plugins/hooks', () => ({
   useTags: () => ({
     tags: mockTags,
     tagsMap: mockTags.reduce((acc, tag) => ({ ...acc, [tag.name]: tag }), {}),
-    getTagLabel: (name: string) => mockTags.find(t => t.name === name)?.label ?? name,
+    getTagLabel: (name: string) => mockTags.find((t) => t.name === name)?.label ?? name,
   }),
 }))
 
@@ -27,16 +27,10 @@ describe('LabelFilter', () => {
 
   // Rendering Tests
   describe('Rendering', () => {
-    it('should render without crashing', () => {
+    it('should display filter label when no labels selected', () => {
       render(<LabelFilter value={[]} onChange={mockOnChange} />)
 
-      expect(screen.getByText('common.tag.placeholder')).toBeInTheDocument()
-    })
-
-    it('should display placeholder when no labels selected', () => {
-      render(<LabelFilter value={[]} onChange={mockOnChange} />)
-
-      expect(screen.getByText('common.tag.placeholder')).toBeInTheDocument()
+      expect(screen.getByText('common.tag.tags')).toBeInTheDocument()
     })
 
     it('should display selected label when one label is selected', () => {
@@ -58,7 +52,7 @@ describe('LabelFilter', () => {
     it('should open dropdown when trigger is clicked', async () => {
       render(<LabelFilter value={[]} onChange={mockOnChange} />)
 
-      const trigger = screen.getByText('common.tag.placeholder')
+      const trigger = screen.getByText('common.tag.tags')
 
       await act(async () => fireEvent.click(trigger))
 
@@ -70,7 +64,7 @@ describe('LabelFilter', () => {
     it('should render search input when dropdown is open', async () => {
       render(<LabelFilter value={[]} onChange={mockOnChange} />)
 
-      const trigger = screen.getByText('common.tag.placeholder').closest('button')
+      const trigger = screen.getByText('common.tag.tags').closest('button')
       expect(trigger).toBeInTheDocument()
 
       await act(async () => fireEvent.click(trigger!))
@@ -85,7 +79,7 @@ describe('LabelFilter', () => {
     it('should call onChange with selected label when clicking a label', async () => {
       render(<LabelFilter value={[]} onChange={mockOnChange} />)
 
-      await act(async () => fireEvent.click(screen.getByText('common.tag.placeholder')))
+      await act(async () => fireEvent.click(screen.getByText('common.tag.tags')))
 
       expect(screen.getByText('Agent')).toBeInTheDocument()
 
@@ -101,11 +95,10 @@ describe('LabelFilter', () => {
 
       // Find the label item in the dropdown list
       const labelItems = screen.getAllByText('Agent')
-      const dropdownItem = labelItems.find(el => el.closest('.hover\\:bg-state-base-hover'))
+      const dropdownItem = labelItems.find((el) => el.closest('.hover\\:bg-state-base-hover'))
 
       await act(async () => {
-        if (dropdownItem)
-          fireEvent.click(dropdownItem)
+        if (dropdownItem) fireEvent.click(dropdownItem)
       })
 
       expect(mockOnChange).toHaveBeenCalledWith([])
@@ -151,7 +144,7 @@ describe('LabelFilter', () => {
       render(<LabelFilter value={[]} onChange={mockOnChange} />)
 
       await act(async () => {
-        fireEvent.click(screen.getByText('common.tag.placeholder'))
+        fireEvent.click(screen.getByText('common.tag.tags'))
       })
 
       expect(screen.getByRole('textbox')).toBeInTheDocument()
@@ -161,15 +154,15 @@ describe('LabelFilter', () => {
         fireEvent.change(searchInput, { target: { value: 'rag' } })
       })
 
-      expect(screen.getByTitle('RAG')).toBeInTheDocument()
-      expect(screen.queryByTitle('Agent')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'RAG' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Agent' })).not.toBeInTheDocument()
     })
 
     it('should show empty state when no labels match search', async () => {
       render(<LabelFilter value={[]} onChange={mockOnChange} />)
 
       await act(async () => {
-        fireEvent.click(screen.getByText('common.tag.placeholder'))
+        fireEvent.click(screen.getByText('common.tag.tags'))
       })
 
       expect(screen.getByRole('textbox')).toBeInTheDocument()
@@ -186,7 +179,7 @@ describe('LabelFilter', () => {
       render(<LabelFilter value={[]} onChange={mockOnChange} />)
 
       await act(async () => {
-        fireEvent.click(screen.getByText('common.tag.placeholder'))
+        fireEvent.click(screen.getByText('common.tag.tags'))
       })
 
       expect(screen.getByRole('textbox')).toBeInTheDocument()
@@ -196,8 +189,8 @@ describe('LabelFilter', () => {
         fireEvent.change(searchInput, { target: { value: 'rag' } })
       })
 
-      expect(screen.getByTitle('RAG')).toBeInTheDocument()
-      expect(screen.queryByTitle('Agent')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'RAG' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Agent' })).not.toBeInTheDocument()
 
       await act(async () => {
         const searchInput = screen.getByRole('textbox')
@@ -205,8 +198,8 @@ describe('LabelFilter', () => {
       })
 
       // All labels should be visible again
-      expect(screen.getByTitle('Agent')).toBeInTheDocument()
-      expect(screen.getByTitle('RAG')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Agent' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'RAG' })).toBeInTheDocument()
     })
   })
 
@@ -224,14 +217,7 @@ describe('LabelFilter', () => {
 
       render(<LabelFilter value={[]} onChange={mockOnChange} />)
 
-      expect(screen.getByText('common.tag.placeholder')).toBeInTheDocument()
-    })
-
-    it('should handle value with non-existent label', () => {
-      render(<LabelFilter value={['nonexistent']} onChange={mockOnChange} />)
-
-      // Should still render without crashing
-      expect(document.querySelector('.text-text-tertiary')).toBeInTheDocument()
+      expect(screen.getByText('common.tag.tags')).toBeInTheDocument()
     })
   })
 
@@ -247,7 +233,7 @@ describe('LabelFilter', () => {
     it('should call onChange with updated array', async () => {
       render(<LabelFilter value={[]} onChange={mockOnChange} />)
 
-      await act(async () => fireEvent.click(screen.getByText('common.tag.placeholder')))
+      await act(async () => fireEvent.click(screen.getByText('common.tag.tags')))
 
       expect(screen.getByText('Agent')).toBeInTheDocument()
 

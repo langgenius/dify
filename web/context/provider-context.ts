@@ -1,15 +1,22 @@
 'use client'
 
+import type {
+  ModelProviderPluginSummaryResponse,
+  ModelProviderSummaryResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Plan, UsagePlanInfo, UsageResetInfo } from '@/app/components/billing/type'
-import type { Model, ModelProvider } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RETRIEVE_METHOD } from '@/types/app'
 import { noop } from 'es-toolkit/function'
 import { createContext, useContext, useContextSelector } from 'use-context-selector'
 import { defaultPlan } from '@/app/components/billing/config'
 
 export type ProviderContextState = {
-  modelProviders: ModelProvider[]
-  refreshModelProviders: () => void
+  modelProviders: ModelProviderSummaryResponse[]
+  modelProviderPlugins: Record<string, ModelProviderPluginSummaryResponse>
+  isLoadingModelProviders: boolean
+  isSuccessModelProviders: boolean
+  refreshModelProviders: () => Promise<void>
   textGenerationModelList: Model[]
   supportRetrievalMethods: RETRIEVE_METHOD[]
   isAPIKeySet: boolean
@@ -28,11 +35,6 @@ export type ProviderContextState = {
   datasetOperatorEnabled: boolean
   enableEducationPlan: boolean
   isEducationWorkspace: boolean
-  isEducationAccount: boolean
-  allowRefreshEducationVerify: boolean
-  educationAccountExpireAt: number | null
-  isLoadingEducationAccountInfo: boolean
-  isFetchingEducationAccountInfo: boolean
   webappCopyrightEnabled: boolean
   licenseLimit: {
     workspace_members: {
@@ -48,7 +50,10 @@ export type ProviderContextState = {
 
 export const baseProviderContextValue: ProviderContextState = {
   modelProviders: [],
-  refreshModelProviders: noop,
+  modelProviderPlugins: {},
+  isLoadingModelProviders: false,
+  isSuccessModelProviders: false,
+  refreshModelProviders: async () => {},
   textGenerationModelList: [],
   supportRetrievalMethods: [],
   isAPIKeySet: true,
@@ -62,11 +67,6 @@ export const baseProviderContextValue: ProviderContextState = {
   datasetOperatorEnabled: false,
   enableEducationPlan: false,
   isEducationWorkspace: false,
-  isEducationAccount: false,
-  allowRefreshEducationVerify: false,
-  educationAccountExpireAt: null,
-  isLoadingEducationAccountInfo: false,
-  isFetchingEducationAccountInfo: false,
   webappCopyrightEnabled: false,
   licenseLimit: {
     workspace_members: {

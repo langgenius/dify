@@ -3,7 +3,7 @@ import logging
 import os
 import uuid
 from datetime import datetime, timedelta
-from typing import Any, cast
+from typing import Any, cast, override
 
 from opik import Opik, Trace
 from opik.id_helpers import uuid4_to_uuid7
@@ -95,6 +95,7 @@ class OpikDataTrace(BaseTraceInstance):
         self.project = opik_config.project
         self.file_base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
 
+    @override
     def trace(self, trace_info: BaseTraceInfo):
         match trace_info:
             case WorkflowTraceInfo():
@@ -173,6 +174,7 @@ class OpikDataTrace(BaseTraceInstance):
 
         workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=session_factory,
+            tenant_id=trace_info.tenant_id,
             user=service_account,
             app_id=app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,

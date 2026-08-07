@@ -48,9 +48,11 @@ def test_console_setup_fastopenapi_post_success(app: Flask):
         patch("controllers.console.setup.TenantService.get_tenant_count", return_value=0),
         patch("controllers.console.setup.get_init_validate_status", return_value=True),
         patch("controllers.console.setup.RegisterService.setup"),
+        patch("controllers.console.setup.mark_setup_completed") as mark_setup_completed,
     ):
         client = app.test_client()
         response = client.post("/console/api/setup", json=payload)
 
     assert response.status_code == 201
     assert response.get_json() == {"result": "success"}
+    mark_setup_completed.assert_called_once_with()

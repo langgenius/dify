@@ -4,6 +4,8 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type EventStreamResponse = string
+
 export type WorkflowPauseDetailsResponse = {
   paused_at?: string | null
   paused_nodes: Array<PausedNodeResponse>
@@ -18,7 +20,7 @@ export type PausedNodeResponse = {
 export type HumanInputPauseTypeResponse = {
   backstage_input_url?: string | null
   form_id: string
-  type: string
+  type: 'human_input'
 }
 
 export type GetWorkflowByWorkflowRunIdEventsData = {
@@ -31,13 +33,11 @@ export type GetWorkflowByWorkflowRunIdEventsData = {
 }
 
 export type GetWorkflowByWorkflowRunIdEventsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: EventStreamResponse
 }
 
-export type GetWorkflowByWorkflowRunIdEventsResponse
-  = GetWorkflowByWorkflowRunIdEventsResponses[keyof GetWorkflowByWorkflowRunIdEventsResponses]
+export type GetWorkflowByWorkflowRunIdEventsResponse =
+  GetWorkflowByWorkflowRunIdEventsResponses[keyof GetWorkflowByWorkflowRunIdEventsResponses]
 
 export type GetWorkflowByWorkflowRunIdPauseDetailsData = {
   body?: never
@@ -49,17 +49,12 @@ export type GetWorkflowByWorkflowRunIdPauseDetailsData = {
 }
 
 export type GetWorkflowByWorkflowRunIdPauseDetailsErrors = {
-  404: {
-    [key: string]: unknown
-  }
+  404: unknown
 }
-
-export type GetWorkflowByWorkflowRunIdPauseDetailsError
-  = GetWorkflowByWorkflowRunIdPauseDetailsErrors[keyof GetWorkflowByWorkflowRunIdPauseDetailsErrors]
 
 export type GetWorkflowByWorkflowRunIdPauseDetailsResponses = {
   200: WorkflowPauseDetailsResponse
 }
 
-export type GetWorkflowByWorkflowRunIdPauseDetailsResponse
-  = GetWorkflowByWorkflowRunIdPauseDetailsResponses[keyof GetWorkflowByWorkflowRunIdPauseDetailsResponses]
+export type GetWorkflowByWorkflowRunIdPauseDetailsResponse =
+  GetWorkflowByWorkflowRunIdPauseDetailsResponses[keyof GetWorkflowByWorkflowRunIdPauseDetailsResponses]
