@@ -1,7 +1,7 @@
 import type { SimplePluginInfo, StreamdownWrapperProps } from './streamdown-wrapper'
 import { cn } from '@langgenius/dify-ui/cn'
 import { flow } from 'es-toolkit/compat'
-import { memo, useMemo } from 'react'
+import { memo, useMemo, useRef } from 'react'
 import dynamic from '@/next/dynamic'
 import { preprocessLaTeX, preprocessThinkTag } from './markdown-utils'
 
@@ -44,6 +44,10 @@ export const Markdown = memo((props: MarkdownProps) => {
     mode,
     className,
   } = props
+  const hasEnteredStreamingModeRef = useRef(Boolean(isAnimating))
+  if (isAnimating) hasEnteredStreamingModeRef.current = true
+
+  const resolvedMode = mode ?? (hasEnteredStreamingModeRef.current ? 'streaming' : 'static')
   const latexContent = useMemo(() => preprocess(content), [content])
 
   return (
@@ -59,7 +63,7 @@ export const Markdown = memo((props: MarkdownProps) => {
         remarkPlugins={remarkPlugins}
         rehypePlugins={rehypePlugins}
         isAnimating={isAnimating}
-        mode={mode}
+        mode={resolvedMode}
       />
     </div>
   )

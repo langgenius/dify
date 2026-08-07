@@ -32,6 +32,7 @@ type AgentActivityEntry =
       type: 'message'
       content: string
       key: string
+      isAnimating: boolean
     }
   | {
       type: 'thought'
@@ -100,35 +101,35 @@ function getThoughtKey(thought: ThoughtItem) {
   return thought.id || `${thought.message_id}-${thought.position}`
 }
 
-function hashString(value: string) {
-  let hash = 5381
-  for (let i = 0; i < value.length; i++) hash = ((hash << 5) + hash) ^ value.charCodeAt(i)
-
-  return (hash >>> 0).toString(36)
-}
-
 function hasVisibleActivity(thought: ThoughtItem) {
   return !!thought.tool || !!thought.message_files?.length
 }
 
-function getAgentActivityEntries(item: ChatItem): AgentActivityEntry[] {
+function getAgentActivityEntries(item: ChatItem, responding?: boolean): AgentActivityEntry[] {
   if (item.agent_response_parts?.length) {
-    const keyOccurrences = new Map<string, number>()
+    const lastPartIndex = item.agent_response_parts.length - 1
 
-    return item.agent_response_parts.flatMap<AgentActivityEntry>((part) => {
-      const baseKey =
-        part.type === 'message'
-          ? `message-${part.content.length}-${hashString(part.content)}`
-          : `thought-${getThoughtKey(part.thought)}`
-      const occurrence = keyOccurrences.get(baseKey) ?? 0
-      keyOccurrences.set(baseKey, occurrence + 1)
-      const key = occurrence ? `${baseKey}-${occurrence}` : baseKey
-
+    return item.agent_response_parts.flatMap<AgentActivityEntry>((part, index) => {
       if (part.type === 'message')
-        return part.content ? [{ type: 'message', content: part.content, key }] : []
+        return part.content
+          ? [
+              {
+                type: 'message',
+                content: part.content,
+                key: `message-${index}`,
+                isAnimating: Boolean(responding && index === lastPartIndex),
+              },
+            ]
+          : []
 
       return hasVisibleActivity(part.thought)
-        ? [{ type: 'thought', thought: part.thought, key }]
+        ? [
+            {
+              type: 'thought',
+              thought: part.thought,
+              key: `thought-${getThoughtKey(part.thought)}`,
+            },
+          ]
         : []
     })
   }
@@ -139,7 +140,13 @@ function getAgentActivityEntries(item: ChatItem): AgentActivityEntry[] {
       const parts: AgentActivityEntry[] = []
       const key = getThoughtKey(thought)
       const answer = thought.answer
-      if (answer?.trim()) parts.push({ type: 'message', content: answer, key: `message-${key}` })
+      if (answer?.trim())
+        parts.push({
+          type: 'message',
+          content: answer,
+          key: `message-${key}`,
+          isAnimating: false,
+        })
 
       if (hasVisibleActivity(thought))
         parts.push({ type: 'thought', thought, key: `thought-${key}` })
@@ -167,13 +174,13 @@ function useWorkingDuration(enabled?: boolean) {
   return Math.max(0, Math.floor((now - startedAtRef.current) / 1000))
 }
 
-function ResponseMessage({ content }: { content: string }) {
+function ResponseMessage({ content, isAnimating }: { content: string; isAnimating?: boolean }) {
   return (
     <div
       className="max-w-full min-w-0 overflow-hidden px-1 body-md-regular text-text-primary"
       data-testid="agent-content-markdown"
     >
-      <Markdown content={content} />
+      <Markdown content={content} isAnimating={isAnimating} />
     </div>
   )
 }
@@ -326,7 +333,11 @@ function AgentActivityDisclosure({
         <div className="flex w-full max-w-full min-w-0 flex-col gap-1 overflow-hidden">
           {entries.map((entry) =>
             entry.type === 'message' ? (
-              <ResponseMessage key={entry.key} content={entry.content} />
+              <ResponseMessage
+                key={entry.key}
+                content={entry.content}
+                isAnimating={entry.isAnimating}
+              />
             ) : (
               <AgentActivityItem key={entry.key} thought={entry.thought} responding={responding} />
             ),
@@ -351,7 +362,7 @@ export function AgentRosterResponseContent({
     )
   }
 
-  const entries = getAgentActivityEntries(item)
+  const entries = getAgentActivityEntries(item, responding)
   const hasLiveResponseParts = !!item.agent_response_parts?.length
   const hasThinkingStatus =
     entries.length === 0 && !!item.agent_response_parts?.some((part) => part.type === 'thought')
@@ -363,7 +374,14 @@ export function AgentRosterResponseContent({
       ? []
       : entries.flatMap((entry) => (entry.type === 'message' ? [entry] : []))
     : content
-      ? [{ type: 'message' as const, content, key: 'final-answer' }]
+      ? [
+          {
+            type: 'message' as const,
+            content,
+            key: 'final-answer',
+            isAnimating: Boolean(responding),
+          },
+        ]
       : []
 
   return (
@@ -381,7 +399,11 @@ export function AgentRosterResponseContent({
         />
       )}
       {standaloneMessages.map((message) => (
-        <ResponseMessage key={message.key} content={message.content} />
+        <ResponseMessage
+          key={message.key}
+          content={message.content}
+          isAnimating={message.isAnimating}
+        />
       ))}
     </div>
   )

@@ -3,8 +3,8 @@ import { render, screen } from '@testing-library/react'
 import ResultTab from '../result-tab'
 
 vi.mock('@/app/components/base/markdown', () => ({
-  Markdown: ({ content }: { content: string }) => (
-    <div>
+  Markdown: ({ content, isAnimating }: { content: string; isAnimating?: boolean }) => (
+    <div data-animating={String(Boolean(isAnimating))}>
       markdown:
       {content}
     </div>
@@ -35,6 +35,7 @@ describe('ResultTab', () => {
       <ResultTab
         currentTab="RESULT"
         content=""
+        isResponding
         data={
           {
             resultText: 'Hello world',
@@ -50,6 +51,7 @@ describe('ResultTab', () => {
     )
 
     expect(screen.getByText('markdown:Hello world')).toBeInTheDocument()
+    expect(screen.getByText('markdown:Hello world')).toHaveAttribute('data-animating', 'true')
     expect(screen.getByText('attachments')).toBeInTheDocument()
     expect(screen.getByText('files:1')).toBeInTheDocument()
   })

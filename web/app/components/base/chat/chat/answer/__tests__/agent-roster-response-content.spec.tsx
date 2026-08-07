@@ -501,6 +501,56 @@ describe('AgentRosterResponseContent', () => {
     expect(screen.getByText('direct answer')).toBeInTheDocument()
   })
 
+  it('should preserve the live message node while streamed content grows', () => {
+    const item = {
+      id: 'answer-growing-message',
+      content: '',
+      isAnswer: true,
+      agent_response_parts: [{ type: 'message', content: 'direct' }],
+    } satisfies ChatItem
+
+    const { rerender } = render(<AgentRosterResponseContent item={item} responding />)
+    const messageNode = screen.getByTestId('agent-content-markdown')
+
+    rerender(
+      <AgentRosterResponseContent
+        item={{
+          ...item,
+          agent_response_parts: [{ type: 'message', content: 'direct answer' }],
+        }}
+        responding
+      />,
+    )
+
+    expect(screen.getByTestId('agent-content-markdown')).toBe(messageNode)
+    expect(messageNode).toHaveTextContent('direct answer')
+  })
+
+  it('should mark only the active response markdown as animating', async () => {
+    const item = {
+      id: 'answer-streaming-table',
+      content: '',
+      isAnswer: true,
+      agent_response_parts: [
+        {
+          type: 'message',
+          content: '| Result |\n| --- |\n| streaming |',
+        },
+      ],
+    } satisfies ChatItem
+
+    const { rerender } = render(<AgentRosterResponseContent item={item} responding />)
+    const copyTableButton = await screen.findByTitle('Copy table')
+
+    expect(copyTableButton).toBeDisabled()
+
+    rerender(<AgentRosterResponseContent item={item} responding={false} />)
+
+    await waitFor(() => {
+      expect(copyTableButton).toBeEnabled()
+    })
+  })
+
   it('should omit the activity disclosure for a completed response without activity', () => {
     const item = {
       id: 'answer-without-activity',

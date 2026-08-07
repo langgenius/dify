@@ -11,6 +11,7 @@ vi.mock('@/app/components/base/markdown', () => ({
     <div
       data-testid={props['data-testid'] || 'markdown'}
       data-content={String(props.content)}
+      data-animating={String(Boolean(props.isAnimating))}
       className={props.className}
     >
       {String(props.content)}
@@ -78,8 +79,15 @@ describe('AgentContent', () => {
   })
 
   it('renders content prop if provided and no annotation', () => {
-    render(<AgentContent item={mockItem} content="Direct Content" />)
-    expect(screen.getByTestId('agent-content-markdown')).toHaveTextContent('Direct Content')
+    const { rerender } = render(
+      <AgentContent item={mockItem} content="Direct Content" responding />,
+    )
+    const markdown = screen.getByTestId('agent-content-markdown')
+    expect(markdown).toHaveTextContent('Direct Content')
+    expect(markdown).toHaveAttribute('data-animating', 'true')
+
+    rerender(<AgentContent item={mockItem} content="Direct Content" responding={false} />)
+    expect(screen.getByTestId('agent-content-markdown')).toHaveAttribute('data-animating', 'false')
   })
 
   it('renders agent_thoughts if content is absent', () => {
@@ -93,7 +101,21 @@ describe('AgentContent', () => {
     const thoughtMarkdowns = screen.getAllByTestId('agent-thought-markdown')
     expect(thoughtMarkdowns[0]).toHaveTextContent('Thought 1')
     expect(thoughtMarkdowns[1]).toHaveTextContent('Thought 2')
+    expect(thoughtMarkdowns[0]).toHaveAttribute('data-animating', 'false')
+    expect(thoughtMarkdowns[1]).toHaveAttribute('data-animating', 'false')
     expect(screen.getByTestId('thought-component')).toHaveTextContent('Thought 1')
+  })
+
+  it('only marks the latest thought as streaming', () => {
+    const itemWithThoughts = {
+      ...mockItem,
+      agent_thoughts: [{ thought: 'Completed thought' }, { thought: 'Current thought' }],
+    }
+    render(<AgentContent item={itemWithThoughts as ChatItem} responding />)
+
+    const thoughtMarkdowns = screen.getAllByTestId('agent-thought-markdown')
+    expect(thoughtMarkdowns[0]).toHaveAttribute('data-animating', 'false')
+    expect(thoughtMarkdowns[1]).toHaveAttribute('data-animating', 'true')
   })
 
   it('passes correct isFinished to Thought component', () => {

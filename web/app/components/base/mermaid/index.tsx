@@ -10,6 +10,7 @@ import { Theme } from '@/types/app'
 import {
   cleanUpSvgCode,
   isMermaidCodeComplete,
+  LruCache,
   prepareMermaidCode,
   processSvgForTheme,
   sanitizeMermaidCode,
@@ -18,8 +19,9 @@ import {
 } from './utils'
 
 // Global flags and cache for mermaid
+const MAX_DIAGRAM_CACHE_ENTRIES = 50
 let isMermaidInitialized = false
-const diagramCache = new Map<string, string>()
+const diagramCache = new LruCache<string, string>(MAX_DIAGRAM_CACHE_ENTRIES)
 let mermaidAPI: typeof mermaid.mermaidAPI | null = null
 
 if (typeof window !== 'undefined') mermaidAPI = mermaid.mermaidAPI
@@ -408,9 +410,10 @@ const Flowchart = (props: FlowchartProps) => {
       }
 
       const cacheKey = `${props.PrimitiveCode}-${look}-${currentTheme}`
-      if (diagramCache.has(cacheKey)) {
+      const cachedDiagram = diagramCache.get(cacheKey)
+      if (cachedDiagram !== undefined) {
         setErrMsg('')
-        setSvgString(diagramCache.get(cacheKey)!)
+        setSvgString(cachedDiagram)
         setIsLoading(false)
         return
       }
