@@ -66,10 +66,7 @@ export type ToolFormSchema = {
 }
 
 export const toType = (type: string) => {
-  if (typeof type !== 'string') return type
-
-  const normalized = type.trim().toLowerCase().replace(/_/g, '-')
-  switch (normalized) {
+  switch (type) {
     case 'string':
       return 'text-input'
     case 'number':
@@ -77,7 +74,7 @@ export const toType = (type: string) => {
     case 'boolean':
       return 'checkbox'
     default:
-      return normalized
+      return type
   }
 }
 
