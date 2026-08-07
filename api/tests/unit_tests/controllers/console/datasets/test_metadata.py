@@ -213,7 +213,7 @@ class TestDocumentMetadataEditApi:
         with (
             app.test_request_context("/"),
             patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
-            patch.object(DatasetService, "get_dataset", return_value=dataset),
+            patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset),
             patch.object(DatasetService, "check_dataset_permission"),
             patch.object(MetadataService, "update_documents_metadata"),
         ):
@@ -221,6 +221,7 @@ class TestDocumentMetadataEditApi:
                 api,
                 MetadataOperationData(operation_data=[{"document_id": "doc-1", "metadata_list": []}]),
                 MagicMock(),
+                dataset.tenant_id,
                 current_user,
                 dataset_id,
             )

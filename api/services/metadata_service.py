@@ -11,6 +11,7 @@ from libs.login import resolve_account_fallback
 from models import Account
 from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding
 from models.enums import DatasetMetadataType
+from services.dataset_ref_service import DatasetRefService
 from services.dataset_service import DocumentService
 from services.entities.knowledge_entities.knowledge_entities import (
     MetadataArgs,
@@ -242,22 +243,47 @@ class MetadataService:
         *,
         session: Session,
     ):
-        current_user, current_tenant_id = resolve_account_fallback(
+        current_user, _ = resolve_account_fallback(
             current_user, current_tenant_id, fallback_tenant_id=dataset.tenant_id
         )
+        metadata_ids = {
+            metadata_value.id
+            for operation in metadata_args.operation_data
+            for metadata_value in operation.metadata_list
+        }
+        metadatas = session.scalars(
+            select(DatasetMetadata).where(
+                DatasetMetadata.id.in_(metadata_ids),
+                DatasetMetadata.tenant_id == dataset.tenant_id,
+                DatasetMetadata.dataset_id == dataset.id,
+            )
+        ).all()
+        metadata_by_id = {metadata.id: metadata for metadata in metadatas}
+        if metadata_ids != set(metadata_by_id):
+            raise ValueError("Metadata not found.")
+
+        dataset_ref = DatasetRefService.create_dataset_ref(dataset)
+        documents_by_id = {}
+        for document_id in {operation.document_id for operation in metadata_args.operation_data}:
+            document_ref = DatasetRefService.create_document_ref_from_id(dataset_ref, document_id)
+            document = DatasetRefService.get_document_by_ref(document_ref, session=session)
+            if document is None:
+                raise ValueError("Document not found.")
+            documents_by_id[document_id] = document
+
         for operation in metadata_args.operation_data:
+            document = documents_by_id[operation.document_id]
+
             lock_key = f"document_metadata_lock_{operation.document_id}"
             try:
                 MetadataService.knowledge_base_metadata_lock_check(None, operation.document_id)
-                document = DocumentService.get_document(dataset.id, operation.document_id, session=session)
-                if document is None:
-                    raise ValueError("Document not found.")
                 if operation.partial_update:
                     doc_metadata = copy.deepcopy(document.doc_metadata) if document.doc_metadata else {}
                 else:
                     doc_metadata = {}
                 for metadata_value in operation.metadata_list:
-                    doc_metadata[metadata_value.name] = metadata_value.value
+                    metadata = metadata_by_id[metadata_value.id]
+                    doc_metadata[metadata.name] = metadata_value.value
                 if dataset.built_in_field_enabled:
                     doc_metadata[BuiltInField.document_name] = document.name
                     doc_metadata[BuiltInField.uploader] = document.get_uploader(session=session)
@@ -271,18 +297,23 @@ class MetadataService:
                 if not operation.partial_update:
                     session.execute(
                         delete(DatasetMetadataBinding).where(
-                            DatasetMetadataBinding.document_id == operation.document_id
+                            DatasetMetadataBinding.tenant_id == dataset.tenant_id,
+                            DatasetMetadataBinding.dataset_id == dataset.id,
+                            DatasetMetadataBinding.document_id == document.id,
                         )
                     )
 
                 for metadata_value in operation.metadata_list:
+                    metadata = metadata_by_id[metadata_value.id]
                     # check if binding already exists
                     if operation.partial_update:
                         existing_binding = session.scalar(
                             select(DatasetMetadataBinding)
                             .where(
-                                DatasetMetadataBinding.document_id == operation.document_id,
-                                DatasetMetadataBinding.metadata_id == metadata_value.id,
+                                DatasetMetadataBinding.tenant_id == dataset.tenant_id,
+                                DatasetMetadataBinding.dataset_id == dataset.id,
+                                DatasetMetadataBinding.document_id == document.id,
+                                DatasetMetadataBinding.metadata_id == metadata.id,
                             )
                             .limit(1)
                         )
@@ -290,10 +321,10 @@ class MetadataService:
                             continue
 
                     dataset_metadata_binding = DatasetMetadataBinding(
-                        tenant_id=current_tenant_id,
+                        tenant_id=dataset.tenant_id,
                         dataset_id=dataset.id,
-                        document_id=operation.document_id,
-                        metadata_id=metadata_value.id,
+                        document_id=document.id,
+                        metadata_id=metadata.id,
                         created_by=current_user.id,
                     )
                     session.add(dataset_metadata_binding)

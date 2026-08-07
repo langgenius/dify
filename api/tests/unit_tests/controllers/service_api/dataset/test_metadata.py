@@ -521,7 +521,7 @@ class TestDocumentMetadataEditPost(_UsesSQLiteSession):
         mock_dataset,
     ):
         """Test successful documents metadata update."""
-        mock_dataset_svc.get_dataset.return_value = mock_dataset
+        mock_dataset_svc.get_dataset_for_tenant.return_value = mock_dataset
         mock_dataset_svc.check_dataset_permission.return_value = None
         mock_meta_svc.update_documents_metadata.return_value = None
 
@@ -551,7 +551,7 @@ class TestDocumentMetadataEditPost(_UsesSQLiteSession):
         mock_dataset,
     ):
         """Test 404 when dataset not found."""
-        mock_dataset_svc.get_dataset.return_value = None
+        mock_dataset_svc.get_dataset_for_tenant.return_value = None
 
         with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/metadata",

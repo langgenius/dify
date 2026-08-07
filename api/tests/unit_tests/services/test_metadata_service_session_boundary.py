@@ -1,6 +1,8 @@
 from datetime import datetime
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
+import pytest
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 
@@ -8,10 +10,12 @@ from core.rag.index_processor.constant.built_in_field import BuiltInField
 from models import Account
 from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding, Document
 from models.enums import DataSourceType, DocumentCreatedFrom
+from services.dataset_ref_service import DatasetRefService
 from services.dataset_service import DocumentService
 from services.entities.knowledge_entities.knowledge_entities import (
     DocumentMetadataOperation,
     MetadataArgs,
+    MetadataDetail,
     MetadataOperationData,
 )
 from services.metadata_service import MetadataService
@@ -99,7 +103,7 @@ def test_update_documents_metadata_uses_caller_session_for_uploader(sqlite_sessi
 
     with (
         patch.object(MetadataService, "knowledge_base_metadata_lock_check"),
-        patch.object(DocumentService, "get_document", return_value=document),
+        patch.object(DatasetRefService, "get_document_by_ref", return_value=document),
         patch("services.metadata_service.redis_client.delete"),
     ):
         MetadataService.update_documents_metadata(
@@ -111,6 +115,108 @@ def test_update_documents_metadata_uses_caller_session_for_uploader(sqlite_sessi
         )
 
     assert document.doc_metadata[BuiltInField.uploader] == "User"
+
+
+def test_update_documents_metadata_rejects_foreign_metadata_before_writes() -> None:
+    session = MagicMock()
+    session.scalars.return_value.all.return_value = []
+    dataset = MagicMock(id="dataset-1", tenant_id="tenant-1")
+    metadata_args = MetadataOperationData(
+        operation_data=[
+            DocumentMetadataOperation(
+                document_id="document-1",
+                metadata_list=[MetadataDetail(id="foreign-metadata", name="spoofed", value="value")],
+                partial_update=False,
+            )
+        ]
+    )
+
+    with (
+        pytest.raises(ValueError, match="Metadata not found"),
+        patch.object(MetadataService, "knowledge_base_metadata_lock_check") as lock_check,
+    ):
+        MetadataService.update_documents_metadata(dataset, metadata_args, _account(), session=session)
+
+    lock_check.assert_not_called()
+    session.add.assert_not_called()
+    session.execute.assert_not_called()
+    session.commit.assert_not_called()
+
+
+def test_update_documents_metadata_validates_all_documents_before_writes() -> None:
+    session = MagicMock()
+    metadata = SimpleNamespace(id="metadata-1", name="canonical")
+    session.scalars.return_value.all.return_value = [metadata]
+    dataset = MagicMock(id="dataset-1", tenant_id="tenant-1", built_in_field_enabled=False)
+    metadata_detail = MetadataDetail(id=metadata.id, name="spoofed", value="value")
+    metadata_args = MetadataOperationData(
+        operation_data=[
+            DocumentMetadataOperation(document_id="document-1", metadata_list=[metadata_detail], partial_update=False),
+            DocumentMetadataOperation(
+                document_id="foreign-document", metadata_list=[metadata_detail], partial_update=False
+            ),
+        ]
+    )
+
+    with (
+        pytest.raises(ValueError, match="Document not found"),
+        patch.object(DatasetRefService, "get_document_by_ref", side_effect=[_document(), None]),
+        patch.object(MetadataService, "knowledge_base_metadata_lock_check") as lock_check,
+        patch("services.metadata_service.redis_client.delete"),
+    ):
+        MetadataService.update_documents_metadata(dataset, metadata_args, _account(), session=session)
+
+    lock_check.assert_not_called()
+    session.add.assert_not_called()
+    session.execute.assert_not_called()
+    session.commit.assert_not_called()
+
+
+def test_update_documents_metadata_uses_canonical_metadata_name() -> None:
+    session = MagicMock()
+    metadata = SimpleNamespace(id="metadata-1", name="canonical")
+    session.scalars.return_value.all.return_value = [metadata]
+    dataset = MagicMock(id="dataset-1", tenant_id="tenant-1", built_in_field_enabled=False)
+    document = _document()
+    metadata_args = MetadataOperationData(
+        operation_data=[
+            DocumentMetadataOperation(
+                document_id=document.id,
+                metadata_list=[MetadataDetail(id=metadata.id, name="spoofed", value="value")],
+                partial_update=False,
+            )
+        ]
+    )
+
+    with (
+        patch.object(DatasetRefService, "get_document_by_ref", return_value=document),
+        patch.object(MetadataService, "knowledge_base_metadata_lock_check"),
+        patch("services.metadata_service.redis_client.delete"),
+    ):
+        MetadataService.update_documents_metadata(dataset, metadata_args, _account(), session=session)
+
+    assert document.doc_metadata == {"canonical": "value"}
+
+
+def test_document_metadata_details_scopes_binding_to_document_owner() -> None:
+    session = MagicMock()
+    session.scalars.return_value.all.return_value = []
+    document = MagicMock(
+        id="document-1",
+        tenant_id="tenant-1",
+        dataset_id="dataset-1",
+        doc_metadata={"canonical": "value"},
+    )
+    document.get_built_in_fields.return_value = []
+
+    assert Document.get_doc_metadata_details(document, session=session) == []
+
+    statement = str(session.scalars.call_args.args[0])
+    assert "dataset_metadatas.tenant_id" in statement
+    assert "dataset_metadatas.dataset_id" in statement
+    assert "dataset_metadata_bindings.tenant_id" in statement
+    assert "dataset_metadata_bindings.dataset_id" in statement
+    assert "dataset_metadata_bindings.document_id" in statement
 
 
 def test_get_dataset_metadatas_uses_caller_session(monkeypatch, sqlite_session: Session) -> None:

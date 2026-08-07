@@ -527,7 +527,7 @@ def test_get_working_documents_by_dataset_id_returns_completed_enabled_unarchive
     assert [document.id for document in result] == [available_document.id]
 
 
-def test_get_error_documents_by_dataset_id_returns_error_and_paused_documents(db_session_with_containers: Session):
+def test_get_error_documents_by_dataset_ref_returns_error_and_paused_documents(db_session_with_containers: Session):
     dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
     error_document = DocumentServiceIntegrationFactory.create_document(
         db_session_with_containers,
@@ -547,7 +547,8 @@ def test_get_error_documents_by_dataset_id_returns_error_and_paused_documents(db
         indexing_status=IndexingStatus.COMPLETED,
     )
 
-    result = DocumentService.get_error_documents_by_dataset_id(dataset.id, session=db_session_with_containers)
+    dataset_ref = DatasetRefService.create_dataset_ref(dataset)
+    result = DocumentService.get_error_documents_by_dataset_ref(dataset_ref, session=db_session_with_containers)
 
     assert {document.id for document in result} == {error_document.id, paused_document.id}
 
