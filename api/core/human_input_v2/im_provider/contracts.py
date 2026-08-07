@@ -60,6 +60,27 @@ class DingTalkIMIntegrationCredentials(_ResolvedIMIntegrationCredentials):
     )
 
 
+class MSTeamsIMIntegrationCredentials(_ResolvedIMIntegrationCredentials):
+    """Resolved Microsoft Teams credentials bound for one adapter lifetime."""
+
+    provider: Literal[IMProvider.MS_TEAMS] = Field(description="Microsoft Teams credential discriminator.")
+    tenant_id: str = Field(
+        min_length=1,
+        pattern=r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+        description="Microsoft Entra tenant identifier.",
+    )
+    client_id: str = Field(
+        min_length=1,
+        pattern=r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+        description="Microsoft Teams bot application client identifier.",
+    )
+    client_secret: str = Field(
+        min_length=1,
+        repr=False,
+        description="Resolved Microsoft Teams application client secret.",
+    )
+
+
 ProviderUserId = NewType("ProviderUserId", str)
 CorrelationToken = NewType("CorrelationToken", str)
 
@@ -341,6 +362,7 @@ __all__ = [
     "IMStreamStartError",
     "IMStreamStopError",
     "IMWebhookHandler",
+    "MSTeamsIMIntegrationCredentials",
     "MessageAccepted",
     "MessageReference",
     "MessageSendingError",
