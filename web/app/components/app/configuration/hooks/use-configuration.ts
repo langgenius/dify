@@ -26,6 +26,7 @@ import type {
   TextToSpeechConfig,
 } from '@/models/debug'
 import type { VisionSettings } from '@/types/app'
+import { useMutation } from '@tanstack/react-query'
 import { useBoolean, useGetState } from 'ahooks'
 import { clone } from 'es-toolkit/object'
 import { produce } from 'immer'
@@ -70,6 +71,7 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { PromptMode } from '@/models/debug'
 import { usePathname } from '@/next/navigation'
 import { updateAppModelConfig } from '@/service/apps'
+import { consoleQuery } from '@/service/client'
 import { useFileUploadConfig } from '@/service/use-common'
 import { AppModeEnum, ModelModeType, Resolution, RETRIEVE_TYPE, TransferMethod } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
@@ -159,6 +161,16 @@ export const useConfiguration = (): ConfigurationViewModel => {
   const pathname = usePathname()
   const matched = /\/app\/([^/]+)/.exec(pathname)
   const appId = matched?.[1] || ''
+  const { mutateAsync: updateModelConfig } = useMutation({
+    mutationFn: (params: Parameters<typeof updateAppModelConfig>[0]) =>
+      updateAppModelConfig(params),
+    onSuccess: (_data, _variables, _onMutateResult, context) =>
+      context.client.invalidateQueries({
+        queryKey: consoleQuery.apps.byAppId.get.queryKey({
+          input: { params: { app_id: appId } },
+        }),
+      }),
+  })
   const [publishedAtOverride, setPublishedAtOverride] = useState({
     appId,
     value: 0,
@@ -741,7 +753,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
         setCanReturnToSimpleMode,
         setPublishedConfig: handlePublishedConfigChange,
         t,
-      })(updateAppModelConfig, modelAndParameter, features)
+      })(updateModelConfig, modelAndParameter, features)
 
       if (result) {
         setUnpublishedChangesState({ appId, value: false })
@@ -773,6 +785,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
       setCanReturnToSimpleMode,
       syncToPublishedConfig,
       t,
+      updateModelConfig,
     ],
   )
 

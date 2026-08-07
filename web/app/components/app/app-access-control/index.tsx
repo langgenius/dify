@@ -1,17 +1,17 @@
 'use client'
 
+import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import type {
   AccessControlSubjects,
   AccessControlSubjectsStatus,
 } from './specific-groups-or-members'
 import type { Subject } from '@/models/access-control'
-import type { App } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { AccessMode, SubjectType } from '@/models/access-control'
+import { AccessMode, isAccessMode, SubjectType } from '@/models/access-control'
 import { useAppWhiteListSubjects } from '@/service/access-control'
 import { consoleQuery } from '@/service/client'
 import { AccessControlForm } from './access-control-form'
@@ -22,7 +22,7 @@ const EMPTY_SUBJECTS: AccessControlSubjects = {
 }
 
 type AccessControlProps = {
-  app: Pick<App, 'id' | 'access_mode'>
+  app: Pick<AppPartial, 'id' | 'access_mode'>
   onClose: () => void
   onConfirm?: () => void
 }
@@ -35,7 +35,9 @@ function AppAccessControlContainer({ app, onClose, onConfirm }: AccessControlPro
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const [accessMode, setAccessMode] = useState(
-    () => app.access_mode ?? AccessMode.SPECIFIC_GROUPS_MEMBERS,
+    () =>
+      (isAccessMode(app.access_mode) ? app.access_mode : undefined) ??
+      AccessMode.SPECIFIC_GROUPS_MEMBERS,
   )
   const [subjectsDraft, setSubjectsDraft] = useState<AccessControlSubjects>()
   const subjectsQuery = useAppWhiteListSubjects(

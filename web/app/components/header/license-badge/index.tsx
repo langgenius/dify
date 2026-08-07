@@ -7,11 +7,12 @@ import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import PremiumBadge from '../../base/premium-badge'
 
-function LicenseNav() {
+function LicenseBadge() {
   const { t } = useTranslation()
   const { data: license } = useQuery(consoleQuery.systemFeatures.license.get.queryOptions())
+  const isExpiring = license?.status === zLicenseStatus.enum.expiring
 
-  if (license?.status === zLicenseStatus.enum.expiring) {
+  if (isExpiring && license.license_expiry_notice_enabled) {
     const count = dayjs(license.expired_at).diff(dayjs(), 'days')
     return (
       <PremiumBadge color="orange" className="select-none">
@@ -34,7 +35,7 @@ function LicenseNav() {
       </PremiumBadge>
     )
   }
-  if (license?.status === zLicenseStatus.enum.active) {
+  if (license?.status === zLicenseStatus.enum.active || isExpiring) {
     return (
       <PremiumBadge color="indigo" className="select-none">
         <span className="px-1 system-xs-medium">Enterprise</span>
@@ -44,4 +45,4 @@ function LicenseNav() {
   return null
 }
 
-export default LicenseNav
+export default LicenseBadge

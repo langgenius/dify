@@ -1,7 +1,7 @@
 'use client'
 
+import type { ApiKeyItem } from '@dify/contracts/api/console/apps/types.gen'
 import type { EnvironmentApiKey } from '@dify/contracts/enterprise-app-deploy/types.gen'
-import type { ApiKeysListResponse, CreateApiKeyResponse } from '@/models/app'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -23,8 +23,8 @@ import useTimestamp from '@/hooks/use-timestamp'
 import SecretKeyGenerateModal from './secret-key-generate'
 import s from './style.module.css'
 
-type SecretKeyItem = ApiKeysListResponse['data'][number] | EnvironmentApiKey
-type CreatedSecretKey = Pick<CreateApiKeyResponse, 'token'>
+type SecretKeyItem = ApiKeyItem | EnvironmentApiKey
+type CreatedSecretKey = Pick<ApiKeyItem, 'token'>
 
 export type SecretKeyModalViewProps = {
   apiKeys?: SecretKeyItem[]

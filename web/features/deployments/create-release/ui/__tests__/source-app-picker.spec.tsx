@@ -71,7 +71,7 @@ function renderSourceAppPicker(disabled: boolean) {
   return render(
     <QueryClientProvider client={queryClient}>
       <SourceAppPicker
-        value={{ id: 'app-1', name: 'Workflow 1' }}
+        value={{ id: 'app-1', name: 'Workflow 1', mode: 'workflow', icon_url: null }}
         onChange={() => undefined}
         disabled={disabled}
       />

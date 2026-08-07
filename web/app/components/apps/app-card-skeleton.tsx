@@ -39,5 +39,3 @@ export const AppCardSkeleton = React.memo(({ count = 6 }: AppCardSkeletonProps) 
     </>
   )
 })
-
-AppCardSkeleton.displayName = 'AppCardSkeleton'

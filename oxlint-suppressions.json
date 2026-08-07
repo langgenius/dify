@@ -181,17 +181,6 @@
       "count": 2
     }
   },
-  "web/app/account/(commonLayout)/account-page/index.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 2
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 2
-    },
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/account/(commonLayout)/delete-account/components/verify-email.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 1
@@ -416,20 +405,6 @@
       "count": 4
     }
   },
-  "web/app/components/app/configuration/config/automatic/get-automatic-res.tsx": {
-    "eslint-react/set-state-in-effect": {
-      "count": 4
-    },
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    },
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/app/configuration/config/automatic/idea-output.tsx": {
     "jsx_a11y/click-events-have-key-events": {
       "count": 1
@@ -456,14 +431,6 @@
   "web/app/components/app/configuration/config/automatic/types.ts": {
     "erasable-syntax-only/enums": {
       "count": 1
-    }
-  },
-  "web/app/components/app/configuration/config/code-generator/get-code-generator-res.tsx": {
-    "eslint-react/set-state-in-effect": {
-      "count": 4
-    },
-    "typescript/no-explicit-any": {
-      "count": 2
     }
   },
   "web/app/components/app/configuration/dataset-config/context-var/var-picker.tsx": {
@@ -571,11 +538,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/create-app-dialog/app-list/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/app/create-app-dialog/app-list/sidebar.tsx": {
     "erasable-syntax-only/enums": {
       "count": 1
@@ -644,14 +606,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/switch-app-modal/index.tsx": {
-    "eslint-react/set-state-in-effect": {
-      "count": 1
-    },
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/app/text-generate/item/index.tsx": {
     "typescript/no-explicit-any": {
       "count": 3
@@ -686,11 +640,6 @@
   "web/app/components/app/workflow-log/list.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 2
-    }
-  },
-  "web/app/components/apps/app-card.tsx": {
-    "jsx_a11y/no-noninteractive-element-to-interactive-role": {
-      "count": 1
     }
   },
   "web/app/components/apps/import-from-marketplace-template-modal.tsx": {
@@ -2870,14 +2819,6 @@
       "count": 4
     }
   },
-  "web/app/components/header/account-setting/model-provider-page/hooks.ts": {
-    "eslint-react/no-unnecessary-use-prefix": {
-      "count": 1
-    },
-    "typescript/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/header/account-setting/model-provider-page/model-auth/add-custom-model.tsx": {
     "jsx_a11y/click-events-have-key-events": {
       "count": 2
@@ -2895,14 +2836,6 @@
     }
   },
   "web/app/components/header/account-setting/model-provider-page/model-auth/authorized/index.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/model-auth/config-model.tsx": {
     "jsx_a11y/click-events-have-key-events": {
       "count": 1
     },
@@ -2951,11 +2884,6 @@
   "web/app/components/header/account-setting/model-provider-page/model-modal/index.tsx": {
     "typescript/no-explicit-any": {
       "count": 5
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/model-parameter-modal/configuration-button.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 2
     }
   },
   "web/app/components/header/account-setting/model-provider-page/model-parameter-modal/index.tsx": {
@@ -3345,14 +3273,6 @@
     },
     "typescript/no-explicit-any": {
       "count": 25
-    }
-  },
-  "web/app/components/plugins/update-plugin/plugin-version-picker.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
     }
   },
   "web/app/components/rag-pipeline/components/__tests__/publish-as-knowledge-pipeline-modal.spec.tsx": {
@@ -5851,11 +5771,6 @@
       "count": 1
     }
   },
-  "web/models/app.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 2
-    }
-  },
   "web/models/datasets.ts": {
     "erasable-syntax-only/enums": {
       "count": 7
@@ -5946,7 +5861,7 @@
       "count": 1
     },
     "typescript/no-explicit-any": {
-      "count": 6
+      "count": 4
     }
   },
   "web/service/base.ts": {
@@ -5967,7 +5882,7 @@
       "count": 1
     },
     "typescript/no-explicit-any": {
-      "count": 8
+      "count": 6
     }
   },
   "web/service/datasets.ts": {
@@ -5975,7 +5890,7 @@
       "count": 1
     },
     "typescript/no-explicit-any": {
-      "count": 5
+      "count": 3
     }
   },
   "web/service/debug.ts": {
@@ -6075,17 +5990,7 @@
       "count": 1
     }
   },
-  "web/service/use-apps.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/service/use-datasource.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/service/use-education.ts": {
     "no-restricted-imports": {
       "count": 1
     }

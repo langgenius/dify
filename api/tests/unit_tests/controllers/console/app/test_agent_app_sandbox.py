@@ -7,6 +7,7 @@ from unittest.mock import MagicMock
 import pytest
 from dify_agent.client import DifyAgentClientError, DifyAgentHTTPError, DifyAgentTimeoutError
 from dify_agent.protocol import WorkspaceListResponse, WorkspaceReadResponse
+from sqlalchemy.orm import Session
 
 from controllers.console import agent_app_sandbox as module
 from models.model import App, AppMode, IconType
@@ -159,9 +160,9 @@ def test_handle_maps_sandbox_and_agent_backend_errors() -> None:
         module._handle(RuntimeError("boom"))
 
 
-def test_agent_app_sandbox_resources_proxy_service(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_agent_app_sandbox_resources_proxy_service(monkeypatch: pytest.MonkeyPatch, unbound_session: Session) -> None:
     service = _AgentAppService()
-    session = MagicMock()
+    session = unbound_session
     account = SimpleNamespace(id="account-1")
     resolver = MagicMock(return_value=_app_model())
     monkeypatch.setattr(module, "AgentAppSandboxService", lambda: service)
@@ -201,7 +202,9 @@ def test_agent_app_sandbox_resources_proxy_service(monkeypatch: pytest.MonkeyPat
     assert all(call.kwargs["session"] is session for call in resolver.call_args_list)
 
 
-def test_agent_app_sandbox_resource_returns_normalized_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_agent_app_sandbox_resource_returns_normalized_errors(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
     class FailingService:
         def get_info(self, **kwargs):
             raise AgentSandboxInspectorError("no_active_binding", "no active binding", status_code=404)
@@ -210,7 +213,7 @@ def test_agent_app_sandbox_resource_returns_normalized_errors(monkeypatch: pytes
             raise AgentSandboxInspectorError("no_active_binding", "no active binding", status_code=404)
 
     monkeypatch.setattr(module, "AgentAppSandboxService", FailingService)
-    session = MagicMock()
+    session = unbound_session
     account = SimpleNamespace(id="account-1")
     monkeypatch.setattr(module, "resolve_agent_runtime_app_model", MagicMock(return_value=_app_model()))
     monkeypatch.setattr(
