@@ -2,10 +2,11 @@
 
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SecretKeyModal from '@/app/components/develop/secret-key/secret-key-modal'
-import { useAppApiKeys } from '@/service/use-apps'
+import { consoleQuery } from '@/service/client'
 
 type ApiSecretKeyButtonProps = {
   appId: string
@@ -25,7 +26,11 @@ export function ApiSecretKeyButton({
   const { t } = useTranslation()
   const [modalOpen, setModalOpen] = useState(false)
   const isEnvironmentScope = Boolean(environmentId)
-  const apiKeysQuery = useAppApiKeys(isEnvironmentScope ? undefined : appId)
+  const apiKeysQuery = useQuery(
+    consoleQuery.apps.byResourceId.apiKeys.get.queryOptions({
+      input: isEnvironmentScope ? skipToken : { params: { resource_id: appId } },
+    }),
+  )
   const apiKeyCount = isEnvironmentScope
     ? (environmentApiKeyCount ?? 0)
     : (apiKeysQuery.data?.data.length ?? 0)

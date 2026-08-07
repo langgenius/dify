@@ -1,6 +1,5 @@
 'use client'
 
-import type { PrecheckWorkflowDeploymentResponse } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { Dispatch, SetStateAction } from 'react'
 import type { DeploymentVersion } from '../version'
 import type { DeploymentDialogRequest } from './types'
@@ -12,6 +11,7 @@ import { DialogCloseButton, DialogDescription, DialogTitle } from '@langgenius/d
 import { useTranslation } from 'react-i18next'
 import { useDeployWorkflow } from '../use-deploy-workflow'
 import { CredentialField } from './credential-field'
+import { DeploymentPrecheckAlert } from './deployment-precheck-alert'
 import { EnvironmentVariableField } from './environment-variable-field'
 import { useDeploymentConfigurationQueries } from './use-deployment-configuration-queries'
 import { useDeploymentConfigurationValues } from './use-deployment-configuration-values'
@@ -43,15 +43,6 @@ function errorMessage(error: unknown, fallback: string) {
   }
 
   return fallback
-}
-
-function precheckIssueMessages(precheck: PrecheckWorkflowDeploymentResponse) {
-  return [
-    ...precheck.unsupported_nodes.map((node) => `${node.type} · ${node.id}`),
-    ...precheck.unsupported_tool_providers.map(
-      (provider) => `${provider.provider_name} · ${provider.tool_name} (${provider.provider_type})`,
-    ),
-  ]
 }
 
 function ConfigurationError({ messages }: { messages: string[] }) {
@@ -113,14 +104,16 @@ function DeploymentConfigurationContent({
     precheck,
     precheckError,
   } = queryState
-  const precheckMessages = precheck ? precheckIssueMessages(precheck) : []
+  const unsupportedNodes = precheck?.unsupported_nodes ?? []
+  const showPrecheckAlert = !isPrechecking && !precheckError && isPrecheckBlocked
   const showConfiguration = Boolean(deploymentOptions)
 
   return (
     <>
       <div
         className={cn(
-          'shrink-0 border-b border-divider-regular pt-2 pb-4',
+          'shrink-0 pt-2',
+          showPrecheckAlert ? 'pb-0' : 'border-b border-divider-regular pb-4',
           horizontalPaddingClassName,
         )}
       >
@@ -161,15 +154,11 @@ function DeploymentConfigurationContent({
             />
           </div>
         )}
-        {!isPrechecking && !precheckError && isPrecheckBlocked && (
-          <div className={cn('py-4', horizontalPaddingClassName)}>
-            <ConfigurationError
-              messages={
-                precheckMessages.length > 0
-                  ? precheckMessages
-                  : [t(($) => $['unsupportedDslNodes.description'])]
-              }
-            />
+        {showPrecheckAlert && (
+          <div
+            className={cn('border-b border-divider-regular pt-2 pb-4', horizontalPaddingClassName)}
+          >
+            <DeploymentPrecheckAlert nodes={unsupportedNodes} />
           </div>
         )}
         {isLoadingDeploymentOptions && <ConfigurationLoading label={tCommon(($) => $.loading)} />}

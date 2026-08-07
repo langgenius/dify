@@ -9,7 +9,6 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import {
@@ -18,24 +17,22 @@ import {
   updateAppSiteConfig,
   updateAppSiteStatus,
 } from '@/service/apps'
-import { appDetailQueryKeyPrefix } from '@/service/use-apps'
+import { consoleQuery } from '@/service/client'
 import { asyncRunSafe } from '@/utils'
 
 export function useBuiltInAccessPointActions(appId: string, canEdit: boolean) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const setAppDetail = useAppStore((state) => state.setAppDetail)
-  const setNeedRefresh = useSetNeedRefreshAppList()
 
   const refreshAppDetail = useCallback(async () => {
     try {
       const appDetail = await fetchAppDetail({ url: '/apps', id: appId })
-      queryClient.setQueryData([...appDetailQueryKeyPrefix, appId], appDetail)
       setAppDetail({ ...appDetail })
     } catch (error) {
       console.error('Failed to refresh app detail:', error)
     }
-  }, [appId, queryClient, setAppDetail])
+  }, [appId, setAppDetail])
 
   const handleResult = useCallback(
     (error: Error | null, message?: I18nKeysByPrefix<'common', 'actionMsg.'>) => {
@@ -105,10 +102,14 @@ export function useBuiltInAccessPointActions(appId: string, canEdit: boolean) {
           body: params,
         }) as Promise<App>,
       )
-      if (!error) setNeedRefresh('1')
+      if (!error) {
+        void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
+        void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.starred.get.key() })
+        void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.recent.get.key() })
+      }
       handleResult(error)
     },
-    [appId, canEdit, handleResult, setNeedRefresh],
+    [appId, canEdit, handleResult, queryClient],
   )
 
   const regenerateSiteCode = useCallback(async () => {
