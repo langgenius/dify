@@ -26,7 +26,13 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
-from controllers.service_api.app.error import NotChatAppError
+from controllers.service_api.app.error import (
+    CompletionRequestError,
+    NotChatAppError,
+    ProviderModelCurrentlyNotSupportError,
+    ProviderNotInitializeError,
+    ProviderQuotaExceededError,
+)
 from controllers.service_api.app.message import (
     AppGetFeedbacksApi,
     FeedbackListQuery,
@@ -36,6 +42,8 @@ from controllers.service_api.app.message import (
     MessageListQuery,
     MessageSuggestedApi,
 )
+from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from graphon.model_runtime.errors.invoke import InvokeError
 from models.enums import FeedbackRating
 from models.model import App, AppMode, EndUser
 from services.errors.conversation import ConversationNotExistsError
@@ -147,7 +155,7 @@ class TestMessageFeedbackPayload:
 
     def test_payload_with_unicode_content(self):
         """Test payload with unicode characters."""
-        unicode_content = "很好的回答 👍 Отличный ответ"
+        unicode_content = "ΞµΞΒΞµΒ¥Β½Ξ·Ββ€Ξµβ€ΊΒΞ·Β­β€ Ο€Ββ€Β Ξ ΒΞ΅β€Ξ Β»Ξ ΞΞ΅β€΅Ξ Β½Ξ΅β€ΉΞ Ξ‰ Ξ ΞΞ΅β€Ξ Β²Ξ ΒµΞ΅β€"
         payload = MessageFeedbackPayload(content=unicode_content)
         assert payload.content == unicode_content
 
@@ -548,6 +556,47 @@ class TestMessageSuggestedApi:
 
         with app.test_request_context("/messages/m1/suggested", method="GET"):
             with pytest.raises(BadRequest):
+                handler(api, app_model=app_model, end_user=end_user, message_id="m1")
+
+    def test_suggested_conversation_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            MessageService,
+            "get_suggested_questions_after_answer",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(ConversationNotExistsError()),
+        )
+
+        api = MessageSuggestedApi()
+        handler = unwrap(api.get)
+        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context("/messages/m1/suggested", method="GET"):
+            with pytest.raises(NotFound):
+                handler(api, app_model=app_model, end_user=end_user, message_id="m1")
+
+    @pytest.mark.parametrize(
+        ("exc", "expected"),
+        [
+            (ProviderTokenNotInitError("token"), ProviderNotInitializeError),
+            (QuotaExceededError(), ProviderQuotaExceededError),
+            (ModelCurrentlyNotSupportError(), ProviderModelCurrentlyNotSupportError),
+            (InvokeError("invoke"), CompletionRequestError),
+        ],
+    )
+    def test_suggested_error_mapping(self, app: Flask, monkeypatch: pytest.MonkeyPatch, exc, expected) -> None:
+        monkeypatch.setattr(
+            MessageService,
+            "get_suggested_questions_after_answer",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(exc),
+        )
+
+        api = MessageSuggestedApi()
+        handler = unwrap(api.get)
+        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context("/messages/m1/suggested", method="GET"):
+            with pytest.raises(expected):
                 handler(api, app_model=app_model, end_user=end_user, message_id="m1")
 
     def test_internal_error(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
