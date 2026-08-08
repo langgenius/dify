@@ -492,7 +492,7 @@ class TestDatasetListApiPost:
             patch.object(type(console_ns), "payload", payload),
             patch.object(DatasetService, "create_empty_dataset", return_value=dataset),
         ):
-            _, status = method(api, DatasetCreatePayload(), MagicMock(), "tenant-1", user)
+            _, status = method(api, DatasetCreatePayload(**payload), MagicMock(), "tenant-1", user)
         assert status == 201
 
     def test_post_forbidden(self, app: Flask):
@@ -502,7 +502,7 @@ class TestDatasetListApiPost:
         user = make_account(TenantAccountRole.NORMAL)
         with app.test_request_context("/datasets", json=payload), patch.object(type(console_ns), "payload", payload):
             with pytest.raises(Forbidden):
-                method(api, DatasetCreatePayload(), MagicMock(), "tenant-1", user)
+                method(api, DatasetCreatePayload(**payload), MagicMock(), "tenant-1", user)
 
     def test_post_duplicate_name(self, app: Flask):
         api = DatasetListApi()
@@ -517,7 +517,7 @@ class TestDatasetListApiPost:
             ),
         ):
             with pytest.raises(DatasetNameDuplicateError):
-                method(api, DatasetCreatePayload(), MagicMock(), "tenant-1", user)
+                method(api, DatasetCreatePayload(**payload), MagicMock(), "tenant-1", user)
 
     def test_post_invalid_payload_missing_name(self, app: Flask):
         api = DatasetListApi()
@@ -532,7 +532,7 @@ class TestDatasetListApiPost:
         payload = {"name": "bad", "indexing_technique": "invalid-tech"}
         with app.test_request_context("/datasets", json=payload), patch.object(type(console_ns), "payload", payload):
             with pytest.raises(ValueError, match="Invalid indexing technique"):
-                method(api, DatasetCreatePayload(), MagicMock(), "tenant-1", make_account())
+                method(api, DatasetCreatePayload(**payload), MagicMock(), "tenant-1", make_account())
 
     def test_post_invalid_provider(self, app: Flask):
         api = DatasetListApi()
@@ -540,7 +540,7 @@ class TestDatasetListApiPost:
         payload = {"name": "bad", "provider": "unknown"}
         with app.test_request_context("/datasets", json=payload), patch.object(type(console_ns), "payload", payload):
             with pytest.raises(ValueError, match="Invalid provider"):
-                method(api, DatasetCreatePayload(), MagicMock(), "tenant-1", make_account())
+                method(api, DatasetCreatePayload(**payload), MagicMock(), "tenant-1", make_account())
 
 
 class TestDatasetApiGet:
@@ -1019,7 +1019,7 @@ class TestDatasetIndexingEstimateApi:
         ):
             response, status = method(
                 api,
-                IndexingEstimatePayload(info_list={}, process_rule={}, indexing_technique="high_quality"),
+                IndexingEstimatePayload(**payload),
                 session,
                 "tenant-1",
             )
@@ -1046,7 +1046,7 @@ class TestDatasetIndexingEstimateApi:
             with pytest.raises(NotFound):
                 method(
                     api,
-                    IndexingEstimatePayload(info_list={}, process_rule={}, indexing_technique="high_quality"),
+                    IndexingEstimatePayload(**payload),
                     session,
                     "tenant-1",
                 )
@@ -1070,7 +1070,7 @@ class TestDatasetIndexingEstimateApi:
             with pytest.raises(ProviderNotInitializeError):
                 method(
                     api,
-                    IndexingEstimatePayload(info_list={}, process_rule={}, indexing_technique="high_quality"),
+                    IndexingEstimatePayload(**payload),
                     session,
                     "tenant-1",
                 )
@@ -1094,7 +1094,7 @@ class TestDatasetIndexingEstimateApi:
             with pytest.raises(ProviderNotInitializeError):
                 method(
                     api,
-                    IndexingEstimatePayload(info_list={}, process_rule={}, indexing_technique="high_quality"),
+                    IndexingEstimatePayload(**payload),
                     session,
                     "tenant-1",
                 )
@@ -1117,7 +1117,7 @@ class TestDatasetIndexingEstimateApi:
             with pytest.raises(IndexingEstimateError):
                 method(
                     api,
-                    IndexingEstimatePayload(info_list={}, process_rule={}, indexing_technique="high_quality"),
+                    IndexingEstimatePayload(**payload),
                     session,
                     "tenant-1",
                 )

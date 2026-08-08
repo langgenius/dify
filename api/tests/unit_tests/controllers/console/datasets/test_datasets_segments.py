@@ -812,7 +812,7 @@ class TestChildChunkAddApi:
             ),
         ):
             response, status = method(
-                api, ChildChunkCreatePayload(), MagicMock(), "tenant-1", user, "ds-1", "doc-1", "seg-1"
+                api, ChildChunkCreatePayload(content="child"), MagicMock(), "tenant-1", user, "ds-1", "doc-1", "seg-1"
             )
         assert status == 200
         assert response["data"]["id"] == "cc-1"
@@ -844,7 +844,16 @@ class TestChildChunkAddApi:
             ),
         ):
             with pytest.raises(ChildChunkIndexingError):
-                method(api, ChildChunkCreatePayload(), MagicMock(), "tenant-1", user, "ds-1", "doc-1", "seg-1")
+                method(
+                    api,
+                    ChildChunkCreatePayload(content="child"),
+                    MagicMock(),
+                    "tenant-1",
+                    user,
+                    "ds-1",
+                    "doc-1",
+                    "seg-1",
+                )
 
     def test_post_permission_denied(self, app: Flask):
         api = ChildChunkAddApi()
@@ -865,7 +874,16 @@ class TestChildChunkAddApi:
             ),
         ):
             with pytest.raises(Forbidden):
-                method(api, ChildChunkCreatePayload(), MagicMock(), "tenant-1", user, "ds-1", "doc-1", "seg-1")
+                method(
+                    api,
+                    ChildChunkCreatePayload(content="child"),
+                    MagicMock(),
+                    "tenant-1",
+                    user,
+                    "ds-1",
+                    "doc-1",
+                    "seg-1",
+                )
 
 
 class TestChildChunkUpdateApi:
@@ -988,7 +1006,17 @@ class TestChildChunkUpdateApi:
             ),
         ):
             with pytest.raises(NotFound):
-                method(api, ChildChunkUpdatePayload(), MagicMock(), "tenant-1", user, "ds-1", "doc-1", "seg-1", "cc-1")
+                method(
+                    api,
+                    ChildChunkUpdatePayload(content="updated child"),
+                    MagicMock(),
+                    "tenant-1",
+                    user,
+                    "ds-1",
+                    "doc-1",
+                    "seg-1",
+                    "cc-1",
+                )
 
 
 class TestSegmentListAdvancedCases:

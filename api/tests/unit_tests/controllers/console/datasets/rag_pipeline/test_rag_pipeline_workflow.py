@@ -68,7 +68,7 @@ def test_draft_rag_pipeline_workflow_get_serializes_response_model(monkeypatch: 
     api = module.DraftRagPipelineApi()
     handler = unwrap_all(api.get)
 
-    response = handler(api, _pipeline())
+    response = handler(api, NodeIdQuery(), _pipeline())
 
     assert response["id"] == "workflow-1"
     assert response["graph"] == {"nodes": [], "edges": []}
@@ -149,6 +149,7 @@ def test_rag_pipeline_workflow_patch_serializes_response_model(
         ):
             response = handler(
                 api,
+                WorkflowUpdatePayload(),
                 _account(),
                 pipeline=_pipeline(),
                 workflow_id="workflow-1",
@@ -171,7 +172,7 @@ def test_default_rag_pipeline_block_configs_serializes_root_response(monkeypatch
     api = module.DefaultRagPipelineBlockConfigsApi()
     handler = unwrap_all(api.get)
 
-    response = handler(api, _pipeline())
+    response = handler(api, NodeIdQuery(), _pipeline())
 
     assert response == block_configs
 
@@ -197,7 +198,7 @@ def test_draft_rag_pipeline_second_step_parameters_serializes_variables(app, mon
     handler = unwrap_all(api.get)
 
     with app.test_request_context("/?node_id=node-1"):
-        response = handler(api, _pipeline())
+        response = handler(api, NodeIdQuery(), _pipeline())
 
     assert response["variables"] == variables
 
@@ -217,6 +218,6 @@ def test_rag_pipeline_recommended_plugins_serializes_known_envelope(app, monkeyp
     handler = unwrap_all(api.get)
 
     with app.test_request_context("/?type=tool"):
-        response = handler(api, "tenant-1", _account())
+        response = handler(api, RagPipelineRecommendedPluginQuery(), "tenant-1", _account())
 
     assert response == recommended_plugins
