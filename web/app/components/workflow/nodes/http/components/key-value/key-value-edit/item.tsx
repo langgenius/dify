@@ -34,6 +34,8 @@ type Props = Readonly<{
   onRemove: () => void
   isLastItem: boolean
   onAdd: () => void
+  index: number
+  onAdvance: (index: number, isLastItem: boolean) => void
   isSupportFile?: boolean
   keyNotSupportVar?: boolean
   insertVarTipToLeft?: boolean
@@ -50,12 +52,43 @@ const KeyValueItem: FC<Props> = ({
   onRemove,
   isLastItem,
   onAdd,
+  index,
+  onAdvance,
   isSupportFile,
   keyNotSupportVar,
   insertVarTipToLeft,
 }) => {
   const { t } = useTranslation()
   const hasValuePayload = payload.type === 'file' ? !!payload.file?.length : !!payload.value
+
+  // While the variable-insert typeahead menu is open, Enter/Tab belong to it
+  // (they select a variable), so we must not hijack them. The menu renders in a
+  // portal with a stable id, which lets us detect it without touching the
+  // shared editor component.
+  const isVarMenuOpen = () => !!document.getElementById('typeahead-menu')
+
+  // KEY field: suppress Enter. A Lexical newline in the key becomes `key\n`,
+  // which strToKeyValueList splits into two rows, migrating the value onto a new
+  // empty-key row — i.e. data corruption.
+  const handleKeyFieldKeyDownCapture = useCallback((e: KeyboardEvent) => {
+    if (e.key !== 'Enter' || isVarMenuOpen()) return
+    e.preventDefault()
+    e.stopPropagation()
+  }, [])
+
+  // VALUE field: Enter or plain Tab commits the row and advances to the next
+  // row's key (creating a new trailing row when on the last row). Shift+Tab is
+  // left alone for normal reverse focus traversal.
+  const handleValueFieldKeyDownCapture = useCallback(
+    (e: KeyboardEvent) => {
+      const isAdvanceKey = e.key === 'Enter' || (e.key === 'Tab' && !e.shiftKey)
+      if (!isAdvanceKey || isVarMenuOpen()) return
+      e.preventDefault()
+      e.stopPropagation()
+      onAdvance(index, isLastItem)
+    },
+    [index, isLastItem, onAdvance],
+  )
 
   const handleChange = useCallback(
     (key: string) => {
@@ -89,7 +122,10 @@ const KeyValueItem: FC<Props> = ({
 
   return (
     // group class name is for hover row show remove button
-    <div className={cn(className, 'group flex min-h-7 border-t border-divider-regular')}>
+    <div
+      data-kv-row
+      className={cn(className, 'group flex min-h-7 border-t border-divider-regular')}
+    >
       <div
         className={cn('shrink-0 border-r border-divider-regular', isSupportFile ? 'w-35' : 'w-1/2')}
       >
@@ -103,6 +139,8 @@ const KeyValueItem: FC<Props> = ({
             placeholder={t(($) => $[`${i18nPrefix}.key`], { ns: 'workflow' })!}
             readOnly={readonly}
             insertVarTipToLeft={insertVarTipToLeft}
+            fieldRole="key"
+            onFieldKeyDownCapture={handleKeyFieldKeyDownCapture}
           />
         ) : (
           <input
@@ -161,6 +199,8 @@ const KeyValueItem: FC<Props> = ({
             readOnly={readonly}
             isSupportFile={isSupportFile}
             insertVarTipToLeft={insertVarTipToLeft}
+            fieldRole="value"
+            onFieldKeyDownCapture={handleValueFieldKeyDownCapture}
           />
         )}
       </div>

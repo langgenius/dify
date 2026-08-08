@@ -4,7 +4,7 @@ import type { KeyValue } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { produce } from 'immer'
 import * as React from 'react'
-import { useCallback } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import KeyValueItem from './item'
 
@@ -59,10 +59,46 @@ const KeyValueList: FC<Props> = ({
     [list, onChange],
   )
 
+  const containerRef = useRef<HTMLDivElement>(null)
+  // Set when a keyboard advance has requested focus on a row that does not exist
+  // yet (a new trailing row being created); flushed once that row has rendered.
+  const pendingFocusIndexRef = useRef<number | null>(null)
+
+  const focusRowKey = useCallback((rowIndex: number) => {
+    const rows = containerRef.current?.querySelectorAll<HTMLElement>('[data-kv-row]')
+    const keyField = rows?.[rowIndex]?.querySelector<HTMLElement>(
+      '[data-kv-field="key"] [contenteditable="true"], [data-kv-field="key"] textarea, [data-kv-field="key"] input',
+    )
+    keyField?.focus()
+    return keyField ?? null
+  }, [])
+
+  // VALUE-field Enter/Tab advance. On the last row we create a new trailing row
+  // (mirroring the existing click-to-add behaviour) and focus it once it renders;
+  // otherwise we move focus to the already-present next row's key field.
+  const advanceFromRow = useCallback(
+    (index: number, isLastItem: boolean) => {
+      if (isLastItem) {
+        onAdd()
+        pendingFocusIndexRef.current = index + 1
+      } else {
+        focusRowKey(index + 1)
+      }
+    },
+    [onAdd, focusRowKey],
+  )
+
+  useEffect(() => {
+    const target = pendingFocusIndexRef.current
+    if (target == null) return
+    // Only clear the request once the target row actually exists and takes focus.
+    if (focusRowKey(target)) pendingFocusIndexRef.current = null
+  }, [list, focusRowKey])
+
   if (!Array.isArray(list)) return null
 
   return (
-    <div className="overflow-hidden rounded-lg border border-divider-regular">
+    <div ref={containerRef} className="overflow-hidden rounded-lg border border-divider-regular">
       <div
         className={cn(
           'flex h-7 items-center system-xs-medium-uppercase leading-7 text-text-tertiary',
@@ -100,6 +136,8 @@ const KeyValueList: FC<Props> = ({
           onRemove={handleRemove(index)}
           isLastItem={index === list.length - 1}
           onAdd={onAdd}
+          index={index}
+          onAdvance={advanceFromRow}
           readonly={readonly}
           canRemove={list.length > 1}
           isSupportFile={isSupportFile}

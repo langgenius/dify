@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import type { Var } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
 import RemoveButton from '@/app/components/workflow/nodes/_base/components/remove-button'
@@ -22,6 +22,11 @@ type Props = Readonly<{
   readOnly?: boolean
   isSupportFile?: boolean
   insertVarTipToLeft?: boolean
+  // Identifies the field within a row so the parent can target it for focus
+  // (rendered as `data-kv-field`), and a capture-phase keydown handler used to
+  // intercept Enter/Tab before the inner Lexical editor processes them.
+  fieldRole?: 'key' | 'value'
+  onFieldKeyDownCapture?: (e: KeyboardEvent) => void
 }>
 
 const InputItem: FC<Props> = ({
@@ -36,12 +41,27 @@ const InputItem: FC<Props> = ({
   readOnly,
   isSupportFile,
   insertVarTipToLeft,
+  fieldRole,
+  onFieldKeyDownCapture,
 }) => {
   const { t } = useTranslation()
 
   const hasValue = !!value
 
   const [isFocus, setIsFocus] = useState(false)
+
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  const keyDownHandlerRef = useRef(onFieldKeyDownCapture)
+  keyDownHandlerRef.current = onFieldKeyDownCapture
+  useEffect(() => {
+    const el = wrapperRef.current
+    if (!el) return
+    // Capture phase so we can act before the inner Lexical editor's own keydown
+    // handling runs; stopping propagation there prevents a newline insertion.
+    const handler = (e: KeyboardEvent) => keyDownHandlerRef.current?.(e)
+    el.addEventListener('keydown', handler, true)
+    return () => el.removeEventListener('keydown', handler, true)
+  }, [])
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar: (varPayload: Var) => {
@@ -61,7 +81,11 @@ const InputItem: FC<Props> = ({
   )
 
   return (
-    <div className={cn(className, 'hover:cursor-text hover:bg-state-base-hover', 'relative flex')}>
+    <div
+      ref={wrapperRef}
+      data-kv-field={fieldRole}
+      className={cn(className, 'hover:cursor-text hover:bg-state-base-hover', 'relative flex')}
+    >
       {!readOnly ? (
         <Input
           instanceId={instanceId}
