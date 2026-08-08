@@ -1302,11 +1302,9 @@ class SkillManagementService:
             return []
         if not isinstance(suggestions, list):
             return []
-        return [
-            suggestion.strip()
-            for suggestion in suggestions
-            if isinstance(suggestion, str) and suggestion.strip()
-        ][:3]
+        return [suggestion.strip() for suggestion in suggestions if isinstance(suggestion, str) and suggestion.strip()][
+            :3
+        ]
 
     def _resolve_assistant_model(
         self,
