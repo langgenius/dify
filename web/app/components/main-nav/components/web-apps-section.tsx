@@ -232,7 +232,7 @@ const WebAppsSectionContent = () => {
                   ))}
                 </div>
               )}
-              {installedAppsQuery.isFetchingNextPage && <InstalledAppPaginationSkeleton />}
+              {installedAppsQuery.hasNextPage && <InstalledAppPaginationSkeleton />}
               <InfiniteScrollSentinel
                 canLoadMore={canLoadMore}
                 onLoadMore={() => {
