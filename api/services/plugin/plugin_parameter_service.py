@@ -59,7 +59,12 @@ class PluginParameterService:
             case "trigger":
                 subscription: TriggerProviderSubscriptionApiEntity | SubscriptionBuilder | None
                 if credential_id:
-                    subscription = TriggerSubscriptionBuilderService.get_subscription_builder(credential_id)
+                    subscription = TriggerSubscriptionBuilderService.get_subscription_builder(
+                        tenant_id=tenant_id,
+                        user_id=user_id,
+                        provider_id=TriggerProviderID(f"{plugin_id}/{provider}"),
+                        subscription_builder_id=credential_id,
+                    )
                     if not subscription:
                         trigger_subscription = TriggerProviderService.get_subscription_by_id(tenant_id, credential_id)
                         subscription = trigger_subscription.to_api_entity() if trigger_subscription else None

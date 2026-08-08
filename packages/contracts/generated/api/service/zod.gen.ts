@@ -872,6 +872,8 @@ export const zDocumentStatusResponse = z.object({
   completed_at: z.int().nullable(),
   completed_segments: z.int().nullish(),
   error: z.string().nullable(),
+  error_code: z.string().nullish(),
+  estimated_vector_space_mb: z.int().nullish(),
   id: z.string(),
   indexing_status: z.string(),
   parsing_completed_at: z.int().nullable(),
@@ -880,6 +882,7 @@ export const zDocumentStatusResponse = z.object({
   splitting_completed_at: z.int().nullable(),
   stopped_at: z.int().nullable(),
   total_segments: z.int().nullish(),
+  vector_space_limit_mb: z.int().nullish(),
 })
 
 /**

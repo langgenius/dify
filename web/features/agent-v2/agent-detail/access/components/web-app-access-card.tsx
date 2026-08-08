@@ -39,7 +39,8 @@ export function WebAppAccessCard({
     site?.app_base_url || (typeof window === 'undefined' ? '' : window.location.origin)
   const webAppUrl = getAgentWebAppUrl(agent)
   const isEnabled = Boolean(agent?.enable_site)
-  const canManageWebApp = Boolean(appId)
+  const accessReady = Boolean(agent?.access_ready)
+  const canManageWebApp = Boolean(appId && accessReady)
   const embeddedConfig =
     appId && accessToken
       ? {

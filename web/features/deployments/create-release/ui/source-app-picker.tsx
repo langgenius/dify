@@ -1,6 +1,7 @@
 'use client'
+import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import type { SourceAppPickerValue } from '../state'
-import type { App } from '@/types/app'
+import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Combobox,
@@ -37,16 +38,17 @@ const SOURCE_APP_PICKER_SKELETON_KEYS = [
   'third-source-app',
 ]
 
-function sourceAppSearchText(app: App) {
+function sourceAppSearchText(app: AppPartial) {
   return `${app.name} ${app.id}`.toLowerCase()
 }
 
-function isSameApp(app: App, selectedApp: App) {
+function isSameApp(app: AppPartial, selectedApp: AppPartial) {
   return app.id === selectedApp.id
 }
 
 function SourceAppTrigger({ app }: { app?: SourceAppPickerValue }) {
   const { t } = useTranslation('deployments')
+  const appIconType = zIconType.safeParse(app?.icon_type).data ?? null
 
   return (
     <span
@@ -62,8 +64,8 @@ function SourceAppTrigger({ app }: { app?: SourceAppPickerValue }) {
         <AppIcon
           className="shrink-0"
           size="xs"
-          iconType={app.icon_type}
-          icon={app.icon}
+          iconType={appIconType}
+          icon={app.icon ?? undefined}
           background={app.icon_background}
           imageUrl={app.icon_url}
         />
@@ -92,15 +94,17 @@ function SourceAppTrigger({ app }: { app?: SourceAppPickerValue }) {
   )
 }
 
-function SourceAppOption({ app }: { app: App }) {
+function SourceAppOption({ app }: { app: AppPartial }) {
+  const appIconType = zIconType.safeParse(app.icon_type).data ?? null
+
   return (
     <ComboboxItem value={app} className="mx-0 grid-cols-[minmax(0,1fr)] gap-3 py-1 pr-3 pl-2">
       <ComboboxItemText className="flex min-w-0 items-center gap-3 px-0">
         <AppIcon
           className="shrink-0"
           size="xs"
-          iconType={app.icon_type}
-          icon={app.icon}
+          iconType={appIconType}
+          icon={app.icon ?? undefined}
           background={app.icon_background}
           imageUrl={app.icon_url}
         />
@@ -134,7 +138,7 @@ export function SourceAppPicker({
   disabled = false,
 }: {
   value?: SourceAppPickerValue
-  onChange: (app: App) => void
+  onChange: (app: AppPartial) => void
   disabled?: boolean
 }) {
   const { t } = useTranslation('deployments')
@@ -166,7 +170,7 @@ export function SourceAppPicker({
   )
 
   return (
-    <Combobox<App>
+    <Combobox<AppPartial>
       items={apps}
       value={selectedApp}
       open={!disabled && isShow}
@@ -227,7 +231,7 @@ export function SourceAppPicker({
             {(sourceAppsIsLoading || sourceAppsIsFetchingNextPage) && apps.length === 0 && (
               <SourceAppPickerSkeleton />
             )}
-            <ComboboxList<App> className="max-h-none p-0">
+            <ComboboxList<AppPartial> className="max-h-none p-0">
               {(app) => <SourceAppOption key={app.id} app={app} />}
             </ComboboxList>
             {!(sourceAppsIsLoading || sourceAppsIsFetchingNextPage) && (

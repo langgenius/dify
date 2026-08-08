@@ -269,7 +269,7 @@ workflow:
 """
 
     result = service.import_snippet(
-        account=SimpleNamespace(current_tenant_id="tenant-1"),
+        account=SimpleNamespace(id="account-1", current_tenant_id="tenant-1"),
         import_mode=ImportMode.YAML_CONTENT.value,
         yaml_content=yaml_content,
         name="Override",
@@ -278,7 +278,10 @@ workflow:
 
     assert result.status == ImportStatus.PENDING
     setex.assert_called_once()
+    assert setex.call_args.args[0] == f"snippet_import_info:{result.id}"
     pending = SnippetPendingData.model_validate_json(setex.call_args.args[2])
+    assert pending.tenant_id == "tenant-1"
+    assert pending.account_id == "account-1"
     assert pending.name == "Override"
     assert pending.description == "Override description"
 
@@ -359,7 +362,9 @@ def test_confirm_import_returns_failed_when_pending_data_missing(monkeypatch):
     service = SnippetDslService(session=SimpleNamespace())
     monkeypatch.setattr("services.snippet_dsl_service.redis_client.get", Mock(return_value=None))
 
-    result = service.confirm_import(import_id="missing", account=SimpleNamespace(current_tenant_id="tenant-1"))
+    result = service.confirm_import(
+        import_id="missing", account=SimpleNamespace(id="account-1", current_tenant_id="tenant-1")
+    )
 
     assert result.status == ImportStatus.FAILED
     assert result.error == "Import information expired or does not exist"
@@ -369,13 +374,15 @@ def test_confirm_import_returns_failed_for_invalid_pending_payload(monkeypatch):
     service = SnippetDslService(session=SimpleNamespace())
     monkeypatch.setattr("services.snippet_dsl_service.redis_client.get", Mock(return_value=object()))
 
-    result = service.confirm_import(import_id="bad", account=SimpleNamespace(current_tenant_id="tenant-1"))
+    result = service.confirm_import(
+        import_id="bad", account=SimpleNamespace(id="account-1", current_tenant_id="tenant-1")
+    )
 
     assert result.status == ImportStatus.FAILED
     assert result.error == "Invalid import information"
 
 
-def test_confirm_import_creates_snippet_from_pending_data(monkeypatch):
+def test_confirm_import_is_scoped_to_its_owner(monkeypatch):
     service = SnippetDslService(session=SimpleNamespace(scalar=Mock(return_value=None)))
     account = SimpleNamespace(id="account-1", current_tenant_id="tenant-1")
     snippet = SimpleNamespace(id="snippet-new")
@@ -391,6 +398,8 @@ workflow:
     edges: []
 """
     pending = SnippetPendingData(
+        tenant_id="tenant-1",
+        account_id="account-1",
         import_mode="yaml-content",
         yaml_content=yaml_content,
         name="Override name",
@@ -399,10 +408,21 @@ workflow:
     )
     create_or_update = Mock(return_value=snippet)
     monkeypatch.setattr(service, "_create_or_update_snippet", create_or_update)
-    monkeypatch.setattr("services.snippet_dsl_service.redis_client.get", Mock(return_value=pending.model_dump_json()))
+    redis_key = "snippet_import_info:import-1"
+    monkeypatch.setattr(
+        "services.snippet_dsl_service.redis_client.get",
+        Mock(side_effect=lambda key: pending.model_dump_json() if key == redis_key else None),
+    )
     redis_delete = Mock()
     monkeypatch.setattr("services.snippet_dsl_service.redis_client.delete", redis_delete)
 
+    for other_account in (
+        SimpleNamespace(id="account-1", current_tenant_id="tenant-2"),
+        SimpleNamespace(id="account-2", current_tenant_id="tenant-1"),
+    ):
+        assert service.confirm_import(import_id="import-1", account=other_account).status == ImportStatus.FAILED
+
+    create_or_update.assert_not_called()
     result = service.confirm_import(import_id="import-1", account=account)
 
     assert result.status == ImportStatus.COMPLETED
@@ -414,7 +434,7 @@ workflow:
     assert kwargs["account"] is account
     assert kwargs["name"] == "Override name"
     assert kwargs["description"] == "Override description"
-    redis_delete.assert_called_once_with("snippet_import_info:import-1")
+    redis_delete.assert_called_once_with(redis_key)
 
 
 def test_confirm_import_returns_failed_for_non_mapping_yaml(monkeypatch):
@@ -426,7 +446,9 @@ def test_confirm_import_returns_failed_for_non_mapping_yaml(monkeypatch):
     )
     monkeypatch.setattr("services.snippet_dsl_service.redis_client.get", Mock(return_value=pending.model_dump_json()))
 
-    result = service.confirm_import(import_id="import-1", account=SimpleNamespace(current_tenant_id="tenant-1"))
+    result = service.confirm_import(
+        import_id="import-1", account=SimpleNamespace(id="account-1", current_tenant_id="tenant-1")
+    )
 
     assert result.status == ImportStatus.FAILED
     assert result.error == "Invalid YAML format: expected a dictionary"
@@ -445,7 +467,7 @@ def test_confirm_import_returns_failed_when_create_or_update_raises(monkeypatch)
 
     result = service.confirm_import(
         import_id="import-1",
-        account=SimpleNamespace(current_tenant_id="tenant-1"),
+        account=SimpleNamespace(id="account-1", current_tenant_id="tenant-1"),
     )
 
     assert result.status == ImportStatus.FAILED

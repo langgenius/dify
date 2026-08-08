@@ -45,7 +45,7 @@ const MCPCard = ({ currentProvider, data, onEdit, onDelete, handleSelect }: Prop
         aria-haspopup="dialog"
         aria-expanded={currentProvider?.id === data.id}
         onClick={handleSelectProvider}
-        className="flex w-full cursor-pointer flex-col rounded-xl text-left outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
+        className="flex w-full cursor-pointer flex-col rounded-xl text-left focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset"
       >
         <div className="flex shrink-0 items-center gap-3 rounded-t-xl p-4">
           <div className="shrink-0 overflow-hidden rounded-lg border-[0.5px] border-effects-icon-border">

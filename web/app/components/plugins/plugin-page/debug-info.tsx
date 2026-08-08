@@ -73,7 +73,7 @@ function DebugInfo({
                     )}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex cursor-pointer items-center gap-1 rounded-xs system-xs-regular text-text-accent outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                    className="flex cursor-pointer items-center gap-1 rounded-xs system-xs-regular text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                   >
                     <span>{t(($) => $[`${i18nPrefix}.viewDocs`], { ns: 'plugin' })}</span>
                     <span aria-hidden className="i-ri-arrow-right-up-line size-3" />

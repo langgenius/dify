@@ -548,7 +548,7 @@ class TestInstalledAppsCreateApi:
             payload_patch({"app_id": "a1"}),
             patch.object(module.db, "session", session),
         ):
-            result = method(api, tenant_id)
+            result = method(api, module.InstalledAppCreatePayload.model_validate({"app_id": "a1"}), tenant_id)
 
         assert result == {"message": "App installed successfully"}
         assert recommended.install_count == 1
@@ -566,7 +566,7 @@ class TestInstalledAppsCreateApi:
             patch.object(module.db, "session", session),
         ):
             with pytest.raises(NotFound):
-                method(api, tenant_id)
+                method(api, module.InstalledAppCreatePayload.model_validate({"app_id": "a1"}), tenant_id)
 
     def test_post_app_not_public(self, app: Flask, tenant_id: str, payload_patch: PayloadPatch) -> None:
         api = module.InstalledAppsListApi()
@@ -587,7 +587,7 @@ class TestInstalledAppsCreateApi:
             patch.object(module.db, "session", session),
         ):
             with pytest.raises(Forbidden):
-                method(api, tenant_id)
+                method(api, module.InstalledAppCreatePayload.model_validate({"app_id": "a1"}), tenant_id)
 
 
 class TestInstalledAppApi:
@@ -665,7 +665,7 @@ class TestInstalledAppApi:
             payload_patch({"is_pinned": True}),
             patch.object(module.db, "session"),
         ):
-            result = method(installed_app)
+            result = method(api, module.InstalledAppUpdatePayload.model_validate({"is_pinned": True}), installed_app)
 
         assert installed_app.is_pinned is True
         assert result["result"] == "success"
@@ -675,7 +675,7 @@ class TestInstalledAppApi:
         method = unwrap(api.patch)
 
         with app.test_request_context("/", json={}), payload_patch({}), patch.object(module.db, "session"):
-            result = method(installed_app)
+            result = method(api, module.InstalledAppUpdatePayload.model_validate({}), installed_app)
 
         assert result["result"] == "success"
 
@@ -869,7 +869,9 @@ def test_sqlite_post_installs_public_recommended_app_and_is_idempotent(
             payload_patch({"app_id": app_model.id}),
             patch.object(module.db, "session", database),
         ):
-            assert method(api, tenant_id) == {"message": "App installed successfully"}
+            assert method(
+                api, module.InstalledAppCreatePayload.model_validate({"app_id": app_model.id}), tenant_id
+            ) == {"message": "App installed successfully"}
 
     # End the request-scoped session so this assertion only observes committed data.
     bind = database.get_bind()
@@ -899,7 +901,7 @@ def test_sqlite_post_enforces_recommendation_and_public_state(
         patch.object(module.db, "session", database),
         pytest.raises(NotFound),
     ):
-        method(api, tenant_id)
+        method(api, module.InstalledAppCreatePayload.model_validate({"app_id": "missing"}), tenant_id)
 
     private_app = _persist_app(database, app_id="private", public=False)
     database.add(
@@ -918,7 +920,7 @@ def test_sqlite_post_enforces_recommendation_and_public_state(
         patch.object(module.db, "session", database),
         pytest.raises(Forbidden),
     ):
-        method(api, tenant_id)
+        method(api, module.InstalledAppCreatePayload.model_validate({"app_id": private_app.id}), tenant_id)
 
 
 def test_sqlite_delete_removes_foreign_installed_app_and_rejects_owned_app(
@@ -957,7 +959,12 @@ def test_sqlite_patch_persists_pin_and_noop_payload(
         payload_patch({"is_pinned": True}),
         patch.object(module.db, "session", database),
     ):
-        assert unwrap(api.patch)(installed)["result"] == "success"
+        assert (
+            unwrap(api.patch)(api, module.InstalledAppUpdatePayload.model_validate({"is_pinned": True}), installed)[
+                "result"
+            ]
+            == "success"
+        )
     database.expire_all()
     persisted_installed_app = database.get(InstalledApp, installed.id)
     assert persisted_installed_app is not None
@@ -968,4 +975,7 @@ def test_sqlite_patch_persists_pin_and_noop_payload(
         payload_patch({}),
         patch.object(module.db, "session", database),
     ):
-        assert unwrap(api.patch)(installed)["result"] == "success"
+        assert (
+            unwrap(api.patch)(api, module.InstalledAppUpdatePayload.model_validate({}), installed)["result"]
+            == "success"
+        )

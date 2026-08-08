@@ -689,6 +689,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
           bottomAction={
             buildDraft.isActive ? (
               <AgentBuildDraftBar
+                changeSummary={buildDraft.changeSummary}
                 changesCount={buildDraft.changesCount}
                 disabled={buildDraftActionsDisabled}
                 isApplying={isApplyingInlineBuildDraft}

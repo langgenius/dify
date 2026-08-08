@@ -2,7 +2,8 @@ import type { IConfiguration } from '@cucumber/cucumber'
 import './scripts/env-register'
 
 const hasCliTags = process.argv.some((arg) => arg === '--tags' || arg.startsWith('--tags='))
-const defaultNonExternalTags = 'not @prepared and not @external-model and not @external-tool'
+const defaultNonExternalTags =
+  'not @axe and not @prepared and not @external-model and not @external-tool'
 const defaultTags =
   process.env.E2E_CUCUMBER_TAGS || (hasCliTags ? undefined : defaultNonExternalTags)
 

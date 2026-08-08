@@ -22,6 +22,7 @@ from dify_agent.protocol import (
     RunCancelledEvent,
     RunEvent,
     RunFailedEvent,
+    RunFailureType,
     RunStartedEvent,
     RunSucceededEvent,
 )
@@ -96,6 +97,7 @@ class AgentBackendRunFailedInternalEvent(AgentBackendInternalEventBase):
 
     type: Literal[AgentBackendInternalEventType.RUN_FAILED] = AgentBackendInternalEventType.RUN_FAILED
     error: str
+    error_type: RunFailureType | None = None
     reason: str | None = None
 
 
@@ -180,6 +182,7 @@ class AgentBackendRunEventAdapter:
                         run_id=event.run_id,
                         source_event_id=event.id,
                         error=event.data.error,
+                        error_type=event.data.error_type,
                         reason=event.data.reason,
                     )
                 ]
