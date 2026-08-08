@@ -8,7 +8,7 @@ This guide, like Dify itself, is a constant work in progress. We highly apprecia
 
 In terms of licensing, please take a minute to read our short [License and Contributor Agreement](./LICENSE). The community also adheres to the [code of conduct](https://github.com/langgenius/.github/blob/main/CODE_OF_CONDUCT.md).
 
-## Before you jump in
+## Before You Jump In
 
 Looking for something to tackle? Browse our [good first issues](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22) and pick one to get started!
 
@@ -20,7 +20,7 @@ Join the fun, contribute, and let's build something awesome together! 💡✨
 
 Don't forget to link an existing issue or open a new issue in the PR's description.
 
-### Bug reports
+### Bug Reports
 
 > [!IMPORTANT]
 > Please make sure to include the following information when submitting a bug report:
@@ -40,7 +40,7 @@ How we prioritize:
 | Non-critical bugs, performance boosts | Medium Priority |
 | Minor fixes (typos, confusing but working UI) | Low Priority |
 
-### Feature requests
+### Feature Requests
 
 > [!NOTE]
 > Please make sure to include the following information when submitting a feature request:
@@ -59,7 +59,7 @@ How we prioritize:
 | Non-core features and minor enhancements | Low Priority |
 | Valuable but not immediate | Future-Feature |
 
-## Submitting your PR
+## Submitting Your PR
 
 ### Pull Request Process
 
@@ -71,7 +71,7 @@ How we prioritize:
 1. Please link the issue in the PR description, `fixes #<issue_number>`
 1. Get merged!
 
-### Setup the project
+### Set Up the Project
 
 #### Frontend
 
