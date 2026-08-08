@@ -7,12 +7,14 @@ type ErrorMessageProps = {
   message: string
 } & React.HTMLAttributes<HTMLDivElement>
 
-const ErrorMessage: FC<ErrorMessageProps> = ({
-  message,
-  className,
-}) => {
+const ErrorMessage: FC<ErrorMessageProps> = ({ message, className }) => {
   return (
-    <div className={cn('mt-1 flex gap-x-1 rounded-lg border-[0.5px] border-components-panel-border bg-toast-error-bg p-2', className)}>
+    <div
+      className={cn(
+        'mt-1 flex gap-x-1 rounded-lg border-[0.5px] border-components-panel-border bg-toast-error-bg p-2',
+        className,
+      )}
+    >
       <RiErrorWarningFill className="size-4 shrink-0 text-text-destructive" />
       <div className="max-h-12 grow overflow-y-auto system-xs-medium wrap-break-word whitespace-pre-line text-text-primary">
         {message}

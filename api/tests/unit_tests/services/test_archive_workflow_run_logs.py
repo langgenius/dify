@@ -9,8 +9,6 @@ This module contains tests for:
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
-from services.retention.workflow_run.constants import ARCHIVE_BUNDLE_NAME
-
 
 class TestWorkflowRunArchiver:
     """Tests for the WorkflowRunArchiver class."""
@@ -37,18 +35,20 @@ class TestWorkflowRunArchiver:
         assert archiver.limit == 50
         assert archiver.dry_run is True
 
-    def test_get_archive_key(self):
-        """Test archive key generation."""
+    def test_get_bundle_manifest_key(self):
+        """Test V2 bundle manifest key generation."""
         from services.retention.workflow_run.archive_paid_plan_workflow_run import WorkflowRunArchiver
 
-        archiver = WorkflowRunArchiver.__new__(WorkflowRunArchiver)
+        archiver = WorkflowRunArchiver(run_shard_index=1, run_shard_total=4)
 
         mock_run = MagicMock()
-        mock_run.tenant_id = "tenant-123"
-        mock_run.app_id = "app-999"
+        mock_run.tenant_id = "9enant-123"
         mock_run.id = "run-456"
         mock_run.created_at = datetime(2024, 1, 15, 12, 0, 0)
 
-        key = archiver._get_archive_key(mock_run)
+        identity = archiver._build_bundle_identity([mock_run])
+        key = archiver._get_manifest_object_key(identity)
 
-        assert key == f"tenant-123/app_id=app-999/year=2024/month=01/workflow_run_id=run-456/{ARCHIVE_BUNDLE_NAME}"
+        assert key.endswith("/manifest.json")
+        assert "workflow-runs/v2/tenant_prefix=9/tenant_id=9enant-123/year=2024/month=01" in key
+        assert "/shard=01-of-04/" in key

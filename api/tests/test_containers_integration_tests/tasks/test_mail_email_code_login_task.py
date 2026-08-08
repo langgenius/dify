@@ -10,6 +10,7 @@ All tests use the testcontainers infrastructure to ensure proper database isolat
 and realistic testing scenarios with actual PostgreSQL and Redis instances.
 """
 
+import logging
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -543,7 +544,10 @@ class TestSendEmailCodeLoginMailTask:
         redis_client.delete(cache_key)
 
     def test_send_email_code_login_mail_task_error_handling_comprehensive(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies,
+        caplog: pytest.LogCaptureFixture,
     ):
         """
         Test comprehensive error handling for email code login mail task.
@@ -559,6 +563,7 @@ class TestSendEmailCodeLoginMailTask:
         test_email = fake.email()
         test_code = "123456"
         test_language = "en-US"
+        caplog.set_level(logging.ERROR, logger="tasks.mail_email_code_login")
 
         # Test different exception types
         exception_types = [
@@ -571,31 +576,26 @@ class TestSendEmailCodeLoginMailTask:
 
         for error_name, exception in exception_types:
             # Reset mocks for each test case
+            caplog.clear()
             mock_email_service_instance = mock_external_service_dependencies["email_service_instance"]
             mock_email_service_instance.reset_mock()
             mock_email_service_instance.send_email.side_effect = exception
 
-            # Mock logging to capture error messages
-            with patch("tasks.mail_email_code_login.logger", autospec=True) as mock_logger:
-                # Act: Execute the task - it should handle the exception gracefully
-                send_email_code_login_mail_task(
-                    language=test_language,
-                    to=test_email,
-                    code=test_code,
-                )
+            # Act: Execute the task - it should handle the exception gracefully
+            send_email_code_login_mail_task(
+                language=test_language,
+                to=test_email,
+                code=test_code,
+            )
 
-                # Assert: Verify error handling
-                # Verify email service was called (and failed)
-                mock_email_service_instance.send_email.assert_called_once()
+            # Assert: Verify error handling
+            # Verify email service was called (and failed)
+            mock_email_service_instance.send_email.assert_called_once()
 
-                # Verify error was logged
-                error_calls = [
-                    call
-                    for call in mock_logger.exception.call_args_list
-                    if f"Send email code login mail to {test_email} failed" in str(call)
-                ]
-                # Check if any exception call was made (the exact message format may vary)
-                assert mock_logger.exception.call_count >= 1, f"Error should be logged for {error_name}"
+            # Verify error was logged
+            assert f"Send email code login mail to {test_email} failed" in caplog.messages, (
+                f"Error should be logged for {error_name}"
+            )
 
             # Reset side effect for next iteration
             mock_email_service_instance.send_email.side_effect = None

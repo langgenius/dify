@@ -1,139 +1,204 @@
-import { cn } from '@langgenius/dify-ui/cn'
+'use client'
+
+import type { Role } from '@/models/access-control'
+import { Field, FieldError } from '@langgenius/dify-ui/field'
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@langgenius/dify-ui/popover'
-import * as React from 'react'
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from '@langgenius/dify-ui/select'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useProviderContext } from '@/context/provider-context'
-
-const roleI18nKeyMap = {
-  normal: 'members.normal',
-  editor: 'members.editor',
-  admin: 'members.admin',
-  dataset_operator: 'members.datasetOperator',
-} as const
-
-export type RoleKey = keyof typeof roleI18nKeyMap
+import { useLocale } from '@/context/i18n'
+import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
+import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
 
 type RoleSelectorProps = {
-  value: RoleKey
-  onChange: (role: RoleKey) => void
+  hasServerError?: boolean
+  disabled?: boolean
 }
 
-const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
+const PAGE_SIZE = 20
+const LEGACY_ROLE_DESCRIPTION_KEY_MAP = {
+  admin: 'members.adminTip',
+  editor: 'members.editorTip',
+  normal: 'members.normalTip',
+  dataset_operator: 'members.datasetOperatorTip',
+} as const
+
+type LegacyRoleKey = keyof typeof LEGACY_ROLE_DESCRIPTION_KEY_MAP
+
+function normalizeLegacyRoleKey(value: string) {
+  return value.trim().toLowerCase()
+}
+
+function isLegacyRoleKey(value: string): value is LegacyRoleKey {
+  return Object.prototype.hasOwnProperty.call(LEGACY_ROLE_DESCRIPTION_KEY_MAP, value)
+}
+
+function getLegacyRoleDescriptionKey(role: Role) {
+  const candidateKeys = [normalizeLegacyRoleKey(role.name), normalizeLegacyRoleKey(role.id)]
+  return candidateKeys.find(isLegacyRoleKey)
+}
+
+export function RoleSelector({ hasServerError = false, disabled = false }: RoleSelectorProps) {
   const { t } = useTranslation()
-  const { datasetOperatorEnabled } = useProviderContext()
-  const [open, setOpen] = React.useState(false)
+  const locale = useLocale()
+  const [open, setOpen] = useState(false)
+  const listRef = useRef<HTMLDivElement>(null)
+  const anchorRef = useRef<HTMLDivElement>(null)
+  const [observerReadyKey, setObserverReadyKey] = useState(0)
+  const language = getAccessControlTemplateLanguage(locale)
+
+  const {
+    data: rolesData,
+    isLoading: rolesLoading,
+    error: rolesError,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  } = useWorkspaceRoleList({
+    page: 1,
+    limit: PAGE_SIZE,
+    language,
+  })
+
+  useEffect(() => {
+    const hasMore = hasNextPage ?? true
+    let observer: IntersectionObserver | undefined
+
+    if (rolesError || !open) return
+
+    if (anchorRef.current && listRef.current) {
+      const listHeight = listRef.current.clientHeight
+      const dynamicMargin = Math.max(100, Math.min(listHeight * 0.2, 200))
+
+      observer = new IntersectionObserver(
+        (entries) => {
+          if (
+            entries[0]!.isIntersecting &&
+            !rolesLoading &&
+            !isFetchingNextPage &&
+            !rolesError &&
+            hasMore
+          )
+            fetchNextPage()
+        },
+        {
+          root: listRef.current,
+          rootMargin: `${dynamicMargin}px`,
+        },
+      )
+      observer.observe(anchorRef.current)
+    }
+
+    return () => observer?.disconnect()
+  }, [
+    rolesLoading,
+    isFetchingNextPage,
+    fetchNextPage,
+    rolesError,
+    hasNextPage,
+    open,
+    observerReadyKey,
+  ])
+
+  const roles = rolesData?.pages.flatMap((page) => page.data) ?? []
+
+  const setListElement = useCallback((node: HTMLDivElement | null) => {
+    listRef.current = node
+    setObserverReadyKey((key) => key + 1)
+  }, [])
+
+  const setAnchorElement = useCallback((node: HTMLDivElement | null) => {
+    anchorRef.current = node
+    setObserverReadyKey((key) => key + 1)
+  }, [])
+
+  const getRoleDescription = (role: Role) => {
+    if (role.description) return role.description
+
+    switch (getLegacyRoleDescriptionKey(role)) {
+      case 'admin':
+        return t(($) => $['members.adminTip'], { ns: 'common' })
+      case 'editor':
+        return t(($) => $['members.editorTip'], { ns: 'common' })
+      case 'normal':
+        return t(($) => $['members.normalTip'], { ns: 'common' })
+      case 'dataset_operator':
+        return t(($) => $['members.datasetOperatorTip'], { ns: 'common' })
+    }
+
+    return t(($) => $['role.noDescription'], { ns: 'permission' })
+  }
 
   return (
-    <Popover
-      open={open}
-      onOpenChange={setOpen}
-    >
-      <PopoverTrigger
-        data-testid="role-selector-trigger"
-        className={cn(
-          'flex w-full cursor-pointer items-center rounded-lg bg-components-input-bg-normal px-3 py-2 hover:bg-state-base-hover',
-          open && 'bg-state-base-hover',
-        )}
+    <Field name="role">
+      <Select<Role>
+        name="role"
+        required
+        disabled={disabled}
+        open={open}
+        onOpenChange={setOpen}
+        itemToStringLabel={(role) => role.name}
+        itemToStringValue={(role) => role.id}
+        isItemEqualToValue={(role, selectedRole) => role.id === selectedRole.id}
       >
-        <div className="mr-2 grow text-sm/5 text-text-primary">{t('members.invitedAsRole', { ns: 'common', role: t(roleI18nKeyMap[value], { ns: 'common' }) })}</div>
-        <div className="i-ri-arrow-down-s-line size-4 shrink-0 text-text-secondary" />
-      </PopoverTrigger>
-      <PopoverContent
-        placement="bottom-start"
-        sideOffset={4}
-        popupClassName="w-[336px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg"
-      >
-        <div className="p-1">
-          <button
-            type="button"
-            aria-pressed={value === 'normal'}
-            className="w-full cursor-pointer rounded-lg border-none bg-transparent p-2 text-left hover:bg-state-base-hover"
-            onClick={() => {
-              onChange('normal')
-              setOpen(false)
-            }}
-          >
-            <div className="relative pl-5">
-              <div className="text-sm/5 text-text-secondary">{t('members.normal', { ns: 'common' })}</div>
-              <div className="text-xs leading-[18px] text-text-tertiary">{t('members.normalTip', { ns: 'common' })}</div>
-              {value === 'normal' && (
-                <div
-                  aria-hidden="true"
-                  className="absolute top-0.5 left-0 i-custom-vender-line-general-check size-4 text-text-accent"
-                />
-              )}
+        <SelectLabel>{t(($) => $['members.role'], { ns: 'common' })}</SelectLabel>
+        <SelectTrigger>
+          <SelectValue placeholder={t(($) => $['members.selectRole'], { ns: 'common' })} />
+        </SelectTrigger>
+        <SelectContent
+          listClassName="max-h-70"
+          listProps={{
+            ref: setListElement,
+            'aria-label': t(($) => $['members.role'], { ns: 'common' }),
+          }}
+        >
+          {rolesLoading ? (
+            <div className="px-3 py-6 text-center system-sm-regular text-text-tertiary">
+              {t(($) => $.loading, { ns: 'common' })}
             </div>
-          </button>
-          <button
-            type="button"
-            aria-pressed={value === 'editor'}
-            className="w-full cursor-pointer rounded-lg border-none bg-transparent p-2 text-left hover:bg-state-base-hover"
-            onClick={() => {
-              onChange('editor')
-              setOpen(false)
-            }}
-          >
-            <div className="relative pl-5">
-              <div className="text-sm/5 text-text-secondary">{t('members.editor', { ns: 'common' })}</div>
-              <div className="text-xs leading-[18px] text-text-tertiary">{t('members.editorTip', { ns: 'common' })}</div>
-              {value === 'editor' && (
-                <div
-                  aria-hidden="true"
-                  className="absolute top-0.5 left-0 i-custom-vender-line-general-check size-4 text-text-accent"
-                />
-              )}
+          ) : rolesError && roles.length === 0 ? (
+            <div className="px-3 py-6 text-center system-sm-regular text-text-destructive-secondary">
+              {t(($) => $['dynamicSelect.error'], { ns: 'common' })}
             </div>
-          </button>
-          <button
-            type="button"
-            aria-pressed={value === 'admin'}
-            className="w-full cursor-pointer rounded-lg border-none bg-transparent p-2 text-left hover:bg-state-base-hover"
-            onClick={() => {
-              onChange('admin')
-              setOpen(false)
-            }}
-          >
-            <div className="relative pl-5">
-              <div className="text-sm/5 text-text-secondary">{t('members.admin', { ns: 'common' })}</div>
-              <div className="text-xs leading-[18px] text-text-tertiary">{t('members.adminTip', { ns: 'common' })}</div>
-              {value === 'admin' && (
-                <div
-                  aria-hidden="true"
-                  className="absolute top-0.5 left-0 i-custom-vender-line-general-check size-4 text-text-accent"
-                />
-              )}
+          ) : roles.length === 0 ? (
+            <div className="px-3 py-6 text-center system-sm-regular text-text-tertiary">
+              {t(($) => $['dynamicSelect.noData'], { ns: 'common' })}
             </div>
-          </button>
-          {datasetOperatorEnabled && (
-            <button
-              type="button"
-              aria-pressed={value === 'dataset_operator'}
-              className="w-full cursor-pointer rounded-lg border-none bg-transparent p-2 text-left hover:bg-state-base-hover"
-              onClick={() => {
-                onChange('dataset_operator')
-                setOpen(false)
-              }}
-            >
-              <div className="relative pl-5">
-                <div className="text-sm/5 text-text-secondary">{t('members.datasetOperator', { ns: 'common' })}</div>
-                <div className="text-xs leading-[18px] text-text-tertiary">{t('members.datasetOperatorTip', { ns: 'common' })}</div>
-                {value === 'dataset_operator' && (
-                  <div
-                    aria-hidden="true"
-                    className="absolute top-0.5 left-0 i-custom-vender-line-general-check size-4 text-text-accent"
-                  />
-                )}
-              </div>
-            </button>
+          ) : (
+            <>
+              {roles.map((role) => (
+                <SelectItem key={role.id} value={role} className="h-auto items-start py-2">
+                  <SelectItemText className="grid gap-0.5">
+                    <span className="truncate text-sm leading-5 text-text-secondary">
+                      {role.name}
+                    </span>
+                    <span className="line-clamp-2 text-xs leading-4.5 text-text-tertiary">
+                      {getRoleDescription(role)}
+                    </span>
+                  </SelectItemText>
+                  <SelectItemIndicator className="mt-0.5" />
+                </SelectItem>
+              ))}
+              <div ref={setAnchorElement} className="h-0" />
+            </>
           )}
-        </div>
-      </PopoverContent>
-    </Popover>
+        </SelectContent>
+      </Select>
+      {hasServerError ? (
+        <FieldError />
+      ) : (
+        <FieldError match="valueMissing">
+          {t(($) => $['members.selectRole'], { ns: 'common' })}
+        </FieldError>
+      )}
+    </Field>
   )
 }
-
-export default RoleSelector

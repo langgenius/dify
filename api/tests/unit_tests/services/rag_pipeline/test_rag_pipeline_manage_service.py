@@ -1,9 +1,11 @@
 from types import SimpleNamespace
 
+from pytest_mock import MockerFixture
+
 from services.rag_pipeline.rag_pipeline_manage_service import RagPipelineManageService
 
 
-def test_list_rag_pipeline_datasources_marks_authorized(mocker) -> None:
+def test_list_rag_pipeline_datasources_marks_authorized(mocker: MockerFixture) -> None:
     datasource_1 = SimpleNamespace(provider="notion", plugin_id="plugin-1", is_authorized=False)
     datasource_2 = SimpleNamespace(provider="jina", plugin_id="plugin-2", is_authorized=False)
 

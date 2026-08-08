@@ -1,10 +1,12 @@
-"""Inner API for the agent drive (agent 网盘) control plane — ENG-591.
+"""Inner API for the agent drive (agent 网盘) control plane.
 
-Two endpoints, called by the dify-agent server (not the sandbox) with the inner
-API key. The drive ref is the URL segment ``agent-<agent_id>``; the path-like
-file key travels in the query/body, never as a URL path segment (so its ``/``
-characters do not collide with routing). Drive-owned semantics: tenant scoped,
-no user-level FileAccessScope.
+These endpoints are called by the dify-agent server (not the sandbox) with the
+inner API key. The drive ref is the URL segment ``agent-<agent_id>``; the
+path-like file key travels in the query/body, never as a URL path segment (so
+its ``/`` characters do not collide with routing). Drive-owned semantics:
+tenant scoped, no user-level FileAccessScope. Commit still canonicalizes the
+trusted execution-context user through the same EndUser lookup as plugin file
+upload before validating ToolFile ownership.
 """
 
 from flask import request
@@ -13,7 +15,9 @@ from pydantic import BaseModel, ValidationError
 
 from controllers.console.wraps import setup_required
 from controllers.inner_api import inner_api_ns
+from controllers.inner_api.plugin.wraps import get_user
 from controllers.inner_api.wraps import plugin_inner_api_only
+from extensions.ext_database import db
 from services.agent_drive_service import (
     AgentDriveError,
     AgentDriveService,
@@ -50,7 +54,26 @@ class AgentDriveManifestApi(Resource):
                 agent_id=agent_id,
                 prefix=request.args.get("prefix", ""),
                 include_download_url=include_download_url,
+                session=db.session(),
             )
+        except AgentDriveError as exc:
+            return _error_response(exc)
+        return {"items": items}
+
+
+@inner_api_ns.route("/drive/<string:drive_ref>/skills")
+class AgentDriveSkillsApi(Resource):
+    @setup_required
+    @plugin_inner_api_only
+    @inner_api_ns.doc("agent_drive_skills")
+    @inner_api_ns.doc(description="List the skill catalog of an agent drive")
+    def get(self, drive_ref: str):
+        try:
+            agent_id = parse_agent_drive_ref(drive_ref)
+            tenant_id = (request.args.get("tenant_id") or "").strip()
+            if not tenant_id:
+                raise AgentDriveError("missing_tenant_id", "tenant_id is required", status_code=400)
+            items = AgentDriveService().list_skills(tenant_id=tenant_id, agent_id=agent_id, session=db.session())
         except AgentDriveError as exc:
             return _error_response(exc)
         return {"items": items}
@@ -69,11 +92,13 @@ class AgentDriveCommitApi(Resource):
                 body = _CommitRequest.model_validate(request.get_json(silent=True) or {})
             except ValidationError as exc:
                 raise AgentDriveError("invalid_request", str(exc), status_code=400) from exc
+            user = get_user(body.tenant_id, body.user_id)
             items = AgentDriveService().commit(
                 tenant_id=body.tenant_id,
-                user_id=body.user_id,
+                user_id=user.id,
                 agent_id=agent_id,
                 items=body.items,
+                session=db.session(),
             )
         except AgentDriveError as exc:
             return _error_response(exc)

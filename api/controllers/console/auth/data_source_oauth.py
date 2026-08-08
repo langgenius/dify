@@ -13,7 +13,14 @@ from libs.login import login_required
 from libs.oauth_data_source import NotionOAuth
 
 from .. import console_ns
-from ..wraps import account_initialization_required, is_admin_or_owner_required, setup_required
+from ..wraps import (
+    RBACPermission,
+    RBACResourceScope,
+    account_initialization_required,
+    is_admin_or_owner_required,
+    rbac_permission_required,
+    setup_required,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +82,7 @@ class OAuthDataSource(Resource):
     @console_ns.response(400, "Invalid provider")
     @console_ns.response(403, "Admin privileges required")
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     def get(self, provider: str):
         # The role of the current user in the table must be admin or owner
         OAUTH_DATASOURCE_PROVIDERS = get_oauth_providers()

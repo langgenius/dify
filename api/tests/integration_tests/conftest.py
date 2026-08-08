@@ -84,6 +84,7 @@ def setup_account(request) -> Generator[Account, None, None]:
             password=secrets.token_hex(16),
             ip_address="localhost",
             language="en-US",
+            session=db.session(),
         )
 
     with _CACHED_APP.test_request_context():

@@ -43,6 +43,57 @@ class TestMCPClient:
         assert client.timeout is None
         assert client.sse_read_timeout is None
 
+    def test_init_with_dynamic_request_headers(self):
+        """Test client initialization with dynamic request headers."""
+        from flask import Flask
+
+        app = Flask("test")
+        with app.test_request_context(headers={"X-Custom-Auth": "my-secret-token", "X-User-Id": "user123"}):
+            client = MCPClient(
+                server_url="http://test.example.com",
+                headers={
+                    "Authorization": "Bearer {{request.headers.X-Custom-Auth}}",
+                    "X-Request-User": "{{request.header.X-User-Id}}",
+                    "X-Static-Header": "static-val",
+                },
+            )
+
+            assert client.headers == {
+                "Authorization": "Bearer my-secret-token",
+                "X-Request-User": "user123",
+                "X-Static-Header": "static-val",
+            }
+
+    def test_init_with_dynamic_request_headers_missing(self):
+        """Test client initialization with dynamic request headers that are missing."""
+        from flask import Flask
+
+        app = Flask("test")
+        with app.test_request_context(headers={}):
+            client = MCPClient(
+                server_url="http://test.example.com",
+                headers={
+                    "Authorization": "Bearer {{request.headers.X-Custom-Auth}}",
+                },
+            )
+
+            assert client.headers == {
+                "Authorization": "Bearer ",
+            }
+
+    def test_init_with_dynamic_request_headers_no_context(self):
+        """Test client initialization with dynamic request headers but no request context."""
+        client = MCPClient(
+            server_url="http://test.example.com",
+            headers={
+                "Authorization": "Bearer {{request.headers.X-Custom-Auth}}",
+            },
+        )
+
+        assert client.headers == {
+            "Authorization": "Bearer {{request.headers.X-Custom-Auth}}",
+        }
+
     @patch("core.mcp.mcp_client.streamablehttp_client")
     @patch("core.mcp.mcp_client.ClientSession")
     def test_initialize_with_mcp_url(self, mock_client_session, mock_streamable_client):

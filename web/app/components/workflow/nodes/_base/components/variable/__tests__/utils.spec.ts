@@ -1,12 +1,19 @@
+import type { AgentV2NodeType } from '@/app/components/workflow/nodes/agent-v2/types'
 import type { AnswerNodeType } from '@/app/components/workflow/nodes/answer/types'
 import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
-import type { Node, PromptItem } from '@/app/components/workflow/types'
+import type { EnvironmentVariable, Node, PromptItem } from '@/app/components/workflow/types'
 import { describe, expect, it } from 'vitest'
 import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
-import { BlockEnum, EditionType, InputVarType, PromptRole } from '@/app/components/workflow/types'
+import {
+  BlockEnum,
+  EditionType,
+  InputVarType,
+  PromptRole,
+  VarType,
+} from '@/app/components/workflow/types'
 import { AppModeEnum } from '@/types/app'
-import { getNodeUsedVars, updateNodeVars } from '../utils'
+import { getNodeUsedVars, toNodeAvailableVars, updateNodeVars } from '../utils'
 
 const createNode = <T>(data: Node<T>['data']): Node<T> => ({
   id: 'node-1',
@@ -42,6 +49,120 @@ const createLLMNodeData = (promptTemplate: PromptItem[]): LLMNodeType => ({
 })
 
 describe('variable utils', () => {
+  describe('toNodeAvailableVars', () => {
+    it('excludes LLM environment aliases from generic variable pickers', () => {
+      const environmentVariables: EnvironmentVariable[] = [
+        {
+          id: 'text-env',
+          name: 'query',
+          value: 'hello',
+          value_type: 'string',
+          description: '',
+        },
+        {
+          id: 'llm-env',
+          name: 'shared_model',
+          value: { provider: 'provider', name: 'model', mode: 'chat' },
+          value_type: 'llm',
+          description: '',
+        },
+      ]
+
+      const availableVars = toNodeAvailableVars({
+        beforeNodes: [],
+        isChatMode: false,
+        environmentVariables,
+        filterVar: () => true,
+        allPluginInfoList: {},
+      })
+
+      expect(availableVars.find((item) => item.nodeId === 'env')?.vars).toEqual([
+        expect.objectContaining({ variable: 'env.query', type: 'string' }),
+      ])
+    })
+
+    it('uses Agent v2 default declared outputs for agent nodes', () => {
+      const node = createNode<AgentV2NodeType>({
+        type: BlockEnum.Agent,
+        title: 'Agent',
+        desc: '',
+        agent_node_kind: 'dify_agent',
+        version: '2',
+      })
+
+      const availableVars = toNodeAvailableVars({
+        beforeNodes: [node],
+        isChatMode: false,
+        filterVar: () => true,
+        allPluginInfoList: {},
+      })
+
+      expect(availableVars).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            nodeId: 'node-1',
+            vars: [
+              { variable: 'text', type: VarType.string },
+              { variable: 'files', type: VarType.arrayFile },
+              { variable: 'json', type: VarType.object },
+            ],
+          }),
+        ]),
+      )
+      expect(availableVars.find((item) => item.nodeId === 'node-1')?.vars).not.toContainEqual({
+        variable: 'usage',
+        type: VarType.object,
+      })
+    })
+
+    it('uses Agent v2 declared outputs from graph data', () => {
+      const node = createNode<AgentV2NodeType>({
+        type: BlockEnum.AgentV2,
+        title: 'Agent',
+        desc: '',
+        agent_node_kind: 'dify_agent',
+        agent_declared_outputs: [
+          {
+            name: 'summary',
+            type: 'string',
+            description: 'Short summary',
+          },
+          {
+            name: 'attachments',
+            type: 'array',
+            array_item: {
+              type: 'file',
+            },
+          },
+        ],
+        version: '2',
+      })
+
+      const availableVars = toNodeAvailableVars({
+        beforeNodes: [node],
+        isChatMode: false,
+        filterVar: () => true,
+        allPluginInfoList: {},
+      })
+
+      expect(availableVars).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            nodeId: 'node-1',
+            vars: [
+              { variable: 'summary', type: VarType.string },
+              { variable: 'attachments', type: VarType.arrayFile },
+            ],
+          }),
+        ]),
+      )
+      expect(availableVars.find((item) => item.nodeId === 'node-1')?.vars).not.toContainEqual({
+        variable: 'text',
+        type: VarType.string,
+      })
+    })
+  })
+
   describe('getNodeUsedVars', () => {
     it('should read variables from llm jinja prompt text', () => {
       const node = createNode<LLMNodeType>(
@@ -54,6 +175,15 @@ describe('variable utils', () => {
       )
 
       expect(getNodeUsedVars(node)).toContainEqual(['env', 'API_KEY'])
+    })
+
+    it('should read an LLM model environment selector', () => {
+      const node = createNode<LLMNodeType>({
+        ...createLLMNodeData([]),
+        model_selector: ['env', 'for_summarize'],
+      })
+
+      expect(getNodeUsedVars(node)).toContainEqual(['env', 'for_summarize'])
     })
 
     it('should read variables from human input email body', () => {
@@ -108,6 +238,19 @@ describe('variable utils', () => {
         ]),
       )
     })
+
+    it('should read variables from agent task', () => {
+      const node = createNode<AgentV2NodeType>({
+        type: BlockEnum.Agent,
+        title: 'Agent',
+        desc: '',
+        agent_node_kind: 'dify_agent',
+        agent_task: 'Clarify {{#start.tender#}}',
+        version: '2',
+      })
+
+      expect(getNodeUsedVars(node)).toContainEqual(['start', 'tender'])
+    })
   })
 
   describe('updateNodeVars', () => {
@@ -142,6 +285,32 @@ describe('variable utils', () => {
         text: '{{#env.RENAMED_KEY#}}',
         jinja2_text: 'Hello {{#env.RENAMED_KEY#}}',
       })
+    })
+
+    it('should replace an LLM model environment selector', () => {
+      const node = createNode<LLMNodeType>({
+        ...createLLMNodeData([]),
+        model_selector: ['env', 'for_summarize'],
+      })
+
+      const updatedNode = updateNodeVars(node, ['env', 'for_summarize'], ['env', 'for_research'])
+
+      expect((updatedNode.data as LLMNodeType).model_selector).toEqual(['env', 'for_research'])
+    })
+
+    it('should replace agent task references', () => {
+      const node = createNode<AgentV2NodeType>({
+        type: BlockEnum.Agent,
+        title: 'Agent',
+        desc: '',
+        agent_node_kind: 'dify_agent',
+        agent_task: 'Clarify {{#start.tender#}}',
+        version: '2',
+      })
+
+      const updatedNode = updateNodeVars(node, ['start', 'tender'], ['start', 'question'])
+
+      expect((updatedNode.data as AgentV2NodeType).agent_task).toBe('Clarify {{#start.question#}}')
     })
 
     it('should replace human input email template references', () => {

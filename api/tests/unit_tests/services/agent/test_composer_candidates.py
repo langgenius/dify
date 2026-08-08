@@ -118,17 +118,24 @@ def test_previous_outputs_capped_and_flagged():
 def _soul() -> AgentSoulConfig:
     return AgentSoulConfig.model_validate(
         {
-            "skills_files": {
-                "skills": [{"id": "sk-1", "name": "tender-analyzer"}],
-                "files": [{"id": "f-1", "name": "qna_report.pdf"}],
-            },
             "tools": {
                 "cli_tools": [
                     {"id": "ct-1", "name": "ffmpeg"},
                     {"id": "ct-2", "name": "disabled-one", "enabled": False},
                 ],
             },
-            "knowledge": {"datasets": [{"id": "ds-1", "name": "旧名"}, {"id": "ds-gone", "name": "已删"}]},
+            "knowledge": {
+                "sets": [
+                    {
+                        "id": "kb-1",
+                        "name": "产品知识",
+                        "description": "knowledge set",
+                        "datasets": [{"id": "ds-1", "name": "旧名"}, {"id": "ds-gone", "name": "已删"}],
+                        "query": {"mode": "generated_query"},
+                        "retrieval": {"mode": "multiple", "top_k": 4},
+                    }
+                ]
+            },
             "human": {"contacts": [{"id": "c-1", "name": "David Hayes", "channel": "email"}]},
         }
     )
@@ -144,49 +151,36 @@ def test_soul_candidates_lists_configured_items_only():
     )
 
     assert truncated is False
-    assert [item["kind"] for item in lists["skills_files"]] == ["skill", "file"]
     assert [item["name"] for item in lists["cli_tools"]] == ["ffmpeg"]
     # the stable mention id flows through so the frontend can mint [§cli_tool:<id>§]
     assert [item["id"] for item in lists["cli_tools"]] == ["ct-1"]
-    # enriched from DB; dangling dataset kept with missing flag (placeholder, 0522)
-    knowledge = {item["id"]: item for item in lists["knowledge_datasets"]}
-    assert knowledge["ds-1"]["name"] == "产品手册"
-    assert knowledge["ds-1"]["missing"] is False
-    assert knowledge["ds-gone"]["missing"] is True
-    assert knowledge["ds-gone"]["name"] == "已删"
+    # Knowledge mentions point at set ids; nested datasets are hydrated for context.
+    knowledge_set = lists["knowledge_sets"][0]
+    assert knowledge_set["id"] == "kb-1"
+    assert knowledge_set["name"] == "产品知识"
+    assert knowledge_set["missing_dataset_ids"] == ["ds-gone"]
+    datasets = {item["id"]: item for item in knowledge_set["datasets"]}
+    assert datasets["ds-1"]["name"] == "产品手册"
+    assert datasets["ds-1"]["missing"] is False
+    assert datasets["ds-gone"]["missing"] is True
+    assert datasets["ds-gone"]["name"] == "已删"
     assert lists["human_contacts"][0]["id"] == "c-1"
     assert lists["dify_tools"][0]["id"] == "tavily/tavily_search"
 
 
-def test_candidates_response_preserves_skill_and_file_candidate_shapes():
+def test_candidates_response_omits_legacy_skill_file_candidates():
     response = AgentComposerCandidatesResponse.model_validate(
         {
             "variant": "agent_app",
             "allowed_node_job_candidates": {},
             "allowed_soul_candidates": {
-                "skills_files": [
-                    {"kind": "skill", "id": "sk-1", "name": "tender-analyzer", "path": "skills/tender.md"},
-                    {
-                        "kind": "file",
-                        "id": "f-1",
-                        "name": "qna_report.pdf",
-                        "transfer_method": "local_file",
-                        "reference": "upload-1",
-                        "url": "https://files.example/qna_report.pdf",
-                    },
-                ]
+                "cli_tools": [],
             },
             "capabilities": {"human_roster_available": False},
         }
     ).model_dump(mode="json")
 
-    skill, file = response["allowed_soul_candidates"]["skills_files"]
-    assert skill["kind"] == "skill"
-    assert skill["path"] == "skills/tender.md"
-    assert file["kind"] == "file"
-    assert file["transfer_method"] == "local_file"
-    assert file["reference"] == "upload-1"
-    assert file["url"] == "https://files.example/qna_report.pdf"
+    assert "skills_files" not in response["allowed_soul_candidates"]
 
 
 def test_soul_candidates_empty_config_yields_empty_lists():

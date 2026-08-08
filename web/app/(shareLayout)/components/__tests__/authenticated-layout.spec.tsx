@@ -67,7 +67,8 @@ const userCanAccessAppQueryState: QueryState<UserCanAccessApp> = {
 }
 
 vi.mock('@/context/web-app-context', () => ({
-  useWebAppStore: (selector: (state: typeof mockWebAppState) => unknown) => selector(mockWebAppState),
+  useWebAppStore: (selector: (state: typeof mockWebAppState) => unknown) =>
+    selector(mockWebAppState),
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -84,7 +85,7 @@ vi.mock('@/service/use-share', () => ({
   useGetWebAppMeta: () => appMetaQueryState,
 }))
 
-vi.mock('@/service/access-control', () => ({
+vi.mock('@/service/access-control/use-app-access-control', () => ({
   useGetUserCanAccessApp: () => userCanAccessAppQueryState,
 }))
 
@@ -126,11 +127,12 @@ const resetQueryStates = () => {
   userCanAccessAppQueryState.isFetching = false
 }
 
-const renderLayout = () => render(
-  <AuthenticatedLayout>
-    <div>Workflow form content</div>
-  </AuthenticatedLayout>,
-)
+const renderLayout = () =>
+  render(
+    <AuthenticatedLayout>
+      <div>Workflow form content</div>
+    </AuthenticatedLayout>,
+  )
 
 describe('AuthenticatedLayout', () => {
   beforeEach(() => {

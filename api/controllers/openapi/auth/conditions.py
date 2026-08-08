@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from controllers.openapi.auth.data import AuthData, Edition, RequestContext, current_edition
-from libs.oauth_bearer import TokenType
+from libs.oauth_bearer import Scope, TokenType
 from services.enterprise.enterprise_service import WebAppAccessMode
 from services.feature_service import FeatureService
 
@@ -50,8 +50,11 @@ EDITION_SAAS = config_cond(lambda: current_edition() == Edition.SAAS)
 
 WEBAPP_AUTH_ENABLED = config_cond(lambda: FeatureService.get_system_features().webapp_auth.enabled)
 
+WEBAPP_RUN_SCOPED = request_cond(lambda ctx: ctx.scope == Scope.APPS_RUN)
+
 WORKSPACE_MEMBERSHIP_REQUIRED = request_cond(lambda ctx: ctx.workspace_membership)
 HAS_ALLOWED_ROLES = request_cond(lambda ctx: ctx.allowed_roles is not None)
+HAS_RBAC = request_cond(lambda ctx: ctx.rbac is not None)
 
 # Caller must belong to the resolved tenant: either an app-scoped path (tenant
 # from the app) or an explicit workspace-membership path (tenant from request).

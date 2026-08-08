@@ -1,13 +1,15 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
+import { render } from '@/test/console/render'
 import CreatorsFilter from '../creators-filter'
 
 const mockOnChange = vi.hoisted(() => vi.fn())
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => ({
     userProfile: { id: 'member-2' },
-  }),
-}))
+  }))
+})
 
 vi.mock('@/service/use-common', () => ({
   useMembers: () => ({
@@ -32,11 +34,13 @@ describe('CreatorsFilter', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /app\.studio\.filters\.creators/i }))
 
-    const options = screen.getAllByRole('button').filter(button =>
-      ['Alice', 'Bob', 'Zoe'].some(name => button.textContent?.includes(name)),
-    )
+    const options = screen
+      .getAllByRole('button')
+      .filter((button) =>
+        ['Alice', 'Bob', 'Zoe'].some((name) => button.textContent?.includes(name)),
+      )
 
-    expect(options.map(option => option.textContent)).toEqual([
+    expect(options.map((option) => option.textContent)).toEqual([
       expect.stringContaining('Alice'),
       expect.stringContaining('Bob'),
       expect.stringContaining('Zoe'),
@@ -66,7 +70,9 @@ describe('CreatorsFilter', () => {
   })
 
   it('should remove selected creators from the trigger reset and menu reset controls', () => {
-    const { rerender } = render(<CreatorsFilter value={['member-2', 'member-3']} onChange={mockOnChange} />)
+    const { rerender } = render(
+      <CreatorsFilter value={['member-2', 'member-3']} onChange={mockOnChange} />,
+    )
 
     const trigger = screen.getByRole('button', { name: /app\.studio\.filters\.creators/i })
     fireEvent.click(within(trigger).getByRole('button', { name: 'app.studio.filters.reset' }))

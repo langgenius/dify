@@ -9,7 +9,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Tag input component for managing a list of string tags. Features auto-sizing input, duplicate detection, length validation (max 20 chars), and customizable confirm key (Enter or Tab).',
+        component:
+          'Tag input component for managing a list of string tags. Features auto-sizing input, duplicate detection, length validation (max 20 chars), and customizable confirm key (Enter or Tab).',
       },
     },
   },
@@ -72,13 +73,10 @@ const TagInputDemo = (args: any) => {
       {items.length > 0 && (
         <div className="mt-4 rounded-lg bg-gray-50 p-3">
           <div className="mb-2 text-xs font-medium text-gray-600">
-            Current Tags (
-            {items.length}
+            Current Tags ({items.length}
             ):
           </div>
-          <div className="font-mono text-sm text-gray-800">
-            {JSON.stringify(items, null, 2)}
-          </div>
+          <div className="font-mono text-sm text-gray-800">{JSON.stringify(items, null, 2)}</div>
         </div>
       )}
     </div>
@@ -87,7 +85,7 @@ const TagInputDemo = (args: any) => {
 
 // Default state (empty)
 export const Default: Story = {
-  render: args => <TagInputDemo {...args} />,
+  render: (args) => <TagInputDemo {...args} />,
   args: {
     items: [],
     placeholder: 'Add a tag...',
@@ -97,7 +95,7 @@ export const Default: Story = {
 
 // With initial tags
 export const WithInitialTags: Story = {
-  render: args => <TagInputDemo {...args} />,
+  render: (args) => <TagInputDemo {...args} />,
   args: {
     items: ['React', 'TypeScript', 'Next.js'],
     placeholder: 'Add more tags...',
@@ -107,7 +105,7 @@ export const WithInitialTags: Story = {
 
 // Tab to confirm
 export const TabToConfirm: Story = {
-  render: args => <TagInputDemo {...args} />,
+  render: (args) => <TagInputDemo {...args} />,
   args: {
     items: ['keyword1', 'keyword2'],
     placeholder: 'Press Tab to add...',
@@ -117,7 +115,7 @@ export const TabToConfirm: Story = {
 
 // Disable remove
 export const DisableRemove: Story = {
-  render: args => <TagInputDemo {...args} />,
+  render: (args) => <TagInputDemo {...args} />,
   args: {
     items: ['Permanent', 'Tags', 'Cannot be removed'],
     disableRemove: true,
@@ -127,7 +125,7 @@ export const DisableRemove: Story = {
 
 // Disable add
 export const DisableAdd: Story = {
-  render: args => <TagInputDemo {...args} />,
+  render: (args) => <TagInputDemo {...args} />,
   args: {
     items: ['Read', 'Only', 'Mode'],
     disableAdd: true,
@@ -136,7 +134,7 @@ export const DisableAdd: Story = {
 
 // Required tags
 export const RequiredTags: Story = {
-  render: args => <TagInputDemo {...args} />,
+  render: (args) => <TagInputDemo {...args} />,
   args: {
     items: [],
     placeholder: 'Add required tags...',
@@ -198,11 +196,9 @@ const EmailTagsDemo = () => {
         </div>
         <div className="mt-4 rounded-lg bg-blue-50 p-3 text-sm text-gray-700">
           <strong>
-            Recipients (
-            {recipients.length}
+            Recipients ({recipients.length}
             ):
-          </strong>
-          {' '}
+          </strong>{' '}
           {recipients.join(', ')}
         </div>
       </div>
@@ -226,9 +222,10 @@ const SearchFiltersDemo = () => {
     { id: 4, title: 'Task 4', tags: ['completed'] },
   ]
 
-  const filteredResults = filters.length > 0
-    ? mockResults.filter(item => filters.some(filter => item.tags.includes(filter)))
-    : mockResults
+  const filteredResults =
+    filters.length > 0
+      ? mockResults.filter((item) => filters.some((filter) => item.tags.includes(filter)))
+      : mockResults
 
   return (
     <div style={{ width: '600px' }} className="rounded-lg border border-gray-200 bg-white p-6">
@@ -244,21 +241,18 @@ const SearchFiltersDemo = () => {
       </div>
       <div className="mt-6">
         <div className="mb-3 text-sm font-medium text-gray-700">
-          Results (
-          {filteredResults.length}
-          {' '}
-          of
-          {' '}
-          {mockResults.length}
-          )
+          Results ({filteredResults.length} of {mockResults.length})
         </div>
         <div className="space-y-2">
-          {filteredResults.map(item => (
+          {filteredResults.map((item) => (
             <div key={item.id} className="rounded-lg bg-gray-50 p-3">
               <div className="text-sm font-medium">{item.title}</div>
               <div className="mt-1 flex gap-1">
-                {item.tags.map(tag => (
-                  <span key={tag} className="rounded-sm bg-blue-100 px-2 py-0.5 text-xs text-blue-700">
+                {item.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="rounded-sm bg-blue-100 px-2 py-0.5 text-xs text-blue-700"
+                  >
                     {tag}
                   </span>
                 ))}
@@ -331,9 +325,7 @@ const KeywordExtractionDemo = () => {
     <div style={{ width: '600px' }} className="rounded-lg border border-gray-200 bg-white p-6">
       <h3 className="mb-4 text-lg font-semibold">SEO Keywords</h3>
       <div>
-        <label className="mb-2 block text-sm font-medium text-gray-700">
-          Meta Keywords
-        </label>
+        <label className="mb-2 block text-sm font-medium text-gray-700">Meta Keywords</label>
         <TagInput
           items={keywords}
           onChange={setKeywords}
@@ -349,8 +341,7 @@ const KeywordExtractionDemo = () => {
         <div className="mb-2 text-xs font-medium text-gray-600">Meta Tag Preview:</div>
         <code className="text-xs text-gray-700">
           &lt;meta name="keywords" content="
-          {keywords.join(', ')}
-          " /&gt;
+          {keywords.join(', ')}" /&gt;
         </code>
       </div>
     </div>
@@ -371,9 +362,7 @@ const TagsWithSuggestionsDemo = () => {
     <div style={{ width: '600px' }} className="rounded-lg border border-gray-200 bg-white p-6">
       <h3 className="mb-4 text-lg font-semibold">Project Tags</h3>
       <div>
-        <label className="mb-2 block text-sm font-medium text-gray-700">
-          Add Tags
-        </label>
+        <label className="mb-2 block text-sm font-medium text-gray-700">Add Tags</label>
         <TagInput
           items={tags}
           onChange={setTags}
@@ -385,16 +374,14 @@ const TagsWithSuggestionsDemo = () => {
         <div className="mb-2 text-xs font-medium text-gray-600">Suggestions:</div>
         <div className="flex flex-wrap gap-2">
           {suggestions
-            .filter(s => !tags.includes(s))
-            .map(suggestion => (
+            .filter((s) => !tags.includes(s))
+            .map((suggestion) => (
               <button
                 key={suggestion}
                 className="cursor-pointer rounded-sm bg-gray-100 px-2 py-1 text-xs text-gray-700 hover:bg-gray-200"
                 onClick={() => setTags([...tags, suggestion])}
               >
-                +
-                {' '}
-                {suggestion}
+                + {suggestion}
               </button>
             ))}
         </div>
@@ -417,22 +404,11 @@ const StopSequencesDemo = () => {
       <h3 className="mb-4 text-lg font-semibold">AI Model Configuration</h3>
       <div className="space-y-4">
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">
-            Temperature
-          </label>
-          <input
-            type="range"
-            min="0"
-            max="2"
-            step="0.1"
-            defaultValue="0.7"
-            className="w-full"
-          />
+          <label className="mb-2 block text-sm font-medium text-gray-700">Temperature</label>
+          <input type="range" min="0" max="2" step="0.1" defaultValue="0.7" className="w-full" />
         </div>
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">
-            Stop Sequences
-          </label>
+          <label className="mb-2 block text-sm font-medium text-gray-700">Stop Sequences</label>
           <TagInput
             items={stopSequences}
             onChange={setStopSequences}
@@ -444,9 +420,7 @@ const StopSequencesDemo = () => {
           </p>
         </div>
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">
-            Max Tokens
-          </label>
+          <label className="mb-2 block text-sm font-medium text-gray-700">Max Tokens</label>
           <input
             type="number"
             defaultValue="2000"
@@ -542,7 +516,7 @@ export const ValidationShowcase: Story = {
 
 // Interactive playground
 export const Playground: Story = {
-  render: args => <TagInputDemo {...args} />,
+  render: (args) => <TagInputDemo {...args} />,
   args: {
     items: ['tag1', 'tag2'],
     placeholder: 'Add a tag...',

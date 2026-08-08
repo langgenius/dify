@@ -1,9 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
-import {
-  Pagination,
-  PaginationSkeleton,
-} from '.'
+import { expect } from 'storybook/test'
+import { Pagination, PaginationSkeleton } from '.'
 
 function PaginationExample({
   initialPage = 2,
@@ -60,7 +58,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Compound pagination primitive for list navigation. It combines semantic page buttons, a NumberField-backed page jump summary, and a SegmentedControl-backed page-size selector.',
+        component:
+          'Compound pagination primitive for list navigation. It combines semantic page buttons, a NumberField-backed page jump summary, and a SegmentedControl-backed page-size selector.',
       },
     },
   },
@@ -77,22 +76,28 @@ type Story = StoryObj<typeof meta>
 
 export const Playground: Story = {
   render: () => <PaginationDemo />,
-  parameters: {
-    a11y: {
-      test: 'todo',
-    },
+  play: async ({ canvas, userEvent }) => {
+    await expect(
+      canvas.getByRole('button', { name: 'Edit page number, current page 2 of 200' }),
+    ).toBeVisible()
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Next page' }))
+    await expect(
+      canvas.getByRole('button', { name: 'Edit page number, current page 3 of 200' }),
+    ).toBeVisible()
+
+    await userEvent.click(canvas.getByRole('button', { name: '50' }))
+    await expect(canvas.getByRole('button', { name: '50' })).toHaveAttribute('aria-pressed', 'true')
   },
 }
 
 export const DesignSpec: Story = {
   render: () => <DesignSpecDemo />,
   parameters: {
-    a11y: {
-      test: 'todo',
-    },
     docs: {
       description: {
-        story: 'Pagination rows with default, hover-like, focused, page-size, and skeleton examples.',
+        story:
+          'Pagination rows with default, hover-like, focused, page-size, and skeleton examples.',
       },
     },
   },

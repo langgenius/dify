@@ -48,14 +48,14 @@ describe('usePageSelectorModel', () => {
   it('should build visible rows from the expanded tree state', async () => {
     const { result } = renderHook(() => usePageSelectorModel(createProps()))
 
-    expect(result.current.rows.map(row => row.page.page_id)).toEqual(['root-1'])
+    expect(result.current.rows.map((row) => row.page.page_id)).toEqual(['root-1'])
 
     act(() => {
       result.current.handleToggle('root-1')
     })
 
     await waitFor(() => {
-      expect(result.current.rows.map(row => row.page.page_id)).toEqual([
+      expect(result.current.rows.map((row) => row.page.page_id)).toEqual([
         'root-1',
         'child-1',
         'child-2',
@@ -67,7 +67,7 @@ describe('usePageSelectorModel', () => {
     })
 
     await waitFor(() => {
-      expect(result.current.rows.map(row => row.page.page_id)).toEqual([
+      expect(result.current.rows.map((row) => row.page.page_id)).toEqual([
         'root-1',
         'child-1',
         'grandchild-1',
@@ -84,20 +84,14 @@ describe('usePageSelectorModel', () => {
       result.current.handleSelect('root-1')
     })
 
-    expect(onSelect).toHaveBeenCalledWith(new Set([
-      'root-1',
-      'child-1',
-      'grandchild-1',
-      'child-2',
-    ]))
+    expect(onSelect).toHaveBeenCalledWith(new Set(['root-1', 'child-1', 'grandchild-1', 'child-2']))
   })
 
   it('should update local preview and respect the controlled previewPageId when provided', () => {
     const onPreview = vi.fn()
-    const { result, rerender } = renderHook(
-      props => usePageSelectorModel(props),
-      { initialProps: createProps({ onPreview }) },
-    )
+    const { result, rerender } = renderHook((props) => usePageSelectorModel(props), {
+      initialProps: createProps({ onPreview }),
+    })
 
     act(() => {
       result.current.handlePreview('child-1')
@@ -112,16 +106,15 @@ describe('usePageSelectorModel', () => {
   })
 
   it('should expose filtered rows when the deferred search value changes', async () => {
-    const { result, rerender } = renderHook(
-      props => usePageSelectorModel(props),
-      { initialProps: createProps() },
-    )
+    const { result, rerender } = renderHook((props) => usePageSelectorModel(props), {
+      initialProps: createProps(),
+    })
 
     rerender(createProps({ searchValue: 'Grandchild' }))
 
     await waitFor(() => {
       expect(result.current.effectiveSearchValue).toBe('Grandchild')
-      expect(result.current.rows.map(row => row.page.page_id)).toEqual(['grandchild-1'])
+      expect(result.current.rows.map((row) => row.page.page_id)).toEqual(['grandchild-1'])
     })
   })
 })

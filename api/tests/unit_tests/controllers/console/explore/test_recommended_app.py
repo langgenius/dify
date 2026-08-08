@@ -1,16 +1,13 @@
+from inspect import unwrap
 from unittest.mock import ANY, patch
 
+import pytest
 from flask import Flask
+from pydantic import ValidationError
 
 import controllers.console.explore.recommended_app as module
 from models import Account
 from models.model import AppMode, IconType
-
-
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
 
 
 def make_account(interface_language: str | None) -> Account:
@@ -37,7 +34,7 @@ class TestRecommendedAppListApi:
         ):
             result = method(api, make_account("fr-FR"))
 
-        service_mock.assert_called_once_with(ANY, "en-US")
+        service_mock.assert_called_once_with("en-US", session=ANY)
         assert result == result_data
 
     def test_get_fallback_to_user_language(self, app: Flask):
@@ -56,7 +53,7 @@ class TestRecommendedAppListApi:
         ):
             result = method(api, make_account("fr-FR"))
 
-        service_mock.assert_called_once_with(ANY, "fr-FR")
+        service_mock.assert_called_once_with("fr-FR", session=ANY)
         assert result == result_data
 
     def test_get_fallback_to_default_language(self, app: Flask):
@@ -75,7 +72,7 @@ class TestRecommendedAppListApi:
         ):
             result = method(api, make_account(None))
 
-        service_mock.assert_called_once_with(ANY, module.languages[0])
+        service_mock.assert_called_once_with(module.languages[0], session=ANY)
         assert result == result_data
 
 
@@ -96,7 +93,7 @@ class TestLearnDifyAppListApi:
         ):
             result = method(api, make_account("fr-FR"))
 
-        service_mock.assert_called_once_with(ANY, "en-US")
+        service_mock.assert_called_once_with("en-US", session=ANY)
         assert result == result_data
 
     def test_get_fallback_to_user_language(self, app: Flask):
@@ -115,7 +112,7 @@ class TestLearnDifyAppListApi:
         ):
             result = method(api, make_account("fr-FR"))
 
-        service_mock.assert_called_once_with(ANY, "fr-FR")
+        service_mock.assert_called_once_with("fr-FR", session=ANY)
         assert result == result_data
 
 
@@ -124,7 +121,13 @@ class TestRecommendedAppApi:
         api = module.RecommendedAppApi()
         method = unwrap(api.get)
 
-        result_data = {"id": "app1"}
+        result_data = {
+            "id": "app1",
+            "name": "App",
+            "mode": "chat",
+            "export_data": "{}",
+            "can_trial": False,
+        }
 
         with (
             app.test_request_context("/"),
@@ -136,8 +139,8 @@ class TestRecommendedAppApi:
         ):
             result = method(api, "11111111-1111-1111-1111-111111111111")
 
-        service_mock.assert_called_once_with(ANY, "11111111-1111-1111-1111-111111111111")
-        assert result == result_data
+        service_mock.assert_called_once_with("11111111-1111-1111-1111-111111111111", session=ANY)
+        assert result == {**result_data, "icon": None, "icon_background": None}
 
 
 class TestRecommendedAppResponseModels:
@@ -203,6 +206,7 @@ class TestRecommendedAppResponseModels:
                         "categories": ["Workflow"],
                         "position": 1,
                         "is_listed": True,
+                        "can_trial": False,
                     }
                 ],
             }
@@ -210,3 +214,7 @@ class TestRecommendedAppResponseModels:
 
         assert response["recommended_apps"][0]["app_id"] == "app-1"
         assert response["recommended_apps"][0]["categories"] == ["Workflow"]
+
+    def test_recommended_app_response_requires_can_trial(self):
+        with pytest.raises(ValidationError):
+            module.RecommendedAppResponse.model_validate({"app_id": "app-1"})

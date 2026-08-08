@@ -1,35 +1,20 @@
-import type { EducationAddParams } from '@/app/education-apply/types'
-import {
-  useMutation,
-  useQuery,
-} from '@tanstack/react-query'
-import { get, post } from './base'
-import { useInvalid } from './use-base'
+import { useMutation } from '@tanstack/react-query'
+import { consoleClient } from './client'
 
 const NAME_SPACE = 'education'
 
 export const useEducationVerify = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'education-verify'],
-    mutationFn: () => {
-      return get<{ token: string }>('/account/education/verify', {}, { silent: true })
-    },
-  })
-}
+    mutationFn: async () => {
+      const response = await consoleClient.account.education.verify.get(
+        {},
+        { context: { silent: true } },
+      )
+      if (!response.token) throw new Error('Education verification token is missing')
 
-export const useEducationAdd = ({
-  onSuccess,
-}: {
-  onSuccess?: () => void
-}) => {
-  return useMutation({
-    mutationKey: [NAME_SPACE, 'education-add'],
-    mutationFn: (params: EducationAddParams) => {
-      return post<{ message: string }>('/account/education', {
-        body: params,
-      })
+      return { token: response.token }
     },
-    onSuccess,
   })
 }
 
@@ -40,29 +25,17 @@ type SearchParams = {
 }
 export const useEducationAutocomplete = () => {
   return useMutation({
-    mutationFn: (searchParams: SearchParams) => {
-      const {
-        keywords = '',
-        page = 0,
-        limit = 40,
-      } = searchParams
-      return get<{ data: string[], has_next: boolean, curr_page: number }>(`/account/education/autocomplete?keywords=${keywords}&page=${page}&limit=${limit}`)
+    mutationFn: async (searchParams: SearchParams) => {
+      const { keywords = '', page = 0, limit = 40 } = searchParams
+      const response = await consoleClient.account.education.autocomplete.get({
+        query: { keywords, limit, page },
+      })
+
+      return {
+        curr_page: response.curr_page ?? page,
+        data: response.data ?? [],
+        has_next: response.has_next ?? false,
+      }
     },
   })
-}
-
-export const useEducationStatus = (disable?: boolean) => {
-  return useQuery({
-    enabled: !disable,
-    queryKey: [NAME_SPACE, 'education-status'],
-    queryFn: () => {
-      return get<{ is_student: boolean, allow_refresh: boolean, expire_at: number | null }>('/account/education')
-    },
-    retry: false,
-    staleTime: 0, // Data expires immediately, ensuring fresh data on refetch
-  })
-}
-
-export const useInvalidateEducationStatus = () => {
-  return useInvalid([NAME_SPACE, 'education-status'])
 }

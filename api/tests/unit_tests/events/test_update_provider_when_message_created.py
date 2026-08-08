@@ -1,43 +1,43 @@
-from collections.abc import Generator
-from contextlib import contextmanager
+from collections.abc import Iterator
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import ANY, patch
 from uuid import uuid4
 
-from sqlalchemy import create_engine, select
+import pytest
+from sqlalchemy import select
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import ChatAppGenerateEntity
 from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
 from events.event_handlers import update_provider_when_message_created
-from models import TenantCreditPool
+from models import Message, TenantCreditPool
+from models.enums import ProviderQuotaType as ModelProviderQuotaType
 from models.provider import ProviderType
 
 
-@contextmanager
-def _patched_credit_pool_session_factory(engine: Engine) -> Generator[None, None, None]:
-    session_maker = sessionmaker(bind=engine, expire_on_commit=False)
-    with patch("services.credit_pool_service.session_factory.get_session_maker", return_value=session_maker):
-        yield
+@pytest.fixture
+def credit_pool_session_factory(sqlite_engine: Engine) -> Iterator[sessionmaker[Session]]:
+    """Bind message-created accounting to fixture-owned SQLite sessions."""
+    session_factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+    with patch("events.event_handlers.update_provider_when_message_created.db.session", session_factory):
+        yield session_factory
 
 
-def test_message_created_trial_credit_accounting_does_not_raise_when_balance_is_insufficient() -> None:
-    engine = create_engine("sqlite:///:memory:")
-    TenantCreditPool.__table__.create(engine)
+def test_message_created_trial_credit_accounting_does_not_raise_when_balance_is_insufficient(
+    credit_pool_session_factory: sessionmaker[Session],
+) -> None:
     tenant_id = str(uuid4())
     pool_id = str(uuid4())
-    with engine.begin() as connection:
-        connection.execute(
-            TenantCreditPool.__table__.insert(),
-            {
-                "id": pool_id,
-                "tenant_id": tenant_id,
-                "pool_type": ProviderQuotaType.TRIAL,
-                "quota_limit": 10,
-                "quota_used": 9,
-            },
-        )
+    pool = TenantCreditPool(
+        tenant_id=tenant_id,
+        pool_type=ModelProviderQuotaType.TRIAL,
+        quota_limit=10,
+        quota_used=9,
+    )
+    pool.id = pool_id
+    with credit_pool_session_factory.begin() as session:
+        session.add(pool)
 
     system_configuration = SimpleNamespace(
         current_quota_type=ProviderQuotaType.TRIAL,
@@ -62,10 +62,9 @@ def test_message_created_trial_credit_accounting_does_not_raise_when_balance_is_
             ),
         ),
     )
-    message = SimpleNamespace(message_tokens=2, answer_tokens=1)
+    message = Message(message_tokens=2, answer_tokens=1)
 
     with (
-        _patched_credit_pool_session_factory(engine),
         patch.object(update_provider_when_message_created, "_execute_provider_updates"),
     ):
         update_provider_when_message_created.handle(
@@ -73,8 +72,8 @@ def test_message_created_trial_credit_accounting_does_not_raise_when_balance_is_
             application_generate_entity=application_generate_entity,
         )
 
-    with engine.connect() as connection:
-        quota_used = connection.scalar(select(TenantCreditPool.quota_used).where(TenantCreditPool.id == pool_id))
+    with credit_pool_session_factory() as session:
+        quota_used = session.scalar(select(TenantCreditPool.quota_used).where(TenantCreditPool.id == pool_id))
 
     assert quota_used == 10
 
@@ -104,7 +103,7 @@ def test_message_created_paid_credit_accounting_uses_paid_pool() -> None:
             ),
         ),
     )
-    message = SimpleNamespace(message_tokens=2, answer_tokens=1)
+    message = Message(message_tokens=2, answer_tokens=1)
 
     with (
         patch.object(update_provider_when_message_created, "_deduct_credit_pool_quota_capped") as mock_deduct,
@@ -122,7 +121,9 @@ def test_message_created_paid_credit_accounting_uses_paid_pool() -> None:
     )
 
 
-def test_capped_credit_pool_accounting_skips_exhaustion_warning_when_full_amount_is_deducted(caplog) -> None:
+def test_capped_credit_pool_accounting_skips_exhaustion_warning_when_full_amount_is_deducted(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     with patch(
         "services.credit_pool_service.CreditPoolService.deduct_credits_capped",
         return_value=3,
@@ -137,5 +138,6 @@ def test_capped_credit_pool_accounting_skips_exhaustion_warning_when_full_amount
         tenant_id="tenant-id",
         credits_required=3,
         pool_type="trial",
+        session=ANY,
     )
     assert "Credit pool exhausted during message-created accounting" not in caplog.text

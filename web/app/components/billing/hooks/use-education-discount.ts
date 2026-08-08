@@ -1,22 +1,22 @@
 'use client'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useAppContext } from '@/context/app-context'
+import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { fetchSubscriptionUrls } from '@/service/billing'
 import { Plan } from '../type'
 
 export const useEducationDiscount = () => {
   const { t } = useTranslation()
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const [isEducationDiscountLoading, setIsEducationDiscountLoading] = useState(false)
 
   const handleEducationDiscount = useCallback(async () => {
-    if (isEducationDiscountLoading)
-      return
+    if (isEducationDiscountLoading) return
 
     if (!isCurrentWorkspaceManager) {
-      toast.error(t('buyPermissionDeniedTip', { ns: 'billing' }))
+      toast.error(t(($) => $.buyPermissionDeniedTip, { ns: 'billing' }))
       return
     }
 
@@ -24,8 +24,7 @@ export const useEducationDiscount = () => {
     try {
       const res = await fetchSubscriptionUrls(Plan.professional, 'year')
       window.location.href = res.url
-    }
-    finally {
+    } finally {
       setIsEducationDiscountLoading(false)
     }
   }, [isCurrentWorkspaceManager, isEducationDiscountLoading, t])

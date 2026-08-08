@@ -8,12 +8,13 @@ controller's request parsing + error mapping, not auth (tested separately).
 from __future__ import annotations
 
 import inspect
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import ANY, patch
 
 import pytest
 from flask import Flask
 
-from controllers.inner_api.plugin.agent_drive import AgentDriveCommitApi, AgentDriveManifestApi
+from controllers.inner_api.plugin.agent_drive import AgentDriveCommitApi, AgentDriveManifestApi, AgentDriveSkillsApi
 from services.agent_drive_service import AgentDriveError
 
 _MOD = "controllers.inner_api.plugin.agent_drive"
@@ -32,7 +33,7 @@ def test_manifest_parses_query_and_returns_items():
             result = raw(AgentDriveManifestApi(), "agent-agent-1")
     assert result == {"items": [{"key": "docs/a.txt"}]}
     svc.return_value.manifest.assert_called_once_with(
-        tenant_id="tenant-1", agent_id="agent-1", prefix="docs/", include_download_url=True
+        tenant_id="tenant-1", agent_id="agent-1", prefix="docs/", include_download_url=True, session=ANY
     )
 
 
@@ -52,6 +53,45 @@ def test_manifest_bad_drive_ref_is_400():
     assert body["code"] == "invalid_drive_ref"
 
 
+def test_skills_requires_tenant_id_and_returns_items():
+    raw = _raw(AgentDriveSkillsApi.get)
+
+    with app.test_request_context("/"):
+        body, status = raw(AgentDriveSkillsApi(), "agent-agent-1")
+    assert status == 400
+    assert body["code"] == "missing_tenant_id"
+
+    with app.test_request_context("/?tenant_id=tenant-1"):
+        with patch(f"{_MOD}.AgentDriveService") as svc:
+            svc.return_value.list_skills.return_value = [
+                {
+                    "path": "tender-analyzer",
+                    "skill_md_key": "tender-analyzer/SKILL.md",
+                    "archive_key": None,
+                    "name": "Tender Analyzer",
+                    "description": "Parses RFPs.",
+                }
+            ]
+            result = raw(AgentDriveSkillsApi(), "agent-agent-1")
+
+    assert result == {
+        "items": [
+            {
+                "path": "tender-analyzer",
+                "skill_md_key": "tender-analyzer/SKILL.md",
+                "archive_key": None,
+                "name": "Tender Analyzer",
+                "description": "Parses RFPs.",
+            }
+        ]
+    }
+    assert svc.return_value.list_skills.call_args.kwargs == {
+        "tenant_id": "tenant-1",
+        "agent_id": "agent-1",
+        "session": ANY,
+    }
+
+
 def test_commit_parses_body_and_returns_items():
     raw = _raw(AgentDriveCommitApi.post)
     payload = {
@@ -60,11 +100,35 @@ def test_commit_parses_body_and_returns_items():
         "items": [{"key": "a.txt", "file_ref": {"kind": "tool_file", "id": "tf-1"}}],
     }
     with app.test_request_context("/", method="POST", json=payload):
-        with patch(f"{_MOD}.AgentDriveService") as svc:
+        with (
+            patch(f"{_MOD}.get_user", return_value=SimpleNamespace(id="user-1")) as get_user,
+            patch(f"{_MOD}.AgentDriveService") as svc,
+        ):
             svc.return_value.commit.return_value = [{"key": "a.txt"}]
             result = raw(AgentDriveCommitApi(), "agent-agent-1")
     assert result == {"items": [{"key": "a.txt"}]}
+    assert get_user.call_args.args == ("tenant-1", "user-1")
     assert svc.return_value.commit.call_args.kwargs["agent_id"] == "agent-1"
+    assert svc.return_value.commit.call_args.kwargs["user_id"] == "user-1"
+
+
+def test_commit_canonicalizes_user_before_service_call():
+    raw = _raw(AgentDriveCommitApi.post)
+    payload = {
+        "tenant_id": "tenant-1",
+        "user_id": "session-1",
+        "items": [{"key": "a.txt", "file_ref": {"kind": "tool_file", "id": "tf-1"}}],
+    }
+    with app.test_request_context("/", method="POST", json=payload):
+        with (
+            patch(f"{_MOD}.get_user", return_value=SimpleNamespace(id="end-user-1")),
+            patch(f"{_MOD}.AgentDriveService") as svc,
+        ):
+            svc.return_value.commit.return_value = [{"key": "a.txt"}]
+            result = raw(AgentDriveCommitApi(), "agent-agent-1")
+
+    assert result == {"items": [{"key": "a.txt"}]}
+    assert svc.return_value.commit.call_args.kwargs["user_id"] == "end-user-1"
 
 
 def test_commit_invalid_body_is_400():
@@ -83,13 +147,16 @@ def test_commit_maps_service_error():
         "items": [{"key": "a.txt", "file_ref": {"kind": "tool_file", "id": "tf-1"}}],
     }
     with app.test_request_context("/", method="POST", json=payload):
-        with patch(f"{_MOD}.AgentDriveService") as svc:
+        with (
+            patch(f"{_MOD}.get_user", return_value=SimpleNamespace(id="user-1")),
+            patch(f"{_MOD}.AgentDriveService") as svc,
+        ):
             svc.return_value.commit.side_effect = AgentDriveError("source_not_found", "nope", status_code=404)
             body, status = raw(AgentDriveCommitApi(), "agent-agent-1")
     assert status == 404
     assert body["code"] == "source_not_found"
 
 
-@pytest.mark.parametrize("api_cls", [AgentDriveManifestApi, AgentDriveCommitApi])
+@pytest.mark.parametrize("api_cls", [AgentDriveManifestApi, AgentDriveSkillsApi, AgentDriveCommitApi])
 def test_endpoints_have_handlers(api_cls):
     assert callable(getattr(api_cls(), "get", None) or getattr(api_cls(), "post", None))

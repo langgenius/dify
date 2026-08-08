@@ -307,13 +307,12 @@ class TestGetProjectUrl:
         monkeypatch.setattr(trace_instance, "entity", None)
         monkeypatch.setattr(trace_instance, "project_name", None)
         # Force an error by making string formatting fail
-        with patch("dify_trace_weave.weave_trace.logger") as mock_logger:
-            # Simulate exception via property
-            original_entity = trace_instance.entity
-            trace_instance.entity = None
-            trace_instance.project_name = None
-            url = trace_instance.get_project_url()
-            assert "https://wandb.ai/" in url
+        # Simulate exception via property
+        original_entity = trace_instance.entity
+        trace_instance.entity = None
+        trace_instance.project_name = None
+        url = trace_instance.get_project_url()
+        assert "https://wandb.ai/" in url
 
 
 # ── TestTraceDispatcher ─────────────────────────────────────────────────────

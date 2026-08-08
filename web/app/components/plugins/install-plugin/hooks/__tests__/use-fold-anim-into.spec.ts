@@ -13,18 +13,9 @@ describe('useFoldAnimInto', () => {
 
   afterEach(() => {
     vi.useRealTimers()
-    document.querySelectorAll('.install-modal, #plugin-task-trigger, .plugins-nav-button')
-      .forEach(el => el.remove())
-  })
-
-  it('should return modalClassName and functions', async () => {
-    const useFoldAnimInto = (await import('../use-fold-anim-into')).default
-    const { result } = renderHook(() => useFoldAnimInto(mockOnClose))
-
-    expect(result.current.modalClassName).toBe('install-modal')
-    expect(typeof result.current.foldIntoAnim).toBe('function')
-    expect(typeof result.current.clearCountDown).toBe('function')
-    expect(typeof result.current.countDownFoldIntoAnim).toBe('function')
+    document
+      .querySelectorAll('.install-modal, #plugin-task-trigger, .plugins-nav-button')
+      .forEach((el) => el.remove())
   })
 
   describe('foldIntoAnim', () => {

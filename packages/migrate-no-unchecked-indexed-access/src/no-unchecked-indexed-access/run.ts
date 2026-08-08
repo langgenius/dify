@@ -41,8 +41,7 @@ function parseArgs(argv: string[]): CliOptions {
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i]
 
-    if (arg === '--')
-      continue
+    if (arg === '--') continue
 
     if (arg === '--verbose') {
       options.verbose = true
@@ -51,8 +50,7 @@ function parseArgs(argv: string[]): CliOptions {
 
     if (arg === '--project') {
       const value = argv[i + 1]
-      if (!value)
-        throw new Error('Missing value for --project')
+      if (!value) throw new Error('Missing value for --project')
 
       options.project = value
       i += 1
@@ -61,8 +59,7 @@ function parseArgs(argv: string[]): CliOptions {
 
     if (arg === '--batch-size') {
       const value = Number(argv[i + 1])
-      if (!Number.isInteger(value) || value <= 0)
-        throw new Error('Invalid value for --batch-size')
+      if (!Number.isInteger(value) || value <= 0) throw new Error('Invalid value for --batch-size')
 
       options.batchSize = value
       i += 1
@@ -81,8 +78,7 @@ function parseArgs(argv: string[]): CliOptions {
 
     if (arg === '--max-rounds') {
       const value = Number(argv[i + 1])
-      if (!Number.isInteger(value) || value <= 0)
-        throw new Error('Invalid value for --max-rounds')
+      if (!Number.isInteger(value) || value <= 0) throw new Error('Invalid value for --max-rounds')
 
       options.maxRounds = value
       i += 1
@@ -96,10 +92,7 @@ function parseArgs(argv: string[]): CliOptions {
 }
 
 function getTypeCheckBuildInfoPath(projectPath: string): string {
-  const hash = createHash('sha1')
-    .update(projectPath)
-    .digest('hex')
-    .slice(0, 16)
+  const hash = createHash('sha1').update(projectPath).digest('hex').slice(0, 16)
 
   return path.join(TYPECHECK_CACHE_DIR, `${hash}.tsbuildinfo`)
 }
@@ -109,7 +102,7 @@ async function runTypeCheck(
   options?: {
     incremental?: boolean
   },
-): Promise<{ diagnostics: DiagnosticEntry[], exitCode: number, rawOutput: string }> {
+): Promise<{ diagnostics: DiagnosticEntry[]; exitCode: number; rawOutput: string }> {
   const projectPath = path.resolve(process.cwd(), project)
   const projectDirectory = path.dirname(projectPath)
   const buildInfoPath = getTypeCheckBuildInfoPath(projectPath)
@@ -120,8 +113,7 @@ async function runTypeCheck(
   const tsgoArgs = ['exec', 'tsgo', '--noEmit', '--pretty', 'false']
   if (incremental) {
     tsgoArgs.push('--incremental', '--tsBuildInfoFile', buildInfoPath)
-  }
-  else {
+  } else {
     tsgoArgs.push('--incremental', 'false')
   }
   tsgoArgs.push('--project', projectPath)
@@ -142,17 +134,19 @@ async function runTypeCheck(
       exitCode: 0,
       rawOutput,
     }
-  }
-  catch (error) {
-    const exitCode = typeof error === 'object' && error && 'code' in error && typeof error.code === 'number'
-      ? error.code
-      : 1
-    const stdout = typeof error === 'object' && error && 'stdout' in error && typeof error.stdout === 'string'
-      ? error.stdout
-      : ''
-    const stderr = typeof error === 'object' && error && 'stderr' in error && typeof error.stderr === 'string'
-      ? error.stderr
-      : ''
+  } catch (error) {
+    const exitCode =
+      typeof error === 'object' && error && 'code' in error && typeof error.code === 'number'
+        ? error.code
+        : 1
+    const stdout =
+      typeof error === 'object' && error && 'stdout' in error && typeof error.stdout === 'string'
+        ? error.stdout
+        : ''
+    const stderr =
+      typeof error === 'object' && error && 'stderr' in error && typeof error.stderr === 'string'
+        ? error.stderr
+        : ''
     const rawOutput = `${stdout}${stderr}`.trim()
 
     return {
@@ -166,18 +160,19 @@ async function runTypeCheck(
 function parseDiagnostics(rawOutput: string, projectDirectory: string): DiagnosticEntry[] {
   return rawOutput
     .split('\n')
-    .map(line => line.trim())
+    .map((line) => line.trim())
     .flatMap((line) => {
       const match = line.match(DIAGNOSTIC_PATTERN)
-      if (!match)
-        return []
+      if (!match) return []
 
-      return [{
-        code: Number(match[4]),
-        fileName: path.resolve(projectDirectory, match[1]!),
-        line: Number(match[2]),
-        message: match[5] ?? '',
-      }]
+      return [
+        {
+          code: Number(match[4]),
+          fileName: path.resolve(projectDirectory, match[1]!),
+          line: Number(match[2]),
+          message: match[5] ?? '',
+        },
+      ]
     })
 }
 
@@ -195,8 +190,7 @@ function summarizeCodes(diagnostics: DiagnosticEntry[]): string {
 
 function chunk<T>(items: T[], size: number): T[][] {
   const batches: T[][] = []
-  for (let i = 0; i < items.length; i += size)
-    batches.push(items.slice(i, i + size))
+  for (let i = 0; i < items.length; i += size) batches.push(items.slice(i, i + size))
 
   return batches
 }
@@ -208,18 +202,24 @@ async function runBatchMigration(options: CliOptions) {
       const finalCheck = await runTypeCheck(options.project, { incremental: false })
       if (finalCheck.exitCode !== 0) {
         const finalDiagnostics = finalCheck.diagnostics
-        console.log(`Final cold type check found ${finalDiagnostics.length} diagnostic(s). ${summarizeCodes(finalDiagnostics)}`)
+        console.log(
+          `Final cold type check found ${finalDiagnostics.length} diagnostic(s). ${summarizeCodes(finalDiagnostics)}`,
+        )
 
         if (options.verbose) {
           for (const diagnostic of finalDiagnostics.slice(0, 40))
-            console.log(`${path.relative(process.cwd(), diagnostic.fileName)}:${diagnostic.line} TS${diagnostic.code} ${diagnostic.message}`)
+            console.log(
+              `${path.relative(process.cwd(), diagnostic.fileName)}:${diagnostic.line} TS${diagnostic.code} ${diagnostic.message}`,
+            )
         }
 
-        const finalSupportedFiles = Array.from(new Set(
-          finalDiagnostics
-            .filter(diagnostic => SUPPORTED_DIAGNOSTIC_CODES.has(diagnostic.code))
-            .map(diagnostic => diagnostic.fileName),
-        ))
+        const finalSupportedFiles = Array.from(
+          new Set(
+            finalDiagnostics
+              .filter((diagnostic) => SUPPORTED_DIAGNOSTIC_CODES.has(diagnostic.code))
+              .map((diagnostic) => diagnostic.fileName),
+          ),
+        )
 
         if (finalSupportedFiles.length > 0) {
           console.log(`  Final pass batch: ${finalSupportedFiles.length} file(s)`)
@@ -243,12 +243,10 @@ async function runBatchMigration(options: CliOptions) {
             })
           }
 
-          if (finalResult.totalEdits > 0)
-            continue
+          if (finalResult.totalEdits > 0) continue
         }
 
-        if (finalCheck.rawOutput)
-          process.stderr.write(`${finalCheck.rawOutput}\n`)
+        if (finalCheck.rawOutput) process.stderr.write(`${finalCheck.rawOutput}\n`)
         process.exitCode = 1
         return
       }
@@ -257,15 +255,25 @@ async function runBatchMigration(options: CliOptions) {
       return
     }
 
-    const supportedDiagnostics = diagnostics.filter(diagnostic => SUPPORTED_DIAGNOSTIC_CODES.has(diagnostic.code))
-    const unsupportedDiagnostics = diagnostics.filter(diagnostic => !SUPPORTED_DIAGNOSTIC_CODES.has(diagnostic.code))
-    const supportedFiles = Array.from(new Set(supportedDiagnostics.map(diagnostic => diagnostic.fileName)))
+    const supportedDiagnostics = diagnostics.filter((diagnostic) =>
+      SUPPORTED_DIAGNOSTIC_CODES.has(diagnostic.code),
+    )
+    const unsupportedDiagnostics = diagnostics.filter(
+      (diagnostic) => !SUPPORTED_DIAGNOSTIC_CODES.has(diagnostic.code),
+    )
+    const supportedFiles = Array.from(
+      new Set(supportedDiagnostics.map((diagnostic) => diagnostic.fileName)),
+    )
 
-    console.log(`Round ${round}: ${diagnostics.length} diagnostic(s). ${summarizeCodes(diagnostics)}`)
+    console.log(
+      `Round ${round}: ${diagnostics.length} diagnostic(s). ${summarizeCodes(diagnostics)}`,
+    )
 
     if (options.verbose) {
       for (const diagnostic of diagnostics.slice(0, 40))
-        console.log(`${path.relative(process.cwd(), diagnostic.fileName)}:${diagnostic.line} TS${diagnostic.code} ${diagnostic.message}`)
+        console.log(
+          `${path.relative(process.cwd(), diagnostic.fileName)}:${diagnostic.line} TS${diagnostic.code} ${diagnostic.message}`,
+        )
     }
 
     if (supportedFiles.length === 0) {
@@ -273,10 +281,11 @@ async function runBatchMigration(options: CliOptions) {
       if (unsupportedDiagnostics.length > 0) {
         console.error('Remaining unsupported diagnostics:')
         for (const diagnostic of unsupportedDiagnostics.slice(0, 40))
-          console.error(`${path.relative(process.cwd(), diagnostic.fileName)}:${diagnostic.line} TS${diagnostic.code} ${diagnostic.message}`)
+          console.error(
+            `${path.relative(process.cwd(), diagnostic.fileName)}:${diagnostic.line} TS${diagnostic.code} ${diagnostic.message}`,
+          )
       }
-      if (rawOutput)
-        process.stderr.write(`${rawOutput}\n`)
+      if (rawOutput) process.stderr.write(`${rawOutput}\n`)
       process.exitCode = 1
       return
     }
@@ -310,7 +319,9 @@ async function runBatchMigration(options: CliOptions) {
     }
 
     if (roundEdits === 0) {
-      console.error('Migration script made no edits in this round; stopping to avoid an infinite loop.')
+      console.error(
+        'Migration script made no edits in this round; stopping to avoid an infinite loop.',
+      )
       process.exitCode = 1
       return
     }

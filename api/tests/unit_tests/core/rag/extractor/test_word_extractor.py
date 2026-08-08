@@ -1,6 +1,7 @@
 """Primarily used for testing merged cell scenarios"""
 
 import io
+import logging
 import os
 import tempfile
 from collections import UserDict
@@ -110,7 +111,8 @@ def test_init_downloads_via_remote_fetcher(monkeypatch: pytest.MonkeyPatch):
         extractor.temp_file.close()
 
 
-def test_extract_images_from_docx(monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.parametrize("inject_session", [False, True])
+def test_extract_images_from_docx(monkeypatch: pytest.MonkeyPatch, inject_session: bool):
     external_bytes = b"ext-bytes"
     internal_bytes = b"int-bytes"
 
@@ -128,8 +130,8 @@ def test_extract_images_from_docx(monkeypatch: pytest.MonkeyPatch):
             self.added = []
             self.committed = False
 
-        def add(self, obj):
-            self.added.append(obj)
+        def add_all(self, objects):
+            self.added.extend(objects)
 
         def commit(self):
             self.committed = True
@@ -176,6 +178,7 @@ def test_extract_images_from_docx(monkeypatch: pytest.MonkeyPatch):
     extractor = object.__new__(WordExtractor)
     extractor.tenant_id = "t1"
     extractor.user_id = "u1"
+    extractor._session = db_stub.session if inject_session else None
 
     image_map = extractor._extract_images_from_docx(doc)
 
@@ -190,7 +193,51 @@ def test_extract_images_from_docx(monkeypatch: pytest.MonkeyPatch):
 
     # DB interactions should be recorded
     assert len(db_stub.session.added) == 2
-    assert db_stub.session.committed is True
+    assert db_stub.session.committed is not inject_session
+
+
+def test_extract_images_does_not_stage_partial_files_on_storage_failure(monkeypatch: pytest.MonkeyPatch):
+    class HashablePart:
+        def __init__(self, blob: bytes):
+            self.blob = blob
+
+        def __hash__(self) -> int:
+            return id(self)
+
+    first_part = HashablePart(b"first")
+    second_part = HashablePart(b"second")
+    doc = SimpleNamespace(
+        part=SimpleNamespace(
+            rels={
+                "rId1": SimpleNamespace(
+                    is_external=False,
+                    target_ref="word/media/image1.png",
+                    target_part=first_part,
+                ),
+                "rId2": SimpleNamespace(
+                    is_external=False,
+                    target_ref="word/media/image2.png",
+                    target_part=second_part,
+                ),
+            }
+        )
+    )
+    session = MagicMock()
+    save = MagicMock(side_effect=[None, RuntimeError("storage failure")])
+    monkeypatch.setattr(we, "storage", SimpleNamespace(save=save))
+    monkeypatch.setattr(we.dify_config, "FILES_URL", "http://files.local", raising=False)
+    monkeypatch.setattr(we.dify_config, "STORAGE_TYPE", "local", raising=False)
+
+    extractor = object.__new__(WordExtractor)
+    extractor.tenant_id = "tenant"
+    extractor.user_id = "user"
+    extractor._session = session
+
+    with pytest.raises(RuntimeError, match="storage failure"):
+        extractor._extract_images_from_docx(doc)
+
+    session.add_all.assert_not_called()
+    session.commit.assert_not_called()
 
 
 def test_extract_images_from_docx_uses_internal_files_url():
@@ -452,6 +499,7 @@ def test_extract_images_handles_invalid_external_cases(monkeypatch: pytest.Monke
     extractor = object.__new__(WordExtractor)
     extractor.tenant_id = "tenant"
     extractor.user_id = "user"
+    extractor._session = None
 
     result = extractor._extract_images_from_docx(doc)
 
@@ -548,7 +596,9 @@ def test_parse_docx_reads_real_paragraph_table_order(monkeypatch: pytest.MonkeyP
             os.remove(tmp_path)
 
 
-def test_parse_docx_covers_drawing_shapes_hyperlink_error_and_table_branch(monkeypatch: pytest.MonkeyPatch):
+def test_parse_docx_covers_drawing_shapes_hyperlink_error_and_table_branch(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+):
     extractor = object.__new__(WordExtractor)
 
     ext_image_id = "ext-image"
@@ -709,10 +759,9 @@ def test_parse_docx_covers_drawing_shapes_hyperlink_error_and_table_branch(monke
     monkeypatch.setattr(we, "Run", FakeRun)
     monkeypatch.setattr(extractor, "_extract_images_from_docx", lambda doc: image_map)
     monkeypatch.setattr(extractor, "_table_to_markdown", lambda table, image_map: "TABLE-MARKDOWN")
-    logger_exception = MagicMock()
-    monkeypatch.setattr(we.logger, "exception", logger_exception)
 
-    content = extractor.parse_docx("dummy.docx")
+    with caplog.at_level(logging.ERROR, logger="core.rag.extractor.word_extractor"):
+        content = extractor.parse_docx("dummy.docx")
 
     assert "[EXT]" in content
     assert "[INT]" in content
@@ -720,7 +769,7 @@ def test_parse_docx_covers_drawing_shapes_hyperlink_error_and_table_branch(monke
     assert "[LinkText](https://example.com)" in content
     assert "BrokenLink" in content
     assert "TABLE-MARKDOWN" in content
-    logger_exception.assert_called_once()
+    assert any(record.levelno == logging.ERROR for record in caplog.records)
 
 
 def test_parse_cell_paragraph_hyperlink_in_table_cell_http():

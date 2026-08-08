@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import { render } from '@/test/console/render'
+import { AppACLPermission } from '@/utils/permission'
 import WorkflowApp from '../index'
 
 const mockSetTriggerStatuses = vi.fn()
@@ -17,6 +19,8 @@ let appStoreState: {
   appDetail?: {
     id: string
     mode: string
+    maintainer?: string
+    permission_keys?: string[]
   }
 }
 
@@ -25,7 +29,7 @@ let workflowInitState: {
     graph: {
       nodes: Array<Record<string, unknown>>
       edges: Array<Record<string, unknown>>
-      viewport: { x: number, y: number, zoom: number }
+      viewport: { x: number; y: number; zoom: number }
     }
     features: Record<string, unknown>
   } | null
@@ -33,11 +37,15 @@ let workflowInitState: {
   fileUploadConfigResponse: Record<string, unknown> | null
 }
 
-let appContextState: {
+let consoleState: {
   isLoadingCurrentWorkspace: boolean
   currentWorkspace: {
     id?: string
   }
+  userProfile: {
+    id: string
+  }
+  workspacePermissionKeys: string[]
 }
 
 let appTriggersState: {
@@ -77,9 +85,33 @@ vi.mock('@/app/components/workflow/store/trigger-status', () => ({
   }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => appContextState,
-}))
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => ({
+    isLoadingCurrentWorkspace: consoleState.isLoadingCurrentWorkspace,
+    currentWorkspace: consoleState.currentWorkspace,
+    userProfile: consoleState.userProfile,
+    workspacePermissionKeys: consoleState.workspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    isLoadingCurrentWorkspace: consoleState.isLoadingCurrentWorkspace,
+    currentWorkspace: consoleState.currentWorkspace,
+    userProfile: consoleState.userProfile,
+    workspacePermissionKeys: consoleState.workspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
+    isLoadingCurrentWorkspace: consoleState.isLoadingCurrentWorkspace,
+    currentWorkspace: consoleState.currentWorkspace,
+    userProfile: consoleState.userProfile,
+    workspacePermissionKeys: consoleState.workspacePermissionKeys,
+  }))
+})
 
 vi.mock('@/next/navigation', () => ({
   useSearchParams: () => ({
@@ -95,11 +127,11 @@ vi.mock('@/service/use-tools', () => ({
   useAppTriggers: () => appTriggersState,
 }))
 
-vi.mock('@/app/components/workflow-app/hooks/use-workflow-init', () => ({
+vi.mock('../hooks/use-workflow-init', () => ({
   useWorkflowInit: () => workflowInitState,
 }))
 
-vi.mock('@/app/components/workflow-app/hooks/use-get-run-and-trace-url', () => ({
+vi.mock('../hooks/use-get-run-and-trace-url', () => ({
   useGetRunAndTraceUrl: () => ({
     getWorkflowRunAndTraceUrl: mockGetWorkflowRunAndTraceUrl,
   }),
@@ -142,7 +174,11 @@ vi.mock('@/app/components/workflow', () => ({
     edges: Array<Record<string, unknown>>
     children: ReactNode
   }) => (
-    <div data-testid="workflow-default-context" data-nodes={JSON.stringify(nodes)} data-edges={JSON.stringify(edges)}>
+    <div
+      data-testid="workflow-default-context"
+      data-nodes={JSON.stringify(nodes)}
+      data-edges={JSON.stringify(edges)}
+    >
       {children}
     </div>
   ),
@@ -154,9 +190,7 @@ vi.mock('@/app/components/workflow/context', () => ({
   }: {
     injectWorkflowStoreSliceFn: unknown
     children: ReactNode
-  }) => (
-    <div data-testid="workflow-context-provider">{children}</div>
-  ),
+  }) => <div data-testid="workflow-context-provider">{children}</div>,
 }))
 
 vi.mock('@/app/components/workflow-app/components/workflow-main', () => ({
@@ -185,6 +219,7 @@ describe('WorkflowApp', () => {
       appDetail: {
         id: 'app-1',
         mode: 'workflow',
+        permission_keys: [AppACLPermission.TestAndRun],
       },
     }
     workflowInitState = {
@@ -203,9 +238,11 @@ describe('WorkflowApp', () => {
       isLoading: false,
       fileUploadConfigResponse: { enabled: true },
     }
-    appContextState = {
+    consoleState = {
       isLoadingCurrentWorkspace: false,
       currentWorkspace: { id: 'workspace-1' },
+      userProfile: { id: 'user-1' },
+      workspacePermissionKeys: [],
     }
     appTriggersState = {}
     searchParamsValue = null
@@ -241,9 +278,18 @@ describe('WorkflowApp', () => {
     render(<WorkflowApp />)
 
     expect(screen.getByTestId('workflow-context-provider')).toBeInTheDocument()
-    expect(screen.getByTestId('workflow-default-context')).toHaveAttribute('data-nodes', JSON.stringify([{ id: 'node-1' }]))
-    expect(screen.getByTestId('workflow-default-context')).toHaveAttribute('data-edges', JSON.stringify([{ id: 'edge-1' }]))
-    expect(screen.getByTestId('workflow-app-main')).toHaveAttribute('data-viewport', JSON.stringify({ x: 1, y: 2, zoom: 3 }))
+    expect(screen.getByTestId('workflow-default-context')).toHaveAttribute(
+      'data-nodes',
+      JSON.stringify([{ id: 'node-1' }]),
+    )
+    expect(screen.getByTestId('workflow-default-context')).toHaveAttribute(
+      'data-edges',
+      JSON.stringify([{ id: 'edge-1' }]),
+    )
+    expect(screen.getByTestId('workflow-app-main')).toHaveAttribute(
+      'data-viewport',
+      JSON.stringify({ x: 1, y: 2, zoom: 3 }),
+    )
     expect(screen.getByTestId('features-provider')).toBeInTheDocument()
     expect(mockSetTriggerStatuses).toHaveBeenCalledWith({
       'trigger-enabled': 'enabled',
@@ -261,7 +307,8 @@ describe('WorkflowApp', () => {
   it('should replay workflow inputs from replayRunId and clean up workflow state on unmount', async () => {
     searchParamsValue = 'run-1'
     mockFetchRunDetail.mockResolvedValue({
-      inputs: '{"sys.query":"hidden","foo":"bar","count":2,"flag":true,"obj":{"nested":true},"nil":null}',
+      inputs:
+        '{"sys.query":"hidden","foo":"bar","count":2,"flag":true,"obj":{"nested":true},"nil":null}',
     })
 
     const { unmount } = render(<WorkflowApp />)
@@ -287,6 +334,27 @@ describe('WorkflowApp', () => {
 
   it('should skip replay lookups when replayRunId is missing', () => {
     render(<WorkflowApp />)
+
+    expect(mockGetWorkflowRunAndTraceUrl).not.toHaveBeenCalled()
+    expect(mockFetchRunDetail).not.toHaveBeenCalled()
+    expect(mockSetInputs).not.toHaveBeenCalled()
+  })
+
+  it('should skip replay lookups when test/run permission is missing', async () => {
+    searchParamsValue = 'run-1'
+    appStoreState = {
+      appDetail: {
+        id: 'app-1',
+        mode: 'workflow',
+        permission_keys: [AppACLPermission.ViewLayout],
+      },
+    }
+
+    render(<WorkflowApp />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('workflow-app-main')).toBeInTheDocument()
+    })
 
     expect(mockGetWorkflowRunAndTraceUrl).not.toHaveBeenCalled()
     expect(mockFetchRunDetail).not.toHaveBeenCalled()

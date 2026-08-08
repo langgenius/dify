@@ -1,21 +1,22 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
-import {
-  RiEqualizer2Line,
-  RiScales3Line,
-} from '@remixicon/react'
+import { RiEqualizer2Line, RiScales3Line } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 
 type ConfigModelProps = {
   onClick?: () => void
+  loading?: boolean
+  disabled?: boolean
   loadBalancingEnabled?: boolean
   loadBalancingInvalid?: boolean
   credentialRemoved?: boolean
 }
 const ConfigModel = ({
   onClick,
+  loading,
+  disabled,
   loadBalancingEnabled,
   loadBalancingInvalid,
   credentialRemoved,
@@ -24,14 +25,19 @@ const ConfigModel = ({
 
   if (loadBalancingInvalid) {
     return (
-      <div
-        className="relative flex h-[18px] cursor-pointer items-center rounded-[5px] border border-text-warning bg-components-badge-bg-dimm px-1.5 system-2xs-medium-uppercase text-text-warning"
+      <Button
+        variant="ghost"
+        size="small"
+        loading={loading}
+        disabled={disabled}
+        aria-busy={loading || undefined}
+        className="relative h-4.5 rounded-[5px] border border-text-warning bg-components-badge-bg-dimm px-1.5 system-2xs-medium-uppercase text-text-warning shadow-none hover:bg-components-badge-bg-dimm"
         onClick={onClick}
       >
         <RiScales3Line className="mr-0.5 size-3" />
-        {t('modelProvider.auth.authorizationError', { ns: 'common' })}
+        {t(($) => $['modelProvider.auth.authorizationError'], { ns: 'common' })}
         <StatusDot status="warning" className="absolute -top-px -right-px size-1.5" />
-      </div>
+      </Button>
     )
   }
 
@@ -39,36 +45,30 @@ const ConfigModel = ({
     <Button
       variant="secondary"
       size="small"
-      className={cn(
-        'hidden shrink-0 group-hover:flex',
-        credentialRemoved && 'flex',
-      )}
+      loading={loading}
+      disabled={disabled}
+      aria-busy={loading || undefined}
+      className={cn('hidden shrink-0 group-hover:flex', credentialRemoved && 'flex')}
       onClick={onClick}
     >
-      {
-        credentialRemoved && (
-          <>
-            {t('modelProvider.auth.credentialRemoved', { ns: 'common' })}
-            <StatusDot status="error" className="ml-2" />
-          </>
-        )
-      }
-      {
-        !loadBalancingEnabled && !credentialRemoved && !loadBalancingInvalid && (
-          <>
-            <RiEqualizer2Line className="mr-1 size-4" />
-            {t('operation.config', { ns: 'common' })}
-          </>
-        )
-      }
-      {
-        loadBalancingEnabled && !credentialRemoved && !loadBalancingInvalid && (
-          <>
-            <RiScales3Line className="mr-1 size-4" />
-            {t('modelProvider.auth.configLoadBalancing', { ns: 'common' })}
-          </>
-        )
-      }
+      {credentialRemoved && (
+        <>
+          {t(($) => $['modelProvider.auth.credentialRemoved'], { ns: 'common' })}
+          <StatusDot status="error" />
+        </>
+      )}
+      {!loadBalancingEnabled && !credentialRemoved && !loadBalancingInvalid && (
+        <>
+          <RiEqualizer2Line className="size-4" />
+          {t(($) => $['operation.config'], { ns: 'common' })}
+        </>
+      )}
+      {loadBalancingEnabled && !credentialRemoved && !loadBalancingInvalid && (
+        <>
+          <RiScales3Line className="size-4" />
+          {t(($) => $['modelProvider.auth.configLoadBalancing'], { ns: 'common' })}
+        </>
+      )}
     </Button>
   )
 }

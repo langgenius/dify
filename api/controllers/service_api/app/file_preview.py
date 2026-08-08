@@ -15,6 +15,7 @@ from controllers.service_api.app.error import (
     FileAccessDeniedError,
     FileNotFoundError,
 )
+from controllers.service_api.schema import binary_response
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from extensions.ext_database import db
 from extensions.ext_storage import storage
@@ -24,11 +25,34 @@ logger = logging.getLogger(__name__)
 
 
 class FilePreviewQuery(BaseModel):
-    as_attachment: bool = Field(default=False, description="Download as attachment")
+    as_attachment: bool = Field(
+        default=False,
+        description="If `true`, forces the file to download as an attachment instead of previewing in browser.",
+    )
 
 
 register_schema_model(service_api_ns, FilePreviewQuery)
 register_response_schema_model(service_api_ns, BinaryFileResponse)
+
+FILE_PREVIEW_RESPONSE_MEDIA_TYPES = [
+    "application/octet-stream",
+    "application/pdf",
+    "audio/aac",
+    "audio/flac",
+    "audio/mp4",
+    "audio/mpeg",
+    "audio/ogg",
+    "audio/wav",
+    "audio/x-m4a",
+    "image/gif",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "text/plain",
+    "video/mp4",
+    "video/quicktime",
+    "video/webm",
+]
 
 
 @service_api_ns.route("/files/<uuid:file_id>/preview")
@@ -40,10 +64,36 @@ class FilePreviewApi(Resource):
     Files can only be accessed if they belong to messages within the requesting app's context.
     """
 
+    @service_api_ns.doc(
+        summary="Download File",
+        description=(
+            "Preview or download uploaded files previously uploaded via the [Upload "
+            "File](/api-reference/files/upload-file) API. Files can only be accessed if they belong to "
+            "messages within the requesting application."
+        ),
+        tags=["Files"],
+        responses={
+            200: (
+                "Returns the raw file content. The `Content-Type` header is set to the file's MIME type. If "
+                "`as_attachment` is `true`, the file is returned as a download with `Content-Disposition: "
+                "attachment`."
+            ),
+            403: "`file_access_denied` : Access to the requested file is denied.",
+            404: "`file_not_found` : The requested file was not found.",
+        },
+    )
     @service_api_ns.doc(params=query_params_from_model(FilePreviewQuery))
+    @binary_response(service_api_ns, FILE_PREVIEW_RESPONSE_MEDIA_TYPES)
     @service_api_ns.doc("preview_file")
     @service_api_ns.doc(description="Preview or download a file uploaded via Service API")
-    @service_api_ns.doc(params={"file_id": "UUID of the file to preview"})
+    @service_api_ns.doc(
+        params={
+            "file_id": (
+                "The unique identifier of the file to preview, obtained from the "
+                "[Upload File](/api-reference/files/upload-file) API response."
+            )
+        }
+    )
     @service_api_ns.doc(
         responses={
             200: "File retrieved successfully",
@@ -52,11 +102,7 @@ class FilePreviewApi(Resource):
             404: "File not found",
         }
     )
-    @service_api_ns.response(
-        200,
-        "File retrieved successfully",
-        service_api_ns.models[BinaryFileResponse.__name__],
-    )
+    @service_api_ns.response(200, "File retrieved successfully")
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
     def get(self, app_model: App, end_user: EndUser, file_id: UUID):
         """

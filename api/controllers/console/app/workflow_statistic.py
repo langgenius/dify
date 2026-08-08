@@ -6,7 +6,14 @@ from sqlalchemy.orm import sessionmaker
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required, with_current_user
+from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
+    account_initialization_required,
+    rbac_permission_required,
+    setup_required,
+    with_current_user,
+)
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.datetime_utils import parse_time_range
@@ -91,11 +98,12 @@ class WorkflowDailyRunsStatistic(Resource):
         "Daily runs statistics retrieved successfully",
         console_ns.models[WorkflowDailyRunsStatisticResponse.__name__],
     )
-    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
     @with_current_user
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
+    @get_app_model
     def get(self, account: Account, app_model: App):
         args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))
 
@@ -134,11 +142,12 @@ class WorkflowDailyTerminalsStatistic(Resource):
         "Daily terminals statistics retrieved successfully",
         console_ns.models[WorkflowDailyTerminalsStatisticResponse.__name__],
     )
-    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
     @with_current_user
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
+    @get_app_model
     def get(self, account: Account, app_model: App):
         args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))
 
@@ -177,11 +186,12 @@ class WorkflowDailyTokenCostStatistic(Resource):
         "Daily token cost statistics retrieved successfully",
         console_ns.models[WorkflowDailyTokenCostStatisticResponse.__name__],
     )
-    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
     @with_current_user
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
+    @get_app_model
     def get(self, account: Account, app_model: App):
         args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))
 
@@ -223,8 +233,9 @@ class WorkflowAverageAppInteractionStatistic(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.WORKFLOW])
     @with_current_user
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
+    @get_app_model(mode=[AppMode.WORKFLOW])
     def get(self, account: Account, app_model: App):
         args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))
 

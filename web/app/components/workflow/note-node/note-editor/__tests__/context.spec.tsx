@@ -49,13 +49,9 @@ const readEditorText = (editor: LexicalEditor) => {
   return text
 }
 
-const ContextProbe = ({
-  onReady,
-}: {
-  onReady?: (editor: LexicalEditor) => void
-}) => {
+const ContextProbe = ({ onReady }: { onReady?: (editor: LexicalEditor) => void }) => {
   const [editor] = useLexicalComposerContext()
-  const selectedIsBold = useStore(state => state.selectedIsBold)
+  const selectedIsBold = useStore((state) => state.selectedIsBold)
 
   useEffect(() => {
     onReady?.(editor)
@@ -76,7 +72,7 @@ describe('NoteEditorContextProvider', () => {
 
       render(
         <NoteEditorContextProvider value={emptyValue}>
-          <ContextProbe onReady={instance => (editor = instance)} />
+          <ContextProbe onReady={(instance) => (editor = instance)} />
         </NoteEditorContextProvider>,
       )
 
@@ -107,7 +103,7 @@ describe('NoteEditorContextProvider', () => {
 
       render(
         <NoteEditorContextProvider value={value}>
-          <ContextProbe onReady={instance => (editor = instance)} />
+          <ContextProbe onReady={(instance) => (editor = instance)} />
         </NoteEditorContextProvider>,
       )
 
@@ -123,7 +119,7 @@ describe('NoteEditorContextProvider', () => {
 
       render(
         <NoteEditorContextProvider value={populatedValue} editable={false}>
-          <ContextProbe onReady={instance => (editor = instance)} />
+          <ContextProbe onReady={(instance) => (editor = instance)} />
         </NoteEditorContextProvider>,
       )
 

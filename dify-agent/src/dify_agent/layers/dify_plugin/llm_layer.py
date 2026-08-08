@@ -32,7 +32,7 @@ class DifyPluginLLMDeps(LayerDeps):
 class DifyPluginLLMLayer(PlainLayer[DifyPluginLLMDeps, DifyPluginLLMLayerConfig]):
     """Layer that creates the Dify plugin-daemon Pydantic AI model."""
 
-    type_id: ClassVar[str] = DIFY_PLUGIN_LLM_LAYER_TYPE_ID
+    type_id: ClassVar[str | None] = DIFY_PLUGIN_LLM_LAYER_TYPE_ID
 
     config: DifyPluginLLMLayerConfig
 

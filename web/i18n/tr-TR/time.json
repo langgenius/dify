@@ -1,9 +1,6 @@
 {
   "dateFormats.display": "D MMMM YYYY",
   "dateFormats.displayWithTime": "D MMMM YYYY hh:mm A",
-  "dateFormats.input": "YYYY-MM-DD",
-  "dateFormats.output": "YYYY-MM-DD",
-  "dateFormats.outputWithTime": "YYYY-MM-DDTHH:mm:ss.SSSZ",
   "daysInWeek.Fri": "Cum",
   "daysInWeek.Mon": "Pzt",
   "daysInWeek.Sat": "Cmt",

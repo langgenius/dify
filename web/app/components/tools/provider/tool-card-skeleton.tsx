@@ -1,5 +1,10 @@
 import { cn } from '@langgenius/dify-ui/cn'
-import { SkeletonContainer, SkeletonPoint, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
+import {
+  SkeletonContainer,
+  SkeletonPoint,
+  SkeletonRectangle,
+  SkeletonRow,
+} from '@/app/components/base/skeleton'
 
 type ToolCardSkeletonGridProps = {
   className?: string
@@ -19,7 +24,7 @@ const ToolCardSkeleton = () => (
             <SkeletonRectangle className="h-4 w-2/3 animate-pulse" />
           </div>
           <SkeletonRow className="mt-0.5 h-4">
-            <SkeletonRectangle className="w-[41px] animate-pulse" />
+            <SkeletonRectangle className="w-10.25 animate-pulse" />
             <SkeletonPoint />
             <SkeletonRectangle className="w-1/3 animate-pulse" />
           </SkeletonRow>
@@ -38,7 +43,7 @@ const ToolCardSkeleton = () => (
 )
 
 const IntegrationsDefaultToolCardSkeleton = () => (
-  <div className="group/tool-provider relative flex min-w-[min(100%,496px)] flex-1 cursor-pointer flex-col overflow-hidden rounded-xl bg-background-section-burn p-[3px]">
+  <div className="group/tool-provider relative flex min-w-[min(100%,496px)] flex-1 cursor-pointer flex-col overflow-hidden rounded-xl bg-background-section-burn p-0.75">
     <div className="relative flex w-full items-center gap-3 overflow-hidden rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-3">
       <SkeletonRectangle className="size-10 shrink-0 animate-pulse rounded-lg" />
       <div className="flex min-w-0 flex-1 flex-col gap-1 py-px">
@@ -46,7 +51,7 @@ const IntegrationsDefaultToolCardSkeleton = () => (
         <SkeletonRectangle className="h-3 w-3/5 animate-pulse" />
       </div>
     </div>
-    <div className="flex h-[26px] w-full items-center gap-2 px-3 pt-1.5 pb-1">
+    <div className="flex h-6.5 w-full items-center gap-2 px-3 pt-1.5 pb-1">
       <SkeletonRectangle className="h-3 w-20 animate-pulse" />
       <SkeletonPoint />
       <SkeletonRectangle className="h-3 w-24 animate-pulse" />
@@ -97,10 +102,10 @@ const MCPCardSkeleton = () => (
 )
 
 const skeletonByVariant = {
-  'default': ToolCardSkeleton,
+  default: ToolCardSkeleton,
   'integrations-default': IntegrationsDefaultToolCardSkeleton,
   'integrations-labeled': IntegrationsLabeledToolCardSkeleton,
-  'mcp': MCPCardSkeleton,
+  mcp: MCPCardSkeleton,
 }
 
 const ToolCardSkeletonGrid = ({

@@ -2,7 +2,7 @@
 import type { MeterTone } from '@langgenius/dify-ui/meter'
 import type { ComponentType, FC, ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import { MeterIndicator, MeterRoot, MeterTrack } from '@langgenius/dify-ui/meter'
+import { Meter, MeterIndicator, MeterTrack } from '@langgenius/dify-ui/meter'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -26,6 +26,7 @@ type Props = Readonly<{
   storageThreshold?: number
   storageTooltip?: string
   isSandboxPlan?: boolean
+  usageUnknown?: boolean
 }>
 
 const UsageInfo: FC<Props> = ({
@@ -44,46 +45,44 @@ const UsageInfo: FC<Props> = ({
   storageThreshold = 50,
   storageTooltip,
   isSandboxPlan = false,
+  usageUnknown = false,
 }) => {
   const { t } = useTranslation()
 
-  const isBelowThreshold = storageMode && usage < storageThreshold
-  const isSandboxFull = storageMode && isSandboxPlan && usage >= storageThreshold
+  const isBelowThreshold = !usageUnknown && storageMode && usage < storageThreshold
+  const isSandboxFull = !usageUnknown && storageMode && isSandboxPlan && usage >= storageThreshold
 
   // Single source of truth: sandbox full is visually clamped to 100%; all other
   // determinate cases show the real percent capped at 100. Tone derives from
   // this, so we never need a separate tone override.
   const rawPercent = total > 0 ? (usage / total) * 100 : 0
   const effectivePercent = isSandboxFull ? 100 : Math.min(rawPercent, 100)
-  const tone: MeterTone
-    = effectivePercent >= 100
-      ? 'error'
-      : effectivePercent >= 80
-        ? 'warning'
-        : 'neutral'
+  const tone: MeterTone =
+    effectivePercent >= 100 ? 'error' : effectivePercent >= 80 ? 'warning' : 'neutral'
 
   const isUnlimited = total === NUM_INFINITE
-  let totalDisplay: string | number = isUnlimited ? t('plansCommon.unlimited', { ns: 'billing' }) : total
-  if (!isUnlimited && unit && unitPosition === 'inline')
-    totalDisplay = `${total}${unit}`
+  let totalDisplay: string | number = isUnlimited
+    ? t(($) => $['plansCommon.unlimited'], { ns: 'billing' })
+    : total
+  if (!isUnlimited && unit && unitPosition === 'inline') totalDisplay = `${total}${unit}`
   const showUnit = !!unit && !isUnlimited && unitPosition === 'suffix'
-  const resetText = resetHint ?? (typeof resetInDays === 'number' ? t('usagePage.resetsIn', { ns: 'billing', count: resetInDays }) : undefined)
+  const resetText =
+    resetHint ??
+    (typeof resetInDays === 'number'
+      ? t(($) => $['usagePage.resetsIn'], { ns: 'billing', count: resetInDays })
+      : undefined)
 
-  const rightInfo: ReactNode = resetText
-    ? (
-        <div className="ml-auto flex-1 text-right system-xs-regular text-text-tertiary">
-          {resetText}
-        </div>
-      )
-    : showUnit
-      ? (
-          <div className="ml-auto system-xs-medium text-text-tertiary">
-            {unit}
-          </div>
-        )
-      : null
+  const rightInfo: ReactNode = resetText ? (
+    <div className="ml-auto flex-1 text-right system-xs-regular text-text-tertiary">
+      {resetText}
+    </div>
+  ) : showUnit ? (
+    <div className="ml-auto system-xs-medium text-text-tertiary">{unit}</div>
+  ) : null
 
   const usageDisplay: ReactNode = (() => {
+    if (usageUnknown) return <span>--</span>
+
     if (storageMode) {
       if (isSandboxFull) {
         return (
@@ -91,9 +90,7 @@ const UsageInfo: FC<Props> = ({
             <span>{storageThreshold}</span>
             <span className="system-md-regular text-text-quaternary">/</span>
             <span>
-              {storageThreshold}
-              {' '}
-              {unit}
+              {storageThreshold} {unit}
             </span>
           </div>
         )
@@ -101,11 +98,7 @@ const UsageInfo: FC<Props> = ({
       if (isBelowThreshold) {
         return (
           <div className="flex items-center gap-1">
-            <span>
-              &lt;
-              {' '}
-              {storageThreshold}
-            </span>
+            <span>&lt; {storageThreshold}</span>
             {!isSandboxPlan && (
               <>
                 <span className="system-md-regular text-text-quaternary">/</span>
@@ -134,37 +127,30 @@ const UsageInfo: FC<Props> = ({
     )
   })()
 
-  const bar: ReactNode = isBelowThreshold
-    ? (
-        // Decorative "< N MB" placeholder — not a meter, not a progressbar.
-        <div
-          aria-hidden="true"
-          className="overflow-hidden rounded-md bg-components-progress-bar-bg"
-        >
-          <div
-            className={cn(
-              'h-1 rounded-md bg-progress-bar-indeterminate-stripe',
-              isSandboxPlan ? 'w-full' : 'w-7.5',
-            )}
-          />
-        </div>
-      )
-    : (
-        <MeterRoot value={effectivePercent} max={100} aria-label={name}>
-          <MeterTrack>
-            <MeterIndicator tone={tone} />
-          </MeterTrack>
-        </MeterRoot>
-      )
+  const bar: ReactNode = isBelowThreshold ? (
+    // Decorative "< N MB" placeholder — not a meter, not a progressbar.
+    <div aria-hidden="true" className="overflow-hidden rounded-md bg-components-progress-bar-bg">
+      <div
+        className={cn(
+          'h-1 rounded-md bg-progress-bar-indeterminate-stripe',
+          isSandboxPlan ? 'w-full' : 'w-7.5',
+        )}
+      />
+    </div>
+  ) : (
+    <Meter value={effectivePercent} max={100} aria-label={name}>
+      <MeterTrack>
+        <MeterIndicator tone={tone} />
+      </MeterTrack>
+    </Meter>
+  )
 
   const wrapWithStorageTooltip = (children: ReactNode) => {
-    if (storageMode && storageTooltip) {
+    if (!usageUnknown && storageMode && storageTooltip) {
       return (
         <Tooltip>
           <TooltipTrigger render={<div className="cursor-default">{children}</div>} />
-          <TooltipContent className="w-50 max-w-50">
-            {storageTooltip}
-          </TooltipContent>
+          <TooltipContent className="w-50 max-w-50">{storageTooltip}</TooltipContent>
         </Tooltip>
       )
     }
@@ -172,23 +158,30 @@ const UsageInfo: FC<Props> = ({
   }
 
   return (
-    <div className={cn('flex flex-col gap-2 rounded-xl bg-components-panel-bg p-4', className)}>
-      {!hideIcon && Icon && (
-        <Icon className="size-4 text-text-tertiary" />
-      )}
-      <div className="flex items-center gap-1">
-        <div className="system-xs-medium text-text-tertiary">{name}</div>
-        {tooltip && (
-          <Infotip aria-label={tooltip} popupClassName="w-[180px] max-w-[180px]">
-            {tooltip}
-          </Infotip>
-        )}
-      </div>
-      <div className="flex items-center gap-1 system-md-semibold text-text-primary">
-        {wrapWithStorageTooltip(usageDisplay)}
-        {rightInfo}
-      </div>
-      {wrapWithStorageTooltip(bar)}
+    <div
+      role="group"
+      aria-label={name}
+      className={cn('flex flex-col gap-2 rounded-xl bg-components-panel-bg p-4', className)}
+    >
+      {!hideIcon && Icon && <Icon className="size-4 text-text-tertiary" />}
+      <dl className="flex flex-col gap-2">
+        <dt className="flex items-center gap-1 system-xs-medium text-text-tertiary">
+          {name}
+          {tooltip && (
+            <Infotip aria-label={tooltip} popupClassName="w-[180px] max-w-[180px]">
+              {tooltip}
+            </Infotip>
+          )}
+        </dt>
+        <dd
+          data-testid="billing-quota-value"
+          className="flex items-center gap-1 system-md-semibold text-text-primary"
+        >
+          {wrapWithStorageTooltip(usageDisplay)}
+          {rightInfo}
+        </dd>
+      </dl>
+      {!usageUnknown && wrapWithStorageTooltip(bar)}
     </div>
   )
 }

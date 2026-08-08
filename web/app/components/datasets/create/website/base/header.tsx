@@ -24,10 +24,11 @@ const Header = ({
   return (
     <div className="flex items-center gap-x-2">
       <div className="flex shrink-0 grow items-center gap-x-1">
-        <div className={cn(
-          'text-text-secondary',
-          isInPipeline ? 'system-sm-semibold' : 'system-md-semibold',
-        )}
+        <div
+          className={cn(
+            'text-text-secondary',
+            isInPipeline ? 'system-sm-semibold' : 'system-md-semibold',
+          )}
         >
           {title}
         </div>
@@ -35,15 +36,11 @@ const Header = ({
         <Button
           variant="secondary"
           size="small"
-          className={cn(isInPipeline ? 'size-6 px-1' : 'gap-x-0.5 px-1.5')}
+          className={cn(isInPipeline ? 'size-6 px-1' : 'px-1.5')}
           onClick={onClickConfiguration}
         >
           <RiEqualizer2Line className="size-4" />
-          {!isInPipeline && (
-            <span className="system-xs-medium">
-              {buttonText}
-            </span>
-          )}
+          {!isInPipeline && <span className="system-xs-medium">{buttonText}</span>}
         </Button>
       </div>
       <a
@@ -53,7 +50,9 @@ const Header = ({
         rel="noopener noreferrer"
       >
         <RiBookOpenLine className="size-3.5 shrink-0" />
-        <span className="grow truncate" title={docTitle}>{docTitle}</span>
+        <span className="grow truncate" title={docTitle}>
+          {docTitle}
+        </span>
       </a>
     </div>
   )

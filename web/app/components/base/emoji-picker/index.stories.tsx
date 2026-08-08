@@ -9,7 +9,8 @@ const meta = {
     layout: 'fullscreen',
     docs: {
       description: {
-        component: 'Modal-based emoji selector that powers the icon picker. Supports search, background swatches, and confirmation callbacks.',
+        component:
+          'Modal-based emoji selector that powers the icon picker. Supports search, background swatches, and confirmation callbacks.',
       },
     },
     nextjs: {
@@ -28,10 +29,10 @@ type Story = StoryObj<typeof meta>
 
 const EmojiPickerDemo = () => {
   const [open, setOpen] = useState(false)
-  const [selection, setSelection] = useState<{ emoji: string, background: string } | null>(null)
+  const [selection, setSelection] = useState<{ emoji: string; background: string } | null>(null)
 
   return (
-    <div className="flex min-h-[320px] flex-col items-start gap-4 px-6 py-8 md:px-12">
+    <div className="flex min-h-80 flex-col items-start gap-4 px-6 py-8 md:px-12">
       <button
         type="button"
         className="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-700"

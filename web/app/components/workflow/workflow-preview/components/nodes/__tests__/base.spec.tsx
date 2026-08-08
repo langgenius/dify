@@ -4,8 +4,13 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import BaseCard from '../base'
 
 vi.mock('reactflow', () => ({
-  Handle: (props: { id: string, type: string, className?: string }) => (
-    <div data-testid="handle" data-handleid={props.id} data-type={props.type} className={props.className} />
+  Handle: (props: { id: string; type: string; className?: string }) => (
+    <div
+      data-testid="handle"
+      data-handleid={props.id}
+      data-type={props.type}
+      className={props.className}
+    />
   ),
   Position: {
     Left: 'left',
@@ -22,11 +27,13 @@ describe('workflow preview base node card', () => {
     render(
       <BaseCard
         id="node-1"
-        data={{
-          type: BlockEnum.Answer,
-          title: 'Answer node',
-          desc: 'This is a preview node',
-        } as never}
+        data={
+          {
+            type: BlockEnum.Answer,
+            title: 'Answer node',
+            desc: 'This is a preview node',
+          } as never
+        }
       >
         <ChildNode />
       </BaseCard>,
@@ -43,14 +50,16 @@ describe('workflow preview base node card', () => {
     render(
       <BaseCard
         id="iteration-1"
-        data={{
-          type: BlockEnum.Iteration,
-          title: 'Iteration node',
-          desc: 'Ignored description',
-          width: 360,
-          height: 220,
-          is_parallel: true,
-        } as never}
+        data={
+          {
+            type: BlockEnum.Iteration,
+            title: 'Iteration node',
+            desc: 'Ignored description',
+            width: 360,
+            height: 220,
+            is_parallel: true,
+          } as never
+        }
       >
         <ChildNode />
       </BaseCard>,

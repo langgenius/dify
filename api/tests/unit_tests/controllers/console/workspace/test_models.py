@@ -1,3 +1,4 @@
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -19,12 +20,6 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 
 
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
-
-
 class TestDefaultModelApi:
     def test_get_success(self, app: Flask):
         api = DefaultModelApi()
@@ -37,7 +32,16 @@ class TestDefaultModelApi:
             ),
             patch("controllers.console.workspace.models.ModelProviderService") as service_mock,
         ):
-            service_mock.return_value.get_default_model_of_model_type.return_value = {"model": "gpt-4"}
+            service_mock.return_value.get_default_model_of_model_type.return_value = {
+                "model": "gpt-4",
+                "model_type": ModelType.LLM,
+                "provider": {
+                    "tenant_id": "tenant1",
+                    "provider": "openai",
+                    "label": {"en_US": "OpenAI", "zh_Hans": "OpenAI"},
+                    "supported_model_types": [ModelType.LLM],
+                },
+            }
 
             result = method(api, "tenant1")
 

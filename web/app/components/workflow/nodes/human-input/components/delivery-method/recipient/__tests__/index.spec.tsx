@@ -1,31 +1,31 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
+import { render } from '@/test/console/render'
+import { withSelectorKey } from '@/test/i18n-mock'
 import Recipient from '../index'
 
 const mockUseTranslation = vi.hoisted(() => vi.fn())
-const mockUseAppContext = vi.hoisted(() => vi.fn())
+const mockConsoleStateReader = vi.hoisted(() => vi.fn())
 const mockUseMembers = vi.hoisted(() => vi.fn())
+const mockConsoleState = vi.hoisted(() => ({
+  userProfile: { email: 'owner@example.com' },
+  currentWorkspace: { name: "Dify's Lab" },
+}))
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => mockUseTranslation(),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => mockUseAppContext(),
-}))
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => mockConsoleState)
+})
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => mockConsoleState)
+})
 
 vi.mock('@/service/use-common', () => ({
   useMembers: () => mockUseMembers(),
-}))
-
-vi.mock('@langgenius/dify-ui/switch', () => ({
-  Switch: (props: {
-    checked: boolean
-    onCheckedChange: (value: boolean) => void
-  }) => (
-    <button type="button" onClick={() => props.onCheckedChange(!props.checked)}>
-      toggle-workspace
-    </button>
-  ),
 }))
 
 vi.mock('../member-selector', () => ({
@@ -42,7 +42,7 @@ vi.mock('../email-input', () => ({
   default: (props: {
     onAdd: (email: string) => void
     onSelect: (id: string) => void
-    onDelete: (recipient: { type: 'member' | 'external', user_id?: string, email?: string }) => void
+    onDelete: (recipient: { type: 'member' | 'external'; user_id?: string; email?: string }) => void
   }) => (
     <div>
       <button type="button" onClick={() => props.onAdd('new@example.com')}>
@@ -54,7 +54,10 @@ vi.mock('../email-input', () => ({
       <button type="button" onClick={() => props.onDelete({ type: 'member', user_id: 'member-1' })}>
         delete-member
       </button>
-      <button type="button" onClick={() => props.onDelete({ type: 'external', email: 'external@example.com' })}>
+      <button
+        type="button"
+        onClick={() => props.onDelete({ type: 'external', email: 'external@example.com' })}
+      >
         delete-external
       </button>
     </div>
@@ -67,12 +70,11 @@ describe('Recipient', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseTranslation.mockReturnValue({
-      t: (key: string, options?: { workspaceName?: string }) => options?.workspaceName ?? key,
+      t: withSelectorKey(
+        (key: string, options?: { workspaceName?: string }) => options?.workspaceName ?? key,
+      ),
     })
-    mockUseAppContext.mockReturnValue({
-      userProfile: { email: 'owner@example.com' },
-      currentWorkspace: { name: 'Dify\'s Lab' },
-    })
+    mockConsoleStateReader.mockReturnValue(mockConsoleState)
     mockUseMembers.mockReturnValue({
       data: {
         accounts: [
@@ -106,7 +108,7 @@ describe('Recipient', () => {
     fireEvent.click(screen.getByText('add-email-member'))
     fireEvent.click(screen.getByText('delete-member'))
     fireEvent.click(screen.getByText('delete-external'))
-    fireEvent.click(screen.getByText('toggle-workspace'))
+    fireEvent.click(screen.getByRole('switch'))
 
     expect(onChange).toHaveBeenNthCalledWith(1, {
       whole_workspace: false,
@@ -134,15 +136,11 @@ describe('Recipient', () => {
     })
     expect(onChange).toHaveBeenNthCalledWith(4, {
       whole_workspace: false,
-      items: [
-        { type: 'external', email: 'external@example.com' },
-      ],
+      items: [{ type: 'external', email: 'external@example.com' }],
     })
     expect(onChange).toHaveBeenNthCalledWith(5, {
       whole_workspace: false,
-      items: [
-        { type: 'member', user_id: 'member-1' },
-      ],
+      items: [{ type: 'member', user_id: 'member-1' }],
     })
     expect(onChange).toHaveBeenNthCalledWith(6, {
       whole_workspace: true,

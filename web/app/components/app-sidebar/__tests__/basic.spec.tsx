@@ -4,11 +4,18 @@ import AppBasic from '../basic'
 
 vi.mock('@/app/components/base/icons/src/vender/workflow', () => ({
   ApiAggregate: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="api-icon" {...props} />,
-  WindowCursor: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="webapp-icon" {...props} />,
+  WindowCursor: (props: React.SVGProps<SVGSVGElement>) => (
+    <svg data-testid="webapp-icon" {...props} />
+  ),
 }))
 
 vi.mock('../../base/app-icon', () => ({
-  default: ({ icon, background, innerIcon, className }: {
+  default: ({
+    icon,
+    background,
+    innerIcon,
+    className,
+  }: {
     icon?: string
     background?: string
     innerIcon?: React.ReactNode
@@ -92,12 +99,6 @@ describe('AppBasic', () => {
     it('should show type inline when isExtraInLine is true and hideType is false', () => {
       render(<AppBasic name="My App" type="Chatbot" isExtraInLine />)
       expect(screen.getByText('Chatbot')).toBeInTheDocument()
-    })
-
-    it('should apply custom text styles', () => {
-      render(<AppBasic name="My App" type="Chatbot" textStyle={{ main: 'text-red-500' }} />)
-      const nameContainer = screen.getByText('My App').parentElement
-      expect(nameContainer).toHaveClass('text-red-500')
     })
   })
 })

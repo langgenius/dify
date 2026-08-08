@@ -13,7 +13,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from models.account import Account
-from models.enums import CreatorUserRole
+from models.enums import CreatorUserRole, EndUserType
 from models.model import App, AppMode, EndUser
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 
@@ -44,7 +44,7 @@ class TestWorkflowNodeExecutionModelCreatedBy:
         end_user = EndUser(
             tenant_id=tenant_id,
             app_id=app_id,
-            type="service_api",
+            type=EndUserType.SERVICE_API,
             external_user_id=f"ext-{uuid4()}",
             name="End User",
             session_id=f"session-{uuid4()}",

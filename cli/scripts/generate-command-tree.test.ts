@@ -14,18 +14,22 @@ import {
 
 describe('pathToTokens', () => {
   it('extracts tokens for nested command', () => {
-    expect(pathToTokens('src/commands/auth/devices/list/index.ts', 'src/commands'))
-      .toEqual(['auth', 'devices', 'list'])
+    expect(pathToTokens('src/commands/auth/devices/list/index.ts', 'src/commands')).toEqual([
+      'auth',
+      'devices',
+      'list',
+    ])
   })
 
   it('extracts tokens for top-level command', () => {
-    expect(pathToTokens('src/commands/version/index.ts', 'src/commands'))
-      .toEqual(['version'])
+    expect(pathToTokens('src/commands/version/index.ts', 'src/commands')).toEqual(['version'])
   })
 
   it('normalizes backslashes (windows-style paths)', () => {
-    expect(pathToTokens('src\\commands\\auth\\login\\index.ts', 'src/commands'))
-      .toEqual(['auth', 'login'])
+    expect(pathToTokens('src\\commands\\auth\\login\\index.ts', 'src/commands')).toEqual([
+      'auth',
+      'login',
+    ])
   })
 })
 
@@ -49,22 +53,35 @@ describe('tokensToIdentifier', () => {
 describe('buildTree', () => {
   it('assembles a nested tree from entries', () => {
     const entries = [
-      { tokens: ['auth', 'login'], identifier: 'AuthLogin', importPath: '@/commands/auth/login/index' },
-      { tokens: ['auth', 'devices', 'list'], identifier: 'AuthDevicesList', importPath: '@/commands/auth/devices/list/index' },
+      {
+        tokens: ['auth', 'login'],
+        identifier: 'AuthLogin',
+        importPath: '@/commands/auth/login/index',
+      },
+      {
+        tokens: ['auth', 'devices', 'list'],
+        identifier: 'AuthDevicesList',
+        importPath: '@/commands/auth/devices/list/index',
+      },
       { tokens: ['version'], identifier: 'Version', importPath: '@/commands/version/index' },
     ]
     const tree = buildTree(entries)
     expect(tree.subcommands.get('auth')?.command).toBeUndefined()
     expect(tree.subcommands.get('auth')?.subcommands.get('login')?.command).toBe('AuthLogin')
-    expect(tree.subcommands.get('auth')?.subcommands.get('devices')?.subcommands.get('list')?.command)
-      .toBe('AuthDevicesList')
+    expect(
+      tree.subcommands.get('auth')?.subcommands.get('devices')?.subcommands.get('list')?.command,
+    ).toBe('AuthDevicesList')
     expect(tree.subcommands.get('version')?.command).toBe('Version')
   })
 
   it('supports a parent command with its own children', () => {
     const entries = [
       { tokens: ['run', 'app'], identifier: 'RunApp', importPath: '@/commands/run/app/index' },
-      { tokens: ['run', 'app', 'resume'], identifier: 'RunAppResume', importPath: '@/commands/run/app/resume/index' },
+      {
+        tokens: ['run', 'app', 'resume'],
+        identifier: 'RunAppResume',
+        importPath: '@/commands/run/app/resume/index',
+      },
     ]
     const tree = buildTree(entries)
     const runApp = tree.subcommands.get('run')?.subcommands.get('app')
@@ -76,9 +93,17 @@ describe('buildTree', () => {
 describe('formatModule', () => {
   it('produces a deterministic ESM file with imports + tree literal', () => {
     const entries: CommandEntry[] = [
-      { tokens: ['auth', 'login'], identifier: 'AuthLogin', importPath: '@/commands/auth/login/index' },
+      {
+        tokens: ['auth', 'login'],
+        identifier: 'AuthLogin',
+        importPath: '@/commands/auth/login/index',
+      },
       { tokens: ['version'], identifier: 'Version', importPath: '@/commands/version/index' },
-      { tokens: ['auth', 'devices', 'list'], identifier: 'AuthDevicesList', importPath: '@/commands/auth/devices/list/index' },
+      {
+        tokens: ['auth', 'devices', 'list'],
+        identifier: 'AuthDevicesList',
+        importPath: '@/commands/auth/devices/list/index',
+      },
     ]
     const tree = buildTree(entries)
     const out = formatModule(entries, tree)
@@ -111,7 +136,11 @@ export const commandTree: CommandTree = {
   it('emits parent-with-own-command shape', () => {
     const entries: CommandEntry[] = [
       { tokens: ['run', 'app'], identifier: 'RunApp', importPath: '@/commands/run/app/index' },
-      { tokens: ['run', 'app', 'resume'], identifier: 'RunAppResume', importPath: '@/commands/run/app/resume/index' },
+      {
+        tokens: ['run', 'app', 'resume'],
+        identifier: 'RunAppResume',
+        importPath: '@/commands/run/app/resume/index',
+      },
     ]
     const tree = buildTree(entries)
     const out = formatModule(entries, tree)
@@ -130,12 +159,35 @@ export const commandTree: CommandTree = {
   it('imports sorted alphabetically by import path', () => {
     const entries: CommandEntry[] = [
       { tokens: ['version'], identifier: 'Version', importPath: '@/commands/version/index' },
-      { tokens: ['auth', 'login'], identifier: 'AuthLogin', importPath: '@/commands/auth/login/index' },
+      {
+        tokens: ['auth', 'login'],
+        identifier: 'AuthLogin',
+        importPath: '@/commands/auth/login/index',
+      },
     ]
     const out = formatModule(entries, buildTree(entries))
     const authIdx = out.indexOf('AuthLogin')
     const verIdx = out.indexOf('Version')
     expect(authIdx).toBeLessThan(verIdx)
+  })
+
+  it('quotes hyphenated keys and leaves plain identifier keys unquoted', () => {
+    const entries: CommandEntry[] = [
+      {
+        tokens: ['export', 'app'],
+        identifier: 'ExportApp',
+        importPath: '@/commands/export/app/index',
+      },
+      {
+        tokens: ['export', 'studio-app'],
+        identifier: 'ExportStudioApp',
+        importPath: '@/commands/export/studio-app/index',
+      },
+    ]
+    const out = formatModule(entries, buildTree(entries))
+    expect(out).toContain(`'studio-app': { command: ExportStudioApp, subcommands: {} },`)
+    expect(out).toContain(`app: { command: ExportApp, subcommands: {} },`)
+    expect(out).not.toContain(`'app':`)
   })
 })
 
@@ -145,7 +197,10 @@ function makeFixture(): string {
   mkdirSync(join(commands, 'auth', 'login'), { recursive: true })
   writeFileSync(join(commands, 'auth', 'login', 'index.ts'), 'export default class Login {}\n')
   mkdirSync(join(commands, 'auth', 'devices', 'list'), { recursive: true })
-  writeFileSync(join(commands, 'auth', 'devices', 'list', 'index.ts'), 'export default class DevicesList {}\n')
+  writeFileSync(
+    join(commands, 'auth', 'devices', 'list', 'index.ts'),
+    'export default class DevicesList {}\n',
+  )
   mkdirSync(join(commands, '_shared'), { recursive: true })
   writeFileSync(join(commands, '_shared', 'index.ts'), 'export default class Shared {}\n')
   mkdirSync(join(commands, 'version'), { recursive: true })
@@ -157,12 +212,12 @@ describe('discoverCommands', () => {
   it('returns sorted entries, skipping _-prefixed segments', async () => {
     const root = makeFixture()
     const entries = await discoverCommands(join(root, 'src', 'commands'))
-    expect(entries.map(e => e.tokens.join('/'))).toEqual([
+    expect(entries.map((e) => e.tokens.join('/'))).toEqual([
       'auth/devices/list',
       'auth/login',
       'version',
     ])
-    expect(entries.find(e => e.tokens[0] === '_shared')).toBeUndefined()
+    expect(entries.find((e) => e.tokens[0] === '_shared')).toBeUndefined()
   })
 
   it('errors on a loose .ts file under commands/', async () => {
@@ -194,8 +249,7 @@ describe('generate', () => {
     const commandsDir = join(root, 'src', 'commands')
     await generate({ commandsDir, mode: 'write' })
     const result = await generate({ commandsDir, mode: 'check' })
-    if (result.mode !== 'check')
-      throw new Error('expected check mode')
+    if (result.mode !== 'check') throw new Error('expected check mode')
     expect(result.ok).toBe(true)
   })
 
@@ -205,10 +259,8 @@ describe('generate', () => {
     await generate({ commandsDir, mode: 'write' })
     writeFileSync(join(commandsDir, 'tree.generated.ts'), '// stale\n')
     const result = await generate({ commandsDir, mode: 'check' })
-    if (result.mode !== 'check')
-      throw new Error('expected check mode')
+    if (result.mode !== 'check') throw new Error('expected check mode')
     expect(result.ok).toBe(false)
-    if (!result.ok)
-      expect(result.diff).toBeDefined()
+    if (!result.ok) expect(result.diff).toBeDefined()
   })
 })

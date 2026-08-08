@@ -5,11 +5,13 @@ from typing import Any
 import pytz  # type: ignore[import-untyped]
 from celery import Celery, Task
 from celery.schedules import crontab
+from celery.signals import beat_init
 from typing_extensions import TypedDict
 
 from configs import dify_config
 from dify_app import DifyApp
 from extensions.redis_names import normalize_redis_key_prefix
+from extensions.workflow_warm_shutdown import setup_workflow_warm_shutdown_handler
 
 
 class _CelerySentinelKwargsDict(TypedDict):
@@ -33,6 +35,19 @@ class CelerySSLOptionsDict(TypedDict):
 class CeleryBeatScheduleEntry(TypedDict):
     task: str
     schedule: crontab | timedelta
+
+
+def _enqueue_initial_community_telemetry_heartbeat(sender: Any, **_: Any) -> None:
+    task_name = "community_telemetry.send_heartbeat"
+    if "community_telemetry_heartbeat" not in sender.app.conf.beat_schedule:
+        return
+
+    task = sender.app.tasks.get(task_name)
+    if task is not None:
+        task.apply_async()
+
+
+beat_init.connect(_enqueue_initial_community_telemetry_heartbeat, weak=False)
 
 
 def get_celery_ssl_options() -> CelerySSLOptionsDict | None:
@@ -147,13 +162,19 @@ def init_app(app: DifyApp) -> Celery:
 
     celery_app.set_default()
     app.extensions["celery"] = celery_app
+    setup_workflow_warm_shutdown_handler()
 
     imports = [
         "tasks.async_workflow_tasks",  # trigger workers
+        "tasks.collect_agent_resources_task",  # retired Agent resource collection
         "tasks.trigger_processing_tasks",  # async trigger processing
         "tasks.generate_summary_index_task",  # summary index generation
         "tasks.regenerate_summary_index_task",  # summary index regeneration
+        "tasks.initialize_created_app_rbac_access_task",  # app access initialization
+        "tasks.install_default_plugins_task",  # tenant default plugin installation
+        "tasks.refresh_billing_vector_space_task",  # billing vector-space cache refresh
         "tasks.app_generate.resume_agent_app_task",  # ENG-635: Agent v2 chat ask_human resume
+        "tasks.workflow_run_archive_download_tasks",  # workflow-run archive download preparation
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
 
@@ -252,6 +273,19 @@ def init_app(app: DifyApp) -> Celery:
         beat_schedule["batch_update_api_token_last_used"] = {
             "task": "schedule.update_api_token_last_used_task.batch_update_api_token_last_used",
             "schedule": timedelta(minutes=dify_config.API_TOKEN_LAST_USED_UPDATE_INTERVAL),
+        }
+
+    if (
+        dify_config.EDITION == "SELF_HOSTED"
+        and not dify_config.ENTERPRISE_ENABLED
+        and not dify_config.DISABLE_TELEMETRY
+        and not dify_config.DO_NOT_TRACK
+        and not dify_config.CI
+    ):
+        imports.append("tasks.community_telemetry_task")
+        beat_schedule["community_telemetry_heartbeat"] = {
+            "task": "community_telemetry.send_heartbeat",
+            "schedule": timedelta(minutes=dify_config.TELEMETRY_HEARTBEAT_INTERVAL_MINUTES),
         }
 
     if dify_config.ENTERPRISE_ENABLED and dify_config.ENTERPRISE_TELEMETRY_ENABLED:

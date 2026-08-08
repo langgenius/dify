@@ -1,10 +1,5 @@
 import type { VarType as NumberVarType } from '../tool/types'
-import type {
-  CommonNodeType,
-  ValueSelector,
-  Var,
-  VarType,
-} from '@/app/components/workflow/types'
+import type { CommonNodeType, ValueSelector, Var, VarType } from '@/app/components/workflow/types'
 
 export enum LogicalOperator {
   and = 'and',
@@ -60,12 +55,36 @@ export type IfElseNodeType = CommonNodeType & {
   isInLoop: boolean
 }
 
-export type HandleAddCondition = (caseId: string, valueSelector: ValueSelector, varItem: Var) => void
+export type HandleAddCondition = (
+  caseId: string,
+  valueSelector: ValueSelector,
+  varItem: Var,
+) => void
 export type HandleRemoveCondition = (caseId: string, conditionId: string) => void
-export type HandleUpdateCondition = (caseId: string, conditionId: string, newCondition: Condition) => void
+export type HandleUpdateCondition = (
+  caseId: string,
+  conditionId: string,
+  newCondition: Condition,
+) => void
 export type HandleToggleConditionLogicalOperator = (caseId: string) => void
 
-export type HandleAddSubVariableCondition = (caseId: string, conditionId: string, key?: string) => void
-export type handleRemoveSubVariableCondition = (caseId: string, conditionId: string, subConditionId: string) => void
-export type HandleUpdateSubVariableCondition = (caseId: string, conditionId: string, subConditionId: string, newSubCondition: Condition) => void
-export type HandleToggleSubVariableConditionLogicalOperator = (caseId: string, conditionId: string) => void
+export type HandleAddSubVariableCondition = (
+  caseId: string,
+  conditionId: string,
+  key?: string,
+) => void
+export type handleRemoveSubVariableCondition = (
+  caseId: string,
+  conditionId: string,
+  subConditionId: string,
+) => void
+export type HandleUpdateSubVariableCondition = (
+  caseId: string,
+  conditionId: string,
+  subConditionId: string,
+  newSubCondition: Condition,
+) => void
+export type HandleToggleSubVariableConditionLogicalOperator = (
+  caseId: string,
+  conditionId: string,
+) => void

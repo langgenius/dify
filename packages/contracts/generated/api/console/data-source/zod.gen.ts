@@ -72,7 +72,7 @@ export const zPatchDataSourceIntegratesResponse = zSimpleResultResponse
 
 export const zGetDataSourceIntegratesByBindingIdByActionPath = z.object({
   action: z.string(),
-  binding_id: z.string(),
+  binding_id: z.uuid(),
 })
 
 /**
@@ -82,7 +82,7 @@ export const zGetDataSourceIntegratesByBindingIdByActionResponse = zDataSourceIn
 
 export const zPatchDataSourceIntegratesByBindingIdByActionPath = z.object({
   action: z.string(),
-  binding_id: z.string(),
+  binding_id: z.uuid(),
 })
 
 /**
