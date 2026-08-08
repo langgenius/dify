@@ -834,6 +834,42 @@ describe("source-product workflow provider imports", () => {
     }
   });
 
+  it("logs logical-revision publication failures and persists a specific workflow error", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const source = sourceRecord("publication-failure-source", { type: "connector" });
+    const fixture = await createFixture({
+      inventory: [],
+      onlineDocuments: { getPageContent: vi.fn(async () => ({ content: "content" })) },
+      publishError: new Error("Source compilation terminated as failed: embedding unavailable"),
+      run: providerRun(source.id, "online-document-import", {
+        items: [
+          {
+            pageId: "publication-page",
+            providerItemId: "publication-provider-item",
+            type: "page",
+            workspaceId: "publication-workspace",
+          },
+        ],
+      }),
+      source,
+    });
+
+    await expect(fixture.runtime.tick()).resolves.toMatchObject({ completed: 0, failed: 1 });
+    await expect(fixture.getRun()).resolves.toMatchObject({
+      lastErrorCode: "SOURCE_DOCUMENT_COMPILATION_FAILED",
+      lastErrorMessage: "Source document compilation failed",
+      state: "failed",
+    });
+    expect(consoleError).toHaveBeenCalledWith(
+      "Source workflow logical revision publication failed",
+      expect.objectContaining({
+        error: "Source compilation terminated as failed: embedding unavailable",
+        sourceId: source.id,
+      }),
+    );
+    consoleError.mockRestore();
+  });
+
   it("runs the explicit crawl-import kind and cleans an empty frozen selection", async () => {
     const deleteRun = vi.fn(async () => ({ deleted: 0, hasMore: false }));
     const source = sourceRecord("empty-crawl-import", { type: "web" });

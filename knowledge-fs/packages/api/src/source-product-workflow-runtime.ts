@@ -1350,13 +1350,24 @@ async function publishLogicalRevisions(
         ),
       );
     } catch (error) {
+      console.error("Source workflow logical revision publication failed", {
+        error: error instanceof Error ? error.message : String(error),
+        filename: candidate.filename,
+        knowledgeSpaceId: run.knowledgeSpaceId,
+        sourceId: source.id,
+        workflowId: run.id,
+        workflowKind: run.kind,
+      });
       await input.materializer.compensate({
         documents: [document],
         knowledgeSpaceId: run.knowledgeSpaceId,
         sourceId: source.id,
         tenantId: run.tenantId,
       });
-      throw error;
+      throw runtimeError(
+        "SOURCE_DOCUMENT_COMPILATION_FAILED",
+        "Source document compilation failed",
+      );
     }
     if (publication.kind === "unchanged") {
       await input.materializer.compensate({

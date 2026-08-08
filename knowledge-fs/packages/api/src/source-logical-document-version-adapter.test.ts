@@ -155,6 +155,25 @@ describe("Source compilation publication executor", () => {
     },
   );
 
+  it("preserves the durable compilation failure detail", async () => {
+    const fixture = compilationJobs([
+      compilationJob({
+        error: "Embedding model is unavailable",
+        runState: "failed",
+        stage: "failed",
+      }),
+    ]);
+    const executor = createSourceCompilationPublicationExecutor({
+      compilationJobs: fixture.jobs,
+      maxWaitMs: 20,
+      pollIntervalMs: 1,
+    });
+
+    await expect(executor.publishAndWait(compilationInput())).rejects.toThrow(
+      "Source compilation terminated as failed: Embedding model is unavailable",
+    );
+  });
+
   it("fails closed when the durable attempt disappears and tolerates cancellation cleanup failure", async () => {
     const fixture = compilationJobs([null], { cancelError: new Error("cancel unavailable") });
     const executor = createSourceCompilationPublicationExecutor({

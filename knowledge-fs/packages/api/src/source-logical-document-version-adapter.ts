@@ -141,8 +141,9 @@ export function createSourceCompilationPublicationExecutor({
             current.runState === "canceled" ||
             current.runState === "superseded"
           ) {
+            const detail = current.error ? `: ${current.error}` : "";
             throw new LogicalDocumentValidationError(
-              `Source compilation terminated as ${current.runState}`,
+              `Source compilation terminated as ${current.runState}${detail}`,
             );
           }
           await cancellableDelay(pollIntervalMs, input.signal);
