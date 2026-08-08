@@ -39,6 +39,7 @@ type IBatchActionProps = {
   onArchive?: () => void
   onEditMetadata?: () => void
   onBatchReIndex?: () => void
+  onBatchSync?: () => void
   onCancel: () => void
 }
 
@@ -53,6 +54,7 @@ const BatchAction: FC<IBatchActionProps> = ({
   onBatchDelete,
   onEditMetadata,
   onBatchReIndex,
+  onBatchSync,
   onCancel,
 }) => {
   const { t } = useTranslation()
@@ -118,6 +120,14 @@ const BatchAction: FC<IBatchActionProps> = ({
           <Button variant="ghost" onClick={onBatchReIndex}>
             <RiRefreshLine className="size-4" />
             <span>{t(($) => $[`${i18nPrefix}.reIndex`], { ns: 'dataset' })}</span>
+          </Button>
+        )}
+        {onBatchSync && (
+          <Button variant="ghost" className="gap-x-0.5 px-3" onClick={onBatchSync}>
+            <RiRefreshLine className="size-4" />
+            <span className="px-0.5">
+              {t(($) => $[`${i18nPrefix}.sync`], { ns: 'dataset' })}
+            </span>
           </Button>
         )}
         {onBatchDownload && (

@@ -11,6 +11,8 @@
   "batchAction.enable": "فعال",
   "batchAction.reIndex": "بازفهرست‌گذاری",
   "batchAction.selected": "انتخاب",
+  "batchAction.sync": "همگام‌سازی",
+  "batchAction.syncAll": "همگام‌سازی همه",
   "chunkingMode.general": "عمومی",
   "chunkingMode.graph": "گراف",
   "chunkingMode.parentChild": "پدر و مادر و فرزند",
