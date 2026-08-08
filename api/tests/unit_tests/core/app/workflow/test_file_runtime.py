@@ -22,7 +22,7 @@ from extensions.storage.storage_type import StorageType
 from graphon.file import File, FileTransferMethod, FileType
 from models import ToolFile, UploadFile
 from models.base import TypeBase
-from models.enums import CreatorUserRole
+from models.enums import CreatorUserRole, UploadFilePurpose
 
 
 @pytest.fixture
@@ -43,10 +43,13 @@ def _persist_upload_file(
     key: str = "canonical-storage-key",
     tenant_id: str = "tenant-id",
     created_by: str = "end-user-id",
+    purpose: UploadFilePurpose | None = None,
+    storage_type: StorageType = StorageType.LOCAL,
 ) -> UploadFile:
     upload_file = UploadFile(
         tenant_id=tenant_id,
-        storage_type=StorageType.LOCAL,
+        storage_type=storage_type,
+        purpose=purpose,
         key=key,
         name="diagram.png",
         size=128,
@@ -213,6 +216,56 @@ def test_resolve_upload_file_url_signs_internal_urls_and_supports_attachments(
     assert parsed.path == "/files/upload-file-id/file-preview"
     assert query["as_attachment"] == ["true"]
     assert query["timestamp"] == ["1700000000"]
+
+
+def test_resolve_upload_file_url_uses_matching_storage_policy(
+    monkeypatch: pytest.MonkeyPatch,
+    file_session: Session,
+) -> None:
+    upload_file = _persist_upload_file(
+        file_session,
+        key="public/upload_files/tenant-id/icon.png",
+        purpose=UploadFilePurpose.ICON,
+        storage_type=StorageType.S3,
+    )
+    policy = MagicMock()
+    policy.generate_download_url.return_value = "https://icons.example.com/icon.png?verify=token"
+    resolve_policy = MagicMock(return_value=policy)
+    monkeypatch.setattr(file_runtime, "has_direct_upload_file_download_policy", lambda: True)
+    monkeypatch.setattr(file_runtime, "resolve_upload_file_storage_policy", resolve_policy)
+
+    file = _build_file(
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        reference=build_file_reference(record_id="upload-file-id"),
+    )
+    result = _build_runtime().resolve_file_url(file=file)
+
+    assert result == "https://icons.example.com/icon.png?verify=token"
+    resolve_policy.assert_called_once_with(
+        UploadFilePurpose.ICON,
+        storage_type=StorageType.S3,
+        key="public/upload_files/tenant-id/icon.png",
+    )
+    policy.generate_download_url.assert_called_once_with(upload_file.key, content_type="image/png")
+
+
+def test_resolve_upload_file_url_keeps_attachment_on_proxy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(file_runtime, "has_direct_upload_file_download_policy", lambda: True)
+    monkeypatch.setattr("core.app.workflow.file_runtime.time.time", lambda: 1700000000)
+    monkeypatch.setattr("core.app.workflow.file_runtime.os.urandom", lambda _: b"\x01" * 16)
+    monkeypatch.setattr("core.app.workflow.file_runtime.dify_config.SECRET_KEY", "unit-secret")
+    monkeypatch.setattr("core.app.workflow.file_runtime.dify_config.FILES_URL", "https://files.example.com")
+
+    result = _build_runtime().resolve_upload_file_url(
+        upload_file_id="upload-file-id",
+        as_attachment=True,
+    )
+
+    parsed = urlparse(result)
+    assert parsed.path == "/files/upload-file-id/file-preview"
+    assert parse_qs(parsed.query)["as_attachment"] == ["true"]
 
 
 def test_verify_preview_signature_validates_signature_and_expiration(monkeypatch: pytest.MonkeyPatch) -> None:
