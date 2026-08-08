@@ -20,14 +20,16 @@ class HumanInputSurface(StrEnum):
     SERVICE_API = "service_api"
     CONSOLE = "console"
     OPENAPI = "openapi"
+    WEB = "web"
 
 
-# SERVICE_API and OPENAPI are intentionally narrower than CONSOLE: token callers
+# Token-facing API surfaces are intentionally narrower than CONSOLE: callers
 # should only be able to act on end-user web forms, not internal console flows.
 ALLOWED_RECIPIENT_TYPES_BY_SURFACE: dict[HumanInputSurface, frozenset[RecipientType]] = {
     HumanInputSurface.SERVICE_API: frozenset({RecipientType.STANDALONE_WEB_APP}),
     HumanInputSurface.CONSOLE: frozenset({RecipientType.CONSOLE, RecipientType.BACKSTAGE}),
     HumanInputSurface.OPENAPI: frozenset({RecipientType.STANDALONE_WEB_APP}),
+    HumanInputSurface.WEB: frozenset({RecipientType.STANDALONE_WEB_APP}),
 }
 
 # A single HITL form can have multiple recipient records; this shared priority

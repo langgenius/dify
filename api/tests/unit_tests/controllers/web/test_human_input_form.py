@@ -120,7 +120,7 @@ def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask, dat
             self.app_id = app_model.id
             self.tenant_id = app_model.tenant_id
             self.expiration_time = expiration
-            self.recipient_type = RecipientType.BACKSTAGE
+            self.recipient_type = RecipientType.STANDALONE_WEB_APP
 
         def get_definition(self):
             return _FakeDefinition()
@@ -323,99 +323,24 @@ def test_create_upload_token_returns_token_and_form_expiration(
     limiter_mock.increment_rate_limit.assert_called_once_with("203.0.113.10")
 
 
-def test_get_form_allows_backstage_token(monkeypatch: pytest.MonkeyPatch, app: Flask, database_session: Session):
-    """GET returns form payload for backstage token."""
+def test_get_form_rejects_backstage_token(monkeypatch: pytest.MonkeyPatch, app: Flask, sqlite_engine: Engine):
+    """GET hides forms whose tokens belong to an internal console surface."""
 
-    expiration_time = datetime(2099, 1, 2, tzinfo=UTC)
-    _, app_model, _ = _persist_app_site(database_session)
-
-    class _FakeDefinition:
-        def model_dump(self, mode: str | None = None):
-            return {
-                "form_content": "Raw content",
-                "rendered_content": "Rendered",
-                "inputs": [],
-                "default_values": {},
-                "user_actions": [],
-            }
-
-    class _FakeForm:
-        def __init__(self, expiration: datetime):
-            self.workflow_run_id = None
-            self.app_id = app_model.id
-            self.tenant_id = app_model.tenant_id
-            self.expiration_time = expiration
-
-        def get_definition(self):
-            return _FakeDefinition()
-
-    form = _FakeForm(expiration_time)
+    form = SimpleNamespace(recipient_type=RecipientType.BACKSTAGE)
     limiter_mock = MagicMock()
     limiter_mock.is_rate_limited.return_value = False
     monkeypatch.setattr(human_input_module, "_FORM_ACCESS_RATE_LIMITER", limiter_mock)
     monkeypatch.setattr(human_input_module, "extract_remote_ip", lambda req: "203.0.113.10")
     service_mock = MagicMock()
     service_mock.get_form_by_token.return_value = form
-    service_mock.resolve_form_inputs.return_value = []
     monkeypatch.setattr(human_input_module, "HumanInputService", lambda engine: service_mock)
-
-    monkeypatch.setattr(
-        site_module.FeatureService,
-        "get_features",
-        lambda tenant_id, **_kwargs: FeatureModel(can_replace_logo=True, webapp_copyright_enabled=True),
-    )
+    monkeypatch.setattr(human_input_module, "db", SimpleNamespace(engine=sqlite_engine))
 
     with app.test_request_context("/api/form/human_input/token-1", method="GET"):
-        response = HumanInputFormApi().get("token-1")
+        with pytest.raises(human_input_module.NotFoundError):
+            HumanInputFormApi().get("token-1")
 
-    body = response
-    assert set(body.keys()) == {
-        "site",
-        "form_content",
-        "inputs",
-        "resolved_default_values",
-        "user_actions",
-        "expiration_time",
-    }
-    assert body["form_content"] == "Rendered"
-    assert body["inputs"] == []
-    assert body["resolved_default_values"] == {}
-    assert body["user_actions"] == []
-    assert body["expiration_time"] == int(expiration_time.timestamp())
-    assert body["site"] == {
-        "app_id": app_model.id,
-        "mode": "chat",
-        "end_user_id": None,
-        "enable_site": True,
-        "site": {
-            "title": "My Site",
-            "chat_color_theme": "light",
-            "chat_color_theme_inverted": False,
-            "icon_type": "emoji",
-            "icon": "robot",
-            "icon_background": "#fff",
-            "icon_url": None,
-            "description": "desc",
-            "copyright": None,
-            "privacy_policy": None,
-            "input_placeholder": "Ask the app",
-            "custom_disclaimer": "",
-            "default_language": "en",
-            "prompt_public": False,
-            "show_workflow_steps": True,
-            "use_icon_as_answer_icon": False,
-        },
-        "model_config": None,
-        "plan": "basic",
-        "can_replace_logo": True,
-        "custom_config": {
-            "remove_webapp_brand": True,
-            "replace_webapp_logo": None,
-        },
-    }
-    service_mock.get_form_by_token.assert_called_once_with("token-1")
-    limiter_mock.is_rate_limited.assert_called_once_with("203.0.113.10")
-    limiter_mock.increment_rate_limit.assert_called_once_with("203.0.113.10")
+    service_mock.ensure_form_active.assert_not_called()
 
 
 def test_get_form_raises_forbidden_when_site_missing(
@@ -442,6 +367,7 @@ def test_get_form_raises_forbidden_when_site_missing(
             self.app_id = app_model.id
             self.tenant_id = app_model.tenant_id
             self.expiration_time = expiration
+            self.recipient_type = RecipientType.STANDALONE_WEB_APP
 
         def get_definition(self):
             return _FakeDefinition()
@@ -462,13 +388,10 @@ def test_get_form_raises_forbidden_when_site_missing(
     limiter_mock.increment_rate_limit.assert_called_once_with("203.0.113.10")
 
 
-def test_submit_form_accepts_backstage_token(monkeypatch: pytest.MonkeyPatch, app: Flask, sqlite_engine: Engine):
-    """POST forwards backstage submissions to the service."""
+def test_submit_form_rejects_backstage_token(monkeypatch: pytest.MonkeyPatch, app: Flask, sqlite_engine: Engine):
+    """POST hides forms whose tokens belong to an internal console surface."""
 
-    class _FakeForm:
-        recipient_type = RecipientType.BACKSTAGE
-
-    form = _FakeForm()
+    form = SimpleNamespace(recipient_type=RecipientType.BACKSTAGE)
     limiter_mock = MagicMock()
     limiter_mock.is_rate_limited.return_value = False
     monkeypatch.setattr(human_input_module, "_FORM_SUBMIT_RATE_LIMITER", limiter_mock)
@@ -483,19 +406,10 @@ def test_submit_form_accepts_backstage_token(monkeypatch: pytest.MonkeyPatch, ap
         method="POST",
         json={"inputs": {"content": "ok"}, "action": "approve"},
     ):
-        response, status = HumanInputFormApi().post("token-1")
+        with pytest.raises(human_input_module.NotFoundError):
+            HumanInputFormApi().post("token-1")
 
-    assert status == 200
-    assert response == {}
-    service_mock.submit_form_by_token.assert_called_once_with(
-        recipient_type=RecipientType.BACKSTAGE,
-        form_token="token-1",
-        selected_action_id="approve",
-        form_data={"content": "ok"},
-        submission_end_user_id=None,
-    )
-    limiter_mock.is_rate_limited.assert_called_once_with("203.0.113.10")
-    limiter_mock.increment_rate_limit.assert_called_once_with("203.0.113.10")
+    service_mock.submit_form_by_token.assert_not_called()
 
 
 def test_submit_form_rate_limited(monkeypatch: pytest.MonkeyPatch, app: Flask):
@@ -546,7 +460,7 @@ def test_get_form_rate_limited(monkeypatch: pytest.MonkeyPatch, app: Flask):
 
 def test_get_form_raises_expired(monkeypatch: pytest.MonkeyPatch, app: Flask, sqlite_engine: Engine):
     class _FakeForm:
-        pass
+        recipient_type = RecipientType.STANDALONE_WEB_APP
 
     form = _FakeForm()
     limiter_mock = MagicMock()

@@ -20,6 +20,7 @@ from controllers.console.wraps import model_validate
 from controllers.web import web_ns
 from controllers.web.error import WebFormRateLimitExceededError
 from controllers.web.site import WebAppSiteResponse
+from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
 from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
 from extensions.ext_database import db
 from fields.base import ResponseModel
@@ -185,11 +186,9 @@ class HumanInputFormApi(Resource):
         _FORM_ACCESS_RATE_LIMITER.increment_rate_limit(ip_address)
 
         service = HumanInputService(db.engine)
-        # TODO(QuantumGhost): forbid submission for form tokens
-        # that are only for console.
         form = service.get_form_by_token(form_token)
 
-        if form is None:
+        if form is None or not is_recipient_type_allowed_for_surface(form.recipient_type, HumanInputSurface.WEB):
             raise NotFoundError("Form not found")
 
         service.ensure_form_active(form)
@@ -258,12 +257,11 @@ class HumanInputFormApi(Resource):
 
         service = HumanInputService(db.engine)
         form = service.get_form_by_token(form_token)
-        if form is None:
+        if form is None or not is_recipient_type_allowed_for_surface(form.recipient_type, HumanInputSurface.WEB):
             raise NotFoundError("Form not found")
 
-        if (recipient_type := form.recipient_type) is None:
-            logger.warning("Recipient type is None for form, form_id=%", form.id)
-            raise AssertionError("Recipient type is None")
+        recipient_type = form.recipient_type
+        assert recipient_type is not None
 
         try:
             service.submit_form_by_token(
