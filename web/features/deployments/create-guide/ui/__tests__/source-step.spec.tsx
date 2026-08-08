@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
+import { Provider } from 'jotai'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SourceStepContent } from '../source-step'
 
@@ -14,18 +15,19 @@ const mocks = vi.hoisted(() => {
     isPlaceholderData: false,
   }
 
-  return {
-    sourceAppsQuery,
-    useInfiniteScroll: vi.fn(() => ({
-      rootRef: vi.fn(),
-      sentinelRef: vi.fn(),
-    })),
-  }
+  return { sourceAppsQuery }
 })
 
-vi.mock('@/features/deployments/shared/hooks/use-infinite-scroll', () => ({
-  useInfiniteScroll: mocks.useInfiniteScroll,
-}))
+type ObserverRecord = {
+  callback: IntersectionObserverCallback
+  options?: IntersectionObserverInit
+}
+
+const observers: ObserverRecord[] = []
+
+function getInfiniteScrollObserver() {
+  return observers.find(({ options }) => options?.rootMargin === '0px 0px 160px 0px')
+}
 
 vi.mock('@/features/deployments/create-guide/state/primitives', async () => {
   const { atom } = await import('jotai')
@@ -87,10 +89,28 @@ vi.mock('@/features/deployments/create-guide/state/queries', async () => {
 describe('SourceStepContent', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.sourceAppsQuery.fetchNextPage.mockReset()
+    observers.length = 0
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class MockIntersectionObserver {
+        readonly root = null
+        readonly rootMargin = ''
+        readonly scrollMargin = ''
+        readonly thresholds: ReadonlyArray<number> = []
+        readonly disconnect = vi.fn()
+        readonly observe = vi.fn()
+        readonly takeRecords = () => []
+        readonly unobserve = vi.fn()
+
+        constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
+          observers.push({ callback, options })
+        }
+      },
+    )
     Object.assign(mocks.sourceAppsQuery, {
       data: { pages: [{ data: [] }] },
       error: null,
-      fetchNextPage: vi.fn(),
       hasNextPage: false,
       isFetching: false,
       isFetchingNextPage: false,
@@ -99,8 +119,16 @@ describe('SourceStepContent', () => {
     })
   })
 
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
   it('should hide the import DSL option when deployment DSL import is disabled', () => {
-    render(<SourceStepContent />)
+    render(
+      <Provider>
+        <SourceStepContent />
+      </Provider>,
+    )
 
     expect(screen.getByText(/createGuide\.methods\.bindApp\.title/)).toBeInTheDocument()
     expect(screen.queryByText(/createGuide\.methods\.importDsl\.title/)).not.toBeInTheDocument()
@@ -129,21 +157,20 @@ describe('SourceStepContent', () => {
       hasNextPage: true,
     })
 
-    render(<SourceStepContent />)
-
-    expect(mocks.useInfiniteScroll).toHaveBeenCalledWith(
-      expect.objectContaining({
-        fetchNextPage: expect.any(Function),
-        hasNextPage: expect.any(Boolean),
-        isFetching: false,
-        isFetchingNextPage: false,
-        isLoading: false,
-      }),
-      expect.objectContaining({
-        rootMargin: '0px 0px 160px 0px',
-        threshold: 0.1,
-      }),
+    render(
+      <Provider>
+        <SourceStepContent />
+      </Provider>,
     )
+
+    act(() => {
+      getInfiniteScrollObserver()?.callback(
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      )
+    })
+
+    expect(mocks.sourceAppsQuery.fetchNextPage).toHaveBeenCalledWith({ cancelRefetch: false })
     expect(
       screen.queryByRole('button', { name: /createModal\.loadMoreApps/ }),
     ).not.toBeInTheDocument()
