@@ -13,8 +13,11 @@ from controllers.console import console_ns
 from controllers.console.tag.tags import (
     TagBasePayload,
     TagBindingCollectionApi,
+    TagBindingPayload,
     TagBindingRemoveApi,
+    TagBindingRemovePayload,
     TagListApi,
+    TagListQueryParam,
     TagUpdateDeleteApi,
     TagUpdateRequestPayload,
 )
@@ -132,7 +135,7 @@ class TestTagListApi:
                     ],
                 ),
             ):
-                result, status = method(api, "tenant-1")
+                result, status = method(api, TagListQueryParam(type="knowledge"), "tenant-1")
 
         assert status == 200
         assert result == [{"id": "1", "name": "tag", "type": "knowledge", "binding_count": "1"}]
@@ -155,7 +158,7 @@ class TestTagListApi:
                     ],
                 ) as get_tags_mock,
             ):
-                result, status = method(api, "tenant-1")
+                result, status = method(api, TagListQueryParam(type="snippet"), "tenant-1")
 
         get_tags_mock.assert_called_once()
         assert get_tags_mock.call_args.args == ("snippet", "tenant-1", None)
@@ -219,7 +222,7 @@ class TestTagListApi:
 
         with app.test_request_context("/"):
             with pytest.raises(Forbidden):
-                method(api, None, readonly_user)
+                method(api, TagBasePayload(name="test", type=TagType.KNOWLEDGE), readonly_user)
 
 
 class TestTagUpdateDeleteApi:
@@ -256,7 +259,7 @@ class TestTagUpdateDeleteApi:
 
         with app.test_request_context("/"):
             with pytest.raises(Forbidden):
-                method(api, None, readonly_user, "tag-1")
+                method(api, TagUpdateRequestPayload(name="test"), readonly_user, "tag-1")
 
     def test_delete_success(self, app: Flask, admin_user, sqlite_engine: Engine):
         api = TagUpdateDeleteApi()
@@ -375,7 +378,7 @@ class TestTagBindingCollectionApi:
                 payload_patch(payload),
                 patch("controllers.console.tag.tags.TagService.save_tag_binding") as save_mock,
             ):
-                result, status = method(api, admin_user)
+                result, status = method(api, TagBindingPayload.model_validate(payload), admin_user)
 
         save_mock.assert_called_once()
         assert status == 200
@@ -396,7 +399,7 @@ class TestTagBindingCollectionApi:
                 payload_patch(payload),
                 patch("controllers.console.tag.tags.TagService.save_tag_binding") as save_mock,
             ):
-                result, status = method(api, admin_user)
+                result, status = method(api, TagBindingPayload.model_validate(payload), admin_user)
 
         save_mock.assert_called_once()
         binding_payload = save_mock.call_args.args[0]
@@ -414,7 +417,11 @@ class TestTagBindingCollectionApi:
                 payload_patch({}),
             ):
                 with pytest.raises(Forbidden):
-                    method(api, readonly_user)
+                    method(
+                        api,
+                        TagBindingPayload(tag_ids=["tag-1"], target_id="target-1", type=TagType.KNOWLEDGE),
+                        readonly_user,
+                    )
 
 
 class TestTagBindingRemoveApi:
@@ -433,7 +440,7 @@ class TestTagBindingRemoveApi:
                 payload_patch(payload),
                 patch("controllers.console.tag.tags.TagService.delete_tag_binding") as delete_mock,
             ):
-                result, status = method(api, admin_user)
+                result, status = method(api, TagBindingRemovePayload.model_validate(payload), admin_user)
 
         delete_mock.assert_called_once()
         delete_payload = delete_mock.call_args.args[0]
@@ -450,7 +457,11 @@ class TestTagBindingRemoveApi:
                 payload_patch({}),
             ):
                 with pytest.raises(Forbidden):
-                    method(api, readonly_user)
+                    method(
+                        api,
+                        TagBindingRemovePayload(tag_ids=["tag-1"], target_id="target-1", type=TagType.KNOWLEDGE),
+                        readonly_user,
+                    )
 
 
 class TestTagResponseModel:

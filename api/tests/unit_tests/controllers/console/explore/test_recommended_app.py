@@ -32,7 +32,7 @@ class TestRecommendedAppListApi:
                 return_value=result_data,
             ) as service_mock,
         ):
-            result = method(api, make_account("fr-FR"))
+            result = method(api, RecommendedAppsQuery(), make_account("fr-FR"))
 
         service_mock.assert_called_once_with("en-US", session=ANY)
         assert result == result_data
@@ -51,7 +51,7 @@ class TestRecommendedAppListApi:
                 return_value=result_data,
             ) as service_mock,
         ):
-            result = method(api, make_account("fr-FR"))
+            result = method(api, RecommendedAppsQuery(), make_account("fr-FR"))
 
         service_mock.assert_called_once_with("fr-FR", session=ANY)
         assert result == result_data
@@ -70,7 +70,7 @@ class TestRecommendedAppListApi:
                 return_value=result_data,
             ) as service_mock,
         ):
-            result = method(api, make_account(None))
+            result = method(api, RecommendedAppsQuery(), make_account(None))
 
         service_mock.assert_called_once_with(module.languages[0], session=ANY)
         assert result == result_data
@@ -91,7 +91,7 @@ class TestLearnDifyAppListApi:
                 return_value=result_data,
             ) as service_mock,
         ):
-            result = method(api, make_account("fr-FR"))
+            result = method(api, RecommendedAppsQuery(), make_account("fr-FR"))
 
         service_mock.assert_called_once_with("en-US", session=ANY)
         assert result == result_data
@@ -110,7 +110,7 @@ class TestLearnDifyAppListApi:
                 return_value=result_data,
             ) as service_mock,
         ):
-            result = method(api, make_account("fr-FR"))
+            result = method(api, RecommendedAppsQuery(), make_account("fr-FR"))
 
         service_mock.assert_called_once_with("fr-FR", session=ANY)
         assert result == result_data

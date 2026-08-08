@@ -15,6 +15,8 @@ from controllers.console.datasets.data_source import (
     DataSourceNotionDocumentSyncApi,
     DataSourceNotionIndexingEstimateApi,
     DataSourceNotionPreviewApi,
+    DataSourceNotionPreviewQuery,
+    NotionEstimatePayload,
 )
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from models import Account
@@ -45,7 +47,7 @@ class TestDataSourceNotionPreviewApi:
                 return_value=extractor,
             ),
         ):
-            response, status = method(api, "tenant-1", "p1", "page")
+            response, status = method(api, DataSourceNotionPreviewQuery(credential_id="c1"), "tenant-1", "p1", "page")
 
         assert status == 200
 
@@ -80,7 +82,7 @@ class TestDataSourceNotionIndexingEstimateApi:
                 return_value=MagicMock(model_dump=lambda: {"total_pages": 1}),
             ),
         ):
-            response, status = method(api, sqlite_session, "tenant-1")
+            response, status = method(api, NotionEstimatePayload.model_validate(payload), sqlite_session, "tenant-1")
 
         assert status == 200
 

@@ -31,6 +31,7 @@ from controllers.console.wraps import (
     RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_tenant_id,
@@ -276,15 +277,15 @@ class ChatMessageTextApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model
-    def post(self, app_model: App):
+    @model_validate(TextToSpeechPayload)
+    def post(self, req_data: TextToSpeechPayload, app_model: App):
         try:
-            payload = TextToSpeechPayload.model_validate(console_ns.payload)
             message_ref = None
-            if payload.message_id:
+            if req_data.message_id:
                 app_ref = AppRefService.create_app_ref(app_model)
                 message_ref = AppRefService.create_message_ref(
                     app_ref,
-                    payload.message_id,
+                    req_data.message_id,
                     account_id=current_user.id,
                 )
 
@@ -292,8 +293,8 @@ class ChatMessageTextApi(Resource):
             return AudioService.transcript_tts(
                 app_model=app_model,
                 session=db.session(),
-                text=payload.text,
-                voice=payload.voice,
+                text=req_data.text,
+                voice=req_data.voice,
                 message_ref=message_ref,
                 is_draft=True,
             )
@@ -339,13 +340,12 @@ class TextModesApi(Resource):
     @account_initialization_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model
-    def get(self, app_model: App):
+    @model_validate(TextToSpeechVoiceQuery)
+    def get(self, req_data: TextToSpeechVoiceQuery, app_model: App):
         try:
-            args = TextToSpeechVoiceQuery.model_validate(request.args.to_dict(flat=True))
-
             response = AudioService.transcript_tts_voices(
                 tenant_id=app_model.tenant_id,
-                language=args.language,
+                language=req_data.language,
             )
 
             return dump_response(TextToSpeechVoiceListResponse, response)

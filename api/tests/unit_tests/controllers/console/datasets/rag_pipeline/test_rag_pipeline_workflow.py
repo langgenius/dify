@@ -133,7 +133,9 @@ def test_published_rag_pipeline_workflows_serialize_items_before_session_closes(
         method="GET",
         query_string={"page": 1, "limit": 10, "user_id": "", "named_only": "false"},
     ):
-        response = handler(api, _account(), pipeline=pipeline)
+        response = handler(
+            api, WorkflowListQuery(page=1, limit=10, user_id="", named_only=False), _account(), pipeline=pipeline
+        )
 
     assert response["items"][0]["id"] == DEFAULT_WORKFLOW_ID
     assert response["page"] == 1
@@ -157,6 +159,7 @@ def test_rag_pipeline_workflow_patch_serializes_response_model(
     ):
         response = handler(
             api,
+            WorkflowUpdatePayload.model_validate(payload),
             _account(),
             pipeline=_pipeline(),
             workflow_id=DEFAULT_WORKFLOW_ID,
@@ -175,7 +178,7 @@ def test_default_rag_pipeline_block_configs_serializes_root_response() -> None:
     handler = unwrap_all(api.get)
 
     with patch.object(RagPipelineService, "get_default_block_configs", return_value=block_configs):
-        response = handler(api, _pipeline())
+        response = handler(api, DefaultBlockConfigQuery(), _pipeline())
 
     assert response == block_configs
 
@@ -198,7 +201,7 @@ def test_draft_rag_pipeline_second_step_parameters_serializes_variables(database
         database_app.test_request_context("/?node_id=node-1"),
         patch.object(RagPipelineService, "get_second_step_parameters", return_value=variables),
     ):
-        response = handler(api, _pipeline())
+        response = handler(api, NodeIdQuery(node_id="node-1"), _pipeline())
 
     assert response["variables"] == variables
 
@@ -215,7 +218,7 @@ def test_rag_pipeline_recommended_plugins_serializes_known_envelope(database_app
         database_app.test_request_context("/?type=tool"),
         patch.object(RagPipelineService, "get_recommended_plugins", return_value=recommended_plugins),
     ):
-        response = handler(api, DEFAULT_WORKFLOW_TENANT_ID, _account())
+        response = handler(api, RagPipelineRecommendedPluginQuery(type="tool"), DEFAULT_WORKFLOW_TENANT_ID, _account())
 
     assert response == recommended_plugins
 
@@ -231,7 +234,7 @@ def test_rag_pipeline_transform_rejects_read_only_member(app: Flask, sqlite_engi
         app.test_request_context("/"),
         pytest.raises(Forbidden),
     ):
-        handler(api, session, account, UUID("44444444-4444-4444-4444-444444444444"))
+        handler(api, DatasourceVariablesPayload(), session, account, UUID("44444444-4444-4444-4444-444444444444"))
 
 
 @pytest.mark.parametrize(
@@ -270,7 +273,12 @@ def test_rag_pipeline_run_uses_sqlite_session(
         patch.object(module.PipelineGenerateService, "generate", return_value=MagicMock()) as generate,
         patch.object(module.helper, "compact_generate_response", return_value={"ok": True}),
     ):
-        response = handler(api, session, _account(), pipeline.id)
+        req_data = (
+            DraftWorkflowRunPayload.model_validate(payload)
+            if api_type is module.DraftRagPipelineRunApi
+            else PublishedWorkflowRunPayload.model_validate(payload)
+        )
+        response = handler(api, req_data, session, _account(), pipeline.id)
 
     assert response == {"ok": True}
     load_pipeline.assert_called_once_with(session, pipeline.id)
@@ -293,6 +301,11 @@ def test_rag_pipeline_run_translates_rate_limit(
     api = api_type()
     handler = unwrap_all(api.post)
     pipeline = _pipeline()
+    req_data = (
+        DraftWorkflowRunPayload.model_validate(payload)
+        if api_type is module.DraftRagPipelineRunApi
+        else PublishedWorkflowRunPayload.model_validate(payload)
+    )
 
     with (
         Session(sqlite_engine) as session,
@@ -301,4 +314,4 @@ def test_rag_pipeline_run_translates_rate_limit(
         patch.object(module.PipelineGenerateService, "generate", side_effect=InvokeRateLimitError("limit")),
         pytest.raises(InvokeRateLimitHttpError),
     ):
-        handler(api, session, _account(), pipeline.id)
+        handler(api, req_data, session, _account(), pipeline.id)
