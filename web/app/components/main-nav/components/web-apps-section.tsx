@@ -14,6 +14,7 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   ScrollArea,
@@ -202,15 +203,15 @@ const WebAppsSectionContent = () => {
                   role="alert"
                 >
                   <span>{t(($) => $['errorBoundary.title'], { ns: 'common' })}</span>
-                  <button
-                    type="button"
-                    className="text-text-accent outline-hidden hover:underline focus-visible:underline"
+                  <Button
+                    size="small"
+                    variant="secondary"
                     onClick={() => {
                       void installedAppsQuery.refetch()
                     }}
                   >
                     {t(($) => $['operation.retry'], { ns: 'common' })}
-                  </button>
+                  </Button>
                 </div>
               )}
               {!installedAppsQuery.isError && installedApps.length === 0 && (
@@ -250,15 +251,15 @@ const WebAppsSectionContent = () => {
                         role="alert"
                       >
                         <span>{t(($) => $['errorBoundary.title'], { ns: 'common' })}</span>
-                        <button
-                          type="button"
-                          className="text-text-accent outline-hidden hover:underline focus-visible:underline"
+                        <Button
+                          size="small"
+                          variant="secondary"
                           onClick={() => {
                             void installedAppsQuery.fetchNextPage({ cancelRefetch: false })
                           }}
                         >
                           {t(($) => $['operation.retry'], { ns: 'common' })}
-                        </button>
+                        </Button>
                       </div>
                     )}
                 </div>

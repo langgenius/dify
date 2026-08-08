@@ -9,6 +9,7 @@ import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/syst
 import type { RefObject } from 'react'
 import type { App } from '@/models/explore'
 import type { TryAppSelection } from '@/types/try-app'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
@@ -224,13 +225,13 @@ function AppListCatalogContent({
                       role="alert"
                     >
                       <span>{t(($) => $['errorBoundary.title'], { ns: 'common' })}</span>
-                      <button
-                        type="button"
-                        className="text-text-accent outline-hidden hover:underline focus-visible:underline"
+                      <Button
+                        size="small"
+                        variant="secondary"
                         onClick={() => void onFetchNextPage()}
                       >
                         {t(($) => $['operation.retry'], { ns: 'common' })}
-                      </button>
+                      </Button>
                     </div>
                   )}
                 </div>
