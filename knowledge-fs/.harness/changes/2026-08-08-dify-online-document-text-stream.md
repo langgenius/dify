@@ -6,6 +6,9 @@ Date: 2026-08-08
 
 - Updated the API online-document connector to consume Dify datasource `text` messages from
   `message.text` and concatenate streamed chunks in order.
+- Added support for the current Dify datasource `variable` protocol: `content` values with
+  `stream: true` are appended, non-streamed `content` values replace prior content, and unrelated
+  variables are ignored.
 - Retained the existing last-non-empty replacement behavior for structured
   `{ result: { content } }` envelopes.
 - Added regression coverage using the real Dify datasource message shape plus compatibility
@@ -16,9 +19,11 @@ Date: 2026-08-08
 
 ## Why
 
-Notion page content arrived through Dify as streamed `text` messages, but the connector only read
-structured `result.content` envelopes. The ignored messages produced a zero-byte Markdown asset,
-zero knowledge nodes, and a terminal compilation failure because no FTS projection existed.
+Notion page content arrived through Dify as streamed `variable` messages containing
+`message.variable_name`, `message.variable_value`, and `message.stream`, while the connector only
+read `text` and structured `result.content` envelopes. The ignored messages produced a zero-byte
+Markdown asset, zero knowledge nodes, and a terminal compilation failure because no FTS projection
+existed.
 
 ## Verification
 
@@ -27,6 +32,8 @@ zero knowledge nodes, and a terminal compilation failure because no FTS projecti
 - GREEN: the same command passed all 211 tests across 42 API-app test files after the fix.
 - RED: the empty-document diagnostic regression test confirmed that empty content already returned
   successfully but no structural frame diagnostic was emitted.
+- RED: production-shaped `variable` messages reproduced the zero-byte result; the connector now
+  aggregates only the `content` variable and reports recognized frames and non-zero byte length.
 - `pnpm check` passed, including typecheck, 4,269 API tests plus the remaining workspace tests,
   coverage gates, evaluation gates, migration checks, Compose checks, and smoke tests.
 - `pnpm build` passed all 12 workspace package builds.

@@ -173,4 +173,41 @@ describe("createApiOnlineDocumentConnector", () => {
     expect(diagnostic).not.toContain("must-not-log");
     info.mockRestore();
   });
+
+  it("aggregates Dify datasource content variable messages", async () => {
+    const calls: ApiDatasourceInvocationInput[] = [];
+    const client = clientYielding(
+      [
+        {
+          message: { stream: true, variable_name: "content", variable_value: "# Page " },
+          type: "variable",
+        },
+        {
+          message: { stream: true, variable_name: "content", variable_value: "One" },
+          type: "variable",
+        },
+        {
+          message: { stream: false, variable_name: "title", variable_value: "Ignored" },
+          type: "variable",
+        },
+      ],
+      calls,
+    );
+    const info = vi.spyOn(console, "info").mockImplementation(() => undefined);
+
+    const content = await createApiOnlineDocumentConnector({ client }).getPageContent({
+      page: { pageId: "p1", type: "page", workspaceId: "w1" },
+      source: SOURCE,
+      tenantId: "tenant-1",
+    });
+
+    expect(content).toEqual({ content: "# Page One", pageId: "p1" });
+    expect(JSON.parse(String(info.mock.calls[0]?.[0]))).toMatchObject({
+      contentBytes: 10,
+      frameCount: 3,
+      frameTypes: { variable: 3 },
+      recognizedFrames: 2,
+    });
+    info.mockRestore();
+  });
 });

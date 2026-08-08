@@ -22,8 +22,8 @@ const MAX_DIAGNOSTIC_KEYS = 20;
 
 /**
  * Online-document connector backed by the deployment-selected datasource runtime. Page listing accumulates the
- * streamed workspaces/pages (deduped); page content concatenates Dify text messages while retaining support for
- * structured content envelopes.
+ * streamed workspaces/pages (deduped); page content aggregates Dify content-variable/text messages while retaining
+ * support for structured content envelopes.
  */
 export function createApiOnlineDocumentConnector(input: {
   readonly client: ApiDatasourceInvocationClient;
@@ -260,6 +260,19 @@ function parseContentEnvelope(
   }
 
   const envelope = raw as Record<string, unknown>;
+  if (envelope.type === "variable") {
+    const message = envelope.message;
+    if (!message || typeof message !== "object") return undefined;
+    const variable = message as Record<string, unknown>;
+    if (variable.variable_name !== "content" || typeof variable.variable_value !== "string") {
+      return undefined;
+    }
+    return {
+      append: variable.stream === true,
+      content: variable.variable_value,
+    };
+  }
+
   if (envelope.type === "text") {
     const message = envelope.message;
     if (!message || typeof message !== "object") return undefined;
