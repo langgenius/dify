@@ -385,7 +385,7 @@ class ExternalDatasetCreateApi(Resource):
             dataset = ExternalDatasetService.create_external_dataset(
                 tenant_id=current_tenant_id,
                 user_id=current_user.id,
-                args=payload,
+                args=req_data,
                 session=session,
             )
         except services.errors.dataset.DatasetNameDuplicateError:
