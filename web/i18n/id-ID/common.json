@@ -702,5 +702,127 @@
   "voiceInput.starting": "Memulai mikrofon...",
   "voiceInput.stop": "Hentikan rekaman",
   "workflowAsToolPage.description": "Ubah workflow yang telah dipublikasikan menjadi alat yang dapat digunakan kembali. Gunakan di beberapa aplikasi agar build tetap modular dan tidak berulang.",
-  "you": "Kamu"
+  "you": "Kamu",
+  "mainNav": {
+    "help": {
+      "stepByStepTour": "Tur Langkah-demi-langkah"
+    }
+  },
+  "stepByStepTour": {
+    "duration": "Tur singkat — sekitar 5 menit",
+    "guides": {
+      "home": {
+        "create": {
+          "description": "Klik di sini untuk membuatnya"
+        },
+        "pick": {
+          "description": "Pilih pelajaran untuk melihat cara kerjanya."
+        }
+      },
+      "integration": {
+        "dataSource": {
+          "title": "Sumber Data"
+        },
+        "trigger": {
+          "title": "Pemicu"
+        }
+      },
+      "knowledge": {
+        "empty": {
+          "connect": {
+            "description": "Sudah punya basis pengetahuan di tempat lain? Hubungkan via API — tanpa perlu migrasi data.",
+            "title": "Hubungkan ke basis pengetahuan eksternal"
+          },
+          "create": {
+            "description": "Cara tercepat untuk memulai. Unggah dokumen dan Dify akan menangani pemotongan, pengindeksan, dan penyematan untuk Anda. Anda bisa beralih ke kustom kapan saja.",
+            "title": "Buat basis pengetahuan siap pakai"
+          },
+          "pipeline": {
+            "description": "Tentukan alur pemotongan, pembersihan, dan pengindeksan Anda sendiri saat Anda membutuhkan kendali lebih halus tentang bagaimana dokumen dapat dicari.",
+            "title": "Bangun basis pengetahuan kustom"
+          }
+        },
+        "withDatasets": {
+          "create": {
+            "description": "Gunakan Buat untuk menambah basis pengetahuan baru — mulai dengan siap pakai, bangun yang kustom dari dokumen Anda, atau hubungkan ke basis pengetahuan eksternal.",
+            "title": "Buat basis pengetahuan baru"
+          },
+          "manage": {
+            "description": "Ketuk basis pengetahuan apa saja untuk membuka halaman manajemen dokumennya — perbarui dokumen, pengaturan pengambilan, dan akses dari sana.",
+            "title": "Buka dan kelola setiap basis pengetahuan"
+          }
+        }
+      },
+      "primaryActionLabel": "Mengerti",
+      "studio": {
+        "empty": {
+          "blank": {
+            "description": "Mulai dari kanvas kosong saat Anda sudah tahu apa yang akan dibangun.",
+            "title": "Buat dari kanvas kosong"
+          },
+          "dsl": {
+            "description": "Punya file DSL Dify? Impor ke sini untuk memulihkan aplikasi yang telah Anda bagikan atau dicadangkan.",
+            "title": "Impor file DSL"
+          },
+          "learnDify": {
+            "description": "Baru mengenal Dify? Ikuti pelajaran terpandu terlebih dahulu — Anda akan melihat Alur Kerja, Agen, dan banyak lagi beraksi.",
+            "title": "Atau mulai dengan Pelajari Dify"
+          },
+          "template": {
+            "description": "Jelajahi templat Dify dan pilih salah satu yang sesuai dengan yang ingin Anda bangun. Cara hebat untuk memulai tanpa menulis dari awal.",
+            "title": "Buat dari templat"
+          }
+        },
+        "withApps": {
+          "create": {
+            "description": "Gunakan Buat untuk menambah aplikasi baru — pilih dari templat, mulai dari awal, atau impor file DSL.",
+            "title": "Buat aplikasi baru"
+          },
+          "manage": {
+            "description": "Ketuk aplikasi apa saja untuk membuka halaman orkestrasinya — edit prompt, model, dan logika, atau kelola pengaturannya dari sana.",
+            "title": "Buka dan kelola setiap aplikasi"
+          }
+        }
+      }
+    },
+    "learnMore": "Pelajari lebih lanjut",
+    "minimize": "Minimalkan",
+    "restore": "Buka tur langkah-demi-langkah",
+    "skip": "Lewati tur",
+    "skipRecovery": {
+      "dismiss": "Mengerti",
+      "label": "Kiat pemulihan Tur Langkah-demi-langkah",
+      "message": "Tur disembunyikan. Nyalakan kembali kapan saja di Bantuan → Tur langkah-demi-langkah."
+    },
+    "tasks": {
+      "home": {
+        "primaryActionLabel": "Lihat",
+        "title": "Coba pelajaran Pelajari Dify"
+      },
+      "integration": {
+        "description": "Model, alat, sumber data & lainnya — jelajahi apa saja yang dapat Anda hubungkan.",
+        "noPermission": {
+          "description": "Jelajahi model, alat, sumber data, dan pemicu. Untuk membuat atau mengelola integrasi, beralihlah ke ruang kerja tempat Anda memiliki izin, atau hubungi Pemilik atau Admin Ruang Kerja Anda."
+        },
+        "primaryActionLabel": "Lihat"
+      },
+      "knowledge": {
+        "description": "Bangun basis pengetahuan agar aplikasi Anda menjawab dari dokumen Anda.",
+        "noPermission": {
+          "primaryActionLabel": "Mengerti"
+        },
+        "primaryActionLabel": "Lihat",
+        "title": "Tambahkan data Anda sendiri"
+      },
+      "studio": {
+        "description": "Semua aplikasi Anda ada di Studio — edit, atur, dan publikasikan di sini.",
+        "noCreate": {
+          "title": "Temukan aplikasi Anda di Studio"
+        },
+        "primaryActionLabel": "Lihat",
+        "title": "Kelola aplikasi Anda di Studio"
+      }
+    },
+    "title": "Mengenal Dify"
+  }
 }

@@ -187,5 +187,10 @@
   "viewBilling": "Mengelola penagihan dan langganan",
   "viewBillingAction": "Kelola",
   "viewBillingDescription": "Kelola metode pembayaran, faktur, dan perubahan langganan",
-  "viewBillingTitle": "Penagihan dan Langganan"
+  "viewBillingTitle": "Penagihan dan Langganan",
+  "plans": {
+    "community": {
+      "priceTip": "Selamanya gratis untuk percobaan dan pengembangan pribadi"
+    }
+  }
 }
