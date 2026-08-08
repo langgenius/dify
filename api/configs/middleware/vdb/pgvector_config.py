@@ -46,3 +46,13 @@ class PGVectorConfig(BaseSettings):
         description="Whether to use pg_bigm module for full text search",
         default=False,
     )
+
+    PGVECTOR_INDEX_TYPE: str = Field(
+        description="PGVector ANN index type. Supported values: hnsw, diskann",
+        default="hnsw",
+    )
+
+    PGVECTOR_DISKANN_EXTENSION: str = Field(
+        description="PostgreSQL extension that provides the diskann index. Supported values: pg_diskann, vectorscale",
+        default="pg_diskann",
+    )

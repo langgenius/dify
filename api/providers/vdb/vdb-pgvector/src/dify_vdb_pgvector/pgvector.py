@@ -3,6 +3,7 @@ import json
 import logging
 import uuid
 from contextlib import contextmanager
+from enum import StrEnum
 from typing import Any, override
 
 import psycopg2.errors
@@ -22,7 +23,19 @@ from models.dataset import Dataset
 logger = logging.getLogger(__name__)
 
 
+class PGVectorIndexType(StrEnum):
+    HNSW = "hnsw"
+    DISKANN = "diskann"
+
+
+class PGVectorDiskannExtension(StrEnum):
+    PG_DISKANN = "pg_diskann"
+    VECTORSCALE = "vectorscale"
+
+
 class PGVectorConfig(BaseModel):
+    """Connection and index settings for the PGVector backend."""
+
     host: str
     port: int
     user: str
@@ -31,6 +44,8 @@ class PGVectorConfig(BaseModel):
     min_connection: int
     max_connection: int
     pg_bigm: bool = False
+    index_type: PGVectorIndexType | str = PGVectorIndexType.HNSW
+    diskann_extension: PGVectorDiskannExtension | str = PGVectorDiskannExtension.PG_DISKANN
 
     @model_validator(mode="before")
     @classmethod
@@ -51,6 +66,16 @@ class PGVectorConfig(BaseModel):
             raise ValueError("config PGVECTOR_MAX_CONNECTION is required")
         if values["min_connection"] > values["max_connection"]:
             raise ValueError("config PGVECTOR_MIN_CONNECTION should less than PGVECTOR_MAX_CONNECTION")
+        index_type = str(values.get("index_type", PGVectorIndexType.HNSW)).lower()
+        try:
+            values["index_type"] = PGVectorIndexType(index_type)
+        except ValueError as exc:
+            raise ValueError("config PGVECTOR_INDEX_TYPE should be hnsw or diskann") from exc
+        diskann_extension = str(values.get("diskann_extension", PGVectorDiskannExtension.PG_DISKANN)).lower()
+        try:
+            values["diskann_extension"] = PGVectorDiskannExtension(diskann_extension)
+        except ValueError as exc:
+            raise ValueError("config PGVECTOR_DISKANN_EXTENSION should be pg_diskann or vectorscale") from exc
         return values
 
 
@@ -68,6 +93,11 @@ CREATE INDEX IF NOT EXISTS embedding_cosine_v1_idx_{index_hash} ON {table_name}
 USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64);
 """
 
+SQL_CREATE_INDEX_DISKANN = """
+CREATE INDEX IF NOT EXISTS embedding_diskann_v1_idx_{index_hash} ON {table_name}
+USING diskann (embedding vector_cosine_ops){index_options};
+"""
+
 SQL_CREATE_INDEX_PG_BIGM = """
 CREATE INDEX IF NOT EXISTS bigm_idx_{index_hash} ON {table_name}
 USING gin (text gin_bigm_ops);
@@ -75,12 +105,17 @@ USING gin (text gin_bigm_ops);
 
 
 class PGVector(BaseVector):
+    index_type: PGVectorIndexType
+    diskann_extension: PGVectorDiskannExtension
+
     def __init__(self, collection_name: str, config: PGVectorConfig):
         super().__init__(collection_name)
         self.pool = self._create_connection_pool(config)
         self.table_name = f"embedding_{collection_name}"
         self.index_hash = hashlib.md5(self.table_name.encode()).hexdigest()[:8]
         self.pg_bigm = config.pg_bigm
+        self.index_type = PGVectorIndexType(config.index_type)
+        self.diskann_extension = PGVectorDiskannExtension(config.diskann_extension)
 
     @override
     def get_type(self) -> str:
@@ -103,16 +138,23 @@ class PGVector(BaseVector):
         cur = conn.cursor()
         try:
             yield cur
+        except Exception:
+            conn.rollback()
+            raise
+        else:
+            conn.commit()
         finally:
             cur.close()
-            conn.commit()
             self.pool.putconn(conn)
 
     @override
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         dimension = len(embeddings[0])
-        self._create_collection(dimension)
-        return self.add_texts(texts, embeddings)
+        self._create_collection(dimension, create_vector_index=self.index_type != PGVectorIndexType.DISKANN)
+        pks = self.add_texts(texts, embeddings)
+        if self.index_type == PGVectorIndexType.DISKANN:
+            self._create_vector_index(dimension)
+        return pks
 
     @override
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
@@ -255,11 +297,16 @@ class PGVector(BaseVector):
         with self._get_cursor() as cur:
             cur.execute(f"DROP TABLE IF EXISTS {self.table_name}")
 
-    def _create_collection(self, dimension: int):
-        cache_key = f"vector_indexing_{self._collection_name}"
+    def _format_diskann_index_options(self, dimension: int) -> str:
+        if self.diskann_extension != PGVectorDiskannExtension.PG_DISKANN or dimension <= 2000:
+            return ""
+        return " WITH (product_quantized = true, pq_param_num_chunks = 0)"
+
+    def _create_collection(self, dimension: int, create_vector_index: bool = True):
+        cache_key = f"vector_collection_{self._collection_name}_{self.index_type}"
         lock_name = f"{cache_key}_lock"
         with redis_client.lock(lock_name, timeout=20):
-            collection_exist_cache_key = f"vector_indexing_{self._collection_name}"
+            collection_exist_cache_key = cache_key
             if redis_client.get(collection_exist_cache_key):
                 return
 
@@ -267,15 +314,52 @@ class PGVector(BaseVector):
                 cur.execute("SELECT 1 FROM pg_extension WHERE extname = 'vector'")
                 if not cur.fetchone():
                     cur.execute("CREATE EXTENSION vector")
+                if self.index_type == PGVectorIndexType.DISKANN:
+                    cur.execute("SELECT 1 FROM pg_extension WHERE extname = %s", (self.diskann_extension.value,))
+                    if not cur.fetchone():
+                        cur.execute(f"CREATE EXTENSION IF NOT EXISTS {self.diskann_extension.value} CASCADE")
 
                 cur.execute(SQL_CREATE_TABLE.format(table_name=self.table_name, dimension=dimension))
                 # PG hnsw index only support 2000 dimension or less
                 # ref: https://github.com/pgvector/pgvector?tab=readme-ov-file#indexing
-                if dimension <= 2000:
-                    cur.execute(SQL_CREATE_INDEX.format(table_name=self.table_name, index_hash=self.index_hash))
+                if create_vector_index:
+                    self._execute_vector_index_sql(cur, dimension)
                 if self.pg_bigm:
                     cur.execute(SQL_CREATE_INDEX_PG_BIGM.format(table_name=self.table_name, index_hash=self.index_hash))
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
+
+    def _execute_vector_index_sql(self, cur, dimension: int):
+        if self.index_type == PGVectorIndexType.HNSW and dimension <= 2000:
+            cur.execute(SQL_CREATE_INDEX.format(table_name=self.table_name, index_hash=self.index_hash))
+        elif self.index_type == PGVectorIndexType.DISKANN:
+            cur.execute(
+                SQL_CREATE_INDEX_DISKANN.format(
+                    table_name=self.table_name,
+                    index_hash=self.index_hash,
+                    index_options=self._format_diskann_index_options(dimension),
+                )
+            )
+
+    def _create_vector_index(self, dimension: int):
+        cache_key = f"vector_indexing_{self._collection_name}_{self.index_type}"
+        lock_name = f"{cache_key}_lock"
+        with redis_client.lock(lock_name, timeout=20):
+            if redis_client.get(cache_key):
+                return
+
+            try:
+                with self._get_cursor() as cur:
+                    self._execute_vector_index_sql(cur, dimension)
+            except psycopg2.errors.InternalError as exc:
+                if self.diskann_extension == PGVectorDiskannExtension.PG_DISKANN and "PQError" in str(exc):
+                    logger.warning(
+                        "Skipping pg_diskann index creation for %s after a PQ training error. "
+                        "The table remains usable without ANN index; retry after more vectors are loaded.",
+                        self.table_name,
+                    )
+                    return
+                raise
+            redis_client.set(cache_key, 1, ex=3600)
 
 
 class PGVectorFactory(AbstractVectorFactory):
@@ -300,5 +384,7 @@ class PGVectorFactory(AbstractVectorFactory):
                 min_connection=dify_config.PGVECTOR_MIN_CONNECTION,
                 max_connection=dify_config.PGVECTOR_MAX_CONNECTION,
                 pg_bigm=dify_config.PGVECTOR_PG_BIGM,
+                index_type=dify_config.PGVECTOR_INDEX_TYPE,
+                diskann_extension=dify_config.PGVECTOR_DISKANN_EXTENSION,
             ),
         )
