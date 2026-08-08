@@ -377,6 +377,14 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
 }))
 
+vi.mock('@/next/dynamic', async () => {
+  const { default: WebAppsSection } = await import('../components/web-apps-section')
+
+  return {
+    default: () => WebAppsSection,
+  }
+})
+
 vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
   return {
@@ -400,12 +408,15 @@ let mockInstalledAppsHasNextPage = false
 let mockWorkspaces: TenantListItemResponse[] = []
 
 function stubScrollRootIntersectionObserver() {
-  let callback: IntersectionObserverCallback | undefined
+  const observers: Array<{
+    callback: IntersectionObserverCallback
+    root: Element | Document | null | undefined
+  }> = []
   vi.stubGlobal(
     'IntersectionObserver',
     class MockIntersectionObserver {
       constructor(nextCallback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
-        if (options?.root) callback = nextCallback
+        observers.push({ callback: nextCallback, root: options?.root })
       }
 
       observe() {}
@@ -414,11 +425,15 @@ function stubScrollRootIntersectionObserver() {
     },
   )
 
-  return () => {
-    if (!callback) throw new Error('The scroll root observer was not created')
+  return async () => {
+    await waitFor(() => {
+      expect(observers.some(({ root }) => root instanceof Element)).toBe(true)
+    })
+    const observer = observers.find(({ root }) => root instanceof Element)
+    if (!observer) throw new Error('The scroll root observer was not created')
 
     act(() => {
-      callback?.(
+      observer.callback(
         [{ isIntersecting: true } as IntersectionObserverEntry],
         {} as IntersectionObserver,
       )
@@ -1443,7 +1458,7 @@ describe('MainNav', () => {
     renderMainNav()
     await screen.findByText('Alpha App')
 
-    triggerIntersection()
+    await triggerIntersection()
 
     await waitFor(() => {
       expect(mockFetchNextInstalledAppsPage).toHaveBeenCalledWith('next-page')
@@ -1453,6 +1468,10 @@ describe('MainNav', () => {
   it('shows next-page errors at the pagination boundary and retries from there', async () => {
     const user = userEvent.setup()
     let nextPageAttempts = 0
+    let resolveNextPage: (() => void) | undefined
+    const nextPagePending = new Promise<void>((resolve) => {
+      resolveNextPage = resolve
+    })
     const triggerIntersection = stubScrollRootIntersectionObserver()
     mockInstalledApps = [createInstalledApp()]
     mockInstalledAppsRequest.mockImplementation(
@@ -1467,6 +1486,8 @@ describe('MainNav', () => {
 
         nextPageAttempts += 1
         if (nextPageAttempts === 1) throw new Error('Failed to load the next page')
+
+        await nextPagePending
 
         return {
           installed_apps: [
@@ -1485,14 +1506,33 @@ describe('MainNav', () => {
       name: 'common.mainNav.webApps.openApp:{"name":"Alpha App"}',
     })
 
-    triggerIntersection()
+    await triggerIntersection()
 
     const paginationError = await screen.findByRole('alert')
     expect(
       firstAppLink.compareDocumentPosition(paginationError) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
 
-    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    const retryButton = screen.getByRole('button', { name: 'common.operation.retry' })
+    const webAppsRegion = screen.getByRole('region', { name: 'explore.sidebar.webApps' })
+    retryButton.focus()
+    expect(retryButton).toHaveFocus()
+
+    await user.keyboard('{Enter}')
+
+    await waitFor(() => {
+      expect(webAppsRegion).toHaveAttribute('aria-busy', 'true')
+      expect(retryButton).toBeInTheDocument()
+      expect(retryButton).toHaveFocus()
+      expect(retryButton).toHaveAttribute('aria-disabled', 'true')
+    })
+
+    await user.keyboard('{Enter}')
+    expect(nextPageAttempts).toBe(2)
+
+    act(() => {
+      resolveNextPage?.()
+    })
 
     expect(await screen.findByText('Beta Tool')).toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()

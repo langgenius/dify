@@ -219,13 +219,14 @@ function AppListCatalogContent({
                 />
                 <div className="relative grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] gap-2.5">
                   <AppCardSkeleton count={3} />
-                  {isFetchNextPageError && !isFetchingNextPage && (
+                  {isFetchNextPageError && (
                     <div
                       className="absolute inset-0 flex items-center justify-center gap-2 bg-background-body system-xs-regular text-text-tertiary"
                       role="alert"
                     >
                       <span>{t(($) => $['errorBoundary.title'], { ns: 'common' })}</span>
                       <Button
+                        loading={isFetchingNextPage}
                         size="small"
                         variant="secondary"
                         onClick={() => void onFetchNextPage()}

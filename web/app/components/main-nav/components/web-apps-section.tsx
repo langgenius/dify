@@ -244,24 +244,24 @@ const WebAppsSectionContent = () => {
                     scrollContainerRef={scrollRef}
                   />
                   <InstalledAppPaginationSkeleton />
-                  {installedAppsQuery.isFetchNextPageError &&
-                    !installedAppsQuery.isFetchingNextPage && (
-                      <div
-                        className="absolute inset-0 flex items-center justify-center gap-2 bg-background-body px-2 system-xs-regular text-text-tertiary"
-                        role="alert"
+                  {installedAppsQuery.isFetchNextPageError && (
+                    <div
+                      className="absolute inset-0 flex items-center justify-center gap-2 bg-background-body px-2 system-xs-regular text-text-tertiary"
+                      role="alert"
+                    >
+                      <span>{t(($) => $['errorBoundary.title'], { ns: 'common' })}</span>
+                      <Button
+                        loading={installedAppsQuery.isFetchingNextPage}
+                        size="small"
+                        variant="secondary"
+                        onClick={() => {
+                          void installedAppsQuery.fetchNextPage({ cancelRefetch: false })
+                        }}
                       >
-                        <span>{t(($) => $['errorBoundary.title'], { ns: 'common' })}</span>
-                        <Button
-                          size="small"
-                          variant="secondary"
-                          onClick={() => {
-                            void installedAppsQuery.fetchNextPage({ cancelRefetch: false })
-                          }}
-                        >
-                          {t(($) => $['operation.retry'], { ns: 'common' })}
-                        </Button>
-                      </div>
-                    )}
+                        {t(($) => $['operation.retry'], { ns: 'common' })}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </ScrollAreaContent>
