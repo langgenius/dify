@@ -22,6 +22,7 @@ const mockOnGraphReadyChange = vi.hoisted(() => vi.fn())
 const mockRefreshGraphSynchronously = vi.hoisted(() => vi.fn())
 const mockReplaceGraphFromReactFlow = vi.hoisted(() => vi.fn())
 const mockCanPersistLocalGraph = vi.hoisted(() => vi.fn())
+const mockCanUseLocalDraftFallback = vi.hoisted(() => vi.fn())
 const mockIsGraphReloadCurrent = vi.hoisted(() => vi.fn())
 const mockRetryGraphReload = vi.hoisted(() => vi.fn())
 
@@ -68,6 +69,7 @@ const collaborationRuntime = vi.hoisted(() => ({
   cursors: {} as Record<string, { x: number; y: number; userId: string; timestamp: number }>,
   isConnected: false,
   isEnabled: false,
+  connectionError: null as string | null,
 }))
 
 const collaborationListeners = vi.hoisted(() => ({
@@ -142,6 +144,7 @@ vi.mock('@/app/components/workflow/collaboration/hooks/use-collaboration', () =>
     cursors: collaborationRuntime.cursors,
     isConnected: collaborationRuntime.isConnected,
     isEnabled: collaborationRuntime.isEnabled,
+    connectionError: collaborationRuntime.connectionError,
   }),
 }))
 
@@ -187,6 +190,7 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
     refreshGraphSynchronously: mockRefreshGraphSynchronously,
     replaceGraphFromReactFlow: mockReplaceGraphFromReactFlow,
     canPersistLocalGraph: mockCanPersistLocalGraph,
+    canUseLocalDraftFallback: mockCanUseLocalDraftFallback,
     isGraphReloadCurrent: mockIsGraphReloadCurrent,
     retryGraphReload: mockRetryGraphReload,
     getIsLeader: mockGetIsLeader,
@@ -436,6 +440,7 @@ describe('WorkflowMain', () => {
     collaborationRuntime.cursors = {}
     collaborationRuntime.isConnected = false
     collaborationRuntime.isEnabled = false
+    collaborationRuntime.connectionError = null
     collaborationListeners.varsAndFeaturesUpdate = null
     collaborationListeners.workflowUpdate = null
     collaborationListeners.syncRequest = null
@@ -445,6 +450,7 @@ describe('WorkflowMain', () => {
     hookFns.doSyncWorkflowDraft.mockReset()
     mockGetIsLeader.mockReturnValue(true)
     mockCanPersistLocalGraph.mockReturnValue(true)
+    mockCanUseLocalDraftFallback.mockReturnValue(false)
     mockIsGraphReloadCurrent.mockReturnValue(true)
     mockReplaceGraphFromReactFlow.mockReturnValue(true)
     hookFns.doSyncWorkflowDraft.mockResolvedValue({ hash: 'saved-hash', updatedAt: 2 })
@@ -588,6 +594,31 @@ describe('WorkflowMain', () => {
 
     act(() => collaborationListeners.graphReadyChange?.(true))
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+
+  it('uses the local draft when the initial collaboration connection fails', () => {
+    collaborationRuntime.isEnabled = true
+    collaborationRuntime.connectionError = 'websocket error'
+    mockCanUseLocalDraftFallback.mockReturnValue(true)
+
+    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
+
+    act(() => collaborationListeners.graphReadyChange?.(false))
+
+    expect(screen.queryByTestId('collaboration-graph-loading')).not.toBeInTheDocument()
+    expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
+  })
+
+  it('keeps blocking after an established collaboration session disconnects', () => {
+    collaborationRuntime.isEnabled = true
+    collaborationRuntime.connectionError = 'transport close'
+    mockCanUseLocalDraftFallback.mockReturnValue(false)
+
+    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
+
+    act(() => collaborationListeners.graphReadyChange?.(false))
+
+    expect(screen.getByRole('status')).toHaveTextContent('workflow.common.syncingData')
   })
 
   it('subscribes collaboration listeners and handles sync/workflow update callbacks', async () => {
