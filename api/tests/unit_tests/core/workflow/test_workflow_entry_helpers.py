@@ -120,6 +120,7 @@ class TestWorkflowEntryInit:
             graph_runtime_state=graph_runtime_state,
             command_channel=sentinel.command_channel,
             config=sentinel.graph_engine_config,
+            container_handler_factories=(workflow_entry.create_dify_iteration_container_handler,),
         )
         assert graph_runtime_state._execution_context is sentinel.execution_context
         debug_logging_layer.assert_called_once_with(

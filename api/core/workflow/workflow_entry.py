@@ -11,6 +11,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_di
 from core.app.file_access import DatabaseFileAccessController
 from core.app.workflow.layers.llm_quota import LLMQuotaLayer
 from core.app.workflow.layers.observability import ObservabilityLayer
+from core.workflow.graph_engine import create_dify_iteration_container_handler
 from core.workflow.node_factory import (
     DifyGraphInitContext,
     DifyNodeFactory,
@@ -138,7 +139,6 @@ class WorkflowEntry:
         self.command_channel = command_channel
         self._response_stream_filter = response_stream_filter or ResponseStreamFilter()
         execution_context = capture_current_context()
-        # ponytail: Graphon snapshots omit process-local context; use a public rebind API when Graphon exposes one.
         graph_runtime_state._execution_context = execution_context
         self.graph_engine = GraphEngine(
             workflow_id=workflow_id,
@@ -151,6 +151,7 @@ class WorkflowEntry:
                 scale_up_threshold=dify_config.GRAPH_ENGINE_SCALE_UP_THRESHOLD,
                 scale_down_idle_time=dify_config.GRAPH_ENGINE_SCALE_DOWN_IDLE_TIME,
             ),
+            container_handler_factories=(create_dify_iteration_container_handler,),
         )
 
         # Add debug logging layer when in debug mode
