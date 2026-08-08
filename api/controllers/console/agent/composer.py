@@ -13,6 +13,7 @@ from controllers.console.wraps import (
     RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_tenant_id,
@@ -116,7 +117,7 @@ class WorkflowAgentComposerApi(Resource):
                 app_id=app_model.id,
                 node_id=node_id,
                 account_id=account_id,
-                payload=payload,
+                payload=req_data,
             ),
         )
 
@@ -177,14 +178,14 @@ class WorkflowAgentComposerValidateApi(Resource):
     @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
     @model_validate(ComposerSavePayload)
     def post(self, req_data: ComposerSavePayload, session: Session, tenant_id: str, app_model: App, node_id: str):
-        ComposerConfigValidator.validate_publish_payload(payload)
+        ComposerConfigValidator.validate_publish_payload(req_data)
         AgentComposerService.validate_knowledge_datasets(
             session=session, tenant_id=tenant_id, agent_soul=req_data.agent_soul
         )
         findings = AgentComposerService.collect_validation_findings(
             session=session,
             tenant_id=tenant_id,
-            payload=payload,
+            payload=req_data,
             agent_id=AgentComposerService.resolve_workflow_node_agent_id(
                 session=session, tenant_id=tenant_id, app_id=app_model.id, node_id=node_id
             ),
@@ -276,7 +277,7 @@ class WorkflowAgentComposerSaveToRosterApi(Resource):
                 app_id=app_model.id,
                 node_id=node_id,
                 account_id=account_id,
-                payload=payload,
+                payload=req_data,
             ),
         )
 
@@ -353,7 +354,7 @@ class SnippetAgentComposerApi(Resource):
                 app_id=_require_snippet_app_id(session=session, tenant_id=tenant_id, snippet_id=snippet_id),
                 node_id=node_id,
                 account_id=account_id,
-                payload=payload,
+                payload=req_data,
             ),
         )
 
@@ -413,14 +414,14 @@ class SnippetAgentComposerValidateApi(Resource):
     @model_validate(ComposerSavePayload)
     def post(self, req_data: ComposerSavePayload, session: Session, tenant_id: str, snippet_id: UUID, node_id: str):
         app_id = _require_snippet_app_id(session=session, tenant_id=tenant_id, snippet_id=snippet_id)
-        ComposerConfigValidator.validate_publish_payload(payload)
+        ComposerConfigValidator.validate_publish_payload(req_data)
         AgentComposerService.validate_knowledge_datasets(
             session=session, tenant_id=tenant_id, agent_soul=req_data.agent_soul
         )
         findings = AgentComposerService.collect_validation_findings(
             session=session,
             tenant_id=tenant_id,
-            payload=payload,
+            payload=req_data,
             agent_id=AgentComposerService.resolve_workflow_node_agent_id(
                 session=session,
                 tenant_id=tenant_id,
@@ -517,7 +518,7 @@ class SnippetAgentComposerSaveToRosterApi(Resource):
                 app_id=_require_snippet_app_id(session=session, tenant_id=tenant_id, snippet_id=snippet_id),
                 node_id=node_id,
                 account_id=account_id,
-                payload=payload,
+                payload=req_data,
             ),
         )
 
@@ -556,7 +557,7 @@ class AgentComposerApi(Resource):
                 tenant_id=tenant_id,
                 agent_id=str(agent_id),
                 account_id=account_id,
-                payload=payload,
+                payload=req_data,
             ),
         )
 
@@ -575,14 +576,14 @@ class AgentComposerValidateApi(Resource):
     @model_validate(ComposerSavePayload)
     def post(self, req_data: ComposerSavePayload, session: Session, tenant_id: str, agent_id: UUID):
         AgentComposerService.load_agent_composer(session=session, tenant_id=tenant_id, agent_id=str(agent_id))
-        ComposerConfigValidator.validate_publish_payload(payload)
+        ComposerConfigValidator.validate_publish_payload(req_data)
         AgentComposerService.validate_knowledge_datasets(
             session=session, tenant_id=tenant_id, agent_soul=req_data.agent_soul
         )
         findings = AgentComposerService.collect_validation_findings(
             session=session,
             tenant_id=tenant_id,
-            payload=payload,
+            payload=req_data,
             agent_id=str(agent_id),
         )
         return dump_response(AgentComposerValidateResponse, {"result": "success", "errors": [], **findings})

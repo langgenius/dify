@@ -7,6 +7,7 @@ from sqlalchemy import select
 
 from controllers.common.schema import query_params_from_model, register_response_schema_models
 from controllers.console import api
+from controllers.console.wraps import model_validate
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.helper import dump_response

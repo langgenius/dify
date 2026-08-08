@@ -38,6 +38,7 @@ from controllers.console.wraps import (
     edit_permission_required,
     enterprise_license_required,
     is_admin_or_owner_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_tenant_id,
@@ -818,7 +819,7 @@ class AgentBuildDraftApi(Resource):
             tenant_id=tenant_id,
             agent_id=str(agent_id),
             account_id=current_user.id,
-            payload=payload,
+            payload=req_data,
         )
 
     @console_ns.response(200, "Agent build draft discarded", console_ns.models[AgentSimpleResultResponse.__name__])
