@@ -299,6 +299,23 @@ class TestFeedbackExportApi:
             format_type="csv",
         )
 
+    def test_feedback_export_end_date_includes_the_full_day(self):
+        session = mock.Mock()
+        session.execute.return_value.all.return_value = []
+
+        FeedbackService.export_feedbacks(
+            str(uuid.uuid4()),
+            session=session,
+            end_date="2024-12-31",
+            format_type="json",
+        )
+
+        statement = session.execute.call_args.args[0]
+        compiled = str(statement.compile(compile_kwargs={"literal_binds": True}))
+
+        assert "2025-01-01 00:00:00" in compiled
+        assert "2024-12-31 00:00:00" not in compiled
+
     def test_feedback_export_invalid_date_format(
         self, test_client: FlaskClient, auth_header, monkeypatch: pytest.MonkeyPatch, mock_app_model, mock_account
     ):
