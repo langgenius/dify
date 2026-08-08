@@ -1,6 +1,8 @@
 import json
 from collections.abc import Iterator, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from uuid import UUID
 
@@ -10,6 +12,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.engine.interfaces import DBAPICursor, ExecutionContext
 from sqlalchemy.orm import Session, sessionmaker
 
+import libs.helper as helper_module
 from configs import dify_config
 from models.account import (
     Account,
@@ -2940,6 +2943,21 @@ class TestIsEmailSendIpLimit:
 
 
 class TestVerificationTokenGeneration:
+    @staticmethod
+    def _build_fake_redis(storage: dict[str, str]):
+        def store_value(key: str, _ttl: int, value: str) -> bool:
+            storage[key] = value
+            return True
+
+        def load_value(key: str) -> str | None:
+            return storage.get(key)
+
+        return SimpleNamespace(
+            setex=store_value,
+            get=load_value,
+            delete=lambda *_args, **_kwargs: None,
+        )
+
     @pytest.mark.parametrize(
         ("method_name", "kwargs"),
         [
@@ -2980,3 +2998,88 @@ class TestVerificationTokenGeneration:
             "phase": "reset",
             "code": "123456",
         }
+
+    @pytest.mark.parametrize(
+        ("generate_method", "get_method", "kwargs", "additional_data"),
+        [
+            (
+                "generate_reset_password_token",
+                "get_reset_password_data",
+                {"email": "reset@example.com"},
+                {"phase": "reset"},
+            ),
+            (
+                "generate_email_register_token",
+                "get_email_register_data",
+                {"email": "register@example.com"},
+                {"phase": "register"},
+            ),
+            (
+                "generate_owner_transfer_token",
+                "get_owner_transfer_data",
+                {"email": "owner@example.com"},
+                {"marker": "transfer"},
+            ),
+        ],
+    )
+    def test_token_roundtrip_preserves_code_and_metadata(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        generate_method: str,
+        get_method: str,
+        kwargs: dict,
+        additional_data: dict,
+    ):
+        storage: dict[str, str] = {}
+        monkeypatch.setattr(helper_module, "redis_client", self._build_fake_redis(storage))
+
+        generate_token = getattr(AccountService, generate_method)
+        get_token_data = getattr(AccountService, get_method)
+
+        code, token = generate_token(**kwargs, code="654321", additional_data=additional_data)
+        data = get_token_data(token)
+
+        assert code == "654321"
+        assert data is not None
+        assert data["code"] == "654321"
+        assert data["email"] == kwargs["email"]
+        for key, value in additional_data.items():
+            assert data[key] == value
+
+    def test_concurrent_generations_do_not_leak_codes_between_tokens(self, monkeypatch: pytest.MonkeyPatch):
+        storage: dict[str, str] = {}
+        monkeypatch.setattr(helper_module, "redis_client", self._build_fake_redis(storage))
+
+        def generate_one(index: int) -> tuple[str, str]:
+            email = f"user{index}@example.com"
+            code = f"{index:06d}"
+            returned_code, token = AccountService.generate_reset_password_token(email, code=code)
+            data = AccountService.get_reset_password_data(token)
+            assert data is not None
+            assert data["email"] == email
+            return returned_code, data["code"]
+
+        with ThreadPoolExecutor(max_workers=50) as executor:
+            results = list(executor.map(generate_one, range(50)))
+
+        for returned_code, stored_code in results:
+            assert returned_code == stored_code
+
+    def test_concurrent_generations_with_auto_generated_codes_do_not_leak(self, monkeypatch: pytest.MonkeyPatch):
+        storage: dict[str, str] = {}
+        monkeypatch.setattr(helper_module, "redis_client", self._build_fake_redis(storage))
+
+        def generate_one(index: int) -> tuple[str, str]:
+            email = f"user{index}@example.com"
+            returned_code, token = AccountService.generate_reset_password_token(email)
+            data = AccountService.get_reset_password_data(token)
+            assert data is not None
+            assert data["email"] == email
+            return returned_code, data["code"]
+
+        with ThreadPoolExecutor(max_workers=50) as executor:
+            results = list(executor.map(generate_one, range(50)))
+
+        for returned_code, stored_code in results:
+            assert returned_code == stored_code
+            assert len(returned_code) == 6
