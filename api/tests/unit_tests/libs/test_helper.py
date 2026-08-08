@@ -1,8 +1,16 @@
 from datetime import datetime
+from uuid import uuid4
 
 import pytest
 
-from libs.helper import OptionalTimestampField, alphanumeric, email, escape_like_pattern, extract_tenant_id
+from libs.helper import (
+    OptionalTimestampField,
+    alphanumeric,
+    as_route_arg_str,
+    email,
+    escape_like_pattern,
+    extract_tenant_id,
+)
 from models.account import Account
 from models.model import EndUser
 
@@ -197,3 +205,15 @@ class TestAlphanumericValidator:
             alphanumeric("tool.name")
         with pytest.raises(ValueError, match="not a valid alphanumeric value"):
             alphanumeric("tool/name")
+
+
+class TestAsRouteArgStr:
+    def test_returns_string_values_unchanged(self) -> None:
+        assert as_route_arg_str("app-123") == "app-123"
+
+    def test_coerces_uuid_values(self) -> None:
+        value = uuid4()
+        assert as_route_arg_str(value) == str(value)
+
+    def test_coerces_non_string_objects(self) -> None:
+        assert as_route_arg_str(42) == "42"

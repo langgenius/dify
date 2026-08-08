@@ -26,7 +26,7 @@ from fields.agent_fields import (
     AgentComposerValidateResponse,
     WorkflowAgentComposerResponse,
 )
-from libs.helper import dump_response
+from libs.helper import dump_response, uuid_value
 from libs.login import login_required
 from models.model import App, AppMode
 from services.agent.composer_service import AgentComposerService
@@ -252,7 +252,7 @@ class WorkflowAgentComposerSaveToRosterApi(Resource):
 
 def _require_snippet_app_id(*, session: Session, tenant_id: str, snippet_id: UUID) -> str:
     snippet = SnippetService(session=session).get_snippet_by_id(
-        snippet_id=str(snippet_id),
+        snippet_id=uuid_value(snippet_id),
         tenant_id=tenant_id,
     )
     if snippet is None:

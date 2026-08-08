@@ -60,7 +60,7 @@ from fields.agent_fields import (
 )
 from fields.base import ResponseModel
 from libs.datetime_utils import parse_time_range
-from libs.helper import dump_response
+from libs.helper import dump_response, uuid_value
 from libs.login import login_required
 from models import Account
 from models.agent import Agent, AgentStatus
@@ -907,7 +907,7 @@ class AgentApiKeyListApi(BaseApiKeyListResource):
     @with_session(write=False)
     def get(self, session: Session, tenant_id: str, agent_id: UUID) -> dict[str, object]:
         app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
-        return dump_response(ApiKeyList, self._get_api_key_list(str(app_model.id), tenant_id, session=session))
+        return dump_response(ApiKeyList, self._get_api_key_list(app_model.id, tenant_id, session=session))
 
     @console_ns.response(201, "Agent service API key created", console_ns.models[ApiKeyItem.__name__])
     @console_ns.response(400, "Maximum keys exceeded")
@@ -920,7 +920,7 @@ class AgentApiKeyListApi(BaseApiKeyListResource):
         app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
         return dump_response(
             ApiKeyItem,
-            self._create_api_key(str(app_model.id), tenant_id, session=session),
+            self._create_api_key(app_model.id, tenant_id, session=session),
         ), 201
 
 
@@ -945,7 +945,7 @@ class AgentApiKeyApi(BaseApiKeyResource):
         api_key_id: UUID,
     ) -> tuple[str, int]:
         app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
-        self._delete_api_key(str(app_model.id), str(api_key_id), tenant_id, current_user, session=session)
+        self._delete_api_key(app_model.id, api_key_id, tenant_id, current_user, session=session)
         return "", 204
 
 
@@ -1033,7 +1033,7 @@ class AgentLogMessagesApi(Resource):
             payload = _agent_observability_service(session).list_log_messages(
                 app=app_model,
                 agent_id=str(agent_id),
-                conversation_id=str(conversation_id),
+                conversation_id=uuid_value(conversation_id),
                 params=AgentLogQueryParams(
                     page=query.page,
                     limit=query.limit,
