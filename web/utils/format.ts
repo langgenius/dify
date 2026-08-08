@@ -88,7 +88,7 @@ export const formatTime = (seconds: number) => {
   if (!seconds) return seconds
   const units = ['sec', 'min', 'h']
   let index = 0
-  while (seconds >= 60 && index < units.length) {
+  while (seconds >= 60 && index < units.length - 1) {
     seconds = seconds / 60
     index++
   }
