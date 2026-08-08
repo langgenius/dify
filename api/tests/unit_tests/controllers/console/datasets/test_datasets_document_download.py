@@ -18,7 +18,7 @@ from zipfile import ZipFile
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import Forbidden, NotFound
+from werkzeug.exceptions import NotFound
 
 
 @pytest.fixture
@@ -108,7 +108,11 @@ def _wire_common_success_mocks(
     import services.dataset_service as dataset_service_module
 
     # Return a dataset object and allow permission checks to pass.
-    monkeypatch.setattr(module.DatasetService, "get_dataset", lambda *_args, **_kwargs: SimpleNamespace(id="ds-1"))
+    monkeypatch.setattr(
+        module.DatasetService,
+        "get_dataset_for_tenant",
+        lambda *_args, **_kwargs: SimpleNamespace(id="ds-1", tenant_id="tenant-123"),
+    )
     monkeypatch.setattr(module.DatasetService, "check_dataset_permission", lambda *_args, **_kwargs: None)
 
     # Return a document that will be validated inside DocumentResource.get_document.
@@ -118,7 +122,11 @@ def _wire_common_success_mocks(
         data_source_type=data_source_type,
         upload_file_id=upload_file_id,
     )
-    monkeypatch.setattr(module.DocumentService, "get_document", lambda *_args, **_kwargs: document)
+    monkeypatch.setattr(
+        module.DatasetRefService,
+        "get_document_by_ref",
+        lambda *_args, **_kwargs: document if document.tenant_id == "tenant-123" else None,
+    )
 
     # Mock UploadFile lookup via FileService batch helper.
     upload_files_by_id: dict[str, object] = {}
@@ -404,10 +412,10 @@ def test_document_download_rejects_when_upload_file_record_missing(
             method(api, MagicMock(), "tenant-123", _mock_user(), dataset_id="ds-1", document_id="doc-1")
 
 
-def test_document_download_rejects_tenant_mismatch(
+def test_document_download_rejects_document_owner_mismatch(
     app: Flask, datasets_document_module, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Ensure tenant mismatch is rejected by the shared `get_document()` permission check."""
+    """Ensure an owner mismatch is rejected by the shared document resolver."""
 
     _wire_common_success_mocks(
         module=datasets_document_module,
@@ -422,5 +430,5 @@ def test_document_download_rejects_tenant_mismatch(
     with app.test_request_context("/datasets/ds-1/documents/doc-1/download", method="GET"):
         api = datasets_document_module.DocumentDownloadApi()
         method = unwrap(api.get)
-        with pytest.raises(Forbidden):
+        with pytest.raises(NotFound):
             method(api, MagicMock(), "tenant-123", _mock_user(), dataset_id="ds-1", document_id="doc-1")

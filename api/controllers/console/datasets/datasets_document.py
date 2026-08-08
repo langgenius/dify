@@ -294,7 +294,7 @@ class DocumentResource(Resource):
     def get_document(
         self, session: Session, dataset_id: str, document_id: str, current_user: Account, current_tenant_id: str
     ) -> Document:
-        dataset = DatasetService.get_dataset(dataset_id, session)
+        dataset = DatasetService.get_dataset_for_tenant(dataset_id, current_tenant_id, session=session)
         if not dataset:
             raise NotFound("Dataset not found.")
 
@@ -303,13 +303,12 @@ class DocumentResource(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 
-        document = DocumentService.get_document(dataset_id, document_id, session=session)
+        dataset_ref = DatasetRefService.create_dataset_ref(dataset)
+        document_ref = DatasetRefService.create_document_ref_from_id(dataset_ref, document_id)
+        document = DatasetRefService.get_document_by_ref(document_ref, session=session)
 
         if not document:
             raise NotFound("Document not found.")
-
-        if document.tenant_id != current_tenant_id:
-            raise Forbidden("No permission.")
 
         return document
 
@@ -1369,22 +1368,25 @@ class DocumentPauseApi(DocumentResource):
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.response(204, "Document paused successfully")
+    @with_current_user
+    @with_current_tenant_id
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @with_session
-    def patch(self, session: Session, dataset_id: UUID, document_id: UUID):
+    def patch(
+        self,
+        session: Session,
+        current_tenant_id: str,
+        current_user: Account,
+        dataset_id: UUID,
+        document_id: UUID,
+    ):
         """pause document."""
         dataset_id_str = str(dataset_id)
         document_id_str = str(document_id)
 
-        dataset = DatasetService.get_dataset(dataset_id_str, session)
-        if not dataset:
-            raise NotFound("Dataset not found.")
-
-        document = DocumentService.get_document(dataset.id, document_id_str, session=session)
-
-        # 404 if document not found
-        if document is None:
-            raise NotFound("Document Not Exists.")
+        document = self.get_document(session, dataset_id_str, document_id_str, current_user, current_tenant_id)
+        if not current_user.is_dataset_editor:
+            raise Forbidden()
 
         # 403 if document is archived
         if DocumentService.check_archived(document):
@@ -1406,20 +1408,25 @@ class DocumentRecoverApi(DocumentResource):
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.response(204, "Document resumed successfully")
+    @with_current_user
+    @with_current_tenant_id
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @with_session
-    def patch(self, session: Session, dataset_id: UUID, document_id: UUID):
+    def patch(
+        self,
+        session: Session,
+        current_tenant_id: str,
+        current_user: Account,
+        dataset_id: UUID,
+        document_id: UUID,
+    ):
         """recover document."""
         dataset_id_str = str(dataset_id)
         document_id_str = str(document_id)
-        dataset = DatasetService.get_dataset(dataset_id_str, session)
-        if not dataset:
-            raise NotFound("Dataset not found.")
-        document = DocumentService.get_document(dataset.id, document_id_str, session=session)
 
-        # 404 if document not found
-        if document is None:
-            raise NotFound("Document Not Exists.")
+        document = self.get_document(session, dataset_id_str, document_id_str, current_user, current_tenant_id)
+        if not current_user.is_dataset_editor:
+            raise Forbidden()
 
         # 403 if document is archived
         if DocumentService.check_archived(document):
@@ -1512,28 +1519,32 @@ class WebsiteDocumentSyncApi(DocumentResource):
     @login_required
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @with_current_user
     @with_current_tenant_id
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT)
     @with_session
-    def get(self, session: Session, current_tenant_id: str, dataset_id: UUID, document_id: UUID):
+    def get(
+        self,
+        session: Session,
+        current_tenant_id: str,
+        current_user: Account,
+        dataset_id: UUID,
+        document_id: UUID,
+    ):
         """sync website document."""
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str, session)
+        dataset = DatasetService.get_dataset_for_tenant(dataset_id_str, current_tenant_id, session=session)
         if not dataset:
             raise NotFound("Dataset not found.")
         document_id_str = str(document_id)
-        document = DocumentService.get_document(dataset.id, document_id_str, session=session)
-        if not document:
-            raise NotFound("Document not found.")
-        if document.tenant_id != current_tenant_id:
-            raise Forbidden("No permission.")
+        document = self.get_document(session, dataset.id, document_id_str, current_user, current_tenant_id)
         if document.data_source_type != "website_crawl":
             raise ValueError("Document is not a website document.")
         # 403 if document is archived
         if DocumentService.check_archived(document):
             raise ArchivedDocumentImmutableError()
         # sync document
-        DocumentService.sync_website_document(dataset_id_str, document, session)
+        DocumentService.sync_website_document(dataset, document, session)
 
         return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
@@ -1548,21 +1559,25 @@ class DocumentPipelineExecutionLogApi(DocumentResource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_current_user
+    @with_current_tenant_id
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT)
     @with_session(write=False)
-    def get(self, session: Session, dataset_id: UUID, document_id: UUID):
+    def get(
+        self,
+        session: Session,
+        current_tenant_id: str,
+        current_user: Account,
+        dataset_id: UUID,
+        document_id: UUID,
+    ):
         dataset_id_str = str(dataset_id)
         document_id_str = str(document_id)
 
-        dataset = DatasetService.get_dataset(dataset_id_str, session)
-        if not dataset:
-            raise NotFound("Dataset not found.")
-        document = DocumentService.get_document(dataset.id, document_id_str, session=session)
-        if not document:
-            raise NotFound("Document not found.")
+        document = self.get_document(session, dataset_id_str, document_id_str, current_user, current_tenant_id)
         log = session.scalar(
             select(DocumentPipelineExecutionLog)
-            .where(DocumentPipelineExecutionLog.document_id == document_id_str)
+            .where(DocumentPipelineExecutionLog.document_id == document.id)
             .order_by(DocumentPipelineExecutionLog.created_at.desc())
             .limit(1)
         )

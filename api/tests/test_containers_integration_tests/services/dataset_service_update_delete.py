@@ -18,6 +18,7 @@ from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAcco
 from models.dataset import AppDatasetJoin, Dataset, DatasetPermissionEnum
 from models.enums import DataSourceType
 from models.model import App
+from services.dataset_ref_service import DatasetRef, DatasetRefService
 from services.dataset_service import DatasetService
 from services.errors.account import NoPermissionError
 
@@ -228,9 +229,10 @@ class TestDatasetServiceDatasetUseCheck:
         dataset = DatasetUpdateDeleteTestDataFactory.create_dataset(db_session_with_containers, tenant.id, owner.id)
         app = DatasetUpdateDeleteTestDataFactory.create_app(db_session_with_containers, tenant.id, owner.id)
         DatasetUpdateDeleteTestDataFactory.create_app_dataset_join(db_session_with_containers, app.id, dataset.id)
+        dataset_ref = DatasetRefService.create_dataset_ref(dataset)
 
         # Act
-        result = DatasetService.dataset_use_check(dataset.id, session=db_session_with_containers)
+        result = DatasetService.dataset_use_check(dataset_ref, session=db_session_with_containers)
 
         # Assert
         assert result is True
@@ -252,9 +254,10 @@ class TestDatasetServiceDatasetUseCheck:
             db_session_with_containers, role=TenantAccountRole.OWNER
         )
         dataset = DatasetUpdateDeleteTestDataFactory.create_dataset(db_session_with_containers, tenant.id, owner.id)
+        dataset_ref = DatasetRefService.create_dataset_ref(dataset)
 
         # Act
-        result = DatasetService.dataset_use_check(dataset.id, session=db_session_with_containers)
+        result = DatasetService.dataset_use_check(dataset_ref, session=db_session_with_containers)
 
         # Assert
         assert result is False
@@ -285,6 +288,7 @@ class TestDatasetServiceUpdateDatasetApiStatus:
         dataset = DatasetUpdateDeleteTestDataFactory.create_dataset(
             db_session_with_containers, tenant.id, owner.id, enable_api=False
         )
+        dataset_ref = DatasetRefService.create_dataset_ref(dataset)
         current_time = datetime.datetime(2023, 1, 1, 12, 0, 0)
 
         # Act
@@ -292,7 +296,7 @@ class TestDatasetServiceUpdateDatasetApiStatus:
             patch("services.dataset_service.current_user", owner),
             patch("services.dataset_service.naive_utc_now", return_value=current_time),
         ):
-            DatasetService.update_dataset_api_status(dataset.id, True, session=db_session_with_containers)
+            DatasetService.update_dataset_api_status(dataset_ref, True, session=db_session_with_containers)
 
         # Assert
         db_session_with_containers.refresh(dataset)
@@ -320,6 +324,7 @@ class TestDatasetServiceUpdateDatasetApiStatus:
         dataset = DatasetUpdateDeleteTestDataFactory.create_dataset(
             db_session_with_containers, tenant.id, owner.id, enable_api=True
         )
+        dataset_ref = DatasetRefService.create_dataset_ref(dataset)
         current_time = datetime.datetime(2023, 1, 1, 12, 0, 0)
 
         # Act
@@ -327,7 +332,7 @@ class TestDatasetServiceUpdateDatasetApiStatus:
             patch("services.dataset_service.current_user", owner),
             patch("services.dataset_service.naive_utc_now", return_value=current_time),
         ):
-            DatasetService.update_dataset_api_status(dataset.id, False, session=db_session_with_containers)
+            DatasetService.update_dataset_api_status(dataset_ref, False, session=db_session_with_containers)
 
         # Assert
         db_session_with_containers.refresh(dataset)
@@ -348,10 +353,11 @@ class TestDatasetServiceUpdateDatasetApiStatus:
         """
         # Arrange
         dataset_id = str(uuid4())
+        dataset_ref = DatasetRef(tenant_id=str(uuid4()), dataset_id=dataset_id)
 
         # Act & Assert
         with pytest.raises(NotFound, match="Dataset not found"):
-            DatasetService.update_dataset_api_status(dataset_id, True, session=db_session_with_containers)
+            DatasetService.update_dataset_api_status(dataset_ref, True, session=db_session_with_containers)
 
     def test_update_dataset_api_status_missing_current_user_error(self, db_session_with_containers: Session):
         """
@@ -372,13 +378,14 @@ class TestDatasetServiceUpdateDatasetApiStatus:
         dataset = DatasetUpdateDeleteTestDataFactory.create_dataset(
             db_session_with_containers, tenant.id, owner.id, enable_api=False
         )
+        dataset_ref = DatasetRefService.create_dataset_ref(dataset)
 
         # Act & Assert
         with (
             patch("services.dataset_service.current_user", None),
             pytest.raises(ValueError, match="Current user or current user id not found"),
         ):
-            DatasetService.update_dataset_api_status(dataset.id, True, session=db_session_with_containers)
+            DatasetService.update_dataset_api_status(dataset_ref, True, session=db_session_with_containers)
 
         # Verify no commit was attempted
         db_session_with_containers.rollback()
