@@ -98,8 +98,8 @@ class AppSite(Resource):
     @with_current_user
     @with_session
     @get_app_model
-    def post(self, session: Session, current_user: Account, app_model: App):
-        args = AppSiteUpdatePayload.model_validate(console_ns.payload or {})
+    @model_validate(AppSiteUpdatePayload)
+    def post(self, req_data: AppSiteUpdatePayload, session: Session, current_user: Account, app_model: App):
         site = session.scalar(select(Site).where(Site.app_id == app_model.id).limit(1))
         if not site:
             raise NotFound

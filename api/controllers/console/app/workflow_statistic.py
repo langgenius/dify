@@ -1,4 +1,4 @@
-from flask import abort, jsonify, request
+from flask import abort, jsonify
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import sessionmaker
@@ -104,13 +104,13 @@ class WorkflowDailyRunsStatistic(Resource):
     @with_current_user
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
     @get_app_model
-    def get(self, account: Account, app_model: App):
-        args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))
+    @model_validate(WorkflowStatisticQuery)
+    def get(self, req_data: WorkflowStatisticQuery, account: Account, app_model: App):
 
         assert account.timezone is not None
 
         try:
-            start_date, end_date = parse_time_range(args.start, args.end, account.timezone)
+            start_date, end_date = parse_time_range(req_data.start, req_data.end, account.timezone)
         except ValueError as e:
             abort(400, description=str(e))
 
@@ -148,13 +148,13 @@ class WorkflowDailyTerminalsStatistic(Resource):
     @with_current_user
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
     @get_app_model
-    def get(self, account: Account, app_model: App):
-        args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))
+    @model_validate(WorkflowStatisticQuery)
+    def get(self, req_data: WorkflowStatisticQuery, account: Account, app_model: App):
 
         assert account.timezone is not None
 
         try:
-            start_date, end_date = parse_time_range(args.start, args.end, account.timezone)
+            start_date, end_date = parse_time_range(req_data.start, req_data.end, account.timezone)
         except ValueError as e:
             abort(400, description=str(e))
 
@@ -192,13 +192,13 @@ class WorkflowDailyTokenCostStatistic(Resource):
     @with_current_user
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
     @get_app_model
-    def get(self, account: Account, app_model: App):
-        args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))
+    @model_validate(WorkflowStatisticQuery)
+    def get(self, req_data: WorkflowStatisticQuery, account: Account, app_model: App):
 
         assert account.timezone is not None
 
         try:
-            start_date, end_date = parse_time_range(args.start, args.end, account.timezone)
+            start_date, end_date = parse_time_range(req_data.start, req_data.end, account.timezone)
         except ValueError as e:
             abort(400, description=str(e))
 
@@ -236,13 +236,13 @@ class WorkflowAverageAppInteractionStatistic(Resource):
     @with_current_user
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
     @get_app_model(mode=[AppMode.WORKFLOW])
-    def get(self, account: Account, app_model: App):
-        args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))
+    @model_validate(WorkflowStatisticQuery)
+    def get(self, req_data: WorkflowStatisticQuery, account: Account, app_model: App):
 
         assert account.timezone is not None
 
         try:
-            start_date, end_date = parse_time_range(args.start, args.end, account.timezone)
+            start_date, end_date = parse_time_range(req_data.start, req_data.end, account.timezone)
         except ValueError as e:
             abort(400, description=str(e))
 

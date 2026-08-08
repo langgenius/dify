@@ -310,19 +310,19 @@ class RBACRolesApi(Resource):
         RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
     )
     @console_ns.response(200, "Success", console_ns.models[_RBACRoleList.__name__])
-    def get(self):
+    @model_validate(_RolesListQuery)
+    def get(self, req_data: _RolesListQuery):
         tenant_id, account_id = _current_ids()
-        query = _RolesListQuery.model_validate(request.args.to_dict(flat=True))
-        options = query.to_inner_options()
+        options = req_data.to_inner_options()
         if not dify_config.RBAC_ENABLED:
             result = _legacy_workspace_roles(
-                options, include_owner=query.include_owner, billing_enabled=dify_config.BILLING_ENABLED
+                options, include_owner=req_data.include_owner, billing_enabled=dify_config.BILLING_ENABLED
             )
         else:
             result = svc.RBACService.Roles.list(
                 tenant_id,
                 account_id,
-                include_owner=query.include_owner,
+                include_owner=req_data.include_owner,
                 biiling_enabled=dify_config.BILLING_ENABLED,
                 options=options,
             )

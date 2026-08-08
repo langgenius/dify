@@ -1,6 +1,5 @@
 from uuid import UUID
 
-from flask import request
 from flask_restx import Resource
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
@@ -64,8 +63,16 @@ class WorkflowAgentComposerApi(Resource):
     @with_current_tenant_id
     @with_session
     @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
-    def get(self, session: Session, tenant_id: str, account_id: str, app_model: App, node_id: str):
-        query = WorkflowAgentComposerQuery.model_validate(request.args.to_dict(flat=True))
+    @model_validate(WorkflowAgentComposerQuery)
+    def get(
+        self,
+        req_data: WorkflowAgentComposerQuery,
+        session: Session,
+        tenant_id: str,
+        account_id: str,
+        app_model: App,
+        node_id: str,
+    ):
         return dump_response(
             WorkflowAgentComposerResponse,
             AgentComposerService.load_workflow_composer(
@@ -74,7 +81,7 @@ class WorkflowAgentComposerApi(Resource):
                 app_id=app_model.id,
                 node_id=node_id,
                 account_id=account_id,
-                snapshot_id=query.snapshot_id,
+                snapshot_id=req_data.snapshot_id,
             ),
         )
 
@@ -91,8 +98,16 @@ class WorkflowAgentComposerApi(Resource):
     @with_current_tenant_id
     @with_session
     @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
-    def put(self, session: Session, tenant_id: str, account_id: str, app_model: App, node_id: str):
-        payload = ComposerSavePayload.model_validate(console_ns.payload or {})
+    @model_validate(ComposerSavePayload)
+    def put(
+        self,
+        req_data: ComposerSavePayload,
+        session: Session,
+        tenant_id: str,
+        account_id: str,
+        app_model: App,
+        node_id: str,
+    ):
         return dump_response(
             WorkflowAgentComposerResponse,
             AgentComposerService.save_workflow_composer(
@@ -123,8 +138,16 @@ class WorkflowAgentComposerCopyFromRosterApi(Resource):
     @with_current_tenant_id
     @with_session
     @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
-    def post(self, session: Session, tenant_id: str, account_id: str, app_model: App, node_id: str):
-        payload = WorkflowComposerCopyFromRosterPayload.model_validate(console_ns.payload or {})
+    @model_validate(WorkflowComposerCopyFromRosterPayload)
+    def post(
+        self,
+        req_data: WorkflowComposerCopyFromRosterPayload,
+        session: Session,
+        tenant_id: str,
+        account_id: str,
+        app_model: App,
+        node_id: str,
+    ):
         return dump_response(
             WorkflowAgentComposerResponse,
             AgentComposerService.copy_workflow_composer_from_roster(
@@ -133,9 +156,9 @@ class WorkflowAgentComposerCopyFromRosterApi(Resource):
                 app_id=app_model.id,
                 node_id=node_id,
                 account_id=account_id,
-                source_agent_id=payload.source_agent_id,
-                source_snapshot_id=payload.source_snapshot_id,
-                idempotency_key=payload.idempotency_key,
+                source_agent_id=req_data.source_agent_id,
+                source_snapshot_id=req_data.source_snapshot_id,
+                idempotency_key=req_data.idempotency_key,
             ),
         )
 
@@ -152,11 +175,11 @@ class WorkflowAgentComposerValidateApi(Resource):
     @with_current_tenant_id
     @with_session(write=False)
     @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
-    def post(self, session: Session, tenant_id: str, app_model: App, node_id: str):
-        payload = ComposerSavePayload.model_validate(console_ns.payload or {})
+    @model_validate(ComposerSavePayload)
+    def post(self, req_data: ComposerSavePayload, session: Session, tenant_id: str, app_model: App, node_id: str):
         ComposerConfigValidator.validate_publish_payload(payload)
         AgentComposerService.validate_knowledge_datasets(
-            session=session, tenant_id=tenant_id, agent_soul=payload.agent_soul
+            session=session, tenant_id=tenant_id, agent_soul=req_data.agent_soul
         )
         findings = AgentComposerService.collect_validation_findings(
             session=session,
@@ -204,9 +227,9 @@ class WorkflowAgentComposerImpactApi(Resource):
     @with_current_tenant_id
     @with_session(write=False)
     @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
-    def post(self, session: Session, tenant_id: str, app_model: App, node_id: str):
-        payload = ComposerSavePayload.model_validate(console_ns.payload or {})
-        current_snapshot_id = payload.binding.current_snapshot_id if payload.binding else None
+    @model_validate(ComposerSavePayload)
+    def post(self, req_data: ComposerSavePayload, session: Session, tenant_id: str, app_model: App, node_id: str):
+        current_snapshot_id = req_data.binding.current_snapshot_id if req_data.binding else None
         if not current_snapshot_id:
             return dump_response(
                 AgentComposerImpactResponse, {"current_snapshot_id": None, "workflow_node_count": 0, "bindings": []}
@@ -235,8 +258,16 @@ class WorkflowAgentComposerSaveToRosterApi(Resource):
     @with_current_tenant_id
     @with_session
     @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
-    def post(self, session: Session, tenant_id: str, account_id: str, app_model: App, node_id: str):
-        payload = ComposerSavePayload.model_validate(console_ns.payload or {})
+    @model_validate(ComposerSavePayload)
+    def post(
+        self,
+        req_data: ComposerSavePayload,
+        session: Session,
+        tenant_id: str,
+        account_id: str,
+        app_model: App,
+        node_id: str,
+    ):
         return dump_response(
             WorkflowAgentComposerResponse,
             AgentComposerService.save_workflow_composer(
@@ -270,8 +301,16 @@ class SnippetAgentComposerApi(Resource):
     @with_current_user_id
     @with_current_tenant_id
     @with_session
-    def get(self, session: Session, tenant_id: str, account_id: str, snippet_id: UUID, node_id: str):
-        query = WorkflowAgentComposerQuery.model_validate(request.args.to_dict(flat=True))
+    @model_validate(WorkflowAgentComposerQuery)
+    def get(
+        self,
+        req_data: WorkflowAgentComposerQuery,
+        session: Session,
+        tenant_id: str,
+        account_id: str,
+        snippet_id: UUID,
+        node_id: str,
+    ):
         return dump_response(
             WorkflowAgentComposerResponse,
             AgentComposerService.load_workflow_composer(
@@ -280,7 +319,7 @@ class SnippetAgentComposerApi(Resource):
                 app_id=_require_snippet_app_id(session=session, tenant_id=tenant_id, snippet_id=snippet_id),
                 node_id=node_id,
                 account_id=account_id,
-                snapshot_id=query.snapshot_id,
+                snapshot_id=req_data.snapshot_id,
             ),
         )
 
@@ -296,8 +335,16 @@ class SnippetAgentComposerApi(Resource):
     @with_current_user_id
     @with_current_tenant_id
     @with_session
-    def put(self, session: Session, tenant_id: str, account_id: str, snippet_id: UUID, node_id: str):
-        payload = ComposerSavePayload.model_validate(console_ns.payload or {})
+    @model_validate(ComposerSavePayload)
+    def put(
+        self,
+        req_data: ComposerSavePayload,
+        session: Session,
+        tenant_id: str,
+        account_id: str,
+        snippet_id: UUID,
+        node_id: str,
+    ):
         return dump_response(
             WorkflowAgentComposerResponse,
             AgentComposerService.save_workflow_composer(
@@ -327,8 +374,16 @@ class SnippetAgentComposerCopyFromRosterApi(Resource):
     @with_current_user_id
     @with_current_tenant_id
     @with_session
-    def post(self, session: Session, tenant_id: str, account_id: str, snippet_id: UUID, node_id: str):
-        payload = WorkflowComposerCopyFromRosterPayload.model_validate(console_ns.payload or {})
+    @model_validate(WorkflowComposerCopyFromRosterPayload)
+    def post(
+        self,
+        req_data: WorkflowComposerCopyFromRosterPayload,
+        session: Session,
+        tenant_id: str,
+        account_id: str,
+        snippet_id: UUID,
+        node_id: str,
+    ):
         return dump_response(
             WorkflowAgentComposerResponse,
             AgentComposerService.copy_workflow_composer_from_roster(
@@ -337,9 +392,9 @@ class SnippetAgentComposerCopyFromRosterApi(Resource):
                 app_id=_require_snippet_app_id(session=session, tenant_id=tenant_id, snippet_id=snippet_id),
                 node_id=node_id,
                 account_id=account_id,
-                source_agent_id=payload.source_agent_id,
-                source_snapshot_id=payload.source_snapshot_id,
-                idempotency_key=payload.idempotency_key,
+                source_agent_id=req_data.source_agent_id,
+                source_snapshot_id=req_data.source_snapshot_id,
+                idempotency_key=req_data.idempotency_key,
             ),
         )
 
@@ -355,12 +410,12 @@ class SnippetAgentComposerValidateApi(Resource):
     @account_initialization_required
     @with_current_tenant_id
     @with_session(write=False)
-    def post(self, session: Session, tenant_id: str, snippet_id: UUID, node_id: str):
+    @model_validate(ComposerSavePayload)
+    def post(self, req_data: ComposerSavePayload, session: Session, tenant_id: str, snippet_id: UUID, node_id: str):
         app_id = _require_snippet_app_id(session=session, tenant_id=tenant_id, snippet_id=snippet_id)
-        payload = ComposerSavePayload.model_validate(console_ns.payload or {})
         ComposerConfigValidator.validate_publish_payload(payload)
         AgentComposerService.validate_knowledge_datasets(
-            session=session, tenant_id=tenant_id, agent_soul=payload.agent_soul
+            session=session, tenant_id=tenant_id, agent_soul=req_data.agent_soul
         )
         findings = AgentComposerService.collect_validation_findings(
             session=session,
@@ -409,10 +464,10 @@ class SnippetAgentComposerImpactApi(Resource):
     @account_initialization_required
     @with_current_tenant_id
     @with_session(write=False)
-    def post(self, session: Session, tenant_id: str, snippet_id: UUID, node_id: str):
+    @model_validate(ComposerSavePayload)
+    def post(self, req_data: ComposerSavePayload, session: Session, tenant_id: str, snippet_id: UUID, node_id: str):
         _require_snippet_app_id(session=session, tenant_id=tenant_id, snippet_id=snippet_id)
-        payload = ComposerSavePayload.model_validate(console_ns.payload or {})
-        current_snapshot_id = payload.binding.current_snapshot_id if payload.binding else None
+        current_snapshot_id = req_data.binding.current_snapshot_id if req_data.binding else None
         if not current_snapshot_id:
             return dump_response(
                 AgentComposerImpactResponse, {"current_snapshot_id": None, "workflow_node_count": 0, "bindings": []}
@@ -444,8 +499,16 @@ class SnippetAgentComposerSaveToRosterApi(Resource):
     @with_current_user_id
     @with_current_tenant_id
     @with_session
-    def post(self, session: Session, tenant_id: str, account_id: str, snippet_id: UUID, node_id: str):
-        payload = ComposerSavePayload.model_validate(console_ns.payload or {})
+    @model_validate(ComposerSavePayload)
+    def post(
+        self,
+        req_data: ComposerSavePayload,
+        session: Session,
+        tenant_id: str,
+        account_id: str,
+        snippet_id: UUID,
+        node_id: str,
+    ):
         return dump_response(
             WorkflowAgentComposerResponse,
             AgentComposerService.save_workflow_composer(
@@ -484,8 +547,8 @@ class AgentComposerApi(Resource):
     @with_current_user_id
     @with_current_tenant_id
     @with_session
-    def put(self, session: Session, tenant_id: str, account_id: str, agent_id: UUID):
-        payload = ComposerSavePayload.model_validate(console_ns.payload or {})
+    @model_validate(ComposerSavePayload)
+    def put(self, req_data: ComposerSavePayload, session: Session, tenant_id: str, account_id: str, agent_id: UUID):
         return dump_response(
             AgentAppComposerResponse,
             AgentComposerService.save_agent_composer(
@@ -509,12 +572,12 @@ class AgentComposerValidateApi(Resource):
     @account_initialization_required
     @with_current_tenant_id
     @with_session
-    def post(self, session: Session, tenant_id: str, agent_id: UUID):
+    @model_validate(ComposerSavePayload)
+    def post(self, req_data: ComposerSavePayload, session: Session, tenant_id: str, agent_id: UUID):
         AgentComposerService.load_agent_composer(session=session, tenant_id=tenant_id, agent_id=str(agent_id))
-        payload = ComposerSavePayload.model_validate(console_ns.payload or {})
         ComposerConfigValidator.validate_publish_payload(payload)
         AgentComposerService.validate_knowledge_datasets(
-            session=session, tenant_id=tenant_id, agent_soul=payload.agent_soul
+            session=session, tenant_id=tenant_id, agent_soul=req_data.agent_soul
         )
         findings = AgentComposerService.collect_validation_findings(
             session=session,

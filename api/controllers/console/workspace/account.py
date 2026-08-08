@@ -332,9 +332,9 @@ class AccountAvatarApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    def get(self, current_user: Account):
-        args = AccountAvatarQuery.model_validate(request.args.to_dict(flat=True))
-        avatar = args.avatar
+    @model_validate(AccountAvatarQuery)
+    def get(self, req_data: AccountAvatarQuery, current_user: Account):
+        avatar = req_data.avatar
 
         if avatar.startswith(("http://", "https://")):
             return AvatarUrlResponse(avatar_url=avatar).model_dump(mode="json")

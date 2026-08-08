@@ -34,14 +34,14 @@ class DataSourceContentPreviewApi(Resource):
     @account_initialization_required
     @get_rag_pipeline
     @with_current_user
-    def post(self, current_user: Account, pipeline: Pipeline, node_id: str):
+    @model_validate(Parser)
+    def post(self, req_data: Parser, current_user: Account, pipeline: Pipeline, node_id: str):
         """
         Run datasource content preview
         """
-        args = Parser.model_validate(console_ns.payload)
 
-        inputs = args.inputs
-        datasource_type = args.datasource_type
+        inputs = req_data.inputs
+        datasource_type = req_data.datasource_type
         rag_pipeline_service = RagPipelineService(db.session())
         preview_content = rag_pipeline_service.run_datasource_node_preview(
             pipeline=pipeline,
@@ -50,6 +50,6 @@ class DataSourceContentPreviewApi(Resource):
             account=current_user,
             datasource_type=datasource_type,
             is_published=True,
-            credential_id=args.credential_id,
+            credential_id=req_data.credential_id,
         )
         return preview_content, 200

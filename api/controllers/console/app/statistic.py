@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 import sqlalchemy as sa
-from flask import abort, request
+from flask import abort
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 
@@ -157,8 +157,8 @@ class DailyMessageStatistic(Resource):
     @with_current_user
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
     @get_app_model
-    def get(self, account: Account, app_model: App):
-        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
+    @model_validate(StatisticTimeRangeQuery)
+    def get(self, req_data: StatisticTimeRangeQuery, account: Account, app_model: App):
 
         converted_created_at = convert_datetime_to_date("created_at")
         sql_query = f"""SELECT
@@ -217,8 +217,8 @@ class DailyConversationStatistic(Resource):
     @with_current_user
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
     @get_app_model
-    def get(self, account: Account, app_model: App):
-        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
+    @model_validate(StatisticTimeRangeQuery)
+    def get(self, req_data: StatisticTimeRangeQuery, account: Account, app_model: App):
 
         converted_created_at = convert_datetime_to_date("created_at")
         sql_query = f"""SELECT
@@ -276,8 +276,8 @@ class DailyTerminalsStatistic(Resource):
     @with_current_user
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
     @get_app_model
-    def get(self, account: Account, app_model: App):
-        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
+    @model_validate(StatisticTimeRangeQuery)
+    def get(self, req_data: StatisticTimeRangeQuery, account: Account, app_model: App):
 
         converted_created_at = convert_datetime_to_date("created_at")
         sql_query = f"""SELECT
@@ -336,8 +336,8 @@ class DailyTokenCostStatistic(Resource):
     @with_current_user
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
     @get_app_model
-    def get(self, account: Account, app_model: App):
-        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
+    @model_validate(StatisticTimeRangeQuery)
+    def get(self, req_data: StatisticTimeRangeQuery, account: Account, app_model: App):
 
         converted_created_at = convert_datetime_to_date("created_at")
         sql_query = f"""SELECT
@@ -399,8 +399,8 @@ class AverageSessionInteractionStatistic(Resource):
     @with_current_user
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
-    def get(self, account: Account, app_model: App):
-        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
+    @model_validate(StatisticTimeRangeQuery)
+    def get(self, req_data: StatisticTimeRangeQuery, account: Account, app_model: App):
 
         converted_created_at = convert_datetime_to_date("c.created_at")
         sql_query = f"""SELECT
@@ -478,8 +478,8 @@ class UserSatisfactionRateStatistic(Resource):
     @with_current_user
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
     @get_app_model
-    def get(self, account: Account, app_model: App):
-        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
+    @model_validate(StatisticTimeRangeQuery)
+    def get(self, req_data: StatisticTimeRangeQuery, account: Account, app_model: App):
 
         converted_created_at = convert_datetime_to_date("m.created_at")
         sql_query = f"""SELECT
@@ -547,8 +547,8 @@ class AverageResponseTimeStatistic(Resource):
     @with_current_user
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
     @get_app_model(mode=AppMode.COMPLETION)
-    def get(self, account: Account, app_model: App):
-        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
+    @model_validate(StatisticTimeRangeQuery)
+    def get(self, req_data: StatisticTimeRangeQuery, account: Account, app_model: App):
 
         converted_created_at = convert_datetime_to_date("created_at")
         sql_query = f"""SELECT
@@ -607,8 +607,8 @@ class TokensPerSecondStatistic(Resource):
     @with_current_user
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
     @get_app_model
-    def get(self, account: Account, app_model: App):
-        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
+    @model_validate(StatisticTimeRangeQuery)
+    def get(self, req_data: StatisticTimeRangeQuery, account: Account, app_model: App):
 
         converted_created_at = convert_datetime_to_date("created_at")
         sql_query = f"""SELECT
