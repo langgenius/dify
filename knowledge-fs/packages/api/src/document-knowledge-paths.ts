@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import {
   type DocumentAsset,
   type DocumentMultimodalItem,
@@ -126,7 +128,13 @@ export function buildDocumentMultimodalAssetKnowledgePaths({
   return manifest.items
     .filter((item) => item.assetRef !== undefined)
     .map((item) => {
-      const virtualPath = buildDocumentMultimodalAssetDescriptorVirtualPath({ asset, item });
+      const virtualPath = buildDocumentMultimodalAssetDescriptorVirtualPath({
+        asset,
+        item,
+        siblingItems: manifest.items,
+      });
+      const filename = virtualPath.split("/").at(-1);
+      if (!filename) throw new Error("Document multimodal asset path has no filename");
 
       return KnowledgePathSchema.parse({
         id: generationScopedKnowledgePathId({
@@ -142,7 +150,7 @@ export function buildDocumentMultimodalAssetKnowledgePaths({
           ...(item.assetRef?.uri ? { uri: item.assetRef.uri } : {}),
           ...(item.assetRef?.variants ? { assetVariants: item.assetRef.variants } : {}),
           contentKind: "document-multimodal-asset",
-          filename: documentMultimodalAssetFilename(item),
+          filename,
           itemId: item.id,
           mimeType: "application/json",
           modality: item.modality,
@@ -183,12 +191,21 @@ export function buildDocumentMultimodalResourceKnowledgePaths({
         buildDocumentMultimodalItemResourceKnowledgePath({
           asset,
           contentKind: "document-multimodal-figure",
-          filename: documentMultimodalAssetFilename(item),
+          filename: documentMultimodalDescriptorFilename({
+            asset,
+            directory: "figures",
+            item,
+            siblingItems: manifest.items,
+          }),
           generateId,
           item,
           publicationGenerationId: generationId,
           tenantId,
-          virtualPath: buildDocumentMultimodalFigureDescriptorVirtualPath({ asset, item }),
+          virtualPath: buildDocumentMultimodalFigureDescriptorVirtualPath({
+            asset,
+            item,
+            siblingItems: manifest.items,
+          }),
         }),
       ),
     ...manifest.items
@@ -197,12 +214,21 @@ export function buildDocumentMultimodalResourceKnowledgePaths({
         buildDocumentMultimodalItemResourceKnowledgePath({
           asset,
           contentKind: "document-multimodal-table",
-          filename: documentMultimodalAssetFilename(item),
+          filename: documentMultimodalDescriptorFilename({
+            asset,
+            directory: "tables",
+            item,
+            siblingItems: manifest.items,
+          }),
           generateId,
           item,
           publicationGenerationId: generationId,
           tenantId,
-          virtualPath: buildDocumentMultimodalTableDescriptorVirtualPath({ asset, item }),
+          virtualPath: buildDocumentMultimodalTableDescriptorVirtualPath({
+            asset,
+            item,
+            siblingItems: manifest.items,
+          }),
         }),
       ),
     ...manifest.items
@@ -225,37 +251,43 @@ export function buildDocumentMultimodalResourceKnowledgePaths({
 export function buildDocumentMultimodalAssetDescriptorVirtualPath({
   asset,
   item,
+  siblingItems,
 }: {
   readonly asset: DocumentAsset;
   readonly item: DocumentMultimodalItem;
+  readonly siblingItems?: readonly DocumentMultimodalItem[] | undefined;
 }): string {
   const documentPath = `${KNOWLEDGE_FS_DOCS_ROOT}/${documentFilenamePathSegment(asset.filename, asset.id)}`;
 
-  return `${documentPath}/assets/${documentMultimodalAssetFilename(item)}`;
+  return `${documentPath}/assets/${documentMultimodalDescriptorFilename({ asset, directory: "assets", item, siblingItems })}`;
 }
 
 export function buildDocumentMultimodalFigureDescriptorVirtualPath({
   asset,
   item,
+  siblingItems,
 }: {
   readonly asset: DocumentAsset;
   readonly item: DocumentMultimodalItem;
+  readonly siblingItems?: readonly DocumentMultimodalItem[] | undefined;
 }): string {
   const documentPath = `${KNOWLEDGE_FS_DOCS_ROOT}/${documentFilenamePathSegment(asset.filename, asset.id)}`;
 
-  return `${documentPath}/figures/${documentMultimodalAssetFilename(item)}`;
+  return `${documentPath}/figures/${documentMultimodalDescriptorFilename({ asset, directory: "figures", item, siblingItems })}`;
 }
 
 export function buildDocumentMultimodalTableDescriptorVirtualPath({
   asset,
   item,
+  siblingItems,
 }: {
   readonly asset: DocumentAsset;
   readonly item: DocumentMultimodalItem;
+  readonly siblingItems?: readonly DocumentMultimodalItem[] | undefined;
 }): string {
   const documentPath = `${KNOWLEDGE_FS_DOCS_ROOT}/${documentFilenamePathSegment(asset.filename, asset.id)}`;
 
-  return `${documentPath}/tables/${documentMultimodalAssetFilename(item)}`;
+  return `${documentPath}/tables/${documentMultimodalDescriptorFilename({ asset, directory: "tables", item, siblingItems })}`;
 }
 
 export function buildDocumentMultimodalPageThumbnailVirtualPath({
@@ -437,7 +469,21 @@ function documentSectionFilename(node: DocumentOutlineNode, maxLength: number): 
   return `${boundedTitle}${suffix}`;
 }
 
-function documentMultimodalAssetFilename(item: DocumentMultimodalItem): string {
+function documentMultimodalDescriptorFilename({
+  asset,
+  directory,
+  item,
+  siblingItems,
+}: {
+  readonly asset: DocumentAsset;
+  readonly directory: "assets" | "figures" | "tables";
+  readonly item: DocumentMultimodalItem;
+  readonly siblingItems?: readonly DocumentMultimodalItem[] | undefined;
+}): string {
+  const documentPath = `${KNOWLEDGE_FS_DOCS_ROOT}/${documentFilenamePathSegment(asset.filename, asset.id)}`;
+  const filenameBudget =
+    KNOWLEDGE_FS_VIRTUAL_PATH_MAX_LENGTH - `${documentPath}/${directory}/`.length;
+  const prefix = `${item.modality}-`;
   const label =
     item.title ??
     item.caption ??
@@ -445,6 +491,53 @@ function documentMultimodalAssetFilename(item: DocumentMultimodalItem): string {
       .split(/[:/\\]/u)
       .filter(Boolean)
       .at(-1) ??
+    item.modality;
+  const slug =
+    label
+      .trim()
+      .replaceAll(/[/\\]+/gu, "-")
+      .replaceAll(/\s+/gu, "-")
+      .replaceAll(/-+/gu, "-")
+      .replaceAll(/^-|-$/gu, "") || item.modality;
+  const legacyShortId = item.id.replaceAll(/[^a-zA-Z0-9]/gu, "").slice(0, 8) || "asset";
+  const legacyFilename = `${prefix}${slug}--${legacyShortId}.json`;
+  const hasLegacyCollision =
+    siblingItems?.some(
+      (sibling) =>
+        sibling.id !== item.id &&
+        documentMultimodalItemBelongsToDirectory(sibling, directory) &&
+        documentMultimodalLegacyFilename(sibling) === legacyFilename,
+    ) ?? false;
+  if (!hasLegacyCollision && legacyFilename.length <= filenameBudget) return legacyFilename;
+
+  const digest = createHash("sha256").update(item.id, "utf8").digest("hex").slice(0, 16);
+  const suffix = `--${digest}.json`;
+  const titleBudget = filenameBudget - prefix.length - suffix.length;
+  if (titleBudget < 1) {
+    throw new Error("Document multimodal descriptor path has no filename title budget");
+  }
+  let boundedSlug = slug.slice(0, titleBudget);
+  if (/[\uD800-\uDBFF]$/u.test(boundedSlug)) boundedSlug = boundedSlug.slice(0, -1);
+  boundedSlug = boundedSlug.replaceAll(/-+$/gu, "") || item.modality.slice(0, titleBudget);
+
+  return `${prefix}${boundedSlug}${suffix}`;
+}
+
+function documentMultimodalItemBelongsToDirectory(
+  item: DocumentMultimodalItem,
+  directory: "assets" | "figures" | "tables",
+): boolean {
+  if (directory === "assets") return item.assetRef !== undefined;
+  if (directory === "figures") return item.modality === "image";
+  return item.modality === "table";
+}
+
+function documentMultimodalLegacyFilename(item: DocumentMultimodalItem): string {
+  const label =
+    item.title ??
+    item.caption ??
+    item.textPreview ??
+    item.sectionPath.filter(Boolean).at(-1) ??
     item.modality;
   const slug =
     label

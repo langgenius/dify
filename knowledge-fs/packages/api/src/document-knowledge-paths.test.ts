@@ -136,6 +136,33 @@ describe("document KnowledgeFS paths", () => {
         item: multimodalItem,
       }),
     ).toBe("/knowledge/docs/Dify-插件-说明.md--6c07b8ca/assets/image-架构图--018f0d60.json");
+    const duplicateTitlePaths = buildDocumentMultimodalAssetKnowledgePaths({
+      asset,
+      generateId: sequenceIds([
+        "018f0d60-7a49-7cc2-9c1b-5b36f18f2c48",
+        "018f0d60-7a49-7cc2-9c1b-5b36f18f2c49",
+      ]),
+      manifest: {
+        ...multimodalManifest,
+        items: [
+          multimodalItem,
+          {
+            ...multimodalItem,
+            id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c47:1:figure-2",
+            parseElementId: "figure-2",
+          },
+        ],
+      },
+      tenantId: "tenant-dev",
+    });
+    expect(duplicateTitlePaths[0]?.virtualPath).not.toBe(duplicateTitlePaths[1]?.virtualPath);
+
+    const longTitlePath = buildDocumentMultimodalAssetDescriptorVirtualPath({
+      asset,
+      item: { ...multimodalItem, title: "多模态知识库".repeat(100) },
+    });
+    expect(longTitlePath).toHaveLength(KNOWLEDGE_FS_VIRTUAL_PATH_MAX_LENGTH);
+    expect(longTitlePath).toMatch(/--49574b7227d70185\.json$/u);
     const resourceManifest = documentMultimodalResourceManifest(asset.id, asset.knowledgeSpaceId);
     const [figureItem, tableItem, pageItem] = resourceManifest.items;
 

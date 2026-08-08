@@ -92,7 +92,11 @@ export function createDocumentMultimodalCandidateResolver({
         ...(item.endOffset !== undefined ? { endOffset: item.endOffset } : {}),
         ...(item.pageNumber !== undefined ? { pageNumber: item.pageNumber } : {}),
         ...(item.startOffset !== undefined ? { startOffset: item.startOffset } : {}),
-        assetDescriptorPath: buildDocumentMultimodalAssetDescriptorVirtualPath({ asset, item }),
+        assetDescriptorPath: buildDocumentMultimodalAssetDescriptorVirtualPath({
+          asset,
+          item,
+          siblingItems: manifest.items,
+        }),
         ...(item.assetRef?.objectKey
           ? {
               assetRoute: `/knowledge-spaces/${encodeURIComponent(knowledgeSpaceId)}/documents/${encodeURIComponent(
