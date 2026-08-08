@@ -26,6 +26,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
 from controllers.console.workspace import rbac as rbac_mod
+from controllers.console.workspace.rbac import _RolesListQuery
 
 
 @pytest.fixture
