@@ -3097,6 +3097,8 @@ export type AgentKnowledgeMetadataCondition = {
     | '≠'
     | '≤'
     | '≥'
+  id?: string | null
+  metadata_id?: string | null
   name: string
   value?: string | Array<string> | number | null
 }
