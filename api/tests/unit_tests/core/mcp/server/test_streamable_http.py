@@ -662,6 +662,13 @@ class TestUtilityFunctions:
                 required=False,
             ),
             VariableEntity(
+                type=VariableEntityType.FILE_LIST,
+                variable="attachments",
+                description="File list upload",
+                label="Attachments",
+                required=True,
+            ),
+            VariableEntity(
                 type=VariableEntityType.CHECKBOX,
                 variable="enabled",
                 description="Enable flag",
@@ -696,6 +703,8 @@ class TestUtilityFunctions:
             "name": "Enter your name",
             "category": "Select category",
             "count": "Enter count",
+            "upload": "Upload a file",
+            "attachments": "Upload files",
             "enabled": "Enable flag",
             "config": "Config object",
             "schema_config": "Config with schema",
@@ -715,8 +724,17 @@ class TestUtilityFunctions:
         assert "count" in parameters
         assert parameters["count"]["type"] == "number"
 
-        # FILE type is skipped entirely via `continue` — key should not exist
-        assert "upload" not in parameters
+        # FILE maps to an object with upload metadata fields
+        assert parameters["upload"]["type"] == "object"
+        assert parameters["upload"]["description"] == "Upload a file"
+        assert parameters["upload"]["additionalProperties"] is True
+        assert "upload_file_id" in parameters["upload"]["properties"]
+
+        # FILE_LIST maps to an array of file objects
+        assert parameters["attachments"]["type"] == "array"
+        assert parameters["attachments"]["description"] == "Upload files"
+        assert parameters["attachments"]["items"]["type"] == "object"
+        assert "upload_file_id" in parameters["attachments"]["items"]["properties"]
 
         # CHECKBOX maps to boolean
         assert parameters["enabled"]["type"] == "boolean"
@@ -738,7 +756,74 @@ class TestUtilityFunctions:
         assert "name" in required
         assert "count" in required
         assert "config" in required
+        assert "attachments" in required
         assert "category" not in required
+        assert "upload" not in required
+
+    def test_handle_list_tools_includes_file_list_input_for_workflow(self):
+        """Regression for #39727: file-list workflow inputs appear in tools/list inputSchema."""
+        user_input_form = [
+            VariableEntity(
+                type=VariableEntityType.FILE_LIST,
+                variable="documents",
+                description="Documents to process",
+                label="Documents",
+                required=True,
+            ),
+        ]
+        parameters_dict = {"documents": "Upload one or more documents"}
+
+        result = handle_list_tools(
+            "extract_docs",
+            AppMode.WORKFLOW,
+            user_input_form,
+            "Extract document content",
+            parameters_dict,
+        )
+
+        input_schema = result.tools[0].inputSchema
+        assert input_schema["properties"]["documents"] == {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "type": {"type": "string"},
+                    "transfer_method": {"type": "string"},
+                    "url": {"type": "string"},
+                    "upload_file_id": {"type": "string"},
+                },
+                "additionalProperties": True,
+            },
+            "description": "Upload one or more documents",
+        }
+        assert input_schema["required"] == ["documents"]
+
+    def test_build_parameter_schema_workflow_mode_includes_file_list(self):
+        """Workflow MCP schema should expose file-list variables alongside other inputs."""
+        schema = build_parameter_schema(
+            AppMode.WORKFLOW,
+            [
+                VariableEntity(
+                    type=VariableEntityType.TEXT_INPUT,
+                    variable="prompt",
+                    description="Prompt",
+                    label="Prompt",
+                    required=False,
+                ),
+                VariableEntity(
+                    type=VariableEntityType.FILE_LIST,
+                    variable="documents",
+                    description="Documents",
+                    label="Documents",
+                    required=True,
+                ),
+            ],
+            {"documents": "Upload documents"},
+        )
+
+        assert schema["properties"]["documents"]["type"] == "array"
+        assert schema["properties"]["documents"]["items"]["type"] == "object"
+        assert schema["required"] == ["documents"]
 
     # Note: _get_request_id function has been removed as request_id is now passed as parameter
 
