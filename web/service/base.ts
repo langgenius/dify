@@ -578,6 +578,7 @@ export const ssePost = async (
     onDataSourceNodeCompleted,
     onDataSourceNodeError,
     onUnhandledEvent,
+    silent,
   } = otherOptions
   const abortController = new AbortController()
 
@@ -638,12 +639,14 @@ export const ssePost = async (
               })
           }
         } else {
-          if (onNotifyError) {
+          if (onNotifyError && !silent) {
             void reportStreamResponseError(res, onError, onNotifyError)
-          } else {
+          } else if (!silent) {
             res.json().then((data) => {
               toast.error(data.message || 'Server Error')
             })
+            onError?.('Server Error')
+          } else {
             onError?.('Server Error')
           }
         }
@@ -655,7 +658,7 @@ export const ssePost = async (
           if (moreInfo.errorMessage) {
             onError?.(moreInfo.errorMessage, moreInfo.errorCode)
             // These errors can happen when a stream is intentionally stopped or its page is left.
-            if (shouldNotifyStreamError(moreInfo.errorMessage)) {
+            if (!silent && shouldNotifyStreamError(moreInfo.errorMessage)) {
               if (onNotifyError) onNotifyError(moreInfo.errorMessage, moreInfo.errorCode)
               else toast.error(moreInfo.errorMessage)
             }
@@ -699,7 +702,7 @@ export const ssePost = async (
     })
     .catch((e) => {
       const errorMessage = String(e)
-      if (shouldNotifyStreamError(e)) {
+      if (!silent && shouldNotifyStreamError(e)) {
         if (onNotifyError) onNotifyError(errorMessage)
         else toast.error(errorMessage)
       }
@@ -750,6 +753,7 @@ export const sseGet = async (
     onDataSourceNodeCompleted,
     onDataSourceNodeError,
     onUnhandledEvent,
+    silent,
   } = otherOptions
   const abortController = new AbortController()
 
@@ -804,12 +808,14 @@ export const sseGet = async (
               })
           }
         } else {
-          if (onNotifyError) {
+          if (onNotifyError && !silent) {
             void reportStreamResponseError(res, onError, onNotifyError)
-          } else {
+          } else if (!silent) {
             res.json().then((data) => {
               toast.error(data.message || 'Server Error')
             })
+            onError?.('Server Error')
+          } else {
             onError?.('Server Error')
           }
         }
@@ -821,7 +827,7 @@ export const sseGet = async (
           if (moreInfo.errorMessage) {
             onError?.(moreInfo.errorMessage, moreInfo.errorCode)
             // These errors can happen when a stream is intentionally stopped or its page is left.
-            if (shouldNotifyStreamError(moreInfo.errorMessage)) {
+            if (!silent && shouldNotifyStreamError(moreInfo.errorMessage)) {
               if (onNotifyError) onNotifyError(moreInfo.errorMessage, moreInfo.errorCode)
               else toast.error(moreInfo.errorMessage)
             }
@@ -865,7 +871,7 @@ export const sseGet = async (
     })
     .catch((e) => {
       const errorMessage = String(e)
-      if (shouldNotifyStreamError(e)) {
+      if (!silent && shouldNotifyStreamError(e)) {
         if (onNotifyError) onNotifyError(errorMessage)
         else toast.error(errorMessage)
       }

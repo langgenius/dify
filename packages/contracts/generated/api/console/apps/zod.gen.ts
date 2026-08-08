@@ -1361,11 +1361,15 @@ export const zAgentLogMetaResponse = z.object({
  * Validated metadata extracted from a Skill package.
  */
 export const zSkillManifest = z.object({
-  description: z.string(),
+  description: z.string().min(1).max(1024),
   entry_path: z.string(),
   files: z.array(z.string()),
   hash: z.string(),
-  name: z.string(),
+  name: z
+    .string()
+    .min(1)
+    .max(64)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
   size: z.int(),
 })
 

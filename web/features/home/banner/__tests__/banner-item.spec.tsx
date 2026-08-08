@@ -5,7 +5,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { BannerItem } from '../banner-item'
 
 const mockTrackEvent = vi.fn()
-
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: (...args: unknown[]) => mockTrackEvent(...args),
 }))
@@ -63,7 +62,9 @@ describe('BannerItem', () => {
       accountId: 'account-123',
     })
 
-    fireEvent.click(screen.getByRole('link', { name: 'Test Banner Title' }))
+    const link = screen.getByRole('link', { name: 'Test Banner Title' })
+    link.addEventListener('click', (event) => event.preventDefault())
+    fireEvent.click(link)
 
     expect(mockTrackEvent).toHaveBeenCalledWith(
       'explore_banner_click',

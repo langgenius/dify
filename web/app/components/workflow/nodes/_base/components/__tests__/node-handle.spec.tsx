@@ -64,7 +64,12 @@ vi.mock('reactflow', () => ({
       data-testid={`handle-${id ?? 'unknown'}`}
       data-handleid={id}
       className={className}
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') onClick?.()
+      }}
     >
       {children}
     </div>
