@@ -67,7 +67,7 @@ class TestRagPipelineImportApi:
                 return_value=service,
             ),
         ):
-            response, status = method(api, user)
+            response, status = method(api, RagPipelineImportPayload(), user)
 
         assert status == 200
         assert response == {
@@ -105,7 +105,7 @@ class TestRagPipelineImportApi:
                 return_value=service,
             ),
         ):
-            response, status = method(api, user)
+            response, status = method(api, RagPipelineImportPayload(), user)
 
         assert status == 400
         assert response["status"] == "failed"
@@ -139,7 +139,7 @@ class TestRagPipelineImportApi:
                 return_value=service,
             ),
         ):
-            response, status = method(api, user)
+            response, status = method(api, RagPipelineImportPayload(), user)
 
         assert status == 202
         assert response["status"] == "pending"
@@ -287,7 +287,7 @@ class TestRagPipelineExportApi:
                 return_value=service,
             ),
         ):
-            response, status = method(api, pipeline)
+            response, status = method(api, IncludeSecretQuery(), pipeline)
 
         assert status == 200
         assert response == {"data": "yaml: data"}

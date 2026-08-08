@@ -90,7 +90,7 @@ class TestPipelineTemplateListApi:
             app.test_request_context("/rag/pipeline/templates"),
             patch.object(module.RagPipelineService, "get_pipeline_templates", side_effect=get_pipeline_templates),
         ):
-            response, status = method(api, session, tenant_id)
+            response, status = method(api, PipelineTemplateListQuery(), session, tenant_id)
 
         assert status == 200
         assert service_calls == [("built-in", "en-US", tenant_id)]
@@ -120,7 +120,7 @@ class TestPipelineTemplateListApi:
             app.test_request_context("/rag/pipeline/templates?type=customized&language=ja-JP"),
             patch.object(module.RagPipelineService, "get_pipeline_templates", side_effect=get_pipeline_templates),
         ):
-            response, status = method(api, session, tenant_id)
+            response, status = method(api, PipelineTemplateListQuery(), session, tenant_id)
 
         assert status == 200
         assert response == {"pipeline_templates": []}
@@ -147,7 +147,7 @@ class TestPipelineTemplateDetailApi:
                 side_effect=get_pipeline_template_detail,
             ),
         ):
-            response, status = method(api, session, "template-1")
+            response, status = method(api, PipelineTemplateDetailQuery(), session, "template-1")
 
         assert status == 200
         assert response == {**_template_detail(), "created_by": None}
@@ -170,7 +170,7 @@ class TestPipelineTemplateDetailApi:
             ),
             pytest.raises(NotFound),
         ):
-            method(api, session, "missing")
+            method(api, PipelineTemplateDetailQuery(), session, "missing")
 
 
 class TestCustomizedPipelineTemplateApi:
@@ -198,7 +198,7 @@ class TestCustomizedPipelineTemplateApi:
             patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
             patch.object(module.RagPipelineService, "update_customized_pipeline_template", side_effect=update_template),
         ):
-            response, status = method(api, tenant_id, account, "template-1")
+            response, status = method(api, CustomizedPipelineTemplatePayload(), tenant_id, account, "template-1")
 
         assert (response, status) == ("", 204)
         assert len(service_calls) == 1
@@ -242,7 +242,7 @@ class TestCustomizedPipelineTemplateApi:
             patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
             patch.object(module.RagPipelineService, "update_customized_pipeline_template", side_effect=update_template),
         ):
-            response, status = method(api, tenant_id, account, "template-1")
+            response, status = method(api, CustomizedPipelineTemplatePayload(), tenant_id, account, "template-1")
 
         assert (response, status) == ("", 204)
         assert len(service_calls) == 1
@@ -349,7 +349,7 @@ class TestPublishCustomizedPipelineTemplateApi:
             patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
             patch.object(module, "RagPipelineService", Service),
         ):
-            response, status = method(api, tenant_id, account, "pipeline-1")
+            response, status = method(api, CustomizedPipelineTemplatePayload(), tenant_id, account, "pipeline-1")
 
         assert (response, status) == ("", 204)
         assert service_calls == [("pipeline-1", payload, account, tenant_id)]
@@ -386,7 +386,7 @@ class TestPublishCustomizedPipelineTemplateApi:
             patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
             patch.object(module, "RagPipelineService", Service),
         ):
-            response, status = method(api, tenant_id, account, "pipeline-1")
+            response, status = method(api, CustomizedPipelineTemplatePayload(), tenant_id, account, "pipeline-1")
 
         assert (response, status) == ("", 204)
         assert service_calls == [

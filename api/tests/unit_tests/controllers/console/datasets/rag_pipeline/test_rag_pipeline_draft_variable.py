@@ -72,7 +72,7 @@ class TestRagPipelineVariableCollectionApi:
                 return_value=draft_srv,
             ),
         ):
-            result = method(api, editor_user, pipeline)
+            result = method(api, PaginationQuery(), editor_user, pipeline)
 
         assert result is var_list
         draft_srv.list_variables_without_values.assert_called_once_with(
@@ -100,7 +100,7 @@ class TestRagPipelineVariableCollectionApi:
             ),
         ):
             with pytest.raises(DraftWorkflowNotExist):
-                method(api, editor_user, pipeline)
+                method(api, PaginationQuery(), editor_user, pipeline)
 
     def test_delete_variables_success(self, app: Flask, fake_db, editor_user):
         api = RagPipelineVariableCollectionApi()
@@ -198,7 +198,7 @@ class TestRagPipelineVariableApi:
             ),
         ):
             with pytest.raises(InvalidArgumentError):
-                method(api, editor_user, pipeline, "v1")
+                method(api, WorkflowDraftVariablePatchPayload(), editor_user, pipeline, "v1")
 
     def test_delete_variable_success(self, app: Flask, fake_db, editor_user):
         api = RagPipelineVariableApi()

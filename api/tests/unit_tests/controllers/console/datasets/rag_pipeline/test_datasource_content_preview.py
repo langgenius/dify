@@ -49,7 +49,7 @@ class TestDataSourceContentPreviewApi:
                 return_value=service_instance,
             ),
         ):
-            response, status = method(api, account, pipeline, node_id)
+            response, status = method(api, Parser(), account, pipeline, node_id)
 
         service_instance.run_datasource_node_preview.assert_called_once_with(
             pipeline=pipeline,
@@ -80,7 +80,7 @@ class TestDataSourceContentPreviewApi:
             patch.object(type(console_ns), "payload", payload),
         ):
             with pytest.raises(ValueError):
-                method(api, account, pipeline, "node-1")
+                method(api, Parser(), account, pipeline, "node-1")
 
     def test_post_without_credential_id(self, app: Flask):
         api = DataSourceContentPreviewApi()
@@ -106,7 +106,7 @@ class TestDataSourceContentPreviewApi:
                 return_value=service_instance,
             ),
         ):
-            response, status = method(api, account, pipeline, "node-1")
+            response, status = method(api, Parser(), account, pipeline, "node-1")
 
         service_instance.run_datasource_node_preview.assert_called_once()
         assert status == 200

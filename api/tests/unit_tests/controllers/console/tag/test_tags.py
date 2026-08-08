@@ -219,7 +219,7 @@ class TestTagListApi:
 
         with app.test_request_context("/"):
             with pytest.raises(Forbidden):
-                method(api, None, readonly_user)
+                method(api, TagBasePayload(), None, readonly_user)
 
 
 class TestTagUpdateDeleteApi:
@@ -256,7 +256,7 @@ class TestTagUpdateDeleteApi:
 
         with app.test_request_context("/"):
             with pytest.raises(Forbidden):
-                method(api, None, readonly_user, "tag-1")
+                method(api, TagUpdateRequestPayload(), None, readonly_user, "tag-1")
 
     def test_delete_success(self, app: Flask, admin_user, sqlite_engine: Engine):
         api = TagUpdateDeleteApi()
@@ -375,7 +375,7 @@ class TestTagBindingCollectionApi:
                 payload_patch(payload),
                 patch("controllers.console.tag.tags.TagService.save_tag_binding") as save_mock,
             ):
-                result, status = method(api, admin_user)
+                result, status = method(api, TagBindingPayload(), admin_user)
 
         save_mock.assert_called_once()
         assert status == 200
@@ -396,7 +396,7 @@ class TestTagBindingCollectionApi:
                 payload_patch(payload),
                 patch("controllers.console.tag.tags.TagService.save_tag_binding") as save_mock,
             ):
-                result, status = method(api, admin_user)
+                result, status = method(api, TagBindingPayload(), admin_user)
 
         save_mock.assert_called_once()
         binding_payload = save_mock.call_args.args[0]
@@ -414,7 +414,7 @@ class TestTagBindingCollectionApi:
                 payload_patch({}),
             ):
                 with pytest.raises(Forbidden):
-                    method(api, readonly_user)
+                    method(api, TagBindingPayload(), readonly_user)
 
 
 class TestTagBindingRemoveApi:
@@ -433,7 +433,7 @@ class TestTagBindingRemoveApi:
                 payload_patch(payload),
                 patch("controllers.console.tag.tags.TagService.delete_tag_binding") as delete_mock,
             ):
-                result, status = method(api, admin_user)
+                result, status = method(api, TagBindingRemovePayload(), admin_user)
 
         delete_mock.assert_called_once()
         delete_payload = delete_mock.call_args.args[0]
@@ -450,7 +450,7 @@ class TestTagBindingRemoveApi:
                 payload_patch({}),
             ):
                 with pytest.raises(Forbidden):
-                    method(api, readonly_user)
+                    method(api, TagBindingRemovePayload(), readonly_user)
 
 
 class TestTagResponseModel:
