@@ -176,7 +176,7 @@ class TestScheduleServiceIntegration:
         with pytest.MonkeyPatch.context() as monkeypatch:
             calls: list[tuple] = []
 
-            def _track(*args, **kwargs):
+            def _track[**P](*args: P.args, **kwargs: P.kwargs):
                 calls.append((args, kwargs))
                 return datetime(2026, 1, 9, 10, 0, 0)
 

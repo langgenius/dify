@@ -597,7 +597,7 @@ class TestPostWriter:
         call_count = {"n": 0}
         original_get = write_queue.get
 
-        def patched_get(*args, **kwargs):
+        def patched_get[**P](*args: P.args, **kwargs: P.kwargs):
             call_count["n"] += 1
             if call_count["n"] == 1:
                 raise queue.Empty

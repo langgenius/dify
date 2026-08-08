@@ -74,7 +74,7 @@ def _patch_session(mocker, session):
     mocker.patch.object(type(module.db), "engine", new_callable=PropertyMock, return_value=MagicMock())
 
 
-def _dummy_preserve(*args, **kwargs):
+def _dummy_preserve[**P](*args: P.args, **kwargs: P.kwargs):
     return contextlib.nullcontext()
 
 
