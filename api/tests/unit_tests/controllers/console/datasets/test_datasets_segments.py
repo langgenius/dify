@@ -9,9 +9,11 @@ from flask import Flask
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
+from controllers.common.controller_schemas import ChildChunkCreatePayload, ChildChunkUpdatePayload
 from controllers.console import console_ns
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.datasets_segments import (
+    BatchImportPayload,
     ChildChunkAddApi,
     ChildChunkBatchUpdatePayload,
     ChildChunkUpdateApi,
@@ -20,6 +22,8 @@ from controllers.console.datasets.datasets_segments import (
     DatasetDocumentSegmentBatchImportApi,
     DatasetDocumentSegmentListApi,
     DatasetDocumentSegmentUpdateApi,
+    SegmentCreatePayload,
+    SegmentUpdatePayload,
 )
 from controllers.console.datasets.error import ChildChunkDeleteIndexError, ChildChunkIndexingError, InvalidActionError
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
@@ -50,6 +54,7 @@ def _segment():
         status=SegmentStatus.COMPLETED,
         updated_by="u1",
     )
+
     segment.id = "seg-1"
     segment.created_at = naive_utc_now()
     segment.updated_at = naive_utc_now()

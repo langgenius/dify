@@ -11,10 +11,12 @@ from flask import Flask
 
 from controllers.console import console_ns
 from controllers.console.datasets.rag_pipeline.rag_pipeline_import import (
+    IncludeSecretQuery,
     RagPipelineExportApi,
     RagPipelineImportApi,
     RagPipelineImportCheckDependenciesApi,
     RagPipelineImportConfirmApi,
+    RagPipelineImportPayload,
 )
 from core.plugin.entities.plugin import PluginDependency, PluginDependencyType
 from models.dataset import Pipeline

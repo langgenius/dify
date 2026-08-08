@@ -15,8 +15,11 @@ from controllers.console import console_ns
 from controllers.console.datasets.rag_pipeline import rag_pipeline as module
 from controllers.console.datasets.rag_pipeline.rag_pipeline import (
     CustomizedPipelineTemplateApi,
+    CustomizedPipelineTemplatePayload,
     PipelineTemplateDetailApi,
+    PipelineTemplateDetailQuery,
     PipelineTemplateListApi,
+    PipelineTemplateListQuery,
     PublishCustomizedPipelineTemplateApi,
 )
 from models.account import Account

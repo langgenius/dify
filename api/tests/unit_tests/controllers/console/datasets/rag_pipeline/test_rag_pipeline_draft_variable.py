@@ -8,12 +8,14 @@ from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.console import console_ns
 from controllers.console.app.error import DraftWorkflowNotExist
 from controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable import (
+    PaginationQuery,
     RagPipelineEnvironmentVariableCollectionApi,
     RagPipelineNodeVariableCollectionApi,
     RagPipelineSystemVariableCollectionApi,
     RagPipelineVariableApi,
     RagPipelineVariableCollectionApi,
     RagPipelineVariableResetApi,
+    WorkflowDraftVariablePatchPayload,
 )
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID

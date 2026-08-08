@@ -7,6 +7,7 @@ from flask import Flask
 from pytest_mock import MockerFixture
 from werkzeug.exceptions import NotFound
 
+from controllers.common.controller_schemas import MetadataUpdatePayload
 from controllers.console import console_ns
 from controllers.console.datasets.metadata import (
     DatasetMetadataApi,
@@ -24,6 +25,7 @@ from services.metadata_service import MetadataService
 @pytest.fixture
 def app():
     app = Flask("test_dataset_metadata")
+
     app.config["TESTING"] = True
     return app
 

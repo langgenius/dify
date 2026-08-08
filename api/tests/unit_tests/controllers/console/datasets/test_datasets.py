@@ -18,6 +18,7 @@ from controllers.console.datasets.datasets import (
     DatasetApiDeleteApi,
     DatasetApiKeyApi,
     DatasetAutoDisableLogApi,
+    DatasetCreatePayload,
     DatasetEnableApiApi,
     DatasetErrorDocs,
     DatasetIndexingEstimateApi,
@@ -28,7 +29,9 @@ from controllers.console.datasets.datasets import (
     DatasetRelatedAppListApi,
     DatasetRetrievalSettingApi,
     DatasetRetrievalSettingMockApi,
+    DatasetUpdatePayload,
     DatasetUseCheckApi,
+    IndexingEstimatePayload,
     _get_retrieval_methods_by_vector_type,
 )
 from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError

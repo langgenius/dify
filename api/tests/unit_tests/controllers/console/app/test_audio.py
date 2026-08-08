@@ -17,6 +17,8 @@ from controllers.console.app.audio import (
     ChatMessageAudioApi,
     ChatMessageTextApi,
     TextModesApi,
+    TextToSpeechPayload,
+    TextToSpeechVoiceQuery,
 )
 from controllers.console.app.error import (
     AppUnavailableError,

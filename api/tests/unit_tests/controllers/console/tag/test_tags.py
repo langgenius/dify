@@ -13,7 +13,9 @@ from controllers.console import console_ns
 from controllers.console.tag.tags import (
     TagBasePayload,
     TagBindingCollectionApi,
+    TagBindingPayload,
     TagBindingRemoveApi,
+    TagBindingRemovePayload,
     TagListApi,
     TagUpdateDeleteApi,
     TagUpdateRequestPayload,
