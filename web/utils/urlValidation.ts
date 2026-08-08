@@ -30,7 +30,7 @@ export function isPrivateOrLocalAddress(url: string): boolean {
     const hostname = urlObj.hostname.toLowerCase()
 
     // Check for localhost
-    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') return true
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]') return true
 
     // Check for private IP ranges
     const ipv4Regex = /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/

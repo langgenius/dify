@@ -1,4 +1,4 @@
-import { validateRedirectUrl } from './urlValidation'
+import { isPrivateOrLocalAddress, validateRedirectUrl } from './urlValidation'
 
 describe('URL Validation', () => {
   describe('validateRedirectUrl', () => {
@@ -54,6 +54,13 @@ describe('URL Validation', () => {
 
     it('should reject protocol-relative URLs', () => {
       expect(() => validateRedirectUrl('//example.com')).toThrow('Invalid URL')
+    })
+  })
+
+  describe('isPrivateOrLocalAddress', () => {
+    it('should recognize the IPv6 loopback address', () => {
+      expect(isPrivateOrLocalAddress('http://[::1]/')).toBe(true)
+      expect(isPrivateOrLocalAddress('http://[::1]:8080/')).toBe(true)
     })
   })
 })
