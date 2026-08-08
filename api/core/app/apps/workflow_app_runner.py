@@ -1,7 +1,7 @@
 import logging
 import time
 from collections.abc import Mapping, Sequence
-from typing import Any, cast
+from typing import Any
 
 from pydantic import ValidationError
 
@@ -268,8 +268,6 @@ class WorkflowBasedAppRunner:
         if not graph_config:
             raise ValueError("workflow graph not found")
 
-        graph_config = cast(dict[str, Any], graph_config)
-
         if "nodes" not in graph_config or "edges" not in graph_config:
             raise ValueError("nodes or edges not found in workflow graph")
 
@@ -290,8 +288,6 @@ class WorkflowBasedAppRunner:
             or (start_node_id and node.get("id") == start_node_id)
         ]
 
-        graph_config["nodes"] = node_configs
-
         node_ids = [node.get("id") for node in node_configs]
 
         # filter edges only in the specified node type
@@ -302,7 +298,10 @@ class WorkflowBasedAppRunner:
             and (edge.get("target") is None or edge.get("target") in node_ids)
         ]
 
-        graph_config["edges"] = edge_configs
+        # Build a filtered copy instead of mutating `workflow.graph_dict`. That mapping is
+        # meant to be read-only (mutating it corrupts later reads such as the full-graph
+        # `extract_variable_selector_to_variable_mapping` call below and blocks caching it).
+        filtered_graph_config = {**graph_config, "nodes": node_configs, "edges": edge_configs}
 
         typed_node_configs = [NodeConfigDictAdapter.validate_python(node) for node in node_configs]
 
@@ -317,7 +316,7 @@ class WorkflowBasedAppRunner:
         )
         graph_init_context = DifyGraphInitContext(
             workflow_id=workflow.id,
-            graph_config=graph_config,
+            graph_config=filtered_graph_config,
             run_context=run_context,
             call_depth=0,
         )
@@ -386,7 +385,7 @@ class WorkflowBasedAppRunner:
 
         # init graph after constructor-time context has been loaded
         graph = Graph.init(
-            graph_config=graph_config, node_factory=node_factory, root_node_id=node_id, skip_validation=True
+            graph_config=filtered_graph_config, node_factory=node_factory, root_node_id=node_id, skip_validation=True
         )
 
         if not graph:
