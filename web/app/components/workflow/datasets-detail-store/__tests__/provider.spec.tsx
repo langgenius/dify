@@ -90,3 +90,40 @@ describe('datasets-detail-store provider', () => {
     })
   })
 })
+
+  it('should refetch dataset details when the nodes prop changes after mount', async () => {
+    mockFetchDatasets.mockResolvedValue({
+      data: [createDataset('dataset-1')],
+    })
+
+    const { rerender } = render(
+      <DatasetsDetailProvider nodes={[createWorkflowNode(['dataset-1'])]}>
+        <Consumer />
+      </DatasetsDetailProvider>,
+    )
+
+    await waitFor(() => expect(mockFetchDatasets).toHaveBeenCalledTimes(1))
+    expect(screen.getByText('dataset-count:1')).toBeInTheDocument()
+
+    mockFetchDatasets.mockClear()
+    mockFetchDatasets.mockResolvedValue({
+      data: [createDataset('dataset-2')],
+    })
+
+    // Mounted with new knowledge-retrieval nodes after the initial render —
+    // loading a different saved workflow, undo/redo, snippet insertion, etc.
+    rerender(
+      <DatasetsDetailProvider nodes={[createWorkflowNode(['dataset-2'])]}>
+        <Consumer />
+      </DatasetsDetailProvider>,
+    )
+
+    await waitFor(() =>
+      expect(mockFetchDatasets).toHaveBeenCalledWith({
+        url: '/datasets',
+        params: { page: 1, ids: ['dataset-2'] },
+      }),
+    )
+    await waitFor(() => expect(screen.getByText('dataset-count:1')).toBeInTheDocument())
+  })
+})
