@@ -12,6 +12,7 @@ client.
 
 import logging
 import time
+from collections.abc import Callable
 from typing import Any
 
 import httpx
@@ -61,6 +62,12 @@ class ResponseTooLargeError(ResponseLimitError):
 
 class UnsupportedResponseEncodingError(ResponseLimitError):
     """Raised when response encoding prevents safe decoded-size enforcement."""
+
+    pass
+
+
+class ResponseDeadlineExceededError(ResponseLimitError):
+    """Raised when consuming a response exceeds an absolute monotonic deadline."""
 
     pass
 
@@ -284,7 +291,13 @@ def make_request(
     raise MaxRetriesExceededError(f"Reached maximum retries ({max_retries}) for URL {url}")
 
 
-def buffer_response(response: httpx.Response, *, max_response_bytes: int) -> httpx.Response:
+def buffer_response(
+    response: httpx.Response,
+    *,
+    max_response_bytes: int,
+    deadline_monotonic: float | None = None,
+    on_chunk: Callable[[], None] | None = None,
+) -> httpx.Response:
     """Consume one open identity response under a decoded byte limit and close its stream."""
     if max_response_bytes <= 0:
         raise ValueError("max_response_bytes must be positive")
@@ -295,6 +308,10 @@ def buffer_response(response: httpx.Response, *, max_response_bytes: int) -> htt
             raise UnsupportedResponseEncodingError(f"content encoding {content_encoding} cannot be safely bounded")
         content = bytearray()
         for chunk in response.iter_bytes():
+            if deadline_monotonic is not None and time.monotonic() >= deadline_monotonic:
+                raise ResponseDeadlineExceededError("response exceeded its execution deadline")
+            if on_chunk is not None:
+                on_chunk()
             if len(content) + len(chunk) > max_response_bytes:
                 raise ResponseTooLargeError(f"response exceeded {max_response_bytes} bytes")
             content.extend(chunk)

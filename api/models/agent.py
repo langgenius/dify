@@ -24,6 +24,15 @@ class AgentKind(StrEnum):
 
     # Native Agent backed by the Dify Agent runtime/protocol.
     DIFY_AGENT = "dify_agent"
+    # Customer-hosted Agent exposed through the A2A protocol.
+    EXTERNAL_AGENT = "external_agent"
+
+
+class ExternalAgentAuthType(StrEnum):
+    """Authentication supported by the first BYOA connection contract."""
+
+    NONE = "none"
+    BEARER = "bearer"
 
 
 class AgentScope(StrEnum):
@@ -96,6 +105,10 @@ class AgentConfigRevisionOperation(StrEnum):
     PUBLISH_DRAFT = "publish_draft"
     # Seeds a new Agent from a portable DSL package.
     IMPORT_PACKAGE = "import_package"
+    # Connects a customer-hosted Agent and publishes its discovered Agent Card.
+    CONNECT_EXTERNAL_AGENT = "connect_external_agent"
+    # Publishes a newly discovered Agent Card for an existing external Agent.
+    REFRESH_EXTERNAL_AGENT = "refresh_external_agent"
 
 
 class AgentConfigDraftType(StrEnum):
@@ -358,6 +371,68 @@ class AgentConfigSnapshot(DefaultFieldsMixin, Base):
         if isinstance(self.config_snapshot, str):
             return json.loads(self.config_snapshot)
         return dict(self.config_snapshot)
+
+
+class ExternalAgentConnection(DefaultFieldsMixin, Base):
+    """Versioned secret-bearing connection for one external roster Agent.
+
+    A refresh creates a new row and the matching external config snapshot pins
+    it. This prevents an old Workflow snapshot from combining its old Agent
+    Card with credentials for a different endpoint. Endpoint and bearer token
+    are encrypted with the owning tenant's key. The endpoint hash exists only
+    for drift checks and must not be used to recover or display the endpoint.
+    """
+
+    __tablename__ = "external_agent_connections"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="external_agent_connection_pkey"),
+        Index("external_agent_connection_tenant_agent_idx", "tenant_id", "agent_id"),
+    )
+
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    agent_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    encrypted_endpoint: Mapped[str] = mapped_column(LongText, nullable=False)
+    endpoint_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    auth_type: Mapped[ExternalAgentAuthType] = mapped_column(
+        EnumText(ExternalAgentAuthType, length=32),
+        nullable=False,
+        default=ExternalAgentAuthType.NONE,
+        server_default=ExternalAgentAuthType.NONE.value,
+    )
+    encrypted_bearer_token: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    last_verified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+
+
+class ExternalAgentConfigSnapshot(DefaultFieldsMixin, Base):
+    """Immutable A2A Agent Card pinned to an Agent config snapshot.
+
+    The complete card is encrypted because supported interface URLs may reveal
+    private deployment topology. Plaintext credentials are never part of it.
+    """
+
+    __tablename__ = "external_agent_config_snapshots"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="external_agent_config_snapshot_pkey"),
+        UniqueConstraint(
+            "tenant_id",
+            "agent_config_snapshot_id",
+            name="external_agent_config_snapshot_tenant_config_unique",
+        ),
+        Index("external_agent_config_snapshot_tenant_agent_idx", "tenant_id", "agent_id"),
+        Index("external_agent_config_snapshot_connection_idx", "tenant_id", "connection_id"),
+    )
+
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    agent_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    agent_config_snapshot_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    connection_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    encrypted_agent_card: Mapped[str] = mapped_column(LongText, nullable=False)
+    agent_card_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    protocol_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    remote_agent_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
 
 
 class AgentConfigRevision(Base):

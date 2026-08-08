@@ -8,7 +8,7 @@ from services.agent.roster_service import AgentRosterService
 
 def resolve_agent_app_model(*, session: Session, tenant_id: str, agent_id: UUID) -> App:
     """Resolve a roster Agent's public Agent App."""
-    return AgentRosterService(session).get_agent_app_model(tenant_id=tenant_id, agent_id=str(agent_id))
+    return AgentRosterService(session).get_native_agent_app_model(tenant_id=tenant_id, agent_id=str(agent_id))
 
 
 def resolve_agent_runtime_app_model(*, session: Session, tenant_id: str, agent_id: UUID) -> App:
@@ -18,4 +18,8 @@ def resolve_agent_runtime_app_model(*, session: Session, tenant_id: str, agent_i
     hidden backing App.
     """
 
-    return AgentRosterService(session).get_agent_runtime_app_model(tenant_id=tenant_id, agent_id=str(agent_id))
+    return AgentRosterService(session).get_agent_runtime_app_model(
+        tenant_id=tenant_id,
+        agent_id=str(agent_id),
+        native_only=True,
+    )

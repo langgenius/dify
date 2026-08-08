@@ -117,6 +117,31 @@ class WorkflowAgentOutputAdapter:
             error_type=error_type,
         )
 
+    def build_external_success_result(
+        self,
+        *,
+        raw_output: Any,
+        inputs: dict[str, Any],
+        process_data: dict[str, Any],
+        metadata: dict[str, Any],
+        declared_outputs: Sequence[DeclaredOutputConfig],
+        tenant_id: str,
+    ) -> NodeRunResult:
+        """Build a successful result for an A2A-backed Agent invocation."""
+
+        return NodeRunResult(
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            inputs=inputs,
+            process_data=process_data,
+            outputs=self._normalize_outputs(
+                raw_output,
+                declared_outputs=declared_outputs,
+                tenant_id=tenant_id,
+            ),
+            metadata=self._build_node_metadata(metadata=metadata, usage=None),
+            llm_usage=LLMUsage.empty_usage(),
+        )
+
     def build_stream_exhausted_result(
         self,
         *,

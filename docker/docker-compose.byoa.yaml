@@ -1,0 +1,8 @@
+services:
+  # Quick Tunnel hostnames may be published before Docker Desktop's embedded
+  # resolver clears a negative cache. Keep the local remote-Dify simulation on
+  # public recursive DNS so Squid can resolve the newly issued public endpoint.
+  ssrf_proxy:
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8

@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "$script_dir/.." && pwd)"
+
+export DIFY_BYOA_CODEX_WORKSPACE_ROOT="${DIFY_BYOA_CODEX_WORKSPACE_ROOT:-$repo_root}"
+
+exec "$repo_root/dify-agent/examples/dify_agent/dify_agent_examples/codex_a2a_bridge/run_public_tunnel.sh"

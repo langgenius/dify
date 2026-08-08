@@ -280,6 +280,16 @@ export const zAgentAppCopyPayload = z.object({
 })
 
 /**
+ * AgentKind
+ *
+ * Agent implementation family.
+ *
+ * This leaves room for future non-Dify agent implementations while keeping
+ * the current roster/workflow APIs scoped to Dify Agent.
+ */
+export const zAgentKind = z.enum(['dify_agent', 'external_agent'])
+
+/**
  * DeletedTool
  */
 export const zDeletedTool = z.object({
@@ -374,6 +384,7 @@ export const zWorkflowPartial = z.object({
  */
 export const zAgentAppDetailWithSite = z.object({
   access_mode: z.string().nullish(),
+  agent_kind: zAgentKind.optional().default('dify_agent'),
   api_base_url: z.string().nullish(),
   app_id: z.string().nullish(),
   backing_app_id: z.string().nullish(),
@@ -410,12 +421,19 @@ export const zAgentAppDetailWithSite = z.object({
 })
 
 /**
- * ComposerBindingPayload
+ * ExternalAgentAuthType
+ *
+ * Authentication supported by the first BYOA connection contract.
  */
-export const zComposerBindingPayload = z.object({
-  agent_id: z.string().nullish(),
-  binding_type: z.enum(['inline_agent', 'roster_agent']),
-  current_snapshot_id: z.string().nullish(),
+export const zExternalAgentAuthType = z.enum(['bearer', 'none'])
+
+/**
+ * ExternalAgentConnectionPayload
+ */
+export const zExternalAgentConnectionPayload = z.object({
+  auth_type: zExternalAgentAuthType.optional().default('none'),
+  bearer_token: z.string().max(8192).nullish(),
+  endpoint: z.string().min(1).max(2048),
 })
 
 /**
@@ -424,6 +442,46 @@ export const zComposerBindingPayload = z.object({
  * Supported icon storage formats for Agent roster entries.
  */
 export const zAgentIconType = z.enum(['emoji', 'image', 'link'])
+
+/**
+ * ExternalAgentCreatePayload
+ */
+export const zExternalAgentCreatePayload = z.object({
+  auth_type: zExternalAgentAuthType.optional().default('none'),
+  bearer_token: z.string().max(8192).nullish(),
+  description: z.string().max(400).nullish(),
+  endpoint: z.string().min(1).max(2048),
+  icon: z.string().max(255).nullish(),
+  icon_background: z.string().max(255).nullish(),
+  icon_type: zAgentIconType.nullish(),
+  name: z.string().min(1).max(255).nullish(),
+  role: z.string().max(255).optional().default(''),
+})
+
+/**
+ * ExternalAgentUpdatePayload
+ */
+export const zExternalAgentUpdatePayload = z.object({
+  auth_type: zExternalAgentAuthType.nullish(),
+  bearer_token: z.string().max(8192).nullish(),
+  description: z.string().max(400).nullish(),
+  endpoint: z.string().min(1).max(2048).nullish(),
+  expected_active_config_snapshot_id: z.string().min(1),
+  icon: z.string().max(255).nullish(),
+  icon_background: z.string().max(255).nullish(),
+  icon_type: zAgentIconType.nullish(),
+  name: z.string().min(1).max(255).nullish(),
+  role: z.string().max(255).nullish(),
+})
+
+/**
+ * ComposerBindingPayload
+ */
+export const zComposerBindingPayload = z.object({
+  agent_id: z.string().nullish(),
+  binding_type: z.enum(['inline_agent', 'roster_agent']),
+  current_snapshot_id: z.string().nullish(),
+})
 
 /**
  * ComposerSaveStrategy
@@ -1030,6 +1088,7 @@ export const zAgentAppPublishedReferenceResponse = z.object({
 export const zAgentAppPartial = z.object({
   access_mode: z.string().nullish(),
   active_config_is_published: z.boolean().optional().default(false),
+  agent_kind: zAgentKind.optional().default('dify_agent'),
   app_id: z.string().nullish(),
   author_name: z.string().nullish(),
   backing_app_id: z.string().nullish(),
@@ -1076,14 +1135,107 @@ export const zAgentAppPagination = z.object({
 })
 
 /**
- * AgentKind
- *
- * Agent implementation family.
- *
- * This leaves room for future non-Dify agent implementations while keeping
- * the current roster/workflow APIs scoped to Dify Agent.
+ * A2AAgentCapabilities
  */
-export const zAgentKind = z.enum(['dify_agent'])
+export const zA2aAgentCapabilities = z.object({
+  extendedAgentCard: z.boolean().optional().default(false),
+  extensions: z.array(z.record(z.string(), z.unknown())).optional(),
+  pushNotifications: z.boolean().optional().default(false),
+  streaming: z.boolean().optional().default(false),
+})
+
+/**
+ * A2AAgentSkill
+ */
+export const zA2aAgentSkill = z.object({
+  description: z.string(),
+  examples: z.array(z.string()).optional(),
+  id: z.string(),
+  inputModes: z.array(z.string()).optional(),
+  name: z.string(),
+  outputModes: z.array(z.string()).optional(),
+  tags: z.array(z.string()).optional(),
+})
+
+/**
+ * A2AAgentInterface
+ */
+export const zA2aAgentInterface = z.object({
+  protocolBinding: z.string(),
+  protocolVersion: z.string(),
+  tenant: z.string().nullish(),
+  url: z.string(),
+})
+
+/**
+ * A2AAgentCard
+ */
+export const zA2aAgentCard = z.object({
+  capabilities: zA2aAgentCapabilities,
+  defaultInputModes: z.array(z.string()).optional(),
+  defaultOutputModes: z.array(z.string()).optional(),
+  description: z.string(),
+  documentationUrl: z.string().nullish(),
+  iconUrl: z.string().nullish(),
+  name: z.string(),
+  provider: z.record(z.string(), z.unknown()).nullish(),
+  securityRequirements: z.array(z.record(z.string(), z.unknown())).optional(),
+  securitySchemes: z.record(z.string(), z.unknown()).optional(),
+  signatures: z.array(z.record(z.string(), z.unknown())).optional(),
+  skills: z.array(zA2aAgentSkill).optional(),
+  supportedInterfaces: z.array(zA2aAgentInterface),
+  version: z.string(),
+})
+
+/**
+ * ExternalAgentDetailResponse
+ */
+export const zExternalAgentDetailResponse = z.object({
+  active_config_snapshot_id: z.string(),
+  agent_card: zA2aAgentCard,
+  agent_kind: zAgentKind,
+  app_id: z.string().nullish(),
+  auth_type: zExternalAgentAuthType,
+  created_at: z.int().nullish(),
+  description: z.string(),
+  endpoint: z.string(),
+  has_bearer_token: z.boolean(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: zAgentIconType.nullish(),
+  id: z.string(),
+  last_verified_at: z.int().nullish(),
+  name: z.string(),
+  protocol_version: z.string(),
+  remote_agent_id: z.string(),
+  role: z.string().optional().default(''),
+  updated_at: z.int().nullish(),
+})
+
+/**
+ * ExternalAgentDiscoveryResponse
+ */
+export const zExternalAgentDiscoveryResponse = z.object({
+  agent_card: zA2aAgentCard,
+  description: z.string(),
+  name: z.string(),
+  protocol_version: z.string(),
+  reachable: z.boolean().optional().default(true),
+  remote_agent_id: z.string(),
+})
+
+/**
+ * ExternalAgentTestResponse
+ */
+export const zExternalAgentTestResponse = z.object({
+  agent_card: zA2aAgentCard,
+  description: z.string(),
+  latency_ms: z.int().gte(0),
+  name: z.string(),
+  protocol_version: z.string(),
+  reachable: z.boolean().optional().default(true),
+  remote_agent_id: z.string(),
+})
 
 /**
  * AgentPublishedReferenceResponse
@@ -1537,9 +1689,11 @@ export const zAgentStatisticSummaryEnvelopeResponse = z.object({
  * Audit operation recorded for Agent Soul version/revision changes.
  */
 export const zAgentConfigRevisionOperation = z.enum([
+  'connect_external_agent',
   'create_version',
   'import_package',
   'publish_draft',
+  'refresh_external_agent',
   'restore_version',
   'save_current_version',
   'save_new_agent',
@@ -2644,6 +2798,7 @@ export const zMessageInfiniteScrollPaginationResponse = z.object({
 export const zAgentAppPartialWritable = z.object({
   access_mode: z.string().nullish(),
   active_config_is_published: z.boolean().optional().default(false),
+  agent_kind: zAgentKind.optional().default('dify_agent'),
   app_id: z.string().nullish(),
   author_name: z.string().nullish(),
   backing_app_id: z.string().nullish(),
@@ -2723,6 +2878,7 @@ export const zAppDetailSiteResponseWritable = z.object({
  */
 export const zAgentAppDetailWithSiteWritable = z.object({
   access_mode: z.string().nullish(),
+  agent_kind: zAgentKind.optional().default('dify_agent'),
   api_base_url: z.string().nullish(),
   app_id: z.string().nullish(),
   backing_app_id: z.string().nullish(),
@@ -2794,6 +2950,20 @@ export const zPostAgentBody = zAgentAppCreatePayload
  * Agent app created successfully
  */
 export const zPostAgentResponse = zAgentAppDetailWithSite
+
+export const zPostAgentExternalBody = zExternalAgentCreatePayload
+
+/**
+ * External Agent connected
+ */
+export const zPostAgentExternalResponse = zExternalAgentDetailResponse
+
+export const zPostAgentExternalDiscoverBody = zExternalAgentConnectionPayload
+
+/**
+ * External A2A Agent discovered
+ */
+export const zPostAgentExternalDiscoverResponse = zExternalAgentDiscoveryResponse
 
 export const zGetAgentInviteOptionsQuery = z.object({
   app_id: z.string().optional(),
@@ -3324,6 +3494,35 @@ export const zGetAgentByAgentIdDriveSkillsBySkillPathInspectPath = z.object({
  */
 export const zGetAgentByAgentIdDriveSkillsBySkillPathInspectResponse =
   zAgentDriveSkillInspectResponse
+
+export const zGetAgentByAgentIdExternalPath = z.object({
+  agent_id: z.uuid(),
+})
+
+/**
+ * External Agent detail
+ */
+export const zGetAgentByAgentIdExternalResponse = zExternalAgentDetailResponse
+
+export const zPutAgentByAgentIdExternalBody = zExternalAgentUpdatePayload
+
+export const zPutAgentByAgentIdExternalPath = z.object({
+  agent_id: z.uuid(),
+})
+
+/**
+ * External Agent updated
+ */
+export const zPutAgentByAgentIdExternalResponse = zExternalAgentDetailResponse
+
+export const zPostAgentByAgentIdExternalTestPath = z.object({
+  agent_id: z.uuid(),
+})
+
+/**
+ * External Agent connection verified
+ */
+export const zPostAgentByAgentIdExternalTestResponse = zExternalAgentTestResponse
 
 export const zPostAgentByAgentIdFeaturesBody = zAgentAppFeaturesPayload
 

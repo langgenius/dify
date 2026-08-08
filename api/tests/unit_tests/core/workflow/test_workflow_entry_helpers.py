@@ -607,6 +607,7 @@ class TestWorkflowEntryHelpers:
             user_id="user-id",
             user_from=UserFrom.ACCOUNT,
             invoke_from=InvokeFrom.DEBUGGER,
+            execution_mode="single_step",
         )
         graph_init_context_cls.assert_called_once_with(
             workflow_id="",

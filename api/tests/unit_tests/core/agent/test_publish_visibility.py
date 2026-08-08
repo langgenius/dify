@@ -97,6 +97,8 @@ def test_publish_visible_operation_contract() -> None:
         AgentConfigRevisionOperation.SAVE_NEW_AGENT,
         AgentConfigRevisionOperation.SAVE_TO_ROSTER,
         AgentConfigRevisionOperation.RESTORE_VERSION,
+        AgentConfigRevisionOperation.CONNECT_EXTERNAL_AGENT,
+        AgentConfigRevisionOperation.REFRESH_EXTERNAL_AGENT,
     } == PUBLISH_VISIBLE_APP_BACKED_REVISION_OPERATIONS
 
 

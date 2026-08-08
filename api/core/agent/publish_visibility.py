@@ -23,6 +23,8 @@ PUBLISH_VISIBLE_APP_BACKED_REVISION_OPERATIONS = frozenset(
         AgentConfigRevisionOperation.SAVE_NEW_AGENT,
         AgentConfigRevisionOperation.SAVE_TO_ROSTER,
         AgentConfigRevisionOperation.RESTORE_VERSION,
+        AgentConfigRevisionOperation.CONNECT_EXTERNAL_AGENT,
+        AgentConfigRevisionOperation.REFRESH_EXTERNAL_AGENT,
     }
 )
 

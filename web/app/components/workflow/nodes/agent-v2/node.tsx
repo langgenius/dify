@@ -3,6 +3,7 @@ import type { AgentV2NodeType } from './types'
 import type { AppIconType } from '@/types/app'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
+import { AgentKindBadge } from '@/features/agent-v2/components/agent-kind-badge'
 import { SettingItem } from '../_base/components/setting-item'
 import { useAgentRosterDetail, useWorkflowInlineAgentDetail } from './hooks'
 import { hasInlineAgentBinding, hasValidRosterAgentBinding } from './types'
@@ -62,7 +63,7 @@ function AgentNodeModel({
     : agent?.name
   const role = isInlineAgent
     ? t(($) => $['nodes.agent.roster.inlineSetup.type'], { ns: 'workflow' })
-    : ''
+    : agent?.role
   const showPlaceholder = isLoading || (!isInlineAgent && !agent)
 
   return (
@@ -85,7 +86,10 @@ function AgentNodeModel({
               </div>
             ) : (
               <>
-                <div className="truncate system-xs-regular text-text-secondary">{name}</div>
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <div className="truncate system-xs-regular text-text-secondary">{name}</div>
+                  {!isInlineAgent && <AgentKindBadge agentKind={agent?.agent_kind} />}
+                </div>
                 <div className="truncate system-2xs-regular text-text-tertiary">{role}</div>
               </>
             )}

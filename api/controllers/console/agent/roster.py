@@ -62,7 +62,7 @@ from libs.datetime_utils import parse_time_range
 from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
-from models.agent import Agent, AgentStatus
+from models.agent import Agent, AgentKind, AgentStatus
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import ApiTokenType
 from models.model import ApiToken, App, IconType
@@ -243,6 +243,7 @@ class AgentAppPartial(GenericAppPartial):
     hidden_app_backed: bool = False
     debug_conversation_id: str | None = None
     role: str | None = None
+    agent_kind: AgentKind = AgentKind.DIFY_AGENT
     active_config_is_published: bool = False
     reference_count: int | None = None
     published_reference_count: int = 0
@@ -257,6 +258,7 @@ class AgentAppDetailWithSite(GenericAppDetailWithSite):
     debug_conversation_has_messages: bool = False
     debug_conversation_message_count: int = 0
     role: str | None = None
+    agent_kind: AgentKind = AgentKind.DIFY_AGENT
 
 
 class AgentDebugConversationRefreshResponse(BaseModel):
@@ -387,19 +389,24 @@ def _serialize_agent_app_detail(
     payload["backing_app_id"] = roster_service.runtime_backing_app_id(agent)
     payload["hidden_app_backed"] = bool(agent.backing_app_id and agent.backing_app_id != agent.app_id)
     payload["id"] = agent.id
-    debug_conversation_id = roster_service.get_or_create_build_conversation(
-        tenant_id=app_model.tenant_id,
-        agent_id=agent.id,
-        account_id=current_user.id,
-        commit=False,
-    )
-    message_count = roster_service.count_agent_app_debug_conversation_messages(
-        conversation_id=debug_conversation_id,
-    )
+    if getattr(agent, "agent_kind", AgentKind.DIFY_AGENT) == AgentKind.DIFY_AGENT:
+        debug_conversation_id = roster_service.get_or_create_build_conversation(
+            tenant_id=app_model.tenant_id,
+            agent_id=agent.id,
+            account_id=current_user.id,
+            commit=False,
+        )
+        message_count = roster_service.count_agent_app_debug_conversation_messages(
+            conversation_id=debug_conversation_id,
+        )
+    else:
+        debug_conversation_id = None
+        message_count = 0
     payload["debug_conversation_id"] = debug_conversation_id
     payload["debug_conversation_has_messages"] = message_count > 0
     payload["debug_conversation_message_count"] = message_count
     payload["role"] = agent.role or ""
+    payload["agent_kind"] = getattr(agent, "agent_kind", AgentKind.DIFY_AGENT)
     return payload
 
 
@@ -451,6 +458,7 @@ def _serialize_agent_app_pagination(session: Session, app_pagination, *, tenant_
             item["id"] = agent.id
             item["debug_conversation_id"] = debug_conversation_ids_by_agent_id.get(agent.id)
             item["role"] = agent.role or ""
+            item["agent_kind"] = getattr(agent, "agent_kind", AgentKind.DIFY_AGENT)
             item["active_config_is_published"] = active_config_is_published_by_agent_id.get(agent.id, False)
             item["reference_count"] = reference_counts_by_agent_id.get(agent.id, 0)
             published_references = published_references_by_agent_id.get(agent.id, [])
@@ -473,6 +481,10 @@ def _serialize_agent_app_pagination(session: Session, app_pagination, *, tenant_
 
 def _resolve_agent_app_model(session: Session, *, tenant_id: str, agent_id: UUID) -> App:
     return _agent_roster_service(session).get_agent_app_model(tenant_id=tenant_id, agent_id=str(agent_id))
+
+
+def _resolve_native_agent_app_model(session: Session, *, tenant_id: str, agent_id: UUID) -> App:
+    return _agent_roster_service(session).get_native_agent_app_model(tenant_id=tenant_id, agent_id=str(agent_id))
 
 
 def _resolve_agent_runtime_app_model(session: Session, *, tenant_id: str, agent_id: UUID) -> App:
@@ -636,7 +648,7 @@ class AgentAppApi(Resource):
     @with_current_tenant_id
     @with_session
     def put(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
+        app_model = _resolve_native_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
         args = AgentAppUpdatePayload.model_validate(console_ns.payload)
         args_dict: AppService.ArgsDict = {
             "name": args.name,
@@ -856,7 +868,7 @@ class AgentApiAccessApi(Resource):
     @with_current_tenant_id
     @with_session(write=False)
     def get(self, session: Session, tenant_id: str, agent_id: UUID):
-        app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
+        app_model = _resolve_native_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
         return _serialize_agent_api_access(session, app_model)
 
 
@@ -874,7 +886,7 @@ class AgentApiStatusApi(Resource):
     @with_current_tenant_id
     @with_session
     def post(self, session: Session, tenant_id: str, agent_id: UUID):
-        app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
+        app_model = _resolve_native_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
         args = AgentApiStatusPayload.model_validate(console_ns.payload)
         app_model = AppService().update_app_api_status(app_model, args.enable_api, session=session)
         return _serialize_agent_api_access(session, app_model)
@@ -892,7 +904,7 @@ class AgentApiKeyListApi(BaseApiKeyListResource):
     @with_current_tenant_id
     @with_session(write=False)
     def get(self, session: Session, tenant_id: str, agent_id: UUID) -> dict[str, object]:
-        app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
+        app_model = _resolve_native_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
         return dump_response(ApiKeyList, self._get_api_key_list(str(app_model.id), tenant_id, session=session))
 
     @console_ns.response(201, "Agent service API key created", console_ns.models[ApiKeyItem.__name__])
@@ -903,7 +915,7 @@ class AgentApiKeyListApi(BaseApiKeyListResource):
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
     @with_session
     def post(self, session: Session, tenant_id: str, agent_id: UUID) -> tuple[dict[str, object], int]:
-        app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
+        app_model = _resolve_native_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
         return dump_response(
             ApiKeyItem,
             self._create_api_key(str(app_model.id), tenant_id, session=session),
@@ -930,7 +942,7 @@ class AgentApiKeyApi(BaseApiKeyResource):
         agent_id: UUID,
         api_key_id: UUID,
     ) -> tuple[str, int]:
-        app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
+        app_model = _resolve_native_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
         self._delete_api_key(str(app_model.id), str(api_key_id), tenant_id, current_user, session=session)
         return "", 204
 

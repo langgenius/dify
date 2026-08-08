@@ -518,6 +518,7 @@ class DifyNodeFactory(NodeFactory):
         if issubclass(node_class, DifyAgentNode):
             from clients.agent_backend import AgentBackendRunEventAdapter, AgentBackendRunRequestBuilder
             from clients.agent_backend.factory import create_agent_backend_run_client
+            from core.workflow.nodes.agent_v2.external_runtime import WorkflowExternalAgentRunner
             from core.workflow.nodes.agent_v2.file_tenant_validator import AgentOutputFileTenantValidator
             from core.workflow.nodes.agent_v2.output_failure_orchestrator import OutputFailureOrchestrator
             from core.workflow.nodes.agent_v2.output_file_rebacker import reback_tool_file_output
@@ -548,6 +549,7 @@ class DifyNodeFactory(NodeFactory):
                 "type_checker": PerOutputTypeChecker(file_validator=AgentOutputFileTenantValidator()),
                 "failure_orchestrator": OutputFailureOrchestrator(),
                 "session_store": WorkflowAgentWorkspaceStore(),
+                "external_agent_runner": WorkflowExternalAgentRunner(),
             }
         return {
             "strategy_resolver": self._agent_strategy_resolver,

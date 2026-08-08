@@ -33,14 +33,16 @@ from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, Wo
 from graphon.graph_events import NodeRunPauseRequestedEvent
 from graphon.node_events import NodeEventBase, NodeRunResult, StreamCompletedEvent
 from graphon.nodes.base.node import Node
-from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
+from models.agent import AgentKind
+from models.agent_config_entities import AgentSoulConfig, DeclaredOutputConfig, WorkflowNodeJobConfig
 from services.agent.prompt_mentions import extract_workflow_node_output_selectors
 from services.agent.workspace_service import AgentWorkspaceNotFoundError
 
 from .ask_human_hitl import AskHumanFormBuildError, build_ask_human_pause_reason
 from .ask_human_resume import build_deferred_tool_results, resolve_ask_human_form
-from .binding_resolver import WorkflowAgentBindingError, WorkflowAgentBindingResolver
+from .binding_resolver import WorkflowAgentBindingBundle, WorkflowAgentBindingError, WorkflowAgentBindingResolver
 from .entities import DifyAgentNodeData
+from .external_runtime import WorkflowExternalAgentRunError, WorkflowExternalAgentRunner
 from .output_adapter import WorkflowAgentOutputAdapter
 from .output_failure_orchestrator import (
     FailedOutput,
@@ -50,6 +52,7 @@ from .output_failure_orchestrator import (
 )
 from .output_type_checker import OutputTypeCheckOutcome, PerOutputTypeChecker
 from .runtime_request_builder import (
+    WorkflowAgentPromptBuildContext,
     WorkflowAgentRuntimeBuildContext,
     WorkflowAgentRuntimeRequestBuilder,
     WorkflowAgentRuntimeRequestBuildError,
@@ -92,6 +95,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         type_checker: PerOutputTypeChecker,
         failure_orchestrator: OutputFailureOrchestrator,
         session_store: WorkflowAgentWorkspaceStore,
+        external_agent_runner: WorkflowExternalAgentRunner | None = None,
     ) -> None:
         super().__init__(
             node_id=node_id,
@@ -107,6 +111,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         self._type_checker = type_checker
         self._failure_orchestrator = failure_orchestrator
         self._session_store = session_store
+        self._external_agent_runner = external_agent_runner
 
     @classmethod
     @override
@@ -171,13 +176,21 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
 
         # ──── Setup: resolve binding once + extract declared outputs for stage 4 checks ────
         try:
-            existing_scope = self._session_store.load_existing_node_execution_scope(
-                tenant_id=dify_ctx.tenant_id,
-                app_id=dify_ctx.app_id,
-                workflow_id=workflow_id,
-                workflow_run_id=workflow_run_id,
-                node_id=self._node_id,
-                node_execution_id=self.execution_id,
+            # Single-step debugger runs do not persist a caller row before the
+            # node executes. External agents are stateless from Dify's workspace
+            # perspective, so they can resolve their configured snapshot without
+            # waiting for a row that will only be written after the run returns.
+            existing_scope = (
+                self._session_store.load_existing_node_execution_scope(
+                    tenant_id=dify_ctx.tenant_id,
+                    app_id=dify_ctx.app_id,
+                    workflow_id=workflow_id,
+                    workflow_run_id=workflow_run_id,
+                    node_id=self._node_id,
+                    node_execution_id=self.execution_id,
+                )
+                if dify_ctx.execution_mode == "graph"
+                else None
             )
             bundle = self._binding_resolver.resolve(
                 tenant_id=dify_ctx.tenant_id,
@@ -232,6 +245,21 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             WorkflowAgentRuntimeRequestBuilder.effective_declared_outputs(list(node_job.declared_outputs))
         )
         outputs_by_name = {o.name: o for o in effective_outputs}
+
+        if bundle.agent.agent_kind == AgentKind.EXTERNAL_AGENT:
+            yield from self._run_external_agent(
+                dify_ctx=dify_ctx,
+                workflow_id=workflow_id,
+                workflow_run_id=workflow_run_id,
+                bundle=bundle,
+                node_job=node_job,
+                effective_outputs=effective_outputs,
+                outputs_by_name=outputs_by_name,
+                inputs=inputs,
+                process_data=process_data,
+                metadata=metadata,
+            )
+            return
 
         # ──── ENG-638: resume after a submitted/timed-out ask_human form ────
         # graphon re-executes this _run when the outer workflow resumes. If a
@@ -436,7 +464,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
 
             # ──── Stage 4: per-output type check ────
             type_check = self._type_checker.check(
-                declared_outputs=effective_outputs,
+                declared_outputs=list(effective_outputs),
                 raw_output=terminal_event.output,
                 tenant_id=dify_ctx.tenant_id,
             )
@@ -481,6 +509,179 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         process_data=process_data,
                         metadata=metadata,
                         declared_outputs=effective_outputs,
+                    )
+                )
+                return
+
+            error_type = (
+                "output_type_check_failed_fail_branch"
+                if outcome.decision == OutputFailureDecision.TAKE_FAIL_BRANCH
+                else "output_type_check_failed"
+            )
+            yield self._failure_event(
+                inputs=inputs,
+                process_data=process_data,
+                metadata=metadata,
+                error=outcome.primary_reason,
+                error_type=error_type,
+            )
+            return
+
+    def _run_external_agent(
+        self,
+        *,
+        dify_ctx: DifyRunContext,
+        workflow_id: str,
+        workflow_run_id: str | None,
+        bundle: WorkflowAgentBindingBundle,
+        node_job: WorkflowNodeJobConfig,
+        effective_outputs: Sequence[DeclaredOutputConfig],
+        outputs_by_name: Mapping[str, DeclaredOutputConfig],
+        inputs: dict[str, Any],
+        process_data: dict[str, Any],
+        metadata: dict[str, Any],
+    ) -> Generator[StreamCompletedEvent, None, None]:
+        if self._external_agent_runner is None:
+            yield self._failure_event(
+                inputs=inputs,
+                process_data=process_data,
+                metadata=metadata,
+                error="External Agent runtime is not configured.",
+                error_type="external_agent_runtime_unavailable",
+            )
+            return
+
+        try:
+            prompt = self._runtime_request_builder.build_external_prompt(
+                WorkflowAgentPromptBuildContext(
+                    dify_context=dify_ctx,
+                    workflow_id=workflow_id,
+                    workflow_run_id=workflow_run_id,
+                    node_id=self._node_id,
+                    node_execution_id=self.execution_id,
+                    variable_pool=self.graph_runtime_state.variable_pool,
+                    binding=bundle.binding,
+                    agent=bundle.agent,
+                    snapshot=bundle.snapshot,
+                )
+            )
+        except WorkflowAgentRuntimeRequestBuildError as error:
+            yield self._failure_event(
+                inputs=inputs,
+                process_data=process_data,
+                metadata=metadata,
+                error=str(error),
+                error_type=error.error_code,
+            )
+            return
+        except Exception as error:
+            yield self._failure_event(
+                inputs=inputs,
+                process_data=process_data,
+                metadata=metadata,
+                error=str(error),
+                error_type="external_agent_request_build_error",
+            )
+            return
+
+        inputs["external_agent_request"] = prompt.redacted_request
+        attempt = 0
+        while True:
+            metadata.clear()
+            metadata.update(prompt.metadata)
+            metadata["attempt"] = attempt
+            try:
+                result = self._external_agent_runner.run(
+                    tenant_id=dify_ctx.tenant_id,
+                    agent_id=bundle.agent.id,
+                    agent_config_snapshot_id=bundle.snapshot.id,
+                    prompt=prompt.text,
+                    request_metadata=metadata,
+                    has_explicit_outputs=bool(node_job.declared_outputs),
+                    should_stop=self._is_graph_aborted,
+                )
+            except WorkflowExternalAgentRunError as error:
+                metadata["external_agent"] = {
+                    **dict(metadata.get("external_agent") or {}),
+                    "status": "failed",
+                    "error_code": error.error_code,
+                }
+                yield self._failure_event(
+                    inputs=inputs,
+                    process_data=process_data,
+                    metadata=metadata,
+                    error=str(error),
+                    error_type=error.error_code,
+                )
+                return
+
+            metadata["external_agent"] = result.metadata
+            process_data.update(
+                {
+                    "external_agent_task_id": result.task_id,
+                    "external_agent_context_id": result.context_id,
+                }
+            )
+            type_check = self._type_checker.check(
+                declared_outputs=list(effective_outputs),
+                raw_output=result.raw_output,
+                tenant_id=dify_ctx.tenant_id,
+            )
+            self._record_type_check_metadata(metadata, type_check)
+            if not type_check.has_failures:
+                yield StreamCompletedEvent(
+                    node_run_result=self._output_adapter.build_external_success_result(
+                        raw_output=result.raw_output,
+                        inputs=inputs,
+                        process_data=process_data,
+                        metadata=metadata,
+                        declared_outputs=effective_outputs,
+                        tenant_id=dify_ctx.tenant_id,
+                    )
+                )
+                return
+
+            failures = [
+                FailedOutput(
+                    declared=outputs_by_name[checked.name],
+                    failure_kind=OutputFailureKind.TYPE_CHECK,
+                    reason=checked.reason,
+                )
+                for checked in type_check.failures
+                if checked.name in outputs_by_name
+            ]
+            outcome = self._failure_orchestrator.decide(failures=failures, current_attempt=attempt)
+            metadata["output_failure_decision"] = outcome.decision.value
+            metadata["output_failure_reason"] = outcome.primary_reason
+            if outcome.decision == OutputFailureDecision.RETRY:
+                # Retrying the same request can execute customer-hosted side
+                # effects twice (for example, a coding agent may edit files).
+                # External agents therefore fail validation safely; users can
+                # retry the Workflow node explicitly after inspecting output.
+                metadata["output_failure_decision"] = OutputFailureDecision.FAIL_NODE.value
+                metadata["external_agent_retry_suppressed"] = True
+                yield self._failure_event(
+                    inputs=inputs,
+                    process_data=process_data,
+                    metadata=metadata,
+                    error=(
+                        f"{outcome.primary_reason} Automatic output retries are disabled for external agents "
+                        "to avoid duplicate side effects."
+                    ),
+                    error_type="output_type_check_failed",
+                )
+                return
+            if outcome.decision == OutputFailureDecision.USE_DEFAULT:
+                patched_output = dict(result.raw_output)
+                patched_output.update(outcome.per_output_actions)
+                yield StreamCompletedEvent(
+                    node_run_result=self._output_adapter.build_external_success_result(
+                        raw_output=patched_output,
+                        inputs=inputs,
+                        process_data=process_data,
+                        metadata=metadata,
+                        declared_outputs=effective_outputs,
+                        tenant_id=dify_ctx.tenant_id,
                     )
                 )
                 return

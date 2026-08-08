@@ -59,6 +59,7 @@ vi.mock('@/service/client', () => ({
 
 const createAgent = (overrides: Partial<AgentAppPartial> = {}): AgentAppPartial => ({
   active_config_is_published: false,
+  agent_kind: 'dify_agent',
   app_id: 'app-1',
   description: 'Find and summarize market materials.',
   id: 'agent-1',
@@ -166,6 +167,33 @@ describe('AgentRosterList', () => {
     expect(screen.getByRole('heading', { name: 'Published Agent' })).toBeInTheDocument()
     expect(screen.queryByText('agentV2.roster.usageStatus.inUse')).not.toBeInTheDocument()
     expect(screen.queryByText('agentV2.roster.status.active')).not.toBeInTheDocument()
+  })
+
+  it('labels external agents and only exposes supported card actions', async () => {
+    const user = userEvent.setup()
+    renderList([
+      createAgent({
+        active_config_is_published: false,
+        agent_kind: 'external_agent',
+        app_id: null,
+        id: 'external-agent-1',
+        name: 'Local Codex',
+      }),
+    ])
+
+    expect(screen.getByText('agentV2.externalAgent.badge')).toBeInTheDocument()
+    expect(screen.queryByText('agentV2.roster.usageStatus.draft')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
+
+    expect(screen.getByRole('menuitem', { name: 'common.operation.delete' })).toBeInTheDocument()
+    expect(
+      screen.queryByRole('menuitem', { name: 'agentV2.roster.editInfo' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('menuitem', { name: 'common.operation.duplicate' }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'app.export' })).not.toBeInTheDocument()
   })
 
   it('renders the Figma-aligned empty roster overlay', () => {

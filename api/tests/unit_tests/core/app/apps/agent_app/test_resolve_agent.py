@@ -15,7 +15,14 @@ import pytest
 
 from core.app.apps.agent_app.app_generator import AgentAppGenerator, AgentAppGeneratorError, AgentAppNotPublishedError
 from core.app.entities.app_invoke_entities import InvokeFrom
-from models.agent import AgentConfigDraft, AgentConfigDraftType, AgentConfigVersionKind, AgentScope, AgentSource
+from models.agent import (
+    AgentConfigDraft,
+    AgentConfigDraftType,
+    AgentConfigVersionKind,
+    AgentKind,
+    AgentScope,
+    AgentSource,
+)
 from models.agent_config_entities import AgentSoulConfig
 from services.agent.workspace_service import (
     AgentWorkspaceBindingGenerationMismatchError,
@@ -238,6 +245,25 @@ class TestResolveDebugDraft:
 
 
 class TestResolveAgent:
+    def test_external_agent_rejects_standalone_agent_app_runtime(self):
+        bound_agent = SimpleNamespace(
+            id="agent-1",
+            agent_kind=AgentKind.EXTERNAL_AGENT,
+            source=AgentSource.AGENT_APP,
+            active_config_snapshot_id="snap-1",
+            active_config_is_published=True,
+        )
+        session = _FakeScalarSession([bound_agent])
+
+        with pytest.raises(AgentAppGeneratorError, match="only be invoked from Workflow Agent nodes"):
+            AgentAppGenerator()._resolve_agent(
+                SimpleNamespace(id="app-1", tenant_id="t1"),
+                invoke_from=InvokeFrom.WEB_APP,
+                draft_type=None,
+                user=SimpleNamespace(id="user-1"),
+                session=session,
+            )  # type: ignore[arg-type]
+
     def test_success_chains_to_resolve_by_id(self):
         bound_agent = SimpleNamespace(
             id="agent-1",

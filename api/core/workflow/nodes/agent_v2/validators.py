@@ -12,6 +12,7 @@ from graphon.enums import BuiltinNodeTypes
 from models.agent import (
     Agent,
     AgentConfigSnapshot,
+    AgentKind,
     AgentScope,
     AgentStatus,
     WorkflowAgentBindingType,
@@ -171,6 +172,21 @@ class WorkflowAgentNodeValidator:
             raise WorkflowAgentNodeValidationError(
                 f"Workflow Agent node {binding.node_id} references a missing config snapshot."
             )
+
+        if agent.agent_kind == AgentKind.EXTERNAL_AGENT:
+            from services.agent.external_agent_service import ExternalAgentService
+
+            if not ExternalAgentService(session).validate_snapshot_available(
+                tenant_id=binding.tenant_id,
+                agent_id=agent.id,
+                agent_config_snapshot_id=snapshot.id,
+            ):
+                raise WorkflowAgentNodeValidationError(
+                    f"Workflow Agent node {binding.node_id} references an unavailable external agent connection."
+                )
+            node_job = WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict)
+            cls.validate_node_job(session=session, binding=binding, node_job=node_job, topology=topology)
+            return
 
         agent_soul = AgentSoulConfig.model_validate(snapshot.config_snapshot_dict)
         if agent_soul.model is None:

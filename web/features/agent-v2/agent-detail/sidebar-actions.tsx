@@ -18,6 +18,7 @@ import { EditAgentDialog } from '@/features/agent-v2/roster/components/edit-agen
 
 type AgentDetailSidebarActionAgent = Pick<
   AgentAppPartial,
+  | 'agent_kind'
   | 'app_id'
   | 'description'
   | 'icon'
@@ -41,6 +42,7 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const { exportAppDsl, isExporting } = useExportAppDsl()
   const dialogAgent: AgentAppPartial = {
+    agent_kind: agent.agent_kind,
     description: agent.description,
     icon: agent.icon,
     icon_background: agent.icon_background,
@@ -73,6 +75,7 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
       appName: agent.name,
     })
   }
+  const isExternalAgent = agent.agent_kind === 'external_agent'
 
   return (
     <>
@@ -84,22 +87,29 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
           <span aria-hidden className="i-ri-more-fill size-4" />
         </DropdownMenuTrigger>
         <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-40">
-          <DropdownMenuItem className="gap-2" onClick={handleEditOpen}>
-            <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
-            <span>{t(($) => $['roster.editInfo'])}</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem className="gap-2" onClick={handleDuplicateOpen}>
-            <span aria-hidden className="i-ri-file-copy-line size-4 shrink-0 text-text-tertiary" />
-            <span>{tCommon(($) => $['operation.duplicate'])}</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem className="gap-2" disabled={isExporting} onClick={handleExport}>
-            <span
-              aria-hidden
-              className="i-ri-file-download-line size-4 shrink-0 text-text-tertiary"
-            />
-            <span>{tApp(($) => $.export)}</span>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
+          {!isExternalAgent && (
+            <>
+              <DropdownMenuItem className="gap-2" onClick={handleEditOpen}>
+                <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
+                <span>{t(($) => $['roster.editInfo'])}</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem className="gap-2" onClick={handleDuplicateOpen}>
+                <span
+                  aria-hidden
+                  className="i-ri-file-copy-line size-4 shrink-0 text-text-tertiary"
+                />
+                <span>{tCommon(($) => $['operation.duplicate'])}</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem className="gap-2" disabled={isExporting} onClick={handleExport}>
+                <span
+                  aria-hidden
+                  className="i-ri-file-download-line size-4 shrink-0 text-text-tertiary"
+                />
+                <span>{tApp(($) => $.export)}</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          )}
           <DropdownMenuItem
             variant="destructive"
             className="gap-2"
@@ -110,18 +120,22 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <EditAgentDialog
-        agent={dialogAgent}
-        formKey={editSessionKey}
-        open={isEditOpen}
-        onOpenChange={setIsEditOpen}
-      />
-      <DuplicateAgentDialog
-        agent={dialogAgent}
-        formKey={duplicateSessionKey}
-        open={isDuplicateOpen}
-        onOpenChange={setIsDuplicateOpen}
-      />
+      {!isExternalAgent && (
+        <>
+          <EditAgentDialog
+            agent={dialogAgent}
+            formKey={editSessionKey}
+            open={isEditOpen}
+            onOpenChange={setIsEditOpen}
+          />
+          <DuplicateAgentDialog
+            agent={dialogAgent}
+            formKey={duplicateSessionKey}
+            open={isDuplicateOpen}
+            onOpenChange={setIsDuplicateOpen}
+          />
+        </>
+      )}
       <DeleteAgentDialog
         agentId={agent.id}
         agentName={agent.name}

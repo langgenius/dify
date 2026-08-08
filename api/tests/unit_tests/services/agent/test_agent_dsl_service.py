@@ -12,6 +12,7 @@ from models.agent import (
     AgentConfigRevisionOperation,
     AgentConfigSnapshot,
     AgentIconType,
+    AgentKind,
     AgentScope,
     AgentSource,
     AgentStatus,
@@ -239,6 +240,16 @@ def test_export_agent_app_requires_backing_agent() -> None:
         AgentDslService(session).export_agent_app(app=SimpleNamespace(tenant_id="tenant-1", id="app-1"))
 
 
+def test_export_agent_app_rejects_external_connection() -> None:
+    session = Mock()
+    agent = _agent()
+    agent.agent_kind = AgentKind.EXTERNAL_AGENT
+    session.scalar.return_value = agent
+
+    with pytest.raises(ValueError, match="cannot be exported"):
+        AgentDslService(session).export_agent_app(app=SimpleNamespace(tenant_id="tenant-1", id="app-1"))
+
+
 @pytest.mark.parametrize("use_draft", [True, False])
 def test_export_agent_app_uses_draft_or_active_snapshot(use_draft: bool) -> None:
     agent = _agent()
@@ -296,6 +307,29 @@ def test_export_workflow_packages_rejects_incomplete_binding() -> None:
 
     with pytest.raises(ValueError, match="no complete persisted binding"):
         AgentDslService(session).export_workflow_packages(
+            workflow=SimpleNamespace(tenant_id="tenant-1", id="workflow-1", version="draft"),
+            graph={"nodes": [_agent_node("node-1")], "edges": []},
+        )
+
+
+def test_export_workflow_packages_rejects_external_connection() -> None:
+    session = Mock()
+    session.scalars.return_value.all.return_value = [
+        SimpleNamespace(
+            node_id="node-1",
+            agent_id="agent-1",
+            current_snapshot_id="snapshot-1",
+            binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+            node_job_config_dict={},
+        )
+    ]
+    service = AgentDslService(session)
+    external_agent = _agent()
+    external_agent.agent_kind = AgentKind.EXTERNAL_AGENT
+    service._require_agent = Mock(return_value=external_agent)
+
+    with pytest.raises(ValueError, match="cannot be exported"):
+        service.export_workflow_packages(
             workflow=SimpleNamespace(tenant_id="tenant-1", id="workflow-1", version="draft"),
             graph={"nodes": [_agent_node("node-1")], "edges": []},
         )
@@ -503,6 +537,21 @@ def test_clone_inline_binding_copies_soul_and_drive_rows(monkeypatch) -> None:
         node_job=node_job,
         session=session,
     )
+
+
+def test_clone_inline_binding_rejects_external_connection() -> None:
+    source_agent = _agent()
+    source_agent.agent_kind = AgentKind.EXTERNAL_AGENT
+
+    with pytest.raises(ValueError, match="cannot be cloned"):
+        AgentDslService(Mock()).clone_inline_binding_for_node(
+            workflow=SimpleNamespace(tenant_id="tenant-1", app_id="app-1", id="workflow-1"),
+            node_id="target-node",
+            source_agent=source_agent,
+            source_snapshot=_snapshot(),
+            node_job=WorkflowNodeJobConfig(),
+            account_id="account-1",
+        )
 
 
 def test_extract_package_dependencies_covers_model_tools_and_knowledge(monkeypatch) -> None:

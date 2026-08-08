@@ -1,4 +1,4 @@
-from werkzeug.exceptions import BadRequest, Conflict, NotFound
+from werkzeug.exceptions import BadGateway, BadRequest, Conflict, NotFound
 
 from libs.exception import BaseHTTPException
 
@@ -45,3 +45,21 @@ class InvalidComposerConfigError(BadRequest):
 
 class PlaintextSecretNotAllowedError(BadRequest):
     description = "Plaintext secret values are not allowed in Agent config."
+
+
+class ExternalAgentNotFoundError(NotFound):
+    description = "External agent not found."
+
+
+class ExternalAgentConfigurationError(BadRequest):
+    description = "External agent configuration is invalid."
+
+
+class ExternalAgentConnectionError(BadGateway):
+    description = "Could not connect to the external agent."
+
+
+class ExternalAgentOperationNotSupportedError(BaseHTTPException):
+    error_code = "external_agent_operation_not_supported"
+    description = "This operation is only available for Dify-native agents."
+    code = 400

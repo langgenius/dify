@@ -19,7 +19,7 @@ from controllers.console.app.error import AppNotFoundError
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant
 from models import App, AppMode, TrialApp
-from models.agent import AgentScope
+from models.agent import AgentKind, AgentScope
 from services.recommended_app_service import RecommendedAppService
 
 __all__ = [
@@ -79,7 +79,7 @@ def agent_manage_required_for_agent_app[**P, R](view: Callable[P, R]) -> Callabl
                 else None
             )
             if binding is not None:
-                if binding.scope == AgentScope.WORKFLOW_ONLY:
+                if binding.scope == AgentScope.WORKFLOW_ONLY or binding.agent_kind == AgentKind.EXTERNAL_AGENT:
                     raise AppNotFoundError()
                 if dify_config.RBAC_ENABLED:
                     current_user, current_tenant_id = current_account_with_tenant()

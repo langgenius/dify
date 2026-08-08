@@ -291,6 +291,60 @@ describe('Blocks', () => {
     expect(requestURL.searchParams.get('page')).toBe('1')
   })
 
+  it('selects a connected external agent with the Agent v2 node contract', async () => {
+    const user = userEvent.setup()
+    const onSelect = vi.fn()
+    mockInviteOptionsResponse([
+      createInviteOption({
+        agent_kind: 'external_agent',
+        id: 'external-agent-1',
+        name: 'Local Codex',
+        role: 'Coding Agent',
+      }),
+    ])
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    })
+    const hooksStore = createHooksStore({
+      configsMap: {
+        flowId: 'app-1',
+        flowType: FlowType.appFlow,
+        fileSettings: {} as never,
+      },
+    })
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <HooksStoreContext value={hooksStore}>
+          <Blocks
+            searchText=""
+            onSelect={onSelect}
+            availableBlocksTypes={[BlockEnum.AgentV2]}
+            blocks={[createBlock(BlockEnum.AgentV2, 'Agent')]}
+          />
+        </HooksStoreContext>
+      </QueryClientProvider>,
+    )
+
+    await user.click(screen.getByRole('button', { name: /Agent/ }))
+    expect(await screen.findByText('Local Codex')).toBeInTheDocument()
+    expect(screen.getByText('agentV2.externalAgent.badge')).toBeInTheDocument()
+    await user.click(screen.getByRole('option', { name: /Local Codex/ }))
+
+    expect(onSelect).toHaveBeenCalledWith(BlockEnum.AgentV2, {
+      agent_binding: {
+        binding_type: 'roster_agent',
+        agent_id: 'external-agent-1',
+      },
+      agent_node_kind: 'dify_agent',
+      version: '2',
+    })
+  })
+
   it('should refresh Agent v2 roster options when the selector is reopened', async () => {
     const user = userEvent.setup()
     queryMocks.request
@@ -367,11 +421,12 @@ describe('Blocks', () => {
     expect(screen.queryByText('Nadia')).not.toBeInTheDocument()
   })
 
-  it('does not select an Agent v2 roster agent without active config snapshot', async () => {
+  it('disables an external agent whose connection is unavailable', async () => {
     const user = userEvent.setup()
     const onSelect = vi.fn()
     mockInviteOptionsResponse([
       createInviteOption({
+        agent_kind: 'external_agent',
         id: 'agent-1',
         name: 'Nadia',
         active_config_snapshot_id: null,
@@ -408,13 +463,14 @@ describe('Blocks', () => {
 
     await user.click(screen.getByRole('button', { name: /Agent/ }))
     expect(await screen.findByText('Nadia')).toBeInTheDocument()
+    expect(screen.getByText('agentV2.roster.nodeSelector.externalUnavailable')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('option', { name: 'Nadia Researcher' }))
+    const option = screen.getByRole('option', { name: /Nadia/ })
+    expect(option).toHaveAttribute('aria-disabled', 'true')
+    await user.click(option)
 
-    await waitFor(() =>
-      expect(queryMocks.toastError).toHaveBeenCalledWith('workflow.nodes.agent.modelNotSelected'),
-    )
     expect(onSelect).not.toHaveBeenCalled()
+    expect(queryMocks.toastError).not.toHaveBeenCalled()
   })
 
   it('inserts an inline Agent v2 node from the selector start action', async () => {

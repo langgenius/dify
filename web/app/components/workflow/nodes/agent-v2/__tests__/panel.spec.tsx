@@ -10,6 +10,7 @@ import { AgentV2Panel } from '../panel'
 const {
   mockEditorFocus,
   mockEditorUpdate,
+  mockExternalPanelProps,
   mockHandleNodeDataUpdate,
   mockHandleNodeDataUpdateWithSyncDraft,
   mockInsertNodes,
@@ -29,6 +30,7 @@ const {
 } = vi.hoisted(() => ({
   mockEditorFocus: vi.fn(),
   mockEditorUpdate: vi.fn((callback: () => void) => callback()),
+  mockExternalPanelProps: [] as Array<{ agentId: string }>,
   mockHandleNodeDataUpdate: vi.fn(),
   mockHandleNodeDataUpdateWithSyncDraft: vi.fn((_payload, options) =>
     options?.callback?.onSuccess?.(),
@@ -157,6 +159,7 @@ vi.mock('@/app/components/workflow/block-selector/agent-selector', () => ({
     onStartFromScratch,
   }: {
     onSelect: (agent: {
+      agent_kind: 'dify_agent'
       description: string
       icon: string
       icon_background: string
@@ -172,6 +175,7 @@ vi.mock('@/app/components/workflow/block-selector/agent-selector', () => ({
         type="button"
         onClick={() =>
           onSelect({
+            agent_kind: 'dify_agent',
             id: 'agent-2',
             name: 'Mara',
             description: 'Tender Analyst',
@@ -248,6 +252,14 @@ vi.mock('../components/agent-orchestrate-panel-content', () => ({
         </button>
       </div>
     )
+  },
+}))
+
+vi.mock('../components/external-agent-detail-panel', () => ({
+  ExternalAgentDetailPanel: (props: { agentId: string }) => {
+    mockExternalPanelProps.push(props)
+
+    return <div role="region" aria-label="external-agent-connection-panel" />
   },
 }))
 
@@ -358,6 +370,7 @@ describe('agent/panel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPromptEditorProps.length = 0
+    mockExternalPanelProps.length = 0
     mockOrchestratePanelContentProps.length = 0
     mockOutputVarsProps.length = 0
     mockStoreState.appId = 'app-1'
@@ -402,6 +415,7 @@ describe('agent/panel', () => {
       data: agentId
         ? {
             id: agentId,
+            agent_kind: 'dify_agent',
             name: 'Nadia',
             description: 'Clarification Drafter',
             icon: 'N',
@@ -488,6 +502,43 @@ describe('agent/panel', () => {
     fireEvent.keyDown(panel, { key: 'Escape' })
 
     expect(screen.queryByRole('dialog', { name: 'Nadia' })).not.toBeInTheDocument()
+  })
+
+  it('opens an external agent connection panel without native composer or copy actions', () => {
+    mockUseAgentRosterDetail.mockImplementation((agentId?: string) => ({
+      data: agentId
+        ? {
+            id: agentId,
+            agent_kind: 'external_agent',
+            name: 'Local Codex',
+            description: 'Local coding agent',
+            icon: 'C',
+            icon_background: '#E9D7FE',
+            icon_type: 'emoji',
+            role: 'Coding Agent',
+          }
+        : undefined,
+    }))
+    render(<AgentV2Panel id="agent-node" data={createData()} panelProps={panelProps} />)
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /^workflow\.nodes\.agent\.roster\.openPanel/ }),
+    )
+
+    const panel = screen.getByRole('dialog', { name: 'Local Codex' })
+    expect(within(panel).getByText('agentV2.externalAgent.badge')).toBeInTheDocument()
+    expect(
+      within(panel).getByRole('region', { name: 'external-agent-connection-panel' }),
+    ).toBeInTheDocument()
+    expect(
+      within(panel).queryByRole('region', { name: 'readonly-roster-orchestrate-panel' }),
+    ).not.toBeInTheDocument()
+    expect(
+      within(panel).queryByRole('button', { name: 'workflow.nodes.agent.roster.makeCopy' }),
+    ).not.toBeInTheDocument()
+    expect(mockOrchestratePanelContentProps).toHaveLength(0)
+    expect(mockExternalPanelProps).toEqual([{ agentId: 'agent-1' }])
+    expect(mockCopyFromRosterMutate).not.toHaveBeenCalled()
   })
 
   it('copies a roster agent from the drawer into an inline agent for this node', () => {

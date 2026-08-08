@@ -57,6 +57,7 @@ from models.agent import (
     AgentConfigDraftType,
     AgentConfigSnapshot,
     AgentConfigVersionKind,
+    AgentKind,
     AgentScope,
     AgentSource,
     AgentStatus,
@@ -644,6 +645,8 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         )
         if agent is None:
             raise AgentAppGeneratorError("Agent App has no bound Agent")
+        if getattr(agent, "agent_kind", AgentKind.DIFY_AGENT) == AgentKind.EXTERNAL_AGENT:
+            raise AgentAppGeneratorError("External Agents can only be invoked from Workflow Agent nodes")
         if (
             agent.source == AgentSource.IMPORTED
             and not agent.active_config_is_published

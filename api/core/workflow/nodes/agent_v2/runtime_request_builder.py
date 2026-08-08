@@ -125,7 +125,7 @@ class CredentialsProvider(Protocol):
 
 
 @dataclass(frozen=True, slots=True)
-class WorkflowAgentRuntimeBuildContext:
+class WorkflowAgentPromptBuildContext:
     dify_context: DifyRunContext
     workflow_id: str
     workflow_run_id: str | None
@@ -135,6 +135,10 @@ class WorkflowAgentRuntimeBuildContext:
     binding: WorkflowAgentNodeBinding
     agent: Agent
     snapshot: AgentConfigSnapshot
+
+
+@dataclass(frozen=True, slots=True)
+class WorkflowAgentRuntimeBuildContext(WorkflowAgentPromptBuildContext):
     binding_id: str
     backend_binding_ref: str
     # Stage 4 §7 / D-4: 0 for the first run, then incremented per retry. Drives the
@@ -151,6 +155,16 @@ class WorkflowAgentRuntimeRequest:
     request: CreateRunRequest
     redacted_request: dict[str, Any]
     agent_soul: AgentSoulConfig
+    node_job: WorkflowNodeJobConfig
+    metadata: dict[str, Any]
+
+
+@dataclass(frozen=True, slots=True)
+class WorkflowExternalAgentPrompt:
+    """One A2A user message built from the existing Workflow Agent authoring model."""
+
+    text: str
+    redacted_request: dict[str, Any]
     node_job: WorkflowNodeJobConfig
     metadata: dict[str, Any]
 
@@ -279,6 +293,56 @@ class WorkflowAgentRuntimeRequestBuilder:
             metadata=metadata,
         )
 
+    def build_external_prompt(self, context: WorkflowAgentPromptBuildContext) -> WorkflowExternalAgentPrompt:
+        """Build the single user message sent to an A2A external agent.
+
+        External agents do not consume Dify's private composition protocol. They
+        receive the same node task and resolved workflow context as native agents,
+        plus a compact output contract when the author explicitly declares one.
+        """
+
+        node_job = WorkflowNodeJobConfig.model_validate(context.binding.node_job_config_dict)
+        effective_node_job = node_job.model_copy(
+            update={"previous_node_output_refs": self._effective_previous_node_output_refs(node_job)}
+        )
+        task_prompt = self._build_workflow_task_prompt(context, effective_node_job)
+        context_prompt = self._build_workflow_context_prompt(context, effective_node_job)
+        sections = [
+            "You are being invoked as an external agent by a Dify workflow.",
+            f"Task:\n{task_prompt or self._WORKFLOW_JOB_PROMPT_FALLBACK}",
+            f"Workflow context:\n{context_prompt or self._WORKFLOW_USER_PROMPT_FALLBACK}",
+        ]
+        if node_job.declared_outputs:
+            output_schema = self._output_json_schema(node_job.declared_outputs)
+            sections.append(
+                "Return only one JSON object matching this workflow output schema:\n"
+                + json.dumps(output_schema, ensure_ascii=False, separators=(",", ":"))
+            )
+        text = "\n\n".join(sections)
+        metadata = {
+            "tenant_id": context.dify_context.tenant_id,
+            "app_id": context.dify_context.app_id,
+            "workflow_id": context.workflow_id,
+            "workflow_run_id": context.workflow_run_id,
+            "node_id": context.node_id,
+            "node_execution_id": context.node_execution_id,
+            "agent_id": context.agent.id,
+            "agent_config_snapshot_id": context.snapshot.id,
+            "binding_id": context.binding.id,
+            "workflow_node_job_mode": node_job.mode.value,
+            "agent_kind": context.agent.agent_kind.value,
+            "external_agent": {"protocol": "a2a", "status": "not_started"},
+        }
+        return WorkflowExternalAgentPrompt(
+            text=text,
+            redacted_request={
+                "protocol": "a2a",
+                "message": {"role": "user", "text": text},
+            },
+            node_job=node_job,
+            metadata=metadata,
+        )
+
     def _build_tool_layers(
         self,
         *,
@@ -351,7 +415,7 @@ class WorkflowAgentRuntimeRequestBuilder:
 
     def _build_workflow_context_prompt(
         self,
-        context: WorkflowAgentRuntimeBuildContext,
+        context: WorkflowAgentPromptBuildContext,
         node_job: WorkflowNodeJobConfig,
     ) -> str:
         lines: list[str] = []
@@ -390,7 +454,7 @@ class WorkflowAgentRuntimeRequestBuilder:
 
     def _build_workflow_task_prompt(
         self,
-        context: WorkflowAgentRuntimeBuildContext,
+        context: WorkflowAgentPromptBuildContext,
         node_job: WorkflowNodeJobConfig,
     ) -> str:
         del context
@@ -545,6 +609,19 @@ class WorkflowAgentRuntimeRequestBuilder:
             json_schema=schema,
             description=WorkflowAgentRuntimeRequestBuilder._build_output_description(effective_outputs),
         )
+
+    @staticmethod
+    def _output_json_schema(declared_outputs: Sequence[DeclaredOutputConfig]) -> dict[str, Any]:
+        properties: dict[str, Any] = {}
+        required: list[str] = []
+        for output in declared_outputs:
+            properties[output.name] = WorkflowAgentRuntimeRequestBuilder._schema_for_declared_output(output)
+            if output.required:
+                required.append(output.name)
+        schema: dict[str, Any] = {"type": "object", "properties": properties}
+        if required:
+            schema["required"] = required
+        return schema
 
     @staticmethod
     def effective_declared_outputs(

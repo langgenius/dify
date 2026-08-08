@@ -267,7 +267,7 @@ class AgentChatMessageApi(Resource):
     @with_session
     def post(self, session: Session, current_tenant_id: str, current_user: Account, agent_id: UUID):
         app_model = AgentRosterService(session).get_agent_runtime_app_model(
-            tenant_id=current_tenant_id, agent_id=str(agent_id)
+            tenant_id=current_tenant_id, agent_id=str(agent_id), native_only=True
         )
         return _create_chat_message(
             session=session,
@@ -296,7 +296,7 @@ class AgentBuildChatFinalizeApi(Resource):
     @with_session
     def post(self, session: Session, current_tenant_id: str, current_user: Account, agent_id: UUID):
         app_model = AgentRosterService(session).get_agent_runtime_app_model(
-            tenant_id=current_tenant_id, agent_id=str(agent_id)
+            tenant_id=current_tenant_id, agent_id=str(agent_id), native_only=True
         )
         return _create_build_chat_finalization_message(
             session=session,

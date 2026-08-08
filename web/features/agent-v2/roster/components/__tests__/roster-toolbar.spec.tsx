@@ -58,6 +58,21 @@ describe('RosterToolbar', () => {
     expect(invalidateQueries).toHaveBeenCalledTimes(1)
   })
 
+  it('opens the external agent connection flow from the shared create menu', async () => {
+    const user = userEvent.setup()
+    renderToolbar()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+    await user.click(screen.getByRole('menuitem', { name: 'agentV2.externalAgent.connectMenu' }))
+
+    const dialog = await screen.findByRole('dialog', {
+      name: 'agentV2.externalAgent.connectTitle',
+    })
+    expect(
+      within(dialog).getByRole('textbox', { name: 'agentV2.externalAgent.endpoint.label' }),
+    ).toBeInTheDocument()
+  })
+
   it('enables roster filters and emits the selected filter', async () => {
     const user = userEvent.setup()
     const { onUrlUpdate } = renderToolbar()

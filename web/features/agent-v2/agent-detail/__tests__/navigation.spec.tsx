@@ -78,6 +78,7 @@ vi.mock('@/service/client', () => ({
 }))
 
 const createAgent = (overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppDetailWithSite => ({
+  agent_kind: 'dify_agent',
   app_id: 'app-1',
   description: 'Find and summarize market materials.',
   enable_api: true,
@@ -123,8 +124,8 @@ describe('AgentDetailSection', () => {
     expect(container.querySelector('em-emoji')).toHaveAttribute('id', '🧪')
     expect(agentAvatar).toHaveClass('h-10', 'w-10', 'rounded-full')
     expect(agentAvatar?.parentElement?.parentElement).toHaveClass('mr-2')
-    expect(agentName.parentElement?.parentElement).toHaveClass('h-10')
-    expect(agentName.parentElement?.parentElement?.parentElement).toHaveClass(
+    expect(agentName.parentElement?.parentElement?.parentElement).toHaveClass('h-10')
+    expect(agentName.parentElement?.parentElement?.parentElement?.parentElement).toHaveClass(
       'h-13',
       'py-1.5',
       'pl-1.5',
@@ -161,6 +162,27 @@ describe('AgentDetailSection', () => {
       appId: 'app-1',
       appName: 'Research Agent',
     })
+  })
+
+  it('shows Connection and only supported actions for an external agent', async () => {
+    const user = userEvent.setup()
+    mocks.queryData = createAgent({
+      agent_kind: 'external_agent',
+      app_id: null,
+      name: 'Local Codex',
+    })
+    renderAgentDetailSection()
+
+    expect(screen.getByText('agentV2.externalAgent.badge')).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'agentV2.agentDetail.sections.connection' }),
+    ).toHaveAttribute('href', '/agents/agent-1/configure')
+
+    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
+
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
+      'common.operation.delete',
+    ])
   })
 
   it('does not render more actions in collapsed sidebar mode', () => {

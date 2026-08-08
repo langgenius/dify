@@ -21,6 +21,7 @@ import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
+import { AgentKindBadge } from '../components/agent-kind-badge'
 import { getAgentDetailPath, getAgentIdFromPathname } from './routes'
 import { AgentDetailSidebarActions } from './sidebar-actions'
 
@@ -34,7 +35,7 @@ type AgentDetailSectionProps = {
 }
 
 type AgentDetailNavItem = {
-  labelKey: `agentDetail.sections.${AgentDetailSectionKey}`
+  labelKey: `agentDetail.sections.${AgentDetailSectionKey | 'connection'}`
   href: string
   icon: NavIcon
   activeIcon: NavIcon
@@ -56,9 +57,15 @@ const fileListFillIcon = createAgentNavIcon('i-ri-file-list-3-fill')
 const dashboardLineIcon = createAgentNavIcon('i-ri-dashboard-2-line')
 const dashboardFillIcon = createAgentNavIcon('i-ri-dashboard-2-fill')
 
-const getAgentDetailNavigation = (agentId: string): AgentDetailNavItem[] => [
+const getAgentDetailNavigation = (
+  agentId: string,
+  agentKind?: 'dify_agent' | 'external_agent',
+): AgentDetailNavItem[] => [
   {
-    labelKey: 'agentDetail.sections.configure',
+    labelKey:
+      agentKind === 'external_agent'
+        ? 'agentDetail.sections.connection'
+        : 'agentDetail.sections.configure',
     href: getAgentDetailPath(agentId, 'configure'),
     icon: configureIcon,
     activeIcon: configureActiveIcon,
@@ -180,8 +187,8 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
 
   if (!agentId) return null
 
-  const navigation = getAgentDetailNavigation(agentId)
   const agent = agentQuery.data
+  const navigation = getAgentDetailNavigation(agentId, agent?.agent_kind)
   const imageUrl =
     agent?.icon_type === 'image' || agent?.icon_type === 'link' ? agent.icon : undefined
   const iconType = (imageUrl ? 'image' : agent?.icon_type) as AgentIconType | null | undefined
@@ -218,8 +225,11 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
           </div>
           <div className={cn('flex h-10 min-w-0 flex-1 items-center gap-2', !expand && 'hidden')}>
             <div className="flex min-w-0 flex-1 flex-col justify-center">
-              <div className="truncate system-md-semibold text-text-secondary">
-                {agent?.name ?? t(($) => $['agentDetail.title'])}
+              <div className="flex min-w-0 items-center gap-1.5">
+                <div className="truncate system-md-semibold text-text-secondary">
+                  {agent?.name ?? t(($) => $['agentDetail.title'])}
+                </div>
+                <AgentKindBadge agentKind={agent?.agent_kind} />
               </div>
               <div className="truncate system-2xs-medium-uppercase text-text-tertiary">
                 {agent?.role ?? t(($) => $['agentDetail.type'])}

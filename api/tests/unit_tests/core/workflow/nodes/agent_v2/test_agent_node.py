@@ -1,7 +1,7 @@
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
 from types import SimpleNamespace
-from typing import cast
+from typing import Literal, cast
 from unittest.mock import MagicMock, patch
 from uuid import UUID, uuid4
 
@@ -18,6 +18,7 @@ from dify_agent.protocol import (
 )
 from pydantic_ai.messages import PartDeltaEvent, TextPartDelta
 
+from clients.a2a import A2ATaskState
 from clients.agent_backend import (
     AgentBackendInternalEventType,
     AgentBackendRunEventAdapter,
@@ -32,6 +33,10 @@ from core.workflow.nodes.agent_v2 import DifyAgentNode
 from core.workflow.nodes.agent_v2.ask_human_resume import AskHumanResumeOutcome
 from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingBundle, WorkflowAgentBindingResolver
 from core.workflow.nodes.agent_v2.entities import DifyAgentNodeData
+from core.workflow.nodes.agent_v2.external_runtime import (
+    WorkflowExternalAgentRunner,
+    WorkflowExternalAgentRunResult,
+)
 from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapter
 from core.workflow.nodes.agent_v2.runtime_request_builder import (
     WorkflowAgentRuntimeBuildContext,
@@ -51,7 +56,7 @@ from graphon.graph_events import NodeRunPauseRequestedEvent
 from graphon.node_events import StreamCompletedEvent
 from graphon.runtime import GraphRuntimeState
 from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
-from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
+from models.agent import Agent, AgentConfigSnapshot, AgentKind, WorkflowAgentNodeBinding
 from models.agent_config_entities import (
     AgentSoulConfig,
     AgentSoulModelConfig,
@@ -314,6 +319,8 @@ def _node(
     agent_backend_client: FakeAgentBackendRunClient | None = None,
     binding_resolver: FakeBindingResolver | None = None,
     runtime_request_builder: WorkflowAgentRuntimeRequestBuilder | None = None,
+    external_agent_runner: WorkflowExternalAgentRunner | None = None,
+    execution_mode: Literal["graph", "single_step"] = "graph",
 ) -> DifyAgentNode:
     graph_init_params = GraphInitParams(
         workflow_id="workflow-1",
@@ -325,6 +332,7 @@ def _node(
                 user_id="user-1",
                 user_from=UserFrom.ACCOUNT,
                 invoke_from=InvokeFrom.DEBUGGER,
+                execution_mode=execution_mode,
             )
         },
         call_depth=0,
@@ -367,6 +375,7 @@ def _node(
         type_checker=PerOutputTypeChecker(file_validator=_AlwaysAllowFileValidator()),
         failure_orchestrator=OutputFailureOrchestrator(),
         session_store=cast(WorkflowAgentWorkspaceStore, session_store or FakeSessionStore()),
+        external_agent_runner=external_agent_runner,
     )
     node.bind_execution_id(str(uuid4()))
     return node
@@ -402,6 +411,84 @@ def test_agent_node_run_maps_successful_agent_backend_run_to_node_result():
     assert result.process_data["agent_id"] == "agent-1"
     layers = {layer["name"]: layer for layer in result.inputs["agent_backend_request"]["composition"]["layers"]}
     assert layers["llm"]["config"]["credentials"] == "[REDACTED]"
+
+
+def test_external_agent_binding_uses_a2a_gateway_without_native_workspace_or_backend() -> None:
+    class _ExternalRunner:
+        def __init__(self) -> None:
+            self.calls: list[dict[str, object]] = []
+
+        def run(self, **kwargs: object) -> WorkflowExternalAgentRunResult:
+            self.calls.append(kwargs)
+            return WorkflowExternalAgentRunResult(
+                raw_output={"text": "hello from codex"},
+                task_id="task-1",
+                context_id="context-1",
+                event_count=4,
+                task_state=A2ATaskState.COMPLETED,
+                metadata={"protocol": "a2a", "status": "succeeded"},
+            )
+
+    resolver = FakeBindingResolver()
+    resolver.agent.agent_kind = AgentKind.EXTERNAL_AGENT
+    resolver.snapshot.config_snapshot = AgentSoulConfig()
+    store = FakeSessionStore()
+    native_client = FakeAgentBackendRunClient()
+    external_runner = _ExternalRunner()
+
+    events = list(
+        _node(
+            binding_resolver=resolver,
+            session_store=store,
+            agent_backend_client=native_client,
+            external_agent_runner=cast(WorkflowExternalAgentRunner, external_runner),
+        )._run()
+    )
+
+    assert len(events) == 1
+    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs == {"text": "hello from codex"}
+    assert result.process_data["external_agent_task_id"] == "task-1"
+    assert result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["external_agent"]["protocol"] == "a2a"
+    assert len(external_runner.calls) == 1
+    assert native_client.request is None
+    assert store.resolved_scopes == []
+
+
+def test_external_agent_single_step_does_not_wait_for_a_persisted_caller_row() -> None:
+    class _NoCallerRowStore(FakeSessionStore):
+        def load_existing_node_execution_scope(self, **kwargs: object) -> WorkflowAgentSessionScope | None:
+            del kwargs
+            raise AssertionError("single-step external runs must not query a caller row")
+
+    class _ExternalRunner:
+        def run(self, **kwargs: object) -> WorkflowExternalAgentRunResult:
+            del kwargs
+            return WorkflowExternalAgentRunResult(
+                raw_output={"text": "single-step external output"},
+                task_id="task-single-step",
+                context_id="context-single-step",
+                event_count=2,
+                task_state=A2ATaskState.COMPLETED,
+                metadata={"protocol": "a2a", "status": "succeeded"},
+            )
+
+    resolver = FakeBindingResolver()
+    resolver.agent.agent_kind = AgentKind.EXTERNAL_AGENT
+    resolver.snapshot.config_snapshot = AgentSoulConfig()
+    node = _node(
+        binding_resolver=resolver,
+        session_store=_NoCallerRowStore(),
+        external_agent_runner=cast(WorkflowExternalAgentRunner, _ExternalRunner()),
+        execution_mode="single_step",
+    )
+
+    events = list(node._run())
+
+    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs == {"text": "single-step external output"}
 
 
 def test_agent_node_uses_resolved_backend_binding_before_backend_invocation() -> None:

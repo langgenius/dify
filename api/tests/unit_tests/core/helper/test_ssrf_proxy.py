@@ -7,6 +7,7 @@ import pytest
 
 from core.helper.ssrf_proxy import (
     SSRF_DEFAULT_MAX_RETRIES,
+    ResponseDeadlineExceededError,
     ResponseTooLargeError,
     SSRFProxy,
     UnsupportedResponseEncodingError,
@@ -79,6 +80,15 @@ def test_buffer_response_rejects_identity_response_exceeding_byte_limit() -> Non
         response = client.send(client.build_request("GET", "http://example.com"), stream=True)
         with pytest.raises(ResponseTooLargeError, match="response exceeded 8 bytes"):
             buffer_response(response, max_response_bytes=8)
+
+
+def test_buffer_response_enforces_absolute_deadline() -> None:
+    transport = httpx.MockTransport(lambda request: httpx.Response(200, content=b"body", request=request))
+
+    with httpx.Client(transport=transport) as client:
+        response = client.send(client.build_request("GET", "http://example.com"), stream=True)
+        with pytest.raises(ResponseDeadlineExceededError, match="deadline"):
+            buffer_response(response, max_response_bytes=8, deadline_monotonic=0)
 
 
 def test_request_can_return_an_open_stream_the_caller_closes() -> None:

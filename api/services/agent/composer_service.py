@@ -44,6 +44,7 @@ from services.agent.errors import (
     AgentNotFoundError,
     AgentVersionConflictError,
     AgentVersionNotFoundError,
+    ExternalAgentOperationNotSupportedError,
     InvalidComposerConfigError,
 )
 from services.agent.home_snapshot_service import (
@@ -115,6 +116,11 @@ def _agent_soul_config_json(agent_soul: AgentSoulConfig | dict[str, Any]) -> dic
 
 
 class AgentComposerService:
+    @staticmethod
+    def _require_native_agent(agent: Agent) -> None:
+        if getattr(agent, "agent_kind", AgentKind.DIFY_AGENT) == AgentKind.EXTERNAL_AGENT:
+            raise ExternalAgentOperationNotSupportedError()
+
     @classmethod
     def load_workflow_composer(
         cls,
@@ -335,6 +341,7 @@ class AgentComposerService:
             raise InvalidComposerConfigError("Source agent does not match the current workflow node binding.")
 
         source_agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=source_agent_id)
+        cls._require_native_agent(source_agent)
         if source_agent.scope != AgentScope.ROSTER or source_agent.status != AgentStatus.ACTIVE:
             raise InvalidComposerConfigError("Source agent must be an active roster agent.")
         if not agent_has_workflow_callable_active_snapshot(session=session, agent=source_agent):
@@ -428,6 +435,7 @@ class AgentComposerService:
 
     @classmethod
     def _load_agent_composer_for_agent(cls, *, session: Session, tenant_id: str, agent: Agent) -> dict[str, Any]:
+        cls._require_native_agent(agent)
         draft = cls.get_or_create_normal_agent_draft(
             session=session,
             tenant_id=tenant_id,
@@ -558,6 +566,7 @@ class AgentComposerService:
     def _save_agent_composer_for_agent(
         cls, *, session: Session, tenant_id: str, agent: Agent, account_id: str, payload: ComposerSavePayload
     ) -> dict[str, Any]:
+        cls._require_native_agent(agent)
         if payload.agent_soul is None:
             raise ValueError("agent_soul is required")
         draft = cls._save_agent_draft(
@@ -621,6 +630,7 @@ class AgentComposerService:
         cls, *, session: Session, tenant_id: str, agent_id: str, account_id: str, version_note: str | None = None
     ) -> dict[str, Any]:
         agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=agent_id)
+        cls._require_native_agent(agent)
         if agent.scope != AgentScope.ROSTER or agent.source not in APP_BACKED_AGENT_SOURCES:
             raise AgentNotFoundError()
         draft = cls._get_or_create_agent_draft(
@@ -701,6 +711,7 @@ class AgentComposerService:
         cls, *, session: Session, tenant_id: str, agent_id: str, account_id: str, force: bool
     ) -> tuple[dict[str, Any], str | None]:
         agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=agent_id)
+        cls._require_native_agent(agent)
         normal_draft = cls._get_or_create_agent_draft(
             session=session,
             tenant_id=tenant_id,
@@ -788,6 +799,9 @@ class AgentComposerService:
     def load_agent_app_build_draft(
         cls, *, session: Session, tenant_id: str, agent_id: str, account_id: str
     ) -> dict[str, Any]:
+        agent = cls._get_agent_if_present(session=session, tenant_id=tenant_id, agent_id=agent_id)
+        if agent is not None:
+            cls._require_native_agent(agent)
         build_draft = cls._get_agent_draft(
             session=session,
             tenant_id=tenant_id,
@@ -808,6 +822,7 @@ class AgentComposerService:
         _backfill_cli_tool_ids(payload.agent_soul)
         ComposerConfigValidator.validate_draft_save_payload(payload)
         agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=agent_id)
+        cls._require_native_agent(agent)
         build_draft = cls._save_agent_draft(
             session=session,
             tenant_id=tenant_id,
@@ -848,6 +863,7 @@ class AgentComposerService:
         account_id: str,
     ) -> tuple[dict[str, Any], list[str]]:
         agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=agent_id)
+        cls._require_native_agent(agent)
         build_draft = cls._get_agent_draft(
             session=session,
             tenant_id=tenant_id,
@@ -996,6 +1012,7 @@ class AgentComposerService:
         cls, *, session: Session, tenant_id: str, agent_id: str, account_id: str
     ) -> tuple[dict[str, Any], str | None]:
         agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=agent_id)
+        cls._require_native_agent(agent)
         build_draft = cls._get_agent_draft(
             session=session,
             tenant_id=tenant_id,
@@ -1265,6 +1282,8 @@ class AgentComposerService:
     def _load_agent_soul(cls, *, session: Session, tenant_id: str, agent_id: str) -> AgentSoulConfig | None:
         agent = cls._get_agent_if_present(session=session, tenant_id=tenant_id, agent_id=agent_id)
         if agent is None:
+            return None
+        if agent.agent_kind != AgentKind.DIFY_AGENT:
             return None
         draft = cls._get_or_create_agent_draft(
             session=session,
@@ -1562,6 +1581,7 @@ class AgentComposerService:
             version_note=payload.version_note,
         )
         agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=binding.agent_id)
+        cls._require_native_agent(agent)
         agent.active_config_snapshot_id = version.id
         agent.active_config_has_model = agent_soul_has_model(payload.agent_soul)
         agent.active_config_is_published = True
@@ -1602,6 +1622,7 @@ class AgentComposerService:
             home_snapshot_id=current_snapshot.home_snapshot_id,
         )
         agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=binding.agent_id)
+        cls._require_native_agent(agent)
         agent.active_config_snapshot_id = version.id
         agent.active_config_has_model = agent_soul_has_model(payload.agent_soul)
         agent.active_config_is_published = True
@@ -1673,6 +1694,7 @@ class AgentComposerService:
     ) -> WorkflowAgentNodeBinding:
         binding = cls._require_binding(binding)
         source_agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=binding.agent_id)
+        cls._require_native_agent(source_agent)
         source_version = cls._require_version(
             session=session,
             tenant_id=tenant_id,
@@ -2033,6 +2055,7 @@ class AgentComposerService:
         agent = cls._get_agent_app_agent(session=session, tenant_id=tenant_id, app_id=app_id)
         if agent is None:
             raise AgentNotFoundError()
+        cls._require_native_agent(agent)
         return agent
 
     @classmethod

@@ -21,6 +21,7 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { AgentKindBadge } from '@/features/agent-v2/components/agent-kind-badge'
 import { useCanManageAgents } from '@/features/agent-v2/permissions'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
@@ -210,6 +211,7 @@ function isAgentSelectorActionOption(
 
 function toAgentRosterNodeData(agent: AgentInviteOptionResponse): AgentRosterNodeData {
   return {
+    agent_kind: agent.agent_kind,
     description: agent.description,
     icon: agent.icon,
     icon_background: agent.icon_background,
@@ -233,16 +235,28 @@ function AgentSelectorAvatar({ agent }: { agent: AgentInviteOptionResponse }) {
 }
 
 function AgentSelectorItem({ agent }: { agent: AgentInviteOptionResponse }) {
+  const { t } = useTranslation('agentV2')
+  const isUnavailable = !agent.active_config_snapshot_id
+
   return (
-    <ComboboxItem value={agent} className="grid-cols-[1fr] gap-0 py-1.5 pr-3 pl-2">
+    <ComboboxItem
+      value={agent}
+      disabled={isUnavailable}
+      className="grid-cols-[1fr] gap-0 py-1.5 pr-3 pl-2"
+    >
       <ComboboxItemText className="flex items-center gap-2 px-0">
         <span aria-hidden className="shrink-0">
           <AgentSelectorAvatar agent={agent} />
         </span>
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="truncate system-sm-medium text-text-secondary">{agent.name}</span>
+          <span className="flex min-w-0 items-center gap-1.5">
+            <span className="truncate system-sm-medium text-text-secondary">{agent.name}</span>
+            <AgentKindBadge agentKind={agent.agent_kind} />
+          </span>
           <span className="truncate system-xs-regular text-text-tertiary">
-            {agent.role || agent.description}
+            {isUnavailable && agent.agent_kind === 'external_agent'
+              ? t(($) => $['roster.nodeSelector.externalUnavailable'])
+              : agent.role || agent.description}
           </span>
         </span>
       </ComboboxItemText>

@@ -17,6 +17,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
+import { AgentKindBadge } from '../../components/agent-kind-badge'
 import { AgentWorkflowReferencesDropdown } from './agent-workflow-references-dropdown'
 import { DeleteAgentDialog } from './delete-agent-dialog'
 import { DuplicateAgentDialog } from './duplicate-agent-dialog'
@@ -126,6 +127,7 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
   const publishedReferences = agent.published_references ?? []
   const hasPublishedReferences = publishedReferences.length > 0
   const isDraft = agent.active_config_is_published !== true
+  const isExternalAgent = agent.agent_kind === 'external_agent'
   const imageUrl =
     agent.icon_type === 'image' || agent.icon_type === 'link' ? agent.icon : undefined
   const iconType = (imageUrl ? 'image' : agent.icon_type) as AgentIconType | null | undefined
@@ -176,9 +178,12 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
               />
             </span>
             <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
-              <h2 id={nameId} className="truncate system-md-semibold text-text-secondary">
-                {agent.name}
-              </h2>
+              <div className="flex min-w-0 items-center gap-1.5">
+                <h2 id={nameId} className="truncate system-md-semibold text-text-secondary">
+                  {agent.name}
+                </h2>
+                <AgentKindBadge agentKind={agent.agent_kind} />
+              </div>
               <p className="truncate system-xs-regular text-text-tertiary">{agent.role}</p>
             </div>
           </div>
@@ -187,7 +192,7 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
               {agent.description}
             </div>
           </div>
-          {isDraft && (
+          {isDraft && !isExternalAgent && (
             <div className="absolute top-[-0.5px] right-0 flex h-5 items-start overflow-hidden">
               <div className="h-5 w-3 bg-background-section-burn [clip-path:polygon(0_0,100%_0,100%_100%)]" />
               <div className="flex h-5 items-center bg-background-section-burn pr-2 pl-0.5 system-2xs-medium-uppercase text-text-tertiary">
@@ -236,22 +241,29 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
             <span aria-hidden className="i-ri-more-fill size-4.5 text-text-tertiary" />
           </DropdownMenuTrigger>
           <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-40">
-            <DropdownMenuItem className="gap-2" onClick={handleEditOpen}>
-              <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
-              <span>{t(($) => $['roster.editInfo'])}</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem className="gap-2" onClick={handleDuplicateOpen}>
-              <span
-                aria-hidden
-                className="i-ri-file-copy-line size-4 shrink-0 text-text-tertiary"
-              />
-              <span>{tCommon(($) => $['operation.duplicate'])}</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem className="gap-2" disabled={isExporting} onClick={handleExport}>
-              <span aria-hidden className="i-ri-download-line size-4 shrink-0 text-text-tertiary" />
-              <span>{tApp(($) => $.export)}</span>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
+            {!isExternalAgent && (
+              <>
+                <DropdownMenuItem className="gap-2" onClick={handleEditOpen}>
+                  <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
+                  <span>{t(($) => $['roster.editInfo'])}</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem className="gap-2" onClick={handleDuplicateOpen}>
+                  <span
+                    aria-hidden
+                    className="i-ri-file-copy-line size-4 shrink-0 text-text-tertiary"
+                  />
+                  <span>{tCommon(($) => $['operation.duplicate'])}</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem className="gap-2" disabled={isExporting} onClick={handleExport}>
+                  <span
+                    aria-hidden
+                    className="i-ri-download-line size-4 shrink-0 text-text-tertiary"
+                  />
+                  <span>{tApp(($) => $.export)}</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
             <DropdownMenuItem
               variant="destructive"
               className="gap-2"
@@ -263,18 +275,22 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <EditAgentDialog
-        agent={agent}
-        formKey={editSessionKey}
-        open={isEditOpen}
-        onOpenChange={setIsEditOpen}
-      />
-      <DuplicateAgentDialog
-        agent={agent}
-        formKey={duplicateSessionKey}
-        open={isDuplicateOpen}
-        onOpenChange={setIsDuplicateOpen}
-      />
+      {!isExternalAgent && (
+        <>
+          <EditAgentDialog
+            agent={agent}
+            formKey={editSessionKey}
+            open={isEditOpen}
+            onOpenChange={setIsEditOpen}
+          />
+          <DuplicateAgentDialog
+            agent={agent}
+            formKey={duplicateSessionKey}
+            open={isDuplicateOpen}
+            onOpenChange={setIsDuplicateOpen}
+          />
+        </>
+      )}
       <DeleteAgentDialog
         agentId={agent.id}
         agentName={agent.name}

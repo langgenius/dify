@@ -166,7 +166,11 @@ def test_agent_v2_console_routes_are_agent_id_first() -> None:
     paths = {route for item in console_ns.resources for route in item.urls}
     for route in (
         "/agent",
+        "/agent/external",
+        "/agent/external/discover",
         "/agent/<uuid:agent_id>",
+        "/agent/<uuid:agent_id>/external",
+        "/agent/<uuid:agent_id>/external/test",
         "/agent/<uuid:agent_id>/composer",
         "/agent/<uuid:agent_id>/composer/validate",
         "/agent/<uuid:agent_id>/composer/candidates",
@@ -444,6 +448,11 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
     )
     captured: dict[str, object] = {}
     monkeypatch.setattr(roster_controller.AgentRosterService, "get_agent_app_model", lambda _self, **kwargs: app_model)
+    monkeypatch.setattr(
+        roster_controller.AgentRosterService,
+        "get_native_agent_app_model",
+        lambda _self, **kwargs: app_model,
+    )
     monkeypatch.setattr(roster_controller, "_resolve_agent_runtime_app_model", lambda _session, **kwargs: app_model)
     monkeypatch.setattr(roster_controller.AgentRosterService, "get_app_backing_agent", lambda _self, **kwargs: agent)
     monkeypatch.setattr(
@@ -701,7 +710,7 @@ def test_agent_api_access_uses_agent_id_and_returns_service_api_metadata(monkeyp
     app_model = SimpleNamespace(
         id="app-1", enable_api=True, api_base_url="https://api.example.test/v1", api_rpm=60, api_rph=600
     )
-    monkeypatch.setattr(roster_controller, "_resolve_agent_app_model", lambda _session, **kwargs: app_model)
+    monkeypatch.setattr(roster_controller, "_resolve_native_agent_app_model", lambda _session, **kwargs: app_model)
     monkeypatch.setattr(roster_controller, "_agent_api_key_count", lambda _session, app_id: 2)
     response = unwrap(AgentApiAccessApi.get)(AgentApiAccessApi(), MagicMock(), "tenant-1", agent_id)
     assert response == {
@@ -731,6 +740,7 @@ def test_agent_api_status_and_key_routes_resolve_backing_app(app: Flask, monkeyp
     captured: dict[str, object] = {}
     session = MagicMock()
     resolve_app = Mock(return_value=app_model)
+    monkeypatch.setattr(roster_controller, "_resolve_native_agent_app_model", resolve_app)
     monkeypatch.setattr(roster_controller, "_resolve_agent_app_model", resolve_app)
     monkeypatch.setattr(roster_controller, "_agent_api_key_count", lambda _session, app_id: 1)
 
@@ -808,7 +818,11 @@ def test_agent_app_update_allows_empty_role(app: Flask, monkeypatch: pytest.Monk
     agent_id = "00000000-0000-0000-0000-000000000001"
     app_model = _app_detail_obj(id="app-1", bound_agent_id=agent_id)
     captured: dict[str, object] = {}
-    monkeypatch.setattr(roster_controller.AgentRosterService, "get_agent_app_model", lambda _self, **kwargs: app_model)
+    monkeypatch.setattr(
+        roster_controller.AgentRosterService,
+        "get_native_agent_app_model",
+        lambda _self, **kwargs: app_model,
+    )
     monkeypatch.setattr(
         roster_controller.AgentRosterService,
         "get_app_backing_agent",
@@ -1344,7 +1358,11 @@ def test_agent_chat_generate_and_stop_routes_resolve_app_from_agent_id(
         assert unwrap(AgentChatMessageApi.post)(
             AgentChatMessageApi(), session, "tenant-1", SimpleNamespace(id=account_id), agent_id
         ) == {"result": "generated"}
-    assert cast(dict[str, object], captured["resolve"]) == {"tenant_id": "tenant-1", "agent_id": agent_id}
+    assert cast(dict[str, object], captured["resolve"]) == {
+        "tenant_id": "tenant-1",
+        "agent_id": agent_id,
+        "native_only": True,
+    }
     assert captured["resolve_session"] is session
     create_call = cast(dict[str, object], captured["create"])
     assert create_call["session"] is session
@@ -1431,7 +1449,11 @@ def test_agent_build_chat_finalize_route_resolves_app_from_agent_id(
         assert unwrap(AgentBuildChatFinalizeApi.post)(
             AgentBuildChatFinalizeApi(), session, "tenant-1", SimpleNamespace(id=account_id), agent_id
         ) == {"result": "generated"}
-    assert cast(dict[str, object], captured["resolve"]) == {"tenant_id": "tenant-1", "agent_id": agent_id}
+    assert cast(dict[str, object], captured["resolve"]) == {
+        "tenant_id": "tenant-1",
+        "agent_id": agent_id,
+        "native_only": True,
+    }
     finalize_call = cast(dict[str, object], captured["finalize"])
     assert finalize_call["session"] is session
     assert finalize_call["app_model"] is app_model

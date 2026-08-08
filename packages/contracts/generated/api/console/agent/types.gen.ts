@@ -23,6 +23,7 @@ export type AgentAppCreatePayload = {
 
 export type AgentAppDetailWithSite = {
   access_mode?: string | null
+  agent_kind?: AgentKind
   api_base_url?: string | null
   app_id?: string | null
   backing_app_id?: string | null
@@ -56,6 +57,55 @@ export type AgentAppDetailWithSite = {
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null
   workflow?: WorkflowPartial | null
+}
+
+export type ExternalAgentCreatePayload = {
+  auth_type?: ExternalAgentAuthType
+  bearer_token?: string | null
+  description?: string | null
+  endpoint: string
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: AgentIconType | null
+  name?: string | null
+  role?: string
+}
+
+export type ExternalAgentDetailResponse = {
+  active_config_snapshot_id: string
+  agent_card: A2aAgentCard
+  agent_kind: AgentKind
+  app_id?: string | null
+  auth_type: ExternalAgentAuthType
+  created_at?: number | null
+  description: string
+  endpoint: string
+  has_bearer_token: boolean
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: AgentIconType | null
+  id: string
+  last_verified_at?: number | null
+  name: string
+  protocol_version: string
+  remote_agent_id: string
+  role?: string
+  updated_at?: number | null
+}
+
+export type ExternalAgentConnectionPayload = {
+  auth_type?: ExternalAgentAuthType
+  bearer_token?: string | null
+  endpoint: string
+}
+
+export type ExternalAgentDiscoveryResponse = {
+  agent_card: A2aAgentCard
+  description: string
+  name: string
+  protocol_version: string
+  reachable?: boolean
+  remote_agent_id: string
 }
 
 export type AgentInviteOptionsResponse = {
@@ -327,6 +377,29 @@ export type AgentDriveSkillInspectResponse = {
   warnings?: Array<string>
 }
 
+export type ExternalAgentUpdatePayload = {
+  auth_type?: ExternalAgentAuthType | null
+  bearer_token?: string | null
+  description?: string | null
+  endpoint?: string | null
+  expected_active_config_snapshot_id: string
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: AgentIconType | null
+  name?: string | null
+  role?: string | null
+}
+
+export type ExternalAgentTestResponse = {
+  agent_card: A2aAgentCard
+  description: string
+  latency_ms: number
+  name: string
+  protocol_version: string
+  reachable?: boolean
+  remote_agent_id: string
+}
+
 export type AgentAppFeaturesPayload = {
   opening_statement?: string | null
   retriever_resource?: AgentFeatureToggleConfig | null
@@ -494,6 +567,7 @@ export type AgentConfigSnapshotRestoreResponse = {
 export type AgentAppPartial = {
   access_mode?: string | null
   active_config_is_published?: boolean
+  agent_kind?: AgentKind
   app_id?: string | null
   author_name?: string | null
   backing_app_id?: string | null
@@ -529,6 +603,8 @@ export type AgentAppPartial = {
 }
 
 export type IconType = 'emoji' | 'image' | 'link'
+
+export type AgentKind = 'dify_agent' | 'external_agent'
 
 export type DeletedTool = {
   provider_id: string
@@ -605,6 +681,36 @@ export type WorkflowPartial = {
   updated_by?: string | null
 }
 
+export type ExternalAgentAuthType = 'bearer' | 'none'
+
+export type AgentIconType = 'emoji' | 'image' | 'link'
+
+export type A2aAgentCard = {
+  capabilities: A2aAgentCapabilities
+  defaultInputModes?: Array<string>
+  defaultOutputModes?: Array<string>
+  description: string
+  documentationUrl?: string | null
+  iconUrl?: string | null
+  name: string
+  provider?: {
+    [key: string]: unknown
+  } | null
+  securityRequirements?: Array<{
+    [key: string]: unknown
+  }>
+  securitySchemes?: {
+    [key: string]: unknown
+  }
+  signatures?: Array<{
+    [key: string]: unknown
+  }>
+  skills?: Array<A2aAgentSkill>
+  supportedInterfaces: Array<A2aAgentInterface>
+  version: string
+  [key: string]: unknown
+}
+
 export type AgentInviteOptionResponse = {
   active_config_is_published?: boolean
   active_config_snapshot?: AgentConfigSnapshotSummaryResponse | null
@@ -676,8 +782,6 @@ export type ComposerBindingPayload = {
   binding_type: 'inline_agent' | 'roster_agent'
   current_snapshot_id?: string | null
 }
-
-export type AgentIconType = 'emoji' | 'image' | 'link'
 
 export type WorkflowNodeJobConfig = {
   declared_outputs?: Array<DeclaredOutputConfig>
@@ -1113,7 +1217,34 @@ export type AgentAppPublishedReferenceResponse = {
   app_name: string
 }
 
-export type AgentKind = 'dify_agent'
+export type A2aAgentCapabilities = {
+  extendedAgentCard?: boolean
+  extensions?: Array<{
+    [key: string]: unknown
+  }>
+  pushNotifications?: boolean
+  streaming?: boolean
+  [key: string]: unknown
+}
+
+export type A2aAgentSkill = {
+  description: string
+  examples?: Array<string>
+  id: string
+  inputModes?: Array<string>
+  name: string
+  outputModes?: Array<string>
+  tags?: Array<string>
+  [key: string]: unknown
+}
+
+export type A2aAgentInterface = {
+  protocolBinding: string
+  protocolVersion: string
+  tenant?: string | null
+  url: string
+  [key: string]: unknown
+}
 
 export type AgentPublishedReferenceResponse = {
   app_icon?: string | null
@@ -1442,9 +1573,11 @@ export type AgentUserSatisfactionRateStatisticResponse = {
 }
 
 export type AgentConfigRevisionOperation =
+  | 'connect_external_agent'
   | 'create_version'
   | 'import_package'
   | 'publish_draft'
+  | 'refresh_external_agent'
   | 'restore_version'
   | 'save_current_version'
   | 'save_new_agent'
@@ -1888,6 +2021,7 @@ export type AgentAppPaginationWritable = {
 
 export type AgentAppDetailWithSiteWritable = {
   access_mode?: string | null
+  agent_kind?: AgentKind
   api_base_url?: string | null
   app_id?: string | null
   backing_app_id?: string | null
@@ -1925,6 +2059,7 @@ export type AgentAppDetailWithSiteWritable = {
 export type AgentAppPartialWritable = {
   access_mode?: string | null
   active_config_is_published?: boolean
+  agent_kind?: AgentKind
   app_id?: string | null
   author_name?: string | null
   backing_app_id?: string | null
@@ -2032,6 +2167,33 @@ export type PostAgentResponses = {
 }
 
 export type PostAgentResponse = PostAgentResponses[keyof PostAgentResponses]
+
+export type PostAgentExternalData = {
+  body: ExternalAgentCreatePayload
+  path?: never
+  query?: never
+  url: '/agent/external'
+}
+
+export type PostAgentExternalResponses = {
+  201: ExternalAgentDetailResponse
+}
+
+export type PostAgentExternalResponse = PostAgentExternalResponses[keyof PostAgentExternalResponses]
+
+export type PostAgentExternalDiscoverData = {
+  body: ExternalAgentConnectionPayload
+  path?: never
+  query?: never
+  url: '/agent/external/discover'
+}
+
+export type PostAgentExternalDiscoverResponses = {
+  200: ExternalAgentDiscoveryResponse
+}
+
+export type PostAgentExternalDiscoverResponse =
+  PostAgentExternalDiscoverResponses[keyof PostAgentExternalDiscoverResponses]
 
 export type GetAgentInviteOptionsData = {
   body?: never
@@ -2857,6 +3019,54 @@ export type GetAgentByAgentIdDriveSkillsBySkillPathInspectResponses = {
 
 export type GetAgentByAgentIdDriveSkillsBySkillPathInspectResponse =
   GetAgentByAgentIdDriveSkillsBySkillPathInspectResponses[keyof GetAgentByAgentIdDriveSkillsBySkillPathInspectResponses]
+
+export type GetAgentByAgentIdExternalData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/external'
+}
+
+export type GetAgentByAgentIdExternalResponses = {
+  200: ExternalAgentDetailResponse
+}
+
+export type GetAgentByAgentIdExternalResponse =
+  GetAgentByAgentIdExternalResponses[keyof GetAgentByAgentIdExternalResponses]
+
+export type PutAgentByAgentIdExternalData = {
+  body: ExternalAgentUpdatePayload
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/external'
+}
+
+export type PutAgentByAgentIdExternalResponses = {
+  200: ExternalAgentDetailResponse
+}
+
+export type PutAgentByAgentIdExternalResponse =
+  PutAgentByAgentIdExternalResponses[keyof PutAgentByAgentIdExternalResponses]
+
+export type PostAgentByAgentIdExternalTestData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/external/test'
+}
+
+export type PostAgentByAgentIdExternalTestResponses = {
+  200: ExternalAgentTestResponse
+}
+
+export type PostAgentByAgentIdExternalTestResponse =
+  PostAgentByAgentIdExternalTestResponses[keyof PostAgentByAgentIdExternalTestResponses]
 
 export type PostAgentByAgentIdFeaturesData = {
   body: AgentAppFeaturesPayload

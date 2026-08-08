@@ -41,6 +41,7 @@ from services.agent.errors import (
     AgentNameConflictError,
     AgentNotFoundError,
     AgentVersionNotFoundError,
+    ExternalAgentOperationNotSupportedError,
 )
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentWorkspaceService, WorkspaceOwnerScope
@@ -69,6 +70,11 @@ class AgentReferencingWorkflow(TypedDict):
 
 
 class AgentRosterService:
+    @staticmethod
+    def _require_native_agent(agent: Agent) -> None:
+        if getattr(agent, "agent_kind", AgentKind.DIFY_AGENT) == AgentKind.EXTERNAL_AGENT:
+            raise ExternalAgentOperationNotSupportedError()
+
     _APP_MODEL_CONFIG_COPY_FIELDS = (
         "opening_statement",
         "suggested_questions",
@@ -623,6 +629,7 @@ class AgentRosterService:
         )
         if agent is None:
             raise AgentNotFoundError()
+        self._require_native_agent(agent)
 
         conversation_id = self._get_or_create_agent_app_debug_conversation(
             agent=agent,
@@ -686,6 +693,7 @@ class AgentRosterService:
         )
         if agent is None:
             raise AgentNotFoundError()
+        self._require_native_agent(agent)
         backing_app_id = self._ensure_workflow_agent_backing_app(
             agent=agent,
             account_id=agent.updated_by or agent.created_by,
@@ -791,6 +799,7 @@ class AgentRosterService:
         )
         if agent is None:
             raise AgentNotFoundError()
+        self._require_native_agent(agent)
         backing_app_id = self._ensure_workflow_agent_backing_app(
             agent=agent,
             account_id=agent.updated_by or agent.created_by,
@@ -885,7 +894,11 @@ class AgentRosterService:
         conversation_ids_by_agent_id: dict[str, str] = {}
         changed = False
         for agent in agents:
-            if agent.tenant_id != tenant_id or agent.status != AgentStatus.ACTIVE:
+            if (
+                agent.tenant_id != tenant_id
+                or agent.status != AgentStatus.ACTIVE
+                or agent.agent_kind != AgentKind.DIFY_AGENT
+            ):
                 continue
             conversation_ids_by_agent_id[agent.id] = self._get_or_create_agent_app_debug_conversation(
                 agent=agent,
@@ -927,7 +940,7 @@ class AgentRosterService:
     def get_published_agent_soul_for_app(self, *, tenant_id: str, app_id: str) -> AgentSoulConfig | None:
         """Return the active Agent Soul used by a published Agent App runtime."""
         agent = self.get_app_backing_agent(tenant_id=tenant_id, app_id=app_id)
-        if agent is None:
+        if agent is None or agent.agent_kind != AgentKind.DIFY_AGENT:
             return None
         version = self._get_version(
             tenant_id=tenant_id,
@@ -973,6 +986,13 @@ class AgentRosterService:
             raise AgentNotFoundError()
         return app
 
+    def get_native_agent_app_model(self, *, tenant_id: str, agent_id: str) -> App:
+        """Resolve an Agent App only when its roster Agent is Dify-native."""
+
+        agent = self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
+        self._require_native_agent(agent)
+        return self.get_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
+
     def _get_runtime_resolvable_agent(self, *, tenant_id: str, agent_id: str) -> Agent | None:
         """Load an Agent that is eligible to resolve to a runtime backing App.
 
@@ -1016,7 +1036,7 @@ class AgentRosterService:
             return None
         return agent.app_id
 
-    def get_agent_runtime_app_model(self, *, tenant_id: str, agent_id: str) -> App:
+    def get_agent_runtime_app_model(self, *, tenant_id: str, agent_id: str, native_only: bool = False) -> App:
         """Resolve the App that backs an Agent runtime surface.
 
         Roster Agents use their public Agent App. Workflow-only Agents use a
@@ -1028,6 +1048,8 @@ class AgentRosterService:
         agent = self._get_runtime_resolvable_agent(tenant_id=tenant_id, agent_id=agent_id)
         if agent is None:
             raise AgentNotFoundError()
+        if native_only:
+            self._require_native_agent(agent)
         should_commit_backing_app = agent.scope == AgentScope.WORKFLOW_ONLY and not agent.backing_app_id
         backing_app_id = self._ensure_workflow_agent_backing_app(
             agent=agent,
@@ -1069,6 +1091,7 @@ class AgentRosterService:
         source_agent = self.get_app_backing_agent(tenant_id=tenant_id, app_id=source_app.id)
         if source_agent is None:
             raise AgentNotFoundError()
+        self._require_native_agent(source_agent)
 
         copied_name = name or self._next_duplicate_agent_name(tenant_id=tenant_id, base_name=source_app.name)
         copied_description = description if description is not None else source_app.description
@@ -1244,6 +1267,7 @@ class AgentRosterService:
         self, *, tenant_id: str, agent_id: str, account_id: str, payload: RosterAgentUpdatePayload
     ) -> dict[str, Any]:
         agent = self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
+        self._require_native_agent(agent)
         if agent.status == AgentStatus.ARCHIVED:
             raise AgentArchivedError()
 
@@ -1296,6 +1320,11 @@ class AgentRosterService:
 
     @staticmethod
     def _visible_version_operations(agent: Agent) -> set[AgentConfigRevisionOperation]:
+        if agent.agent_kind == AgentKind.EXTERNAL_AGENT:
+            return {
+                AgentConfigRevisionOperation.CONNECT_EXTERNAL_AGENT,
+                AgentConfigRevisionOperation.REFRESH_EXTERNAL_AGENT,
+            }
         if agent.source == AgentSource.AGENT_APP or (
             agent.source == AgentSource.IMPORTED and agent.scope == AgentScope.ROSTER and agent.app_id
         ):
@@ -1424,6 +1453,7 @@ class AgentRosterService:
         self, *, tenant_id: str, agent_id: str, version_id: str, account_id: str
     ) -> dict[str, Any]:
         agent = self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
+        self._require_native_agent(agent)
         visible_version_ids = self._visible_version_ids_stmt(tenant_id=tenant_id, agent_id=agent_id, agent=agent)
         visible_version_id = self._session.scalar(
             select(AgentConfigSnapshot.id)

@@ -32,6 +32,7 @@ import { OutputEditCard } from './components/agent-output-variables/edit-card'
 import { createDraft, isDefaultOutput } from './components/agent-output-variables/utils'
 import { AgentRosterField } from './components/agent-roster-field'
 import { AgentTaskField } from './components/agent-task-field'
+import { ExternalAgentDetailPanel } from './components/external-agent-detail-panel'
 import { SaveInlineAgentToRosterDialog } from './components/save-inline-agent-to-roster-dialog'
 import {
   useAgentRosterDetail,
@@ -147,6 +148,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
   const isInlineAgentPending =
     inputs.agent_binding?.binding_type === 'inline_agent' && !isInlineAgentReady
   const rosterAgentQuery = useAgentRosterDetail(rosterAgentId)
+  const isExternalRosterAgent = rosterAgentQuery.data?.agent_kind === 'external_agent'
   const inlineAgentQuery = useWorkflowInlineAgentDetail(id, sourceInlineAgentId, {
     pollUntilReady: isInlineAgentReady,
   })
@@ -652,6 +654,8 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
                   }
                   open={isAgentPanelOpen}
                 />
+              ) : isExternalRosterAgent && rosterAgentId ? (
+                <ExternalAgentDetailPanel agentId={rosterAgentId} />
               ) : (
                 <WorkflowRosterAgentOrchestratePanelContent
                   agentId={rosterAgentId}
@@ -667,9 +671,10 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
               : 'detail'
           }
           portalContainerRef={drawerPortalContainerRef}
+          showPanelCopyAction={!isExternalRosterAgent}
           showPanelDetailActions={!isInlineAgentReady && !isInlineAgentPending}
           onChange={handleRosterChange}
-          onMakeCopy={rosterAgentId ? handleMakeRosterCopy : undefined}
+          onMakeCopy={rosterAgentId && !isExternalRosterAgent ? handleMakeRosterCopy : undefined}
           onPanelOpenChange={handleAgentPanelOpenChange}
           onRetry={isInlineAgentLoadError ? () => void inlineAgentQuery.refetch() : undefined}
           onSaveInlineToRoster={canSaveInlineToRoster ? handleSaveInlineToRosterOpen : undefined}

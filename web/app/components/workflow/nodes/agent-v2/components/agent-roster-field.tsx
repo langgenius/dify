@@ -1,3 +1,4 @@
+import type { AgentKind } from '@dify/contracts/api/console/agent/types.gen'
 import type { ReactElement, ReactNode, RefObject } from 'react'
 import type { AgentRosterNodeData } from '@/app/components/workflow/block-selector/types'
 import type { AppIconType } from '@/types/app'
@@ -31,6 +32,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { AgentSelectorContent } from '@/app/components/workflow/block-selector/agent-selector'
+import { AgentKindBadge } from '@/features/agent-v2/components/agent-kind-badge'
 import { useCanManageAgents } from '@/features/agent-v2/permissions'
 import { EditInConsoleLink } from './edit-in-console-link'
 
@@ -38,6 +40,7 @@ const i18nPrefix = 'nodes.agent'
 type AgentRosterDrawerMode = 'setup' | 'detail'
 
 type AgentRosterDisplayData = {
+  agent_kind?: AgentKind | null
   description?: string | null
   icon?: string | null
   icon_background?: string | null
@@ -101,6 +104,7 @@ function AgentRosterDrawer({
   portalContainerRef,
   showAccessIcon = true,
   showConsoleLink = true,
+  showCopyAction = true,
   showDetailActions = true,
   isCopyPending = false,
   onMakeCopy,
@@ -116,6 +120,7 @@ function AgentRosterDrawer({
   portalContainerRef: RefObject<HTMLDivElement | null>
   showAccessIcon?: boolean
   showConsoleLink?: boolean
+  showCopyAction?: boolean
   showDetailActions?: boolean
   onMakeCopy?: () => void
   onSaveInlineToRoster?: () => void
@@ -190,6 +195,7 @@ function AgentRosterDrawer({
                         >
                           {title}
                         </DrawerTitle>
+                        {!isInlineSetup && <AgentKindBadge agentKind={agent.agent_kind} />}
                         {!isSetup && showAccessIcon && (
                           <span
                             aria-hidden
@@ -254,18 +260,20 @@ function AgentRosterDrawer({
                     {showConsoleLink && (
                       <EditInConsoleLink agentId={agent.id} canManageAgents={canManageAgents} />
                     )}
-                    <Button
-                      variant="secondary"
-                      size="medium"
-                      className="min-w-0 flex-1 px-3"
-                      loading={isCopyPending}
-                      onClick={onMakeCopy}
-                    >
-                      <span aria-hidden className="i-ri-file-copy-2-line size-4 shrink-0" />
-                      <span className="truncate">
-                        {t(($) => $[`${i18nPrefix}.roster.makeCopy`], { ns: 'workflow' })}
-                      </span>
-                    </Button>
+                    {showCopyAction && (
+                      <Button
+                        variant="secondary"
+                        size="medium"
+                        className="min-w-0 flex-1 px-3"
+                        loading={isCopyPending}
+                        onClick={onMakeCopy}
+                      >
+                        <span aria-hidden className="i-ri-file-copy-2-line size-4 shrink-0" />
+                        <span className="truncate">
+                          {t(($) => $[`${i18nPrefix}.roster.makeCopy`], { ns: 'workflow' })}
+                        </span>
+                      </Button>
+                    )}
                   </div>
                 )}
               </header>
@@ -330,6 +338,7 @@ export function AgentRosterField({
   panelBody,
   panelMode = 'detail',
   showPanelDetailActions = true,
+  showPanelCopyAction = true,
   portalContainerRef,
   onChange,
   onMakeCopy,
@@ -351,6 +360,7 @@ export function AgentRosterField({
   panelBody?: ReactNode
   panelMode?: AgentRosterDrawerMode
   showPanelDetailActions?: boolean
+  showPanelCopyAction?: boolean
   portalContainerRef: RefObject<HTMLDivElement | null>
   onChange: (agent: AgentRosterNodeData) => void
   onMakeCopy?: () => void
@@ -374,8 +384,11 @@ export function AgentRosterField({
     <>
       {isInlineSetup ? <InlineSetupAvatar /> : <AgentRosterAvatar agent={agent} />}
       <span className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
-        <span className="truncate system-sm-medium text-text-secondary">
-          {isInlineSetup ? inlineSetupName : agent.name}
+        <span className="flex min-w-0 items-center gap-1.5">
+          <span className="truncate system-sm-medium text-text-secondary">
+            {isInlineSetup ? inlineSetupName : agent.name}
+          </span>
+          {!isInlineSetup && <AgentKindBadge agentKind={agent.agent_kind} />}
         </span>
         <span className="truncate system-xs-regular text-text-tertiary">
           {isInlineSetup ? inlineSetupType : agent.role}
@@ -505,6 +518,7 @@ export function AgentRosterField({
                   open={panelOpen}
                   portalContainerRef={portalContainerRef}
                   showAccessIcon
+                  showCopyAction={showPanelCopyAction}
                   showDetailActions={showPanelDetailActions}
                   isCopyPending={isPanelCopyPending}
                   onMakeCopy={onMakeCopy}

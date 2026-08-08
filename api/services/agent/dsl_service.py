@@ -87,6 +87,10 @@ class AgentDslService:
         )
         if agent is None:
             raise ValueError("Agent App has no active backing Agent.")
+        if agent.agent_kind == AgentKind.EXTERNAL_AGENT:
+            raise ValueError(
+                "External Agent connections cannot be exported; reconnect the agent in the target workspace."
+            )
 
         draft = self.session.scalar(
             select(AgentConfigDraft)
@@ -139,6 +143,10 @@ class AgentDslService:
             if binding is None or not binding.agent_id or not binding.current_snapshot_id:
                 raise ValueError(f"Workflow Agent node {node_id} has no complete persisted binding.")
             agent = self._require_agent(tenant_id=workflow.tenant_id, agent_id=binding.agent_id)
+            if agent.agent_kind == AgentKind.EXTERNAL_AGENT:
+                raise ValueError(
+                    f"Workflow Agent node {node_id} uses an External Agent connection that cannot be exported."
+                )
             snapshot = self._require_snapshot(
                 tenant_id=workflow.tenant_id,
                 agent_id=agent.id,
@@ -331,6 +339,9 @@ class AgentDslService:
         account_id: str,
     ) -> tuple[Agent, AgentConfigSnapshot]:
         """Clone a same-workspace Inline Agent for a pasted target node."""
+
+        if source_agent.agent_kind == AgentKind.EXTERNAL_AGENT:
+            raise ValueError("External Agent connections cannot be cloned as inline Agents.")
 
         soul = AgentSoulConfig.model_validate(source_snapshot.config_snapshot_dict)
         metadata = AgentPackageMetadata(

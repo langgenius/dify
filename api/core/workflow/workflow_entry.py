@@ -226,6 +226,7 @@ class WorkflowEntry:
             user_id=user_id,
             user_from=UserFrom.ACCOUNT,
             invoke_from=InvokeFrom.DEBUGGER,
+            execution_mode="single_step",
         )
         graph_init_context = DifyGraphInitContext(
             workflow_id=workflow.id,
@@ -385,6 +386,7 @@ class WorkflowEntry:
             user_id=user_id,
             user_from=UserFrom.ACCOUNT,
             invoke_from=InvokeFrom.DEBUGGER,
+            execution_mode="single_step",
         )
         graph_init_context = DifyGraphInitContext(
             workflow_id="",

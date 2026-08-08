@@ -15,6 +15,12 @@ import {
 } from '@/app/components/step-by-step-tour/dropdown-menu'
 
 type CreateAppDropdownProps = {
+  additionalPrimaryActions?: Array<{
+    iconClassName: string
+    key: string
+    label: string
+    onSelect: () => void
+  }>
   onCreateBlank: () => void
   onCreateTemplate?: () => void
   onImportDSL: () => void
@@ -24,6 +30,7 @@ type CreateAppDropdownProps = {
 }
 
 export function CreateAppDropdown({
+  additionalPrimaryActions = [],
   onCreateBlank,
   onCreateTemplate,
   onImportDSL,
@@ -75,6 +82,19 @@ export function CreateAppDropdown({
               {t(($) => $['newApp.startFromBlank'], { ns: 'app' })}
             </span>
           </DropdownMenuItem>
+          {additionalPrimaryActions.map((action) => (
+            <DropdownMenuItem
+              key={action.key}
+              className="h-8 gap-1 rounded-lg px-2 py-1 system-md-regular text-text-secondary"
+              onClick={action.onSelect}
+            >
+              <span
+                aria-hidden
+                className={cn(action.iconClassName, 'size-4 shrink-0 text-text-secondary')}
+              />
+              <span className="min-w-0 flex-1 truncate px-1">{action.label}</span>
+            </DropdownMenuItem>
+          ))}
           {onCreateTemplate && (
             <DropdownMenuItem
               className="h-8 gap-1 rounded-lg px-2 py-1 system-md-regular text-text-secondary"
