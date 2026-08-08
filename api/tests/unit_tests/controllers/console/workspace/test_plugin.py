@@ -455,7 +455,7 @@ class TestPluginListApi:
                 return_value=plugins_with_total,
             ) as mock_list_with_total,
         ):
-            result = method(api, ParserList(), "t1", "u1")
+            result = method(api, ParserList(page=1, page_size=10), "t1", "u1")
 
         assert result == {"plugins": [_expected_plugin_entity_dump()], "total": 1}
         mock_list_with_total.assert_called_once_with("t1", "u1", 1, 10)
