@@ -312,6 +312,12 @@ class NotionExtractor(BaseExtractor):
                 timeout=_REQUEST_TIMEOUT,
             )
             data = res.json()
+            if not data.get("results"):
+                if data.get("next_cursor") is None:
+                    done = True
+                else:
+                    start_cursor = data["next_cursor"]
+                continue
             # get table headers text
             table_header_cell_texts = []
             table_header_cells = data["results"][0]["table_row"]["cells"]
