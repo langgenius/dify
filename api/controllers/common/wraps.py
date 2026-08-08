@@ -158,9 +158,7 @@ def _extract_resource_id(
         agent_id = matched_args.get("agent_id")
         if agent_id:
             agent_id_str = as_route_arg_str(agent_id)
-            authz_app_id = AgentRosterService(db.session).peek_authz_app_id(
-                tenant_id=tenant_id, agent_id=agent_id_str
-            )
+            authz_app_id = AgentRosterService(db.session).peek_authz_app_id(tenant_id=tenant_id, agent_id=agent_id_str)
             return authz_app_id or agent_id_str
 
         resource_id = matched_args.get("resource_id")
@@ -175,9 +173,7 @@ def _extract_resource_id(
 
         pipeline_id = matched_args.get("pipeline_id")
         if pipeline_id:
-            dataset = db.session.scalar(
-                select(Dataset).where(Dataset.pipeline_id == as_route_arg_str(pipeline_id))
-            )
+            dataset = db.session.scalar(select(Dataset).where(Dataset.pipeline_id == as_route_arg_str(pipeline_id)))
             if not dataset:
                 raise NotFound("Dataset not found for pipeline")
             return dataset.id
