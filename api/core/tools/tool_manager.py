@@ -887,6 +887,7 @@ class ToolManager:
         try:
             credentials = _credentials_adapter.validate_json(provider_obj.credentials_str) or {}
         except Exception:
+            logger.warning("Failed to parse credentials for provider %s, defaulting to empty", provider_name)
             credentials = {}
 
         # package tool provider controller
