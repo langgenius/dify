@@ -95,6 +95,31 @@ def test_dify_config(monkeypatch: pytest.MonkeyPatch):
     assert Version(config.project.version) >= Version("1.0.0")
 
 
+@pytest.mark.parametrize(
+    ("environment_value", "expected"),
+    [
+        pytest.param(None, None, id="unset"),
+        pytest.param("", "", id="empty"),
+        pytest.param("expected", "expected", id="ascii"),
+        pytest.param("pässwörd-🔐", "pässwörd-🔐", id="unicode"),
+    ],
+)
+def test_init_password_preserves_environment_value(
+    monkeypatch: pytest.MonkeyPatch,
+    environment_value: str | None,
+    expected: str | None,
+) -> None:
+    _set_basic_config_env(monkeypatch)
+    if environment_value is None:
+        monkeypatch.delenv("INIT_PASSWORD", raising=False)
+    else:
+        monkeypatch.setenv("INIT_PASSWORD", environment_value)
+
+    config = DifyConfig(_env_file=None)
+
+    assert expected == config.INIT_PASSWORD
+
+
 def test_new_user_default_plugin_ids_are_parsed_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     _set_basic_config_env(monkeypatch)
     monkeypatch.setenv(
