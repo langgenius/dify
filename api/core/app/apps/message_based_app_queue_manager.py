@@ -1,5 +1,6 @@
 from typing import override
 
+from configs import dify_config
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -24,6 +25,13 @@ class MessageBasedAppQueueManager(AppQueueManager):
         self._conversation_id = str(conversation_id)
         self._app_mode = app_mode
         self._message_id = str(message_id)
+
+    @property
+    @override
+    def _listen_timeout(self) -> int:
+        if self._app_mode == AppMode.ADVANCED_CHAT.value:
+            return dify_config.WORKFLOW_MAX_EXECUTION_TIME
+        return dify_config.APP_MAX_EXECUTION_TIME
 
     @override
     def _publish(self, event: AppQueueEvent, pub_from: PublishFrom):
