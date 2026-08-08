@@ -73,11 +73,40 @@ The minimum settings are:
 
 See `.example.env` for the full server settings template.
 
-If you plan to run `dify.shell`, also configure `DIFY_AGENT_SHELLCTL_ENTRYPOINT`
-and, when shell jobs need to call back with the `dify-agent` command, set
-`DIFY_AGENT_STUB_API_BASE_URL`. The supplied default configs include a
+If you plan to run `dify.shell`, select a coherent Home Snapshot and Execution
+Binding backend. A standalone Local server normally uses:
+
+```env
+DIFY_AGENT_RUNTIME_BACKEND=local
+DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT=http://127.0.0.1:5004
+DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN=
+# Optional when shellctl runs directly on a host without /home/dify:
+# DIFY_AGENT_LOCAL_SANDBOX_MATERIALIZED_HOME_ROOT=/tmp/dify-agent/materialized-homes
+# DIFY_AGENT_LOCAL_SANDBOX_WORKSPACE_ROOT=/tmp/dify-agent/workspaces
+# DIFY_AGENT_LOCAL_SANDBOX_HOME_SNAPSHOT_ROOT=/tmp/dify-agent/home-snapshots
+```
+
+E2B requires `DIFY_AGENT_E2B_API_KEY` and defaults to the prepared
+`difys-default-team/dify-agent-local-sandbox` template. The E2B active timeout
+pauses the physical resource behind a Binding; it is not a retention TTL.
+Enterprise supports Bindings created from its deployment-default Home.
+Immutable Home Snapshot creation and materialization remain unsupported there.
+
+A shell-enabled request includes Execution Context, `dify.runtime`, and
+`dify.shell`. Dify API creates or resolves the specific persistent Binding for
+the request's product context;
+`DifyRuntimeLayerConfig.backend_binding_ref` carries only that opaque ref and
+opens a new operation-scoped `RuntimeLease` for the run. When shell jobs need to
+call back with the `dify-agent` command, also set
+`DIFY_AGENT_STUB_API_BASE_URL` and the Sandbox-reachable Dify API base
+`DIFY_AGENT_SANDBOX_FILES_BASE_URL`. The supplied default configs include a
 development `DIFY_AGENT_SERVER_SECRET_KEY`, but production deployments should
-override it with a unique 32-byte base64url value as documented in `.example.env`.
+override it with a unique 32-byte base64url value as documented in
+`.example.env`.
+
+See [Runtime resources](../concepts/runtime-resources/index.md) for the layer
+graph and state ownership, and the [Operations Guide](../guide/index.md) for
+backend-specific configuration and validation commands.
 
 ## Start the Dify Agent server
 

@@ -1,16 +1,16 @@
 'use client'
 
+import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import type { Placement } from '@langgenius/dify-ui/popover'
-import type { App } from '@/types/app'
+import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
+import { keepPreviousData, skipToken, useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppInputsPanel from '@/app/components/plugins/plugin-detail-panel/app-selector/app-inputs-panel'
 import { AppPicker } from '@/app/components/plugins/plugin-detail-panel/app-selector/app-picker'
 import { AppTrigger } from '@/app/components/plugins/plugin-detail-panel/app-selector/app-trigger'
 import { consoleQuery } from '@/service/client'
-import { normalizeAppPagination, useAppDetail } from '@/service/use-apps'
 
 const PAGE_SIZE = 20
 
@@ -62,17 +62,17 @@ export function AppSelector({
       initialPageParam: 1,
       placeholderData: keepPreviousData,
     }),
-    select: (data) => ({
-      ...data,
-      pages: data.pages.map(normalizeAppPagination),
-    }),
   })
 
   const displayedApps = useMemo(() => {
     return data?.pages.flatMap(({ data: apps }) => apps) ?? []
   }, [data?.pages])
 
-  const { data: selectedAppDetail } = useAppDetail(value?.app_id || '')
+  const { data: selectedAppDetail } = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: value?.app_id ? { params: { app_id: value.app_id } } : skipToken,
+    }),
+  )
 
   const currentAppInfo = useMemo(() => {
     if (!value?.app_id) return undefined
@@ -83,7 +83,7 @@ export function AppSelector({
   const hasMore = hasNextPage ?? true
 
   const handleSelectApp = useCallback(
-    (app: App) => {
+    (app: AppPartial) => {
       const shouldClearValue = app.id !== value?.app_id
 
       onSelect({
@@ -126,18 +126,22 @@ export function AppSelector({
       <PopoverTrigger
         aria-label={t(($) => $['appSelector.label'], { ns: 'app' })}
         disabled={disabled}
-        render={
-          <button type="button" className="block w-full border-0 bg-transparent p-0 text-left" />
-        }
-      >
-        <AppTrigger open={isShow} appDetail={currentAppInfo} />
-      </PopoverTrigger>
+        render={(props, state) => (
+          <button
+            {...props}
+            type="button"
+            className={cn('block w-full border-0 bg-transparent p-0 text-left', props.className)}
+          >
+            <AppTrigger open={state.open} appDetail={currentAppInfo} />
+          </button>
+        )}
+      />
       <PopoverContent
         placement={placement}
         sideOffset={offset}
         popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
       >
-        <div className="relative min-h-20 w-[389px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
+        <div className="relative min-h-20 w-97.25 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
           <div className="flex flex-col gap-1 px-4 py-3">
             <div className="flex h-6 items-center system-sm-semibold text-text-secondary">
               {t(($) => $['appSelector.label'], { ns: 'app' })}
@@ -162,6 +166,7 @@ export function AppSelector({
           </div>
           {currentAppInfo && (
             <AppInputsPanel
+              key={currentAppInfo.id}
               value={formattedValue}
               appDetail={currentAppInfo}
               onFormChange={handleFormChange}

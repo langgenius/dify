@@ -167,7 +167,7 @@ export function Uploader({
             aria-labelledby={fileNameId}
             aria-describedby={fileMetadataId}
             className={cn(
-              'group flex items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+              'group flex items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
               'hover:bg-components-panel-on-panel-item-bg-hover',
             )}
           >
@@ -183,7 +183,7 @@ export function Uploader({
               </span>
               <div
                 id={fileMetadataId}
-                className="font-inter flex h-3 items-center gap-1 self-stretch text-[10px] leading-3 font-medium text-text-tertiary uppercase"
+                className="font-inter flex h-3 items-center gap-1 self-stretch text-2xs leading-3 font-medium text-text-tertiary uppercase"
               >
                 <span>{displayName}</span>
                 <span className="text-text-quaternary">·</span>

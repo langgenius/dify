@@ -63,7 +63,9 @@ const DataSourcePage = ({ layout, onOpenMarketplace, stickyToolbar }: DataSource
     select: (s) => s.enable_marketplace,
   })
   const { data, isLoading: isDataSourceListLoading } = useGetDataSourceListAuth()
-  const { data: installedPluginList } = useInstalledPluginList()
+  const { data: installedPluginList } = useInstalledPluginList({
+    category: PluginCategoryEnum.datasource,
+  })
   const pluginListWithLatestVersion = usePluginsWithLatestVersion(installedPluginList?.plugins)
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   const invalidateDataSourceListAuth = useInvalidDataSourceListAuth()
@@ -109,7 +111,7 @@ const DataSourcePage = ({ layout, onOpenMarketplace, stickyToolbar }: DataSource
       }
     >
       <SearchInput
-        className="w-[200px]"
+        className="w-50"
         placeholder={t(($) => $['operation.search'], { ns: 'common' })}
         value={searchText}
         onValueChange={setSearchText}

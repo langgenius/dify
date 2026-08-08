@@ -47,13 +47,15 @@ const OutputPanel: FC<OutputPanelProps> = ({ isRunning, outputs, error, height }
   return (
     <div className="p-2">
       {isRunning && (
-        <div className="pt-4 pl-[26px]">
+        <div className="pt-4 pl-6.5">
           <LoadingAnim type="text" />
         </div>
       )}
       {!isRunning && error && (
         <div className="px-4">
-          <StatusContainer status="failed">{error}</StatusContainer>
+          <StatusContainer status="failed" copyContent={error}>
+            {error}
+          </StatusContainer>
         </div>
       )}
       {!isRunning && !outputs && (

@@ -9,7 +9,6 @@ import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import ExternalAPIPanel from '@/app/components/datasets/external-api/external-api-panel'
 import ServiceApi from '@/app/components/datasets/extra-info/service-api'
-import { useExternalApiPanel } from '@/context/external-api-panel-context'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
@@ -60,7 +59,7 @@ export function NewKnowledgeList({
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const { data: apiBaseInfo } = useDatasetApiBaseUrl()
-  const { showExternalApiPanel, setShowExternalApiPanel } = useExternalApiPanel()
+  const [showExternalApiPanel, setShowExternalApiPanel] = useState(false)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canCreate = hasPermission(workspacePermissionKeys, 'dataset.create_and_management')
   const canConnect = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
@@ -95,7 +94,7 @@ export function NewKnowledgeList({
       aria-label={t(($) => $['newKnowledge.new'])}
       className="relative flex grow flex-col overflow-y-auto bg-background-body"
     >
-      <header className="sticky top-0 z-10 flex flex-col gap-[14px] bg-background-body px-4 pt-4 pb-2 sm:px-8">
+      <header className="sticky top-0 z-10 flex flex-col gap-3.5 bg-background-body px-4 pt-4 pb-2 sm:px-8">
         <div className="flex min-h-6 flex-wrap items-center justify-between gap-2">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <h1 className="text-[18px]/[21.6px] font-semibold text-text-primary">
@@ -108,14 +107,14 @@ export function NewKnowledgeList({
               <Button
                 variant="ghost"
                 size="small"
-                className="gap-1 overflow-hidden px-1.5 text-text-tertiary"
+                className="overflow-hidden text-text-tertiary"
                 onClick={() => setShowExternalApiPanel(true)}
               >
                 <span
                   aria-hidden
                   className="i-custom-vender-solid-development-api-connection-mod size-3.5 shrink-0"
                 />
-                <span className="px-0.5 system-xs-medium">{t(($) => $.externalAPIPanelTitle)}</span>
+                <span className="system-xs-medium">{t(($) => $.externalAPIPanelTitle)}</span>
               </Button>
             )}
             <ServiceApi apiBaseUrl={apiBaseInfo?.api_base_url ?? ''} />
@@ -129,7 +128,7 @@ export function NewKnowledgeList({
               onClick={showFilterBoundary}
             />
             <SearchInput
-              className="w-full min-w-0 sm:w-[200px]"
+              className="w-full min-w-0 sm:w-50"
               value={searchValue}
               onValueChange={setSearchValue}
             />
@@ -140,10 +139,10 @@ export function NewKnowledgeList({
                 render={<Link href="/datasets/new/create" />}
                 variant="primary"
                 size="medium"
-                className="gap-0.5 px-2 shadow-xs"
+                className="px-2 shadow-xs"
               >
                 <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
-                <span className="pl-1">{createLabel}</span>
+                <span>{createLabel}</span>
               </Button>
             </div>
           )}

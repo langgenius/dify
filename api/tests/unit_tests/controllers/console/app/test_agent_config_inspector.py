@@ -11,6 +11,8 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, PropertyMock, patch
 
 from flask import Flask
+from sqlalchemy import event
+from sqlalchemy.orm import Session
 
 from controllers.console.app import agent_config_inspector as inspector
 from controllers.console.app.agent_config_inspector import (
@@ -46,8 +48,8 @@ _APP = SimpleNamespace(
 _USER = SimpleNamespace(id="acct-1")
 
 
-def test_resolve_bound_agent_uses_injected_session():
-    session = MagicMock()
+def test_resolve_bound_agent_uses_injected_session(unbound_session: Session):
+    session = unbound_session
     resolver = MagicMock(return_value="agent-1")
     app_model = SimpleNamespace(bound_agent_id_with_session=resolver)
     result = inspector._resolve_agent_id(session, app_model, None)
@@ -100,8 +102,10 @@ def test_manifest_resolves_workflow_node_agent_and_normal_draft():
     assert config_service.return_value.manifest.call_args.kwargs["config_version_kind"].value == "draft"
 
 
-def test_normal_draft_resolution_commits_created_draft_before_service_session() -> None:
-    session = MagicMock()
+def test_normal_draft_resolution_commits_created_draft_before_service_session(sqlite_session: Session) -> None:
+    session = sqlite_session
+    commits: list[str] = []
+    event.listen(session, "after_commit", lambda _session: commits.append("commit"))
     with patch(f"{_MOD}.AgentComposerService") as composer:
         composer.load_agent_composer.return_value = {"draft": {"id": "draft-1"}}
         version_id, version_kind = inspector._resolve_console_version(
@@ -114,7 +118,7 @@ def test_normal_draft_resolution_commits_created_draft_before_service_session() 
         )
     assert version_id == "draft-1"
     assert version_kind.value == "draft"
-    session.commit.assert_called_once()
+    assert commits == ["commit"]
 
 
 def test_skill_inspect_by_agent_returns_strict_json_response():

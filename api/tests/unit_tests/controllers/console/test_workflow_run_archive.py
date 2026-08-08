@@ -54,7 +54,7 @@ def test_current_owner_or_admin_ids_returns_current_ids_for_manager(
     ("method", "args"),
     [
         (WorkflowRunArchivesApi.get, ()),
-        (WorkflowRunArchiveDownloadsApi.post, ()),
+        (WorkflowRunArchiveDownloadsApi.post, (None,)),
         (WorkflowRunArchiveDownloadApi.get, ("download-1",)),
         (WorkflowRunArchiveDownloadFileApi.get, ("download-1",)),
     ],

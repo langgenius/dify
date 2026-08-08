@@ -13,12 +13,11 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   },
 }))
 
-const mockSetShowAccountSettingModal = vi.fn()
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowAccountSettingModal: mockSetShowAccountSettingModal,
-  }),
-}))
+const mockSetSettingsDestination = vi.fn()
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+})
 
 let mockCodeBasedExtensions: { data: { data: Record<string, unknown>[] } } = { data: { data: [] } }
 let mockModelProvidersData: {
@@ -45,15 +44,11 @@ let mockModelProvidersData: {
 
 vi.mock('@/service/use-common', () => ({
   useCodeBasedExtensions: () => mockCodeBasedExtensions,
-  useModelProviders: () => mockModelProvidersData,
+  useModelProviderDetails: () => mockModelProvidersData,
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/declarations', () => ({
   CustomConfigurationStatusEnum: { active: 'active' },
-}))
-
-vi.mock('@/app/components/header/account-setting/constants', () => ({
-  ACCOUNT_SETTING_TAB: { PROVIDER: 'provider' },
 }))
 
 vi.mock('@/app/components/header/account-setting/api-based-extension-page/selector', () => ({
@@ -668,12 +663,7 @@ describe('ModerationSettingModal', () => {
 
     fireEvent.click(screen.getByText(/settings\.provider/))
 
-    expect(mockSetShowAccountSettingModal).toHaveBeenCalled()
-
-    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-      payload: 'provider',
-      onCancelCallback: expect.any(Function),
-    })
+    expect(mockSetSettingsDestination).toHaveBeenCalledWith('provider')
   })
 
   it('should not save when OpenAI type is selected but not configured', async () => {

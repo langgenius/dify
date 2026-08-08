@@ -1,7 +1,10 @@
 import type { PropsWithChildren } from 'react'
+import type { ToolWithProvider } from '@/app/components/workflow/types'
+import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
+import { CollectionType } from '@/app/components/tools/types'
 import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import {
@@ -19,6 +22,17 @@ const toastMock = vi.hoisted(() => ({
 }))
 
 const trackEventMock = vi.hoisted(() => vi.fn())
+
+const toolProviderState = vi.hoisted(() => ({
+  builtInTools: [] as ToolWithProvider[] | undefined,
+  customTools: [] as ToolWithProvider[] | undefined,
+  mcpTools: [] as ToolWithProvider[] | undefined,
+  workflowTools: [] as ToolWithProvider[] | undefined,
+}))
+
+const marketplacePluginState = vi.hoisted(() => ({
+  label: undefined as Record<string, string> | undefined,
+}))
 
 const composerPutMutationFn = vi.hoisted(() =>
   vi.fn(
@@ -139,6 +153,37 @@ vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: trackEventMock,
 }))
 
+vi.mock('@/context/i18n', () => ({
+  useGetLanguage: () => 'en_US',
+}))
+
+vi.mock('@/service/use-plugins', () => ({
+  useFetchPluginsInMarketPlaceByInfo: (infos: Array<{ organization: string; plugin: string }>) => ({
+    data:
+      infos.length > 0 && marketplacePluginState.label
+        ? {
+            data: {
+              list: infos.map(({ organization, plugin }) => ({
+                plugin: {
+                  label: marketplacePluginState.label,
+                  labels: marketplacePluginState.label,
+                  name: plugin,
+                  plugin_id: `${organization}/${plugin}`,
+                },
+              })),
+            },
+          }
+        : undefined,
+  }),
+}))
+
+vi.mock('@/service/use-tools', () => ({
+  useAllBuiltInTools: () => ({ data: toolProviderState.builtInTools }),
+  useAllCustomTools: () => ({ data: toolProviderState.customTools }),
+  useAllMCPTools: () => ({ data: toolProviderState.mcpTools }),
+  useAllWorkflowTools: () => ({ data: toolProviderState.workflowTools }),
+}))
+
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     agent: {
@@ -151,6 +196,14 @@ vi.mock('@/service/client', () => ({
             'agent-detail',
             input.params.agent_id,
           ],
+        },
+        apiAccess: {
+          get: {
+            queryKey: ({ input }: { input: { params: { agent_id: string } } }) => [
+              'agent-api-access',
+              input.params.agent_id,
+            ],
+          },
         },
         composer: {
           get: {
@@ -219,11 +272,55 @@ function renderUseAgentConfigureSync({
   }
 }
 
+const credentialRequiredProvider = {
+  id: 'google',
+  name: 'google',
+  author: 'Google',
+  description: {
+    en_US: 'Google tools.',
+    zh_Hans: 'Google 工具。',
+  },
+  icon: 'https://example.com/google.svg',
+  icon_dark: 'https://example.com/google-dark.svg',
+  label: {
+    en_US: 'Google Tools',
+    zh_Hans: 'Google 工具',
+  },
+  type: CollectionType.builtIn,
+  team_credentials: {
+    api_key: {
+      label: {
+        en_US: 'API Key',
+        zh_Hans: 'API Key',
+      },
+      placeholder: {
+        en_US: 'Enter API key',
+        zh_Hans: '输入 API Key',
+      },
+      required: true,
+      type: 'secret-input',
+      variable: 'api_key',
+    },
+  },
+  is_team_authorization: false,
+  allow_delete: false,
+  labels: [],
+  meta: {
+    version: '0.0.1',
+  },
+  tools: [],
+} satisfies ToolWithProvider
+
 describe('useAgentConfigureSync', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.clearAllMocks()
     composerPutRequestContexts.length = 0
+    toolProviderState.builtInTools = []
+    toolProviderState.customTools = []
+    toolProviderState.mcpTools = []
+    toolProviderState.workflowTools = []
+    marketplacePluginState.label = undefined
   })
 
   afterEach(() => {
@@ -880,6 +977,81 @@ describe('useAgentConfigureSync', () => {
     expect(toastMock.error).toHaveBeenCalledWith('common.modelProvider.selectModel')
   })
 
+  it('should toast and skip publish when a configured tool is not installed', async () => {
+    marketplacePluginState.label = {
+      en_US: 'Jina',
+    }
+    const { result, store } = renderUseAgentConfigureSync({
+      currentModel: configuredModel,
+    })
+
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        tools: [
+          {
+            id: 'langgenius/jina_tool/jina',
+            kind: 'provider',
+            name: 'langgenius/jina_tool/jina',
+            iconClassName: 'i-custom-public-other-default-tool-icon',
+            providerType: 'plugin',
+            credentialType: 'unauthorized',
+            credentialVariant: 'unauthorized',
+            actions: [],
+          },
+        ],
+      } satisfies AgentSoulConfigFormState)
+    })
+
+    await act(async () => {
+      await result.current.publishDraft()
+    })
+
+    expect(composerPutMutationFn).not.toHaveBeenCalled()
+    expect(publishAgentMutationFn).not.toHaveBeenCalled()
+    expect(trackEventMock).not.toHaveBeenCalled()
+    expect(toastMock.error).toHaveBeenCalledWith(
+      'workflow.nodes.agent.toolNotInstallTooltip:{"tool":"Jina"}',
+    )
+  })
+
+  it('should toast and skip publish when a configured tool is not authorized', async () => {
+    toolProviderState.builtInTools = [credentialRequiredProvider]
+    const { result, store } = renderUseAgentConfigureSync({
+      currentModel: configuredModel,
+    })
+
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        tools: [
+          {
+            id: 'google',
+            kind: 'provider',
+            name: 'google',
+            displayName: 'Google Tools',
+            iconClassName: 'i-custom-public-other-default-tool-icon',
+            providerType: 'builtin',
+            credentialType: 'unauthorized',
+            credentialVariant: 'unauthorized',
+            actions: [],
+          },
+        ],
+      } satisfies AgentSoulConfigFormState)
+    })
+
+    await act(async () => {
+      await result.current.publishDraft()
+    })
+
+    expect(composerPutMutationFn).not.toHaveBeenCalled()
+    expect(publishAgentMutationFn).not.toHaveBeenCalled()
+    expect(trackEventMock).not.toHaveBeenCalled()
+    expect(toastMock.error).toHaveBeenCalledWith(
+      'workflow.nodes.agent.toolNotAuthorizedTooltip:{"tool":"Google Tools"}',
+    )
+  })
+
   it('should keep default model fallback from leaving the local draft dirty after publish', async () => {
     const { result, store } = renderUseAgentConfigureSync({
       currentModel: configuredModel,
@@ -975,11 +1147,45 @@ describe('useAgentConfigureSync', () => {
       })
     })
 
-    await expect(result.current.publishDraft()).rejects.toThrow(
-      'Failed to save agent composer draft.',
-    )
+    await expect(result.current.publishDraft()).rejects.toThrow('save failed')
 
     expect(publishAgentMutationFn).not.toHaveBeenCalled()
+    expect(toastMock.error).toHaveBeenCalledWith('save failed')
+  })
+
+  it('should show the API error message when publishing fails', async () => {
+    const responseError = new Response(
+      JSON.stringify({
+        code: 'invalid_model_credentials',
+        message: 'Model credential validation failed',
+        status: 400,
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        status: 400,
+        statusText: 'Bad Request',
+      },
+    )
+    publishAgentMutationFn.mockRejectedValueOnce(responseError)
+    const { result } = renderUseAgentConfigureSync({
+      currentModel: configuredModel,
+    })
+
+    await expect(result.current.publishDraft()).rejects.toBe(responseError)
+
+    expect(toastMock.error).toHaveBeenCalledWith('Model credential validation failed')
+  })
+
+  it('should show the default error when publish rejection has no message', async () => {
+    publishAgentMutationFn.mockRejectedValueOnce({ code: 'publish_failed' })
+    const { result } = renderUseAgentConfigureSync({
+      currentModel: configuredModel,
+    })
+
+    await expect(result.current.publishDraft()).rejects.toEqual({ code: 'publish_failed' })
+
     expect(toastMock.error).toHaveBeenCalledWith('common.api.actionFailed')
   })
 
@@ -1249,6 +1455,7 @@ describe('useAgentConfigureSync', () => {
 
     expect(result.current.isPublishing).toBe(false)
     expect(toastMock.error).toHaveBeenCalledTimes(1)
+    expect(toastMock.error).toHaveBeenCalledWith('publish failed')
     expect(composerPutMutationFn).toHaveBeenCalledTimes(2)
     expect(composerPutMutationFn).toHaveBeenLastCalledWith(
       expect.objectContaining({

@@ -386,7 +386,7 @@ export function ProcessingTasksDrawer({
       <DrawerPortal>
         <DrawerBackdrop />
         <DrawerViewport>
-          <DrawerPopup className="data-[swipe-direction=right]:w-[440px] data-[swipe-direction=right]:max-w-[calc(100vw-1rem)]">
+          <DrawerPopup className="data-[swipe-direction=right]:w-110 data-[swipe-direction=right]:max-w-[calc(100vw-1rem)]">
             <DrawerContent className="flex min-h-0 flex-1 flex-col bg-components-panel-bg p-0 pb-0">
               <header className="shrink-0 pt-[calc(1.25rem+env(safe-area-inset-top,0px))] pr-[calc(1.5rem+env(safe-area-inset-right,0px))] pb-4 pl-[calc(1.5rem+env(safe-area-inset-left,0px))]">
                 <div className="flex items-center justify-between gap-3">
@@ -510,7 +510,7 @@ export function ProcessingTasksDrawer({
                       const taskError = task.errorMessage ?? task.errorCode
                       const actionTarget = `${documentTitles.get(task.documentId) ?? task.documentId} · ${task.id}`
                       return (
-                        <li key={task.id} className="flex min-h-[62px] items-center gap-2.5 py-3.5">
+                        <li key={task.id} className="flex min-h-15.5 items-center gap-2.5 py-3.5">
                           <span
                             aria-hidden
                             className={
@@ -539,7 +539,7 @@ export function ProcessingTasksDrawer({
                               )}
                             </p>
                             {taskError && (
-                              <p className="mt-1 system-2xs-regular break-words whitespace-pre-wrap text-text-destructive">
+                              <p className="mt-1 system-2xs-regular wrap-break-word whitespace-pre-wrap text-text-destructive">
                                 {taskError}
                               </p>
                             )}

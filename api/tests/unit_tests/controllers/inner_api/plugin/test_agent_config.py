@@ -3,19 +3,17 @@
 from __future__ import annotations
 
 import inspect
-from types import SimpleNamespace
 from unittest.mock import patch
 
 from flask import Flask
 
 from controllers.inner_api.plugin.agent_config import (
+    AgentConfigDownloadRequestApi,
     AgentConfigEnvApi,
-    AgentConfigFilePullApi,
     AgentConfigManifestApi,
     AgentConfigNoteApi,
     AgentConfigPushApi,
     AgentConfigSkillInspectApi,
-    AgentConfigSkillPullApi,
 )
 from services.agent_config_service import AgentConfigServiceError
 
@@ -108,26 +106,40 @@ def test_manifest_happy_path_calls_service() -> None:
     assert service.return_value.manifest.call_args.kwargs["config_version_kind"].value == "build_draft"
 
 
-def test_skill_pull_returns_send_file_response() -> None:
-    raw = _raw(AgentConfigSkillPullApi.get)
+def test_download_request_returns_origin_free_metadata() -> None:
+    raw = _raw(AgentConfigDownloadRequestApi.post)
+    payload = {
+        "tenant_id": "tenant-1",
+        "user_id": "user-1",
+        "config_version_id": "cfg-1",
+        "config_version_kind": "build_draft",
+        "config": {"kind": "skill", "name": "alpha"},
+    }
 
-    with app.test_request_context(
-        "/?tenant_id=tenant-1&user_id=user-1&config_version_id=cfg-1&config_version_kind=build_draft"
-    ):
+    with app.test_request_context("/", method="POST", json=payload):
         with patch(f"{MODULE}.AgentConfigService") as service:
-            service.return_value.pull_skill.return_value = SimpleNamespace(
-                payload=b"zip-bytes",
-                mime_type="application/zip",
-                filename="alpha.zip",
-            )
-            response = raw(AgentConfigSkillPullApi(), "agent-1", "alpha")
+            service.return_value.request_download.return_value.filename = "alpha.zip"
+            service.return_value.request_download.return_value.mime_type = "application/zip"
+            service.return_value.request_download.return_value.size = 123
+            service.return_value.request_download.return_value.download_uri = "/files/tools/skill.zip?sign=1"
+            body = raw(AgentConfigDownloadRequestApi(), "agent-1")
 
-    response.direct_passthrough = False
-    assert response.status_code == 200
-    assert response.mimetype == "application/zip"
-    assert response.get_data() == b"zip-bytes"
-    assert "filename=alpha.zip" in response.headers["Content-Disposition"]
-    assert service.return_value.pull_skill.call_args.kwargs["user_id"] == "user-1"
+    assert body == {
+        "filename": "alpha.zip",
+        "mime_type": "application/zip",
+        "size": 123,
+        "download_uri": "/files/tools/skill.zip?sign=1",
+    }
+    assert service.return_value.request_download.call_args.kwargs == {
+        "tenant_id": "tenant-1",
+        "agent_id": "agent-1",
+        "user_id": "user-1",
+        "config_version_id": "cfg-1",
+        "config_version_kind": service.return_value.request_download.call_args.kwargs["config_version_kind"],
+        "kind": "skill",
+        "name": "alpha",
+    }
+    assert service.return_value.request_download.call_args.kwargs["config_version_kind"].value == "build_draft"
 
 
 def test_skill_inspect_happy_path_returns_service_payload() -> None:
@@ -142,28 +154,6 @@ def test_skill_inspect_happy_path_returns_service_payload() -> None:
 
     assert body == {"name": "alpha", "files": ["SKILL.md"]}
     assert service.return_value.inspect_skill.call_args.kwargs["user_id"] == "user-1"
-
-
-def test_file_pull_returns_send_file_response() -> None:
-    raw = _raw(AgentConfigFilePullApi.get)
-
-    with app.test_request_context(
-        "/?tenant_id=tenant-1&user_id=user-1&config_version_id=cfg-1&config_version_kind=build_draft"
-    ):
-        with patch(f"{MODULE}.AgentConfigService") as service:
-            service.return_value.pull_file.return_value = SimpleNamespace(
-                payload=b"file-bytes",
-                mime_type="text/plain",
-                filename="guide.txt",
-            )
-            response = raw(AgentConfigFilePullApi(), "agent-1", "guide.txt")
-
-    response.direct_passthrough = False
-    assert response.status_code == 200
-    assert response.mimetype == "text/plain"
-    assert response.get_data() == b"file-bytes"
-    assert "filename=guide.txt" in response.headers["Content-Disposition"]
-    assert service.return_value.pull_file.call_args.kwargs["user_id"] == "user-1"
 
 
 def test_push_happy_path_validates_body_and_preserves_execution_user() -> None:
@@ -248,6 +238,22 @@ def test_manifest_invalid_query_returns_400() -> None:
 
     with app.test_request_context("/?tenant_id=tenant-1"):
         body, status = raw(AgentConfigManifestApi(), "agent-1")
+
+    assert status == 400
+    assert body["code"] == "invalid_request"
+
+
+def test_download_request_rejects_invalid_config_name() -> None:
+    raw = _raw(AgentConfigDownloadRequestApi.post)
+    payload = {
+        "tenant_id": "tenant-1",
+        "config_version_id": "cfg-1",
+        "config_version_kind": "draft",
+        "config": {"kind": "file", "name": "../guide.txt"},
+    }
+
+    with app.test_request_context("/", method="POST", json=payload):
+        body, status = raw(AgentConfigDownloadRequestApi(), "agent-1")
 
     assert status == 400
     assert body["code"] == "invalid_request"

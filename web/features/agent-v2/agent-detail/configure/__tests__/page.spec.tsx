@@ -687,7 +687,7 @@ describe('AgentConfigurePage', () => {
       )
     })
 
-    it('should expose a single configure workspace region after loading', () => {
+    it('should leave the configure landmark to the orchestrate panel after loading', () => {
       const queryClient = new QueryClient()
       mocks.queryState.composer = {
         data: {},
@@ -705,11 +705,8 @@ describe('AgentConfigurePage', () => {
       )
 
       expect(
-        screen.getAllByRole('region', { name: 'agentV2.agentDetail.sections.configure' }),
-      ).toHaveLength(1)
-      expect(
-        screen.getByRole('region', { name: 'agentV2.agentDetail.sections.configure' }),
-      ).toBeVisible()
+        screen.queryByRole('region', { name: 'agentV2.agentDetail.sections.configure' }),
+      ).not.toBeInTheDocument()
       expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toBeInTheDocument()
     })
 
@@ -2040,7 +2037,9 @@ describe('AgentConfigurePage', () => {
               system_prompt: 'build prompt',
             },
           },
-          draft: {},
+          draft: {
+            id: 'build-draft-1',
+          },
           variant: 'agent_app',
         },
         dataUpdatedAt: 1,

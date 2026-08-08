@@ -61,7 +61,7 @@ describe('AccessControlItem', () => {
 
     const organization = screen.getByRole('radio', { name: 'Organization Only' })
     expect(organization).toHaveAttribute('aria-disabled', 'true')
-    expect(organization).toHaveClass('cursor-not-allowed')
+    expect(organization).toHaveAttribute('data-disabled')
 
     await user.click(organization)
 

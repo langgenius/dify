@@ -14,12 +14,19 @@ import * as React from 'react'
 import { ALL_PLANS } from '@/app/components/billing/config'
 import Pricing from '@/app/components/billing/pricing'
 import { Plan } from '@/app/components/billing/type'
-import { render } from '@/test/console/render'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
 
 // ─── Mock state ──────────────────────────────────────────────────────────────
 let mockProviderCtx: Record<string, unknown> = {}
 let mockConsoleState: Record<string, unknown> = {}
+let mockEducationStatus = { is_student: false, allow_refresh: false, expire_at: null }
 const mockFetchSubscriptionUrls = vi.hoisted(() => vi.fn())
+
+const render = (ui: React.ReactElement) => {
+  const { wrapper } = createConsoleQueryWrapper({ educationStatus: mockEducationStatus })
+  return renderWithConsoleState(ui, { wrapper })
+}
 
 // ─── Context mocks ───────────────────────────────────────────────────────────
 vi.mock('@/context/provider-context', () => ({
@@ -49,15 +56,24 @@ vi.mock('@/service/billing', () => ({
   fetchSubscriptionUrls: (...args: unknown[]) => mockFetchSubscriptionUrls(...args),
 }))
 
-vi.mock('@/service/client', () => ({
-  consoleClient: {
-    billing: {
-      invoices: {
-        get: vi.fn().mockResolvedValue({ url: 'https://invoice.example.com' }),
+vi.mock('@/service/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/client')>()
+  return {
+    ...actual,
+    consoleClient: new Proxy(actual.consoleClient, {
+      get(target, prop, receiver) {
+        if (prop === 'billing') {
+          return {
+            invoices: {
+              get: vi.fn().mockResolvedValue({ url: 'https://invoice.example.com' }),
+            },
+          }
+        }
+        return Reflect.get(target, prop, receiver)
       },
-    },
-  },
-}))
+    }),
+  }
+})
 
 vi.mock('@/hooks/use-async-window-open', () => ({
   useAsyncWindowOpen: () => vi.fn(),
@@ -118,13 +134,12 @@ const setupContexts = (
   planOverrides: Record<string, unknown> = {},
   appOverrides: Record<string, unknown> = {},
 ) => {
+  mockEducationStatus = { is_student: false, allow_refresh: false, expire_at: null }
   mockProviderCtx = {
     plan: { ...defaultPlanData, ...planOverrides },
     enableBilling: true,
     isFetchedPlan: true,
     enableEducationPlan: false,
-    isEducationAccount: false,
-    allowRefreshEducationVerify: false,
   }
   mockConsoleState = {
     isCurrentWorkspaceManager: true,
@@ -282,8 +297,8 @@ describe('Pricing Modal Flow', () => {
       mockProviderCtx = {
         ...mockProviderCtx,
         enableEducationPlan: true,
-        isEducationAccount: true,
       }
+      mockEducationStatus.is_student = true
       const user = userEvent.setup()
       render(<Pricing onCancel={onCancel} />)
 

@@ -71,7 +71,7 @@ function renderSourceAppPicker(disabled: boolean) {
   return render(
     <QueryClientProvider client={queryClient}>
       <SourceAppPicker
-        value={{ id: 'app-1', name: 'Workflow 1' }}
+        value={{ id: 'app-1', name: 'Workflow 1', mode: 'workflow', icon_url: null }}
         onChange={() => undefined}
         disabled={disabled}
       />
@@ -154,5 +154,18 @@ describe('SourceAppPicker', () => {
     expect(
       screen.queryByRole('button', { name: /createModal\.loadMoreApps/ }),
     ).not.toBeInTheDocument()
+  })
+
+  it('should restore the selected app by business identity', async () => {
+    const user = userEvent.setup()
+
+    renderSourceAppPicker(false)
+
+    await user.click(screen.getByRole('combobox', { name: 'deployments.versions.sourceAppOption' }))
+
+    expect(screen.getByRole('option', { name: /Workflow App/ })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
   })
 })

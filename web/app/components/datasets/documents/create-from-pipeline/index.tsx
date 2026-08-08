@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
+import { Plan } from '@/app/components/billing/type'
 import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import {
@@ -73,11 +74,14 @@ const CreateFormPipeline = () => {
   const { data: fileUploadConfigResponse } = useFileUploadConfig()
 
   const fileUploadConfig = useMemo(
-    () =>
-      fileUploadConfigResponse ?? {
-        file_size_limit: 15,
-        batch_count_limit: 5,
-      },
+    () => ({
+      ...fileUploadConfigResponse,
+      file_size_limit:
+        fileUploadConfigResponse?.knowledge_file_size_limit ??
+        fileUploadConfigResponse?.file_size_limit ??
+        15,
+      batch_count_limit: fileUploadConfigResponse?.batch_count_limit ?? 5,
+    }),
     [fileUploadConfigResponse],
   )
 
@@ -118,13 +122,22 @@ const CreateFormPipeline = () => {
       onlineDocuments.length > 0 ||
       websitePages.length > 0 ||
       selectedFileIds.length > 0)
-  const { data: vectorSpace, isFetching: isFetchingVectorSpacePlan } = useQuery(
+  const {
+    data: vectorSpace,
+    isFetching: isFetchingVectorSpacePlan,
+    refetch: refetchVectorSpace,
+  } = useQuery(
     consoleQuery.features.vectorSpace.get.queryOptions({ enabled: shouldCheckVectorSpace }),
   )
   const isCheckingVectorSpace = shouldCheckVectorSpace && !vectorSpace && isFetchingVectorSpacePlan
+  const isVectorSpaceUnavailable =
+    shouldCheckVectorSpace && plan.type === Plan.sandbox && !!vectorSpace?.usage_unknown
   const isVectorSpaceFull =
-    !!vectorSpace && vectorSpace.limit > 0 && vectorSpace.size >= vectorSpace.limit
-  const supportBatchUpload = !enableBilling || plan.type !== 'sandbox'
+    !!vectorSpace &&
+    !vectorSpace.usage_unknown &&
+    vectorSpace.limit > 0 &&
+    vectorSpace.size >= vectorSpace.limit
+  const supportBatchUpload = !enableBilling || plan.type !== Plan.sandbox
 
   // UI state
   const {
@@ -144,7 +157,7 @@ const CreateFormPipeline = () => {
     selectedFileIdsLength: selectedFileIds.length,
     onlineDriveFileList,
     isVectorSpaceFull,
-    isCheckingVectorSpace,
+    isCheckingVectorSpace: isCheckingVectorSpace || isVectorSpaceUnavailable,
     enableBilling,
     currentWorkspacePagesLength: currentWorkspace?.pages.length ?? 0,
     fileUploadConfig,
@@ -227,7 +240,7 @@ const CreateFormPipeline = () => {
   if (isLoadingWorkspacePermissionKeys || shouldRedirectToDocuments) return <Loading type="app" />
 
   return (
-    <div className="relative flex h-[calc(100vh-56px)] w-full min-w-[1024px] overflow-x-auto rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle">
+    <div className="relative flex h-[calc(100vh-56px)] w-full min-w-5xl overflow-x-auto rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle">
       <div className="h-full min-w-0 flex-1">
         <div className="flex h-full flex-col px-14">
           <LeftHeader
@@ -242,8 +255,9 @@ const CreateFormPipeline = () => {
                 datasourceType={datasourceType}
                 pipelineNodes={(pipelineInfo?.graph.nodes || []) as Node<DataSourceNodeType>[]}
                 supportBatchUpload={supportBatchUpload}
-                localFileListLength={localFileList.length}
                 isShowVectorSpaceFull={isShowVectorSpaceFull}
+                isShowVectorSpaceUnavailable={isVectorSpaceUnavailable}
+                isRetryingVectorSpace={isFetchingVectorSpacePlan}
                 showSelect={showSelect}
                 totalOptions={totalOptions}
                 selectedOptions={selectedOptions}
@@ -252,6 +266,7 @@ const CreateFormPipeline = () => {
                 onSelectDataSource={handleSwitchDataSource}
                 onCredentialChange={handleCredentialChange}
                 onSelectAll={handleSelectAll}
+                onRetryVectorSpace={() => void refetchVectorSpace()}
                 onNextStep={handleNextStep}
               />
             )}

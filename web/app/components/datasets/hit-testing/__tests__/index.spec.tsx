@@ -9,29 +9,6 @@ import { render } from '@/test/console/render'
 import { RETRIEVE_METHOD } from '@/types/app'
 import HitTestingPage from '../index'
 
-vi.mock('@langgenius/dify-ui/pagination', () => ({
-  Pagination: ({
-    page,
-    totalPages,
-    onPageChange,
-    labels,
-  }: {
-    page: number
-    totalPages: number
-    onPageChange: (page: number) => void
-    labels: { next: string }
-  }) => (
-    <button
-      type="button"
-      aria-label={labels.next}
-      disabled={page >= totalPages}
-      onClick={() => onPageChange(page + 1)}
-    >
-      {page}/{totalPages}
-    </button>
-  ),
-}))
-
 vi.mock('@/app/components/datasets/common/retrieval-method-config', () => ({
   default: ({
     value,
@@ -154,7 +131,7 @@ vi.mock('@/context/permission-state', async () => {
 
   return createPermissionStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/system-features-state', async () => {
+vi.mock('@/features/system-features/state', async () => {
   const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
 
   return createSystemFeaturesStateModuleMock(() => mockConsoleState)
@@ -286,13 +263,6 @@ vi.mock(
 // Mock docLink hook
 vi.mock('@/context/i18n', () => ({
   useDocLink: vi.fn(() => () => 'https://docs.example.com'),
-}))
-
-// Mock provider context for retrieval method config
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: vi.fn(() => ({
-    supportRetrievalMethods: ['semantic_search', 'full_text_search', 'hybrid_search'],
-  })),
 }))
 
 // Mock model list hook - include all exports used by child components

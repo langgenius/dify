@@ -56,6 +56,11 @@ export const useApplyTagBindingsMutation = () => {
           },
         }),
       })
+      if (variables.type === 'app') {
+        void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
+        void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.starred.get.key() })
+        void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.recent.get.key() })
+      }
     },
   })
 }

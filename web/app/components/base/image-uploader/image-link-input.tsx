@@ -37,7 +37,7 @@ const ImageLinkInput: FC<ImageLinkInputProps> = ({ onUpload, disabled }) => {
     <div className="flex h-8 items-center rounded-lg border border-components-panel-border bg-components-panel-bg pr-1 pl-1.5 shadow-xs">
       <input
         type="text"
-        className="mr-0.5 h-[18px] grow appearance-none bg-transparent px-1 text-[13px] text-text-primary outline-hidden"
+        className="mr-0.5 h-4.5 grow appearance-none bg-transparent px-1 text-[13px] text-text-primary outline-hidden"
         value={imageLink}
         onChange={(e) => setImageLink(e.target.value)}
         placeholder={safeText}

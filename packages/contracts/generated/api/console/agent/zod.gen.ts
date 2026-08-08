@@ -6,6 +6,7 @@ import * as z from 'zod'
  * AgentApiAccessResponse
  */
 export const zAgentApiAccessResponse = z.object({
+  access_ready: z.boolean(),
   api_key_count: z.int(),
   api_rph: z.int(),
   api_rpm: z.int(),
@@ -196,8 +197,23 @@ export const zAgentPublishPayload = z.object({
  * SandboxInfoResponse
  */
 export const zSandboxInfoResponse = z.object({
-  session_id: z.string(),
   workspace_cwd: z.string(),
+})
+
+/**
+ * AgentSandboxDownloadPayload
+ */
+export const zAgentSandboxDownloadPayload = z.object({
+  caller_id: z.string().min(1),
+  caller_type: z.enum(['build_draft', 'conversation']),
+  path: z.string().min(1),
+})
+
+/**
+ * SandboxDownloadResponse
+ */
+export const zSandboxDownloadResponse = z.object({
+  url: z.string(),
 })
 
 /**
@@ -209,21 +225,6 @@ export const zSandboxReadResponse = z.object({
   size: z.int().nullish(),
   text: z.string().nullish(),
   truncated: z.boolean(),
-})
-
-/**
- * AgentSandboxUploadPayload
- */
-export const zAgentSandboxUploadPayload = z.object({
-  conversation_id: z.string().min(1),
-  path: z.string().min(1),
-})
-
-/**
- * SandboxUploadResponse
- */
-export const zSandboxUploadResponse = z.object({
-  url: z.string(),
 })
 
 /**
@@ -374,6 +375,7 @@ export const zWorkflowPartial = z.object({
  */
 export const zAgentAppDetailWithSite = z.object({
   access_mode: z.string().nullish(),
+  access_ready: z.boolean().optional().default(false),
   api_base_url: z.string().nullish(),
   app_id: z.string().nullish(),
   backing_app_id: z.string().nullish(),
@@ -651,45 +653,6 @@ export const zAgentConfigSkillInspectResponse = z.object({
 })
 
 /**
- * AgentConfigDraftType
- *
- * Editable Agent Soul draft workspace type.
- */
-export const zAgentConfigDraftType = z.enum(['debug_build', 'draft'])
-
-/**
- * AgentDebugConversationRefreshPayload
- */
-export const zAgentDebugConversationRefreshPayload = z.object({
-  draft_type: zAgentConfigDraftType.optional().default('debug_build'),
-})
-
-/**
- * AgentConfigDraftSummaryResponse
- */
-export const zAgentConfigDraftSummaryResponse = z.object({
-  account_id: z.string().nullish(),
-  agent_id: z.string(),
-  base_snapshot_id: z.string().nullish(),
-  created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
-  draft_type: zAgentConfigDraftType,
-  id: z.string(),
-  updated_at: z.int().nullish(),
-  updated_by: z.string().nullish(),
-})
-
-/**
- * AgentPublishResponse
- */
-export const zAgentPublishResponse = z.object({
-  active_config_snapshot: zAgentConfigSnapshotSummaryResponse.nullish(),
-  active_config_snapshot_id: z.string(),
-  draft: zAgentConfigDraftSummaryResponse.nullish(),
-  result: z.string(),
-})
-
-/**
  * AgentDriveItemResponse
  */
 export const zAgentDriveItemResponse = z.object({
@@ -865,40 +828,6 @@ export const zAgentLogConversationItemResponse = z.object({
  */
 export const zAgentLogListResponse = z.object({
   data: z.array(zAgentLogConversationItemResponse),
-  has_more: z.boolean(),
-  limit: z.int(),
-  page: z.int(),
-  total: z.int(),
-})
-
-/**
- * AgentLogMessageItemResponse
- */
-export const zAgentLogMessageItemResponse = z.object({
-  answer: z.string(),
-  answer_tokens: z.int(),
-  conversation_id: z.string(),
-  created_at: z.int().nullish(),
-  currency: z.string(),
-  error: z.string().nullish(),
-  from_account_id: z.string().nullish(),
-  from_end_user_id: z.string().nullish(),
-  id: z.string(),
-  latency: z.number(),
-  message_id: z.string(),
-  message_tokens: z.int(),
-  query: z.string(),
-  status: z.string(),
-  total_price: z.string(),
-  total_tokens: z.int(),
-  updated_at: z.int().nullish(),
-})
-
-/**
- * AgentLogMessageListResponse
- */
-export const zAgentLogMessageListResponse = z.object({
-  data: z.array(zAgentLogMessageItemResponse),
   has_more: z.boolean(),
   limit: z.int(),
   page: z.int(),
@@ -1279,6 +1208,38 @@ export const zAgentSoulPromptConfig = z.object({
 })
 
 /**
+ * AgentConfigDraftType
+ *
+ * Editable Agent Soul draft workspace type.
+ */
+export const zAgentConfigDraftType = z.enum(['debug_build', 'draft'])
+
+/**
+ * AgentConfigDraftSummaryResponse
+ */
+export const zAgentConfigDraftSummaryResponse = z.object({
+  account_id: z.string().nullish(),
+  agent_id: z.string(),
+  base_snapshot_id: z.string().nullish(),
+  created_at: z.int().nullish(),
+  created_by: z.string().nullish(),
+  draft_type: zAgentConfigDraftType,
+  id: z.string(),
+  updated_at: z.int().nullish(),
+  updated_by: z.string().nullish(),
+})
+
+/**
+ * AgentPublishResponse
+ */
+export const zAgentPublishResponse = z.object({
+  active_config_snapshot: zAgentConfigSnapshotSummaryResponse.nullish(),
+  active_config_snapshot_id: z.string(),
+  draft: zAgentConfigDraftSummaryResponse.nullish(),
+  result: z.string(),
+})
+
+/**
  * AgentHumanContactConfig
  */
 export const zAgentHumanContactConfig = z.object({
@@ -1370,6 +1331,51 @@ export const zAgentSuggestedQuestionsAfterAnswerFeatureConfig = z.object({
   enabled: z.boolean().optional().default(false),
   model: zAgentSuggestedQuestionsAfterAnswerModelConfig.nullish(),
   prompt: z.string().nullish(),
+})
+
+/**
+ * AgentLogFeedbackResponse
+ */
+export const zAgentLogFeedbackResponse = z.object({
+  content: z.string().nullish(),
+  from_source: z.enum(['admin', 'user']),
+  rating: z.enum(['dislike', 'like']),
+})
+
+/**
+ * AgentLogMessageItemResponse
+ */
+export const zAgentLogMessageItemResponse = z.object({
+  answer: z.string(),
+  answer_tokens: z.int(),
+  conversation_id: z.string(),
+  created_at: z.int().nullish(),
+  currency: z.string(),
+  error: z.string().nullish(),
+  feedback_enabled: z.boolean().optional().default(false),
+  feedbacks: z.array(zAgentLogFeedbackResponse).optional(),
+  from_account_id: z.string().nullish(),
+  from_end_user_id: z.string().nullish(),
+  id: z.string(),
+  latency: z.number(),
+  message_id: z.string(),
+  message_tokens: z.int(),
+  query: z.string(),
+  status: z.string(),
+  total_price: z.string(),
+  total_tokens: z.int(),
+  updated_at: z.int().nullish(),
+})
+
+/**
+ * AgentLogMessageListResponse
+ */
+export const zAgentLogMessageListResponse = z.object({
+  data: z.array(zAgentLogMessageItemResponse),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
 })
 
 /**
@@ -2730,6 +2736,7 @@ export const zAppDetailSiteResponseWritable = z.object({
  */
 export const zAgentAppDetailWithSiteWritable = z.object({
   access_mode: z.string().nullish(),
+  access_ready: z.boolean().optional().default(false),
   api_base_url: z.string().nullish(),
   app_id: z.string().nullish(),
   backing_app_id: z.string().nullish(),
@@ -3263,8 +3270,6 @@ export const zPostAgentByAgentIdCopyPath = z.object({
  */
 export const zPostAgentByAgentIdCopyResponse = zAgentAppDetailWithSite
 
-export const zPostAgentByAgentIdDebugConversationRefreshBody = zAgentDebugConversationRefreshPayload
-
 export const zPostAgentByAgentIdDebugConversationRefreshPath = z.object({
   agent_id: z.uuid(),
 })
@@ -3471,7 +3476,8 @@ export const zGetAgentByAgentIdSandboxPath = z.object({
 })
 
 export const zGetAgentByAgentIdSandboxQuery = z.object({
-  conversation_id: z.string().min(1),
+  caller_id: z.string().min(1),
+  caller_type: z.enum(['build_draft', 'conversation']),
 })
 
 /**
@@ -3484,7 +3490,8 @@ export const zGetAgentByAgentIdSandboxFilesPath = z.object({
 })
 
 export const zGetAgentByAgentIdSandboxFilesQuery = z.object({
-  conversation_id: z.string().min(1),
+  caller_id: z.string().min(1),
+  caller_type: z.enum(['build_draft', 'conversation']),
   path: z.string().optional().default('.'),
 })
 
@@ -3493,12 +3500,24 @@ export const zGetAgentByAgentIdSandboxFilesQuery = z.object({
  */
 export const zGetAgentByAgentIdSandboxFilesResponse = zSandboxListResponse
 
+export const zPostAgentByAgentIdSandboxFilesDownloadBody = zAgentSandboxDownloadPayload
+
+export const zPostAgentByAgentIdSandboxFilesDownloadPath = z.object({
+  agent_id: z.uuid(),
+})
+
+/**
+ * Download URL returned
+ */
+export const zPostAgentByAgentIdSandboxFilesDownloadResponse = zSandboxDownloadResponse
+
 export const zGetAgentByAgentIdSandboxFilesReadPath = z.object({
   agent_id: z.uuid(),
 })
 
 export const zGetAgentByAgentIdSandboxFilesReadQuery = z.object({
-  conversation_id: z.string().min(1),
+  caller_id: z.string().min(1),
+  caller_type: z.enum(['build_draft', 'conversation']),
   path: z.string().min(1),
 })
 
@@ -3506,17 +3525,6 @@ export const zGetAgentByAgentIdSandboxFilesReadQuery = z.object({
  * Preview returned
  */
 export const zGetAgentByAgentIdSandboxFilesReadResponse = zSandboxReadResponse
-
-export const zPostAgentByAgentIdSandboxFilesUploadBody = zAgentSandboxUploadPayload
-
-export const zPostAgentByAgentIdSandboxFilesUploadPath = z.object({
-  agent_id: z.uuid(),
-})
-
-/**
- * Uploaded
- */
-export const zPostAgentByAgentIdSandboxFilesUploadResponse = zSandboxUploadResponse
 
 export const zPostAgentByAgentIdSkillsUploadBody = z.object({
   file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),

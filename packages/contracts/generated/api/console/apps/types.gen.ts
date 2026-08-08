@@ -865,21 +865,21 @@ export type SandboxListResponse = {
   truncated?: boolean
 }
 
+export type WorkflowAgentSandboxDownloadPayload = {
+  node_execution_id: string
+  path: string
+}
+
+export type SandboxDownloadResponse = {
+  url: string
+}
+
 export type SandboxReadResponse = {
   binary: boolean
   path: string
   size?: number | null
   text?: string | null
   truncated: boolean
-}
-
-export type WorkflowAgentSandboxUploadPayload = {
-  node_execution_id?: string | null
-  path: string
-}
-
-export type SandboxUploadResponse = {
-  url: string
 }
 
 export type WorkflowCommentBasicList = {
@@ -1011,9 +1011,7 @@ export type SyncDraftWorkflowPayload = {
   conversation_variables?: Array<{
     [key: string]: unknown
   }>
-  environment_variables?: Array<{
-    [key: string]: unknown
-  }>
+  environment_variable_patch?: SyncEnvironmentVariablePatchPayload | null
   features: {
     [key: string]: unknown
   }
@@ -1042,7 +1040,9 @@ export type EnvironmentVariableListResponse = {
 }
 
 export type EnvironmentVariableUpdatePayload = {
+  deleted_environment_variable_ids?: Array<string>
   environment_variables: Array<EnvironmentVariableItemPayload>
+  patch?: boolean
 }
 
 export type WorkflowFeaturesPayload = {
@@ -1975,6 +1975,13 @@ export type PipelineVariableResponse = {
   type: string
   unit?: string | null
   variable: string
+}
+
+export type SyncEnvironmentVariablePatchPayload = {
+  deleted_environment_variable_ids?: Array<string>
+  environment_variables?: Array<{
+    [key: string]: unknown
+  }>
 }
 
 export type ConversationVariableItemPayload = {
@@ -5010,6 +5017,27 @@ export type PutAppsByAppIdServerResponses = {
 export type PutAppsByAppIdServerResponse =
   PutAppsByAppIdServerResponses[keyof PutAppsByAppIdServerResponses]
 
+export type PostAppsByAppIdServerRefreshData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/server/refresh'
+}
+
+export type PostAppsByAppIdServerRefreshErrors = {
+  403: unknown
+  404: unknown
+}
+
+export type PostAppsByAppIdServerRefreshResponses = {
+  200: AppMcpServerResponse
+}
+
+export type PostAppsByAppIdServerRefreshResponse =
+  PostAppsByAppIdServerRefreshResponses[keyof PostAppsByAppIdServerRefreshResponses]
+
 export type PostAppsByAppIdSiteData = {
   body: AppSiteUpdatePayload
   path: {
@@ -5658,8 +5686,8 @@ export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFi
     node_id: string
     workflow_run_id: string
   }
-  query?: {
-    node_execution_id?: string
+  query: {
+    node_execution_id: string
     path?: string
   }
   url: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files'
@@ -5672,6 +5700,25 @@ export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFi
 export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesResponse =
   GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesResponses[keyof GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesResponses]
 
+export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesDownloadData = {
+  body: WorkflowAgentSandboxDownloadPayload
+  path: {
+    app_id: string
+    node_id: string
+    workflow_run_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/download'
+}
+
+export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesDownloadResponses =
+  {
+    200: SandboxDownloadResponse
+  }
+
+export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesDownloadResponse =
+  PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesDownloadResponses[keyof PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesDownloadResponses]
+
 export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadData = {
   body?: never
   path: {
@@ -5680,7 +5727,7 @@ export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFi
     workflow_run_id: string
   }
   query: {
-    node_execution_id?: string
+    node_execution_id: string
     path: string
   }
   url: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/read'
@@ -5692,25 +5739,6 @@ export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFi
 
 export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadResponse =
   GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadResponses[keyof GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadResponses]
-
-export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadData = {
-  body: WorkflowAgentSandboxUploadPayload
-  path: {
-    app_id: string
-    node_id: string
-    workflow_run_id: string
-  }
-  query?: never
-  url: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/upload'
-}
-
-export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadResponses =
-  {
-    200: SandboxUploadResponse
-  }
-
-export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadResponse =
-  PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadResponses[keyof PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadResponses]
 
 export type GetAppsByAppIdWorkflowCommentsData = {
   body?: never
@@ -7001,24 +7029,3 @@ export type DeleteAppsByResourceIdApiKeysByApiKeyIdResponses = {
 
 export type DeleteAppsByResourceIdApiKeysByApiKeyIdResponse =
   DeleteAppsByResourceIdApiKeysByApiKeyIdResponses[keyof DeleteAppsByResourceIdApiKeysByApiKeyIdResponses]
-
-export type GetAppsByServerIdServerRefreshData = {
-  body?: never
-  path: {
-    server_id: string
-  }
-  query?: never
-  url: '/apps/{server_id}/server/refresh'
-}
-
-export type GetAppsByServerIdServerRefreshErrors = {
-  403: unknown
-  404: unknown
-}
-
-export type GetAppsByServerIdServerRefreshResponses = {
-  200: AppMcpServerResponse
-}
-
-export type GetAppsByServerIdServerRefreshResponse =
-  GetAppsByServerIdServerRefreshResponses[keyof GetAppsByServerIdServerRefreshResponses]

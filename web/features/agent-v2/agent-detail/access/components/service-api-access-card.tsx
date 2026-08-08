@@ -47,6 +47,7 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
       },
     }),
   )
+  const accessReady = Boolean(apiAccess?.access_ready)
   const isBusy = apiAccessQuery.isPending || toggleServiceApiMutation.isPending
 
   function handleEnabledChange(enabled: boolean) {
@@ -71,14 +72,14 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
         enabled={Boolean(apiAccess?.enabled)}
         onEnabledChange={handleEnabledChange}
         copyLabel={t(($) => $['agentDetail.access.copyServiceEndpoint'])}
-        disabled={apiAccessQuery.isPending || apiAccessQuery.isError}
+        disabled={apiAccessQuery.isPending || apiAccessQuery.isError || !accessReady}
         busy={toggleServiceApiMutation.isPending}
       >
         <Button
           variant="secondary"
           size="medium"
-          className="gap-1.5 px-3"
-          disabled={isBusy || apiAccessQuery.isError}
+          className="px-3"
+          disabled={isBusy || apiAccessQuery.isError || !accessReady}
           onClick={() => setApiKeyModalOpen(true)}
         >
           <span aria-hidden className="i-ri-key-2-line size-4" />
@@ -101,7 +102,7 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
           <Button
             variant="secondary"
             size="medium"
-            className="gap-1.5 px-3"
+            className="px-3"
             onClick={() => {
               void apiAccessQuery.refetch()
             }}

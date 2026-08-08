@@ -43,6 +43,7 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
+from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
 from fields.agent_fields import (
     AgentConfigDraftSummaryResponse,
     AgentConfigSnapshotDetailResponse,
@@ -62,7 +63,7 @@ from libs.datetime_utils import parse_time_range
 from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
-from models.agent import Agent, AgentConfigDraftType, AgentStatus
+from models.agent import Agent, AgentStatus
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import ApiTokenType
 from models.model import ApiToken, App, IconType
@@ -139,6 +140,7 @@ class AgentApiStatusPayload(BaseModel):
 
 
 class AgentApiAccessResponse(BaseModel):
+    access_ready: bool
     enabled: bool
     service_api_base_url: str
     streaming_only: bool = True
@@ -257,19 +259,13 @@ class AgentAppDetailWithSite(GenericAppDetailWithSite):
     debug_conversation_has_messages: bool = False
     debug_conversation_message_count: int = 0
     role: str | None = None
+    access_ready: bool = False
 
 
 class AgentDebugConversationRefreshResponse(BaseModel):
     debug_conversation_id: str
     debug_conversation_has_messages: bool = False
     debug_conversation_message_count: int = 0
-
-
-class AgentDebugConversationRefreshPayload(BaseModel):
-    draft_type: AgentConfigDraftType = Field(
-        default=AgentConfigDraftType.DEBUG_BUILD,
-        description="Agent draft surface whose conversation should be refreshed",
-    )
 
 
 class AgentPublishPayload(BaseModel):
@@ -315,7 +311,6 @@ register_schema_models(
     AgentAppCopyPayload,
     AgentPublishPayload,
     AgentBuildDraftCheckoutPayload,
-    AgentDebugConversationRefreshPayload,
     ComposerSavePayload,
     AgentApiStatusPayload,
     AgentInviteOptionsQuery,
@@ -395,11 +390,10 @@ def _serialize_agent_app_detail(
     payload["backing_app_id"] = roster_service.runtime_backing_app_id(agent)
     payload["hidden_app_backed"] = bool(agent.backing_app_id and agent.backing_app_id != agent.app_id)
     payload["id"] = agent.id
-    debug_conversation_id = roster_service.get_or_create_agent_app_debug_conversation_id(
+    debug_conversation_id = roster_service.get_or_create_build_conversation(
         tenant_id=app_model.tenant_id,
         agent_id=agent.id,
         account_id=current_user.id,
-        draft_type=AgentConfigDraftType.DEBUG_BUILD,
         commit=False,
     )
     message_count = roster_service.count_agent_app_debug_conversation_messages(
@@ -409,6 +403,7 @@ def _serialize_agent_app_detail(
     payload["debug_conversation_has_messages"] = message_count > 0
     payload["debug_conversation_message_count"] = message_count
     payload["role"] = agent.role or ""
+    payload["access_ready"] = agent_has_workflow_callable_active_snapshot(session=session, agent=agent)
     return payload
 
 
@@ -439,11 +434,10 @@ def _serialize_agent_app_pagination(session: Session, app_pagination, *, tenant_
         tenant_id=tenant_id,
         agent_ids=[agent.id for agent in agents_by_app_id.values()],
     )
-    debug_conversation_ids_by_agent_id = roster_service.load_or_create_agent_app_debug_conversation_ids_by_agent_id(
+    debug_conversation_ids_by_agent_id = roster_service.load_or_create_build_conversation_ids_by_agent_id(
         tenant_id=tenant_id,
         agents=list(agents_by_app_id.values()),
         account_id=current_user.id,
-        draft_type=AgentConfigDraftType.DEBUG_BUILD,
     )
     payload = AgentAppPagination.model_validate(
         app_pagination,
@@ -501,10 +495,20 @@ def _agent_api_key_count(session: Session, app_id: str) -> int:
     )
 
 
+def _agent_app_access_ready(session: Session, app_model: App) -> bool:
+    agent = _agent_roster_service(session).get_app_backing_agent(
+        tenant_id=app_model.tenant_id,
+        app_id=str(app_model.id),
+    )
+    return bool(agent and agent_has_workflow_callable_active_snapshot(session=session, agent=agent))
+
+
 def _serialize_agent_api_access(session: Session, app_model: App) -> dict:
     base_url = app_model.api_base_url
+    access_ready = _agent_app_access_ready(session, app_model)
     response = AgentApiAccessResponse(
-        enabled=bool(app_model.enable_api),
+        access_ready=access_ready,
+        enabled=bool(app_model.enable_api and access_ready),
         service_api_base_url=base_url,
         chat_endpoint=f"{base_url}/chat-messages",
         stop_endpoint=f"{base_url}/chat-messages/{{task_id}}/stop",
@@ -678,16 +682,6 @@ class AgentAppApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/debug-conversation/refresh")
 class AgentDebugConversationRefreshApi(Resource):
-    @console_ns.expect(console_ns.models[AgentDebugConversationRefreshPayload.__name__])
-    @console_ns.doc(
-        params={
-            "payload": {
-                "in": "body",
-                "required": False,
-                "schema": {"$ref": f"#/components/schemas/{AgentDebugConversationRefreshPayload.__name__}"},
-            }
-        }
-    )
     @console_ns.response(
         200,
         "Agent debug conversation refreshed",
@@ -702,12 +696,10 @@ class AgentDebugConversationRefreshApi(Resource):
     @with_current_tenant_id
     @with_session
     def post(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
-        args = AgentDebugConversationRefreshPayload.model_validate(request.get_json(silent=True) or {})
-        debug_conversation_id = _agent_roster_service(session).refresh_agent_app_debug_conversation_id(
+        debug_conversation_id = _agent_roster_service(session).reset_build_conversation(
             tenant_id=tenant_id,
             agent_id=str(agent_id),
             account_id=current_user.id,
-            draft_type=args.draft_type,
         )
         return AgentDebugConversationRefreshResponse(
             debug_conversation_id=debug_conversation_id,
@@ -751,7 +743,7 @@ class AgentBuildDraftCheckoutApi(Resource):
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
     @with_current_user
     @with_current_tenant_id
-    @with_session
+    @with_session(write=False)
     def post(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
         args = AgentBuildDraftCheckoutPayload.model_validate(console_ns.payload or {})
         return AgentComposerService.checkout_agent_app_build_draft(
@@ -808,7 +800,7 @@ class AgentBuildDraftApi(Resource):
     @edit_permission_required
     @with_current_user
     @with_current_tenant_id
-    @with_session
+    @with_session(write=False)
     def delete(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
         return AgentComposerService.discard_agent_app_build_draft(
             session=session,
@@ -828,7 +820,7 @@ class AgentBuildDraftApplyApi(Resource):
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
     @with_current_user
     @with_current_tenant_id
-    @with_session
+    @with_session(write=False)
     def post(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
         return AgentComposerService.apply_agent_app_build_draft(
             session=session,

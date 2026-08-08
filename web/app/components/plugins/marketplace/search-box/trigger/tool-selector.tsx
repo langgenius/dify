@@ -7,7 +7,6 @@ import { useTranslation } from '#i18n'
 
 type ToolSelectorTriggerProps = {
   selectedTagsLength: number
-  open: boolean
   tags: string[]
   tagsMap: Record<string, Tag>
   onTagsChange: (tags: string[]) => void
@@ -15,7 +14,6 @@ type ToolSelectorTriggerProps = {
 
 function ToolSelectorTrigger({
   selectedTagsLength,
-  open,
   tags,
   tagsMap,
   onTagsChange,
@@ -49,10 +47,10 @@ function ToolSelectorTrigger({
               !selectedTagsLength && 'size-7 min-h-0 justify-center p-0',
               !!selectedTagsLength &&
                 'border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg py-0.5 pr-7 pl-1 shadow-xs shadow-shadow-shadow-3',
-              open && !selectedTagsLength && 'bg-state-base-hover',
+              !selectedTagsLength && 'data-popup-open:bg-state-base-hover',
             )}
           >
-            <span className={cn('shrink-0', !!selectedTagsLength && 'p-0.5')}>
+            <span className={cn('shrink-0', !!selectedTagsLength && 'py-0.5 pl-0.5')}>
               <span
                 aria-hidden
                 className={cn(
@@ -62,7 +60,7 @@ function ToolSelectorTrigger({
               />
             </span>
             {!!selectedTagsLength && (
-              <span className="flex min-w-0 items-center gap-x-0.5 px-0.5 py-1 system-sm-medium">
+              <span className="flex min-w-0 items-center gap-x-0.5 py-1 system-sm-medium">
                 <span className="truncate text-text-secondary">
                   {tags
                     .map((tag) => tagsMap[tag]?.label)

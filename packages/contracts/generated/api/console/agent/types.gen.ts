@@ -23,6 +23,7 @@ export type AgentAppCreatePayload = {
 
 export type AgentAppDetailWithSite = {
   access_mode?: string | null
+  access_ready?: boolean
   api_base_url?: string | null
   app_id?: string | null
   backing_app_id?: string | null
@@ -78,6 +79,7 @@ export type AgentAppUpdatePayload = {
 }
 
 export type AgentApiAccessResponse = {
+  access_ready: boolean
   api_key_count: number
   api_rph: number
   api_rpm: number
@@ -282,10 +284,6 @@ export type AgentAppCopyPayload = {
   role?: string | null
 }
 
-export type AgentDebugConversationRefreshPayload = {
-  draft_type?: AgentConfigDraftType
-}
-
 export type AgentDebugConversationRefreshResponse = {
   debug_conversation_has_messages?: boolean
   debug_conversation_id: string
@@ -426,7 +424,6 @@ export type AgentReferencingWorkflowsResponse = {
 }
 
 export type SandboxInfoResponse = {
-  session_id: string
   workspace_cwd: string
 }
 
@@ -436,21 +433,22 @@ export type SandboxListResponse = {
   truncated?: boolean
 }
 
+export type AgentSandboxDownloadPayload = {
+  caller_id: string
+  caller_type: 'build_draft' | 'conversation'
+  path: string
+}
+
+export type SandboxDownloadResponse = {
+  url: string
+}
+
 export type SandboxReadResponse = {
   binary: boolean
   path: string
   size?: number | null
   text?: string | null
   truncated: boolean
-}
-
-export type AgentSandboxUploadPayload = {
-  conversation_id: string
-  path: string
-}
-
-export type SandboxUploadResponse = {
-  url: string
 }
 
 export type AgentSkillUploadResponse = {
@@ -822,8 +820,6 @@ export type AgentConfigSkillMarkdownResponse = {
   truncated: boolean
 }
 
-export type AgentConfigDraftType = 'debug_build' | 'draft'
-
 export type AgentDriveItemResponse = {
   created_at?: number | null
   file_kind: string
@@ -939,6 +935,8 @@ export type AgentLogMessageItemResponse = {
   created_at?: number | null
   currency: string
   error?: string | null
+  feedback_enabled?: boolean
+  feedbacks?: Array<AgentLogFeedbackResponse>
   from_account_id?: string | null
   from_end_user_id?: string | null
   id: string
@@ -1227,6 +1225,8 @@ export type AgentSoulToolsConfig = {
   dify_tools?: Array<AgentSoulDifyToolConfig>
 }
 
+export type AgentConfigDraftType = 'debug_build' | 'draft'
+
 export type DeclaredOutputConfig = {
   array_item?: DeclaredArrayItem | null
   check?: DeclaredOutputCheckConfig | null
@@ -1361,6 +1361,12 @@ export type AgentSuggestedQuestionsAfterAnswerModelConfig = {
   name: string
   provider: string
   [key: string]: unknown
+}
+
+export type AgentLogFeedbackResponse = {
+  content?: string | null
+  from_source: 'admin' | 'user'
+  rating: 'dislike' | 'like'
 }
 
 export type SimpleAccount = {
@@ -1892,6 +1898,7 @@ export type AgentAppPaginationWritable = {
 
 export type AgentAppDetailWithSiteWritable = {
   access_mode?: string | null
+  access_ready?: boolean
   api_base_url?: string | null
   app_id?: string | null
   backing_app_id?: string | null
@@ -2756,7 +2763,7 @@ export type PostAgentByAgentIdCopyResponse =
   PostAgentByAgentIdCopyResponses[keyof PostAgentByAgentIdCopyResponses]
 
 export type PostAgentByAgentIdDebugConversationRefreshData = {
-  body?: AgentDebugConversationRefreshPayload
+  body?: never
   path: {
     agent_id: string
   }
@@ -3077,7 +3084,8 @@ export type GetAgentByAgentIdSandboxData = {
     agent_id: string
   }
   query: {
-    conversation_id: string
+    caller_id: string
+    caller_type: 'build_draft' | 'conversation'
   }
   url: '/agent/{agent_id}/sandbox'
 }
@@ -3095,7 +3103,8 @@ export type GetAgentByAgentIdSandboxFilesData = {
     agent_id: string
   }
   query: {
-    conversation_id: string
+    caller_id: string
+    caller_type: 'build_draft' | 'conversation'
     path?: string
   }
   url: '/agent/{agent_id}/sandbox/files'
@@ -3108,13 +3117,30 @@ export type GetAgentByAgentIdSandboxFilesResponses = {
 export type GetAgentByAgentIdSandboxFilesResponse =
   GetAgentByAgentIdSandboxFilesResponses[keyof GetAgentByAgentIdSandboxFilesResponses]
 
+export type PostAgentByAgentIdSandboxFilesDownloadData = {
+  body: AgentSandboxDownloadPayload
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/sandbox/files/download'
+}
+
+export type PostAgentByAgentIdSandboxFilesDownloadResponses = {
+  200: SandboxDownloadResponse
+}
+
+export type PostAgentByAgentIdSandboxFilesDownloadResponse =
+  PostAgentByAgentIdSandboxFilesDownloadResponses[keyof PostAgentByAgentIdSandboxFilesDownloadResponses]
+
 export type GetAgentByAgentIdSandboxFilesReadData = {
   body?: never
   path: {
     agent_id: string
   }
   query: {
-    conversation_id: string
+    caller_id: string
+    caller_type: 'build_draft' | 'conversation'
     path: string
   }
   url: '/agent/{agent_id}/sandbox/files/read'
@@ -3126,22 +3152,6 @@ export type GetAgentByAgentIdSandboxFilesReadResponses = {
 
 export type GetAgentByAgentIdSandboxFilesReadResponse =
   GetAgentByAgentIdSandboxFilesReadResponses[keyof GetAgentByAgentIdSandboxFilesReadResponses]
-
-export type PostAgentByAgentIdSandboxFilesUploadData = {
-  body: AgentSandboxUploadPayload
-  path: {
-    agent_id: string
-  }
-  query?: never
-  url: '/agent/{agent_id}/sandbox/files/upload'
-}
-
-export type PostAgentByAgentIdSandboxFilesUploadResponses = {
-  200: SandboxUploadResponse
-}
-
-export type PostAgentByAgentIdSandboxFilesUploadResponse =
-  PostAgentByAgentIdSandboxFilesUploadResponses[keyof PostAgentByAgentIdSandboxFilesUploadResponses]
 
 export type PostAgentByAgentIdSkillsUploadData = {
   body: {

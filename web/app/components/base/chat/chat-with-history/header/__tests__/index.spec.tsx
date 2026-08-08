@@ -16,23 +16,6 @@ vi.mock('@/app/components/base/chat/chat-with-history/inputs-form/content', () =
   default: () => <div data-testid="inputs-form-content">InputsFormContent</div>,
 }))
 
-vi.mock('@langgenius/dify-ui/dropdown-menu', () => import('@/__mocks__/base-ui-dropdown-menu'))
-vi.mock('@langgenius/dify-ui/tooltip', () => import('@/__mocks__/base-ui-tooltip'))
-
-// Mock Dialog to avoid Base UI focus/portal behavior in tests
-vi.mock('@langgenius/dify-ui/dialog', () => ({
-  Dialog: ({ children, open }: { children: React.ReactNode; open?: boolean }) => {
-    if (!open) return null
-    return <div data-testid="modal">{children}</div>
-  },
-  DialogContent: ({ children }: { children: React.ReactNode }) => (
-    <div role="dialog" data-testid="modal-content">
-      {children}
-    </div>
-  ),
-  DialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}))
-
 const mockAppData: AppData = {
   app_id: 'app-1',
   site: {

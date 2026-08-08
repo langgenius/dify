@@ -125,7 +125,7 @@ const TextGenerationResultPanel: FC<TextGenerationResultPanelProps> = ({
           className={cn(
             isShowResultPanel
               ? 'flex items-center justify-center p-2 pt-6'
-              : 'absolute top-0 left-0 z-10 flex w-full items-center justify-center px-2 pt-[3px] pb-[57px]',
+              : 'absolute top-0 left-0 z-10 flex w-full items-center justify-center px-2 pt-0.75 pb-14.25',
           )}
           onClick={() => {
             if (isShowResultPanel) onHideResultPanel()

@@ -192,31 +192,33 @@ def mock_db_session():
 
 @pytest.fixture
 def mock_dataset(dataset_id, tenant_id):
-    """Create a mock Dataset object."""
-    dataset = Mock(spec=Dataset)
-    dataset.id = dataset_id
-    dataset.tenant_id = tenant_id
-    dataset.indexing_technique = IndexTechniqueType.HIGH_QUALITY
-    dataset.embedding_model_provider = "openai"
-    dataset.embedding_model = "text-embedding-ada-002"
+    """Create a Dataset model object."""
+    dataset = Dataset(
+        id=dataset_id,
+        tenant_id=tenant_id,
+        indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+        embedding_model_provider="openai",
+        embedding_model="text-embedding-ada-002",
+    )
     return dataset
 
 
 @pytest.fixture
 def mock_documents(document_ids, dataset_id):
-    """Create mock Document objects."""
+    """Create Document model objects."""
     documents = []
     for doc_id in document_ids:
-        doc = Mock(spec=Document)
-        doc.id = doc_id
-        doc.dataset_id = dataset_id
-        doc.indexing_status = "waiting"
-        doc.error = None
-        doc.stopped_at = None
-        doc.processing_started_at = None
-        # optional attribute used in some code paths
-        doc.doc_form = IndexStructureType.PARAGRAPH_INDEX
-        documents.append(doc)
+        documents.append(
+            Document(
+                id=doc_id,
+                dataset_id=dataset_id,
+                indexing_status="waiting",
+                error=None,
+                stopped_at=None,
+                processing_started_at=None,
+                doc_form=IndexStructureType.PARAGRAPH_INDEX,
+            )
+        )
     return documents
 
 
@@ -226,6 +228,7 @@ def mock_indexing_runner():
     with patch("tasks.document_indexing_task.IndexingRunner") as mock_runner_class:
         mock_runner = MagicMock()
         mock_runner_class.return_value = mock_runner
+        mock_runner._constructor_mock = mock_runner_class
         yield mock_runner
 
 
@@ -397,7 +400,7 @@ class TestBatchProcessing:
         # Arrange - Create actual document objects that can be modified
         mock_documents = []
         for doc_id in document_ids:
-            doc = MagicMock(spec=Document)
+            doc = Document()
             doc.id = doc_id
             doc.dataset_id = dataset_id
             doc.indexing_status = "waiting"
@@ -422,6 +425,7 @@ class TestBatchProcessing:
                 assert doc.processing_started_at is not None
 
             # IndexingRunner should be called with all documents
+            mock_indexing_runner._constructor_mock.assert_called_once_with(enforce_vector_space_admission=True)
             mock_indexing_runner.run.assert_called_once()
             call_args = mock_indexing_runner.run.call_args[0][0]
             assert len(call_args) == len(document_ids)
@@ -439,7 +443,7 @@ class TestBatchProcessing:
 
         mock_documents = []
         for doc_id in document_ids:
-            doc = MagicMock(spec=Document)
+            doc = Document()
             doc.id = doc_id
             doc.dataset_id = dataset_id
             doc.indexing_status = "waiting"
@@ -479,7 +483,7 @@ class TestBatchProcessing:
 
         mock_documents = []
         for doc_id in document_ids:
-            doc = MagicMock(spec=Document)
+            doc = Document()
             doc.id = doc_id
             doc.dataset_id = dataset_id
             doc.indexing_status = "waiting"
@@ -548,7 +552,7 @@ class TestProgressTracking:
         # Arrange - Create actual document objects
         mock_documents = []
         for doc_id in document_ids:
-            doc = MagicMock(spec=Document)
+            doc = Document()
             doc.id = doc_id
             doc.dataset_id = dataset_id
             doc.indexing_status = "waiting"
@@ -584,7 +588,7 @@ class TestProgressTracking:
         # Arrange - Create actual document objects
         mock_documents = []
         for doc_id in document_ids:
-            doc = MagicMock(spec=Document)
+            doc = Document()
             doc.id = doc_id
             doc.dataset_id = dataset_id
             doc.indexing_status = "waiting"
@@ -666,7 +670,12 @@ class TestErrorHandling:
     """Test cases for error handling and retry mechanisms."""
 
     def test_error_handling_sets_document_error_status(
-        self, dataset_id, document_ids, mock_db_session, mock_dataset, mock_feature_service
+        self,
+        dataset_id,
+        document_ids,
+        mock_db_session,
+        mock_dataset,
+        mock_feature_service,
     ):
         """
         Test that errors during validation set document error status.
@@ -677,7 +686,7 @@ class TestErrorHandling:
         # Arrange - Create actual document objects
         mock_documents = []
         for doc_id in document_ids:
-            doc = MagicMock(spec=Document)
+            doc = Document()
             doc.id = doc_id
             doc.dataset_id = dataset_id
             doc.indexing_status = "waiting"
@@ -692,8 +701,8 @@ class TestErrorHandling:
         # Set up to trigger vector space limit error
         mock_feature_service.get_features.return_value.billing.enabled = True
         mock_feature_service.get_features.return_value.billing.subscription.plan = CloudPlan.PROFESSIONAL
+        mock_feature_service.get_features.return_value.vector_space.size = 100
         mock_feature_service.get_features.return_value.vector_space.limit = 100
-        mock_feature_service.get_features.return_value.vector_space.size = 100  # At limit
 
         # Act
         _document_indexing(dataset_id, document_ids)
@@ -911,7 +920,7 @@ class TestAdvancedScenarios:
         # The new code uses .all() which will only return existing documents
         mock_documents = []
         for i, doc_id in enumerate([document_ids[0], document_ids[2]]):  # Skip middle one
-            doc = MagicMock(spec=Document)
+            doc = Document()
             doc.id = doc_id
             doc.dataset_id = dataset_id
             doc.indexing_status = "waiting"
@@ -982,7 +991,12 @@ class TestAdvancedScenarios:
                 assert mock_redis.setex.call_count >= concurrency_limit
 
     def test_vector_space_limit_edge_case_at_exact_limit(
-        self, dataset_id, document_ids, mock_db_session, mock_dataset, mock_feature_service
+        self,
+        dataset_id,
+        document_ids,
+        mock_db_session,
+        mock_dataset,
+        mock_feature_service,
     ):
         """
         Test vector space limit validation at exact boundary.
@@ -1002,7 +1016,7 @@ class TestAdvancedScenarios:
         # Arrange
         mock_documents = []
         for doc_id in document_ids:
-            doc = MagicMock(spec=Document)
+            doc = Document()
             doc.id = doc_id
             doc.dataset_id = dataset_id
             doc.indexing_status = "waiting"
@@ -1017,8 +1031,8 @@ class TestAdvancedScenarios:
         # Set vector space exactly at limit
         mock_feature_service.get_features.return_value.billing.enabled = True
         mock_feature_service.get_features.return_value.billing.subscription.plan = CloudPlan.PROFESSIONAL
+        mock_feature_service.get_features.return_value.vector_space.size = 100
         mock_feature_service.get_features.return_value.vector_space.limit = 100
-        mock_feature_service.get_features.return_value.vector_space.size = 100  # Exactly at limit
 
         # Act
         _document_indexing(dataset_id, document_ids)
@@ -1141,7 +1155,7 @@ class TestAdvancedScenarios:
 
         mock_documents = []
         for doc_id in large_batch_ids:
-            doc = MagicMock(spec=Document)
+            doc = Document()
             doc.id = doc_id
             doc.dataset_id = dataset_id
             doc.indexing_status = "waiting"
@@ -1183,7 +1197,7 @@ class TestIntegration:
         # Arrange - Create actual document objects
         mock_documents = []
         for doc_id in document_ids:
-            doc = MagicMock(spec=Document)
+            doc = Document()
             doc.id = doc_id
             doc.dataset_id = dataset_id
             doc.indexing_status = "waiting"
@@ -1221,7 +1235,7 @@ class TestIntegration:
         # Arrange - Create actual document objects
         mock_documents = []
         for doc_id in document_ids:
-            doc = MagicMock(spec=Document)
+            doc = Document()
             doc.id = doc_id
             doc.dataset_id = dataset_id
             doc.indexing_status = "waiting"
@@ -1333,7 +1347,12 @@ class TestPerformanceScenarios:
     """Test performance-related scenarios and optimizations."""
 
     def test_large_document_batch_processing(
-        self, dataset_id, mock_db_session, mock_dataset, mock_indexing_runner, mock_feature_service
+        self,
+        dataset_id,
+        mock_db_session,
+        mock_dataset,
+        mock_indexing_runner,
+        mock_feature_service,
     ):
         """
         Test processing a large batch of documents at batch limit.
@@ -1357,7 +1376,7 @@ class TestPerformanceScenarios:
 
         mock_documents = []
         for doc_id in document_ids:
-            doc = MagicMock(spec=Document)
+            doc = Document()
             doc.id = doc_id
             doc.dataset_id = dataset_id
             doc.indexing_status = "waiting"
@@ -1371,8 +1390,8 @@ class TestPerformanceScenarios:
         # Configure billing with sufficient limits
         mock_feature_service.get_features.return_value.billing.enabled = True
         mock_feature_service.get_features.return_value.billing.subscription.plan = CloudPlan.PROFESSIONAL
+        mock_feature_service.get_features.return_value.vector_space.size = 40.75
         mock_feature_service.get_features.return_value.vector_space.limit = 10000
-        mock_feature_service.get_features.return_value.vector_space.size = 0
 
         with patch("tasks.document_indexing_task.dify_config.BATCH_UPLOAD_LIMIT", str(batch_limit)):
             # Act
@@ -1385,6 +1404,7 @@ class TestPerformanceScenarios:
             mock_indexing_runner.run.assert_called_once()
             call_args = mock_indexing_runner.run.call_args[0][0]
             assert len(call_args) == batch_limit
+            mock_feature_service.get_features.assert_called_once_with(mock_dataset.tenant_id)
 
     def test_tenant_queue_handles_burst_traffic(self, tenant_id, dataset_id, mock_redis, mock_db_session, mock_dataset):
         """

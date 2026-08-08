@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -37,6 +39,7 @@ from models import Account
 from models.dataset import ExternalKnowledgeApis
 from services.dataset_service import DatasetService
 from services.enterprise import rbac_service as enterprise_rbac_service
+from services.entities.external_knowledge_entities.external_knowledge_entities import ExternalDatasetCreatePayload
 from services.external_knowledge_service import ExternalDatasetService
 from services.hit_testing_service import HitTestingService
 from services.knowledge_service import BedrockRetrievalSetting, ExternalDatasetTestService
@@ -47,14 +50,6 @@ class ExternalKnowledgeApiPayload(BaseModel):
     settings: dict[str, Any]
 
 
-class ExternalDatasetCreatePayload(BaseModel):
-    external_knowledge_api_id: str
-    external_knowledge_id: str
-    name: str = Field(..., min_length=1, max_length=100)
-    description: str | None = Field(None, max_length=400)
-    external_retrieval_model: dict[str, Any] | None = None
-
-
 class ExternalHitTestingPayload(BaseModel):
     query: str
     external_retrieval_model: dict[str, Any] | None = None
@@ -62,7 +57,7 @@ class ExternalHitTestingPayload(BaseModel):
 
 
 class BedrockRetrievalPayload(BaseModel):
-    retrieval_setting: "BedrockRetrievalSetting"
+    retrieval_setting: BedrockRetrievalSetting
     query: str
     knowledge_id: str
 
@@ -106,7 +101,7 @@ class ExternalKnowledgeApiResponseSource:
         return self.external_knowledge_api.get_dataset_bindings(session=self.session)
 
     def __getattr__(self, name: str) -> Any:
-        return getattr(self.external_knowledge_api, name)  # noqa: no-new-getattr response adapter delegates model fields
+        return getattr(self.external_knowledge_api, name)  # guard-ignore: no-new-getattr -- delegates model fields
 
 
 def external_knowledge_api_response(
@@ -353,14 +348,15 @@ class ExternalDatasetCreateApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EXTERNAL_CONNECT)
+    @rbac_permission_required(
+        RBACResourceScope.DATASET, RBACPermission.DATASET_EXTERNAL_CONNECT, resource_required=False
+    )
     @with_current_user
     @with_current_tenant_id
     @with_session
     def post(self, session: Session, current_tenant_id: str, current_user: Account):
         # The role of the current user in the ta table must be admin, owner, or editor
         payload = ExternalDatasetCreatePayload.model_validate(console_ns.payload or {})
-        args = payload.model_dump(exclude_none=True)
 
         # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
         if not current_user.is_dataset_editor:
@@ -370,7 +366,7 @@ class ExternalDatasetCreateApi(Resource):
             dataset = ExternalDatasetService.create_external_dataset(
                 tenant_id=current_tenant_id,
                 user_id=current_user.id,
-                args=args,
+                args=payload,
                 session=session,
             )
         except services.errors.dataset.DatasetNameDuplicateError:

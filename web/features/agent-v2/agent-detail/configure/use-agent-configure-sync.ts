@@ -7,7 +7,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { mutationOptions, useMutation, useQueryClient } from '@tanstack/react-query'
 import { debounce } from 'es-toolkit/compat'
 import isEqual from 'fast-deep-equal'
-import { useSetAtom, useStore } from 'jotai'
+import { useAtomValue, useSetAtom, useStore } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
@@ -22,7 +22,13 @@ import {
   agentComposerSavedDraftAtom,
   isAgentComposerDirtyAtom,
 } from '@/features/agent-v2/agent-composer/store'
+import { agentComposerToolPresentationIdentitiesAtom } from '@/features/agent-v2/agent-composer/store-modules/tools'
 import { consoleQuery } from '@/service/client'
+import {
+  getAgentToolPublishIssue,
+  useAgentToolPresentation,
+  useAgentToolProviderCatalog,
+} from './tool-provider-catalog'
 
 const DRAFT_AUTOSAVE_WAIT = 5000
 
@@ -40,7 +46,11 @@ export function useAgentConfigureSync({
   enabled: boolean
 }) {
   const { t: tCommon } = useTranslation('common')
+  const { t: tWorkflow } = useTranslation('workflow')
   const getKnowledgeValidationMessage = useKnowledgeValidationMessage()
+  const toolPresentationIdentities = useAtomValue(agentComposerToolPresentationIdentitiesAtom)
+  const toolProviderCatalog = useAgentToolProviderCatalog()
+  const toolPresentation = useAgentToolPresentation(toolPresentationIdentities, toolProviderCatalog)
   const queryClient = useQueryClient()
   const store = useStore()
   const setSavedDraft = useSetAtom(agentComposerSavedDraftAtom)
@@ -135,9 +145,10 @@ export function useAgentConfigureSync({
             agent_soul: configSnapshot,
           },
         })
-      } catch {
+      } catch (error) {
         // Autosave is silent and keeps the local draft intact; explicit commands must stop at this boundary.
         if (!silent) {
+          if (publish) throw error
           throw new Error('Failed to save agent composer draft.')
         }
 
@@ -157,9 +168,21 @@ export function useAgentConfigureSync({
           },
           body: {},
         })
-        await queryClient.invalidateQueries({
-          queryKey: consoleQuery.agent.byAgentId.versions.get.key(),
-        })
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: consoleQuery.agent.byAgentId.versions.get.key(),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: consoleQuery.agent.byAgentId.get.queryKey({
+              input: { params: { agent_id: agentId } },
+            }),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: consoleQuery.agent.byAgentId.apiAccess.get.queryKey({
+              input: { params: { agent_id: agentId } },
+            }),
+          }),
+        ])
       }
 
       return true
@@ -354,6 +377,19 @@ export function useAgentConfigureSync({
       return
     }
 
+    const toolPublishIssue = getAgentToolPublishIssue(draft.tools, toolProviderCatalog)
+    if (toolPublishIssue) {
+      const toolName =
+        toolPresentation.toolDisplayNameById.get(toolPublishIssue.tool.id) ??
+        toolPublishIssue.tool.name
+      toast.error(
+        toolPublishIssue.type === 'uninstalled'
+          ? tWorkflow(($) => $['nodes.agent.toolNotInstallTooltip'], { tool: toolName })
+          : tWorkflow(($) => $['nodes.agent.toolNotAuthorizedTooltip'], { tool: toolName }),
+      )
+      return
+    }
+
     const knowledgeValidation = validateKnowledgeRetrievals(draft.knowledgeRetrievals)
     if (!knowledgeValidation.isValid) {
       toast.error(
@@ -378,7 +414,20 @@ export function useAgentConfigureSync({
       })
       toast.success(tCommon(($) => $['api.actionSuccess']))
     } catch (error) {
-      toast.error(tCommon(($) => $['api.actionFailed']))
+      let errorData: unknown = error
+      if (error instanceof Response) {
+        try {
+          errorData = await error.clone().json()
+        } catch {}
+      }
+      toast.error(
+        errorData &&
+          typeof errorData === 'object' &&
+          'message' in errorData &&
+          typeof errorData.message === 'string'
+          ? errorData.message
+          : tCommon(($) => $['api.actionFailed']),
+      )
       throw error
     } finally {
       publishInFlightRef.current = false
@@ -392,6 +441,9 @@ export function useAgentConfigureSync({
     runPublishTransaction,
     store,
     tCommon,
+    toolProviderCatalog,
+    toolPresentation.toolDisplayNameById,
+    tWorkflow,
   ])
 
   return {

@@ -9,6 +9,7 @@ import {
   SelectItemIndicator,
   SelectItemText,
   SelectTrigger,
+  SelectValue,
 } from '@langgenius/dify-ui/select'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -156,7 +157,7 @@ const SelectPreview: React.FC<{ label: string; options: string[] }> = ({ label, 
           className="w-full rounded-[10px]"
           aria-label="human-input-note-select"
         >
-          {value}
+          <SelectValue />
         </SelectTrigger>
         <SelectContent listClassName="max-h-[140px] overflow-y-auto">
           {options.map((option) => (

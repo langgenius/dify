@@ -3,14 +3,12 @@ import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { defaultPlan } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
 import { useModalContextSelector } from '@/context/modal-context'
 import { ModalContextProvider } from '@/context/modal-context-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
-
-const mockSetEducationVerifying = vi.hoisted(() => vi.fn())
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
@@ -23,21 +21,12 @@ vi.mock('@/app/components/billing/pricing', () => ({
   default: () => <div>billing.plansCommon.mostPopular</div>,
 }))
 
-vi.mock('@/app/components/header/account-setting', () => ({
-  default: ({ activeTab, onCancelAction }: { activeTab: string; onCancelAction: () => void }) => (
-    <>
-      <div role="status" aria-label="active account setting tab">
-        {activeTab}
-      </div>
-      <button type="button" onClick={onCancelAction}>
-        cancel account setting
-      </button>
-    </>
+vi.mock('@/app/components/plugins/update-plugin', () => ({
+  default: ({ onSave }: { onSave: () => void | Promise<void> }) => (
+    <button data-testid="save-plugin-update" onClick={onSave}>
+      Save plugin update
+    </button>
   ),
-}))
-
-vi.mock('@/app/education-apply/storage', () => ({
-  useSetEducationVerifying: () => mockSetEducationVerifying,
 }))
 
 const mockUseProviderContext = vi.fn()
@@ -81,9 +70,50 @@ const createPlan = (overrides: PlanOverrides = {}): PlanShape => ({
   },
 })
 
-const renderProvider = (
-  children: React.ReactNode = <div data-testid="modal-context-test-child" />,
-) => {
+const ModalBlockingState = () => {
+  const hasBlockingModalOpen = useModalContextSelector((state) => state.hasBlockingModalOpen)
+
+  return <output>{hasBlockingModalOpen ? 'blocked' : 'clear'}</output>
+}
+
+const UpdatePluginTrigger = ({
+  onSave,
+  category = PluginCategoryEnum.model,
+}: {
+  onSave: () => void | Promise<void>
+  category?: PluginCategoryEnum
+}) => {
+  const setShowUpdatePluginModal = useModalContextSelector(
+    (state) => state.setShowUpdatePluginModal,
+  )
+
+  return (
+    <button
+      onClick={() =>
+        setShowUpdatePluginModal({
+          onSaveCallback: onSave,
+          payload: {
+            type: PluginSource.github,
+            category,
+            github: {
+              originalPackageInfo: {
+                id: 'plugin@1.0.0',
+                repo: 'owner/repo',
+                version: '1.0.0',
+                package: 'plugin.difypkg',
+                releases: [],
+              },
+            },
+          },
+        })
+      }
+    >
+      Open plugin update
+    </button>
+  )
+}
+
+const renderProvider = (children: React.ReactNode = <ModalBlockingState />) => {
   const { wrapper: QueryWrapper } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: 'CLOUD' },
   })
@@ -97,47 +127,10 @@ const renderProvider = (
   return render(<ModalContextProvider>{children}</ModalContextProvider>, { wrapper })
 }
 
-const AccountSettingOpener = () => {
-  const setShowAccountSettingModal = useModalContextSelector(
-    (state) => state.setShowAccountSettingModal,
-  )
-
-  return (
-    <button
-      type="button"
-      onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })}
-    >
-      open account setting
-    </button>
-  )
-}
-
-const PreferencesOpener = () => {
-  const setShowAccountSettingModal = useModalContextSelector(
-    (state) => state.setShowAccountSettingModal,
-  )
-
-  return (
-    <button
-      type="button"
-      onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PREFERENCES })}
-    >
-      open preferences
-    </button>
-  )
-}
-
-const BlockingModalProbe = () => {
-  const hasBlockingModalOpen = useModalContextSelector((state) => state.hasBlockingModalOpen)
-
-  return <div data-testid="has-blocking-modal-open">{String(hasBlockingModalOpen)}</div>
-}
-
 describe('ModalContextProvider trigger events limit modal', () => {
   beforeEach(() => {
     mockConsoleStateReader.mockReset()
     mockUseProviderContext.mockReset()
-    mockSetEducationVerifying.mockReset()
     window.localStorage.clear()
     mockConsoleStateReader.mockReturnValue({
       currentWorkspace: {
@@ -170,66 +163,18 @@ describe('ModalContextProvider trigger events limit modal', () => {
 
     await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument())
     expect(screen.getAllByText('3000')).toHaveLength(2)
+    expect(screen.getByText('blocked')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'billing.triggerLimitModal.dismiss' }))
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(screen.getByText('clear')).toBeInTheDocument()
     await waitFor(() => {
       expect(setItemSpy.mock.calls.length).toBeGreaterThan(0)
     })
     const [key, value] = (setItemSpy.mock.calls[0] ?? []) as [string, string]
     expect(key).toContain('trigger-events-limit-dismissed-workspace-1-professional-3000-')
     expect(value).toBe('1')
-  })
-
-  it('clears the education verifying flag when account settings are canceled', async () => {
-    mockUseProviderContext.mockReturnValue({
-      plan: createPlan(),
-      isFetchedPlan: true,
-    })
-    const user = userEvent.setup()
-
-    renderProvider(<AccountSettingOpener />)
-
-    await user.click(screen.getByRole('button', { name: 'open account setting' }))
-    await user.click(await screen.findByRole('button', { name: 'cancel account setting' }))
-
-    expect(mockSetEducationVerifying).toHaveBeenCalledWith(expect.any(Function))
-    const updater = mockSetEducationVerifying.mock.calls[0]?.[0] as (
-      educationVerifying: string,
-    ) => string | null
-    expect(updater('yes')).toBeNull()
-    expect(updater('no')).toBe('no')
-  })
-
-  it('opens preferences in the account settings shell', async () => {
-    mockUseProviderContext.mockReturnValue({
-      plan: createPlan(),
-      isFetchedPlan: true,
-    })
-    const user = userEvent.setup()
-
-    renderProvider(
-      <>
-        <BlockingModalProbe />
-        <PreferencesOpener />
-      </>,
-    )
-
-    expect(screen.getByTestId('has-blocking-modal-open')).toHaveTextContent('false')
-
-    await user.click(screen.getByRole('button', { name: 'open preferences' }))
-
-    expect(
-      await screen.findByRole('status', { name: 'active account setting tab' }),
-    ).toHaveTextContent(ACCOUNT_SETTING_TAB.PREFERENCES)
-    expect(screen.getByTestId('has-blocking-modal-open')).toHaveTextContent('true')
-
-    await user.click(screen.getByRole('button', { name: 'cancel account setting' }))
-
-    await waitFor(() => {
-      expect(screen.getByTestId('has-blocking-modal-open')).toHaveTextContent('false')
-    })
   })
 
   it('relies on the in-memory guard when localStorage reads throw', async () => {
@@ -249,13 +194,20 @@ describe('ModalContextProvider trigger events limit modal', () => {
     const setItemSpy = vi.spyOn(localStorage, 'setItem')
     const user = userEvent.setup()
 
-    renderProvider()
+    const { rerender } = renderProvider()
 
     await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument())
 
     await user.click(screen.getByRole('button', { name: 'billing.triggerLimitModal.dismiss' }))
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    rerender(
+      <ModalContextProvider>
+        <ModalBlockingState />
+      </ModalContextProvider>,
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(screen.getByText('clear')).toBeInTheDocument()
     expect(setItemSpy).not.toHaveBeenCalled()
   })
 
@@ -275,13 +227,20 @@ describe('ModalContextProvider trigger events limit modal', () => {
     })
     const user = userEvent.setup()
 
-    renderProvider()
+    const { rerender } = renderProvider()
 
     await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument())
 
     await user.click(screen.getByRole('button', { name: 'billing.triggerLimitModal.dismiss' }))
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    rerender(
+      <ModalContextProvider>
+        <ModalBlockingState />
+      </ModalContextProvider>,
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(screen.getByText('clear')).toBeInTheDocument()
   })
 
   it('closes the trigger events limit modal and opens pricing when upgrading', async () => {
@@ -307,5 +266,60 @@ describe('ModalContextProvider trigger events limit modal', () => {
       expect(screen.getByText('billing.plansCommon.mostPopular')).toBeInTheDocument(),
     )
     expect(screen.queryByText('400')).not.toBeInTheDocument()
+    expect(screen.getByText('blocked')).toBeInTheDocument()
+  })
+})
+
+describe('ModalContextProvider plugin update modal', () => {
+  beforeEach(() => {
+    mockConsoleStateReader.mockReset()
+    mockUseProviderContext.mockReset()
+    mockConsoleStateReader.mockReturnValue({
+      currentWorkspace: {
+        id: 'workspace-1',
+      },
+    })
+    mockUseProviderContext.mockReturnValue({
+      plan: createPlan(),
+      isFetchedPlan: false,
+    })
+  })
+
+  it('keeps a model plugin update open until its refresh callback finishes', async () => {
+    let resolveSave: (() => void) | undefined
+    const onSave = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveSave = resolve
+        }),
+    )
+    const user = userEvent.setup()
+
+    renderProvider(<UpdatePluginTrigger onSave={onSave} />)
+
+    await user.click(screen.getByRole('button', { name: 'Open plugin update' }))
+    await user.click(screen.getByTestId('save-plugin-update'))
+
+    expect(onSave).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId('save-plugin-update')).toBeInTheDocument()
+
+    resolveSave?.()
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('save-plugin-update')).not.toBeInTheDocument()
+    })
+  })
+
+  it('closes a non-model plugin update immediately after saving', async () => {
+    const onSave = vi.fn()
+    const user = userEvent.setup()
+
+    renderProvider(<UpdatePluginTrigger onSave={onSave} category={PluginCategoryEnum.tool} />)
+
+    await user.click(screen.getByRole('button', { name: 'Open plugin update' }))
+    await user.click(screen.getByTestId('save-plugin-update'))
+
+    expect(onSave).toHaveBeenCalledTimes(1)
+    expect(screen.queryByTestId('save-plugin-update')).not.toBeInTheDocument()
   })
 })

@@ -256,7 +256,7 @@ const Empty = ({
                 {emptyText}
               </div>
             </div>
-            <div className="flex w-[236px] flex-col">
+            <div className="flex w-59 flex-col">
               <input
                 type="file"
                 ref={fileInputRef}
@@ -271,7 +271,7 @@ const Empty = ({
                       key={action}
                       variant="secondary"
                       title={text}
-                      className="h-8 w-full justify-start gap-x-0.5 px-3 py-2 system-sm-medium"
+                      className="h-8 w-full justify-start py-2 system-sm-medium"
                       onClick={() => {
                         if (action === 'local') fileInputRef.current?.click()
                         else if (action === 'marketplace')
@@ -284,7 +284,7 @@ const Empty = ({
                       ) : (
                         <Icon className="size-4 text-components-button-secondary-text" />
                       )}
-                      <span className="min-w-0 flex-1 truncate px-0.5 text-left">{text}</span>
+                      <span className="min-w-0 flex-1 truncate text-left">{text}</span>
                     </Button>
                   ),
                 )}
