@@ -5,26 +5,54 @@ from unittest.mock import MagicMock
 import pytest
 from pydantic import BaseModel
 from pytest_mock import MockerFixture
-from sqlalchemy.dialects import postgresql
+from sqlalchemy import Engine, event
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.plugin.backwards_invocation.app import PluginAppBackwardsInvocation
 from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
-from models.model import AppMode
+from models import Account, Tenant, TenantAccountJoin
+from models.enums import EndUserType
+from models.model import App, AppMode, AppModelConfig, EndUser
+from models.workflow import Workflow, WorkflowType
 
 
 class _Chunk(BaseModel):
     value: int
 
 
-def _build_app_model_config(result: dict | None = None):
-    app_model_config = MagicMock()
-    app_model_config.app_id = "app-1"
-    app_model_config.to_dict.return_value = result or {
-        "user_input_form": [{"name": "bar"}],
-        "annotation_reply": {"enabled": False},
-    }
-    return app_model_config
+def _app(
+    *,
+    app_id: str = "app-1",
+    tenant_id: str = "tenant-1",
+    mode: AppMode = AppMode.WORKFLOW,
+    workflow_id: str | None = None,
+    app_model_config_id: str | None = None,
+) -> App:
+    return App(
+        id=app_id,
+        tenant_id=tenant_id,
+        name="Plugin app",
+        description="",
+        mode=mode,
+        enable_site=False,
+        enable_api=False,
+        workflow_id=workflow_id,
+        app_model_config_id=app_model_config_id,
+    )
+
+
+def _workflow(*, workflow_id: str = "workflow-1", app_id: str = "app-1", tenant_id: str = "tenant-1") -> Workflow:
+    return Workflow(
+        id=workflow_id,
+        tenant_id=tenant_id,
+        app_id=app_id,
+        type=WorkflowType.WORKFLOW,
+        version=Workflow.VERSION_DRAFT,
+        graph="{}",
+        _features="{}",
+        created_by="account-1",
+    )
 
 
 class TestBaseBackwardsInvocation:
@@ -53,17 +81,18 @@ class TestBaseBackwardsInvocation:
 
 
 class TestPluginAppBackwardsInvocation:
-    def patch_create_session(self, mocker: MockerFixture, *, return_value=None, side_effect=None):
-        session = MagicMock()
-        if side_effect is not None:
-            session.scalar.side_effect = side_effect
-        else:
-            session.scalar.return_value = return_value
-        session_ctx = MagicMock()
-        session_ctx.__enter__.return_value = session
-        session_ctx.__exit__.return_value = None
-        mocker.patch("core.plugin.backwards_invocation.app.create_session", return_value=session_ctx)
-        return session
+    @pytest.fixture(autouse=True)
+    def _real_sessions(
+        self,
+        mocker: MockerFixture,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+        sqlite_engine: Engine,
+    ) -> None:
+        self.session = sqlite_session
+        self.session_factory = sqlite_session_factory
+        self.sqlite_engine = sqlite_engine
+        mocker.patch("core.plugin.backwards_invocation.app.create_session", side_effect=sqlite_session_factory)
 
     def test_fetch_app_info_workflow_path(self, mocker: MockerFixture):
         workflow = MagicMock()
@@ -124,7 +153,7 @@ class TestPluginAppBackwardsInvocation:
             stream=False,
             inputs={"x": 1},
             files=[],
-            session=MagicMock(),
+            session=self.session,
         )
 
         assert result == {"routed": True}
@@ -151,7 +180,7 @@ class TestPluginAppBackwardsInvocation:
             stream=True,
             inputs={},
             files=[],
-            session=MagicMock(),
+            session=self.session,
         )
 
         assert result == {"ok": True}
@@ -173,7 +202,7 @@ class TestPluginAppBackwardsInvocation:
                 stream=False,
                 inputs={},
                 files=[],
-                session=MagicMock(),
+                session=self.session,
             )
 
     def test_invoke_app_unexpected_mode_raises(self, mocker: MockerFixture):
@@ -190,7 +219,7 @@ class TestPluginAppBackwardsInvocation:
                 stream=False,
                 inputs={},
                 files=[],
-                session=MagicMock(),
+                session=self.session,
             )
 
     @pytest.mark.parametrize(
@@ -212,7 +241,7 @@ class TestPluginAppBackwardsInvocation:
             stream=False,
             inputs={"k": "v"},
             files=[],
-            session=MagicMock(),
+            session=self.session,
         )
 
         assert result == {"result": "ok"}
@@ -228,13 +257,13 @@ class TestPluginAppBackwardsInvocation:
 
         mocker.patch(
             "core.plugin.backwards_invocation.app.db",
-            SimpleNamespace(engine=MagicMock()),
+            SimpleNamespace(engine=self.sqlite_engine),
         )
         generator_spy = mocker.patch(
             "core.plugin.backwards_invocation.app.AdvancedChatAppGenerator.generate",
             return_value={"result": "ok"},
         )
-        session = MagicMock()
+        session = self.session
 
         result = PluginAppBackwardsInvocation.invoke_chat_app(
             app=app,
@@ -266,7 +295,7 @@ class TestPluginAppBackwardsInvocation:
                 stream=False,
                 inputs={},
                 files=[],
-                session=MagicMock(),
+                session=self.session,
             )
 
     def test_invoke_chat_app_unexpected_mode_raises(self):
@@ -280,7 +309,7 @@ class TestPluginAppBackwardsInvocation:
                 stream=False,
                 inputs={},
                 files=[],
-                session=MagicMock(),
+                session=self.session,
             )
 
     def test_invoke_workflow_app_injects_pause_state_config(self, mocker: MockerFixture):
@@ -292,7 +321,7 @@ class TestPluginAppBackwardsInvocation:
 
         mocker.patch(
             "core.plugin.backwards_invocation.app.db",
-            SimpleNamespace(engine=MagicMock()),
+            SimpleNamespace(engine=self.sqlite_engine),
         )
         generator_spy = mocker.patch(
             "core.plugin.backwards_invocation.app.WorkflowAppGenerator.generate",
@@ -329,7 +358,7 @@ class TestPluginAppBackwardsInvocation:
                 stream=False,
                 inputs={},
                 files=[],
-                session=MagicMock(),
+                session=self.session,
             )
 
     def test_invoke_completion_app(self, mocker: MockerFixture):
@@ -338,60 +367,76 @@ class TestPluginAppBackwardsInvocation:
         )
         app = MagicMock(mode=AppMode.COMPLETION)
 
-        result = PluginAppBackwardsInvocation.invoke_completion_app(app, MagicMock(), False, {"x": 1}, [], MagicMock())
+        result = PluginAppBackwardsInvocation.invoke_completion_app(app, MagicMock(), False, {"x": 1}, [], self.session)
 
         assert result == {"ok": 1}
         assert spy.call_count == 1
 
-    def test_get_user_returns_end_user(self, mocker: MockerFixture):
-        session = self.patch_create_session(mocker, side_effect=[MagicMock(id="end-user")])
+    def test_get_user_returns_end_user(self):
         app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+        end_user = EndUser(
+            id="uid",
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+            type=EndUserType.BROWSER,
+            session_id="browser-session",
+            name="Browser user",
+            is_anonymous=True,
+        )
+        self.session.add(end_user)
+        self.session.commit()
 
         user = PluginAppBackwardsInvocation._get_user("uid", app)
 
-        assert user.id == "end-user"
-        stmt = session.scalar.call_args_list[0].args[0]
-        compiled = str(stmt.compile(dialect=postgresql.dialect()))
-        assert "end_users.id" in compiled
-        assert "end_users.tenant_id" in compiled
-        assert "end_users.app_id" in compiled
-        assert stmt.compile().params == {"id_1": "uid", "tenant_id_1": "tenant-1", "app_id_1": "app-1"}
+        assert user.id == "uid"
+        assert user.tenant_id == app.tenant_id
+        assert user.app_id == app.id
 
-    def test_get_user_returns_end_user_by_session_id(self, mocker: MockerFixture):
-        session = self.patch_create_session(mocker, side_effect=[None, MagicMock(id="session-user")])
+    def test_get_user_returns_end_user_by_session_id(self):
         app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+        end_user = EndUser(
+            id="session-user",
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+            type=EndUserType.BROWSER,
+            session_id="wecom-sender-1",
+            name="External user",
+            is_anonymous=True,
+        )
+        self.session.add(end_user)
+        self.session.commit()
 
         user = PluginAppBackwardsInvocation._get_user("wecom-sender-1", app)
 
         assert user.id == "session-user"
-        stmt = session.scalar.call_args_list[1].args[0]
-        compiled = str(stmt.compile(dialect=postgresql.dialect()))
-        assert "end_users.session_id" in compiled
-        assert "end_users.tenant_id" in compiled
-        assert "end_users.app_id" in compiled
-        assert stmt.compile().params == {
-            "session_id_1": "wecom-sender-1",
-            "tenant_id_1": "tenant-1",
-            "app_id_1": "app-1",
-        }
 
-    def test_get_user_falls_back_to_account_user(self, mocker: MockerFixture):
-        session = self.patch_create_session(mocker, side_effect=[None, None, MagicMock(id="account-user")])
+    def test_get_user_falls_back_to_account_user(self):
         app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+        tenant = Tenant(name="Plugin tenant")
+        tenant.id = app.tenant_id
+        account = Account(name="Account user", email="account-user@example.com")
+        account.id = "account-user"
+        membership = TenantAccountJoin(tenant_id=tenant.id, account_id=account.id)
+        self.session.add_all([tenant, account, membership])
+        self.session.commit()
 
-        user = PluginAppBackwardsInvocation._get_user("uid", app)
+        user = PluginAppBackwardsInvocation._get_user(account.id, app)
 
         assert user.id == "account-user"
-        stmt = session.scalar.call_args_list[2].args[0]
-        compiled = str(stmt.compile(dialect=postgresql.dialect()))
-        assert "accounts.id" in compiled
-        assert "tenant_account_joins.account_id" in compiled
-        assert "tenant_account_joins.tenant_id" in compiled
-        assert stmt.compile().params == {"id_1": "uid", "tenant_id_1": "tenant-1"}
 
-    def test_get_user_raises_when_user_not_found(self, mocker: MockerFixture):
-        self.patch_create_session(mocker, side_effect=[None, None, None])
+    def test_get_user_raises_when_user_not_found(self):
         app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+        other_tenant_user = EndUser(
+            id="uid",
+            tenant_id="other-tenant",
+            app_id=app.id,
+            type=EndUserType.BROWSER,
+            session_id="uid",
+            name="Wrong tenant",
+            is_anonymous=True,
+        )
+        self.session.add(other_tenant_user)
+        self.session.commit()
 
         with pytest.raises(ValueError, match="user not found"):
             PluginAppBackwardsInvocation._get_user("uid", app)
@@ -418,54 +463,56 @@ class TestPluginAppBackwardsInvocation:
             stream=True,
             inputs={},
             files=[],
-            session=MagicMock(),
+            session=self.session,
         )
 
         assert result == {"ok": True}
         get_or_create.assert_called_once_with(app, user_id="wecom-sender-1")
         assert route.call_args.args[2] is end_user
 
-    def test_get_app_returns_app(self, mocker: MockerFixture):
-        app_obj = MagicMock(id="app")
-        self.patch_create_session(mocker, return_value=app_obj)
+    def test_get_app_returns_app(self):
+        app_obj = _app(app_id="app", tenant_id="tenant")
+        self.session.add(app_obj)
+        self.session.commit()
 
-        assert PluginAppBackwardsInvocation._get_app("app", "tenant") is app_obj
+        result = PluginAppBackwardsInvocation._get_app("app", "tenant")
+        assert result.id == app_obj.id
+        assert result.tenant_id == app_obj.tenant_id
 
-    def test_get_app_raises_when_missing(self, mocker: MockerFixture):
-        self.patch_create_session(mocker, return_value=None)
-
-        with pytest.raises(ValueError, match="app not found"):
-            PluginAppBackwardsInvocation._get_app("app", "tenant")
-
-    def test_get_app_raises_when_query_fails(self, mocker: MockerFixture):
-        self.patch_create_session(mocker, side_effect=RuntimeError("db down"))
+    def test_get_app_raises_when_missing(self):
+        self.session.add(_app(app_id="app", tenant_id="other-tenant"))
+        self.session.commit()
 
         with pytest.raises(ValueError, match="app not found"):
             PluginAppBackwardsInvocation._get_app("app", "tenant")
 
-    def test_get_workflow_stays_inside_app_boundary(self, mocker: MockerFixture):
-        workflow = MagicMock(id="workflow")
-        session = self.patch_create_session(mocker, return_value=workflow)
+    def test_get_app_raises_when_query_fails(self):
+        def fail_query(*_args, **_kwargs):
+            raise RuntimeError("db down")
+
+        event.listen(self.sqlite_engine, "before_cursor_execute", fail_query, once=True)
+
+        with pytest.raises(ValueError, match="app not found"):
+            PluginAppBackwardsInvocation._get_app("app", "tenant")
+
+    def test_get_workflow_stays_inside_app_boundary(self):
+        workflow = _workflow()
+        other_workflow = _workflow(workflow_id="workflow-other", tenant_id="other-tenant")
+        self.session.add_all([workflow, other_workflow])
+        self.session.commit()
         app = SimpleNamespace(id="app-1", tenant_id="tenant-1", workflow_id="workflow-1")
 
-        assert PluginAppBackwardsInvocation._get_workflow(app) is workflow
-
-        stmt = session.scalar.call_args.args[0]
-        compiled = str(stmt.compile(dialect=postgresql.dialect()))
-        assert "workflows.id" in compiled
-        assert "workflows.tenant_id" in compiled
-        assert "workflows.app_id" in compiled
-        assert stmt.compile().params == {
-            "id_1": "workflow-1",
-            "tenant_id_1": "tenant-1",
-            "app_id_1": "app-1",
-            "param_1": 1,
-        }
+        result = PluginAppBackwardsInvocation._get_workflow(app)
+        assert result is not None
+        assert result.id == workflow.id
+        assert result.tenant_id == app.tenant_id
 
     def test_get_app_model_config_dict_uses_explicit_session_for_annotation_reply(self, mocker: MockerFixture):
         annotation_reply = {"enabled": False}
-        app_model_config = _build_app_model_config()
-        session = self.patch_create_session(mocker, return_value=app_model_config)
+        app_model_config = AppModelConfig(app_id="app-1", user_input_form=json.dumps([{"name": "bar"}]))
+        app_model_config.id = "config-1"
+        self.session.add(app_model_config)
+        self.session.commit()
         load_annotation_reply_config = mocker.patch(
             "core.plugin.backwards_invocation.app.load_annotation_reply_config",
             return_value=annotation_reply,
@@ -477,11 +524,6 @@ class TestPluginAppBackwardsInvocation:
         assert result is not None
         assert result["user_input_form"] == [{"name": "bar"}]
         assert result["annotation_reply"] == annotation_reply
-        load_annotation_reply_config.assert_called_once_with(session, "app-1")
-        app_model_config.to_dict.assert_called_once_with(annotation_reply=annotation_reply)
-
-        stmt = session.scalar.call_args.args[0]
-        compiled = str(stmt.compile(dialect=postgresql.dialect()))
-        assert "app_model_configs.id" in compiled
-        assert "app_model_configs.app_id" in compiled
-        assert stmt.compile().params == {"id_1": "config-1", "app_id_1": "app-1", "param_1": 1}
+        queried_session, queried_app_id = load_annotation_reply_config.call_args.args
+        assert isinstance(queried_session, Session)
+        assert queried_app_id == "app-1"
