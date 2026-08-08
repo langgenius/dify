@@ -58,7 +58,9 @@ describe('detectTokenStore', () => {
     const f = memStore('file')
     const result = await detectTokenStore({
       factory: {
-        keyring: () => { throw new Error('no backend') },
+        keyring: () => {
+          throw new Error('no backend')
+        },
         file: () => f,
       },
     })

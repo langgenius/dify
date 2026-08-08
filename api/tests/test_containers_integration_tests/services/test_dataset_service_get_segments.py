@@ -173,7 +173,9 @@ class TestSegmentServiceGetSegments:
         )
 
         # Act
-        items, total = SegmentService.get_segments(document_id=document.id, tenant_id=tenant.id, page=1, limit=20)
+        items, total = SegmentService.get_segments(
+            document_id=document.id, tenant_id=tenant.id, page=1, limit=20, session=db_session_with_containers
+        )
 
         # Assert
         assert len(items) == 2
@@ -226,7 +228,10 @@ class TestSegmentServiceGetSegments:
 
         # Act
         items, total = SegmentService.get_segments(
-            document_id=document.id, tenant_id=tenant.id, status_list=["completed", "indexing"]
+            document_id=document.id,
+            tenant_id=tenant.id,
+            status_list=["completed", "indexing"],
+            session=db_session_with_containers,
         )
 
         # Assert
@@ -270,7 +275,9 @@ class TestSegmentServiceGetSegments:
         )
 
         # Act
-        items, total = SegmentService.get_segments(document_id=document.id, tenant_id=tenant.id, status_list=[])
+        items, total = SegmentService.get_segments(
+            document_id=document.id, tenant_id=tenant.id, status_list=[], session=db_session_with_containers
+        )
 
         # Assert — empty status_list should return all segments (no status filter applied)
         assert len(items) == 2
@@ -311,7 +318,9 @@ class TestSegmentServiceGetSegments:
         )
 
         # Act
-        items, total = SegmentService.get_segments(document_id=document.id, tenant_id=tenant.id, keyword="search term")
+        items, total = SegmentService.get_segments(
+            document_id=document.id, tenant_id=tenant.id, keyword="search term", session=db_session_with_containers
+        )
 
         # Assert
         assert len(items) == 1
@@ -364,7 +373,9 @@ class TestSegmentServiceGetSegments:
         )
 
         # Act
-        items, total = SegmentService.get_segments(document_id=document.id, tenant_id=tenant.id)
+        items, total = SegmentService.get_segments(
+            document_id=document.id, tenant_id=tenant.id, session=db_session_with_containers
+        )
 
         # Assert — segments should be ordered by position ASC
         assert len(items) == 3
@@ -386,7 +397,9 @@ class TestSegmentServiceGetSegments:
         non_existent_doc_id = str(uuid4())
 
         # Act
-        items, total = SegmentService.get_segments(document_id=non_existent_doc_id, tenant_id=tenant.id)
+        items, total = SegmentService.get_segments(
+            document_id=non_existent_doc_id, tenant_id=tenant.id, session=db_session_with_containers
+        )
 
         # Assert
         assert items == []
@@ -447,6 +460,7 @@ class TestSegmentServiceGetSegments:
             keyword="important",
             page=1,
             limit=10,
+            session=db_session_with_containers,
         )
 
         # Assert — only the first segment matches both filters
@@ -494,6 +508,7 @@ class TestSegmentServiceGetSegments:
             document_id=document.id,
             tenant_id=tenant.id,
             status_list=None,
+            session=db_session_with_containers,
         )
 
         # Assert — None status_list should return all segments
@@ -532,6 +547,7 @@ class TestSegmentServiceGetSegments:
             document_id=document.id,
             tenant_id=tenant.id,
             limit=200,
+            session=db_session_with_containers,
         )
 
         # Assert — total is 105, but items per page capped at 100

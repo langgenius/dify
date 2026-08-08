@@ -38,8 +38,7 @@ const TOKEN_MINT_APPROVE_ATTEMPTS = 5
 const TOKEN_MINT_RETRY_BASE_MS = 2_000
 
 export async function setup(project: TestProject): Promise<void> {
-  if (process.env.DIFY_E2E_MODE === 'local')
-    return
+  if (process.env.DIFY_E2E_MODE === 'local') return
 
   const E = loadE2EEnv()
   const consoleBase = E.consoleUrl.replace(/\/$/, '')
@@ -66,20 +65,19 @@ export async function setup(project: TestProject): Promise<void> {
   async function loadCachedToken(): Promise<string> {
     try {
       const raw = await readFile(TOKEN_CACHE, 'utf8')
-      const { token, host } = JSON.parse(raw) as { token?: string, host?: string }
+      const { token, host } = JSON.parse(raw) as { token?: string; host?: string }
       // Invalidate if host changed (different staging env)
-      if (!token || host !== E.host)
-        return ''
+      if (!token || host !== E.host) return ''
       return token
+    } catch {
+      return ''
     }
-    catch { return '' }
   }
 
   async function saveCachedToken(token: string): Promise<void> {
     try {
       await writeFile(TOKEN_CACHE, JSON.stringify({ token, host: E.host }, null, 2), 'utf8')
-    }
-    catch (err) {
+    } catch (err) {
       console.warn(`[E2E] Could not save token cache: ${err}`)
     }
   }
@@ -91,33 +89,35 @@ export async function setup(project: TestProject): Promise<void> {
         signal: AbortSignal.timeout(8_000),
       })
       return r.ok
+    } catch {
+      return false
     }
-    catch { return false }
   }
 
   let primaryToken = E.token
   if (primaryToken) {
     console.warn(`[E2E] primaryToken from env: ${primaryToken.slice(0, 20)}…`)
-  }
-  else {
+  } else {
     // Try cache first
     const cached = await loadCachedToken()
-    if (cached && await validateToken(cached)) {
+    if (cached && (await validateToken(cached))) {
       primaryToken = cached
       console.warn(`[E2E] primaryToken from cache: ${primaryToken.slice(0, 20)}…`)
-    }
-    else {
-      if (cached)
-        console.warn('[E2E] Cached token invalid or expired — re-minting…')
+    } else {
+      if (cached) console.warn('[E2E] Cached token invalid or expired — re-minting…')
       try {
-        primaryToken = await mintTokenWithSession(consoleBase, cookieString, csrfToken, 'e2e-primary')
+        primaryToken = await mintTokenWithSession(
+          consoleBase,
+          cookieString,
+          csrfToken,
+          'e2e-primary',
+        )
         await saveCachedToken(primaryToken)
         console.warn(`[E2E] primaryToken minted and cached: ${primaryToken.slice(0, 20)}…`)
-      }
-      catch (err) {
+      } catch (err) {
         throw new Error(
-          `[E2E global-setup] Failed to mint primary token: ${err}\n`
-          + 'Ensure DIFY_E2E_EMAIL and DIFY_E2E_PASSWORD are correct.',
+          `[E2E global-setup] Failed to mint primary token: ${err}\n` +
+            'Ensure DIFY_E2E_EMAIL and DIFY_E2E_PASSWORD are correct.',
         )
       }
     }
@@ -131,40 +131,35 @@ export async function setup(project: TestProject): Promise<void> {
       headers: { Authorization: `Bearer ${primaryToken}` },
       signal: AbortSignal.timeout(10_000),
     })
-  }
-  catch (err) {
+  } catch (err) {
     throw new Error(
-      `[E2E global-setup] Cannot reach staging server at ${sessionsUrl}.\n`
-      + `Check DIFY_E2E_HOST and network connectivity.\n${String(err)}`,
+      `[E2E global-setup] Cannot reach staging server at ${sessionsUrl}.\n` +
+        `Check DIFY_E2E_HOST and network connectivity.\n${String(err)}`,
     )
   }
 
   if (!res.ok) {
     throw new Error(
-      `[E2E global-setup] Primary token is invalid or expired (HTTP ${res.status}).\n`
-      + `URL: ${sessionsUrl}`,
+      `[E2E global-setup] Primary token is invalid or expired (HTTP ${res.status}).\n` +
+        `URL: ${sessionsUrl}`,
     )
   }
 
   console.warn(`[E2E] Server healthy, primary token valid at ${E.host}`)
 
   // ── Resolve token_id ─────────────────────────────────────────────────────
-  const body = await res.json() as { data: Array<{ id: string, prefix: string }> }
-  const match = body.data.find(s => s.prefix !== '' && primaryToken.startsWith(s.prefix))
+  const body = (await res.json()) as { data: Array<{ id: string; prefix: string }> }
+  const match = body.data.find((s) => s.prefix !== '' && primaryToken.startsWith(s.prefix))
   if (!match) {
-    console.warn('[E2E global-setup] Could not resolve token_id — devicesToken selfHit detection may not work')
-  }
-  else {
+    console.warn(
+      '[E2E global-setup] Could not resolve token_id — devicesToken selfHit detection may not work',
+    )
+  } else {
     console.warn(`[E2E] Resolved token_id: ${match.id}`)
   }
 
   // ── Discover workspaces ──────────────────────────────────────────────────
-  const workspaces = await discoverWorkspaces(
-    consoleBase,
-    cookieString,
-    csrfToken,
-    E.edition,
-  )
+  const workspaces = await discoverWorkspaces(consoleBase, cookieString, csrfToken, E.edition)
   if (!workspaces) {
     // @ts-expect-error — ProvidedContext augmentation cannot be expressed without
     // triggering TS2300 or TS2664 under tsgo; safe at runtime.
@@ -182,6 +177,7 @@ export async function setup(project: TestProject): Promise<void> {
       workflowAppId: '',
       fileAppId: '',
       fileChatAppId: '',
+      reasoningAppId: '',
       hitlAppId: '',
       hitlExternalAppId: '',
       hitlSingleActionAppId: '',
@@ -197,24 +193,19 @@ export async function setup(project: TestProject): Promise<void> {
   let devicesToken = ''
 
   const mint = (label: string) => mintTokenWithSession(consoleBase, cookieString, csrfToken, label)
-  const [lt, dt] = await Promise.allSettled([
-    mint('e2e-logout-suite'),
-    mint('e2e-devices-suite'),
-  ])
+  const [lt, dt] = await Promise.allSettled([mint('e2e-logout-suite'), mint('e2e-devices-suite')])
 
   if (lt.status === 'fulfilled') {
     logoutToken = lt.value
     console.warn(`[E2E] logoutToken  minted: ${logoutToken.slice(0, 20)}…`)
-  }
-  else {
+  } else {
     console.warn(`[E2E global-setup] Failed to mint logoutToken: ${lt.reason}`)
   }
 
   if (dt.status === 'fulfilled') {
     devicesToken = dt.value
     console.warn(`[E2E] devicesToken minted: ${devicesToken.slice(0, 20)}…`)
-  }
-  else {
+  } else {
     console.warn(`[E2E global-setup] Failed to mint devicesToken: ${dt.reason}`)
   }
 
@@ -239,18 +230,18 @@ export async function setup(project: TestProject): Promise<void> {
   const envAppIds: Record<string, string> = {}
   for (const key of preProvisioned) {
     const val = process.env[key]
-    if (val && val !== '')
-      envAppIds[key] = val
+    if (val && val !== '') envAppIds[key] = val
   }
-  const allPreset = preProvisioned.every(k => envAppIds[k] !== undefined)
+  const allPreset = preProvisioned.every((k) => envAppIds[k] !== undefined)
 
   if (allPreset) {
     // All app IDs already available via env — skip provisioning to avoid
     // race conditions in parallel CI jobs.
     provisionedIds = envAppIds
-    console.warn(`[E2E global-setup] App IDs pre-set via env — skipping provisionApps (${Object.keys(provisionedIds).length} apps)`)
-  }
-  else {
+    console.warn(
+      `[E2E global-setup] App IDs pre-set via env — skipping provisionApps (${Object.keys(provisionedIds).length} apps)`,
+    )
+  } else {
     try {
       const fixturesDir = join(fileURLToPath(import.meta.url), '..', '..', 'fixtures', 'apps')
       provisionedIds = await provisionApps(
@@ -266,9 +257,10 @@ export async function setup(project: TestProject): Promise<void> {
         E.email,
         primaryWsName,
       )
-      console.warn(`[E2E global-setup] Provisioned ${Object.keys(provisionedIds).length} fixture apps`)
-    }
-    catch (err) {
+      console.warn(
+        `[E2E global-setup] Provisioned ${Object.keys(provisionedIds).length} fixture apps`,
+      )
+    } catch (err) {
       console.warn(`[E2E global-setup] provisionApps failed (non-fatal): ${err}`)
     }
   }
@@ -288,9 +280,11 @@ export async function setup(project: TestProject): Promise<void> {
     workflowAppId: provisionedIds.DIFY_E2E_WORKFLOW_APP_ID || E.workflowAppId,
     fileAppId: provisionedIds.DIFY_E2E_FILE_APP_ID || E.fileAppId,
     fileChatAppId: provisionedIds.DIFY_E2E_FILE_CHAT_APP_ID || E.fileChatAppId,
+    reasoningAppId: provisionedIds.DIFY_E2E_REASONING_APP_ID || E.reasoningAppId,
     hitlAppId: provisionedIds.DIFY_E2E_HITL_APP_ID || E.hitlAppId,
     hitlExternalAppId: provisionedIds.DIFY_E2E_HITL_EXTERNAL_APP_ID || E.hitlExternalAppId,
-    hitlSingleActionAppId: provisionedIds.DIFY_E2E_HITL_SINGLE_ACTION_APP_ID || E.hitlSingleActionAppId,
+    hitlSingleActionAppId:
+      provisionedIds.DIFY_E2E_HITL_SINGLE_ACTION_APP_ID || E.hitlSingleActionAppId,
     hitlMultiNodeAppId: provisionedIds.DIFY_E2E_HITL_MULTI_NODE_APP_ID || E.hitlMultiNodeAppId,
     ws2AppId: provisionedIds.DIFY_E2E_WS2_APP_ID || E.ws2AppId,
   }
@@ -311,7 +305,11 @@ export { teardown } from './global-teardown.js'
  * Tries /init (fresh server) first, then falls back to /register.
  * A 409 "already exists" response is treated as success.
  */
-async function ceRegisterAccount(consoleBase: string, email: string, password: string): Promise<void> {
+async function ceRegisterAccount(
+  consoleBase: string,
+  email: string,
+  password: string,
+): Promise<void> {
   const passwordB64 = Buffer.from(password, 'utf8').toString('base64')
   const name = email.split('@')[0] ?? 'e2e-user'
 
@@ -338,8 +336,7 @@ async function ceRegisterAccount(consoleBase: string, email: string, password: s
     console.warn(
       `[E2E CE] /register returned HTTP ${registerRes.status} — account may already exist; continuing`,
     )
-  }
-  else {
+  } else {
     console.warn(`[E2E CE] Account ready via /register (status ${registerRes.status})`)
   }
 }
@@ -354,7 +351,7 @@ async function consoleLogin(
   consoleBase: string,
   email: string,
   password: string,
-): Promise<{ cookieString: string, csrfToken: string }> {
+): Promise<{ cookieString: string; csrfToken: string }> {
   const passwordB64 = Buffer.from(password, 'utf8').toString('base64')
   const loginRes = await fetch(`${consoleBase}/console/api/login`, {
     method: 'POST',
@@ -362,11 +359,10 @@ async function consoleLogin(
     body: JSON.stringify({ email, password: passwordB64, remember_me: false }),
     signal: AbortSignal.timeout(15_000),
   })
-  if (!loginRes.ok)
-    throw new Error(`console/api/login failed: HTTP ${loginRes.status}`)
+  if (!loginRes.ok) throw new Error(`console/api/login failed: HTTP ${loginRes.status}`)
 
   const setCookies = loginRes.headers.getSetCookie?.() ?? []
-  const cookieString = setCookies.map(c => c.split(';')[0]).join('; ')
+  const cookieString = setCookies.map((c) => c.split(';')[0]).join('; ')
   const csrfToken = (cookieString.match(/csrf_token=([^;]+)/) ?? [])[1] ?? ''
   return { cookieString, csrfToken }
 }
@@ -389,29 +385,28 @@ async function discoverWorkspaces(
   cookieString: string,
   csrfToken: string,
   edition: 'ce' | 'ee',
-): Promise<{ primaryWsId: string, primaryWsName: string, secondaryWsId: string } | null> {
+): Promise<{ primaryWsId: string; primaryWsName: string; secondaryWsId: string } | null> {
   const wsRes = await fetch(`${consoleBase}/console/api/workspaces`, {
-    headers: { 'Cookie': cookieString, 'X-CSRF-Token': csrfToken },
+    headers: { Cookie: cookieString, 'X-CSRF-Token': csrfToken },
     signal: AbortSignal.timeout(10_000),
   })
-  if (!wsRes.ok)
-    throw new Error(`list workspaces failed: HTTP ${wsRes.status}`)
+  if (!wsRes.ok) throw new Error(`list workspaces failed: HTTP ${wsRes.status}`)
 
-  const wsBody = await wsRes.json() as {
-    workspaces?: Array<{ id: string, name: string }>
+  const wsBody = (await wsRes.json()) as {
+    workspaces?: Array<{ id: string; name: string }>
   }
   const all = wsBody.workspaces ?? []
 
   if (edition === 'ee') {
     // EE: must find the two pre-created workspaces by exact name
-    const ws0 = all.find(w => w.name === 'auto_test0')
-    const ws1 = all.find(w => w.name === 'auto_test1')
+    const ws0 = all.find((w) => w.name === 'auto_test0')
+    const ws1 = all.find((w) => w.name === 'auto_test1')
 
     if (!ws0 || !ws1) {
-      const existing = all.map(w => w.name).join(', ') || '(none)'
+      const existing = all.map((w) => w.name).join(', ') || '(none)'
       console.warn(
-        `[E2E EE] Required workspaces not found; expected auto_test0 and auto_test1, got: ${existing}. `
-        + 'Skip fixture app provisioning.',
+        `[E2E EE] Required workspaces not found; expected auto_test0 and auto_test1, got: ${existing}. ` +
+          'Skip fixture app provisioning.',
       )
       return null
     }
@@ -428,7 +423,7 @@ async function discoverWorkspaces(
 
   // CE: look for workspaces with "auto" in the name, sorted alphabetically
   const autoWorkspaces = all
-    .filter(w => w.name.toLowerCase().includes('auto'))
+    .filter((w) => w.name.toLowerCase().includes('auto'))
     .sort((a, b) => a.name.localeCompare(b.name))
 
   if (autoWorkspaces.length > 0) {
@@ -438,14 +433,12 @@ async function discoverWorkspaces(
     console.warn(`[E2E CE] primary workspace: ${primaryWsName} (${primaryWsId})`)
     if (autoWorkspaces[1])
       console.warn(`[E2E CE] secondary workspace: ${autoWorkspaces[1].name} (${secondaryWsId})`)
-    else
-      console.warn('[E2E CE] only one "auto" workspace found — ws2 reuses primary')
+    else console.warn('[E2E CE] only one "auto" workspace found — ws2 reuses primary')
     return { primaryWsId, primaryWsName, secondaryWsId }
   }
 
   // CE fallback: use the first available workspace
-  if (all.length === 0)
-    throw new Error('[E2E CE] No workspaces found for this account')
+  if (all.length === 0) throw new Error('[E2E CE] No workspaces found for this account')
 
   const primaryWsId = all[0]!.id
   const primaryWsName = all[0]!.name
@@ -488,7 +481,7 @@ async function provisionApps(
   const NEEDS_PUBLISH = new Set(['workflow', 'advanced-chat', 'agent-chat'])
 
   const mkHeaders = (extra: Record<string, string> = {}): Record<string, string> => ({
-    'Cookie': cookieString,
+    Cookie: cookieString,
     'X-CSRF-Token': csrfToken,
     ...extra,
   })
@@ -503,6 +496,18 @@ async function provisionApps(
     ['hitl-single-action.yml', 'DIFY_E2E_HITL_SINGLE_ACTION_APP_ID', primaryWsId],
     ['hitl-multi-node.yml', 'DIFY_E2E_HITL_MULTI_NODE_APP_ID', primaryWsId],
     ['file-chat.yml', 'DIFY_E2E_FILE_CHAT_APP_ID', primaryWsId],
+    // reasoning-chat.yml runs a real LLM node, so it is opt-in: provisioning it
+    // requires the workspace to have a default chat model configured. Off by
+    // default to keep the shared bootstrap free of any model dependency.
+    ...(process.env.DIFY_E2E_REASONING_PROVISION === '1'
+      ? [
+          ['reasoning-chat.yml', 'DIFY_E2E_REASONING_APP_ID', primaryWsId] as [
+            string,
+            string,
+            string,
+          ],
+        ]
+      : []),
     ...(edition === 'ee'
       ? [['ws2-workflow.yml', 'DIFY_E2E_WS2_APP_ID', secondaryWsId] as [string, string, string]]
       : []),
@@ -519,14 +524,13 @@ async function provisionApps(
 
   async function importAppCli(filePath: string, wsId: string): Promise<string> {
     const result = await run(
-      ['import', 'app', '--from-file', filePath, '--workspace', wsId],
+      ['import', 'studio-app', '--from-file', filePath, '--workspace', wsId],
       { configDir, timeout: 60_000 },
     )
     if (result.exitCode !== 0)
-      throw new Error(`import app failed (exit ${result.exitCode}): ${result.stderr}`)
+      throw new Error(`import studio-app failed (exit ${result.exitCode}): ${result.stderr}`)
     const match = result.stderr.match(/app ([0-9a-f-]{36})/)
-    if (!match?.[1])
-      throw new Error(`import app: could not parse app_id: ${result.stderr}`)
+    if (!match?.[1]) throw new Error(`import studio-app: could not parse app_id: ${result.stderr}`)
     return match[1]
   }
 
@@ -537,17 +541,15 @@ async function provisionApps(
       body: JSON.stringify({ tenant_id: wsId }),
       signal: AbortSignal.timeout(10_000),
     })
-    if (!r.ok)
-      throw new Error(`workspace switch to ${wsId} failed: HTTP ${r.status}`)
+    if (!r.ok) throw new Error(`workspace switch to ${wsId} failed: HTTP ${r.status}`)
   }
 
   async function findAppByName(name: string): Promise<string | null> {
     const url = `${consoleBase}/console/api/apps?name=${encodeURIComponent(name)}&limit=50&page=1`
     const r = await fetch(url, { headers: mkHeaders(), signal: AbortSignal.timeout(10_000) })
-    if (!r.ok)
-      throw new Error(`list apps by name "${name}" failed: HTTP ${r.status}`)
-    const d = await r.json() as { data?: Array<{ id: string, name: string }> }
-    return d.data?.find(a => a.name === name)?.id ?? null
+    if (!r.ok) throw new Error(`list apps by name "${name}" failed: HTTP ${r.status}`)
+    const d = (await r.json()) as { data?: Array<{ id: string; name: string }> }
+    return d.data?.find((a) => a.name === name)?.id ?? null
   }
 
   async function enableApi(appId: string): Promise<void> {
@@ -578,14 +580,14 @@ async function provisionApps(
       })
       if (r.ok) {
         console.warn(`[E2E provision] setAppPublic(${appId}): access_mode → public`)
-      }
-      else {
+      } else {
         // CE servers return 404 here — non-fatal
         const text = await r.text().catch(() => '')
-        console.warn(`[E2E provision] setAppPublic(${appId}) skipped: HTTP ${r.status} ${text.slice(0, 100)}`)
+        console.warn(
+          `[E2E provision] setAppPublic(${appId}) skipped: HTTP ${r.status} ${text.slice(0, 100)}`,
+        )
       }
-    }
-    catch (err) {
+    } catch (err) {
       console.warn(`[E2E provision] setAppPublic(${appId}) error (non-fatal): ${err}`)
     }
   }
@@ -601,28 +603,26 @@ async function provisionApps(
       }
 
       const dsl = await readFile(join(fixturesDir, dslFile), 'utf8')
-      const appName = (dsl.match(/^[ \t]+name:[ \t]*(\S[^\n]*)$/m) ?? [])[1]
-        ?.trim()
-        .replace(/^['"]|['"]$/g, '') ?? dslFile
+      const appName =
+        (dsl.match(/^[ \t]+name:[ \t]*(\S[^\n]*)$/m) ?? [])[1]
+          ?.trim()
+          .replace(/^['"]|['"]$/g, '') ?? dslFile
       const appMode = (dsl.match(/^\s+mode:\s*(\S+)/m) ?? [])[1] ?? ''
 
       let appId = await findAppByName(appName)
       if (appId) {
         console.warn(`[E2E provision] ${dslFile}: exists in workspace id=${appId}; skip import`)
-      }
-      else {
+      } else {
         appId = await importAppCli(join(fixturesDir, dslFile), wsId)
         console.warn(`[E2E provision] ${dslFile}: imported id=${appId}`)
       }
 
       await enableApi(appId)
       await setAppPublic(appId)
-      if (NEEDS_PUBLISH.has(appMode))
-        await publishWorkflow(appId)
+      if (NEEDS_PUBLISH.has(appMode)) await publishWorkflow(appId)
 
       results[envVar] = appId
-    }
-    catch (err) {
+    } catch (err) {
       console.warn(`[E2E provision] ${dslFile} skipped: ${err}`)
     }
   }
@@ -648,9 +648,11 @@ async function mintTokenWithSession(
     body: JSON.stringify({ client_id: 'difyctl', device_label: label }),
     signal: AbortSignal.timeout(15_000),
   })
-  if (!codeRes.ok)
-    throw new Error(`device/code failed: HTTP ${codeRes.status}`)
-  const { device_code, user_code } = await codeRes.json() as { device_code: string, user_code: string }
+  if (!codeRes.ok) throw new Error(`device/code failed: HTTP ${codeRes.status}`)
+  const { device_code, user_code } = (await codeRes.json()) as {
+    device_code: string
+    user_code: string
+  }
 
   // Step 2 — approve
   const approveRes = await approveDeviceCodeWithRetry({
@@ -659,8 +661,7 @@ async function mintTokenWithSession(
     csrfToken,
     userCode: user_code,
   })
-  if (!approveRes.ok)
-    throw new Error(`device/approve failed: HTTP ${approveRes.status}`)
+  if (!approveRes.ok) throw new Error(`device/approve failed: HTTP ${approveRes.status}`)
 
   // Step 3 — exchange for bearer token
   const tokenRes = await fetch(`${consoleBase}/openapi/v1/oauth/device/token`, {
@@ -669,10 +670,9 @@ async function mintTokenWithSession(
     body: JSON.stringify({ device_code, client_id: 'difyctl' }),
     signal: AbortSignal.timeout(10_000),
   })
-  if (!tokenRes.ok)
-    throw new Error(`device/token failed: HTTP ${tokenRes.status}`)
+  if (!tokenRes.ok) throw new Error(`device/token failed: HTTP ${tokenRes.status}`)
 
-  const tokenBody = await tokenRes.json() as { token?: string, error?: string }
+  const tokenBody = (await tokenRes.json()) as { token?: string; error?: string }
   if (!tokenBody.token)
     throw new Error(`device/token response missing token: ${JSON.stringify(tokenBody)}`)
 
@@ -691,18 +691,19 @@ async function approveDeviceCodeWithRetry(opts: {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Cookie': opts.cookieString,
+        Cookie: opts.cookieString,
         'X-CSRFToken': opts.csrfToken,
       },
       body: JSON.stringify({ user_code: opts.userCode }),
       signal: AbortSignal.timeout(10_000),
     })
-    if (response.ok || !isRetryableApproveStatus(response.status))
-      return response
+    if (response.ok || !isRetryableApproveStatus(response.status)) return response
 
     lastResponse = response
     const delayMs = TOKEN_MINT_RETRY_BASE_MS * attempt
-    console.warn(`[E2E] device approve HTTP ${response.status}; retrying in ${delayMs}ms (${attempt}/${TOKEN_MINT_APPROVE_ATTEMPTS})`)
+    console.warn(
+      `[E2E] device approve HTTP ${response.status}; retrying in ${delayMs}ms (${attempt}/${TOKEN_MINT_APPROVE_ATTEMPTS})`,
+    )
     await sleep(delayMs)
   }
   return lastResponse ?? new Response(null, { status: 429 })
@@ -713,5 +714,5 @@ function isRetryableApproveStatus(status: number): boolean {
 }
 
 function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms))
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }

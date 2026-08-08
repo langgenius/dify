@@ -10,12 +10,12 @@ from sqlalchemy.orm import sessionmaker
 
 import models.account as account_module
 import services.human_input_file_upload_service as service_module
+from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from graphon.enums import WorkflowExecutionStatus
-from graphon.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, Tenant, TenantAccountJoin
 from models.base import Base
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
 from models.human_input import (
     HumanInputForm,
     HumanInputFormRecipient,
@@ -107,7 +107,7 @@ def _create_waiting_form(
             end_user = EndUser(
                 tenant_id=tenant_id,
                 app_id=app_id,
-                type="web_app",
+                type=EndUserType.BROWSER,
                 is_anonymous=False,
                 session_id="session-1",
                 external_user_id="external-1",
@@ -210,7 +210,7 @@ def test_issue_upload_token_persists_token_without_technical_end_user(
         assert token_model.form_id == form_id
         assert token_model.recipient_id == recipient_id
         assert token_model.token == token.upload_token
-        assert session.scalar(select(EndUser).where(EndUser.type == "human-input")) is None
+        assert session.scalar(select(EndUser).limit(1)) is None
 
 
 def test_validate_upload_token_returns_account_owner_and_record_file_link(session_maker) -> None:

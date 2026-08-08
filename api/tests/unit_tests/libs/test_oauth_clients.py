@@ -70,6 +70,14 @@ class TestGitHubOAuth(BaseOAuthTest):
         else:
             assert "state" not in params
 
+    def test_should_preserve_redirect_url_in_state(self, oauth):
+        redirect_url = "/apps?category=workflow"
+
+        url = oauth.get_authorization_url(redirect_url=redirect_url)
+        _, params = self.parse_auth_url(url)
+
+        assert decode_oauth_state(params["state"][0]) == {"redirect_url": redirect_url}
+
     @pytest.mark.parametrize(
         ("response_data", "expected_token", "should_raise"),
         [
@@ -251,6 +259,14 @@ class TestGoogleOAuth(BaseOAuthTest):
             assert decode_oauth_state(params["state"][0]) == expected_state
         else:
             assert "state" not in params
+
+    def test_should_preserve_redirect_url_in_state(self, oauth):
+        redirect_url = "/apps?category=workflow"
+
+        url = oauth.get_authorization_url(redirect_url=redirect_url)
+        _, params = self.parse_auth_url(url)
+
+        assert decode_oauth_state(params["state"][0]) == {"redirect_url": redirect_url}
 
     @pytest.mark.parametrize(
         ("response_data", "expected_token", "should_raise"),

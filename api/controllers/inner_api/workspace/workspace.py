@@ -47,10 +47,12 @@ class EnterpriseWorkspace(Resource):
         if account is None:
             return {"message": "owner account not found."}, 404
 
-        tenant = TenantService.create_tenant(args.name, is_from_dashboard=True)
-        TenantService.create_tenant_member(tenant, account, role="owner")
-
-        tenant_was_created.send(tenant)
+        tenant = TenantService.create_owner_tenant(
+            account,
+            name=args.name,
+            is_from_dashboard=True,
+            session=db.session(),
+        )
 
         resp = {
             "id": tenant.id,
@@ -84,7 +86,7 @@ class EnterpriseWorkspaceNoOwnerEmail(Resource):
     def post(self):
         args = WorkspaceOwnerlessPayload.model_validate(inner_api_ns.payload or {})
 
-        tenant = TenantService.create_tenant(args.name, is_from_dashboard=True)
+        tenant = TenantService.create_tenant(args.name, is_from_dashboard=True, session=db.session())
 
         tenant_was_created.send(tenant)
 

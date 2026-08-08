@@ -20,7 +20,6 @@ from constants import (
     VIDEO_EXTENSIONS,
 )
 from core.rag.extractor.extract_processor import ExtractProcessor
-from extensions.ext_database import db
 from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType
 from graphon.file import helpers as file_helpers
@@ -39,12 +38,13 @@ class FileService:
     _session_maker: sessionmaker[Session]
 
     def __init__(self, session_factory: sessionmaker | Engine | None = None):
-        if isinstance(session_factory, Engine):
-            self._session_maker = sessionmaker(bind=session_factory)
-        elif isinstance(session_factory, sessionmaker):
-            self._session_maker = session_factory
-        else:
-            raise AssertionError("must be a sessionmaker or an Engine.")
+        match session_factory:
+            case Engine():
+                self._session_maker = sessionmaker(bind=session_factory)
+            case sessionmaker():
+                self._session_maker = session_factory
+            case _:
+                raise AssertionError("must be a sessionmaker or an Engine.")
 
     def upload_file(
         self,
@@ -53,8 +53,10 @@ class FileService:
         content: bytes,
         mimetype: str,
         user: Account | EndUser,
+        tenant_id: str | None = None,
         source: Literal["datasets"] | None = None,
         source_url: str = "",
+        default_file_size_limit: int | None = None,
     ) -> UploadFile:
         # get file extension
         extension = os.path.splitext(filename)[1].lstrip(".").lower()
@@ -78,22 +80,26 @@ class FileService:
         file_size = len(content)
 
         # check if the file size is exceeded
-        if not FileService.is_file_size_within_limit(extension=extension, file_size=file_size):
+        if not FileService.is_file_size_within_limit(
+            extension=extension,
+            file_size=file_size,
+            default_file_size_limit=default_file_size_limit,
+        ):
             raise FileTooLargeError
 
         # generate file key
         file_uuid = str(uuid.uuid4())
 
-        current_tenant_id = extract_tenant_id(user)
+        resource_tenant_id = tenant_id if tenant_id is not None else extract_tenant_id(user)
 
-        file_key = "upload_files/" + (current_tenant_id or "") + "/" + file_uuid + "." + extension
+        file_key = "upload_files/" + (resource_tenant_id or "") + "/" + file_uuid + "." + extension
 
         # save file to storage
         storage.save(file_key, content)
 
         # save file to db
         upload_file = UploadFile(
-            tenant_id=current_tenant_id or "",
+            tenant_id=resource_tenant_id or "",
             storage_type=StorageType(dify_config.STORAGE_TYPE),
             key=file_key,
             name=filename,
@@ -118,7 +124,12 @@ class FileService:
         return upload_file
 
     @staticmethod
-    def is_file_size_within_limit(*, extension: str, file_size: int) -> bool:
+    def is_file_size_within_limit(
+        *,
+        extension: str,
+        file_size: int,
+        default_file_size_limit: int | None = None,
+    ) -> bool:
         if extension in IMAGE_EXTENSIONS:
             file_size_limit = dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT * 1024 * 1024
         elif extension in VIDEO_EXTENSIONS:
@@ -126,7 +137,12 @@ class FileService:
         elif extension in AUDIO_EXTENSIONS:
             file_size_limit = dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT * 1024 * 1024
         else:
-            file_size_limit = dify_config.UPLOAD_FILE_SIZE_LIMIT * 1024 * 1024
+            # Context-specific uploads may override the default limit without changing media-specific limits.
+            file_size_limit = (
+                (default_file_size_limit if default_file_size_limit is not None else dify_config.UPLOAD_FILE_SIZE_LIMIT)
+                * 1024
+                * 1024
+            )
 
         return file_size <= file_size_limit
 
@@ -140,15 +156,39 @@ class FileService:
         blob = storage.load_once(upload_file_key)
         return base64.b64encode(blob).decode()
 
+    def get_file_presigned_url(self, *, file_id: str, tenant_id: str) -> str:
+        """Generate a direct storage URL for a tenant-owned upload file."""
+        with self._session_maker(expire_on_commit=False) as session:
+            upload_file = session.scalar(
+                select(UploadFile)
+                .where(
+                    UploadFile.id == file_id,
+                    UploadFile.tenant_id == tenant_id,
+                )
+                .limit(1)
+            )
+            if upload_file is None:
+                raise NotFound("File not found")
+
+            file_key = upload_file.key
+            content_type = upload_file.mime_type
+
+        return storage.generate_presigned_url(
+            file_key,
+            expires_in=dify_config.FILES_ACCESS_TIMEOUT,
+            content_type=content_type,
+        )
+
     def upload_text(self, text: str, text_name: str, user_id: str, tenant_id: str) -> UploadFile:
         if len(text_name) > 200:
             text_name = text_name[:200]
         # user uuid as file name
         file_uuid = str(uuid.uuid4())
         file_key = "upload_files/" + tenant_id + "/" + file_uuid + ".txt"
+        content = text.encode("utf-8")
 
         # save file to storage
-        storage.save(file_key, text.encode("utf-8"))
+        storage.save(file_key, content)
 
         # save file to db
         upload_file = UploadFile(
@@ -156,7 +196,7 @@ class FileService:
             storage_type=StorageType(dify_config.STORAGE_TYPE),
             key=file_key,
             name=text_name,
-            size=len(text),
+            size=len(content),
             extension="txt",
             mime_type="text/plain",
             created_by=user_id,
@@ -173,7 +213,7 @@ class FileService:
 
         return upload_file
 
-    def get_file_preview(self, file_id: str, tenant_id: str):
+    def get_file_preview(self, file_id: str, tenant_id: str) -> str:
         """
         Return a short text preview extracted from a document file.
         """
@@ -191,9 +231,7 @@ class FileService:
             raise UnsupportedFileTypeError()
 
         text = ExtractProcessor.load_from_upload_file(upload_file, return_text=True)
-        text = text[0:PREVIEW_WORDS_LIMIT] if text else ""
-
-        return text
+        return text[0:PREVIEW_WORDS_LIMIT] if text else ""
 
     def get_image_preview(self, file_id: str, timestamp: str, nonce: str, sign: str):
         result = file_helpers.verify_image_signature(
@@ -267,7 +305,9 @@ class FileService:
             session.delete(upload_file)
 
     @staticmethod
-    def get_upload_files_by_ids(tenant_id: str, upload_file_ids: Sequence[str]) -> dict[str, UploadFile]:
+    def get_upload_files_by_ids(
+        tenant_id: str, upload_file_ids: Sequence[str], *, session: Session
+    ) -> dict[str, UploadFile]:
         """
         Fetch `UploadFile` rows for a tenant in a single batch query.
 
@@ -281,7 +321,7 @@ class FileService:
         unique_upload_file_ids: list[str] = list(set(upload_file_id_list))
 
         # Fetch upload files in one query for efficient batch access.
-        upload_files: Sequence[UploadFile] = db.session.scalars(
+        upload_files: Sequence[UploadFile] = session.scalars(
             select(UploadFile).where(
                 UploadFile.tenant_id == tenant_id,
                 UploadFile.id.in_(unique_upload_file_ids),

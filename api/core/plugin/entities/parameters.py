@@ -57,11 +57,12 @@ class MCPServerParameterType(StrEnum):
     OBJECT = auto()
 
 
-class PluginParameterAutoGenerate(BaseModel):
-    class Type(StrEnum):
-        PROMPT_INSTRUCTION = auto()
+class PluginParameterAutoGenerateType(StrEnum):
+    PROMPT_INSTRUCTION = auto()
 
-    type: Type
+
+class PluginParameterAutoGenerate(BaseModel):
+    type: PluginParameterAutoGenerateType
 
 
 class PluginParameterTemplate(BaseModel):
@@ -116,20 +117,21 @@ def cast_parameter_value(typ: StrEnum, value: Any, /):
                     return value if isinstance(value, str) else str(value)
 
             case PluginParameterType.BOOLEAN:
-                if value is None:
-                    return False
-                elif isinstance(value, str):
-                    # Allowed YAML boolean value strings: https://yaml.org/type/bool.html
-                    # and also '0' for False and '1' for True
-                    match value.lower():
-                        case "true" | "yes" | "y" | "1":
-                            return True
-                        case "false" | "no" | "n" | "0":
-                            return False
-                        case _:
-                            return bool(value)
-                else:
-                    return value if isinstance(value, bool) else bool(value)
+                match value:
+                    case None:
+                        return False
+                    case str():
+                        # Allowed YAML boolean value strings: https://yaml.org/type/bool.html
+                        # and also '0' for False and '1' for True
+                        match value.lower():
+                            case "true" | "yes" | "y" | "1":
+                                return True
+                            case "false" | "no" | "n" | "0":
+                                return False
+                            case _:
+                                return bool(value)
+                    case _:
+                        return value if isinstance(value, bool) else bool(value)
 
             case PluginParameterType.NUMBER:
                 match value:
@@ -200,7 +202,10 @@ def init_frontend_parameter(rule: PluginParameter, type: StrEnum, value: Any):
     init frontend parameter by rule
     """
     parameter_value = value
-    if not parameter_value and parameter_value != 0:
+    is_empty_tools_selection = (
+        type == PluginParameterType.TOOLS_SELECTOR and isinstance(parameter_value, list) and not parameter_value
+    )
+    if not is_empty_tools_selection and not parameter_value and parameter_value != 0:
         # get default value
         parameter_value = rule.default
         if not parameter_value and rule.required:

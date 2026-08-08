@@ -1,6 +1,7 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { storybookTest } from '@storybook/addon-vitest/vitest-plugin'
+import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
@@ -15,11 +16,7 @@ export default defineConfig({
     tsconfigPaths: true,
   },
   optimizeDeps: {
-    include: [
-      '@base-ui/react/form',
-      '@base-ui/react/merge-props',
-      '@base-ui/react/use-render',
-    ],
+    include: ['vite-plus/test/browser'],
   },
   test: {
     coverage: {
@@ -36,6 +33,7 @@ export default defineConfig({
     projects: [
       {
         extends: true,
+        plugins: [tailwindcss()],
         test: {
           name: 'unit',
           globals: true,

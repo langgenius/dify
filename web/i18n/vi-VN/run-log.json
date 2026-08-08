@@ -1,5 +1,4 @@
 {
-  "actionLogs": "Nhật ký hành động",
   "circularInvocationTip": "Có lệnh gọi vòng tròn các công cụ/nút trong quy trình làm việc hiện tại.",
   "detail": "CHI TIẾT",
   "input": "NHẬP",
@@ -10,7 +9,6 @@
   "meta.time": "Thời gian đã trôi qua",
   "meta.title": "DỮ LIỆU META",
   "meta.tokens": "Tổng số token",
-  "meta.version": "Phiên bản",
   "result": "KẾT QUẢ",
   "resultEmpty.link": "bảng chi tiết",
   "resultEmpty.tipLeft": "vui lòng truy cập ",

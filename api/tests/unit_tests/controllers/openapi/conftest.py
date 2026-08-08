@@ -20,6 +20,7 @@ def _stub_execute(
     edition=None,
     workspace_membership=False,
     allowed_roles=None,
+    rbac=None,
 ):
     """Bypass all auth logic; inject minimal AuthData and call the view directly."""
     kwargs["auth_data"] = AuthData(
@@ -30,12 +31,13 @@ def _stub_execute(
         scopes=frozenset({Scope.FULL}),
         required_scope=scope,
         allowed_roles=allowed_roles,
+        rbac=rbac,
     )
     return view(*args, **kwargs)
 
 
 @pytest.fixture
-def bypass_pipeline(monkeypatch):
+def bypass_pipeline(monkeypatch: pytest.MonkeyPatch):
     """Stub PipelineRouter._execute so endpoints skip real auth at request time.
 
     Module-level @auth_router.guard(...) captures the real router at import

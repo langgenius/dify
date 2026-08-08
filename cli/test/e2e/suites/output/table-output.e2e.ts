@@ -38,10 +38,10 @@
  */
 
 import type { AuthFixture } from '../../helpers/cli.js'
-import { afterEach, beforeEach, describe, expect, it, inject } from 'vitest'
+import { afterEach, beforeEach, describe, expect, inject, it } from 'vitest'
 import { assertExitCode, assertNoAnsi } from '../../helpers/assert.js'
 import { withAuthFixture } from '../../helpers/cli.js'
-import { loadE2EEnv, resolveEnv } from '../../setup/env.js'
+import { resolveEnv } from '../../setup/env.js'
 
 // @ts-expect-error — see test/e2e/helpers/vitest-context.ts for explanation
 const caps = inject('e2eCapabilities') as import('../../setup/env.js').E2ECapabilities
@@ -51,8 +51,12 @@ const E = resolveEnv(caps)
 describe('E2E / table output — header and column format (spec 5.1–5.19)', () => {
   let fx: AuthFixture
 
-  beforeEach(async () => { fx = await withAuthFixture(E) })
-  afterEach(async () => { await fx.cleanup() })
+  beforeEach(async () => {
+    fx = await withAuthFixture(E)
+  })
+  afterEach(async () => {
+    await fx.cleanup()
+  })
 
   it('[P0] 5.1 default output (no -o) is an aligned text table, not JSON or YAML', async () => {
     // Spec 5.1: the default format is a text table; -o table does not exist.
@@ -65,19 +69,18 @@ describe('E2E / table output — header and column format (spec 5.1–5.19)', ()
     expect(result.stdout.trim().length).toBeGreaterThan(0)
   })
 
-  it('[P0] 5.2 header row contains all five expected column names', async () => {
-    // Spec 5.2: header columns are NAME / ID / MODE / TAGS / UPDATED.
+  it('[P0] 5.2 header row contains all four expected column names', async () => {
+    // Spec 5.2: header columns are NAME / ID / MODE / UPDATED.
     const result = await fx.r(['get', 'app'])
     assertExitCode(result, 0)
     const header = result.stdout.split('\n')[0] ?? ''
     expect(header).toMatch(/NAME/i)
     expect(header).toMatch(/ID/i)
     expect(header).toMatch(/MODE/i)
-    expect(header).toMatch(/TAGS/i)
     expect(header).toMatch(/UPDATED/i)
   })
 
-  it('[P0] 5.3 column order is NAME → ID → MODE → TAGS → UPDATED', async () => {
+  it('[P0] 5.3 column order is NAME → ID → MODE → UPDATED', async () => {
     // Spec 5.3: columns appear in the defined order (as verified from actual CLI output).
     const result = await fx.r(['get', 'app'])
     assertExitCode(result, 0)
@@ -85,26 +88,26 @@ describe('E2E / table output — header and column format (spec 5.1–5.19)', ()
     const nameIdx = header.indexOf('NAME')
     const idIdx = header.indexOf('ID')
     const modeIdx = header.indexOf('MODE')
-    const tagsIdx = header.indexOf('TAGS')
     const updatedIdx = header.indexOf('UPDATED')
     // All columns must be present
     expect(nameIdx).toBeGreaterThanOrEqual(0)
     expect(idIdx).toBeGreaterThanOrEqual(0)
     expect(modeIdx).toBeGreaterThanOrEqual(0)
-    expect(tagsIdx).toBeGreaterThanOrEqual(0)
     expect(updatedIdx).toBeGreaterThanOrEqual(0)
     // Verify left-to-right order
     expect(nameIdx).toBeLessThan(idIdx)
     expect(idIdx).toBeLessThan(modeIdx)
-    expect(modeIdx).toBeLessThan(tagsIdx)
-    expect(tagsIdx).toBeLessThan(updatedIdx)
+    expect(modeIdx).toBeLessThan(updatedIdx)
   })
 
   it('[P0] 5.5 table displays multiple data rows when more than one app exists', async () => {
     // Spec 5.5: when there are multiple apps, all rows are rendered.
     const result = await fx.r(['get', 'app'])
     assertExitCode(result, 0)
-    const lines = result.stdout.trim().split('\n').filter(l => l.trim())
+    const lines = result.stdout
+      .trim()
+      .split('\n')
+      .filter((l) => l.trim())
     // At least header + 1 data row
     expect(lines.length).toBeGreaterThan(1)
   })
@@ -114,7 +117,10 @@ describe('E2E / table output — header and column format (spec 5.1–5.19)', ()
     // row with no data rows underneath (not an error, exit 0).
     const result = await fx.r(['get', 'app', '--name', 'zzz-nonexistent-app-xyz-000'])
     assertExitCode(result, 0)
-    const lines = result.stdout.trim().split('\n').filter(l => l.trim())
+    const lines = result.stdout
+      .trim()
+      .split('\n')
+      .filter((l) => l.trim())
     // Only the header row should remain
     expect(lines).toHaveLength(1)
     expect(lines[0] ?? '').toMatch(/NAME/i)
@@ -128,7 +134,7 @@ describe('E2E / table output — header and column format (spec 5.1–5.19)', ()
     // Extract word-like tokens from the header
     const tokens = header.match(/[A-Z]{2,}/g) ?? []
     expect(tokens.length).toBeGreaterThan(0)
-    tokens.forEach(token =>
+    tokens.forEach((token) =>
       expect(token, `header token "${token}" should be uppercase`).toBe(token.toUpperCase()),
     )
   })
@@ -141,7 +147,7 @@ describe('E2E / table output — header and column format (spec 5.1–5.19)', ()
     assertExitCode(result, 0)
     // No NUL, BEL, BS, VT, FF, SO–US, DEL bytes that would corrupt a pipe
     // eslint-disable-next-line no-control-regex
-    expect(result.stdout).not.toMatch(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/)
+    expect(result.stdout).not.toMatch(/[\x00-\x08\v\f\x0E-\x1F\x7F]/)
   })
 
   it('[P0] 5.16 default table output written to a file contains no control characters', async () => {
@@ -150,33 +156,7 @@ describe('E2E / table output — header and column format (spec 5.1–5.19)', ()
     assertExitCode(result, 0)
     assertNoAnsi(result.stdout, 'stdout')
     // eslint-disable-next-line no-control-regex
-    expect(result.stdout).not.toMatch(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/)
-  })
-
-  // ── 5.17 — Empty-field rendering ─────────────────────────────────────────
-
-  it('[P1] 5.17 empty TAGS field is rendered as blank — not as a dash (-)', async () => {
-    // Spec 5.17: empty fields show blank, not the `-` placeholder.
-    // Most apps in the fixture workspace have no tags.
-    const result = await fx.r(['get', 'app'])
-    assertExitCode(result, 0)
-    const lines = result.stdout.trim().split('\n')
-    const header = lines[0] ?? ''
-    const tagsStart = header.indexOf('TAGS')
-    const updatedStart = header.indexOf('UPDATED')
-    // Check at least one data row: the TAGS slice should be blank, not '-'
-    const dataLines = lines.slice(1).filter(l => l.trim())
-    if (dataLines.length > 0 && tagsStart >= 0 && updatedStart > tagsStart) {
-      const tagsSlice = (dataLines[0] ?? '').substring(tagsStart, updatedStart).trim()
-      // If there are no tags, the slice should be empty (not contain a lone '-')
-      if (tagsSlice === '') {
-        expect(tagsSlice).toBe('')
-      }
-      else {
-        // Tags are present — just verify it's not the placeholder dash
-        expect(tagsSlice).not.toBe('-')
-      }
-    }
+    expect(result.stdout).not.toMatch(/[\x00-\x08\v\f\x0E-\x1F\x7F]/)
   })
 
   // ── 5.25 — Performance ────────────────────────────────────────────────────

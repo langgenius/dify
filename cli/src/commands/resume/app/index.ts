@@ -22,15 +22,39 @@ export default class ResumeApp extends DifyCommand {
   }
 
   static override flags = {
-    'workflow-run-id': Flags.string({ description: 'workflow_run_id from the HITL pause JSON', required: true }),
-    'action': Flags.string({ description: 'user action id (auto-selected when form has exactly one action)' }),
-    'inputs': Flags.string({ description: 'Input variables as a JSON object, e.g. --inputs \'{"key":"value"}\'. Mutually exclusive with --inputs-file.' }),
-    'inputs-file': Flags.string({ description: 'Path to a JSON file containing the inputs object. Mutually exclusive with --inputs.' }),
-    'workspace': Flags.string({ description: 'workspace id override' }),
-    'with-history': Flags.boolean({ description: 'Replay executed-node history before attaching to live stream.', default: false }),
-    'stream': Flags.boolean({ description: 'Print output live as tokens/events arrive. Default: collect and print at end.', default: false }),
-    'think': Flags.boolean({ description: 'Show model thinking/reasoning when available. Strips <think>...</think> blocks silently by default; with --think, thinking is printed to stderr.', default: false }),
-    'output': Flags.outputFormat({ options: [OutputFormat.JSON, OutputFormat.YAML, OutputFormat.TEXT], default: '' }),
+    'workflow-run-id': Flags.string({
+      description: 'workflow_run_id from the HITL pause JSON',
+      required: true,
+    }),
+    action: Flags.string({
+      description: 'user action id (auto-selected when form has exactly one action)',
+    }),
+    inputs: Flags.string({
+      description:
+        'Input variables as a JSON object, e.g. --inputs \'{"key":"value"}\'. Mutually exclusive with --inputs-file.',
+    }),
+    'inputs-file': Flags.string({
+      description:
+        'Path to a JSON file containing the inputs object. Mutually exclusive with --inputs.',
+    }),
+    workspace: Flags.string({ description: 'workspace id override' }),
+    'with-history': Flags.boolean({
+      description: 'Replay executed-node history before attaching to live stream.',
+      default: false,
+    }),
+    stream: Flags.boolean({
+      description: 'Print output live as tokens/events arrive. Default: collect and print at end.',
+      default: false,
+    }),
+    think: Flags.boolean({
+      description:
+        'Show model thinking/reasoning when available — both inline <think>...</think> blocks and separated reasoning streams. Hidden by default; with --think, thinking is printed to stderr.',
+      default: false,
+    }),
+    output: Flags.outputFormat({
+      options: [OutputFormat.JSON, OutputFormat.YAML, OutputFormat.TEXT],
+      default: '',
+    }),
     'http-retry': httpRetryFlag,
   }
 

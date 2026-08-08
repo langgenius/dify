@@ -3,7 +3,17 @@ import type { IOtherOptions } from './base'
 import { toast } from '@langgenius/dify-ui/toast'
 import Cookies from 'js-cookie'
 import ky, { HTTPError } from 'ky'
-import { API_PREFIX, APP_VERSION, CSRF_COOKIE_NAME, CSRF_HEADER_NAME, IS_MARKETPLACE, MARKETPLACE_API_PREFIX, PASSPORT_HEADER_NAME, PUBLIC_API_PREFIX, WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
+import {
+  API_PREFIX,
+  APP_VERSION,
+  CSRF_COOKIE_NAME,
+  CSRF_HEADER_NAME,
+  IS_MARKETPLACE,
+  MARKETPLACE_API_PREFIX,
+  PASSPORT_HEADER_NAME,
+  PUBLIC_API_PREFIX,
+  WEB_APP_SHARE_CODE_HEADER_NAME,
+} from '@/config'
 import { getWebAppAccessToken, getWebAppPassport } from './webapp-auth'
 
 const TIME_OUT = 100000
@@ -44,13 +54,10 @@ const createResponseFromHTTPError = (error: HTTPError): Response => {
   headers.delete('content-length')
 
   let body: BodyInit | null = null
-  if (typeof error.data === 'string')
-    body = error.data
-  else if (error.data !== undefined)
-    body = JSON.stringify(error.data)
+  if (typeof error.data === 'string') body = error.data
+  else if (error.data !== undefined) body = JSON.stringify(error.data)
 
-  if (body !== null && !headers.has('content-type'))
-    headers.set('content-type', ContentType.json)
+  if (body !== null && !headers.has('content-type')) headers.set('content-type', ContentType.json)
 
   return new Response(body, {
     status: error.response.status,
@@ -66,13 +73,11 @@ const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook 
       try {
         const data: unknown = await response.clone().json()
         errorData = data as ResponseError
-      }
-      catch {}
+      } catch {}
       const shouldNotifyError = response.status !== 401 && errorData && !otherOptions.silent
 
       const errorMessage = errorData?.message || errorData?.error
-      if (shouldNotifyError && errorMessage)
-        toast.error(errorMessage)
+      if (shouldNotifyError && errorMessage) toast.error(errorMessage)
 
       if (response.status === 403 && errorData?.code === 'already_setup')
         globalThis.location.href = `${globalThis.location.origin}/signin`
@@ -85,19 +90,16 @@ const SHARE_ROUTE_DENY_LIST = new Set(['webapp-signin', 'check-code', 'login'])
 const resolveShareCode = () => {
   const pathnameSegments = globalThis.location.pathname.split('/').filter(Boolean)
   const lastSegment = pathnameSegments.at(-1) || ''
-  if (lastSegment && !SHARE_ROUTE_DENY_LIST.has(lastSegment))
-    return lastSegment
+  if (lastSegment && !SHARE_ROUTE_DENY_LIST.has(lastSegment)) return lastSegment
 
   const redirectParam = new URLSearchParams(globalThis.location.search).get('redirect_url')
-  if (!redirectParam)
-    return ''
+  if (!redirectParam) return ''
   try {
     const redirectUrl = new URL(decodeURIComponent(redirectParam), globalThis.location.origin)
     const redirectSegments = redirectUrl.pathname.split('/').filter(Boolean)
     const redirectSegment = redirectSegments.at(-1) || ''
     return SHARE_ROUTE_DENY_LIST.has(redirectSegment) ? '' : redirectSegment
-  }
-  catch {
+  } catch {
     return ''
   }
 }
@@ -105,22 +107,17 @@ const resolveShareCode = () => {
 const beforeRequestPublicWithCode: BeforeRequestHook = ({ request }) => {
   if (!request.headers.has('Authorization')) {
     const accessToken = getWebAppAccessToken()
-    if (accessToken)
-      request.headers.set('Authorization', `Bearer ${accessToken}`)
-    else
-      request.headers.delete('Authorization')
+    if (accessToken) request.headers.set('Authorization', `Bearer ${accessToken}`)
+    else request.headers.delete('Authorization')
   }
   const shareCode = resolveShareCode()
-  if (!shareCode)
-    return
+  if (!shareCode) return
   request.headers.set(WEB_APP_SHARE_CODE_HEADER_NAME, shareCode)
   request.headers.set(PASSPORT_HEADER_NAME, getWebAppPassport(shareCode))
 }
 
 const baseHooks: Hooks = {
-  afterResponse: [
-    afterResponse204,
-  ],
+  afterResponse: [afterResponse204],
 }
 
 const baseClient = ky.create({
@@ -138,15 +135,19 @@ export const getBaseOptions = (): RequestInit => ({
   redirect: 'follow',
 })
 
-async function base<T>(url: string, options: FetchOptionType = {}, otherOptions: IOtherOptions = {}): Promise<T> {
+async function base<T>(
+  url: string,
+  options: FetchOptionType = {},
+  otherOptions: IOtherOptions = {},
+): Promise<T> {
   // In fetchCompat mode, skip baseOptions to avoid overriding Request object's method, headers,
   const baseOptions = otherOptions.fetchCompat
-    ? {
+    ? ({
         mode: 'cors',
         credentials: 'include', // always send cookies、HTTP Basic authentication.
         redirect: 'follow',
-      } as const
-    : {
+      } as const)
+    : ({
         mode: 'cors',
         credentials: 'include', // always send cookies、HTTP Basic authentication.
         headers: new Headers({
@@ -154,9 +155,8 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
         }),
         method: 'GET',
         redirect: 'follow',
-      } as const
+      } as const)
   const { params, body, headers: headersFromProps, ...init } = { ...baseOptions, ...options }
-  const headers = new Headers(headersFromProps || {})
 
   const {
     isPublicAPI = false,
@@ -169,13 +169,12 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
     request,
   } = otherOptions
 
+  const headers = new Headers(headersFromProps || {})
+
   let base: string
-  if (isMarketplaceAPI)
-    base = MARKETPLACE_API_PREFIX
-  else if (isPublicAPI)
-    base = PUBLIC_API_PREFIX
-  else
-    base = API_PREFIX
+  if (isMarketplaceAPI) base = MARKETPLACE_API_PREFIX
+  else if (isPublicAPI) base = PUBLIC_API_PREFIX
+  else base = API_PREFIX
 
   if (getAbortController) {
     const abortController = new AbortController()
@@ -184,27 +183,21 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
   }
 
   const fetchPathname = base + (url.startsWith('/') ? url : `/${url}`)
-  if (!isMarketplaceAPI)
-    headers.set(CSRF_HEADER_NAME, Cookies.get(CSRF_COOKIE_NAME()) || '')
+  if (!isMarketplaceAPI) headers.set(CSRF_HEADER_NAME, Cookies.get(CSRF_COOKIE_NAME()) || '')
 
-  if (deleteContentType)
-    headers.delete('Content-Type')
+  if (deleteContentType) headers.delete('Content-Type')
 
   // ! For Marketplace API, help to filter tags added in new version
-  if (isMarketplaceAPI)
-    headers.set('X-Dify-Version', !IS_MARKETPLACE ? APP_VERSION : '999.0.0')
+  if (isMarketplaceAPI) headers.set('X-Dify-Version', !IS_MARKETPLACE ? APP_VERSION : '999.0.0')
 
   const client = baseClient.extend({
     hooks: {
       ...baseHooks,
       beforeRequest: [
-        ...baseHooks.beforeRequest || [],
+        ...(baseHooks.beforeRequest || []),
         isPublicAPI && beforeRequestPublicWithCode,
       ].filter((h): h is BeforeRequestHook => Boolean(h)),
-      afterResponse: [
-        ...baseHooks.afterResponse || [],
-        afterResponseErrorCode(otherOptions),
-      ],
+      afterResponse: [...(baseHooks.afterResponse || []), afterResponseErrorCode(otherOptions)],
     },
   })
 
@@ -213,9 +206,7 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
     res = await client(request || fetchPathname, {
       ...init,
       headers,
-      credentials: isMarketplaceAPI
-        ? 'omit'
-        : (options.credentials || 'include'),
+      credentials: isMarketplaceAPI ? 'omit' : options.credentials || 'include',
       retry: {
         methods: [],
       },
@@ -232,24 +223,21 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
         return globalThis.fetch(resource, options)
       },
     })
-  }
-  catch (error) {
-    if (error instanceof HTTPError)
-      throw createResponseFromHTTPError(error)
+  } catch (error) {
+    if (error instanceof HTTPError) throw createResponseFromHTTPError(error)
     throw error
   }
 
-  if (needAllResponseContent || fetchCompat)
-    return res as T
+  if (needAllResponseContent || fetchCompat) return res as T
   const contentType = res.headers.get('content-type')
   if (
-    contentType
-    && [ContentType.download, ContentType.audio, ContentType.downloadZip].includes(contentType)
+    contentType &&
+    [ContentType.download, ContentType.audio, ContentType.downloadZip].includes(contentType)
   ) {
-    return await res.blob() as T
+    return (await res.blob()) as T
   }
 
-  return await res.json() as T
+  return (await res.json()) as T
 }
 
 /**
@@ -259,23 +247,24 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
  * standard `base()` fetch wrapper.
  */
 export function postWithKeepalive(url: string, body: Record<string, unknown>): void {
-  const headers: Record<string, string> = {
+  const headers = new Headers({
     'Content-Type': ContentType.json,
     [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '',
-  }
+  })
 
   // Add Authorization header if an access token is available
   const accessToken = getWebAppAccessToken()
-  if (accessToken)
-    headers.Authorization = `Bearer ${accessToken}`
+  if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`)
 
-  globalThis.fetch(url, {
-    method: 'POST',
-    keepalive: true,
-    credentials: 'include',
-    headers,
-    body: JSON.stringify(body),
-  }).catch(() => {})
+  globalThis
+    .fetch(url, {
+      method: 'POST',
+      keepalive: true,
+      credentials: 'include',
+      headers,
+      body: JSON.stringify(body),
+    })
+    .catch(() => {})
 }
 
 export { base }

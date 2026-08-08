@@ -127,7 +127,9 @@ class TestWorkspacePermissionHelper:
 
     @patch("libs.workspace_permission.EnterpriseService")
     @patch("libs.workspace_permission.dify_config")
-    def test_enterprise_service_error_fails_open(self, mock_config, mock_enterprise_service, caplog):
+    def test_enterprise_service_error_fails_open(
+        self, mock_config, mock_enterprise_service, caplog: pytest.LogCaptureFixture
+    ):
         """On enterprise service error, should fail-open (allow) and log error."""
         mock_config.ENTERPRISE_ENABLED = True
 

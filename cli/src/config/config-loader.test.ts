@@ -18,8 +18,7 @@ describe('loadConfig', () => {
     await getConfigurationStore().setTyped({ schema_version: 1 })
     const r = await loadConfig(getConfigurationStore())
     expect(r.found).toBe(true)
-    if (r.found)
-      expect(r.config.schema_version).toBe(1)
+    if (r.found) expect(r.config.schema_version).toBe(1)
   })
 
   it('parses defaults + state', async () => {
@@ -41,13 +40,16 @@ describe('loadConfig', () => {
     // Simulate a corrupt on-disk file via a fake store; loadConfig must wrap
     // the underlying error as ConfigSchemaUnsupported.
     const throwingStore = {
-      getTyped: () => { throw new Error('YAML parse failure') },
+      getTyped: () => {
+        throw new Error('YAML parse failure')
+      },
     } as unknown as YamlStore
     let caught: unknown
     try {
       await loadConfig(throwingStore)
+    } catch (err) {
+      caught = err
     }
-    catch (err) { caught = err }
     expect(isBaseError(caught)).toBe(true)
     if (isBaseError(caught)) {
       expect(caught.code).toBe(ErrorCode.ConfigSchemaUnsupported)
@@ -60,11 +62,11 @@ describe('loadConfig', () => {
     let caught: unknown
     try {
       await loadConfig(getConfigurationStore())
+    } catch (err) {
+      caught = err
     }
-    catch (err) { caught = err }
     expect(isBaseError(caught)).toBe(true)
-    if (isBaseError(caught))
-      expect(caught.code).toBe(ErrorCode.ConfigSchemaUnsupported)
+    if (isBaseError(caught)) expect(caught.code).toBe(ErrorCode.ConfigSchemaUnsupported)
   })
 
   it('throws BaseError(config_schema_unsupported) when schema_version > 1 (forward-refuse)', async () => {
@@ -72,8 +74,9 @@ describe('loadConfig', () => {
     let caught: unknown
     try {
       await loadConfig(getConfigurationStore())
+    } catch (err) {
+      caught = err
     }
-    catch (err) { caught = err }
     expect(isBaseError(caught)).toBe(true)
     if (isBaseError(caught)) {
       expect(caught.code).toBe(ErrorCode.ConfigSchemaUnsupported)

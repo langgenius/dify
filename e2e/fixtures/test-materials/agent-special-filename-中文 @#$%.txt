@@ -1,0 +1,2 @@
+Special filename fixture.
+Expected token: AGENT_SPECIAL_FILENAME_PASS

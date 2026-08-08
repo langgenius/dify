@@ -1,5 +1,6 @@
 import type { SearchParams } from 'nuqs'
-import { TanstackQueryInitializer } from '@/context/query-client'
+import { PluginInstallPermissionProviderGuard } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
+import { TanStackQueryProvider } from '@/app/query-provider'
 import Description from './description'
 import { HydrateQueryClient } from './hydration-server'
 import ListWrapper from './list/list-wrapper'
@@ -7,6 +8,7 @@ import StickySearchAndSwitchWrapper from './sticky-search-and-switch-wrapper'
 
 type MarketplaceProps = {
   showInstallButton?: boolean
+  linkToMarketplaceDetail?: boolean
   pluginTypeSwitchClassName?: string
   isMarketplacePlatform?: boolean
   marketplaceNav?: React.ReactNode
@@ -17,31 +19,31 @@ type MarketplaceProps = {
 }
 
 const Marketplace = async ({
-  showInstallButton = true,
+  showInstallButton = false,
+  linkToMarketplaceDetail = false,
   pluginTypeSwitchClassName,
   isMarketplacePlatform = false,
   marketplaceNav,
   searchParams,
 }: MarketplaceProps) => {
   return (
-    <TanstackQueryInitializer>
+    <TanStackQueryProvider>
       <HydrateQueryClient searchParams={searchParams}>
-        <Description
-          isMarketplacePlatform={isMarketplacePlatform}
-          marketplaceNav={marketplaceNav}
-        />
-        {
-          !isMarketplacePlatform && (
-            <StickySearchAndSwitchWrapper
-              pluginTypeSwitchClassName={pluginTypeSwitchClassName}
-            />
-          )
-        }
-        <ListWrapper
-          showInstallButton={showInstallButton}
-        />
+        <PluginInstallPermissionProviderGuard canInstallPlugin={showInstallButton}>
+          <Description
+            isMarketplacePlatform={isMarketplacePlatform}
+            marketplaceNav={marketplaceNav}
+          />
+          {!isMarketplacePlatform && (
+            <StickySearchAndSwitchWrapper pluginTypeSwitchClassName={pluginTypeSwitchClassName} />
+          )}
+          <ListWrapper
+            showInstallButton={showInstallButton}
+            linkToMarketplaceDetail={linkToMarketplaceDetail}
+          />
+        </PluginInstallPermissionProviderGuard>
       </HydrateQueryClient>
-    </TanstackQueryInitializer>
+    </TanStackQueryProvider>
   )
 }
 

@@ -18,7 +18,7 @@ from services.snippet_dsl_service import (
     [
         ("not-a-version", ImportStatus.FAILED),
         ("999.0.0", ImportStatus.PENDING),
-        ("0.1.0", ImportStatus.COMPLETED),
+        ("0.1.0", ImportStatus.COMPLETED_WITH_WARNINGS),
     ],
 )
 def test_check_version_compatibility_special_cases(version, expected):
@@ -73,7 +73,7 @@ def test_import_snippet_rejects_invalid_yaml_url_scheme() -> None:
     assert result.error == "Invalid URL scheme, only http and https are allowed"
 
 
-def test_import_snippet_returns_failed_when_yaml_url_fetch_fails(monkeypatch) -> None:
+def test_import_snippet_returns_failed_when_yaml_url_fetch_fails(monkeypatch: pytest.MonkeyPatch) -> None:
     service = SnippetDslService(session=SimpleNamespace())
     monkeypatch.setattr(
         "services.snippet_dsl_service.ssrf_proxy.get",
@@ -90,12 +90,12 @@ def test_import_snippet_returns_failed_when_yaml_url_fetch_fails(monkeypatch) ->
     assert result.error == "Failed to fetch YAML from URL: 404"
 
 
-def test_import_snippet_rejects_oversized_yaml_url_content(monkeypatch) -> None:
+def test_import_snippet_rejects_oversized_yaml_url_content(monkeypatch: pytest.MonkeyPatch) -> None:
     service = SnippetDslService(session=SimpleNamespace())
     monkeypatch.setattr("services.snippet_dsl_service.DSL_MAX_SIZE", 3)
     monkeypatch.setattr(
         "services.snippet_dsl_service.ssrf_proxy.get",
-        Mock(return_value=SimpleNamespace(status_code=200, text="too large")),
+        Mock(return_value=SimpleNamespace(status_code=200, content=b"too large")),
     )
 
     result = service.import_snippet(
@@ -108,7 +108,44 @@ def test_import_snippet_rejects_oversized_yaml_url_content(monkeypatch) -> None:
     assert "YAML content size exceeds maximum limit" in result.error
 
 
-def test_import_snippet_returns_failed_when_yaml_url_fetch_raises(monkeypatch) -> None:
+def test_import_snippet_rejects_oversized_yaml_url_bytes_before_decode(monkeypatch: pytest.MonkeyPatch) -> None:
+    service = SnippetDslService(session=SimpleNamespace())
+    monkeypatch.setattr("services.snippet_dsl_service.DSL_MAX_SIZE", 1)
+    monkeypatch.setattr(
+        "services.snippet_dsl_service.ssrf_proxy.get",
+        Mock(return_value=SimpleNamespace(status_code=200, content=b"\xff\xff")),
+    )
+
+    result = service.import_snippet(
+        account=SimpleNamespace(current_tenant_id="tenant-1"),
+        import_mode=ImportMode.YAML_URL.value,
+        yaml_url="https://example.com/snippet.yaml",
+    )
+
+    assert result.status == ImportStatus.FAILED
+    assert "YAML content size exceeds maximum limit" in result.error
+
+
+def test_import_snippet_returns_decode_error_for_invalid_yaml_url_bytes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = SnippetDslService(session=SimpleNamespace())
+    monkeypatch.setattr(
+        "services.snippet_dsl_service.ssrf_proxy.get",
+        Mock(return_value=SimpleNamespace(status_code=200, content=b"\xff")),
+    )
+
+    result = service.import_snippet(
+        account=SimpleNamespace(current_tenant_id="tenant-1"),
+        import_mode=ImportMode.YAML_URL.value,
+        yaml_url="https://example.com/snippet.yaml",
+    )
+
+    assert result.status == ImportStatus.FAILED
+    assert "utf-8" in result.error
+
+
+def test_import_snippet_returns_failed_when_yaml_url_fetch_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     service = SnippetDslService(session=SimpleNamespace())
     monkeypatch.setattr(
         "services.snippet_dsl_service.ssrf_proxy.get",
@@ -125,14 +162,14 @@ def test_import_snippet_returns_failed_when_yaml_url_fetch_raises(monkeypatch) -
     assert result.error == "Failed to fetch YAML from URL: network down"
 
 
-def test_import_snippet_rejects_oversized_yaml_content(monkeypatch) -> None:
+def test_import_snippet_rejects_oversized_yaml_content(monkeypatch: pytest.MonkeyPatch) -> None:
     service = SnippetDslService(session=SimpleNamespace())
-    monkeypatch.setattr("services.snippet_dsl_service.DSL_MAX_SIZE", 3)
+    monkeypatch.setattr("services.snippet_dsl_service.DSL_MAX_SIZE", 1)
 
     result = service.import_snippet(
         account=SimpleNamespace(current_tenant_id="tenant-1"),
         import_mode=ImportMode.YAML_CONTENT.value,
-        yaml_content="too large",
+        yaml_content="é",
     )
 
     assert result.status == ImportStatus.FAILED
@@ -165,7 +202,7 @@ def test_import_snippet_rejects_invalid_yaml_shapes(yaml_content, expected_error
 
 
 def test_import_snippet_returns_failed_for_invalid_version_type() -> None:
-    service = SnippetDslService(session=SimpleNamespace())
+    service = SnippetDslService(session=SimpleNamespace(rollback=Mock()))
 
     result = service.import_snippet(
         account=SimpleNamespace(current_tenant_id="tenant-1"),
@@ -232,7 +269,7 @@ workflow:
 """
 
     result = service.import_snippet(
-        account=SimpleNamespace(current_tenant_id="tenant-1"),
+        account=SimpleNamespace(id="account-1", current_tenant_id="tenant-1"),
         import_mode=ImportMode.YAML_CONTENT.value,
         yaml_content=yaml_content,
         name="Override",
@@ -241,7 +278,10 @@ workflow:
 
     assert result.status == ImportStatus.PENDING
     setex.assert_called_once()
+    assert setex.call_args.args[0] == f"snippet_import_info:{result.id}"
     pending = SnippetPendingData.model_validate_json(setex.call_args.args[2])
+    assert pending.tenant_id == "tenant-1"
+    assert pending.account_id == "account-1"
     assert pending.name == "Override"
     assert pending.description == "Override description"
 
@@ -296,17 +336,35 @@ workflow:
         yaml_content=yaml_content,
     )
 
-    assert result.status == ImportStatus.COMPLETED
+    assert result.status == ImportStatus.COMPLETED_WITH_WARNINGS
     assert result.snippet_id == "snippet-1"
     dependencies = create_or_update.call_args.kwargs["dependencies"]
     assert dependencies[0].value.plugin_unique_identifier == "langgenius/openai:0.0.1"
+
+
+def test_import_snippet_rolls_back_when_create_or_update_raises(monkeypatch):
+    session = SimpleNamespace(scalar=Mock(return_value=None), rollback=Mock())
+    service = SnippetDslService(session=session)
+    monkeypatch.setattr(service, "_create_or_update_snippet", Mock(side_effect=RuntimeError("boom")))
+
+    result = service.import_snippet(
+        account=SimpleNamespace(id="account-1", current_tenant_id="tenant-1"),
+        import_mode=ImportMode.YAML_CONTENT.value,
+        yaml_content="version: 0.1.0\nkind: snippet\nsnippet:\n  name: Bad\n",
+    )
+
+    assert result.status == ImportStatus.FAILED
+    assert result.error == "boom"
+    session.rollback.assert_called_once()
 
 
 def test_confirm_import_returns_failed_when_pending_data_missing(monkeypatch):
     service = SnippetDslService(session=SimpleNamespace())
     monkeypatch.setattr("services.snippet_dsl_service.redis_client.get", Mock(return_value=None))
 
-    result = service.confirm_import(import_id="missing", account=SimpleNamespace(current_tenant_id="tenant-1"))
+    result = service.confirm_import(
+        import_id="missing", account=SimpleNamespace(id="account-1", current_tenant_id="tenant-1")
+    )
 
     assert result.status == ImportStatus.FAILED
     assert result.error == "Import information expired or does not exist"
@@ -316,13 +374,15 @@ def test_confirm_import_returns_failed_for_invalid_pending_payload(monkeypatch):
     service = SnippetDslService(session=SimpleNamespace())
     monkeypatch.setattr("services.snippet_dsl_service.redis_client.get", Mock(return_value=object()))
 
-    result = service.confirm_import(import_id="bad", account=SimpleNamespace(current_tenant_id="tenant-1"))
+    result = service.confirm_import(
+        import_id="bad", account=SimpleNamespace(id="account-1", current_tenant_id="tenant-1")
+    )
 
     assert result.status == ImportStatus.FAILED
     assert result.error == "Invalid import information"
 
 
-def test_confirm_import_creates_snippet_from_pending_data(monkeypatch):
+def test_confirm_import_is_scoped_to_its_owner(monkeypatch):
     service = SnippetDslService(session=SimpleNamespace(scalar=Mock(return_value=None)))
     account = SimpleNamespace(id="account-1", current_tenant_id="tenant-1")
     snippet = SimpleNamespace(id="snippet-new")
@@ -338,6 +398,8 @@ workflow:
     edges: []
 """
     pending = SnippetPendingData(
+        tenant_id="tenant-1",
+        account_id="account-1",
         import_mode="yaml-content",
         yaml_content=yaml_content,
         name="Override name",
@@ -346,10 +408,21 @@ workflow:
     )
     create_or_update = Mock(return_value=snippet)
     monkeypatch.setattr(service, "_create_or_update_snippet", create_or_update)
-    monkeypatch.setattr("services.snippet_dsl_service.redis_client.get", Mock(return_value=pending.model_dump_json()))
+    redis_key = "snippet_import_info:import-1"
+    monkeypatch.setattr(
+        "services.snippet_dsl_service.redis_client.get",
+        Mock(side_effect=lambda key: pending.model_dump_json() if key == redis_key else None),
+    )
     redis_delete = Mock()
     monkeypatch.setattr("services.snippet_dsl_service.redis_client.delete", redis_delete)
 
+    for other_account in (
+        SimpleNamespace(id="account-1", current_tenant_id="tenant-2"),
+        SimpleNamespace(id="account-2", current_tenant_id="tenant-1"),
+    ):
+        assert service.confirm_import(import_id="import-1", account=other_account).status == ImportStatus.FAILED
+
+    create_or_update.assert_not_called()
     result = service.confirm_import(import_id="import-1", account=account)
 
     assert result.status == ImportStatus.COMPLETED
@@ -361,7 +434,7 @@ workflow:
     assert kwargs["account"] is account
     assert kwargs["name"] == "Override name"
     assert kwargs["description"] == "Override description"
-    redis_delete.assert_called_once_with("snippet_import_info:import-1")
+    redis_delete.assert_called_once_with(redis_key)
 
 
 def test_confirm_import_returns_failed_for_non_mapping_yaml(monkeypatch):
@@ -373,14 +446,17 @@ def test_confirm_import_returns_failed_for_non_mapping_yaml(monkeypatch):
     )
     monkeypatch.setattr("services.snippet_dsl_service.redis_client.get", Mock(return_value=pending.model_dump_json()))
 
-    result = service.confirm_import(import_id="import-1", account=SimpleNamespace(current_tenant_id="tenant-1"))
+    result = service.confirm_import(
+        import_id="import-1", account=SimpleNamespace(id="account-1", current_tenant_id="tenant-1")
+    )
 
     assert result.status == ImportStatus.FAILED
     assert result.error == "Invalid YAML format: expected a dictionary"
 
 
 def test_confirm_import_returns_failed_when_create_or_update_raises(monkeypatch):
-    service = SnippetDslService(session=SimpleNamespace(scalar=Mock(return_value=None)))
+    session = SimpleNamespace(scalar=Mock(return_value=None), rollback=Mock())
+    service = SnippetDslService(session=session)
     pending = SnippetPendingData(
         import_mode="yaml-content",
         yaml_content="version: 0.1.0\nkind: snippet\nsnippet:\n  name: Bad\n",
@@ -391,11 +467,12 @@ def test_confirm_import_returns_failed_when_create_or_update_raises(monkeypatch)
 
     result = service.confirm_import(
         import_id="import-1",
-        account=SimpleNamespace(current_tenant_id="tenant-1"),
+        account=SimpleNamespace(id="account-1", current_tenant_id="tenant-1"),
     )
 
     assert result.status == ImportStatus.FAILED
     assert result.error == "boom"
+    session.rollback.assert_called_once()
 
 
 def test_check_dependencies_returns_empty_without_draft_workflow(monkeypatch):
@@ -437,6 +514,7 @@ def test_check_dependencies_returns_generated_dependencies(monkeypatch):
 def test_create_or_update_snippet_updates_existing_snippet_and_syncs_workflow(monkeypatch):
     snippet = SimpleNamespace(
         id="snippet-1",
+        tenant_id="tenant-1",
         name="Old",
         description="Old",
         type="node",
@@ -453,6 +531,14 @@ def test_create_or_update_snippet_updates_existing_snippet_and_syncs_workflow(mo
         sync_draft_workflow=Mock(),
     )
     monkeypatch.setattr("services.snippet_dsl_service.SnippetService", lambda *_args, **_kwargs: snippet_service)
+    monkeypatch.setattr(
+        "services.snippet_dsl_service.WorkflowAgentPublishService.sync_agent_bindings_for_draft",
+        Mock(return_value=set()),
+    )
+    monkeypatch.setattr(
+        "services.snippet_dsl_service.WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync",
+        Mock(),
+    )
 
     result = service._create_or_update_snippet(
         snippet=snippet,
@@ -482,6 +568,14 @@ def test_create_or_update_snippet_creates_new_snippet_and_flushes(monkeypatch):
     service = SnippetDslService(session=session)
     snippet_service = SimpleNamespace(get_draft_workflow=Mock(return_value=None), sync_draft_workflow=Mock())
     monkeypatch.setattr("services.snippet_dsl_service.SnippetService", lambda *_args, **_kwargs: snippet_service)
+    monkeypatch.setattr(
+        "services.snippet_dsl_service.WorkflowAgentPublishService.sync_agent_bindings_for_draft",
+        Mock(return_value=set()),
+    )
+    monkeypatch.setattr(
+        "services.snippet_dsl_service.WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync",
+        Mock(),
+    )
 
     result = service._create_or_update_snippet(
         snippet=None,

@@ -304,22 +304,23 @@ def _has_dify_refs_recursive(schema: SchemaType) -> bool:
     Returns:
         True if any Dify $ref is found, False otherwise
     """
-    if isinstance(schema, dict):
-        # Check if this dict has a $ref field
-        ref_uri = schema.get("$ref")
-        if ref_uri and _is_dify_schema_ref(ref_uri):
-            return True
-
-        # Check nested values
-        for value in schema.values():
-            if _has_dify_refs_recursive(value):
+    match schema:
+        case dict():
+            # Check if this dict has a $ref field
+            ref_uri = schema.get("$ref")
+            if ref_uri and _is_dify_schema_ref(ref_uri):
                 return True
 
-    elif isinstance(schema, list):
-        # Check each item in the list
-        for item in schema:
-            if _has_dify_refs_recursive(item):
-                return True
+            # Check nested values
+            for value in schema.values():
+                if _has_dify_refs_recursive(value):
+                    return True
+
+        case list():
+            # Check each item in the list
+            for item in schema:
+                if _has_dify_refs_recursive(item):
+                    return True
 
     # Primitive types don't contain refs
     return False

@@ -16,10 +16,10 @@ export const AppCardSkeleton = React.memo(({ count = 6 }: AppCardSkeletonProps) 
 
   return (
     <>
-      {skeletonKeys.map(key => (
+      {skeletonKeys.map((key) => (
         <div
           key={key}
-          className="h-[160px] overflow-hidden rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg p-4 shadow-xs"
+          className="h-40 overflow-hidden rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg p-4 shadow-xs"
         >
           <SkeletonContainer className="h-full">
             <SkeletonRow>
@@ -39,5 +39,3 @@ export const AppCardSkeleton = React.memo(({ count = 6 }: AppCardSkeletonProps) 
     </>
   )
 })
-
-AppCardSkeleton.displayName = 'AppCardSkeleton'

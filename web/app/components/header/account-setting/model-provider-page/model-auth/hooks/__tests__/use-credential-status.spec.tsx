@@ -1,3 +1,4 @@
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ModelProvider } from '../../../declarations'
 import { renderHook } from '@testing-library/react'
 import { useCredentialStatus } from '../use-credential-status'
@@ -48,8 +49,32 @@ describe('useCredentialStatus', () => {
     expect(restrictedRes.current.notAllowedToUse).toBe(true)
   })
 
+  it('uses the summary credential usability flag', () => {
+    const provider = {
+      custom_configuration: {
+        current_credential_id: '123',
+        current_credential_name: 'Key',
+        current_credential_usable: false,
+        available_credentials: [
+          {
+            credential_id: '123',
+            credential_name: 'Key',
+          },
+        ],
+      },
+    } as unknown as ModelProviderSummaryResponse
+
+    const { result } = renderHook(() => useCredentialStatus(provider))
+
+    expect(result.current.hasCredential).toBe(true)
+    expect(result.current.authorized).toBe(false)
+    expect(result.current.notAllowedToUse).toBe(true)
+  })
+
   it('handles undefined custom configuration gracefully', () => {
-    const { result } = renderHook(() => useCredentialStatus({ custom_configuration: {} } as ModelProvider))
+    const { result } = renderHook(() =>
+      useCredentialStatus({ custom_configuration: {} } as ModelProvider),
+    )
     expect(result.current.hasCredential).toBe(false)
     expect(result.current.available_credentials).toBeUndefined()
   })

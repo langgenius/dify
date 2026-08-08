@@ -2,26 +2,19 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from flask_restx import fields
-from pydantic import computed_field, field_validator
+from pydantic import Field, computed_field, field_validator
 
 from fields.base import ResponseModel
 from libs.helper import build_avatar_url, to_timestamp
 
-simple_account_fields = {
-    "id": fields.String,
-    "name": fields.String,
-    "email": fields.String,
-}
 
-
-class SimpleAccount(ResponseModel):
+class SimpleAccountResponse(ResponseModel):
     id: str
     name: str
     email: str
 
 
-class _AccountAvatar(ResponseModel):
+class _AccountAvatarResponseMixin(ResponseModel):
     avatar: str | None = None
 
     @computed_field(return_type=str | None)  # type: ignore[prop-decorator]
@@ -30,7 +23,7 @@ class _AccountAvatar(ResponseModel):
         return build_avatar_url(self.avatar)
 
 
-class Account(_AccountAvatar):
+class AccountResponse(_AccountAvatarResponseMixin):
     id: str
     name: str
     email: str
@@ -48,7 +41,7 @@ class Account(_AccountAvatar):
         return to_timestamp(value)
 
 
-class AccountWithRole(_AccountAvatar):
+class AccountWithRoleResponse(_AccountAvatarResponseMixin):
     id: str
     name: str
     email: str
@@ -56,6 +49,7 @@ class AccountWithRole(_AccountAvatar):
     last_active_at: int | None = None
     created_at: int | None = None
     role: str
+    roles: list[dict[str, str]] = Field(default_factory=list)
     status: str
 
     @field_validator("last_login_at", "last_active_at", "created_at", mode="before")
@@ -64,5 +58,11 @@ class AccountWithRole(_AccountAvatar):
         return to_timestamp(value)
 
 
-class AccountWithRoleList(ResponseModel):
-    accounts: list[AccountWithRole]
+class AccountWithRoleListResponse(ResponseModel):
+    accounts: list[AccountWithRoleResponse]
+
+
+SimpleAccount = SimpleAccountResponse
+Account = AccountResponse
+AccountWithRole = AccountWithRoleResponse
+AccountWithRoleList = AccountWithRoleListResponse

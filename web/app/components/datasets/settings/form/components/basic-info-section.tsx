@@ -15,7 +15,6 @@ const labelClass = 'flex items-center shrink-0 w-[180px] h-7 pt-1'
 
 type BasicInfoSectionProps = {
   currentDataset: DataSet | undefined
-  isCurrentWorkspaceDatasetOperator: boolean
   name: string
   setName: (value: string) => void
   description: string
@@ -30,11 +29,11 @@ type BasicInfoSectionProps = {
   selectedMemberIDs: string[]
   setSelectedMemberIDs: (value: string[]) => void
   memberList: Member[]
+  readonly?: boolean
 }
 
 const BasicInfoSection = ({
   currentDataset,
-  isCurrentWorkspaceDatasetOperator,
   name,
   setName,
   description,
@@ -49,6 +48,7 @@ const BasicInfoSection = ({
   selectedMemberIDs,
   setSelectedMemberIDs,
   memberList,
+  readonly = false,
 }: BasicInfoSectionProps) => {
   const { t } = useTranslation()
 
@@ -57,23 +57,25 @@ const BasicInfoSection = ({
       {/* Dataset name and icon */}
       <div className={rowClass}>
         <div className={labelClass}>
-          <div className="system-sm-semibold text-text-secondary">{t('form.nameAndIcon', { ns: 'datasetSettings' })}</div>
+          <div className="system-sm-semibold text-text-secondary">
+            {t(($) => $['form.nameAndIcon'], { ns: 'datasetSettings' })}
+          </div>
         </div>
         <div className="flex grow items-center gap-x-2">
           <AppIcon
             size="small"
-            onClick={handleOpenAppIconPicker}
-            className="cursor-pointer"
+            onClick={readonly ? undefined : handleOpenAppIconPicker}
+            className={readonly ? undefined : 'cursor-pointer'}
             iconType={iconInfo.icon_type as AppIconType}
             icon={iconInfo.icon}
             background={iconInfo.icon_background}
             imageUrl={iconInfo.icon_url}
-            showEditIcon
+            showEditIcon={!readonly}
           />
           <Input
-            disabled={!currentDataset?.embedding_available}
+            disabled={!currentDataset?.embedding_available || readonly}
             value={name}
-            onChange={e => setName(e.target.value)}
+            onChange={(e) => setName(e.target.value)}
           />
         </div>
       </div>
@@ -81,16 +83,18 @@ const BasicInfoSection = ({
       {/* Dataset description */}
       <div className={rowClass}>
         <div className={labelClass}>
-          <div className="system-sm-semibold text-text-secondary">{t('form.desc', { ns: 'datasetSettings' })}</div>
+          <div className="system-sm-semibold text-text-secondary">
+            {t(($) => $['form.desc'], { ns: 'datasetSettings' })}
+          </div>
         </div>
         <div className="grow">
           <Textarea
-            aria-label={t('form.desc', { ns: 'datasetSettings' })}
-            disabled={!currentDataset?.embedding_available}
+            aria-label={t(($) => $['form.desc'], { ns: 'datasetSettings' })}
+            disabled={!currentDataset?.embedding_available || readonly}
             className="resize-none"
-            placeholder={t('form.descPlaceholder', { ns: 'datasetSettings' }) || ''}
+            placeholder={t(($) => $['form.descPlaceholder'], { ns: 'datasetSettings' }) || ''}
             value={description}
-            onValueChange={value => setDescription(value)}
+            onValueChange={(value) => setDescription(value)}
           />
         </div>
       </div>
@@ -98,14 +102,16 @@ const BasicInfoSection = ({
       {/* Permissions */}
       <div className={rowClass}>
         <div className={labelClass}>
-          <div className="system-sm-semibold text-text-secondary">{t('form.permissions', { ns: 'datasetSettings' })}</div>
+          <div className="system-sm-semibold text-text-secondary">
+            {t(($) => $['form.permissions'], { ns: 'datasetSettings' })}
+          </div>
         </div>
         <div className="grow">
           <PermissionSelector
-            disabled={!currentDataset?.embedding_available || isCurrentWorkspaceDatasetOperator}
+            disabled={!currentDataset?.embedding_available || readonly}
             permission={permission}
             value={selectedMemberIDs}
-            onChange={v => setPermission(v)}
+            onChange={(v) => setPermission(v)}
             onMemberSelect={setSelectedMemberIDs}
             memberList={memberList}
           />
@@ -115,9 +121,11 @@ const BasicInfoSection = ({
       {showAppIconPicker && (
         <AppIconPicker
           open={showAppIconPicker}
-          initialEmoji={iconInfo.icon_type === 'emoji'
-            ? { icon: iconInfo.icon, background: iconInfo.icon_background }
-            : undefined}
+          initialEmoji={
+            iconInfo.icon_type === 'emoji'
+              ? { icon: iconInfo.icon, background: iconInfo.icon_background }
+              : undefined
+          }
           onOpenChange={setShowAppIconPicker}
           onSelect={handleSelectAppIcon}
         />

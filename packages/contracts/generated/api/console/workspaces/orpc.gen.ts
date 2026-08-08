@@ -2,7 +2,6 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import {
   zDeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdPath,
   zDeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse,
@@ -19,6 +18,16 @@ import {
   zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponse,
   zDeleteWorkspacesCurrentModelProvidersByProviderModelsPath,
   zDeleteWorkspacesCurrentModelProvidersByProviderModelsResponse,
+  zDeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdPath,
+  zDeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse,
+  zDeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsBody,
+  zDeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsPath,
+  zDeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsResponse,
+  zDeleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsBody,
+  zDeleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsPath,
+  zDeleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsResponse,
+  zDeleteWorkspacesCurrentRbacRolesByRoleIdPath,
+  zDeleteWorkspacesCurrentRbacRolesByRoleIdResponse,
   zDeleteWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientPath,
   zDeleteWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientResponse,
   zDeleteWorkspacesCurrentToolProviderMcpBody,
@@ -60,8 +69,10 @@ import {
   zGetWorkspacesCurrentModelProvidersByProviderModelsParameterRulesResponse,
   zGetWorkspacesCurrentModelProvidersByProviderModelsPath,
   zGetWorkspacesCurrentModelProvidersByProviderModelsResponse,
+  zGetWorkspacesCurrentModelProvidersCreditsResponse,
   zGetWorkspacesCurrentModelProvidersQuery,
   zGetWorkspacesCurrentModelProvidersResponse,
+  zGetWorkspacesCurrentModelProvidersSummaryResponse,
   zGetWorkspacesCurrentModelsModelTypesByModelTypePath,
   zGetWorkspacesCurrentModelsModelTypesByModelTypeResponse,
   zGetWorkspacesCurrentPermissionResponse,
@@ -77,6 +88,8 @@ import {
   zGetWorkspacesCurrentPluginFetchManifestResponse,
   zGetWorkspacesCurrentPluginIconQuery,
   zGetWorkspacesCurrentPluginIconResponse,
+  zGetWorkspacesCurrentPluginInstalledIdsQuery,
+  zGetWorkspacesCurrentPluginInstalledIdsResponse,
   zGetWorkspacesCurrentPluginListQuery,
   zGetWorkspacesCurrentPluginListResponse,
   zGetWorkspacesCurrentPluginMarketplacePkgQuery,
@@ -90,6 +103,55 @@ import {
   zGetWorkspacesCurrentPluginTasksByTaskIdResponse,
   zGetWorkspacesCurrentPluginTasksQuery,
   zGetWorkspacesCurrentPluginTasksResponse,
+  zGetWorkspacesCurrentRbacAccessPoliciesByPolicyIdPath,
+  zGetWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse,
+  zGetWorkspacesCurrentRbacAccessPoliciesResponse,
+  zGetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsPath,
+  zGetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsResponse,
+  zGetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdRoleBindingsPath,
+  zGetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdRoleBindingsResponse,
+  zGetWorkspacesCurrentRbacAppsByAppIdAccessPolicyPath,
+  zGetWorkspacesCurrentRbacAppsByAppIdAccessPolicyQuery,
+  zGetWorkspacesCurrentRbacAppsByAppIdAccessPolicyResponse,
+  zGetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesPath,
+  zGetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesQuery,
+  zGetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesResponse,
+  zGetWorkspacesCurrentRbacAppsByAppIdWhitelistPath,
+  zGetWorkspacesCurrentRbacAppsByAppIdWhitelistResponse,
+  zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsPath,
+  zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsResponse,
+  zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdRoleBindingsPath,
+  zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdRoleBindingsResponse,
+  zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPolicyPath,
+  zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPolicyQuery,
+  zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPolicyResponse,
+  zGetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesPath,
+  zGetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesQuery,
+  zGetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesResponse,
+  zGetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistPath,
+  zGetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistResponse,
+  zGetWorkspacesCurrentRbacMembersByMemberIdRbacRolesPath,
+  zGetWorkspacesCurrentRbacMembersByMemberIdRbacRolesResponse,
+  zGetWorkspacesCurrentRbacMyPermissionsResponse,
+  zGetWorkspacesCurrentRbacRolePermissionsCatalogAppResponse,
+  zGetWorkspacesCurrentRbacRolePermissionsCatalogDatasetResponse,
+  zGetWorkspacesCurrentRbacRolePermissionsCatalogResponse,
+  zGetWorkspacesCurrentRbacRolesByRoleIdMembersPath,
+  zGetWorkspacesCurrentRbacRolesByRoleIdMembersResponse,
+  zGetWorkspacesCurrentRbacRolesByRoleIdPath,
+  zGetWorkspacesCurrentRbacRolesByRoleIdResponse,
+  zGetWorkspacesCurrentRbacRolesResponse,
+  zGetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdMemberBindingsPath,
+  zGetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdMemberBindingsResponse,
+  zGetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdRoleBindingsPath,
+  zGetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdRoleBindingsResponse,
+  zGetWorkspacesCurrentRbacWorkspaceAppsAccessPolicyResponse,
+  zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdMemberBindingsPath,
+  zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdMemberBindingsResponse,
+  zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRoleBindingsPath,
+  zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRoleBindingsResponse,
+  zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponse,
+  zGetWorkspacesCurrentSummaryResponse,
   zGetWorkspacesCurrentToolLabelsResponse,
   zGetWorkspacesCurrentToolProviderApiGetQuery,
   zGetWorkspacesCurrentToolProviderApiGetResponse,
@@ -144,6 +206,7 @@ import {
   zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAuthorizePath,
   zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAuthorizeResponse,
   zGetWorkspacesCurrentTriggersResponse,
+  zGetWorkspacesCustomConfigResponse,
   zGetWorkspacesResponse,
   zPatchWorkspacesCurrentCustomizedSnippetsBySnippetIdBody,
   zPatchWorkspacesCurrentCustomizedSnippetsBySnippetIdPath,
@@ -250,8 +313,14 @@ import {
   zPostWorkspacesCurrentPluginUploadBundleResponse,
   zPostWorkspacesCurrentPluginUploadGithubBody,
   zPostWorkspacesCurrentPluginUploadGithubResponse,
+  zPostWorkspacesCurrentPluginUploadPkgBody,
   zPostWorkspacesCurrentPluginUploadPkgResponse,
-  zPostWorkspacesCurrentResponse,
+  zPostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyPath,
+  zPostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyResponse,
+  zPostWorkspacesCurrentRbacAccessPoliciesResponse,
+  zPostWorkspacesCurrentRbacRolesByRoleIdCopyPath,
+  zPostWorkspacesCurrentRbacRolesByRoleIdCopyResponse,
+  zPostWorkspacesCurrentRbacRolesResponse,
   zPostWorkspacesCurrentToolProviderApiAddBody,
   zPostWorkspacesCurrentToolProviderApiAddResponse,
   zPostWorkspacesCurrentToolProviderApiDeleteBody,
@@ -312,6 +381,7 @@ import {
   zPostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpdateResponse,
   zPostWorkspacesCustomConfigBody,
   zPostWorkspacesCustomConfigResponse,
+  zPostWorkspacesCustomConfigWebappLogoUploadBody,
   zPostWorkspacesCustomConfigWebappLogoUploadResponse,
   zPostWorkspacesInfoBody,
   zPostWorkspacesInfoResponse,
@@ -326,6 +396,35 @@ import {
   zPutWorkspacesCurrentModelProvidersByProviderModelsCredentialsBody,
   zPutWorkspacesCurrentModelProvidersByProviderModelsCredentialsPath,
   zPutWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponse,
+  zPutWorkspacesCurrentRbacAccessPoliciesByPolicyIdPath,
+  zPutWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse,
+  zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockPath,
+  zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockResponse,
+  zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockPath,
+  zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockResponse,
+  zPutWorkspacesCurrentRbacAppsByAppIdUsersByTargetAccountIdAccessPoliciesBody,
+  zPutWorkspacesCurrentRbacAppsByAppIdUsersByTargetAccountIdAccessPoliciesPath,
+  zPutWorkspacesCurrentRbacAppsByAppIdUsersByTargetAccountIdAccessPoliciesResponse,
+  zPutWorkspacesCurrentRbacAppsByAppIdWhitelistBody,
+  zPutWorkspacesCurrentRbacAppsByAppIdWhitelistPath,
+  zPutWorkspacesCurrentRbacAppsByAppIdWhitelistResponse,
+  zPutWorkspacesCurrentRbacDatasetsByDatasetIdUsersByTargetAccountIdAccessPoliciesBody,
+  zPutWorkspacesCurrentRbacDatasetsByDatasetIdUsersByTargetAccountIdAccessPoliciesPath,
+  zPutWorkspacesCurrentRbacDatasetsByDatasetIdUsersByTargetAccountIdAccessPoliciesResponse,
+  zPutWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistBody,
+  zPutWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistPath,
+  zPutWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistResponse,
+  zPutWorkspacesCurrentRbacMembersByMemberIdRbacRolesBody,
+  zPutWorkspacesCurrentRbacMembersByMemberIdRbacRolesPath,
+  zPutWorkspacesCurrentRbacMembersByMemberIdRbacRolesResponse,
+  zPutWorkspacesCurrentRbacRolesByRoleIdPath,
+  zPutWorkspacesCurrentRbacRolesByRoleIdResponse,
+  zPutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsBody,
+  zPutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsPath,
+  zPutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsResponse,
+  zPutWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBindingsBody,
+  zPutWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBindingsPath,
+  zPutWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBindingsResponse,
   zPutWorkspacesCurrentToolProviderMcpBody,
   zPutWorkspacesCurrentToolProviderMcpResponse,
 } from './zod.gen'
@@ -975,6 +1074,34 @@ export const get12 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
+    operationId: 'getWorkspacesCurrentModelProvidersCredits',
+    path: '/workspaces/current/model-providers/credits',
+    tags: ['console'],
+  })
+  .output(zGetWorkspacesCurrentModelProvidersCreditsResponse)
+
+export const credits = {
+  get: get12,
+}
+
+export const get13 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesCurrentModelProvidersSummary',
+    path: '/workspaces/current/model-providers/summary',
+    tags: ['console'],
+  })
+  .output(zGetWorkspacesCurrentModelProvidersSummaryResponse)
+
+export const summary = {
+  get: get13,
+}
+
+export const get14 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
     operationId: 'getWorkspacesCurrentModelProvidersByProviderCheckoutUrl',
     path: '/workspaces/current/model-providers/{provider}/checkout-url',
     tags: ['console'],
@@ -983,7 +1110,7 @@ export const get12 = oc
   .output(zGetWorkspacesCurrentModelProvidersByProviderCheckoutUrlResponse)
 
 export const checkoutUrl = {
-  get: get12,
+  get: get14,
 }
 
 export const post16 = oc
@@ -1043,7 +1170,7 @@ export const delete5 = oc
   )
   .output(zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsResponse)
 
-export const get13 = oc
+export const get15 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1094,7 +1221,7 @@ export const put2 = oc
 
 export const credentials = {
   delete: delete5,
-  get: get13,
+  get: get15,
   post: post18,
   put: put2,
   switch: switch_,
@@ -1158,7 +1285,7 @@ export const delete6 = oc
   )
   .output(zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponse)
 
-export const get14 = oc
+export const get16 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1209,7 +1336,7 @@ export const put3 = oc
 
 export const credentials2 = {
   delete: delete6,
-  get: get14,
+  get: get16,
   post: post21,
   put: put3,
   switch: switch2,
@@ -1313,7 +1440,7 @@ export const loadBalancingConfigs = {
   byConfigId,
 }
 
-export const get15 = oc
+export const get17 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1330,7 +1457,7 @@ export const get15 = oc
   .output(zGetWorkspacesCurrentModelProvidersByProviderModelsParameterRulesResponse)
 
 export const parameterRules = {
-  get: get15,
+  get: get17,
 }
 
 export const delete7 = oc
@@ -1350,7 +1477,7 @@ export const delete7 = oc
   )
   .output(zDeleteWorkspacesCurrentModelProvidersByProviderModelsResponse)
 
-export const get16 = oc
+export const get18 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1379,7 +1506,7 @@ export const post24 = oc
 
 export const models = {
   delete: delete7,
-  get: get16,
+  get: get18,
   post: post24,
   credentials: credentials2,
   disable: disable2,
@@ -1415,7 +1542,7 @@ export const byProvider = {
   preferredProviderType,
 }
 
-export const get17 = oc
+export const get19 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1427,11 +1554,13 @@ export const get17 = oc
   .output(zGetWorkspacesCurrentModelProvidersResponse)
 
 export const modelProviders = {
-  get: get17,
+  get: get19,
+  credits,
+  summary,
   byProvider,
 }
 
-export const get18 = oc
+export const get20 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1443,7 +1572,7 @@ export const get18 = oc
   .output(zGetWorkspacesCurrentModelsModelTypesByModelTypeResponse)
 
 export const byModelType = {
-  get: get18,
+  get: get20,
 }
 
 export const modelTypes = {
@@ -1459,7 +1588,7 @@ export const models2 = {
  *
  * Returns permission flags that control workspace features like member invitations and owner transfer.
  */
-export const get19 = oc
+export const get21 = oc
   .route({
     description:
       'Returns permission flags that control workspace features like member invitations and owner transfer.',
@@ -1473,10 +1602,10 @@ export const get19 = oc
   .output(zGetWorkspacesCurrentPermissionResponse)
 
 export const permission = {
-  get: get19,
+  get: get21,
 }
 
-export const get20 = oc
+export const get22 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1488,7 +1617,7 @@ export const get20 = oc
   .output(zGetWorkspacesCurrentPluginAssetResponse)
 
 export const asset = {
-  get: get20,
+  get: get22,
 }
 
 export const post26 = oc
@@ -1521,7 +1650,7 @@ export const exclude = {
   post: post27,
 }
 
-export const get21 = oc
+export const get23 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1533,7 +1662,7 @@ export const get21 = oc
   .output(zGetWorkspacesCurrentPluginAutoUpgradeFetchResponse)
 
 export const fetch_ = {
-  get: get21,
+  get: get23,
 }
 
 export const autoUpgrade = {
@@ -1542,7 +1671,7 @@ export const autoUpgrade = {
   fetch: fetch_,
 }
 
-export const get22 = oc
+export const get24 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1553,10 +1682,10 @@ export const get22 = oc
   .output(zGetWorkspacesCurrentPluginDebuggingKeyResponse)
 
 export const debuggingKey = {
-  get: get22,
+  get: get24,
 }
 
-export const get23 = oc
+export const get25 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1568,10 +1697,10 @@ export const get23 = oc
   .output(zGetWorkspacesCurrentPluginFetchManifestResponse)
 
 export const fetchManifest = {
-  get: get23,
+  get: get25,
 }
 
-export const get24 = oc
+export const get26 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1583,7 +1712,7 @@ export const get24 = oc
   .output(zGetWorkspacesCurrentPluginIconResponse)
 
 export const icon = {
-  get: get24,
+  get: get26,
 }
 
 export const post28 = oc
@@ -1637,6 +1766,21 @@ export const install = {
   pkg,
 }
 
+export const get27 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesCurrentPluginInstalledIds',
+    path: '/workspaces/current/plugin/installed-ids',
+    tags: ['console'],
+  })
+  .input(z.object({ query: zGetWorkspacesCurrentPluginInstalledIdsQuery }))
+  .output(zGetWorkspacesCurrentPluginInstalledIdsResponse)
+
+export const installedIds = {
+  get: get27,
+}
+
 export const post31 = oc
   .route({
     inputStructure: 'detailed',
@@ -1671,7 +1815,7 @@ export const latestVersions = {
   post: post32,
 }
 
-export const get25 = oc
+export const get28 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1683,12 +1827,12 @@ export const get25 = oc
   .output(zGetWorkspacesCurrentPluginListResponse)
 
 export const list2 = {
-  get: get25,
+  get: get28,
   installations,
   latestVersions,
 }
 
-export const get26 = oc
+export const get29 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1700,14 +1844,14 @@ export const get26 = oc
   .output(zGetWorkspacesCurrentPluginMarketplacePkgResponse)
 
 export const pkg2 = {
-  get: get26,
+  get: get29,
 }
 
 export const marketplace2 = {
   pkg: pkg2,
 }
 
-export const get27 = oc
+export const get30 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1719,7 +1863,7 @@ export const get27 = oc
   .output(zGetWorkspacesCurrentPluginParametersDynamicOptionsResponse)
 
 export const dynamicOptions = {
-  get: get27,
+  get: get30,
 }
 
 /**
@@ -1763,7 +1907,7 @@ export const change2 = {
   post: post34,
 }
 
-export const get28 = oc
+export const get31 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1774,7 +1918,7 @@ export const get28 = oc
   .output(zGetWorkspacesCurrentPluginPermissionFetchResponse)
 
 export const fetch2 = {
-  get: get28,
+  get: get31,
 }
 
 export const permission2 = {
@@ -1782,7 +1926,7 @@ export const permission2 = {
   fetch: fetch2,
 }
 
-export const get29 = oc
+export const get32 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1794,7 +1938,7 @@ export const get29 = oc
   .output(zGetWorkspacesCurrentPluginReadmeResponse)
 
 export const readme = {
-  get: get29,
+  get: get32,
 }
 
 export const post35 = oc
@@ -1842,7 +1986,7 @@ export const delete8 = {
   byIdentifier,
 }
 
-export const get30 = oc
+export const get33 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1854,11 +1998,11 @@ export const get30 = oc
   .output(zGetWorkspacesCurrentPluginTasksByTaskIdResponse)
 
 export const byTaskId = {
-  get: get30,
+  get: get33,
   delete: delete8,
 }
 
-export const get31 = oc
+export const get34 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1870,7 +2014,7 @@ export const get31 = oc
   .output(zGetWorkspacesCurrentPluginTasksResponse)
 
 export const tasks = {
-  get: get31,
+  get: get34,
   deleteAll,
   byTaskId,
 }
@@ -1962,6 +2106,7 @@ export const post43 = oc
     path: '/workspaces/current/plugin/upload/pkg',
     tags: ['console'],
   })
+  .input(z.object({ body: zPostWorkspacesCurrentPluginUploadPkgBody }))
   .output(zPostWorkspacesCurrentPluginUploadPkgResponse)
 
 export const pkg3 = {
@@ -1974,7 +2119,7 @@ export const upload = {
   pkg: pkg3,
 }
 
-export const get32 = oc
+export const get35 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1991,7 +2136,7 @@ export const get32 = oc
   .output(zGetWorkspacesCurrentPluginByCategoryListResponse)
 
 export const list3 = {
-  get: get32,
+  get: get35,
 }
 
 export const byCategory = {
@@ -2005,6 +2150,7 @@ export const plugin2 = {
   fetchManifest,
   icon,
   install,
+  installedIds,
   list: list2,
   marketplace: marketplace2,
   parameters,
@@ -2017,7 +2163,895 @@ export const plugin2 = {
   byCategory,
 }
 
-export const get33 = oc
+export const post44 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopy',
+    path: '/workspaces/current/rbac/access-policies/{policy_id}/copy',
+    successStatus: 201,
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyPath }))
+  .output(zPostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyResponse)
+
+export const copy = {
+  post: post44,
+}
+
+export const delete9 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteWorkspacesCurrentRbacAccessPoliciesByPolicyId',
+    path: '/workspaces/current/rbac/access-policies/{policy_id}',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zDeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdPath }))
+  .output(zDeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse)
+
+export const get36 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesCurrentRbacAccessPoliciesByPolicyId',
+    path: '/workspaces/current/rbac/access-policies/{policy_id}',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetWorkspacesCurrentRbacAccessPoliciesByPolicyIdPath }))
+  .output(zGetWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse)
+
+export const put4 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putWorkspacesCurrentRbacAccessPoliciesByPolicyId',
+    path: '/workspaces/current/rbac/access-policies/{policy_id}',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPutWorkspacesCurrentRbacAccessPoliciesByPolicyIdPath }))
+  .output(zPutWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse)
+
+export const byPolicyId = {
+  delete: delete9,
+  get: get36,
+  put: put4,
+  copy,
+}
+
+export const get37 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesCurrentRbacAccessPolicies',
+    path: '/workspaces/current/rbac/access-policies',
+    tags: ['console'],
+  })
+  .output(zGetWorkspacesCurrentRbacAccessPoliciesResponse)
+
+export const post45 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkspacesCurrentRbacAccessPolicies',
+    path: '/workspaces/current/rbac/access-policies',
+    successStatus: 201,
+    tags: ['console'],
+  })
+  .output(zPostWorkspacesCurrentRbacAccessPoliciesResponse)
+
+export const accessPolicies = {
+  get: get37,
+  post: post45,
+  byPolicyId,
+}
+
+export const put5 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLock',
+    path: '/workspaces/current/rbac/access-policy-bindings/{binding_id}/lock',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockPath }))
+  .output(zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockResponse)
+
+export const lock = {
+  put: put5,
+}
+
+export const put6 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlock',
+    path: '/workspaces/current/rbac/access-policy-bindings/{binding_id}/unlock',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockPath }))
+  .output(zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockResponse)
+
+export const unlock = {
+  put: put6,
+}
+
+export const byBindingId = {
+  lock,
+  unlock,
+}
+
+export const accessPolicyBindings = {
+  byBindingId,
+}
+
+export const delete10 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindings',
+    path: '/workspaces/current/rbac/apps/{app_id}/access-policies/{policy_id}/member-bindings',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zDeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsBody,
+      params: zDeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsPath,
+    }),
+  )
+  .output(zDeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsResponse)
+
+export const get38 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindings',
+    path: '/workspaces/current/rbac/apps/{app_id}/access-policies/{policy_id}/member-bindings',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsPath,
+    }),
+  )
+  .output(zGetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsResponse)
+
+export const memberBindings = {
+  delete: delete10,
+  get: get38,
+}
+
+export const get39 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdRoleBindings',
+    path: '/workspaces/current/rbac/apps/{app_id}/access-policies/{policy_id}/role-bindings',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdRoleBindingsPath,
+    }),
+  )
+  .output(zGetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdRoleBindingsResponse)
+
+export const roleBindings = {
+  get: get39,
+}
+
+export const byPolicyId2 = {
+  memberBindings,
+  roleBindings,
+}
+
+export const accessPolicies2 = {
+  byPolicyId: byPolicyId2,
+}
+
+export const get40 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesCurrentRbacAppsByAppIdAccessPolicy',
+    path: '/workspaces/current/rbac/apps/{app_id}/access-policy',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetWorkspacesCurrentRbacAppsByAppIdAccessPolicyPath,
+      query: zGetWorkspacesCurrentRbacAppsByAppIdAccessPolicyQuery.optional(),
+    }),
+  )
+  .output(zGetWorkspacesCurrentRbacAppsByAppIdAccessPolicyResponse)
+
+export const accessPolicy = {
+  get: get40,
+}
+
+export const get41 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesCurrentRbacAppsByAppIdUserAccessPolicies',
+    path: '/workspaces/current/rbac/apps/{app_id}/user-access-policies',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesPath,
+      query: zGetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesQuery.optional(),
+    }),
+  )
+  .output(zGetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesResponse)
+
+export const userAccessPolicies = {
+  get: get41,
+}
+
+export const put7 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putWorkspacesCurrentRbacAppsByAppIdUsersByTargetAccountIdAccessPolicies',
+    path: '/workspaces/current/rbac/apps/{app_id}/users/{target_account_id}/access-policies',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPutWorkspacesCurrentRbacAppsByAppIdUsersByTargetAccountIdAccessPoliciesBody,
+      params: zPutWorkspacesCurrentRbacAppsByAppIdUsersByTargetAccountIdAccessPoliciesPath,
+    }),
+  )
+  .output(zPutWorkspacesCurrentRbacAppsByAppIdUsersByTargetAccountIdAccessPoliciesResponse)
+
+export const accessPolicies3 = {
+  put: put7,
+}
+
+export const byTargetAccountId = {
+  accessPolicies: accessPolicies3,
+}
+
+export const users = {
+  byTargetAccountId,
+}
+
+export const get42 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesCurrentRbacAppsByAppIdWhitelist',
+    path: '/workspaces/current/rbac/apps/{app_id}/whitelist',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetWorkspacesCurrentRbacAppsByAppIdWhitelistPath }))
+  .output(zGetWorkspacesCurrentRbacAppsByAppIdWhitelistResponse)
+
+export const put8 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putWorkspacesCurrentRbacAppsByAppIdWhitelist',
+    path: '/workspaces/current/rbac/apps/{app_id}/whitelist',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPutWorkspacesCurrentRbacAppsByAppIdWhitelistBody,
+      params: zPutWorkspacesCurrentRbacAppsByAppIdWhitelistPath,
+    }),
+  )
+  .output(zPutWorkspacesCurrentRbacAppsByAppIdWhitelistResponse)
+
+export const whitelist = {
+  get: get42,
+  put: put8,
+}
+
+export const byAppId = {
+  accessPolicies: accessPolicies2,
+  accessPolicy,
+  userAccessPolicies,
+  users,
+  whitelist,
+}
+
+export const apps = {
+  byAppId,
+}
+
+export const delete11 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId:
+      'deleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindings',
+    path: '/workspaces/current/rbac/datasets/{dataset_id}/access-policies/{policy_id}/member-bindings',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zDeleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsBody,
+      params:
+        zDeleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsPath,
+    }),
+  )
+  .output(
+    zDeleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsResponse,
+  )
+
+export const get43 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId:
+      'getWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindings',
+    path: '/workspaces/current/rbac/datasets/{dataset_id}/access-policies/{policy_id}/member-bindings',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params:
+        zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsPath,
+    }),
+  )
+  .output(
+    zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsResponse,
+  )
+
+export const memberBindings2 = {
+  delete: delete11,
+  get: get43,
+}
+
+export const get44 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdRoleBindings',
+    path: '/workspaces/current/rbac/datasets/{dataset_id}/access-policies/{policy_id}/role-bindings',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdRoleBindingsPath,
+    }),
+  )
+  .output(zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdRoleBindingsResponse)
+
+export const roleBindings2 = {
+  get: get44,
+}
+
+export const byPolicyId3 = {
+  memberBindings: memberBindings2,
+  roleBindings: roleBindings2,
+}
+
+export const accessPolicies4 = {
+  byPolicyId: byPolicyId3,
+}
+
+export const get45 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesCurrentRbacDatasetsByDatasetIdAccessPolicy',
+    path: '/workspaces/current/rbac/datasets/{dataset_id}/access-policy',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPolicyPath,
+      query: zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPolicyQuery.optional(),
+    }),
+  )
+  .output(zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPolicyResponse)
+
+export const accessPolicy2 = {
+  get: get45,
+}
+
+export const get46 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPolicies',
+    path: '/workspaces/current/rbac/datasets/{dataset_id}/user-access-policies',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesPath,
+      query: zGetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesQuery.optional(),
+    }),
+  )
+  .output(zGetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesResponse)
+
+export const userAccessPolicies2 = {
+  get: get46,
+}
+
+export const put9 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putWorkspacesCurrentRbacDatasetsByDatasetIdUsersByTargetAccountIdAccessPolicies',
+    path: '/workspaces/current/rbac/datasets/{dataset_id}/users/{target_account_id}/access-policies',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPutWorkspacesCurrentRbacDatasetsByDatasetIdUsersByTargetAccountIdAccessPoliciesBody,
+      params: zPutWorkspacesCurrentRbacDatasetsByDatasetIdUsersByTargetAccountIdAccessPoliciesPath,
+    }),
+  )
+  .output(zPutWorkspacesCurrentRbacDatasetsByDatasetIdUsersByTargetAccountIdAccessPoliciesResponse)
+
+export const accessPolicies5 = {
+  put: put9,
+}
+
+export const byTargetAccountId2 = {
+  accessPolicies: accessPolicies5,
+}
+
+export const users2 = {
+  byTargetAccountId: byTargetAccountId2,
+}
+
+export const get47 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesCurrentRbacDatasetsByDatasetIdWhitelist',
+    path: '/workspaces/current/rbac/datasets/{dataset_id}/whitelist',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistPath }))
+  .output(zGetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistResponse)
+
+export const put10 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putWorkspacesCurrentRbacDatasetsByDatasetIdWhitelist',
+    path: '/workspaces/current/rbac/datasets/{dataset_id}/whitelist',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPutWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistBody,
+      params: zPutWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistPath,
+    }),
+  )
+  .output(zPutWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistResponse)
+
+export const whitelist2 = {
+  get: get47,
+  put: put10,
+}
+
+export const byDatasetId = {
+  accessPolicies: accessPolicies4,
+  accessPolicy: accessPolicy2,
+  userAccessPolicies: userAccessPolicies2,
+  users: users2,
+  whitelist: whitelist2,
+}
+
+export const datasets = {
+  byDatasetId,
+}
+
+export const get48 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesCurrentRbacMembersByMemberIdRbacRoles',
+    path: '/workspaces/current/rbac/members/{member_id}/rbac-roles',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetWorkspacesCurrentRbacMembersByMemberIdRbacRolesPath }))
+  .output(zGetWorkspacesCurrentRbacMembersByMemberIdRbacRolesResponse)
+
+export const put11 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putWorkspacesCurrentRbacMembersByMemberIdRbacRoles',
+    path: '/workspaces/current/rbac/members/{member_id}/rbac-roles',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPutWorkspacesCurrentRbacMembersByMemberIdRbacRolesBody,
+      params: zPutWorkspacesCurrentRbacMembersByMemberIdRbacRolesPath,
+    }),
+  )
+  .output(zPutWorkspacesCurrentRbacMembersByMemberIdRbacRolesResponse)
+
+export const rbacRoles = {
+  get: get48,
+  put: put11,
+}
+
+export const byMemberId2 = {
+  rbacRoles,
+}
+
+export const members2 = {
+  byMemberId: byMemberId2,
+}
+
+export const get49 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesCurrentRbacMyPermissions',
+    path: '/workspaces/current/rbac/my-permissions',
+    tags: ['console'],
+  })
+  .output(zGetWorkspacesCurrentRbacMyPermissionsResponse)
+
+export const myPermissions = {
+  get: get49,
+}
+
+export const get50 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesCurrentRbacRolePermissionsCatalogApp',
+    path: '/workspaces/current/rbac/role-permissions/catalog/app',
+    tags: ['console'],
+  })
+  .output(zGetWorkspacesCurrentRbacRolePermissionsCatalogAppResponse)
+
+export const app = {
+  get: get50,
+}
+
+export const get51 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesCurrentRbacRolePermissionsCatalogDataset',
+    path: '/workspaces/current/rbac/role-permissions/catalog/dataset',
+    tags: ['console'],
+  })
+  .output(zGetWorkspacesCurrentRbacRolePermissionsCatalogDatasetResponse)
+
+export const dataset = {
+  get: get51,
+}
+
+export const get52 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesCurrentRbacRolePermissionsCatalog',
+    path: '/workspaces/current/rbac/role-permissions/catalog',
+    tags: ['console'],
+  })
+  .output(zGetWorkspacesCurrentRbacRolePermissionsCatalogResponse)
+
+export const catalog = {
+  get: get52,
+  app,
+  dataset,
+}
+
+export const rolePermissions = {
+  catalog,
+}
+
+export const post46 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkspacesCurrentRbacRolesByRoleIdCopy',
+    path: '/workspaces/current/rbac/roles/{role_id}/copy',
+    successStatus: 201,
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPostWorkspacesCurrentRbacRolesByRoleIdCopyPath }))
+  .output(zPostWorkspacesCurrentRbacRolesByRoleIdCopyResponse)
+
+export const copy2 = {
+  post: post46,
+}
+
+export const get53 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesCurrentRbacRolesByRoleIdMembers',
+    path: '/workspaces/current/rbac/roles/{role_id}/members',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetWorkspacesCurrentRbacRolesByRoleIdMembersPath }))
+  .output(zGetWorkspacesCurrentRbacRolesByRoleIdMembersResponse)
+
+export const members3 = {
+  get: get53,
+}
+
+export const delete12 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteWorkspacesCurrentRbacRolesByRoleId',
+    path: '/workspaces/current/rbac/roles/{role_id}',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zDeleteWorkspacesCurrentRbacRolesByRoleIdPath }))
+  .output(zDeleteWorkspacesCurrentRbacRolesByRoleIdResponse)
+
+export const get54 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesCurrentRbacRolesByRoleId',
+    path: '/workspaces/current/rbac/roles/{role_id}',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetWorkspacesCurrentRbacRolesByRoleIdPath }))
+  .output(zGetWorkspacesCurrentRbacRolesByRoleIdResponse)
+
+export const put12 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putWorkspacesCurrentRbacRolesByRoleId',
+    path: '/workspaces/current/rbac/roles/{role_id}',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPutWorkspacesCurrentRbacRolesByRoleIdPath }))
+  .output(zPutWorkspacesCurrentRbacRolesByRoleIdResponse)
+
+export const byRoleId = {
+  delete: delete12,
+  get: get54,
+  put: put12,
+  copy: copy2,
+  members: members3,
+}
+
+export const get55 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesCurrentRbacRoles',
+    path: '/workspaces/current/rbac/roles',
+    tags: ['console'],
+  })
+  .output(zGetWorkspacesCurrentRbacRolesResponse)
+
+export const post47 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkspacesCurrentRbacRoles',
+    path: '/workspaces/current/rbac/roles',
+    successStatus: 201,
+    tags: ['console'],
+  })
+  .output(zPostWorkspacesCurrentRbacRolesResponse)
+
+export const roles = {
+  get: get55,
+  post: post47,
+  byRoleId,
+}
+
+export const put13 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindings',
+    path: '/workspaces/current/rbac/workspace/apps/access-policies/{policy_id}/bindings',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsBody,
+      params: zPutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsPath,
+    }),
+  )
+  .output(zPutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsResponse)
+
+export const bindings = {
+  put: put13,
+}
+
+export const get56 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdMemberBindings',
+    path: '/workspaces/current/rbac/workspace/apps/access-policies/{policy_id}/member-bindings',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdMemberBindingsPath,
+    }),
+  )
+  .output(zGetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdMemberBindingsResponse)
+
+export const memberBindings3 = {
+  get: get56,
+}
+
+export const get57 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdRoleBindings',
+    path: '/workspaces/current/rbac/workspace/apps/access-policies/{policy_id}/role-bindings',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdRoleBindingsPath,
+    }),
+  )
+  .output(zGetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdRoleBindingsResponse)
+
+export const roleBindings3 = {
+  get: get57,
+}
+
+export const byPolicyId4 = {
+  bindings,
+  memberBindings: memberBindings3,
+  roleBindings: roleBindings3,
+}
+
+export const accessPolicies6 = {
+  byPolicyId: byPolicyId4,
+}
+
+export const get58 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesCurrentRbacWorkspaceAppsAccessPolicy',
+    path: '/workspaces/current/rbac/workspace/apps/access-policy',
+    tags: ['console'],
+  })
+  .output(zGetWorkspacesCurrentRbacWorkspaceAppsAccessPolicyResponse)
+
+export const accessPolicy3 = {
+  get: get58,
+}
+
+export const apps2 = {
+  accessPolicies: accessPolicies6,
+  accessPolicy: accessPolicy3,
+}
+
+export const put14 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBindings',
+    path: '/workspaces/current/rbac/workspace/datasets/access-policies/{policy_id}/bindings',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPutWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBindingsBody,
+      params: zPutWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBindingsPath,
+    }),
+  )
+  .output(zPutWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBindingsResponse)
+
+export const bindings2 = {
+  put: put14,
+}
+
+export const get59 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdMemberBindings',
+    path: '/workspaces/current/rbac/workspace/datasets/access-policies/{policy_id}/member-bindings',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdMemberBindingsPath,
+    }),
+  )
+  .output(zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdMemberBindingsResponse)
+
+export const memberBindings4 = {
+  get: get59,
+}
+
+export const get60 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRoleBindings',
+    path: '/workspaces/current/rbac/workspace/datasets/access-policies/{policy_id}/role-bindings',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRoleBindingsPath,
+    }),
+  )
+  .output(zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRoleBindingsResponse)
+
+export const roleBindings4 = {
+  get: get60,
+}
+
+export const byPolicyId5 = {
+  bindings: bindings2,
+  memberBindings: memberBindings4,
+  roleBindings: roleBindings4,
+}
+
+export const accessPolicies7 = {
+  byPolicyId: byPolicyId5,
+}
+
+export const get61 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicy',
+    path: '/workspaces/current/rbac/workspace/datasets/access-policy',
+    tags: ['console'],
+  })
+  .output(zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponse)
+
+export const accessPolicy4 = {
+  get: get61,
+}
+
+export const datasets2 = {
+  accessPolicies: accessPolicies7,
+  accessPolicy: accessPolicy4,
+}
+
+export const workspace = {
+  apps: apps2,
+  datasets: datasets2,
+}
+
+export const rbac = {
+  accessPolicies,
+  accessPolicyBindings,
+  apps,
+  datasets,
+  members: members2,
+  myPermissions,
+  rolePermissions,
+  roles,
+  workspace,
+}
+
+export const get62 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesCurrentSummary',
+    path: '/workspaces/current/summary',
+    tags: ['console'],
+  })
+  .output(zGetWorkspacesCurrentSummaryResponse)
+
+export const summary2 = {
+  get: get62,
+}
+
+export const get63 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2028,10 +3062,10 @@ export const get33 = oc
   .output(zGetWorkspacesCurrentToolLabelsResponse)
 
 export const toolLabels = {
-  get: get33,
+  get: get63,
 }
 
-export const post44 = oc
+export const post48 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2043,10 +3077,10 @@ export const post44 = oc
   .output(zPostWorkspacesCurrentToolProviderApiAddResponse)
 
 export const add = {
-  post: post44,
+  post: post48,
 }
 
-export const post45 = oc
+export const post49 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2057,11 +3091,11 @@ export const post45 = oc
   .input(z.object({ body: zPostWorkspacesCurrentToolProviderApiDeleteBody }))
   .output(zPostWorkspacesCurrentToolProviderApiDeleteResponse)
 
-export const delete9 = {
-  post: post45,
+export const delete13 = {
+  post: post49,
 }
 
-export const get34 = oc
+export const get64 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2072,11 +3106,11 @@ export const get34 = oc
   .input(z.object({ query: zGetWorkspacesCurrentToolProviderApiGetQuery }))
   .output(zGetWorkspacesCurrentToolProviderApiGetResponse)
 
-export const get35 = {
-  get: get34,
+export const get65 = {
+  get: get64,
 }
 
-export const get36 = oc
+export const get66 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2088,10 +3122,10 @@ export const get36 = oc
   .output(zGetWorkspacesCurrentToolProviderApiRemoteResponse)
 
 export const remote = {
-  get: get36,
+  get: get66,
 }
 
-export const post46 = oc
+export const post50 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2103,10 +3137,10 @@ export const post46 = oc
   .output(zPostWorkspacesCurrentToolProviderApiSchemaResponse)
 
 export const schema = {
-  post: post46,
+  post: post50,
 }
 
-export const post47 = oc
+export const post51 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2118,14 +3152,14 @@ export const post47 = oc
   .output(zPostWorkspacesCurrentToolProviderApiTestPreResponse)
 
 export const pre = {
-  post: post47,
+  post: post51,
 }
 
 export const test = {
   pre,
 }
 
-export const get37 = oc
+export const get67 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2137,10 +3171,10 @@ export const get37 = oc
   .output(zGetWorkspacesCurrentToolProviderApiToolsResponse)
 
 export const tools = {
-  get: get37,
+  get: get67,
 }
 
-export const post48 = oc
+export const post52 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2152,13 +3186,13 @@ export const post48 = oc
   .output(zPostWorkspacesCurrentToolProviderApiUpdateResponse)
 
 export const update2 = {
-  post: post48,
+  post: post52,
 }
 
 export const api = {
   add,
-  delete: delete9,
-  get: get35,
+  delete: delete13,
+  get: get65,
   remote,
   schema,
   test,
@@ -2166,7 +3200,7 @@ export const api = {
   update: update2,
 }
 
-export const post49 = oc
+export const post53 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2183,10 +3217,10 @@ export const post49 = oc
   .output(zPostWorkspacesCurrentToolProviderBuiltinByProviderAddResponse)
 
 export const add2 = {
-  post: post49,
+  post: post53,
 }
 
-export const get38 = oc
+export const get68 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2203,10 +3237,10 @@ export const get38 = oc
   .output(zGetWorkspacesCurrentToolProviderBuiltinByProviderCredentialInfoResponse)
 
 export const info = {
-  get: get38,
+  get: get68,
 }
 
-export const get39 = oc
+export const get69 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2226,7 +3260,7 @@ export const get39 = oc
   )
 
 export const byCredentialType = {
-  get: get39,
+  get: get69,
 }
 
 export const schema2 = {
@@ -2238,7 +3272,7 @@ export const credential = {
   schema: schema2,
 }
 
-export const get40 = oc
+export const get70 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2255,10 +3289,10 @@ export const get40 = oc
   .output(zGetWorkspacesCurrentToolProviderBuiltinByProviderCredentialsResponse)
 
 export const credentials3 = {
-  get: get40,
+  get: get70,
 }
 
-export const post50 = oc
+export const post54 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2275,10 +3309,10 @@ export const post50 = oc
   .output(zPostWorkspacesCurrentToolProviderBuiltinByProviderDefaultCredentialResponse)
 
 export const defaultCredential = {
-  post: post50,
+  post: post54,
 }
 
-export const post51 = oc
+export const post55 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2294,11 +3328,11 @@ export const post51 = oc
   )
   .output(zPostWorkspacesCurrentToolProviderBuiltinByProviderDeleteResponse)
 
-export const delete10 = {
-  post: post51,
+export const delete14 = {
+  post: post55,
 }
 
-export const get41 = oc
+export const get71 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2310,10 +3344,10 @@ export const get41 = oc
   .output(zGetWorkspacesCurrentToolProviderBuiltinByProviderIconResponse)
 
 export const icon2 = {
-  get: get41,
+  get: get71,
 }
 
-export const get42 = oc
+export const get72 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2325,10 +3359,10 @@ export const get42 = oc
   .output(zGetWorkspacesCurrentToolProviderBuiltinByProviderInfoResponse)
 
 export const info2 = {
-  get: get42,
+  get: get72,
 }
 
-export const get43 = oc
+export const get73 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2342,10 +3376,10 @@ export const get43 = oc
   .output(zGetWorkspacesCurrentToolProviderBuiltinByProviderOauthClientSchemaResponse)
 
 export const clientSchema = {
-  get: get43,
+  get: get73,
 }
 
-export const delete11 = oc
+export const delete15 = oc
   .route({
     inputStructure: 'detailed',
     method: 'DELETE',
@@ -2360,7 +3394,7 @@ export const delete11 = oc
   )
   .output(zDeleteWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientResponse)
 
-export const get44 = oc
+export const get74 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2373,7 +3407,7 @@ export const get44 = oc
   )
   .output(zGetWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientResponse)
 
-export const post52 = oc
+export const post56 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2390,9 +3424,9 @@ export const post52 = oc
   .output(zPostWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientResponse)
 
 export const customClient = {
-  delete: delete11,
-  get: get44,
-  post: post52,
+  delete: delete15,
+  get: get74,
+  post: post56,
 }
 
 export const oauth = {
@@ -2400,7 +3434,7 @@ export const oauth = {
   customClient,
 }
 
-export const get45 = oc
+export const get75 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2412,10 +3446,10 @@ export const get45 = oc
   .output(zGetWorkspacesCurrentToolProviderBuiltinByProviderToolsResponse)
 
 export const tools2 = {
-  get: get45,
+  get: get75,
 }
 
-export const post53 = oc
+export const post57 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2432,7 +3466,7 @@ export const post53 = oc
   .output(zPostWorkspacesCurrentToolProviderBuiltinByProviderUpdateResponse)
 
 export const update3 = {
-  post: post53,
+  post: post57,
 }
 
 export const byProvider2 = {
@@ -2440,7 +3474,7 @@ export const byProvider2 = {
   credential,
   credentials: credentials3,
   defaultCredential,
-  delete: delete10,
+  delete: delete14,
   icon: icon2,
   info: info2,
   oauth,
@@ -2452,7 +3486,7 @@ export const builtin = {
   byProvider: byProvider2,
 }
 
-export const post54 = oc
+export const post58 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2464,10 +3498,10 @@ export const post54 = oc
   .output(zPostWorkspacesCurrentToolProviderMcpAuthResponse)
 
 export const auth = {
-  post: post54,
+  post: post58,
 }
 
-export const get46 = oc
+export const get76 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2479,14 +3513,14 @@ export const get46 = oc
   .output(zGetWorkspacesCurrentToolProviderMcpToolsByProviderIdResponse)
 
 export const byProviderId = {
-  get: get46,
+  get: get76,
 }
 
 export const tools3 = {
   byProviderId,
 }
 
-export const get47 = oc
+export const get77 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2498,14 +3532,14 @@ export const get47 = oc
   .output(zGetWorkspacesCurrentToolProviderMcpUpdateByProviderIdResponse)
 
 export const byProviderId2 = {
-  get: get47,
+  get: get77,
 }
 
 export const update4 = {
   byProviderId: byProviderId2,
 }
 
-export const delete12 = oc
+export const delete16 = oc
   .route({
     inputStructure: 'detailed',
     method: 'DELETE',
@@ -2516,7 +3550,7 @@ export const delete12 = oc
   .input(z.object({ body: zDeleteWorkspacesCurrentToolProviderMcpBody }))
   .output(zDeleteWorkspacesCurrentToolProviderMcpResponse)
 
-export const post55 = oc
+export const post59 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2527,7 +3561,7 @@ export const post55 = oc
   .input(z.object({ body: zPostWorkspacesCurrentToolProviderMcpBody }))
   .output(zPostWorkspacesCurrentToolProviderMcpResponse)
 
-export const put4 = oc
+export const put15 = oc
   .route({
     inputStructure: 'detailed',
     method: 'PUT',
@@ -2539,15 +3573,15 @@ export const put4 = oc
   .output(zPutWorkspacesCurrentToolProviderMcpResponse)
 
 export const mcp = {
-  delete: delete12,
-  post: post55,
-  put: put4,
+  delete: delete16,
+  post: post59,
+  put: put15,
   auth,
   tools: tools3,
   update: update4,
 }
 
-export const post56 = oc
+export const post60 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2559,10 +3593,10 @@ export const post56 = oc
   .output(zPostWorkspacesCurrentToolProviderWorkflowCreateResponse)
 
 export const create2 = {
-  post: post56,
+  post: post60,
 }
 
-export const post57 = oc
+export const post61 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2573,11 +3607,11 @@ export const post57 = oc
   .input(z.object({ body: zPostWorkspacesCurrentToolProviderWorkflowDeleteBody }))
   .output(zPostWorkspacesCurrentToolProviderWorkflowDeleteResponse)
 
-export const delete13 = {
-  post: post57,
+export const delete17 = {
+  post: post61,
 }
 
-export const get48 = oc
+export const get78 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2588,11 +3622,11 @@ export const get48 = oc
   .input(z.object({ query: zGetWorkspacesCurrentToolProviderWorkflowGetQuery.optional() }))
   .output(zGetWorkspacesCurrentToolProviderWorkflowGetResponse)
 
-export const get49 = {
-  get: get48,
+export const get79 = {
+  get: get78,
 }
 
-export const get50 = oc
+export const get80 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2604,10 +3638,10 @@ export const get50 = oc
   .output(zGetWorkspacesCurrentToolProviderWorkflowToolsResponse)
 
 export const tools4 = {
-  get: get50,
+  get: get80,
 }
 
-export const post58 = oc
+export const post62 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2619,13 +3653,13 @@ export const post58 = oc
   .output(zPostWorkspacesCurrentToolProviderWorkflowUpdateResponse)
 
 export const update5 = {
-  post: post58,
+  post: post62,
 }
 
 export const workflow = {
   create: create2,
-  delete: delete13,
-  get: get49,
+  delete: delete17,
+  get: get79,
   tools: tools4,
   update: update5,
 }
@@ -2637,7 +3671,7 @@ export const toolProvider = {
   workflow,
 }
 
-export const get51 = oc
+export const get81 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2649,10 +3683,10 @@ export const get51 = oc
   .output(zGetWorkspacesCurrentToolProvidersResponse)
 
 export const toolProviders = {
-  get: get51,
+  get: get81,
 }
 
-export const get52 = oc
+export const get82 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2663,10 +3697,10 @@ export const get52 = oc
   .output(zGetWorkspacesCurrentToolsApiResponse)
 
 export const api2 = {
-  get: get52,
+  get: get82,
 }
 
-export const get53 = oc
+export const get83 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2677,10 +3711,10 @@ export const get53 = oc
   .output(zGetWorkspacesCurrentToolsBuiltinResponse)
 
 export const builtin2 = {
-  get: get53,
+  get: get83,
 }
 
-export const get54 = oc
+export const get84 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2691,10 +3725,10 @@ export const get54 = oc
   .output(zGetWorkspacesCurrentToolsMcpResponse)
 
 export const mcp2 = {
-  get: get54,
+  get: get84,
 }
 
-export const get55 = oc
+export const get85 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2705,7 +3739,7 @@ export const get55 = oc
   .output(zGetWorkspacesCurrentToolsWorkflowResponse)
 
 export const workflow2 = {
-  get: get55,
+  get: get85,
 }
 
 export const tools5 = {
@@ -2715,7 +3749,7 @@ export const tools5 = {
   workflow: workflow2,
 }
 
-export const get56 = oc
+export const get86 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2727,13 +3761,13 @@ export const get56 = oc
   .output(zGetWorkspacesCurrentTriggerProviderByProviderIconResponse)
 
 export const icon3 = {
-  get: get56,
+  get: get86,
 }
 
 /**
  * Get info for a trigger provider
  */
-export const get57 = oc
+export const get87 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2746,13 +3780,13 @@ export const get57 = oc
   .output(zGetWorkspacesCurrentTriggerProviderByProviderInfoResponse)
 
 export const info3 = {
-  get: get57,
+  get: get87,
 }
 
 /**
  * Remove custom OAuth client configuration
  */
-export const delete14 = oc
+export const delete18 = oc
   .route({
     inputStructure: 'detailed',
     method: 'DELETE',
@@ -2767,7 +3801,7 @@ export const delete14 = oc
 /**
  * Get OAuth client configuration for a provider
  */
-export const get58 = oc
+export const get88 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2782,7 +3816,7 @@ export const get58 = oc
 /**
  * Configure custom OAuth client for a provider
  */
-export const post59 = oc
+export const post63 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2800,9 +3834,9 @@ export const post59 = oc
   .output(zPostWorkspacesCurrentTriggerProviderByProviderOauthClientResponse)
 
 export const client = {
-  delete: delete14,
-  get: get58,
-  post: post59,
+  delete: delete18,
+  get: get88,
+  post: post63,
 }
 
 export const oauth2 = {
@@ -2812,7 +3846,7 @@ export const oauth2 = {
 /**
  * Build a subscription instance for a trigger provider
  */
-export const post60 = oc
+export const post64 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2834,7 +3868,7 @@ export const post60 = oc
   )
 
 export const bySubscriptionBuilderId = {
-  post: post60,
+  post: post64,
 }
 
 export const build = {
@@ -2844,7 +3878,7 @@ export const build = {
 /**
  * Add a new subscription instance for a trigger provider
  */
-export const post61 = oc
+export const post65 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2862,13 +3896,13 @@ export const post61 = oc
   .output(zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderCreateResponse)
 
 export const create3 = {
-  post: post61,
+  post: post65,
 }
 
 /**
  * Get the request logs for a subscription instance for a trigger provider
  */
-export const get59 = oc
+export const get89 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2889,7 +3923,7 @@ export const get59 = oc
   )
 
 export const bySubscriptionBuilderId2 = {
-  get: get59,
+  get: get89,
 }
 
 export const logs = {
@@ -2899,7 +3933,7 @@ export const logs = {
 /**
  * Update a subscription instance for a trigger provider
  */
-export const post62 = oc
+export const post66 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2921,7 +3955,7 @@ export const post62 = oc
   )
 
 export const bySubscriptionBuilderId3 = {
-  post: post62,
+  post: post66,
 }
 
 export const update6 = {
@@ -2931,7 +3965,7 @@ export const update6 = {
 /**
  * Verify and update a subscription instance for a trigger provider
  */
-export const post63 = oc
+export const post67 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2953,7 +3987,7 @@ export const post63 = oc
   )
 
 export const bySubscriptionBuilderId4 = {
-  post: post63,
+  post: post67,
 }
 
 export const verifyAndUpdate = {
@@ -2963,7 +3997,7 @@ export const verifyAndUpdate = {
 /**
  * Get a subscription instance for a trigger provider
  */
-export const get60 = oc
+export const get90 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2984,7 +4018,7 @@ export const get60 = oc
   )
 
 export const bySubscriptionBuilderId5 = {
-  get: get60,
+  get: get90,
 }
 
 export const builder = {
@@ -2999,26 +4033,26 @@ export const builder = {
 /**
  * List all trigger subscriptions for the current tenant's provider
  */
-export const get61 = oc
+export const get91 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesCurrentTriggerProviderByProviderSubscriptionsList',
     path: '/workspaces/current/trigger-provider/{provider}/subscriptions/list',
-    summary: 'List all trigger subscriptions for the current tenant\'s provider',
+    summary: "List all trigger subscriptions for the current tenant's provider",
     tags: ['console'],
   })
   .input(z.object({ params: zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsListPath }))
   .output(zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsListResponse)
 
 export const list4 = {
-  get: get61,
+  get: get91,
 }
 
 /**
  * Initiate OAuth authorization flow for a trigger provider
  */
-export const get62 = oc
+export const get92 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3035,7 +4069,7 @@ export const get62 = oc
   .output(zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAuthorizeResponse)
 
 export const authorize = {
-  get: get62,
+  get: get92,
 }
 
 export const oauth3 = {
@@ -3045,7 +4079,7 @@ export const oauth3 = {
 /**
  * Verify credentials for an existing subscription (edit mode only)
  */
-export const post64 = oc
+export const post68 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3067,7 +4101,7 @@ export const post64 = oc
   )
 
 export const bySubscriptionId = {
-  post: post64,
+  post: post68,
 }
 
 export const verify = {
@@ -3091,7 +4125,7 @@ export const byProvider3 = {
 /**
  * Delete a subscription instance
  */
-export const post65 = oc
+export const post69 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3107,14 +4141,14 @@ export const post65 = oc
   )
   .output(zPostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsDeleteResponse)
 
-export const delete15 = {
-  post: post65,
+export const delete19 = {
+  post: post69,
 }
 
 /**
  * Update a subscription instance
  */
-export const post66 = oc
+export const post70 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3132,11 +4166,11 @@ export const post66 = oc
   .output(zPostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpdateResponse)
 
 export const update7 = {
-  post: post66,
+  post: post70,
 }
 
 export const subscriptions2 = {
-  delete: delete15,
+  delete: delete19,
   update: update7,
 }
 
@@ -3152,7 +4186,7 @@ export const triggerProvider = {
 /**
  * List all trigger providers for the current tenant
  */
-export const get63 = oc
+export const get93 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3164,21 +4198,10 @@ export const get63 = oc
   .output(zGetWorkspacesCurrentTriggersResponse)
 
 export const triggers = {
-  get: get63,
+  get: get93,
 }
 
-export const post67 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postWorkspacesCurrent',
-    path: '/workspaces/current',
-    tags: ['console'],
-  })
-  .output(zPostWorkspacesCurrentResponse)
-
 export const current = {
-  post: post67,
   agentProvider,
   agentProviders,
   customizedSnippets,
@@ -3190,6 +4213,8 @@ export const current = {
   models: models2,
   permission,
   plugin: plugin2,
+  rbac,
+  summary: summary2,
   toolLabels,
   toolProvider,
   toolProviders,
@@ -3198,7 +4223,7 @@ export const current = {
   triggers,
 }
 
-export const post68 = oc
+export const post71 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3207,17 +4232,28 @@ export const post68 = oc
     successStatus: 201,
     tags: ['console'],
   })
+  .input(z.object({ body: zPostWorkspacesCustomConfigWebappLogoUploadBody }))
   .output(zPostWorkspacesCustomConfigWebappLogoUploadResponse)
 
 export const upload2 = {
-  post: post68,
+  post: post71,
 }
 
 export const webappLogo = {
   upload: upload2,
 }
 
-export const post69 = oc
+export const get94 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesCustomConfig',
+    path: '/workspaces/custom-config',
+    tags: ['console'],
+  })
+  .output(zGetWorkspacesCustomConfigResponse)
+
+export const post72 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3229,11 +4265,12 @@ export const post69 = oc
   .output(zPostWorkspacesCustomConfigResponse)
 
 export const customConfig = {
-  post: post69,
+  get: get94,
+  post: post72,
   webappLogo,
 }
 
-export const post70 = oc
+export const post73 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3245,10 +4282,10 @@ export const post70 = oc
   .output(zPostWorkspacesInfoResponse)
 
 export const info4 = {
-  post: post70,
+  post: post73,
 }
 
-export const post71 = oc
+export const post74 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3260,10 +4297,10 @@ export const post71 = oc
   .output(zPostWorkspacesSwitchResponse)
 
 export const switch3 = {
-  post: post71,
+  post: post74,
 }
 
-export const get64 = oc
+export const get95 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3275,7 +4312,7 @@ export const get64 = oc
   .output(zGetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangResponse)
 
 export const byLang = {
-  get: get64,
+  get: get95,
 }
 
 export const byIconType = {
@@ -3294,7 +4331,7 @@ export const byTenantId = {
   modelProviders: modelProviders2,
 }
 
-export const get65 = oc
+export const get96 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3305,7 +4342,7 @@ export const get65 = oc
   .output(zGetWorkspacesResponse)
 
 export const workspaces = {
-  get: get65,
+  get: get96,
   current,
   customConfig,
   info: info4,

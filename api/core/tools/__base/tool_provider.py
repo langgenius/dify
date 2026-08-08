@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from copy import deepcopy
 from typing import Any
 
-from core.entities.provider_entities import ProviderConfig
+from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import (
     ToolProviderEntity,
@@ -71,11 +71,11 @@ class ToolProviderController[ToolProviderEntityT: ToolProviderEntity, ToolProvid
             if not credential_schema.required and credentials[credential_name] is None:
                 continue
 
-            if credential_schema.type in {ProviderConfig.Type.SECRET_INPUT, ProviderConfig.Type.TEXT_INPUT}:
+            if credential_schema.type in {ProviderConfigType.SECRET_INPUT, ProviderConfigType.TEXT_INPUT}:
                 if not isinstance(credentials[credential_name], str):
                     raise ToolProviderCredentialValidationError(f"credential {credential_name} should be string")
 
-            elif credential_schema.type == ProviderConfig.Type.SELECT:
+            elif credential_schema.type == ProviderConfigType.SELECT:
                 if not isinstance(credentials[credential_name], str):
                     raise ToolProviderCredentialValidationError(f"credential {credential_name} should be string")
 
@@ -100,9 +100,9 @@ class ToolProviderController[ToolProviderEntityT: ToolProviderEntity, ToolProvid
                 default_value = credential_schema.default
                 # parse default value into the correct type
                 if credential_schema.type in {
-                    ProviderConfig.Type.SECRET_INPUT,
-                    ProviderConfig.Type.TEXT_INPUT,
-                    ProviderConfig.Type.SELECT,
+                    ProviderConfigType.SECRET_INPUT,
+                    ProviderConfigType.TEXT_INPUT,
+                    ProviderConfigType.SELECT,
                 }:
                     default_value = str(default_value)
 

@@ -13,14 +13,16 @@ export const zAllowedExtensionsResponse = z.object({
  * UploadConfig
  */
 export const zUploadConfig = z.object({
-  attachment_image_file_size_limit: z.int().nullish(),
+  attachment_image_file_size_limit: z.int(),
   audio_file_size_limit: z.int(),
   batch_count_limit: z.int(),
   file_size_limit: z.int(),
-  file_upload_limit: z.int().nullish(),
+  file_upload_limit: z.int(),
   image_file_batch_limit: z.int(),
   image_file_size_limit: z.int(),
+  knowledge_file_size_limit: z.int(),
   single_chunk_attachment_limit: z.int(),
+  skill_file_size_limit: z.int(),
   video_file_size_limit: z.int(),
   workflow_file_upload_limit: z.int(),
 })
@@ -63,13 +65,18 @@ export const zGetFilesSupportTypeResponse = zAllowedExtensionsResponse
  */
 export const zGetFilesUploadResponse = zUploadConfig
 
+export const zPostFilesUploadBody = z.object({
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+  source: z.enum(['datasets']).optional(),
+})
+
 /**
  * File uploaded successfully
  */
 export const zPostFilesUploadResponse = zFileResponse
 
 export const zGetFilesByFileIdPreviewPath = z.object({
-  file_id: z.string(),
+  file_id: z.uuid(),
 })
 
 /**

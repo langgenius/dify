@@ -1,7 +1,7 @@
 import inspect
 import json
 import logging
-from collections.abc import Callable, Generator
+from collections.abc import Callable, Generator, Mapping
 from typing import Any, cast
 from urllib.parse import unquote
 
@@ -20,8 +20,10 @@ from core.plugin.impl.exc import (
     PluginDaemonNotFoundError,
     PluginDaemonUnauthorizedError,
     PluginInvokeError,
+    PluginLLMPollingUnsupportedError,
     PluginNotFoundError,
     PluginPermissionDeniedError,
+    PluginRuntimeError,
     PluginUniqueIdentifierError,
 )
 from core.trigger.errors import (
@@ -370,6 +372,22 @@ class BasePluginClient:
                         raise TriggerInvokeError(error_object.get("message"))
                     case EventIgnoreError.__name__:
                         raise EventIgnoreError(description=error_object.get("message"))
+                    # NOTE: current plugin sdk / plugin daemon does not raise exception with
+                    # type `PluginLLMPollingUnsupportedError`.
+                    case PluginLLMPollingUnsupportedError.__name__:
+                        raise PluginLLMPollingUnsupportedError(description=error_object.get("message"))
+                    case PluginRuntimeError.__name__:
+                        args = error_object.get("args")
+                        lambda_request_id = args.get("request_id") if isinstance(args, Mapping) else None
+                        if not isinstance(lambda_request_id, str):
+                            lambda_request_id = None
+                        runtime_message = error_object.get("message")
+                        if not isinstance(runtime_message, str):
+                            runtime_message = "Plugin runtime request failed"
+                        raise PluginRuntimeError(
+                            description=runtime_message,
+                            lambda_request_id=lambda_request_id,
+                        )
                     case _:
                         raise PluginInvokeError(description=message)
             case PluginDaemonInternalServerError.__name__:

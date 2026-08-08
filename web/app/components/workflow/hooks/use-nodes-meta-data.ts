@@ -5,16 +5,13 @@ import { CollectionType } from '@/app/components/tools/types'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { getNodeCatalogType } from '@/app/components/workflow/utils/node'
 import { useGetLanguage } from '@/context/i18n'
-import {
-  useAllBuiltInTools,
-  useAllCustomTools,
-  useAllWorkflowTools,
-} from '@/service/use-tools'
+import { useAllBuiltInTools, useAllCustomTools, useAllWorkflowTools } from '@/service/use-tools'
 import { canFindTool } from '@/utils'
 
 export const useNodesMetaData = () => {
-  const availableNodesMetaData = useHooksStore(s => s.availableNodesMetaData)
+  const availableNodesMetaData = useHooksStore((s) => s.availableNodesMetaData)
 
   return useMemo(() => {
     return {
@@ -29,33 +26,42 @@ export const useNodeMetaData = (node: Node) => {
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
-  const dataSourceList = useStore(s => s.dataSourceList)
+  const dataSourceList = useStore((s) => s.dataSourceList)
   const availableNodesMetaData = useNodesMetaData()
   const { data } = node
-  const nodeMetaData = availableNodesMetaData.nodesMap?.[data.type]
+  const nodeMetaData = availableNodesMetaData.nodesMap?.[getNodeCatalogType(data)]
   const author = useMemo(() => {
     if (data.type === BlockEnum.DataSource)
-      return dataSourceList?.find(dataSource => dataSource.plugin_id === data.plugin_id)?.author
+      return dataSourceList?.find((dataSource) => dataSource.plugin_id === data.plugin_id)?.author
 
     if (data.type === BlockEnum.Tool) {
       if (data.provider_type === CollectionType.builtIn)
-        return buildInTools?.find(toolWithProvider => canFindTool(toolWithProvider.id, data.provider_id))?.author
+        return buildInTools?.find((toolWithProvider) =>
+          canFindTool(toolWithProvider.id, data.provider_id),
+        )?.author
       if (data.provider_type === CollectionType.workflow)
-        return workflowTools?.find(toolWithProvider => toolWithProvider.id === data.provider_id)?.author
-      return customTools?.find(toolWithProvider => toolWithProvider.id === data.provider_id)?.author
+        return workflowTools?.find((toolWithProvider) => toolWithProvider.id === data.provider_id)
+          ?.author
+      return customTools?.find((toolWithProvider) => toolWithProvider.id === data.provider_id)
+        ?.author
     }
     return nodeMetaData?.metaData.author
   }, [data, buildInTools, customTools, workflowTools, nodeMetaData, dataSourceList])
 
   const description = useMemo(() => {
     if (data.type === BlockEnum.DataSource)
-      return dataSourceList?.find(dataSource => dataSource.plugin_id === data.plugin_id)?.description[language]
+      return dataSourceList?.find((dataSource) => dataSource.plugin_id === data.plugin_id)
+        ?.description[language]
     if (data.type === BlockEnum.Tool) {
       if (data.provider_type === CollectionType.builtIn)
-        return buildInTools?.find(toolWithProvider => canFindTool(toolWithProvider.id, data.provider_id))?.description[language]
+        return buildInTools?.find((toolWithProvider) =>
+          canFindTool(toolWithProvider.id, data.provider_id),
+        )?.description[language]
       if (data.provider_type === CollectionType.workflow)
-        return workflowTools?.find(toolWithProvider => toolWithProvider.id === data.provider_id)?.description[language]
-      return customTools?.find(toolWithProvider => toolWithProvider.id === data.provider_id)?.description[language]
+        return workflowTools?.find((toolWithProvider) => toolWithProvider.id === data.provider_id)
+          ?.description[language]
+      return customTools?.find((toolWithProvider) => toolWithProvider.id === data.provider_id)
+        ?.description[language]
     }
     return nodeMetaData?.metaData.description
   }, [data, buildInTools, customTools, workflowTools, nodeMetaData, dataSourceList, language])

@@ -40,7 +40,7 @@ class DummyDocumentExtractorNode(DummyNode):
 
 class TestDifyNodeFactory:
     @staticmethod
-    def _stub_node_resolution(monkeypatch, node_class):
+    def _stub_node_resolution(monkeypatch: pytest.MonkeyPatch, node_class):
         monkeypatch.setattr(
             "core.workflow.node_factory.resolve_workflow_node_class",
             lambda **_kwargs: node_class,

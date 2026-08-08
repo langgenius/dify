@@ -4,16 +4,24 @@ import time
 from collections.abc import Callable
 from enum import StrEnum, auto
 from functools import wraps
-from typing import cast, overload
+from typing import Protocol, cast, overload
 
 from flask import current_app, request
 from flask_login import user_logged_in
 from flask_restx import Resource
+from flask_restx.utils import merge
 from pydantic import BaseModel
 from sqlalchemy import select
-from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
+from sqlalchemy.orm import sessionmaker
+from werkzeug.exceptions import Forbidden, NotFound, ServiceUnavailable, Unauthorized
 
 from configs import dify_config
+from controllers.service_api.schema import (
+    USER_FETCH_FROM_ATTR,
+    USER_FORM_PARAM,
+    USER_QUERY_PARAM,
+    USER_REQUIRED_ATTR,
+)
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -26,6 +34,12 @@ from services.end_user_service import EndUserService
 from services.feature_service import FeatureService
 
 logger = logging.getLogger(__name__)
+
+
+class _RestxDocumentedView(Protocol):
+    """Callable view object carrying Flask-RESTX documentation metadata."""
+
+    __apidoc__: dict[str, object]
 
 
 class WhereisUserArg(StrEnum):
@@ -41,6 +55,35 @@ class WhereisUserArg(StrEnum):
 class FetchUserArg(BaseModel):
     fetch_from: WhereisUserArg
     required: bool = False
+
+
+APP_TOKEN_FORBIDDEN_RESPONSE = {
+    403: "Forbidden - token scope, app, dataset, or workspace access denied",
+}
+
+DATASET_TOKEN_AUTH_RESPONSES = {
+    401: "Unauthorized - invalid API token",
+    403: "Forbidden - dataset API access or workspace access denied",
+}
+
+
+def _document_app_token_contract(view_func: Callable[..., object], fetch_user_arg: FetchUserArg | None) -> None:
+    doc: dict[str, object] = {"responses": APP_TOKEN_FORBIDDEN_RESPONSE}
+    if fetch_user_arg is not None:
+        setattr(view_func, USER_FETCH_FROM_ATTR, fetch_user_arg.fetch_from.name)
+        setattr(view_func, USER_REQUIRED_ATTR, fetch_user_arg.required)
+        match fetch_user_arg.fetch_from:
+            case WhereisUserArg.QUERY:
+                doc["params"] = {"user": {**USER_QUERY_PARAM, "required": fetch_user_arg.required}}
+            case WhereisUserArg.FORM:
+                doc["params"] = {"user": {**USER_FORM_PARAM, "required": fetch_user_arg.required}}
+            case WhereisUserArg.JSON:
+                pass
+
+    cast(_RestxDocumentedView, view_func).__apidoc__ = cast(
+        dict[str, object],
+        merge(getattr(view_func, "__apidoc__", {}), doc),
+    )
 
 
 @overload
@@ -118,7 +161,7 @@ def validate_app_token[**P, R](
 
                 if tenant_owner_info:
                     tenant_model, account = tenant_owner_info
-                    account.current_tenant = tenant_model
+                    account.set_current_tenant_with_session(tenant_model, session=db.session())
                     current_app.login_manager._update_request_context_with_user(account)  # type: ignore
                     user_logged_in.send(current_app._get_current_object(), user=current_user)  # type: ignore
                 else:
@@ -126,6 +169,7 @@ def validate_app_token[**P, R](
 
             return view_func(*args, **kwargs)
 
+        _document_app_token_contract(decorated_view, fetch_user_arg)
         return decorated_view
 
     if view is None:
@@ -146,6 +190,12 @@ def cloud_edition_billing_resource_check[**P, R](
                     return view(*args, **kwargs)
 
                 vector_space = FeatureService.get_vector_space(api_token.tenant_id)
+                if vector_space.usage_unknown:
+                    features = FeatureService.get_features(api_token.tenant_id, exclude_vector_space=True)
+                    if features.billing.enabled and features.billing.subscription.plan == CloudPlan.SANDBOX:
+                        raise ServiceUnavailable(
+                            "Unable to verify vector space usage right now. Please try again later."
+                        )
                 if 0 < vector_space.limit <= vector_space.size:
                     raise Forbidden("The capacity of the vector space has reached the limit of your subscription.")
                 return view(*args, **kwargs)
@@ -226,8 +276,8 @@ def cloud_edition_billing_rate_limit_check[**P, R](
                             subscription_plan=knowledge_rate_limit.subscription_plan,
                             operation="knowledge",
                         )
-                        db.session.add(rate_limit_log)
-                        db.session.commit()
+                        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
+                            session.add(rate_limit_log)
                         raise Forbidden(
                             "Sorry, you have reached the knowledge base request rate limit of your subscription."
                         )
@@ -278,18 +328,19 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
                 raise Forbidden("Dataset api access is not enabled.")
 
         tenant_account_join = db.session.execute(
-            select(Tenant, TenantAccountJoin)
-            .where(Tenant.id == api_token.tenant_id)
-            .where(TenantAccountJoin.tenant_id == Tenant.id)
-            .where(TenantAccountJoin.role.in_(["owner"]))
-            .where(Tenant.status == TenantStatus.NORMAL)
+            select(Tenant, TenantAccountJoin).where(
+                Tenant.id == api_token.tenant_id,
+                TenantAccountJoin.tenant_id == Tenant.id,
+                TenantAccountJoin.role.in_(["owner"]),
+                Tenant.status == TenantStatus.NORMAL,
+            )
         ).one_or_none()  # TODO: only owner information is required, so only one is returned.
         if tenant_account_join:
             tenant, ta = tenant_account_join
             account = db.session.get(Account, ta.account_id)
             # Login admin
             if account:
-                account.current_tenant = tenant
+                account.set_current_tenant_with_session(tenant, session=db.session())
                 current_app.login_manager._update_request_context_with_user(account)  # type: ignore
                 user_logged_in.send(current_app._get_current_object(), user=current_user)  # type: ignore
             else:
@@ -343,6 +394,8 @@ def validate_and_get_api_token(scope: str | None = None):
 
 
 class DatasetApiResource(Resource):
+    __apidoc__ = {"responses": DATASET_TOKEN_AUTH_RESPONSES}
+
     method_decorators = [validate_dataset_token]
 
     def get_dataset(self, dataset_id: str, tenant_id: str) -> Dataset:

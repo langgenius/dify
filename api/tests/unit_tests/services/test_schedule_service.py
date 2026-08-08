@@ -1,17 +1,16 @@
+import json
 import unittest
 from datetime import UTC, datetime
-from types import SimpleNamespace
-from typing import Any, cast
-from unittest.mock import MagicMock, Mock
+from typing import Any
+from unittest.mock import MagicMock
 
 import pytest
-from sqlalchemy.orm import Session
 
 from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE
 from core.workflow.nodes.trigger_schedule.entities import VisualConfig
 from core.workflow.nodes.trigger_schedule.exc import ScheduleConfigError
 from libs.schedule_utils import calculate_next_run_at, convert_12h_to_24h
-from models.workflow import Workflow
+from models.workflow import Workflow, WorkflowType
 from services.trigger.schedule_service import ScheduleService
 
 
@@ -326,20 +325,23 @@ class TestExtractScheduleConfig(unittest.TestCase):
 
     def test_extract_schedule_config_with_cron_mode(self):
         """Test extracting schedule config in cron mode."""
-        workflow = Mock(spec=Workflow)
-        workflow.graph_dict = {
-            "nodes": [
+        workflow = Workflow(
+            graph=json.dumps(
                 {
-                    "id": "schedule-node",
-                    "data": {
-                        "type": "trigger-schedule",
-                        "mode": "cron",
-                        "cron_expression": "0 10 * * *",
-                        "timezone": "America/New_York",
-                    },
+                    "nodes": [
+                        {
+                            "id": "schedule-node",
+                            "data": {
+                                "type": "trigger-schedule",
+                                "mode": "cron",
+                                "cron_expression": "0 10 * * *",
+                                "timezone": "America/New_York",
+                            },
+                        }
+                    ]
                 }
-            ]
-        }
+            ),
+        )
 
         config = ScheduleService.extract_schedule_config(workflow)
 
@@ -350,21 +352,24 @@ class TestExtractScheduleConfig(unittest.TestCase):
 
     def test_extract_schedule_config_with_visual_mode(self):
         """Test extracting schedule config in visual mode."""
-        workflow = Mock(spec=Workflow)
-        workflow.graph_dict = {
-            "nodes": [
+        workflow = Workflow(
+            graph=json.dumps(
                 {
-                    "id": "schedule-node",
-                    "data": {
-                        "type": "trigger-schedule",
-                        "mode": "visual",
-                        "frequency": "daily",
-                        "visual_config": {"time": "10:30 AM"},
-                        "timezone": "UTC",
-                    },
+                    "nodes": [
+                        {
+                            "id": "schedule-node",
+                            "data": {
+                                "type": "trigger-schedule",
+                                "mode": "visual",
+                                "frequency": "daily",
+                                "visual_config": {"time": "10:30 AM"},
+                                "timezone": "UTC",
+                            },
+                        }
+                    ]
                 }
-            ]
-        }
+            ),
+        )
 
         config = ScheduleService.extract_schedule_config(workflow)
 
@@ -375,23 +380,27 @@ class TestExtractScheduleConfig(unittest.TestCase):
 
     def test_extract_schedule_config_no_schedule_node(self):
         """Test extracting config when no schedule node exists."""
-        workflow = Mock(spec=Workflow)
-        workflow.graph_dict = {
-            "nodes": [
+        workflow = Workflow(
+            graph=json.dumps(
                 {
-                    "id": "other-node",
-                    "data": {"type": "llm"},
+                    "nodes": [
+                        {
+                            "id": "other-node",
+                            "data": {"type": "llm"},
+                        }
+                    ]
                 }
-            ]
-        }
+            ),
+        )
 
         config = ScheduleService.extract_schedule_config(workflow)
         assert config is None
 
     def test_extract_schedule_config_invalid_graph(self):
         """Test extracting config with invalid graph data."""
-        workflow = Mock(spec=Workflow)
-        workflow.graph_dict = None
+        workflow = Workflow(
+            graph="",
+        )
 
         with pytest.raises(ScheduleConfigError, match="Workflow graph is empty"):
             ScheduleService.extract_schedule_config(workflow)
@@ -497,13 +506,19 @@ class TestScheduleWithTimezone(unittest.TestCase):
         assert summer_next.hour == 14
 
 
-@pytest.fixture
-def session_mock() -> MagicMock:
-    return MagicMock(spec=Session)
-
-
-def _workflow(**kwargs: Any) -> Workflow:
-    return cast(Workflow, SimpleNamespace(**kwargs))
+def _workflow(*, graph_dict: dict[str, Any]) -> Workflow:
+    return Workflow.new(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        type=WorkflowType.WORKFLOW,
+        version="draft",
+        graph=json.dumps(graph_dict),
+        features="{}",
+        created_by="account-1",
+        environment_variables=[],
+        conversation_variables=[],
+        rag_pipeline_variables=[],
+    )
 
 
 def test_to_schedule_config_should_build_from_cron_mode() -> None:

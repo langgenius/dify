@@ -1,20 +1,22 @@
 'use client'
 
-import type { App } from '@/types/app'
+import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
+import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 
 type AppTriggerProps = {
   open: boolean
-  appDetail?: App
+  appDetail?: Pick<
+    AppPartial,
+    'icon' | 'icon_background' | 'icon_type' | 'icon_url' | 'id' | 'name'
+  >
 }
 
-export function AppTrigger({
-  open,
-  appDetail,
-}: AppTriggerProps) {
+export function AppTrigger({ open, appDetail }: AppTriggerProps) {
   const { t } = useTranslation()
+  const appIconType = zIconType.safeParse(appDetail?.icon_type).data ?? null
 
   return (
     <span
@@ -28,23 +30,21 @@ export function AppTrigger({
         <AppIcon
           className="mr-2 shrink-0"
           size="xs"
-          iconType={appDetail.icon_type}
-          icon={appDetail.icon}
+          iconType={appIconType}
+          icon={appDetail.icon ?? undefined}
           background={appDetail.icon_background}
           imageUrl={appDetail.icon_url}
         />
       )}
-      {appDetail
-        ? (
-            <span className="min-w-0 grow truncate system-sm-medium text-components-input-text-filled">
-              {appDetail.name}
-            </span>
-          )
-        : (
-            <span className="min-w-0 grow truncate system-sm-regular text-components-input-text-placeholder">
-              {t('appSelector.placeholder', { ns: 'app' })}
-            </span>
-          )}
+      {appDetail ? (
+        <span className="min-w-0 grow truncate system-sm-medium text-components-input-text-filled">
+          {appDetail.name}
+        </span>
+      ) : (
+        <span className="min-w-0 grow truncate system-sm-regular text-components-input-text-placeholder">
+          {t(($) => $['appSelector.placeholder'], { ns: 'app' })}
+        </span>
+      )}
       <span
         className={cn(
           'ml-0.5 i-ri-arrow-down-s-line size-4 shrink-0 text-text-quaternary group-hover:text-text-secondary',

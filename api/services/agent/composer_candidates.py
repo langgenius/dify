@@ -25,6 +25,7 @@ from models.agent_config_entities import (
     AgentSoulConfig,
     DeclaredOutputConfig,
 )
+from services.agent.knowledge_datasets import list_agent_soul_knowledge_dataset_ids
 
 MAX_CANDIDATES_PER_LIST = 200
 
@@ -137,24 +138,36 @@ def soul_candidates(
     soul = agent_soul or AgentSoulConfig()
     truncated = False
 
-    skills_files = [{"kind": "skill", **skill.model_dump(exclude_none=True)} for skill in soul.skills_files.skills]
-    skills_files += [{"kind": "file", **file.model_dump(exclude_none=True)} for file in soul.skills_files.files]
-
     cli_tools = [tool.model_dump(exclude_none=True) for tool in soul.tools.cli_tools if tool.enabled]
 
-    dataset_ids = [dataset.id for dataset in soul.knowledge.datasets if dataset.id]
+    dataset_ids = list_agent_soul_knowledge_dataset_ids(soul)
     dataset_rows = dataset_lookup(dataset_ids) if dataset_ids else {}
-    knowledge_datasets: list[dict[str, Any]] = []
-    for dataset in soul.knowledge.datasets:
-        if not dataset.id:
-            continue
-        row = dataset_rows.get(dataset.id)
-        knowledge_datasets.append(
+    knowledge_sets: list[dict[str, Any]] = []
+    for knowledge_set in soul.knowledge.sets:
+        missing_dataset_ids: list[str] = []
+        datasets: list[dict[str, Any]] = []
+        for dataset in knowledge_set.datasets:
+            dataset_id = (dataset.id or "").strip()
+            if not dataset_id:
+                continue
+            row = dataset_rows.get(dataset_id)
+            if row is None:
+                missing_dataset_ids.append(dataset_id)
+            datasets.append(
+                {
+                    "id": dataset_id,
+                    "name": (getattr(row, "name", None) or dataset.name or dataset_id),
+                    "description": getattr(row, "description", None) or dataset.description,
+                    "missing": row is None,
+                }
+            )
+        knowledge_sets.append(
             {
-                "id": dataset.id,
-                "name": (getattr(row, "name", None) or dataset.name or dataset.id),
-                "description": getattr(row, "description", None) or dataset.description,
-                "missing": row is None,
+                "id": knowledge_set.id,
+                "name": knowledge_set.name,
+                "description": knowledge_set.description,
+                "datasets": datasets,
+                "missing_dataset_ids": missing_dataset_ids,
             }
         )
 
@@ -162,10 +175,9 @@ def soul_candidates(
     dify_tools = workspace_tools_loader()
 
     lists = {
-        "skills_files": skills_files,
         "dify_tools": dify_tools,
         "cli_tools": cli_tools,
-        "knowledge_datasets": knowledge_datasets,
+        "knowledge_sets": knowledge_sets,
         "human_contacts": human_contacts,
     }
     capped: dict[str, list[dict[str, Any]]] = {}

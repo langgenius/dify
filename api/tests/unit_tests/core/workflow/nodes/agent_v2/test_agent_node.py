@@ -1,17 +1,30 @@
+from collections.abc import Callable, Iterator
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock, patch
+from uuid import UUID, uuid4
 
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.layers.ask_human import AskHumanToolResult
-from dify_agent.protocol import RunStartedEvent, RunSucceededEvent, RunSucceededEventData
+from dify_agent.protocol import (
+    CancelRunRequest,
+    CancelRunResponse,
+    PydanticAIStreamRunEvent,
+    RunEvent,
+    RunStartedEvent,
+    RunSucceededEvent,
+    RunSucceededEventData,
+)
+from pydantic_ai.messages import PartDeltaEvent, TextPartDelta
 
 from clients.agent_backend import (
+    AgentBackendInternalEventType,
     AgentBackendRunEventAdapter,
+    AgentBackendStreamError,
     AgentBackendStreamInternalEvent,
     FakeAgentBackendRunClient,
     FakeAgentBackendScenario,
-    RuntimeLayerSpec,
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
 from core.workflow.file_reference import build_file_reference
@@ -20,18 +33,22 @@ from core.workflow.nodes.agent_v2.ask_human_resume import AskHumanResumeOutcome
 from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingBundle, WorkflowAgentBindingResolver
 from core.workflow.nodes.agent_v2.entities import DifyAgentNodeData
 from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapter
-from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeRequestBuilder
+from core.workflow.nodes.agent_v2.runtime_request_builder import (
+    WorkflowAgentRuntimeBuildContext,
+    WorkflowAgentRuntimeRequestBuilder,
+)
 from core.workflow.nodes.agent_v2.session_store import (
     StoredWorkflowAgentSession,
-    WorkflowAgentRuntimeSessionStore,
     WorkflowAgentSessionScope,
+    WorkflowAgentWorkspaceStore,
 )
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from graphon.entities import GraphInitParams
-from graphon.entities.pause_reason import HumanInputRequired
+from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
-from graphon.node_events import PauseRequestedEvent, StreamCompletedEvent
-from graphon.nodes.human_input.entities import UserActionConfig
+from graphon.graph_events import NodeRunPauseRequestedEvent
+from graphon.node_events import StreamCompletedEvent
 from graphon.runtime import GraphRuntimeState
 from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
 from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
@@ -41,6 +58,7 @@ from models.agent_config_entities import (
     DeclaredOutputType,
     WorkflowNodeJobConfig,
 )
+from services.agent.workspace_service import AgentWorkspaceNotFoundError
 
 
 class FakeCredentialsProvider:
@@ -82,12 +100,14 @@ class FakeVariablePool:
 
 class FakeBindingResolver(WorkflowAgentBindingResolver):
     def __init__(self):
+        self.calls: list[dict[str, object]] = []
         self.agent = Agent(id="agent-1", tenant_id="tenant-1", name="Agent")
         self.snapshot = AgentConfigSnapshot(
             id="snapshot-1",
             tenant_id="tenant-1",
             agent_id="agent-1",
             version=1,
+            home_snapshot_id="home-1",
             config_snapshot=AgentSoulConfig(
                 prompt={"system_prompt": "You are careful."},
                 model=AgentSoulModelConfig(
@@ -114,13 +134,29 @@ class FakeBindingResolver(WorkflowAgentBindingResolver):
             ),
         )
 
-    def resolve(self, **_kwargs):
+    def resolve(self, **kwargs):
+        self.calls.append(kwargs)
+        snapshot_id = kwargs.get("snapshot_id")
+        if isinstance(snapshot_id, str):
+            self.snapshot.id = snapshot_id
         return WorkflowAgentBindingBundle(binding=self.binding, agent=self.agent, snapshot=self.snapshot)
 
 
 class FakeSessionStore:
-    def __init__(self, snapshot: CompositorSessionSnapshot | None = None) -> None:
+    def __init__(
+        self,
+        snapshot: CompositorSessionSnapshot | None = None,
+        *,
+        binding_id: str = "binding-1",
+        workspace_id: str = "workspace-1",
+        backend_binding_ref: str = "backend-binding-1",
+    ) -> None:
         self.loaded_snapshot = snapshot
+        self.binding_id = binding_id
+        self.workspace_id = workspace_id
+        self.backend_binding_ref = backend_binding_ref
+        self.resolved_scopes: list[WorkflowAgentSessionScope] = []
+        self.existing_scope_lookups: list[dict[str, object]] = []
         # ENG-638: set to simulate resume after a submitted/timed-out form.
         self.loaded_session: StoredWorkflowAgentSession | None = None
         self.saved: list[
@@ -128,40 +164,43 @@ class FakeSessionStore:
                 WorkflowAgentSessionScope,
                 str,
                 CompositorSessionSnapshot | None,
-                list[RuntimeLayerSpec],
                 str | None,
                 str | None,
             ]
         ] = []
-        self.cleaned: list[tuple[WorkflowAgentSessionScope, str | None]] = []
 
-    def load_active_snapshot(self, scope: WorkflowAgentSessionScope) -> CompositorSessionSnapshot | None:
-        return self.loaded_snapshot
+    def load_existing_node_execution_scope(self, **kwargs: object) -> WorkflowAgentSessionScope | None:
+        self.existing_scope_lookups.append(kwargs)
+        return self.loaded_session.scope if self.loaded_session is not None else None
 
-    def load_active_session(self, scope: WorkflowAgentSessionScope) -> StoredWorkflowAgentSession | None:
-        return self.loaded_session
+    def load_or_create_node_execution_session(
+        self,
+        scope: WorkflowAgentSessionScope,
+        *,
+        home_snapshot_id: str,
+    ) -> StoredWorkflowAgentSession:
+        assert home_snapshot_id == "home-1"
+        self.resolved_scopes.append(scope)
+        if self.loaded_session is not None:
+            return self.loaded_session
+        return StoredWorkflowAgentSession(
+            scope=scope,
+            binding_id=self.binding_id,
+            workspace_id=self.workspace_id,
+            backend_binding_ref=self.backend_binding_ref,
+            session_snapshot=self.loaded_snapshot,
+        )
 
     def save_active_snapshot(
         self,
         *,
         scope: WorkflowAgentSessionScope,
-        backend_run_id: str,
+        binding_id: str,
         snapshot: CompositorSessionSnapshot | None,
-        runtime_layer_specs: list[RuntimeLayerSpec],
         pending_form_id: str | None = None,
         pending_tool_call_id: str | None = None,
     ) -> None:
-        self.saved.append(
-            (scope, backend_run_id, snapshot, list(runtime_layer_specs), pending_form_id, pending_tool_call_id)
-        )
-
-    def mark_cleaned(
-        self,
-        *,
-        scope: WorkflowAgentSessionScope,
-        backend_run_id: str | None = None,
-    ) -> None:
-        self.cleaned.append((scope, backend_run_id))
+        self.saved.append((scope, binding_id, snapshot, pending_form_id, pending_tool_call_id))
 
 
 class FileOutputBackendClient(FakeAgentBackendRunClient):
@@ -190,12 +229,91 @@ class FileOutputBackendClient(FakeAgentBackendRunClient):
         )
 
 
+class AgentMessageDeltaBackendClient(FakeAgentBackendRunClient):
+    def _events(self, run_id: str):
+        created_at = datetime(2026, 1, 1, tzinfo=UTC)
+        return (
+            RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at),
+            PydanticAIStreamRunEvent(
+                id="2-0",
+                run_id=run_id,
+                created_at=created_at,
+                data=PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="hello ")),
+                agent_message_delta="hello ",
+            ),
+            RunSucceededEvent(
+                id="3-0",
+                run_id=run_id,
+                created_at=created_at,
+                data=RunSucceededEventData(
+                    output={"text": "hello agent"},
+                    session_snapshot=CompositorSessionSnapshot(layers=[]),
+                ),
+            ),
+        )
+
+
+class FailingStreamBackendClient(FakeAgentBackendRunClient):
+    def __init__(self) -> None:
+        super().__init__()
+        self.cancel_requests: list[CancelRunRequest | None] = []
+
+    def stream_events(
+        self,
+        run_id: str,
+        *,
+        after: str | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> Iterator[RunEvent]:
+        del run_id, after, should_stop
+        raise AgentBackendStreamError("stream reconnect attempts exhausted")
+        yield
+
+    def cancel_run(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
+        self.cancel_requests.append(request)
+        return CancelRunResponse(run_id=run_id, status="cancelled")
+
+
+class EmptyStreamBackendClient(FailingStreamBackendClient):
+    def stream_events(
+        self,
+        run_id: str,
+        *,
+        after: str | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> Iterator[RunEvent]:
+        del run_id, after, should_stop
+        return
+        yield
+
+
+class GenericFailingStreamBackendClient(FailingStreamBackendClient):
+    def stream_events(
+        self,
+        run_id: str,
+        *,
+        after: str | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> Iterator[RunEvent]:
+        del run_id, after, should_stop
+        raise RuntimeError("unexpected stream failure")
+        yield
+
+
+class CancelFailingStreamBackendClient(FailingStreamBackendClient):
+    def cancel_run(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
+        self.cancel_requests.append(request)
+        raise RuntimeError(f"failed to cancel {run_id}")
+
+
 def _node(
     *,
     scenario: FakeAgentBackendScenario = FakeAgentBackendScenario.SUCCESS,
     session_store: FakeSessionStore | None = None,
     declared_outputs: list[dict[str, object]] | None = None,
     agent_backend_client: FakeAgentBackendRunClient | None = None,
+    binding_resolver: FakeBindingResolver | None = None,
+    runtime_request_builder: WorkflowAgentRuntimeRequestBuilder | None = None,
 ) -> DifyAgentNode:
     graph_init_params = GraphInitParams(
         workflow_id="workflow-1",
@@ -219,7 +337,7 @@ def _node(
             return True
 
     client = agent_backend_client or FakeAgentBackendRunClient(scenario=scenario)
-    binding_resolver = FakeBindingResolver()
+    binding_resolver = binding_resolver or FakeBindingResolver()
     if declared_outputs is not None:
         binding_resolver.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
             {
@@ -229,20 +347,46 @@ def _node(
             }
         )
 
-    return DifyAgentNode(
+    node = DifyAgentNode(
         node_id="agent-node",
         data=DifyAgentNodeData.model_validate({"type": BuiltinNodeTypes.AGENT, "version": "2"}),
         graph_init_params=graph_init_params,
-        graph_runtime_state=cast(GraphRuntimeState, SimpleNamespace(variable_pool=FakeVariablePool())),
+        graph_runtime_state=cast(
+            GraphRuntimeState,
+            SimpleNamespace(
+                variable_pool=FakeVariablePool(),
+                graph_execution=SimpleNamespace(aborted=False),
+            ),
+        ),
         binding_resolver=binding_resolver,
-        runtime_request_builder=WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()),
+        runtime_request_builder=runtime_request_builder
+        or WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()),
         agent_backend_client=client,
         event_adapter=AgentBackendRunEventAdapter(),
         output_adapter=WorkflowAgentOutputAdapter(),
         type_checker=PerOutputTypeChecker(file_validator=_AlwaysAllowFileValidator()),
         failure_orchestrator=OutputFailureOrchestrator(),
-        session_store=cast(WorkflowAgentRuntimeSessionStore | None, session_store),
+        session_store=cast(WorkflowAgentWorkspaceStore, session_store or FakeSessionStore()),
     )
+    node.bind_execution_id(str(uuid4()))
+    return node
+
+
+def test_extract_variable_selector_to_variable_mapping_uses_frontend_agent_task_markers():
+    mapping = DifyAgentNode._extract_variable_selector_to_variable_mapping(
+        graph_config={},
+        node_id="agent-node",
+        node_data={
+            "agent_task": (
+                "Review {{#previous-node.report#}}, ignore {{#sys.query#}}, "
+                "ignore [§node_output:legacy-node.output:LEGACY§], then use {{#previous-node.report#}} again."
+            )
+        },
+    )
+
+    assert mapping == {
+        "agent-node.previous-node.report": ["previous-node", "report"],
+    }
 
 
 def test_agent_node_run_maps_successful_agent_backend_run_to_node_result():
@@ -256,7 +400,100 @@ def test_agent_node_run_maps_successful_agent_backend_run_to_node_result():
     assert agent_log["agent_backend"]["run_id"] == "fake-run-1"
     assert agent_log["agent_backend"]["status"] == "succeeded"
     assert result.process_data["agent_id"] == "agent-1"
-    assert result.inputs["agent_backend_request"]["composition"]["layers"][5]["config"]["credentials"] == "[REDACTED]"
+    layers = {layer["name"]: layer for layer in result.inputs["agent_backend_request"]["composition"]["layers"]}
+    assert layers["llm"]["config"]["credentials"] == "[REDACTED]"
+
+
+def test_agent_node_uses_resolved_backend_binding_before_backend_invocation() -> None:
+    client = FakeAgentBackendRunClient()
+    store = FakeSessionStore(binding_id="binding-2", backend_binding_ref="backend-binding-2")
+
+    events = list(_node(agent_backend_client=client, session_store=store)._run())
+
+    assert len(events) == 1
+    assert client.request is not None
+    layers = {layer["name"]: layer for layer in client.request.model_dump(mode="json")["composition"]["layers"]}
+    assert layers["runtime"]["config"]["backend_binding_ref"] == "backend-binding-2"
+    assert store.saved[0][1] == "binding-2"
+    assert len(store.resolved_scopes) == 1
+
+
+def test_agent_node_resume_resolves_the_generation_from_the_persisted_execution() -> None:
+    binding_resolver = FakeBindingResolver()
+    store = FakeSessionStore()
+    store.loaded_session = StoredWorkflowAgentSession(
+        scope=WorkflowAgentSessionScope(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            workflow_id="workflow-1",
+            workflow_run_id="workflow-run-1",
+            node_id="agent-node",
+            node_execution_id="exec-1",
+            workflow_agent_binding_id="binding-1",
+            agent_id="agent-1",
+            agent_config_snapshot_id="snapshot-pinned",
+        ),
+        binding_id="workspace-binding-1",
+        workspace_id="workspace-1",
+        backend_binding_ref="backend-binding-1",
+        session_snapshot=None,
+    )
+    node = _node(binding_resolver=binding_resolver, session_store=store)
+
+    events = list(node._run())
+
+    assert len(events) == 1
+    assert store.existing_scope_lookups[0]["node_execution_id"] == node.execution_id
+    assert binding_resolver.calls[0]["binding_id"] == "binding-1"
+    assert binding_resolver.calls[0]["snapshot_id"] == "snapshot-pinned"
+
+
+def test_agent_node_maps_persisted_participant_lookup_error_to_node_failure() -> None:
+    class _UnavailableParticipantStore(FakeSessionStore):
+        def load_existing_node_execution_scope(self, **kwargs: object) -> WorkflowAgentSessionScope | None:
+            del kwargs
+            raise AgentWorkspaceNotFoundError("Workflow node participant Binding is unavailable")
+
+    events = list(_node(session_store=_UnavailableParticipantStore())._run())
+
+    assert len(events) == 1
+    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
+    assert result.error == "Workflow node participant Binding is unavailable"
+    assert result.error_type == "agent_workflow_node_runtime_error"
+
+
+def test_agent_node_passes_execution_id_to_session_store_and_runtime_request_builder() -> None:
+    store = FakeSessionStore()
+    request_builder = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider())
+    node = _node(session_store=store, runtime_request_builder=request_builder)
+    execution_id = node.execution_id
+
+    with patch.object(request_builder, "build", wraps=request_builder.build) as build:
+        list(node._run())
+
+    assert str(UUID(execution_id)) == execution_id
+    assert execution_id != node.id
+    scope = store.resolved_scopes[0]
+    build.assert_called_once()
+    context = cast(WorkflowAgentRuntimeBuildContext, build.call_args.args[0])
+    assert scope.node_id == node.id
+    assert scope.node_execution_id == execution_id
+    assert context.node_id == node.id
+    assert context.node_execution_id == execution_id
+
+
+def test_agent_node_run_ignores_agent_message_delta_until_terminal_result():
+    events = list(_node(agent_backend_client=AgentMessageDeltaBackendClient())._run())
+
+    assert len(events) == 1
+    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs == {"text": "hello agent"}
+    agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
+    assert agent_backend["status"] == "succeeded"
+    assert agent_backend["agent_message_delta_count"] == 1
+    assert agent_backend["agent_message_delta_length"] == len("hello ")
 
 
 def test_agent_node_run_normalizes_declared_file_output_with_canonical_mapping():
@@ -370,23 +607,6 @@ def test_agent_node_run_maps_failed_agent_backend_run_to_node_result():
     assert result.error_type == "unit_test"
 
 
-def test_agent_node_failed_run_marks_session_cleaned_to_prevent_stale_reuse():
-    """A failed agent run must retire the local ACTIVE session row so a workflow
-    loop back into the same Agent node does not resume from a stale snapshot."""
-    existing_snapshot = CompositorSessionSnapshot(layers=[])
-    store = FakeSessionStore(snapshot=existing_snapshot)
-
-    events = list(_node(scenario=FakeAgentBackendScenario.FAILED, session_store=store)._run())
-
-    assert len(events) == 1
-    assert store.cleaned, "failed agent run should mark the session cleaned"
-    cleaned_scope, cleaned_backend_run_id = store.cleaned[0]
-    assert cleaned_scope.workflow_run_id == "workflow-run-1"
-    assert cleaned_backend_run_id == "fake-run-1"
-    # A failed run does not produce a fresh snapshot to persist.
-    assert store.saved == []
-
-
 def test_agent_node_saves_success_snapshot_and_reuses_existing_snapshot():
     existing_snapshot = CompositorSessionSnapshot(layers=[])
     store = FakeSessionStore(snapshot=existing_snapshot)
@@ -397,21 +617,15 @@ def test_agent_node_saves_success_snapshot_and_reuses_existing_snapshot():
 
     assert len(events) == 1
     assert store.saved
-    scope, backend_run_id, saved_snapshot, saved_specs, pending_form_id, pending_tool_call_id = store.saved[0]
+    scope, binding_id, saved_snapshot, pending_form_id, pending_tool_call_id = store.saved[0]
     assert scope.workflow_run_id == "workflow-run-1"
-    assert backend_run_id == "fake-run-1"
+    assert binding_id == "binding-1"
     assert saved_snapshot is not None
     # A successful terminal carries no ask_human pause correlation.
     assert pending_form_id is None
     assert pending_tool_call_id is None
     assert client.request is not None
     assert client.request.session_snapshot is existing_snapshot
-    # Persist enough composition shape to replay a cleanup run; plugin layers
-    # (which would carry credentials) are intentionally absent.
-    saved_layer_names = [spec.name for spec in saved_specs]
-    assert saved_layer_names, "cleanup specs must persist at least the non-plugin layers"
-    plugin_types = {"dify.plugin.llm", "dify.plugin.tools"}
-    assert not {spec.type for spec in saved_specs} & plugin_types
 
 
 def test_agent_node_run_when_session_store_save_raises_records_persist_error_in_metadata():
@@ -432,52 +646,7 @@ def test_agent_node_run_when_session_store_save_raises_records_persist_error_in_
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
     assert agent_backend["session_snapshot_persisted"] is False
-    assert agent_backend["session_snapshot_persist_error"] == "workflow_agent_runtime_session_store_error"
-
-
-def test_agent_node_failed_run_when_mark_cleaned_raises_records_cleanup_error_in_metadata():
-    """Same defensive pattern: a DB-side mark_cleaned failure must surface as
-    a ``session_snapshot_cleanup_error`` in metadata, not as a node crash."""
-
-    class _ExplodingMarkCleanedStore(FakeSessionStore):
-        def mark_cleaned(self, **kwargs):  # type: ignore[override]
-            del kwargs
-            raise RuntimeError("simulated DB failure")
-
-    store = _ExplodingMarkCleanedStore()
-    events = list(_node(scenario=FakeAgentBackendScenario.FAILED, session_store=store)._run())
-
-    assert len(events) == 1
-    result = cast(StreamCompletedEvent, events[0]).node_run_result
-    assert result.status == WorkflowNodeExecutionStatus.FAILED
-    agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
-    assert agent_backend["session_snapshot_cleaned_on_failure"] is False
-    assert agent_backend["session_snapshot_cleanup_error"] == "workflow_agent_runtime_session_store_error"
-
-
-def test_agent_node_success_run_without_session_store_skips_persistence():
-    """When ``session_store`` is None the node still completes successfully —
-    the lifecycle branch is a no-op and the run result is unaffected."""
-    events = list(_node(session_store=None)._run())
-
-    assert len(events) == 1
-    result = cast(StreamCompletedEvent, events[0]).node_run_result
-    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-    agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
-    # No persistence metadata is attached when the store is missing.
-    assert "session_snapshot_persisted" not in agent_backend
-
-
-def test_agent_node_failed_run_without_session_store_skips_mark_cleaned():
-    """``session_store=None`` + failed terminal must remain a no-op for
-    the cleanup branch — the node failure path still surfaces correctly."""
-    events = list(_node(scenario=FakeAgentBackendScenario.FAILED, session_store=None)._run())
-
-    assert len(events) == 1
-    result = cast(StreamCompletedEvent, events[0]).node_run_result
-    assert result.status == WorkflowNodeExecutionStatus.FAILED
-    agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
-    assert "session_snapshot_cleaned_on_failure" not in agent_backend
+    assert agent_backend["session_snapshot_persist_error"] == "workflow_agent_workspace_store_error"
 
 
 def test_agent_node_paused_run_requests_workflow_pause_and_persists_snapshot():
@@ -485,7 +654,7 @@ def test_agent_node_paused_run_requests_workflow_pause_and_persists_snapshot():
     node = _node(scenario=FakeAgentBackendScenario.PAUSED, session_store=store)
 
     # ENG-636: the PAUSED scenario emits a dify.ask_human deferred call, so the
-    # node now builds a HITL form and pauses with HumanInputRequired. Stub the
+    # node now builds a HITL form and pauses with HitlRequired. Stub the
     # form repository so the unit test stays DB-free.
     fake_repo = MagicMock()
     fake_repo.create_form.return_value = MagicMock(id="form-1")
@@ -494,17 +663,21 @@ def test_agent_node_paused_run_requests_workflow_pause_and_persists_snapshot():
     events = list(node._run())
 
     assert len(events) == 1
-    assert isinstance(events[0], PauseRequestedEvent)
-    assert isinstance(events[0].reason, HumanInputRequired)
-    assert events[0].reason.form_id == "form-1"
+    assert isinstance(events[0], NodeRunPauseRequestedEvent)
+    assert isinstance(events[0].reason, HitlRequired)
+    assert events[0].reason.session_id == "form-1"
     assert events[0].reason.node_id == "agent-node"
+    assert events[0].node_run_result.process_data == {
+        "agent_id": "agent-1",
+        "agent_config_snapshot_id": "snapshot-1",
+        "workflow_agent_binding_id": "binding-1",
+    }
     fake_repo.create_form.assert_called_once()
     assert store.saved
-    assert store.saved[0][1] == "fake-run-1"
-    assert store.saved[0][3], "paused agent run should still persist replayable layer specs"
+    assert store.saved[0][1] == "binding-1"
     # ENG-637: the awaiting form + deferred tool_call correlation is persisted.
-    assert store.saved[0][4] == "form-1"
-    assert store.saved[0][5] == "fake-ask-human-1"
+    assert store.saved[0][3] == "form-1"
+    assert store.saved[0][4] == "fake-ask-human-1"
 
 
 def _pending_session(snapshot: CompositorSessionSnapshot) -> StoredWorkflowAgentSession:
@@ -516,12 +689,14 @@ def _pending_session(snapshot: CompositorSessionSnapshot) -> StoredWorkflowAgent
             workflow_run_id="workflow-run-1",
             node_id="agent-node",
             node_execution_id="exec-1",
-            binding_id="binding-1",
+            workflow_agent_binding_id="binding-1",
             agent_id="agent-1",
             agent_config_snapshot_id="snapshot-1",
         ),
+        binding_id="binding-1",
+        workspace_id="workspace-1",
+        backend_binding_ref="backend-binding-1",
         session_snapshot=snapshot,
-        backend_run_id="run-0",
         pending_form_id="form-1",
         pending_tool_call_id="call-1",
     )
@@ -560,7 +735,7 @@ def test_agent_node_repauses_when_resumed_form_still_waiting(monkeypatch):
         form_id="form-1",
         form_content="Approve?",
         inputs=[],
-        actions=[UserActionConfig(id="ok", title="OK")],
+        actions=[],
         node_id="agent-node",
         node_title="Budget review",
     )
@@ -575,9 +750,159 @@ def test_agent_node_repauses_when_resumed_form_still_waiting(monkeypatch):
     events = list(node._run())
 
     assert len(events) == 1
-    assert isinstance(events[0], PauseRequestedEvent)
-    assert isinstance(events[0].reason, HumanInputRequired)
+    assert isinstance(events[0], NodeRunPauseRequestedEvent)
+    assert isinstance(events[0].reason, HitlRequired)
+    assert events[0].node_run_result.process_data["workflow_agent_binding_id"] == "binding-1"
     assert client.request is None  # no second Agent run was created
+
+
+def test_agent_node_expired_ask_human_failure_keeps_binding_identity(monkeypatch):
+    snapshot = CompositorSessionSnapshot(layers=[])
+    store = FakeSessionStore(snapshot=snapshot)
+    store.loaded_session = _pending_session(snapshot)
+
+    def _raise_expired_form(**_kwargs):
+        raise AssertionError("cannot resume globally expired ask_human form, form_id=form-1")
+
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.agent_node.resolve_ask_human_form",
+        _raise_expired_form,
+    )
+
+    events = list(_node(session_store=store)._run())
+
+    assert len(events) == 1
+    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
+    assert result.error == "cannot resume globally expired ask_human form, form_id=form-1"
+    assert result.error_type == "agent_workflow_node_runtime_error"
+    assert result.process_data["workflow_agent_binding_id"] == "binding-1"
+    assert "agent_workspace_binding_id" not in result.process_data
+
+
+def test_agent_node_unexpected_post_resolution_failure_keeps_binding_identity():
+    class _FailingSessionStore(FakeSessionStore):
+        def load_or_create_node_execution_session(
+            self,
+            scope: WorkflowAgentSessionScope,
+            *,
+            home_snapshot_id: str,
+        ) -> StoredWorkflowAgentSession:
+            del scope, home_snapshot_id
+            raise RuntimeError("session store failed")
+
+    events = list(_node(session_store=_FailingSessionStore())._run())
+
+    assert len(events) == 1
+    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
+    assert result.error == "session store failed"
+    assert result.error_type == "agent_workflow_node_runtime_error"
+    assert result.process_data == {
+        "agent_id": "agent-1",
+        "agent_config_snapshot_id": "snapshot-1",
+        "workflow_agent_binding_id": "binding-1",
+    }
+
+
+def test_agent_node_cancels_backend_run_when_stream_fails():
+    client = FailingStreamBackendClient()
+    node = _node(agent_backend_client=client)
+
+    terminal, failure = node._consume_event_stream(
+        "run-1",
+        inputs={},
+        process_data={"workflow_agent_binding_id": "binding-1"},
+        metadata={"agent_backend": {}},
+    )
+
+    assert terminal is None
+    assert failure is not None
+    assert failure.node_run_result.process_data == {"workflow_agent_binding_id": "binding-1"}
+    assert len(client.cancel_requests) == 1
+    assert client.cancel_requests[0] is not None
+    assert client.cancel_requests[0].reason == "event_stream_failed"
+
+
+def test_agent_node_cancels_backend_run_when_stream_ends_without_terminal_event():
+    client = EmptyStreamBackendClient()
+    node = _node(agent_backend_client=client)
+
+    terminal, failure = node._consume_event_stream(
+        "run-1",
+        inputs={},
+        process_data={"workflow_agent_binding_id": "binding-1"},
+        metadata={"agent_backend": {}},
+    )
+
+    assert terminal is None
+    assert failure is None
+    assert client.cancel_requests[0] is not None
+    assert client.cancel_requests[0].reason == "stream_ended_without_terminal_event"
+
+
+def test_agent_node_cancels_backend_run_when_stream_raises_unexpected_error():
+    client = GenericFailingStreamBackendClient()
+    node = _node(agent_backend_client=client)
+
+    terminal, failure = node._consume_event_stream(
+        "run-1",
+        inputs={},
+        process_data={"workflow_agent_binding_id": "binding-1"},
+        metadata={"agent_backend": {}},
+    )
+
+    assert terminal is None
+    assert failure is not None
+    assert failure.node_run_result.error == "unexpected stream failure"
+    assert failure.node_run_result.process_data == {"workflow_agent_binding_id": "binding-1"}
+    assert client.cancel_requests[0] is not None
+    assert client.cancel_requests[0].reason == "event_stream_failed"
+
+
+def test_agent_node_uses_graph_abort_reason_when_cancel_request_fails(caplog):
+    client = CancelFailingStreamBackendClient()
+    node = _node(agent_backend_client=client)
+    node.graph_runtime_state.graph_execution = SimpleNamespace(aborted=True)
+
+    terminal, failure = node._consume_event_stream(
+        "run-1",
+        inputs={},
+        process_data={"workflow_agent_binding_id": "binding-1"},
+        metadata={"agent_backend": {}},
+    )
+
+    assert terminal is None
+    assert failure is not None
+    assert client.cancel_requests[0] is not None
+    assert client.cancel_requests[0].reason == "workflow_graph_aborted"
+    assert "Failed to cancel Workflow Agent backend run" in caplog.text
+
+
+def test_agent_node_cancels_backend_run_for_unexpected_internal_event():
+    client = FakeAgentBackendRunClient()
+    node = _node(agent_backend_client=client)
+    node._agent_backend_client.cancel_run = MagicMock(  # type: ignore[method-assign]
+        return_value=CancelRunResponse(run_id="run-1", status="cancelled")
+    )
+    node._event_adapter.adapt = MagicMock(  # type: ignore[method-assign]
+        return_value=[SimpleNamespace(type=AgentBackendInternalEventType.RUN_FAILED)]
+    )
+
+    terminal, failure = node._consume_event_stream(
+        "run-1",
+        inputs={},
+        process_data={"workflow_agent_binding_id": "binding-1"},
+        metadata={"agent_backend": {}},
+    )
+
+    assert terminal is None
+    assert failure is not None
+    assert failure.node_run_result.error == (
+        "Unexpected internal event type <AgentBackendInternalEventType.RUN_FAILED: 'run_failed'>"
+    )
+    assert failure.node_run_result.process_data == {"workflow_agent_binding_id": "binding-1"}
+    node._agent_backend_client.cancel_run.assert_called_once()
 
 
 def test_agent_node_records_stream_usage_metadata():

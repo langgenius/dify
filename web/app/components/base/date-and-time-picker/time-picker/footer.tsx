@@ -4,10 +4,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
-const Footer: FC<TimePickerFooterProps> = ({
-  handleSelectCurrentTime,
-  handleConfirm,
-}) => {
+const Footer: FC<TimePickerFooterProps> = ({ handleSelectCurrentTime, handleConfirm }) => {
   const { t } = useTranslation()
 
   return (
@@ -19,7 +16,7 @@ const Footer: FC<TimePickerFooterProps> = ({
         className="mr-1 flex-1"
         onClick={handleSelectCurrentTime}
       >
-        {t('operation.now', { ns: 'time' })}
+        {t(($) => $['operation.now'], { ns: 'time' })}
       </Button>
       {/* Confirm Button */}
       <Button
@@ -28,7 +25,7 @@ const Footer: FC<TimePickerFooterProps> = ({
         className="ml-1 flex-1"
         onClick={handleConfirm.bind(null)}
       >
-        {t('operation.ok', { ns: 'time' })}
+        {t(($) => $['operation.ok'], { ns: 'time' })}
       </Button>
     </div>
   )

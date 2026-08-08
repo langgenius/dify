@@ -35,30 +35,6 @@ describe('OptionListItem', () => {
     })
   })
 
-  describe('Selection State', () => {
-    it('should have selected styles when isSelected is true', () => {
-      render(
-        <OptionListItem isSelected={true} onClick={vi.fn()}>
-          Selected
-        </OptionListItem>,
-      )
-
-      const item = screen.getByRole('button')
-      expect(item).toHaveClass('bg-components-button-ghost-bg-hover')
-    })
-
-    it('should not have selected styles when isSelected is false', () => {
-      render(
-        <OptionListItem isSelected={false} onClick={vi.fn()}>
-          Not Selected
-        </OptionListItem>,
-      )
-
-      const item = screen.getByRole('button')
-      expect(item).not.toHaveClass('bg-components-button-ghost-bg-hover')
-    })
-  })
-
   describe('Auto-Scroll', () => {
     it('should scroll into view on mount when isSelected is true', () => {
       render(

@@ -5,7 +5,10 @@ import CrawledResultItem from '../crawled-result-item'
 
 describe('CrawledResultItem', () => {
   const defaultProps = {
-    payload: { title: 'Example Page', source_url: 'https://example.com/page' } as CrawlResultItemType,
+    payload: {
+      title: 'Example Page',
+      source_url: 'https://example.com/page',
+    } as CrawlResultItemType,
     isChecked: false,
     isPreview: false,
     onCheckChange: vi.fn(),
@@ -20,11 +23,6 @@ describe('CrawledResultItem', () => {
     render(<CrawledResultItem {...defaultProps} />)
     expect(screen.getByText('Example Page')).toBeInTheDocument()
     expect(screen.getByText('https://example.com/page')).toBeInTheDocument()
-  })
-
-  it('should apply active styling when isPreview', () => {
-    const { container } = render(<CrawledResultItem {...defaultProps} isPreview={true} />)
-    expect((container.firstChild as HTMLElement).className).toContain('bg-state-base-active')
   })
 
   it('should call onCheckChange with true when unchecked checkbox is clicked', () => {

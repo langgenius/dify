@@ -1,6 +1,13 @@
 import type { AppDescribeResponse } from '@dify/contracts/api/openapi/types.gen'
 import { describe, expect, it } from 'vitest'
-import { covers, FieldInfo, FieldInputSchema, FieldParameters, fromDescribe, mergeMeta } from './app-meta'
+import {
+  covers,
+  FieldInfo,
+  FieldInputSchema,
+  FieldParameters,
+  fromDescribe,
+  mergeMeta,
+} from './app-meta'
 
 function describeResp(): AppDescribeResponse {
   return {
@@ -9,8 +16,6 @@ function describeResp(): AppDescribeResponse {
       name: 'Greeter',
       description: '',
       mode: 'chat',
-      author: 'tester',
-      tags: [],
       updated_at: undefined,
       service_api_enabled: false,
       is_agent: false,

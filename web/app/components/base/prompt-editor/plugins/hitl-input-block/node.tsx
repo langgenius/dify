@@ -1,4 +1,4 @@
-import type { LexicalNode, NodeKey, SerializedLexicalNode } from 'lexical'
+import type { NodeKey, SerializedLexicalNode } from 'lexical'
 import type { GetVarType } from '../../types'
 import type { WorkflowNodesMap } from '../workflow-variable-block/node'
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
@@ -169,7 +169,13 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
 
   override createDOM(): HTMLElement {
     const div = document.createElement('div')
-    div.classList.add('inline-flex', 'w-[calc(100%-1px)]', 'items-center', 'align-middle', 'support-drag')
+    div.classList.add(
+      'inline-flex',
+      'w-[calc(100%-1px)]',
+      'items-center',
+      'align-middle',
+      'support-drag',
+    )
     return div
   }
 
@@ -268,10 +274,4 @@ export function $createHITLInputNode(
     ragVariables,
     readonly,
   )
-}
-
-export function $isHITLInputNode(
-  node: HITLInputNode | LexicalNode | null | undefined,
-): node is HITLInputNode {
-  return node instanceof HITLInputNode
 }

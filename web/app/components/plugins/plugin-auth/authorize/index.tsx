@@ -3,11 +3,9 @@ import type { AddApiKeyButtonProps } from './add-api-key-button'
 import type { AddOAuthButtonProps } from './add-oauth-button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import {
-  memo,
-  useMemo,
-} from 'react'
+import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import AddApiKeyButton from './add-api-key-button'
 import AddOAuthButton from './add-oauth-button'
 
@@ -17,7 +15,6 @@ type AuthorizeProps = {
   showDivider?: boolean
   canOAuth?: boolean
   canApiKey?: boolean
-  disabled?: boolean
   onUpdate?: () => void
   notAllowCustomCredential?: boolean
   /**
@@ -34,16 +31,19 @@ const Authorize = ({
   showDivider = true,
   canOAuth,
   canApiKey,
-  disabled,
   onUpdate,
   notAllowCustomCredential,
   onApiKeyClick,
 }: AuthorizeProps) => {
   const { t } = useTranslation()
+  const { canCreateCredential } = useCredentialPermissions()
+
   const oAuthButtonProps: AddOAuthButtonProps = useMemo(() => {
     if (theme === 'secondary') {
       return {
-        buttonText: !canApiKey ? t('auth.useOAuthAuth', { ns: 'plugin' }) : t('auth.addOAuth', { ns: 'plugin' }),
+        buttonText: !canApiKey
+          ? t(($) => $['auth.useOAuthAuth'], { ns: 'plugin' })
+          : t(($) => $['auth.addOAuth'], { ns: 'plugin' }),
         buttonVariant: 'secondary',
         className: 'hover:bg-components-button-secondary-bg',
         buttonLeftClassName: 'hover:bg-components-button-secondary-bg-hover',
@@ -54,7 +54,9 @@ const Authorize = ({
     }
 
     return {
-      buttonText: !canApiKey ? t('auth.useOAuthAuth', { ns: 'plugin' }) : t('auth.addOAuth', { ns: 'plugin' }),
+      buttonText: !canApiKey
+        ? t(($) => $['auth.useOAuthAuth'], { ns: 'plugin' })
+        : t(($) => $['auth.addOAuth'], { ns: 'plugin' }),
       pluginPayload,
     }
   }, [canApiKey, theme, pluginPayload, t])
@@ -64,13 +66,17 @@ const Authorize = ({
       return {
         pluginPayload,
         buttonVariant: 'secondary',
-        buttonText: !canOAuth ? t('auth.useApiAuth', { ns: 'plugin' }) : t('auth.addApi', { ns: 'plugin' }),
+        buttonText: !canOAuth
+          ? t(($) => $['auth.useApiAuth'], { ns: 'plugin' })
+          : t(($) => $['auth.addApi'], { ns: 'plugin' }),
         onClick: onApiKeyClick,
       }
     }
     return {
       pluginPayload,
-      buttonText: !canOAuth ? t('auth.useApiAuth', { ns: 'plugin' }) : t('auth.addApi', { ns: 'plugin' }),
+      buttonText: !canOAuth
+        ? t(($) => $['auth.useApiAuth'], { ns: 'plugin' })
+        : t(($) => $['auth.addApi'], { ns: 'plugin' }),
       buttonVariant: !canOAuth ? 'primary' : 'secondary-accent',
       onClick: onApiKeyClick,
     }
@@ -81,7 +87,7 @@ const Authorize = ({
       <div className={cn('min-w-0 flex-1', notAllowCustomCredential && 'opacity-50')}>
         <AddOAuthButton
           {...oAuthButtonProps}
-          disabled={disabled || notAllowCustomCredential}
+          disabled={!canCreateCredential || notAllowCustomCredential}
           onUpdate={onUpdate}
         />
       </div>
@@ -92,20 +98,20 @@ const Authorize = ({
         <Tooltip>
           <TooltipTrigger render={Item} />
           <TooltipContent>
-            {t('auth.credentialUnavailable', { ns: 'plugin' })}
+            {t(($) => $['auth.credentialUnavailable'], { ns: 'plugin' })}
           </TooltipContent>
         </Tooltip>
       )
     }
     return Item
-  }, [notAllowCustomCredential, oAuthButtonProps, disabled, onUpdate, t])
+  }, [notAllowCustomCredential, oAuthButtonProps, canCreateCredential, onUpdate, t])
 
   const ApiKeyButton = useMemo(() => {
     const Item = (
       <div className={cn('min-w-0 flex-1', notAllowCustomCredential && 'opacity-50')}>
         <AddApiKeyButton
           {...apiKeyButtonProps}
-          disabled={disabled || notAllowCustomCredential}
+          disabled={!canCreateCredential || notAllowCustomCredential}
           onUpdate={onUpdate}
         />
       </div>
@@ -116,36 +122,26 @@ const Authorize = ({
         <Tooltip>
           <TooltipTrigger render={Item} />
           <TooltipContent>
-            {t('auth.credentialUnavailable', { ns: 'plugin' })}
+            {t(($) => $['auth.credentialUnavailable'], { ns: 'plugin' })}
           </TooltipContent>
         </Tooltip>
       )
     }
     return Item
-  }, [notAllowCustomCredential, apiKeyButtonProps, disabled, onUpdate, t])
+  }, [notAllowCustomCredential, apiKeyButtonProps, canCreateCredential, onUpdate, t])
 
   return (
     <>
       <div className="flex items-center space-x-1.5">
-        {
-          canOAuth && (
-            OAuthButton
-          )
-        }
-        {
-          showDivider && canOAuth && canApiKey && (
-            <div className="flex shrink-0 flex-col items-center justify-between system-2xs-medium-uppercase text-text-tertiary">
-              <div className="h-2 w-px bg-divider-subtle"></div>
-              or
-              <div className="h-2 w-px bg-divider-subtle"></div>
-            </div>
-          )
-        }
-        {
-          canApiKey && (
-            ApiKeyButton
-          )
-        }
+        {canOAuth && OAuthButton}
+        {showDivider && canOAuth && canApiKey && (
+          <div className="flex shrink-0 flex-col items-center justify-between system-2xs-medium-uppercase text-text-tertiary">
+            <div className="h-2 w-px bg-divider-subtle"></div>
+            or
+            <div className="h-2 w-px bg-divider-subtle"></div>
+          </div>
+        )}
+        {canApiKey && ApiKeyButton}
       </div>
     </>
   )

@@ -3,8 +3,10 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from flask_restx import Resource
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
+from controllers.common.session import with_session
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import accepts, returns
 from controllers.openapi._models import (
@@ -18,7 +20,6 @@ from controllers.openapi._models import (
 )
 from controllers.openapi.auth.composition import auth_router
 from controllers.openapi.auth.data import AuthData
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.oauth_bearer import (
     Scope,
@@ -41,12 +42,13 @@ from services.oauth_device_flow import (
 class AccountApi(Resource):
     @auth_router.guard(scope=Scope.FULL, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
     @returns(200, AccountResponse, description="Account info")
-    def get(self, *, auth_data: AuthData):
+    @with_session(write=False)
+    def get(self, session: Session, *, auth_data: AuthData):
         enforce(LIMIT_ME_PER_ACCOUNT, key=f"account:{auth_data.account_id}")
 
         account_id_str = str(auth_data.account_id) if auth_data.account_id else None
-        account = AccountService.get_account_by_id(db.session, account_id_str) if account_id_str else None
-        memberships = TenantService.get_account_memberships(db.session, account_id_str) if account_id_str else []
+        account = AccountService.get_account_by_id(account_id_str, session=session) if account_id_str else None
+        memberships = TenantService.get_account_memberships(account_id_str, session=session) if account_id_str else []
         default_ws_id = _pick_default_workspace(memberships)
 
         return AccountResponse(
@@ -62,8 +64,9 @@ class AccountApi(Resource):
 class AccountSessionsSelfApi(Resource):
     @auth_router.guard(scope=Scope.FULL, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
     @returns(200, RevokeResponse, description="Session revoked")
-    def delete(self, *, auth_data: AuthData):
-        revoke_oauth_token(db.session, redis_client, str(auth_data.token_id))
+    @with_session
+    def delete(self, session: Session, *, auth_data: AuthData):
+        revoke_oauth_token(redis_client, str(auth_data.token_id), session=session)
         return RevokeResponse(status="revoked")
 
 
@@ -72,7 +75,8 @@ class AccountSessionsApi(Resource):
     @auth_router.guard(scope=Scope.FULL, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
     @returns(200, SessionListResponse, description="Session list")
     @accepts(query=SessionListQuery)
-    def get(self, *, auth_data: AuthData, query: SessionListQuery):
+    @with_session(write=False)
+    def get(self, session: Session, *, auth_data: AuthData, query: SessionListQuery):
         # SessionListQuery enforces the advertised bounds (extra='forbid', page>=1,
         # 1<=limit<=MAX_PAGE_LIMIT) so the server rejects out-of-range paging rather
         # than silently coercing (e.g. page=0 -> empty slice).
@@ -81,7 +85,7 @@ class AccountSessionsApi(Resource):
         page = query.page
         limit = query.limit
 
-        all_rows = list_active_sessions(db.session, ctx, now)
+        all_rows = list_active_sessions(ctx, now, session=session)
 
         total = len(all_rows)
         sliced = all_rows[(page - 1) * limit : page * limit]
@@ -112,15 +116,16 @@ class AccountSessionsApi(Resource):
 class AccountSessionByIdApi(Resource):
     @auth_router.guard(scope=Scope.FULL, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
     @returns(200, RevokeResponse, description="Session revoked")
-    def delete(self, session_id: str, *, auth_data: AuthData):
+    @with_session
+    def delete(self, session: Session, session_id: str, *, auth_data: AuthData):
         ctx = get_auth_ctx()
 
         # 404 (not 403) on cross-subject so the endpoint doesn't leak
         # token IDs that belong to other subjects.
-        if not token_belongs_to_subject(db.session, session_id, ctx):
+        if not token_belongs_to_subject(session_id, ctx, session=session):
             raise NotFound("session not found")
 
-        revoke_oauth_token(db.session, redis_client, session_id)
+        revoke_oauth_token(redis_client, session_id, session=session)
         return RevokeResponse(status="revoked")
 
 

@@ -4,11 +4,16 @@ import SimpleNode from '../index'
 
 let mockNodesReadOnly = false
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesReadOnly: () => ({
-    nodesReadOnly: mockNodesReadOnly,
-  }),
-}))
+vi.mock('../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useNodesReadOnly: () => ({
+      nodesReadOnly: mockNodesReadOnly,
+    }),
+  }
+})
 
 vi.mock('@/app/components/workflow/block-icon', () => ({
   __esModule: true,
@@ -38,12 +43,7 @@ describe('simple-node', () => {
   })
 
   it('should render the block shell, target handle, and node control by default', () => {
-    render(
-      <SimpleNode
-        id="simple-node"
-        data={createData()}
-      />,
-    )
+    render(<SimpleNode id="simple-node" data={createData()} />)
 
     expect(screen.getByText('Answer')).toBeInTheDocument()
     expect(screen.getByText('block-icon:answer')).toBeInTheDocument()
@@ -119,7 +119,9 @@ describe('simple-node', () => {
 
     expect(screen.queryByText('node-handle:target')).not.toBeInTheDocument()
     expect(screen.queryByText('node-control:simple-node')).not.toBeInTheDocument()
-    expect(container.querySelector('.border-components-option-card-option-selected-border')).not.toBeNull()
+    expect(
+      container.querySelector('.border-components-option-card-option-selected-border'),
+    ).not.toBeNull()
     expect(container.querySelector('.opacity-70')).not.toBeNull()
   })
 

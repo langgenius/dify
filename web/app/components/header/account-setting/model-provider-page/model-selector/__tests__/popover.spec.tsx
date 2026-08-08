@@ -2,18 +2,16 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import ModelSelector from '../index'
 
 vi.mock('../../hooks', () => ({
-  useCurrentProviderAndModel: () => ({
+  getCurrentProviderAndModel: () => ({
     currentProvider: undefined,
     currentModel: undefined,
   }),
 }))
 
 vi.mock('../model-selector-trigger', () => ({
-  default: ({ open, readonly }: { open: boolean, readonly?: boolean }) => (
+  default: ({ open, readonly }: { open: boolean; readonly?: boolean }) => (
     <span>
-      {open ? 'open' : 'closed'}
-      -
-      {readonly ? 'readonly' : 'editable'}
+      {open ? 'open' : 'closed'}-{readonly ? 'readonly' : 'editable'}
     </span>
   ),
 }))
@@ -21,7 +19,9 @@ vi.mock('../model-selector-trigger', () => ({
 vi.mock('../popup', () => ({
   default: ({ onHide }: { onHide: () => void }) => (
     <div data-testid="popup">
-      <button type="button" onClick={onHide}>hide-popup</button>
+      <button type="button" onClick={onHide}>
+        hide-popup
+      </button>
     </div>
   ),
 }))

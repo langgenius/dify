@@ -29,6 +29,7 @@ from extensions.ext_database import db
 from fields.file_fields import FileResponse, FileWithSignedUrl
 from graphon.file import helpers as file_helpers
 from libs.exception import BaseHTTPException
+from libs.helper import dump_response
 from repositories.factory import DifyAPIRepositoryFactory
 from services.file_service import FileService
 from services.human_input_file_upload_service import (
@@ -141,8 +142,7 @@ def _upload_local_file(context):
     except services.errors.file.BlockedFileExtensionError as exc:
         raise BlockedFileExtensionError() from exc
 
-    response = FileResponse.model_validate(upload_file, from_attributes=True)
-    return upload_file.id, response
+    return upload_file.id, dump_response(FileResponse, upload_file)
 
 
 def _upload_remote_file(context, url: str):
@@ -186,7 +186,7 @@ def _upload_remote_file(context, url: str):
         created_by=upload_file.created_by,
         created_at=int(upload_file.created_at.timestamp()),
     )
-    return upload_file.id, response
+    return upload_file.id, response.model_dump(mode="json")
 
 
 @web_ns.route("/human-input-forms/files")
@@ -209,4 +209,5 @@ class HumanInputFileUploadApi(Resource):
             file_id, response = _upload_local_file(context=context)
 
         upload_service.record_upload_file(context=context, file_id=file_id)
-        return response.model_dump(mode="json"), 201
+        # response-contract:ignore pre-dumped response. See above
+        return response, 201

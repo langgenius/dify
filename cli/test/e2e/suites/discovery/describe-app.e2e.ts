@@ -67,12 +67,6 @@ describe('E2E / difyctl describe app', () => {
     expect(result.stdout).toMatch(/Name:/i)
   })
 
-  it('[P1] describe output contains Tags field', async () => {
-    const result = await fx.r(['describe', 'app', E.chatAppId])
-    assertExitCode(result, 0)
-    expect(result.stdout).toMatch(/Tags:/i)
-  })
-
   // ── Input schema ──────────────────────────────────────────────────────────
 
   it('[P0] describe output contains Parameters section', async () => {
@@ -89,7 +83,7 @@ describe('E2E / difyctl describe app', () => {
     // Spec 3.78: -o json → raw describe response containing info + parameters.
     const result = await fx.r(['describe', 'app', E.chatAppId, '-o', 'json'])
     assertExitCode(result, 0)
-    const parsed = assertJson<{ info: { id: string }, parameters: unknown }>(result)
+    const parsed = assertJson<{ info: { id: string }; parameters: unknown }>(result)
     expect(parsed.info?.id, 'info.id should match the queried app').toBe(E.chatAppId)
     expect(parsed.parameters, 'parameters field must be present').toBeDefined()
   })
@@ -164,16 +158,16 @@ describe('E2E / difyctl describe app', () => {
       const result = await run(['describe', 'app', E.chatAppId], { configDir: tmp.configDir })
       assertExitCode(result, 4)
       expect(result.stderr).toMatch(/not.?logged.?in|auth/i)
-    }
-    finally {
+    } finally {
       await tmp.cleanup()
     }
   })
 
   // ── External SSO ──────────────────────────────────────────────────────────
 
-  itWithSso('[P0] external SSO user describe app returns insufficient_scope (3.86)', async () => {
-    // Spec 3.86: dfoe_ token → insufficient_scope, exit non-0.
+  itWithSso('[P0] external SSO user can describe a permitted app', async () => {
+    // A dfoe_ token resolves `describe app` via the permitted-external surface
+    // (not the account /apps surface), so a permitted app describes successfully.
     // Uses DIFY_E2E_SSO_TOKEN; skipped when not configured.
     const { mkdir, writeFile } = await import('node:fs/promises')
     const { join } = await import('node:path')
@@ -191,10 +185,11 @@ describe('E2E / difyctl describe app', () => {
       ].join('\n')}\n`
       await writeFile(join(ssoTmp.configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
       const result = await run(['describe', 'app', E.chatAppId], { configDir: ssoTmp.configDir })
-      expect(result.exitCode, 'SSO user describe app should exit non-zero').not.toBe(0)
-      expect(result.stderr).toMatch(/insufficient_scope|scope|not_logged_in|auth/i)
-    }
-    finally {
+      assertExitCode(result, 0)
+      expect(result.stdout).toMatch(/ID:/i)
+      expect(result.stdout).toContain(E.chatAppId)
+      expect(result.stdout).toMatch(/Mode:/i)
+    } finally {
       await ssoTmp.cleanup()
     }
   })
@@ -203,10 +198,10 @@ describe('E2E / difyctl describe app', () => {
 
   it('[P0] describe output has no ANSI colour codes (non-TTY)', async () => {
     // withRetry: staging may return transient 500 on cold start
-    const result = await withRetry(
-      () => fx.r(['describe', 'app', E.chatAppId]),
-      { attempts: 3, delayMs: 2000 },
-    )
+    const result = await withRetry(() => fx.r(['describe', 'app', E.chatAppId]), {
+      attempts: 3,
+      delayMs: 2000,
+    })
     assertExitCode(result, 0)
     assertNoAnsi(result.stdout, 'stdout')
   })
@@ -216,32 +211,22 @@ describe('E2E / difyctl describe app', () => {
   it('[P1] describe output contains Description field (3.66)', async () => {
     // Spec 3.66: output includes Description when app has a non-empty description.
     // Prerequisite: echo-bot description set to 'e2e-test' in the Dify web console.
-    const result = await withRetry(
-      () => fx.r(['describe', 'app', E.chatAppId]),
-      { attempts: 3, delayMs: 2000 },
-    )
+    const result = await withRetry(() => fx.r(['describe', 'app', E.chatAppId]), {
+      attempts: 3,
+      delayMs: 2000,
+    })
     assertExitCode(result, 0)
     expect(result.stdout).toMatch(/Description:/i)
     expect(result.stdout).toContain('e2e-test')
   })
 
-  it('[P1] describe output contains Author field (3.67)', async () => {
-    // Spec 3.67: output includes Author field when app has an author.
-    const result = await withRetry(
-      () => fx.r(['describe', 'app', E.chatAppId]),
-      { attempts: 3, delayMs: 2000 },
-    )
-    assertExitCode(result, 0)
-    expect(result.stdout).toMatch(/Author:/i)
-  })
-
   it('[P0] Inputs section shows parameter names (3.70)', async () => {
     // Spec 3.70: Parameters/Inputs section displays variable names.
     // workflow app has x, num, enum_var, paragraph.
-    const result = await withRetry(
-      () => fx.r(['describe', 'app', E.workflowAppId]),
-      { attempts: 3, delayMs: 2000 },
-    )
+    const result = await withRetry(() => fx.r(['describe', 'app', E.workflowAppId]), {
+      attempts: 3,
+      delayMs: 2000,
+    })
     assertExitCode(result, 0)
     expect(result.stdout).toMatch(/Parameters|Inputs/i)
     expect(result.stdout).toContain('"x"')
@@ -251,45 +236,47 @@ describe('E2E / difyctl describe app', () => {
   it('[P0] Inputs section shows parameter types (3.71)', async () => {
     // Spec 3.71: Parameters section displays parameter type info.
     // input_schema is a JSON Schema object with properties.inputs.properties.<var>.type.
-    const result = await withRetry(
-      () => fx.r(['describe', 'app', E.workflowAppId, '-o', 'json']),
-      { attempts: 3, delayMs: 2000 },
-    )
+    const result = await withRetry(() => fx.r(['describe', 'app', E.workflowAppId, '-o', 'json']), {
+      attempts: 3,
+      delayMs: 2000,
+    })
     assertExitCode(result, 0)
     const parsed = assertJson<{
       input_schema: { properties?: { inputs?: { properties?: Record<string, { type: string }> } } }
     }>(result)
     const varProps = parsed.input_schema?.properties?.inputs?.properties
     expect(varProps, 'input_schema should expose variable type properties').toBeDefined()
-    const types = Object.values(varProps ?? {}).map(v => v.type)
+    const types = Object.values(varProps ?? {}).map((v) => v.type)
     expect(types.length, 'should have at least one typed parameter').toBeGreaterThan(0)
-    types.forEach(t => expect(typeof t, 'each type must be a string').toBe('string'))
+    types.forEach((t) => expect(typeof t, 'each type must be a string').toBe('string'))
   })
 
   it('[P0] Inputs section shows required/optional markers (3.72)', async () => {
     // Spec 3.72: Parameters section shows required/optional per field.
     // user_input_form entries each have a required:boolean flag.
-    const result = await withRetry(
-      () => fx.r(['describe', 'app', E.workflowAppId, '-o', 'json']),
-      { attempts: 3, delayMs: 2000 },
-    )
+    const result = await withRetry(() => fx.r(['describe', 'app', E.workflowAppId, '-o', 'json']), {
+      attempts: 3,
+      delayMs: 2000,
+    })
     assertExitCode(result, 0)
-    type FormItem = Record<string, { variable: string, required: boolean }>
+    type FormItem = Record<string, { variable: string; required: boolean }>
     const parsed = assertJson<{ parameters: { user_input_form: FormItem[] } }>(result)
     const fields = parsed.parameters.user_input_form
     expect(fields.length, 'user_input_form should have entries').toBeGreaterThan(0)
     fields.forEach((item) => {
       const entry = Object.values(item)[0]!
-      expect(typeof entry.required, `field ${entry.variable} must have required flag`).toBe('boolean')
+      expect(typeof entry.required, `field ${entry.variable} must have required flag`).toBe(
+        'boolean',
+      )
     })
   })
 
   it('[P0] workflow app with 4 typed fields shows all in Parameters (3.73)', async () => {
     // Spec 3.73: 4-field workflow app — x / num / enum_var / paragraph all appear.
-    const result = await withRetry(
-      () => fx.r(['describe', 'app', E.workflowAppId]),
-      { attempts: 3, delayMs: 2000 },
-    )
+    const result = await withRetry(() => fx.r(['describe', 'app', E.workflowAppId]), {
+      attempts: 3,
+      delayMs: 2000,
+    })
     assertExitCode(result, 0)
     expect(result.stdout).toContain('"x"')
     expect(result.stdout).toContain('"num"')
@@ -300,10 +287,10 @@ describe('E2E / difyctl describe app', () => {
   it('[P1] enum parameter shows options list (3.74)', async () => {
     // Spec 3.74: enum-type input shows the selectable options.
     // enum_var has options A, B, C.
-    const result = await withRetry(
-      () => fx.r(['describe', 'app', E.workflowAppId]),
-      { attempts: 3, delayMs: 2000 },
-    )
+    const result = await withRetry(() => fx.r(['describe', 'app', E.workflowAppId]), {
+      attempts: 3,
+      delayMs: 2000,
+    })
     assertExitCode(result, 0)
     // Options A / B / C appear in the raw JSON dump of parameters
     expect(result.stdout).toMatch(/"A"|"B"|"C"/)
@@ -312,10 +299,10 @@ describe('E2E / difyctl describe app', () => {
   it('[P1] paragraph parameter shows max_length value (3.75)', async () => {
     // Spec 3.75: paragraph input with max_length shows the limit value.
     // paragraph has max_length = 100.
-    const result = await withRetry(
-      () => fx.r(['describe', 'app', E.workflowAppId]),
-      { attempts: 3, delayMs: 2000 },
-    )
+    const result = await withRetry(() => fx.r(['describe', 'app', E.workflowAppId]), {
+      attempts: 3,
+      delayMs: 2000,
+    })
     assertExitCode(result, 0)
     expect(result.stdout).toContain('100')
   })
@@ -348,8 +335,7 @@ describe('E2E / difyctl describe app', () => {
       })
       expect(result.exitCode, 'unreachable host should cause non-zero exit').not.toBe(0)
       expect(result.stderr.length).toBeGreaterThan(0)
-    }
-    finally {
+    } finally {
       await networkTmp.cleanup()
     }
   })

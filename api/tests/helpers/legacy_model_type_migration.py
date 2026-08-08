@@ -131,10 +131,11 @@ def fetch_table_rows(
     for row in rows:
         normalized = dict(row)
         for key, value in normalized.items():
-            if isinstance(value, datetime):
-                normalized[key] = value.isoformat()
-            elif isinstance(value, uuid.UUID):
-                normalized[key] = str(value)
+            match value:
+                case datetime():
+                    normalized[key] = value.isoformat()
+                case uuid.UUID():
+                    normalized[key] = str(value)
         result.append(normalized)
     return result
 

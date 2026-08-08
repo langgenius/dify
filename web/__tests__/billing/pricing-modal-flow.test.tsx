@@ -8,25 +8,43 @@
  * Validates cross-component state propagation when the user switches between
  * cloud / self-hosted categories and monthly / yearly plan ranges.
  */
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { ALL_PLANS } from '@/app/components/billing/config'
 import Pricing from '@/app/components/billing/pricing'
 import { Plan } from '@/app/components/billing/type'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
 
 // ─── Mock state ──────────────────────────────────────────────────────────────
 let mockProviderCtx: Record<string, unknown> = {}
-let mockAppCtx: Record<string, unknown> = {}
+let mockConsoleState: Record<string, unknown> = {}
+let mockEducationStatus = { is_student: false, allow_refresh: false, expire_at: null }
+const mockFetchSubscriptionUrls = vi.hoisted(() => vi.fn())
+
+const render = (ui: React.ReactElement) => {
+  const { wrapper } = createConsoleQueryWrapper({ educationStatus: mockEducationStatus })
+  return renderWithConsoleState(ui, { wrapper })
+}
 
 // ─── Context mocks ───────────────────────────────────────────────────────────
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => mockProviderCtx,
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => mockAppCtx,
-}))
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => mockConsoleState)
+})
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => mockConsoleState)
+})
+vi.mock('@/context/version-state', async () => {
+  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createVersionStateModuleMock(() => mockConsoleState)
+})
 
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en-US',
@@ -35,16 +53,27 @@ vi.mock('@/context/i18n', () => ({
 
 // ─── Service mocks ───────────────────────────────────────────────────────────
 vi.mock('@/service/billing', () => ({
-  fetchSubscriptionUrls: vi.fn().mockResolvedValue({ url: 'https://pay.example.com' }),
+  fetchSubscriptionUrls: (...args: unknown[]) => mockFetchSubscriptionUrls(...args),
 }))
 
-vi.mock('@/service/client', () => ({
-  consoleClient: {
-    billing: {
-      invoices: vi.fn().mockResolvedValue({ url: 'https://invoice.example.com' }),
-    },
-  },
-}))
+vi.mock('@/service/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/client')>()
+  return {
+    ...actual,
+    consoleClient: new Proxy(actual.consoleClient, {
+      get(target, prop, receiver) {
+        if (prop === 'billing') {
+          return {
+            invoices: {
+              get: vi.fn().mockResolvedValue({ url: 'https://invoice.example.com' }),
+            },
+          }
+        }
+        return Reflect.get(target, prop, receiver)
+      },
+    }),
+  }
+})
 
 vi.mock('@/hooks/use-async-window-open', () => ({
   useAsyncWindowOpen: () => vi.fn(),
@@ -101,16 +130,18 @@ const defaultPlanData = {
   },
 }
 
-const setupContexts = (planOverrides: Record<string, unknown> = {}, appOverrides: Record<string, unknown> = {}) => {
+const setupContexts = (
+  planOverrides: Record<string, unknown> = {},
+  appOverrides: Record<string, unknown> = {},
+) => {
+  mockEducationStatus = { is_student: false, allow_refresh: false, expire_at: null }
   mockProviderCtx = {
     plan: { ...defaultPlanData, ...planOverrides },
     enableBilling: true,
     isFetchedPlan: true,
     enableEducationPlan: false,
-    isEducationAccount: false,
-    allowRefreshEducationVerify: false,
   }
-  mockAppCtx = {
+  mockConsoleState = {
     isCurrentWorkspaceManager: true,
     userProfile: { email: 'test@example.com' },
     langGeniusVersionInfo: { current_version: '1.0.0' },
@@ -125,6 +156,7 @@ describe('Pricing Modal Flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     cleanup()
+    mockFetchSubscriptionUrls.mockResolvedValue({ url: 'https://pay.example.com' })
     setupContexts()
   })
 
@@ -152,6 +184,9 @@ describe('Pricing Modal Flow', () => {
     it('should show plan range switcher (annual billing toggle) by default for cloud', () => {
       render(<Pricing onCancel={onCancel} />)
 
+      expect(
+        screen.getByRole('switch', { name: 'billing.plansCommon.yearlyBilling' }),
+      ).toBeInTheDocument()
       expect(screen.getByText(/plansCommon\.annualBilling/i)).toBeInTheDocument()
     })
 
@@ -246,6 +281,56 @@ describe('Pricing Modal Flow', () => {
 
   // ─── 4. Cloud Plan Button States ─────────────────────────────────────────
   describe('Cloud plan button states', () => {
+    it('should allow managers without billing permission keys to change plans', async () => {
+      const user = userEvent.setup()
+      render(<Pricing onCancel={onCancel} />)
+
+      await user.click(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' }))
+
+      await waitFor(() => {
+        expect(mockFetchSubscriptionUrls).toHaveBeenCalledWith(Plan.professional, 'month')
+      })
+    })
+
+    it('should default education account managers to yearly checkout', async () => {
+      setupContexts()
+      mockProviderCtx = {
+        ...mockProviderCtx,
+        enableEducationPlan: true,
+      }
+      mockEducationStatus.is_student = true
+      const user = userEvent.setup()
+      render(<Pricing onCancel={onCancel} />)
+
+      expect(
+        screen.getByRole('switch', { name: 'billing.plansCommon.yearlyBilling' }),
+      ).toBeChecked()
+
+      await user.click(screen.getByRole('button', { name: 'education.useEducationDiscount' }))
+
+      await waitFor(() => {
+        expect(mockFetchSubscriptionUrls).toHaveBeenCalledWith(Plan.professional, 'year')
+      })
+    })
+
+    it('should block non-manager members even when billing permission keys are present', async () => {
+      setupContexts(
+        {},
+        {
+          isCurrentWorkspaceManager: false,
+          workspacePermissionKeys: ['billing.manage', 'billing.subscription.manage'],
+        },
+      )
+      const user = userEvent.setup()
+      render(<Pricing onCancel={onCancel} />)
+
+      await user.click(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' }))
+
+      await waitFor(() => {
+        expect(mockFetchSubscriptionUrls).not.toHaveBeenCalled()
+      })
+    })
+
     it('should show "Current Plan" for the current plan (sandbox)', () => {
       setupContexts({ type: Plan.sandbox })
       render(<Pricing onCancel={onCancel} />)

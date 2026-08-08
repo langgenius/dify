@@ -84,7 +84,10 @@ describe('SubmittedContentItem', () => {
     )
 
     expect(screen.getByTestId('submitted-field-evidence')).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: 'Preview' })).toHaveAttribute('src', 'https://example.com/evidence.png')
+    expect(screen.getByRole('img', { name: 'Preview' })).toHaveAttribute(
+      'src',
+      'https://example.com/evidence.png',
+    )
     expect(screen.getByText('evidence.pdf')).toBeInTheDocument()
   })
 
@@ -168,10 +171,12 @@ describe('SubmittedContentItem', () => {
     const { container } = render(
       <SubmittedContentItem
         content="{{#$output.unknown#}}"
-        formInputFields={[{
-          type: 'unsupported',
-          output_variable_name: 'unknown',
-        } as unknown as FormInputItem]}
+        formInputFields={[
+          {
+            type: 'unsupported',
+            output_variable_name: 'unknown',
+          } as unknown as FormInputItem,
+        ]}
         values={{ unknown: 'value' }}
       />,
     )
