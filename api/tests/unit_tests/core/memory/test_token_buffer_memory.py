@@ -507,7 +507,6 @@ class TestGetHistoryPromptMessages:
 
     @staticmethod
     def _history_scalars_side_effect(
-        messages: list[MagicMock],
         user_files: list[MagicMock] | None = None,
         assistant_files: list[MagicMock] | None = None,
     ):
@@ -516,8 +515,6 @@ class TestGetHistoryPromptMessages:
         def scalars_side_effect(_stmt):
             result = MagicMock()
             if call_count["n"] == 0:
-                result.all.return_value = messages
-            elif call_count["n"] == 1:
                 result.all.return_value = user_files or []
             else:
                 result.all.return_value = assistant_files or []
@@ -669,7 +666,7 @@ class TestGetHistoryPromptMessages:
                 return_value=None,
             ),
         ):
-            mock_db.session.scalars.side_effect = self._history_scalars_side_effect([msg], user_files=[mock_user_file])
+            mock_db.session.scalars.side_effect = self._history_scalars_side_effect(user_files=[mock_user_file])
             result = mem.get_history_prompt_messages()
 
         assert mock_build.call_count >= 1
@@ -700,7 +697,7 @@ class TestGetHistoryPromptMessages:
             ) as mock_build,
         ):
             mock_db.session.scalars.side_effect = self._history_scalars_side_effect(
-                [msg], assistant_files=[mock_assistant_file]
+                assistant_files=[mock_assistant_file]
             )
             result = mem.get_history_prompt_messages()
 
@@ -773,7 +770,7 @@ class TestGetHistoryPromptMessages:
             patch("core.memory.token_buffer_memory.extract_thread_messages", return_value=messages),
             patch("core.memory.token_buffer_memory.FileUploadConfigManager.convert", return_value=None),
         ):
-            mock_db.session.scalars.side_effect = self._history_scalars_side_effect(messages)
+            mock_db.session.scalars.side_effect = self._history_scalars_side_effect()
             result = mem.get_history_prompt_messages(max_token_limit=2000)
 
         assert len(result) == 2
@@ -801,7 +798,7 @@ class TestGetHistoryPromptMessages:
             patch("core.memory.token_buffer_memory.extract_thread_messages", return_value=messages),
             patch("core.memory.token_buffer_memory.FileUploadConfigManager.convert", return_value=None),
         ):
-            mock_db.session.scalars.side_effect = self._history_scalars_side_effect(messages)
+            mock_db.session.scalars.side_effect = self._history_scalars_side_effect()
             result = mem.get_history_prompt_messages(max_token_limit=1)
 
         assert result == []
