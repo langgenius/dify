@@ -88,7 +88,7 @@ docker compose up -d
 
 #### सहायता प्राप्त करना
 
-यदि आपको Dify सेटअप करते समय कोई समस्या आती है, तो कृपया हमारे [FAQ](https://docs.dify.ai/getting-started/install-self-hosted/faqs) को देखें। यदि फिर भी समस्या बनी रहती है, तो [the community and us](#community--contact) से संपर्क करें।
+यदि आपको Dify सेटअप करते समय कोई समस्या आती है, तो कृपया हमारे [FAQ](https://docs.dify.ai/getting-started/install-self-hosted/faqs) को देखें। यदि फिर भी समस्या बनी रहती है, तो [the community and us](#समुदाय-और-संपर्क-community--contact) से संपर्क करें।
 
 > यदि आप Dify में योगदान देना चाहते हैं या अतिरिक्त विकास करना चाहते हैं, तो हमारे [guide to deploying from source code](https://docs.dify.ai/getting-started/install-self-hosted/local-source-code) को देखें।
 
