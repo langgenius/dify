@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from constants.languages import languages
 from extensions.ext_database import db
 from libs.helper import email as email_validate
-from libs.password import hash_password, password_pattern, valid_password
+from libs.password import hash_password, valid_password
 from services.account_service import AccountService, RegisterService, TenantService
 
 
@@ -33,8 +33,8 @@ def reset_password(email, new_password, password_confirm):
 
     try:
         valid_password(new_password)
-    except:
-        click.echo(click.style(f"Invalid password. Must match {password_pattern}", fg="red"))
+    except ValueError as e:
+        click.echo(click.style(str(e), fg="red"))
         return
 
     # generate password salt
@@ -75,8 +75,8 @@ def reset_email(email, new_email, email_confirm):
 
     try:
         email_validate(normalized_new_email)
-    except:
-        click.echo(click.style(f"Invalid email: {new_email}", fg="red"))
+    except ValueError as e:
+        click.echo(click.style(str(e), fg="red"))
         return
 
     with Session(db.engine) as session:
