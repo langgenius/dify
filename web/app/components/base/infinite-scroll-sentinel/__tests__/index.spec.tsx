@@ -120,6 +120,25 @@ describe('InfiniteScrollSentinel', () => {
     expect(onLoadMore).toHaveBeenCalledTimes(2)
   })
 
+  it('pauses load notifications while loading is disallowed and resumes when allowed again', () => {
+    const onLoadMore = vi.fn()
+    const { rerender } = render(
+      <Harness canLoadMore preloadDistance={160} onLoadMore={onLoadMore} />,
+    )
+    const firstObserver = getObserver(0)
+
+    triggerIntersection(firstObserver, true)
+    expect(onLoadMore).toHaveBeenCalledOnce()
+
+    rerender(<Harness canLoadMore={false} preloadDistance={160} onLoadMore={onLoadMore} />)
+    triggerIntersection(firstObserver, true)
+    expect(onLoadMore).toHaveBeenCalledOnce()
+
+    rerender(<Harness canLoadMore preloadDistance={160} onLoadMore={onLoadMore} />)
+    triggerIntersection(getObserver(1), true)
+    expect(onLoadMore).toHaveBeenCalledTimes(2)
+  })
+
   it('uses the latest load callback after rerendering', () => {
     const firstOnLoadMore = vi.fn()
     const nextOnLoadMore = vi.fn()
