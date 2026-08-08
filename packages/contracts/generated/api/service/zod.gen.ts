@@ -1860,7 +1860,7 @@ export const zTagUpdatePayload = z.object({
 export const zTextToAudioPayload = z.object({
   message_id: z.uuid().nullish(),
   streaming: z.boolean().nullish(),
-  text: z.string().nullish(),
+  text: z.string().max(4096).nullish(),
   voice: z.string().nullish(),
 })
 
@@ -1870,7 +1870,7 @@ export const zTextToAudioPayload = z.object({
 export const zTextToAudioPayloadWithUser = z.object({
   message_id: z.uuid().nullish(),
   streaming: z.boolean().nullish(),
-  text: z.string().nullish(),
+  text: z.string().max(4096).nullish(),
   user: z.string().optional(),
   voice: z.string().nullish(),
 })

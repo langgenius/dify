@@ -6,6 +6,14 @@ from pydantic import BaseModel, Field, GetJsonSchemaHandler, WithJsonSchema, mod
 
 from libs.helper import UUIDStrOrEmpty
 
+# Maximum TTS input length, in characters. Matches OpenAI tts-1's per-request
+# input cap and is well under the per-request caps of every other major TTS
+# provider (ElevenLabs 5000, Azure 5x10^6/year, Google 5000 bytes / 3000 input).
+# Inputs above this limit are rejected at the API boundary so the server
+# returns a clean 400 instead of forwarding them to the provider and reporting
+# the provider's rejection as a 500. See #39825.
+TTS_MAX_TEXT_LENGTH = 4096
+
 # --- Conversation schemas ---
 
 
@@ -225,7 +233,11 @@ class TextToAudioPayload(BaseModel):
             "[Get App Parameters](/api-reference/applications/get-app-parameters) as `text_to_speech.voice`."
         ),
     )
-    text: str | None = Field(default=None, description="Speech content to convert.")
+    text: str | None = Field(
+        default=None,
+        max_length=TTS_MAX_TEXT_LENGTH,
+        description=(f"Speech content to convert. Maximum {TTS_MAX_TEXT_LENGTH} characters per request."),
+    )
     streaming: bool | None = Field(
         default=None,
         description="Reserved for compatibility; TTS response streaming is determined by the provider output.",
