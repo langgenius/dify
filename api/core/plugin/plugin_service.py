@@ -58,6 +58,7 @@ from core.plugin.impl.debugging import PluginDebuggingClient
 from core.plugin.impl.endpoint import PluginEndpointClient
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.plugin import PluginInstaller
+from enums import DeploymentEdition
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.provider import Provider, ProviderCredential, TenantPreferredModelProvider
@@ -1256,7 +1257,7 @@ class PluginService:
                 PluginService.invalidate_plugin_model_providers_cache(tenant_id)
             return result
 
-        if dify_config.ENTERPRISE_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
             PluginManagerService.try_pre_uninstall_plugin(
                 PreUninstallPluginRequest(
                     tenant_id=tenant_id,

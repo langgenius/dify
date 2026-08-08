@@ -42,7 +42,7 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from core.helper.trace_id_helper import get_external_trace_id, get_trace_session_id, omit_trace_session_id_from_payload
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan, DeploymentEdition
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import UUIDStrOrEmpty
@@ -376,7 +376,11 @@ class ChatApi(Resource):
 
         payload = ChatRequestPayload.model_validate(omit_trace_session_id_from_payload(service_api_ns.payload) or {})
 
-        if app_mode == AppMode.ADVANCED_CHAT and payload.workflow_id and dify_config.BILLING_ENABLED:
+        if (
+            app_mode == AppMode.ADVANCED_CHAT
+            and payload.workflow_id
+            and dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
+        ):
             billing_info = BillingService.get_info(app_model.tenant_id, exclude_vector_space=True)
             if billing_info["enabled"] and billing_info["subscription"]["plan"] == CloudPlan.SANDBOX:
                 raise WorkflowVersionExecutionNotAllowedError()

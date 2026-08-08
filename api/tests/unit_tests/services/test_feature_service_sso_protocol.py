@@ -2,7 +2,7 @@ import logging
 
 import pytest
 
-from enums.deployment_edition import DeploymentEdition
+from enums import DeploymentEdition
 from services import feature_service as feature_service_module
 from services.entities.feature_entities import SSOProtocol, SystemFeatureModel
 from services.feature_service import FeatureService

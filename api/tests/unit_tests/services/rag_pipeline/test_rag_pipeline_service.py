@@ -9,7 +9,12 @@ import pytest
 from pytest_mock import MockerFixture
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.enums import (
+    BuiltinNodeTypes,
+    ErrorStrategy,
+    WorkflowNodeExecutionMetadataKey,
+    WorkflowNodeExecutionStatus,
+)
 from graphon.graph_events import NodeRunFailedEvent
 from graphon.node_events.base import NodeRunResult
 from models import Account, Tenant
@@ -388,7 +393,6 @@ def test_get_default_block_config_returns_config_for_valid_type(
     fake_node_class.get_default_config.return_value = {"type": "start", "config": {}}
 
     # Use a simpler approach: test with a known valid node type
-    from graphon.enums import BuiltinNodeTypes
 
     mocker.patch(
         "services.rag_pipeline.rag_pipeline.get_node_type_classes_mapping",
@@ -799,7 +803,6 @@ def test_run_datasource_node_preview_online_document(
 def test_handle_node_run_result_success(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
-    from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
     from graphon.graph_events import NodeRunSucceededEvent
     from graphon.node_events.base import NodeRunResult
 
@@ -1121,7 +1124,6 @@ def test_get_default_block_configs_success(rag_pipeline_service: RagPipelineServ
 
 
 def test_get_default_block_config_success(rag_pipeline_service: RagPipelineServiceTestContext) -> None:
-    from graphon.enums import BuiltinNodeTypes
 
     result = rag_pipeline_service.service.get_default_block_config(BuiltinNodeTypes.LLM)
     assert result is not None
@@ -1143,7 +1145,6 @@ def test_publish_workflow_raises_when_draft_workflow_missing(
 def test_get_default_block_config_returns_none_when_mapped_type_missing(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
-    from graphon.enums import BuiltinNodeTypes
 
     mocker.patch("services.rag_pipeline.rag_pipeline.get_node_type_classes_mapping", return_value={})
 
@@ -1153,7 +1154,6 @@ def test_get_default_block_config_returns_none_when_mapped_type_missing(
 def test_get_default_block_config_injects_http_request_filter(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
-    from graphon.enums import BuiltinNodeTypes
 
     fake_node_cls = mocker.Mock()
     fake_node_cls.get_default_config.return_value = {"type": "http-request"}
@@ -1396,7 +1396,6 @@ def test_handle_node_run_result_default_value_strategy(
 ) -> None:
     from datetime import datetime
 
-    from graphon.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecutionStatus
     from graphon.graph_events import NodeRunFailedEvent
     from graphon.node_events.base import NodeRunResult
 
@@ -1582,7 +1581,6 @@ def test_set_datasource_variables_raises_when_node_id_missing(
 def test_get_default_block_configs_skips_empty_configs(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
-    from graphon.enums import BuiltinNodeTypes
 
     http_node = mocker.Mock()
     http_node.get_default_config.return_value = {"type": "http-request"}
@@ -2058,7 +2056,6 @@ def test_publish_workflow_skips_dataset_update_for_non_knowledge_nodes(
 def test_get_default_block_config_returns_none_when_default_empty(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
-    from graphon.enums import BuiltinNodeTypes
 
     node_cls = mocker.Mock()
     node_cls.get_default_config.return_value = None

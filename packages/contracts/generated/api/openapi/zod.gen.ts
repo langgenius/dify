@@ -142,6 +142,13 @@ export const zAppRunRequest = z.object({
 })
 
 /**
+ * DeploymentEdition
+ *
+ * Enum representing the deployment edition of the platform.
+ */
+export const zDeploymentEdition = z.enum(['CLOUD', 'COMMUNITY', 'ENTERPRISE'])
+
+/**
  * DeviceCodeRequest
  */
 export const zDeviceCodeRequest = z.object({
@@ -499,7 +506,7 @@ export const zRevokeResponse = z.object({
  * Meta endpoint payload for `GET /openapi/v1/_version` — no auth required.
  */
 export const zServerVersionResponse = z.object({
-  edition: z.enum(['CLOUD', 'SELF_HOSTED']),
+  edition: zDeploymentEdition,
   version: z.string(),
 })
 

@@ -14,6 +14,7 @@ from controllers.console.auth import activate as activate_module
 from controllers.console.auth.activate import ActivateApi, ActivateCheckApi
 from controllers.console.auth.error import InvitationAccountMismatchError
 from controllers.console.error import AccountInFreezeError, AlreadyActivateError
+from enums import DeploymentEdition
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 
 
@@ -285,7 +286,7 @@ class TestActivateApi:
         assert isinstance(account, Account)
         account.email = "Invitee@Example.com"
         sqlite_session.commit()
-        monkeypatch.setattr(activate_module.dify_config, "BILLING_ENABLED", True)
+        monkeypatch.setattr(activate_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
 
         with (
             patch.object(

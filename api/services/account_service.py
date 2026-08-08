@@ -22,6 +22,7 @@ from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
 from constants.languages import get_valid_language, language_timezone_mapping
+from enums import DeploymentEdition
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client, redis_fallback
@@ -119,7 +120,7 @@ class InvitationDetailDict(TypedDict):
 
 def _try_join_enterprise_default_workspace(account_id: str) -> None:
     """Best-effort join to enterprise default workspace."""
-    if not dify_config.ENTERPRISE_ENABLED:
+    if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
         return
 
     from services.enterprise.enterprise_service import try_join_default_workspace
@@ -378,7 +379,7 @@ class AccountService:
         payload = {
             "user_id": account.id,
             "exp": exp,
-            "iss": dify_config.EDITION,
+            "iss": dify_config.DEPLOYMENT_EDITION.value,
             "sub": "Console API Passport",
         }
 
@@ -463,7 +464,7 @@ class AccountService:
         if not FeatureService.get_license().seats.is_available():
             raise SeatsLimitExceededError("licensed seats limit exceeded")
 
-        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(email):
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and BillingService.is_email_in_freeze(email):
             raise AccountRegisterError(
                 description=(
                     "This email account has been deleted within the past "
@@ -1053,7 +1054,7 @@ class AccountService:
 
     @classmethod
     def get_user_through_email(cls, email: str, *, session: Session):
-        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(email):
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and BillingService.is_email_in_freeze(email):
             raise AccountRegisterError(
                 description=(
                     "This email account has been deleted within the past "
@@ -1072,7 +1073,7 @@ class AccountService:
 
     @classmethod
     def is_account_in_freeze(cls, email: str) -> bool:
-        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(email):
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and BillingService.is_email_in_freeze(email):
             return True
         return False
 
@@ -1395,7 +1396,7 @@ class TenantService:
             session.add(ta)
 
         session.commit()
-        if dify_config.BILLING_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             BillingService.clean_billing_info_cache(tenant.id)
         return ta
 
@@ -1828,7 +1829,7 @@ class TenantService:
                 account_email,
             )
 
-        if dify_config.BILLING_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             BillingService.clean_billing_info_cache(tenant.id)
 
         # Queue account deletion sync task for enterprise backend to reassign resources (enterprise only)

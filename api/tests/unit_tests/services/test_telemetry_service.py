@@ -7,6 +7,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from enums import DeploymentEdition
 from models.model import DifySetup
 from services import telemetry_service
 from services.telemetry_service import CommunityTelemetryService
@@ -14,8 +15,7 @@ from services.telemetry_service import CommunityTelemetryService
 
 @pytest.fixture
 def telemetry_enabled(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(telemetry_service.dify_config, "EDITION", "SELF_HOSTED")
-    monkeypatch.setattr(telemetry_service.dify_config, "ENTERPRISE_ENABLED", False)
+    monkeypatch.setattr(telemetry_service.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     monkeypatch.setattr(telemetry_service.dify_config, "DISABLE_TELEMETRY", False)
     monkeypatch.setattr(telemetry_service.dify_config, "DO_NOT_TRACK", False)
     monkeypatch.setattr(telemetry_service.dify_config, "CI", False)
@@ -29,8 +29,7 @@ def telemetry_enabled(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_telemetry_is_disabled_for_enterprise(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(telemetry_service.dify_config, "EDITION", "SELF_HOSTED")
-    monkeypatch.setattr(telemetry_service.dify_config, "ENTERPRISE_ENABLED", True)
+    monkeypatch.setattr(telemetry_service.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE)
 
     assert CommunityTelemetryService._is_enabled() is False
 
@@ -38,7 +37,7 @@ def test_telemetry_is_disabled_for_enterprise(monkeypatch: pytest.MonkeyPatch):
 @pytest.mark.parametrize(
     ("setting", "value"),
     [
-        ("EDITION", "CLOUD"),
+        ("DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
         ("DISABLE_TELEMETRY", True),
         ("DO_NOT_TRACK", True),
         ("CI", True),

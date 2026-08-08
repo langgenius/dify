@@ -1,10 +1,11 @@
 import pytest
 
+from enums import DeploymentEdition
 from services.feature_service import FeatureService
 
 
 def test_workspace_creation_uses_environment_policy(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("services.feature_service.dify_config.ENTERPRISE_ENABLED", False)
+    monkeypatch.setattr("services.feature_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     monkeypatch.setattr("services.feature_service.dify_config.ALLOW_CREATE_WORKSPACE", True)
     monkeypatch.setattr(
         "services.feature_service.EnterpriseService.get_info",
@@ -15,7 +16,7 @@ def test_workspace_creation_uses_environment_policy(monkeypatch: pytest.MonkeyPa
 
 
 def test_workspace_creation_uses_enterprise_policy(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("services.feature_service.dify_config.ENTERPRISE_ENABLED", True)
+    monkeypatch.setattr("services.feature_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE)
     monkeypatch.setattr(
         "services.feature_service.EnterpriseService.get_info",
         lambda: {"IsAllowCreateWorkspace": False},
@@ -27,7 +28,7 @@ def test_workspace_creation_uses_enterprise_policy(monkeypatch: pytest.MonkeyPat
 def test_workspace_creation_keeps_environment_policy_when_enterprise_value_is_missing(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("services.feature_service.dify_config.ENTERPRISE_ENABLED", True)
+    monkeypatch.setattr("services.feature_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE)
     monkeypatch.setattr("services.feature_service.dify_config.ALLOW_CREATE_WORKSPACE", True)
     monkeypatch.setattr("services.feature_service.EnterpriseService.get_info", lambda: {})
 
@@ -35,8 +36,8 @@ def test_workspace_creation_keeps_environment_policy_when_enterprise_value_is_mi
 
 
 def test_plugin_manager_is_enabled_only_for_enterprise(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("services.feature_service.dify_config.ENTERPRISE_ENABLED", True)
+    monkeypatch.setattr("services.feature_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE)
     assert FeatureService.is_plugin_manager_enabled() is True
 
-    monkeypatch.setattr("services.feature_service.dify_config.ENTERPRISE_ENABLED", False)
+    monkeypatch.setattr("services.feature_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     assert FeatureService.is_plugin_manager_enabled() is False

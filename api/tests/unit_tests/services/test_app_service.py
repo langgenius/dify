@@ -12,6 +12,7 @@ from sqlalchemy import event
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from enums import DeploymentEdition
 from graphon.model_runtime.entities.model_entities import ModelType
 from models import Account, Tenant
 from models.model import App, AppMode, AppModelConfig, IconType
@@ -43,7 +44,7 @@ class TestCreateAppTransactionBoundary:
                 "services.app_service.FeatureService.get_system_features",
                 return_value=SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
             ),
-            patch("services.app_service.dify_config.BILLING_ENABLED", False),
+            patch("services.app_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
         ):
             AppService().create_app(
                 "tenant-1",
@@ -82,7 +83,7 @@ class TestCreateAppTransactionBoundary:
                 "services.app_service.FeatureService.get_system_features",
                 return_value=SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
             ),
-            patch("services.app_service.dify_config.BILLING_ENABLED", False),
+            patch("services.app_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
         ):
             app = AppService().create_app(
                 "tenant-1",

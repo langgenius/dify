@@ -1,4 +1,4 @@
-"""Feature-query gateway backed by FeatureService."""
+"""Feature-query gateway backed by the existing FeatureService."""
 
 from typing import override
 

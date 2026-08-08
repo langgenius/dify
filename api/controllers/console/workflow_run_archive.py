@@ -11,7 +11,6 @@ from controllers.common.schema import register_response_schema_models, register_
 from controllers.console import console_ns
 from controllers.console.wraps import (
     account_initialization_required,
-    cloud_edition_billing_enabled,
     cloud_edition_billing_paid_plan_required,
     model_validate,
     only_edition_cloud,
@@ -122,7 +121,6 @@ class WorkflowRunArchivesApi(Resource):
     @login_required
     @account_initialization_required
     @only_edition_cloud
-    @cloud_edition_billing_enabled
     @cloud_edition_billing_paid_plan_required
     def get(self):
         tenant_id, _ = _current_owner_or_admin_ids()
@@ -143,7 +141,6 @@ class WorkflowRunArchiveDownloadsApi(Resource):
     @login_required
     @account_initialization_required
     @only_edition_cloud
-    @cloud_edition_billing_enabled
     @cloud_edition_billing_paid_plan_required
     @model_validate(WorkflowRunArchiveDownloadPayload)
     def post(self, req_data: WorkflowRunArchiveDownloadPayload):
@@ -170,7 +167,6 @@ class WorkflowRunArchiveDownloadApi(Resource):
     @login_required
     @account_initialization_required
     @only_edition_cloud
-    @cloud_edition_billing_enabled
     @cloud_edition_billing_paid_plan_required
     def get(self, download_id: str):
         tenant_id, _ = _current_owner_or_admin_ids()
@@ -195,7 +191,6 @@ class WorkflowRunArchiveDownloadFileApi(Resource):
     @login_required
     @account_initialization_required
     @only_edition_cloud
-    @cloud_edition_billing_enabled
     @cloud_edition_billing_paid_plan_required
     def get(self, download_id: str):
         tenant_id, _ = _current_owner_or_admin_ids()

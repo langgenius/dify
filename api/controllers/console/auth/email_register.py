@@ -15,6 +15,7 @@ from controllers.console.auth.error import (
     InvalidTokenError,
     PasswordMismatchError,
 )
+from enums import DeploymentEdition
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.helper import EmailStr, extract_remote_ip
@@ -98,7 +99,9 @@ class EmailRegisterSendEmailApi(Resource):
         if args.language is not None and args.language in languages:
             language = args.language
 
-        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(normalized_email):
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and BillingService.is_email_in_freeze(
+            normalized_email
+        ):
             raise AccountInFreezeError()
 
         account = AccountService.get_account_by_email_with_case_fallback(args.email, session=db.session())

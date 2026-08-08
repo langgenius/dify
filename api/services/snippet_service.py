@@ -8,7 +8,9 @@ from typing import Any
 from sqlalchemy import delete, event, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from configs import dify_config
 from core.workflow.node_factory import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
+from enums import DeploymentEdition
 from graphon.enums import BuiltinNodeTypes, NodeType
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account, TagBinding
@@ -150,10 +152,9 @@ class SnippetService:
 
     @staticmethod
     def _delete_archived_workflow_run_files(*, snippet: CustomizedSnippet) -> None:
-        from configs import dify_config
         from libs.archive_storage import ArchiveStorageNotConfiguredError, get_archive_storage
 
-        if not (dify_config.BILLING_ENABLED and dify_config.ARCHIVE_STORAGE_ENABLED):
+        if not (dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and dify_config.ARCHIVE_STORAGE_ENABLED):
             return
 
         prefix = f"{snippet.tenant_id}/app_id={snippet.id}/"

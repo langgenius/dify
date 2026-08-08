@@ -20,7 +20,7 @@ import pytest
 from core.indexing_runner import DocumentIsPausedError
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset, Document
 from models.enums import IndexingStatus

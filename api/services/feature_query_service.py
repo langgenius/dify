@@ -1,4 +1,4 @@
-"""Application service for Console feature queries."""
+"""Application service for feature queries exposed by API adapters."""
 
 from collections.abc import Sequence
 from typing import Protocol

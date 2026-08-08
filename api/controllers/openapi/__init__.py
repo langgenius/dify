@@ -139,7 +139,6 @@ register_response_schema_models(
 register_enum_models(openapi_ns, OpenApiErrorCode)
 
 from . import (
-    _meta,
     account,
     app_dsl,
     app_run,
@@ -157,7 +156,6 @@ from . import (
 # Request models are imported from _models.py and registered above.
 
 __all__ = [
-    "_meta",
     "account",
     "app_dsl",
     "app_run",

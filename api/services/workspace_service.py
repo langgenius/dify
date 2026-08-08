@@ -6,8 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
-from enums.cloud_plan import CloudPlan
-from enums.deployment_edition import DeploymentEdition
+from enums import CloudPlan, DeploymentEdition
 from models.account import Tenant, TenantAccountJoin, TenantAccountRole
 from services.account_service import TenantService
 from services.billing_service import BillingService
@@ -53,7 +52,7 @@ def _set_credit_pool_info(
 class WorkspaceService:
     @classmethod
     def get_effective_credit_pool(cls, tenant_id: str, *, session: Session) -> EffectiveCreditPool:
-        if not dify_config.BILLING_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
             return EffectiveCreditPool()
 
         billing_info = BillingService.get_info(tenant_id, exclude_vector_space=True)

@@ -14,6 +14,7 @@ from _pytest.logging import LogCaptureFixture
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
+from enums import DeploymentEdition
 from models.account import Account
 from tasks.delete_account_task import delete_account_task
 
@@ -35,14 +36,14 @@ def mock_external_dependencies(mocker: MockerFixture) -> tuple[MagicMock, MagicM
     return billing_service, mail_task
 
 
-def test_billing_enabled_account_exists_calls_billing_and_sends_email(
+def test_cloud_account_exists_calls_billing_and_sends_email(
     db_session_with_containers: Session,
     mock_external_dependencies: tuple[MagicMock, MagicMock],
     mocker: MockerFixture,
 ) -> None:
     billing_service, mail_task = mock_external_dependencies
     account = _create_account(db_session_with_containers, email="a@b.com")
-    mocker.patch("tasks.delete_account_task.dify_config.BILLING_ENABLED", True)
+    mocker.patch("tasks.delete_account_task.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
 
     delete_account_task(account.id)
 
@@ -50,14 +51,14 @@ def test_billing_enabled_account_exists_calls_billing_and_sends_email(
     mail_task.delay.assert_called_once_with(account.email)
 
 
-def test_billing_disabled_account_exists_sends_email_only(
+def test_community_account_exists_sends_email_only(
     db_session_with_containers: Session,
     mock_external_dependencies: tuple[MagicMock, MagicMock],
     mocker: MockerFixture,
 ) -> None:
     billing_service, mail_task = mock_external_dependencies
     account = _create_account(db_session_with_containers, email="x@y.com")
-    mocker.patch("tasks.delete_account_task.dify_config.BILLING_ENABLED", False)
+    mocker.patch("tasks.delete_account_task.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
 
     delete_account_task(account.id)
 
@@ -65,12 +66,12 @@ def test_billing_disabled_account_exists_sends_email_only(
     mail_task.delay.assert_called_once_with(account.email)
 
 
-def test_billing_enabled_account_not_found_calls_billing_no_email(
+def test_cloud_account_not_found_calls_billing_no_email(
     mock_external_dependencies: tuple[MagicMock, MagicMock], mocker: MockerFixture, caplog: LogCaptureFixture
 ) -> None:
     billing_service, mail_task = mock_external_dependencies
     account_id = str(uuid4())
-    mocker.patch("tasks.delete_account_task.dify_config.BILLING_ENABLED", True)
+    mocker.patch("tasks.delete_account_task.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
 
     delete_account_task(account_id)
 
@@ -87,7 +88,7 @@ def test_billing_delete_raises_propagates_and_no_email(
     billing_service, mail_task = mock_external_dependencies
     account = _create_account(db_session_with_containers, email="err@example.com")
     billing_service.delete_account.side_effect = RuntimeError("billing down")
-    mocker.patch("tasks.delete_account_task.dify_config.BILLING_ENABLED", True)
+    mocker.patch("tasks.delete_account_task.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
 
     with pytest.raises(RuntimeError, match="billing down"):
         delete_account_task(account.id)
