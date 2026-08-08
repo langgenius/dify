@@ -4,6 +4,9 @@ import type { ToolVarInputs } from '../../types'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Tool } from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
+import { useCallback } from 'react'
+import { useResetOnChange } from '@/app/components/tools/hooks/use-reset-on-change'
+import { resetToolSettingFieldValue } from '@/app/components/tools/utils/to-form-schema'
 import ToolFormItem from './item'
 
 type Props = Readonly<{
@@ -34,11 +37,24 @@ const ToolForm: FC<Props> = ({
   onManageInputField,
   extraParams,
 }) => {
+  const handleReset = useCallback(
+    (schemasToReset: CredentialFormSchema[]) => {
+      const nextValue = { ...value }
+      schemasToReset.forEach((schema) => {
+        nextValue[schema.variable] = resetToolSettingFieldValue(schema)
+      })
+      onChange(nextValue)
+    },
+    [onChange, value],
+  )
+
+  useResetOnChange({ schemas: schema, value, onReset: handleReset })
+
   return (
     <div className="space-y-1">
-      {schema.map((schema, index) => (
+      {schema.map((schema) => (
         <ToolFormItem
-          key={index}
+          key={schema.variable}
           readOnly={readOnly}
           nodeId={nodeId}
           schema={schema}

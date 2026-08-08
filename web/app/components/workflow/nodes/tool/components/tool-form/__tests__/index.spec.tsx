@@ -1,6 +1,6 @@
 import type { ToolVarInputs } from '../../../types'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { VarType } from '../../../types'
 import ToolForm from '../index'
@@ -106,5 +106,51 @@ describe('tool/tool-form', () => {
     expect(container.firstChild)!.toHaveClass('space-y-1')
     expect(screen.queryByTestId(/tool-form-item-/)).not.toBeInTheDocument()
     expect(mockToolFormItem).not.toHaveBeenCalled()
+  })
+
+  it('should reset a dependent field when a watched sibling changes', async () => {
+    const handleChange = vi.fn()
+    const schemas = [
+      createSchema({ name: 'source', variable: 'source' }),
+      createSchema({
+        name: 'dependent',
+        variable: 'dependent',
+        type: FormTypeEnum.select,
+        default: 'default-option',
+        reset_on_change: ['source'],
+      }),
+    ]
+    const { rerender } = render(
+      <ToolForm
+        readOnly={false}
+        nodeId="tool-node"
+        schema={schemas}
+        value={{
+          source: { type: VarType.constant, value: 'first' },
+          dependent: { type: VarType.constant, value: 'selected' },
+        }}
+        onChange={handleChange}
+      />,
+    )
+
+    rerender(
+      <ToolForm
+        readOnly={false}
+        nodeId="tool-node"
+        schema={schemas}
+        value={{
+          source: { type: VarType.constant, value: 'second' },
+          dependent: { type: VarType.constant, value: 'selected' },
+        }}
+        onChange={handleChange}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(handleChange).toHaveBeenCalledWith({
+        source: { type: VarType.constant, value: 'second' },
+        dependent: { type: VarType.constant, value: 'default-option' },
+      })
+    })
   })
 })

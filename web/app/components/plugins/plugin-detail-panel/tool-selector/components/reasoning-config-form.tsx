@@ -23,6 +23,7 @@ import { FormTypeEnum } from '@/app/components/header/account-setting/model-prov
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { AppSelector } from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
+import { useResetOnChange } from '@/app/components/tools/hooks/use-reset-on-change'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import FormInputBoolean from '@/app/components/workflow/nodes/_base/components/form-input-boolean'
 import FormInputTypeSwitch from '@/app/components/workflow/nodes/_base/components/form-input-type-switch'
@@ -35,6 +36,7 @@ import {
   getFieldFlags,
   getFieldTitle,
   mergeReasoningValue,
+  resetReasoningConfigEntry,
   resolveTargetVarType,
   updateInputAutoState,
   updateReasoningValue,
@@ -64,6 +66,19 @@ const ReasoningConfigForm: React.FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const language = useLanguage()
+
+  const handleReset = useCallback(
+    (schemasToReset: ToolFormSchema[]) => {
+      const nextValue = { ...value }
+      schemasToReset.forEach((schema) => {
+        nextValue[schema.variable] = resetReasoningConfigEntry(schema, value[schema.variable])
+      })
+      onChange(nextValue)
+    },
+    [onChange, value],
+  )
+
+  useResetOnChange({ schemas, value, onReset: handleReset })
 
   const handleAutomatic = (key: string, val: boolean, type: string) => {
     onChange(updateInputAutoState(value, key, val, type))

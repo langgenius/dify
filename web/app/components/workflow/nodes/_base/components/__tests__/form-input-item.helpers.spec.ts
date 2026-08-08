@@ -10,6 +10,7 @@ import {
   filterVisibleOptions,
   getCheckboxListOptions,
   getCheckboxListValue,
+  getDynamicOptionsResetKey,
   getFilterVar,
   getFormInputState,
   getNumberInputValue,
@@ -166,6 +167,18 @@ describe('form-input-item helpers', () => {
     expect(normalizeVariableSelectorValue([])).toEqual([])
     expect(normalizeVariableSelectorValue(['node', 'answer'])).toEqual(['node', 'answer'])
     expect(normalizeVariableSelectorValue('')).toBe('')
+  })
+
+  it('should derive a stable dynamic-options reset key from watched siblings only', () => {
+    const value = {
+      source: { type: VarKindType.constant, value: 'alpha' },
+      ignored: { type: VarKindType.constant, value: 'one' },
+    }
+
+    expect(getDynamicOptionsResetKey(value, ['source'])).toBe(
+      `source:${JSON.stringify(value.source)}`,
+    )
+    expect(getDynamicOptionsResetKey(value, [])).toBe('')
   })
 
   it('should derive remaining target variable types and label states', () => {

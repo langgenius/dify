@@ -37,6 +37,7 @@ import {
   filterVisibleOptions,
   getCheckboxListOptions,
   getCheckboxListValue,
+  getDynamicOptionsResetKey,
   getFilterVar,
   getFormInputState,
   getNumberInputValue,
@@ -123,6 +124,14 @@ const FormInputItem: FC<Props> = ({
     variable,
   } = formState
   const varInput = value[variable]
+  const dynamicOptionsResetKey = useMemo(
+    () => getDynamicOptionsResetKey(value, schema.reset_on_change),
+    [schema.reset_on_change, value],
+  )
+  const hasCurrentTool = !!currentTool
+  const hasCurrentProvider = !!currentProvider
+  const currentToolName = currentTool?.name
+  const currentProviderName = currentProvider?.name
 
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
@@ -172,10 +181,11 @@ const FormInputItem: FC<Props> = ({
     const fetchPanelDynamicOptions = async () => {
       if (
         isDynamicSelect &&
-        currentTool &&
-        currentProvider &&
+        hasCurrentTool &&
+        hasCurrentProvider &&
         (providerType === PluginCategoryEnum.tool || providerType === PluginCategoryEnum.trigger)
       ) {
+        setToolsOptions(null)
         setIsLoadingToolsOptions(true)
         try {
           const data = await fetchDynamicOptions()
@@ -192,11 +202,14 @@ const FormInputItem: FC<Props> = ({
     fetchPanelDynamicOptions()
   }, [
     isDynamicSelect,
-    currentTool?.name,
-    currentProvider?.name,
+    hasCurrentTool,
+    hasCurrentProvider,
+    currentToolName,
+    currentProviderName,
     variable,
     extraParams,
     providerType,
+    dynamicOptionsResetKey,
     fetchDynamicOptions,
   ])
 

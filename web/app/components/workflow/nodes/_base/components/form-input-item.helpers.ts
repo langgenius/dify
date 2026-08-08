@@ -42,6 +42,14 @@ export type SelectItem = {
   value: string
 }
 
+export const getDynamicOptionsResetKey = (
+  inputs: ResourceVarInputs,
+  resetOnChange: string[] = [],
+) =>
+  resetOnChange
+    .map((variable) => `${variable}:${JSON.stringify(inputs[variable] ?? null)}`)
+    .join('\0')
+
 type FormInputState = {
   defaultValue: unknown
   isAppSelector: boolean

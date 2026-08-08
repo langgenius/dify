@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import type { AppSelectorValue } from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -562,5 +562,53 @@ describe('ReasoningConfigForm', () => {
       'href',
       'https://example.com/help',
     )
+  })
+
+  it('should reset a dependent reasoning field when a watched sibling changes', async () => {
+    const onChange = vi.fn()
+    const schemas = [
+      createSchema({ variable: 'source' }),
+      createSchema({
+        variable: 'dependent',
+        type: FormTypeEnum.textNumber,
+        default: '0.7',
+        reset_on_change: ['source'],
+      }),
+    ]
+    const initialValue = {
+      source: { auto: 0 as const, value: { type: VarKindType.mixed, value: 'first' } },
+      dependent: { auto: 0 as const, value: { type: VarKindType.constant, value: '1' } },
+    }
+    const { rerender } = render(
+      <ReasoningConfigForm
+        value={initialValue}
+        onChange={onChange}
+        schemas={schemas}
+        nodeOutputVars={[]}
+        availableNodes={[]}
+        nodeId="node-1"
+      />,
+    )
+
+    rerender(
+      <ReasoningConfigForm
+        value={{
+          ...initialValue,
+          source: { auto: 0, value: { type: VarKindType.mixed, value: 'second' } },
+        }}
+        onChange={onChange}
+        schemas={schemas}
+        nodeOutputVars={[]}
+        availableNodes={[]}
+        nodeId="node-1"
+      />,
+    )
+
+    await waitFor(() => {
+      expect(onChange).toHaveBeenCalledWith({
+        source: { auto: 0, value: { type: VarKindType.mixed, value: 'second' } },
+        dependent: { auto: 0, value: { type: VarKindType.constant, value: 0.7 } },
+      })
+    })
   })
 })

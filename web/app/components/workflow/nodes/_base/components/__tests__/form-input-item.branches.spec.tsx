@@ -264,7 +264,7 @@ describe('FormInputItem branches', () => {
       }),
       currentProvider: { plugin_id: 'provider-1', name: 'provider-1' } as never,
       currentTool: { name: 'tool-1' } as never,
-      providerType: PluginCategoryEnum.tool,
+      providerType: 'tool' as const,
       value: {
         field: {
           type: VarKindType.constant,
@@ -290,6 +290,42 @@ describe('FormInputItem branches', () => {
         value: 'remote',
       },
     })
+  })
+
+  it('should refresh dynamic options when a reset dependency changes', async () => {
+    const schema = createSchema({
+      type: FormTypeEnum.dynamicSelect,
+      reset_on_change: ['source'],
+    })
+    const commonProps = {
+      readOnly: false,
+      nodeId: 'node-1',
+      schema,
+      onChange: vi.fn(),
+      currentProvider: { plugin_id: 'provider-1', name: 'provider-1' } as never,
+      currentTool: { name: 'tool-1' } as never,
+      providerType: 'tool' as const,
+    }
+    const { rerender } = renderFormInputItem({
+      ...commonProps,
+      value: {
+        source: { type: VarKindType.constant, value: 'first' },
+        field: { type: VarKindType.constant, value: 'selected' },
+      },
+    })
+    await waitFor(() => expect(mockFetchDynamicOptions).toHaveBeenCalledTimes(1))
+
+    rerender(
+      <FormInputItem
+        {...commonProps}
+        value={{
+          source: { type: VarKindType.constant, value: 'second' },
+          field: { type: VarKindType.constant, value: '' },
+        }}
+      />,
+    )
+
+    await waitFor(() => expect(mockFetchDynamicOptions).toHaveBeenCalledTimes(2))
   })
 
   it('should recover when fetching dynamic tool options fails', async () => {
