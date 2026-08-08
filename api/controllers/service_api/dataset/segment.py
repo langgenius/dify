@@ -276,7 +276,6 @@ class SegmentApi(DatasetApiResource):
         args = query_params_from_request(
             SegmentListQuery,
             list_fields=("status",),
-            use_defaults_for_malformed_ints=True,
         )
         page = args.page
         limit = args.limit
@@ -637,7 +636,7 @@ class ChildChunkApi(DatasetApiResource):
         segment_id_str = str(segment_id)
         _get_segment_for_document(session, dataset, document, segment_id_str)
 
-        args = query_params_from_request(ChildChunkListQuery, use_defaults_for_malformed_ints=True)
+        args = query_params_from_request(ChildChunkListQuery)
 
         page = args.page
         limit = min(args.limit, 100)
