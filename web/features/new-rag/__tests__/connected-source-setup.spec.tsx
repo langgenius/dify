@@ -679,6 +679,12 @@ describe('ConnectedSourceSetup', () => {
     expect(clientMock.getWorkflow).toHaveBeenCalledWith({
       params: { control_space_id: 'space-1', run_id: 'import-run-1' },
     })
+    expect(clientMock.getSyncPolicy).toHaveBeenCalledWith(
+      {
+        params: { control_space_id: 'space-1', source_id: 'preview-source' },
+      },
+      { context: { silent: true } },
+    )
     expect(clientMock.updateSyncPolicy).toHaveBeenCalledWith({
       body: {
         enabled: true,

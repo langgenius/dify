@@ -1595,6 +1595,7 @@ function ResourceConfiguration({
                 source_id: finalSource.id,
               },
             },
+            { context: { silent: true } },
           ),
         ).revision
       } catch (error) {
