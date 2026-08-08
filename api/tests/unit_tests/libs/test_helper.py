@@ -1,10 +1,16 @@
 from datetime import datetime
+from uuid import uuid4
 
 import pytest
 
-from uuid import uuid4
-
-from libs.helper import OptionalTimestampField, alphanumeric, as_route_arg_str, email, escape_like_pattern, extract_tenant_id
+from libs.helper import (
+    OptionalTimestampField,
+    alphanumeric,
+    as_route_arg_str,
+    email,
+    escape_like_pattern,
+    extract_tenant_id,
+)
 from models.account import Account
 from models.model import EndUser
 
