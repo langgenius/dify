@@ -9,7 +9,7 @@ from sqlalchemy.sql.elements import ColumnElement
 
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
 from libs.helper import to_timestamp
-from models import Account, Conversation
+from models import Account, App, Conversation
 from models.agent import (
     APP_BACKED_AGENT_SOURCES,
     Agent,
@@ -510,11 +510,6 @@ class AgentComposerService:
             )
             session.add(agent)
             session.flush()
-            home_snapshot = AgentHomeSnapshotService.create_initial(
-                session=session,
-                tenant_id=tenant_id,
-                agent_id=agent.id,
-            )
             initial_version = cls._create_config_version(
                 session=session,
                 tenant_id=tenant_id,
@@ -523,7 +518,7 @@ class AgentComposerService:
                 agent_soul=AgentSoulConfig(),
                 operation=AgentConfigRevisionOperation.CREATE_VERSION,
                 version_note=None,
-                home_snapshot_id=home_snapshot.id,
+                home_snapshot_id=None,
             )
             agent.active_config_snapshot_id = initial_version.id
             agent.active_config_has_model = False
@@ -601,7 +596,7 @@ class AgentComposerService:
         tenant_id: str,
         agent: Agent,
         agent_soul: AgentSoulConfig,
-        home_snapshot_id: str,
+        home_snapshot_id: str | None,
     ) -> bool:
         if not agent.active_config_snapshot_id:
             return False
@@ -628,6 +623,7 @@ class AgentComposerService:
         agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=agent_id)
         if agent.scope != AgentScope.ROSTER or agent.source not in APP_BACKED_AGENT_SOURCES:
             raise AgentNotFoundError()
+        access_was_ready = agent_has_workflow_callable_active_snapshot(session=session, agent=agent)
         draft = cls._get_or_create_agent_draft(
             session=session,
             tenant_id=tenant_id,
@@ -670,6 +666,22 @@ class AgentComposerService:
         agent.updated_by = account_id
         draft.base_snapshot_id = version.id
         draft.updated_by = account_id
+        if not access_was_ready:
+            if not agent.app_id:
+                raise AgentNotFoundError()
+            app = session.scalar(
+                select(App)
+                .where(
+                    App.tenant_id == tenant_id,
+                    App.id == agent.app_id,
+                )
+                .limit(1)
+            )
+            if app is None:
+                raise AgentNotFoundError()
+            app.enable_site = True
+            app.enable_api = True
+            app.updated_by = account_id
         session.flush()
         return {
             "result": "success",
@@ -1767,11 +1779,6 @@ class AgentComposerService:
         )
         session.add(agent)
         session.flush()
-        home_snapshot = AgentHomeSnapshotService.create_initial(
-            session=session,
-            tenant_id=tenant_id,
-            agent_id=agent.id,
-        )
         version = cls._create_config_version(
             session=session,
             tenant_id=tenant_id,
@@ -1780,7 +1787,7 @@ class AgentComposerService:
             agent_soul=agent_soul,
             operation=AgentConfigRevisionOperation.CREATE_VERSION,
             version_note=None,
-            home_snapshot_id=home_snapshot.id,
+            home_snapshot_id=None,
         )
         agent.active_config_snapshot_id = version.id
         agent.active_config_has_model = agent_soul_has_model(agent_soul)
@@ -1951,7 +1958,7 @@ class AgentComposerService:
         agent_soul: AgentSoulConfig,
         operation: AgentConfigRevisionOperation,
         version_note: str | None,
-        home_snapshot_id: str,
+        home_snapshot_id: str | None,
         previous_snapshot_id: str | None = None,
     ) -> AgentConfigSnapshot:
         next_version = (

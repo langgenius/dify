@@ -4,6 +4,7 @@ import type {
   GuideMethod,
   WorkflowSourceApp,
 } from '@/features/deployments/create-guide/state/types'
+import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
@@ -77,6 +78,7 @@ function SourceMethodSection() {
       hideHeader
     >
       <RadioGroup<GuideMethod>
+        aria-label={t(($) => $['createGuide.steps.method'])}
         value={method}
         onValueChange={selectMethod}
         className="flex flex-col items-stretch gap-2 sm:flex-row"
@@ -119,7 +121,7 @@ function SourceMethodCard({
       nativeButton
       render={<button type="button" />}
       className={cn(
-        `relative box-content h-[84px] w-full cursor-pointer rounded-xl border-[0.5px] border-components-option-card-option-border bg-components-panel-on-panel-item-bg p-3 text-left shadow-xs outline-hidden hover:shadow-md focus-visible:ring-2 focus-visible:ring-state-accent-solid sm:w-[240px]`,
+        `relative box-content h-21 w-full cursor-pointer rounded-xl border-[0.5px] border-components-option-card-option-border bg-components-panel-on-panel-item-bg p-3 text-left shadow-xs outline-hidden hover:shadow-md focus-visible:ring-2 focus-visible:ring-state-accent-solid sm:w-60`,
         'data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:shadow-md data-checked:inset-ring-[0.5px] data-checked:inset-ring-components-option-card-option-selected-border',
       )}
     >
@@ -287,6 +289,8 @@ function SourceAppOption({
   onSelect: () => void
   selected: boolean
 }) {
+  const appIconType = zIconType.safeParse(app.icon_type).data ?? null
+
   return (
     <label
       className={cn(
@@ -299,8 +303,8 @@ function SourceAppOption({
       <AppIcon
         className="shrink-0"
         size="xs"
-        iconType={app.icon_type}
-        icon={app.icon}
+        iconType={appIconType}
+        icon={app.icon ?? undefined}
         background={app.icon_background}
         imageUrl={app.icon_url}
       />

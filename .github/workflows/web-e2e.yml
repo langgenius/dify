@@ -11,10 +11,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: web-e2e-${{ github.head_ref || github.run_id }}
-  cancel-in-progress: true
-
 jobs:
   test:
     name: Web Full-Stack E2E
@@ -30,6 +26,11 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Switch Ubuntu mirror
+        run: |
+          sudo sed -i 's|http://us-east-1.ec2.archive.ubuntu.com/ubuntu|http://azure.archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources
+          sudo apt-get update
+
       - name: Setup web dependencies
         uses: ./.github/actions/setup-web
 
@@ -37,7 +38,7 @@ jobs:
         uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
           enable-cache: true
-          python-version: "3.12"
+          python-version: '3.12'
           cache-dependency-glob: |
             api/uv.lock
             dify-agent/uv.lock
@@ -50,9 +51,17 @@ jobs:
         working-directory: ./e2e
         run: vp run test:unit
 
-      - name: Install Playwright browser
+      - name: Install Playwright browsers for core E2E
+        if: ${{ !inputs.run-external-runtime }}
+        timeout-minutes: 15
         working-directory: ./e2e
-        run: vp run e2e:install
+        run: vp run e2e:install:ci
+
+      - name: Install Chromium for external runtime E2E
+        if: ${{ inputs.run-external-runtime }}
+        timeout-minutes: 15
+        working-directory: ./e2e
+        run: vp run e2e:install:ci:chromium
 
       - name: Run isolated source-api and built-web Cucumber E2E tests
         if: ${{ !inputs.run-external-runtime }}
@@ -61,9 +70,8 @@ jobs:
           E2E_ADMIN_EMAIL: e2e-admin@example.com
           E2E_ADMIN_NAME: E2E Admin
           E2E_ADMIN_PASSWORD: E2eAdmin12345
-          E2E_FORCE_WEB_BUILD: "1"
+          E2E_FORCE_WEB_BUILD: '1'
           E2E_INIT_PASSWORD: E2eInit12345
-          E2E_START_AGENT_BACKEND: "1"
         run: vp run e2e:full
 
       - name: Preserve Chromium E2E report and logs
@@ -122,7 +130,7 @@ jobs:
           E2E_AGENT_DECISION_MODEL_NAME: ${{ vars.E2E_AGENT_DECISION_MODEL_NAME || 'gpt-5.5' }}
           E2E_AGENT_DECISION_MODEL_PROVIDER: ${{ vars.E2E_AGENT_DECISION_MODEL_PROVIDER || 'openai' }}
           E2E_AGENT_DECISION_MODEL_TYPE: ${{ vars.E2E_AGENT_DECISION_MODEL_TYPE || 'llm' }}
-          E2E_FORCE_WEB_BUILD: "1"
+          E2E_FORCE_WEB_BUILD: '1'
           E2E_INIT_PASSWORD: E2eInit12345
           E2E_MARKETPLACE_API_URL: ${{ vars.E2E_MARKETPLACE_API_URL }}
           E2E_MARKETPLACE_PLUGIN_IDS: ${{ vars.E2E_MARKETPLACE_PLUGIN_IDS }}

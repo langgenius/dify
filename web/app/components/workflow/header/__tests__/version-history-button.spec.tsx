@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { VersionHistoryButton } from '../version-history-button'
 
 let mockTheme: 'light' | 'dark' = 'light'
@@ -28,12 +29,6 @@ vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
     },
   }
 })
-
-vi.mock('@langgenius/dify-ui/tooltip', () => ({
-  Tooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  TooltipTrigger: ({ render }: { render: React.ReactNode }) => <>{render}</>,
-  TooltipContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}))
 
 describe('VersionHistoryButton', () => {
   beforeEach(() => {
@@ -66,9 +61,10 @@ describe('VersionHistoryButton', () => {
   })
 
   it('should render the tooltip popup content on hover', async () => {
+    const user = userEvent.setup()
     render(<VersionHistoryButton onClick={vi.fn()} />)
 
-    fireEvent.mouseEnter(screen.getByRole('button'))
+    await user.hover(screen.getByRole('button'))
 
     expect(await screen.findByText('workflow.common.versionHistory')).toBeInTheDocument()
   })

@@ -25,7 +25,9 @@ import dayjs from 'dayjs'
 import { APP_PAGE_LIMIT } from '@/config'
 import { WorkflowRunTriggeredFrom } from '@/models/log'
 import * as useLogModule from '@/service/use-log'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render } from '@/test/console/render'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { TIME_PERIOD_MAPPING } from '../filter'
 import Logs from '../index'
 
@@ -35,9 +37,6 @@ import Logs from '../index'
 
 const mockPlanState = vi.hoisted(() => ({
   value: 'unrestricted' as CloudSandboxPlanState,
-}))
-const mockDebouncedPeriod = vi.hoisted(() => ({
-  value: null as string | null,
 }))
 
 vi.mock('@/service/use-log')
@@ -51,17 +50,7 @@ vi.mock('../../log/cloud-sandbox-retention', async (importOriginal) => {
 })
 
 vi.mock('ahooks', () => ({
-  useDebounce: <T,>(value: T) => {
-    if (
-      mockDebouncedPeriod.value === null ||
-      typeof value !== 'object' ||
-      value === null ||
-      !('period' in value)
-    )
-      return value
-
-    return { ...value, period: mockDebouncedPeriod.value }
-  },
+  useDebounce: <T,>(value: T) => value,
   useDebounceFn: (fn: (value: string) => void) => ({ run: fn }),
   useBoolean: (initial: boolean) => {
     const setters = {
@@ -124,7 +113,15 @@ const mockedUseWorkflowLogs = useLogModule.useWorkflowLogs as MockedFunction<
 // ============================================================================
 
 const renderWithQueryClient = (ui: React.ReactElement) => {
-  return renderWithConsoleQuery(ui)
+  const { wrapper: QueryWrapper } = createConsoleQueryWrapper()
+  const { wrapper: NuqsWrapper } = createNuqsTestWrapper()
+  const wrapper = ({ children }: { children: React.ReactNode }) => (
+    <QueryWrapper>
+      <NuqsWrapper>{children}</NuqsWrapper>
+    </QueryWrapper>
+  )
+
+  return render(ui, { wrapper })
 }
 
 // ============================================================================
@@ -269,7 +266,6 @@ describe('Logs Container', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPlanState.value = 'unrestricted'
-    mockDebouncedPeriod.value = null
   })
 
   // --------------------------------------------------------------------------
@@ -499,53 +495,6 @@ describe('Logs Container', () => {
       expect(
         dayjs(String(params?.created_at__before)).diff(String(params?.created_at__after), 'day'),
       ).toBe(30)
-    })
-
-    it('should use a valid period for the real Chip and request when plan state settles to Sandbox', async () => {
-      const user = userEvent.setup()
-      mockedUseWorkflowLogs.mockReturnValue(
-        createMockQueryResult<WorkflowLogsResponse>({
-          data: createMockLogsResponse([], 0),
-        }),
-      )
-      const rendered = renderWithQueryClient(<Logs {...defaultProps} />)
-
-      await user.click(screen.getByText('appLog.filter.period.last7days'))
-      await user.click(await screen.findByText('appLog.filter.period.allTime'))
-      expect(getMockCallParams()?.params).not.toHaveProperty('created_at__after')
-      expect(getMockCallParams()?.params).not.toHaveProperty('created_at__before')
-
-      mockPlanState.value = 'pending'
-      mockDebouncedPeriod.value = '9'
-      rendered.rerender(<Logs {...defaultProps} />)
-
-      expect(
-        screen.getByRole('combobox', { name: 'appLog.filter.period.today' }),
-      ).toBeInTheDocument()
-      expect(
-        screen.getByRole('button', {
-          name: /common\.operation\.clear appLog\.filter\.period\.today/,
-        }),
-      ).toBeInTheDocument()
-      expect(getMockCallParams()?.params).toEqual(
-        expect.objectContaining({
-          created_at__after: expect.any(String),
-          created_at__before: expect.any(String),
-        }),
-      )
-
-      mockPlanState.value = 'sandbox'
-      rendered.rerender(<Logs {...defaultProps} />)
-
-      expect(
-        screen.getByRole('combobox', { name: 'appLog.filter.period.today' }),
-      ).toBeInTheDocument()
-      expect(getMockCallParams()?.params).toEqual(
-        expect.objectContaining({
-          created_at__after: expect.any(String),
-          created_at__before: expect.any(String),
-        }),
-      )
     })
 
     it('should update query when typing keyword', async () => {

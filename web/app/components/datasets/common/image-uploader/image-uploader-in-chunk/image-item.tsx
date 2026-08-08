@@ -56,10 +56,7 @@ const ImageItem = ({ file, showDeleteAction, onRemove, onReUpload, onPreview }: 
           <RiCloseLine className="size-4 text-components-button-secondary-text" />
         </Button>
       )}
-      <FileImageRender
-        className="h-[68px] w-[68px] shadow-md"
-        imageUrl={base64Url || sourceUrl || ''}
-      />
+      <FileImageRender className="h-17 w-17 shadow-md" imageUrl={base64Url || sourceUrl || ''} />
       {progress >= 0 && !fileIsUploaded(file) && (
         <div className="absolute inset-0 z-10 flex items-center justify-center border-2 border-effects-image-frame bg-background-overlay-alt">
           <ProgressCircle

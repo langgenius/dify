@@ -14,13 +14,6 @@ from dify_agent.adapters.shell.protocols import ShellCommandProtocol
 
 
 @dataclass(frozen=True, slots=True)
-class InitializeHomeSnapshotSpec:
-    tenant_id: str
-    agent_id: str
-    home_snapshot_id: str
-
-
-@dataclass(frozen=True, slots=True)
 class HomeSnapshotCreateSpec:
     tenant_id: str
     agent_id: str
@@ -35,51 +28,6 @@ class RuntimeLayout:
     workspace_dir: str
 
 
-@dataclass(frozen=True, slots=True)
-class WorkspaceFileEntry:
-    name: str
-    type: str
-    size: int | None
-    mtime: int | None
-
-
-@dataclass(frozen=True, slots=True)
-class WorkspaceListResult:
-    path: str
-    entries: tuple[WorkspaceFileEntry, ...]
-    truncated: bool
-
-
-@dataclass(frozen=True, slots=True)
-class WorkspaceReadResult:
-    path: str
-    size: int
-    truncated: bool
-    binary: bool
-    text: str | None
-
-
-@dataclass(frozen=True, slots=True)
-class WorkspaceFileContent:
-    path: str
-    size: int
-    content: bytes
-
-
-class FileSystem(Protocol):
-    """File operations interpreted in the current RuntimeLease namespace."""
-
-    async def list_directory(self, *, path: str, limit: int) -> WorkspaceListResult: ...
-
-    async def read_file(self, *, path: str, max_bytes: int) -> WorkspaceReadResult: ...
-
-    async def read_bytes(self, *, path: str, max_bytes: int) -> WorkspaceFileContent: ...
-
-    async def upload(self, *, content: bytes, remote_path: str, cwd: str | None = None) -> None: ...
-
-    async def download(self, *, remote_path: str, cwd: str | None = None) -> bytes: ...
-
-
 class RuntimeLease(Protocol):
     """Invocation-local data-plane access to one persistent Binding."""
 
@@ -89,9 +37,6 @@ class RuntimeLease(Protocol):
     @property
     def commands(self) -> ShellCommandProtocol: ...
 
-    @property
-    def files(self) -> FileSystem: ...
-
 
 @dataclass(frozen=True, slots=True)
 class ExecutionBindingCreateSpec:
@@ -100,7 +45,7 @@ class ExecutionBindingCreateSpec:
     binding_id: str
     workspace_id: str
     existing_workspace_ref: str | None
-    home_snapshot_ref: str
+    home_snapshot_ref: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -126,12 +71,18 @@ class ExecutionBindingBackend(Protocol):
     async def create_binding(self, spec: ExecutionBindingCreateSpec) -> ExecutionBindingAllocation:
         """Materialize a mutable Home and make the requested Workspace ready.
 
-        Implementations must initialize the Home from ``home_snapshot_ref`` and
-        return stable opaque refs only after both resources are usable. With an
-        ``existing_workspace_ref``, they must attach that Workspace without
-        clearing or replacing its contents; unsupported sharing must fail before
-        mutating it. On failure, implementations should clean up newly allocated
-        partial resources and must not damage a pre-existing Workspace.
+        With a non-null ``home_snapshot_ref``, implementations must initialize
+        the Home from that exact immutable snapshot and must fail rather than
+        fall back when it is unavailable. With ``None``, implementations must
+        create an independent mutable Home from their deployment default without
+        implicitly creating an immutable snapshot.
+
+        Implementations must return stable opaque refs only after Home and
+        Workspace are usable. With an ``existing_workspace_ref``, they must
+        attach that Workspace without clearing or replacing its contents;
+        unsupported sharing must fail before mutating it. On failure,
+        implementations should clean up newly allocated partial resources and
+        must not damage a pre-existing Workspace.
         """
         ...
 
@@ -171,16 +122,6 @@ class ExecutionBindingBackend(Protocol):
 class HomeSnapshotBackend(Protocol):
     """Manage immutable backend-native Home resources."""
 
-    async def initialize(self, spec: InitializeHomeSnapshotSpec) -> str:
-        """Create the deployment-defined baseline Home Snapshot.
-
-        Implementations may use any backend-native bootstrap mechanism, but must
-        return a stable opaque ref only after an immutable snapshot is ready for
-        future Binding creation. Temporary bootstrap resources must not become
-        part of the logical snapshot lifecycle.
-        """
-        ...
-
     async def create_from_runtime(self, *, spec: HomeSnapshotCreateSpec, source: RuntimeLease) -> str:
         """Capture the source lease's current Home as a new immutable snapshot.
 
@@ -214,15 +155,9 @@ __all__ = [
     "ExecutionBindingBackend",
     "ExecutionBindingCreateSpec",
     "ExecutionBindingDestroySpec",
-    "FileSystem",
     "HomeSnapshotBackend",
     "HomeSnapshotCreateSpec",
-    "InitializeHomeSnapshotSpec",
     "RuntimeBackendProfile",
     "RuntimeLayout",
     "RuntimeLease",
-    "WorkspaceFileContent",
-    "WorkspaceFileEntry",
-    "WorkspaceListResult",
-    "WorkspaceReadResult",
 ]

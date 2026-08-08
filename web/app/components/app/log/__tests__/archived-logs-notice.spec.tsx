@@ -3,8 +3,6 @@ import userEvent from '@testing-library/user-event'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
 import { defaultPlan } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
@@ -26,16 +24,13 @@ vi.mock('@/context/provider-context', async (importOriginal) => {
   }
 })
 
-vi.mock('@/context/modal-context', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/context/modal-context')>()
-  return {
-    ...actual,
-    useModalContextSelector: vi.fn(),
-  }
+const setSettingsDestination = vi.fn()
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, setSettingsDestination] }
 })
 
 const mockUseProviderContext = vi.mocked(useProviderContext)
-const mockUseModalContextSelector = vi.mocked(useModalContextSelector)
 
 function mockProviderPlan(planType: Plan) {
   mockUseProviderContext.mockReturnValue(
@@ -50,7 +45,6 @@ function mockProviderPlan(planType: Plan) {
 }
 
 describe('ArchivedLogsNotice', () => {
-  const setShowAccountSettingModal = vi.fn()
   const renderNotice = () => {
     const { wrapper } = createConsoleQueryWrapper({
       systemFeatures: { deployment_edition: 'CLOUD' },
@@ -61,11 +55,6 @@ describe('ArchivedLogsNotice', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockProviderPlan(Plan.professional)
-    mockUseModalContextSelector.mockImplementation((selector) =>
-      selector({
-        setShowAccountSettingModal,
-      } as unknown as Parameters<typeof selector>[0]),
-    )
   })
 
   it('should show an accessible notice for paid workspace managers', async () => {
@@ -78,9 +67,7 @@ describe('ArchivedLogsNotice', () => {
     expect(within(notice).getByText('appLog.archives.notice.description')).toBeInTheDocument()
 
     await user.click(within(notice).getByRole('button', { name: 'appLog.archives.notice.action' }))
-    expect(setShowAccountSettingModal).toHaveBeenCalledWith({
-      payload: ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES,
-    })
+    expect(setSettingsDestination).toHaveBeenCalledWith('workflow-log-archives')
   })
 
   it('should not show notice for sandbox workspaces', () => {

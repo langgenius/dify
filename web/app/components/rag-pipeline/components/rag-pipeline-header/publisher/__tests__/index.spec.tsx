@@ -8,7 +8,7 @@ import { render } from '@/test/console/render'
 import Publisher from '../index'
 import { Popup } from '../popup'
 
-vi.mock('@/context/system-features-state', async () => {
+vi.mock('@/features/system-features/state', async () => {
   const { atom } = await import('jotai')
   return {
     deploymentEditionAtom: atom('CLOUD'),
@@ -35,54 +35,6 @@ const triggerHotkey = (hotkey: string) => {
     handler({ preventDefault: vi.fn() } as unknown as KeyboardEvent)
   })
 }
-
-vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children, onClick, disabled, variant, className }: Record<string, unknown>) => (
-    <button
-      onClick={onClick as (() => void) | undefined}
-      disabled={disabled as boolean | undefined}
-      data-variant={variant as string | undefined}
-      className={className as string | undefined}
-    >
-      {children as React.ReactNode}
-    </button>
-  ),
-}))
-vi.mock('@langgenius/dify-ui/alert-dialog', () => ({
-  AlertDialog: ({
-    children,
-    open,
-    onOpenChange,
-  }: {
-    children: React.ReactNode
-    open?: boolean
-    onOpenChange?: (open: boolean) => void
-  }) =>
-    open ? (
-      <div role="alertdialog">
-        {children}
-        <button data-testid="alert-dialog-close" onClick={() => onOpenChange?.(false)}>
-          Close
-        </button>
-      </div>
-    ) : null,
-  AlertDialogActions: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  AlertDialogCancelButton: ({ children }: { children: React.ReactNode }) => (
-    <button>{children}</button>
-  ),
-  AlertDialogConfirmButton: ({ children, onClick, disabled }: Record<string, unknown>) => (
-    <button
-      onClick={onClick as (() => void) | undefined}
-      disabled={disabled as boolean | undefined}
-    >
-      {children as React.ReactNode}
-    </button>
-  ),
-  AlertDialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  AlertDialogDescription: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  AlertDialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}))
 
 const mockPush = vi.fn()
 vi.mock('@/next/navigation', () => ({
@@ -348,7 +300,7 @@ describe('publisher', () => {
       it('should render portal element in closed state by default', () => {
         renderWithQueryClient(<Publisher />)
 
-        expect(screen.getByTestId('popover')).toHaveAttribute('data-open', 'false')
+        expect(screen.getByRole('button')).toHaveAttribute('aria-expanded', 'false')
         expect(screen.queryByText('workflow.common.publishUpdate')).not.toBeInTheDocument()
       })
 
@@ -900,7 +852,7 @@ describe('publisher', () => {
           expect(screen.getByText('pipeline.common.confirmPublish')).toBeInTheDocument()
         })
 
-        fireEvent.click(screen.getByTestId('alert-dialog-close'))
+        fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
         await waitFor(() => {
           expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
@@ -933,7 +885,7 @@ describe('publisher', () => {
         const { container } = renderWithQueryClient(<Popup />)
 
         const popupDiv = container.firstChild as HTMLElement
-        expect(popupDiv.className).toContain('w-[360px]')
+        expect(popupDiv.className).toContain('w-90')
       })
 
       it('should display correct width when permission is not allowed', () => {
@@ -941,7 +893,7 @@ describe('publisher', () => {
         const { container } = renderWithQueryClient(<Popup />)
 
         const popupDiv = container.firstChild as HTMLElement
-        expect(popupDiv.className).toContain('w-[400px]')
+        expect(popupDiv.className).toContain('w-100')
       })
 
       it('should display draft updated time when not published', () => {

@@ -57,7 +57,10 @@ from controllers.console.app.ops_trace import TraceConfigPayload, TraceProviderQ
 from controllers.console.app.site import AppSiteUpdatePayload
 from controllers.console.app.workflow import AdvancedChatWorkflowRunPayload, SyncDraftWorkflowPayload
 from controllers.console.app.workflow_app_log import WorkflowAppLogQuery
-from controllers.console.app.workflow_draft_variable import WorkflowDraftVariableUpdatePayload
+from controllers.console.app.workflow_draft_variable import (
+    EnvironmentVariableUpdatePayload,
+    WorkflowDraftVariableUpdatePayload,
+)
 from controllers.console.app.workflow_statistic import WorkflowStatisticQuery
 from controllers.console.app.workflow_trigger import Parser, ParserEnable
 from models import App, Site
@@ -206,7 +209,9 @@ class TestCompletionEndpoints:
 
 
 class TestAppEndpoints:
-    def test_app_put_should_preserve_icon_type_when_payload_omits_it(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
+    def test_app_put_should_preserve_icon_type_when_payload_omits_it(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+    ):
         api = app_module.AppApi()
         method = unwrap(api.put)
         payload = {
@@ -227,7 +232,7 @@ class TestAppEndpoints:
             app.test_request_context("/console/api/apps/app-1", method="PUT", json=payload),
             patch.object(type(console_ns), "payload", payload),
         ):
-            response = method(api, MagicMock(spec=Session), app_model=_make_app(icon_type=app_module.IconType.EMOJI))
+            response = method(api, unbound_session, app_model=_make_app(icon_type=app_module.IconType.EMOJI))
 
         assert response == {"id": "app-1"}
         assert app_service.update_app.call_args.args[1]["icon_type"] is None
@@ -244,7 +249,9 @@ class TestAppEndpoints:
                 }
             )
 
-    def test_app_icon_post_should_forward_icon_type(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
+    def test_app_icon_post_should_forward_icon_type(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+    ):
         api = app_module.AppIconApi()
         method = unwrap(api.post)
         payload = {
@@ -264,7 +271,7 @@ class TestAppEndpoints:
             app.test_request_context("/console/api/apps/app-1/icon", method="POST", json=payload),
             patch.object(type(console_ns), "payload", payload),
         ):
-            response = method(api, MagicMock(spec=Session), app_model=_make_app())
+            response = method(api, unbound_session, app_model=_make_app())
 
         assert response == {"id": "app-1"}
         assert app_service.update_app_icon.call_args.args[1:] == (
@@ -467,6 +474,64 @@ class TestWorkflowDraftVariableEndpoints:
             result = method(api, _make_account(), app_model=_make_app("app-1"))
 
         assert result == {"items": [], "total": 0}
+
+    def test_environment_variable_update_payload_preserves_full_replace_default(self) -> None:
+        payload = EnvironmentVariableUpdatePayload(environment_variables=[])
+
+        assert payload.patch is False
+        assert payload.deleted_environment_variable_ids == []
+
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            {"environment_variables": [], "deleted_environment_variable_ids": ["env-a"]},
+            {
+                "environment_variables": [{"name": "a", "value_type": "string", "value": "a"}],
+                "patch": True,
+            },
+            {
+                "environment_variables": [{"id": "env-a", "name": "a", "value_type": "string", "value": "a"}],
+                "patch": True,
+                "deleted_environment_variable_ids": ["env-a"],
+            },
+        ],
+    )
+    def test_environment_variable_patch_payload_rejects_ambiguous_mutations(self, payload: dict) -> None:
+        with pytest.raises(ValidationError):
+            EnvironmentVariableUpdatePayload.model_validate(payload)
+
+    def test_environment_variable_collection_post_routes_patch_to_service(
+        self, database_app: Flask, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        api = workflow_draft_variable_module.EnvironmentVariableCollectionApi()
+        method = unwrap(api.post)
+        captured: dict = {}
+
+        class DummyWorkflowService:
+            def patch_draft_workflow_environment_variables(self, **kwargs) -> None:
+                captured.update(kwargs)
+
+            def update_draft_workflow_environment_variables(self, **_kwargs) -> None:
+                raise AssertionError("patch request must not use full replacement")
+
+        monkeypatch.setattr(workflow_draft_variable_module, "WorkflowService", DummyWorkflowService)
+
+        with database_app.test_request_context(
+            "/",
+            json={
+                "environment_variables": [{"id": "env-a", "name": "a", "value_type": "string", "value": "new-a"}],
+                "patch": True,
+                "deleted_environment_variable_ids": ["env-b"],
+            },
+        ):
+            result = method(api, _make_account(), app_model=_make_app())
+
+        assert result == {"result": "success"}
+        assert [(variable.id, variable.value) for variable in captured["environment_variables"]] == [("env-a", "new-a")]
+        assert captured["deleted_environment_variable_ids"] == ["env-b"]
+        assert captured["app_model"].id == APP_ID
+        assert captured["account"].id == USER_ID
+        assert captured["session"].get_bind() is db.engine
 
 
 class TestWorkflowStatisticEndpoints:

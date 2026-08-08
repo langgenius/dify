@@ -100,23 +100,25 @@ export const WithGroupLabel: Story = {
   ),
 }
 
+type Density = 'compact' | 'comfortable' | 'spacious'
+
 const WithRadioItemsDemo = () => {
-  const [value, setValue] = React.useState('comfortable')
+  const [density, setDensity] = React.useState<Density>('comfortable')
 
   return (
     <ContextMenu>
-      <TriggerArea label={`Right-click to set density: ${value}`} />
+      <TriggerArea label={`Right-click to set density: ${density}`} />
       <ContextMenuContent popupClassName="w-44">
-        <ContextMenuRadioGroup value={value} onValueChange={setValue}>
-          <ContextMenuRadioItem value="compact">
+        <ContextMenuRadioGroup<Density> value={density} onValueChange={setDensity}>
+          <ContextMenuRadioItem<Density> value="compact">
             Compact
             <ContextMenuRadioItemIndicator />
           </ContextMenuRadioItem>
-          <ContextMenuRadioItem value="comfortable">
+          <ContextMenuRadioItem<Density> value="comfortable">
             Comfortable
             <ContextMenuRadioItemIndicator />
           </ContextMenuRadioItem>
-          <ContextMenuRadioItem value="spacious">
+          <ContextMenuRadioItem<Density> value="spacious">
             Spacious
             <ContextMenuRadioItemIndicator />
           </ContextMenuRadioItem>

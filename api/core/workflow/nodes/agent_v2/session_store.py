@@ -125,7 +125,7 @@ class WorkflowAgentWorkspaceStore:
             )
 
     def load_or_create_node_execution_session(
-        self, scope: WorkflowAgentSessionScope, *, home_snapshot_id: str
+        self, scope: WorkflowAgentSessionScope, *, home_snapshot_id: str | None
     ) -> StoredWorkflowAgentSession:
         with session_factory.create_session() as session:
             execution = self._load_execution(session=session, scope=scope)

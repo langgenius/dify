@@ -1,13 +1,13 @@
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ReactElement } from 'react'
 import type { FilterState } from '../../filter-management'
+import { zPluginInstallationScope } from '@dify/contracts/api/console/system-features/zod.gen'
 import { act, fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   getStepByStepTourTargetSelector,
   STEP_BY_STEP_TOUR_TARGETS,
 } from '@/app/components/step-by-step-tour/target-registry'
-import { InstallationScope } from '@/features/system-features/constants'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 // ==================== Imports (after mocks) ====================
 import Empty from '../index'
@@ -99,7 +99,7 @@ const resetMockState = () => {
   mockState.systemFeatures = {
     enable_marketplace: true,
     plugin_installation_permission: {
-      plugin_installation_scope: InstallationScope.ALL,
+      plugin_installation_scope: zPluginInstallationScope.enum.all,
       restrict_to_marketplace_only: false,
     },
   }
@@ -328,7 +328,7 @@ describe('Empty Component', () => {
       setMockSystemFeatures({
         enable_marketplace: true,
         plugin_installation_permission: {
-          plugin_installation_scope: InstallationScope.ALL,
+          plugin_installation_scope: zPluginInstallationScope.enum.all,
           restrict_to_marketplace_only: false,
         },
       })
@@ -356,7 +356,7 @@ describe('Empty Component', () => {
       setMockSystemFeatures({
         enable_marketplace: true,
         plugin_installation_permission: {
-          plugin_installation_scope: InstallationScope.ALL,
+          plugin_installation_scope: zPluginInstallationScope.enum.all,
           restrict_to_marketplace_only: true,
         },
       })
@@ -378,7 +378,7 @@ describe('Empty Component', () => {
       setMockSystemFeatures({
         enable_marketplace: false,
         plugin_installation_permission: {
-          plugin_installation_scope: InstallationScope.ALL,
+          plugin_installation_scope: zPluginInstallationScope.enum.all,
           restrict_to_marketplace_only: false,
         },
       })
@@ -400,7 +400,7 @@ describe('Empty Component', () => {
       setMockSystemFeatures({
         enable_marketplace: false,
         plugin_installation_permission: {
-          plugin_installation_scope: InstallationScope.ALL,
+          plugin_installation_scope: zPluginInstallationScope.enum.all,
           restrict_to_marketplace_only: true,
         },
       })
@@ -611,7 +611,7 @@ describe('Empty Component', () => {
       setMockSystemFeatures({
         enable_marketplace: true,
         plugin_installation_permission: {
-          plugin_installation_scope: InstallationScope.ALL,
+          plugin_installation_scope: zPluginInstallationScope.enum.all,
           restrict_to_marketplace_only: false,
         },
       })
@@ -625,7 +625,7 @@ describe('Empty Component', () => {
       setMockSystemFeatures({
         enable_marketplace: true,
         plugin_installation_permission: {
-          plugin_installation_scope: InstallationScope.ALL,
+          plugin_installation_scope: zPluginInstallationScope.enum.all,
           restrict_to_marketplace_only: true,
         },
       })

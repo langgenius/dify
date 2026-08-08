@@ -149,13 +149,13 @@ describe('#39592 narrow-container regression (structural)', () => {
   it('gives the MaxLength input a min-width floor so it can never collapse to a sliver', () => {
     render(<MaxLengthInput onChange={vi.fn()} />)
     const input = screen.getByRole('textbox')
-    expect(input.className).toContain('min-w-[64px]')
+    expect(input.className).toContain('min-w-16')
   })
 
   it('gives the OverlapInput input a min-width floor too', () => {
     render(<OverlapInput onChange={vi.fn()} />)
     const input = screen.getByRole('textbox')
-    expect(input.className).toContain('min-w-[64px]')
+    expect(input.className).toContain('min-w-16')
   })
 
   it('caps each field width when stacked and restores flex-1 across the 552px container query', () => {

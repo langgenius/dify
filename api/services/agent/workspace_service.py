@@ -110,7 +110,7 @@ class AgentWorkspaceService:
         session: Session,
         scope: WorkspaceOwnerScope,
         agent_id: str,
-        base_home_snapshot_id: str,
+        base_home_snapshot_id: str | None,
         agent_config_version_id: str,
         agent_config_version_kind: AgentConfigVersionKind,
     ) -> AgentWorkspaceBinding:
@@ -123,16 +123,19 @@ class AgentWorkspaceService:
         fails before the backend returns success.
         """
 
-        home_snapshot = session.scalar(
-            select(AgentHomeSnapshot).where(
-                AgentHomeSnapshot.id == base_home_snapshot_id,
-                AgentHomeSnapshot.tenant_id == scope.tenant_id,
-                AgentHomeSnapshot.agent_id == agent_id,
-                AgentHomeSnapshot.status == AgentWorkingResourceStatus.ACTIVE,
+        home_snapshot_ref: str | None = None
+        if base_home_snapshot_id is not None:
+            home_snapshot = session.scalar(
+                select(AgentHomeSnapshot).where(
+                    AgentHomeSnapshot.id == base_home_snapshot_id,
+                    AgentHomeSnapshot.tenant_id == scope.tenant_id,
+                    AgentHomeSnapshot.agent_id == agent_id,
+                    AgentHomeSnapshot.status == AgentWorkingResourceStatus.ACTIVE,
+                )
             )
-        )
-        if home_snapshot is None:
-            raise AgentWorkspaceNotFoundError("base Home Snapshot is unavailable")
+            if home_snapshot is None:
+                raise AgentWorkspaceNotFoundError("base Home Snapshot is unavailable")
+            home_snapshot_ref = home_snapshot.snapshot_ref
         workspace = cls.resolve_active_workspace(session=session, scope=scope)
         workspace_id = workspace.id if workspace is not None else str(uuidv7())
         binding_id = str(uuidv7())
@@ -144,7 +147,7 @@ class AgentWorkspaceService:
                     binding_id=binding_id,
                     workspace_id=workspace_id,
                     existing_workspace_ref=workspace.backend_workspace_ref if workspace is not None else None,
-                    home_snapshot_ref=home_snapshot.snapshot_ref,
+                    home_snapshot_ref=home_snapshot_ref,
                 )
             )
         if workspace is not None and allocation.workspace_ref != workspace.backend_workspace_ref:
@@ -439,7 +442,7 @@ class AgentWorkspaceService:
     def validate_binding_generation(
         binding: AgentWorkspaceBinding,
         *,
-        base_home_snapshot_id: str,
+        base_home_snapshot_id: str | None,
         agent_config_version_id: str,
         agent_config_version_kind: AgentConfigVersionKind,
     ) -> None:

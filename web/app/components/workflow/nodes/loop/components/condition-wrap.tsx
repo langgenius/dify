@@ -90,7 +90,7 @@ const ConditionWrap: FC<Props> = ({
         <div
           className={cn(
             'group relative rounded-[10px] bg-components-panel-bg',
-            !isSubVariable && 'min-h-[40px] px-3 py-1',
+            !isSubVariable && 'min-h-10 px-3 py-1',
             isSubVariable && 'px-1 py-2',
           )}
         >
@@ -121,10 +121,10 @@ const ConditionWrap: FC<Props> = ({
 
           <div
             className={cn(
-              'flex items-center justify-between pr-[30px]',
+              'flex items-center justify-between pr-7.5',
               !conditions.length && !isSubVariable && 'mt-1',
               !conditions.length && isSubVariable && 'mt-2',
-              conditions.length > 1 && !isSubVariable && 'ml-[60px]',
+              conditions.length > 1 && !isSubVariable && 'ml-15',
             )}
           >
             {isSubVariable ? (
@@ -141,7 +141,7 @@ const ConditionWrap: FC<Props> = ({
                   className="border-0 bg-transparent p-0 hover:bg-transparent focus-visible:bg-transparent [&>*:last-child]:hidden"
                 >
                   <Button size="small" disabled={readOnly}>
-                    <RiAddLine className="mr-1 size-3.5" />
+                    <RiAddLine className="size-3.5" />
                     {t(($) => $['nodes.ifElse.addSubVariable'], { ns: 'workflow' })}
                   </Button>
                 </SelectTrigger>

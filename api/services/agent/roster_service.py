@@ -350,17 +350,12 @@ class AgentRosterService:
         self._session.add(agent)
         self._session.flush()
 
-        home_snapshot = AgentHomeSnapshotService.create_initial(
-            session=self._session,
-            tenant_id=tenant_id,
-            agent_id=agent.id,
-        )
         version = AgentConfigSnapshot(
             tenant_id=tenant_id,
             agent_id=agent.id,
             version=1,
             config_snapshot=payload.agent_soul,
-            home_snapshot_id=home_snapshot.id,
+            home_snapshot_id=None,
             version_note=payload.version_note,
             created_by=account_id,
         )
@@ -429,17 +424,12 @@ class AgentRosterService:
         self._session.add(agent)
         self._session.flush()
 
-        home_snapshot = AgentHomeSnapshotService.create_initial(
-            session=self._session,
-            tenant_id=tenant_id,
-            agent_id=agent.id,
-        )
         version = AgentConfigSnapshot(
             tenant_id=tenant_id,
             agent_id=agent.id,
             version=1,
             config_snapshot=soul,
-            home_snapshot_id=home_snapshot.id,
+            home_snapshot_id=None,
             created_by=account_id,
         )
         self._session.add(version)
@@ -1105,8 +1095,10 @@ class AgentRosterService:
             session=self._session,
         )
 
-        target_app.enable_site = source_app.enable_site
-        target_app.enable_api = source_app.enable_api
+        # A copy owns a new publication history. It remains private until its
+        # first successful publish even when the source Agent is public.
+        target_app.enable_site = False
+        target_app.enable_api = False
         target_app.use_icon_as_answer_icon = source_app.use_icon_as_answer_icon
         target_app.tracing = source_app.tracing
 
@@ -1174,7 +1166,7 @@ class AgentRosterService:
         target_version.version_note = source_version.version_note
         target_version.created_by = account_id
         target_agent.active_config_has_model = agent_soul_has_model(target_version.config_snapshot)
-        target_agent.active_config_is_published = source_agent.active_config_is_published
+        target_agent.active_config_is_published = False
         target_agent.updated_by = account_id
 
     def _next_duplicate_agent_name(self, *, tenant_id: str, base_name: str) -> str:

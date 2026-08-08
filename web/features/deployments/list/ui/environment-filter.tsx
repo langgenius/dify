@@ -19,7 +19,7 @@ import {
 } from '../state'
 
 function EnvironmentOptionIcon() {
-  return <span className="i-ri-server-line size-[14px]" />
+  return <span className="i-ri-server-line size-3.5" />
 }
 
 function EnvironmentFilterOptionIcon({
@@ -28,7 +28,7 @@ function EnvironmentFilterOptionIcon({
   option: DeploymentsListEnvironmentFilterOption
 }) {
   return option.kind === 'all' ? (
-    <span className="i-ri-apps-2-line size-[14px]" />
+    <span className="i-ri-apps-2-line size-3.5" />
   ) : (
     <EnvironmentOptionIcon />
   )
@@ -52,8 +52,7 @@ export function EnvironmentFilter({ className }: { className?: string }) {
     <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
         className={cn(
-          'flex h-8 max-w-full cursor-pointer items-center gap-1 rounded-lg border border-transparent bg-components-input-bg-normal px-2 text-left select-none',
-          open && 'shadow-xs',
+          'flex h-8 max-w-full cursor-pointer items-center gap-1 rounded-lg border border-transparent bg-components-input-bg-normal px-2 text-left select-none data-popup-open:shadow-xs',
           className,
         )}
       >

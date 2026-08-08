@@ -14,11 +14,11 @@ import { useRouter } from '@/next/navigation'
 import { useEducationVerify } from '@/service/use-education'
 import { SparklesSoftAccent } from '../components/base/icons/src/public/common'
 
-export type ExpireNoticeModalPayloadProps = {
+type ExpireNoticeModalPayloadProps = {
   expireAt: number
   expired: boolean
 }
-export type Props = {
+type Props = {
   onClose: () => void
 } & ExpireNoticeModalPayloadProps
 
@@ -52,7 +52,7 @@ const ExpireNoticeModal: React.FC<Props> = ({ expireAt, expired, onClose }) => {
         if (!open) onClose()
       }}
     >
-      <DialogContent className="w-full max-w-[600px] overflow-hidden! border-none text-left align-middle">
+      <DialogContent className="w-full max-w-150 overflow-hidden! border-none text-left align-middle">
         <DialogCloseButton />
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {expired
@@ -114,7 +114,7 @@ const ExpireNoticeModal: React.FC<Props> = ({ expireAt, expired, onClose }) => {
                   onClose()
                   setShowPricingModal()
                 }}
-                className="flex items-center space-x-1"
+                className="flex items-center"
               >
                 <SparklesSoftAccent className="size-4" />
                 <div className="text-components-button-secondary-accent-text">

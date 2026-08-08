@@ -1,11 +1,9 @@
 import type { Resources } from '../index'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useDocumentDownload } from '@/service/knowledge/use-document'
 import { downloadUrl } from '@/utils/download'
 import Popup from '../popup'
-
-vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
 
 vi.mock('@/service/knowledge/use-document', () => ({
   useDocumentDownload: vi.fn(),
@@ -65,8 +63,12 @@ const makeData = (overrides: Partial<Resources> = {}): Resources => ({
 const openPopup = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(screen.getByTestId('popup-trigger'))
 }
-const getDownloadButton = (name = 'report.pdf') => screen.getByRole('button', { name })
-const queryDownloadButton = (name = 'report.pdf') => screen.queryByRole('button', { name })
+const getDownloadButton = (name = 'report.pdf') =>
+  within(screen.getByTestId('popup-content')).getByRole('button', { name })
+const queryDownloadButton = (name = 'report.pdf') =>
+  screen.queryByTestId('popup-content')
+    ? within(screen.getByTestId('popup-content')).queryByRole('button', { name })
+    : null
 
 describe('Popup', () => {
   beforeEach(() => {

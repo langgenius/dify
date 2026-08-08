@@ -23,7 +23,7 @@ const CreateEntryCard = ({
     <div
       data-step-by-step-tour-target={stepByStepTourTarget}
       className={cn(
-        'col-span-1 flex h-[120px] flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-md',
+        'col-span-1 flex h-30 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-md',
         className,
       )}
     >
@@ -31,7 +31,7 @@ const CreateEntryCard = ({
         type="button"
         aria-label={title}
         title={title}
-        className="group flex h-[84px] w-full cursor-pointer items-center gap-3 p-4 text-left outline-hidden hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+        className="group flex h-21 w-full cursor-pointer items-center gap-3 p-4 text-left outline-hidden hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
         onClick={onCreate}
       >
         <div className="flex size-10 shrink-0 items-center justify-center">

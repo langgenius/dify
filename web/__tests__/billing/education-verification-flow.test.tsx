@@ -17,11 +17,16 @@ import { defaultPlan } from '@/app/components/billing/config'
 import PlanComp from '@/app/components/billing/plan'
 import { Plan } from '@/app/components/billing/type'
 import { consoleQuery } from '@/service/client'
-import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
+import {
+  createConsoleQueryClient,
+  createConsoleQueryWrapper,
+  seedEducationStatus,
+} from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
 
 let mockProviderCtx: Record<string, unknown> = {}
 let mockConsoleState: Record<string, unknown> = {}
+let mockEducationStatus = { is_student: false, allow_refresh: false, expire_at: null }
 
 const render = (ui: ReactElement, options: RenderOptions = {}) => {
   const queryClient = createConsoleQueryClient()
@@ -32,7 +37,9 @@ const render = (ui: ReactElement, options: RenderOptions = {}) => {
   queryClient.setQueryData(consoleQuery.features.vectorSpace.get.queryOptions().queryKey, {
     size: plan.usage.vectorSpace,
     limit: plan.total.vectorSpace,
+    usage_unknown: false,
   })
+  seedEducationStatus(queryClient, mockEducationStatus)
   const { wrapper } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: 'CLOUD' },
     queryClient,
@@ -42,10 +49,8 @@ const render = (ui: ReactElement, options: RenderOptions = {}) => {
 
 // ─── Mock state ──────────────────────────────────────────────────────────────
 const mockSetShowPricingModal = vi.fn()
-const mockSetShowAccountSettingModal = vi.fn()
 const mockRouterPush = vi.fn()
 const mockMutateAsync = vi.fn()
-const mockSetEducationVerifying = vi.hoisted(() => vi.fn())
 
 // ─── Context mocks ───────────────────────────────────────────────────────────
 vi.mock('@/context/provider-context', () => ({
@@ -69,10 +74,6 @@ vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
     setShowPricingModal: mockSetShowPricingModal,
   }),
-  useModalContextSelector: (selector: (s: Record<string, unknown>) => unknown) =>
-    selector({
-      setShowAccountSettingModal: mockSetShowAccountSettingModal,
-    }),
 }))
 
 // ─── Service mocks ───────────────────────────────────────────────────────────
@@ -83,27 +84,11 @@ vi.mock('@/service/use-education', () => ({
   }),
 }))
 
-vi.mock('@/service/use-billing', () => ({
-  useBillingUrl: () => ({
-    data: 'https://billing.example.com',
-    isFetching: false,
-    refetch: vi.fn(),
-  }),
-}))
-
 // ─── Navigation mocks ───────────────────────────────────────────────────────
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mockRouterPush }),
   usePathname: () => '/billing',
   useSearchParams: () => new URLSearchParams(),
-}))
-
-vi.mock('@/hooks/use-async-window-open', () => ({
-  useAsyncWindowOpen: () => vi.fn(),
-}))
-
-vi.mock('@/app/education-apply/storage', () => ({
-  useSetEducationVerifying: () => mockSetEducationVerifying,
 }))
 
 // ─── External component mocks ───────────────────────────────────────────────
@@ -152,14 +137,19 @@ const setupContexts = (
   planOverrides: PlanOverrides = {},
   providerOverrides: Record<string, unknown> = {},
   appOverrides: Record<string, unknown> = {},
+  educationStatus: Partial<typeof mockEducationStatus> = {},
 ) => {
+  mockEducationStatus = {
+    is_student: false,
+    allow_refresh: false,
+    expire_at: null,
+    ...educationStatus,
+  }
   mockProviderCtx = {
     plan: createPlanData(planOverrides),
     enableBilling: true,
     isFetchedPlan: true,
     enableEducationPlan: false,
-    isEducationAccount: false,
-    allowRefreshEducationVerify: false,
     ...providerOverrides,
   }
   mockConsoleState = {
@@ -189,7 +179,7 @@ describe('Education Verification Flow', () => {
     })
 
     it('should show verify button when enableEducationPlan is true and not yet verified', () => {
-      setupContexts({}, { enableEducationPlan: true, isEducationAccount: false })
+      setupContexts({}, { enableEducationPlan: true })
 
       render(<PlanComp loc="test" />)
 
@@ -197,33 +187,23 @@ describe('Education Verification Flow', () => {
     })
 
     it('should not show verify button when already verified and not about to expire', () => {
-      setupContexts(
-        {},
-        {
-          enableEducationPlan: true,
-          isEducationAccount: true,
-          allowRefreshEducationVerify: false,
-        },
-      )
+      setupContexts({}, { enableEducationPlan: true }, {}, { is_student: true })
 
       render(<PlanComp loc="test" />)
 
       expect(screen.queryByText(/toVerified/i)).not.toBeInTheDocument()
     })
 
-    it('should show verify button when about to expire (allowRefreshEducationVerify is true)', () => {
+    it('should show verify button when the education status allows refresh', () => {
       setupContexts(
         {},
-        {
-          enableEducationPlan: true,
-          isEducationAccount: true,
-          allowRefreshEducationVerify: true,
-        },
+        { enableEducationPlan: true },
+        {},
+        { is_student: true, allow_refresh: true },
       )
 
       render(<PlanComp loc="test" />)
 
-      // Shown because isAboutToExpire = allowRefreshEducationVerify = true
       expect(screen.getByText(/toVerified/i)).toBeInTheDocument()
     })
   })
@@ -232,11 +212,7 @@ describe('Education Verification Flow', () => {
   describe('Successful verification flow', () => {
     it('should let non-manager members start education verification', async () => {
       mockMutateAsync.mockResolvedValue({ token: 'edu-token-123' })
-      setupContexts(
-        {},
-        { enableEducationPlan: true, isEducationAccount: false },
-        { isCurrentWorkspaceManager: false },
-      )
+      setupContexts({}, { enableEducationPlan: true }, { isCurrentWorkspaceManager: false })
       const user = userEvent.setup()
 
       render(<PlanComp loc="test" />)
@@ -249,27 +225,13 @@ describe('Education Verification Flow', () => {
         expect(mockRouterPush).toHaveBeenCalledWith('/education-apply?token=edu-token-123')
       })
     })
-
-    it('should clear education verifying flag on success', async () => {
-      mockMutateAsync.mockResolvedValue({ token: 'token-xyz' })
-      setupContexts({}, { enableEducationPlan: true, isEducationAccount: false })
-      const user = userEvent.setup()
-
-      render(<PlanComp loc="test" />)
-
-      await user.click(screen.getByText(/toVerified/i))
-
-      await waitFor(() => {
-        expect(mockSetEducationVerifying).toHaveBeenCalledWith(null)
-      })
-    })
   })
 
   // ─── 3. Failed Verification Flow ────────────────────────────────────────
   describe('Failed verification flow', () => {
     it('should show VerifyStateModal with rejection info on error', async () => {
       mockMutateAsync.mockRejectedValue(new Error('Verification failed'))
-      setupContexts({}, { enableEducationPlan: true, isEducationAccount: false })
+      setupContexts({}, { enableEducationPlan: true })
       const user = userEvent.setup()
 
       render(<PlanComp loc="test" />)
@@ -292,7 +254,7 @@ describe('Education Verification Flow', () => {
 
     it('should show email and link in VerifyStateModal', async () => {
       mockMutateAsync.mockRejectedValue(new Error('fail'))
-      setupContexts({}, { enableEducationPlan: true, isEducationAccount: false })
+      setupContexts({}, { enableEducationPlan: true })
       const user = userEvent.setup()
 
       render(<PlanComp loc="test" />)
@@ -307,7 +269,7 @@ describe('Education Verification Flow', () => {
 
     it('should not redirect on verification failure', async () => {
       mockMutateAsync.mockRejectedValue(new Error('fail'))
-      setupContexts({}, { enableEducationPlan: true, isEducationAccount: false })
+      setupContexts({}, { enableEducationPlan: true })
       const user = userEvent.setup()
 
       render(<PlanComp loc="test" />)
@@ -326,10 +288,7 @@ describe('Education Verification Flow', () => {
   // ─── 4. Education + Upgrade Coexistence ─────────────────────────────────
   describe('Education and upgrade button coexistence', () => {
     it('should show both education verify and upgrade buttons for sandbox user', () => {
-      setupContexts(
-        { type: Plan.sandbox },
-        { enableEducationPlan: true, isEducationAccount: false },
-      )
+      setupContexts({ type: Plan.sandbox }, { enableEducationPlan: true })
 
       render(<PlanComp loc="test" />)
 
@@ -338,10 +297,7 @@ describe('Education Verification Flow', () => {
     })
 
     it('should not show upgrade button for enterprise plan', () => {
-      setupContexts(
-        { type: Plan.enterprise },
-        { enableEducationPlan: true, isEducationAccount: false },
-      )
+      setupContexts({ type: Plan.enterprise }, { enableEducationPlan: true })
 
       render(<PlanComp loc="test" />)
 
@@ -351,7 +307,7 @@ describe('Education Verification Flow', () => {
     })
 
     it('should show team plan with plain upgrade button and education button', () => {
-      setupContexts({ type: Plan.team }, { enableEducationPlan: true, isEducationAccount: false })
+      setupContexts({ type: Plan.team }, { enableEducationPlan: true })
 
       render(<PlanComp loc="test" />)
 

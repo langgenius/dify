@@ -1,6 +1,7 @@
 'use client'
+import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { Placement } from '@langgenius/dify-ui/popover'
-import type { ComponentProps, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
@@ -16,7 +17,7 @@ type DebugInfoProps = {
   popupPlacement?: Placement
   triggerClassName?: string
   triggerContent?: ReactNode
-  triggerVariant?: ComponentProps<typeof Button>['variant']
+  triggerVariant?: ButtonProps['variant']
 }
 
 function DebugInfo({
@@ -72,7 +73,7 @@ function DebugInfo({
                     )}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex cursor-pointer items-center gap-1 rounded-xs system-xs-regular text-text-accent outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                    className="flex cursor-pointer items-center gap-1 rounded-xs system-xs-regular text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                   >
                     <span>{t(($) => $[`${i18nPrefix}.viewDocs`], { ns: 'plugin' })}</span>
                     <span aria-hidden className="i-ri-arrow-right-up-line size-3" />

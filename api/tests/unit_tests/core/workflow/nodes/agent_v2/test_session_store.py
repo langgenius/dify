@@ -155,7 +155,8 @@ def test_load_existing_scope_rejects_unavailable_persisted_binding(monkeypatch: 
         )
 
 
-def test_load_or_create_persists_binding_on_node_execution(monkeypatch) -> None:
+@pytest.mark.parametrize("home_snapshot_id", ["home-1", None])
+def test_load_or_create_persists_binding_on_node_execution(monkeypatch, home_snapshot_id: str | None) -> None:
     execution = WorkflowNodeExecutionModel(
         agent_workspace_binding_id=None,
         process_data=json.dumps({"existing": "value"}),
@@ -171,7 +172,7 @@ def test_load_or_create_persists_binding_on_node_execution(monkeypatch) -> None:
     monkeypatch.setattr(store, "_load_execution", MagicMock(return_value=execution))
     monkeypatch.setattr(AgentWorkspaceService, "create_binding", create)
 
-    stored = store.load_or_create_node_execution_session(_scope(), home_snapshot_id="home-1")
+    stored = store.load_or_create_node_execution_session(_scope(), home_snapshot_id=home_snapshot_id)
 
     assert stored.binding_id == "binding-1"
     assert stored.workspace_id == "workspace-1"
@@ -183,6 +184,7 @@ def test_load_or_create_persists_binding_on_node_execution(monkeypatch) -> None:
     }
     assert "agent_workspace_binding_id" not in execution.process_data_dict
     assert create.call_args.kwargs["session"] is session
+    assert create.call_args.kwargs["base_home_snapshot_id"] == home_snapshot_id
     session.commit.assert_called_once_with()
 
     get_active = MagicMock(return_value=_binding())
@@ -197,9 +199,13 @@ def test_load_or_create_persists_binding_on_node_execution(monkeypatch) -> None:
         session=session,
     )
 
-    assert resolved.id == "binding-1"
+    assert resolved.backend_binding_ref == "backend-binding-1"
+    assert resolved.agent_id == "agent-1"
+    assert resolved.agent_config_version_id == "config-1"
+    assert resolved.agent_config_version_kind == "snapshot"
     owner_scope = get_active.call_args.kwargs["expected_owner_scope"]
     assert owner_scope.owner_scope_key == "node-1:workflow-binding-1"
+    session.rollback.assert_called_once_with()
 
 
 def test_load_existing_pointer_rejects_missing_workflow_identity(monkeypatch: pytest.MonkeyPatch) -> None:

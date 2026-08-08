@@ -1,17 +1,9 @@
-import type { ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as ReactI18next from 'react-i18next'
 import { expectLoadingButton } from '@/test/button'
 import { withSelectorKey } from '@/test/i18n-mock'
 import RenameModal from '../rename-modal'
-
-vi.mock('@langgenius/dify-ui/dialog', () => ({
-  Dialog: ({ children, open }: { children: ReactNode; open?: boolean }) =>
-    open === false ? null : <>{children}</>,
-  DialogContent: ({ children }: { children: ReactNode }) => <div role="dialog">{children}</div>,
-  DialogTitle: ({ children }: { children: ReactNode }) => <h2>{children}</h2>,
-}))
 
 describe('RenameModal', () => {
   const defaultProps = {

@@ -6,6 +6,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from models.agent import (
+    Agent,
     AgentConfigDraft,
     AgentConfigDraftType,
     AgentConfigSnapshot,
@@ -14,11 +15,11 @@ from models.agent import (
 )
 from models.agent_config_entities import AgentSoulConfig
 from services.agent.errors import AgentBuildSandboxNotFoundError
-from services.agent.home_snapshot_service import AgentHomeSnapshotService
+from services.agent.home_snapshot_service import AgentHomeSnapshotService, validate_home_snapshot_binding
 from services.agent.workspace_service import AgentWorkspaceService
 
 
-def _build_draft() -> AgentConfigDraft:
+def _build_draft(*, home_snapshot_id: str | None = "home-old") -> AgentConfigDraft:
     return AgentConfigDraft(
         id="build-1",
         tenant_id="tenant-1",
@@ -26,7 +27,7 @@ def _build_draft() -> AgentConfigDraft:
         draft_type=AgentConfigDraftType.DEBUG_BUILD,
         account_id="account-1",
         draft_owner_key="account-1",
-        home_snapshot_id="home-old",
+        home_snapshot_id=home_snapshot_id,
         agent_workspace_binding_id="binding-1",
         config_snapshot=AgentSoulConfig(),
     )
@@ -34,42 +35,19 @@ def _build_draft() -> AgentConfigDraft:
 
 def _client(*, snapshot_ref: str = "snapshot-ref-1") -> MagicMock:
     client = MagicMock()
-    client.initialize_home_snapshot_sync.return_value = SimpleNamespace(snapshot_ref=snapshot_ref)
     client.create_home_snapshot_from_binding_sync.return_value = SimpleNamespace(snapshot_ref=snapshot_ref)
     return client
 
 
-def test_create_initial_persists_backend_snapshot_ref(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_validate_home_snapshot_binding_accepts_default_home_without_ledger_lookup() -> None:
     session = MagicMock()
-    client = _client()
-    monkeypatch.setattr(AgentHomeSnapshotService, "_client", lambda: nullcontext(client))
-
-    snapshot = AgentHomeSnapshotService.create_initial(
+    validate_home_snapshot_binding(
         session=session,
-        tenant_id="tenant-1",
-        agent_id="agent-1",
+        agent=Agent(id="agent-1"),
+        home_snapshot_id=None,
     )
 
-    assert snapshot.snapshot_ref == "snapshot-ref-1"
-    assert snapshot.status is AgentWorkingResourceStatus.ACTIVE
-    session.add.assert_called_once_with(snapshot)
-    session.flush.assert_called_once_with()
-
-
-def test_create_initial_flush_failure_does_not_delete_backend_snapshot(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = MagicMock()
-    session.flush.side_effect = RuntimeError("flush failed")
-    client = _client()
-    monkeypatch.setattr(AgentHomeSnapshotService, "_client", lambda: nullcontext(client))
-
-    with pytest.raises(RuntimeError, match="flush failed"):
-        AgentHomeSnapshotService.create_initial(
-            session=session,
-            tenant_id="tenant-1",
-            agent_id="agent-1",
-        )
-
-    client.delete_home_snapshot_sync.assert_not_called()
+    session.scalar.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -98,7 +76,8 @@ def test_build_apply_checkpoints_exact_active_binding(
     client = _client(snapshot_ref="snapshot-ref-2")
     monkeypatch.setattr(AgentHomeSnapshotService, "_client", lambda: nullcontext(client))
     monkeypatch.setattr(AgentWorkspaceService, "get_active_binding", get_binding)
-    monkeypatch.setattr(AgentWorkspaceService, "validate_binding_generation", MagicMock())
+    validate_generation = MagicMock()
+    monkeypatch.setattr(AgentWorkspaceService, "validate_binding_generation", validate_generation)
 
     snapshot = AgentHomeSnapshotService.create_for_build_apply(
         session=session,
@@ -110,6 +89,32 @@ def test_build_apply_checkpoints_exact_active_binding(
     request = client.create_home_snapshot_from_binding_sync.call_args.args[0]
     assert request.backend_binding_ref == "binding-ref-1"
     assert snapshot.snapshot_ref == "snapshot-ref-2"
+    assert validate_generation.call_args.kwargs["base_home_snapshot_id"] == "home-old"
+
+
+def test_build_apply_forwards_default_home_generation(monkeypatch: pytest.MonkeyPatch) -> None:
+    session = MagicMock()
+    session.scalar.return_value = SimpleNamespace(app_id="app-1", backing_app_id=None)
+    binding = SimpleNamespace(
+        backend_binding_ref="binding-ref-1",
+        agent_id="agent-1",
+        base_home_snapshot_id=None,
+        agent_config_version_id="build-1",
+        agent_config_version_kind="build_draft",
+    )
+    client = _client(snapshot_ref="snapshot-ref-2")
+    validate_generation = MagicMock()
+    monkeypatch.setattr(AgentHomeSnapshotService, "_client", lambda: nullcontext(client))
+    monkeypatch.setattr(AgentWorkspaceService, "get_active_binding", MagicMock(return_value=binding))
+    monkeypatch.setattr(AgentWorkspaceService, "validate_binding_generation", validate_generation)
+
+    snapshot = AgentHomeSnapshotService.create_for_build_apply(
+        session=session,
+        build_draft=_build_draft(home_snapshot_id=None),
+    )
+
+    assert snapshot.snapshot_ref == "snapshot-ref-2"
+    assert validate_generation.call_args.kwargs["base_home_snapshot_id"] is None
 
 
 def test_build_apply_fails_fast_without_source_binding() -> None:

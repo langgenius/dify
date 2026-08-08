@@ -8,7 +8,13 @@ import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgeni
 import { Field, FieldControl, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
-import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
+import {
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import {
   Select,
   SelectContent,
@@ -351,7 +357,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   return (
     <>
       <Dialog open={isShow} onOpenChange={(open) => !open && handleClose()} disablePointerDismissal>
-        <DialogContent className="grid max-h-[calc(100dvh-2rem)] w-[520px] grid-rows-[auto_minmax(0,1fr)] overflow-hidden p-0">
+        <DialogContent className="grid max-h-[calc(100dvh-2rem)] w-130 grid-rows-[auto_minmax(0,1fr)] overflow-hidden p-0">
           {/* header */}
           <div className="shrink-0 pt-5 pr-5 pb-3 pl-6">
             <div className="flex items-center gap-1">
@@ -369,355 +375,367 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             onFormSubmit={handleFormSubmit}
           >
             {/* form body */}
-            <ScrollArea
-              className="relative min-h-0"
-              slotClassNames={{
-                viewport: 'overscroll-contain',
-                content: 'min-w-0 space-y-5 px-6 py-3',
-              }}
-            >
-              {/* name & icon */}
-              <div className="flex gap-4">
-                <Field name="title" className="grow">
-                  <FieldLabel>
-                    {t(($) => $[`${prefixSettings}.webName`], { ns: 'appOverview' })}
-                  </FieldLabel>
-                  <FieldControl
-                    value={inputInfo.title}
-                    onValueChange={(value) => setInputInfo((item) => ({ ...item, title: value }))}
-                    placeholder={t(($) => $.appNamePlaceholder, { ns: 'app' }) || ''}
-                  />
-                </Field>
-                <AppIcon
-                  size="xxl"
-                  onClick={() => {
-                    setShowAppIconPicker(true)
-                  }}
-                  className="mt-2 cursor-pointer"
-                  iconType={appIcon.type === 'link' ? 'image' : appIcon.type}
-                  icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
-                  background={appIcon.type === 'emoji' ? appIcon.background : undefined}
-                  imageUrl={appIcon.type === 'emoji' ? undefined : appIcon.url}
-                />
-              </div>
-              {/* description */}
-              <Field name="description">
-                <FieldLabel>
-                  {t(($) => $[`${prefixSettings}.webDesc`], { ns: 'appOverview' })}
-                </FieldLabel>
-                <Textarea
-                  value={inputInfo.desc}
-                  onValueChange={onDesChange}
-                  placeholder={
-                    t(($) => $[`${prefixSettings}.webDescPlaceholder`], {
-                      ns: 'appOverview',
-                    }) as string
-                  }
-                />
-                <FieldDescription>
-                  {t(($) => $[`${prefixSettings}.webDescTip`], { ns: 'appOverview' })}
-                </FieldDescription>
-              </Field>
-              <Divider className="my-0 h-px" />
-              {/* answer icon */}
-              {isChat && (
-                <Field name="use_icon_as_answer_icon" className="w-full">
-                  <div className="flex items-center justify-between gap-3">
-                    <FieldLabel>{t(($) => $['answerIcon.title'], { ns: 'app' })}</FieldLabel>
-                    <Switch
-                      checked={inputInfo.use_icon_as_answer_icon}
-                      onCheckedChange={(v) =>
-                        setInputInfo({ ...inputInfo, use_icon_as_answer_icon: v })
-                      }
-                    />
-                  </div>
-                  <FieldDescription>
-                    {t(($) => $['answerIcon.description'], { ns: 'app' })}
-                  </FieldDescription>
-                </Field>
-              )}
-              {/* language */}
-              <div className="flex items-center">
-                <div className={cn('grow py-1 system-sm-semibold text-text-secondary')}>
-                  {t(($) => $[`${prefixSettings}.language`], { ns: 'appOverview' })}
-                </div>
-                <Select
-                  value={selectedLanguage?.value ?? null}
-                  onValueChange={handleLanguageChange}
-                >
-                  <SelectTrigger
-                    aria-label={t(($) => $[`${prefixSettings}.language`], { ns: 'appOverview' })}
-                    size="medium"
-                    className="w-[200px]"
-                  >
-                    {selectedLanguage?.name ?? t(($) => $['placeholder.select'], { ns: 'common' })}
-                  </SelectTrigger>
-                  <SelectContent>
-                    {LANGUAGE_OPTIONS.map((item) => (
-                      <SelectItem key={item.value} value={item.value}>
-                        <SelectItemText>{item.name}</SelectItemText>
-                        <SelectItemIndicator />
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {/* theme color */}
-              {isChat && (
-                <div className="flex items-center">
-                  <div className="grow">
-                    <div className={cn('py-1 system-sm-semibold text-text-secondary')}>
-                      {t(($) => $[`${prefixSettings}.chatColorTheme`], { ns: 'appOverview' })}
-                    </div>
-                    <div className="pb-0.5 body-xs-regular text-text-tertiary">
-                      {t(($) => $[`${prefixSettings}.chatColorThemeDesc`], { ns: 'appOverview' })}
-                    </div>
-                  </div>
-                  <Field name="chat_color_theme" className="w-[200px] shrink-0">
-                    <FieldControl
-                      className="mb-1"
-                      value={inputInfo.chatColorTheme ?? ''}
-                      onValueChange={(value) =>
-                        setInputInfo((item) => ({ ...item, chatColorTheme: value }))
-                      }
-                      placeholder="E.g #A020F0"
-                    />
-                    <div className="flex items-center justify-between gap-2 body-xs-regular text-text-tertiary">
-                      <span>
-                        {t(($) => $[`${prefixSettings}.chatColorThemeInverted`], {
-                          ns: 'appOverview',
-                        })}
-                      </span>
-                      <Switch
-                        checked={inputInfo.chatColorThemeInverted}
-                        onCheckedChange={(v) =>
-                          setInputInfo({ ...inputInfo, chatColorThemeInverted: v })
+            <ScrollArea className="relative min-h-0">
+              <ScrollAreaViewport className="overscroll-contain">
+                <ScrollAreaContent style={{ minWidth: 0 }} className="space-y-5 px-6 py-3">
+                  {/* name & icon */}
+                  <div className="flex gap-4">
+                    <Field name="title" className="grow">
+                      <FieldLabel>
+                        {t(($) => $[`${prefixSettings}.webName`], { ns: 'appOverview' })}
+                      </FieldLabel>
+                      <FieldControl
+                        value={inputInfo.title}
+                        onValueChange={(value) =>
+                          setInputInfo((item) => ({ ...item, title: value }))
                         }
-                      ></Switch>
-                    </div>
-                  </Field>
-                </div>
-              )}
-              {/* workflow detail */}
-              <Field name="show_workflow_steps" className="w-full">
-                <div className="flex items-center justify-between gap-3">
-                  <FieldLabel>
-                    {t(($) => $[`${prefixSettings}.workflow.subTitle`], { ns: 'appOverview' })}
-                  </FieldLabel>
-                  <Switch
-                    disabled={
-                      !(
-                        appInfo.mode === AppModeEnum.WORKFLOW ||
-                        appInfo.mode === AppModeEnum.ADVANCED_CHAT
-                      )
-                    }
-                    checked={inputInfo.show_workflow_steps}
-                    onCheckedChange={(v) => setInputInfo({ ...inputInfo, show_workflow_steps: v })}
-                  />
-                </div>
-                <FieldDescription>
-                  {t(($) => $[`${prefixSettings}.workflow.showDesc`], { ns: 'appOverview' })}
-                </FieldDescription>
-              </Field>
-              <Divider className="my-0 h-px" />
-              <div className="space-y-5">
-                {INPUT_PLACEHOLDER_SUPPORTED_MODES.includes(appInfo.mode) && (
-                  <div className="w-full">
-                    <div className="flex items-center">
-                      <div className="flex grow items-center">
-                        <div
-                          id={inputPlaceholderLabelId}
-                          className={cn('mr-1 py-1 system-sm-semibold text-text-secondary')}
-                        >
-                          {t(($) => $[`${prefixSettings}.more.inputPlaceholder`], {
-                            ns: 'appOverview',
-                          })}
-                        </div>
-                        {isCloudSandboxPlan && (
-                          <div className="h-[18px] select-none">
-                            <PremiumBadgeButton size="s" color="blue" onClick={handlePlanClick}>
-                              <span
-                                aria-hidden="true"
-                                className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0"
-                              />
-                              <div className="system-xs-medium">
-                                <span className="p-1">
-                                  {t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
-                                </span>
-                              </div>
-                            </PremiumBadgeButton>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <p
-                      id={inputPlaceholderDescriptionId}
-                      className="pb-0.5 body-xs-regular text-text-tertiary"
-                    >
-                      {t(($) => $[`${prefixSettings}.more.inputPlaceholderTip`], {
-                        ns: 'appOverview',
-                      })}
-                    </p>
-                    {isCloudSandboxPlan ? (
-                      <Tooltip>
-                        <TooltipTrigger render={inputPlaceholderField} />
-                        <TooltipContent className="w-[180px]">
-                          {t(($) => $[`${prefixSettings}.more.inputPlaceholderTooltip`], {
-                            ns: 'appOverview',
-                          })}
-                        </TooltipContent>
-                      </Tooltip>
-                    ) : (
-                      inputPlaceholderField
-                    )}
-                    {!isCloudSandboxPlan && (
-                      <div className="mt-1 text-right body-xs-regular text-text-tertiary">
-                        {`${inputInfo.inputPlaceholder?.length ?? 0} / ${INPUT_PLACEHOLDER_MAX_LENGTH}`}
-                      </div>
-                    )}
-                  </div>
-                )}
-                {/* copyright */}
-                <div className="w-full">
-                  <div className="flex items-center">
-                    <div className="flex grow items-center">
-                      <div className={cn('mr-1 py-1 system-sm-semibold text-text-secondary')}>
-                        {t(($) => $[`${prefixSettings}.more.copyright`], { ns: 'appOverview' })}
-                      </div>
-                      {/* upgrade button */}
-                      {isCloudSandboxPlan && (
-                        <div className="h-[18px] select-none">
-                          <PremiumBadgeButton size="s" color="blue" onClick={handlePlanClick}>
-                            <span
-                              aria-hidden="true"
-                              className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0"
-                            />
-                            <div className="system-xs-medium">
-                              <span className="p-1">
-                                {t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
-                              </span>
-                            </div>
-                          </PremiumBadgeButton>
-                        </div>
-                      )}
-                    </div>
-                    {webappCopyrightEnabled ? (
-                      <Switch
-                        aria-label={t(($) => $[`${prefixSettings}.more.copyright`], {
-                          ns: 'appOverview',
-                        })}
-                        checked={copyrightSwitchValue}
-                        onCheckedChange={(v) =>
-                          setInputInfo({ ...inputInfo, copyrightSwitchValue: v })
-                        }
+                        placeholder={t(($) => $.appNamePlaceholder, { ns: 'app' }) || ''}
                       />
-                    ) : (
-                      <Tooltip>
-                        <TooltipTrigger
-                          render={
-                            <div>
-                              <Switch
-                                aria-label={t(($) => $[`${prefixSettings}.more.copyright`], {
-                                  ns: 'appOverview',
-                                })}
-                                disabled
-                                checked={copyrightSwitchValue}
-                                onCheckedChange={(v) =>
-                                  setInputInfo({ ...inputInfo, copyrightSwitchValue: v })
-                                }
-                              />
-                            </div>
-                          }
-                        />
-                        <TooltipContent className="w-[180px]">
-                          {t(($) => $[`${prefixSettings}.more.copyrightTooltip`], {
-                            ns: 'appOverview',
-                          })}
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
+                    </Field>
+                    <AppIcon
+                      size="xxl"
+                      onClick={() => {
+                        setShowAppIconPicker(true)
+                      }}
+                      className="mt-2 cursor-pointer"
+                      iconType={appIcon.type === 'link' ? 'image' : appIcon.type}
+                      icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
+                      background={appIcon.type === 'emoji' ? appIcon.background : undefined}
+                      imageUrl={appIcon.type === 'emoji' ? undefined : appIcon.url}
+                    />
                   </div>
-                  <p className="pb-0.5 body-xs-regular text-text-tertiary">
-                    {t(($) => $[`${prefixSettings}.more.copyrightTip`], { ns: 'appOverview' })}
-                  </p>
-                  {copyrightSwitchValue && (
-                    <Input
-                      aria-label={t(($) => $[`${prefixSettings}.more.copyright`], {
-                        ns: 'appOverview',
-                      })}
-                      className="mt-2 h-10"
-                      value={inputInfo.copyright}
-                      onChange={onChange('copyright')}
+                  {/* description */}
+                  <Field name="description">
+                    <FieldLabel>
+                      {t(($) => $[`${prefixSettings}.webDesc`], { ns: 'appOverview' })}
+                    </FieldLabel>
+                    <Textarea
+                      value={inputInfo.desc}
+                      onValueChange={onDesChange}
                       placeholder={
-                        t(($) => $[`${prefixSettings}.more.copyRightPlaceholder`], {
+                        t(($) => $[`${prefixSettings}.webDescPlaceholder`], {
                           ns: 'appOverview',
                         }) as string
                       }
                     />
+                    <FieldDescription>
+                      {t(($) => $[`${prefixSettings}.webDescTip`], { ns: 'appOverview' })}
+                    </FieldDescription>
+                  </Field>
+                  <Divider className="my-0 h-px" />
+                  {/* answer icon */}
+                  {isChat && (
+                    <Field name="use_icon_as_answer_icon" className="w-full">
+                      <div className="flex items-center justify-between gap-3">
+                        <FieldLabel>{t(($) => $['answerIcon.title'], { ns: 'app' })}</FieldLabel>
+                        <Switch
+                          checked={inputInfo.use_icon_as_answer_icon}
+                          onCheckedChange={(v) =>
+                            setInputInfo({ ...inputInfo, use_icon_as_answer_icon: v })
+                          }
+                        />
+                      </div>
+                      <FieldDescription>
+                        {t(($) => $['answerIcon.description'], { ns: 'app' })}
+                      </FieldDescription>
+                    </Field>
                   )}
-                </div>
-                {/* privacy policy */}
-                <div className="w-full">
-                  <div className={cn('py-1 system-sm-semibold text-text-secondary')}>
-                    {t(($) => $[`${prefixSettings}.more.privacyPolicy`], { ns: 'appOverview' })}
+                  {/* language */}
+                  <div className="flex items-center">
+                    <div className={cn('grow py-1 system-sm-semibold text-text-secondary')}>
+                      {t(($) => $[`${prefixSettings}.language`], { ns: 'appOverview' })}
+                    </div>
+                    <Select
+                      value={selectedLanguage?.value ?? null}
+                      onValueChange={handleLanguageChange}
+                    >
+                      <SelectTrigger
+                        aria-label={t(($) => $[`${prefixSettings}.language`], {
+                          ns: 'appOverview',
+                        })}
+                        size="medium"
+                        className="w-50"
+                      >
+                        {selectedLanguage?.name ??
+                          t(($) => $['placeholder.select'], { ns: 'common' })}
+                      </SelectTrigger>
+                      <SelectContent>
+                        {LANGUAGE_OPTIONS.map((item) => (
+                          <SelectItem key={item.value} value={item.value}>
+                            <SelectItemText>{item.name}</SelectItemText>
+                            <SelectItemIndicator />
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <p className={cn('pb-0.5 body-xs-regular text-text-tertiary')}>
-                    <Trans
-                      i18nKey={($) => $[`${prefixSettings}.more.privacyPolicyTip`]}
-                      ns="appOverview"
-                      components={{
-                        privacyPolicyLink: (
-                          <Link
-                            href="https://dify.ai/privacy"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-text-accent"
+                  {/* theme color */}
+                  {isChat && (
+                    <div className="flex items-center">
+                      <div className="grow">
+                        <div className={cn('py-1 system-sm-semibold text-text-secondary')}>
+                          {t(($) => $[`${prefixSettings}.chatColorTheme`], { ns: 'appOverview' })}
+                        </div>
+                        <div className="pb-0.5 body-xs-regular text-text-tertiary">
+                          {t(($) => $[`${prefixSettings}.chatColorThemeDesc`], {
+                            ns: 'appOverview',
+                          })}
+                        </div>
+                      </div>
+                      <Field name="chat_color_theme" className="w-50 shrink-0">
+                        <FieldControl
+                          className="mb-1"
+                          value={inputInfo.chatColorTheme ?? ''}
+                          onValueChange={(value) =>
+                            setInputInfo((item) => ({ ...item, chatColorTheme: value }))
+                          }
+                          placeholder="E.g #A020F0"
+                        />
+                        <div className="flex items-center justify-between gap-2 body-xs-regular text-text-tertiary">
+                          <span>
+                            {t(($) => $[`${prefixSettings}.chatColorThemeInverted`], {
+                              ns: 'appOverview',
+                            })}
+                          </span>
+                          <Switch
+                            checked={inputInfo.chatColorThemeInverted}
+                            onCheckedChange={(v) =>
+                              setInputInfo({ ...inputInfo, chatColorThemeInverted: v })
+                            }
+                          ></Switch>
+                        </div>
+                      </Field>
+                    </div>
+                  )}
+                  {/* workflow detail */}
+                  <Field name="show_workflow_steps" className="w-full">
+                    <div className="flex items-center justify-between gap-3">
+                      <FieldLabel>
+                        {t(($) => $[`${prefixSettings}.workflow.subTitle`], { ns: 'appOverview' })}
+                      </FieldLabel>
+                      <Switch
+                        disabled={
+                          !(
+                            appInfo.mode === AppModeEnum.WORKFLOW ||
+                            appInfo.mode === AppModeEnum.ADVANCED_CHAT
+                          )
+                        }
+                        checked={inputInfo.show_workflow_steps}
+                        onCheckedChange={(v) =>
+                          setInputInfo({ ...inputInfo, show_workflow_steps: v })
+                        }
+                      />
+                    </div>
+                    <FieldDescription>
+                      {t(($) => $[`${prefixSettings}.workflow.showDesc`], { ns: 'appOverview' })}
+                    </FieldDescription>
+                  </Field>
+                  <Divider className="my-0 h-px" />
+                  <div className="space-y-5">
+                    {INPUT_PLACEHOLDER_SUPPORTED_MODES.includes(appInfo.mode) && (
+                      <div className="w-full">
+                        <div className="flex items-center">
+                          <div className="flex grow items-center">
+                            <div
+                              id={inputPlaceholderLabelId}
+                              className={cn('mr-1 py-1 system-sm-semibold text-text-secondary')}
+                            >
+                              {t(($) => $[`${prefixSettings}.more.inputPlaceholder`], {
+                                ns: 'appOverview',
+                              })}
+                            </div>
+                            {isCloudSandboxPlan && (
+                              <div className="h-4.5 select-none">
+                                <PremiumBadgeButton size="s" color="blue" onClick={handlePlanClick}>
+                                  <span
+                                    aria-hidden="true"
+                                    className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center py-px pl-0.75 text-components-premium-badge-indigo-text-stop-0"
+                                  />
+                                  <div className="system-xs-medium">
+                                    <span className="p-1">
+                                      {t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
+                                    </span>
+                                  </div>
+                                </PremiumBadgeButton>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <p
+                          id={inputPlaceholderDescriptionId}
+                          className="pb-0.5 body-xs-regular text-text-tertiary"
+                        >
+                          {t(($) => $[`${prefixSettings}.more.inputPlaceholderTip`], {
+                            ns: 'appOverview',
+                          })}
+                        </p>
+                        {isCloudSandboxPlan ? (
+                          <Tooltip>
+                            <TooltipTrigger render={inputPlaceholderField} />
+                            <TooltipContent className="w-45">
+                              {t(($) => $[`${prefixSettings}.more.inputPlaceholderTooltip`], {
+                                ns: 'appOverview',
+                              })}
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          inputPlaceholderField
+                        )}
+                        {!isCloudSandboxPlan && (
+                          <div className="mt-1 text-right body-xs-regular text-text-tertiary">
+                            {`${inputInfo.inputPlaceholder?.length ?? 0} / ${INPUT_PLACEHOLDER_MAX_LENGTH}`}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {/* copyright */}
+                    <div className="w-full">
+                      <div className="flex items-center">
+                        <div className="flex grow items-center">
+                          <div className={cn('mr-1 py-1 system-sm-semibold text-text-secondary')}>
+                            {t(($) => $[`${prefixSettings}.more.copyright`], { ns: 'appOverview' })}
+                          </div>
+                          {/* upgrade button */}
+                          {isCloudSandboxPlan && (
+                            <div className="h-4.5 select-none">
+                              <PremiumBadgeButton size="s" color="blue" onClick={handlePlanClick}>
+                                <span
+                                  aria-hidden="true"
+                                  className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center py-px pl-0.75 text-components-premium-badge-indigo-text-stop-0"
+                                />
+                                <div className="system-xs-medium">
+                                  <span className="p-1">
+                                    {t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
+                                  </span>
+                                </div>
+                              </PremiumBadgeButton>
+                            </div>
+                          )}
+                        </div>
+                        {webappCopyrightEnabled ? (
+                          <Switch
+                            aria-label={t(($) => $[`${prefixSettings}.more.copyright`], {
+                              ns: 'appOverview',
+                            })}
+                            checked={copyrightSwitchValue}
+                            onCheckedChange={(v) =>
+                              setInputInfo({ ...inputInfo, copyrightSwitchValue: v })
+                            }
                           />
-                        ),
-                      }}
-                    />
-                  </p>
-                  <Input
-                    aria-label={t(($) => $[`${prefixSettings}.more.privacyPolicy`], {
-                      ns: 'appOverview',
-                    })}
-                    className="mt-1"
-                    value={inputInfo.privacyPolicy}
-                    onChange={onChange('privacyPolicy')}
-                    placeholder={
-                      t(($) => $[`${prefixSettings}.more.privacyPolicyPlaceholder`], {
-                        ns: 'appOverview',
-                      }) as string
-                    }
-                  />
-                </div>
-                {/* custom disclaimer */}
-                <div className="w-full">
-                  <div className={cn('py-1 system-sm-semibold text-text-secondary')}>
-                    {t(($) => $[`${prefixSettings}.more.customDisclaimer`], { ns: 'appOverview' })}
+                        ) : (
+                          <Tooltip>
+                            <TooltipTrigger
+                              render={
+                                <div>
+                                  <Switch
+                                    aria-label={t(($) => $[`${prefixSettings}.more.copyright`], {
+                                      ns: 'appOverview',
+                                    })}
+                                    disabled
+                                    checked={copyrightSwitchValue}
+                                    onCheckedChange={(v) =>
+                                      setInputInfo({ ...inputInfo, copyrightSwitchValue: v })
+                                    }
+                                  />
+                                </div>
+                              }
+                            />
+                            <TooltipContent className="w-45">
+                              {t(($) => $[`${prefixSettings}.more.copyrightTooltip`], {
+                                ns: 'appOverview',
+                              })}
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                      </div>
+                      <p className="pb-0.5 body-xs-regular text-text-tertiary">
+                        {t(($) => $[`${prefixSettings}.more.copyrightTip`], { ns: 'appOverview' })}
+                      </p>
+                      {copyrightSwitchValue && (
+                        <Input
+                          aria-label={t(($) => $[`${prefixSettings}.more.copyright`], {
+                            ns: 'appOverview',
+                          })}
+                          className="mt-2 h-10"
+                          value={inputInfo.copyright}
+                          onChange={onChange('copyright')}
+                          placeholder={
+                            t(($) => $[`${prefixSettings}.more.copyRightPlaceholder`], {
+                              ns: 'appOverview',
+                            }) as string
+                          }
+                        />
+                      )}
+                    </div>
+                    {/* privacy policy */}
+                    <div className="w-full">
+                      <div className={cn('py-1 system-sm-semibold text-text-secondary')}>
+                        {t(($) => $[`${prefixSettings}.more.privacyPolicy`], { ns: 'appOverview' })}
+                      </div>
+                      <p className={cn('pb-0.5 body-xs-regular text-text-tertiary')}>
+                        <Trans
+                          i18nKey={($) => $[`${prefixSettings}.more.privacyPolicyTip`]}
+                          ns="appOverview"
+                          components={{
+                            privacyPolicyLink: (
+                              <Link
+                                href="https://dify.ai/privacy"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-text-accent"
+                              />
+                            ),
+                          }}
+                        />
+                      </p>
+                      <Input
+                        aria-label={t(($) => $[`${prefixSettings}.more.privacyPolicy`], {
+                          ns: 'appOverview',
+                        })}
+                        className="mt-1"
+                        value={inputInfo.privacyPolicy}
+                        onChange={onChange('privacyPolicy')}
+                        placeholder={
+                          t(($) => $[`${prefixSettings}.more.privacyPolicyPlaceholder`], {
+                            ns: 'appOverview',
+                          }) as string
+                        }
+                      />
+                    </div>
+                    {/* custom disclaimer */}
+                    <div className="w-full">
+                      <div className={cn('py-1 system-sm-semibold text-text-secondary')}>
+                        {t(($) => $[`${prefixSettings}.more.customDisclaimer`], {
+                          ns: 'appOverview',
+                        })}
+                      </div>
+                      <p className={cn('pb-0.5 body-xs-regular text-text-tertiary')}>
+                        {t(($) => $[`${prefixSettings}.more.customDisclaimerTip`], {
+                          ns: 'appOverview',
+                        })}
+                      </p>
+                      <Textarea
+                        aria-label={t(($) => $[`${prefixSettings}.more.customDisclaimer`], {
+                          ns: 'appOverview',
+                        })}
+                        className="mt-1"
+                        value={inputInfo.customDisclaimer}
+                        onValueChange={(value) =>
+                          setInputInfo((item) => ({ ...item, customDisclaimer: value }))
+                        }
+                        placeholder={
+                          t(($) => $[`${prefixSettings}.more.customDisclaimerPlaceholder`], {
+                            ns: 'appOverview',
+                          }) as string
+                        }
+                      />
+                    </div>
                   </div>
-                  <p className={cn('pb-0.5 body-xs-regular text-text-tertiary')}>
-                    {t(($) => $[`${prefixSettings}.more.customDisclaimerTip`], {
-                      ns: 'appOverview',
-                    })}
-                  </p>
-                  <Textarea
-                    aria-label={t(($) => $[`${prefixSettings}.more.customDisclaimer`], {
-                      ns: 'appOverview',
-                    })}
-                    className="mt-1"
-                    value={inputInfo.customDisclaimer}
-                    onValueChange={(value) =>
-                      setInputInfo((item) => ({ ...item, customDisclaimer: value }))
-                    }
-                    placeholder={
-                      t(($) => $[`${prefixSettings}.more.customDisclaimerPlaceholder`], {
-                        ns: 'appOverview',
-                      }) as string
-                    }
-                  />
-                </div>
-              </div>
+                </ScrollAreaContent>
+              </ScrollAreaViewport>
+              <ScrollAreaScrollbar>
+                <ScrollAreaThumb />
+              </ScrollAreaScrollbar>
             </ScrollArea>
             {/* footer */}
             <div className="flex shrink-0 justify-end p-6 pt-5">

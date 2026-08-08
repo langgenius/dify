@@ -128,10 +128,7 @@ export function SegmentAdd({
       >
         <span aria-hidden className={cn('i-ri-add-line size-4', textColor)} />
         <span
-          className={cn(
-            'ml-0.5 px-0.5 text-[13px] leading-[16px] font-medium capitalize',
-            textColor,
-          )}
+          className={cn('ml-0.5 px-0.5 text-[13px] leading-4 font-medium capitalize', textColor)}
         >
           {t(($) => $['list.action.addButton'], { ns: 'datasetDocuments' })}
         </span>

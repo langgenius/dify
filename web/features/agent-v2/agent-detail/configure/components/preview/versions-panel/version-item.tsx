@@ -67,7 +67,7 @@ export function VersionItem({
             {label}
           </p>
           {isLatest && (
-            <span className="shrink-0 rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-[5px] py-[3px] system-2xs-medium-uppercase text-text-accent-secondary">
+            <span className="shrink-0 rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-1.25 py-0.75 system-2xs-medium-uppercase text-text-accent-secondary">
               {tWorkflow(($) => $['versionHistory.latest'])}
             </span>
           )}

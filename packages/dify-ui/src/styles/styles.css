@@ -66,6 +66,12 @@
 
   /* shadows */
   --shadow-xs: 0px 1px 2px 0px rgba(16, 24, 40, 0.05);
+  --shadow-primary-button:
+    0px 2px 2px -1px rgba(0, 0, 0, 0.12), 0px 1px 1px -1px rgba(0, 0, 0, 0.12),
+    0px 0px 0px 0.5px var(--color-shadow-shadow-10),
+    inset 0px -6px 12px -4px var(--color-shadow-shadow-5),
+    inset 0px 0px 1px 0px rgba(255, 255, 255, 0.16),
+    inset 0px 0.5px 0px 0px rgba(255, 255, 255, 0.08);
   --shadow-sm: 0px 1px 2px 0px rgba(16, 24, 40, 0.06), 0px 1px 3px 0px rgba(16, 24, 40, 0.1);
   --shadow-sm-no-bottom:
     0px -1px 2px 0px rgba(16, 24, 40, 0.06), 0px -1px 3px 0px rgba(16, 24, 40, 0.1);
