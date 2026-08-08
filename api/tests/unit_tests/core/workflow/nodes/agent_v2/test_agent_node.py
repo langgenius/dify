@@ -5,6 +5,7 @@ from typing import cast
 from unittest.mock import MagicMock, patch
 from uuid import UUID, uuid4
 
+import pytest
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.layers.ask_human import AskHumanToolResult
 from dify_agent.protocol import (
@@ -402,6 +403,19 @@ def test_agent_node_run_maps_successful_agent_backend_run_to_node_result():
     assert result.process_data["agent_id"] == "agent-1"
     layers = {layer["name"]: layer for layer in result.inputs["agent_backend_request"]["composition"]["layers"]}
     assert layers["llm"]["config"]["credentials"] == "[REDACTED]"
+
+
+def test_agent_node_does_not_allocate_participant_after_caller_persistence_failure():
+    resolver = FakeBindingResolver()
+    session_store = FakeSessionStore()
+    node = _node(binding_resolver=resolver, session_store=session_store)
+    node.mark_caller_persistence(error=RuntimeError("caller commit failed"))
+
+    with pytest.raises(RuntimeError, match="caller commit failed"):
+        list(node._run())
+
+    assert resolver.calls == []
+    assert session_store.existing_scope_lookups == []
 
 
 def test_agent_node_uses_resolved_backend_binding_before_backend_invocation() -> None:

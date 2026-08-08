@@ -382,7 +382,23 @@ class TestWorkflowPersistenceLayer:
     def test_agent_v2_caller_row_is_saved_synchronously_before_node_run(self):
         layer, _, node_repo, _ = _make_layer()
         layer._handle_graph_run_started()
+        persistence_results = []
+        node = SimpleNamespace(
+            id="agent-node",
+            execution_id="agent-exec",
+            node_type=BuiltinNodeTypes.AGENT,
+            title="Agent",
+            version=lambda: "2",
+            mark_caller_persistence=lambda **kwargs: persistence_results.append(kwargs.get("error")),
+        )
 
+        layer.on_node_run_start(node)
+
+        assert [execution.id for execution in node_repo.synchronously_saved] == ["agent-exec"]
+        assert persistence_results == [None]
+
+        # The asynchronously dispatched start event only enriches the row; it
+        # must not create a second synchronous caller write.
         layer._handle_node_started(
             NodeRunStartedEvent(
                 id="agent-exec",
@@ -395,7 +411,27 @@ class TestWorkflowPersistenceLayer:
         )
 
         assert [execution.id for execution in node_repo.synchronously_saved] == ["agent-exec"]
-        assert node_repo.saved == []
+        assert [execution.id for execution in node_repo.saved] == ["agent-exec"]
+
+    def test_agent_v2_caller_persistence_failure_is_reported_to_node(self):
+        layer, _, node_repo, _ = _make_layer()
+        layer._handle_graph_run_started()
+        failure = RuntimeError("database unavailable")
+        node_repo.save_synchronously = lambda _execution: (_ for _ in ()).throw(failure)
+        persistence_results = []
+        node = SimpleNamespace(
+            id="agent-node",
+            execution_id="agent-exec",
+            node_type=BuiltinNodeTypes.AGENT,
+            title="Agent",
+            version=lambda: "2",
+            mark_caller_persistence=lambda **kwargs: persistence_results.append(kwargs.get("error")),
+        )
+
+        with pytest.raises(RuntimeError, match="database unavailable"):
+            layer.on_node_run_start(node)
+
+        assert persistence_results == [failure]
 
     def test_retry_history_is_preserved_after_node_succeeds(self):
         layer, _, node_repo, _ = _make_layer()

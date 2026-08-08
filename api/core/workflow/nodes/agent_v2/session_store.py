@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import time
 from dataclasses import dataclass
 
 from agenton.compositor import CompositorSessionSnapshot
@@ -24,9 +23,6 @@ from services.agent.workspace_service import (
     AgentWorkspaceService,
     WorkspaceOwnerScope,
 )
-
-_CALLER_VISIBILITY_ATTEMPTS = 60
-_CALLER_VISIBILITY_INTERVAL_SECONDS = 0.05
 
 
 @dataclass(frozen=True, slots=True)
@@ -247,7 +243,7 @@ class WorkflowAgentWorkspaceStore:
         node_id: str,
         node_execution_id: str,
     ) -> WorkflowNodeExecutionModel:
-        """Wait briefly for the already-emitted node-start event to persist its caller row."""
+        """Load the caller row committed by the worker-side start boundary."""
 
         stmt = select(WorkflowNodeExecutionModel).where(
             WorkflowNodeExecutionModel.id == node_execution_id,
@@ -257,13 +253,9 @@ class WorkflowAgentWorkspaceStore:
             WorkflowNodeExecutionModel.node_id == node_id,
             WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
         )
-        for attempt in range(_CALLER_VISIBILITY_ATTEMPTS):
-            execution = session.scalar(stmt)
-            if execution is not None:
-                return execution
-            if attempt < _CALLER_VISIBILITY_ATTEMPTS - 1:
-                time.sleep(_CALLER_VISIBILITY_INTERVAL_SECONDS)
-
+        execution = session.scalar(stmt)
+        if execution is not None:
+            return execution
         raise AgentWorkspaceNotFoundError("Workflow node execution caller is unavailable")
 
     @staticmethod
