@@ -506,15 +506,21 @@ class TestGetHistoryPromptMessages:
         return TokenBufferMemory(conversation=conv, model_instance=_make_model_instance())
 
     @staticmethod
-    def _history_scalars_side_effect(messages: list[MagicMock]):
+    def _history_scalars_side_effect(
+        messages: list[MagicMock],
+        user_files: list[MagicMock] | None = None,
+        assistant_files: list[MagicMock] | None = None,
+    ):
         call_count = {"n": 0}
 
         def scalars_side_effect(_stmt):
             result = MagicMock()
             if call_count["n"] == 0:
                 result.all.return_value = messages
+            elif call_count["n"] == 1:
+                result.all.return_value = user_files or []
             else:
-                result.all.return_value = []
+                result.all.return_value = assistant_files or []
             call_count["n"] += 1
             return result
 
@@ -647,22 +653,6 @@ class TestGetHistoryPromptMessages:
         mock_user_prompt = UserPromptMessage(content="from build")
         mock_assistant_prompt = AssistantPromptMessage(content="answer")
 
-        call_count = {"n": 0}
-
-        def scalars_side_effect(_stmt):
-            r = MagicMock()
-            if call_count["n"] == 0:
-                # messages query
-                r.all.return_value = [msg]
-            elif call_count["n"] == 1:
-                # user files
-                r.all.return_value = [mock_user_file]
-            else:
-                # assistant files
-                r.all.return_value = []
-            call_count["n"] += 1
-            return r
-
         with (
             patch("core.memory.token_buffer_memory.db") as mock_db,
             patch(
@@ -679,7 +669,7 @@ class TestGetHistoryPromptMessages:
                 return_value=None,
             ),
         ):
-            mock_db.session.scalars.side_effect = scalars_side_effect
+            mock_db.session.scalars.side_effect = self._history_scalars_side_effect([msg], user_files=[mock_user_file])
             result = mem.get_history_prompt_messages()
 
         assert mock_build.call_count >= 1
@@ -697,19 +687,6 @@ class TestGetHistoryPromptMessages:
         mock_user_prompt = UserPromptMessage(content="query")
         mock_assistant_prompt = AssistantPromptMessage(content="built")
 
-        call_count = {"n": 0}
-
-        def scalars_side_effect(_stmt):
-            r = MagicMock()
-            if call_count["n"] == 0:
-                r.all.return_value = [msg]
-            elif call_count["n"] == 1:
-                r.all.return_value = []  # no user files
-            else:
-                r.all.return_value = [mock_assistant_file]
-            call_count["n"] += 1
-            return r
-
         with (
             patch("core.memory.token_buffer_memory.db") as mock_db,
             patch(
@@ -722,7 +699,9 @@ class TestGetHistoryPromptMessages:
                 return_value=mock_assistant_prompt,
             ) as mock_build,
         ):
-            mock_db.session.scalars.side_effect = scalars_side_effect
+            mock_db.session.scalars.side_effect = self._history_scalars_side_effect(
+                [msg], assistant_files=[mock_assistant_file]
+            )
             result = mem.get_history_prompt_messages()
 
         mock_build.assert_called_once()
