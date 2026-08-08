@@ -207,6 +207,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self._conversation_name_generate_thread: Thread | None = None
         self._recorded_files: list[Mapping[str, Any]] = []
         self._workflow_run_id: str = ""
+        self._pending_workflow_finished_resp = None  # set by _handle_workflow_succeeded_event
         self._draft_var_saver_factory = draft_var_saver_factory
         self._graph_runtime_state: GraphRuntimeState | None = None
         self._message_saved_on_pause = False
@@ -393,6 +394,15 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             except Exception:
                 logger.exception("Failed to listen audio message, task_id: %s", task_id)
                 break
+
+        # Yield workflow_finished AFTER all TTS audio chunks have been flushed,
+        # matching the expected SSE order:
+        #   tts_message* → tts_message_end → workflow_finished
+        # See: https://github.com/langgenius/dify/issues/36027
+        if self._pending_workflow_finished_resp:
+            yield self._pending_workflow_finished_resp
+            self._pending_workflow_finished_resp = None
+
         if tts_publisher:
             yield MessageAudioEndStreamResponse(audio="", task_id=task_id)
 
@@ -655,7 +665,14 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         trace_manager: TraceQueueManager | None = None,
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
-        """Handle workflow succeeded events."""
+        """Handle workflow succeeded events.
+
+        Note: workflow_finished is intentionally NOT yielded here.
+        It is deferred to _wrapper_process_stream_response so that TTS audio
+        chunks (tts_message) are fully sent before workflow_finished, matching
+        the expected SSE order: tts_message* → tts_message_end → workflow_finished.
+        See: https://github.com/langgenius/dify/issues/36027
+        """
         _ = trace_manager
         self._ensure_workflow_initialized()
         validated_state = self._ensure_graph_runtime_initialized()
@@ -665,11 +682,13 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             status=WorkflowExecutionStatus.SUCCEEDED,
             graph_runtime_state=validated_state,
         )
+        # Stash the workflow_finished response so the caller can yield it
+        # after all TTS audio chunks have been flushed.
+        self._pending_workflow_finished_resp = workflow_finish_resp
 
         yield from self._handle_advanced_chat_message_end_event(
             QueueAdvancedChatMessageEndEvent(), graph_runtime_state=validated_state
         )
-        yield workflow_finish_resp
 
     def _handle_workflow_partial_success_event(
         self,
