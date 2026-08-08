@@ -146,6 +146,14 @@ class TestAppGeneratorTTSPublisher:
         publisher = AppGeneratorTTSPublisher("tenant", "invalid_voice")
         assert publisher.voice == "voice1"
 
+    def test_initialization_no_voices_raises(self, mock_model_manager, mock_model_instance):
+        # A TTS model can have no voices for the requested language. The audio tool and
+        # audio_service already guard this and raise "Sorry, no voice available."; the
+        # publisher was the one path that didn't, so it crashed with IndexError on voices[0].
+        mock_model_instance.get_tts_voices.return_value = []
+        with pytest.raises(ValueError, match="Sorry, no voice available."):
+            AppGeneratorTTSPublisher("tenant", "voice1")
+
     def test_publish_puts_message_in_queue(self, mock_model_manager):
         publisher = AppGeneratorTTSPublisher("tenant", "voice1")
         message = MagicMock()
