@@ -1,0 +1,320 @@
+# Instincts generated from https://github.com/devops2626/dify
+# Generated: 2026-07-22T06:48:03.844Z
+# Version: 2.0
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+# High-confidence manually curated instincts should be preserved alongside these.
+
+---
+id: dify-commit-conventional
+trigger: "when writing a commit message"
+confidence: 0.85
+domain: git
+source: repo-analysis
+source_repo: https://github.com/devops2626/dify
+---
+
+# Dify Commit Conventional
+
+## Action
+
+Use conventional commit format with prefixes: chore
+
+## Evidence
+
+- 1 commits analyzed
+- Detected conventional commit pattern
+- Examples: chore: bump the github-actions-dependencies group with 5 updates
+
+---
+id: dify-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/devops2626/dify
+---
+
+# Dify Commit Length
+
+## Action
+
+Write moderate-length commit messages (~64 characters)
+
+## Evidence
+
+- Average commit message length: 64 chars
+- Based on 1 commits
+
+---
+id: dify-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/devops2626/dify
+---
+
+# Dify Naming Files
+
+## Action
+
+Use kebab-case naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: kebab-case
+
+---
+id: dify-import-relative
+trigger: "when importing modules"
+confidence: 0.75
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/devops2626/dify
+---
+
+# Dify Import Relative
+
+## Action
+
+Use relative imports for project files
+
+## Evidence
+
+- Import analysis shows relative import pattern
+- Example: import { x } from '../lib/x'
+
+---
+id: dify-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/devops2626/dify
+---
+
+# Dify Export Style
+
+## Action
+
+Prefer named exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: named
+
+---
+id: dify-test-separate
+trigger: "when writing tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/devops2626/dify
+---
+
+# Dify Test Separate
+
+## Action
+
+Place tests in the tests/ or __tests__/ directory, mirroring src structure
+
+## Evidence
+
+- Separate test directory pattern detected
+- Tests live in dedicated test folders
+
+---
+id: dify-instinct-file-naming
+trigger: "When creating a new file"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: devops2626/dify
+---
+
+# Dify Instinct File Naming
+
+## Action
+
+Name the file using kebab-case
+
+## Evidence
+
+- Pattern in codeStyle.namingConventions.files
+
+---
+id: dify-instinct-function-naming
+trigger: "When defining a function"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: devops2626/dify
+---
+
+# Dify Instinct Function Naming
+
+## Action
+
+Use camelCase for the function name
+
+## Evidence
+
+- Pattern in codeStyle.namingConventions.functions
+
+---
+id: dify-instinct-class-naming
+trigger: "When defining a class"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: devops2626/dify
+---
+
+# Dify Instinct Class Naming
+
+## Action
+
+Use PascalCase for the class name
+
+## Evidence
+
+- Pattern in codeStyle.namingConventions.classes
+
+---
+id: dify-instinct-constant-naming
+trigger: "When defining a constant"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: devops2626/dify
+---
+
+# Dify Instinct Constant Naming
+
+## Action
+
+Use SCREAMING_SNAKE_CASE for the constant name
+
+## Evidence
+
+- Pattern in codeStyle.namingConventions.constants
+
+---
+id: dify-instinct-import-style
+trigger: "When importing modules"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: devops2626/dify
+---
+
+# Dify Instinct Import Style
+
+## Action
+
+Use relative import paths
+
+## Evidence
+
+- Pattern in codeStyle.importStyle
+
+---
+id: dify-instinct-export-style
+trigger: "When exporting modules or functions"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: devops2626/dify
+---
+
+# Dify Instinct Export Style
+
+## Action
+
+Use named exports
+
+## Evidence
+
+- Pattern in codeStyle.exportStyle
+
+---
+id: dify-instinct-git-commit-prefix
+trigger: "When writing a commit message for maintenance or dependency updates"
+confidence: 0.9
+domain: git
+source: repo-analysis
+source_repo: devops2626/dify
+---
+
+# Dify Instinct Git Commit Prefix
+
+## Action
+
+Prefix the commit message with 'chore:'
+
+## Evidence
+
+- Seen in commit: chore: bump the github-actions-dependencies group with 5 updates
+- Pattern in commits.prefixes
+
+---
+id: dify-instinct-git-commit-format
+trigger: "When writing a commit message"
+confidence: 0.8
+domain: git
+source: repo-analysis
+source_repo: devops2626/dify
+---
+
+# Dify Instinct Git Commit Format
+
+## Action
+
+Follow the conventional commit format: <type>: <description>
+
+## Evidence
+
+- Pattern in commits.type
+- Seen in commit: chore: bump the github-actions-dependencies group with 5 updates
+
+---
+id: dify-instinct-test-location
+trigger: "When adding new tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: devops2626/dify
+---
+
+# Dify Instinct Test Location
+
+## Action
+
+Place test files in a separate test directory
+
+## Evidence
+
+- Pattern in architecture.folderStructure.testLocation
+
+---
+id: dify-instinct-github-workflow-location
+trigger: "When adding or modifying CI/CD workflows"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: devops2626/dify
+---
+
+# Dify Instinct Github Workflow Location
+
+## Action
+
+Place workflow YAML files in the .github/workflows directory
+
+## Evidence
+
+- Pattern in architecture.configFiles
+- Pattern in architecture.folderStructure.commonFolders
+

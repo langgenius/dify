@@ -1,8 +1,14 @@
 version: 2
 
+
+  updates:
+  - package-ecosystem: "uv"
+    directory: "/api"
+
 updates:
   - package-ecosystem: 'uv'
     directory: '/api'
+
     open-pull-requests-limit: 10
     schedule:
       interval: 'weekly'
