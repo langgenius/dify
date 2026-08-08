@@ -9,7 +9,7 @@ from controllers.common.schema import (
     register_response_schema_models,
 )
 from controllers.console import console_ns
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import account_initialization_required, model_validate, setup_required
 from fields.base import ResponseModel
 from libs.login import login_required
 from services.advanced_prompt_template_service import AdvancedPromptTemplateArgs, AdvancedPromptTemplateService

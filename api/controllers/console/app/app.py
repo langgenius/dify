@@ -32,6 +32,7 @@ from controllers.console.wraps import (
     edit_permission_required,
     enterprise_license_required,
     is_admin_or_owner_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_tenant_id,
