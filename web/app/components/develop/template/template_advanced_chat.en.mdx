@@ -1799,8 +1799,8 @@ Chat applications support session persistence, allowing previous chat history to
     <Properties>
       <Property name='file' type='file' key='file'>
         Audio file.
-        Supported formats: `['mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'wav', 'webm']`
-        File size limit: 15MB
+        Supported formats: `['mp3', 'm4a', 'wav', 'amr', 'mpga']`
+        File size limit: 30MB
       </Property>
       <Property name='user' type='string' key='user'>
       User identifier, defined by the developer's rules, must be unique within the application.
@@ -1819,7 +1819,7 @@ Chat applications support session persistence, allowing previous chat history to
       label="/audio-to-text"
       targetCode={`curl -X POST '${props.appDetail.api_base_url}/audio-to-text' \\
 --header 'Authorization: Bearer {api_key}' \\
---form 'file=@localfile;type=audio/[mp3|mp4|mpeg|mpga|m4a|wav|webm]'`}
+--form 'file=@localfile;type=audio/[mp3|m4a|wav|amr|mpga]'`}
     />
 
     <CodeGroup title="Response">
