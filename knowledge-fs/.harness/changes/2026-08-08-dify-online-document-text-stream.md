@@ -1,0 +1,36 @@
+# Dify online-document text stream compatibility
+
+Date: 2026-08-08
+
+## What changed
+
+- Updated the API online-document connector to consume Dify datasource `text` messages from
+  `message.text` and concatenate streamed chunks in order.
+- Retained the existing last-non-empty replacement behavior for structured
+  `{ result: { content } }` envelopes.
+- Added regression coverage using the real Dify datasource message shape plus compatibility
+  coverage for the structured envelope.
+
+## Why
+
+Notion page content arrived through Dify as streamed `text` messages, but the connector only read
+structured `result.content` envelopes. The ignored messages produced a zero-byte Markdown asset,
+zero knowledge nodes, and a terminal compilation failure because no FTS projection existed.
+
+## Verification
+
+- RED: `pnpm --filter @knowledge/api-app test -- online-document-options.test.ts` reproduced an
+  empty content result for two Dify text messages.
+- GREEN: the same command passed all 211 tests across 42 API-app test files after the fix.
+- `pnpm check` passed, including typecheck, 4,269 API tests plus the remaining workspace tests,
+  coverage gates, evaluation gates, migration checks, Compose checks, and smoke tests.
+- `pnpm build` passed all 12 workspace package builds.
+- Focused Biome checks passed for both modified TypeScript files. The full `pnpm lint` command is
+  blocked by nine pre-existing formatting/lint errors outside this change (Admin files, a test
+  helper, and the generated capability operations JSON); those unrelated files were not modified.
+
+## Risks and follow-up
+
+- Text chunks are accumulated in memory, matching the existing bounded datasource response path.
+- No protocol or behavior changes were made to page listing, online-drive downloads, or structured
+  page-content envelopes.

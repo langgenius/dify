@@ -96,7 +96,32 @@ describe("createApiOnlineDocumentConnector", () => {
     expect(JSON.stringify(calls[0])).not.toContain("credentials");
   });
 
-  it("fetches page content with the page ref and returns the last non-empty content", async () => {
+  it("concatenates Dify datasource text messages into page content", async () => {
+    const calls: ApiDatasourceInvocationInput[] = [];
+    const client = clientYielding(
+      [
+        { message: { text: "# Page One\n" }, type: "text" },
+        { message: { text: "Notion body" }, type: "text" },
+      ],
+      calls,
+    );
+
+    const content = await createApiOnlineDocumentConnector({ client }).getPageContent({
+      page: { pageId: "p1", type: "page", workspaceId: "w1" },
+      source: SOURCE,
+      tenantId: "tenant-1",
+    });
+
+    expect(content).toEqual({ content: "# Page One\nNotion body", pageId: "p1" });
+    expect(calls[0]).toMatchObject({
+      operation: "get_online_document_page_content",
+      page: { pageId: "p1", type: "page", workspaceId: "w1" },
+      source: SOURCE,
+      tenantId: "tenant-1",
+    });
+  });
+
+  it("keeps supporting structured page-content envelopes", async () => {
     const calls: ApiDatasourceInvocationInput[] = [];
     const client = clientYielding(
       [
@@ -113,11 +138,5 @@ describe("createApiOnlineDocumentConnector", () => {
     });
 
     expect(content).toEqual({ content: "# Page One", pageId: "p1", workspaceId: "w1" });
-    expect(calls[0]).toMatchObject({
-      operation: "get_online_document_page_content",
-      page: { pageId: "p1", type: "page", workspaceId: "w1" },
-      source: SOURCE,
-      tenantId: "tenant-1",
-    });
   });
 });

@@ -20,7 +20,8 @@ interface ListingEnvelopeMetadata {
 
 /**
  * Online-document connector backed by the deployment-selected datasource runtime. Page listing accumulates the
- * streamed workspaces/pages (deduped); page content takes the last non-empty content chunk.
+ * streamed workspaces/pages (deduped); page content concatenates Dify text messages while retaining support for
+ * structured content envelopes.
  */
 export function createApiOnlineDocumentConnector(input: {
   readonly client: ApiDatasourceInvocationClient;
@@ -46,7 +47,7 @@ export function createApiOnlineDocumentConnector(input: {
         }
 
         if (parsed.content) {
-          content = parsed.content;
+          content = parsed.append ? content + parsed.content : parsed.content;
         }
 
         if (parsed.pageId) {
@@ -201,12 +202,20 @@ function parsePage(raw: unknown): OnlineDocumentPage | undefined {
 
 function parseContentEnvelope(
   raw: unknown,
-): { content: string; pageId?: string; workspaceId?: string } | undefined {
+): { append: boolean; content: string; pageId?: string; workspaceId?: string } | undefined {
   if (!raw || typeof raw !== "object") {
     return undefined;
   }
 
-  const result = (raw as Record<string, unknown>).result;
+  const envelope = raw as Record<string, unknown>;
+  if (envelope.type === "text") {
+    const message = envelope.message;
+    if (!message || typeof message !== "object") return undefined;
+    const text = (message as Record<string, unknown>).text;
+    return typeof text === "string" ? { append: true, content: text } : undefined;
+  }
+
+  const result = envelope.result;
 
   if (!result || typeof result !== "object") {
     return undefined;
@@ -215,6 +224,7 @@ function parseContentEnvelope(
   const record = result as Record<string, unknown>;
 
   return {
+    append: false,
     content: typeof record.content === "string" ? record.content : "",
     ...(typeof record.page_id === "string" ? { pageId: record.page_id } : {}),
     ...(typeof record.workspace_id === "string" ? { workspaceId: record.workspace_id } : {}),
