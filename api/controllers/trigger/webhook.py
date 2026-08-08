@@ -73,7 +73,7 @@ def handle_webhook(webhook_id: str):
         WebhookService.trigger_workflow_execution(webhook_trigger, webhook_data, workflow)
 
         # Return configured response
-        response_data, status_code = WebhookService.generate_webhook_response(node_config)
+        response_data, status_code = WebhookService.generate_webhook_response(node_config, webhook_data)
         return jsonify(response_data), status_code
 
     except QuotaExceededError as error:
@@ -151,7 +151,7 @@ def handle_webhook_debug(webhook_id: str):
                 ),
                 409,
             )
-        response_data, status_code = WebhookService.generate_webhook_response(node_config)
+        response_data, status_code = WebhookService.generate_webhook_response(node_config, webhook_data)
         return jsonify(response_data), status_code
 
     except ValueError as e:
