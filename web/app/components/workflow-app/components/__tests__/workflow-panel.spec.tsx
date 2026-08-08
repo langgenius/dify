@@ -23,6 +23,7 @@ type WorkflowStoreState = {
   showDebugAndPreviewPanel: boolean
   showChatVariablePanel: boolean
   showGlobalVariablePanel: boolean
+  showCopilotPanel: boolean
 }
 
 const mockUseIsChatMode = vi.fn()
@@ -31,6 +32,20 @@ const mockSetShowMessageLogModal = vi.fn()
 
 let appStoreState: AppStoreState
 let workflowStoreState: WorkflowStoreState
+
+const featureFlags = vi.hoisted(() => ({
+  enableFeaturePreview: true,
+}))
+
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    get ENABLE_FEATURE_PREVIEW() {
+      return featureFlags.enableFeaturePreview
+    },
+  }
+})
 
 vi.mock('@/app/components/app/store', () => ({
   useStore: <T,>(selector: (state: AppStoreState) => T) => selector(appStoreState),
@@ -130,6 +145,10 @@ vi.mock('@/app/components/workflow/panel/global-variable-panel', () => ({
   default: () => <div data-testid="global-variable-panel">global-variable</div>,
 }))
 
+vi.mock('@/app/components/workflow/panel/workflow-copilot', () => ({
+  default: () => <div data-testid="workflow-copilot-panel">copilot</div>,
+}))
+
 vi.mock('../../hooks/use-is-chat-mode', () => ({
   useIsChatMode: () => mockUseIsChatMode(),
 }))
@@ -137,6 +156,7 @@ vi.mock('../../hooks/use-is-chat-mode', () => ({
 describe('WorkflowPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    featureFlags.enableFeaturePreview = true
     appStoreState = {
       appDetail: {
         id: 'app-123',
@@ -155,6 +175,7 @@ describe('WorkflowPanel', () => {
       showDebugAndPreviewPanel: false,
       showChatVariablePanel: false,
       showGlobalVariablePanel: false,
+      showCopilotPanel: false,
     }
     mockUseIsChatMode.mockReturnValue(false)
   })
@@ -200,6 +221,7 @@ describe('WorkflowPanel', () => {
       showDebugAndPreviewPanel: true,
       showChatVariablePanel: true,
       showGlobalVariablePanel: true,
+      showCopilotPanel: false,
     }
     mockUseIsChatMode.mockReturnValue(true)
 
@@ -222,5 +244,21 @@ describe('WorkflowPanel', () => {
     expect(screen.queryByTestId('chat-record-panel')).not.toBeInTheDocument()
     expect(screen.queryByTestId('debug-and-preview-panel')).not.toBeInTheDocument()
     expect(screen.queryByTestId('chat-variable-panel')).not.toBeInTheDocument()
+  })
+
+  it('should render Copilot only when preview features are enabled', async () => {
+    workflowStoreState = {
+      ...workflowStoreState,
+      showCopilotPanel: true,
+    }
+
+    const { unmount } = render(<WorkflowPanel />)
+    expect(await screen.findByTestId('workflow-copilot-panel')).toBeInTheDocument()
+
+    unmount()
+    featureFlags.enableFeaturePreview = false
+    render(<WorkflowPanel />)
+
+    expect(screen.queryByTestId('workflow-copilot-panel')).not.toBeInTheDocument()
   })
 })

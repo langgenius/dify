@@ -6,6 +6,12 @@ export type WorkflowContextMenuTarget =
   | { type: 'node'; nodeId: string }
   | { type: 'edge'; edgeId: string }
 
+/** A node pinned as explicit context for the Workflow Copilot conversation. */
+export type CopilotContextNode = {
+  id: string
+  title: string
+}
+
 export type PanelSliceShape = {
   panelWidth: number
   setPanelWidth: (width: number) => void
@@ -17,6 +23,15 @@ export type PanelSliceShape = {
   setShowInputsPanel: (showInputsPanel: boolean) => void
   showDebugAndPreviewPanel: boolean
   setShowDebugAndPreviewPanel: (showDebugAndPreviewPanel: boolean) => void
+  showCopilotPanel: boolean
+  setShowCopilotPanel: (showCopilotPanel: boolean) => void
+  // Nodes pinned as explicit context for the Copilot conversation. Populated
+  // from a node's "..." menu ("Add to Copilot"); the copilot panel reads and
+  // renders these as removable chips.
+  copilotContextNodes: CopilotContextNode[]
+  addCopilotContextNode: (node: CopilotContextNode) => void
+  removeCopilotContextNode: (id: string) => void
+  clearCopilotContextNodes: () => void
   showCommentsPanel: boolean
   setShowCommentsPanel: (showCommentsPanel: boolean) => void
   showUserComments: boolean
@@ -45,6 +60,18 @@ export const createPanelSlice: StateCreator<PanelSliceShape> = (set) => ({
   showInputsPanel: false,
   setShowInputsPanel: (showInputsPanel) => set(() => ({ showInputsPanel })),
   showDebugAndPreviewPanel: false,
+  setShowDebugAndPreviewPanel: showDebugAndPreviewPanel => set(() => ({ showDebugAndPreviewPanel })),
+  showCopilotPanel: false,
+  setShowCopilotPanel: showCopilotPanel => set(() => ({ showCopilotPanel })),
+  copilotContextNodes: [],
+  addCopilotContextNode: node => set(state =>
+    state.copilotContextNodes.some(n => n.id === node.id)
+      ? state
+      : ({ copilotContextNodes: [...state.copilotContextNodes, node] })),
+  removeCopilotContextNode: id => set(state => ({
+    copilotContextNodes: state.copilotContextNodes.filter(n => n.id !== id),
+  })),
+  clearCopilotContextNodes: () => set(() => ({ copilotContextNodes: [] })),
   setShowDebugAndPreviewPanel: (showDebugAndPreviewPanel) =>
     set(() => ({ showDebugAndPreviewPanel })),
   showCommentsPanel: false,

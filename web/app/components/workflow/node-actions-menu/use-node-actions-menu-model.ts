@@ -6,6 +6,7 @@ import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import { canRunBySingle } from '@/app/components/workflow/utils'
+import { ENABLE_FEATURE_PREVIEW } from '@/config'
 import { useAllWorkflowTools } from '@/service/use-tools'
 import { canFindTool } from '@/utils'
 import { useNodesInteractions } from '../hooks/use-nodes-interactions'
@@ -79,14 +80,30 @@ export function useNodeActionsMenuModel({
     handleNodeDelete(id)
   }, [handleNodeDelete, id, onClose])
 
+  const handleAddToCopilot = useCallback(() => {
+    if (!ENABLE_FEATURE_PREVIEW) return
+    onClose()
+    const store = workflowStore.getState()
+    store.addCopilotContextNode({ id, title: data.title || data.type })
+    // Reveal the panel so the freshly-pinned context chip is visible, and
+    // close the other right-side panels so only Copilot shows.
+    store.setShowCopilotPanel(true)
+    store.setShowDebugAndPreviewPanel(false)
+    store.setShowEnvPanel(false)
+    store.setShowChatVariablePanel(false)
+    store.setShowGlobalVariablePanel(false)
+  }, [data.title, data.type, id, onClose, workflowStore])
+
   return {
     about: {
       author: nodeMetaData.author,
       description: nodeMetaData.description,
     },
     canChangeBlock,
+    canAddToCopilot: ENABLE_FEATURE_PREVIEW,
     canRun,
     data,
+    handleAddToCopilot,
     handleCopy,
     handleDelete,
     handleDuplicate,

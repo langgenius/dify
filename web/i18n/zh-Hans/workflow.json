@@ -1316,6 +1316,7 @@
   "versionHistory.releaseNotesPlaceholder": "请描述变更",
   "versionHistory.restorationTip": "版本回滚后，当前草稿将被覆盖。",
   "versionHistory.title": "版本",
+  "workflowGenerator.addToCopilot": "添加到 Copilot",
   "workflowGenerator.applied": "已应用",
   "workflowGenerator.appliedRefineHint": "已应用 — 随时用 ⌘K → /refine 优化",
   "workflowGenerator.applyFailed": "应用工作流失败",
@@ -1361,6 +1362,7 @@
   "workflowGenerator.instructionPlaceholder": "描述你想要的工作流——输入是什么、处理流程、输出形式。",
   "workflowGenerator.instructionRequired": "请先填写指令",
   "workflowGenerator.loading": "正在生成工作流……",
+  "workflowGenerator.locateNode": "在画布中定位节点",
   "workflowGenerator.modelRequired": "请先选择一个模型再生成。",
   "workflowGenerator.modes.chatflow": "Chatflow",
   "workflowGenerator.modes.workflow": "Workflow",
@@ -1376,7 +1378,11 @@
   "workflowGenerator.refineTitle": "优化 {{mode}}",
   "workflowGenerator.regenerate": "重新生成",
   "workflowGenerator.reload": "重新加载",
+  "workflowGenerator.stop": "停止",
+  "workflowGenerator.stopped": "已停止生成。",
   "workflowGenerator.studioApply": "应用",
   "workflowGenerator.studioButton": "生成",
-  "workflowGenerator.title": "生成 {{mode}}"
+  "workflowGenerator.title": "生成 {{mode}}",
+  "workflowGenerator.tokens": "tokens",
+  "workflowGenerator.tookTime": "耗时"
 }
