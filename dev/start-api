@@ -5,7 +5,7 @@ set -x
 SCRIPT_DIR="$(dirname "$(realpath "$0")")"
 cd "$SCRIPT_DIR/../api"
 
-uv run flask db upgrade
+uv run flask db upgrade || exit 1
 
 uv run \
   dotenv -f .env run --no-override -- python -m app
