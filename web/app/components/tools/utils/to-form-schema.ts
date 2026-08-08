@@ -188,6 +188,12 @@ const correctInitialData = (
       target.value = Number.parseFloat(defaultValue)
   }
 
+  if (type === FormTypeEnum.date || type === FormTypeEnum.dateRange) {
+    if (typeof defaultValue === 'string') target.value = defaultValue
+    if (typeof defaultValue === 'object' && defaultValue !== null && !Array.isArray(defaultValue))
+      target.value = JSON.stringify(defaultValue)
+  }
+
   if (type === 'app-selector' || type === 'model-selector') target.value = defaultValue
 
   return target
@@ -271,7 +277,9 @@ const getVarKindType = (type: FormTypeEnum) => {
   if (
     type === FormTypeEnum.select ||
     type === FormTypeEnum.checkbox ||
-    type === FormTypeEnum.textNumber
+    type === FormTypeEnum.textNumber ||
+    type === FormTypeEnum.date ||
+    type === FormTypeEnum.dateRange
   )
     return VarKindType.constant
   if (type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput) return VarKindType.mixed
