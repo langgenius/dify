@@ -30,13 +30,11 @@ export type AppInfoModalType =
   | null
 
 type UseAppInfoActionsParams = {
-  onDetailExpand?: (expand: boolean) => void
   resetKey?: string
 }
 
 type AppInfoUiState = {
   resetKey?: string
-  panelOpen: boolean
   activeModal: AppInfoModalType
   secretEnvList: EnvironmentVariableItemResponse[]
 }
@@ -75,7 +73,6 @@ const updateCachedAppMetadata = (cachedApp: AppDetailWithSite | undefined, app: 
 
 const createInitialUiState = (resetKey?: string): AppInfoUiState => ({
   resetKey,
-  panelOpen: false,
   activeModal: null,
   secretEnvList: [],
 })
@@ -88,7 +85,7 @@ const getCurrentUiState = (state: AppInfoUiState, resetKey?: string) => {
   return state.resetKey === resetKey ? state : createInitialUiState(resetKey)
 }
 
-export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoActionsParams) {
+export function useAppInfoActions({ resetKey }: UseAppInfoActionsParams) {
   const { t } = useTranslation()
   const { replace } = useRouter()
   const queryClient = useQueryClient()
@@ -103,22 +100,8 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
 
   const [uiState, setUiState] = useState(() => createInitialUiState(resetKey))
   const uiStateMatchesResetKey = uiState.resetKey === resetKey
-  const panelOpen = uiStateMatchesResetKey ? uiState.panelOpen : false
   const activeModal = uiStateMatchesResetKey ? uiState.activeModal : null
   const secretEnvList = uiStateMatchesResetKey ? uiState.secretEnvList : emptySecretEnvList
-
-  const setPanelOpen = useCallback<Dispatch<SetStateAction<boolean>>>(
-    (value) => {
-      setUiState((state) => {
-        const current = getCurrentUiState(state, resetKey)
-        return {
-          ...current,
-          panelOpen: resolveStateAction(value, current.panelOpen),
-        }
-      })
-    },
-    [resetKey],
-  )
 
   const setActiveModal = useCallback<Dispatch<SetStateAction<AppInfoModalType>>>(
     (value) => {
@@ -146,17 +129,11 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
     [resetKey],
   )
 
-  const closePanel = useCallback(() => {
-    setPanelOpen(false)
-    onDetailExpand?.(false)
-  }, [onDetailExpand, setPanelOpen])
-
   const openModal = useCallback(
     (modal: Exclude<AppInfoModalType, null>) => {
-      closePanel()
       setActiveModal(modal)
     },
-    [closePanel, setActiveModal],
+    [setActiveModal],
   )
 
   const closeModal = useCallback(() => {
@@ -352,9 +329,6 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
 
   return {
     appDetail,
-    panelOpen,
-    setPanelOpen,
-    closePanel,
     activeModal,
     openModal,
     closeModal,

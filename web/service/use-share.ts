@@ -1,3 +1,4 @@
+import type { WebAppAddress } from './webapp-address'
 import type { FormData as HumanInputFormData } from '@/app/(humanInputLayout)/form/[token]/form'
 import type { AppConversationData, ConversationItem } from '@/models/share'
 import { useMutation, useQuery } from '@tanstack/react-query'
@@ -14,6 +15,7 @@ import {
   submitHumanInputForm,
 } from './share'
 import { useInvalid } from './use-base'
+import { resolveWebAppAddress } from './webapp-address'
 
 const NAME_SPACE = 'webapp'
 
@@ -44,10 +46,11 @@ type ShareQueryOptions = {
 }
 
 export const shareQueryKeys = {
-  appAccessMode: (code: string | null) => [NAME_SPACE, 'appAccessMode', code] as const,
-  appInfo: [NAME_SPACE, 'appInfo'] as const,
-  appParams: [NAME_SPACE, 'appParams'] as const,
-  appMeta: [NAME_SPACE, 'appMeta'] as const,
+  appAccessMode: (address: WebAppAddress | null, code: string | null) =>
+    [NAME_SPACE, 'appAccessMode', address, code] as const,
+  appInfo: (address: WebAppAddress | null) => [NAME_SPACE, address, 'appInfo'] as const,
+  appParams: (address: WebAppAddress | null) => [NAME_SPACE, address, 'appParams'] as const,
+  appMeta: (address: WebAppAddress | null) => [NAME_SPACE, address, 'appMeta'] as const,
   conversations: [NAME_SPACE, 'conversations'] as const,
   conversationList: (params: ShareConversationsParams) =>
     [NAME_SPACE, 'conversations', params] as const,
@@ -58,8 +61,9 @@ export const shareQueryKeys = {
 }
 
 export const useGetWebAppAccessModeByCode = (code: string | null) => {
+  const address = resolveWebAppAddress()
   return useQuery({
-    queryKey: shareQueryKeys.appAccessMode(code),
+    queryKey: shareQueryKeys.appAccessMode(address, code),
     queryFn: () => getAppAccessModeByAppCode(code!),
     enabled: !!code,
     staleTime: 0, // backend change the access mode may cause the logic error. Because /permission API is no cached.
@@ -68,8 +72,9 @@ export const useGetWebAppAccessModeByCode = (code: string | null) => {
 }
 
 export const useGetWebAppInfo = () => {
+  const address = resolveWebAppAddress()
   return useQuery({
-    queryKey: shareQueryKeys.appInfo,
+    queryKey: shareQueryKeys.appInfo(address),
     queryFn: () => {
       return fetchAppInfo()
     },
@@ -77,8 +82,9 @@ export const useGetWebAppInfo = () => {
 }
 
 export const useGetWebAppParams = () => {
+  const address = resolveWebAppAddress()
   return useQuery({
-    queryKey: shareQueryKeys.appParams,
+    queryKey: shareQueryKeys.appParams(address),
     queryFn: () => {
       return fetchAppParams(AppSourceType.webApp)
     },
@@ -86,8 +92,9 @@ export const useGetWebAppParams = () => {
 }
 
 export const useGetWebAppMeta = () => {
+  const address = resolveWebAppAddress()
   return useQuery({
-    queryKey: shareQueryKeys.appMeta,
+    queryKey: shareQueryKeys.appMeta(address),
     queryFn: () => {
       return fetchAppMeta(AppSourceType.webApp)
     },

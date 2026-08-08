@@ -5,6 +5,8 @@ import dayjs from 'dayjs'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Badge from '@/app/components/base/badge/index'
+import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { WorkflowVersion } from '../../types'
 import ActionMenu from './action-menu'
 
@@ -53,6 +55,7 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
   const isSelected = item.version === currentVersion?.version
   const isDraft = formattedVersion === WorkflowVersion.Draft
   const isLatest = formattedVersion === WorkflowVersion.Latest
+  const deployedEnvironments = item.environments || []
 
   useEffect(() => {
     if (isDraft) onClick(item)
@@ -105,7 +108,10 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
           >
             {isDraft
               ? t(($) => $['versionHistory.currentDraft'], { ns: 'workflow' })
-              : item.marked_name || t(($) => $['versionHistory.defaultName'], { ns: 'workflow' })}
+              : getWorkflowVersionName(
+                  item,
+                  t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
+                )}
           </div>
           {isLatest && (
             <div className="flex h-5 shrink-0 items-center rounded-md border border-text-accent-secondary bg-components-badge-bg-dimm px-1.25 system-2xs-medium-uppercase text-text-accent-secondary">
@@ -123,11 +129,25 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
             {`${formatTime(item.created_at)} · ${item.created_by.name}`}
           </div>
         )}
+        {!isDraft && deployedEnvironments.length > 0 && (
+          <div className="flex w-full flex-wrap content-start items-start gap-x-1 gap-y-2 pt-0.5">
+            {deployedEnvironments.map((environment) => (
+              <Badge
+                key={environment.id}
+                size="s"
+                className="h-4.5 shrink-0 bg-components-badge-bg-dimm py-0!"
+              >
+                {environment.name}
+              </Badge>
+            ))}
+          </div>
+        )}
       </div>
       {/* Action Menu */}
       {!hideActionMenu && !isDraft && isHovering && (
         <div className="absolute top-1 right-1">
           <ActionMenu
+            workflowId={item.id}
             isShowDelete={!isLatest}
             isNamedVersion={!!item.marked_name}
             canImportExportDSL={canImportExportDSL}

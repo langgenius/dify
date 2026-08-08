@@ -39,8 +39,8 @@ const SecretKeyButton = ({
       <SecretKeyModal
         isShow={isVisible}
         onClose={() => setIsVisible(false)}
-        appId={appId}
         canManage={canManage}
+        scope={appId ? { type: 'app', appId } : { type: 'dataset' }}
       />
     </>
   )

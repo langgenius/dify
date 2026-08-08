@@ -19,11 +19,13 @@ import { useProviderContext } from '@/context/provider-context'
 import ModelIcon from '../../header/account-setting/model-provider-page/model-icon'
 
 type PublishWithMultipleModelProps = {
+  disabled?: boolean
   multipleModelConfigs: ModelAndParameter[]
   // textGenerationModelList?: Model[]
   onSelect: (v: ModelAndParameter) => void
 }
 const PublishWithMultipleModel: FC<PublishWithMultipleModelProps> = ({
+  disabled = false,
   multipleModelConfigs,
   // textGenerationModelList = [],
   onSelect,
@@ -55,13 +57,13 @@ const PublishWithMultipleModel: FC<PublishWithMultipleModelProps> = ({
     }
   })
 
+  const triggerDisabled = disabled || !validModelConfigs.length
+
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
-        disabled={!validModelConfigs.length}
-        render={
-          <Button variant="primary" disabled={!validModelConfigs.length} className="mt-3 w-full" />
-        }
+        disabled={triggerDisabled}
+        render={<Button variant="primary" disabled={triggerDisabled} className="w-full" />}
       >
         <>
           {t(($) => $['operation.applyConfig'], { ns: 'appDebug' })}

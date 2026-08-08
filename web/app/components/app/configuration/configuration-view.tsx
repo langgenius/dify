@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { ConfigurationViewModel } from './hooks/use-configuration'
+import type { ConfigurationViewModel } from './hooks/configuration-view-model'
 import type { InstallBundleCompleteCallback } from '@/app/components/plugins/install-plugin/install-bundle'
 import { CodeBracketIcon } from '@heroicons/react/20/solid'
 import {
@@ -99,6 +99,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
   onCompletionParamsChange,
   onConfirmUseGPT4,
   onEnableMultipleModelDebug,
+  onFeatureStoreChange,
   onFeaturesChange,
   onHideDebugPanel,
   onModelChange,
@@ -145,7 +146,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
 
   return (
     <ConfigContext.Provider value={contextValue}>
-      <FeaturesProvider features={featuresData}>
+      <FeaturesProvider features={featuresData} onFeaturesChange={onFeatureStoreChange}>
         <>
           <div className="flex h-full flex-col">
             <div className="relative flex h-50 grow pt-14">

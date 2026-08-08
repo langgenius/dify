@@ -7,7 +7,7 @@ import { useProviderContext } from '@/context/provider-context'
 import { VersionHistoryContextMenuOptions } from '../../../types'
 
 const useActionMenu = (props: ActionMenuProps) => {
-  const { isNamedVersion, canImportExportDSL } = props
+  const { workflowId, isNamedVersion, canImportExportDSL } = props
   const { t } = useTranslation()
   const pipelineId = useStore((s) => s.pipelineId)
   const { plan, enableBilling } = useProviderContext()
@@ -47,9 +47,10 @@ const useActionMenu = (props: ActionMenuProps) => {
       {
         key: VersionHistoryContextMenuOptions.copyId,
         name: t(($) => $['versionHistory.copyId'], { ns: 'workflow' }),
+        description: workflowId,
       },
     ]
-  }, [canImportExportDSL, isNamedVersion, pipelineId, shouldShowUpgrade, shouldShowUpgrade, t])
+  }, [canImportExportDSL, isNamedVersion, pipelineId, shouldShowUpgrade, t, workflowId])
 
   return {
     deleteOperation,

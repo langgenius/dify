@@ -1147,6 +1147,7 @@ describe('Debug', () => {
             enabled: true,
           }),
         }),
+        { silent: true },
       )
     })
 

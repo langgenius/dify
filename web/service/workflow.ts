@@ -83,10 +83,6 @@ export const getLoopSingleNodeRunUrl = (
   return `${getFlowPrefix(flowType)}/${flowId}/${isChatFlow ? 'advanced-chat/' : ''}workflows/draft/loop/nodes/${nodeId}/run`
 }
 
-export const fetchPublishedWorkflow = (url: string) => {
-  return get<FetchWorkflowDraftResponse | null>(url)
-}
-
 export const stopWorkflowRun = (url: string) => {
   return post<CommonResponse>(url)
 }

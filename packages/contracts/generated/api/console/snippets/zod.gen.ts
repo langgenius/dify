@@ -133,7 +133,7 @@ export const zWorkflowDraftVariableUpdatePayload = z.object({
 export const zPublishWorkflowPayload = z.object({
   knowledge_base_setting: z.record(z.string(), z.unknown()).nullish(),
   marked_comment: z.string().max(100).nullish(),
-  marked_name: z.string().max(20).nullish(),
+  marked_name: z.string().max(50).nullish(),
 })
 
 /**
@@ -149,7 +149,7 @@ export const zWorkflowPublishResponse = z.object({
  */
 export const zWorkflowUpdatePayload = z.object({
   marked_comment: z.string().max(100).nullish(),
-  marked_name: z.string().max(20).nullish(),
+  marked_name: z.string().max(50).nullish(),
 })
 
 /**
@@ -317,6 +317,7 @@ export const zSnippetWorkflowResponse = z.object({
   updated_at: z.int(),
   updated_by: zSimpleAccountResponse.nullish(),
   version: z.string(),
+  version_number: z.int().nullish(),
 })
 
 /**

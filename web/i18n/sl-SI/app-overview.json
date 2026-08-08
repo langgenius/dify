@@ -95,6 +95,7 @@
   "overview.appInfo.settings.more.privacyPolicy": "Politika zasebnosti",
   "overview.appInfo.settings.more.privacyPolicyPlaceholder": "Vnesite povezavo do politike zasebnosti",
   "overview.appInfo.settings.more.privacyPolicyTip": "Pomaga obiskovalcem razumeti, katere podatke aplikacija zbira, glejte <privacyPolicyLink>politiko zasebnosti</privacyPolicyLink> Dify.",
+  "overview.appInfo.settings.multiEnvironmentNotice": "Nastavitve spletne aplikacije veljajo za vsa okolja.",
   "overview.appInfo.settings.sso.description": "Vsi uporabniki morajo pred uporabo spletne aplikacije opraviti prijavo preko SSO",
   "overview.appInfo.settings.sso.label": "SSO avtentikacija",
   "overview.appInfo.settings.sso.title": "SSO spletne aplikacije",

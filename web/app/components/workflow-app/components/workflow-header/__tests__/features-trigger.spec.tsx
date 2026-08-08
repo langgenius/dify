@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import type { AppPublisherProps } from '@/app/components/app/app-publisher'
+import type { AppPublisherProps } from '@/app/components/app/app-publisher/types'
 import type { App } from '@/types/app'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'

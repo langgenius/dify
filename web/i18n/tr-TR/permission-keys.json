@@ -4,6 +4,7 @@
   "app.access_config": "Uygulama erişim izinlerini yapılandır",
   "app.acl.access_config": "Uygulama erişim izinlerini yapılandır",
   "app.acl.delete": "Uygulamayı sil",
+  "app.acl.deploy": "Uygulamayı dağıt",
   "app.acl.edit": "Uygulamayı düzenle ve düzenle",
   "app.acl.import_export_dsl": "DSL içe / dışa aktar",
   "app.acl.log_and_annotation": "Günlüklere ve açıklamalara eriş",
