@@ -30,7 +30,10 @@ from controllers.console.agent.roster import (
     AgentApiStatusApi,
     AgentAppApi,
     AgentAppCopyApi,
+    AgentAppCopyPayload,
+    AgentAppCreatePayload,
     AgentAppListApi,
+    AgentAppUpdatePayload,
     AgentBuildDraftApi,
     AgentBuildDraftApplyApi,
     AgentBuildDraftCheckoutApi,
@@ -40,6 +43,7 @@ from controllers.console.agent.roster import (
     AgentLogsApi,
     AgentLogSourcesApi,
     AgentPublishApi,
+    AgentPublishPayload,
     AgentRosterVersionDetailApi,
     AgentRosterVersionRestoreApi,
     AgentRosterVersionsApi,
@@ -430,7 +434,7 @@ def test_agent_app_list_and_create_use_agent_route(
         json={"name": "Iris", "description": "Agent app", "role": "Coordinator", "icon_type": "emoji", "icon": "robot"},
     ):
         created, status = unwrap(AgentAppListApi.post)(
-            AgentAppListApi(), MagicMock(), "tenant-1", SimpleNamespace(id=account_id)
+            AgentAppListApi(), AgentAppCreatePayload(), MagicMock(), "tenant-1", SimpleNamespace(id=account_id)
         )
     assert status == 201
     assert created["id"] == "agent-created"
@@ -484,7 +488,9 @@ def test_agent_app_create_omits_optional_role_as_empty_string(
         "/console/api/agent",
         json={"name": "No-role Iris", "description": "Agent app", "icon_type": "emoji", "icon": "robot"},
     ):
-        created, status = unwrap(AgentAppListApi.post)(AgentAppListApi(), MagicMock(), "tenant-1", current_user)
+        created, status = unwrap(AgentAppListApi.post)(
+            AgentAppListApi(), AgentAppCreatePayload(), MagicMock(), "tenant-1", current_user
+        )
     assert status == 201
     assert created == {"id": "agent-created", "app_id": "app-created"}
     create_call = cast(dict[str, object], captured["create"])
@@ -566,7 +572,9 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
         "/console/api/agent/00000000-0000-0000-0000-000000000001",
         json={"name": "Renamed", "description": "", "role": "Reviewer", "icon_type": "emoji", "icon": "R"},
     ):
-        updated = unwrap(AgentAppApi.put)(AgentAppApi(), session, tenant_id, SimpleNamespace(id=account_id), agent_id)
+        updated = unwrap(AgentAppApi.put)(
+            AgentAppApi(), AgentAppUpdatePayload(), session, tenant_id, SimpleNamespace(id=account_id), agent_id
+        )
     assert updated["name"] == "Renamed"
     assert updated["id"] == agent_id
     assert updated["app_id"] == app_id
@@ -615,7 +623,7 @@ def test_agent_app_copy_uses_agent_id_and_returns_agent_detail(
         },
     ):
         copied, status = unwrap(AgentAppCopyApi.post)(
-            AgentAppCopyApi(), MagicMock(), "tenant-1", current_user, agent_id
+            AgentAppCopyApi(), AgentAppCopyPayload(), MagicMock(), "tenant-1", current_user, agent_id
         )
     assert status == 201
     assert copied == {"id": "copied-agent", "app_id": "copied-app", "name": "Iris"}
@@ -715,7 +723,9 @@ def test_agent_publish_and_build_draft_routes_call_composer_service(
     with app.test_request_context(
         "/console/api/agent/00000000-0000-0000-0000-000000000001/publish", json={"version_note": "publish v1"}
     ):
-        published = unwrap(AgentPublishApi.post)(AgentPublishApi(), MagicMock(), "tenant-1", current_user, agent_id)
+        published = unwrap(AgentPublishApi.post)(
+            AgentPublishApi(), AgentPublishPayload(), MagicMock(), "tenant-1", current_user, agent_id
+        )
     assert published["active_config_snapshot_id"] == "version-1"
     captured["publish"].pop("session", None)
     assert captured["publish"] == {

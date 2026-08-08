@@ -175,7 +175,7 @@ class TestPaginationMapping:
             patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
             patch("controllers.console.workspace.rbac.svc.RBACService.Roles.list") as mock_list,
         ):
-            response = inspect.unwrap(rbac_mod.RBACRolesApi.get)(rbac_mod.RBACRolesApi())
+            response = inspect.unwrap(rbac_mod.RBACRolesApi.get)(rbac_mod.RBACRolesApi(), _RolesListQuery())
 
         owner_permission_keys = rbac_mod._LEGACY_ROLE_PERMISSION_KEYS["owner"]
         valid_owner_permission_keys = []
@@ -230,7 +230,7 @@ class TestPaginationMapping:
             patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
             patch("controllers.console.workspace.rbac.svc.RBACService.Roles.list"),
         ):
-            response = inspect.unwrap(rbac_mod.RBACRolesApi.get)(rbac_mod.RBACRolesApi())
+            response = inspect.unwrap(rbac_mod.RBACRolesApi.get)(rbac_mod.RBACRolesApi(), _RolesListQuery())
 
         names = [r["name"] for r in response["data"]]
         assert "owner" not in names
@@ -242,7 +242,7 @@ class TestPaginationMapping:
             patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
             patch("controllers.console.workspace.rbac.svc.RBACService.Roles.list"),
         ):
-            response = inspect.unwrap(rbac_mod.RBACRolesApi.get)(rbac_mod.RBACRolesApi())
+            response = inspect.unwrap(rbac_mod.RBACRolesApi.get)(rbac_mod.RBACRolesApi(), _RolesListQuery())
 
         names = [r["name"] for r in response["data"]]
         assert "owner" in names
@@ -254,7 +254,7 @@ class TestPaginationMapping:
             patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
             patch("controllers.console.workspace.rbac.svc.RBACService.Roles.list"),
         ):
-            response = inspect.unwrap(rbac_mod.RBACRolesApi.get)(rbac_mod.RBACRolesApi())
+            response = inspect.unwrap(rbac_mod.RBACRolesApi.get)(rbac_mod.RBACRolesApi(), _RolesListQuery())
 
         names = [r["name"] for r in response["data"]]
         assert "owner" not in names
@@ -267,7 +267,7 @@ class TestPaginationMapping:
             patch("controllers.console.workspace.rbac.svc.RBACService.Roles.list") as mock_list,
             patch("controllers.console.workspace.rbac._dump", return_value={}),
         ):
-            inspect.unwrap(rbac_mod.RBACRolesApi.get)(rbac_mod.RBACRolesApi())
+            inspect.unwrap(rbac_mod.RBACRolesApi.get)(rbac_mod.RBACRolesApi(), _RolesListQuery())
 
         _, kwargs = mock_list.call_args
         options = kwargs["options"]
