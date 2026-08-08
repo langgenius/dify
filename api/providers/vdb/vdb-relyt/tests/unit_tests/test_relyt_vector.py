@@ -266,6 +266,31 @@ def test_similarity_search_with_score_by_vector(relyt_module):
     assert similarities[0][0].page_content == "doc-a"
 
 
+def test_similarity_search_metadata_filter_sql_quotes_key_once(relyt_module):
+    """Regression for #39476: metadata keys must not be double-quoted via !r."""
+    vector = relyt_module.RelytVector.__new__(relyt_module.RelytVector)
+    vector._collection_name = "collection_1"
+    vector.client = MagicMock()
+    vector.embedding_dimension = 3
+    conn = MagicMock()
+    conn.__enter__.return_value = conn
+    conn.__exit__.return_value = None
+    conn.execute.return_value.fetchall.return_value = []
+    vector.client.connect.return_value = conn
+
+    vector.similarity_search_with_score_by_vector(
+        [0.1, 0.2],
+        k=2,
+        filter={"document_id": ["d-1"], "source": ["a", "b"]},
+    )
+
+    sql = conn.execute.call_args.args[0].text
+    assert "metadata->>'document_id' = 'd-1'" in sql
+    assert "metadata->>'source' in ('a', 'b')" in sql
+    assert "metadata->>''document_id''" not in sql
+    assert "metadata->>''source''" not in sql
+
+
 # 7. search_by_vector filters by score and ids
 def test_search_by_vector_filters_by_score_and_ids(relyt_module):
     vector = relyt_module.RelytVector.__new__(relyt_module.RelytVector)
