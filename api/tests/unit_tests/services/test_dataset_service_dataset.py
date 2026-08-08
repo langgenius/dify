@@ -1411,6 +1411,55 @@ class TestDatasetServiceRagPipelineSettings:
 class TestDatasetServicePermissionsAndLifecycle:
     """Unit tests for dataset permissions, deletion, and metadata helpers."""
 
+    @staticmethod
+    def _only_me_dataset():
+        return SimpleNamespace(
+            id="dataset-1",
+            tenant_id="tenant-1",
+            permission=DatasetPermissionEnum.ONLY_ME,
+            maintainer="owner-1",
+        )
+
+    @staticmethod
+    def _member(tenant_id: str = "tenant-1"):
+        return SimpleNamespace(id="member-1", current_tenant_id=tenant_id, current_role=TenantAccountRole.NORMAL)
+
+    def test_check_dataset_permission_defers_to_rbac_when_enabled(self):
+        # RBAC owns per-resource access, so the legacy permission column must not shadow it.
+        with patch("services.dataset_service.dify_config.RBAC_ENABLED", True):
+            DatasetService.check_dataset_permission(self._only_me_dataset(), self._member(), MagicMock())
+
+    def test_check_dataset_permission_still_rejects_cross_tenant_access_when_rbac_enabled(self):
+        with (
+            patch("services.dataset_service.dify_config.RBAC_ENABLED", True),
+            pytest.raises(NoPermissionError),
+        ):
+            DatasetService.check_dataset_permission(
+                self._only_me_dataset(), self._member(tenant_id="tenant-2"), MagicMock()
+            )
+
+    def test_check_dataset_permission_keeps_legacy_rules_when_rbac_disabled(self):
+        with (
+            patch("services.dataset_service.dify_config.RBAC_ENABLED", False),
+            pytest.raises(NoPermissionError),
+        ):
+            DatasetService.check_dataset_permission(self._only_me_dataset(), self._member(), MagicMock())
+
+    def test_check_dataset_operator_permission_defers_to_rbac_when_enabled(self):
+        with patch("services.dataset_service.dify_config.RBAC_ENABLED", True):
+            DatasetService.check_dataset_operator_permission(
+                user=self._member(), dataset=self._only_me_dataset(), session=MagicMock()
+            )
+
+    def test_check_dataset_operator_permission_keeps_legacy_rules_when_rbac_disabled(self):
+        with (
+            patch("services.dataset_service.dify_config.RBAC_ENABLED", False),
+            pytest.raises(NoPermissionError),
+        ):
+            DatasetService.check_dataset_operator_permission(
+                user=self._member(), dataset=self._only_me_dataset(), session=MagicMock()
+            )
+
     def test_check_dataset_operator_permission_validates_required_arguments(self):
         session = MagicMock()
 

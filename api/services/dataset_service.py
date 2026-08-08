@@ -1375,6 +1375,11 @@ class DatasetService:
         if dataset.tenant_id != user.current_tenant_id:
             logger.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
             raise NoPermissionError("You do not have permission to access this dataset.")
+        if dify_config.RBAC_ENABLED:
+            # RBAC mode: access is enforced by @rbac_permission_required and the per-resource RBAC
+            # whitelist, same as the RBAC branch in get_datasets. The legacy permission column is not
+            # maintained by the RBAC access config, so applying it here would shadow the whitelist.
+            return
         if user.current_role != TenantAccountRole.OWNER:
             if dataset.permission == DatasetPermissionEnum.ONLY_ME and dataset.maintainer != user.id:
                 logger.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
@@ -1400,6 +1405,10 @@ class DatasetService:
 
         if not user:
             raise ValueError("User not found")
+
+        if dify_config.RBAC_ENABLED:
+            # See check_dataset_permission: RBAC owns per-resource access in RBAC mode.
+            return
 
         if user.current_role != TenantAccountRole.OWNER:
             if dataset.permission == DatasetPermissionEnum.ONLY_ME:
