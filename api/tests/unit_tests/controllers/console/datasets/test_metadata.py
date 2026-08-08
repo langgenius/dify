@@ -140,7 +140,9 @@ class TestDatasetMetadataApi:
                 return_value={"id": "m1", "type": "string", "name": "updated-name"},
             ),
         ):
-            result, status = method(api, MetadataUpdatePayload(), MagicMock(), "tenant-1", current_user, dataset_id, metadata_id)
+            result, status = method(
+                api, MetadataUpdatePayload(), MagicMock(), "tenant-1", current_user, dataset_id, metadata_id
+            )
         assert status == 200
         assert result["type"] == "string"
         assert result["name"] == "updated-name"

@@ -16,7 +16,6 @@ from controllers.console.app.generator import (
     InstructionTemplatePayload,
     RuleCodeGeneratePayload,
     RuleGeneratePayload,
-    RuleStructuredOutputPayload,
     WorkflowGeneratePayload,
     WorkflowInstructionSuggestionsPayload,
 )

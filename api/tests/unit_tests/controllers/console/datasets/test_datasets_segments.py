@@ -747,7 +747,9 @@ class TestChildChunkAddApi:
                 return_value=child_chunk,
             ),
         ):
-            response, status = method(api, ChildChunkCreatePayload(), MagicMock(), "tenant-1", user, "ds-1", "doc-1", "seg-1")
+            response, status = method(
+                api, ChildChunkCreatePayload(), MagicMock(), "tenant-1", user, "ds-1", "doc-1", "seg-1"
+            )
         assert status == 200
         assert response["data"]["id"] == "cc-1"
 
