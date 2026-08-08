@@ -189,6 +189,8 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                     from_source=from_source,
                     from_end_user_id=end_user_id,
                     from_account_id=account_id,
+                    created_at=naive_utc_now(),
+                    updated_at=naive_utc_now(),
                 )
 
                 session.add(conversation)
@@ -222,6 +224,8 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                 from_end_user_id=end_user_id,
                 from_account_id=account_id,
                 app_mode=app_config.app_mode,
+                created_at=naive_utc_now(),
+                updated_at=naive_utc_now(),
             )
 
             session.add(message)
@@ -239,6 +243,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                     upload_file_id=resolve_file_record_id(file.reference),
                     created_by_role=(CreatorUserRole.ACCOUNT if account_id else CreatorUserRole.END_USER),
                     created_by=account_id or end_user_id or "",
+                    created_at=naive_utc_now(),
                 )
                 message_files.append(message_file)
 
