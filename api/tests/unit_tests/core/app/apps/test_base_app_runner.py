@@ -133,6 +133,33 @@ class TestAppRunner:
 
         assert runner.recalc_llm_max_tokens(model_config, prompt_messages=[]) == -1
 
+    def test_recalc_llm_max_tokens_can_update_runtime_parameters(self, monkeypatch: pytest.MonkeyPatch):
+        runner = AppRunner()
+        model_schema = AIModelEntity.model_construct(
+            model_properties={ModelPropertyKey.CONTEXT_SIZE: 100},
+            parameter_rules=[_DummyParameterRule("max_tokens")],
+        )
+        model_config = ModelConfigWithCredentialsEntity.model_construct(
+            provider_model_bundle=object(),
+            model="mock",
+            model_schema=model_schema,
+            parameters={"max_tokens": 30},
+        )
+        runtime_parameters = {"max_tokens": 40}
+        monkeypatch.setattr(
+            "core.app.apps.base_app_runner.ModelInstance",
+            lambda provider_model_bundle, model: _TokenCountingModel(80),
+        )
+
+        runner.recalc_llm_max_tokens(
+            model_config,
+            prompt_messages=[AssistantPromptMessage(content="hi")],
+            model_parameters=runtime_parameters,
+        )
+
+        assert runtime_parameters["max_tokens"] == 20
+        assert model_config.parameters["max_tokens"] == 30
+
     def test_direct_output_streaming_publishes_chunks_and_end(self):
         runner = AppRunner()
         queue = _queue_manager()

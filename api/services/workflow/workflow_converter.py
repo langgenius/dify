@@ -135,7 +135,46 @@ class WorkflowConverter:
             app_model=app_model, app_model_config=app_model_config, session=session
         )
 
-        # init workflow graph
+        graph, features = self.build_graph_from_app_config(
+            app_model=app_model,
+            app_config=app_config,
+            target_app_mode=new_app_mode,
+            session=session,
+        )
+
+        # create workflow record
+        workflow = Workflow(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            type=WorkflowType.from_app_mode(new_app_mode).value,
+            version=Workflow.VERSION_DRAFT,
+            graph=json.dumps(graph),
+            features=json.dumps(features),
+            created_by=account_id,
+            environment_variables=[],
+            conversation_variables=[],
+        )
+
+        session.add(workflow)
+        session.commit()
+
+        return workflow
+
+    def build_graph_from_app_config(
+        self,
+        *,
+        app_model: App,
+        app_config: EasyUIBasedAppConfig,
+        target_app_mode: AppMode,
+        session: Session,
+        use_sys_query_for_external_data: bool = False,
+    ) -> tuple[WorkflowGraph, dict[str, Any]]:
+        """
+        Build a workflow graph from an EasyUI app config without persisting it.
+
+        This is shared by the persisted app-conversion flow and runtime-only
+        execution paths that need a graph but must not create a Workflow row.
+        """
         graph: WorkflowGraph = {"nodes": [], "edges": []}
 
         # Convert list:
@@ -160,6 +199,7 @@ class WorkflowConverter:
                 variables=app_config.variables,
                 external_data_variables=app_config.external_data_variables,
                 session=session,
+                use_sys_query=use_sys_query_for_external_data,
             )
 
             for http_request_node in http_request_nodes:
@@ -168,7 +208,7 @@ class WorkflowConverter:
         # convert to knowledge retrieval node
         if app_config.dataset:
             knowledge_retrieval_node = self._convert_to_knowledge_retrieval_node(
-                new_app_mode=new_app_mode, dataset_config=app_config.dataset, model_config=app_config.model
+                new_app_mode=target_app_mode, dataset_config=app_config.dataset, model_config=app_config.model
             )
 
             if knowledge_retrieval_node:
@@ -177,7 +217,7 @@ class WorkflowConverter:
         # convert to llm node
         llm_node = self._convert_to_llm_node(
             original_app_mode=AppMode.value_of(app_model.mode),
-            new_app_mode=new_app_mode,
+            new_app_mode=target_app_mode,
             graph=graph,
             model_config=app_config.model,
             prompt_template=app_config.prompt_template,
@@ -189,7 +229,7 @@ class WorkflowConverter:
 
         app_model_config_dict = app_config.app_model_config_dict
 
-        match new_app_mode:
+        match target_app_mode:
             case AppMode.WORKFLOW:
                 end_node = self._convert_to_end_node()
                 graph = self._append_node(graph, end_node)
@@ -220,23 +260,7 @@ class WorkflowConverter:
                     "sensitive_word_avoidance": app_model_config_dict.get("sensitive_word_avoidance"),
                 }
 
-        # create workflow record
-        workflow = Workflow(
-            tenant_id=app_model.tenant_id,
-            app_id=app_model.id,
-            type=WorkflowType.from_app_mode(new_app_mode).value,
-            version=Workflow.VERSION_DRAFT,
-            graph=json.dumps(graph),
-            features=json.dumps(features),
-            created_by=account_id,
-            environment_variables=[],
-            conversation_variables=[],
-        )
-
-        session.add(workflow)
-        session.commit()
-
-        return workflow
+        return graph, features
 
     def _convert_to_app_config(
         self, app_model: App, app_model_config: AppModelConfig, *, session: Session
@@ -298,6 +322,7 @@ class WorkflowConverter:
         variables: list[VariableEntity],
         external_data_variables: list[ExternalDataVariableEntity],
         session: Session,
+        use_sys_query: bool = False,
     ) -> tuple[list[_NodeType], dict[str, str]]:
         """
         Convert API Based Extension to HTTP Request Node
@@ -341,7 +366,7 @@ class WorkflowConverter:
                     "app_id": app_model.id,
                     "tool_variable": tool_variable,
                     "inputs": inputs,
-                    "query": "{{#sys.query#}}" if app_model.mode == AppMode.CHAT else "",
+                    "query": "{{#sys.query#}}" if use_sys_query or app_model.mode == AppMode.CHAT else "",
                 },
             }
 
@@ -573,8 +598,7 @@ class WorkflowConverter:
         if new_app_mode == AppMode.ADVANCED_CHAT:
             memory = {"role_prefix": role_prefix, "window": {"enabled": False}}
 
-        completion_params = model_config.parameters
-        completion_params.update({"stop": model_config.stop})
+        completion_params = {**model_config.parameters, "stop": model_config.stop}
         return {
             "id": "llm",
             "position": None,

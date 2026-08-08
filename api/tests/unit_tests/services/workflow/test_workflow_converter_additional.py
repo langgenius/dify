@@ -131,7 +131,15 @@ def test__convert_to_http_request_node_for_chatbot(default_variables: list[Varia
     assert mapping == {"external_variable": "code_1"}
 
 
-def test__convert_to_http_request_node_for_workflow_app(default_variables: list[VariableEntity]) -> None:
+@pytest.mark.parametrize(
+    ("use_sys_query", "expected_query"),
+    [(False, ""), (True, "{{#sys.query#}}")],
+)
+def test__convert_to_http_request_node_for_workflow_app(
+    default_variables: list[VariableEntity],
+    use_sys_query: bool,
+    expected_query: str,
+) -> None:
     app_model = MagicMock()
     app_model.id = "app_id"
     app_model.tenant_id = "tenant_id"
@@ -162,10 +170,11 @@ def test__convert_to_http_request_node_for_workflow_app(default_variables: list[
         variables=default_variables,
         external_data_variables=external_data_variables,
         session=MagicMock(),
+        use_sys_query=use_sys_query,
     )
 
     body = json.loads(nodes[0]["data"]["body"]["data"])
-    assert body["params"]["query"] == ""
+    assert body["params"]["query"] == expected_query
 
 
 def test__convert_to_knowledge_retrieval_node_for_chatbot() -> None:
@@ -219,7 +228,13 @@ def test__convert_to_knowledge_retrieval_node_for_workflow_app() -> None:
 def test__convert_to_llm_node_for_chatbot_simple_chat_model(default_variables: list[VariableEntity]) -> None:
     workflow_converter = WorkflowConverter()
     graph = {"nodes": [workflow_converter._convert_to_start_node(default_variables)], "edges": []}
-    model_config = ModelConfigEntity(provider="openai", model="gpt-4", mode=LLMMode.CHAT.value, parameters={}, stop=[])
+    model_config = ModelConfigEntity(
+        provider="openai",
+        model="gpt-4",
+        mode=LLMMode.CHAT.value,
+        parameters={"temperature": 0.2},
+        stop=["END"],
+    )
     prompt_template = PromptTemplateEntity(
         prompt_type=PromptTemplateEntity.PromptType.SIMPLE,
         simple_prompt_template="You are a helper for {{text_input}} and {{paragraph}}",
@@ -237,6 +252,8 @@ def test__convert_to_llm_node_for_chatbot_simple_chat_model(default_variables: l
     assert node["data"]["memory"] is not None
     assert node["data"]["prompt_template"][0]["role"] == "user"
     assert "{{#start.text_input#}}" in node["data"]["prompt_template"][0]["text"]
+    assert node["data"]["model"]["completion_params"] == {"temperature": 0.2, "stop": ["END"]}
+    assert model_config.parameters == {"temperature": 0.2}
 
 
 def test__convert_to_llm_node_for_chatbot_simple_chat_model_with_empty_template(
@@ -597,6 +614,94 @@ def test_convert_app_model_config_to_workflow_should_build_workflow_mode_with_en
 
     features = json.loads(workflow.features)
     assert set(features.keys()) == {"text_to_speech", "file_upload", "sensitive_word_avoidance"}
+
+
+def test_build_graph_from_app_config_for_completion_does_not_create_workflow(
+    converter: WorkflowConverter,
+) -> None:
+    app_model = _app_model(id="app-1", tenant_id="tenant-1", mode=AppMode.COMPLETION)
+    app_config = SimpleNamespace(
+        variables=[],
+        external_data_variables=[],
+        dataset=None,
+        model=_build_model_config(mode=LLMMode.CHAT),
+        prompt_template=PromptTemplateEntity(
+            prompt_type=PromptTemplateEntity.PromptType.SIMPLE,
+            simple_prompt_template="Hello",
+        ),
+        additional_features=None,
+        app_model_config_dict={
+            "text_to_speech": {"enabled": False},
+            "file_upload": {"enabled": False},
+            "sensitive_word_avoidance": {"enabled": False},
+        },
+    )
+    db_session = SimpleNamespace(add=MagicMock(), commit=MagicMock())
+
+    graph, features = converter.build_graph_from_app_config(
+        app_model=app_model,
+        app_config=app_config,
+        target_app_mode=AppMode.WORKFLOW,
+        session=db_session,
+    )
+
+    assert [node["id"] for node in graph["nodes"]] == ["start", "llm", "end"]
+    assert features == {
+        "text_to_speech": {"enabled": False},
+        "file_upload": {"enabled": False},
+        "sensitive_word_avoidance": {"enabled": False},
+    }
+    db_session.add.assert_not_called()
+    db_session.commit.assert_not_called()
+
+
+def test_build_graph_from_app_config_preserves_api_based_variable_nodes(
+    converter: WorkflowConverter,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app_model = _app_model(id="app-1", tenant_id="tenant-1", mode=AppMode.COMPLETION)
+    app_config = SimpleNamespace(
+        variables=[VariableEntity(variable="city", label="City", type=VariableEntityType.TEXT_INPUT)],
+        external_data_variables=[
+            ExternalDataVariableEntity(
+                variable="weather",
+                type="api",
+                config={"api_based_extension_id": "api_based_extension_id"},
+            )
+        ],
+        dataset=None,
+        model=_build_model_config(mode=LLMMode.CHAT),
+        prompt_template=PromptTemplateEntity(
+            prompt_type=PromptTemplateEntity.PromptType.SIMPLE,
+            simple_prompt_template="Weather: {{weather}}",
+        ),
+        additional_features=None,
+        app_model_config_dict={},
+    )
+    extension = SimpleNamespace(
+        name="Weather API",
+        api_endpoint="https://example.com/weather",
+        api_key="encrypted-token",
+    )
+    monkeypatch.setattr(converter, "_get_api_based_extension", MagicMock(return_value=extension))
+    monkeypatch.setattr(converter_module.encrypter, "decrypt_token", MagicMock(return_value="plain-token"))
+
+    graph, _ = converter.build_graph_from_app_config(
+        app_model=app_model,
+        app_config=app_config,
+        target_app_mode=AppMode.WORKFLOW,
+        session=MagicMock(),
+    )
+
+    assert [node["data"]["type"] for node in graph["nodes"]] == [
+        BuiltinNodeTypes.START,
+        BuiltinNodeTypes.HTTP_REQUEST,
+        BuiltinNodeTypes.CODE,
+        BuiltinNodeTypes.LLM,
+        BuiltinNodeTypes.END,
+    ]
+    llm_node = next(node for node in graph["nodes"] if node["id"] == "llm")
+    assert "{{#code_1.result#}}" in llm_node["data"]["prompt_template"][0]["text"]
 
 
 def test_convert_to_app_config_should_route_to_correct_manager(
