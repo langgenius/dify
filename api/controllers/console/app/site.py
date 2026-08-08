@@ -17,6 +17,7 @@ from controllers.console.wraps import (
     account_initialization_required,
     edit_permission_required,
     is_admin_or_owner_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_user,
@@ -123,7 +124,7 @@ class AppSite(Resource):
             "show_workflow_steps",
             "use_icon_as_answer_icon",
         ]:
-            value = getattr(args, attr_name)
+            value = getattr(req_data, attr_name)
             if value is not None:
                 setattr(site, attr_name, value)
 

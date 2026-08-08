@@ -49,7 +49,7 @@ from controllers.console.explore.error import (
 from controllers.console.explore.wraps import TrialAppResource
 from controllers.console.files import FILE_UPLOAD_PARAMS, upload_file_from_request
 from controllers.console.remote_files import RemoteFileUploadPayload, upload_remote_file_from_request
-from controllers.console.wraps import cloud_edition_billing_resource_check, with_current_user
+from controllers.console.wraps import cloud_edition_billing_resource_check, model_validate, with_current_user
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from core.app.apps.base_app_queue_manager import AppQueueManager

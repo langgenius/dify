@@ -11,7 +11,7 @@ from werkzeug.exceptions import NotFound
 from configs import dify_config
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.wraps import RBACPermission, RBACResourceScope, rbac_permission_required
+from controllers.console.wraps import RBACPermission, RBACResourceScope, model_validate, rbac_permission_required
 from core.db.session_factory import session_factory
 from core.rbac import RBACResourceWhitelistScope
 from extensions.ext_database import db

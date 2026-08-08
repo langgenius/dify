@@ -12,6 +12,7 @@ from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
     edit_permission_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_user,

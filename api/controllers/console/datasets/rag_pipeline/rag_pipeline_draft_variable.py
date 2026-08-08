@@ -24,7 +24,7 @@ from controllers.console.app.workflow_draft_variable import (
     workflow_draft_variable_model,
 )
 from controllers.console.datasets.wraps import get_rag_pipeline
-from controllers.console.wraps import account_initialization_required, setup_required, with_current_user
+from controllers.console.wraps import account_initialization_required, model_validate, setup_required, with_current_user
 from core.app.file_access import DatabaseFileAccessController
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable, environment_variable_value_type
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID

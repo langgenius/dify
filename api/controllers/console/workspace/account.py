@@ -41,6 +41,7 @@ from controllers.console.wraps import (
     cloud_edition_billing_enabled,
     enable_change_email,
     enterprise_license_required,
+    model_validate,
     only_edition_cloud,
     setup_required,
     with_current_user,

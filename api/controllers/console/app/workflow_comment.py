@@ -10,6 +10,7 @@ from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     account_initialization_required,
     edit_permission_required,
+    model_validate,
     setup_required,
     with_current_tenant_id,
     with_current_user,

@@ -36,6 +36,7 @@ from controllers.console.wraps import (
     cloud_edition_billing_knowledge_limit_check,
     cloud_edition_billing_rate_limit_check,
     cloud_edition_billing_resource_check,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_tenant_id,

@@ -14,6 +14,7 @@ from ...common.schema import DEFAULT_REF_TEMPLATE_OPENAPI_3_0
 from .. import console_ns
 from ..wraps import (
     account_initialization_required,
+    model_validate,
     only_edition_cloud,
     setup_required,
     with_current_tenant_id,

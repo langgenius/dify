@@ -17,7 +17,12 @@ from controllers.console.app.error import (
     ProviderQuotaExceededError,
 )
 from controllers.console.app.wraps import with_session
-from controllers.console.wraps import account_initialization_required, setup_required, with_current_tenant_id
+from controllers.console.wraps import (
+    account_initialization_required,
+    model_validate,
+    setup_required,
+    with_current_tenant_id,
+)
 from core.app.app_config.entities import ModelConfig
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.helper.code_executor.code_node_provider import CodeNodeProvider
@@ -242,7 +247,7 @@ class RuleGenerateApi(Resource):
     def post(self, req_data: RuleGeneratePayload, current_tenant_id: str):
 
         try:
-            rules = LLMGenerator.generate_rule_config(tenant_id=current_tenant_id, args=args)
+            rules = LLMGenerator.generate_rule_config(tenant_id=current_tenant_id, args=req_data)
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
@@ -497,7 +502,7 @@ class WorkflowGenerateApi(Resource):
 
         # Reject empty / over-length instructions at the boundary (shared with
         # the streaming endpoint) before spending a planner+builder roundtrip.
-        guard = _workflow_instruction_guard(args)
+        guard = _workflow_instruction_guard(req_data)
         if guard is not None:
             return guard
 
@@ -588,7 +593,7 @@ class WorkflowGenerateStreamApi(Resource):
 
         # Same boundary guards as the blocking endpoint — return a normal 400
         # JSON for these BEFORE opening the stream.
-        guard = _workflow_instruction_guard(args)
+        guard = _workflow_instruction_guard(req_data)
         if guard is not None:
             return guard
 

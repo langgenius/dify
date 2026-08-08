@@ -36,6 +36,7 @@ from controllers.console.snippets.snippet_workflow import get_snippet
 from controllers.console.wraps import (
     account_initialization_required,
     edit_permission_required,
+    model_validate,
     setup_required,
     with_current_user,
 )

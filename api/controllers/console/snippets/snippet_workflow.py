@@ -36,6 +36,7 @@ from controllers.console.wraps import (
     RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_user,
@@ -747,7 +748,7 @@ class SnippetDraftRunLoopNodeApi(Resource):
                 snippet=snippet,
                 user=current_user,
                 node_id=node_id,
-                args=args,
+                args=req_data,
                 streaming=True,
                 session_maker=_snippet_session_maker(),
             )

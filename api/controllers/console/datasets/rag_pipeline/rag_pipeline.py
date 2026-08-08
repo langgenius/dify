@@ -20,6 +20,7 @@ from controllers.console.wraps import (
     account_initialization_required,
     enterprise_license_required,
     knowledge_pipeline_publish_enabled,
+    model_validate,
     setup_required,
     with_current_tenant_id,
     with_current_user,

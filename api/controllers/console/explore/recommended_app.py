@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, RootModel, computed_field, field_validato
 from constants.languages import languages
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.wraps import account_initialization_required, with_current_user
+from controllers.console.wraps import account_initialization_required, model_validate, with_current_user
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.helper import build_icon_url, dump_response

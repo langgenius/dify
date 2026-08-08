@@ -16,6 +16,7 @@ from controllers.console.wraps import (
     RBACPermission,
     RBACResourceScope,
     account_initialization_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_tenant_id,

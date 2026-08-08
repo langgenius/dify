@@ -10,6 +10,7 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_import import RagPip
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_rate_limit_check,
+    model_validate,
     setup_required,
     with_current_tenant_id,
     with_current_user,
