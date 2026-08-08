@@ -2937,3 +2937,59 @@ class TestIsEmailSendIpLimit:
             patch.object(dify_config, "EMAIL_SEND_IP_LIMIT_PER_MINUTE", 60),
         ):
             assert AccountService.is_email_send_ip_limit("1.2.3.4") is False
+
+
+class TestTokenGeneratorsDoNotShareState:
+    """The token generators must not use a mutable default for `additional_data`.
+
+    A `dict` default is created once when the function is defined and shared by
+    every call that omits the argument. These generators wrote `additional_data["code"]`
+    into it, so concurrent requests inside one gevent worker mutated the same dict
+    between the write and `TokenManager.generate_token` reading it.
+    """
+
+    GENERATORS = [
+        pytest.param(
+            AccountService.generate_reset_password_token,
+            id="generate_reset_password_token",
+        ),
+        pytest.param(
+            AccountService.generate_email_register_token,
+            id="generate_email_register_token",
+        ),
+        pytest.param(
+            AccountService.generate_owner_transfer_token,
+            id="generate_owner_transfer_token",
+        ),
+    ]
+    EMAIL = "a@example.com"
+
+    @pytest.mark.parametrize("generator", GENERATORS)
+    def test_default_argument_is_not_mutated(self, generator) -> None:
+        defaults = generator.__func__.__defaults__
+
+        with patch("services.account_service.TokenManager.generate_token", return_value="tok"):
+            generator(email=self.EMAIL, code="111111")
+
+        for default in defaults or ():
+            assert default != {"code": "111111"}, (
+                f"{generator.__name__} mutated its default argument; the dict is shared across calls"
+            )
+
+    @pytest.mark.parametrize("generator", GENERATORS)
+    def test_caller_dict_is_not_mutated(self, generator) -> None:
+        caller_data = {"origin": "web"}
+
+        with patch("services.account_service.TokenManager.generate_token", return_value="tok"):
+            generator(email=self.EMAIL, code="222222", additional_data=caller_data)
+
+        assert caller_data == {"origin": "web"}, f"{generator.__name__} wrote into the caller's dict"
+
+    @pytest.mark.parametrize("generator", GENERATORS)
+    def test_code_still_reaches_the_token(self, generator) -> None:
+        with patch("services.account_service.TokenManager.generate_token", return_value="tok") as generate:
+            code, token = generator(email=self.EMAIL, code="333333")
+
+        assert code == "333333"
+        assert token == "tok"
+        assert generate.call_args.kwargs["additional_data"]["code"] == "333333"
