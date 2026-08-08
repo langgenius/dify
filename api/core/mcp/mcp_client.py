@@ -6,11 +6,12 @@ from types import TracebackType
 from typing import Any
 from urllib.parse import urlparse
 
+import httpx
 from flask import has_request_context, request
 
 from core.mcp.client.sse_client import sse_client
 from core.mcp.client.streamable_client import streamablehttp_client
-from core.mcp.error import MCPConnectionError
+from core.mcp.error import MCPAuthError, MCPConnectionError
 from core.mcp.session.client_session import ClientSession
 from core.mcp.types import CallToolResult, Tool
 
@@ -58,7 +59,7 @@ class MCPClient:
     def _initialize(
         self,
     ):
-        """Initialize the client with fallback to SSE if streamable connection fails"""
+        """Initialize the client, preferring streamable-http when the URL path is ambiguous."""
         connection_methods: dict[str, Callable[..., AbstractContextManager[Any]]] = {
             "mcp": streamablehttp_client,
             "sse": sse_client,
@@ -72,11 +73,19 @@ class MCPClient:
             self.connect_server(client_factory, method_name)
         else:
             try:
-                logger.debug("Not supported method %s found in URL path, trying default 'mcp' method.", method_name)
-                self.connect_server(sse_client, "sse")
-            except (MCPConnectionError, ValueError):
-                logger.debug("MCP connection failed with 'sse', falling back to 'mcp' method.")
+                logger.debug(
+                    "Not supported method %s found in URL path, trying streamable-http first.",
+                    method_name,
+                )
                 self.connect_server(streamablehttp_client, "mcp")
+            except MCPAuthError:
+                raise
+            except (MCPConnectionError, ValueError, httpx.TransportError) as error:
+                logger.debug(
+                    "MCP connection failed with streamable-http, falling back to 'sse' method: %s",
+                    error,
+                )
+                self.connect_server(sse_client, "sse")
 
     def connect_server(self, client_factory: Callable[..., AbstractContextManager[Any]], method_name: str) -> None:
         """
