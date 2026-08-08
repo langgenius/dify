@@ -300,7 +300,7 @@ Convert text to speech.
 
 | Code | Description |
 | ---- | ----------- |
-| 200 | Returns the generated audio. Generator responses are streamed by the service as `audio/mpeg`; otherwise the provider output is returned directly. |
+| 200 | Returns the generated audio. Generator responses are streamed by the service with the content type sniffed from the audio bytes (`audio/wav`, `audio/mpeg`, `audio/ogg`, or `audio/flac`); otherwise the provider output is returned directly. |
 | 400 | - `app_unavailable` : App unavailable or misconfigured. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model does not support this operation. - `completion_request_error` : Text-to-speech request failed. |
 | 401 | Unauthorized - invalid API token |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |

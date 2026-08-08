@@ -151,7 +151,8 @@ class TextApi(Resource):
         tags=["TTS"],
         responses={
             200: (
-                "Returns the generated audio. Generator responses are streamed by the service as `audio/mpeg`; "
+                "Returns the generated audio. Generator responses are streamed by the service with the content "
+                "type sniffed from the audio bytes (`audio/wav`, `audio/mpeg`, `audio/ogg`, or `audio/flac`); "
                 "otherwise the provider output is returned directly."
             ),
             400: (
@@ -165,7 +166,10 @@ class TextApi(Resource):
         },
     )
     @expect_with_user(service_api_ns, TextToAudioPayload)
-    @binary_response(service_api_ns, "audio/mpeg")
+    # Keep a single octet-stream media type here: the TS contract codegen
+    # crashes on a response that lists several schema-less audio types, and the
+    # sniffed types are already spelled out in the 200 description above.
+    @binary_response(service_api_ns, "application/octet-stream")
     @service_api_ns.doc("text_to_audio")
     @service_api_ns.doc(description="Convert text to audio using text-to-speech")
     @service_api_ns.doc(
