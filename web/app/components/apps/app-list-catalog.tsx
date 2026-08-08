@@ -13,13 +13,13 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { InfiniteScrollSentinel } from '@/app/components/base/infinite-scroll-sentinel'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
 import { AppCard } from './app-card'
 import { AppCardSkeleton } from './app-card-skeleton'
-import { AppListInfiniteScrollSentinel } from './app-list-infinite-scroll-sentinel'
 import { APP_LIST_GRID_CLASS_NAME } from './constants'
 import Empty from './empty'
 import FirstEmptyState from './first-empty-state'
@@ -30,6 +30,9 @@ import { StarredAppList } from './starred-app-list'
 const STARRED_APP_LIMIT = 100
 const STEP_BY_STEP_TOUR_APP_ROW_CARD_COUNT = 4
 const emptyStarredApps: AppPartial[] = []
+
+const getPreloadDistance = (scrollContainer: Element) =>
+  Math.max(160, Math.min(scrollContainer.clientHeight * 0.25, 320))
 
 type AppListQuery = NonNullable<GetAppsData['query']>
 
@@ -205,10 +208,13 @@ function AppListCatalogContent({
             )}
             {hasNextPage && (
               <div className="relative col-span-full">
-                <AppListInfiniteScrollSentinel
+                <InfiniteScrollSentinel
                   canLoadMore={!isFetching && !isFetchNextPageError}
-                  fetchNextPage={onFetchNextPage}
-                  scrollViewportRef={scrollViewportRef}
+                  onLoadMore={() => {
+                    void onFetchNextPage()
+                  }}
+                  preloadDistance={getPreloadDistance}
+                  scrollContainerRef={scrollViewportRef}
                 />
                 <div className="relative grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] gap-2.5">
                   <AppCardSkeleton count={3} />

@@ -28,9 +28,9 @@ import { useAtomValue } from 'jotai'
 import { Fragment, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
+import { InfiniteScrollSentinel } from '@/app/components/base/infinite-scroll-sentinel'
 import { SearchInput } from '@/app/components/base/search-input'
 import AppNavItem from '@/app/components/explore/installed-app-navigation/app-nav-item'
-import { InfiniteScrollSentinel } from '@/app/components/explore/installed-app-navigation/infinite-scroll-sentinel'
 import { InstalledAppPaginationSkeleton } from '@/app/components/explore/installed-app-navigation/pagination-skeleton'
 import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -39,6 +39,9 @@ import { consoleQuery } from '@/service/client'
 import { hasPermission } from '@/utils/permission'
 
 const emptyInstalledApps: InstalledAppResponse[] = []
+
+const getPreloadDistance = (scrollContainer: Element) =>
+  Math.max(160, Math.min(scrollContainer.clientHeight * 0.25, 320))
 
 const selectInstalledApps = (data: InfiniteData<InstalledAppListResponse, string | undefined>) =>
   data.pages.flatMap((page) => page.installed_apps)
@@ -232,12 +235,13 @@ const WebAppsSectionContent = () => {
               {installedAppsQuery.isFetchingNextPage && <InstalledAppPaginationSkeleton />}
               <InfiniteScrollSentinel
                 canLoadMore={canLoadMore}
-                fetchNextPage={() =>
-                  installedAppsQuery.fetchNextPage({
+                onLoadMore={() => {
+                  void installedAppsQuery.fetchNextPage({
                     cancelRefetch: false,
                   })
-                }
-                scrollRootRef={scrollRef}
+                }}
+                preloadDistance={getPreloadDistance}
+                scrollContainerRef={scrollRef}
               />
             </ScrollAreaContent>
           </ScrollAreaViewport>
