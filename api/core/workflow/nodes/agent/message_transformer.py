@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from collections.abc import Generator, Mapping
 from typing import Any, cast
 
@@ -29,6 +30,24 @@ from .events import AgentLogEvent
 from .exceptions import AgentNodeError, AgentVariableTypeError, ToolFileNotFoundError
 
 _file_access_controller = DatabaseFileAccessController()
+
+
+def _is_positive_elapsed_time(value: Any) -> bool:
+    return isinstance(value, int | float) and not isinstance(value, bool) and math.isfinite(value) and value > 0
+
+
+def _merge_agent_log_metadata(
+    previous_metadata: Mapping[str, Any] | None,
+    new_metadata: Mapping[str, Any] | None,
+) -> Mapping[str, Any]:
+    merged_metadata = dict(new_metadata or {})
+    previous_elapsed_time = (previous_metadata or {}).get("elapsed_time")
+    new_elapsed_time = merged_metadata.get("elapsed_time")
+
+    if _is_positive_elapsed_time(previous_elapsed_time) and not _is_positive_elapsed_time(new_elapsed_time):
+        merged_metadata["elapsed_time"] = previous_elapsed_time
+
+    return merged_metadata
 
 
 class AgentMessageTransformer:
@@ -241,7 +260,7 @@ class AgentMessageTransformer:
                         log.status = agent_log.status
                         log.error = agent_log.error
                         log.label = agent_log.label
-                        log.metadata = agent_log.metadata
+                        log.metadata = _merge_agent_log_metadata(log.metadata, agent_log.metadata)
                         break
                 else:
                     agent_logs.append(agent_log)
