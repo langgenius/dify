@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from extensions.ext_redis import redis_client
+from models import AccountStatus, TenantStatus
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
@@ -52,14 +53,14 @@ class TestEnableSegmentsToIndexTask:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
 
         tenant = Tenant(
             name=fake.company(),
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()
@@ -89,7 +90,6 @@ class TestEnableSegmentsToIndexTask:
 
         # Create document
         document = Document(
-            id=fake.uuid4(),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=1,
@@ -291,7 +291,7 @@ class TestEnableSegmentsToIndexTask:
             # Reset document status
             document.enabled = True
             document.archived = False
-            document.indexing_status = "completed"
+            document.indexing_status = IndexingStatus.COMPLETED
             db_session_with_containers.commit()
 
             # Set invalid status

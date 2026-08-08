@@ -102,6 +102,7 @@ class TestMetadataPartialUpdate:
 
         updated_doc = db_session_with_containers.get(Document, document.id)
         assert updated_doc is not None
+        assert updated_doc.doc_metadata
         assert updated_doc.doc_metadata["existing_key"] == "existing_value"
         assert updated_doc.doc_metadata["new_key"] == "new_value"
 
