@@ -668,3 +668,116 @@ class TestBaseAgentRunnerCoverage:
         result = runner.organize_agent_history([], session=mock_db_session)
 
         assert any(isinstance(item, module.ToolPromptMessage) for item in result)
+
+
+# ==========================================================
+# organize_agent_history — a tool called more than once in a turn
+# ==========================================================
+
+
+class TestOrganizeHistoryRepeatedTools:
+    def _replay(self, runner: BaseAgentRunner, mock_db_session, mocker: MockerFixture, thought):
+        msg = mocker.MagicMock(id="m_repeat", agent_thoughts=[thought], answer=None, app_model_config=None)
+        msg.agent_thoughts_with_session.return_value = [thought]
+
+        mock_db_session.execute.return_value.scalars.return_value.all.return_value = [msg]
+        mocker.patch.object(module, "extract_thread_messages", return_value=[msg])
+        mocker.patch.object(
+            runner,
+            "organize_agent_user_prompt",
+            return_value=module.UserPromptMessage(content="user"),
+        )
+
+        result = runner.organize_agent_history([], session=mock_db_session)
+
+        assistant = next(item for item in result if isinstance(item, module.AssistantPromptMessage) and item.tool_calls)
+        responses = [item for item in result if isinstance(item, module.ToolPromptMessage)]
+        return assistant, responses
+
+    def test_repeated_tool_replays_each_call_separately(
+        self, runner: BaseAgentRunner, mock_db_session, mocker: MockerFixture
+    ):
+        thought = mocker.MagicMock(
+            tool="search;search",
+            tool_input=json.dumps({"search": [{"q": "first"}, {"q": "second"}]}),
+            observation=json.dumps({"search": ["first result", "second result"]}),
+            thought="thinking",
+        )
+
+        assistant, responses = self._replay(runner, mock_db_session, mocker, thought)
+
+        assert [call.function.name for call in assistant.tool_calls] == ["search", "search"]
+        assert [json.loads(call.function.arguments) for call in assistant.tool_calls] == [
+            {"q": "first"},
+            {"q": "second"},
+        ]
+        assert [response.content for response in responses] == ["first result", "second result"]
+        # each replayed response is tied to its own call
+        assert [call.id for call in assistant.tool_calls] == [response.tool_call_id for response in responses]
+        assert len({call.id for call in assistant.tool_calls}) == 2
+
+    def test_legacy_record_replays_unchanged(self, runner: BaseAgentRunner, mock_db_session, mocker: MockerFixture):
+        # exactly the shape written before repeated calls were kept apart: one
+        # value per tool name, the last call having overwritten the first
+        thought = mocker.MagicMock(
+            tool="search;search",
+            tool_input=json.dumps({"search": {"q": "second"}}),
+            observation=json.dumps({"search": "second result"}),
+            thought="thinking",
+        )
+
+        assistant, responses = self._replay(runner, mock_db_session, mocker, thought)
+
+        assert [json.loads(call.function.arguments) for call in assistant.tool_calls] == [
+            {"q": "second"},
+            {"q": "second"},
+        ]
+        assert [response.content for response in responses] == ["second result", "second result"]
+
+    def test_single_call_replays_unchanged(self, runner: BaseAgentRunner, mock_db_session, mocker: MockerFixture):
+        thought = mocker.MagicMock(
+            tool="search",
+            tool_input=json.dumps({"search": {"q": "only"}}),
+            observation=json.dumps({"search": "only result"}),
+            thought="thinking",
+        )
+
+        assistant, responses = self._replay(runner, mock_db_session, mocker, thought)
+
+        assert len(assistant.tool_calls) == 1
+        assert json.loads(assistant.tool_calls[0].function.arguments) == {"q": "only"}
+        assert [response.content for response in responses] == ["only result"]
+
+    def test_distinct_tools_replay_unchanged(self, runner: BaseAgentRunner, mock_db_session, mocker: MockerFixture):
+        thought = mocker.MagicMock(
+            tool="search;calculator",
+            tool_input=json.dumps({"search": {"q": "a"}, "calculator": {"expr": "1+1"}}),
+            observation=json.dumps({"search": "search result", "calculator": "2"}),
+            thought="thinking",
+        )
+
+        assistant, responses = self._replay(runner, mock_db_session, mocker, thought)
+
+        assert [call.function.name for call in assistant.tool_calls] == ["search", "calculator"]
+        assert [response.content for response in responses] == ["search result", "2"]
+
+    def test_a_legacy_list_of_matching_length_is_read_per_call_not_whole(
+        self, runner: BaseAgentRunner, mock_db_session, mocker: MockerFixture
+    ):
+        # the other half of the same decision. Length is the only signal the
+        # reader has, so a single stored value that is itself a list as long as
+        # the call count is indistinguishable from one value per call, and is
+        # read as one value per call. A legacy row whose one value happened to
+        # be a two-element list is therefore split across the two calls instead
+        # of replayed whole.
+        thought = mocker.MagicMock(
+            tool="search;search",
+            tool_input=json.dumps({"search": ["a", "b"]}),
+            observation=json.dumps({"search": ["x", "y"]}),
+            thought="thinking",
+        )
+
+        assistant, responses = self._replay(runner, mock_db_session, mocker, thought)
+
+        assert [json.loads(call.function.arguments) for call in assistant.tool_calls] == ["a", "b"]
+        assert [response.content for response in responses] == ["x", "y"]

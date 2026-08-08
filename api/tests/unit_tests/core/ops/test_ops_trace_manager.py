@@ -538,6 +538,28 @@ def test_tool_trace_reads_real_message_file(monkeypatch: pytest.MonkeyPatch, dat
     assert result.message_file_data.id == file.id
 
 
+def test_tool_trace_reads_the_last_call_of_a_repeated_tool(monkeypatch: pytest.MonkeyPatch, database: Session) -> None:
+    # a tool called twice in one turn keeps one meta per call; the trace covers
+    # the tool rather than one call of it, so it reads the last — the only one a
+    # record written before those calls were kept apart held
+    thought = SimpleNamespace(
+        tools=["tool-a", "tool-a"],
+        created_at=datetime(2025, 2, 20, 12, 1),
+        tool_meta={
+            "tool-a": [
+                {"tool_config": {}, "time_cost": 3, "error": "", "tool_parameters": {"q": "first"}},
+                {"tool_config": {}, "time_cost": 5, "error": "", "tool_parameters": {"q": "second"}},
+            ]
+        },
+    )
+    monkeypatch.setattr(module, "get_message_data", lambda _message_id: _message_data(agent_thoughts=[thought]))
+    result = TraceTask(trace_type=TraceTaskName.TOOL_TRACE).tool_trace(
+        "message-1", {"start": 1, "end": 2}, tool_name="tool-a", tool_inputs={}, tool_outputs="result"
+    )
+    assert result.time_cost == 5
+    assert result.tool_parameters == {"q": "second"}
+
+
 def test_node_execution_trace_resolves_real_message_by_conversation_and_run(
     trace_environment: None, database: Session
 ) -> None:

@@ -43,6 +43,21 @@ _FILE_PREVIEW_ID_PATTERN = re.compile(r"/files/([a-fA-F0-9-]{36})/file-preview")
 _KNOWLEDGE_RETRIEVAL_PROMPT_NAME = "knowledge_retrieval"
 
 
+def _group_by_tool_name(items: list[tuple[str, Any]]) -> dict[str, Any]:
+    """
+    Group per-call values by tool name for the agent thought record.
+
+    A tool called once in a turn keeps its bare value, which is the shape every
+    record written so far uses. A tool called more than once keeps every value
+    in call order, so a repeated tool no longer discards all but the last one.
+    """
+    grouped: dict[str, list[Any]] = {}
+    for tool_name, value in items:
+        grouped.setdefault(tool_name, []).append(value)
+
+    return {tool_name: values[0] if len(values) == 1 else values for tool_name, values in grouped.items()}
+
+
 class FunctionCallAgentRunner(BaseAgentRunner):
     def _build_dataset_tool_image_contents(
         self, session: Session, tool_response: str, tool_instance: Any
@@ -201,13 +216,12 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         function_call_state = True
                         tool_calls.extend(self.extract_tool_calls(chunk) or [])
                         tool_call_names = ";".join([tool_call[1] for tool_call in tool_calls])
+                        grouped_inputs = _group_by_tool_name([(tool_call[1], tool_call[2]) for tool_call in tool_calls])
                         try:
-                            tool_call_inputs = json.dumps(
-                                {tool_call[1]: tool_call[2] for tool_call in tool_calls}, ensure_ascii=False
-                            )
+                            tool_call_inputs = json.dumps(grouped_inputs, ensure_ascii=False)
                         except TypeError:
                             # fallback: force ASCII to handle non-serializable objects
-                            tool_call_inputs = json.dumps({tool_call[1]: tool_call[2] for tool_call in tool_calls})
+                            tool_call_inputs = json.dumps(grouped_inputs)
 
                     if chunk.delta.message and chunk.delta.message.content:
                         if isinstance(chunk.delta.message.content, list):
@@ -228,13 +242,12 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     function_call_state = True
                     tool_calls.extend(self.extract_blocking_tool_calls(result) or [])
                     tool_call_names = ";".join([tool_call[1] for tool_call in tool_calls])
+                    grouped_inputs = _group_by_tool_name([(tool_call[1], tool_call[2]) for tool_call in tool_calls])
                     try:
-                        tool_call_inputs = json.dumps(
-                            {tool_call[1]: tool_call[2] for tool_call in tool_calls}, ensure_ascii=False
-                        )
+                        tool_call_inputs = json.dumps(grouped_inputs, ensure_ascii=False)
                     except TypeError:
                         # fallback: force ASCII to handle non-serializable objects
-                        tool_call_inputs = json.dumps({tool_call[1]: tool_call[2] for tool_call in tool_calls})
+                        tool_call_inputs = json.dumps(grouped_inputs)
 
                 if result.usage:
                     increase_usage(llm_usage, result.usage)
@@ -380,13 +393,18 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     tool_name="",
                     tool_input="",
                     thought="",
-                    tool_invoke_meta={
-                        tool_response["tool_call_name"]: tool_response["meta"] for tool_response in tool_responses
-                    },
-                    observation={
-                        tool_response["tool_call_name"]: tool_response["tool_response"]
-                        for tool_response in tool_responses
-                    },
+                    tool_invoke_meta=_group_by_tool_name(
+                        [
+                            (str(tool_response["tool_call_name"]), tool_response["meta"])
+                            for tool_response in tool_responses
+                        ]
+                    ),
+                    observation=_group_by_tool_name(
+                        [
+                            (str(tool_response["tool_call_name"]), tool_response["tool_response"])
+                            for tool_response in tool_responses
+                        ]
+                    ),
                     answer="",
                     messages_ids=message_file_ids,
                 )
