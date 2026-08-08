@@ -895,13 +895,13 @@ class AccountService:
         email: str,
         account: Account | None = None,
         code: str | None = None,
-        additional_data: dict[str, Any] = {},
+        additional_data: dict[str, Any] | None = None,
     ):
         if not code:
             code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
-        additional_data["code"] = code
+        token_data = {**(additional_data or {}), "code": code}
         token = TokenManager.generate_token(
-            account=account, email=email, token_type="reset_password", additional_data=additional_data
+            account=account, email=email, token_type="reset_password", additional_data=token_data
         )
         return code, token
 
@@ -910,12 +910,12 @@ class AccountService:
         cls,
         email: str,
         code: str | None = None,
-        additional_data: dict[str, Any] = {},
+        additional_data: dict[str, Any] | None = None,
     ):
         if not code:
             code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
-        additional_data["code"] = code
-        token = TokenManager.generate_token(email=email, token_type="email_register", additional_data=additional_data)
+        token_data = {**(additional_data or {}), "code": code}
+        token = TokenManager.generate_token(email=email, token_type="email_register", additional_data=token_data)
         return code, token
 
     @classmethod
@@ -938,13 +938,13 @@ class AccountService:
         email: str,
         account: Account | None = None,
         code: str | None = None,
-        additional_data: dict[str, Any] = {},
+        additional_data: dict[str, Any] | None = None,
     ):
         if not code:
             code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
-        additional_data["code"] = code
+        token_data = {**(additional_data or {}), "code": code}
         token = TokenManager.generate_token(
-            account=account, email=email, token_type="owner_transfer", additional_data=additional_data
+            account=account, email=email, token_type="owner_transfer", additional_data=token_data
         )
         return code, token
 

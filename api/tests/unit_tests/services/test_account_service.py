@@ -2744,3 +2744,46 @@ class TestIsEmailSendIpLimit:
             patch.object(dify_config, "EMAIL_SEND_IP_LIMIT_PER_MINUTE", 60),
         ):
             assert AccountService.is_email_send_ip_limit("1.2.3.4") is False
+
+
+class TestVerificationTokenGeneration:
+    @pytest.mark.parametrize(
+        ("method_name", "kwargs"),
+        [
+            ("generate_reset_password_token", {"email": "a@example.com"}),
+            ("generate_email_register_token", {"email": "b@example.com"}),
+            ("generate_owner_transfer_token", {"email": "c@example.com"}),
+        ],
+    )
+    def test_default_additional_data_is_not_shared_between_calls(self, method_name: str, kwargs: dict):
+        generate_token = getattr(AccountService, method_name)
+        with patch("services.account_service.TokenManager.generate_token") as mock_generate_token:
+            mock_generate_token.return_value = "token"
+            code_a, _ = generate_token(**kwargs, code="111111")
+            code_b, _ = generate_token(**kwargs, code="222222")
+
+        assert code_a == "111111"
+        assert code_b == "222222"
+        assert mock_generate_token.call_args_list[0].kwargs["additional_data"]["code"] == "111111"
+        assert mock_generate_token.call_args_list[1].kwargs["additional_data"]["code"] == "222222"
+
+    @pytest.mark.parametrize(
+        ("method_name", "kwargs"),
+        [
+            ("generate_reset_password_token", {"email": "a@example.com"}),
+            ("generate_email_register_token", {"email": "b@example.com"}),
+            ("generate_owner_transfer_token", {"email": "c@example.com"}),
+        ],
+    )
+    def test_caller_additional_data_is_not_mutated(self, method_name: str, kwargs: dict):
+        generate_token = getattr(AccountService, method_name)
+        additional_data = {"phase": "reset"}
+        with patch("services.account_service.TokenManager.generate_token") as mock_generate_token:
+            mock_generate_token.return_value = "token"
+            generate_token(**kwargs, code="123456", additional_data=additional_data)
+
+        assert additional_data == {"phase": "reset"}
+        assert mock_generate_token.call_args.kwargs["additional_data"] == {
+            "phase": "reset",
+            "code": "123456",
+        }
