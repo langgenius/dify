@@ -1,3 +1,4 @@
+import type { CredentialPermission } from '@/models/permission'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -12,10 +13,6 @@ import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { userProfileAtom } from '@/context/account-state'
 import { PermissionLevel } from '@/models/permission'
-
-export type CredentialPermission =
-  | typeof PermissionLevel.onlyMe
-  | typeof PermissionLevel.allTeamMembers
 
 type PermissionSelectorProps = {
   disabled?: boolean

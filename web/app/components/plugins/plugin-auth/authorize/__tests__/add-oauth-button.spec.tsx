@@ -17,6 +17,14 @@ vi.mock('@/hooks/use-i18n', () => ({
     typeof obj === 'string' ? obj : obj.en_US || '',
 }))
 
+// The pre-OAuth visibility picker renders PermissionSelector, which reads
+// userProfileAtom via jotai. Stub the account-state module so the atom
+// resolves synchronously in tests without triggering a profile fetch.
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => ({ userProfile: {} }))
+})
+
 vi.mock('@/hooks/use-oauth', () => ({
   openOAuthPopup: (...args: unknown[]) => mockOpenOAuthPopup(...args),
 }))
@@ -127,6 +135,10 @@ describe('AddOAuthButton', () => {
     const button = screen.getByText('Use OAuth').closest('button')
     if (button) fireEvent.click(button)
 
+    // Confirm the visibility picker to actually kick off OAuth
+    const confirmButton = await screen.findByText('plugin.auth.saveAndAuth')
+    fireEvent.click(confirmButton)
+
     await waitFor(() => {
       expect(mockOpenOAuthPopup).toHaveBeenCalledWith(
         'https://auth.example.com',
@@ -148,10 +160,48 @@ describe('AddOAuthButton', () => {
     const button = screen.getByText('Use OAuth').closest('button')
     if (button) fireEvent.click(button)
 
+    // Confirm the visibility picker so the OAuth request fires
+    const confirmButton = await screen.findByText('plugin.auth.saveAndAuth')
+    fireEvent.click(confirmButton)
+
     await waitFor(() => {
       expect(mockGetPluginOAuthUrl).toHaveBeenCalled()
     })
     expect(mockOpenOAuthPopup).not.toHaveBeenCalled()
+  })
+
+  it('should skip visibility picker for categories without backend visibility support', async () => {
+    // Trigger / model OAuth endpoints don't yet accept a visibility value on
+    // the backend — the picker would let users select "Only me" while the
+    // credential silently defaults to all_team_members. Tool and datasource
+    // are both wired end-to-end so they DO get the picker.
+    const triggerPayload = { category: AuthCategory.trigger, provider: 'test-trigger' }
+    render(<AddOAuthButton pluginPayload={triggerPayload} buttonText="Use OAuth" />)
+
+    const button = screen.getByText('Use OAuth').closest('button')
+    if (button) fireEvent.click(button)
+
+    await waitFor(() => {
+      expect(mockGetPluginOAuthUrl).toHaveBeenCalledWith(undefined)
+    })
+    // No pre-OAuth visibility modal should ever appear for unsupported categories.
+    expect(screen.queryByText('plugin.auth.saveAndAuth')).not.toBeInTheDocument()
+  })
+
+  it('should show visibility picker for datasource category (backend now supports it)', async () => {
+    const datasourcePayload = { category: AuthCategory.datasource, provider: 'test-datasource' }
+    render(<AddOAuthButton pluginPayload={datasourcePayload} buttonText="Use OAuth" />)
+
+    const button = screen.getByText('Use OAuth').closest('button')
+    if (button) fireEvent.click(button)
+
+    // Visibility picker appears for datasource just like it does for tool.
+    const confirmButton = await screen.findByText('plugin.auth.saveAndAuth')
+    fireEvent.click(confirmButton)
+
+    await waitFor(() => {
+      expect(mockGetPluginOAuthUrl).toHaveBeenCalledWith({ visibility: 'only_me' })
+    })
   })
 
   it('should be disabled when disabled prop is true', () => {

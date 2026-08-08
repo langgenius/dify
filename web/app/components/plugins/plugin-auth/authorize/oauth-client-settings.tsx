@@ -1,5 +1,6 @@
 import type { PluginPayload } from '../types'
 import type { FormRefObject, FormSchema } from '@/app/components/base/form/types'
+import type { CredentialPermission } from '@/models/permission'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -13,6 +14,7 @@ import {
   useInvalidPluginOAuthClientSchemaHook,
   useSetPluginOAuthCustomClientHook,
 } from '../hooks/use-credential'
+import PermissionSelector from './permission-selector'
 
 export type OAuthClientSettingsProps = {
   pluginPayload: PluginPayload
@@ -25,6 +27,13 @@ export type OAuthClientSettingsProps = {
   onAuth?: () => Promise<void>
   hasOriginalClientParams?: boolean
   onUpdate?: () => void
+  /**
+   * Inline visibility picker — shown only when the parent passes both a value
+   * and a setter, so callers that just need "Save only" (no credential
+   * created yet) can skip the picker entirely.
+   */
+  visibility?: CredentialPermission
+  onVisibilityChange?: (permission: CredentialPermission) => void
 }
 const OAuthClientSettings = ({
   pluginPayload,
@@ -37,6 +46,8 @@ const OAuthClientSettings = ({
   onAuth,
   hasOriginalClientParams,
   onUpdate,
+  visibility,
+  onVisibilityChange,
 }: OAuthClientSettingsProps) => {
   const { t } = useTranslation()
   const [doingAction, setDoingAction] = useState(false)
@@ -157,6 +168,18 @@ const OAuthClientSettings = ({
               defaultValues={editValues || defaultValues}
               disabled={disabled}
             />
+            {visibility !== undefined && onVisibilityChange && (
+              <div className="mt-4">
+                <div className="mb-1 system-sm-semibold text-text-secondary">
+                  {t(($) => $['auth.whoCanUse'], { ns: 'plugin' })}
+                </div>
+                <PermissionSelector
+                  disabled={isDisabled}
+                  permission={visibility}
+                  onChange={onVisibilityChange}
+                />
+              </div>
+            )}
           </div>
           <div className="flex shrink-0 justify-between p-6 pt-5">
             <div>

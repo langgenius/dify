@@ -137,6 +137,7 @@ export type GetOauthPluginByProviderIdDatasourceGetAuthorizationUrlData = {
   }
   query?: {
     credential_id?: string
+    visibility?: string
   }
   url: '/oauth/plugin/{provider_id}/datasource/get-authorization-url'
 }

@@ -447,9 +447,13 @@ describe('AddOAuthButton', () => {
         wrapper: createWrapper(),
       })
 
-      // Click the main button area (left side)
+      // Click the main button area (left side) → opens visibility picker
       const buttonText = screen.getByText('use oauth')
       fireEvent.click(buttonText)
+
+      // Confirm the picker to actually kick off OAuth
+      const confirmButton = await screen.findByText('plugin.auth.saveAndAuth')
+      fireEvent.click(confirmButton)
 
       await waitFor(() => {
         expect(mockGetPluginOAuthUrl).toHaveBeenCalled()
@@ -488,6 +492,10 @@ describe('AddOAuthButton', () => {
       const buttonText = screen.getByText('use oauth')
       fireEvent.click(buttonText)
 
+      // Confirm the visibility picker to kick off the OAuth request
+      const confirmButton = await screen.findByText('plugin.auth.saveAndAuth')
+      fireEvent.click(confirmButton)
+
       await waitFor(() => {
         expect(mockGetPluginOAuthUrl).toHaveBeenCalled()
       })
@@ -517,6 +525,10 @@ describe('AddOAuthButton', () => {
 
       const buttonText = screen.getByText('use oauth')
       fireEvent.click(buttonText)
+
+      // Confirm the visibility picker to kick off the OAuth request
+      const confirmButton = await screen.findByText('plugin.auth.saveAndAuth')
+      fireEvent.click(confirmButton)
 
       await waitFor(() => {
         expect(mockOpenOAuthPopup).toHaveBeenCalledWith(

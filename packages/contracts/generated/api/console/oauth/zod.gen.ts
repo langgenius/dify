@@ -133,6 +133,7 @@ export const zGetOauthPluginByProviderIdDatasourceGetAuthorizationUrlPath = z.ob
 
 export const zGetOauthPluginByProviderIdDatasourceGetAuthorizationUrlQuery = z.object({
   credential_id: z.string().optional(),
+  visibility: z.string().optional(),
 })
 
 /**

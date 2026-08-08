@@ -1,5 +1,6 @@
 import type { FormSchema } from '@/app/components/base/form/types'
 import type { Credential, CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
+import type { CredentialPermission } from '@/models/permission'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { del, get, post } from './base'
 import { useInvalid } from './use-base'
@@ -80,12 +81,19 @@ export const useGetPluginCredentialSchema = (url: string) => {
 export const useGetPluginOAuthUrl = (url: string) => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'oauth-url', url],
-    mutationFn: () => {
+    // The optional visibility param is passed through as a query string so the
+    // backend can stash it in the OAuth proxy context and apply it when the
+    // callback creates the credential.
+    mutationFn: (params?: { visibility?: CredentialPermission }) => {
+      const visibility = params?.visibility
+      const finalUrl = visibility
+        ? `${url}${url.includes('?') ? '&' : '?'}visibility=${encodeURIComponent(visibility)}`
+        : url
       return get<{
         authorization_url: string
         state: string
         context_id: string
-      }>(url)
+      }>(finalUrl)
     },
   })
 }
