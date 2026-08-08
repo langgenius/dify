@@ -196,7 +196,7 @@ const WebAppsSectionContent = () => {
             role="region"
           >
             <ScrollAreaContent style={{ minWidth: 0 }} className="w-full max-w-full px-2">
-              {installedAppsQuery.isError && (
+              {installedAppsQuery.isError && !installedAppsQuery.isFetchNextPageError && (
                 <div
                   className="flex flex-col items-start gap-1 px-2 py-2 system-xs-regular text-text-tertiary"
                   role="alert"
@@ -206,9 +206,7 @@ const WebAppsSectionContent = () => {
                     type="button"
                     className="text-text-accent outline-hidden hover:underline focus-visible:underline"
                     onClick={() => {
-                      if (installedAppsQuery.isFetchNextPageError)
-                        void installedAppsQuery.fetchNextPage({ cancelRefetch: false })
-                      else void installedAppsQuery.refetch()
+                      void installedAppsQuery.refetch()
                     }}
                   >
                     {t(($) => $['operation.retry'], { ns: 'common' })}
@@ -232,17 +230,39 @@ const WebAppsSectionContent = () => {
                   ))}
                 </div>
               )}
-              {installedAppsQuery.hasNextPage && <InstalledAppPaginationSkeleton />}
-              <InfiniteScrollSentinel
-                canLoadMore={canLoadMore}
-                onLoadMore={() => {
-                  void installedAppsQuery.fetchNextPage({
-                    cancelRefetch: false,
-                  })
-                }}
-                preloadDistance={getPreloadDistance}
-                scrollContainerRef={scrollRef}
-              />
+              {installedAppsQuery.hasNextPage && (
+                <div className="relative">
+                  <InfiniteScrollSentinel
+                    canLoadMore={canLoadMore}
+                    onLoadMore={() => {
+                      void installedAppsQuery.fetchNextPage({
+                        cancelRefetch: false,
+                      })
+                    }}
+                    preloadDistance={getPreloadDistance}
+                    scrollContainerRef={scrollRef}
+                  />
+                  <InstalledAppPaginationSkeleton />
+                  {installedAppsQuery.isFetchNextPageError &&
+                    !installedAppsQuery.isFetchingNextPage && (
+                      <div
+                        className="absolute inset-0 flex items-center justify-center gap-2 bg-background-body px-2 system-xs-regular text-text-tertiary"
+                        role="alert"
+                      >
+                        <span>{t(($) => $['errorBoundary.title'], { ns: 'common' })}</span>
+                        <button
+                          type="button"
+                          className="text-text-accent outline-hidden hover:underline focus-visible:underline"
+                          onClick={() => {
+                            void installedAppsQuery.fetchNextPage({ cancelRefetch: false })
+                          }}
+                        >
+                          {t(($) => $['operation.retry'], { ns: 'common' })}
+                        </button>
+                      </div>
+                    )}
+                </div>
+              )}
             </ScrollAreaContent>
           </ScrollAreaViewport>
           <ScrollAreaScrollbar>
