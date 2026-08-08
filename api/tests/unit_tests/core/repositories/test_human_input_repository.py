@@ -424,6 +424,16 @@ def test_create_form_adds_console_and_backstage_recipients(
         RecipientType.BACKSTAGE,
     }
 
+    added_recipients = [obj for obj in session.added if isinstance(obj, HumanInputFormRecipient)]
+    assert {r.recipient_type for r in added_recipients} == {
+        RecipientType.STANDALONE_WEB_APP,
+        RecipientType.CONSOLE,
+        RecipientType.BACKSTAGE,
+    }
+    console_recipient = next(r for r in added_recipients if r.recipient_type == RecipientType.CONSOLE)
+    # Console token should take precedence when a console recipient is present.
+    assert entity.submission_token == console_recipient.access_token
+
 
 def test_submission_get_by_token_returns_none_when_missing_or_form_missing(repository_session: Session) -> None:
     repo = HumanInputFormSubmissionRepository()

@@ -56,6 +56,7 @@ def _add_workspace_member(
     session.commit()
 
 
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
 class TestHumanInputFormRepositoryImplHelpers:
     def test_build_email_recipients_with_member_and_external(
         self,
