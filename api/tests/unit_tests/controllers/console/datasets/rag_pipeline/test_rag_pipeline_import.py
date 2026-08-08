@@ -69,7 +69,7 @@ class TestRagPipelineImportApi:
                 return_value=service,
             ),
         ):
-            response, status = method(api, RagPipelineImportPayload(), user)
+            response, status = method(api, RagPipelineImportPayload(mode="create"), user)
 
         assert status == 200
         assert response == {
@@ -107,7 +107,7 @@ class TestRagPipelineImportApi:
                 return_value=service,
             ),
         ):
-            response, status = method(api, RagPipelineImportPayload(), user)
+            response, status = method(api, RagPipelineImportPayload(mode="create"), user)
 
         assert status == 400
         assert response["status"] == "failed"
@@ -141,7 +141,7 @@ class TestRagPipelineImportApi:
                 return_value=service,
             ),
         ):
-            response, status = method(api, RagPipelineImportPayload(), user)
+            response, status = method(api, RagPipelineImportPayload(mode="create"), user)
 
         assert status == 202
         assert response["status"] == "pending"

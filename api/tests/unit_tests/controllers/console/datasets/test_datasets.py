@@ -1017,7 +1017,12 @@ class TestDatasetIndexingEstimateApi:
             patch("controllers.console.datasets.datasets.DocumentService.estimate_args_validate", return_value=None),
             patch("controllers.console.datasets.datasets.IndexingRunner.indexing_estimate", return_value=mock_response),
         ):
-            response, status = method(api, IndexingEstimatePayload(), session, "tenant-1")
+            response, status = method(
+                api,
+                IndexingEstimatePayload(info_list={}, process_rule={}, indexing_technique="high_quality"),
+                session,
+                "tenant-1",
+            )
         assert status == 200
         assert response == {
             "tokens": 0,
@@ -1039,7 +1044,12 @@ class TestDatasetIndexingEstimateApi:
             patch("controllers.console.datasets.datasets.DocumentService.estimate_args_validate", return_value=None),
         ):
             with pytest.raises(NotFound):
-                method(api, IndexingEstimatePayload(), session, "tenant-1")
+                method(
+                    api,
+                    IndexingEstimatePayload(info_list={}, process_rule={}, indexing_technique="high_quality"),
+                    session,
+                    "tenant-1",
+                )
 
     def test_post_llm_bad_request_error(self, app: Flask):
         api = DatasetIndexingEstimateApi()
@@ -1058,7 +1068,12 @@ class TestDatasetIndexingEstimateApi:
             ),
         ):
             with pytest.raises(ProviderNotInitializeError):
-                method(api, IndexingEstimatePayload(), session, "tenant-1")
+                method(
+                    api,
+                    IndexingEstimatePayload(info_list={}, process_rule={}, indexing_technique="high_quality"),
+                    session,
+                    "tenant-1",
+                )
 
     def test_post_provider_token_not_init(self, app: Flask):
         api = DatasetIndexingEstimateApi()
@@ -1077,7 +1092,12 @@ class TestDatasetIndexingEstimateApi:
             ),
         ):
             with pytest.raises(ProviderNotInitializeError):
-                method(api, IndexingEstimatePayload(), session, "tenant-1")
+                method(
+                    api,
+                    IndexingEstimatePayload(info_list={}, process_rule={}, indexing_technique="high_quality"),
+                    session,
+                    "tenant-1",
+                )
 
     def test_post_generic_exception(self, app: Flask):
         api = DatasetIndexingEstimateApi()
@@ -1095,7 +1115,12 @@ class TestDatasetIndexingEstimateApi:
             ),
         ):
             with pytest.raises(IndexingEstimateError):
-                method(api, IndexingEstimatePayload(), session, "tenant-1")
+                method(
+                    api,
+                    IndexingEstimatePayload(info_list={}, process_rule={}, indexing_technique="high_quality"),
+                    session,
+                    "tenant-1",
+                )
 
 
 class TestDatasetRelatedAppListApi:

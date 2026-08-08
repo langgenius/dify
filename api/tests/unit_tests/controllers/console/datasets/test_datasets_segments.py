@@ -359,7 +359,9 @@ class TestDatasetDocumentSegmentAddApi:
                 return_value=None,
             ),
         ):
-            response, status = method(api, SegmentCreatePayload(), session, "tenant-1", user, "ds-1", "doc-1")
+            response, status = method(
+                api, SegmentCreatePayload(content="test content"), session, "tenant-1", user, "ds-1", "doc-1"
+            )
         assert status == 200
         assert response["data"]["id"] == "seg-1"
 
@@ -383,7 +385,9 @@ class TestDatasetDocumentSegmentAddApi:
             ),
         ):
             with pytest.raises(ProviderNotInitializeError):
-                method(api, SegmentCreatePayload(), MagicMock(), "tenant-1", user, "ds-1", "doc-1")
+                method(
+                    api, SegmentCreatePayload(content="test content"), MagicMock(), "tenant-1", user, "ds-1", "doc-1"
+                )
 
     def test_post_provider_token_not_init(self, app: Flask):
         api = DatasetDocumentSegmentAddApi()
@@ -405,7 +409,9 @@ class TestDatasetDocumentSegmentAddApi:
             ),
         ):
             with pytest.raises(ProviderNotInitializeError):
-                method(api, SegmentCreatePayload(), MagicMock(), "tenant-1", user, "ds-1", "doc-1")
+                method(
+                    api, SegmentCreatePayload(content="test content"), MagicMock(), "tenant-1", user, "ds-1", "doc-1"
+                )
 
 
 class TestDatasetDocumentSegmentUpdateApi:
@@ -446,7 +452,9 @@ class TestDatasetDocumentSegmentUpdateApi:
                 return_value=None,
             ),
         ):
-            response, status = method(api, SegmentUpdatePayload(), session, "tenant-1", user, "ds-1", "doc-1", "seg-1")
+            response, status = method(
+                api, SegmentUpdatePayload(content="test content"), session, "tenant-1", user, "ds-1", "doc-1", "seg-1"
+            )
         assert status == 200
         assert "data" in response
 
@@ -472,7 +480,16 @@ class TestDatasetDocumentSegmentUpdateApi:
             ),
         ):
             with pytest.raises(NotFound):
-                method(api, SegmentUpdatePayload(), MagicMock(), "tenant-1", user, "ds-1", "doc-1", "seg-1")
+                method(
+                    api,
+                    SegmentUpdatePayload(content="test content"),
+                    MagicMock(),
+                    "tenant-1",
+                    user,
+                    "ds-1",
+                    "doc-1",
+                    "seg-1",
+                )
 
     def test_patch_segment_not_found(self, app: Flask):
         api = DatasetDocumentSegmentUpdateApi()
@@ -500,7 +517,16 @@ class TestDatasetDocumentSegmentUpdateApi:
             ),
         ):
             with pytest.raises(NotFound):
-                method(api, SegmentUpdatePayload(), MagicMock(), "tenant-1", user, "ds-1", "doc-1", "seg-1")
+                method(
+                    api,
+                    SegmentUpdatePayload(content="test content"),
+                    MagicMock(),
+                    "tenant-1",
+                    user,
+                    "ds-1",
+                    "doc-1",
+                    "seg-1",
+                )
 
     def test_patch_llm_bad_request(self, app: Flask):
         api = DatasetDocumentSegmentUpdateApi()
@@ -530,7 +556,16 @@ class TestDatasetDocumentSegmentUpdateApi:
             ),
         ):
             with pytest.raises(ProviderNotInitializeError):
-                method(api, SegmentUpdatePayload(), MagicMock(), "tenant-1", user, "ds-1", "doc-1", "seg-1")
+                method(
+                    api,
+                    SegmentUpdatePayload(content="test content"),
+                    MagicMock(),
+                    "tenant-1",
+                    user,
+                    "ds-1",
+                    "doc-1",
+                    "seg-1",
+                )
 
 
 class TestDatasetDocumentSegmentBatchImportApi:
@@ -569,7 +604,9 @@ class TestDatasetDocumentSegmentBatchImportApi:
                 return_value=None,
             ),
         ):
-            response, status = method(api, BatchImportPayload(), session, "tenant-1", user, "ds-1", "doc-1")
+            response, status = method(
+                api, BatchImportPayload(upload_file_id="test-file-id"), session, "tenant-1", user, "ds-1", "doc-1"
+            )
         assert status == 200
         assert response["job_status"] == "waiting"
 
@@ -586,7 +623,15 @@ class TestDatasetDocumentSegmentBatchImportApi:
             patch("controllers.console.datasets.datasets_segments.DatasetService.get_dataset", return_value=None),
         ):
             with pytest.raises(NotFound):
-                method(api, BatchImportPayload(), MagicMock(), "tenant-1", user, "ds-1", "doc-1")
+                method(
+                    api,
+                    BatchImportPayload(upload_file_id="test-file-id"),
+                    MagicMock(),
+                    "tenant-1",
+                    user,
+                    "ds-1",
+                    "doc-1",
+                )
 
     def test_post_document_not_found(self, app: Flask):
         api = DatasetDocumentSegmentBatchImportApi()
@@ -604,7 +649,15 @@ class TestDatasetDocumentSegmentBatchImportApi:
             patch("controllers.console.datasets.datasets_segments.DocumentService.get_document", return_value=None),
         ):
             with pytest.raises(NotFound):
-                method(api, BatchImportPayload(), MagicMock(), "tenant-1", user, "ds-1", "doc-1")
+                method(
+                    api,
+                    BatchImportPayload(upload_file_id="test-file-id"),
+                    MagicMock(),
+                    "tenant-1",
+                    user,
+                    "ds-1",
+                    "doc-1",
+                )
 
     def test_post_upload_file_not_found(self, app: Flask):
         api = DatasetDocumentSegmentBatchImportApi()
@@ -624,7 +677,9 @@ class TestDatasetDocumentSegmentBatchImportApi:
             ),
         ):
             with pytest.raises(NotFound):
-                method(api, BatchImportPayload(), session, "tenant-1", user, "ds-1", "doc-1")
+                method(
+                    api, BatchImportPayload(upload_file_id="test-file-id"), session, "tenant-1", user, "ds-1", "doc-1"
+                )
 
     def test_post_invalid_file_type(self, app: Flask):
         api = DatasetDocumentSegmentBatchImportApi()
@@ -646,7 +701,9 @@ class TestDatasetDocumentSegmentBatchImportApi:
             ),
         ):
             with pytest.raises(ValueError):
-                method(api, BatchImportPayload(), session, "tenant-1", user, "ds-1", "doc-1")
+                method(
+                    api, BatchImportPayload(upload_file_id="test-file-id"), session, "tenant-1", user, "ds-1", "doc-1"
+                )
 
     def test_post_async_task_failure(self, app: Flask):
         api = DatasetDocumentSegmentBatchImportApi()
@@ -670,7 +727,9 @@ class TestDatasetDocumentSegmentBatchImportApi:
                 "controllers.console.datasets.datasets_segments.redis_client.setnx", side_effect=Exception("redis down")
             ),
         ):
-            response, status = method(api, BatchImportPayload(), session, "tenant-1", user, "ds-1", "doc-1")
+            response, status = method(
+                api, BatchImportPayload(upload_file_id="test-file-id"), session, "tenant-1", user, "ds-1", "doc-1"
+            )
         assert status == 500
         assert "error" in response
 
@@ -1054,7 +1113,9 @@ class TestSegmentOperationCases:
             ),
         ):
             with pytest.raises(ProviderTokenNotInitError):
-                method(api, SegmentCreatePayload(), MagicMock(), "tenant-1", user, "ds-1", "doc-1")
+                method(
+                    api, SegmentCreatePayload(content="test content"), MagicMock(), "tenant-1", user, "ds-1", "doc-1"
+                )
 
     def test_batch_import_with_document_not_found(self, app: Flask):
         """Test batch import with document not found"""
@@ -1070,7 +1131,15 @@ class TestSegmentOperationCases:
             patch("controllers.console.datasets.datasets_segments.DocumentService.get_document", return_value=None),
         ):
             with pytest.raises(NotFound):
-                method(api, BatchImportPayload(), MagicMock(), "tenant-1", user, "ds-1", "doc-1")
+                method(
+                    api,
+                    BatchImportPayload(upload_file_id="test-file-id"),
+                    MagicMock(),
+                    "tenant-1",
+                    user,
+                    "ds-1",
+                    "doc-1",
+                )
 
     def test_batch_import_with_invalid_file(self, app: Flask):
         """Test batch import with invalid file type"""
@@ -1090,7 +1159,9 @@ class TestSegmentOperationCases:
             patch("controllers.console.datasets.datasets_segments.DocumentService.get_document", return_value=document),
         ):
             with pytest.raises(NotFound):
-                method(api, BatchImportPayload(), session, "tenant-1", user, "ds-1", "doc-1")
+                method(
+                    api, BatchImportPayload(upload_file_id="test-file-id"), session, "tenant-1", user, "ds-1", "doc-1"
+                )
 
     def test_batch_import_with_async_task_failure(self, app: Flask):
         api = DatasetDocumentSegmentBatchImportApi()
@@ -1129,7 +1200,9 @@ class TestSegmentOperationCases:
                 side_effect=Exception("Task failed"),
             ),
         ):
-            response, status = method(api, BatchImportPayload(), session, "tenant-1", user, "ds-1", "doc-1")
+            response, status = method(
+                api, BatchImportPayload(upload_file_id="test-file-id"), session, "tenant-1", user, "ds-1", "doc-1"
+            )
         assert status == 500
         assert "error" in response
 
