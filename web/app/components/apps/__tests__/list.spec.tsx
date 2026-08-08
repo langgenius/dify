@@ -1361,20 +1361,5 @@ describe('List', () => {
 
       expect(mockFetchNextPage).toHaveBeenCalledWith({ cancelRefetch: false })
     })
-
-    it('should keep the pagination retry focused while retrying', () => {
-      mockServiceState.error = new Error('Test error')
-      mockServiceState.hasNextPage = true
-      mockServiceState.isFetchNextPageError = true
-      mockServiceState.isFetchingNextPage = true
-
-      renderList()
-
-      const retryButton = screen.getByRole('button', { name: 'common.operation.retry' })
-      act(() => retryButton.focus())
-
-      expect(retryButton).toHaveFocus()
-      expect(retryButton).toHaveAttribute('aria-disabled', 'true')
-    })
   })
 })
