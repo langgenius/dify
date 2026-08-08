@@ -7,6 +7,7 @@ document embeddings used in retrieval-augmented generation workflows.
 
 import atexit
 import datetime
+import hashlib
 import json
 import logging
 import threading
@@ -24,7 +25,7 @@ from weaviate.exceptions import UnexpectedStatusCodeError, WeaviateQueryError
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field
-from core.rag.datasource.vdb.vector_base import BaseVector, VectorIndexStructDict
+from core.rag.datasource.vdb.vector_base import BaseVector, VectorIndexStructDict, VectorStoreDict
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.embedding.embedding_base import Embeddings
@@ -98,8 +99,11 @@ class WeaviateVector(BaseVector):
     """
 
     _DOCUMENT_ID_PROPERTY = "document_id"
+    # Class-level default so instances built without __init__ (e.g. via __new__) default to the
+    # legacy, non-multi-tenant layout. __init__ overrides this per instance.
+    _tenant: str | None = None
 
-    def __init__(self, collection_name: str, config: WeaviateConfig, attributes: list):
+    def __init__(self, collection_name: str, config: WeaviateConfig, attributes: list, tenant: str | None = None):
         """
         Initializes the Weaviate vector store.
 
@@ -107,10 +111,28 @@ class WeaviateVector(BaseVector):
             collection_name: Name of the Weaviate collection
             config: Weaviate configuration settings
             attributes: List of metadata attributes to store
+            tenant: Optional Weaviate tenant name. When set, the store operates on a single
+                isolated tenant within a shared multi-tenant collection (one tenant per dataset).
+                When None, the store uses the legacy collection-per-dataset layout.
         """
         super().__init__(collection_name)
         self._client = self._init_client(config)
         self._attributes = attributes
+        self._tenant = tenant
+
+    def _collection(self):
+        """
+        Returns the collection handle for data operations.
+
+        When multi-tenancy is active (``self._tenant`` set), the handle is scoped to this
+        dataset's tenant so reads/writes/deletes are isolated. Schema and tenant-management
+        operations must use ``self._client.collections.use(...)`` directly (they are
+        collection-level, not tenant-scoped).
+        """
+        col = self._client.collections.use(self._collection_name)
+        if self._tenant:
+            return col.with_tenant(self._tenant)
+        return col
 
     def _init_client(self, config: WeaviateConfig) -> weaviate.WeaviateClient:
         """
@@ -186,10 +208,14 @@ class WeaviateVector(BaseVector):
         return Dataset.gen_collection_name_by_id(dataset_id)
 
     def to_index_struct(self) -> VectorIndexStructDict:
-        """Returns the index structure dictionary for persistence."""
+        """Returns the index structure dictionary for persistence (records the tenant under multi-tenancy)."""
+        vector_store: VectorStoreDict = {"class_prefix": self._collection_name}
+        if self._tenant:
+            vector_store["multi_tenant"] = True
+            vector_store["tenant"] = self._tenant
         result: VectorIndexStructDict = {
             "type": self.get_type(),
-            "vector_store": {"class_prefix": self._collection_name},
+            "vector_store": vector_store,
         }
         return result
 
@@ -209,7 +235,12 @@ class WeaviateVector(BaseVector):
         """
         lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):
+            # Under multi-tenancy the shared collection is created once, but every dataset
+            # (tenant) sharing it still needs its own tenant ensured, so scope the cache key
+            # by tenant to avoid short-circuiting tenant creation for later datasets.
             cache_key = f"vector_indexing_{self._collection_name}"
+            if self._tenant:
+                cache_key = f"{cache_key}_{self._tenant}"
             if redis_client.get(cache_key):
                 return
 
@@ -235,14 +266,104 @@ class WeaviateVector(BaseVector):
                             wc.Property(name="is_summary", data_type=wc.DataType.BOOL),
                             wc.Property(name="original_chunk_id", data_type=wc.DataType.TEXT),
                         ],
-                        vector_config=wc.Configure.Vectors.self_provided(),
+                        vector_config=wc.Configure.Vectors.self_provided(
+                            vector_index_config=self._build_vector_index_config(),
+                        ),
+                        multi_tenancy_config=(
+                            wc.Configure.multi_tenancy(
+                                enabled=True,
+                                auto_tenant_creation=True,
+                                auto_tenant_activation=True,
+                            )
+                            if self._tenant
+                            else None
+                        ),
+                        replication_config=(
+                            wc.Configure.replication(factor=dify_config.WEAVIATE_REPLICATION_FACTOR)
+                            if dify_config.WEAVIATE_REPLICATION_FACTOR > 1
+                            else None
+                        ),
                     )
 
                 self._ensure_properties()
+                self._ensure_tenant()
                 redis_client.set(cache_key, 1, ex=3600)
             except Exception as e:
-                logger.exception("Error creating collection %s", self._collection_name)
+                if (dify_config.WEAVIATE_INDEX_TYPE or "").lower() == "dynamic":
+                    logger.exception(
+                        "Error creating collection %s with a dynamic vector index. A dynamic index requires "
+                        "ASYNC_INDEXING=true on the Weaviate server (WEAVIATE_ASYNC_INDEXING=true).",
+                        self._collection_name,
+                    )
+                else:
+                    logger.exception("Error creating collection %s", self._collection_name)
                 raise
+
+    def _build_quantizer(self):
+        """
+        Builds a vector quantizer config from WEAVIATE_COMPRESSION, or None for no compression.
+
+        A fresh config object is returned on each call because a single quantizer config cannot be
+        reused across multiple index configs (e.g. the hnsw and flat phases of a dynamic index).
+        """
+        compression = (dify_config.WEAVIATE_COMPRESSION or "none").lower()
+        cache = dify_config.WEAVIATE_COMPRESSION_CACHE
+        if compression in ("", "none"):
+            return None
+        if compression == "rq":
+            return wc.Configure.VectorIndex.Quantizer.rq(bits=dify_config.WEAVIATE_RQ_BITS, cache=cache)
+        if compression == "pq":
+            return wc.Configure.VectorIndex.Quantizer.pq(
+                segments=dify_config.WEAVIATE_PQ_SEGMENTS,
+                training_limit=dify_config.WEAVIATE_PQ_TRAINING_LIMIT,
+            )
+        if compression == "bq":
+            return wc.Configure.VectorIndex.Quantizer.bq(cache=cache)
+        if compression == "sq":
+            return wc.Configure.VectorIndex.Quantizer.sq(
+                training_limit=dify_config.WEAVIATE_SQ_TRAINING_LIMIT,
+                cache=cache,
+            )
+        raise ValueError(f"Unsupported WEAVIATE_COMPRESSION value: {dify_config.WEAVIATE_COMPRESSION}")
+
+    def _build_vector_index_config(self):
+        """
+        Builds the vector index config (hnsw/flat/dynamic) with the configured distance metric and
+        compression. A flat index — including the flat phase of a dynamic index — only supports BQ.
+        """
+        index_type = (dify_config.WEAVIATE_INDEX_TYPE or "hnsw").lower()
+        compression = (dify_config.WEAVIATE_COMPRESSION or "none").lower()
+        distance = wc.VectorDistances(dify_config.WEAVIATE_DISTANCE_METRIC)
+
+        if index_type == "flat":
+            if compression not in ("none", "bq"):
+                raise ValueError("A flat Weaviate index supports only 'bq' compression (WEAVIATE_COMPRESSION=bq).")
+            return wc.Configure.VectorIndex.flat(distance_metric=distance, quantizer=self._build_quantizer())
+        if index_type == "dynamic":
+            # The flat phase only supports BQ; drop any non-BQ quantizer from it while keeping it on HNSW.
+            flat_quantizer = self._build_quantizer() if compression in ("none", "bq") else None
+            return wc.Configure.VectorIndex.dynamic(
+                distance_metric=distance,
+                threshold=dify_config.WEAVIATE_DYNAMIC_INDEX_THRESHOLD,
+                hnsw=wc.Configure.VectorIndex.hnsw(distance_metric=distance, quantizer=self._build_quantizer()),
+                flat=wc.Configure.VectorIndex.flat(distance_metric=distance, quantizer=flat_quantizer),
+            )
+        if index_type == "hnsw":
+            return wc.Configure.VectorIndex.hnsw(distance_metric=distance, quantizer=self._build_quantizer())
+        raise ValueError(f"Unsupported WEAVIATE_INDEX_TYPE value: {dify_config.WEAVIATE_INDEX_TYPE}")
+
+    def _ensure_tenant(self) -> None:
+        """Ensures this dataset's tenant exists in the shared multi-tenant collection (no-op without MT)."""
+        if not self._tenant:
+            return
+        if not self._client.collections.exists(self._collection_name):
+            return
+        col = self._client.collections.use(self._collection_name)
+        try:
+            if not col.tenants.exists(self._tenant):
+                col.tenants.create(self._tenant)
+        except Exception as e:
+            logger.warning("Could not ensure tenant %s on collection %s: %s", self._tenant, self._collection_name, e)
 
     def _ensure_properties(self) -> None:
         """
@@ -304,7 +425,7 @@ class WeaviateVector(BaseVector):
         texts = [d.page_content for d in documents]
         metadatas = [d.metadata for d in documents]
 
-        col = self._client.collections.use(self._collection_name)
+        col = self._collection()
         objs: list[DataObject] = []
         ids_out: list[str] = []
 
@@ -350,13 +471,31 @@ class WeaviateVector(BaseVector):
         if not self._client.collections.exists(self._collection_name):
             return
 
-        col = self._client.collections.use(self._collection_name)
+        col = self._collection()
         col.data.delete_many(where=Filter.by_property(key).equal(value))
 
     @override
     def delete(self):
-        """Deletes the entire collection from Weaviate."""
-        if self._client.collections.exists(self._collection_name):
+        """
+        Deletes this dataset's data from Weaviate.
+
+        Under multi-tenancy this removes only this dataset's tenant from the shared collection,
+        leaving other datasets' tenants intact; otherwise it deletes the whole per-dataset collection.
+        """
+        if not self._client.collections.exists(self._collection_name):
+            return
+        if self._tenant:
+            col = self._client.collections.use(self._collection_name)
+            try:
+                col.tenants.remove(self._tenant)
+            except Exception as e:
+                logger.warning(
+                    "Could not remove tenant %s from collection %s: %s",
+                    self._tenant,
+                    self._collection_name,
+                    e,
+                )
+        else:
             self._client.collections.delete(self._collection_name)
 
     @override
@@ -365,7 +504,7 @@ class WeaviateVector(BaseVector):
         if not self._client.collections.exists(self._collection_name):
             return False
 
-        col = self._client.collections.use(self._collection_name)
+        col = self._collection()
         res = col.query.fetch_objects(
             filters=Filter.by_property("doc_id").equal(id),
             limit=1,
@@ -384,7 +523,7 @@ class WeaviateVector(BaseVector):
         if not self._client.collections.exists(self._collection_name):
             return
 
-        col = self._client.collections.use(self._collection_name)
+        col = self._collection()
 
         for uid in ids:
             try:
@@ -404,7 +543,7 @@ class WeaviateVector(BaseVector):
         if not self._client.collections.exists(self._collection_name):
             return []
 
-        col = self._client.collections.use(self._collection_name)
+        col = self._collection()
         props = list({*self._attributes, self._DOCUMENT_ID_PROPERTY, Field.TEXT_KEY.value})
 
         where = None
@@ -464,7 +603,7 @@ class WeaviateVector(BaseVector):
         if not self._client.collections.exists(self._collection_name):
             return []
 
-        col = self._client.collections.use(self._collection_name)
+        col = self._collection()
         props = list({*self._attributes, Field.TEXT_KEY.value})
 
         where = None
@@ -516,20 +655,43 @@ class WeaviateVector(BaseVector):
 class WeaviateVectorFactory(AbstractVectorFactory):
     """Factory class for creating WeaviateVector instances."""
 
+    @staticmethod
+    def _gen_shared_collection_name(dataset: Dataset) -> str:
+        """
+        Generates a deterministic shared collection name for multi-tenancy, keyed by the dataset's
+        embedding model. Datasets using the same embedding model (hence the same vector dimension and
+        schema) share one collection, each isolated as its own tenant; this avoids creating one
+        collection per dataset at scale.
+        """
+        model_key = f"{dataset.embedding_model_provider or ''}:{dataset.embedding_model or ''}"
+        digest = hashlib.sha256(model_key.encode("utf-8")).hexdigest()[:16]
+        return f"{dify_config.VECTOR_INDEX_NAME_PREFIX}_shared_{digest}_Node"
+
     @override
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> WeaviateVector:
         """
         Initializes a WeaviateVector instance for the given dataset.
 
-        Uses existing collection name from dataset index structure or generates a new one.
-        Updates dataset index structure if not already set.
+        Reuses the persisted layout from the dataset index structure when present (so existing
+        datasets are never silently migrated). For a new dataset, uses a shared multi-tenant
+        collection when WEAVIATE_MULTI_TENANCY_ENABLED is set, otherwise the legacy
+        collection-per-dataset layout. The chosen layout is persisted in the index structure.
         """
+        tenant: str | None = None
         if dataset.index_struct_dict:
-            class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
-            collection_name = class_prefix
+            vector_store = dataset.index_struct_dict["vector_store"]
+            collection_name = vector_store["class_prefix"]
+            if vector_store.get("multi_tenant"):
+                tenant = vector_store.get("tenant") or dataset.id
+        elif dify_config.WEAVIATE_MULTI_TENANCY_ENABLED:
+            collection_name = self._gen_shared_collection_name(dataset)
+            tenant = dataset.id
+            index_struct = self.gen_index_struct_dict(VectorType.WEAVIATE, collection_name)
+            index_struct["vector_store"]["multi_tenant"] = True
+            index_struct["vector_store"]["tenant"] = tenant
+            dataset.index_struct = json.dumps(index_struct)
         else:
-            dataset_id = dataset.id
-            collection_name = Dataset.gen_collection_name_by_id(dataset_id)
+            collection_name = Dataset.gen_collection_name_by_id(dataset.id)
             dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.WEAVIATE, collection_name))
         return WeaviateVector(
             collection_name=collection_name,
@@ -540,4 +702,5 @@ class WeaviateVectorFactory(AbstractVectorFactory):
                 batch_size=dify_config.WEAVIATE_BATCH_SIZE,
             ),
             attributes=attributes,
+            tenant=tenant,
         )
