@@ -509,7 +509,7 @@ class TestGetHistoryPromptMessages:
     def _history_scalars_side_effect(messages: list[MagicMock]):
         call_count = {"n": 0}
 
-        def scalars_side_effect(stmt):
+        def scalars_side_effect(_stmt):
             result = MagicMock()
             if call_count["n"] == 0:
                 result.all.return_value = messages
@@ -649,7 +649,7 @@ class TestGetHistoryPromptMessages:
 
         call_count = {"n": 0}
 
-        def scalars_side_effect(stmt):
+        def scalars_side_effect(_stmt):
             r = MagicMock()
             if call_count["n"] == 0:
                 # messages query
@@ -699,7 +699,7 @@ class TestGetHistoryPromptMessages:
 
         call_count = {"n": 0}
 
-        def scalars_side_effect(stmt):
+        def scalars_side_effect(_stmt):
             r = MagicMock()
             if call_count["n"] == 0:
                 r.all.return_value = [msg]
@@ -746,7 +746,7 @@ class TestGetHistoryPromptMessages:
 
         call_count = {"n": 0}
 
-        def scalars_side_effect(stmt):
+        def scalars_side_effect(_stmt):
             r = MagicMock()
             if call_count["n"] == 0:
                 r.all.return_value = [msg]
@@ -843,7 +843,7 @@ class TestGetHistoryPromptMessages:
 
         call_count = {"n": 0}
 
-        def scalars_side_effect(stmt):
+        def scalars_side_effect(_stmt):
             r = MagicMock()
             if call_count["n"] == 0:
                 r.all.return_value = [msg]
@@ -878,7 +878,7 @@ class TestGetHistoryPromptMessages:
 
         call_count = {"n": 0}
 
-        def scalars_side_effect(stmt):
+        def scalars_side_effect(_stmt):
             r = MagicMock()
             if call_count["n"] == 0:
                 r.all.return_value = [msg]
@@ -913,7 +913,7 @@ class TestGetHistoryPromptMessages:
 
         call_count = {"n": 0}
 
-        def scalars_side_effect(stmt):
+        def scalars_side_effect(_stmt):
             r = MagicMock()
             if call_count["n"] == 0:
                 r.all.return_value = [msg]
