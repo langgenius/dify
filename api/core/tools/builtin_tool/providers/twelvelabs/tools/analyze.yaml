@@ -1,0 +1,63 @@
+identity:
+  name: analyze
+  author: mohit-twelvelabs
+  label:
+    en_US: Analyze Video
+    zh_Hans: 分析视频
+description:
+  human:
+    en_US: Generate text about an indexed video using the TwelveLabs Pegasus model (summaries, Q&A, descriptions).
+    zh_Hans: 使用 TwelveLabs Pegasus 模型对已索引的视频生成文本（摘要、问答、描述）。
+  llm: >-
+    Analyze an indexed video with the TwelveLabs Pegasus model and return generated text.
+    Requires the video_id of a video already uploaded to a TwelveLabs index, plus a prompt
+    describing what to generate (e.g. "Summarize this video" or "What happens at the end?").
+parameters:
+  - name: video_id
+    type: string
+    required: true
+    label:
+      en_US: Video ID
+      zh_Hans: 视频 ID
+    human_description:
+      en_US: The ID of a video that has already been indexed in TwelveLabs.
+      zh_Hans: 已在 TwelveLabs 中完成索引的视频 ID。
+    llm_description: The TwelveLabs video_id of the indexed video to analyze.
+    form: llm
+  - name: prompt
+    type: string
+    required: true
+    label:
+      en_US: Prompt
+      zh_Hans: 提示词
+    human_description:
+      en_US: Instruction describing what to generate from the video.
+      zh_Hans: 描述要从视频生成什么内容的指令。
+    llm_description: The instruction describing what text to generate from the video.
+    form: llm
+  - name: temperature
+    type: number
+    required: false
+    label:
+      en_US: Temperature
+      zh_Hans: 温度
+    human_description:
+      en_US: Sampling temperature between 0 and 1. Higher values produce more varied output.
+      zh_Hans: 0 到 1 之间的采样温度，值越高输出越多样。
+    form: form
+    default: 0.2
+    min: 0
+    max: 1
+  - name: max_tokens
+    type: number
+    required: false
+    label:
+      en_US: Max Tokens
+      zh_Hans: 最大 Token 数
+    human_description:
+      en_US: Maximum number of tokens to generate.
+      zh_Hans: 生成的最大 token 数。
+    form: form
+    default: 2048
+    min: 1
+    max: 4096
