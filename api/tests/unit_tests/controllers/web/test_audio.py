@@ -119,6 +119,24 @@ class TestAudioApi:
             with pytest.raises(ProviderModelCurrentlyNotSupportError):
                 AudioApi().post(_app_model(), _end_user())
 
+    def test_missing_file_field_returns_400(self, app: Flask) -> None:
+        """A multipart POST with no `file` field must surface as 400, not 500.
+
+        Verifies the controller passes file=None to AudioService.transcript_asr
+        instead of raising a KeyError that would yield HTTP 500.
+        """
+
+        def fake_asr(*args, **kwargs):
+            assert kwargs["file"] is None
+            raise NoAudioUploadedServiceError()
+
+        with patch("controllers.web.audio.AudioService.transcript_asr", side_effect=fake_asr):
+            with app.test_request_context("/audio-to-text", method="POST", data={}, content_type="multipart/form-data"):
+                with pytest.raises(NoAudioUploadedError) as exc_info:
+                    AudioApi().post(_app_model(), _end_user())
+
+        assert exc_info.value.code == 400
+
 
 # ---------------------------------------------------------------------------
 # TextApi (text-to-audio)
