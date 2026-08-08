@@ -18,6 +18,8 @@ interface ListingEnvelopeMetadata {
   nextCursor?: string | undefined;
 }
 
+const MAX_DIAGNOSTIC_KEYS = 20;
+
 /**
  * Online-document connector backed by the deployment-selected datasource runtime. Page listing accumulates the
  * streamed workspaces/pages (deduped); page content concatenates Dify text messages while retaining support for
@@ -29,8 +31,12 @@ export function createApiOnlineDocumentConnector(input: {
   return {
     getPageContent: async ({ page, signal, source, tenantId, userId }) => {
       let content = "";
+      let frameCount = 0;
       let pageId = page.pageId;
+      let recognizedFrames = 0;
       let workspaceId: string | undefined;
+      const frameTypes = new Map<string, number>();
+      const messageKeys = new Set<string>();
 
       for await (const raw of input.client.dispatch({
         operation: "get_online_document_page_content",
@@ -40,11 +46,15 @@ export function createApiOnlineDocumentConnector(input: {
         ...(userId ? { userId } : {}),
         ...(signal ? { signal } : {}),
       })) {
+        frameCount += 1;
+        accumulateContentFrameMetadata(raw, frameTypes, messageKeys);
         const parsed = parseContentEnvelope(raw);
 
         if (!parsed) {
           continue;
         }
+
+        recognizedFrames += 1;
 
         if (parsed.content) {
           content = parsed.append ? content + parsed.content : parsed.content;
@@ -58,6 +68,21 @@ export function createApiOnlineDocumentConnector(input: {
           workspaceId = parsed.workspaceId;
         }
       }
+
+      console.info(
+        JSON.stringify({
+          contentBytes: new TextEncoder().encode(content).byteLength,
+          event: "knowledge_fs.online_document.content_frames",
+          frameCount,
+          frameTypes: Object.fromEntries(
+            Array.from(frameTypes.entries()).sort(([a], [b]) => a.localeCompare(b)),
+          ),
+          messageKeys: Array.from(messageKeys).sort(),
+          pageId,
+          recognizedFrames,
+          sourceId: source.id,
+        }),
+      );
 
       const result: OnlineDocumentPageContent = {
         content,
@@ -103,6 +128,33 @@ export function createApiOnlineDocumentConnector(input: {
       };
     },
   };
+}
+
+function accumulateContentFrameMetadata(
+  raw: unknown,
+  frameTypes: Map<string, number>,
+  messageKeys: Set<string>,
+): void {
+  if (!raw || typeof raw !== "object") {
+    incrementBoundedFrameType(frameTypes, typeof raw);
+    return;
+  }
+
+  const envelope = raw as Record<string, unknown>;
+  const type = typeof envelope.type === "string" && envelope.type ? envelope.type : "unknown";
+  incrementBoundedFrameType(frameTypes, type);
+
+  if (envelope.message && typeof envelope.message === "object") {
+    for (const key of Object.keys(envelope.message)) {
+      if (messageKeys.size >= MAX_DIAGNOSTIC_KEYS) break;
+      messageKeys.add(key);
+    }
+  }
+}
+
+function incrementBoundedFrameType(frameTypes: Map<string, number>, type: string): void {
+  const key = frameTypes.has(type) || frameTypes.size < MAX_DIAGNOSTIC_KEYS ? type : "other";
+  frameTypes.set(key, (frameTypes.get(key) ?? 0) + 1);
 }
 
 export function createApiOnlineDocumentOptions(input: {

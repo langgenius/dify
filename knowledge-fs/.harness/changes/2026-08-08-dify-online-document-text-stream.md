@@ -10,6 +10,9 @@ Date: 2026-08-08
   `{ result: { content } }` envelopes.
 - Added regression coverage using the real Dify datasource message shape plus compatibility
   coverage for the structured envelope.
+- Added one safe content-fetch diagnostic containing only bounded frame types, message field names,
+  recognized-frame count, and final UTF-8 byte length. Empty documents remain valid connector
+  results; neither content nor credentials are logged.
 
 ## Why
 
@@ -22,6 +25,8 @@ zero knowledge nodes, and a terminal compilation failure because no FTS projecti
 - RED: `pnpm --filter @knowledge/api-app test -- online-document-options.test.ts` reproduced an
   empty content result for two Dify text messages.
 - GREEN: the same command passed all 211 tests across 42 API-app test files after the fix.
+- RED: the empty-document diagnostic regression test confirmed that empty content already returned
+  successfully but no structural frame diagnostic was emitted.
 - `pnpm check` passed, including typecheck, 4,269 API tests plus the remaining workspace tests,
   coverage gates, evaluation gates, migration checks, Compose checks, and smoke tests.
 - `pnpm build` passed all 12 workspace package builds.

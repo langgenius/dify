@@ -1,5 +1,5 @@
 import type { OnlineDocumentListInput } from "@knowledge/api";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type {
   ApiDatasourceInvocationClient,
@@ -138,5 +138,39 @@ describe("createApiOnlineDocumentConnector", () => {
     });
 
     expect(content).toEqual({ content: "# Page One", pageId: "p1", workspaceId: "w1" });
+  });
+
+  it("keeps empty content valid and logs only bounded frame metadata", async () => {
+    const calls: ApiDatasourceInvocationInput[] = [];
+    const client = clientYielding(
+      [
+        { message: { text: "" }, meta: { credential: "must-not-log" }, type: "text" },
+        { message: { json_object: { ignored: true } }, type: "json" },
+      ],
+      calls,
+    );
+    const info = vi.spyOn(console, "info").mockImplementation(() => undefined);
+
+    const content = await createApiOnlineDocumentConnector({ client }).getPageContent({
+      page: { pageId: "p1", type: "page", workspaceId: "w1" },
+      source: SOURCE,
+      tenantId: "tenant-1",
+    });
+
+    expect(content).toEqual({ content: "", pageId: "p1" });
+    expect(info).toHaveBeenCalledOnce();
+    const diagnostic = String(info.mock.calls[0]?.[0]);
+    expect(JSON.parse(diagnostic)).toMatchObject({
+      contentBytes: 0,
+      event: "knowledge_fs.online_document.content_frames",
+      frameCount: 2,
+      frameTypes: { json: 1, text: 1 },
+      messageKeys: ["json_object", "text"],
+      pageId: "p1",
+      recognizedFrames: 1,
+      sourceId: SOURCE.id,
+    });
+    expect(diagnostic).not.toContain("must-not-log");
+    info.mockRestore();
   });
 });
