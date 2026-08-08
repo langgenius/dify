@@ -5,9 +5,14 @@ import type { TriggerProps } from './types'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { useQueryState } from 'nuqs'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
 import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE } from '@/config'
 import { useModelParameterRules } from '@/service/use-common'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '../hooks'
@@ -68,6 +73,10 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   const { currentProvider, currentModel, activeTextGenerationModelList } =
     useTextGenerationCurrentProviderAndModelAndModelList({ provider, model: modelId })
   const selectableModelList = modelList ?? activeTextGenerationModelList
+  const [settingsDestination, setSettingsDestination] = useQueryState(
+    settingsQueryParamName,
+    settingsQueryParser,
+  )
 
   const parameterRules: ModelParameterRule[] = useMemo(() => {
     return parameterRulesData?.data || []
@@ -92,6 +101,10 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
       mode: targetModelItem?.model_properties.mode as string,
       features: targetModelItem?.features || [],
     })
+  }
+
+  const handleConfigureEmptyState = () => {
+    if (settingsDestination !== 'provider') void setSettingsDestination('provider')
   }
 
   const handleSwitch = (key: string, value: boolean, assignValue: ParameterValue) => {
@@ -159,6 +172,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                 isInWorkflow &&
                   'border border-workflow-block-parma-bg bg-workflow-block-parma-bg hover:bg-workflow-block-parma-bg',
               )}
+              onConfigureEmptyState={handleConfigureEmptyState}
               onSelect={handleChangeModel}
             />
           </div>

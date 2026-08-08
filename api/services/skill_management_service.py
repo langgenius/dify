@@ -1228,29 +1228,30 @@ class SkillManagementService:
 
     @staticmethod
     def _extract_reasoning_from_dump(value: object) -> str:
-        match value:
-            case (
-                {"reasoning_content": str(reasoning)}
-                | {"reasoning": str(reasoning)}
-                | {"reasoningContent": str(reasoning)}
-            ):
-                return reasoning
-            case {"data": str(text)} | {"content": str(text)}:
-                _clean_text, reasoning = split_reasoning(text, "separated")
-                return reasoning
-            case dict():
-                for nested_value in value.values():
-                    reasoning = SkillManagementService._extract_reasoning_from_dump(nested_value)
-                    if reasoning:
-                        return reasoning
-            case list() | tuple():
-                for nested_value in value:
-                    reasoning = SkillManagementService._extract_reasoning_from_dump(nested_value)
-                    if reasoning:
-                        return reasoning
-            case str():
-                _clean_text, reasoning = split_reasoning(value, "separated")
-                return reasoning
+        if isinstance(value, str):
+            _clean_text, reasoning = split_reasoning(value, "separated")
+            return reasoning
+        if isinstance(value, dict):
+            for key in ("reasoning_content", "reasoning", "reasoningContent"):
+                raw_reasoning = value.get(key)
+                if isinstance(raw_reasoning, str):
+                    return raw_reasoning
+
+            for key in ("data", "content"):
+                text = value.get(key)
+                if isinstance(text, str):
+                    _clean_text, reasoning = split_reasoning(text, "separated")
+                    return reasoning
+
+            for nested_value in value.values():
+                reasoning = SkillManagementService._extract_reasoning_from_dump(nested_value)
+                if reasoning:
+                    return reasoning
+        elif isinstance(value, (list, tuple)):
+            for nested_value in value:
+                reasoning = SkillManagementService._extract_reasoning_from_dump(nested_value)
+                if reasoning:
+                    return reasoning
         return ""
 
     def _generate_assistant_suggestions(
@@ -1290,6 +1291,7 @@ class SkillManagementService:
             logger.warning("skill_assistant_suggestions_failed", exc_info=True)
             return []
 
+        suggestions: object
         if isinstance(parsed, list):
             suggestions = parsed
         elif isinstance(parsed, dict):
@@ -2634,7 +2636,9 @@ class SkillManagementService:
             return "existing_skill"
 
         skill_md = next((file for file in files if file.path == _SKILL_MD), None)
-        content = skill_md.content_text if skill_md is not None else ""
+        content = ""
+        if skill_md is not None and skill_md.content_text is not None:
+            content = skill_md.content_text
         has_description = bool(skill.description.strip() and skill.description.strip() != _UNTITLED_SKILL_DESCRIPTION)
         body = _FRONTMATTER_RE.sub("", content, count=1).strip()
         has_body = bool(body and body not in {_EMPTY_SKILL_DRAFT_CONTENT.strip(), _UNTITLED_SKILL_MD_BODY.strip()})
@@ -2687,7 +2691,9 @@ class SkillManagementService:
             return plan
 
         skill_md = next((file for file in files if file.path == _SKILL_MD), None)
-        current_content = skill_md.content_text if skill_md is not None else _EMPTY_SKILL_DRAFT_CONTENT
+        current_content = _EMPTY_SKILL_DRAFT_CONTENT
+        if skill_md is not None and skill_md.content_text is not None:
+            current_content = skill_md.content_text
         operations: list[SkillAssistDraftOperationPayload] = []
         for operation in plan.operations:
             if operation.path == _SKILL_MD and operation.operation == "upsert_text":

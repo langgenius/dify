@@ -540,19 +540,15 @@ class WorkspaceSkillAssistMessageApi(Resource):
     def post(self, current_tenant_id: str, current_user: Account, skill_id: str):
         try:
             payload = SkillAssistMessagePayload.model_validate(console_ns.payload or {})
-            assistant_kwargs = {
-                "tenant_id": current_tenant_id,
-                "skill_id": skill_id,
-                "user_id": current_user.id,
-                "message": payload.message,
-                "attachments": payload.attachments,
-                "model_payload": payload.model,
-                "target_path": payload.target_path,
-            }
-            if payload.history:
-                assistant_kwargs["history"] = payload.history
             response = SkillManagementService().create_assistant_action_stream(
-                **assistant_kwargs,
+                tenant_id=current_tenant_id,
+                skill_id=skill_id,
+                user_id=current_user.id,
+                message=payload.message,
+                attachments=payload.attachments,
+                history=payload.history,
+                model_payload=payload.model,
+                target_path=payload.target_path,
             )
         except ValidationError as exc:
             return {"code": "invalid_request", "message": str(exc)}, 400
