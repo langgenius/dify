@@ -37,6 +37,9 @@ type Reader = {
 
 type AudioResponse = {
   status: number
+  headers: {
+    get: (name: string) => string | null
+  }
   body: {
     getReader: () => Reader
   }
@@ -194,7 +197,11 @@ const setMediaSourceSupport = (options: { mediaSource: boolean; managedMediaSour
   })
 }
 
-const makeAudioResponse = (status: number, reads: ReaderResult[]): AudioResponse => {
+const makeAudioResponse = (
+  status: number,
+  reads: ReaderResult[],
+  contentType = 'audio/mpeg',
+): AudioResponse => {
   const read = vi.fn<() => Promise<ReaderResult>>()
   reads.forEach((result) => {
     read.mockResolvedValueOnce(result)
@@ -202,6 +209,12 @@ const makeAudioResponse = (status: number, reads: ReaderResult[]): AudioResponse
 
   return {
     status,
+    headers: {
+      get: (name: string) => {
+        if (name.toLowerCase() === 'content-type') return contentType
+        return null
+      },
+    },
     body: {
       getReader: () => ({ read }),
     },
@@ -1040,6 +1053,34 @@ describe('AudioPlayer', () => {
       expect(audio!.pause).toHaveBeenCalledTimes(1)
       expect(audioContext!.close).toHaveBeenCalledTimes(1)
       expect(globalThis.URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock-url')
+    })
+
+    it('should use WAV content type from response header instead of default audio/mpeg', async () => {
+      mockTextToAudioStream.mockResolvedValue(
+        makeAudioResponse(
+          200,
+          [
+            { value: new Uint8Array([1, 2]), done: false },
+            { value: new Uint8Array([3, 4]), done: true },
+          ],
+          'audio/wav',
+        ),
+      )
+
+      const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', null)
+      player.playAudio()
+      const mediaSource = testState.mediaSources[0]
+
+      // Wait for the async loadAudio to process the response (which sets the
+      // content type from the header), then fire sourceopen so the source buffer
+      // is created with the detected WAV type.
+      await waitFor(() => {
+        expect(mockTextToAudioStream).toHaveBeenCalledTimes(1)
+      })
+      await Promise.resolve()
+      mediaSource!.emit('sourceopen')
+
+      expect(mediaSource!.addSourceBuffer).toHaveBeenCalledWith('audio/wav')
     })
   })
 })
