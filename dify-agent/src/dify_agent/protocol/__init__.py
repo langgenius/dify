@@ -43,24 +43,30 @@ from .execution_binding import (
     CreateExecutionBindingResponse,
     DestroyExecutionBindingRequest,
 )
+from .binding_file import (
+    BindingFileDownloadRequest,
+    BindingFileDownloadResponse,
+    BindingFileEntry,
+    BindingFileListRequest,
+    BindingFileListResponse,
+    BindingFileReadRequest,
+    BindingFileReadResponse,
+)
 from .home_snapshot import (
     CreateHomeSnapshotFromBindingRequest,
     DeleteHomeSnapshotRequest,
     HomeSnapshotResponse,
 )
-from .workspace import (
-    WorkspaceFileEntry,
-    WorkspaceListRequest,
-    WorkspaceListResponse,
-    WorkspaceReadRequest,
-    WorkspaceReadResponse,
-    WorkspaceUploadRequest,
-    WorkspaceUploadResponse,
-    WorkspaceUploadedFile,
-)
 
 __all__ = [
     "BaseRunEvent",
+    "BindingFileDownloadRequest",
+    "BindingFileDownloadResponse",
+    "BindingFileEntry",
+    "BindingFileListRequest",
+    "BindingFileListResponse",
+    "BindingFileReadRequest",
+    "BindingFileReadResponse",
     "AgentRunUsage",
     "CancelRunRequest",
     "CancelRunResponse",
@@ -96,14 +102,6 @@ __all__ = [
     "RunStatusResponse",
     "RunSucceededEvent",
     "RunSucceededEventData",
-    "WorkspaceFileEntry",
-    "WorkspaceListRequest",
-    "WorkspaceListResponse",
-    "WorkspaceReadRequest",
-    "WorkspaceReadResponse",
-    "WorkspaceUploadRequest",
-    "WorkspaceUploadResponse",
-    "WorkspaceUploadedFile",
     "normalize_composition",
     "utc_now",
 ]

@@ -406,9 +406,9 @@ import {
   zPostAppsByAppIdWorkflowCommentsByCommentIdResolveResponse,
   zPostAppsByAppIdWorkflowCommentsPath,
   zPostAppsByAppIdWorkflowCommentsResponse,
-  zPostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadBody,
-  zPostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadPath,
-  zPostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadResponse,
+  zPostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesDownloadBody,
+  zPostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesDownloadPath,
+  zPostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesDownloadResponse,
   zPostAppsByAppIdWorkflowRunsTasksByTaskIdStopPath,
   zPostAppsByAppIdWorkflowRunsTasksByTaskIdStopResponse,
   zPostAppsByAppIdWorkflowsByWorkflowIdRestorePath,
@@ -3051,6 +3051,31 @@ export const byRunId = {
 }
 
 /**
+ * Create a ToolFile from one workflow Agent Binding file and return its download URL
+ */
+export const post42 = oc
+  .route({
+    description:
+      'Create a ToolFile from one workflow Agent Binding file and return its download URL',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesDownload',
+    path: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/download',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesDownloadBody,
+      params: zPostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesDownloadPath,
+    }),
+  )
+  .output(zPostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesDownloadResponse)
+
+export const download5 = {
+  post: post42,
+}
+
+/**
  * Read a text/binary preview file in a workflow Agent node sandbox
  */
 export const get58 = oc
@@ -3075,30 +3100,6 @@ export const read = {
 }
 
 /**
- * Upload one workflow Agent sandbox file and return a signed download URL
- */
-export const post42 = oc
-  .route({
-    description: 'Upload one workflow Agent sandbox file and return a signed download URL',
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUpload',
-    path: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/upload',
-    tags: ['console'],
-  })
-  .input(
-    z.object({
-      body: zPostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadBody,
-      params: zPostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadPath,
-    }),
-  )
-  .output(zPostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadResponse)
-
-export const upload3 = {
-  post: post42,
-}
-
-/**
  * List a directory in a workflow Agent node sandbox
  */
 export const get59 = oc
@@ -3120,8 +3121,8 @@ export const get59 = oc
 
 export const files5 = {
   get: get59,
+  download: download5,
   read,
-  upload: upload3,
 }
 
 export const sandbox = {
