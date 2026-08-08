@@ -6,7 +6,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
-import { useEffect } from 'react'
+import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import PromptEditor from '@/app/components/base/prompt-editor'
@@ -24,6 +24,8 @@ type Props = Readonly<{
   onFocusChange?: (value: boolean) => void
   readOnly?: boolean
   justVar?: boolean
+  singleLine?: boolean
+  onCommit?: () => void
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
   insertVarTipToLeft?: boolean
@@ -42,6 +44,8 @@ const Editor: FC<Props> = ({
   nodesOutputVars,
   availableNodes = [],
   insertVarTipToLeft,
+  singleLine = false,
+  onCommit,
 }) => {
   const { t } = useTranslation()
 
@@ -54,8 +58,27 @@ const Editor: FC<Props> = ({
   const pipelineId = useStore((s) => s.pipelineId)
   const setShowInputFieldPanel = useStore((s) => s.setShowInputFieldPanel)
 
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (!singleLine || e.key !== 'Enter') return
+      // When the variable-insert menu is open, Enter must select the highlighted
+      // variable — let the editor handle it.
+      const menuOpen = document.querySelector(
+        '[data-prompt-editor-typeahead-menu] > div:not([style*="visibility: hidden"])',
+      )
+      if (menuOpen) return
+      e.preventDefault()
+      onCommit?.()
+    },
+    [singleLine, onCommit],
+  )
+
   return (
-    <div className={cn(className, 'relative min-h-8')}>
+    <div
+      className={cn(className, 'relative min-h-8')}
+      role="presentation"
+      onKeyDown={handleKeyDown}
+    >
       <>
         <PromptEditor
           instanceId={instanceId}
