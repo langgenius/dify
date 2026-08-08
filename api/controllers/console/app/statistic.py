@@ -178,7 +178,7 @@ WHERE
         }
 
         try:
-            start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
+            start_datetime_utc, end_datetime_utc = parse_time_range(req_data.start, req_data.end, account.timezone)
         except ValueError as e:
             abort(400, description=str(e))
 
@@ -238,7 +238,7 @@ WHERE
         }
 
         try:
-            start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
+            start_datetime_utc, end_datetime_utc = parse_time_range(req_data.start, req_data.end, account.timezone)
         except ValueError as e:
             abort(400, description=str(e))
 
@@ -297,7 +297,7 @@ WHERE
         }
 
         try:
-            start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
+            start_datetime_utc, end_datetime_utc = parse_time_range(req_data.start, req_data.end, account.timezone)
         except ValueError as e:
             abort(400, description=str(e))
 
@@ -358,7 +358,7 @@ WHERE
         }
 
         try:
-            start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
+            start_datetime_utc, end_datetime_utc = parse_time_range(req_data.start, req_data.end, account.timezone)
         except ValueError as e:
             abort(400, description=str(e))
 
@@ -428,7 +428,7 @@ FROM
         }
 
         try:
-            start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
+            start_datetime_utc, end_datetime_utc = parse_time_range(req_data.start, req_data.end, account.timezone)
         except ValueError as e:
             abort(400, description=str(e))
 
@@ -503,7 +503,7 @@ WHERE
         }
 
         try:
-            start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
+            start_datetime_utc, end_datetime_utc = parse_time_range(req_data.start, req_data.end, account.timezone)
         except ValueError as e:
             abort(400, description=str(e))
 
@@ -568,7 +568,7 @@ WHERE
         }
 
         try:
-            start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
+            start_datetime_utc, end_datetime_utc = parse_time_range(req_data.start, req_data.end, account.timezone)
         except ValueError as e:
             abort(400, description=str(e))
 
@@ -631,7 +631,7 @@ WHERE
         }
 
         try:
-            start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
+            start_datetime_utc, end_datetime_utc = parse_time_range(req_data.start, req_data.end, account.timezone)
         except ValueError as e:
             abort(400, description=str(e))
 

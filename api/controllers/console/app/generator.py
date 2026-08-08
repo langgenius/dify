@@ -278,7 +278,7 @@ class RuleCodeGenerateApi(Resource):
         try:
             code_result = LLMGenerator.generate_code(
                 tenant_id=current_tenant_id,
-                args=args,
+                args=req_data,
             )
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -310,7 +310,7 @@ class RuleStructuredOutputGenerateApi(Resource):
         try:
             structured_output = LLMGenerator.generate_structured_output(
                 tenant_id=current_tenant_id,
-                args=args,
+                args=req_data,
             )
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
