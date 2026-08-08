@@ -348,7 +348,9 @@ const InputField: React.FC<InputFieldProps> = ({
             </Button>
           ) : (
             <Button className="flex" variant="primary" disabled={!nameValid} onClick={handleSave}>
-              <span className="mr-1">{t(($) => $[`${i18nPrefix}.insert`], { ns: 'workflow' })}</span>
+              <span className="mr-1">
+                {t(($) => $[`${i18nPrefix}.insert`], { ns: 'workflow' })}
+              </span>
               <KbdGroup>
                 {['Mod', 'Enter'].map((key) => (
                   <Kbd key={key} color="white">
