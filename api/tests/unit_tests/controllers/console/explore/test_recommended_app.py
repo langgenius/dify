@@ -6,6 +6,7 @@ from flask import Flask
 from pydantic import ValidationError
 
 import controllers.console.explore.recommended_app as module
+from controllers.console.explore.recommended_app import RecommendedAppsQuery
 from models import Account
 from models.model import AppMode, IconType
 

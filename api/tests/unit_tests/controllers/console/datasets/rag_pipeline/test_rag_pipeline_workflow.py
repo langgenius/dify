@@ -16,6 +16,16 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 from controllers.console.datasets.rag_pipeline import rag_pipeline_workflow as module
+from controllers.console.datasets.rag_pipeline.rag_pipeline_workflow import (
+    DatasourceVariablesPayload,
+    DefaultBlockConfigQuery,
+    DraftWorkflowRunPayload,
+    NodeIdQuery,
+    PublishedWorkflowRunPayload,
+    RagPipelineRecommendedPluginQuery,
+    WorkflowListQuery,
+    WorkflowUpdatePayload,
+)
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from models.account import Account, TenantAccountRole
 from models.dataset import Pipeline

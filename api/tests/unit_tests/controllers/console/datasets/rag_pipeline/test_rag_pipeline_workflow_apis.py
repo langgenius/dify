@@ -22,8 +22,12 @@ import services
 from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
 from controllers.console.datasets.rag_pipeline import rag_pipeline_workflow as workflow_controller
 from controllers.console.datasets.rag_pipeline.rag_pipeline_workflow import (
+    DatasourceVariablesPayload,
+    DefaultBlockConfigQuery,
     DefaultRagPipelineBlockConfigApi,
     DraftRagPipelineApi,
+    NodeRunPayload,
+    NodeRunRequiredPayload,
     PublishedAllRagPipelineApi,
     PublishedRagPipelineApi,
     RagPipelineByIdApi,
@@ -33,9 +37,12 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_workflow import (
     RagPipelineDraftRunLoopNodeApi,
     RagPipelineDraftWorkflowRestoreApi,
     RagPipelineRecommendedPluginApi,
+    RagPipelineRecommendedPluginQuery,
     RagPipelineTaskStopApi,
     RagPipelineWorkflowLastRunApi,
     RagPipelineWorkflowRunNodeExecutionListApi,
+    WorkflowListQuery,
+    WorkflowUpdatePayload,
 )
 from graphon.enums import WorkflowNodeExecutionStatus
 from libs.datetime_utils import naive_utc_now
@@ -418,7 +425,7 @@ class TestDraftRunNodes:
                 return_value={"ok": True},
             ),
         ):
-            result = method(api, user, pipeline, "node")
+            result = method(api, NodeRunPayload(), user, pipeline, "node")
             assert result == {"ok": True}
 
     def test_iteration_node_conversation_not_exists(self, app: Flask) -> None:
@@ -436,7 +443,7 @@ class TestDraftRunNodes:
             ),
         ):
             with pytest.raises(NotFound):
-                method(api, user, pipeline, "node")
+                method(api, NodeRunPayload(), user, pipeline, "node")
 
     def test_loop_node_success(self, app: Flask) -> None:
         api = RagPipelineDraftRunLoopNodeApi()
@@ -456,7 +463,7 @@ class TestDraftRunNodes:
                 return_value={"ok": True},
             ),
         ):
-            assert method(api, user, pipeline, "node") == {"ok": True}
+            assert method(api, NodeRunPayload(), user, pipeline, "node") == {"ok": True}
 
 
 class TestDraftNodeRun:
@@ -478,7 +485,7 @@ class TestDraftNodeRun:
             ),
         ):
             with pytest.raises(ValueError):
-                method(api, user, pipeline, "node")
+                method(api, NodeRunRequiredPayload(inputs={}), user, pipeline, "node")
 
 
 class TestPublishedPipelineApis:
@@ -551,7 +558,7 @@ class TestMiscApis:
                 return_value=service,
             ),
         ):
-            result = method(api, tenant_id, user)
+            result = method(api, RagPipelineRecommendedPluginQuery(type="all"), tenant_id, user)
             assert result == recommended_plugins
             service.get_recommended_plugins.assert_called_once_with("all", user, tenant_id)
 
@@ -573,7 +580,7 @@ class TestDefaultBlockConfigApi:
                 return_value=service,
             ),
         ):
-            result = method(api, pipeline, "llm")
+            result = method(api, DefaultBlockConfigQuery(q="{}"), pipeline, "llm")
             assert result == {"k": "v"}
 
     def test_get_block_config_invalid_json(self, app: Flask) -> None:
@@ -584,7 +591,7 @@ class TestDefaultBlockConfigApi:
 
         with app.test_request_context("/?q=bad-json"):
             with pytest.raises(ValueError):
-                method(api, pipeline, "llm")
+                method(api, DefaultBlockConfigQuery(q="bad-json"), pipeline, "llm")
 
 
 class TestPublishedAllRagPipelineApi:
@@ -605,7 +612,7 @@ class TestPublishedAllRagPipelineApi:
                 return_value=service,
             ),
         ):
-            result = method(api, user, pipeline)
+            result = method(api, WorkflowListQuery(), user, pipeline)
 
         assert result["items"][0]["id"] == "w1"
         assert result["items"][0]["graph"] == {"nodes": [], "edges": []}
@@ -622,7 +629,7 @@ class TestPublishedAllRagPipelineApi:
             app.test_request_context("/?user_id=u2"),
         ):
             with pytest.raises(Forbidden):
-                method(api, user, pipeline)
+                method(api, WorkflowListQuery(user_id="u2"), user, pipeline)
 
 
 class TestRagPipelineByIdApi:
@@ -647,7 +654,7 @@ class TestRagPipelineByIdApi:
                 return_value=service,
             ),
         ):
-            result = method(api, user, pipeline, "w1")
+            result = method(api, WorkflowUpdatePayload.model_validate(payload), user, pipeline, "w1")
 
         assert result["id"] == "w1"
         assert result["marked_name"] == "test"
@@ -661,7 +668,7 @@ class TestRagPipelineByIdApi:
         user = make_account()
 
         with app.test_request_context("/", json={}):
-            result, status = method(api, user, pipeline, "w1")
+            result, status = method(api, WorkflowUpdatePayload(), user, pipeline, "w1")
             assert status == 400
 
     def test_delete_success(self, app: Flask) -> None:
@@ -797,6 +804,6 @@ class TestRagPipelineDatasourceVariableApi:
                 return_value=service,
             ),
         ):
-            result = method(api, user, pipeline)
+            result = method(api, DatasourceVariablesPayload.model_validate(payload), user, pipeline)
             assert result["node_id"] == "n1"
             assert result["process_data"] == {}

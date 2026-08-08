@@ -200,7 +200,7 @@ class TestRagPipelineVariableApi:
             ),
         ):
             with pytest.raises(InvalidArgumentError):
-                method(api, WorkflowDraftVariablePatchPayload(), editor_user, pipeline, "v1")
+                method(api, WorkflowDraftVariablePatchPayload.model_validate(payload), editor_user, pipeline, "v1")
 
     def test_delete_variable_success(self, app: Flask, fake_db, editor_user):
         api = RagPipelineVariableApi()

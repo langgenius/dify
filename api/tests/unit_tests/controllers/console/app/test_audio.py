@@ -317,7 +317,7 @@ def test_console_text_api_builds_message_ref(app: Flask, monkeypatch: pytest.Mon
         ),
         patch("controllers.console.app.audio.current_user", SimpleNamespace(id="account-1")),
     ):
-        response = handler(api, TextToSpeechPayload(text="hello"), app_model=app_model)
+        response = handler(api, TextToSpeechPayload(text="hello", message_id="message-1"), app_model=app_model)
 
     assert response == {"audio": "ok"}
     assert calls["message_ref"] == MessageRef(AppRef("tenant-1", "app-1"), "message-1", account_id="account-1")
