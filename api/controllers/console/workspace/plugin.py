@@ -1,4 +1,5 @@
 import io
+import json
 from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Any, Literal, TypedDict
@@ -84,6 +85,18 @@ class AutoUpgradeSettingsResponse(TypedDict):
     upgrade_mode: TenantPluginAutoUpgradeMode
     exclude_plugins: list[str]
     include_plugins: list[str]
+
+
+def _parse_parameter_values_query(raw: str | None) -> dict[str, Any]:
+    if not raw:
+        return {}
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as e:
+        raise ValueError("parameter_values must be valid JSON") from e
+    if not isinstance(data, dict):
+        raise ValueError("parameter_values must be a JSON object")
+    return data
 
 
 class ParserList(BaseModel):
@@ -178,6 +191,7 @@ class ParserDynamicOptions(BaseModel):
     parameter: str
     credential_id: str | None = None
     provider_type: Literal["tool", "trigger"]
+    parameter_values: str | None = None
 
 
 class ParserDynamicOptionsWithCredentials(BaseModel):
@@ -187,6 +201,16 @@ class ParserDynamicOptionsWithCredentials(BaseModel):
     parameter: str
     credential_id: str
     credentials: Mapping[str, Any]
+    parameter_values: Mapping[str, Any] | None = None
+
+
+class ParserDynamicTreeOptions(BaseModel):
+    plugin_id: str
+    provider: str
+    action: str
+    parameter: str
+    credential_id: str | None = None
+    parameter_values: str | None = None
 
 
 class PluginPermissionSettingsPayload(BaseModel):
@@ -419,6 +443,8 @@ register_schema_models(
     ParserPermissionChange,
     ParserDynamicOptions,
     ParserDynamicOptionsWithCredentials,
+    ParserDynamicTreeOptions,
+    ParserPreferencesChange,
     ParserAutoUpgradeChange,
     ParserAutoUpgradeFetch,
     ParserExcludePlugin,
@@ -1138,6 +1164,7 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
         args = ParserDynamicOptions.model_validate(request.args.to_dict(flat=True))
 
         try:
+            parameter_values = _parse_parameter_values_query(args.parameter_values)
             options = PluginParameterService.get_dynamic_select_options(
                 tenant_id=tenant_id,
                 user_id=current_user.id,
@@ -1147,6 +1174,7 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
                 parameter=args.parameter,
                 credential_id=args.credential_id,
                 provider_type=args.provider_type,
+                parameter_values=parameter_values,
             )
         except PluginDaemonClientSideError as e:
             return {"code": "plugin_error", "message": e.description}, 400
@@ -1179,6 +1207,38 @@ class PluginFetchDynamicSelectOptionsWithCredentialsApi(Resource):
                 parameter=args.parameter,
                 credential_id=args.credential_id,
                 credentials=args.credentials,
+                parameter_values=dict(args.parameter_values) if args.parameter_values is not None else None,
+            )
+        except PluginDaemonClientSideError as e:
+            return {"code": "plugin_error", "message": e.description}, 400
+
+        return jsonable_encoder({"options": options})
+
+
+@console_ns.route("/workspaces/current/plugin/parameters/dynamic-tree-options")
+class PluginFetchDynamicTreeSelectOptionsApi(Resource):
+    @console_ns.expect(console_ns.models[ParserDynamicTreeOptions.__name__])
+    @setup_required
+    @login_required
+    @is_admin_or_owner_required
+    @account_initialization_required
+    def get(self):
+        current_user, tenant_id = current_account_with_tenant()
+        user_id = current_user.id
+
+        args = ParserDynamicTreeOptions.model_validate(request.args.to_dict(flat=True))  # type: ignore
+
+        try:
+            parameter_values = _parse_parameter_values_query(args.parameter_values)
+            options = PluginParameterService.get_dynamic_tree_select_options(
+                tenant_id=tenant_id,
+                user_id=user_id,
+                plugin_id=args.plugin_id,
+                provider=args.provider,
+                action=args.action,
+                parameter=args.parameter,
+                credential_id=args.credential_id,
+                parameter_values=parameter_values,
             )
         except PluginDaemonClientSideError as e:
             return {"code": "plugin_error", "message": e.description}, 400

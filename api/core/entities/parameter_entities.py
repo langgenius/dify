@@ -21,6 +21,7 @@ class CommonParameterType(StrEnum):
     # Once you are not sure about the available options until authorization is done
     # eg: Select a Slack channel from a Slack workspace
     DYNAMIC_SELECT = "dynamic-select"
+    DYNAMIC_TREE_SELECT = "dynamic-tree-select"
 
     # TOOL_SELECTOR = "tool-selector"
     # MCP object and array type parameters

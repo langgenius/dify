@@ -6,6 +6,7 @@ import type {
   CredentialFormSchema,
   CredentialFormSchemaSelect,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Tool } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { Node, ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
@@ -70,6 +71,8 @@ type Props = Readonly<{
   placeholder?: string
   readonly: boolean
   schemaWithDynamicSelect?: Partial<CredentialFormSchema>
+  /** Lazy-load tool dynamic-select options when the constant-mode select opens. */
+  onConstantFieldOpenChange?: (open: boolean) => void
   setControlFocus: (value: number) => void
   setOpen: (value: boolean) => void
   showErrorIcon?: boolean
@@ -114,6 +117,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
   placeholder,
   readonly,
   schemaWithDynamicSelect,
+  onConstantFieldOpenChange,
   setControlFocus,
   setOpen,
   showErrorIcon = false,
@@ -341,10 +345,14 @@ const VarReferencePickerTrigger: FC<Props> = ({
             )}
             {isConstant ? (
               <ConstantField
-                value={value as string}
+                value={
+                  schemaWithDynamicSelect?.type === FormTypeEnum.dynamicTreeSelect
+                    ? (Array.isArray(value) ? value : (typeof value === 'string' ? value : ''))
+                    : (typeof value === 'string' ? value : '')
+                }
                 onChange={
                   onChange as (
-                    value: string | number,
+                    value: string | number | string[],
                     varKindType: VarKindType,
                     varInfo?: Var,
                   ) => void
@@ -352,6 +360,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
                 schema={schemaWithDynamicSelect as CredentialFormSchemaSelect}
                 readonly={readonly}
                 isLoading={isLoading}
+                onOpenChange={onConstantFieldOpenChange}
               />
             ) : (
               resolvedVariablePicker

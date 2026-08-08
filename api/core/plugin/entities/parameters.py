@@ -2,7 +2,7 @@ import json
 from enum import StrEnum, auto
 from typing import Any, Union
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import AliasChoices, BaseModel, Field, field_validator
 
 from core.entities.parameter_entities import CommonParameterType
 from core.tools.entities.common_entities import I18nObject
@@ -12,6 +12,7 @@ class PluginParameterOption(BaseModel):
     value: str = Field(..., description="The value of the option")
     label: I18nObject = Field(..., description="The label of the option")
     icon: str | None = Field(default=None, description="The icon of the option, can be a url or a base64 encoded image")
+    children: list["PluginParameterOption"] = Field(default_factory=list, description="The child options of the option")
 
     @field_validator("value", mode="before")
     @classmethod
@@ -39,6 +40,7 @@ class PluginParameterType(StrEnum):
     TOOLS_SELECTOR = CommonParameterType.TOOLS_SELECTOR
     ANY = CommonParameterType.ANY
     DYNAMIC_SELECT = CommonParameterType.DYNAMIC_SELECT
+    DYNAMIC_TREE_SELECT = CommonParameterType.DYNAMIC_TREE_SELECT
     CHECKBOX = CommonParameterType.CHECKBOX
     # deprecated, should not use.
     SYSTEM_FILES = CommonParameterType.SYSTEM_FILES
@@ -74,9 +76,16 @@ class PluginParameter(BaseModel):
     label: I18nObject = Field(..., description="The label presented to the user")
     placeholder: I18nObject | None = Field(default=None, description="The placeholder presented to the user")
     scope: str | None = None
+    dynamic_select_lazy_load: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("dynamic_select_lazy_load", "dynamicSelectLazyLoad"),
+        description="When true, DYNAMIC_SELECT/DYNAMIC_TREE_SELECT options load on panel open (lazy); "
+        "when false (default), options prefetch after mount.",
+    )
     auto_generate: PluginParameterAutoGenerate | None = None
     template: PluginParameterTemplate | None = None
     required: bool = False
+    multiple: bool = False
     default: Union[float, int, str, bool, list, dict] | None = None
     min: Union[float, int] | None = None
     max: Union[float, int] | None = None
@@ -115,6 +124,12 @@ def cast_parameter_value(typ: StrEnum, value: Any, /):
                     return ""
                 else:
                     return value if isinstance(value, str) else str(value)
+            case PluginParameterType.DYNAMIC_TREE_SELECT:
+                if isinstance(value, list):
+                    return [item if isinstance(item, str) else str(item) for item in value]
+                if value is None:
+                    return ""
+                return value if isinstance(value, str) else str(value)
 
             case PluginParameterType.BOOLEAN:
                 match value:
@@ -197,6 +212,14 @@ def cast_parameter_value(typ: StrEnum, value: Any, /):
         raise ValueError(f"The tool parameter value {repr(value)} is not in correct type of {as_normal_type(typ)}.")
 
 
+def _cast_multiple_select_value(value: Any, /) -> list[str]:
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        value = [value]
+    return [item if isinstance(item, str) else str(item) for item in value]
+
+
 def init_frontend_parameter(rule: PluginParameter, type: StrEnum, value: Any):
     """
     init frontend parameter by rule
@@ -211,10 +234,26 @@ def init_frontend_parameter(rule: PluginParameter, type: StrEnum, value: Any):
         if not parameter_value and rule.required:
             raise ValueError(f"tool parameter {rule.name} not found in tool config")
 
+    is_multiple_select = rule.multiple and type in {
+        PluginParameterType.SELECT,
+        PluginParameterType.CHECKBOX,
+        PluginParameterType.DYNAMIC_SELECT,
+        PluginParameterType.DYNAMIC_TREE_SELECT,
+    }
+    if is_multiple_select:
+        parameter_value = _cast_multiple_select_value(parameter_value)
+
     if type == PluginParameterType.SELECT:
         # check if tool_parameter_config in options
         options = [x.value for x in rule.options]
-        if parameter_value is not None and parameter_value not in options:
+        if isinstance(parameter_value, list):
+            invalid_options = [value for value in parameter_value if value not in options]
+            if invalid_options:
+                raise ValueError(f"tool parameter {rule.name} value {invalid_options} not in options {options}")
+        elif parameter_value is not None and parameter_value not in options:
             raise ValueError(f"tool parameter {rule.name} value {parameter_value} not in options {options}")
+
+    if is_multiple_select:
+        return parameter_value
 
     return cast_parameter_value(type, parameter_value)
