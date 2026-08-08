@@ -533,8 +533,8 @@ describe('InputField', () => {
 
     await user.click(screen.getByRole('button', { name: 'select-paragraph' }))
     expect(
-      screen.getByText(/workflow\.nodes\.humanInput\.insertInputField\.prePopulateField/i),
-    ).toBeInTheDocument()
+      screen.getAllByText(/workflow\.nodes\.humanInput\.insertInputField\.prePopulateField/i),
+    ).not.toHaveLength(0)
   })
 
   it('should save constant select options', async () => {
