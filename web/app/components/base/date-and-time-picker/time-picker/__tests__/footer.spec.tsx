@@ -3,7 +3,9 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import Footer from '../footer'
 
 // Factory for TimePickerFooter props
-const createFooterProps = (overrides: Partial<TimePickerFooterProps> = {}): TimePickerFooterProps => ({
+const createFooterProps = (
+  overrides: Partial<TimePickerFooterProps> = {},
+): TimePickerFooterProps => ({
   handleSelectCurrentTime: vi.fn(),
   handleConfirm: vi.fn(),
   ...overrides,

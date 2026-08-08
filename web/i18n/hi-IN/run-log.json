@@ -1,5 +1,4 @@
 {
-  "actionLogs": "क्रिया लॉग",
   "circularInvocationTip": "वर्तमान कार्यप्रवाह में उपकरणों/नोड्स का वृत्ताकार आह्वान है।",
   "detail": "विवरण",
   "input": "इनपुट",
@@ -10,7 +9,6 @@
   "meta.time": "समय की अवधि",
   "meta.title": "मेटाडाटा",
   "meta.tokens": "कुल टोकन्स",
-  "meta.version": "वर्ज़न",
   "result": "नतीजा",
   "resultEmpty.link": "विवरण पैनल",
   "resultEmpty.tipLeft": "लेखक ",

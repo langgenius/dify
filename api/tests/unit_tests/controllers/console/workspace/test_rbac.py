@@ -24,6 +24,7 @@ from flask import Flask
 from pydantic import ValidationError
 from werkzeug.exceptions import Forbidden, NotFound
 
+from configs import dify_config
 from controllers.console.workspace import rbac as rbac_mod
 
 
@@ -136,7 +137,7 @@ class TestPydanticModels:
 
     def test_resource_access_scope_defaults_empty_account_ids(self):
         parsed = rbac_mod._ResourceAccessScopeRequest.model_validate({"scope": "specific"})
-        assert parsed.scope is rbac_mod._AccessScope.SPECIFIC
+        assert parsed.scope is rbac_mod.RBACResourceWhitelistScope.SPECIFIC
 
     def test_resource_access_scope_coerce_null_account_ids(self):
         rbac_mod._ResourceAccessScopeRequest.model_validate({"scope": "all"})
@@ -176,6 +177,20 @@ class TestPaginationMapping:
         ):
             response = inspect.unwrap(rbac_mod.RBACRolesApi.get)(rbac_mod.RBACRolesApi())
 
+        owner_permission_keys = rbac_mod._LEGACY_ROLE_PERMISSION_KEYS["owner"]
+        valid_owner_permission_keys = []
+        for permission_key in owner_permission_keys:
+            if not dify_config.BILLING_ENABLED and "billing" in permission_key:
+                continue
+            valid_owner_permission_keys.append(permission_key)
+
+        admin_permission_keys = rbac_mod._LEGACY_ROLE_PERMISSION_KEYS["admin"]
+        valid_admin_permission_keys = []
+        for permission_key in admin_permission_keys:
+            if not dify_config.BILLING_ENABLED and "billing" in permission_key:
+                continue
+            valid_admin_permission_keys.append(permission_key)
+
         assert response["data"] == [
             {
                 "id": "owner",
@@ -185,7 +200,7 @@ class TestPaginationMapping:
                 "name": "owner",
                 "description": "",
                 "is_builtin": True,
-                "permission_keys": list(dict.fromkeys(rbac_mod._LEGACY_ROLE_PERMISSION_KEYS["owner"])),
+                "permission_keys": valid_owner_permission_keys,
                 "role_tag": "owner",
             },
             {
@@ -196,15 +211,15 @@ class TestPaginationMapping:
                 "name": "admin",
                 "description": "",
                 "is_builtin": True,
-                "permission_keys": list(dict.fromkeys(rbac_mod._LEGACY_ROLE_PERMISSION_KEYS["admin"])),
+                "permission_keys": valid_admin_permission_keys,
                 "role_tag": "",
             },
         ]
         assert response["pagination"] == {
-            "total_count": 5,
+            "total_count": 4,
             "per_page": 2,
             "current_page": 1,
-            "total_pages": 3,
+            "total_pages": 2,
         }
         mock_list.assert_not_called()
 
@@ -262,6 +277,25 @@ class TestPaginationMapping:
 
 
 class TestResourceAccessScopeBindings:
+    def test_app_whitelist_all_schedules_member_policy_sync(self, app):
+        with (
+            app.test_request_context(
+                "/workspaces/current/rbac/apps/app-1/whitelist",
+                method="PUT",
+                json={"scope": "all"},
+            ),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-actor")),
+            patch("controllers.console.workspace.rbac.dify_config.RBAC_ENABLED", True),
+            patch(
+                "controllers.console.workspace.rbac.svc.RBACService.AppAccess.replace_whitelist",
+                return_value=rbac_mod.svc.ResourceWhitelist(),
+            ),
+            patch("controllers.console.workspace.rbac.initialize_created_app_rbac_access_task") as mock_sync_task,
+        ):
+            inspect.unwrap(rbac_mod.RBACAppWhitelistApi.put)(rbac_mod.RBACAppWhitelistApi(), "app-1")
+
+        mock_sync_task.delay.assert_called_once_with("tenant-1", "acct-actor", "app-1")
+
     def test_app_user_access_policy_assignment_forwards_ids(self, app):
         with (
             app.test_request_context(

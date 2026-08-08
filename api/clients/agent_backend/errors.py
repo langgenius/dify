@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from dify_agent.protocol import RunFailureType
+
 
 class AgentBackendError(Exception):
     """Base error for API-side Agent backend integration failures."""
@@ -54,8 +56,24 @@ class AgentBackendRunFailedError(AgentBackendError):
 
     run_id: str
     detail: Any
+    error_type: RunFailureType | None
+    reason: str | None
+    source_event_id: str | None
 
-    def __init__(self, run_id: str, detail: Any) -> None:
+    def __init__(
+        self,
+        run_id: str,
+        detail: Any,
+        *,
+        message: str | None = None,
+        error_type: RunFailureType | None = None,
+        reason: str | None = None,
+        source_event_id: str | None = None,
+    ) -> None:
         self.run_id = run_id
         self.detail = detail
-        super().__init__(f"Agent backend run failed: {run_id}")
+        self.error_type = error_type
+        self.reason = reason
+        self.source_event_id = source_event_id
+        display_message = message or f"Agent backend run failed: {run_id}"
+        super().__init__(f"{display_message} (agent_run_id={run_id})")

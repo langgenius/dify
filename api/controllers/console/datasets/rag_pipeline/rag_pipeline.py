@@ -5,7 +5,7 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import NotFound
 
 from controllers.common.fields import SimpleDataResponse
@@ -16,6 +16,7 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console import console_ns
+from controllers.console.app.wraps import with_session
 from controllers.console.wraps import (
     account_initialization_required,
     enterprise_license_required,
@@ -102,10 +103,16 @@ class PipelineTemplateListApi(Resource):
     @account_initialization_required
     @enterprise_license_required
     @with_current_tenant_id
-    def get(self, current_tenant_id: str) -> JsonResponseWithStatus:
+    @with_session
+    def get(self, session: Session, current_tenant_id: str) -> JsonResponseWithStatus:
         query = PipelineTemplateListQuery.model_validate(request.args.to_dict(flat=True))
         # get pipeline templates
-        pipeline_templates = RagPipelineService.get_pipeline_templates(query.type, query.language, current_tenant_id)
+        pipeline_templates = RagPipelineService.get_pipeline_templates(
+            type=query.type,
+            language=query.language,
+            current_tenant_id=current_tenant_id,
+            session=session,
+        )
         return dump_response(PipelineTemplateListResponse, pipeline_templates), 200
 
 
@@ -117,10 +124,14 @@ class PipelineTemplateDetailApi(Resource):
     @login_required
     @account_initialization_required
     @enterprise_license_required
-    def get(self, template_id: str) -> JsonResponseWithStatus:
+    @with_session
+    def get(self, session: Session, template_id: str) -> JsonResponseWithStatus:
         query = PipelineTemplateDetailQuery.model_validate(request.args.to_dict(flat=True))
-        rag_pipeline_service = RagPipelineService()
-        pipeline_template = rag_pipeline_service.get_pipeline_template_detail(template_id, query.type)
+        pipeline_template = RagPipelineService.get_pipeline_template_detail(
+            template_id,
+            type=query.type,
+            session=session,
+        )
         if pipeline_template is None:
             raise NotFound("Pipeline template not found from upstream service.")
         return dump_response(PipelineTemplateDetailResponse, pipeline_template), 200
@@ -140,7 +151,7 @@ class CustomizedPipelineTemplateApi(Resource):
         payload = CustomizedPipelineTemplatePayload.model_validate(console_ns.payload or {})
         pipeline_template_info = PipelineTemplateInfoEntity.model_validate(payload.model_dump())
         RagPipelineService.update_customized_pipeline_template(
-            template_id, pipeline_template_info, current_user, current_tenant_id
+            template_id, pipeline_template_info, current_user, current_tenant_id, session=db.session()
         )
         return "", 204
 
@@ -151,7 +162,7 @@ class CustomizedPipelineTemplateApi(Resource):
     @enterprise_license_required
     @with_current_tenant_id
     def delete(self, current_tenant_id: str, template_id: str) -> tuple[str, int]:
-        RagPipelineService.delete_customized_pipeline_template(template_id, current_tenant_id)
+        RagPipelineService.delete_customized_pipeline_template(template_id, current_tenant_id, session=db.session())
         return "", 204
 
     @setup_required
@@ -183,8 +194,8 @@ class PublishCustomizedPipelineTemplateApi(Resource):
     @with_current_tenant_id
     def post(self, current_tenant_id: str, current_user: Account, pipeline_id: str) -> tuple[str, int]:
         payload = CustomizedPipelineTemplatePayload.model_validate(console_ns.payload or {})
-        rag_pipeline_service = RagPipelineService()
+        rag_pipeline_service = RagPipelineService(db.session())
         rag_pipeline_service.publish_customized_pipeline_template(
-            pipeline_id, payload.model_dump(), current_user, current_tenant_id
+            pipeline_id, payload.model_dump(), current_user, current_tenant_id, session=db.session()
         )
         return "", 204

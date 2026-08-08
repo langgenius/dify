@@ -1,4 +1,4 @@
-import { IS_CE_EDITION } from '@/config'
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 
 type ConversationField = {
   id: string
@@ -6,7 +6,7 @@ type ConversationField = {
 }
 
 declare global {
-  // eslint-disable-next-line ts/consistent-type-definitions
+  // oxlint-disable-next-line typescript/consistent-type-definitions
   interface Window {
     zE?: (
       command: string,
@@ -17,19 +17,13 @@ declare global {
   }
 }
 
-export const setZendeskConversationFields = (fields: ConversationField[], callback?: () => unknown) => {
-  if (!IS_CE_EDITION && window.zE)
+export const setZendeskConversationFields = (
+  fields: ConversationField[],
+  deploymentEdition: DeploymentEdition,
+  callback?: () => unknown,
+) => {
+  if (deploymentEdition === 'CLOUD' && window.zE)
     window.zE('messenger:set', 'conversationFields', fields, callback)
-}
-
-export const setZendeskWidgetVisibility = (visible: boolean) => {
-  if (!IS_CE_EDITION && window.zE)
-    window.zE('messenger', visible ? 'show' : 'hide')
-}
-
-export const toggleZendeskWindow = (open: boolean) => {
-  if (!IS_CE_EDITION && window.zE)
-    window.zE('messenger', open ? 'open' : 'close')
 }
 
 type OpenZendeskWindowOptions = {
@@ -37,29 +31,25 @@ type OpenZendeskWindowOptions = {
   retries?: number
 }
 
-const openZendeskWindowOnce = () => {
-  if (IS_CE_EDITION || !window.zE)
-    return false
+const openZendeskWindowOnce = (deploymentEdition: DeploymentEdition) => {
+  if (deploymentEdition !== 'CLOUD' || !window.zE) return false
 
   window.zE('messenger', 'show')
   window.zE('messenger', 'open')
   return true
 }
 
-export const openZendeskWindow = ({
-  interval = 100,
-  retries = 20,
-}: OpenZendeskWindowOptions = {}) => {
-  if (IS_CE_EDITION)
-    return
+export const openZendeskWindow = (
+  deploymentEdition: DeploymentEdition,
+  { interval = 100, retries = 20 }: OpenZendeskWindowOptions = {},
+) => {
+  if (deploymentEdition !== 'CLOUD') return
 
-  if (openZendeskWindowOnce())
-    return
+  if (openZendeskWindowOnce(deploymentEdition)) return
 
   let attempts = 0
   const timer = window.setInterval(() => {
     attempts += 1
-    if (openZendeskWindowOnce() || attempts >= retries)
-      window.clearInterval(timer)
+    if (openZendeskWindowOnce(deploymentEdition) || attempts >= retries) window.clearInterval(timer)
   }, interval)
 }

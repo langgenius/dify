@@ -2,38 +2,57 @@ import type { ReactElement } from 'react'
 import type { App } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import userEvent from '@testing-library/user-event'
+import useAccessControlStore from '@/context/access-control-store'
 import { AccessMode } from '@/models/access-control'
-import { AccessControl } from '../index'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import AccessControl from '../index'
 
 let mockWebappAuth = {
   enabled: true,
   allow_sso: true,
   allow_email_password_login: false,
   allow_email_code_login: false,
+  allow_public_access: true,
 }
 
-const render = (ui: ReactElement) => renderWithSystemFeatures(ui, {
-  systemFeatures: { webapp_auth: mockWebappAuth },
-})
+const render = (ui: ReactElement) =>
+  renderWithConsoleQuery(ui, {
+    systemFeatures: { webapp_auth: mockWebappAuth },
+  })
 
-const mockMutate = vi.fn()
-const mockUseMutation = vi.hoisted(() => vi.fn())
+const { mockMutateAsync } = vi.hoisted(() => ({
+  mockMutateAsync: vi.fn(),
+}))
 const mockUseAppWhiteListSubjects = vi.fn()
 const mockUseSearchForWhiteListCandidates = vi.fn()
 
-vi.mock('@/service/access-control/use-app-access-control', () => ({
+vi.mock('@/service/access-control', () => ({
   useAppWhiteListSubjects: (...args: unknown[]) => mockUseAppWhiteListSubjects(...args),
-  useSearchForWhiteListCandidates: (...args: unknown[]) => mockUseSearchForWhiteListCandidates(...args),
+  useSearchForWhiteListCandidates: (...args: unknown[]) =>
+    mockUseSearchForWhiteListCandidates(...args),
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useMutation: (...args: unknown[]) => mockUseMutation(...args),
-  }
-})
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    systemFeatures: {
+      get: {
+        queryKey: () => ['system-features'],
+        queryOptions: (options: Record<string, unknown> = {}) => ({
+          queryKey: ['system-features'],
+          ...options,
+        }),
+      },
+    },
+    enterprise: {
+      webAppAuth: {
+        updateWebAppWhitelistSubjects: {
+          mutationOptions: () => ({ mutationFn: mockMutateAsync }),
+        },
+      },
+    },
+  },
+}))
 
 describe('AccessControl', () => {
   beforeEach(() => {
@@ -43,14 +62,16 @@ describe('AccessControl', () => {
       allow_sso: true,
       allow_email_password_login: false,
       allow_email_code_login: false,
+      allow_public_access: true,
     }
-    mockMutate.mockImplementation((_: unknown, options?: { onSuccess?: () => void }) => {
-      options?.onSuccess?.()
+    useAccessControlStore.setState({
+      appId: '',
+      specificGroups: [],
+      specificMembers: [],
+      currentMenu: AccessMode.SPECIFIC_GROUPS_MEMBERS,
+      selectedGroupsForBreadcrumb: [],
     })
-    mockUseMutation.mockReturnValue({
-      isPending: false,
-      mutate: mockMutate,
-    })
+    mockMutateAsync.mockResolvedValue(undefined)
     mockUseAppWhiteListSubjects.mockReturnValue({
       isPending: false,
       data: {
@@ -75,26 +96,22 @@ describe('AccessControl', () => {
       access_mode: AccessMode.PUBLIC,
     } as App
 
-    render(
-      <AccessControl
-        app={app}
-        onClose={onClose}
-        onConfirm={onConfirm}
-      />,
-    )
+    render(<AccessControl app={app} onClose={onClose} onConfirm={onConfirm} />)
+
+    await waitFor(() => {
+      expect(useAccessControlStore.getState().appId).toBe(app.id)
+      expect(useAccessControlStore.getState().currentMenu).toBe(AccessMode.PUBLIC)
+    })
 
     fireEvent.click(screen.getByText('common.operation.confirm'))
 
     await waitFor(() => {
-      expect(mockMutate).toHaveBeenCalledWith(
-        {
-          body: {
-            appId: app.id,
-            accessMode: AccessMode.PUBLIC,
-          },
+      expect(mockMutateAsync.mock.calls[0]?.[0]).toEqual({
+        body: {
+          appId: app.id,
+          accessMode: AccessMode.PUBLIC,
         },
-        expect.objectContaining({ onSuccess: expect.any(Function) }),
-      )
+      })
       expect(toastSpy).toHaveBeenCalledWith('app.accessControlDialog.updateSuccess')
       expect(onConfirm).toHaveBeenCalledTimes(1)
     })
@@ -106,6 +123,7 @@ describe('AccessControl', () => {
       allow_sso: false,
       allow_email_password_login: false,
       allow_email_code_login: false,
+      allow_public_access: true,
     }
 
     render(
@@ -119,29 +137,63 @@ describe('AccessControl', () => {
     expect(screen.getByText('app.accessControlDialog.accessItems.anyone')).toBeInTheDocument()
   })
 
-  it('should prevent confirming specific access before subjects are loaded', () => {
-    mockUseAppWhiteListSubjects.mockReturnValue({
-      isPending: true,
-      data: undefined,
-    })
+  it('should preserve an unfinished selection when the parent rerenders', async () => {
+    const user = userEvent.setup()
+    const app = { id: 'app-id-3', access_mode: AccessMode.PUBLIC } as App
+    const { rerender } = render(<AccessControl app={app} onClose={vi.fn()} />)
 
-    render(
-      <AccessControl
-        app={{ id: 'app-id-3', access_mode: AccessMode.SPECIFIC_GROUPS_MEMBERS } as App}
-        onClose={vi.fn()}
-      />,
-    )
-
-    const confirmButton = screen.getByRole('button', { name: 'common.operation.confirm' })
-    const organizationOption = screen.getByRole('radio', {
+    const organization = screen.getByRole('radio', {
       name: 'app.accessControlDialog.accessItems.organization',
     })
+    await user.click(organization)
+    expect(organization).toBeChecked()
 
-    expect(confirmButton).toBeDisabled()
-    expect(organizationOption).toHaveAttribute('aria-disabled', 'true')
+    rerender(<AccessControl app={{ ...app }} onClose={vi.fn()} />)
 
-    fireEvent.click(confirmButton)
+    expect(organization).toBeChecked()
+  })
 
-    expect(mockMutate).not.toHaveBeenCalled()
+  describe('public access control', () => {
+    it('should render the public option enabled without a tooltip when public access is allowed', () => {
+      render(
+        <AccessControl
+          app={{ id: 'app-id-4', access_mode: AccessMode.SPECIFIC_GROUPS_MEMBERS } as App}
+          onClose={vi.fn()}
+        />,
+      )
+
+      const publicOption = screen.getByRole('radio', {
+        name: /app\.accessControlDialog\.accessItems\.anyone/,
+      })
+      expect(publicOption).not.toHaveAttribute('data-disabled')
+      expect(
+        screen.queryByLabelText('app.accessControlDialog.webAppPublicAccessDisabledTip'),
+      ).not.toBeInTheDocument()
+    })
+
+    it('should render the public option disabled with a tooltip when public access is disabled', () => {
+      mockWebappAuth = {
+        enabled: true,
+        allow_sso: true,
+        allow_email_password_login: false,
+        allow_email_code_login: false,
+        allow_public_access: false,
+      }
+
+      render(
+        <AccessControl
+          app={{ id: 'app-id-5', access_mode: AccessMode.SPECIFIC_GROUPS_MEMBERS } as App}
+          onClose={vi.fn()}
+        />,
+      )
+
+      const publicOption = screen.getByRole('radio', {
+        name: /app\.accessControlDialog\.accessItems\.anyone/,
+      })
+      expect(publicOption).toHaveAttribute('aria-disabled', 'true')
+      expect(
+        screen.getByLabelText('app.accessControlDialog.webAppPublicAccessDisabledTip'),
+      ).toBeInTheDocument()
+    })
   })
 })

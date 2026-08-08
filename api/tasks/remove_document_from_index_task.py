@@ -38,7 +38,7 @@ def remove_document_from_index_task(document_id: str):
         indexing_cache_key = f"document_{document.id}_indexing"
 
         try:
-            dataset = document.dataset
+            dataset = document.get_dataset(session=session)
 
             if not dataset:
                 raise Exception("Document has no dataset")
@@ -64,7 +64,13 @@ def remove_document_from_index_task(document_id: str):
             index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
             if index_node_ids:
                 try:
-                    index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=False)
+                    index_processor.clean(
+                        dataset,
+                        index_node_ids,
+                        with_keywords=True,
+                        delete_child_chunks=False,
+                        session=session,
+                    )
                 except Exception:
                     logger.exception("clean dataset %s from index failed", dataset.id)
             # update segment to disable

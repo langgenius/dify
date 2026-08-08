@@ -79,7 +79,7 @@ function getDeclaredOutputVarType(output: DeclaredOutputConfig) {
 }
 
 export function getAgentV2OutputVars(data: AgentV2NodeType): Var[] {
-  return getAgentV2DeclaredOutputs(data).map(output => ({
+  return getAgentV2DeclaredOutputs(data).map((output) => ({
     variable: output.name,
     type: getDeclaredOutputVarType(output),
   }))

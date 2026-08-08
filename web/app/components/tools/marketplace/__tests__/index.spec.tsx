@@ -1,5 +1,5 @@
+import type { SearchParamsFromCollection } from '@dify/contracts/marketplace'
 import type { useMarketplace } from '../hooks'
-import type { SearchParamsFromCollection } from '@/app/components/plugins/marketplace/types'
 import type { Plugin } from '@/app/components/plugins/types'
 import type { Collection } from '@/app/components/tools/types'
 import { render, screen } from '@testing-library/react'
@@ -8,11 +8,14 @@ import * as React from 'react'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { getMarketplaceUrl } from '@/utils/var'
-
 import Marketplace from '../index'
 
 const { mockRouterPush } = vi.hoisted(() => ({
   mockRouterPush: vi.fn(),
+}))
+
+const { mockCanInstallPlugin } = vi.hoisted(() => ({
+  mockCanInstallPlugin: vi.fn(() => true),
 }))
 
 const listRenderSpy = vi.fn()
@@ -30,10 +33,17 @@ vi.mock('@/app/components/plugins/marketplace/list', () => ({
   },
 }))
 
+vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
+  usePluginSettingsAccess: () => ({
+    canInstallPlugin: mockCanInstallPlugin(),
+  }),
+}))
+
 const mockUseMarketplaceCollectionsAndPlugins = vi.fn()
 const mockUseMarketplacePlugins = vi.fn()
 vi.mock('@/app/components/plugins/marketplace/hooks', () => ({
-  useMarketplaceCollectionsAndPlugins: (...args: unknown[]) => mockUseMarketplaceCollectionsAndPlugins(...args),
+  useMarketplaceCollectionsAndPlugins: (...args: unknown[]) =>
+    mockUseMarketplaceCollectionsAndPlugins(...args),
   useMarketplacePlugins: (...args: unknown[]) => mockUseMarketplacePlugins(...args),
 }))
 
@@ -108,6 +118,7 @@ const createMarketplaceContext = (overrides: Partial<ReturnType<typeof useMarket
 describe('Marketplace', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockCanInstallPlugin.mockReturnValue(true)
   })
 
   // Rendering the marketplace panel based on loading and visibility state.
@@ -148,11 +159,37 @@ describe('Marketplace', () => {
 
       // Assert
       expect(screen.getByTestId('marketplace-list')).toBeInTheDocument()
-      expect(listRenderSpy).toHaveBeenCalledWith(expect.objectContaining({
-        cardContainerClassName: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3',
-        onCollectionMoreClick: expect.any(Function),
-        showInstallButton: true,
-      }))
+      expect(listRenderSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cardContainerClassName: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3',
+          onCollectionMoreClick: expect.any(Function),
+          showInstallButton: true,
+        }),
+      )
+    })
+
+    it('should hide install actions when plugin install permission is missing', () => {
+      mockCanInstallPlugin.mockReturnValue(false)
+      const marketplaceContext = createMarketplaceContext({
+        isLoading: false,
+        plugins: [createPlugin()],
+      })
+
+      render(
+        <Marketplace
+          searchPluginText=""
+          filterPluginTags={[]}
+          isMarketplaceArrowVisible={false}
+          showMarketplacePanel={vi.fn()}
+          marketplaceContext={marketplaceContext}
+        />,
+      )
+
+      expect(listRenderSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          showInstallButton: false,
+        }),
+      )
     })
   })
 
@@ -163,7 +200,7 @@ describe('Marketplace', () => {
       // Arrange
       const marketplaceContext = createMarketplaceContext()
       const showMarketplacePanel = vi.fn()
-      const { container } = render(
+      render(
         <Marketplace
           searchPluginText="vector"
           filterPluginTags={['tag-a', 'tag-b']}
@@ -174,19 +211,19 @@ describe('Marketplace', () => {
       )
 
       // Act
-      const arrowIcon = container.querySelector('svg.cursor-pointer')
-      expect(arrowIcon).toBeTruthy()
-      await user.click(arrowIcon as SVGElement)
+      await user.click(screen.getByRole('button', { name: /plugin.marketplace.moreFrom/i }))
 
       // Assert
       expect(showMarketplacePanel).toHaveBeenCalledTimes(1)
       expect(mockGetMarketplaceUrl).toHaveBeenCalledWith('', {
-        language: 'en',
+        language: 'en-US',
         q: 'vector',
         tags: 'tag-a,tag-b',
         theme: undefined,
       })
-      const marketplaceLink = screen.getByRole('link', { name: /plugin.marketplace.difyMarketplace/i })
+      const marketplaceLink = screen.getByRole('link', {
+        name: /plugin.marketplace.difyMarketplace/i,
+      })
       expect(marketplaceLink).toHaveAttribute('href', 'https://marketplace.test/market')
     })
 
@@ -203,8 +240,9 @@ describe('Marketplace', () => {
         />,
       )
 
-      const contentFrames = Array.from(container.querySelectorAll('div'))
-        .filter(el => el.classList.contains('max-w-[1600px]'))
+      const contentFrames = Array.from(container.querySelectorAll('div')).filter((el) =>
+        el.classList.contains('max-w-[1600px]'),
+      )
       expect(contentFrames).toHaveLength(2)
       expect(contentFrames[0]).toHaveClass('px-6')
       expect(contentFrames[1]).toHaveClass('px-6')
@@ -231,7 +269,9 @@ describe('Marketplace', () => {
         sort_order: 'DESC',
       })
 
-      expect(mockRouterPush).toHaveBeenCalledWith('/marketplace?category=tool&q=featured+tools&sort_by=install_count&sort_order=DESC')
+      expect(mockRouterPush).toHaveBeenCalledWith(
+        '/marketplace?category=tool&q=featured+tools&sort_by=install_count&sort_order=DESC',
+      )
     })
   })
 })

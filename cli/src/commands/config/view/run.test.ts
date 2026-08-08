@@ -18,9 +18,7 @@ describe('runConfigView', () => {
       state: { current_app: 'app-1' },
     })
     const out = await runConfigView({ store: getConfigurationStore() })
-    expect(out).toBe(
-      'defaults.format = json\ndefaults.limit = 50\nstate.current_app = app-1\n',
-    )
+    expect(out).toBe('defaults.format = json\ndefaults.limit = 50\nstate.current_app = app-1\n')
   })
 
   it('text format: skips unset keys', async () => {

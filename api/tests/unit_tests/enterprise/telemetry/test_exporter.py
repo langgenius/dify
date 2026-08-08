@@ -7,6 +7,8 @@ from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from configs.enterprise import EnterpriseTelemetryConfig
 from enterprise.telemetry.entities import EnterpriseTelemetryCounter, EnterpriseTelemetryHistogram
 from enterprise.telemetry.exporter import EnterpriseExporter, _datetime_to_ns, _parse_otlp_headers
@@ -533,7 +535,7 @@ def test_export_span_cross_workflow_parent_context() -> None:
     assert kwargs["context"] is not None
 
 
-def test_export_span_logs_exception_on_error(caplog) -> None:
+def test_export_span_logs_exception_on_error(caplog: pytest.LogCaptureFixture) -> None:
     """If the span block raises, the exception is logged and context is still cleared."""
     exporter, mock_tracer, mock_span = _make_exporter_with_mock_tracer()
 
@@ -546,7 +548,7 @@ def test_export_span_logs_exception_on_error(caplog) -> None:
     assert "bad.span" in caplog.text
 
 
-def test_export_span_invalid_trace_correlation_logs_warning(caplog) -> None:
+def test_export_span_invalid_trace_correlation_logs_warning(caplog: pytest.LogCaptureFixture) -> None:
     """Invalid UUID for trace_correlation_override triggers a warning log."""
     exporter, mock_tracer, mock_span = _make_exporter_with_mock_tracer()
 

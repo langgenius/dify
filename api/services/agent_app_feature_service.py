@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import Any, cast
 
-from sqlalchemy.orm import scoped_session
+from sqlalchemy.orm import Session
 
 from core.app.app_config.common.sensitive_word_avoidance.manager import SensitiveWordAvoidanceConfigManager
 from core.app.app_config.features.opening_statement.manager import OpeningStatementConfigManager
@@ -69,7 +69,12 @@ class AgentAppFeatureConfigService:
 
     @classmethod
     def update_features(
-        cls, *, app_model: App, account: Account, config: dict[str, Any], session: scoped_session
+        cls,
+        *,
+        app_model: App,
+        account: Account,
+        config: dict[str, Any],
+        session: Session,
     ) -> AppModelConfig:
         """Persist the presentation features as a new app_model_config version.
 

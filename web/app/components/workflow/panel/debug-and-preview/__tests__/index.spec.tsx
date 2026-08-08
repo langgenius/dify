@@ -19,9 +19,11 @@ const createMockLocalStorage = () => {
       delete storage[key]
     }),
     clear: vi.fn(() => {
-      Object.keys(storage).forEach(key => delete storage[key])
+      Object.keys(storage).forEach((key) => delete storage[key])
     }),
-    get storage() { return { ...storage } },
+    get storage() {
+      return { ...storage }
+    },
   }
 }
 
@@ -32,8 +34,7 @@ const createPreviewPanelManager = () => {
   return {
     updateWidth: (width: number, source: PanelWidthSource = 'user') => {
       const newValue = Math.max(400, Math.min(width, 800))
-      if (source === 'user')
-        localStorage.setItem(storageKey, `${newValue}`)
+      if (source === 'user') localStorage.setItem(storageKey, `${newValue}`)
 
       return newValue
     },

@@ -4,9 +4,11 @@ from typing import Any, Literal
 from flask import request, send_file
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy.orm import Session
 
-from controllers.common.fields import BinaryFileResponse, SimpleResultResponse
+from controllers.common.fields import SimpleResultResponse, ValidationResultResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.wraps import (
     RBACPermission,
@@ -18,16 +20,21 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
+from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
-from graphon.model_runtime.utils.encoders import jsonable_encoder
-from libs.helper import uuid_value
+from libs.helper import dump_response, uuid_value
 from libs.login import login_required
 from models import Account
 from services.billing_service import BillingService
-from services.entities.model_provider_entities import ProviderResponse
+from services.entities.model_provider_entities import (
+    ModelProviderPluginSummaryResponse,
+    ModelProviderSummaryResponse,
+    ProviderResponse,
+)
 from services.model_provider_service import ModelProviderService
+from services.workspace_service import WorkspaceService
 
 
 class ParserModelList(BaseModel):
@@ -91,13 +98,24 @@ class ModelProviderListResponse(ResponseModel):
     data: list[ProviderResponse]
 
 
-class ProviderCredentialResponse(ResponseModel):
-    credentials: dict[str, Any] | None = Field(default=None)
+class ModelProviderSummaryListResponse(ResponseModel):
+    data: list[ModelProviderSummaryResponse]
+    plugins: dict[str, ModelProviderPluginSummaryResponse]
 
 
-class ProviderCredentialValidateResponse(ResponseModel):
-    result: Literal["success", "error"]
-    error: str | None = None
+class ModelProviderCreditsResponse(ResponseModel):
+    pool_type: Literal["paid", "trial"] | None
+    quota_limit: int | None = Field(description="Credit limit for the effective pool; -1 means unlimited.")
+    quota_used: int | None
+    remaining_credits: int | None = Field(description="Remaining credits; -1 means unlimited.")
+    is_unlimited: bool
+    is_exhausted: bool
+    exhausted_at: int | None
+    next_credit_reset_date: int | None
+
+
+class ProviderCredentialsResponse(ResponseModel):
+    credentials: dict[str, Any] | None = None
 
 
 class ModelProviderPaymentCheckoutUrlResponse(ResponseModel):
@@ -117,19 +135,22 @@ register_schema_models(
 )
 register_response_schema_models(
     console_ns,
-    BinaryFileResponse,
     SimpleResultResponse,
     ModelProviderListResponse,
+    ModelProviderSummaryListResponse,
+    ModelProviderCreditsResponse,
+    ProviderCredentialsResponse,
+    ValidationResultResponse,
     ModelProviderPaymentCheckoutUrlResponse,
-    ProviderCredentialResponse,
-    ProviderCredentialValidateResponse,
 )
 
 
 @console_ns.route("/workspaces/current/model-providers")
 class ModelProviderListApi(Resource):
     @console_ns.doc(params=query_params_from_model(ParserModelList))
-    @console_ns.response(200, "Success", console_ns.models[ModelProviderListResponse.__name__])
+    @console_ns.response(
+        200, "Model providers retrieved successfully", console_ns.models[ModelProviderListResponse.__name__]
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -141,13 +162,51 @@ class ModelProviderListApi(Resource):
         model_provider_service = ModelProviderService()
         provider_list = model_provider_service.get_provider_list(tenant_id=tenant_id, model_type=args.model_type)
 
-        return jsonable_encoder({"data": provider_list})
+        return ModelProviderListResponse(data=provider_list).model_dump(mode="json")
+
+
+@console_ns.route("/workspaces/current/model-providers/summary")
+class ModelProviderSummaryListApi(Resource):
+    @console_ns.response(
+        200,
+        "Model provider summaries retrieved successfully",
+        console_ns.models[ModelProviderSummaryListResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_tenant_id
+    def get(self, tenant_id: str):
+        providers, plugins = ModelProviderService().get_provider_summary_list(tenant_id=tenant_id)
+        return dump_response(
+            ModelProviderSummaryListResponse,
+            {"data": providers, "plugins": plugins},
+        )
+
+
+@console_ns.route("/workspaces/current/model-providers/credits")
+class ModelProviderCreditsApi(Resource):
+    @console_ns.response(
+        200, "Model provider credits retrieved successfully", console_ns.models[ModelProviderCreditsResponse.__name__]
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_tenant_id
+    @with_session(write=False)
+    def get(self, session: Session, tenant_id: str):
+        credit_pool = WorkspaceService.get_effective_credit_pool(tenant_id, session=session)
+        return dump_response(ModelProviderCreditsResponse, credit_pool)
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/credentials")
 class ModelProviderCredentialApi(Resource):
     @console_ns.doc(params=query_params_from_model(ParserCredentialId))
-    @console_ns.response(200, "Success", console_ns.models[ProviderCredentialResponse.__name__])
+    @console_ns.response(
+        200,
+        "Provider credentials retrieved successfully",
+        console_ns.models[ProviderCredentialsResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -162,7 +221,7 @@ class ModelProviderCredentialApi(Resource):
             tenant_id=tenant_id, provider=provider, credential_id=args.credential_id
         )
 
-        return {"credentials": credentials}
+        return ProviderCredentialsResponse(credentials=credentials).model_dump(mode="json")
 
     @console_ns.expect(console_ns.models[ParserCredentialCreate.__name__])
     @console_ns.response(201, "Credential created successfully", console_ns.models[SimpleResultResponse.__name__])
@@ -188,7 +247,7 @@ class ModelProviderCredentialApi(Resource):
         except CredentialsValidateFailedError as ex:
             raise ValueError(str(ex))
 
-        return {"result": "success"}, 201
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 201
 
     @console_ns.expect(console_ns.models[ParserCredentialUpdate.__name__])
     @console_ns.response(200, "Credential updated successfully", console_ns.models[SimpleResultResponse.__name__])
@@ -215,7 +274,7 @@ class ModelProviderCredentialApi(Resource):
         except CredentialsValidateFailedError as ex:
             raise ValueError(str(ex))
 
-        return {"result": "success"}
+        return SimpleResultResponse(result="success").model_dump(mode="json")
 
     @console_ns.expect(console_ns.models[ParserCredentialDelete.__name__])
     @console_ns.response(204, "Credential deleted successfully")
@@ -257,7 +316,7 @@ class ModelProviderCredentialSwitchApi(Resource):
             provider=provider,
             credential_id=args.credential_id,
         )
-        return {"result": "success"}
+        return SimpleResultResponse(result="success").model_dump(mode="json")
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/credentials/validate")
@@ -265,8 +324,8 @@ class ModelProviderValidateApi(Resource):
     @console_ns.expect(console_ns.models[ParserCredentialValidate.__name__])
     @console_ns.response(
         200,
-        "Credential validation result",
-        console_ns.models[ProviderCredentialValidateResponse.__name__],
+        "Provider credentials validated successfully",
+        console_ns.models[ValidationResultResponse.__name__],
     )
     @setup_required
     @login_required
@@ -291,12 +350,10 @@ class ModelProviderValidateApi(Resource):
             result = False
             error = str(ex)
 
-        response = {"result": "success" if result else "error"}
-
         if not result:
-            response["error"] = error or "Unknown error"
+            return ValidationResultResponse(result="error", error=error or "Unknown error").model_dump(mode="json")
 
-        return response
+        return ValidationResultResponse(result="success").model_dump(mode="json")
 
 
 @console_ns.route("/workspaces/<string:tenant_id>/model-providers/<path:provider>/<string:icon_type>/<string:lang>")
@@ -305,8 +362,9 @@ class ModelProviderIconApi(Resource):
     Get model provider icon
     """
 
-    @console_ns.response(200, "Success", console_ns.models[BinaryFileResponse.__name__])
+    @console_ns.response(200, "Model provider icon")
     def get(self, tenant_id: str, provider: str, icon_type: str, lang: str):
+        # response-contract:ignore binary send_file response
         model_provider_service = ModelProviderService()
         icon, mimetype = model_provider_service.get_model_provider_icon(
             tenant_id=tenant_id,
@@ -338,12 +396,16 @@ class PreferredProviderTypeUpdateApi(Resource):
             tenant_id=tenant_id, provider=provider, preferred_provider_type=args.preferred_provider_type
         )
 
-        return {"result": "success"}
+        return SimpleResultResponse(result="success").model_dump(mode="json")
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/checkout-url")
 class ModelProviderPaymentCheckoutUrlApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[ModelProviderPaymentCheckoutUrlResponse.__name__])
+    @console_ns.response(
+        200,
+        "Model provider checkout URL retrieved successfully",
+        console_ns.models[ModelProviderPaymentCheckoutUrlResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -352,11 +414,11 @@ class ModelProviderPaymentCheckoutUrlApi(Resource):
     def get(self, current_tenant_id: str, current_user: Account, provider: str):
         if provider != "anthropic":
             raise ValueError(f"provider name {provider} is invalid")
-        BillingService.is_tenant_owner_or_admin(current_user)
+        BillingService.is_tenant_owner_or_admin(current_user, session=db.session())
         data = BillingService.get_model_provider_payment_link(
             provider_name=provider,
             tenant_id=current_tenant_id,
             account_id=current_user.id,
             prefilled_email=current_user.email,
         )
-        return data
+        return dump_response(ModelProviderPaymentCheckoutUrlResponse, data)

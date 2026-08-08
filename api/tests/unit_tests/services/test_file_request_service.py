@@ -5,7 +5,6 @@ import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.file_access import FileAccessScope
-from core.workflow.file_reference import build_file_reference
 from services.file_request_service import FileRequestService
 
 
@@ -16,7 +15,7 @@ from services.file_request_service import FileRequestService
         ("end-user", "service-api", UserFrom.END_USER, InvokeFrom.SERVICE_API),
     ],
 )
-def test_request_download_url_builds_file_under_bound_scope(
+def test_request_download_builds_file_under_bound_scope(
     user_from: UserFrom | str,
     invoke_from: InvokeFrom | str,
     expected_user_from: UserFrom,
@@ -25,16 +24,14 @@ def test_request_download_url_builds_file_under_bound_scope(
     fake_file = MagicMock(filename="report.pdf", mime_type="application/pdf", size=123)
     access_controller = MagicMock()
     service = FileRequestService(access_controller=access_controller)
-    reference = build_file_reference(record_id="tool-file-1")
+    reference = "dify-file-ref:tool-file-1"
 
     with (
         patch("services.file_request_service.bind_file_access_scope", return_value=nullcontext()) as bind_scope,
         patch.object(service, "_build_file", return_value=fake_file) as build_file,
-        patch(
-            "services.file_request_service.file_helpers.resolve_file_url", return_value="https://files.example.com/x"
-        ),
+        patch.object(service._runtime, "resolve_file_uri", return_value="/files/tools/x?sign=1") as resolve_file_uri,
     ):
-        result = service.request_download_url(
+        result = service.request_download(
             tenant_id="tenant-1",
             user_id="user-1",
             user_from=user_from,
@@ -52,22 +49,23 @@ def test_request_download_url_builds_file_under_bound_scope(
     build_file.assert_called_once_with(
         mapping={"transfer_method": "tool_file", "reference": reference}, tenant_id="tenant-1"
     )
+    resolve_file_uri.assert_called_once_with(file=fake_file)
     assert result.filename == "report.pdf"
     assert result.mime_type == "application/pdf"
     assert result.size == 123
-    assert result.download_url == "https://files.example.com/x"
+    assert result.download_uri == "/files/tools/x?sign=1"
 
 
-def test_request_download_url_rejects_unsupported_files() -> None:
+def test_request_download_rejects_unsupported_files() -> None:
     service = FileRequestService(access_controller=MagicMock())
 
     with (
         patch("services.file_request_service.bind_file_access_scope", return_value=nullcontext()),
         patch.object(service, "_build_file", return_value=MagicMock(filename="report.pdf", mime_type=None, size=1)),
-        patch("services.file_request_service.file_helpers.resolve_file_url", return_value=None),
+        patch.object(service._runtime, "resolve_file_uri", return_value=None),
     ):
         with pytest.raises(ValueError, match="file does not support signed download"):
-            service.request_download_url(
+            service.request_download(
                 tenant_id="tenant-1",
                 user_id="user-1",
                 user_from="account",

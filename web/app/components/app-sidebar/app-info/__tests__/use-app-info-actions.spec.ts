@@ -1,4 +1,5 @@
 import { act, renderHook } from '@testing-library/react'
+import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
 import { useAppInfoActions } from '../use-app-info-actions'
 
@@ -6,7 +7,9 @@ const toastMocks = vi.hoisted(() => {
   const call = vi.fn()
   return {
     call,
-    api: vi.fn((message: unknown, options?: Record<string, unknown>) => call({ message, ...options })),
+    api: vi.fn((message: unknown, options?: Record<string, unknown>) =>
+      call({ message, ...options }),
+    ),
     dismiss: vi.fn(),
     update: vi.fn(),
     promise: vi.fn(),
@@ -14,15 +17,16 @@ const toastMocks = vi.hoisted(() => {
 })
 const mockReplace = vi.fn()
 const mockOnPlanInfoChanged = vi.fn()
-const mockInvalidateAppList = vi.fn()
+const mockInvalidateQueries = vi.fn()
 const mockSetAppDetail = vi.fn()
 const mockUpdateAppInfo = vi.fn()
 const mockCopyApp = vi.fn()
-const mockExportAppConfig = vi.fn()
+const mockExportAppDsl = vi.fn()
+const mockExportState = { isExporting: false }
+const mockExportWorkflowAppDsl = vi.fn()
+const mockWorkflowExportState = { isExporting: false }
 const mockDeleteApp = vi.fn()
 const mockFetchAppDetail = vi.fn()
-const mockFetchWorkflowDraft = vi.fn()
-const mockDownloadBlob = vi.fn()
 const mockGetSocket = vi.fn()
 const mockOnAppMetaUpdate = vi.fn()
 const mockSetQueryData = vi.fn()
@@ -45,9 +49,21 @@ vi.mock('@/context/provider-context', () => ({
 }))
 
 vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
-    appDetail: mockAppDetail,
-    setAppDetail: mockSetAppDetail,
+  useStore: (selector: (state: Record<string, unknown>) => unknown) =>
+    selector({
+      appDetail: mockAppDetail,
+      setAppDetail: mockSetAppDetail,
+    }),
+}))
+
+vi.mock('@/app/components/app/use-export-app-dsl', () => ({
+  useExportAppDsl: () => ({
+    exportAppDsl: mockExportAppDsl,
+    isExporting: mockExportState.isExporting,
+  }),
+  useExportWorkflowAppDsl: () => ({
+    exportWorkflowAppDsl: mockExportWorkflowAppDsl,
+    isExporting: mockWorkflowExportState.isExporting,
   }),
 }))
 
@@ -63,17 +79,13 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   }),
 }))
 
-vi.mock('@/service/use-apps', () => ({
-  appDetailQueryKeyPrefix: ['apps', 'detail'],
-  useInvalidateAppList: () => mockInvalidateAppList,
-}))
-
 vi.mock('@tanstack/react-query', () => ({
   queryOptions: <TOptions>(options: TOptions) => options,
   useSuspenseQuery: () => ({
     data: { rbac_enabled: true },
   }),
   useQueryClient: () => ({
+    invalidateQueries: mockInvalidateQueries,
     setQueryData: mockSetQueryData,
   }),
 }))
@@ -81,17 +93,8 @@ vi.mock('@tanstack/react-query', () => ({
 vi.mock('@/service/apps', () => ({
   updateAppInfo: (...args: unknown[]) => mockUpdateAppInfo(...args),
   copyApp: (...args: unknown[]) => mockCopyApp(...args),
-  exportAppConfig: (...args: unknown[]) => mockExportAppConfig(...args),
   deleteApp: (...args: unknown[]) => mockDeleteApp(...args),
   fetchAppDetail: (...args: unknown[]) => mockFetchAppDetail(...args),
-}))
-
-vi.mock('@/service/workflow', () => ({
-  fetchWorkflowDraft: (...args: unknown[]) => mockFetchWorkflowDraft(...args),
-}))
-
-vi.mock('@/utils/download', () => ({
-  downloadBlob: (...args: unknown[]) => mockDownloadBlob(...args),
 }))
 
 vi.mock('@/utils/app-redirection', () => ({
@@ -113,9 +116,12 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
 describe('useAppInfoActions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockExportState.isExporting = false
+    mockExportAppDsl.mockResolvedValue({ status: 'downloaded' })
+    mockWorkflowExportState.isExporting = false
+    mockExportWorkflowAppDsl.mockResolvedValue({ status: 'downloaded' })
     mockOnAppMetaUpdate.mockReturnValue(() => {})
     mockGetSocket.mockReturnValue(null)
-    mockSetQueryData.mockReset()
     mockAppDetail = {
       id: 'app-1',
       name: 'Test App',
@@ -164,10 +170,9 @@ describe('useAppInfoActions', () => {
     })
 
     it('should reset app-scoped state when resetKey changes', () => {
-      const { result, rerender } = renderHook(
-        ({ resetKey }) => useAppInfoActions({ resetKey }),
-        { initialProps: { resetKey: 'app-1' } },
-      )
+      const { result, rerender } = renderHook(({ resetKey }) => useAppInfoActions({ resetKey }), {
+        initialProps: { resetKey: 'app-1' },
+      })
 
       act(() => {
         result.current.openModal('delete')
@@ -235,6 +240,25 @@ describe('useAppInfoActions', () => {
       })
 
       expect(mockUpdateAppInfo).toHaveBeenCalled()
+      expect(mockSetQueryData).toHaveBeenCalledWith(
+        consoleQuery.apps.byAppId.get.queryKey({
+          input: { params: { app_id: 'app-1' } },
+        }),
+        expect.any(Function),
+      )
+      const updateCachedApp = mockSetQueryData.mock.calls[0]![1]
+      expect(updateCachedApp({ id: 'app-1', name: 'Old name' })).toEqual(
+        expect.objectContaining({ id: 'app-1', name: 'Updated' }),
+      )
+      expect(mockInvalidateQueries).toHaveBeenCalledWith({
+        queryKey: consoleQuery.apps.get.key(),
+      })
+      expect(mockInvalidateQueries).toHaveBeenCalledWith({
+        queryKey: consoleQuery.apps.starred.get.key(),
+      })
+      expect(mockInvalidateQueries).toHaveBeenCalledWith({
+        queryKey: consoleQuery.apps.recent.get.key(),
+      })
       expect(mockSetAppDetail).toHaveBeenCalledWith(updatedApp)
       expect(toastMocks.call).toHaveBeenCalledWith({ type: 'success', message: 'app.editDone' })
     })
@@ -257,7 +281,7 @@ describe('useAppInfoActions', () => {
           use_icon_as_answer_icon: false,
         })
       })
-      await new Promise(resolve => setTimeout(resolve, 0))
+      await new Promise((resolve) => setTimeout(resolve, 0))
 
       expect(mockGetSocket).toHaveBeenCalledWith('app-1')
       expect(socket.emit).toHaveBeenCalledWith(
@@ -324,7 +348,11 @@ describe('useAppInfoActions', () => {
       })
 
       expect(mockCopyApp).toHaveBeenCalled()
-      expect(toastMocks.call).toHaveBeenCalledWith({ type: 'success', message: 'app.newApp.appCreated' })
+      expect(mockInvalidateQueries).toHaveBeenCalledTimes(3)
+      expect(toastMocks.call).toHaveBeenCalledWith({
+        type: 'success',
+        message: 'app.newApp.appCreated',
+      })
       expect(mockOnPlanInfoChanged).toHaveBeenCalled()
     })
 
@@ -342,7 +370,10 @@ describe('useAppInfoActions', () => {
         })
       })
 
-      expect(toastMocks.call).toHaveBeenCalledWith({ type: 'error', message: 'app.newApp.appCreateFailed' })
+      expect(toastMocks.call).toHaveBeenCalledWith({
+        type: 'error',
+        message: 'app.newApp.appCreateFailed',
+      })
     })
   })
 
@@ -366,29 +397,18 @@ describe('useAppInfoActions', () => {
   })
 
   describe('onExport', () => {
-    it('should export app config and trigger download', async () => {
-      mockExportAppConfig.mockResolvedValue({ data: 'yaml-content' })
-
+    it('should export the app DSL', async () => {
       const { result } = renderHook(() => useAppInfoActions({}))
 
       await act(async () => {
         await result.current.onExport(false)
       })
 
-      expect(mockExportAppConfig).toHaveBeenCalledWith({ appID: 'app-1', include: false })
-      expect(mockDownloadBlob).toHaveBeenCalled()
-    })
-
-    it('should notify error on export failure', async () => {
-      mockExportAppConfig.mockRejectedValue(new Error('fail'))
-
-      const { result } = renderHook(() => useAppInfoActions({}))
-
-      await act(async () => {
-        await result.current.onExport()
+      expect(mockExportAppDsl).toHaveBeenCalledWith({
+        appId: 'app-1',
+        appName: 'Test App',
+        includeSecret: false,
       })
-
-      expect(toastMocks.call).toHaveBeenCalledWith({ type: 'error', message: 'app.exportFailed' })
     })
   })
 
@@ -402,21 +422,19 @@ describe('useAppInfoActions', () => {
         await result.current.onExport()
       })
 
-      expect(mockExportAppConfig).not.toHaveBeenCalled()
+      expect(mockExportAppDsl).not.toHaveBeenCalled()
     })
   })
 
   describe('exportCheck', () => {
     it('should call onExport directly for non-workflow modes', async () => {
-      mockExportAppConfig.mockResolvedValue({ data: 'yaml' })
-
       const { result } = renderHook(() => useAppInfoActions({}))
 
       await act(async () => {
         await result.current.exportCheck()
       })
 
-      expect(mockExportAppConfig).toHaveBeenCalled()
+      expect(mockExportAppDsl).toHaveBeenCalled()
     })
 
     it('should open export warning modal for workflow mode', async () => {
@@ -454,32 +472,31 @@ describe('useAppInfoActions', () => {
         await result.current.exportCheck()
       })
 
-      expect(mockExportAppConfig).not.toHaveBeenCalled()
+      expect(mockExportAppDsl).not.toHaveBeenCalled()
     })
   })
 
   describe('handleConfirmExport', () => {
     it('should export directly when no secret env variables', async () => {
       mockAppDetail = { ...mockAppDetail, mode: AppModeEnum.WORKFLOW }
-      mockFetchWorkflowDraft.mockResolvedValue({
-        environment_variables: [{ value_type: 'string' }],
-      })
-      mockExportAppConfig.mockResolvedValue({ data: 'yaml' })
-
       const { result } = renderHook(() => useAppInfoActions({}))
 
       await act(async () => {
         await result.current.handleConfirmExport()
       })
 
-      expect(mockExportAppConfig).toHaveBeenCalled()
+      expect(mockExportWorkflowAppDsl).toHaveBeenCalledWith({
+        appId: 'app-1',
+        appName: 'Test App',
+      })
     })
 
     it('should set secret env list when secret variables exist', async () => {
       mockAppDetail = { ...mockAppDetail, mode: AppModeEnum.WORKFLOW }
-      const secretVars = [{ value_type: 'secret', key: 'API_KEY' }]
-      mockFetchWorkflowDraft.mockResolvedValue({
-        environment_variables: secretVars,
+      const secretVars = [{ value_type: 'secret', name: 'API_KEY', value: 'secret' }]
+      mockExportWorkflowAppDsl.mockResolvedValue({
+        status: 'confirmation-required',
+        secretEnvList: secretVars,
       })
 
       const { result } = renderHook(() => useAppInfoActions({}))
@@ -489,18 +506,6 @@ describe('useAppInfoActions', () => {
       })
 
       expect(result.current.secretEnvList).toEqual(secretVars)
-    })
-
-    it('should notify error on workflow draft fetch failure', async () => {
-      mockFetchWorkflowDraft.mockRejectedValue(new Error('fail'))
-
-      const { result } = renderHook(() => useAppInfoActions({}))
-
-      await act(async () => {
-        await result.current.handleConfirmExport()
-      })
-
-      expect(toastMocks.call).toHaveBeenCalledWith({ type: 'error', message: 'app.exportFailed' })
     })
   })
 
@@ -514,24 +519,7 @@ describe('useAppInfoActions', () => {
         await result.current.handleConfirmExport()
       })
 
-      expect(mockFetchWorkflowDraft).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('handleConfirmExport - with environment variables', () => {
-    it('should handle empty environment_variables', async () => {
-      mockFetchWorkflowDraft.mockResolvedValue({
-        environment_variables: undefined,
-      })
-      mockExportAppConfig.mockResolvedValue({ data: 'yaml' })
-
-      const { result } = renderHook(() => useAppInfoActions({}))
-
-      await act(async () => {
-        await result.current.handleConfirmExport()
-      })
-
-      expect(mockExportAppConfig).toHaveBeenCalled()
+      expect(mockExportWorkflowAppDsl).not.toHaveBeenCalled()
     })
   })
 
@@ -547,7 +535,7 @@ describe('useAppInfoActions', () => {
 
       expect(mockDeleteApp).toHaveBeenCalledWith('app-1')
       expect(toastMocks.call).toHaveBeenCalledWith({ type: 'success', message: 'app.appDeleted' })
-      expect(mockInvalidateAppList).toHaveBeenCalled()
+      expect(mockInvalidateQueries).toHaveBeenCalledTimes(3)
       expect(mockReplace).toHaveBeenCalledWith('/apps')
       expect(mockSetAppDetail).toHaveBeenCalledWith()
     })
@@ -593,13 +581,23 @@ describe('useAppInfoActions', () => {
       mockFetchAppDetail.mockResolvedValue(updated)
 
       const { unmount } = renderHook(() => useAppInfoActions({}))
-      await new Promise(resolve => setTimeout(resolve, 0))
+      await new Promise((resolve) => setTimeout(resolve, 0))
 
       await act(async () => {
         await onUpdate?.()
       })
 
       expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
+      expect(mockSetQueryData).toHaveBeenCalledWith(
+        consoleQuery.apps.byAppId.get.queryKey({
+          input: { params: { app_id: 'app-1' } },
+        }),
+        expect.any(Function),
+      )
+      const updateCachedApp = mockSetQueryData.mock.calls[0]![1]
+      expect(updateCachedApp({ id: 'app-1', name: 'Old name' })).toEqual(
+        expect.objectContaining({ id: 'app-1', name: 'Remote Updated' }),
+      )
       expect(mockSetAppDetail).toHaveBeenCalledWith(updated)
 
       unmount()

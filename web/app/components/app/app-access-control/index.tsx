@@ -1,132 +1,166 @@
 'use client'
-import type { Subject as EnterpriseSubject } from '@dify/contracts/enterprise/types.gen'
-import type { App } from '@/types/app'
-import { SubjectType as EnterpriseSubjectType } from '@dify/contracts/enterprise/types.gen'
+import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
+import type { Subject } from '@/models/access-control'
+import { Button } from '@langgenius/dify-ui/button'
+import { DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { RadioGroup } from '@langgenius/dify-ui/radio'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
+import { useCallback, useEffect, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { AccessMode } from '@/models/access-control'
-import { useAppWhiteListSubjects } from '@/service/access-control/use-app-access-control'
+import { AccessMode, isAccessMode, SubjectType } from '@/models/access-control'
 import { consoleQuery } from '@/service/client'
-import { AccessControlDialog } from './access-control-dialog'
-import { AccessControlDialogContent } from './access-control-dialog-content'
-import { useAccessControlStore } from './store'
-import { AccessControlDraftProvider } from './store-provider'
+import useAccessControlStore from '../../../../context/access-control-store'
+import { Infotip } from '../../base/infotip'
+import AccessControlDialog from './access-control-dialog'
+import AccessControlItem from './access-control-item'
+import SpecificGroupsOrMembers, { WebAppSSONotEnabledTip } from './specific-groups-or-members'
 
 type AccessControlProps = {
-  app: App
+  app: Pick<AppPartial, 'id' | 'access_mode'>
   onClose: () => void
   onConfirm?: () => void
 }
 
-export function AccessControl(props: AccessControlProps) {
+export default function AccessControl(props: AccessControlProps) {
   const { app, onClose, onConfirm } = props
+  const { id: appId } = app
+  const appAccessMode = isAccessMode(app.access_mode) ? app.access_mode : undefined
+  const accessControlOptionsLabelId = useId()
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const hideExternalTip = systemFeatures.webapp_auth.enabled
-    && (systemFeatures.webapp_auth.allow_sso
-      || systemFeatures.webapp_auth.allow_email_password_login
-      || systemFeatures.webapp_auth.allow_email_code_login)
-  const initialAccessMode = app.access_mode ?? AccessMode.SPECIFIC_GROUPS_MEMBERS
-  const whiteListSubjectsQuery = useAppWhiteListSubjects(
-    app.id,
-    initialAccessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS,
+  const setAppId = useAccessControlStore((s) => s.setAppId)
+  const specificGroups = useAccessControlStore((s) => s.specificGroups)
+  const specificMembers = useAccessControlStore((s) => s.specificMembers)
+  const currentMenu = useAccessControlStore((s) => s.currentMenu)
+  const setCurrentMenu = useAccessControlStore((s) => s.setCurrentMenu)
+  const hideTip =
+    systemFeatures.webapp_auth.enabled &&
+    (systemFeatures.webapp_auth.allow_sso ||
+      systemFeatures.webapp_auth.allow_email_password_login ||
+      systemFeatures.webapp_auth.allow_email_code_login)
+  const publicAccessDisabled = !systemFeatures.webapp_auth.allow_public_access
+
+  useEffect(() => {
+    setAppId(appId)
+    setCurrentMenu(appAccessMode ?? AccessMode.SPECIFIC_GROUPS_MEMBERS)
+  }, [appAccessMode, appId, setAppId, setCurrentMenu])
+
+  const { isPending, mutateAsync: updateAccessMode } = useMutation(
+    consoleQuery.enterprise.webAppAuth.updateWebAppWhitelistSubjects.mutationOptions(),
   )
-  const initialSpecificGroups = whiteListSubjectsQuery.data?.groups ?? []
-  const initialSpecificMembers = whiteListSubjectsQuery.data?.members ?? []
-  const draftKey = [
-    app.id,
-    initialAccessMode,
-    initialSpecificGroups.map(group => group.id).join(','),
-    initialSpecificMembers.map(member => member.id).join(','),
-  ].join(':')
-
-  return (
-    <AccessControlDraftProvider
-      draftKey={draftKey}
-      initialDraft={{
-        appId: app.id,
-        currentMenu: initialAccessMode,
-        specificGroups: initialSpecificGroups,
-        specificMembers: initialSpecificMembers,
-        selectedGroupsForBreadcrumb: [],
-      }}
-    >
-      <AccessControlForm
-        app={app}
-        hideExternalTip={hideExternalTip}
-        subjectsLoading={initialAccessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS && whiteListSubjectsQuery.isPending}
-        onClose={onClose}
-        onConfirm={onConfirm}
-        successMessage={t('accessControlDialog.updateSuccess', { ns: 'app' })}
-      />
-    </AccessControlDraftProvider>
-  )
-}
-
-function AccessControlForm({
-  app,
-  hideExternalTip,
-  subjectsLoading,
-  successMessage,
-  onClose,
-  onConfirm,
-}: {
-  app: App
-  hideExternalTip: boolean
-  subjectsLoading: boolean
-  successMessage: string
-  onClose: () => void
-  onConfirm?: () => void
-}) {
-  const specificGroups = useAccessControlStore(s => s.specificGroups)
-  const specificMembers = useAccessControlStore(s => s.specificMembers)
-  const currentMenu = useAccessControlStore(s => s.currentMenu)
-  const { isPending, mutate: updateAccessMode } = useMutation(consoleQuery.explore.updateAppAccessMode.mutationOptions())
-
-  function handleConfirm() {
+  const confirmDisabled = isPending || (currentMenu === AccessMode.PUBLIC && publicAccessDisabled)
+  const handleConfirm = useCallback(async () => {
+    if (confirmDisabled) return
     const submitData: {
       appId: string
       accessMode: AccessMode
-      subjects?: Pick<EnterpriseSubject, 'subjectId' | 'subjectType'>[]
-    } = { appId: app.id, accessMode: currentMenu }
+      subjects?: Pick<Subject, 'subjectId' | 'subjectType'>[]
+    } = { appId, accessMode: currentMenu }
     if (currentMenu === AccessMode.SPECIFIC_GROUPS_MEMBERS) {
-      const subjects: Pick<EnterpriseSubject, 'subjectId' | 'subjectType'>[] = []
+      const subjects: Pick<Subject, 'subjectId' | 'subjectType'>[] = []
       specificGroups.forEach((group) => {
-        subjects.push({ subjectId: group.id, subjectType: EnterpriseSubjectType.SUBJECT_TYPE_GROUP })
+        subjects.push({ subjectId: group.id, subjectType: SubjectType.GROUP })
       })
       specificMembers.forEach((member) => {
         subjects.push({
           subjectId: member.id,
-          subjectType: EnterpriseSubjectType.SUBJECT_TYPE_ACCOUNT,
+          subjectType: SubjectType.ACCOUNT,
         })
       })
       submitData.subjects = subjects
     }
-    updateAccessMode({
-      body: submitData,
-    }, {
-      onSuccess: () => {
-        toast.success(successMessage)
-        onConfirm?.()
-      },
-    })
-  }
-
+    await updateAccessMode({ body: submitData })
+    toast.success(t(($) => $['accessControlDialog.updateSuccess'], { ns: 'app' }))
+    onConfirm?.()
+  }, [
+    updateAccessMode,
+    appId,
+    specificGroups,
+    specificMembers,
+    t,
+    onConfirm,
+    currentMenu,
+    confirmDisabled,
+  ])
   return (
     <AccessControlDialog show onClose={onClose}>
-      <AccessControlDialogContent
-        hideExternalTip={hideExternalTip}
-        saving={isPending}
-        controlsDisabled={subjectsLoading || isPending}
-        confirmDisabled={subjectsLoading}
-        specificGroupsOrMembersProps={{
-          loading: subjectsLoading,
-        }}
-        onClose={onClose}
-        onConfirm={handleConfirm}
-      />
+      <div className="flex flex-col gap-y-3">
+        <div className="pt-6 pr-14 pb-3 pl-6">
+          <DialogTitle className="title-2xl-semi-bold text-text-primary">
+            {t(($) => $['accessControlDialog.title'], { ns: 'app' })}
+          </DialogTitle>
+          <DialogDescription className="mt-1 system-xs-regular text-text-tertiary">
+            {t(($) => $['accessControlDialog.description'], { ns: 'app' })}
+          </DialogDescription>
+        </div>
+        <RadioGroup<AccessMode>
+          value={currentMenu}
+          onValueChange={setCurrentMenu}
+          className="flex flex-col items-stretch gap-y-1 px-6 pb-3"
+          aria-labelledby={accessControlOptionsLabelId}
+        >
+          <div className="leading-6">
+            <p id={accessControlOptionsLabelId} className="system-sm-medium text-text-tertiary">
+              {t(($) => $['accessControlDialog.accessLabel'], { ns: 'app' })}
+            </p>
+          </div>
+          <AccessControlItem type={AccessMode.ORGANIZATION}>
+            <div className="flex items-center p-3">
+              <div className="flex grow items-center gap-x-2">
+                <span aria-hidden className="i-ri-building-line size-4 text-text-primary" />
+                <p className="system-sm-medium text-text-primary">
+                  {t(($) => $['accessControlDialog.accessItems.organization'], { ns: 'app' })}
+                </p>
+              </div>
+            </div>
+          </AccessControlItem>
+          <AccessControlItem type={AccessMode.SPECIFIC_GROUPS_MEMBERS}>
+            <SpecificGroupsOrMembers />
+          </AccessControlItem>
+          <AccessControlItem type={AccessMode.EXTERNAL_MEMBERS}>
+            <div className="flex items-center p-3">
+              <div className="flex grow items-center gap-x-2">
+                <span aria-hidden className="i-ri-verified-badge-line size-4 text-text-primary" />
+                <p className="system-sm-medium text-text-primary">
+                  {t(($) => $['accessControlDialog.accessItems.external'], { ns: 'app' })}
+                </p>
+              </div>
+              {!hideTip && <WebAppSSONotEnabledTip />}
+            </div>
+          </AccessControlItem>
+          <AccessControlItem type={AccessMode.PUBLIC} disabled={publicAccessDisabled}>
+            <div className="flex items-center gap-x-2 p-3">
+              <span aria-hidden className="i-ri-global-line size-4 text-text-primary" />
+              <p className="system-sm-medium text-text-primary">
+                {t(($) => $['accessControlDialog.accessItems.anyone'], { ns: 'app' })}
+              </p>
+              {publicAccessDisabled && (
+                <Infotip
+                  aria-label={t(($) => $['accessControlDialog.webAppPublicAccessDisabledTip'], {
+                    ns: 'app',
+                  })}
+                  className="h-4 w-4 shrink-0 text-text-warning-secondary hover:text-text-warning-secondary"
+                >
+                  {t(($) => $['accessControlDialog.webAppPublicAccessDisabledTip'], { ns: 'app' })}
+                </Infotip>
+              )}
+            </div>
+          </AccessControlItem>
+        </RadioGroup>
+        <div className="flex items-center justify-end gap-x-2 p-6 pt-5">
+          <Button onClick={onClose}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
+          <Button
+            disabled={confirmDisabled}
+            loading={isPending}
+            variant="primary"
+            onClick={handleConfirm}
+          >
+            {t(($) => $['operation.confirm'], { ns: 'common' })}
+          </Button>
+        </div>
+      </div>
     </AccessControlDialog>
   )
 }

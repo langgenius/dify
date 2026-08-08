@@ -3,19 +3,21 @@ import type { FC } from 'react'
 import type { Category } from './types'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import {
+  ScrollArea,
   ScrollAreaContent,
   ScrollAreaCorner,
-  ScrollAreaRoot,
   ScrollAreaScrollbar,
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
+import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useState } from 'react'
-import { useAppContext } from '@/context/app-context'
 import { useGetPricingPageLanguage } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
-import { BillingPermission, hasPermission } from '@/utils/permission'
+import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
+import { consoleQuery } from '@/service/client'
 import { NoiseBottom, NoiseTop } from './assets'
 import Footer from './footer'
 import Header from './header'
@@ -28,26 +30,21 @@ type PricingProps = {
   onCancel: () => void
 }
 
-const pricingScrollAreaClassNames = {
-  root: 'relative h-full w-full overflow-hidden',
-  viewport: 'overscroll-contain',
-  content: 'min-h-full min-w-[1200px]',
-  verticalScrollbar: 'data-[orientation=vertical]:my-2 data-[orientation=vertical]:me-1',
-  horizontalScrollbar: 'data-[orientation=horizontal]:mx-2 data-[orientation=horizontal]:mb-0.5',
-  corner: 'bg-saas-background',
-} as const
-
-const Pricing: FC<PricingProps> = ({
-  onCancel,
-}) => {
-  const { plan, enableEducationPlan, isEducationAccount } = useProviderContext()
-  const { workspacePermissionKeys } = useAppContext()
-  const canManageBilling = hasPermission(workspacePermissionKeys, BillingPermission.Manage)
-  const shouldDefaultToYearly = canManageBilling && enableEducationPlan && isEducationAccount
+const Pricing: FC<PricingProps> = ({ onCancel }) => {
+  const { plan, enableEducationPlan } = useProviderContext()
+  const { data: isEducationAccount = false } = useQuery(
+    consoleQuery.account.education.get.queryOptions({
+      enabled: enableEducationPlan,
+      select: ({ is_student }) => is_student ?? false,
+    }),
+  )
+  const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
+  const shouldDefaultToYearly =
+    isCurrentWorkspaceManager && enableEducationPlan && isEducationAccount
   const [selectedPlanRange, setSelectedPlanRange] = React.useState<PlanRange>()
-  const planRange = selectedPlanRange ?? (shouldDefaultToYearly ? PlanRange.yearly : PlanRange.monthly)
+  const planRange =
+    selectedPlanRange ?? (shouldDefaultToYearly ? PlanRange.yearly : PlanRange.monthly)
   const [currentCategory, setCurrentCategory] = useState<Category>(CategoryEnum.CLOUD)
-  const canPay = canManageBilling
 
   const pricingPageLanguage = useGetPricingPageLanguage()
   const pricingPageURL = pricingPageLanguage
@@ -58,16 +55,13 @@ const Pricing: FC<PricingProps> = ({
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open)
-          onCancel()
+        if (!open) onCancel()
       }}
     >
-      <DialogContent
-        className="inset-0 size-full max-h-none max-w-none translate-0 overflow-hidden rounded-none border-none bg-saas-background p-0 shadow-none"
-      >
-        <ScrollAreaRoot className={pricingScrollAreaClassNames.root}>
-          <ScrollAreaViewport className={pricingScrollAreaClassNames.viewport}>
-            <ScrollAreaContent className={pricingScrollAreaClassNames.content}>
+      <DialogContent className="inset-0 size-full max-h-none max-w-none translate-0 overflow-hidden rounded-none border-none bg-saas-background p-0 shadow-none">
+        <ScrollArea className="relative h-full w-full overflow-hidden">
+          <ScrollAreaViewport className="overscroll-contain">
+            <ScrollAreaContent className="min-h-full min-w-300">
               <div className="relative grid min-h-full grid-rows-[1fr_auto_auto_1fr] overflow-hidden">
                 <div className="absolute inset-x-0 -top-12 -z-10">
                   <NoiseTop />
@@ -83,7 +77,7 @@ const Pricing: FC<PricingProps> = ({
                   plan={plan}
                   currentPlan={currentCategory}
                   planRange={planRange}
-                  canPay={canPay}
+                  canPay={isCurrentWorkspaceManager}
                 />
                 <Footer pricingPageURL={pricingPageURL} currentCategory={currentCategory} />
                 <div className="absolute inset-x-0 -bottom-12 -z-10">
@@ -92,17 +86,14 @@ const Pricing: FC<PricingProps> = ({
               </div>
             </ScrollAreaContent>
           </ScrollAreaViewport>
-          <ScrollAreaScrollbar className={pricingScrollAreaClassNames.verticalScrollbar}>
+          <ScrollAreaScrollbar>
             <ScrollAreaThumb className="rounded-full" />
           </ScrollAreaScrollbar>
-          <ScrollAreaScrollbar
-            orientation="horizontal"
-            className={pricingScrollAreaClassNames.horizontalScrollbar}
-          >
+          <ScrollAreaScrollbar orientation="horizontal">
             <ScrollAreaThumb className="rounded-full" />
           </ScrollAreaScrollbar>
-          <ScrollAreaCorner className={pricingScrollAreaClassNames.corner} />
-        </ScrollAreaRoot>
+          <ScrollAreaCorner className="bg-saas-background" />
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   )

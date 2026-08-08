@@ -23,6 +23,7 @@ from controllers.console.wraps import (
     with_current_user,
 )
 from core.workflow.human_input_forms import load_form_tokens_by_form_id as _load_form_tokens_by_form_id
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.workflow_run_fields import (
@@ -33,7 +34,6 @@ from fields.workflow_run_fields import (
     WorkflowRunNodeExecutionResponse,
     WorkflowRunPaginationResponse,
 )
-from graphon.entities.pause_reason import HumanInputRequired
 from graphon.enums import WorkflowExecutionStatus
 from libs.archive_storage import ArchiveStorageNotConfiguredError, get_archive_storage
 from libs.custom_inputs import time_duration

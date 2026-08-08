@@ -1,13 +1,20 @@
 import type { ReactNode } from 'react'
 import { DeployDrawer } from '@/features/deployments/deploy-drawer'
-import { DeploymentsRouteStateHydrator } from '@/features/deployments/route-state-hydrator'
+import {
+  getSystemFeaturesQueryClient,
+  systemFeaturesServerQueryOptions,
+} from '@/features/system-features/server'
+import { notFound } from '@/next/navigation'
 
-export default function DeploymentsLayout({ children }: {
-  children: ReactNode
-}) {
+export default async function DeploymentsLayout({ children }: { children: ReactNode }) {
+  const systemFeatures = await getSystemFeaturesQueryClient().ensureQueryData(
+    systemFeaturesServerQueryOptions(),
+  )
+
+  if (!systemFeatures.enable_app_deploy) notFound()
+
   return (
     <>
-      <DeploymentsRouteStateHydrator />
       {children}
       <DeployDrawer />
     </>

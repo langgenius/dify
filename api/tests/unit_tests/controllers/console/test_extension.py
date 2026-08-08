@@ -114,7 +114,7 @@ def test_api_based_extension_get_returns_tenant_extensions(app: Flask, monkeypat
     assert response[0]["name"] == "Weather API"
     assert response[0]["api_endpoint"] == extension.api_endpoint
     assert response[0]["api_key"].startswith(extension.api_key[:3])
-    service_mock.assert_called_once_with(ANY, "tenant-123")
+    service_mock.assert_called_once_with("tenant-123", session=ANY)
 
 
 def test_api_based_extension_post_creates_extension(app: Flask, monkeypatch: pytest.MonkeyPatch):
@@ -132,7 +132,7 @@ def test_api_based_extension_post_creates_extension(app: Flask, monkeypatch: pyt
         response, status = APIBasedExtensionAPI().post()
 
     args, _ = save_mock.call_args
-    created_extension: APIBasedExtension = args[1]
+    created_extension: APIBasedExtension = args[0]
     assert created_extension.tenant_id == "tenant-123"
     assert created_extension.name == payload["name"]
     assert created_extension.api_endpoint == payload["api_endpoint"]
@@ -157,7 +157,7 @@ def test_api_based_extension_detail_get_fetches_extension(app: Flask, monkeypatc
 
     assert response["id"] == extension.id
     assert response["name"] == extension.name
-    service_mock.assert_called_once_with(ANY, "tenant-123", str(extension_id))
+    service_mock.assert_called_once_with("tenant-123", str(extension_id), session=ANY)
 
 
 def test_api_based_extension_detail_post_keeps_hidden_api_key(app: Flask, monkeypatch: pytest.MonkeyPatch):
@@ -187,7 +187,7 @@ def test_api_based_extension_detail_post_keeps_hidden_api_key(app: Flask, monkey
     assert existing_extension.name == payload["name"]
     assert existing_extension.api_endpoint == payload["api_endpoint"]
     assert existing_extension.api_key == "keep-me"
-    save_mock.assert_called_once_with(ANY, existing_extension)
+    save_mock.assert_called_once_with(existing_extension, session=ANY)
     assert response["name"] == payload["name"]
     assert response["api_key"] == _masked_api_key("keep-me")
 
@@ -217,7 +217,7 @@ def test_api_based_extension_detail_post_updates_api_key_when_provided(app: Flas
         response = APIBasedExtensionDetailAPI().post(extension_id)
 
     assert existing_extension.api_key == "new-secret"
-    save_mock.assert_called_once_with(ANY, existing_extension)
+    save_mock.assert_called_once_with(existing_extension, session=ANY)
     assert response["name"] == payload["name"]
     assert response["api_key"] == _masked_api_key(payload["api_key"])
 
@@ -239,6 +239,6 @@ def test_api_based_extension_detail_delete_removes_extension(app: Flask, monkeyp
     ):
         response, status = APIBasedExtensionDetailAPI().delete(extension_id)
 
-    delete_mock.assert_called_once_with(ANY, existing_extension)
+    delete_mock.assert_called_once_with(existing_extension, session=ANY)
     assert status == 204
     assert response == ""

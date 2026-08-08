@@ -13,7 +13,11 @@ type ExternalKnowledgeSectionProps = {
   topK: number
   scoreThreshold: number
   scoreThresholdEnabled: boolean
-  handleSettingsChange: (data: { top_k?: number, score_threshold?: number, score_threshold_enabled?: boolean }) => void
+  handleSettingsChange: (data: {
+    top_k?: number
+    score_threshold?: number
+    score_threshold_enabled?: boolean
+  }) => void
   readonly?: boolean
 }
 
@@ -34,7 +38,9 @@ const ExternalKnowledgeSection = ({
       {/* Retrieval Settings */}
       <div className={rowClass}>
         <div className={labelClass}>
-          <div className="system-sm-semibold text-text-secondary">{t('form.retrievalSetting.title', { ns: 'datasetSettings' })}</div>
+          <div className="system-sm-semibold text-text-secondary">
+            {t(($) => $['form.retrievalSetting.title'], { ns: 'datasetSettings' })}
+          </div>
         </div>
         <RetrievalSettings
           topK={topK}
@@ -51,7 +57,9 @@ const ExternalKnowledgeSection = ({
       {/* External Knowledge API */}
       <div className={rowClass}>
         <div className={labelClass}>
-          <div className="system-sm-semibold text-text-secondary">{t('form.externalKnowledgeAPI', { ns: 'datasetSettings' })}</div>
+          <div className="system-sm-semibold text-text-secondary">
+            {t(($) => $['form.externalKnowledgeAPI'], { ns: 'datasetSettings' })}
+          </div>
         </div>
         <div className="w-full">
           <div className="flex h-full items-center gap-1 rounded-lg bg-components-input-bg-normal px-3 py-2">
@@ -70,7 +78,9 @@ const ExternalKnowledgeSection = ({
       {/* External Knowledge ID */}
       <div className={rowClass}>
         <div className={labelClass}>
-          <div className="system-sm-semibold text-text-secondary">{t('form.externalKnowledgeID', { ns: 'datasetSettings' })}</div>
+          <div className="system-sm-semibold text-text-secondary">
+            {t(($) => $['form.externalKnowledgeID'], { ns: 'datasetSettings' })}
+          </div>
         </div>
         <div className="w-full">
           <div className="flex h-full items-center gap-1 rounded-lg bg-components-input-bg-normal px-3 py-2">

@@ -12,7 +12,8 @@ from flask_restx import Resource
 from flask_restx.utils import merge
 from pydantic import BaseModel
 from sqlalchemy import select
-from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
+from sqlalchemy.orm import sessionmaker
+from werkzeug.exceptions import Forbidden, NotFound, ServiceUnavailable, Unauthorized
 
 from configs import dify_config
 from controllers.service_api.schema import (
@@ -160,7 +161,7 @@ def validate_app_token[**P, R](
 
                 if tenant_owner_info:
                     tenant_model, account = tenant_owner_info
-                    account.current_tenant = tenant_model
+                    account.set_current_tenant_with_session(tenant_model, session=db.session())
                     current_app.login_manager._update_request_context_with_user(account)  # type: ignore
                     user_logged_in.send(current_app._get_current_object(), user=current_user)  # type: ignore
                 else:
@@ -189,6 +190,12 @@ def cloud_edition_billing_resource_check[**P, R](
                     return view(*args, **kwargs)
 
                 vector_space = FeatureService.get_vector_space(api_token.tenant_id)
+                if vector_space.usage_unknown:
+                    features = FeatureService.get_features(api_token.tenant_id, exclude_vector_space=True)
+                    if features.billing.enabled and features.billing.subscription.plan == CloudPlan.SANDBOX:
+                        raise ServiceUnavailable(
+                            "Unable to verify vector space usage right now. Please try again later."
+                        )
                 if 0 < vector_space.limit <= vector_space.size:
                     raise Forbidden("The capacity of the vector space has reached the limit of your subscription.")
                 return view(*args, **kwargs)
@@ -269,8 +276,8 @@ def cloud_edition_billing_rate_limit_check[**P, R](
                             subscription_plan=knowledge_rate_limit.subscription_plan,
                             operation="knowledge",
                         )
-                        db.session.add(rate_limit_log)
-                        db.session.commit()
+                        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
+                            session.add(rate_limit_log)
                         raise Forbidden(
                             "Sorry, you have reached the knowledge base request rate limit of your subscription."
                         )
@@ -321,18 +328,19 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
                 raise Forbidden("Dataset api access is not enabled.")
 
         tenant_account_join = db.session.execute(
-            select(Tenant, TenantAccountJoin)
-            .where(Tenant.id == api_token.tenant_id)
-            .where(TenantAccountJoin.tenant_id == Tenant.id)
-            .where(TenantAccountJoin.role.in_(["owner"]))
-            .where(Tenant.status == TenantStatus.NORMAL)
+            select(Tenant, TenantAccountJoin).where(
+                Tenant.id == api_token.tenant_id,
+                TenantAccountJoin.tenant_id == Tenant.id,
+                TenantAccountJoin.role.in_(["owner"]),
+                Tenant.status == TenantStatus.NORMAL,
+            )
         ).one_or_none()  # TODO: only owner information is required, so only one is returned.
         if tenant_account_join:
             tenant, ta = tenant_account_join
             account = db.session.get(Account, ta.account_id)
             # Login admin
             if account:
-                account.current_tenant = tenant
+                account.set_current_tenant_with_session(tenant, session=db.session())
                 current_app.login_manager._update_request_context_with_user(account)  # type: ignore
                 user_logged_in.send(current_app._get_current_object(), user=current_user)  # type: ignore
             else:

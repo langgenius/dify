@@ -21,10 +21,11 @@ from fields._value_type_serializer import serialize_value_type
 from fields.base import ResponseModel
 from fields.conversation_fields import (
     ConversationInfiniteScrollPagination,
+    ConversationResponseSource,
     SimpleConversation,
 )
 from graphon.variables.types import SegmentType
-from libs.helper import UUIDStrOrEmpty, to_timestamp
+from libs.helper import UUIDStrOrEmpty, dump_response, to_timestamp
 from models.model import App, AppMode, EndUser
 from services.conversation_service import ConversationService
 
@@ -142,15 +143,13 @@ register_schema_models(
     ConversationRenamePayload,
     ConversationVariablesQuery,
     ConversationVariableUpdatePayload,
-    ConversationVariableResponse,
-    ConversationVariableInfiniteScrollPaginationResponse,
 )
 register_response_schema_models(
     service_api_ns,
-    ConversationInfiniteScrollPagination,
-    SimpleConversation,
     ConversationVariableResponse,
     ConversationVariableInfiniteScrollPaginationResponse,
+    ConversationInfiniteScrollPagination,
+    SimpleConversation,
 )
 
 
@@ -166,9 +165,9 @@ class ConversationApi(Resource):
             404: "`not_found` : Last conversation does not exist (invalid `last_id`).",
         },
     )
-    @service_api_ns.doc(params=query_params_from_model(ConversationListQuery))
     @service_api_ns.doc("list_conversations")
     @service_api_ns.doc(description="List all conversations for the current user")
+    @service_api_ns.doc(params=query_params_from_model(ConversationListQuery))
     @service_api_ns.doc(
         responses={
             200: "Conversations retrieved successfully",
@@ -192,7 +191,7 @@ class ConversationApi(Resource):
             raise NotChatAppError()
 
         query_args = ConversationListQuery.model_validate(request.args.to_dict())
-        last_id = str(query_args.last_id) if query_args.last_id else None
+        last_id = query_args.last_id or None
 
         try:
             with sessionmaker(db.engine).begin() as session:
@@ -206,11 +205,15 @@ class ConversationApi(Resource):
                     sort_by=query_args.sort_by,
                 )
                 adapter = TypeAdapter(SimpleConversation)
-                conversations = [adapter.validate_python(item, from_attributes=True) for item in pagination.data]
+                conversations = [
+                    adapter.validate_python(
+                        ConversationResponseSource(item, session=session),
+                        from_attributes=True,
+                    )
+                    for item in pagination.data
+                ]
                 return ConversationInfiniteScrollPagination(
-                    limit=pagination.limit,
-                    has_more=pagination.has_more,
-                    data=conversations,
+                    limit=pagination.limit, has_more=pagination.has_more, data=conversations
                 ).model_dump(mode="json")
         except services.errors.conversation.LastConversationNotExistsError:
             raise NotFound("Last Conversation Not Exists.")
@@ -249,7 +252,7 @@ class ConversationDetailApi(Resource):
         conversation_id = str(c_id)
 
         try:
-            ConversationService.delete(app_model, conversation_id, end_user)
+            ConversationService.delete(app_model, conversation_id, end_user, session=db.session())
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
         return "", 204
@@ -298,14 +301,11 @@ class ConversationRenameApi(Resource):
         payload = ConversationRenamePayload.model_validate(service_api_ns.payload or {})
 
         try:
+            session = db.session()
             conversation = ConversationService.rename(
-                app_model, conversation_id, end_user, payload.name, payload.auto_generate
+                app_model, conversation_id, end_user, payload.name, payload.auto_generate, session=session
             )
-            return (
-                TypeAdapter(SimpleConversation)
-                .validate_python(conversation, from_attributes=True)
-                .model_dump(mode="json")
-            )
+            return dump_response(SimpleConversation, ConversationResponseSource(conversation, session=session))
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 
@@ -322,10 +322,9 @@ class ConversationVariablesApi(Resource):
             404: "`not_found` : Conversation does not exist.",
         },
     )
-    @service_api_ns.doc(params=query_params_from_model(ConversationVariablesQuery))
     @service_api_ns.doc("list_conversation_variables")
     @service_api_ns.doc(description="List all variables for a conversation")
-    @service_api_ns.doc(params={"c_id": "Conversation ID."})
+    @service_api_ns.doc(params={"c_id": "Conversation ID.", **query_params_from_model(ConversationVariablesQuery)})
     @service_api_ns.doc(
         responses={
             200: "Variables retrieved successfully",
@@ -352,15 +351,19 @@ class ConversationVariablesApi(Resource):
         conversation_id = str(c_id)
 
         query_args = ConversationVariablesQuery.model_validate(request.args.to_dict())
-        last_id = str(query_args.last_id) if query_args.last_id else None
+        last_id = query_args.last_id or None
 
         try:
             pagination = ConversationService.get_conversational_variable(
-                app_model, conversation_id, end_user, query_args.limit, last_id, query_args.variable_name
+                app_model,
+                conversation_id,
+                end_user,
+                query_args.limit,
+                last_id,
+                query_args.variable_name,
+                session=db.session(),
             )
-            return ConversationVariableInfiniteScrollPaginationResponse.model_validate(
-                pagination, from_attributes=True
-            ).model_dump(mode="json")
+            return dump_response(ConversationVariableInfiniteScrollPaginationResponse, pagination)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 
@@ -417,9 +420,9 @@ class ConversationVariableDetailApi(Resource):
 
         try:
             variable = ConversationService.update_conversation_variable(
-                app_model, conversation_id, variable_id_str, end_user, payload.value
+                app_model, conversation_id, variable_id_str, end_user, payload.value, session=db.session()
             )
-            return ConversationVariableResponse.model_validate(variable, from_attributes=True).model_dump(mode="json")
+            return dump_response(ConversationVariableResponse, variable)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
         except services.errors.conversation.ConversationVariableNotExistsError:

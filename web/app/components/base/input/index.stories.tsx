@@ -9,7 +9,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Input component with support for icons, clear button, validation states, and units. Includes automatic leading zero removal for number inputs.',
+        component:
+          'Input component with support for icons, clear button, validation states, and units. Includes automatic leading zero removal for number inputs.',
       },
     },
   },
@@ -79,7 +80,7 @@ const InputDemo = (args: any) => {
 
 // Default state
 export const Default: Story = {
-  render: args => <InputDemo {...args} />,
+  render: (args) => <InputDemo {...args} />,
   args: {
     size: 'regular',
     placeholder: 'Enter text...',
@@ -89,7 +90,7 @@ export const Default: Story = {
 
 // Large size
 export const LargeSize: Story = {
-  render: args => <InputDemo {...args} />,
+  render: (args) => <InputDemo {...args} />,
   args: {
     size: 'large',
     placeholder: 'Enter text...',
@@ -99,7 +100,7 @@ export const LargeSize: Story = {
 
 // With search icon
 export const WithSearchIcon: Story = {
-  render: args => <InputDemo {...args} />,
+  render: (args) => <InputDemo {...args} />,
   args: {
     size: 'regular',
     showLeftIcon: true,
@@ -110,7 +111,7 @@ export const WithSearchIcon: Story = {
 
 // With clear button
 export const WithClearButton: Story = {
-  render: args => <InputDemo {...args} />,
+  render: (args) => <InputDemo {...args} />,
   args: {
     size: 'regular',
     showClearIcon: true,
@@ -122,7 +123,7 @@ export const WithClearButton: Story = {
 
 // Search input (icon + clear)
 export const SearchInput: Story = {
-  render: args => <InputDemo {...args} />,
+  render: (args) => <InputDemo {...args} />,
   args: {
     size: 'regular',
     showLeftIcon: true,
@@ -135,7 +136,7 @@ export const SearchInput: Story = {
 
 // Disabled state
 export const Disabled: Story = {
-  render: args => <InputDemo {...args} />,
+  render: (args) => <InputDemo {...args} />,
   args: {
     size: 'regular',
     value: 'Disabled input',
@@ -146,7 +147,7 @@ export const Disabled: Story = {
 
 // Destructive/error state
 export const DestructiveState: Story = {
-  render: args => <InputDemo {...args} />,
+  render: (args) => <InputDemo {...args} />,
   args: {
     size: 'regular',
     value: 'invalid@email',
@@ -158,7 +159,7 @@ export const DestructiveState: Story = {
 
 // Number input
 export const NumberInput: Story = {
-  render: args => <InputDemo {...args} />,
+  render: (args) => <InputDemo {...args} />,
   args: {
     size: 'regular',
     type: 'number',
@@ -169,7 +170,7 @@ export const NumberInput: Story = {
 
 // With unit
 export const WithUnit: Story = {
-  render: args => <InputDemo {...args} />,
+  render: (args) => <InputDemo {...args} />,
   args: {
     size: 'regular',
     type: 'number',
@@ -181,7 +182,7 @@ export const WithUnit: Story = {
 
 // Email input
 export const EmailInput: Story = {
-  render: args => <InputDemo {...args} />,
+  render: (args) => <InputDemo {...args} />,
   args: {
     size: 'regular',
     type: 'email',
@@ -192,7 +193,7 @@ export const EmailInput: Story = {
 
 // Password input
 export const PasswordInput: Story = {
-  render: args => <InputDemo {...args} />,
+  render: (args) => <InputDemo {...args} />,
   args: {
     size: 'regular',
     type: 'password',
@@ -213,7 +214,7 @@ const SizeComparisonDemo = () => {
         <Input
           size="regular"
           value={regularValue}
-          onChange={e => setRegularValue(e.target.value)}
+          onChange={(e) => setRegularValue(e.target.value)}
           placeholder="Regular input..."
           showClearIcon
           onClear={() => setRegularValue('')}
@@ -224,7 +225,7 @@ const SizeComparisonDemo = () => {
         <Input
           size="large"
           value={largeValue}
-          onChange={e => setLargeValue(e.target.value)}
+          onChange={(e) => setLargeValue(e.target.value)}
           placeholder="Large input..."
           showClearIcon
           onClear={() => setLargeValue('')}
@@ -249,26 +250,18 @@ const StateComparisonDemo = () => {
         <label className="text-sm font-medium text-gray-700">Normal</label>
         <Input
           value={normalValue}
-          onChange={e => setNormalValue(e.target.value)}
+          onChange={(e) => setNormalValue(e.target.value)}
           showClearIcon
           onClear={() => setNormalValue('')}
         />
       </div>
       <div className="flex flex-col gap-2">
         <label className="text-sm font-medium text-gray-700">Destructive</label>
-        <Input
-          value={errorValue}
-          onChange={e => setErrorValue(e.target.value)}
-          destructive
-        />
+        <Input value={errorValue} onChange={(e) => setErrorValue(e.target.value)} destructive />
       </div>
       <div className="flex flex-col gap-2">
         <label className="text-sm font-medium text-gray-700">Disabled</label>
-        <Input
-          value="Disabled input"
-          onChange={() => undefined}
-          disabled
-        />
+        <Input value="Disabled input" onChange={() => undefined} disabled />
       </div>
     </div>
   )
@@ -303,7 +296,7 @@ const FormExampleDemo = () => {
           <label className="text-sm font-medium text-gray-700">Name</label>
           <Input
             value={formData.name}
-            onChange={e => setFormData({ ...formData, name: e.target.value })}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             placeholder="Enter your name..."
             showClearIcon
             onClear={() => setFormData({ ...formData, name: '' })}
@@ -316,7 +309,10 @@ const FormExampleDemo = () => {
             value={formData.email}
             onChange={(e) => {
               setFormData({ ...formData, email: e.target.value })
-              setErrors({ ...errors, email: e.target.value ? !validateEmail(e.target.value) : false })
+              setErrors({
+                ...errors,
+                email: e.target.value ? !validateEmail(e.target.value) : false,
+              })
             }}
             placeholder="Enter your email..."
             destructive={errors.email}
@@ -343,16 +339,14 @@ const FormExampleDemo = () => {
             destructive={errors.age}
             unit="years"
           />
-          {errors.age && (
-            <span className="text-xs text-red-600">Must be 18 or older</span>
-          )}
+          {errors.age && <span className="text-xs text-red-600">Must be 18 or older</span>}
         </div>
         <div className="flex flex-col gap-2">
           <label className="text-sm font-medium text-gray-700">Website</label>
           <Input
             type="url"
             value={formData.website}
-            onChange={e => setFormData({ ...formData, website: e.target.value })}
+            onChange={(e) => setFormData({ ...formData, website: e.target.value })}
             placeholder="https://example.com"
             showClearIcon
             onClear={() => setFormData({ ...formData, website: '' })}
@@ -371,7 +365,7 @@ export const FormExample: Story = {
 const SearchExampleDemo = () => {
   const [searchQuery, setSearchQuery] = useState('')
   const items = ['Apple', 'Banana', 'Cherry', 'Date', 'Elderberry', 'Fig', 'Grape']
-  const filteredItems = items.filter(item =>
+  const filteredItems = items.filter((item) =>
     item.toLowerCase().includes(searchQuery.toLowerCase()),
   )
 
@@ -382,20 +376,18 @@ const SearchExampleDemo = () => {
         showLeftIcon
         showClearIcon
         value={searchQuery}
-        onChange={e => setSearchQuery(e.target.value)}
+        onChange={(e) => setSearchQuery(e.target.value)}
         onClear={() => setSearchQuery('')}
         placeholder="Search fruits..."
       />
       {searchQuery && (
         <div className="rounded-lg bg-gray-50 p-4">
           <div className="mb-2 text-xs text-gray-500">
-            {filteredItems.length}
-            {' '}
-            result
+            {filteredItems.length} result
             {filteredItems.length !== 1 ? 's' : ''}
           </div>
           <div className="flex flex-col gap-1">
-            {filteredItems.map(item => (
+            {filteredItems.map((item) => (
               <div key={item} className="text-sm text-gray-700">
                 {item}
               </div>
@@ -413,7 +405,7 @@ export const SearchExample: Story = {
 
 // Interactive playground
 export const Playground: Story = {
-  render: args => <InputDemo {...args} />,
+  render: (args) => <InputDemo {...args} />,
   args: {
     size: 'regular',
     type: 'text',

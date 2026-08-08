@@ -2,15 +2,13 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { NoteTheme } from '../../../types'
 import Toolbar from '../index'
 
-const {
-  mockHandleCommand,
-  mockHandleFontSize,
-  mockHandleOpenFontSizeSelector,
-} = vi.hoisted(() => ({
-  mockHandleCommand: vi.fn(),
-  mockHandleFontSize: vi.fn(),
-  mockHandleOpenFontSizeSelector: vi.fn(),
-}))
+const { mockHandleCommand, mockHandleFontSize, mockHandleOpenFontSizeSelector } = vi.hoisted(
+  () => ({
+    mockHandleCommand: vi.fn(),
+    mockHandleFontSize: vi.fn(),
+    mockHandleOpenFontSizeSelector: vi.fn(),
+  }),
+)
 
 let mockFontSizeSelectorShow = false
 let mockFontSize = '14px'

@@ -488,7 +488,7 @@ class TestFetchDatasetRetriever:
         )
 
         # Act
-        results, usage = node._fetch_dataset_retriever(node_data=node_data, variables=variables)
+        results, usage = node._fetch_dataset_retriever(Mock(), node_data=node_data, variables=variables)
 
         # Assert
         assert len(results) == 1
@@ -525,7 +525,7 @@ class TestFetchDatasetRetriever:
         )
 
         # Act
-        results, usage = node._fetch_dataset_retriever(node_data=sample_node_data, variables=variables)
+        results, usage = node._fetch_dataset_retriever(Mock(), node_data=sample_node_data, variables=variables)
 
         # Assert
         assert isinstance(results, list)
@@ -580,7 +580,7 @@ class TestFetchDatasetRetriever:
         )
 
         # Act
-        results, usage = node._fetch_dataset_retriever(node_data=node_data, variables=variables)
+        results, usage = node._fetch_dataset_retriever(Mock(), node_data=node_data, variables=variables)
 
         # Assert
         assert isinstance(results, list)
@@ -692,7 +692,7 @@ class TestFetchDatasetRetriever:
         mock_rag_retrieval.llm_usage = LLMUsage.empty_usage()
 
         # Act
-        node._fetch_dataset_retriever(node_data=node_data, variables=variables)
+        node._fetch_dataset_retriever(Mock(), node_data=node_data, variables=variables)
 
         # Assert the passed request has resolved value
         call_args = mock_rag_retrieval.knowledge_retrieval.call_args

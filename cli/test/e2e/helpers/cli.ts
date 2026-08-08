@@ -14,7 +14,7 @@ import { execSync, spawn } from 'node:child_process'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import yaml from 'js-yaml'
+import { dump } from 'js-yaml'
 
 /** Path to the dev entry point — no build required. */
 export const BIN = resolve(__dirname, '../../../bin/dev.js')
@@ -36,12 +36,11 @@ function resolveBun(): string {
     try {
       execSync(`${candidate} --version`, { stdio: 'ignore', timeout: 3000 })
       return candidate
+    } catch {
+      /* try next */
     }
-    catch { /* try next */ }
   }
-  throw new Error(
-    'bun not found. Install it with: curl -fsSL https://bun.sh/install | bash',
-  )
+  throw new Error('bun not found. Install it with: curl -fsSL https://bun.sh/install | bash')
 }
 
 export const BUN = resolveBun()
@@ -173,7 +172,7 @@ export type AuthInjectionOptions = {
   workspaceName: string
   workspaceRole?: string
   /** Full available workspace list. Defaults to the primary workspace only. */
-  availableWorkspaces?: Array<{ id: string, name: string, role: string }>
+  availableWorkspaces?: Array<{ id: string; name: string; role: string }>
   /**
    * Server-side session UUID (OAuthAccessToken.id).
    * When provided, written as `token_id` in hosts.yml so that
@@ -189,32 +188,37 @@ export type SsoAuthInjectionOptions = {
   issuer?: string
 }
 
-function splitHost(host: string): { bare: string, scheme: string } {
+function splitHost(host: string): { bare: string; scheme: string } {
   const bare = (() => {
     try {
       return new URL(host).host || host
-    }
-    catch {
+    } catch {
       return host
     }
   })()
   const scheme = (() => {
     try {
       return new URL(host).protocol.replace(':', '')
-    }
-    catch {
+    } catch {
       return 'https'
     }
   })()
   return { bare, scheme }
 }
 
-async function writeFileToken(configDir: string, host: string, email: string, bearer: string): Promise<void> {
+async function writeFileToken(
+  configDir: string,
+  host: string,
+  email: string,
+  bearer: string,
+): Promise<void> {
   const doc: TokenDoc = {
     version: 1,
     tokens: { [host]: { [email]: bearer } },
   }
-  await writeFile(join(configDir, 'tokens.yml'), yaml.dump(doc, { lineWidth: -1, noRefs: true }), { mode: 0o600 })
+  await writeFile(join(configDir, 'tokens.yml'), dump(doc, { lineWidth: -1, noRefs: true }), {
+    mode: 0o600,
+  })
 }
 
 /**
@@ -234,11 +238,13 @@ export async function injectAuth(configDir: string, opts: AuthInjectionOptions):
   const { bare, scheme } = splitHost(opts.host)
   const email = opts.email ?? 'e2e@example.com'
   const accountName = opts.accountName ?? email.split('@')[0] ?? ''
-  const availableWorkspaces = opts.availableWorkspaces ?? [{
-    id: opts.workspaceId,
-    name: opts.workspaceName,
-    role,
-  }]
+  const availableWorkspaces = opts.availableWorkspaces ?? [
+    {
+      id: opts.workspaceId,
+      name: opts.workspaceName,
+      role,
+    },
+  ]
 
   // ── hosts.yml ────────────────────────────────────────────────────────────
   // difyctl 0.1.0-rc.1 uses a nested registry format:
@@ -269,7 +275,7 @@ export async function injectAuth(configDir: string, opts: AuthInjectionOptions):
     `          name: "${opts.workspaceName}"`,
     `          role: ${role}`,
     `        available_workspaces:`,
-    ...availableWorkspaces.flatMap(workspace => [
+    ...availableWorkspaces.flatMap((workspace) => [
       `          - id: ${workspace.id}`,
       `            name: "${workspace.name}"`,
       `            role: ${workspace.role}`,
@@ -287,15 +293,17 @@ export async function injectAuth(configDir: string, opts: AuthInjectionOptions):
     const { Entry } = await import('@napi-rs/keyring')
     const account = `tokens.${bare}.${email}`
     new Entry('difyctl', account).setPassword(JSON.stringify(opts.bearer))
-  }
-  else {
+  } else {
     // Fall back to tokens.yml — FileTokenStore uses getTyped<TokenDoc>()
     // which expects flat tokens[host][email] with version: 1.
     await writeFileToken(configDir, bare, email, opts.bearer)
   }
 }
 
-export async function injectSsoAuth(configDir: string, opts: SsoAuthInjectionOptions): Promise<void> {
+export async function injectSsoAuth(
+  configDir: string,
+  opts: SsoAuthInjectionOptions,
+): Promise<void> {
   await mkdir(configDir, { recursive: true, mode: 0o700 })
 
   const { bare, scheme } = splitHost(opts.host)
@@ -364,13 +372,16 @@ export function spawn_background(argv: string[], opts: RunOptions = {}): Spawned
   })
 
   return {
-    interrupt: () => { proc.kill('SIGINT') },
-    wait: () => new Promise((res) => {
-      proc.on('close', (code: number | null) => {
-        clearTimeout(timeoutId)
-        res({ stdout, stderr, exitCode: code ?? (timedOut ? 124 : 1) })
-      })
-    }),
+    interrupt: () => {
+      proc.kill('SIGINT')
+    },
+    wait: () =>
+      new Promise((res) => {
+        proc.on('close', (code: number | null) => {
+          clearTimeout(timeoutId)
+          res({ stdout, stderr, exitCode: code ?? (timedOut ? 124 : 1) })
+        })
+      }),
   }
 }
 
@@ -402,9 +413,13 @@ export type AuthFixture = {
  *   assertExitCode(result, 0)
  * })
  */
-export async function withAuthFixture(
-  E: { host: string, token: string, workspaceId: string, workspaceName: string, email?: string },
-): Promise<AuthFixture> {
+export async function withAuthFixture(E: {
+  host: string
+  token: string
+  workspaceId: string
+  workspaceName: string
+  email?: string
+}): Promise<AuthFixture> {
   const { configDir, cleanup } = await withTempConfig()
   await injectAuth(configDir, {
     host: E.host,
@@ -441,8 +456,7 @@ export async function mintFreshToken(
   email: string,
   password: string,
 ): Promise<string> {
-  if (!email || !password)
-    return ''
+  if (!email || !password) return ''
 
   const base = host.replace(/\/$/, '')
   const sig = AbortSignal.timeout(15_000)
@@ -455,11 +469,10 @@ export async function mintFreshToken(
     body: JSON.stringify({ email, password: passwordB64, remember_me: false }),
     signal: AbortSignal.timeout(20_000),
   })
-  if (!loginRes.ok)
-    return ''
+  if (!loginRes.ok) return ''
 
   const setCookieHeaders = loginRes.headers.getSetCookie?.() ?? []
-  const cookieString = setCookieHeaders.map(c => c.split(';')[0]).join('; ')
+  const cookieString = setCookieHeaders.map((c) => c.split(';')[0]).join('; ')
   const csrfMatch = cookieString.match(/csrf_token=([^;]+)/)
   const csrfToken = csrfMatch ? csrfMatch[1] : ''
 
@@ -470,19 +483,20 @@ export async function mintFreshToken(
     body: JSON.stringify({ client_id: 'difyctl', device_label: 'e2e-fresh' }),
     signal: sig,
   })
-  if (!codeRes.ok)
-    return ''
-  const { device_code, user_code } = await codeRes.json() as { device_code: string, user_code: string }
+  if (!codeRes.ok) return ''
+  const { device_code, user_code } = (await codeRes.json()) as {
+    device_code: string
+    user_code: string
+  }
 
   // Step 3 — approve
   const approveRes = await fetch(`${base}/openapi/v1/oauth/device/approve`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Cookie': cookieString, 'X-CSRFToken': csrfToken },
+    headers: { 'Content-Type': 'application/json', Cookie: cookieString, 'X-CSRFToken': csrfToken },
     body: JSON.stringify({ user_code }),
     signal: AbortSignal.timeout(20_000),
   })
-  if (!approveRes.ok)
-    return ''
+  if (!approveRes.ok) return ''
 
   // Step 4 — poll token
   const tokenRes = await fetch(`${base}/openapi/v1/oauth/device/token`, {
@@ -491,8 +505,7 @@ export async function mintFreshToken(
     body: JSON.stringify({ device_code, client_id: 'difyctl' }),
     signal: AbortSignal.timeout(20_000),
   })
-  if (!tokenRes.ok)
-    return ''
-  const body = await tokenRes.json() as { token?: string }
+  if (!tokenRes.ok) return ''
+  const body = (await tokenRes.json()) as { token?: string }
   return body.token ?? ''
 }

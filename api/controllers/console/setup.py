@@ -6,6 +6,7 @@ from sqlalchemy import select
 
 from configs import dify_config
 from controllers.fastopenapi import console_router
+from enums.deployment_edition import DeploymentEdition
 from libs.helper import EmailStr, extract_remote_ip
 from libs.password import valid_password
 from models.model import DifySetup, db
@@ -13,7 +14,7 @@ from services.account_service import RegisterService, TenantService
 
 from .error import AlreadySetupError, NotInitValidateError
 from .init_validate import get_init_validate_status
-from .wraps import only_edition_self_hosted
+from .wraps import mark_setup_completed, only_edition_self_hosted
 
 
 class SetupRequestPayload(BaseModel):
@@ -52,7 +53,7 @@ def get_setup_status_api() -> SetupStatusResponse:
 
     Only bootstrap-safe status information should be returned by this endpoint.
     """
-    if dify_config.EDITION == "SELF_HOSTED":
+    if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
         setup_status = get_setup_status()
         if setup_status and not isinstance(setup_status, bool):
             return SetupStatusResponse(step="finished", setup_at=setup_status.setup_at.isoformat())
@@ -79,7 +80,7 @@ def setup_system(payload: SetupRequestPayload) -> SetupResponse:
     if get_setup_status():
         raise AlreadySetupError()
 
-    tenant_count = TenantService.get_tenant_count()
+    tenant_count = TenantService.get_tenant_count(session=db.session())
     if tenant_count > 0:
         raise AlreadySetupError()
 
@@ -94,13 +95,15 @@ def setup_system(payload: SetupRequestPayload) -> SetupResponse:
         password=payload.password,
         ip_address=extract_remote_ip(request),
         language=payload.language,
+        session=db.session(),
     )
+    mark_setup_completed()
 
     return SetupResponse(result="success")
 
 
 def get_setup_status() -> DifySetup | bool | None:
-    if dify_config.EDITION == "SELF_HOSTED":
+    if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
         return db.session.scalar(select(DifySetup).limit(1))
 
     return True

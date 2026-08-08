@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from typing import override
 from unittest.mock import MagicMock, patch
 
@@ -5,16 +6,21 @@ import pytest
 from flask import Flask, request
 from flask_login import LoginManager, UserMixin
 from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import HTTPException
 
 from controllers.common.wraps import _extract_resource_id
+from controllers.console import flask_admission
 from controllers.console.error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
 from controllers.console.workspace.error import AccountNotInitializedError
 from controllers.console.wraps import (
     RBACPermission,
     RBACResourceScope,
+    _is_setup_completed,
     account_initialization_required,
     cloud_edition_billing_enabled,
+    cloud_edition_billing_paid_plan_required,
     cloud_edition_billing_rate_limit_check,
     cloud_edition_billing_resource_check,
     cloud_utm_record,
@@ -30,9 +36,18 @@ from controllers.console.wraps import (
     with_current_user,
     with_current_user_id,
 )
+from libs.login import AccountWithTenant
+from machinery.context import RequestContext
 from models import Account
 from models.account import AccountStatus, TenantAccountRole
-from services.feature_service import LicenseStatus
+from models.dataset import RateLimitLog
+from services.entities.feature_entities import LicenseStatus
+
+
+@pytest.fixture(autouse=True)
+def reset_setup_required_cache():
+    """Keep setup_required's process cache isolated across unit tests."""
+    _is_setup_completed.reset_success()
 
 
 class MockUser(UserMixin):
@@ -112,6 +127,71 @@ class TestAccountInitialization:
 class TestCurrentContextInjection:
     """Test request context injection decorators."""
 
+    def test_console_account_admission_injects_request_context(self):
+        current_user = make_account()
+
+        with (
+            patch(
+                "controllers.console.flask_admission.setup_required", side_effect=lambda view: view
+            ) as setup_required,
+            patch(
+                "controllers.console.flask_admission.login_required", side_effect=lambda view: view
+            ) as login_required,
+            patch(
+                "controllers.console.flask_admission.account_initialization_required", side_effect=lambda view: view
+            ) as account_initialization_required,
+            patch(
+                "controllers.console.flask_admission.current_account_with_tenant",
+                return_value=AccountWithTenant(account=current_user, tenant_id="tenant-123"),
+            ),
+            patch("controllers.console.flask_admission.get_request_id", return_value="request-1"),
+            patch("controllers.console.flask_admission.get_trace_id", return_value="trace-1"),
+        ):
+
+            class Handler:
+                @flask_admission.console_account_admission()
+                def get(self, request_context: RequestContext):
+                    return request_context
+
+            with Flask(__name__).test_request_context():
+                result = Handler().get()
+
+        assert result == RequestContext(
+            request_id="request-1",
+            trace_id="trace-1",
+            account_id=current_user.id,
+            active_workspace_id="tenant-123",
+        )
+        setup_required.assert_called_once()
+        login_required.assert_called_once()
+        account_initialization_required.assert_called_once()
+
+    def test_console_account_admission_preserves_route_kwarg_named_request_context(self):
+        current_user = make_account()
+
+        with (
+            patch("controllers.console.flask_admission.setup_required", side_effect=lambda view: view),
+            patch("controllers.console.flask_admission.login_required", side_effect=lambda view: view),
+            patch("controllers.console.flask_admission.account_initialization_required", side_effect=lambda view: view),
+            patch(
+                "controllers.console.flask_admission.current_account_with_tenant",
+                return_value=AccountWithTenant(account=current_user, tenant_id="tenant-123"),
+            ),
+            patch("controllers.console.flask_admission.get_request_id", return_value="request-1"),
+            patch("controllers.console.flask_admission.get_trace_id", return_value="trace-1"),
+        ):
+
+            class Handler:
+                @flask_admission.console_account_admission()
+                def get(self, admission_context: RequestContext, request_context: str):
+                    return admission_context, request_context
+
+            with Flask(__name__).test_request_context():
+                admission_context, route_value = Handler().get(request_context="route-value")
+
+        assert admission_context.active_workspace_id == "tenant-123"
+        assert route_value == "route-value"
+
     def test_with_current_tenant_id_injects_tenant_id(self):
         class Handler:
             @with_current_tenant_id
@@ -189,7 +269,7 @@ class TestRbacPermissionRequired:
         ):
             assert protected_view(app_id="app-123") == "ok"
 
-        mock_extract.assert_called_once_with("app", {"app_id": "app-123"})
+        mock_extract.assert_called_once_with(RBACResourceScope.APP, "tenant-1", {"app_id": "app-123"})
         mock_owned.assert_called_once_with("tenant-1", "account-1", "app", "app-123")
         mock_check.assert_called_once_with(
             "tenant-1",
@@ -295,7 +375,7 @@ class TestRbacPermissionRequired:
         with app.test_request_context("/"):
             request.view_args = {"app_id": "view-app"}
 
-            assert _extract_resource_id("app", {"app_id": "path-app"}) == "path-app"
+            assert _extract_resource_id("app", "tenant-1", {"app_id": "path-app"}) == "path-app"
 
     def test_extract_resource_id_falls_back_to_request_view_args(self):
         app = Flask(__name__)
@@ -303,22 +383,59 @@ class TestRbacPermissionRequired:
         with app.test_request_context("/"):
             request.view_args = {"app_id": "view-app"}
 
-            assert _extract_resource_id("app") == "view-app"
+            assert _extract_resource_id("app", "tenant-1") == "view-app"
 
     def test_extract_resource_id_supports_legacy_route_aliases(self):
         app = Flask(__name__)
 
         with app.test_request_context("/apps/app-1/api-keys"):
             request.view_args = {"resource_id": "app-1"}
-            assert _extract_resource_id(RBACResourceScope.APP) == "app-1"
-
-        with app.test_request_context("/agent/agent-1/features"):
-            request.view_args = {"agent_id": "agent-1"}
-            assert _extract_resource_id(RBACResourceScope.APP) == "agent-1"
+            assert _extract_resource_id(RBACResourceScope.APP, "tenant-1") == "app-1"
 
         with app.test_request_context("/datasets/dataset-1/api-keys"):
             request.view_args = {"resource_id": "dataset-1"}
-            assert _extract_resource_id(RBACResourceScope.DATASET) == "dataset-1"
+            assert _extract_resource_id(RBACResourceScope.DATASET, "tenant-1") == "dataset-1"
+
+    def test_extract_resource_id_resolves_agent_to_its_authz_app(self):
+        app = Flask(__name__)
+
+        with (
+            app.test_request_context("/agent/agent-1/chat-messages"),
+            patch("controllers.common.wraps.AgentRosterService") as mock_service,
+        ):
+            request.view_args = {"agent_id": "agent-1"}
+            mock_service.return_value.peek_authz_app_id.return_value = "parent-app-1"
+
+            assert _extract_resource_id(RBACResourceScope.APP, "tenant-1") == "parent-app-1"
+
+    def test_extract_resource_id_scopes_agent_resolution_to_the_calling_tenant(self):
+        """The tenant must reach the resolver, or an Agent id from any tenant resolves."""
+        app = Flask(__name__)
+
+        with (
+            app.test_request_context("/agent/agent-1/chat-messages"),
+            patch("controllers.common.wraps.AgentRosterService") as mock_service,
+        ):
+            request.view_args = {"agent_id": "agent-1"}
+            mock_service.return_value.peek_authz_app_id.return_value = "parent-app-1"
+
+            _extract_resource_id(RBACResourceScope.APP, "tenant-9")
+
+            mock_service.return_value.peek_authz_app_id.assert_called_once_with(
+                tenant_id="tenant-9", agent_id="agent-1"
+            )
+
+    def test_extract_resource_id_keeps_agent_id_when_the_agent_does_not_resolve(self):
+        app = Flask(__name__)
+
+        with (
+            app.test_request_context("/agent/agent-1/chat-messages"),
+            patch("controllers.common.wraps.AgentRosterService") as mock_service,
+        ):
+            request.view_args = {"agent_id": "agent-1"}
+            mock_service.return_value.peek_authz_app_id.return_value = None
+
+            assert _extract_resource_id(RBACResourceScope.APP, "tenant-1") == "agent-1"
 
     def test_legacy_admin_decorator_noops_when_rbac_enabled(self):
         @is_admin_or_owner_required
@@ -481,6 +598,53 @@ class TestBillingEnabled:
         get_features.assert_not_called()
 
 
+class TestBillingPaidPlanRequired:
+    @pytest.mark.parametrize("plan", ["professional", "team"])
+    def test_should_allow_paid_plan(self, plan: str):
+        @cloud_edition_billing_paid_plan_required
+        def paid_view():
+            return "paid_success"
+
+        billing_info = {"enabled": True, "subscription": {"plan": plan}}
+        with (
+            patch(
+                "controllers.console.wraps.current_account_with_tenant",
+                return_value=(MockUser("test_user"), "tenant123"),
+            ),
+            patch("controllers.console.wraps.BillingService.get_info", return_value=billing_info) as get_info,
+        ):
+            result = paid_view()
+
+        assert result == "paid_success"
+        get_info.assert_called_once_with("tenant123", exclude_vector_space=True)
+
+    @pytest.mark.parametrize(
+        ("enabled", "plan"),
+        [(False, "professional"), (True, "sandbox"), (True, "unknown")],
+    )
+    def test_should_reject_non_paid_plan(self, enabled: bool, plan: str):
+        app = create_app_with_login()
+
+        @cloud_edition_billing_paid_plan_required
+        def paid_view():
+            return "paid_success"
+
+        billing_info = {"enabled": enabled, "subscription": {"plan": plan}}
+        with app.test_request_context():
+            with (
+                patch(
+                    "controllers.console.wraps.current_account_with_tenant",
+                    return_value=(MockUser("test_user"), "tenant123"),
+                ),
+                patch("controllers.console.wraps.BillingService.get_info", return_value=billing_info),
+                pytest.raises(HTTPException) as exc_info,
+            ):
+                paid_view()
+
+        assert exc_info.value.code == 403
+        assert "requires a paid plan" in str(exc_info.value.description)
+
+
 class TestBillingResourceLimits:
     """Test billing resource limit decorators"""
 
@@ -597,13 +761,23 @@ class TestBillingResourceLimits:
                     result = upload_document()
                     assert result == "document_uploaded"
 
+        # Test 3: Form source must enforce the same quota as query source
+        with app.test_request_context("/", method="POST", data={"source": "datasets"}):
+            with patch(
+                "controllers.console.wraps.current_account_with_tenant",
+                return_value=(MockUser("test_user"), "tenant123"),
+            ):
+                with patch("controllers.console.wraps.FeatureService.get_features", return_value=mock_features):
+                    with pytest.raises(HTTPException) as exc_info:
+                        upload_document()
+                    assert exc_info.value.code == 403
+
 
 class TestRateLimiting:
     """Test rate limiting decorator"""
 
     @patch("controllers.console.wraps.redis_client")
-    @patch("controllers.console.wraps.db")
-    def test_should_allow_requests_within_rate_limit(self, mock_db: MagicMock, mock_redis: MagicMock):
+    def test_should_allow_requests_within_rate_limit(self, mock_redis: MagicMock):
         """Test that requests within rate limit are allowed"""
         # Arrange
         mock_rate_limit = MagicMock()
@@ -630,8 +804,13 @@ class TestRateLimiting:
         mock_redis.zremrangebyscore.assert_called_once()
 
     @patch("controllers.console.wraps.redis_client")
-    @patch("controllers.console.wraps.db")
-    def test_should_reject_requests_over_rate_limit(self, mock_db: MagicMock, mock_redis: MagicMock):
+    @pytest.mark.parametrize("sqlite_session", [(RateLimitLog,)], indirect=True)
+    def test_should_reject_requests_over_rate_limit(
+        self,
+        mock_redis: MagicMock,
+        sqlite_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
         """Test that requests over rate limit are rejected and logged"""
         # Arrange
         app = create_app_with_login()
@@ -641,8 +820,7 @@ class TestRateLimiting:
         mock_rate_limit.subscription_plan = "pro"
         mock_redis.zcard.return_value = 11  # Over limit
 
-        mock_session = MagicMock()
-        mock_db.session = mock_session
+        monkeypatch.setattr("controllers.console.wraps.db", SimpleNamespace(session=sqlite_session))
 
         @cloud_edition_billing_rate_limit_check("knowledge")
         def knowledge_request():
@@ -664,9 +842,11 @@ class TestRateLimiting:
                     assert exc_info.value.code == 403
                     assert "rate limit" in str(exc_info.value.description)
 
-                    # Verify rate limit log was created
-                    mock_session.add.assert_called_once()
-                    mock_session.commit.assert_called_once()
+                    rate_limit_log = sqlite_session.scalar(select(RateLimitLog))
+                    assert rate_limit_log is not None
+                    assert rate_limit_log.tenant_id == "tenant123"
+                    assert rate_limit_log.subscription_plan == "pro"
+                    assert rate_limit_log.operation == "knowledge"
 
 
 class TestCloudUtmRecord:
@@ -734,6 +914,39 @@ class TestSystemSetup:
 
         # Assert
         assert result == "admin_success"
+
+    @patch("controllers.console.wraps.db")
+    def test_should_cache_completed_setup(self, mock_db):
+        """Test that completed setup skips repeated DB reads in this process"""
+        mock_db.session.scalar.return_value = MagicMock()
+
+        @setup_required
+        def admin_view():
+            return "admin_success"
+
+        with patch("controllers.console.wraps.dify_config.EDITION", "SELF_HOSTED"):
+            assert admin_view() == "admin_success"
+            assert admin_view() == "admin_success"
+
+        assert mock_db.session.scalar.call_count == 1
+
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.wraps.os.environ.get")
+    def test_should_not_cache_missing_setup(self, mock_environ_get, mock_db):
+        """Test that first-time bootstrap completion can be observed later in the same process"""
+        mock_db.session.scalar.side_effect = [None, MagicMock()]
+        mock_environ_get.return_value = None
+
+        @setup_required
+        def admin_view():
+            return "admin_success"
+
+        with patch("controllers.console.wraps.dify_config.EDITION", "SELF_HOSTED"):
+            with pytest.raises(NotSetupError):
+                admin_view()
+            assert admin_view() == "admin_success"
+
+        assert mock_db.session.scalar.call_count == 2
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.wraps.os.environ.get")

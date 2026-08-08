@@ -3,18 +3,22 @@ import type { SnippetDetail, SnippetInputField } from '@/models/snippet'
 import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { PipelineInputVarType } from '@/models/pipeline'
-import SnippetSidebar from '../snippet-sidebar'
+import { SnippetSidebarContent } from '../snippet-sidebar'
 
-let capturedVarListProps: {
-  list: InputVar[]
-  onChange: (list: InputVar[]) => void
-  readonly: boolean
-} | undefined
-let capturedConfigVarModalProps: {
-  onClose: () => void
-  onConfirm: (field: InputVar) => void
-  varKeys: string[]
-} | undefined
+let capturedVarListProps:
+  | {
+      list: InputVar[]
+      onChange: (list: InputVar[]) => void
+      readonly: boolean
+    }
+  | undefined
+let capturedConfigVarModalProps:
+  | {
+      onClose: () => void
+      onConfirm: (field: InputVar) => void
+      varKeys: string[]
+    }
+  | undefined
 
 vi.mock('@/app/components/app-sidebar/snippet-info/dropdown', () => ({
   default: () => <div data-testid="snippet-info-dropdown" />,
@@ -38,33 +42,23 @@ vi.mock('@/app/components/app/configuration/config-var/config-modal', () => ({
       <div role="dialog" aria-label="config-var-modal">
         <button
           type="button"
-          onClick={() => props.onConfirm({
-            type: PipelineInputVarType.textInput as unknown as InputVar['type'],
-            label: 'Question',
-            variable: 'question',
-            required: false,
-          })}
+          onClick={() =>
+            props.onConfirm({
+              type: PipelineInputVarType.textInput as unknown as InputVar['type'],
+              label: 'Question',
+              variable: 'question',
+              required: false,
+            })
+          }
         >
           confirm field
         </button>
-        <button type="button" onClick={props.onClose}>close modal</button>
+        <button type="button" onClick={props.onClose}>
+          close modal
+        </button>
       </div>
     )
   },
-}))
-
-vi.mock('@/next/link', () => ({
-  default: ({
-    children,
-    href,
-    className,
-  }: {
-    children: React.ReactNode
-    href: string
-    className?: string
-  }) => (
-    <a href={href} className={className}>{children}</a>
-  ),
 }))
 
 vi.mock('@/app/components/workflow/nodes/start/components/var-list', () => ({
@@ -96,7 +90,7 @@ const fields: SnippetInputField[] = [
   },
 ]
 
-describe('SnippetSidebar', () => {
+describe('SnippetSidebarContent', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     capturedVarListProps = undefined
@@ -106,7 +100,7 @@ describe('SnippetSidebar', () => {
   it('should ignore unchanged VarList updates', () => {
     const onFieldsChange = vi.fn()
     render(
-      <SnippetSidebar
+      <SnippetSidebarContent
         snippet={snippet}
         fields={fields}
         readonly={false}
@@ -122,7 +116,7 @@ describe('SnippetSidebar', () => {
   it('should forward changed VarList updates', () => {
     const onFieldsChange = vi.fn()
     render(
-      <SnippetSidebar
+      <SnippetSidebarContent
         snippet={snippet}
         fields={fields}
         readonly={false}
@@ -147,23 +141,41 @@ describe('SnippetSidebar', () => {
 
   it('should hide input field operations when readonly', () => {
     render(
-      <SnippetSidebar
+      <SnippetSidebarContent snippet={snippet} fields={fields} readonly onFieldsChange={vi.fn()} />,
+    )
+
+    expect(screen.queryByRole('link', { name: /snippet\.management/i })).not.toBeInTheDocument()
+    expect(screen.getByText(snippet.name)).toHaveAttribute('title', snippet.name)
+    expect(screen.getByText(snippet.name)).toHaveClass('truncate')
+    if (!snippet.description) throw new Error('snippet.description is required for this test')
+    expect(screen.getByText(snippet.description)).toHaveAttribute('title', snippet.description)
+    expect(screen.getByText(snippet.description)).toHaveClass('truncate')
+    expect(
+      screen.queryByRole('button', { name: /common\.operation\.add/i }),
+    ).not.toBeInTheDocument()
+    expect(capturedVarListProps?.readonly).toBe(true)
+  })
+
+  it('should render the orchestrate route menu item', () => {
+    render(
+      <SnippetSidebarContent
         snippet={snippet}
         fields={fields}
-        readonly
+        readonly={false}
         onFieldsChange={vi.fn()}
       />,
     )
 
-    expect(screen.getByRole('link', { name: /snippet\.management/i })).toHaveAttribute('href', '/snippets')
-    expect(screen.queryByRole('button', { name: /common\.operation\.add/i })).not.toBeInTheDocument()
-    expect(capturedVarListProps?.readonly).toBe(true)
+    expect(screen.getByRole('link', { name: 'snippet.sectionOrchestrate' })).toHaveAttribute(
+      'href',
+      '/snippets/snippet-1/orchestrate',
+    )
   })
 
   it('should add a new input field from the config variable modal', () => {
     const onFieldsChange = vi.fn()
     render(
-      <SnippetSidebar
+      <SnippetSidebarContent
         snippet={snippet}
         fields={fields}
         readonly={false}
@@ -192,7 +204,7 @@ describe('SnippetSidebar', () => {
   it('should reject duplicate variable and label updates', () => {
     const onFieldsChange = vi.fn()
     render(
-      <SnippetSidebar
+      <SnippetSidebarContent
         snippet={snippet}
         fields={fields}
         readonly={false}

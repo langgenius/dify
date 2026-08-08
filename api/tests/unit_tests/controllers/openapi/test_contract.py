@@ -5,6 +5,7 @@ view function decorated with @accepts/@returns, driven inside a request context.
 """
 
 from functools import wraps
+from typing import Any, cast
 
 import pytest
 from pydantic import BaseModel, ConfigDict, Field
@@ -100,7 +101,7 @@ def test_accepts_validation_error_is_sanitized_and_structured(app):
         with pytest.raises(UnprocessableEntity) as exc_info:
             view()
 
-    data = exc_info.value.data
+    data = cast(dict[str, Any], cast(Any, exc_info.value).data)
     assert data["message"] == "Request validation failed"
     assert isinstance(data["errors"], list)
     assert data["errors"]

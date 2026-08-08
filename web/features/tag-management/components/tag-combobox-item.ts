@@ -1,10 +1,10 @@
-import type { Tag, TagType } from '@/contract/console/tags'
+import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
 
 type CreateTagOption = {
   id: string
   name: string
   type: TagType
-  binding_count: number
+  binding_count: string
   isCreateOption: true
 }
 

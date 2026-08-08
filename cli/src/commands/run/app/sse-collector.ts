@@ -2,6 +2,7 @@ import type { BaseError } from '@/errors/base'
 import type { SseEvent } from '@/http/sse'
 import { HttpClientError, newError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
+import { accumulateReasoning, parseReasoningChunk } from '@/sys/io/reasoning'
 import { RUN_MODES } from './handlers'
 
 export type HitlPauseData = {
@@ -43,22 +44,22 @@ export type Collector = {
 const dec = new TextDecoder()
 
 function parseJson(data: Uint8Array): Record<string, unknown> {
-  if (data.byteLength === 0)
-    return {}
+  if (data.byteLength === 0) return {}
   try {
     return JSON.parse(dec.decode(data)) as Record<string, unknown>
-  }
-  catch (e) {
+  } catch (e) {
     throw newError(ErrorCode.Unknown, `decode SSE event: ${(e as Error).message}`)
   }
 }
 
-function copyScalar(dst: Record<string, unknown>, src: Record<string, unknown>, keys: readonly string[]): void {
+function copyScalar(
+  dst: Record<string, unknown>,
+  src: Record<string, unknown>,
+  keys: readonly string[],
+): void {
   for (const k of keys) {
-    if (k in dst)
-      continue
-    if (k in src)
-      dst[k] = src[k]
+    if (k in dst) continue
+    if (k in src) dst[k] = src[k]
   }
 }
 
@@ -67,6 +68,7 @@ class ChatCollector implements Collector {
   private base: Record<string, unknown> = {}
   private metadata: Record<string, unknown> | undefined
   private thoughts: unknown[] = []
+  private readonly reasoning: Record<string, string> = {}
   private readonly mode: string
   private readonly isAgent: boolean
   constructor(mode: string, isAgent: boolean) {
@@ -79,9 +81,14 @@ class ChatCollector implements Collector {
     switch (ev.name) {
       case 'message':
       case 'agent_message': {
-        if (typeof c.answer === 'string')
-          this.answer += c.answer
+        if (typeof c.answer === 'string') this.answer += c.answer
         copyScalar(this.base, c, ['id', 'conversation_id', 'message_id', 'task_id', 'created_at'])
+        return
+      }
+      // Accumulate separated-mode reasoning deltas per LLM node.
+      case 'reasoning_chunk': {
+        const chunk = parseReasoningChunk(c)
+        if (chunk !== undefined) accumulateReasoning(this.reasoning, chunk)
         return
       }
       case 'agent_thought':
@@ -96,12 +103,23 @@ class ChatCollector implements Collector {
 
   finalize(): Record<string, unknown> {
     const out: Record<string, unknown> = { mode: this.mode, answer: this.answer, ...this.base }
-    if (this.metadata !== undefined)
-      out.metadata = this.metadata
-    if (this.isAgent || this.thoughts.length > 0)
-      out.agent_thoughts = this.thoughts
+    if (this.metadata !== undefined) out.metadata = this.metadata
+    // Fall back to live deltas only when the server didn't persist reasoning in metadata.
+    if (Object.keys(this.reasoning).length > 0 && !hasReasoning(this.metadata))
+      out.metadata = { ...(this.metadata ?? {}), reasoning: this.reasoning }
+    if (this.isAgent || this.thoughts.length > 0) out.agent_thoughts = this.thoughts
     return out
   }
+}
+
+function hasReasoning(metadata: Record<string, unknown> | undefined): boolean {
+  const reasoning = metadata?.reasoning
+  return (
+    reasoning !== null &&
+    typeof reasoning === 'object' &&
+    !Array.isArray(reasoning) &&
+    Object.keys(reasoning as object).length > 0
+  )
 }
 
 class CompletionCollector implements Collector {
@@ -112,8 +130,7 @@ class CompletionCollector implements Collector {
     const c = parseJson(ev.data)
     switch (ev.name) {
       case 'message':
-        if (typeof c.answer === 'string')
-          this.answer += c.answer
+        if (typeof c.answer === 'string') this.answer += c.answer
         copyScalar(this.base, c, ['id', 'message_id', 'task_id', 'created_at'])
         return
       case 'message_end':
@@ -124,23 +141,40 @@ class CompletionCollector implements Collector {
   }
 
   finalize(): Record<string, unknown> {
-    const out: Record<string, unknown> = { mode: RUN_MODES.Completion, answer: this.answer, ...this.base }
-    if (this.metadata !== undefined)
-      out.metadata = this.metadata
+    const out: Record<string, unknown> = {
+      mode: RUN_MODES.Completion,
+      answer: this.answer,
+      ...this.base,
+    }
+    if (this.metadata !== undefined) out.metadata = this.metadata
     return out
   }
 }
 
 class WorkflowCollector implements Collector {
   private final: Record<string, unknown> | undefined
+  private readonly reasoning: Record<string, string> = {}
   consume(ev: SseEvent): void {
-    if (ev.name !== 'workflow_finished')
+    if (ev.name === 'reasoning_chunk') {
+      const chunk = parseReasoningChunk(parseJson(ev.data))
+      if (chunk !== undefined) accumulateReasoning(this.reasoning, chunk)
       return
+    }
+    if (ev.name !== 'workflow_finished') return
     this.final = parseJson(ev.data)
   }
 
   finalize(): Record<string, unknown> {
-    return { mode: RUN_MODES.Workflow, ...(this.final ?? {}) }
+    const out: Record<string, unknown> = { mode: RUN_MODES.Workflow, ...(this.final ?? {}) }
+    // Workflow runs don't persist reasoning; surface live deltas under metadata.reasoning.
+    if (Object.keys(this.reasoning).length > 0) {
+      const existing =
+        out.metadata !== null && typeof out.metadata === 'object' && !Array.isArray(out.metadata)
+          ? (out.metadata as Record<string, unknown>)
+          : undefined
+      out.metadata = { ...(existing ?? {}), reasoning: this.reasoning }
+    }
+    return out
   }
 }
 
@@ -154,27 +188,27 @@ const FACTORIES: Record<string, () => Collector> = {
 
 export function collectorFor(mode: string): Collector {
   const f = FACTORIES[mode]
-  if (f === undefined)
-    throw newError(ErrorCode.Unknown, `unsupported streaming mode "${mode}"`)
+  if (f === undefined) throw newError(ErrorCode.Unknown, `unsupported streaming mode "${mode}"`)
   return f()
 }
 
 export function decodeStreamError(data: Uint8Array): BaseError {
-  type Env = { message?: string, code?: string, status?: number }
+  type Env = { message?: string; code?: string; status?: number }
   let env: Env = {}
   if (data.byteLength > 0) {
     try {
       env = JSON.parse(dec.decode(data)) as Env
-    }
-    catch {}
+    } catch {}
   }
-  const rawMessage = env.message !== undefined && env.message !== ''
-    ? env.message
-    : 'stream terminated by error event'
+  const rawMessage =
+    env.message !== undefined && env.message !== ''
+      ? env.message
+      : 'stream terminated by error event'
   const message = unwrapInvokeErrorMessage(rawMessage)
-  const code = env.status !== undefined && env.status > 0 && env.status < 500
-    ? ErrorCode.Server4xxOther
-    : ErrorCode.Server5xx
+  const code =
+    env.status !== undefined && env.status > 0 && env.status < 500
+      ? ErrorCode.Server4xxOther
+      : ErrorCode.Server5xx
   const err = newError(code, message)
   if (env.status !== undefined && env.status > 0)
     return HttpClientError.from(err).withHttpStatus(env.status)
@@ -182,8 +216,7 @@ export function decodeStreamError(data: Uint8Array): BaseError {
 }
 
 function unwrapInvokeErrorMessage(raw: string): string {
-  if (!raw.startsWith('{'))
-    return raw
+  if (!raw.startsWith('{')) return raw
   type InvokeErrorEnv = {
     error_type?: string
     args?: { description?: string }
@@ -191,11 +224,9 @@ function unwrapInvokeErrorMessage(raw: string): string {
   }
   try {
     const inner = JSON.parse(raw) as InvokeErrorEnv
-    if (inner.error_type === undefined)
-      return raw
+    if (inner.error_type === undefined) return raw
     return inner.args?.description ?? inner.message ?? raw
-  }
-  catch {
+  } catch {
     return raw
   }
 }
@@ -216,15 +247,16 @@ export async function collect(
 ): Promise<Record<string, unknown>> {
   const c = collectorFor(mode)
   for await (const ev of iter) {
-    if (ev.name === 'ping' || SILENT_EVENTS.has(ev.name))
-      continue
-    if (ev.name === 'error')
-      throw decodeStreamError(ev.data)
+    if (ev.name === 'ping' || SILENT_EVENTS.has(ev.name)) continue
+    if (ev.name === 'error') throw decodeStreamError(ev.data)
     if (ev.name === 'human_input_required') {
       throw new HitlPauseError(parseJson(ev.data) as unknown as HitlPausePayload)
     }
     if (ev.name === 'workflow_paused') {
-      throw newError(ErrorCode.Unknown, 'workflow paused (non-interactive pause; check server logs)')
+      throw newError(
+        ErrorCode.Unknown,
+        'workflow paused (non-interactive pause; check server logs)',
+      )
     }
     c.consume(ev)
   }

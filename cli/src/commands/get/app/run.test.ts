@@ -36,10 +36,12 @@ describe('runGetApp', () => {
 
   async function render(opts: Parameters<typeof runGetApp>[0] = {}): Promise<string> {
     const result = await runGetApp(opts, { active: baseActive, http: http() })
-    return stringifyOutput(table({
-      format: opts.format ?? '',
-      data: result.data,
-    }))
+    return stringifyOutput(
+      table({
+        format: opts.format ?? '',
+        data: result.data,
+      }),
+    )
   }
 
   it('list (no id, default format) renders table with NAME ID MODE UPDATED', async () => {
@@ -53,7 +55,7 @@ describe('runGetApp', () => {
   })
 
   it('defines table headers on the output class', () => {
-    expect(AppListOutput.tableColumns().map(column => column.name)).toEqual([
+    expect(AppListOutput.tableColumns().map((column) => column.name)).toEqual([
       'NAME',
       'ID',
       'MODE',
@@ -87,9 +89,9 @@ describe('runGetApp', () => {
 
   it('-o json emits parseable JSON envelope', async () => {
     const out = await render({ format: 'json' })
-    const parsed = JSON.parse(out) as { data: Array<{ id: string }>, total: number }
+    const parsed = JSON.parse(out) as { data: Array<{ id: string }>; total: number }
     expect(parsed.data).toHaveLength(2)
-    expect(parsed.data.map(r => r.id).sort()).toEqual(['app-1', 'app-2'])
+    expect(parsed.data.map((r) => r.id).sort()).toEqual(['app-1', 'app-2'])
   })
 
   it('-o yaml emits YAML envelope', async () => {
@@ -110,9 +112,7 @@ describe('runGetApp', () => {
   })
 
   it('rejects unknown format', async () => {
-    await expect(render({ format: 'bogus' }))
-      .rejects
-      .toThrow(/not supported/)
+    await expect(render({ format: 'bogus' })).rejects.toThrow(/not supported/)
   })
 
   it('--workspace flag overrides bundle default', async () => {
@@ -132,10 +132,33 @@ describe('runGetApp', () => {
   })
 
   it('external login lists via permitted-external client without workspace', async () => {
-    const list = vi.fn().mockResolvedValue({ page: 1, limit: 20, total: 1, has_more: false, data: [{ id: 'x', name: 'X', description: null, mode: 'chat', updated_at: null, workspace_id: 'w', workspace_name: 'W' }] })
+    const list = vi.fn().mockResolvedValue({
+      page: 1,
+      limit: 20,
+      total: 1,
+      has_more: false,
+      data: [
+        {
+          id: 'x',
+          name: 'X',
+          description: null,
+          mode: 'chat',
+          updated_at: null,
+          workspace_id: 'w',
+          workspace_name: 'W',
+        },
+      ],
+    })
     const { PermittedExternalAppsClient } = await import('@/api/permitted-external-apps')
     vi.spyOn(PermittedExternalAppsClient.prototype, 'list').mockImplementation(list)
-    const active: ActiveContext = { host: 'h', email: 'e', ctx: { account: { id: 'a', email: 'e', name: 'n' }, external_subject: { email: 'e', issuer: 'i' } } }
+    const active: ActiveContext = {
+      host: 'h',
+      email: 'e',
+      ctx: {
+        account: { id: 'a', email: 'e', name: 'n' },
+        external_subject: { email: 'e', issuer: 'i' },
+      },
+    }
     const http = { baseURL: 'https://x', request: vi.fn() } as unknown as HttpClient
     const res = await runGetApp({}, { active, http })
     expect(list).toHaveBeenCalled()
@@ -145,10 +168,17 @@ describe('runGetApp', () => {
   })
 
   it('--all-workspaces throws UsageInvalidFlag for external logins', async () => {
-    const active: ActiveContext = { host: 'h', email: 'e', ctx: { account: { id: 'a', email: 'e', name: 'n' }, external_subject: { email: 'e', issuer: 'i' } } }
+    const active: ActiveContext = {
+      host: 'h',
+      email: 'e',
+      ctx: {
+        account: { id: 'a', email: 'e', name: 'n' },
+        external_subject: { email: 'e', issuer: 'i' },
+      },
+    }
     const httpClient = { baseURL: 'https://x', request: vi.fn() } as unknown as HttpClient
-    await expect(runGetApp({ allWorkspaces: true }, { active, http: httpClient }))
-      .rejects
-      .toThrow(/--all-workspaces is not available for external logins/)
+    await expect(runGetApp({ allWorkspaces: true }, { active, http: httpClient })).rejects.toThrow(
+      /--all-workspaces is not available for external logins/,
+    )
   })
 })

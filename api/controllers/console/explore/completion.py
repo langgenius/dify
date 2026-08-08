@@ -3,10 +3,11 @@ from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
-from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
+from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.app.error import (
     AppUnavailableError,
@@ -16,9 +17,10 @@ from controllers.console.app.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
+from controllers.console.app.wraps import with_session
 from controllers.console.explore.error import NotChatAppError, NotCompletionAppError
 from controllers.console.explore.wraps import InstalledAppResource
-from controllers.console.wraps import with_current_user, with_current_user_id
+from controllers.console.wraps import model_validate, with_current_user, with_current_user_id
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
@@ -34,6 +36,7 @@ from models import Account
 from models.model import AppMode, InstalledApp
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
+from services.conversation_service import ConversationService
 from services.errors.llm import InvokeRateLimitError
 
 from .. import console_ns
@@ -73,7 +76,7 @@ class ChatMessagePayload(BaseModel):
 
 
 register_schema_models(console_ns, CompletionMessageExplorePayload, ChatMessagePayload)
-register_response_schema_models(console_ns, GeneratedAppResponse, SimpleResultResponse)
+register_response_schema_models(console_ns, SimpleResultResponse)
 
 
 # define completion api for user
@@ -83,19 +86,26 @@ register_response_schema_models(console_ns, GeneratedAppResponse, SimpleResultRe
 )
 class CompletionApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[CompletionMessageExplorePayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
+    @console_ns.response(200, "Success")
     @with_current_user
-    def post(self, current_user: Account, installed_app: InstalledApp):
-        app_model = installed_app.app
+    @with_session
+    @model_validate(CompletionMessageExplorePayload)
+    def post(
+        self,
+        req_data: CompletionMessageExplorePayload,
+        session: Session,
+        current_user: Account,
+        installed_app: InstalledApp,
+    ):
+        app_model = installed_app.app_with_session(session=session)
         if app_model is None:
             raise AppUnavailableError()
         if app_model.mode != AppMode.COMPLETION:
             raise NotCompletionAppError()
 
-        payload = CompletionMessageExplorePayload.model_validate(console_ns.payload or {})
-        args = payload.model_dump(exclude_none=True)
+        args = req_data.model_dump(exclude_none=True)
 
-        streaming = payload.response_mode == "streaming"
+        streaming = req_data.response_mode == "streaming"
         args["auto_generate_name"] = False
 
         installed_app.last_used_at = naive_utc_now()
@@ -103,9 +113,15 @@ class CompletionApi(InstalledAppResource):
 
         try:
             response = AppGenerateService.generate(
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=streaming
+                session=session,
+                app_model=app_model,
+                user=current_user,
+                args=args,
+                invoke_from=InvokeFrom.EXPLORE,
+                streaming=streaming,
             )
 
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -136,8 +152,9 @@ class CompletionApi(InstalledAppResource):
 class CompletionStopApi(InstalledAppResource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @with_current_user_id
-    def post(self, current_user_id: str, installed_app: InstalledApp, task_id: str):
-        app_model = installed_app.app
+    @with_session(write=False)
+    def post(self, session: Session, current_user_id: str, installed_app: InstalledApp, task_id: str):
+        app_model = installed_app.app_with_session(session=session)
         if app_model is None:
             raise AppUnavailableError()
         if app_model.mode != AppMode.COMPLETION:
@@ -150,7 +167,7 @@ class CompletionStopApi(InstalledAppResource):
             app_mode=AppMode.value_of(app_model.mode),
         )
 
-        return {"result": "success"}, 200
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
 
 @console_ns.route(
@@ -159,18 +176,19 @@ class CompletionStopApi(InstalledAppResource):
 )
 class ChatApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[ChatMessagePayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
+    @console_ns.response(200, "Success")
     @with_current_user
-    def post(self, current_user: Account, installed_app: InstalledApp):
-        app_model = installed_app.app
+    @with_session
+    @model_validate(ChatMessagePayload)
+    def post(self, req_data: ChatMessagePayload, session: Session, current_user: Account, installed_app: InstalledApp):
+        app_model = installed_app.app_with_session(session=session)
         if app_model is None:
             raise AppUnavailableError()
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        payload = ChatMessagePayload.model_validate(console_ns.payload or {})
-        args = payload.model_dump(exclude_none=True)
+        args = req_data.model_dump(exclude_none=True)
 
         args["auto_generate_name"] = False
 
@@ -178,10 +196,25 @@ class ChatApi(InstalledAppResource):
         db.session.commit()
 
         try:
+            # Eagerly validate conversation to avoid hanging on invalid conversation_id
+            if req_data.conversation_id:
+                ConversationService.get_conversation(
+                    app_model=app_model,
+                    conversation_id=req_data.conversation_id,
+                    user=current_user,
+                    session=session,
+                )
+
             response = AppGenerateService.generate(
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True
+                session=session,
+                app_model=app_model,
+                user=current_user,
+                args=args,
+                invoke_from=InvokeFrom.EXPLORE,
+                streaming=True,
             )
 
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -214,8 +247,9 @@ class ChatApi(InstalledAppResource):
 class ChatStopApi(InstalledAppResource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @with_current_user_id
-    def post(self, current_user_id: str, installed_app: InstalledApp, task_id: str):
-        app_model = installed_app.app
+    @with_session(write=False)
+    def post(self, session: Session, current_user_id: str, installed_app: InstalledApp, task_id: str):
+        app_model = installed_app.app_with_session(session=session)
         if app_model is None:
             raise AppUnavailableError()
         app_mode = AppMode.value_of(app_model.mode)
@@ -229,4 +263,4 @@ class ChatStopApi(InstalledAppResource):
             app_mode=app_mode,
         )
 
-        return {"result": "success"}, 200
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 200

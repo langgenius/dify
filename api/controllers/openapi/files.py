@@ -1,4 +1,4 @@
-"""POST /openapi/v1/apps/<app_id>/files/upload — upload a file for use in app inputs."""
+"""POST /openapi/v1/apps/<app_id>/files — upload a file for use in app inputs."""
 
 from __future__ import annotations
 
@@ -26,7 +26,7 @@ from libs.oauth_bearer import Scope
 from services.file_service import FileService
 
 
-@openapi_ns.route("/apps/<string:app_id>/files/upload")
+@openapi_ns.route("/apps/<string:app_id>/files")
 class AppFileUploadApi(Resource):
     @openapi_ns.doc("upload_file_for_app_input")
     @openapi_ns.doc(description="Upload a file to use as an input variable when running the app")
