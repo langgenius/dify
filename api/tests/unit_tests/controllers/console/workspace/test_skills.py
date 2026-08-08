@@ -1077,7 +1077,7 @@ def test_skill_assistant_runs_agent_app_stream(app: Flask, current_user: Account
         history=[],
         model_payload=None,
         target_path=None,
-        )
+    )
     compact_generate_response.assert_called_once_with(action_stream)
 
 
