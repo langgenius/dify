@@ -37,7 +37,7 @@
   "publishSuccess": "Snippet 已发布",
   "sectionOrchestrate": "编排",
   "testRunButton": "测试运行",
-  "typeLabel": "Snippet",
+  "typeLabel": "代码片段",
   "unknownUser": "用户",
   "updatedBy": "{{name}} 更新于 {{time}}",
   "usageCount": "已使用 {{count}} 次",

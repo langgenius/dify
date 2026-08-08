@@ -5,7 +5,7 @@ import { changeLanguage } from '@/i18n-config/client'
 import { LanguagesSupported } from '@/i18n-config/language'
 
 export const i18n = {
-  defaultLocale: 'en-US',
+  defaultLocale: 'zh-Hans',
   locales: LanguagesSupported,
 } as const
 

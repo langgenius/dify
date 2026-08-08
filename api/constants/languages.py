@@ -1,6 +1,6 @@
 language_timezone_mapping = {
-    "en-US": "America/New_York",
     "zh-Hans": "Asia/Shanghai",
+    "en-US": "America/New_York",
     "zh-Hant": "Asia/Taipei",
     "pt-BR": "America/Sao_Paulo",
     "es-ES": "Europe/Madrid",
@@ -36,6 +36,9 @@ def supported_language(lang):
 
 
 def get_valid_language(lang: str | None) -> str:
-    if lang and lang in languages:
-        return lang
+    if lang:
+        if lang in ("zh-CN", "zh_CN"):
+            return "zh-Hans"
+        if lang in languages:
+            return lang
     return languages[0]

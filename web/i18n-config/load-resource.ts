@@ -12,9 +12,11 @@ const legacyLocaleMap: Partial<Record<Locale, Locale>> = {
   en_US: 'en-US',
   ja_JP: 'ja-JP',
   zh_Hans: 'zh-Hans',
+  'zh-CN': 'zh-Hans',
+  zh_CN: 'zh-Hans',
 }
 
-const defaultLocale = 'en-US' satisfies Locale
+const defaultLocale = 'zh-Hans' satisfies Locale
 
 const normalizeLocale = (locale: Locale): Locale => {
   const normalized = legacyLocaleMap[locale] ?? locale
