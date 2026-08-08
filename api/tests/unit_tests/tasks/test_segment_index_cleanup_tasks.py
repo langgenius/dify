@@ -81,7 +81,7 @@ def test_disable_segments_commits_index_cleanup() -> None:
 
 
 def test_delete_segment_commits_index_cleanup_without_attachments() -> None:
-    dataset = SimpleNamespace(id="dataset-1", is_multimodal=False)
+    dataset = SimpleNamespace(id="dataset-1", tenant_id="tenant-1", is_multimodal=False)
     document = SimpleNamespace(
         id="document-1",
         enabled=True,
@@ -99,8 +99,31 @@ def test_delete_segment_commits_index_cleanup_without_attachments() -> None:
     with (
         patch("tasks.delete_segment_from_index_task.session_factory.create_session", return_value=nullcontext(session)),
         patch("tasks.delete_segment_from_index_task.IndexProcessorFactory") as processor_factory,
+        patch("tasks.delete_segment_from_index_task.schedule_billing_vector_space_refresh") as schedule_refresh,
     ):
         processor_factory.return_value.init_index_processor.return_value = processor
         delete_segment_from_index_task.run(["node-1"], dataset.id, document.id, ["segment-1"])
 
     assert phase_events == ["clean", "commit"]
+    schedule_refresh.assert_called_once_with("tenant-1")
+
+
+def test_delete_segment_skips_billing_refresh_when_document_not_actionable() -> None:
+    dataset = SimpleNamespace(id="dataset-1", tenant_id="tenant-1", is_multimodal=False)
+    document = SimpleNamespace(
+        id="document-1",
+        enabled=False,
+        archived=False,
+        indexing_status="completed",
+        doc_form="text_model",
+    )
+    session = MagicMock()
+    session.scalar.side_effect = [dataset, document]
+
+    with (
+        patch("tasks.delete_segment_from_index_task.session_factory.create_session", return_value=nullcontext(session)),
+        patch("tasks.delete_segment_from_index_task.schedule_billing_vector_space_refresh") as schedule_refresh,
+    ):
+        delete_segment_from_index_task.run(["node-1"], dataset.id, document.id, ["segment-1"])
+
+    schedule_refresh.assert_not_called()
