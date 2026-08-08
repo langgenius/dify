@@ -771,7 +771,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
 
         assert result == "streamed"
         pipeline._message_cycle_manager.generate_conversation_name.assert_called_once_with(
-            conversation_id="conv", query="hello"
+            conversation_id="conv", query="hello", message_id="msg"
         )
 
     def test_process_routes_to_blocking_for_completion_mode(self):
