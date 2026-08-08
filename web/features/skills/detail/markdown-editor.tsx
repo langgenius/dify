@@ -515,7 +515,8 @@ export function MarkdownLiveBodyEditor({
   } | null>(null)
   const currentLine = getCurrentLine(body, selectionOffset)
   const showPlaceholder = (!focused && !body.trim()) || (focused && currentLine.blank)
-  const showRenderedPreview = !focused && Boolean(body.trim())
+  // Keep the live editor mounted so slash references and keyboard input use one stable target.
+  const showRenderedPreview = false
 
   const syncSelection = () => {
     const root = editorRef.current

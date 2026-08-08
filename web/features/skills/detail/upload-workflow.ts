@@ -6,7 +6,7 @@ import { getPathBaseName, getPathDirName, joinSkillPath } from './shared'
 
 export type SkillUploadDecision = 'keep-both' | 'replace' | 'skip' | 'use-suggestion'
 
-export type SkillUploadReviewKind = 'conflict' | 'invalid-name' | 'ready' | 'skipped'
+type SkillUploadReviewKind = 'conflict' | 'invalid-name' | 'ready' | 'skipped'
 
 export type SkillUploadReviewItem = {
   check: SkillFileCheckItemResponse

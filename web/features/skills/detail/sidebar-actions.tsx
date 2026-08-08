@@ -179,7 +179,7 @@ function SkillDetailDeleteDialog({
             disabled={referenceCount > 0 && confirmDeleteInput !== detail.display_name}
             onClick={handleDelete}
           >
-            {tCommon(($) => $['operation.delete'])}
+            {tCommon(($) => (referenceCount > 0 ? $['operation.confirm'] : $['operation.delete']))}
           </AlertDialogConfirmButton>
         </AlertDialogActions>
       </AlertDialogContent>

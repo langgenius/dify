@@ -659,13 +659,6 @@ export function updateMarkdownMetadata(
   )
 }
 
-export function setMarkdownDisplayName(content: string, value: string) {
-  const nextContent = removeMarkdownDisplayName(content)
-  if (!value.trim()) return nextContent
-
-  return addMarkdownMetadata(nextContent, 'display-name', value)
-}
-
 export function setMarkdownFrontmatterField(
   content: string,
   key: 'description' | 'name',
@@ -739,64 +732,6 @@ export function removeMarkdownMetadata(content: string, key: string) {
     const value = line.slice(separatorIndex + 1).trimStart()
     insideMetadata = lineKey === 'metadata' && !value
     if (lineKey.trim() === trimmedKey) removeLineIndexes.add(index)
-  }
-
-  const nextLines = lines.filter((_, index) => !removeLineIndexes.has(index))
-  const nextClosingIndex = nextLines.findIndex((line, index) => index > 0 && line.trim() === '---')
-  const metadataIndex = nextLines.findIndex(
-    (line, index) => index > 0 && index < nextClosingIndex && line.trim() === 'metadata:',
-  )
-  if (metadataIndex !== -1) {
-    let hasMetadataChildren = false
-    for (let index = metadataIndex + 1; index < nextClosingIndex; index += 1) {
-      const line = nextLines[index] ?? ''
-      if (!line.trim()) continue
-      if (!line.startsWith(' ') && !line.startsWith('\t')) break
-      hasMetadataChildren = true
-      break
-    }
-    if (!hasMetadataChildren) nextLines.splice(metadataIndex, 1)
-  }
-
-  return nextLines.join('\n')
-}
-
-function removeMarkdownDisplayName(content: string) {
-  const normalizedContent = normalizeSkillDraftContentForEditing(content)
-  if (!normalizedContent.startsWith('---')) return normalizedContent
-
-  const lines = normalizedContent.split(/\r?\n/)
-  const closingIndex = lines.findIndex((line, index) => index > 0 && line.trim() === '---')
-  if (closingIndex === -1) return normalizedContent
-
-  const removeLineIndexes = new Set<number>()
-  let insideMetadata = false
-
-  for (let index = 1; index < closingIndex; index += 1) {
-    const line = lines[index] ?? ''
-    if (!line.trim()) continue
-
-    if (line.startsWith(' ') || line.startsWith('\t')) {
-      if (!insideMetadata) continue
-
-      const trimmedLine = line.trimStart()
-      const separatorIndex = trimmedLine.indexOf(':')
-      if (separatorIndex <= 0) continue
-
-      const lineKey = unquoteYamlValue(trimmedLine.slice(0, separatorIndex))
-      if (isDisplayNameMetadataKey(lineKey.trim())) removeLineIndexes.add(index)
-      continue
-    }
-
-    const separatorIndex = line.indexOf(':')
-    if (separatorIndex <= 0) {
-      insideMetadata = false
-      continue
-    }
-
-    const lineKey = line.slice(0, separatorIndex)
-    const value = line.slice(separatorIndex + 1).trimStart()
-    insideMetadata = lineKey === 'metadata' && !value
   }
 
   const nextLines = lines.filter((_, index) => !removeLineIndexes.has(index))

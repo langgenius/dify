@@ -49,6 +49,7 @@ from graphon.model_runtime.entities.message_entities import (
     UserPromptMessage,
 )
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
+from graphon.model_runtime.errors.invoke import InvokeError
 from graphon.nodes.llm.reasoning import split_reasoning
 from libs.datetime_utils import naive_utc_now
 from models.account import Account
@@ -4028,7 +4029,7 @@ class SkillManagementService:
     @staticmethod
     def _assistant_error_message(exc: Exception, *, fallback: str) -> str:
         """Expose a bounded provider error without returning a traceback to the client."""
-        description = getattr(exc, "description", None)
+        description = exc.description if isinstance(exc, InvokeError) else None
         message = description if isinstance(description, str) and description.strip() else str(exc)
         message = message.strip()
         if message.startswith("[models] "):

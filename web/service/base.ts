@@ -75,6 +75,25 @@ type IOnMessageEnd = (messageEnd: MessageEnd) => void
 export type IOnMessageReplace = (messageReplace: MessageReplace) => void
 export type IOnCompleted = (hasError?: boolean, errorMessage?: string) => void
 export type IOnError = (msg: string, code?: string) => void
+
+const reportStreamResponseError = async (
+  response: Response,
+  onError: IOnError | undefined,
+  onNotifyError: IOnError,
+) => {
+  let errorMessage = 'Server Error'
+  try {
+    const data: unknown = await response.json()
+    if (typeof data === 'object' && data !== null && 'message' in data) {
+      const message = data.message
+      if (typeof message === 'string' && message) errorMessage = message
+    }
+  } catch {}
+
+  onError?.(errorMessage)
+  onNotifyError(errorMessage)
+}
+
 type UnhandledEventError = {
   conversationId?: string
   errorCode?: string
@@ -132,6 +151,8 @@ export type IOtherOptions = {
   onMessageEnd?: IOnMessageEnd
   onMessageReplace?: IOnMessageReplace
   onError?: IOnError
+  /** Replaces the default global error notification for this request. */
+  onNotifyError?: IOnError
   onUnhandledEvent?: IOnUnhandledEvent
   onCompleted?: IOnCompleted // for stream
   getAbortController?: (abortController: AbortController) => void
@@ -544,6 +565,7 @@ export const ssePost = async (
     onTextReplace,
     onAgentLog,
     onError,
+    onNotifyError,
     getAbortController,
     onLoopStart,
     onLoopNext,
@@ -617,10 +639,16 @@ export const ssePost = async (
               })
           }
         } else {
-          res.json().then((data) => {
-            if (!silent) toast.error(data.message || 'Server Error')
-          })
-          onError?.('Server Error')
+          if (onNotifyError && !silent) {
+            void reportStreamResponseError(res, onError, onNotifyError)
+          } else if (!silent) {
+            res.json().then((data) => {
+              toast.error(data.message || 'Server Error')
+            })
+            onError?.('Server Error')
+          } else {
+            onError?.('Server Error')
+          }
         }
         return
       }
@@ -630,8 +658,10 @@ export const ssePost = async (
           if (moreInfo.errorMessage) {
             onError?.(moreInfo.errorMessage, moreInfo.errorCode)
             // These errors can happen when a stream is intentionally stopped or its page is left.
-            if (!silent && shouldNotifyStreamError(moreInfo.errorMessage))
-              toast.error(moreInfo.errorMessage)
+            if (!silent && shouldNotifyStreamError(moreInfo.errorMessage)) {
+              if (onNotifyError) onNotifyError(moreInfo.errorMessage, moreInfo.errorCode)
+              else toast.error(moreInfo.errorMessage)
+            }
             return
           }
           onData?.(str, isFirstMessage, moreInfo)
@@ -672,7 +702,10 @@ export const ssePost = async (
     })
     .catch((e) => {
       const errorMessage = String(e)
-      if (!silent && shouldNotifyStreamError(e)) toast.error(errorMessage)
+      if (!silent && shouldNotifyStreamError(e)) {
+        if (onNotifyError) onNotifyError(errorMessage)
+        else toast.error(errorMessage)
+      }
       onError?.(errorMessage)
     })
 }
@@ -707,6 +740,7 @@ export const sseGet = async (
     onTextReplace,
     onAgentLog,
     onError,
+    onNotifyError,
     getAbortController,
     onLoopStart,
     onLoopNext,
@@ -719,6 +753,7 @@ export const sseGet = async (
     onDataSourceNodeCompleted,
     onDataSourceNodeError,
     onUnhandledEvent,
+    silent,
   } = otherOptions
   const abortController = new AbortController()
 
@@ -773,10 +808,16 @@ export const sseGet = async (
               })
           }
         } else {
-          res.json().then((data) => {
-            toast.error(data.message || 'Server Error')
-          })
-          onError?.('Server Error')
+          if (onNotifyError && !silent) {
+            void reportStreamResponseError(res, onError, onNotifyError)
+          } else if (!silent) {
+            res.json().then((data) => {
+              toast.error(data.message || 'Server Error')
+            })
+            onError?.('Server Error')
+          } else {
+            onError?.('Server Error')
+          }
         }
         return
       }
@@ -786,7 +827,10 @@ export const sseGet = async (
           if (moreInfo.errorMessage) {
             onError?.(moreInfo.errorMessage, moreInfo.errorCode)
             // These errors can happen when a stream is intentionally stopped or its page is left.
-            if (shouldNotifyStreamError(moreInfo.errorMessage)) toast.error(moreInfo.errorMessage)
+            if (!silent && shouldNotifyStreamError(moreInfo.errorMessage)) {
+              if (onNotifyError) onNotifyError(moreInfo.errorMessage, moreInfo.errorCode)
+              else toast.error(moreInfo.errorMessage)
+            }
             return
           }
           onData?.(str, isFirstMessage, moreInfo)
@@ -827,7 +871,10 @@ export const sseGet = async (
     })
     .catch((e) => {
       const errorMessage = String(e)
-      if (shouldNotifyStreamError(e)) toast.error(errorMessage)
+      if (!silent && shouldNotifyStreamError(e)) {
+        if (onNotifyError) onNotifyError(errorMessage)
+        else toast.error(errorMessage)
+      }
       onError?.(errorMessage)
     })
 }

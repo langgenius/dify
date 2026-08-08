@@ -1832,7 +1832,7 @@ describe('SkillDetailPage', () => {
     await waitFor(() => {
       expect(mocks.deleteSkillMutationFn).toHaveBeenCalledWith(
         {
-          body: { confirmation_name: 'github-actions-failure-debugging' },
+          body: { confirmation_name: 'Untitled skill' },
           params: { skill_id: 'skill-1' },
         },
         expect.anything(),
