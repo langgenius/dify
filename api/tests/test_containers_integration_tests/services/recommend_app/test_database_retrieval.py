@@ -6,6 +6,7 @@ from uuid import uuid4
 from flask import Flask
 from sqlalchemy.orm import Session
 
+from models.enums import CustomizeTokenStrategy
 from models.model import App, RecommendedApp, Site
 from services.recommend_app.database.database_retrieval import DatabaseRecommendAppRetrieval
 
@@ -30,7 +31,7 @@ def _create_site(db_session: Session, *, app_id: str) -> Site:
         app_id=app_id,
         title=f"site-{uuid4()}",
         default_language="en-US",
-        customize_token_strategy="not_allow",
+        customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
         description="desc",
         copyright="copy",
         privacy_policy="pp",

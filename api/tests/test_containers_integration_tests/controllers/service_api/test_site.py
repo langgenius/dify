@@ -11,6 +11,7 @@ from werkzeug.exceptions import Forbidden
 
 from controllers.service_api.app.site import AppSiteApi
 from models.account import Tenant, TenantStatus
+from models.enums import CustomizeTokenStrategy
 from models.model import App, AppMode, Site
 
 
@@ -54,7 +55,7 @@ def _create_site(db_session: Session, app_id: str) -> Site:
         default_language="en-US",
         prompt_public=True,
         show_workflow_steps=True,
-        customize_token_strategy="not_allow",
+        customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
         use_icon_as_answer_icon=False,
         chat_color_theme="light",
         chat_color_theme_inverted=False,
