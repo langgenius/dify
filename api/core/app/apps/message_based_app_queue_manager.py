@@ -51,7 +51,7 @@ class MessageBasedAppQueueManager(AppQueueManager):
             | QueueAdvancedChatMessageEndEvent
             | QueueWorkflowPausedEvent,
         ):
-            self.stop_listen(execution_terminal=True)
+            self.complete_listener_segment()
 
         if pub_from == PublishFrom.APPLICATION_MANAGER and self._is_stopped():
             if self._app_mode == AppMode.ADVANCED_CHAT.value:

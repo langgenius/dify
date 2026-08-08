@@ -81,6 +81,31 @@ class TestBaseAppQueueManager:
                 reason="Client response stream closed before app execution completed",
             )
 
+    def test_complete_listener_segment_sets_event_and_closes_queue(self):
+        with patch("core.app.apps.base_app_queue_manager.redis_client") as mock_redis:
+            mock_redis.setex.return_value = True
+            mock_redis.get.return_value = None
+            manager = DummyQueueManager(task_id="t1", user_id="u1", invoke_from=InvokeFrom.SERVICE_API)
+
+            assert manager._listener_segment_completed.is_set() is False
+            manager.complete_listener_segment()
+            assert manager._listener_segment_completed.is_set() is True
+            assert manager._q.get_nowait() is None
+
+    def test_listen_after_complete_listener_segment_does_not_abort(self):
+        with (
+            patch("core.app.apps.base_app_queue_manager.redis_client") as mock_redis,
+            patch("core.app.apps.base_app_queue_manager.GraphEngineManager") as graph_engine_manager,
+        ):
+            mock_redis.setex.return_value = True
+            mock_redis.get.return_value = None
+            manager = DummyQueueManager(task_id="t1", user_id="u1", invoke_from=InvokeFrom.SERVICE_API)
+
+            manager.complete_listener_segment()
+            assert list(manager.listen()) == []
+
+            graph_engine_manager.return_value.send_stop_command.assert_not_called()
+
     def test_abort_execution_is_idempotent_when_graph_stop_command_fails(self, caplog):
         with (
             patch("core.app.apps.base_app_queue_manager.redis_client") as mock_redis,

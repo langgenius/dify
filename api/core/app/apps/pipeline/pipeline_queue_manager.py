@@ -42,7 +42,7 @@ class PipelineQueueManager(AppQueueManager):
             | QueueWorkflowFailedEvent
             | QueueWorkflowPartialSuccessEvent,
         ):
-            self.stop_listen(execution_terminal=True)
+            self.complete_listener_segment()
 
         if pub_from == PublishFrom.APPLICATION_MANAGER and self._is_stopped():
             raise GenerateTaskStoppedError()

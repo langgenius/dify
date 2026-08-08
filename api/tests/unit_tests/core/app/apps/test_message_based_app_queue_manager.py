@@ -27,11 +27,11 @@ class TestMessageBasedAppQueueManager:
                 message_id="m1",
             )
 
-        manager.stop_listen = Mock()
+        manager.complete_listener_segment = Mock()
         manager._is_stopped = Mock(return_value=False)
 
         manager._publish(QueueStopEvent(stopped_by=QueueStopEvent.StopBy.USER_MANUAL), Mock())
-        manager.stop_listen.assert_called_once()
+        manager.complete_listener_segment.assert_called_once()
 
     def test_publish_raises_when_stopped(self):
         with patch("core.app.apps.base_app_queue_manager.redis_client") as mock_redis:
@@ -63,7 +63,7 @@ class TestMessageBasedAppQueueManager:
             )
 
         manager._is_stopped = Mock(return_value=False)
-        manager.stop_listen = Mock()
+        manager.complete_listener_segment = Mock()
 
         manager._publish(QueueMessageEndEvent(), PublishFrom.TASK_PIPELINE)
 
