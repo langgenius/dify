@@ -95,3 +95,33 @@ forbidden_modules =
     services.workspace_member_role_resolver
     sqlalchemy
     werkzeug
+
+[importlinter:contract:setup-service-boundary]
+name = Setup application service is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.setup_service
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    werkzeug
+
+[importlinter:contract:schema-definition-service-boundary]
+name = Schema definition application service is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.schema_definition_service
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    werkzeug
