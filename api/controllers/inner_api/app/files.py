@@ -39,6 +39,7 @@ from fields.file_fields import FileWithSignedUrl, UploadConfig
 from graphon.file import helpers as file_helpers
 from models import App, EndUser, UploadFile
 from models.enums import CreatorUserRole, EndUserType
+from services.feature_service import FeatureService
 from services.file_service import FileService
 
 DEFAULT_LOCATOR_TTL = 600
@@ -289,6 +290,7 @@ class EnterpriseAppDeployFileConfig(Resource):
     def get(self):
         return UploadConfig(
             file_size_limit=dify_config.UPLOAD_FILE_SIZE_LIMIT,
+            knowledge_file_size_limit=FeatureService.get_knowledge_file_size_limit(None),
             batch_count_limit=dify_config.UPLOAD_FILE_BATCH_LIMIT,
             file_upload_limit=dify_config.BATCH_UPLOAD_LIMIT,
             image_file_size_limit=dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT,

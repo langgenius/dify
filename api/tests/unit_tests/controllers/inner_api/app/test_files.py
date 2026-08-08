@@ -278,3 +278,13 @@ def test_remote_upload_reports_fetch_failures(error: Exception) -> None:
             )
 
     file_service.assert_not_called()
+
+
+def test_file_config_supplies_every_upload_config_field(app: Flask) -> None:
+    with app.test_request_context("/inner/api/enterprise/app-deploy/files/config"):
+        body, status = module.EnterpriseAppDeployFileConfig().get.__wrapped__(
+            module.EnterpriseAppDeployFileConfig()
+        )
+
+    assert status == 200
+    assert set(body) == set(module.UploadConfig.model_fields)
