@@ -9,6 +9,7 @@ from pydantic import Field, field_validator
 from sqlalchemy.orm import Session
 
 from fields.base import ResponseModel
+from fields.document_response_prefetch import DocumentResponsePrefetch
 from libs.helper import to_timestamp
 from models.dataset import DocMetadataDetailItem, Document
 
@@ -76,17 +77,24 @@ class DocumentWithSession:
 
     document: Document
     session: Session
+    prefetch: DocumentResponsePrefetch | None = None
 
     @property
     def data_source_detail_dict(self) -> dict[str, Any]:
+        if self.prefetch is not None:
+            return self.prefetch.data_source_details.get(str(self.document.id), {})
         return self.document.get_data_source_detail_dict(session=self.session)
 
     @property
     def hit_count(self) -> int:
+        if self.prefetch is not None:
+            return self.prefetch.hit_counts.get(str(self.document.id), 0)
         return self.document.get_hit_count(session=self.session)
 
     @property
     def doc_metadata_details(self) -> list[DocMetadataDetailItem] | None:
+        if self.prefetch is not None:
+            return self.prefetch.metadata_details.get(str(self.document.id))
         return self.document.get_doc_metadata_details(session=self.session)
 
     def __getattr__(self, name: str) -> Any:
