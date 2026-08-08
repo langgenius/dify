@@ -178,6 +178,8 @@ const FormInputItem: FC<Props> = ({
 
   // Fetch dynamic options for tools only (triggers use hook directly)
   useEffect(() => {
+    let ignoreResult = false
+
     const fetchPanelDynamicOptions = async () => {
       if (
         isDynamicSelect &&
@@ -189,17 +191,23 @@ const FormInputItem: FC<Props> = ({
         setIsLoadingToolsOptions(true)
         try {
           const data = await fetchDynamicOptions()
-          setToolsOptions(data?.options || [])
+          if (!ignoreResult) setToolsOptions(data?.options || [])
         } catch (error) {
-          console.error('Failed to fetch dynamic options:', error)
-          setToolsOptions([])
+          if (!ignoreResult) {
+            console.error('Failed to fetch dynamic options:', error)
+            setToolsOptions([])
+          }
         } finally {
-          setIsLoadingToolsOptions(false)
+          if (!ignoreResult) setIsLoadingToolsOptions(false)
         }
       }
     }
 
     fetchPanelDynamicOptions()
+
+    return () => {
+      ignoreResult = true
+    }
   }, [
     isDynamicSelect,
     hasCurrentTool,

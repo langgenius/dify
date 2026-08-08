@@ -2,7 +2,7 @@ import json
 from enum import StrEnum, auto
 from typing import Any, Union
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 from core.entities.parameter_entities import CommonParameterType
 from core.tools.entities.common_entities import I18nObject
@@ -93,6 +93,14 @@ class PluginParameter(BaseModel):
         if not isinstance(v, list):
             return []
         return v
+
+    @field_validator("reset_on_change")
+    @classmethod
+    def validate_reset_on_change(cls, value: list[str], info: ValidationInfo) -> list[str]:
+        parameter_name = info.data.get("name")
+        if parameter_name in value:
+            raise ValueError("reset_on_change cannot reference the parameter itself")
+        return list(dict.fromkeys(value))
 
 
 def as_normal_type(typ: StrEnum):

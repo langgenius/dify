@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import type { AppSelectorValue } from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -564,7 +564,7 @@ describe('ReasoningConfigForm', () => {
     )
   })
 
-  it('should reset a dependent reasoning field when a watched sibling changes', async () => {
+  it('should reset a dependent reasoning field in the source field change', async () => {
     const onChange = vi.fn()
     const schemas = [
       createSchema({ variable: 'source' }),
@@ -579,7 +579,7 @@ describe('ReasoningConfigForm', () => {
       source: { auto: 0 as const, value: { type: VarKindType.mixed, value: 'first' } },
       dependent: { auto: 0 as const, value: { type: VarKindType.constant, value: '1' } },
     }
-    const { rerender } = render(
+    render(
       <ReasoningConfigForm
         value={initialValue}
         onChange={onChange}
@@ -590,25 +590,13 @@ describe('ReasoningConfigForm', () => {
       />,
     )
 
-    rerender(
-      <ReasoningConfigForm
-        value={{
-          ...initialValue,
-          source: { auto: 0, value: { type: VarKindType.mixed, value: 'second' } },
-        }}
-        onChange={onChange}
-        schemas={schemas}
-        nodeOutputVars={[]}
-        availableNodes={[]}
-        nodeId="node-1"
-      />,
-    )
+    const user = userEvent.setup()
+    await user.click(screen.getAllByTestId('mixed-input')[0]!)
 
-    await waitFor(() => {
-      expect(onChange).toHaveBeenCalledWith({
-        source: { auto: 0, value: { type: VarKindType.mixed, value: 'second' } },
-        dependent: { auto: 0, value: { type: VarKindType.constant, value: 0.7 } },
-      })
+    expect(onChange).toHaveBeenCalledOnce()
+    expect(onChange).toHaveBeenCalledWith({
+      source: { auto: 0, value: { type: VarKindType.mixed, value: 'updated-text' } },
+      dependent: { auto: 0, value: { type: VarKindType.constant, value: 0.7 } },
     })
   })
 })

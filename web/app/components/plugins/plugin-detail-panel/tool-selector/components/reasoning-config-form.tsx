@@ -23,7 +23,7 @@ import { FormTypeEnum } from '@/app/components/header/account-setting/model-prov
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { AppSelector } from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
-import { useResetOnChange } from '@/app/components/tools/hooks/use-reset-on-change'
+import { applyResetOnChange } from '@/app/components/tools/utils/reset-on-change'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import FormInputBoolean from '@/app/components/workflow/nodes/_base/components/form-input-boolean'
 import FormInputTypeSwitch from '@/app/components/workflow/nodes/_base/components/form-input-type-switch'
@@ -67,66 +67,71 @@ const ReasoningConfigForm: React.FC<Props> = ({
   const { t } = useTranslation()
   const language = useLanguage()
 
-  const handleReset = useCallback(
-    (schemasToReset: ToolFormSchema[]) => {
-      const nextValue = { ...value }
-      schemasToReset.forEach((schema) => {
-        nextValue[schema.variable] = resetReasoningConfigEntry(schema, value[schema.variable])
-      })
-      onChange(nextValue)
+  const handleChange = useCallback(
+    (nextValue: ReasoningConfigValue) => {
+      onChange(
+        applyResetOnChange({
+          schemas,
+          previousValue: value,
+          nextValue,
+          getResetValue: (schema, previousEntry) =>
+            resetReasoningConfigEntry(
+              schema,
+              previousEntry as ReasoningConfigValue[string] | undefined,
+            ),
+        }),
+      )
     },
-    [onChange, value],
+    [onChange, schemas, value],
   )
 
-  useResetOnChange({ schemas, value, onReset: handleReset })
-
   const handleAutomatic = (key: string, val: boolean, type: string) => {
-    onChange(updateInputAutoState(value, key, val, type))
+    handleChange(updateInputAutoState(value, key, val, type))
   }
 
   const handleTypeChange = useCallback(
     (variable: string, defaultValue: unknown) => {
       return (newType: VarKindType) => {
-        onChange(updateVariableTypeValue(value, variable, newType, defaultValue))
+        handleChange(updateVariableTypeValue(value, variable, newType, defaultValue))
       }
     },
-    [onChange, value],
+    [handleChange, value],
   )
 
   const handleValueChange = useCallback(
     (variable: string, varType: string) => {
       return (newValue: unknown) => {
-        onChange(updateReasoningValue(value, variable, varType, newValue))
+        handleChange(updateReasoningValue(value, variable, varType, newValue))
       }
     },
-    [onChange, value],
+    [handleChange, value],
   )
 
   const handleAppChange = useCallback(
     (variable: string) => {
       return (app: { app_id: string; inputs: Record<string, unknown>; files?: unknown[] }) => {
-        onChange(updateReasoningValue(value, variable, FormTypeEnum.appSelector, app))
+        handleChange(updateReasoningValue(value, variable, FormTypeEnum.appSelector, app))
       }
     },
-    [onChange, value],
+    [handleChange, value],
   )
 
   const handleModelChange = useCallback(
     (variable: string) => {
       return (model: Record<string, unknown>) => {
-        onChange(mergeReasoningValue(value, variable, model))
+        handleChange(mergeReasoningValue(value, variable, model))
       }
     },
-    [onChange, value],
+    [handleChange, value],
   )
 
   const handleVariableSelectorChange = useCallback(
     (variable: string) => {
       return (newValue: ValueSelector | string) => {
-        onChange(updateVariableSelectorValue(value, variable, newValue))
+        handleChange(updateVariableSelectorValue(value, variable, newValue))
       }
     },
-    [onChange, value],
+    [handleChange, value],
   )
 
   const [isShowSchema, { setTrue: showSchema, setFalse: hideSchema }] = useBoolean(false)

@@ -5,7 +5,7 @@ import type { CredentialFormSchema } from '@/app/components/header/account-setti
 import type { Tool } from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { useCallback } from 'react'
-import { useResetOnChange } from '@/app/components/tools/hooks/use-reset-on-change'
+import { applyResetOnChange } from '@/app/components/tools/utils/reset-on-change'
 import { resetToolSettingFieldValue } from '@/app/components/tools/utils/to-form-schema'
 import ToolFormItem from './item'
 
@@ -37,18 +37,19 @@ const ToolForm: FC<Props> = ({
   onManageInputField,
   extraParams,
 }) => {
-  const handleReset = useCallback(
-    (schemasToReset: CredentialFormSchema[]) => {
-      const nextValue = { ...value }
-      schemasToReset.forEach((schema) => {
-        nextValue[schema.variable] = resetToolSettingFieldValue(schema)
-      })
-      onChange(nextValue)
+  const handleChange = useCallback(
+    (nextValue: ToolVarInputs) => {
+      onChange(
+        applyResetOnChange({
+          schemas: schema,
+          previousValue: value,
+          nextValue,
+          getResetValue: resetToolSettingFieldValue,
+        }),
+      )
     },
-    [onChange, value],
+    [onChange, schema, value],
   )
-
-  useResetOnChange({ schemas: schema, value, onReset: handleReset })
 
   return (
     <div className="space-y-1">
@@ -59,7 +60,7 @@ const ToolForm: FC<Props> = ({
           nodeId={nodeId}
           schema={schema}
           value={value}
-          onChange={onChange}
+          onChange={handleChange}
           inPanel={inPanel}
           currentTool={currentTool}
           currentProvider={currentProvider}

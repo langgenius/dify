@@ -4,7 +4,7 @@ import type {
   FormOption,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { AppSelectorValue } from '@/app/components/plugins/plugin-detail-panel/app-selector'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
@@ -326,6 +326,60 @@ describe('FormInputItem branches', () => {
     )
 
     await waitFor(() => expect(mockFetchDynamicOptions).toHaveBeenCalledTimes(2))
+  })
+
+  it('should ignore an outdated dynamic-options response', async () => {
+    let resolveFirst: (value: { options: FormOption[] }) => void = () => {}
+    let resolveSecond: (value: { options: FormOption[] }) => void = () => {}
+    mockFetchDynamicOptions
+      .mockReturnValueOnce(new Promise((resolve) => (resolveFirst = resolve)))
+      .mockReturnValueOnce(new Promise((resolve) => (resolveSecond = resolve)))
+
+    const schema = createSchema({
+      type: FormTypeEnum.dynamicSelect,
+      reset_on_change: ['source'],
+    })
+    const commonProps = {
+      readOnly: false,
+      nodeId: 'node-1',
+      schema,
+      onChange: vi.fn(),
+      currentProvider: { plugin_id: 'provider-1', name: 'provider-1' } as never,
+      currentTool: { name: 'tool-1' } as never,
+      providerType: 'tool' as const,
+    }
+    const { rerender } = renderFormInputItem({
+      ...commonProps,
+      value: {
+        source: { type: VarKindType.constant, value: 'first' },
+        field: { type: VarKindType.constant, value: '' },
+      },
+    })
+    await waitFor(() => expect(mockFetchDynamicOptions).toHaveBeenCalledTimes(1))
+
+    rerender(
+      <FormInputItem
+        {...commonProps}
+        value={{
+          source: { type: VarKindType.constant, value: 'second' },
+          field: { type: VarKindType.constant, value: '' },
+        }}
+      />,
+    )
+    await waitFor(() => expect(mockFetchDynamicOptions).toHaveBeenCalledTimes(2))
+
+    await act(async () => {
+      resolveSecond({ options: [createOption('new-option')] })
+    })
+    await waitFor(() => expect(screen.getByRole('combobox')).not.toBeDisabled())
+    await userEvent.setup().click(screen.getByRole('combobox'))
+    expect(screen.getByText('new-option')).toBeInTheDocument()
+
+    await act(async () => {
+      resolveFirst({ options: [createOption('old-option')] })
+    })
+    expect(screen.queryByText('old-option')).not.toBeInTheDocument()
+    expect(screen.getByText('new-option')).toBeInTheDocument()
   })
 
   it('should recover when fetching dynamic tool options fails', async () => {

@@ -179,6 +179,11 @@ describe('form-input-item helpers', () => {
       `source:${JSON.stringify(value.source)}`,
     )
     expect(getDynamicOptionsResetKey(value, [])).toBe('')
+    expect(
+      getDynamicOptionsResetKey({ source: { value: 'alpha', type: VarKindType.constant } }, [
+        'source',
+      ]),
+    ).toBe(getDynamicOptionsResetKey(value, ['source']))
   })
 
   it('should derive remaining target variable types and label states', () => {
