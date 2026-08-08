@@ -126,6 +126,82 @@ class TestKnowledgeService:
     # ===== Edge Cases =====
 
     @patch("services.knowledge_service.boto3.client")
+    def test_knowledge_retrieval_should_handle_missing_score(self, mock_boto: MagicMock):
+        """Test that a result missing 'score' is treated as 0.0 (no AttributeError/TypeError)."""
+        mock_client = MagicMock()
+        mock_boto.return_value = mock_client
+        mock_client.retrieve.return_value = {
+            "ResponseMetadata": {"HTTPStatusCode": 200},
+            "retrievalResults": [
+                {
+                    "metadata": {"x-amz-bedrock-kb-source-uri": "s3://bucket/doc.pdf"},
+                    "content": {"text": "some content"},
+                }
+            ],
+        }
+
+        result = cast(
+            dict[str, Any],
+            ExternalDatasetTestService.knowledge_retrieval(
+                BedrockRetrievalSetting(top_k=1, score_threshold=0.0), "query", "kb"
+            ),
+        )
+
+        assert len(result["records"]) == 1
+        assert result["records"][0]["score"] == 0.0
+
+    @patch("services.knowledge_service.boto3.client")
+    def test_knowledge_retrieval_should_handle_missing_metadata(self, mock_boto: MagicMock):
+        """Test that a result with no 'metadata' key returns title=None without crashing."""
+        mock_client = MagicMock()
+        mock_boto.return_value = mock_client
+        mock_client.retrieve.return_value = {
+            "ResponseMetadata": {"HTTPStatusCode": 200},
+            "retrievalResults": [
+                {
+                    "score": 0.8,
+                    "content": {"text": "some content"},
+                }
+            ],
+        }
+
+        result = cast(
+            dict[str, Any],
+            ExternalDatasetTestService.knowledge_retrieval(
+                BedrockRetrievalSetting(top_k=1, score_threshold=0.5), "query", "kb"
+            ),
+        )
+
+        assert len(result["records"]) == 1
+        assert result["records"][0]["title"] is None
+        assert result["records"][0]["metadata"] == {}
+
+    @patch("services.knowledge_service.boto3.client")
+    def test_knowledge_retrieval_should_handle_missing_content(self, mock_boto: MagicMock):
+        """Test that a result with no 'content' key returns content=None without crashing."""
+        mock_client = MagicMock()
+        mock_boto.return_value = mock_client
+        mock_client.retrieve.return_value = {
+            "ResponseMetadata": {"HTTPStatusCode": 200},
+            "retrievalResults": [
+                {
+                    "score": 0.8,
+                    "metadata": {"x-amz-bedrock-kb-source-uri": "s3://bucket/doc.pdf"},
+                }
+            ],
+        }
+
+        result = cast(
+            dict[str, Any],
+            ExternalDatasetTestService.knowledge_retrieval(
+                BedrockRetrievalSetting(top_k=1, score_threshold=0.5), "query", "kb"
+            ),
+        )
+
+        assert len(result["records"]) == 1
+        assert result["records"][0]["content"] is None
+
+    @patch("services.knowledge_service.boto3.client")
     def test_knowledge_retrieval_should_handle_missing_threshold_in_settings(self, mock_boto: MagicMock):
         """Test that knowledge_retrieval uses 0.0 as default threshold if not provided"""
         # Arrange
