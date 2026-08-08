@@ -18,6 +18,7 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { VarType } from '@/app/components/workflow/types'
 import VarReferencePicker from '../../../../_base/components/variable/var-reference-picker'
+import { sanitizeKeyValueField } from '../../../utils'
 import InputItem from './input-item'
 // import Input from '@/app/components/base/input'
 
@@ -60,16 +61,18 @@ const KeyValueItem: FC<Props> = ({
   const handleChange = useCallback(
     (key: string) => {
       return (value: string | ValueSelector) => {
+        const sanitizedValue = typeof value === 'string' ? sanitizeKeyValueField(value) : value
+
         const shouldAddNextItem =
           isLastItem &&
-          ((key === 'value' && !payload.value && !!value) ||
+          ((key === 'value' && !payload.value && !!sanitizedValue) ||
             (key === 'file' &&
               (!payload.file || payload.file.length === 0) &&
-              Array.isArray(value) &&
-              value.length > 0))
+              Array.isArray(sanitizedValue) &&
+              sanitizedValue.length > 0))
 
         const newPayload = produce(payload, (draft: any) => {
-          draft[key] = value
+          draft[key] = sanitizedValue
         })
         onChange(newPayload)
 
