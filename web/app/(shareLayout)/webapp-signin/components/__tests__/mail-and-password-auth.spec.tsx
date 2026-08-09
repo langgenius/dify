@@ -83,4 +83,18 @@ describe('MailAndPasswordAuth', () => {
     )
     expect(screen.getByRole('link', { name: 'login.forget' })).toBeInTheDocument()
   })
+
+  it('names the password visibility action for its current state', async () => {
+    const user = userEvent.setup()
+    render(<MailAndPasswordAuth isEmailSetup />)
+
+    const passwordInput = screen.getByLabelText('login.password')
+    expect(passwordInput).toHaveAttribute('type', 'password')
+
+    await user.click(screen.getByRole('button', { name: 'login.showPassword' }))
+    expect(passwordInput).toHaveAttribute('type', 'text')
+
+    await user.click(screen.getByRole('button', { name: 'login.hidePassword' }))
+    expect(passwordInput).toHaveAttribute('type', 'password')
+  })
 })
