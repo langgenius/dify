@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import CheckCode from '@/app/(shareLayout)/webapp-signin/check-code/page'
 import MailAndCodeAuth from '@/app/(shareLayout)/webapp-signin/components/mail-and-code-auth'
@@ -71,6 +72,7 @@ beforeEach(() => {
 
 describe('embedded user id propagation in authentication flows', () => {
   it('passes embedded user id when logging in with email and password', async () => {
+    const user = userEvent.setup()
     const params = new URLSearchParams()
     params.set('redirect_url', encodeURIComponent('/chatbot/test-app'))
     useSearchParamsMock.mockReturnValue(params)
@@ -80,13 +82,21 @@ describe('embedded user id propagation in authentication flows', () => {
 
     render(<MailAndPasswordAuth isEmailSetup />)
 
-    fireEvent.change(screen.getByLabelText('login.email'), {
-      target: { value: 'user@example.com' },
-    })
-    fireEvent.change(screen.getByLabelText(/login\.password/), {
-      target: { value: 'strong-password' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'login.signBtn' }))
+    const emailInput = screen.getByLabelText('login.email')
+    const passwordInput = screen.getByLabelText(/login\.password/)
+    const submitButton = screen.getByRole('button', { name: 'login.signBtn' })
+
+    expect(emailInput).toHaveAttribute('name', 'email')
+    expect(emailInput).toHaveAttribute('autocomplete', 'email')
+    expect(emailInput).toHaveProperty('tabIndex', 0)
+    expect(passwordInput).toHaveAttribute('name', 'password')
+    expect(passwordInput).toHaveAttribute('autocomplete', 'current-password')
+    expect(passwordInput).toHaveProperty('tabIndex', 0)
+    expect(submitButton).toHaveAttribute('type', 'submit')
+    expect(submitButton).toHaveProperty('tabIndex', 0)
+
+    await user.type(emailInput, 'user@example.com')
+    await user.type(passwordInput, 'strong-password{Enter}')
 
     await waitFor(() => {
       expect(fetchAccessTokenMock).toHaveBeenCalledWith({
@@ -97,6 +107,7 @@ describe('embedded user id propagation in authentication flows', () => {
     expect(setWebAppAccessTokenMock).toHaveBeenCalledWith('login-token')
     expect(setWebAppPassportMock).toHaveBeenCalledWith('test-app', 'passport-token')
     expect(replaceMock).toHaveBeenCalledWith('/chatbot/test-app')
+    expect(webAppLoginMock).toHaveBeenCalledTimes(1)
   })
 
   it('does not call password login services when the redirect target is external', async () => {
