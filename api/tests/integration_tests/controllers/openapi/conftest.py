@@ -21,7 +21,7 @@ def _sha256(token: str) -> str:
 
 
 @pytest.fixture(autouse=True)
-def disable_enterprise(monkeypatch):
+def disable_enterprise(monkeypatch: pytest.MonkeyPatch):
     """Default to CE behaviour for /openapi/v1 tests. Tests that exercise the
     EE branch override this with their own monkeypatch in-test."""
     from configs import dify_config
