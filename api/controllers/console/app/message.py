@@ -28,6 +28,7 @@ from controllers.console.wraps import (
     RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_tenant_id,
@@ -320,8 +321,8 @@ class MessageFeedbackExportApi(Resource):
     @account_initialization_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model
-    def get(self, app_model: App):
-        args = FeedbackExportQuery.model_validate(request.args.to_dict())
+    @model_validate(FeedbackExportQuery)
+    def get(self, req_data: FeedbackExportQuery, app_model: App):
 
         # Import the service function
         from services.feedback_service import FeedbackService
@@ -330,12 +331,12 @@ class MessageFeedbackExportApi(Resource):
             export_data = FeedbackService.export_feedbacks(
                 app_model.id,
                 session=db.session(),
-                from_source=args.from_source,
-                rating=args.rating,
-                has_comment=args.has_comment,
-                start_date=args.start_date,
-                end_date=args.end_date,
-                format_type=args.format,
+                from_source=req_data.from_source,
+                rating=req_data.rating,
+                has_comment=req_data.has_comment,
+                start_date=req_data.start_date,
+                end_date=req_data.end_date,
+                format_type=req_data.format,
             )
             return export_data
 

@@ -15,6 +15,7 @@ from models import Account
 from models.account import AccountStatus, TenantAccountRole
 from models.enums import ApiTokenType
 from models.model import ApiToken, App, AppMode, IconType
+from services.agent.errors import AgentAccessNotReadyError
 
 
 def _make_list_resource() -> BaseApiKeyListResource:
@@ -45,12 +46,12 @@ def _make_account(role: TenantAccountRole) -> Account:
     return account
 
 
-def _persist_app(session: Session) -> App:
+def _persist_app(session: Session, *, mode: AppMode = AppMode.CHAT) -> App:
     app = App(
         id="app-1",
         tenant_id="tenant-1",
         name="API key app",
-        mode=AppMode.CHAT,
+        mode=mode,
         icon_type=IconType.EMOJI,
         icon="chat",
         icon_background="#ffffff",
@@ -112,6 +113,22 @@ def test_create_api_key_uses_injected_session_and_tenant_id(sqlite_session: Sess
     assert api_token.type == ApiTokenType.APP
     generate_api_key.assert_called_once_with("app-", 24, session=session)
     assert commits == ["commit"]
+
+
+def test_create_agent_api_key_requires_published_access(sqlite_session: Session) -> None:
+    resource = _make_list_resource()
+    session = sqlite_session
+    app = _persist_app(session, mode=AppMode.AGENT)
+
+    with patch(
+        "controllers.console.apikey.AppService.ensure_agent_app_access_ready",
+        side_effect=AgentAccessNotReadyError(),
+    ) as ensure_access_ready:
+        with pytest.raises(AgentAccessNotReadyError):
+            resource._create_api_key("app-1", "tenant-1", session=session)
+
+    ensure_access_ready.assert_called_once_with(app, session=session)
+    assert session.scalar(select(ApiToken)) is None
 
 
 def test_delete_api_key_rejects_non_admin_account(sqlite_session: Session) -> None:

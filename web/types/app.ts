@@ -66,14 +66,6 @@ export const AppModeEnum = {
   AGENT_CHAT: 'agent-chat' as AppModeEnum,
   AGENT: 'agent' as AppModeEnum,
 } as const
-export const AppModes = [
-  AppModeEnum.COMPLETION,
-  AppModeEnum.WORKFLOW,
-  AppModeEnum.CHAT,
-  AppModeEnum.ADVANCED_CHAT,
-  AppModeEnum.AGENT_CHAT,
-] as const
-
 /**
  * Variable type
  */

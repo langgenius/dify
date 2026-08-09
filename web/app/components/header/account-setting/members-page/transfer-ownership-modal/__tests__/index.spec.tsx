@@ -1,4 +1,3 @@
-import type { ICurrentWorkspace } from '@/models/common'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -53,7 +52,7 @@ describe('TransferOwnershipModal', () => {
     vi.clearAllMocks()
 
     const consoleState = {
-      currentWorkspace: { name: 'Test Workspace' } as ICurrentWorkspace,
+      currentWorkspace: { name: 'Test Workspace' },
       userProfile: { email: 'owner@example.com', id: 'owner-id' },
     } as unknown as ConsoleStateFixture
     mockConsoleState.current = consoleState

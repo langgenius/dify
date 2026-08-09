@@ -8,7 +8,11 @@ import pytest
 from flask import Flask
 from sqlalchemy.orm import Session
 
-from controllers.inner_api.agent.files import AgentFileDownloadRequestApi, AgentFileUploadRequestApi
+from controllers.inner_api.agent.files import (
+    AgentFileDownloadRequestApi,
+    AgentFileRequestHttpError,
+    AgentFileUploadRequestApi,
+)
 from core.workflow.file_reference import build_file_reference
 from services.file_request_service import DownloadFileRequestResult
 
@@ -47,6 +51,7 @@ def test_upload_request_returns_origin_free_uri(app: Flask, unbound_session: Ses
         tenant_id="tenant-1",
         user_id="canonical-end-user-1",
         conversation_id="conversation-1",
+        user_from=None,
     )
 
 

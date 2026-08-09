@@ -28,6 +28,7 @@ import {
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
+import { useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -60,6 +61,7 @@ import {
   updateBuiltInToolCredential,
   updateCustomCollection,
 } from '@/service/tools'
+import { modelProviderDetailsQueryOptions } from '@/service/use-common'
 import { useInvalidateAllWorkflowTools } from '@/service/use-tools'
 import { basePath } from '@/utils/var'
 import { AuthHeaderPrefix, AuthType, CollectionType } from '../types'
@@ -91,12 +93,17 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
   const [showSettingAuth, setShowSettingAuth] = useState(false)
   const { setShowModelModal } = useModalContext()
   const { modelProviders: providers } = useProviderContext()
-  const showSettingAuthModal = () => {
+  const queryClient = useQueryClient()
+  const showSettingAuthModal = async () => {
     if (!canOpenCredentialSettings) return
 
     if (isModel) {
-      const provider = providers.find((item) => item.provider === collection?.id)
-      if (provider) {
+      const summary = providers.find((item) => item.provider === collection?.id)
+      if (!summary) return
+      try {
+        const response = await queryClient.ensureQueryData(modelProviderDetailsQueryOptions())
+        const provider = response.data.find((item) => item.provider === summary.provider)
+        if (!provider) return
         setShowModelModal({
           payload: {
             currentProvider: provider,
@@ -107,7 +114,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
             onRefreshData()
           },
         })
-      }
+      } catch {}
     } else {
       setShowSettingAuth(true)
     }

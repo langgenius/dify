@@ -5,7 +5,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import * as React from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
@@ -35,9 +35,10 @@ export function ContinueWorkItem({ app }: ContinueWorkItemProps) {
   const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const appNameId = React.useId()
-  const appModeId = React.useId()
-  const appMetadataId = React.useId()
+  const appNameId = useId()
+  const appModeId = useId()
+  const appMetadataId = useId()
+  const [isPrefetchEnabled, setIsPrefetchEnabled] = useState(false)
   const isRbacEnabled = systemFeatures.rbac_enabled
   const updatedAt = app.updated_at * 1000
   const appModeLabel = t(($) => $[appModeLabelKeys[app.mode]], { ns: 'app' })
@@ -121,6 +122,9 @@ export function ContinueWorkItem({ app }: ContinueWorkItemProps) {
   return (
     <Link
       href={href}
+      prefetch={isPrefetchEnabled ? null : false}
+      onMouseEnter={() => setIsPrefetchEnabled(true)}
+      onFocus={() => setIsPrefetchEnabled(true)}
       aria-labelledby={`${appNameId} ${appModeId}`}
       aria-describedby={appMetadataId}
       className={cn(

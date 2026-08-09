@@ -116,16 +116,6 @@ class FakePluginDaemonHttpClient:
         self.is_closed = True
 
 
-class FakeAgentStubGRPCServer:
-    closed: bool
-
-    def __init__(self) -> None:
-        self.closed = False
-
-    async def aclose(self) -> None:
-        self.closed = True
-
-
 class FakeTimeout:
     connect: float
     read: float
@@ -280,6 +270,15 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
             getattr(route, "path", None) == "/agent-stub/drive/manifest" for route in create_app(settings).routes
         )
         assert any(getattr(route, "path", None) == "/agent-stub/drive/commit" for route in create_app(settings).routes)
+        route_paths = create_app(settings).openapi()["paths"]
+        assert {
+            "/execution-bindings/files/list",
+            "/execution-bindings/files/read",
+            "/execution-bindings/files/download",
+        }.issubset(route_paths)
+        assert "/workspace/files/list" not in route_paths
+        assert "/workspace/files/read" not in route_paths
+        assert "/workspace/files/upload" not in route_paths
 
     assert FakeRunScheduler.created[0].shutdown_called is True
     assert FakeRunScheduler.created[0].dify_api_http_client.is_closed is True
@@ -407,34 +406,6 @@ def test_create_app_wires_authenticated_agent_stub_drive_manifest_route(monkeypa
 
     assert response.status_code == 200
     assert response.json()["items"][0]["key"] == "skills/example/SKILL.md"
-    assert FakeRunScheduler.created[0].shutdown_called is True
-    assert fake_http_client.is_closed is True
-    assert fake_redis.closed is True
-
-
-def test_create_app_starts_and_stops_agent_stub_grpc_server_for_grpc_url(monkeypatch: pytest.MonkeyPatch) -> None:
-    fake_redis, fake_http_client = _patch_app_lifecycle(monkeypatch)
-    started: dict[str, object] = {}
-    fake_grpc_server = FakeAgentStubGRPCServer()
-
-    async def fake_start_agent_stub_grpc_server(**kwargs):
-        started.update(kwargs)
-        return fake_grpc_server
-
-    monkeypatch.setattr(app_module, "start_agent_stub_grpc_server", fake_start_agent_stub_grpc_server)
-
-    settings = ServerSettings(
-        redis_url="redis://example.invalid/0",
-        agent_stub_api_base_url="grpc://agent.example.com:9091",
-        agent_stub_grpc_bind_address="0.0.0.0:9191",
-        server_secret_key=_base64url_secret(b"1" * 32),
-    )
-
-    with TestClient(create_app(settings)):
-        assert started["public_url"] == "grpc://agent.example.com:9091"
-        assert started["bind_address"] == "0.0.0.0:9191"
-
-    assert fake_grpc_server.closed is True
     assert FakeRunScheduler.created[0].shutdown_called is True
     assert fake_http_client.is_closed is True
     assert fake_redis.closed is True

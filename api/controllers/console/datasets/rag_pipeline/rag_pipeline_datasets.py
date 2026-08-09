@@ -10,6 +10,7 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_import import RagPip
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_rate_limit_check,
+    model_validate,
     setup_required,
     with_current_tenant_id,
     with_current_user,
@@ -47,8 +48,13 @@ class CreateRagPipelineDatasetApi(Resource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     @with_current_user
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, current_user: Account) -> JsonResponseWithStatus:
-        payload = RagPipelineDatasetImportPayload.model_validate(console_ns.payload or {})
+    @model_validate(RagPipelineDatasetImportPayload)
+    def post(
+        self,
+        req_data: RagPipelineDatasetImportPayload,
+        current_tenant_id: str,
+        current_user: Account,
+    ) -> JsonResponseWithStatus:
         # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
         if not current_user.is_dataset_editor:
             raise Forbidden()
@@ -62,7 +68,7 @@ class CreateRagPipelineDatasetApi(Resource):
             ),
             permission=DatasetPermissionEnum.ONLY_ME,
             partial_member_list=None,
-            yaml_content=payload.yaml_content,
+            yaml_content=req_data.yaml_content,
         )
         try:
             rag_pipeline_dsl_service = RagPipelineDslService(db.session())
