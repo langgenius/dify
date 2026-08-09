@@ -6,7 +6,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { RiMoreLine } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -29,7 +28,7 @@ const AgentLogNavMore = ({ options, onShowAgentOrToolLog }: AgentLogNavMoreProps
           />
         }
       >
-        <RiMoreLine className="size-4" />
+        <span aria-hidden className="i-ri-more-line size-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         placement="bottom-start"
