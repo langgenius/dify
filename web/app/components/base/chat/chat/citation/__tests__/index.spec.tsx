@@ -99,11 +99,13 @@ describe('Citation', () => {
       expect(screen.getAllByTestId('citation-measurement-item')).toHaveLength(2)
     })
 
-    it('should display the document name inside each measurement item', () => {
+    it('should hide measurement text from the accessibility tree', () => {
       mockClientWidths({ container: 500, item: 50 })
       setupContainer()
       render(<Citation data={[makeCitationItem({ document_name: 'My Report' })]} />)
-      expect(screen.getByTestId('citation-measurement-item')).toHaveTextContent('My Report')
+      const measurementItem = screen.getByTestId('citation-measurement-item')
+      expect(measurementItem).toHaveTextContent('My Report')
+      expect(measurementItem).toHaveAttribute('aria-hidden', 'true')
     })
 
     it('should render a popup for each resource that fits within the container', () => {
