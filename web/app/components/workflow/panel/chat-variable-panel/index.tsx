@@ -1,14 +1,8 @@
 import type { ConversationVariable } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiBookOpenLine, RiCloseLine } from '@remixicon/react'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
-import {
-  BubbleX,
-  LongArrowLeft,
-  LongArrowRight,
-} from '@/app/components/base/icons/src/vender/line/others'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import RemoveEffectVarConfirm from '@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm'
@@ -217,7 +211,7 @@ const ChatVariablePanel = () => {
             state={showTip ? ActionButtonState.Active : undefined}
             onClick={() => setShowTip(!showTip)}
           >
-            <RiBookOpenLine aria-hidden="true" className="size-4" />
+            <span aria-hidden="true" className="i-ri-book-open-line size-4" />
           </ActionButton>
           <button
             type="button"
@@ -225,7 +219,7 @@ const ChatVariablePanel = () => {
             className="flex size-6 cursor-pointer items-center justify-center"
             onClick={() => setShowChatVariablePanel(false)}
           >
-            <RiCloseLine aria-hidden="true" className="size-4 text-text-tertiary" />
+            <span aria-hidden="true" className="i-ri-close-line size-4 text-text-tertiary" />
           </button>
         </div>
       </div>
@@ -240,14 +234,20 @@ const ChatVariablePanel = () => {
             </div>
             <div className="flex items-center gap-2">
               <div className="flex flex-col rounded-[10px] border border-workflow-block-border bg-workflow-block-bg p-3 pb-4 shadow-md">
-                <BubbleX className="mb-1 size-4 shrink-0 text-util-colors-teal-teal-700" />
+                <span
+                  aria-hidden="true"
+                  className="mb-1 i-custom-vender-line-others-bubble-x size-4 shrink-0 text-util-colors-teal-teal-700"
+                />
                 <div className="system-xs-semibold text-text-secondary">conversation_var</div>
                 <div className="system-2xs-regular text-text-tertiary">String</div>
               </div>
               <div className="grow">
                 <div className="mb-2 flex items-center gap-2 py-1">
                   <div className="flex h-3 w-16 shrink-0 items-center gap-1 px-1">
-                    <LongArrowLeft className="h-2 grow text-text-quaternary" />
+                    <span
+                      aria-hidden="true"
+                      className="i-custom-vender-line-others-long-arrow-left h-2 grow text-text-quaternary"
+                    />
                     <div className="shrink-0 system-2xs-medium text-text-tertiary">WRITE</div>
                   </div>
                   <BlockIcon className="shrink-0" type={BlockEnum.Assigner} />
@@ -258,7 +258,10 @@ const ChatVariablePanel = () => {
                 <div className="flex items-center gap-2 py-1">
                   <div className="flex h-3 w-16 shrink-0 items-center gap-1 px-1">
                     <div className="shrink-0 system-2xs-medium text-text-tertiary">READ</div>
-                    <LongArrowRight className="h-2 grow text-text-quaternary" />
+                    <span
+                      aria-hidden="true"
+                      className="i-custom-vender-line-others-long-arrow-right h-2 grow text-text-quaternary"
+                    />
                   </div>
                   <BlockIcon className="shrink-0" type={BlockEnum.LLM} />
                   <div className="grow truncate system-xs-semibold text-text-secondary">
