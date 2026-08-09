@@ -1,7 +1,6 @@
 import type { FC } from 'react'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { RiCloseLine, RiZoomInLine, RiZoomOutLine } from '@remixicon/react'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
@@ -101,7 +100,7 @@ const PdfPreview: FC<PdfPreviewProps> = ({ url, onCancel }) => {
                 className="absolute top-6 right-24 flex size-8 cursor-pointer items-center justify-center rounded-lg"
                 onClick={zoomOut}
               >
-                <RiZoomOutLine className="size-4 text-gray-500" />
+                <span aria-hidden className="i-ri-zoom-out-line size-4 text-gray-500" />
               </button>
             }
           />
@@ -116,7 +115,7 @@ const PdfPreview: FC<PdfPreviewProps> = ({ url, onCancel }) => {
                 className="absolute top-6 right-16 flex size-8 cursor-pointer items-center justify-center rounded-lg"
                 onClick={zoomIn}
               >
-                <RiZoomInLine className="size-4 text-gray-500" />
+                <span aria-hidden className="i-ri-zoom-in-line size-4 text-gray-500" />
               </button>
             }
           />
@@ -131,7 +130,7 @@ const PdfPreview: FC<PdfPreviewProps> = ({ url, onCancel }) => {
                 className="absolute top-6 right-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white/8 backdrop-blur-[2px]"
                 onClick={onCancel}
               >
-                <RiCloseLine className="size-4 text-gray-500" />
+                <span aria-hidden className="i-ri-close-line size-4 text-gray-500" />
               </button>
             }
           />
