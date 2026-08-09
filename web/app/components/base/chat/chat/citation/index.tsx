@@ -102,17 +102,22 @@ const Citation: FC<CitationProps> = ({
           </div>
         ))}
         {limitNumberInOneLine < resourcesLength && (
-          <div
-            data-testid="citation-more-toggle"
-            className="flex h-7 cursor-pointer items-center rounded-lg bg-components-panel-bg px-2 system-xs-medium text-text-tertiary"
+          <button
+            type="button"
+            aria-expanded={showMore}
+            aria-label={t(($) => $[showMore ? 'chat.collapse' : 'chat.expand'], { ns: 'share' })}
+            className="flex h-7 cursor-pointer items-center rounded-lg bg-components-panel-bg px-2 system-xs-medium text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
             onClick={() => setShowMore((v) => !v)}
           >
             {!showMore ? (
               `+ ${resourcesLength - limitNumberInOneLine}`
             ) : (
-              <div className="i-ri-arrow-down-s-line size-4 rotate-180 text-text-tertiary" />
+              <span
+                aria-hidden
+                className="i-ri-arrow-down-s-line size-4 rotate-180 text-text-tertiary"
+              />
             )}
-          </div>
+          </button>
         )}
       </div>
     </div>

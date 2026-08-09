@@ -226,7 +226,7 @@ describe('Citation', () => {
         />,
       )
       expect(screen.getAllByTestId('popup')).toHaveLength(3)
-      expect(screen.queryByTestId('citation-more-toggle')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'share.chat.expand' })).not.toBeInTheDocument()
     })
   })
 
@@ -246,7 +246,7 @@ describe('Citation', () => {
           ]}
         />,
       )
-      expect(screen.getByTestId('citation-more-toggle')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'share.chat.expand' })).toBeInTheDocument()
     })
   })
 
@@ -268,7 +268,7 @@ describe('Citation', () => {
           ]}
         />,
       )
-      expect(screen.getByTestId('citation-more-toggle')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'share.chat.expand' })).toBeInTheDocument()
       expect(screen.getAllByTestId('popup')).toHaveLength(2)
     })
   })
@@ -290,38 +290,49 @@ describe('Citation', () => {
           ]}
         />,
       )
-      return screen.getByTestId('citation-more-toggle')
+      return screen.getByRole('button', { name: 'share.chat.expand' })
     }
 
     it('should show the overflow count label matching /+\\s*\\d+/ on the more-toggle in collapsed state', () => {
-      renderOverflowScenario()
-      expect(screen.getByTestId('citation-more-toggle').textContent).toMatch(/^\+\s*\d+$/)
+      const toggle = renderOverflowScenario()
+      expect(toggle).toHaveAttribute('aria-expanded', 'false')
+      expect(toggle.textContent).toMatch(/^\+\s*\d+$/)
     })
 
-    it('should display the collapse icon div after clicking more-toggle to expand', async () => {
+    it('should expose the expanded state after clicking more-toggle', async () => {
       const user = userEvent.setup()
-      renderOverflowScenario()
+      const toggle = renderOverflowScenario()
 
-      await user.click(screen.getByTestId('citation-more-toggle'))
+      await user.click(toggle)
 
+      expect(screen.getByRole('button', { name: 'share.chat.collapse' })).toHaveAttribute(
+        'aria-expanded',
+        'true',
+      )
       expect(document.querySelector('.i-ri-arrow-down-s-line')).toBeInTheDocument()
     })
 
-    it('should return to the count label after clicking the toggle a second time to collapse', async () => {
+    it('should support Enter and Space activation', async () => {
       const user = userEvent.setup()
-      renderOverflowScenario()
+      const toggle = renderOverflowScenario()
+      toggle.focus()
 
-      await user.click(screen.getByTestId('citation-more-toggle'))
-      await user.click(screen.getByTestId('citation-more-toggle'))
+      await user.keyboard('[Enter]')
+      const collapseToggle = screen.getByRole('button', { name: 'share.chat.collapse' })
+      collapseToggle.focus()
+      await user.keyboard('[Space]')
 
-      expect(screen.getByTestId('citation-more-toggle').textContent).toMatch(/^\+\s*\d+$/)
+      expect(screen.getByRole('button', { name: 'share.chat.expand' })).toHaveAttribute(
+        'aria-expanded',
+        'false',
+      )
     })
 
     it('should show all resource popups after expanding via the more-toggle', async () => {
       const user = userEvent.setup()
-      renderOverflowScenario()
+      const toggle = renderOverflowScenario()
 
-      await user.click(screen.getByTestId('citation-more-toggle'))
+      await user.click(toggle)
 
       await waitFor(() => {
         expect(screen.getAllByTestId('popup')).toHaveLength(3)
@@ -335,7 +346,7 @@ describe('Citation', () => {
       setupContainer()
       render(<Citation data={[makeCitationItem()]} />)
       expect(screen.getAllByTestId('citation-measurement-item')).toHaveLength(1)
-      expect(screen.queryByTestId('citation-more-toggle')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'share.chat.expand' })).not.toBeInTheDocument()
     })
 
     it('should handle all citations sharing one document_id as a single resource', () => {
