@@ -36,7 +36,12 @@ from controllers.console.wraps import (
 from core.plugin.entities.plugin import PluginDependency
 from extensions.ext_database import db
 from fields.base import ResponseModel
-from fields.snippet_fields import SnippetListItemResponse, SnippetPaginationResponse, SnippetResponse
+from fields.snippet_fields import (
+    SnippetListItemResponse,
+    SnippetPaginationResponse,
+    SnippetResponse,
+    SnippetResponseSource,
+)
 from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
@@ -116,10 +121,11 @@ class CustomizedSnippetsApi(Resource):
         """List customized snippets with pagination and search."""
         query = _snippet_list_query_from_request()
 
+        session = db.session()
         snippet_service = _snippet_service()
         snippets, total, has_more = snippet_service.get_snippets(
             tenant_id=current_tenant_id,
-            session=db.session(),
+            session=session,
             page=query.page,
             limit=query.limit,
             keyword=query.keyword,
@@ -131,7 +137,7 @@ class CustomizedSnippetsApi(Resource):
         return dump_response(
             SnippetPaginationResponse,
             {
-                "data": snippets,
+                "data": [SnippetResponseSource(snippet, session=session) for snippet in snippets],
                 "page": query.page,
                 "limit": query.limit,
                 "total": total,
@@ -177,7 +183,7 @@ class CustomizedSnippetsApi(Resource):
         except ValueError as e:
             return {"message": str(e)}, 400
 
-        return dump_response(SnippetResponse, snippet), 201
+        return dump_response(SnippetResponse, SnippetResponseSource(snippet, session=db.session())), 201
 
 
 @console_ns.route("/workspaces/current/customized-snippets/<uuid:snippet_id>")
@@ -200,7 +206,7 @@ class CustomizedSnippetDetailApi(Resource):
         if not snippet:
             raise NotFound("Snippet not found")
 
-        return dump_response(SnippetResponse, snippet), 200
+        return dump_response(SnippetResponse, SnippetResponseSource(snippet, session=db.session())), 200
 
     @console_ns.doc("update_customized_snippet")
     @console_ns.expect(console_ns.models.get(UpdateSnippetPayload.__name__))
@@ -236,9 +242,9 @@ class CustomizedSnippetDetailApi(Resource):
         if not update_data:
             return {"message": "No valid fields to update"}, 400
 
-        try:
-            with Session(db.engine, expire_on_commit=False) as session:
-                snippet = session.merge(snippet)
+        with Session(db.engine, expire_on_commit=False) as session:
+            snippet = session.merge(snippet)
+            try:
                 snippet = SnippetService.update_snippet(
                     session=session,
                     snippet=snippet,
@@ -246,10 +252,10 @@ class CustomizedSnippetDetailApi(Resource):
                     data=update_data,
                 )
                 session.commit()
-        except ValueError as e:
-            return {"message": str(e)}, 400
+            except ValueError as e:
+                return {"message": str(e)}, 400
 
-        return dump_response(SnippetResponse, snippet), 200
+            return dump_response(SnippetResponse, SnippetResponseSource(snippet, session=session)), 200
 
     @console_ns.doc("delete_customized_snippet")
     @console_ns.response(204, "Snippet deleted successfully")
