@@ -581,7 +581,7 @@ describe('WorkflowMain', () => {
 
     render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
 
-    expect(screen.queryByTestId('collaboration-graph-loading')).not.toBeInTheDocument()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
 
     act(() => collaborationListeners.graphReadyChange?.(false))
     expect(screen.getByRole('status')).toHaveTextContent('workflow.common.syncingData')

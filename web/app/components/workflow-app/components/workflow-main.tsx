@@ -534,10 +534,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
       </WorkflowWithInnerContext>
       {isCollaborationEnabled &&
         (collaborationGraphState.appId !== appId || !collaborationGraphState.isReady) && (
-          <div
-            data-testid="collaboration-graph-loading"
-            className="absolute inset-0 z-50 flex cursor-wait items-center justify-center"
-          >
+          <div className="absolute inset-0 z-50 flex cursor-wait items-center justify-center">
             <div
               role="status"
               aria-live="polite"
