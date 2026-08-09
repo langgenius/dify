@@ -186,7 +186,7 @@ def test_execute_llm(monkeypatch: pytest.MonkeyPatch):
 
     node._model_instance = build_mock_model_instance()
 
-    with patch.object(LLMNode, "fetch_prompt_messages", mock_fetch_prompt_messages_1):
+    with patch("graphon.nodes.llm.llm_utils.fetch_prompt_messages", mock_fetch_prompt_messages_1):
         # execute node
         result = node._run()
         assert isinstance(result, Generator)
@@ -301,7 +301,7 @@ def test_execute_llm_with_jinja2(monkeypatch: pytest.MonkeyPatch):
 
     node._model_instance = build_mock_model_instance()
 
-    with patch.object(LLMNode, "fetch_prompt_messages", mock_fetch_prompt_messages_2):
+    with patch("graphon.nodes.llm.llm_utils.fetch_prompt_messages", mock_fetch_prompt_messages_2):
         # execute node
         result = node._run()
 
