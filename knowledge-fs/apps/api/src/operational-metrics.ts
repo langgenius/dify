@@ -1,6 +1,11 @@
 import type {
+  ConcurrencyGateEvent,
   DifyCapabilityV2OperationalMetric,
   DifyCapabilityV2OperationalMetrics,
+  DocumentOutlineSummaryOperationalMetric,
+  DocumentOutlineSummaryOperationalMetrics,
+  DocumentSemanticEnrichmentOperationalMetric,
+  DocumentSemanticEnrichmentOperationalMetrics,
   DurableTaskOperationalMetric,
   DurableTaskOperationalMetrics,
   LegacyAuthorizationTrafficMetric,
@@ -10,10 +15,26 @@ import type {
   UploadSessionMetric,
   UploadSessionOperationalMetrics,
 } from "@knowledge/api";
+import type {
+  DifyModelRuntimeEmbeddingOperationalMetric,
+  DifyModelRuntimeEmbeddingOperationalMetrics,
+} from "@knowledge/embeddings";
 
 export type ApiKnowledgeFsOperationalMetric =
+  | (DifyModelRuntimeEmbeddingOperationalMetric & {
+      readonly event: "knowledge_fs.embedding_request.metric";
+    })
+  | (ConcurrencyGateEvent & {
+      readonly event: "knowledge_fs.ingestion_model_concurrency.metric";
+    })
   | (DifyCapabilityV2OperationalMetric & {
       readonly event: "knowledge_fs.capability_v2.metric";
+    })
+  | (DocumentSemanticEnrichmentOperationalMetric & {
+      readonly event: "knowledge_fs.semantic_enrichment.metric";
+    })
+  | (DocumentOutlineSummaryOperationalMetric & {
+      readonly event: "knowledge_fs.outline_summary.metric";
     })
   | (UploadSessionMetric & {
       readonly event: "knowledge_fs.upload_session.metric";
@@ -31,7 +52,13 @@ export type ApiKnowledgeFsOperationalMetric =
 export interface ApiKnowledgeFsOperationalMetrics {
   readonly capabilityV2: DifyCapabilityV2OperationalMetrics;
   readonly durableTasks: DurableTaskOperationalMetrics;
+  readonly embeddingRequests: DifyModelRuntimeEmbeddingOperationalMetrics;
   readonly legacyAuthorization: LegacyAuthorizationTrafficMetrics;
+  readonly ingestionModel: {
+    record(metric: ConcurrencyGateEvent): Promise<void> | void;
+  };
+  readonly semanticEnrichment: DocumentSemanticEnrichmentOperationalMetrics;
+  readonly outlineSummary: DocumentOutlineSummaryOperationalMetrics;
   readonly retrieval: RetrievalOperationalMetrics;
   readonly uploadSessions: UploadSessionOperationalMetrics;
 }
@@ -54,9 +81,25 @@ export function createApiKnowledgeFsOperationalMetrics({
       record: (metric) =>
         safelyEmit(emit, { event: "knowledge_fs.durable_task.metric", ...metric }),
     },
+    embeddingRequests: {
+      record: (metric) =>
+        safelyEmit(emit, { event: "knowledge_fs.embedding_request.metric", ...metric }),
+    },
     legacyAuthorization: {
       record: (metric) =>
         safelyEmit(emit, { event: "knowledge_fs.legacy_authorization.metric", ...metric }),
+    },
+    ingestionModel: {
+      record: (metric) =>
+        safelyEmit(emit, { event: "knowledge_fs.ingestion_model_concurrency.metric", ...metric }),
+    },
+    semanticEnrichment: {
+      record: (metric) =>
+        safelyEmit(emit, { event: "knowledge_fs.semantic_enrichment.metric", ...metric }),
+    },
+    outlineSummary: {
+      record: (metric) =>
+        safelyEmit(emit, { event: "knowledge_fs.outline_summary.metric", ...metric }),
     },
     retrieval: {
       record: (metric) => safelyEmit(emit, { event: "knowledge_fs.retrieval.metric", ...metric }),

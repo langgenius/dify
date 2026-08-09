@@ -92,6 +92,8 @@ export interface DocumentCompilationWorkerOptions {
   readonly parser: ParserAdapter;
   readonly pdfRasterizer?: DocumentPdfRasterizer | undefined;
   readonly reindexer: IncrementalReindexer;
+  /** Persists optional graph work before the searchable candidate is published. */
+  readonly semanticEnrichmentAdmission?: DocumentSemanticEnrichmentAdmission | undefined;
   readonly operationLeases?: KnowledgeFsOperationLeaseCoordinator | undefined;
   readonly outlineBuilder?: DocumentOutlineBuilder | undefined;
   readonly outlineSummaryEnhancer?: DocumentOutlineSummaryEnhancer | undefined;
@@ -127,6 +129,19 @@ export interface DocumentCompilationWorker {
     payload: JobPayload,
     options?: { readonly signal?: AbortSignal | undefined },
   ): Promise<DocumentCompilationJob>;
+}
+
+export interface DocumentSemanticEnrichmentAdmission {
+  enqueue(input: {
+    readonly compilationAttemptId: string;
+    readonly documentAssetId: string;
+    readonly documentVersion: number;
+    readonly knowledgeSpaceId: string;
+    readonly parseArtifactId: string;
+    readonly publicationGenerationId: string;
+    readonly retrievalProfile: KnowledgeSpaceRetrievalProfile;
+    readonly tenantId: string;
+  }): Promise<void>;
 }
 
 export interface ComposeDocumentCompilationWorkerCandidateInput {
@@ -213,6 +228,7 @@ export function createDocumentCompilationWorker({
   parser,
   pdfRasterizer,
   reindexer,
+  semanticEnrichmentAdmission,
   semanticPostProcessor,
   smokeEvaluation,
   visualEmbeddingModel,
@@ -550,7 +566,26 @@ export function createDocumentCompilationWorker({
           let graphEntityIds: readonly string[] = [];
           let graphRelationIds: readonly string[] = [];
           if (
+            semanticEnrichmentAdmission &&
+            publicationGenerationId &&
+            frozenRetrievalProfile &&
+            reindexResult.status === "rebuilt" &&
+            documentIndexOverrides.enableGraph !== false
+          ) {
+            await semanticEnrichmentAdmission.enqueue({
+              compilationAttemptId: input.documentCompilationJobId,
+              documentAssetId: activeAsset.id,
+              documentVersion: activeAsset.version,
+              knowledgeSpaceId: input.knowledgeSpaceId,
+              parseArtifactId: canonicalArtifact.id,
+              publicationGenerationId,
+              retrievalProfile: frozenRetrievalProfile,
+              tenantId: input.tenantId,
+            });
+          }
+          if (
             semanticPostProcessor &&
+            !publicationGenerationId &&
             reindexResult.status === "rebuilt" &&
             documentIndexOverrides.enableGraph !== false
           ) {
@@ -562,9 +597,7 @@ export function createDocumentCompilationWorker({
               ...(frozenRetrievalProfile ? { retrievalProfile: frozenRetrievalProfile } : {}),
               tenantId: input.tenantId,
             });
-            const semanticResult = publicationGenerationId
-              ? await postprocess
-              : await postprocess.catch(() => undefined);
+            const semanticResult = await postprocess.catch(() => undefined);
             await assertWritable();
             graphEntityIds = semanticResult?.graphEntityIds ?? [];
             graphRelationIds = semanticResult?.graphRelationIds ?? [];

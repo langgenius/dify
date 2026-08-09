@@ -1,8 +1,10 @@
 import { z } from "zod";
 
-import type {
-  RelationExtractionProvider,
-  RelationExtractionProviderInput,
+import type { ConcurrencyGate } from "./bounded-concurrency";
+import {
+  RelationExtractionBatchContractError,
+  type RelationExtractionProvider,
+  type RelationExtractionProviderInput,
 } from "./relation-extraction-flow";
 import { semanticExtractionModelRequestGate } from "./semantic-extraction-concurrency";
 
@@ -36,6 +38,7 @@ export interface RelationExtractionTextProvider {
 export interface LlmRelationExtractionProviderOptions {
   readonly maxOutputTokens?: number | undefined;
   readonly maxRetries?: number | undefined;
+  readonly modelRequestGate?: ConcurrencyGate | undefined;
   readonly provider: RelationExtractionTextProvider;
   readonly temperature?: number | undefined;
 }
@@ -43,6 +46,7 @@ export interface LlmRelationExtractionProviderOptions {
 export function createLlmRelationExtractionProvider({
   maxOutputTokens = 1_500,
   maxRetries = 2,
+  modelRequestGate = semanticExtractionModelRequestGate,
   provider,
   temperature = 0,
 }: LlmRelationExtractionProviderOptions): RelationExtractionProvider {
@@ -65,7 +69,7 @@ export function createLlmRelationExtractionProvider({
       let parsed: LlmRelationExtractionOutput | undefined;
       for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
         try {
-          result = await semanticExtractionModelRequestGate.run(() =>
+          result = await modelRequestGate.run(() =>
             provider.generate({
               maxOutputTokens,
               messages,
@@ -107,7 +111,82 @@ export function createLlmRelationExtractionProvider({
         })),
       };
     },
+    extractBatch: async (inputs) => {
+      if (inputs.length === 0) return [];
+      let messages = relationExtractionBatchMessages(inputs);
+      let result: GenerateRelationExtractionTextResult | undefined;
+      for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+        try {
+          result = await modelRequestGate.run(() =>
+            provider.generate({
+              maxOutputTokens: Math.min(4_096, Math.max(maxOutputTokens, inputs.length * 384)),
+              messages,
+              model: inputs[0]?.model ?? "",
+              temperature,
+              ...(inputs[0]?.tenantId ? { tenantId: inputs[0].tenantId } : {}),
+            }),
+          );
+          const parsed = parseLlmRelationExtractionBatchJson(result.text, inputs);
+          return parsed.map((relations) => ({
+            metadata: {
+              batchSize: inputs.length,
+              ...(provider.kind ? { provider: provider.kind } : {}),
+              ...(result?.finishReason ? { finishReason: result.finishReason } : {}),
+              ...(result?.model ? { generationModel: result.model } : {}),
+            },
+            relations,
+          }));
+        } catch (error) {
+          if (attempt >= maxRetries) {
+            if (result) {
+              throw new RelationExtractionBatchContractError(
+                "LLM relation extraction batch returned invalid JSON",
+                { cause: error },
+              );
+            }
+            throw error;
+          }
+          if (result) {
+            messages = relationExtractionCorrectionMessages(messages, result.text);
+            result = undefined;
+          } else if (!isRetryableModelError(error)) {
+            throw error;
+          }
+        }
+      }
+      throw new RelationExtractionBatchContractError(
+        "LLM relation extraction batch exhausted retries",
+      );
+    },
   };
+}
+
+function relationExtractionBatchMessages(
+  inputs: readonly RelationExtractionProviderInput[],
+): readonly LlmRelationExtractionMessage[] {
+  return [
+    {
+      content: [
+        "Extract high-signal knowledge graph relations from document chunks.",
+        "Return strict JSON only with this shape:",
+        '{"nodes":[{"nodeId":"node-id","relations":[{"subject":"Acme Corp","type":"references","object":"Renewal Policy","confidence":0.91}]}]}',
+        "Return exactly one node object for every supplied nodeId and do not invent ids.",
+        "Allowed relation types: mentions, defines, references, depends_on, supersedes, contradicts.",
+      ].join("\n"),
+      role: "system",
+    },
+    {
+      content: JSON.stringify({
+        nodes: inputs.map((input) => ({
+          entities: input.entities,
+          maxRelations: input.maxRelations,
+          nodeId: input.node.id,
+          prompt: input.prompt,
+        })),
+      }),
+      role: "user",
+    },
+  ];
 }
 
 function relationExtractionMessages(
@@ -192,15 +271,28 @@ const RelationTypeSchema = z.enum([
   "supersedes",
 ]);
 
+const ExtractedRelationSchema = z
+  .object({
+    confidence: z.number().min(0).max(1),
+    object: z.string().min(1),
+    subject: z.string().min(1),
+    type: RelationTypeSchema,
+  })
+  .strict();
+
 const LlmRelationExtractionOutputSchema = z
   .object({
-    relations: z.array(
+    relations: z.array(ExtractedRelationSchema),
+  })
+  .strict();
+
+const LlmRelationExtractionBatchOutputSchema = z
+  .object({
+    nodes: z.array(
       z
         .object({
-          confidence: z.number().min(0).max(1),
-          object: z.string().min(1),
-          subject: z.string().min(1),
-          type: RelationTypeSchema,
+          nodeId: z.string().min(1),
+          relations: z.array(ExtractedRelationSchema),
         })
         .strict(),
     ),
@@ -208,3 +300,22 @@ const LlmRelationExtractionOutputSchema = z
   .strict();
 
 type LlmRelationExtractionOutput = z.infer<typeof LlmRelationExtractionOutputSchema>;
+
+function parseLlmRelationExtractionBatchJson(
+  text: string,
+  inputs: readonly RelationExtractionProviderInput[],
+): Array<LlmRelationExtractionOutput["relations"]> {
+  const parsed = LlmRelationExtractionBatchOutputSchema.parse(tryParseJsonObject(text));
+  const expected = new Set(inputs.map((input) => input.node.id));
+  const byNodeId = new Map<string, LlmRelationExtractionOutput["relations"]>();
+  for (const node of parsed.nodes) {
+    if (!expected.has(node.nodeId) || byNodeId.has(node.nodeId)) {
+      throw new Error("LLM relation extraction batch returned an unexpected or duplicate node id");
+    }
+    byNodeId.set(node.nodeId, node.relations);
+  }
+  if (byNodeId.size !== inputs.length) {
+    throw new Error("LLM relation extraction batch returned an incomplete node set");
+  }
+  return inputs.map((input) => byNodeId.get(input.node.id) ?? []);
+}

@@ -44,6 +44,15 @@ describe("createApiEmbeddingOptions", () => {
     ]);
   });
 
+  it("validates embedding transport concurrency", () => {
+    expect(() =>
+      createApiEmbeddingOptions({ KNOWLEDGE_EMBEDDING_REQUEST_CONCURRENCY: "0" }),
+    ).toThrow("KNOWLEDGE_EMBEDDING_REQUEST_CONCURRENCY must be a positive integer");
+    expect(() =>
+      createApiEmbeddingOptions({ KNOWLEDGE_EMBEDDING_REQUEST_CONCURRENCY: "9" }),
+    ).toThrow("KNOWLEDGE_EMBEDDING_REQUEST_CONCURRENCY must be between 1 and 8");
+  });
+
   it("builds a profile-only Dify factory without a deployment default", async () => {
     const options = createApiEmbeddingOptions({});
 

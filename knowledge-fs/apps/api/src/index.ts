@@ -64,6 +64,7 @@ import {
 } from "./durable-deletion-options";
 import { createApiEmbeddingOptions } from "./embedding-options";
 import { createApiGraphExpansionOptions } from "./graph-expansion-options";
+import { createApiIngestionModelRuntimeOptions } from "./ingestion-model-runtime-options";
 import { createApiKnowledgeSpaceProfileBackfillAssembly } from "./knowledge-space-profile-backfill-options";
 import {
   createApiKnowledgeSpaceSemanticIngestionOptions,
@@ -119,6 +120,10 @@ const operationalMetrics = createApiKnowledgeFsOperationalMetrics({
     process.stdout.write(`${JSON.stringify(metric)}\n`);
   },
 });
+const ingestionModelRuntimeOptions = createApiIngestionModelRuntimeOptions(
+  process.env,
+  operationalMetrics.ingestionModel,
+);
 const capabilityV2 = createApiCapabilityV2Assembly({
   audit: {
     record(event) {
@@ -142,7 +147,11 @@ const legacyAuthorizationRemoved =
 const integratedModeEnabled =
   process.env.KNOWLEDGE_INTEGRATED_MODE_ENABLED?.trim().toLowerCase() === "true";
 const compute = createApiComputeRuntime();
-const embeddingOptions = createApiEmbeddingOptions();
+const embeddingOptions = createApiEmbeddingOptions(
+  process.env,
+  operationalMetrics.embeddingRequests,
+  ingestionModelRuntimeOptions.modelRequestGate,
+);
 const parser = createApiDocumentParser();
 const visualEmbeddingOptions = createApiVisualEmbeddingOptions({
   objectStorage: adapter.objectStorage,
@@ -155,7 +164,9 @@ const multimodalEnrichmentOptions = createApiMultimodalEnrichmentOptions({
   objectStorage: adapter.objectStorage,
 });
 const rerankerOptions = createApiRerankerOptions();
-const semanticEntityExtractionOptions = createApiSemanticEntityExtractionOptions();
+const semanticEntityExtractionOptions = createApiSemanticEntityExtractionOptions(process.env, {
+  modelRequestGate: ingestionModelRuntimeOptions.modelRequestGate,
+});
 const profileReasoningCapability = createApiProfileReasoningCapability();
 const pageIndexSemanticTreeSearch = createPageIndexSemanticTreeSearch({
   batchSize: 5,
@@ -404,10 +415,18 @@ const knowledgeSpaceManifests = databaseRepositories.knowledgeSpaceProfiles
     })
   : rawKnowledgeSpaceManifests;
 const documentOutlineSummaryEnhancer = createKnowledgeSpaceOutlineSummaryEnhancer({
+  ...(databaseRepositories.documentOutlineSummaryCheckpoints
+    ? { checkpoints: databaseRepositories.documentOutlineSummaryCheckpoints }
+    : {}),
   manifests: knowledgeSpaceManifests,
+  maxBatchInputChars: ingestionModelRuntimeOptions.outlineSummaryBatchMaxInputChars,
+  maxBatchSize: ingestionModelRuntimeOptions.outlineSummaryBatchSize,
+  maxConcurrentSummaries: ingestionModelRuntimeOptions.outlineSummaryMaxConcurrency,
   maxInputChars: 12_000,
   maxOutputTokens: profileReasoningCapability.maxOutputTokens,
   maxSummaryChars: 2_000,
+  metrics: operationalMetrics.outlineSummary,
+  modelRequestGate: ingestionModelRuntimeOptions.modelRequestGate,
   providerFactory: profileReasoningCapability.providerFactory,
 });
 const relevanceTriageOptions = createApiRelevanceTriageOptions({
@@ -546,7 +565,13 @@ const documentCompilationRuntime = createApiDocumentCompilationRuntime({
       ? { tasks: repositoryOptions.documentProcessingTasks }
       : {}),
   },
-  semantic: knowledgeSpaceSemanticIngestionOptions,
+  semantic: {
+    ...knowledgeSpaceSemanticIngestionOptions,
+    modelRequestGate: ingestionModelRuntimeOptions.modelRequestGate,
+    semanticExtractionBatchSize: ingestionModelRuntimeOptions.semanticExtractionBatchSize,
+    semanticExtractionMaxConcurrency: ingestionModelRuntimeOptions.semanticExtractionMaxConcurrency,
+  },
+  semanticMetrics: operationalMetrics.semanticEnrichment,
   ...(visualEmbeddingOptions
     ? {
         visual: {

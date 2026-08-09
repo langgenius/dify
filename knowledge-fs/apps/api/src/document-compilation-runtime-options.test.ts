@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   createApiDocumentCompilationRuntime,
   createApiProfileMigrationGatewayOptions,
+  createDocumentSemanticEnrichmentGenerationGuard,
 } from "./document-compilation-runtime-options";
 import { createApiDatabaseRepositories } from "./repository-options";
 
@@ -173,6 +174,75 @@ describe("createApiDocumentCompilationRuntime", () => {
     assembly?.stop();
   });
 });
+
+describe("createDocumentSemanticEnrichmentGenerationGuard", () => {
+  it("waits when another document advances the space head before this compilation publishes", async () => {
+    const guard = semanticGenerationGuard({ attemptRunState: "running", memberKeys: [] });
+
+    await expect(guard.status(semanticJob())).resolves.toBe("pending");
+  });
+
+  it("accepts the exact outline generation once it is part of the current publication", async () => {
+    const guard = semanticGenerationGuard({
+      attemptRunState: "running",
+      memberKeys: [outlineId],
+    });
+
+    await expect(guard.status(semanticJob())).resolves.toBe("current");
+  });
+
+  it("supersedes a successful generation that is absent from the current publication", async () => {
+    const guard = semanticGenerationGuard({ attemptRunState: "succeeded", memberKeys: [] });
+
+    await expect(guard.status(semanticJob())).resolves.toBe("superseded");
+  });
+});
+
+const attemptId = "018f0d60-7a49-7cc2-9c1b-000000000001";
+const assetId = "018f0d60-7a49-7cc2-9c1b-000000000002";
+const generationId = "018f0d60-7a49-7cc2-9c1b-000000000003";
+const outlineId = "018f0d60-7a49-7cc2-9c1b-000000000004";
+const publicationId = "018f0d60-7a49-7cc2-9c1b-000000000005";
+const spaceId = "018f0d60-7a49-7cc2-9c1b-000000000006";
+
+function semanticGenerationGuard({
+  attemptRunState,
+  memberKeys,
+}: {
+  readonly attemptRunState: "running" | "succeeded";
+  readonly memberKeys: readonly string[];
+}) {
+  return createDocumentSemanticEnrichmentGenerationGuard({
+    attempts: {
+      get: async () => ({
+        id: attemptId,
+        publicationGenerationId: generationId,
+        runState: attemptRunState,
+      }),
+    } as never,
+    members: {
+      filterComponentKeys: async () => [...memberKeys],
+    } as never,
+    outlines: {
+      getByDocumentVersion: async () => ({ id: outlineId }),
+    } as never,
+    publications: {
+      getPublished: async () => ({ headRevision: 8, id: publicationId }),
+    } as never,
+  });
+}
+
+function semanticJob() {
+  return {
+    baseHeadRevision: 7,
+    compilationAttemptId: attemptId,
+    documentAssetId: assetId,
+    documentVersion: 1,
+    knowledgeSpaceId: spaceId,
+    publicationGenerationId: generationId,
+    tenantId: "tenant-1",
+  } as never;
+}
 
 function required<T>(value: T | undefined): T {
   if (!value) {

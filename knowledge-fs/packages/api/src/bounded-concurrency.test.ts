@@ -1,6 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { createConcurrencyGate, mapWithConcurrency } from "./bounded-concurrency";
+import {
+  type ConcurrencyGateEvent,
+  createConcurrencyGate,
+  mapWithConcurrency,
+} from "./bounded-concurrency";
 
 describe("bounded concurrency", () => {
   it("shares a concurrency gate across independent callers", async () => {
@@ -66,5 +70,50 @@ describe("bounded concurrency", () => {
     release?.();
     await expect(observed).resolves.toMatchObject({ message: "boom" });
     expect(started).toEqual([0, 1]);
+  });
+
+  it("reports bounded active load and FIFO queue wait without affecting callers", async () => {
+    let clock = 100;
+    let releaseFirst: (() => void) | undefined;
+    let firstStarted: (() => void) | undefined;
+    const blocked = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    const started = new Promise<void>((resolve) => {
+      firstStarted = resolve;
+    });
+    const events: ConcurrencyGateEvent[] = [];
+    const gate = createConcurrencyGate(1, {
+      now: () => clock,
+      onEvent: (event) => {
+        events.push(event);
+      },
+    });
+
+    const first = gate.run(async () => {
+      firstStarted?.();
+      await blocked;
+    });
+    await started;
+    const second = gate.run(async () => undefined);
+    await Promise.resolve();
+    clock = 125;
+    releaseFirst?.();
+    await Promise.all([first, second]);
+
+    expect(events.filter((event) => event.lifecycle === "acquired")).toEqual([
+      expect.objectContaining({ activeRequests: 1, queueWaitMs: 0 }),
+      expect.objectContaining({ activeRequests: 1, queueWaitMs: 25 }),
+    ]);
+    expect(events.every((event) => event.activeRequests <= event.limit)).toBe(true);
+  });
+
+  it("isolates concurrency telemetry failures", async () => {
+    const gate = createConcurrencyGate(1, {
+      onEvent: vi.fn(() => {
+        throw new Error("collector unavailable");
+      }),
+    });
+    await expect(gate.run(async () => "ok")).resolves.toBe("ok");
   });
 });

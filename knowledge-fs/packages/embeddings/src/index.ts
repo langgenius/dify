@@ -404,13 +404,34 @@ export interface DifyModelRuntimeEmbeddingProviderOptions {
   /** Optional model configuration used for early response validation. */
   readonly dimension?: number | undefined;
   readonly maxBatchSize?: number | undefined;
+  /** Maximum Dify/plugin-daemon transport requests issued at the same time by one embed call. */
+  readonly maxConcurrentRequests?: number | undefined;
   /** Bounds each Dify/plugin-daemon response independently of the accepted caller batch. */
   readonly maxRequestBatchSize?: number | undefined;
   readonly maxTextBytes?: number | undefined;
+  readonly metrics?: DifyModelRuntimeEmbeddingOperationalMetrics | undefined;
   readonly model: string;
   readonly models?: readonly EmbeddingModelInfo[] | undefined;
   readonly pluginId: string;
   readonly provider: string;
+  readonly requestGate?: DifyModelRuntimeEmbeddingRequestGate | undefined;
+  readonly now?: (() => number) | undefined;
+}
+
+export interface DifyModelRuntimeEmbeddingRequestGate {
+  run<T>(fn: () => Promise<T>): Promise<T>;
+}
+
+export interface DifyModelRuntimeEmbeddingOperationalMetric {
+  readonly concurrencyLimit: number;
+  readonly durationMs: number;
+  readonly failureKind?: "timeout" | "rate_limited" | "other" | undefined;
+  readonly outcome: "succeeded" | "failed";
+  readonly textCount: number;
+}
+
+export interface DifyModelRuntimeEmbeddingOperationalMetrics {
+  record(metric: DifyModelRuntimeEmbeddingOperationalMetric): Promise<void> | void;
 }
 
 const DifyModelRuntimeEmbeddingDataSchema = z.object({
@@ -425,6 +446,7 @@ const DifyModelRuntimeEmbeddingDataSchema = z.object({
 // exceeds plugin-daemon's default 5 MiB stdio buffer. Keep each daemon round-trip comfortably
 // below that boundary while still accepting the workspace-wide 128-item provider contract.
 const DEFAULT_DIFY_MODEL_RUNTIME_REQUEST_BATCH_SIZE = 16;
+const DEFAULT_DIFY_MODEL_RUNTIME_REQUEST_CONCURRENCY = 2;
 
 /**
  * EmbeddingProvider backed by Dify's tenant-bound ModelManager/ModelInstance runtime.
@@ -458,6 +480,9 @@ export function createDifyModelRuntimeEmbeddingProvider(
   const maxRequestBatchSize =
     options.maxRequestBatchSize ??
     Math.min(DEFAULT_DIFY_MODEL_RUNTIME_REQUEST_BATCH_SIZE, maxBatchSize);
+  const maxConcurrentRequests =
+    options.maxConcurrentRequests ?? DEFAULT_DIFY_MODEL_RUNTIME_REQUEST_CONCURRENCY;
+  const now = options.now ?? Date.now;
   const maxTextBytes = options.maxTextBytes ?? defaultMaxTextBytes;
   if (
     !Number.isSafeInteger(maxRequestBatchSize) ||
@@ -466,6 +491,11 @@ export function createDifyModelRuntimeEmbeddingProvider(
   ) {
     throw new ProviderInputError(
       "Dify model runtime embedding maxRequestBatchSize must be between 1 and maxBatchSize",
+    );
+  }
+  if (!Number.isSafeInteger(maxConcurrentRequests) || maxConcurrentRequests < 1) {
+    throw new ProviderInputError(
+      "Dify model runtime embedding maxConcurrentRequests must be a positive integer",
     );
   }
   const models = (
@@ -492,37 +522,77 @@ export function createDifyModelRuntimeEmbeddingProvider(
       }
 
       const configuredDimension = observedDimensions.get(input.model);
+      const requestBatches = chunkEmbeddingTexts(input.texts, maxRequestBatchSize);
+      const requestAbortController = new AbortController();
+      const requestSignal = input.signal
+        ? AbortSignal.any([input.signal, requestAbortController.signal])
+        : requestAbortController.signal;
+      const batchResults = await mapEmbeddingBatchesWithConcurrency(
+        requestBatches,
+        maxConcurrentRequests,
+        async (texts) => {
+          const startedAt = now();
+          try {
+            requestSignal.throwIfAborted();
+            const invoke = () =>
+              options.client.invokeTextEmbedding({
+                inputType: input.inputType === "search_query" ? "query" : "document",
+                model: input.model,
+                pluginId: options.pluginId,
+                provider: options.provider,
+                tenantId,
+                texts,
+                signal: requestSignal,
+              });
+            const data = options.requestGate
+              ? await options.requestGate.run(invoke)
+              : await invoke();
+            const parsed = DifyModelRuntimeEmbeddingDataSchema.safeParse(data);
+
+            if (!parsed.success) {
+              throw new ProviderResponseError("Dify returned an invalid embedding response", {
+                cause: parsed.error,
+              });
+            }
+            if (parsed.data.embeddings.length !== texts.length) {
+              throw new ProviderResponseError(
+                `Dify returned ${parsed.data.embeddings.length} embeddings for ${texts.length} texts`,
+              );
+            }
+
+            const result = {
+              dimension: validateEmbeddingResponseVectors(parsed.data.embeddings),
+              embeddings: parsed.data.embeddings.map((vector) => [...vector]),
+              tokens: parsed.data.usage?.total_tokens ?? parsed.data.usage?.tokens,
+            };
+            recordDifyEmbeddingMetric(options.metrics, {
+              concurrencyLimit: maxConcurrentRequests,
+              durationMs: Math.max(0, now() - startedAt),
+              outcome: "succeeded",
+              textCount: texts.length,
+            });
+            return result;
+          } catch (error) {
+            recordDifyEmbeddingMetric(options.metrics, {
+              concurrencyLimit: maxConcurrentRequests,
+              durationMs: Math.max(0, now() - startedAt),
+              failureKind: difyEmbeddingFailureKind(error),
+              outcome: "failed",
+              textCount: texts.length,
+            });
+            throw error;
+          }
+        },
+        requestAbortController,
+      );
+
       const dense: number[][] = [];
       let responseDimension: number | undefined;
       let totalTokens = 0;
       let usageObserved = false;
 
-      for (let offset = 0; offset < input.texts.length; offset += maxRequestBatchSize) {
-        input.signal?.throwIfAborted();
-        const texts = input.texts.slice(offset, offset + maxRequestBatchSize);
-        const data = await options.client.invokeTextEmbedding({
-          inputType: input.inputType === "search_query" ? "query" : "document",
-          model: input.model,
-          pluginId: options.pluginId,
-          provider: options.provider,
-          tenantId,
-          texts,
-          ...(input.signal ? { signal: input.signal } : {}),
-        });
-        const parsed = DifyModelRuntimeEmbeddingDataSchema.safeParse(data);
-
-        if (!parsed.success) {
-          throw new ProviderResponseError("Dify returned an invalid embedding response", {
-            cause: parsed.error,
-          });
-        }
-        if (parsed.data.embeddings.length !== texts.length) {
-          throw new ProviderResponseError(
-            `Dify returned ${parsed.data.embeddings.length} embeddings for ${texts.length} texts`,
-          );
-        }
-
-        const batchDimension = validateEmbeddingResponseVectors(parsed.data.embeddings);
+      for (const batch of batchResults) {
+        const batchDimension = batch.dimension;
         const expectedDimension = responseDimension ?? configuredDimension;
         if (expectedDimension !== undefined && expectedDimension !== batchDimension) {
           throw new ProviderResponseError(
@@ -530,9 +600,9 @@ export function createDifyModelRuntimeEmbeddingProvider(
           );
         }
         responseDimension = batchDimension;
-        dense.push(...parsed.data.embeddings.map((vector) => [...vector]));
+        dense.push(...batch.embeddings);
 
-        const batchTokens = parsed.data.usage?.total_tokens ?? parsed.data.usage?.tokens;
+        const batchTokens = batch.tokens;
         if (batchTokens !== undefined) {
           usageObserved = true;
           totalTokens += batchTokens;
@@ -568,6 +638,85 @@ export function createDifyModelRuntimeEmbeddingProvider(
       }));
     },
   };
+}
+
+function difyEmbeddingFailureKind(
+  error: unknown,
+): NonNullable<DifyModelRuntimeEmbeddingOperationalMetric["failureKind"]> {
+  const record = typeof error === "object" && error !== null ? error : undefined;
+  const code = record && "code" in record ? String(record.code).toLowerCase() : "";
+  const status = record && "status" in record ? Number(record.status) : undefined;
+  const message = (error instanceof Error ? error.message : String(error)).toLowerCase();
+  if (status === 429 || code.includes("429") || code.includes("rate_limit")) {
+    return "rate_limited";
+  }
+  if (
+    code.includes("timeout") ||
+    code.includes("timedout") ||
+    message.includes("timed out") ||
+    message.includes("timeout")
+  ) {
+    return "timeout";
+  }
+  return "other";
+}
+
+function recordDifyEmbeddingMetric(
+  metrics: DifyModelRuntimeEmbeddingOperationalMetrics | undefined,
+  metric: DifyModelRuntimeEmbeddingOperationalMetric,
+): void {
+  if (!metrics) return;
+  try {
+    const pending = metrics.record(metric);
+    if (pending) void pending.catch(() => undefined);
+  } catch {
+    // Embedding telemetry cannot alter projection output or cancellation behavior.
+  }
+}
+
+function chunkEmbeddingTexts(texts: readonly string[], batchSize: number): string[][] {
+  const batches: string[][] = [];
+  for (let offset = 0; offset < texts.length; offset += batchSize) {
+    batches.push(texts.slice(offset, offset + batchSize));
+  }
+  return batches;
+}
+
+async function mapEmbeddingBatchesWithConcurrency<Result>(
+  batches: readonly string[][],
+  concurrency: number,
+  task: (batch: string[]) => Promise<Result>,
+  abortController: AbortController,
+): Promise<Result[]> {
+  const results = new Array<Result>(batches.length);
+  let nextIndex = 0;
+  let failure: unknown;
+
+  const worker = async () => {
+    while (!abortController.signal.aborted) {
+      const index = nextIndex;
+      nextIndex += 1;
+      const batch = batches[index];
+      if (!batch) return;
+
+      try {
+        results[index] = await task(batch);
+      } catch (error) {
+        if (failure === undefined) {
+          failure = error;
+          abortController.abort(error);
+        }
+        return;
+      }
+    }
+  };
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, batches.length) }, async () => worker()),
+  );
+  if (failure !== undefined) throw failure;
+
+  return results;
 }
 
 function defaultDifyModelRuntimeEmbeddingModel(

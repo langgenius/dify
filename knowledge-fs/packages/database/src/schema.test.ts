@@ -110,6 +110,9 @@ describe("database schema catalog", () => {
       "dify_integration_freezes",
       "upload_sessions",
       "page_index_findability_evaluations",
+      "document_outline_summary_checkpoints",
+      "document_semantic_enrichment_jobs",
+      "document_semantic_extraction_checkpoints",
       "bulk_operations",
     ]);
   });

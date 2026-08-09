@@ -3,6 +3,7 @@ import {
   KnowledgeSpaceRetrievalProfileSchema,
 } from "@knowledge/core";
 
+import type { ConcurrencyGate } from "./bounded-concurrency";
 import { type EntityExtractionFlow, createEntityExtractionFlow } from "./entity-extraction-flow";
 import {
   type ExtractionQualityControlFlow,
@@ -38,9 +39,12 @@ export interface KnowledgeSpaceSemanticIngestionPostProcessorOptions {
   readonly graph: GraphIndexRepository;
   readonly manifests: Pick<KnowledgeSpaceManifestRepository, "get">;
   readonly maxEntitiesPerNode: number;
+  readonly maxConcurrentBatches?: number | undefined;
   readonly maxNodesPerArtifact: number;
   readonly maxOutputTokens: number;
   readonly maxRelationsPerNode: number;
+  readonly providerBatchSize?: number | undefined;
+  readonly modelRequestGate?: ConcurrencyGate | undefined;
   readonly nodes: KnowledgeNodeRepository;
   readonly now?: () => string;
   readonly providerFactory: (
@@ -75,13 +79,16 @@ export type KnowledgeSpaceSemanticExtractionFlowResolverOptions = Omit<
 
 export function createKnowledgeSpaceSemanticExtractionFlowResolver({
   manifests,
+  maxConcurrentBatches = 4,
   maxEntitiesPerNode,
   maxNodesPerArtifact,
   maxOutputTokens,
   maxRelationsPerNode,
+  modelRequestGate,
   nodes,
   now = () => new Date().toISOString(),
   providerFactory,
+  providerBatchSize = 8,
 }: KnowledgeSpaceSemanticExtractionFlowResolverOptions): KnowledgeSpaceSemanticExtractionFlowResolver {
   assertPositiveInteger(maxEntitiesPerNode, "maxEntitiesPerNode");
   assertPositiveInteger(maxNodesPerArtifact, "maxNodesPerArtifact");
@@ -118,14 +125,17 @@ export function createKnowledgeSpaceSemanticExtractionFlowResolver({
       return {
         entityExtraction: createEntityExtractionFlow({
           maxBatchSize: maxNodesPerArtifact,
+          maxConcurrency: maxConcurrentBatches,
           maxEntitiesPerNode,
           model: selection.model,
           nodes,
           now,
           provider: createLlmEntityExtractionProvider({
             maxOutputTokens,
+            ...(modelRequestGate ? { modelRequestGate } : {}),
             provider,
           }),
+          providerBatchSize,
         }),
         extractionQuality: createExtractionQualityControlFlow({
           maxBatchSize: maxNodesPerArtifact,
@@ -135,14 +145,17 @@ export function createKnowledgeSpaceSemanticExtractionFlowResolver({
         }),
         relationExtraction: createRelationExtractionFlow({
           maxBatchSize: maxNodesPerArtifact,
+          maxConcurrency: maxConcurrentBatches,
           maxRelationsPerNode,
           model: selection.model,
           nodes,
           now,
           provider: createLlmRelationExtractionProvider({
             maxOutputTokens,
+            ...(modelRequestGate ? { modelRequestGate } : {}),
             provider,
           }),
+          providerBatchSize,
         }),
       };
     },
@@ -159,23 +172,29 @@ export function createKnowledgeSpaceSemanticIngestionPostProcessor({
   communityMaterializer,
   graph,
   manifests,
+  maxConcurrentBatches,
   maxEntitiesPerNode,
   maxNodesPerArtifact,
   maxOutputTokens,
   maxRelationsPerNode,
+  modelRequestGate,
   nodes,
   now = () => new Date().toISOString(),
   providerFactory,
+  providerBatchSize,
 }: KnowledgeSpaceSemanticIngestionPostProcessorOptions): SemanticIngestionPostProcessor {
   const flowResolver = createKnowledgeSpaceSemanticExtractionFlowResolver({
     manifests,
+    ...(maxConcurrentBatches ? { maxConcurrentBatches } : {}),
     maxEntitiesPerNode,
     maxNodesPerArtifact,
     maxOutputTokens,
     maxRelationsPerNode,
+    ...(modelRequestGate ? { modelRequestGate } : {}),
     nodes,
     now,
     providerFactory,
+    ...(providerBatchSize ? { providerBatchSize } : {}),
   });
 
   return {

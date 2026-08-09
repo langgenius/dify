@@ -1,6 +1,11 @@
 import type { BulkOperation } from "./bulk-operation";
 import type { BulkOperationSummary } from "./bulk-operation-summary";
-import type { DocumentProcessingTask } from "./document-processing-task-repository";
+import type {
+  DocumentProcessingOperation,
+  DocumentProcessingPhase,
+  DocumentProcessingTask,
+  DocumentSemanticEnrichmentProgress,
+} from "./document-processing-task-repository";
 import type { SourceWorkflowRun } from "./source-product-workflow";
 
 export type BackgroundTaskKind = "document" | "document_bulk" | "source";
@@ -20,6 +25,7 @@ export type BackgroundTaskOperation =
 export type BackgroundTaskState = "queued" | "running" | "completed" | "failed" | "canceled";
 
 export interface BackgroundTask {
+  readonly activeOperations?: readonly DocumentProcessingOperation[] | undefined;
   readonly canCancel: boolean;
   readonly canRetry: boolean;
   readonly completedAt?: string | undefined;
@@ -31,12 +37,14 @@ export interface BackgroundTask {
   readonly id: string;
   readonly knowledgeSpaceId: string;
   readonly operation: BackgroundTaskOperation;
+  readonly phase?: DocumentProcessingPhase | undefined;
   readonly progressCompleted: number;
   readonly progressFailed: number;
   readonly progressPercent: number;
   readonly progressTotal: number;
   readonly sourceId?: string | undefined;
   readonly state: BackgroundTaskState;
+  readonly semanticEnrichment?: DocumentSemanticEnrichmentProgress | undefined;
   readonly taskKind: BackgroundTaskKind;
   readonly updatedAt: string;
 }
@@ -51,6 +59,7 @@ export interface BackgroundTaskCursor {
 export function documentBackgroundTask(task: DocumentProcessingTask): BackgroundTask {
   const state = documentState(task.state);
   return {
+    ...(task.activeOperations ? { activeOperations: task.activeOperations } : {}),
     canCancel: state === "queued" || state === "running",
     canRetry: state === "failed" || state === "canceled",
     ...(task.completedAt ? { completedAt: task.completedAt } : {}),
@@ -62,11 +71,13 @@ export function documentBackgroundTask(task: DocumentProcessingTask): Background
     id: task.id,
     knowledgeSpaceId: task.knowledgeSpaceId,
     operation: "document_processing",
+    ...(task.phase ? { phase: task.phase } : {}),
     progressCompleted: state === "completed" ? 1 : 0,
     progressFailed: state === "failed" ? 1 : 0,
     progressPercent: task.progressPercent,
     progressTotal: 1,
     state,
+    ...(task.semanticEnrichment ? { semanticEnrichment: task.semanticEnrichment } : {}),
     taskKind: "document",
     updatedAt: task.updatedAt,
   };

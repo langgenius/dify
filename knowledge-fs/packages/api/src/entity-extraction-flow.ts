@@ -28,6 +28,13 @@ export interface EntityExtractionProviderResult {
 
 export interface EntityExtractionProvider {
   extract(input: EntityExtractionProviderInput): Promise<EntityExtractionProviderResult>;
+  extractBatch?(
+    inputs: readonly EntityExtractionProviderInput[],
+  ): Promise<readonly EntityExtractionProviderResult[]>;
+}
+
+export class EntityExtractionBatchContractError extends Error {
+  override readonly name = "EntityExtractionBatchContractError";
 }
 
 export interface EntityExtractionFlowOptions {
@@ -39,6 +46,7 @@ export interface EntityExtractionFlowOptions {
   readonly now?: () => string;
   readonly promptVersion?: string | undefined;
   readonly provider: EntityExtractionProvider;
+  readonly providerBatchSize?: number | undefined;
 }
 
 export interface ExtractKnowledgeNodeEntitiesInput {
@@ -67,6 +75,7 @@ export function createEntityExtractionFlow({
   now = () => new Date().toISOString(),
   promptVersion = "entity-extraction-v1",
   provider,
+  providerBatchSize = 8,
 }: EntityExtractionFlowOptions): EntityExtractionFlow {
   if (!Number.isInteger(maxBatchSize) || maxBatchSize < 1) {
     throw new Error("Entity extraction maxBatchSize must be at least 1");
@@ -78,6 +87,10 @@ export function createEntityExtractionFlow({
 
   if (!Number.isInteger(maxEntitiesPerNode) || maxEntitiesPerNode < 1) {
     throw new Error("Entity extraction maxEntitiesPerNode must be at least 1");
+  }
+
+  if (!Number.isInteger(providerBatchSize) || providerBatchSize < 1) {
+    throw new Error("Entity extraction providerBatchSize must be at least 1");
   }
 
   if (!model.trim()) {
@@ -117,15 +130,33 @@ export function createEntityExtractionFlow({
         };
       }
 
-      const generated = await mapWithConcurrency(orderedNodes, maxConcurrency, async (node) => {
-        const result = await provider.extract({
-          maxEntities: maxEntitiesPerNode,
-          model,
-          node: cloneKnowledgeNode(node),
-          prompt: entityExtractionPrompt(node),
-          promptVersion,
-          ...(tenantId ? { tenantId } : {}),
-        });
+      const providerInputs = orderedNodes.map((node) => ({
+        maxEntities: maxEntitiesPerNode,
+        model,
+        node: cloneKnowledgeNode(node),
+        prompt: entityExtractionPrompt(node),
+        promptVersion,
+        ...(tenantId ? { tenantId } : {}),
+      }));
+      const extractBatch = provider.extractBatch;
+      const providerResults = extractBatch
+        ? await extractEntitiesInBatches({
+            extractBatch,
+            inputs: providerInputs,
+            maxConcurrency,
+            provider,
+            providerBatchSize,
+          })
+        : await mapWithConcurrency(providerInputs, maxConcurrency, (providerInput) =>
+            provider.extract(providerInput),
+          );
+      const generated = orderedNodes.map((node, index) => {
+        const result = providerResults[index];
+        if (!result) {
+          throw new EntityExtractionBatchContractError(
+            "Entity extraction provider returned an incomplete result set",
+          );
+        }
         const entities = validateExtractedEntities(result.entities, maxEntitiesPerNode);
 
         return {
@@ -153,6 +184,45 @@ export function createEntityExtractionFlow({
       };
     },
   };
+}
+
+async function extractEntitiesInBatches({
+  extractBatch,
+  inputs,
+  maxConcurrency,
+  provider,
+  providerBatchSize,
+}: {
+  readonly extractBatch: NonNullable<EntityExtractionProvider["extractBatch"]>;
+  readonly inputs: readonly EntityExtractionProviderInput[];
+  readonly maxConcurrency: number;
+  readonly provider: EntityExtractionProvider;
+  readonly providerBatchSize: number;
+}): Promise<EntityExtractionProviderResult[]> {
+  const batches = chunk(inputs, providerBatchSize);
+  const results = await mapWithConcurrency(batches, maxConcurrency, async (batch) => {
+    try {
+      const extracted = await extractBatch(batch);
+      if (extracted.length !== batch.length) {
+        throw new EntityExtractionBatchContractError(
+          `Entity extraction batch returned ${extracted.length} results for ${batch.length} inputs`,
+        );
+      }
+      return [...extracted];
+    } catch (error) {
+      if (!(error instanceof EntityExtractionBatchContractError)) throw error;
+      return mapWithConcurrency(batch, maxConcurrency, (input) => provider.extract(input));
+    }
+  });
+  return results.flat();
+}
+
+function chunk<T>(items: readonly T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+  return chunks;
 }
 
 function validateEntityExtractionInput({

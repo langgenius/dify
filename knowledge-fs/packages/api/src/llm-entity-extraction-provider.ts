@@ -1,8 +1,10 @@
 import { z } from "zod";
 
-import type {
-  EntityExtractionProvider,
-  EntityExtractionProviderInput,
+import type { ConcurrencyGate } from "./bounded-concurrency";
+import {
+  EntityExtractionBatchContractError,
+  type EntityExtractionProvider,
+  type EntityExtractionProviderInput,
 } from "./entity-extraction-flow";
 import { cloneJsonObject, isPlainObject } from "./json-utils";
 import { semanticExtractionModelRequestGate } from "./semantic-extraction-concurrency";
@@ -35,6 +37,7 @@ export interface EntityExtractionTextProvider {
 export interface LlmEntityExtractionProviderOptions {
   readonly maxOutputTokens?: number | undefined;
   readonly maxRetries?: number | undefined;
+  readonly modelRequestGate?: ConcurrencyGate | undefined;
   readonly provider: EntityExtractionTextProvider;
   readonly temperature?: number | undefined;
 }
@@ -42,6 +45,7 @@ export interface LlmEntityExtractionProviderOptions {
 export function createLlmEntityExtractionProvider({
   maxOutputTokens = 1_500,
   maxRetries = 2,
+  modelRequestGate = semanticExtractionModelRequestGate,
   provider,
   temperature = 0,
 }: LlmEntityExtractionProviderOptions): EntityExtractionProvider {
@@ -64,7 +68,7 @@ export function createLlmEntityExtractionProvider({
       let parsed: LlmEntityExtractionOutput | undefined;
       for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
         try {
-          result = await semanticExtractionModelRequestGate.run(() =>
+          result = await modelRequestGate.run(() =>
             provider.generate({
               maxOutputTokens,
               messages,
@@ -110,7 +114,80 @@ export function createLlmEntityExtractionProvider({
         },
       };
     },
+    extractBatch: async (inputs) => {
+      if (inputs.length === 0) return [];
+      let messages = entityExtractionBatchMessages(inputs);
+      let result: GenerateEntityExtractionTextResult | undefined;
+      for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+        try {
+          result = await modelRequestGate.run(() =>
+            provider.generate({
+              maxOutputTokens: Math.min(4_096, Math.max(maxOutputTokens, inputs.length * 384)),
+              messages,
+              model: inputs[0]?.model ?? "",
+              temperature,
+              ...(inputs[0]?.tenantId ? { tenantId: inputs[0].tenantId } : {}),
+            }),
+          );
+          const parsed = parseLlmEntityExtractionBatchJson(result.text, inputs);
+          return parsed.map((entities) => ({
+            entities,
+            metadata: {
+              batchSize: inputs.length,
+              ...(provider.kind ? { provider: provider.kind } : {}),
+              ...(result?.finishReason ? { finishReason: result.finishReason } : {}),
+              ...(result?.model ? { generationModel: result.model } : {}),
+              ...(isPlainObject(result?.metadata) ? cloneJsonObject(result.metadata) : {}),
+            },
+          }));
+        } catch (error) {
+          if (attempt >= maxRetries) {
+            if (result) {
+              throw new EntityExtractionBatchContractError(
+                "LLM entity extraction batch returned invalid JSON",
+                { cause: error },
+              );
+            }
+            throw error;
+          }
+          if (result) {
+            messages = entityExtractionCorrectionMessages(messages, result.text);
+            result = undefined;
+          } else if (!isRetryableModelError(error)) {
+            throw error;
+          }
+        }
+      }
+      throw new EntityExtractionBatchContractError("LLM entity extraction batch exhausted retries");
+    },
   };
+}
+
+function entityExtractionBatchMessages(
+  inputs: readonly EntityExtractionProviderInput[],
+): readonly LlmEntityExtractionMessage[] {
+  return [
+    {
+      content: [
+        "Extract high-signal knowledge graph entities from document chunks.",
+        "Return strict JSON only with this shape:",
+        '{"nodes":[{"nodeId":"node-id","entities":[{"text":"Acme Corp","type":"organization","confidence":0.95,"canonicalName":"Acme Corp","aliases":["Acme"]}]}]}',
+        "Return exactly one node object for every supplied nodeId and do not invent ids.",
+        "Allowed entity types: date, metric, organization, person, policy, product, term.",
+      ].join("\n"),
+      role: "system",
+    },
+    {
+      content: JSON.stringify({
+        nodes: inputs.map((input) => ({
+          maxEntities: input.maxEntities,
+          nodeId: input.node.id,
+          prompt: input.prompt,
+        })),
+      }),
+      role: "user",
+    },
+  ];
 }
 
 function entityExtractionMessages(
@@ -196,16 +273,29 @@ const EntityTypeSchema = z.enum([
   "term",
 ]);
 
+const ExtractedEntitySchema = z
+  .object({
+    aliases: z.array(z.string().min(1)).max(12).optional(),
+    canonicalName: z.string().min(1).optional(),
+    confidence: z.number().min(0).max(1),
+    text: z.string().min(1),
+    type: EntityTypeSchema,
+  })
+  .strict();
+
 const LlmEntityExtractionOutputSchema = z
   .object({
-    entities: z.array(
+    entities: z.array(ExtractedEntitySchema),
+  })
+  .strict();
+
+const LlmEntityExtractionBatchOutputSchema = z
+  .object({
+    nodes: z.array(
       z
         .object({
-          aliases: z.array(z.string().min(1)).max(12).optional(),
-          canonicalName: z.string().min(1).optional(),
-          confidence: z.number().min(0).max(1),
-          text: z.string().min(1),
-          type: EntityTypeSchema,
+          entities: z.array(ExtractedEntitySchema),
+          nodeId: z.string().min(1),
         })
         .strict(),
     ),
@@ -213,3 +303,22 @@ const LlmEntityExtractionOutputSchema = z
   .strict();
 
 type LlmEntityExtractionOutput = z.infer<typeof LlmEntityExtractionOutputSchema>;
+
+function parseLlmEntityExtractionBatchJson(
+  text: string,
+  inputs: readonly EntityExtractionProviderInput[],
+): Array<LlmEntityExtractionOutput["entities"]> {
+  const parsed = LlmEntityExtractionBatchOutputSchema.parse(tryParseJsonObject(text));
+  const expected = new Set(inputs.map((input) => input.node.id));
+  const byNodeId = new Map<string, LlmEntityExtractionOutput["entities"]>();
+  for (const node of parsed.nodes) {
+    if (!expected.has(node.nodeId) || byNodeId.has(node.nodeId)) {
+      throw new Error("LLM entity extraction batch returned an unexpected or duplicate node id");
+    }
+    byNodeId.set(node.nodeId, node.entities);
+  }
+  if (byNodeId.size !== inputs.length) {
+    throw new Error("LLM entity extraction batch returned an incomplete node set");
+  }
+  return inputs.map((input) => byNodeId.get(input.node.id) ?? []);
+}

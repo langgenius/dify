@@ -70,6 +70,8 @@ describe("document processing task repository", () => {
       ]);
       expect(query?.sql).toContain("document_revisions");
       expect(query?.sql).toContain("document_assets");
+      expect(query?.sql).toContain("document_semantic_enrichment_jobs");
+      expect(query?.sql).toContain("LEFT JOIN");
       expect(query?.sql).toContain("permissionScope");
       expect(query?.sql.indexOf("permissionScope")).toBeLessThan(
         query?.sql.lastIndexOf("LIMIT") ?? -1,
@@ -89,7 +91,15 @@ describe("document processing task repository", () => {
       updatedAt: "2026-07-14T12:02:00.000Z",
     });
     expect(events).toEqual([
-      expect.objectContaining({ event: "progress", id: "task-terminal:2026-07-14T12:02:00.000Z" }),
+      expect.objectContaining({
+        data: expect.objectContaining({
+          activeOperations: ["outline_summary"],
+          phase: "outline_summary",
+          semanticEnrichment: { nodesCompleted: 0, state: "disabled" },
+        }),
+        event: "progress",
+        id: "task-terminal:2026-07-14T12:02:00.000Z",
+      }),
       expect.objectContaining({
         data: { errorCode: "PARSER_FAILED", state: "failed" },
         event: "terminal",
@@ -260,6 +270,67 @@ describe("document processing task repository", () => {
     }
   });
 
+  it("reports the next compilation phase and completed asynchronous graph enrichment", async () => {
+    const database = createSchemaDatabaseAdapter({
+      executor: async () => ({
+        rows: [
+          taskRow({
+            checkpoint: "outline_built",
+            run_state: "running",
+            semantic_enrichment_error_code: null,
+            semantic_enrichment_error_message: null,
+            semantic_enrichment_result: {
+              nodesScanned: 80,
+              semanticProviderCalls: 18,
+              semanticProviderCallsMaximum: 20,
+            },
+            semantic_enrichment_state: "succeeded",
+            semantic_enrichment_updated_at: "2026-07-14T12:02:00.000Z",
+          }),
+        ],
+        rowsAffected: 1,
+      }),
+      kind: "postgres",
+    });
+
+    await expect(
+      createDatabaseDocumentProcessingTaskRepository({ database, maxListLimit: 10 }).get({
+        documentId,
+        knowledgeSpaceId,
+        taskId: "task-visible",
+        tenantId,
+      }),
+    ).resolves.toMatchObject({
+      activeOperations: ["chunk", "fts_index", "embedding"],
+      phase: "chunking_indexing",
+      semanticEnrichment: {
+        nodesCompleted: 80,
+        nodesTotal: 80,
+        providerCalls: 18,
+        providerCallsMaximum: 20,
+        state: "ready",
+      },
+    });
+  });
+
+  it("rejects invalid asynchronous graph enrichment state", async () => {
+    const database = createSchemaDatabaseAdapter({
+      executor: async () => ({
+        rows: [taskRow({ semantic_enrichment_state: "invalid" })],
+        rowsAffected: 1,
+      }),
+      kind: "postgres",
+    });
+    await expect(
+      createDatabaseDocumentProcessingTaskRepository({ database, maxListLimit: 10 }).get({
+        documentId,
+        knowledgeSpaceId,
+        taskId: "task-visible",
+        tenantId,
+      }),
+    ).rejects.toThrow("Invalid semantic enrichment state");
+  });
+
   it("returns null database gets and paginates a cursor-only list", async () => {
     const emptyDatabase = createSchemaDatabaseAdapter({
       executor: async () => ({ rows: [], rowsAffected: 0 }),
@@ -395,6 +466,11 @@ function taskRow(overrides: Record<string, unknown> = {}) {
     logical_document_revision: 1,
     retry_at: null,
     run_state: "queued",
+    semantic_enrichment_error_code: null,
+    semantic_enrichment_error_message: null,
+    semantic_enrichment_result: null,
+    semantic_enrichment_state: null,
+    semantic_enrichment_updated_at: null,
     updated_at: "2026-07-14T12:00:00.000Z",
     ...overrides,
   };

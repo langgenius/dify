@@ -2,7 +2,7 @@ import type {
   DifyModelRuntimeClient,
   DifyTextEmbeddingInput,
 } from "@knowledge/dify-model-runtime-client";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   ProviderInputError,
@@ -209,6 +209,77 @@ describe("Dify model runtime embedding provider", () => {
     ]);
   });
 
+  it("runs transport batches with bounded concurrency while preserving input order", async () => {
+    let active = 0;
+    let gatedRequests = 0;
+    let maxActive = 0;
+    const metrics = { record: vi.fn() };
+    const provider = createDifyModelRuntimeEmbeddingProvider({
+      ...BASE,
+      client: fakeClient(async (input) => {
+        active += 1;
+        maxActive = Math.max(maxActive, active);
+        const firstIndex = Number(input.texts[0]?.slice("chunk-".length));
+        await new Promise((resolve) => setTimeout(resolve, firstIndex === 0 ? 20 : 1));
+        active -= 1;
+
+        return {
+          embeddings: input.texts.map((text) => [Number(text.slice("chunk-".length)), 1]),
+        };
+      }),
+      maxConcurrentRequests: 2,
+      maxRequestBatchSize: 2,
+      metrics,
+      requestGate: {
+        run: async (request) => {
+          gatedRequests += 1;
+          return request();
+        },
+      },
+    });
+
+    const result = await provider.embed({
+      model: BASE.model,
+      tenantId: "tenant-abc",
+      texts: Array.from({ length: 8 }, (_, index) => `chunk-${index}`),
+    });
+
+    expect(maxActive).toBe(2);
+    expect(gatedRequests).toBe(4);
+    expect(result.dense.map((vector) => vector[0])).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
+    expect(metrics.record).toHaveBeenCalledTimes(4);
+    expect(metrics.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        concurrencyLimit: 2,
+        outcome: "succeeded",
+        textCount: 2,
+      }),
+    );
+  });
+
+  it("classifies rate-limited embedding request telemetry without exposing route identity", async () => {
+    const metrics = { record: vi.fn() };
+    const provider = createDifyModelRuntimeEmbeddingProvider({
+      ...BASE,
+      client: fakeClient(async () => {
+        throw Object.assign(new Error("provider unavailable"), { status: 429 });
+      }),
+      metrics,
+    });
+
+    await expect(
+      provider.embed({ model: BASE.model, tenantId: "tenant-abc", texts: ["secret text"] }),
+    ).rejects.toThrow("provider unavailable");
+    expect(metrics.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        failureKind: "rate_limited",
+        outcome: "failed",
+        textCount: 1,
+      }),
+    );
+    expect(JSON.stringify(metrics.record.mock.calls)).not.toContain("secret text");
+  });
+
   it("synthesizes a model descriptor and validates constructor options", async () => {
     const provider = createDifyModelRuntimeEmbeddingProvider({
       ...BASE,
@@ -259,6 +330,13 @@ describe("Dify model runtime embedding provider", () => {
         client: fakeClient(async () => ({})),
         maxBatchSize: 8,
         maxRequestBatchSize: 9,
+      }),
+    ).toThrow(ProviderInputError);
+    expect(() =>
+      createDifyModelRuntimeEmbeddingProvider({
+        ...BASE,
+        client: fakeClient(async () => ({})),
+        maxConcurrentRequests: 0,
       }),
     ).toThrow(ProviderInputError);
   });

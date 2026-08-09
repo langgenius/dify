@@ -4,6 +4,49 @@ import { createLlmEntityExtractionProvider } from "./llm-entity-extraction-provi
 import { createLlmRelationExtractionProvider } from "./llm-relation-extraction-provider";
 
 describe("createLlmEntityExtractionProvider", () => {
+  it("extracts multiple nodes in one strict batch request", async () => {
+    let calls = 0;
+    const provider = createLlmEntityExtractionProvider({
+      provider: {
+        generate: async () => {
+          calls += 1;
+          return {
+            text: JSON.stringify({
+              nodes: [
+                {
+                  entities: [{ confidence: 0.9, text: "Acme", type: "organization" }],
+                  nodeId: "node-1",
+                },
+                { entities: [], nodeId: "node-2" },
+              ],
+            }),
+          };
+        },
+      },
+    });
+
+    const results = await provider.extractBatch?.([
+      {
+        maxEntities: 5,
+        model: "entity-llm",
+        node: { id: "node-1" } as never,
+        prompt: "Acme",
+        promptVersion: "entity-extraction-v1",
+      },
+      {
+        maxEntities: 5,
+        model: "entity-llm",
+        node: { id: "node-2" } as never,
+        prompt: "Empty",
+        promptVersion: "entity-extraction-v1",
+      },
+    ]);
+
+    expect(calls).toBe(1);
+    expect(results?.[0]?.entities[0]).toMatchObject({ text: "Acme", type: "organization" });
+    expect(results?.[1]?.entities).toEqual([]);
+  });
+
   it("adapts strict LLM JSON into entity extraction provider results", async () => {
     const calls: unknown[] = [];
     const provider = createLlmEntityExtractionProvider({

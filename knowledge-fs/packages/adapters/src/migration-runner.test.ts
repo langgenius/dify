@@ -45,6 +45,8 @@ const researchTaskAnswerStreamingMigrationId = "0035_research_task_answer_stream
 const pageIndexFindabilityMigrationId = "0036_page_index_findability";
 const logicalDocumentZeroRevisionDeletionMigrationId =
   "0037_logical_document_zero_revision_deletion";
+const documentOutlineSummaryCheckpointsMigrationId = "0038_document_outline_summary_checkpoints";
+const documentSemanticEnrichmentMigrationId = "0039_document_semantic_enrichment";
 const migrationsAfterDurableDeletion = [
   versionedSpaceProfilesMigrationId,
   profilePublicationBindingsMigrationId,
@@ -66,6 +68,8 @@ const migrationsAfterDurableDeletion = [
   researchTaskAnswerStreamingMigrationId,
   pageIndexFindabilityMigrationId,
   logicalDocumentZeroRevisionDeletionMigrationId,
+  documentOutlineSummaryCheckpointsMigrationId,
+  documentSemanticEnrichmentMigrationId,
 ] as const;
 const migrationsAfterTidbBaselineRepair = [
   spaceAccessControlMigrationId,

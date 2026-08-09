@@ -31,6 +31,13 @@ export interface RelationExtractionProviderResult {
 
 export interface RelationExtractionProvider {
   extract(input: RelationExtractionProviderInput): Promise<RelationExtractionProviderResult>;
+  extractBatch?(
+    inputs: readonly RelationExtractionProviderInput[],
+  ): Promise<readonly RelationExtractionProviderResult[]>;
+}
+
+export class RelationExtractionBatchContractError extends Error {
+  override readonly name = "RelationExtractionBatchContractError";
 }
 
 export interface RelationExtractionFlowOptions {
@@ -42,6 +49,7 @@ export interface RelationExtractionFlowOptions {
   readonly now?: () => string;
   readonly promptVersion?: string | undefined;
   readonly provider: RelationExtractionProvider;
+  readonly providerBatchSize?: number | undefined;
 }
 
 export interface ExtractKnowledgeNodeRelationsInput {
@@ -70,6 +78,7 @@ export function createRelationExtractionFlow({
   now = () => new Date().toISOString(),
   promptVersion = "relation-extraction-v1",
   provider,
+  providerBatchSize = 8,
 }: RelationExtractionFlowOptions): RelationExtractionFlow {
   if (!Number.isInteger(maxBatchSize) || maxBatchSize < 1) {
     throw new Error("Relation extraction maxBatchSize must be at least 1");
@@ -81,6 +90,10 @@ export function createRelationExtractionFlow({
 
   if (!Number.isInteger(maxRelationsPerNode) || maxRelationsPerNode < 1) {
     throw new Error("Relation extraction maxRelationsPerNode must be at least 1");
+  }
+
+  if (!Number.isInteger(providerBatchSize) || providerBatchSize < 1) {
+    throw new Error("Relation extraction providerBatchSize must be at least 1");
   }
 
   if (!model.trim()) {
@@ -120,17 +133,49 @@ export function createRelationExtractionFlow({
         };
       }
 
-      const generated = await mapWithConcurrency(orderedNodes, maxConcurrency, async (node) => {
+      const inputsWithNodes = orderedNodes.map((node) => {
         const entities = extractedEntitiesFromNodeMetadata(node);
-        const result = await provider.extract({
-          entities,
-          maxRelations: maxRelationsPerNode,
-          model,
-          node: cloneKnowledgeNode(node),
-          prompt: relationExtractionPrompt(node, entities),
-          promptVersion,
-          ...(tenantId ? { tenantId } : {}),
-        });
+        return {
+          input: {
+            entities,
+            maxRelations: maxRelationsPerNode,
+            model,
+            node: cloneKnowledgeNode(node),
+            prompt: relationExtractionPrompt(node, entities),
+            promptVersion,
+            ...(tenantId ? { tenantId } : {}),
+          },
+          node,
+        };
+      });
+      const callable = inputsWithNodes.filter(({ input }) => input.entities.length > 0);
+      const extractBatch = provider.extractBatch;
+      const providerResults = extractBatch
+        ? await extractRelationsInBatches({
+            extractBatch,
+            inputs: callable.map(({ input }) => input),
+            maxConcurrency,
+            provider,
+            providerBatchSize,
+          })
+        : await mapWithConcurrency(
+            callable.map(({ input }) => input),
+            maxConcurrency,
+            (providerInput) => provider.extract(providerInput),
+          );
+      const resultsByNodeId = new Map(
+        callable.map(({ node }, index) => {
+          const result = providerResults[index];
+          if (!result) {
+            throw new RelationExtractionBatchContractError(
+              "Relation extraction provider returned an incomplete result set",
+            );
+          }
+          return [node.id, result] as const;
+        }),
+      );
+      const generated = inputsWithNodes.map(({ node }) => {
+        const result = resultsByNodeId.get(node.id) ?? { relations: [] };
         const relations = validateExtractedRelations(result.relations, maxRelationsPerNode);
 
         return {
@@ -158,6 +203,45 @@ export function createRelationExtractionFlow({
       };
     },
   };
+}
+
+async function extractRelationsInBatches({
+  extractBatch,
+  inputs,
+  maxConcurrency,
+  provider,
+  providerBatchSize,
+}: {
+  readonly extractBatch: NonNullable<RelationExtractionProvider["extractBatch"]>;
+  readonly inputs: readonly RelationExtractionProviderInput[];
+  readonly maxConcurrency: number;
+  readonly provider: RelationExtractionProvider;
+  readonly providerBatchSize: number;
+}): Promise<RelationExtractionProviderResult[]> {
+  const batches = chunk(inputs, providerBatchSize);
+  const results = await mapWithConcurrency(batches, maxConcurrency, async (batch) => {
+    try {
+      const extracted = await extractBatch(batch);
+      if (extracted.length !== batch.length) {
+        throw new RelationExtractionBatchContractError(
+          `Relation extraction batch returned ${extracted.length} results for ${batch.length} inputs`,
+        );
+      }
+      return [...extracted];
+    } catch (error) {
+      if (!(error instanceof RelationExtractionBatchContractError)) throw error;
+      return mapWithConcurrency(batch, maxConcurrency, (input) => provider.extract(input));
+    }
+  });
+  return results.flat();
+}
+
+function chunk<T>(items: readonly T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+  return chunks;
 }
 
 function validateRelationExtractionInput({

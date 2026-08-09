@@ -1,6 +1,7 @@
 import { numberColumn, optionalStringColumn, stringColumn } from "./database-row-utils";
 import { databasePlaceholder, quoteDatabaseIdentifier } from "./database-sql-utils";
 import { readableDocumentAssetPredicateSql } from "./document-asset-visibility-sql";
+import { jsonObjectColumn } from "./json-utils";
 import {
   type LogicalDocumentLookup,
   type LogicalDocumentScope,
@@ -19,7 +20,37 @@ export type DocumentProcessingTaskState =
   | "canceled"
   | "superseded";
 
+export type DocumentProcessingPhase =
+  | "queued"
+  | "parsing"
+  | "outline_summary"
+  | "chunking_indexing"
+  | "graph_admission"
+  | "publication"
+  | "complete";
+
+export type DocumentProcessingOperation =
+  | "parse"
+  | "outline_summary"
+  | "chunk"
+  | "fts_index"
+  | "embedding"
+  | "graph_admission"
+  | "publication";
+
+export interface DocumentSemanticEnrichmentProgress {
+  readonly errorCode?: string | undefined;
+  readonly errorMessage?: string | undefined;
+  readonly nodesCompleted: number;
+  readonly nodesTotal?: number | undefined;
+  readonly providerCalls?: number | undefined;
+  readonly providerCallsMaximum?: number | undefined;
+  readonly state: "not_scheduled" | "pending" | "running" | "ready" | "failed" | "disabled";
+  readonly updatedAt?: string | undefined;
+}
+
 export interface DocumentProcessingTask {
+  readonly activeOperations?: readonly DocumentProcessingOperation[] | undefined;
   readonly completedAt?: string | undefined;
   readonly createdAt: string;
   readonly documentId: string;
@@ -29,6 +60,7 @@ export interface DocumentProcessingTask {
   readonly id: string;
   readonly knowledgeSpaceId: string;
   readonly progressPercent: number;
+  readonly phase?: DocumentProcessingPhase | undefined;
   readonly retryAt?: string | undefined;
   readonly stage:
     | "queued"
@@ -39,6 +71,7 @@ export interface DocumentProcessingTask {
     | "smoke_eval_passed"
     | "published";
   readonly state: DocumentProcessingTaskState;
+  readonly semanticEnrichment?: DocumentSemanticEnrichmentProgress | undefined;
   readonly updatedAt: string;
 }
 
@@ -240,12 +273,16 @@ export function documentTaskSseEvents(task: DocumentProcessingTask): readonly {
   readonly event: "progress" | "terminal";
   readonly id: string;
 }[] {
+  const normalized = normalizeTaskProgress(task);
   const progress = {
     data: {
-      progressPercent: task.progressPercent,
-      stage: task.stage,
-      state: task.state,
-      updatedAt: task.updatedAt,
+      progressPercent: normalized.progressPercent,
+      activeOperations: normalized.activeOperations,
+      phase: normalized.phase,
+      semanticEnrichment: normalized.semanticEnrichment,
+      stage: normalized.stage,
+      state: normalized.state,
+      updatedAt: normalized.updatedAt,
     },
     event: "progress" as const,
     id: `${task.id}:${task.updatedAt}`,
@@ -275,7 +312,7 @@ export function isTerminalTask(task: DocumentProcessingTask): boolean {
 }
 
 function taskSelectSql(database: DatabaseAdapter): string {
-  return `SELECT attempt.*, revision.${q(database, "document_id")} AS ${q(database, "logical_document_id")}, revision.${q(database, "revision")} AS ${q(database, "logical_document_revision")} FROM ${q(database, "document_compilation_attempts")} attempt JOIN ${q(database, "document_revisions")} revision ON revision.${q(database, "tenant_id")} = attempt.${q(database, "tenant_id")} AND revision.${q(database, "knowledge_space_id")} = attempt.${q(database, "knowledge_space_id")} AND revision.${q(database, "document_asset_id")} = attempt.${q(database, "document_asset_id")} AND revision.${q(database, "document_asset_version")} = attempt.${q(database, "document_version")} AND (revision.${q(database, "compilation_attempt_id")} = attempt.${q(database, "id")} OR EXISTS (SELECT 1 FROM ${q(database, "document_reindex_attempts")} reindex_attempt WHERE reindex_attempt.${q(database, "tenant_id")} = attempt.${q(database, "tenant_id")} AND reindex_attempt.${q(database, "knowledge_space_id")} = attempt.${q(database, "knowledge_space_id")} AND reindex_attempt.${q(database, "compilation_attempt_id")} = attempt.${q(database, "id")} AND reindex_attempt.${q(database, "document_id")} = revision.${q(database, "document_id")} AND reindex_attempt.${q(database, "document_revision")} = revision.${q(database, "revision")}) OR EXISTS (SELECT 1 FROM ${q(database, "document_chunk_state_changes")} chunk_change WHERE chunk_change.${q(database, "tenant_id")} = attempt.${q(database, "tenant_id")} AND chunk_change.${q(database, "knowledge_space_id")} = attempt.${q(database, "knowledge_space_id")} AND chunk_change.${q(database, "compilation_attempt_id")} = attempt.${q(database, "id")} AND chunk_change.${q(database, "document_id")} = revision.${q(database, "document_id")} AND chunk_change.${q(database, "document_revision")} = revision.${q(database, "revision")})) JOIN ${q(database, "document_assets")} asset ON asset.${q(database, "knowledge_space_id")} = revision.${q(database, "knowledge_space_id")} AND asset.${q(database, "id")} = revision.${q(database, "document_asset_id")} AND asset.${q(database, "version")} = revision.${q(database, "document_asset_version")}`;
+  return `SELECT attempt.*, revision.${q(database, "document_id")} AS ${q(database, "logical_document_id")}, revision.${q(database, "revision")} AS ${q(database, "logical_document_revision")}, semantic.${q(database, "run_state")} AS ${q(database, "semantic_enrichment_state")}, semantic.${q(database, "result")} AS ${q(database, "semantic_enrichment_result")}, semantic.${q(database, "last_error_code")} AS ${q(database, "semantic_enrichment_error_code")}, semantic.${q(database, "last_error_message")} AS ${q(database, "semantic_enrichment_error_message")}, semantic.${q(database, "updated_at")} AS ${q(database, "semantic_enrichment_updated_at")} FROM ${q(database, "document_compilation_attempts")} attempt JOIN ${q(database, "document_revisions")} revision ON revision.${q(database, "tenant_id")} = attempt.${q(database, "tenant_id")} AND revision.${q(database, "knowledge_space_id")} = attempt.${q(database, "knowledge_space_id")} AND revision.${q(database, "document_asset_id")} = attempt.${q(database, "document_asset_id")} AND revision.${q(database, "document_asset_version")} = attempt.${q(database, "document_version")} AND (revision.${q(database, "compilation_attempt_id")} = attempt.${q(database, "id")} OR EXISTS (SELECT 1 FROM ${q(database, "document_reindex_attempts")} reindex_attempt WHERE reindex_attempt.${q(database, "tenant_id")} = attempt.${q(database, "tenant_id")} AND reindex_attempt.${q(database, "knowledge_space_id")} = attempt.${q(database, "knowledge_space_id")} AND reindex_attempt.${q(database, "compilation_attempt_id")} = attempt.${q(database, "id")} AND reindex_attempt.${q(database, "document_id")} = revision.${q(database, "document_id")} AND reindex_attempt.${q(database, "document_revision")} = revision.${q(database, "revision")}) OR EXISTS (SELECT 1 FROM ${q(database, "document_chunk_state_changes")} chunk_change WHERE chunk_change.${q(database, "tenant_id")} = attempt.${q(database, "tenant_id")} AND chunk_change.${q(database, "knowledge_space_id")} = attempt.${q(database, "knowledge_space_id")} AND chunk_change.${q(database, "compilation_attempt_id")} = attempt.${q(database, "id")} AND chunk_change.${q(database, "document_id")} = revision.${q(database, "document_id")} AND chunk_change.${q(database, "document_revision")} = revision.${q(database, "revision")})) JOIN ${q(database, "document_assets")} asset ON asset.${q(database, "knowledge_space_id")} = revision.${q(database, "knowledge_space_id")} AND asset.${q(database, "id")} = revision.${q(database, "document_asset_id")} AND asset.${q(database, "version")} = revision.${q(database, "document_asset_version")} LEFT JOIN ${q(database, "document_semantic_enrichment_jobs")} semantic ON semantic.${q(database, "tenant_id")} = attempt.${q(database, "tenant_id")} AND semantic.${q(database, "knowledge_space_id")} = attempt.${q(database, "knowledge_space_id")} AND semantic.${q(database, "compilation_attempt_id")} = attempt.${q(database, "id")}`;
 }
 
 function assetPermissionSql(
@@ -293,7 +330,7 @@ function publicTask(
   task: DocumentProcessingTask & { readonly tenantId?: string | undefined },
 ): DocumentProcessingTask {
   const { tenantId: _tenantId, ...value } = task;
-  return { ...value };
+  return normalizeTaskProgress(value);
 }
 
 function mapTask(row: DatabaseRow): DocumentProcessingTask {
@@ -303,7 +340,7 @@ function mapTask(row: DatabaseRow): DocumentProcessingTask {
   const stage = stringColumn(row, "checkpoint");
   if (!isTaskStage(stage))
     throw new LogicalDocumentValidationError("Invalid processing task stage");
-  return {
+  return normalizeTaskProgress({
     ...(optionalStringColumn(row, "completed_at")
       ? { completedAt: optionalStringColumn(row, "completed_at") }
       : {}),
@@ -324,8 +361,130 @@ function mapTask(row: DatabaseRow): DocumentProcessingTask {
       : {}),
     stage,
     state,
+    semanticEnrichment: mapSemanticEnrichment(row, state),
     updatedAt: stringColumn(row, "updated_at"),
+  });
+}
+
+function normalizeTaskProgress(task: DocumentProcessingTask): DocumentProcessingTask {
+  const phase = task.phase ?? phaseForTask(task.stage, task.state);
+  return {
+    ...task,
+    activeOperations: task.activeOperations ?? operationsForPhase(phase),
+    phase,
+    semanticEnrichment:
+      task.semanticEnrichment ??
+      ({
+        nodesCompleted: 0,
+        state: isTerminalTask(task as DocumentProcessingTask) ? "disabled" : "not_scheduled",
+      } satisfies DocumentSemanticEnrichmentProgress),
   };
+}
+
+function phaseForTask(
+  stage: DocumentProcessingTask["stage"],
+  state: DocumentProcessingTaskState,
+): DocumentProcessingPhase {
+  if (stage === "published" && state === "succeeded") return "complete";
+  switch (stage) {
+    case "queued":
+      return state === "dispatch_pending" || state === "queued" ? "queued" : "parsing";
+    case "parsed":
+      return "outline_summary";
+    case "outline_built":
+      return "chunking_indexing";
+    case "nodes_generated":
+      return "graph_admission";
+    case "projection_built":
+    case "smoke_eval_passed":
+    case "published":
+      return "publication";
+  }
+}
+
+function operationsForPhase(
+  phase: DocumentProcessingPhase,
+): readonly DocumentProcessingOperation[] {
+  switch (phase) {
+    case "parsing":
+      return ["parse"];
+    case "outline_summary":
+      return ["outline_summary"];
+    case "chunking_indexing":
+      return ["chunk", "fts_index", "embedding"];
+    case "graph_admission":
+      return ["graph_admission"];
+    case "publication":
+      return ["publication"];
+    case "queued":
+    case "complete":
+      return [];
+  }
+}
+
+function mapSemanticEnrichment(
+  row: DatabaseRow,
+  taskState: DocumentProcessingTaskState,
+): DocumentSemanticEnrichmentProgress {
+  const jobState = optionalStringColumn(row, "semantic_enrichment_state");
+  if (!jobState) {
+    return {
+      nodesCompleted: 0,
+      state:
+        taskState === "succeeded" ||
+        taskState === "failed" ||
+        taskState === "canceled" ||
+        taskState === "superseded"
+          ? "disabled"
+          : "not_scheduled",
+    };
+  }
+  const state = semanticState(jobState);
+  const result =
+    row.semantic_enrichment_result == null
+      ? {}
+      : jsonObjectColumn(row, "semantic_enrichment_result");
+  const nodesTotal = nonnegativeResultInteger(result.nodesScanned);
+  const providerCalls = nonnegativeResultInteger(result.semanticProviderCalls);
+  const providerCallsMaximum = nonnegativeResultInteger(result.semanticProviderCallsMaximum);
+  return {
+    ...(optionalStringColumn(row, "semantic_enrichment_error_code")
+      ? { errorCode: optionalStringColumn(row, "semantic_enrichment_error_code") }
+      : {}),
+    ...(optionalStringColumn(row, "semantic_enrichment_error_message")
+      ? { errorMessage: optionalStringColumn(row, "semantic_enrichment_error_message") }
+      : {}),
+    nodesCompleted: state === "ready" ? (nodesTotal ?? 0) : 0,
+    ...(nodesTotal !== undefined ? { nodesTotal } : {}),
+    ...(providerCalls !== undefined ? { providerCalls } : {}),
+    ...(providerCallsMaximum !== undefined ? { providerCallsMaximum } : {}),
+    state,
+    ...(optionalStringColumn(row, "semantic_enrichment_updated_at")
+      ? { updatedAt: optionalStringColumn(row, "semantic_enrichment_updated_at") }
+      : {}),
+  };
+}
+
+function semanticState(value: string): DocumentSemanticEnrichmentProgress["state"] {
+  switch (value) {
+    case "queued":
+    case "retry_wait":
+      return "pending";
+    case "running":
+      return "running";
+    case "succeeded":
+      return "ready";
+    case "failed":
+      return "failed";
+    case "superseded":
+      return "disabled";
+    default:
+      throw new LogicalDocumentValidationError("Invalid semantic enrichment state");
+  }
+}
+
+function nonnegativeResultInteger(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : undefined;
 }
 
 const stageProgress = {

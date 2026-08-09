@@ -153,6 +153,19 @@ export const DocumentChunkStateChangeResponseSchema = z
 
 export const DocumentProcessingTaskSchema = z
   .object({
+    activeOperations: z
+      .array(
+        z.enum([
+          "parse",
+          "outline_summary",
+          "chunk",
+          "fts_index",
+          "embedding",
+          "graph_admission",
+          "publication",
+        ]),
+      )
+      .optional(),
     completedAt: z.string().optional(),
     createdAt: z.string(),
     documentId: z.string().uuid(),
@@ -161,6 +174,17 @@ export const DocumentProcessingTaskSchema = z
     errorMessage: z.string().optional(),
     id: z.string().uuid(),
     knowledgeSpaceId: z.string().uuid(),
+    phase: z
+      .enum([
+        "queued",
+        "parsing",
+        "outline_summary",
+        "chunking_indexing",
+        "graph_admission",
+        "publication",
+        "complete",
+      ])
+      .optional(),
     progressPercent: z.number().int().min(0).max(100),
     retryAt: z.string().optional(),
     stage: z.enum([
@@ -182,6 +206,19 @@ export const DocumentProcessingTaskSchema = z
       "canceled",
       "superseded",
     ]),
+    semanticEnrichment: z
+      .object({
+        errorCode: z.string().optional(),
+        errorMessage: z.string().optional(),
+        nodesCompleted: z.number().int().nonnegative(),
+        nodesTotal: z.number().int().nonnegative().optional(),
+        providerCalls: z.number().int().nonnegative().optional(),
+        providerCallsMaximum: z.number().int().nonnegative().optional(),
+        state: z.enum(["not_scheduled", "pending", "running", "ready", "failed", "disabled"]),
+        updatedAt: z.string().optional(),
+      })
+      .strict()
+      .optional(),
     updatedAt: z.string(),
   })
   .strict()

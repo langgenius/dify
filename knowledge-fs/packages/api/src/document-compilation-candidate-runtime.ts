@@ -393,6 +393,7 @@ export function createRepositoryDocumentCompilationCandidateEvaluator({
 export interface DocumentCompilationWorkerAttemptProcessorOptions {
   readonly coordinator: Pick<DocumentCompilationPublicationCoordinator, "composeCandidate">;
   readonly createWorker: (input: {
+    readonly baseHeadRevision: number;
     readonly candidateComposer: DocumentCompilationWorkerCandidateComposer;
     readonly frozenEmbeddingProfile?:
       | Awaited<ReturnType<typeof loadDocumentCompilationFrozenProfiles>>["embeddingProfile"]
@@ -447,6 +448,7 @@ export function createDocumentCompilationWorkerAttemptProcessor({
       ? await loadDocumentCompilationFrozenProfiles(profiles, execution.attempt)
       : undefined;
     const worker = await createWorker({
+      baseHeadRevision: execution.attempt.baseHeadRevision,
       candidateComposer,
       ...(frozenProfiles
         ? {

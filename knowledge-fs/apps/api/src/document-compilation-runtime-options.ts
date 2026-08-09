@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import {
   type CapabilityGrantProvenanceRepository,
+  type ConcurrencyGate,
   type DeletionLifecycleFenceGuard,
   type DeletionObjectWriteAdmission,
   type DocumentAssetRepository,
@@ -13,6 +14,8 @@ import {
   type DocumentMultimodalManifestRepository,
   type DocumentOutlineRepository,
   type DocumentProcessingTaskRepository,
+  type DocumentSemanticEnrichmentGenerationGuard,
+  type DocumentSemanticEnrichmentOperationalMetrics,
   type DocumentSettingsRepository,
   type DurableTaskOperationalMetrics,
   type GoldenQuestionRepository,
@@ -47,6 +50,8 @@ import {
   createDatabaseDocumentCompilationIndexOverrideResolver,
   createDatabaseDocumentLogicalMutationReconciler,
   createDatabaseDocumentRevisionPublicationFenceResolver,
+  createDatabaseDocumentSemanticEnrichmentRepository,
+  createDatabaseDocumentSemanticExtractionCheckpointRepository,
   createDatabaseKnowledgeSpaceProfileMigrationCandidateSnapshotRepository,
   createDatabasePublishedPageIndexBuildRepository,
   createDenseVectorProjectionBuilder,
@@ -60,12 +65,13 @@ import {
   createDocumentCompilationWorkerAttemptProcessor,
   createDocumentOutlineBuilder,
   createDocumentRevisionRollbackCoordinator,
+  createDocumentSemanticEnrichmentProcessor,
+  createDocumentSemanticEnrichmentRuntime,
   createDocumentSettingsChangeCoordinator,
   createDurableDocumentCompilationJobStateMachine,
   createFtsProjectionBuilder,
   createIncrementalReindexer,
   createKnowledgeSpaceProfileMigrationRuntime,
-  createKnowledgeSpaceSemanticIngestionPostProcessor,
   createLegacySpacePublicationBootstrapRuntime,
   createLegacySpacePublicationBootstrapService,
   createPageIndexFindabilityPublicationEvaluator,
@@ -153,15 +159,19 @@ export interface CreateApiDocumentCompilationRuntimeOptions {
     | undefined;
   readonly repositories: Partial<ApiDocumentCompilationRuntimeRepositories>;
   readonly semantic?:
-    | Pick<
+    | ((Pick<
         KnowledgeGatewayOptions,
         | "semanticEntityExtractionMaxEntitiesPerNode"
         | "semanticEntityExtractionMaxNodesPerRun"
         | "semanticRelationExtractionMaxRelationsPerNode"
         | "semanticReasoningMaxOutputTokens"
         | "semanticReasoningProviderFactory"
-      >
+      > & { readonly modelRequestGate?: ConcurrencyGate | undefined }) & {
+        readonly semanticExtractionBatchSize?: number | undefined;
+        readonly semanticExtractionMaxConcurrency?: number | undefined;
+      })
     | undefined;
+  readonly semanticMetrics?: DocumentSemanticEnrichmentOperationalMetrics | undefined;
   readonly visual?:
     | {
         readonly model: string;
@@ -241,6 +251,7 @@ export function createApiDocumentCompilationRuntime({
   profileMigration,
   repositories: partialRepositories,
   semantic,
+  semanticMetrics,
   visual,
 }: CreateApiDocumentCompilationRuntimeOptions): ApiDocumentCompilationRuntimeAssembly | undefined {
   if (!config) {
@@ -459,11 +470,17 @@ export function createApiDocumentCompilationRuntime({
           workerId: `profile-migration-runtime-${process.pid}-${randomUUID()}`,
         })
       : undefined;
-  const semanticPostProcessor = createCandidateSemanticPostProcessor({
+  const semanticEnrichment = createCandidateSemanticEnrichment({
+    adapter,
+    attempts: repositories.attempts,
     graph: repositories.graph,
-    manifests: repositories.manifests,
+    members: repositories.members,
     nodes: repositories.nodes,
+    outlines: repositories.outlines,
+    publications: repositories.publications,
+    runtimeConfig: config,
     semantic,
+    semanticMetrics,
   });
   const initialProfiles = createDocumentCompilationInitialProfileCoordinator({
     activations: initialProfileActivations,
@@ -473,7 +490,13 @@ export function createApiDocumentCompilationRuntime({
   });
   const compileCandidate = createDocumentCompilationWorkerAttemptProcessor({
     coordinator,
-    createWorker: ({ candidateComposer, frozenEmbeddingProfile, frozenRetrievalProfile, jobs }) =>
+    createWorker: ({
+      baseHeadRevision,
+      candidateComposer,
+      frozenEmbeddingProfile,
+      frozenRetrievalProfile,
+      jobs,
+    }) =>
       createDocumentCompilationWorker({
         assets: repositories.assets,
         candidateComposer,
@@ -523,7 +546,14 @@ export function createApiDocumentCompilationRuntime({
           ? { pdfRasterizer: multimodal.documentPdfRasterizer }
           : {}),
         reindexer,
-        ...(semanticPostProcessor ? { semanticPostProcessor } : {}),
+        ...(semanticEnrichment
+          ? {
+              semanticEnrichmentAdmission: {
+                enqueue: (input) =>
+                  semanticEnrichment.admission.enqueue({ ...input, baseHeadRevision }),
+              },
+            }
+          : {}),
         ...(visual ? { visualEmbeddingModel: visual.model } : {}),
       }),
     fingerprintMaterial,
@@ -644,6 +674,7 @@ export function createApiDocumentCompilationRuntime({
       legacyBootstrapRuntime.start();
       pageIndexUpgradeBackfillRuntime.start();
       pageIndexSummaryRepairRuntime?.start();
+      semanticEnrichment?.runtime.start();
       void documentMutationReconciler.tick().catch(() => undefined);
       documentMutationTimer = setInterval(
         () => void documentMutationReconciler.tick().catch(() => undefined),
@@ -662,6 +693,7 @@ export function createApiDocumentCompilationRuntime({
       }
       pageIndexUpgradeBackfillRuntime.stop();
       pageIndexSummaryRepairRuntime?.stop();
+      semanticEnrichment?.runtime.stop();
       if (documentMutationTimer) {
         clearInterval(documentMutationTimer);
         documentMutationTimer = undefined;
@@ -678,37 +710,154 @@ export function createApiDocumentCompilationRuntime({
   };
 }
 
-function createCandidateSemanticPostProcessor({
+function createCandidateSemanticEnrichment({
+  adapter,
+  attempts,
   graph,
-  manifests,
+  members,
   nodes,
+  outlines,
+  publications,
+  runtimeConfig,
   semantic,
+  semanticMetrics,
 }: {
+  readonly adapter: CreateApiDocumentCompilationRuntimeOptions["adapter"];
+  readonly attempts: DocumentCompilationAttemptRepository;
   readonly graph?: GraphIndexRepository | undefined;
-  readonly manifests: KnowledgeSpaceManifestRepository;
+  readonly members: ProjectionSetPublicationMemberRepository;
   readonly nodes: KnowledgeNodeRepository;
+  readonly outlines: DocumentOutlineRepository;
+  readonly publications: ProjectionSetPublicationRepository;
+  readonly runtimeConfig: ApiDocumentCompilationOptions;
   readonly semantic: CreateApiDocumentCompilationRuntimeOptions["semantic"];
+  readonly semanticMetrics: CreateApiDocumentCompilationRuntimeOptions["semanticMetrics"];
 }) {
   if (!semantic?.semanticReasoningProviderFactory) {
     return undefined;
   }
   if (!graph) {
-    throw new Error(
-      "Document compilation semantic candidate processing requires the graph repository",
-    );
+    throw new Error("Document compilation semantic enrichment requires the graph repository");
   }
   const maxNodes = semantic.semanticEntityExtractionMaxNodesPerRun ?? 100;
-  return createKnowledgeSpaceSemanticIngestionPostProcessor({
+  const repository = createDatabaseDocumentSemanticEnrichmentRepository({
+    database: adapter.database,
+    generateLeaseToken: randomUUID,
+    maxClaimBatchSize: runtimeConfig.batchSize,
+  });
+  const checkpoints = createDatabaseDocumentSemanticExtractionCheckpointRepository({
+    database: adapter.database,
+    maxBatchSize: maxNodes,
+  });
+  const processor = createDocumentSemanticEnrichmentProcessor({
+    checkpoints,
     graph,
-    manifests,
+    maxConcurrentBatches: semantic.semanticExtractionMaxConcurrency ?? 4,
     maxEntitiesPerNode: semantic.semanticEntityExtractionMaxEntitiesPerNode ?? 50,
     maxNodesPerArtifact: maxNodes,
     maxOutputTokens: semantic.semanticReasoningMaxOutputTokens ?? 1_500,
     maxRelationsPerNode: semantic.semanticRelationExtractionMaxRelationsPerNode ?? 50,
+    ...(semantic.modelRequestGate ? { modelRequestGate: semantic.modelRequestGate } : {}),
     nodes,
-    now: () => new Date().toISOString(),
     providerFactory: semantic.semanticReasoningProviderFactory,
+    providerBatchSize: semantic.semanticExtractionBatchSize ?? 8,
   });
+  const generationGuard = createDocumentSemanticEnrichmentGenerationGuard({
+    attempts,
+    members,
+    outlines,
+    publications,
+  });
+  const runtime = createDocumentSemanticEnrichmentRuntime({
+    claimLimit: runtimeConfig.batchSize,
+    generationGuard,
+    heartbeatIntervalMs: Math.max(1, Math.floor(runtimeConfig.leaseMs / 3)),
+    intervalMs: runtimeConfig.tickMs,
+    leaseMs: runtimeConfig.leaseMs,
+    ...(semanticMetrics ? { metrics: semanticMetrics } : {}),
+    processor,
+    repository,
+    retryBaseMs: runtimeConfig.retryBaseMs,
+    workerId: `document-semantic-enrichment-${process.pid}-${randomUUID()}`,
+  });
+
+  return {
+    admission: {
+      enqueue: async (
+        input: Parameters<
+          NonNullable<
+            Parameters<typeof createDocumentCompilationWorker>[0]["semanticEnrichmentAdmission"]
+          >["enqueue"]
+        >[0] & { readonly baseHeadRevision: number },
+      ) => {
+        // No reasoning route means graph enrichment is explicitly disabled for this profile.
+        if (!input.retrievalProfile.reasoningModel) return;
+        const createdAt = new Date().toISOString();
+        await repository.enqueue({
+          ...input,
+          availableAt: createdAt,
+          createdAt,
+          id: randomUUID(),
+          maxExecutionAttempts: runtimeConfig.maxAttempts,
+        });
+      },
+    },
+    runtime,
+  };
+}
+
+export function createDocumentSemanticEnrichmentGenerationGuard({
+  attempts,
+  members,
+  outlines,
+  publications,
+}: {
+  readonly attempts: Pick<DocumentCompilationAttemptRepository, "get">;
+  readonly members: Pick<ProjectionSetPublicationMemberRepository, "filterComponentKeys">;
+  readonly outlines: Pick<DocumentOutlineRepository, "getByDocumentVersion">;
+  readonly publications: Pick<ProjectionSetPublicationRepository, "getPublished">;
+}): DocumentSemanticEnrichmentGenerationGuard {
+  return {
+    status: async (job) => {
+      const attempt = await attempts.get(job.compilationAttemptId);
+      if (
+        !attempt ||
+        attempt.publicationGenerationId !== job.publicationGenerationId ||
+        attempt.runState === "failed" ||
+        attempt.runState === "canceled" ||
+        attempt.runState === "superseded"
+      ) {
+        return "superseded";
+      }
+
+      const published = await publications.getPublished({
+        knowledgeSpaceId: job.knowledgeSpaceId,
+        tenantId: job.tenantId,
+      });
+      if (published && published.headRevision > job.baseHeadRevision) {
+        const outline = await outlines.getByDocumentVersion({
+          documentAssetId: job.documentAssetId,
+          publicationGenerationId: job.publicationGenerationId,
+          version: job.documentVersion,
+        });
+        if (outline) {
+          const [member] = await members.filterComponentKeys({
+            componentKeys: [outline.id],
+            componentType: "document-outline",
+            knowledgeSpaceId: job.knowledgeSpaceId,
+            publicationId: published.id,
+            tenantId: job.tenantId,
+          });
+          if (member === outline.id) return "current";
+        }
+      }
+
+      // Another document can advance the shared space head while this compilation is still
+      // running. Missing membership is therefore conclusive only after this attempt succeeds;
+      // otherwise the job must wait for its own candidate publication instead of being lost.
+      return attempt.runState === "succeeded" ? "superseded" : "pending";
+    },
+  };
 }
 
 function requireRuntimeRepositories(

@@ -1,5 +1,6 @@
+import { createMemoryObjectStorageAdapter } from "@knowledge/adapters";
 import { createNodePlatformAdapter } from "@knowledge/adapters/node";
-import { ParseArtifactSchema } from "@knowledge/core";
+import { ParseArtifactSchema, type PlatformAdapter } from "@knowledge/core";
 import type { ParserAdapter } from "@knowledge/parsers";
 import { describe, expect, it } from "vitest";
 
@@ -27,7 +28,7 @@ import {
 
 describe("createDocumentCompilationWorker lease integration", () => {
   it("fails closed instead of silently writing a generation payload as legacy", async () => {
-    const adapter = createNodePlatformAdapter({ env: {} });
+    const adapter = createTestPlatformAdapter();
     const assets = createInMemoryDocumentAssetRepository({
       maxAssets: 1,
       now: () => "2026-05-27T10:00:00.000Z",
@@ -85,7 +86,7 @@ describe("createDocumentCompilationWorker lease integration", () => {
   });
 
   it("does not persist compilation progress after a document deletion fence appears", async () => {
-    const adapter = createNodePlatformAdapter({ env: {} });
+    const adapter = createTestPlatformAdapter();
     const assets = createInMemoryDocumentAssetRepository({ maxAssets: 1 });
     const asset = await assets.create({
       filename: "Stale.md",
@@ -164,7 +165,7 @@ describe("createDocumentCompilationWorker lease integration", () => {
   });
 
   it("compensates a multimodal object written after deletion inventory has passed", async () => {
-    const adapter = createNodePlatformAdapter({ env: {} });
+    const adapter = createTestPlatformAdapter();
     const assets = createInMemoryDocumentAssetRepository({ maxAssets: 1 });
     const asset = await assets.create({
       filename: "Late-image.md",
@@ -258,7 +259,7 @@ describe("createDocumentCompilationWorker lease integration", () => {
   });
 
   it("converts an in-flight compilation failure to the deletion fence and compensates objects", async () => {
-    const adapter = createNodePlatformAdapter({ env: {} });
+    const adapter = createTestPlatformAdapter();
     const assets = createInMemoryDocumentAssetRepository({ maxAssets: 1 });
     const asset = await assets.create({
       filename: "Fence-on-error.md",
@@ -329,7 +330,7 @@ describe("createDocumentCompilationWorker lease integration", () => {
   });
 
   it("composes a complete generation receipt and stops before evaluation or publication", async () => {
-    const adapter = createNodePlatformAdapter({ env: {} });
+    const adapter = createTestPlatformAdapter();
     const assets = createInMemoryDocumentAssetRepository({
       maxAssets: 1,
       now: () => "2026-07-13T10:00:00.000Z",
@@ -367,6 +368,7 @@ describe("createDocumentCompilationWorker lease integration", () => {
     let mutableEmbeddingReads = 0;
     let pageIndexBuildCalls = 0;
     let publishCalls = 0;
+    const semanticAdmissions: unknown[] = [];
     let semanticCalls = 0;
     let smokeCalls = 0;
     const worker = createDocumentCompilationWorker({
@@ -398,7 +400,7 @@ describe("createDocumentCompilationWorker lease integration", () => {
       },
       indexOverrides: {
         resolve: async () => ({
-          enableGraph: false,
+          enableGraph: true,
           enablePageIndex: false,
           language: "zh-CN",
         }),
@@ -464,6 +466,11 @@ describe("createDocumentCompilationWorker lease integration", () => {
           };
         },
       },
+      semanticEnrichmentAdmission: {
+        enqueue: async (input) => {
+          semanticAdmissions.push(input);
+        },
+      },
       semanticPostProcessor: {
         process: async () => {
           semanticCalls += 1;
@@ -521,6 +528,14 @@ describe("createDocumentCompilationWorker lease integration", () => {
     expect(smokeCalls).toBe(0);
     expect(mutableEmbeddingReads).toBe(0);
     expect(pageIndexBuildCalls).toBe(0);
+    expect(semanticAdmissions).toEqual([
+      expect.objectContaining({
+        documentAssetId: asset.id,
+        parseArtifactId: "018f0d60-7a49-7cc2-9c1b-5b36f18f6a02",
+        publicationGenerationId: generationId,
+        retrievalProfile: expect.objectContaining({ revision: 4 }),
+      }),
+    ]);
     expect(semanticCalls).toBe(0);
     expect(reindexInputs[0]).toEqual(expect.objectContaining({ language: "zh-CN" }));
     expect(reindexInputs[0]).not.toHaveProperty("denseModel");
@@ -531,7 +546,7 @@ describe("createDocumentCompilationWorker lease integration", () => {
   });
 
   it("leaves transient status transitions to a durable caller", async () => {
-    const adapter = createNodePlatformAdapter({ env: {} });
+    const adapter = createTestPlatformAdapter();
     const assets = createInMemoryDocumentAssetRepository({
       maxAssets: 1,
       now: () => "2026-07-13T10:00:00.000Z",
@@ -593,7 +608,7 @@ describe("createDocumentCompilationWorker lease integration", () => {
   });
 
   it("resumes an outline-built generation without reparsing or regenerating LLM summaries", async () => {
-    const adapter = createNodePlatformAdapter({ env: {} });
+    const adapter = createTestPlatformAdapter();
     const assets = createInMemoryDocumentAssetRepository({
       maxAssets: 1,
       now: () => "2026-07-30T15:16:20.000Z",
@@ -813,7 +828,7 @@ describe("createDocumentCompilationWorker lease integration", () => {
   });
 
   it("builds retry derivatives from the canonical artifact returned by reindexing", async () => {
-    const adapter = createNodePlatformAdapter({ env: {} });
+    const adapter = createTestPlatformAdapter();
     const assets = createInMemoryDocumentAssetRepository({
       maxAssets: 1,
       now: () => "2026-07-13T10:00:00.000Z",
@@ -972,7 +987,7 @@ describe("createDocumentCompilationWorker lease integration", () => {
   });
 
   it("does not expose legacy ready projections when outline construction fails", async () => {
-    const adapter = createNodePlatformAdapter({ env: {} });
+    const adapter = createTestPlatformAdapter();
     const assets = createInMemoryDocumentAssetRepository({
       maxAssets: 1,
       now: () => "2026-07-13T10:00:00.000Z",
@@ -1045,7 +1060,7 @@ describe("createDocumentCompilationWorker lease integration", () => {
   });
 
   it("wraps durable document compilation work in a publish lease", async () => {
-    const adapter = createNodePlatformAdapter({ env: {} });
+    const adapter = createTestPlatformAdapter();
     const assets = createInMemoryDocumentAssetRepository({
       maxAssets: 4,
       now: () => "2026-05-27T10:00:00.000Z",
@@ -1349,7 +1364,7 @@ describe("createDocumentCompilationWorker lease integration", () => {
   });
 
   it("fails staged projections without publishing when smoke evaluation rejects them", async () => {
-    const adapter = createNodePlatformAdapter({ env: {} });
+    const adapter = createTestPlatformAdapter();
     const assets = createInMemoryDocumentAssetRepository({
       maxAssets: 4,
       now: () => "2026-05-27T10:00:00.000Z",
@@ -1458,7 +1473,7 @@ describe("createDocumentCompilationWorker lease integration", () => {
   });
 
   it("fails every staged projection when publication only updates part of the candidate", async () => {
-    const adapter = createNodePlatformAdapter({ env: {} });
+    const adapter = createTestPlatformAdapter();
     const assets = createInMemoryDocumentAssetRepository({
       maxAssets: 4,
       now: () => "2026-05-27T10:00:00.000Z",
@@ -1544,7 +1559,7 @@ describe("createDocumentCompilationWorker lease integration", () => {
   });
 
   it("rasterizes PDF multimodal candidates before async asset extraction", async () => {
-    const adapter = createNodePlatformAdapter({ env: {} });
+    const adapter = createTestPlatformAdapter();
     const assets = createInMemoryDocumentAssetRepository({
       maxAssets: 4,
       now: () => "2026-05-27T10:00:00.000Z",
@@ -1660,6 +1675,17 @@ describe("createDocumentCompilationWorker lease integration", () => {
     ).resolves.toEqual(new Uint8Array([9, 8, 7, 6]));
   });
 });
+
+function createTestPlatformAdapter(): PlatformAdapter {
+  const adapter = createNodePlatformAdapter({ env: {} });
+  return {
+    ...adapter,
+    objectStorage: createMemoryObjectStorageAdapter({
+      kind: "memory",
+      maxObjectBytes: 64 * 1024 * 1024,
+    }),
+  };
+}
 
 function parser(): ParserAdapter {
   return {

@@ -2,8 +2,24 @@ export interface ConcurrencyGate {
   run<T>(fn: () => Promise<T>): Promise<T>;
 }
 
+export interface ConcurrencyGateEvent {
+  readonly activeRequests: number;
+  readonly lifecycle: "acquired" | "released";
+  readonly limit: number;
+  readonly queueWaitMs: number;
+  readonly queuedRequests: number;
+}
+
+export interface ConcurrencyGateOptions {
+  readonly now?: (() => number) | undefined;
+  readonly onEvent?: ((event: ConcurrencyGateEvent) => Promise<void> | void) | undefined;
+}
+
 /** Fair FIFO gate that shares a fixed concurrency budget across independent callers. */
-export function createConcurrencyGate(limit: number): ConcurrencyGate {
+export function createConcurrencyGate(
+  limit: number,
+  { now = Date.now, onEvent }: ConcurrencyGateOptions = {},
+): ConcurrencyGate {
   if (!Number.isSafeInteger(limit) || limit < 1) {
     throw new Error("Concurrency gate limit must be at least 1");
   }
@@ -11,14 +27,31 @@ export function createConcurrencyGate(limit: number): ConcurrencyGate {
   let active = 0;
   const waiters: Array<() => void> = [];
 
+  const emit = (event: ConcurrencyGateEvent): void => {
+    if (!onEvent) return;
+    try {
+      const pending = onEvent(event);
+      if (pending) void pending.catch(() => undefined);
+    } catch {
+      // Telemetry must never own a provider slot or alter request behavior.
+    }
+  };
+
   const acquire = async (): Promise<void> => {
+    const queuedAt = now();
     if (active < limit) {
       active += 1;
-      return;
+    } else {
+      await new Promise<void>((resolve) => {
+        waiters.push(resolve);
+      });
     }
-
-    await new Promise<void>((resolve) => {
-      waiters.push(resolve);
+    emit({
+      activeRequests: active,
+      lifecycle: "acquired",
+      limit,
+      queueWaitMs: Math.max(0, now() - queuedAt),
+      queuedRequests: waiters.length,
     });
   };
 
@@ -26,10 +59,16 @@ export function createConcurrencyGate(limit: number): ConcurrencyGate {
     const next = waiters.shift();
     if (next) {
       next();
-      return;
+    } else {
+      active -= 1;
     }
-
-    active -= 1;
+    emit({
+      activeRequests: active,
+      lifecycle: "released",
+      limit,
+      queueWaitMs: 0,
+      queuedRequests: waiters.length,
+    });
   };
 
   return {

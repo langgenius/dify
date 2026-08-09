@@ -45,6 +45,30 @@ describe("background task DTOs", () => {
     });
   });
 
+  it("forwards additive document compilation and graph progress metadata", () => {
+    expect(
+      documentBackgroundTask(
+        documentTask({
+          activeOperations: ["chunk", "fts_index", "embedding"],
+          phase: "chunking_indexing",
+          semanticEnrichment: {
+            nodesCompleted: 32,
+            nodesTotal: 80,
+            state: "running",
+          },
+        }),
+      ),
+    ).toMatchObject({
+      activeOperations: ["chunk", "fts_index", "embedding"],
+      phase: "chunking_indexing",
+      semanticEnrichment: {
+        nodesCompleted: 32,
+        nodesTotal: 80,
+        state: "running",
+      },
+    });
+  });
+
   it.each([
     ["succeeded", "completed", 1, false, false],
     ["canceled", "canceled", 0, false, true],

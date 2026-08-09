@@ -1045,10 +1045,38 @@ describe("document write gateway integration", () => {
       semanticReasoningProviderFactory: () => ({
         generate: async (input) => {
           semanticRequests.push({ model: input.model, tenantId: input.tenantId });
+          const systemMessage = input.messages[0]?.content ?? "";
+          const userMessage = input.messages.at(-1)?.content ?? "";
+          const batchInput = userMessage.startsWith("{")
+            ? (JSON.parse(userMessage) as { nodes?: Array<{ nodeId: string }> })
+            : {};
+
+          if (batchInput.nodes) {
+            return {
+              model: input.model,
+              text: JSON.stringify({
+                nodes: batchInput.nodes.map(({ nodeId }) => ({
+                  nodeId,
+                  ...(systemMessage.includes("graph relations")
+                    ? { relations: [] }
+                    : {
+                        entities: [
+                          {
+                            canonicalName: "Acme Renewal Policy",
+                            confidence: 0.95,
+                            text: "Acme Renewal Policy",
+                            type: "policy",
+                          },
+                        ],
+                      }),
+                })),
+              }),
+            };
+          }
 
           return {
             model: input.model,
-            text: input.messages[0]?.content.includes("graph relations")
+            text: systemMessage.includes("graph relations")
               ? JSON.stringify({ relations: [] })
               : JSON.stringify({
                   entities: [

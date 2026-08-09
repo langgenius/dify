@@ -24,6 +24,19 @@ export const BackgroundTaskOperationSchema = z.enum([
   "source_bulk",
 ]);
 export const BackgroundTaskSchema = z.object({
+  activeOperations: z
+    .array(
+      z.enum([
+        "parse",
+        "outline_summary",
+        "chunk",
+        "fts_index",
+        "embedding",
+        "graph_admission",
+        "publication",
+      ]),
+    )
+    .optional(),
   canCancel: z.boolean(),
   canRetry: z.boolean(),
   completedAt: z.string().optional(),
@@ -35,12 +48,36 @@ export const BackgroundTaskSchema = z.object({
   id: z.string().uuid(),
   knowledgeSpaceId: z.string().uuid(),
   operation: BackgroundTaskOperationSchema,
+  phase: z
+    .enum([
+      "queued",
+      "parsing",
+      "outline_summary",
+      "chunking_indexing",
+      "graph_admission",
+      "publication",
+      "complete",
+    ])
+    .optional(),
   progressCompleted: z.number().int().nonnegative(),
   progressFailed: z.number().int().nonnegative(),
   progressPercent: z.number().int().min(0).max(100),
   progressTotal: z.number().int().nonnegative(),
   sourceId: z.string().uuid().optional(),
   state: BackgroundTaskStateSchema,
+  semanticEnrichment: z
+    .object({
+      errorCode: z.string().optional(),
+      errorMessage: z.string().optional(),
+      nodesCompleted: z.number().int().nonnegative(),
+      nodesTotal: z.number().int().nonnegative().optional(),
+      providerCalls: z.number().int().nonnegative().optional(),
+      providerCallsMaximum: z.number().int().nonnegative().optional(),
+      state: z.enum(["not_scheduled", "pending", "running", "ready", "failed", "disabled"]),
+      updatedAt: z.string().optional(),
+    })
+    .strict()
+    .optional(),
   taskKind: BackgroundTaskKindSchema,
   updatedAt: z.string(),
 });

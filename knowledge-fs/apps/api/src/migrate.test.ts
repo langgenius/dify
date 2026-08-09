@@ -29,56 +29,21 @@ describe("runApiDatabaseMigrations", () => {
       kind: "postgres",
     });
 
-    await expect(
-      runApiDatabaseMigrations({
-        adapter: {
-          database,
-        },
-        env: { DATABASE_URL: "postgresql://user:pass@localhost:5432/knowledge_fs" },
-        log: () => undefined,
-        now: () => "2026-05-21T00:00:00.000Z",
-      }),
-    ).resolves.toEqual({
-      appliedMigrationIds: [
-        "0001_initial_schema",
-        "0002_vector_index_upgrade",
-        "0003_projection_set_publications",
-        "0004_projection_publication_members",
-        "0005_publication_generation_nonzero",
-        "0006_document_compilation_attempts",
-        "0007_knowledge_node_generations",
-        "0008_flattened_page_index",
-        "0009_legacy_space_bootstrap",
-        "0010_page_index_upgrade_backfill",
-        "0011_tidb_fts_postings",
-        "0012_tidb_baseline_repair",
-        "0013_space_access_control",
-        "0014_source_credential_refs",
-        "0015_research_task_jobs",
-        "0016_compilation_job_requester_binding",
-        "0017_durable_deletion",
-        "0018_versioned_space_profiles",
-        "0019_profile_publication_bindings",
-        "0020_profile_migration_runs",
-        "0021_source_product_workflows",
-        "0022_logical_document_revisions",
-        "0023_knowledge_space_overview",
-        "0024_quality_control",
-        "0025_capability_grant_provenance",
-        "0026_capability_job_provenance",
-        "0027_upload_sessions",
-        "0028_dify_integration_states",
-        "0029_dify_integration_freezes",
-        "0030_bulk_operations",
-        "0031_source_connection_capability_provenance",
-        "0032_capability_source_sync_policies",
-        "0033_research_task_final_answers",
-        "0034_knowledge_space_emoji_icons",
-        "0035_research_task_answer_streaming",
-        "0036_page_index_findability",
-        "0037_logical_document_zero_revision_deletion",
-      ],
-      pendingBeforeRun: 37,
+    const result = await runApiDatabaseMigrations({
+      adapter: {
+        database,
+      },
+      env: { DATABASE_URL: "postgresql://user:pass@localhost:5432/knowledge_fs" },
+      log: () => undefined,
+      now: () => "2026-05-21T00:00:00.000Z",
+    });
+    const expectedPostgresMigrationIds = migrationSql.map(
+      (sql) => /-- Migration id: ([^\s]+)/u.exec(sql)?.[1] ?? "",
+    );
+
+    expect(result).toEqual({
+      appliedMigrationIds: expectedPostgresMigrationIds,
+      pendingBeforeRun: expectedPostgresMigrationIds.length,
     });
     expect(operations).toEqual([
       "schema",
@@ -158,8 +123,12 @@ describe("runApiDatabaseMigrations", () => {
       "insert",
       "schema",
       "insert",
+      "schema",
+      "insert",
+      "schema",
+      "insert",
     ]);
-    expect(migrationSql).toHaveLength(37);
+    expect(migrationSql).toHaveLength(expectedPostgresMigrationIds.length);
     expect(migrationSql[2]).toContain("-- Migration id: 0003_projection_set_publications\n");
     expect(migrationSql[2]).toContain("-- Dialect: postgres\n");
     expect(migrationSql[2]).toContain('CREATE TABLE IF NOT EXISTS "projection_set_publications"');
@@ -210,6 +179,10 @@ describe("runApiDatabaseMigrations", () => {
     expect(migrationSql[36]).toContain(
       "-- Migration id: 0037_logical_document_zero_revision_deletion\n",
     );
+    expect(migrationSql[37]).toContain(
+      "-- Migration id: 0038_document_outline_summary_checkpoints\n",
+    );
+    expect(migrationSql[38]).toContain("-- Migration id: 0039_document_semantic_enrichment\n");
     expect(closed).toBe(true);
   });
 

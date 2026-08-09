@@ -39,10 +39,10 @@ export interface TraversePublishedGraphInput {
 /**
  * Read-only graph view over one immutable publication.
  *
- * Implementations must enforce graph-entity/graph-relation publication membership, exact
- * generation ownership, document/source-node closure, and permission scope before a row can
- * affect traversal. A publication remains readable after a head switch while its status is
- * `superseded`; the current head must never be re-resolved inside a query.
+ * Implementations anchor graph rows to an exact published document-outline generation, then
+ * enforce document/source-node closure and permission scope before a row can affect traversal.
+ * This permits optional graph rows to arrive after searchable publication without mutating the
+ * immutable publication member set. A fixed snapshot remains readable after a head switch.
  */
 export interface PublishedGraphIndexRepository {
   findSeedEntityIds(input: FindPublishedGraphSeedEntityIdsInput): Promise<readonly string[]>;
@@ -130,8 +130,7 @@ export function createDatabasePublishedGraphIndexRepository({
         )}${publishedGraphEntityFromSql(database, "e", "em")}${publishedSnapshotWhereSql(
           database,
           "em",
-          "graph-entity",
-        )} AND ${graphPermissionSql(
+        )} AND ${publishedGraphReadinessSql(database, "em")} AND ${graphPermissionSql(
           database,
           column(database, "e", "permission_scope"),
           graphPermissionPosition,
@@ -277,7 +276,10 @@ async function loadPublishedGraphRoot(
       database,
       "e",
       "em",
-    )}${publishedSnapshotWhereSql(database, "em", "graph-entity")} AND ${graphPermissionSql(
+    )}${publishedSnapshotWhereSql(database, "em")} AND ${publishedGraphReadinessSql(
+      database,
+      "em",
+    )} AND ${graphPermissionSql(
       database,
       column(database, "e", "permission_scope"),
       graphPermissionPosition,
@@ -366,39 +368,36 @@ async function loadPublishedGraphEdges(
     )} FROM ${quoted(database, "projection_set_publications")} pub JOIN ${quoted(
       database,
       "projection_set_publication_members",
-    )} rm ON ${publicationMemberToPublicationJoinSql(database, "rm")} JOIN ${quoted(
+    )} rm ON ${publicationMemberToPublicationJoinSql(database, "rm")} AND ${column(
+      database,
+      "rm",
+      "component_type",
+    )} = 'document-outline' JOIN ${quoted(
       database,
       "graph_relations",
-    )} r ON ${graphComponentMemberJoinSql(database, "r", "rm", "graph-relation")} JOIN ${quoted(
-      database,
-      "projection_set_publication_members",
-    )} sm ON ${samePublicationMemberSql(database, "sm", "rm", "graph-entity")} AND ${column(
-      database,
-      "sm",
-      "component_key",
-    )} = ${column(database, "r", "subject_entity_id")} JOIN ${quoted(
+    )} r ON ${graphGenerationAnchorJoinSql(database, "r", "rm")} JOIN ${quoted(
       database,
       "graph_entities",
-    )} subject ON ${graphComponentMemberJoinSql(
+    )} subject ON ${graphGenerationAnchorJoinSql(
       database,
       "subject",
-      "sm",
-      "graph-entity",
-    )} JOIN ${quoted(database, "projection_set_publication_members")} cm ON ${samePublicationMemberSql(
-      database,
-      "cm",
       "rm",
-      "graph-entity",
-    )} AND ${column(database, "cm", "component_key")} = ${column(
+    )} AND ${column(database, "subject", "id")} = ${column(
+      database,
+      "r",
+      "subject_entity_id",
+    )} JOIN ${quoted(database, "graph_entities")} child ON ${graphGenerationAnchorJoinSql(
+      database,
+      "child",
+      "rm",
+    )} AND ${column(database, "child", "id")} = ${column(
       database,
       "r",
       "object_entity_id",
-    )} JOIN ${quoted(database, "graph_entities")} child ON ${graphComponentMemberJoinSql(
+    )}${publishedSnapshotWhereOnlySql(database)} AND ${publishedGraphReadinessSql(
       database,
-      "child",
-      "cm",
-      "graph-entity",
-    )}${publishedSnapshotWhereOnlySql(database)} AND ${column(
+      "rm",
+    )} AND ${column(
       database,
       "r",
       "subject_entity_id",
@@ -422,12 +421,12 @@ async function loadPublishedGraphEdges(
     )} AND ${graphSourceNodeClosureSql(
       database,
       "subject",
-      "sm",
+      "rm",
       permissionPositions[4] as number,
     )} AND ${graphSourceNodeClosureSql(
       database,
       "child",
-      "cm",
+      "rm",
       permissionPositions[5] as number,
     )}) ${ranked} WHERE ${quoted(
       database,
@@ -456,12 +455,10 @@ function publishedGraphEntityFromSql(
   )} ${memberAlias} ON ${publicationMemberToPublicationJoinSql(
     database,
     memberAlias,
-  )} JOIN ${quoted(database, "graph_entities")} ${entityAlias} ON ${graphComponentMemberJoinSql(
+  )} AND ${column(database, memberAlias, "component_type")} = 'document-outline' JOIN ${quoted(
     database,
-    entityAlias,
-    memberAlias,
-    "graph-entity",
-  )}`;
+    "graph_entities",
+  )} ${entityAlias} ON ${graphGenerationAnchorJoinSql(database, entityAlias, memberAlias)}`;
 }
 
 function publicationMemberToPublicationJoinSql(
@@ -479,17 +476,12 @@ function publicationMemberToPublicationJoinSql(
   )} AND ${column(database, memberAlias, "publication_id")} = ${column(database, "pub", "id")}`;
 }
 
-function graphComponentMemberJoinSql(
+function graphGenerationAnchorJoinSql(
   database: DatabaseAdapter,
   componentAlias: string,
   memberAlias: string,
-  componentType: "graph-entity" | "graph-relation",
 ): string {
-  return `${column(database, memberAlias, "component_type")} = '${componentType}' AND ${column(
-    database,
-    memberAlias,
-    "component_key",
-  )} = ${column(database, componentAlias, "id")} AND ${column(
+  return `${column(
     database,
     memberAlias,
     "knowledge_space_id",
@@ -500,37 +492,41 @@ function graphComponentMemberJoinSql(
   )} = ${column(database, componentAlias, "publication_generation_id")}`;
 }
 
-function samePublicationMemberSql(
-  database: DatabaseAdapter,
-  memberAlias: string,
-  referenceAlias: string,
-  componentType: "graph-entity" | "graph-relation",
-): string {
-  return `${column(database, memberAlias, "tenant_id")} = ${column(
-    database,
-    referenceAlias,
-    "tenant_id",
-  )} AND ${column(database, memberAlias, "knowledge_space_id")} = ${column(
-    database,
-    referenceAlias,
-    "knowledge_space_id",
-  )} AND ${column(database, memberAlias, "publication_id")} = ${column(
-    database,
-    referenceAlias,
-    "publication_id",
-  )} AND ${column(database, memberAlias, "component_type")} = '${componentType}'`;
-}
-
-function publishedSnapshotWhereSql(
-  database: DatabaseAdapter,
-  memberAlias: string,
-  componentType: "graph-entity" | "graph-relation",
-): string {
+function publishedSnapshotWhereSql(database: DatabaseAdapter, memberAlias: string): string {
   return `${publishedSnapshotWhereOnlySql(database)} AND ${column(
     database,
     memberAlias,
     "component_type",
-  )} = '${componentType}' AND ${column(database, memberAlias, "document_asset_id")} IS NOT NULL`;
+  )} = 'document-outline' AND ${column(database, memberAlias, "document_asset_id")} IS NOT NULL`;
+}
+
+/**
+ * Legacy generation-scoped graph rows have no enrichment job and remain readable. New async rows
+ * are hidden until their durable job reaches `succeeded`, so the entity and relation upserts become
+ * visible as one logical unit instead of leaking a partially written graph during enrichment.
+ */
+function publishedGraphReadinessSql(database: DatabaseAdapter, memberAlias: string): string {
+  const readiness = "graph_readiness";
+  return `NOT EXISTS (SELECT 1 FROM ${quoted(
+    database,
+    "document_semantic_enrichment_jobs",
+  )} ${readiness} WHERE ${column(database, readiness, "tenant_id")} = ${column(
+    database,
+    memberAlias,
+    "tenant_id",
+  )} AND ${column(database, readiness, "knowledge_space_id")} = ${column(
+    database,
+    memberAlias,
+    "knowledge_space_id",
+  )} AND ${column(database, readiness, "document_asset_id")} = ${column(
+    database,
+    memberAlias,
+    "document_asset_id",
+  )} AND ${column(database, readiness, "publication_generation_id")} = ${column(
+    database,
+    memberAlias,
+    "generation_id",
+  )} AND ${column(database, readiness, "run_state")} <> 'succeeded')`;
 }
 
 function publishedSnapshotWhereOnlySql(database: DatabaseAdapter): string {

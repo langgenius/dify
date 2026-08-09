@@ -1,4 +1,8 @@
-import type { EmbeddingProvider } from "@knowledge/embeddings";
+import type { ConcurrencyGate } from "@knowledge/api";
+import type {
+  DifyModelRuntimeEmbeddingOperationalMetrics,
+  EmbeddingProvider,
+} from "@knowledge/embeddings";
 import {
   createDifyModelRuntimeEmbeddingProvider,
   createStaticEmbeddingProvider,
@@ -13,6 +17,7 @@ export interface ApiEmbeddingEnv extends DifyModelRuntimeClientEnv {
   /** Required only by the test-only static provider; Dify responses are authoritative. */
   readonly KNOWLEDGE_EMBEDDING_DIMENSION?: string | undefined;
   readonly KNOWLEDGE_EMBEDDING_MODEL?: string | undefined;
+  readonly KNOWLEDGE_EMBEDDING_REQUEST_CONCURRENCY?: string | undefined;
   readonly KNOWLEDGE_EMBEDDING_PLUGIN_ID?: string | undefined;
   readonly KNOWLEDGE_EMBEDDING_PLUGIN_PROVIDER?: string | undefined;
   readonly KNOWLEDGE_EMBEDDING_PROVIDER?: string | undefined;
@@ -50,6 +55,8 @@ const DEFAULT_STATIC_EMBEDDING_MODEL = "static-embedding";
  */
 export function createApiEmbeddingOptions(
   env: ApiEmbeddingEnv = process.env,
+  metrics?: DifyModelRuntimeEmbeddingOperationalMetrics,
+  requestGate?: ConcurrencyGate,
 ): ApiEmbeddingOptions | Record<string, never> {
   const providerName = normalizedProvider(env.KNOWLEDGE_EMBEDDING_PROVIDER);
 
@@ -97,22 +104,34 @@ export function createApiEmbeddingOptions(
     );
   }
   const legacyDefaultConfigured = Boolean(pluginId && pluginProvider);
+  const requestConcurrency = boundedPositiveIntegerEnv(
+    env.KNOWLEDGE_EMBEDDING_REQUEST_CONCURRENCY,
+    "KNOWLEDGE_EMBEDDING_REQUEST_CONCURRENCY",
+    2,
+    8,
+  );
   const selection =
     pluginId && pluginProvider ? { model, pluginId, provider: pluginProvider } : undefined;
   const client = createApiDifyModelRuntimeClient(env);
   const providerFactory = (requested: ApiEmbeddingSelection) =>
     createDifyModelRuntimeEmbeddingProvider({
       client,
+      maxConcurrentRequests: requestConcurrency,
+      ...(metrics ? { metrics } : {}),
       model: requested.model,
       pluginId: requested.pluginId,
       provider: requested.provider,
+      ...(requestGate ? { requestGate } : {}),
     });
   const provider = selection
     ? createDifyModelRuntimeEmbeddingProvider({
         client,
+        maxConcurrentRequests: requestConcurrency,
+        ...(metrics ? { metrics } : {}),
         model: selection.model,
         pluginId: selection.pluginId,
         provider: selection.provider,
+        ...(requestGate ? { requestGate } : {}),
       })
     : profileOnlyEmbeddingProvider();
 
@@ -124,6 +143,19 @@ export function createApiEmbeddingOptions(
     knowledgeSpaceEmbeddingProviderFactory: providerFactory,
     legacyDefaultConfigured,
   };
+}
+
+function boundedPositiveIntegerEnv(
+  value: string | undefined,
+  name: string,
+  defaultValue: number,
+  maximum: number,
+): number {
+  const parsed = optionalPositiveIntegerEnv(value, name) ?? defaultValue;
+  if (parsed > maximum) {
+    throw new Error(`${name} must be between 1 and ${maximum}`);
+  }
+  return parsed;
 }
 
 /**

@@ -56,6 +56,7 @@ describe("createApiDatabaseRepositories", () => {
       difyIntegrationFreezes: expect.any(Object),
       difyIntegrationStates: expect.any(Object),
       documentCompilationAttempts: expect.any(Object),
+      documentOutlineSummaryCheckpoints: expect.any(Object),
       durableDeletionEnabled: false,
       gatewayOptions: {
         agentWorkspaceSnapshots: expect.any(Object),

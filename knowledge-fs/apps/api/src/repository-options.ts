@@ -6,6 +6,7 @@ import {
   type DifyIntegrationFreezeRepository,
   type DifyIntegrationStateRepository,
   type DocumentCompilationAttemptRepository,
+  type DocumentOutlineSummaryCheckpointRepository,
   type DurableDeletionRepository,
   type IntegratedKnowledgeSpaceProvisioningRepository,
   type KnowledgeFsLeaseRepository,
@@ -44,6 +45,7 @@ import {
   createDatabaseDocumentCompilationAttemptRepository,
   createDatabaseDocumentMultimodalManifestRepository,
   createDatabaseDocumentOutlineRepository,
+  createDatabaseDocumentOutlineSummaryCheckpointRepository,
   createDatabaseDocumentProcessingTaskRepository,
   createDatabaseDocumentSettingsRepository,
   createDatabaseDurableDeletionRepository,
@@ -113,6 +115,9 @@ export interface ApiDatabaseRepositoryBundle {
   readonly difyIntegrationFreezes?: DifyIntegrationFreezeRepository | undefined;
   readonly difyIntegrationStates?: DifyIntegrationStateRepository | undefined;
   readonly documentCompilationAttempts?: DocumentCompilationAttemptRepository | undefined;
+  readonly documentOutlineSummaryCheckpoints?:
+    | DocumentOutlineSummaryCheckpointRepository
+    | undefined;
   readonly durableDeletionRepository?: DurableDeletionRepository | undefined;
   readonly durableDeletionEnabled: boolean;
   readonly gatewayOptions: Partial<KnowledgeGatewayOptions>;
@@ -182,6 +187,11 @@ export function createApiDatabaseRepositories({
     database,
     maxOutboxClaimBatchSize: maxListLimit,
   });
+  const documentOutlineSummaryCheckpoints =
+    createDatabaseDocumentOutlineSummaryCheckpointRepository({
+      database,
+      maxBatchSize,
+    });
   const bulkOperations = createDatabaseBulkOperationRepository({
     database,
     maxItems: maxBatchSize,
@@ -326,6 +336,7 @@ export function createApiDatabaseRepositories({
     difyIntegrationFreezes,
     difyIntegrationStates,
     documentCompilationAttempts,
+    documentOutlineSummaryCheckpoints,
     durableDeletionEnabled,
     ...(durableDeletionRepository ? { durableDeletionRepository } : {}),
     gatewayOptions: {

@@ -12,7 +12,18 @@ const SPACE_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42";
 describe("knowledge-space PageIndex Summary enhancer", () => {
   it("uses the owning space reasoning model and records it on the Outline", async () => {
     const stream = vi.fn(async function* (input) {
-      yield { delta: `Summary by ${input.model}`, type: "delta" as const };
+      const payload = JSON.parse(input.messages[1]?.content ?? "{}") as {
+        readonly sections?: readonly { readonly outlineNodeId: string }[];
+      };
+      yield {
+        delta: JSON.stringify({
+          summaries: payload.sections?.map((section) => ({
+            outlineNodeId: section.outlineNodeId,
+            summary: `Summary by ${input.model}`,
+          })),
+        }),
+        type: "delta" as const,
+      };
       yield { metadata: { requestId: "req-1" }, type: "done" as const };
     });
     const factory = vi.fn(() => ({ kind: "dify-model-runtime", stream }));
@@ -58,6 +69,7 @@ describe("knowledge-space PageIndex Summary enhancer", () => {
       provider: "vendor",
     });
     expect(stream).toHaveBeenCalledWith(expect.objectContaining({ model: "space-reasoning-v3" }));
+    expect(stream).toHaveBeenCalledOnce();
     expect(result.nodes[0]?.summary).toBe("Summary by space-reasoning-v3");
     expect(result.metadata).toMatchObject({
       summary: { model: "space-reasoning-v3", source: "provider" },

@@ -33,6 +33,34 @@ describe("API KnowledgeFS operational metrics", () => {
       method: "GET",
       routeKind: "access_policy",
     });
+    metrics.ingestionModel.record({
+      activeRequests: 8,
+      lifecycle: "acquired",
+      limit: 16,
+      queuedRequests: 2,
+      queueWaitMs: 12,
+    });
+    metrics.semanticEnrichment.record({
+      degraded: true,
+      durationMs: 8_000,
+      executionAttempt: 3,
+      failureKind: "timeout",
+      outcome: "retry",
+      queueWaitMs: 25,
+    });
+    metrics.outlineSummary.record({
+      checkpointHits: 60,
+      durationMs: 1_200,
+      nodeCount: 68,
+      outcome: "succeeded",
+      providerCalls: 1,
+    });
+    metrics.embeddingRequests.record({
+      concurrencyLimit: 2,
+      durationMs: 150,
+      outcome: "succeeded",
+      textCount: 16,
+    });
 
     expect(emit.mock.calls.map((call) => call[0])).toEqual([
       {
@@ -69,6 +97,38 @@ describe("API KnowledgeFS operational metrics", () => {
         event: "knowledge_fs.legacy_authorization.metric",
         method: "GET",
         routeKind: "access_policy",
+      },
+      {
+        activeRequests: 8,
+        event: "knowledge_fs.ingestion_model_concurrency.metric",
+        lifecycle: "acquired",
+        limit: 16,
+        queuedRequests: 2,
+        queueWaitMs: 12,
+      },
+      {
+        degraded: true,
+        durationMs: 8_000,
+        event: "knowledge_fs.semantic_enrichment.metric",
+        executionAttempt: 3,
+        failureKind: "timeout",
+        outcome: "retry",
+        queueWaitMs: 25,
+      },
+      {
+        checkpointHits: 60,
+        durationMs: 1_200,
+        event: "knowledge_fs.outline_summary.metric",
+        nodeCount: 68,
+        outcome: "succeeded",
+        providerCalls: 1,
+      },
+      {
+        concurrencyLimit: 2,
+        durationMs: 150,
+        event: "knowledge_fs.embedding_request.metric",
+        outcome: "succeeded",
+        textCount: 16,
       },
     ]);
     const serialized = JSON.stringify(emit.mock.calls);

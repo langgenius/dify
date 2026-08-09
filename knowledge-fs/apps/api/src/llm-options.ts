@@ -1,4 +1,5 @@
 import {
+  type ConcurrencyGate,
   type KnowledgeGatewayOptions,
   createLlmCommunitySummaryProvider,
   createLlmEntityExtractionProvider,
@@ -78,6 +79,7 @@ export function createApiKnowledgeSpaceSemanticIngestionOptions({
  */
 export function createApiSemanticEntityExtractionOptions(
   env: ApiSemanticEntityExtractionEnv = process.env,
+  options: { readonly modelRequestGate?: ConcurrencyGate | undefined } = {},
 ): Partial<KnowledgeGatewayOptions> {
   if (!semanticExtractionEnabled(env.KNOWLEDGE_ENTITY_EXTRACTION_PROVIDER)) {
     return {};
@@ -105,6 +107,7 @@ export function createApiSemanticEntityExtractionOptions(
         1_500,
         "KNOWLEDGE_ENTITY_EXTRACTION_MAX_OUTPUT_TOKENS",
       ),
+      ...(options.modelRequestGate ? { modelRequestGate: options.modelRequestGate } : {}),
       provider,
     }),
     semanticRelationExtractionMaxRelationsPerNode: positiveIntegerEnv(
@@ -119,6 +122,7 @@ export function createApiSemanticEntityExtractionOptions(
         1_500,
         "KNOWLEDGE_RELATION_EXTRACTION_MAX_OUTPUT_TOKENS",
       ),
+      ...(options.modelRequestGate ? { modelRequestGate: options.modelRequestGate } : {}),
       provider,
     }),
     semanticCommunitySummaryProvider: createLlmCommunitySummaryProvider({

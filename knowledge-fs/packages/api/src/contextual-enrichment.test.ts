@@ -55,6 +55,10 @@ function knowledgeNode(overrides: Partial<KnowledgeNode> = {}): KnowledgeNode {
   });
 }
 
+function uuidSequence(value: number): string {
+  return `018f0d60-7a49-7cc2-9c1b-${value.toString().padStart(12, "0")}`;
+}
+
 function createRecordingContextualProvider(): ContextualEnrichmentProvider & {
   readonly calls: ContextualEnrichmentProvider["generate"] extends (input: infer Input) => unknown
     ? Input[]
@@ -829,6 +833,56 @@ describe("contextual enrichment", () => {
 });
 
 describe("entity extraction", () => {
+  it("reduces 80 node extractions to 10 provider batches", async () => {
+    const nodes = createInMemoryKnowledgeNodeRepository({
+      maxBatchSize: 100,
+      maxListLimit: 100,
+      maxNodes: 100,
+    });
+    const inputs = Array.from({ length: 80 }, (_, index) => {
+      const text = `Node ${index} mentions Acme.`;
+      const startOffset = index * 100;
+
+      return knowledgeNode({
+        endOffset: startOffset + text.length,
+        id: uuidSequence(index + 100),
+        metadata: { chunkIndex: index },
+        sourceLocation: {
+          endOffset: startOffset + text.length,
+          sectionPath: ["Guide", `Node ${index}`],
+          startOffset,
+        },
+        startOffset,
+        text,
+      });
+    });
+    await nodes.createMany(inputs);
+    let batchCalls = 0;
+    const flow = createEntityExtractionFlow({
+      maxBatchSize: 100,
+      maxConcurrency: 4,
+      model: "entity-model",
+      nodes,
+      provider: {
+        extract: async () => {
+          throw new Error("single-node fallback must not run");
+        },
+        extractBatch: async (batch) => {
+          batchCalls += 1;
+          return batch.map(() => ({ entities: [] }));
+        },
+      },
+      providerBatchSize: 8,
+    });
+
+    await flow.extract({
+      knowledgeSpaceId: inputs[0]?.knowledgeSpaceId ?? "",
+      nodeIds: inputs.map((node) => node.id),
+    });
+
+    expect(batchCalls).toBe(10);
+  });
+
   it("extracts typed entities into knowledge node metadata with bounded provider calls", async () => {
     const nodes = createInMemoryKnowledgeNodeRepository({
       maxBatchSize: 3,
@@ -1134,6 +1188,60 @@ describe("entity extraction", () => {
 });
 
 describe("relation extraction", () => {
+  it("reduces 80 node relation extractions to 10 provider batches", async () => {
+    const nodes = createInMemoryKnowledgeNodeRepository({
+      maxBatchSize: 100,
+      maxListLimit: 100,
+      maxNodes: 100,
+    });
+    const inputs = Array.from({ length: 80 }, (_, index) => {
+      const startOffset = index * 100;
+
+      return knowledgeNode({
+        endOffset: startOffset + 24,
+        id: uuidSequence(index + 300),
+        metadata: {
+          chunkIndex: index,
+          extractedEntities: [
+            { confidence: 0.9, text: "Acme", type: "organization" },
+            { confidence: 0.9, text: "Atlas", type: "product" },
+          ],
+        },
+        sourceLocation: {
+          endOffset: startOffset + 24,
+          sectionPath: ["Guide", `Node ${index}`],
+          startOffset,
+        },
+        startOffset,
+      });
+    });
+    await nodes.createMany(inputs);
+    let batchCalls = 0;
+    const flow = createRelationExtractionFlow({
+      maxBatchSize: 100,
+      maxConcurrency: 4,
+      model: "relation-model",
+      nodes,
+      provider: {
+        extract: async () => {
+          throw new Error("single-node fallback must not run");
+        },
+        extractBatch: async (batch) => {
+          batchCalls += 1;
+          return batch.map(() => ({ relations: [] }));
+        },
+      },
+      providerBatchSize: 8,
+    });
+
+    await flow.extract({
+      knowledgeSpaceId: inputs[0]?.knowledgeSpaceId ?? "",
+      nodeIds: inputs.map((node) => node.id),
+    });
+
+    expect(batchCalls).toBe(10);
+  });
+
   it("extracts typed relations using existing node entities as provider context", async () => {
     const nodes = createInMemoryKnowledgeNodeRepository({
       maxBatchSize: 2,
@@ -1268,7 +1376,14 @@ describe("relation extraction", () => {
       maxListLimit: 2,
       maxNodes: 2,
     });
-    const first = knowledgeNode();
+    const first = knowledgeNode({
+      metadata: {
+        extractedEntities: [
+          { confidence: 0.9, text: "A", type: "organization" },
+          { confidence: 0.9, text: "B", type: "product" },
+        ],
+      },
+    });
     await nodes.createMany([first]);
     const flow = createRelationExtractionFlow({
       maxBatchSize: 1,

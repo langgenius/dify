@@ -5822,6 +5822,224 @@ const tables = [
     ],
   },
   {
+    name: "document_outline_summary_checkpoints",
+    checkConstraints: [
+      {
+        expression: {
+          postgres: `"input_fingerprint" ~ '^sha256:[a-f0-9]{64}$'`,
+          tidb: "`input_fingerprint` REGEXP '^sha256:[a-f0-9]{64}$'",
+        },
+        name: "document_outline_summary_checkpoints_fingerprint_ck",
+      },
+      {
+        expression: {
+          postgres: "jsonb_typeof(\"metadata\") = 'object'",
+          tidb: "JSON_TYPE(`metadata`) = 'OBJECT'",
+        },
+        name: "document_outline_summary_checkpoints_metadata_ck",
+      },
+      {
+        expression: {
+          postgres: '"document_version" >= 1',
+          tidb: "`document_version` >= 1",
+        },
+        name: "document_outline_summary_checkpoints_version_ck",
+      },
+    ],
+    foreignKeys: [
+      {
+        columns: ["tenant_id", "knowledge_space_id"],
+        name: "document_outline_summary_checkpoints_scope_fk",
+        onDelete: "CASCADE",
+        referencedColumns: ["tenant_id", "id"],
+        referencedTable: "knowledge_spaces",
+      },
+      {
+        columns: ["knowledge_space_id", "document_asset_id", "document_version"],
+        name: "document_outline_summary_checkpoints_asset_fk",
+        onDelete: "CASCADE",
+        referencedColumns: ["knowledge_space_id", "id", "version"],
+        referencedTable: "document_assets",
+      },
+    ],
+    primaryKey: [
+      "tenant_id",
+      "knowledge_space_id",
+      "publication_generation_id",
+      "outline_node_id",
+      "input_fingerprint",
+    ],
+    columns: [
+      varcharColumn("tenant_id", 255),
+      idColumn("knowledge_space_id"),
+      idColumn("document_asset_id"),
+      integerColumn("document_version"),
+      idColumn("publication_generation_id"),
+      varcharColumn("outline_node_id", 255),
+      varcharColumn("input_fingerprint", 71),
+      textColumn("summary"),
+      jsonColumn("metadata"),
+      timestampColumn("created_at"),
+    ],
+  },
+  {
+    name: "document_semantic_enrichment_jobs",
+    checkConstraints: [
+      {
+        expression: {
+          postgres:
+            "\"run_state\" IN ('queued', 'running', 'retry_wait', 'succeeded', 'failed', 'superseded')",
+          tidb: "`run_state` IN ('queued', 'running', 'retry_wait', 'succeeded', 'failed', 'superseded')",
+        },
+        name: "document_semantic_enrichment_jobs_state_ck",
+      },
+      {
+        expression: {
+          postgres:
+            '"document_version" >= 1 AND "base_head_revision" >= 0 AND "execution_attempts" >= 0 AND "max_execution_attempts" >= 1 AND "execution_attempts" <= "max_execution_attempts" AND "row_version" >= 0',
+          tidb: "`document_version` >= 1 AND `base_head_revision` >= 0 AND `execution_attempts` >= 0 AND `max_execution_attempts` >= 1 AND `execution_attempts` <= `max_execution_attempts` AND `row_version` >= 0",
+        },
+        name: "document_semantic_enrichment_jobs_counts_ck",
+      },
+      {
+        expression: {
+          postgres:
+            "jsonb_typeof(\"retrieval_profile\") = 'object' AND jsonb_typeof(\"result\") = 'object'",
+          tidb: "JSON_TYPE(`retrieval_profile`) = 'OBJECT' AND JSON_TYPE(`result`) = 'OBJECT'",
+        },
+        name: "document_semantic_enrichment_jobs_json_ck",
+      },
+      {
+        expression: {
+          postgres:
+            '(("run_state" = \'running\' AND "worker_id" IS NOT NULL AND "lease_token" IS NOT NULL AND "lease_expires_at" IS NOT NULL AND "heartbeat_at" IS NOT NULL AND "completed_at" IS NULL) OR ("run_state" <> \'running\' AND "worker_id" IS NULL AND "lease_token" IS NULL AND "lease_expires_at" IS NULL AND "heartbeat_at" IS NULL))',
+          tidb: "((`run_state` = 'running' AND `worker_id` IS NOT NULL AND `lease_token` IS NOT NULL AND `lease_expires_at` IS NOT NULL AND `heartbeat_at` IS NOT NULL AND `completed_at` IS NULL) OR (`run_state` <> 'running' AND `worker_id` IS NULL AND `lease_token` IS NULL AND `lease_expires_at` IS NULL AND `heartbeat_at` IS NULL))",
+        },
+        name: "document_semantic_enrichment_jobs_lease_ck",
+      },
+      {
+        expression: {
+          postgres:
+            "((\"run_state\" IN ('succeeded', 'failed', 'superseded') AND \"completed_at\" IS NOT NULL) OR (\"run_state\" IN ('queued', 'running', 'retry_wait') AND \"completed_at\" IS NULL))",
+          tidb: "((`run_state` IN ('succeeded', 'failed', 'superseded') AND `completed_at` IS NOT NULL) OR (`run_state` IN ('queued', 'running', 'retry_wait') AND `completed_at` IS NULL))",
+        },
+        name: "document_semantic_enrichment_jobs_terminal_ck",
+      },
+    ],
+    foreignKeys: [
+      {
+        columns: ["tenant_id", "knowledge_space_id"],
+        name: "document_semantic_enrichment_jobs_scope_fk",
+        onDelete: "CASCADE",
+        referencedColumns: ["tenant_id", "id"],
+        referencedTable: "knowledge_spaces",
+      },
+      {
+        columns: ["knowledge_space_id", "document_asset_id", "document_version"],
+        name: "document_semantic_enrichment_jobs_asset_fk",
+        onDelete: "CASCADE",
+        referencedColumns: ["knowledge_space_id", "id", "version"],
+        referencedTable: "document_assets",
+      },
+      {
+        columns: ["compilation_attempt_id"],
+        name: "document_semantic_enrichment_jobs_attempt_fk",
+        onDelete: "CASCADE",
+        referencedColumns: ["id"],
+        referencedTable: "document_compilation_attempts",
+      },
+    ],
+    columns: [
+      idColumn(),
+      idColumn("compilation_attempt_id"),
+      varcharColumn("tenant_id", 255),
+      idColumn("knowledge_space_id"),
+      idColumn("document_asset_id"),
+      integerColumn("document_version"),
+      idColumn("parse_artifact_id"),
+      idColumn("publication_generation_id"),
+      bigintColumn("base_head_revision"),
+      jsonColumn("retrieval_profile"),
+      varcharColumn("run_state", 24),
+      integerColumn("execution_attempts"),
+      integerColumn("max_execution_attempts"),
+      timestampColumn("available_at"),
+      varcharColumn("worker_id", 255, true),
+      idColumn("lease_token", true),
+      timestampColumn("lease_expires_at", true),
+      timestampColumn("heartbeat_at", true),
+      varcharColumn("last_error_code", 128, true),
+      varcharColumn("last_error_message", 2000, true),
+      jsonColumn("result"),
+      integerColumn("row_version"),
+      timestampColumn("created_at"),
+      timestampColumn("updated_at"),
+      timestampColumn("completed_at", true),
+    ],
+  },
+  {
+    name: "document_semantic_extraction_checkpoints",
+    checkConstraints: [
+      {
+        expression: {
+          postgres: "\"stage\" IN ('entity', 'relation')",
+          tidb: "`stage` IN ('entity', 'relation')",
+        },
+        name: "document_semantic_extraction_checkpoints_stage_ck",
+      },
+      {
+        expression: {
+          postgres: `"input_fingerprint" ~ '^sha256:[a-f0-9]{64}$'`,
+          tidb: "`input_fingerprint` REGEXP '^sha256:[a-f0-9]{64}$'",
+        },
+        name: "document_semantic_extraction_checkpoints_fingerprint_ck",
+      },
+      {
+        expression: {
+          postgres: "jsonb_typeof(\"result\") = 'object'",
+          tidb: "JSON_TYPE(`result`) = 'OBJECT'",
+        },
+        name: "document_semantic_extraction_checkpoints_result_ck",
+      },
+    ],
+    foreignKeys: [
+      {
+        columns: ["tenant_id", "knowledge_space_id"],
+        name: "document_semantic_extraction_checkpoints_scope_fk",
+        onDelete: "CASCADE",
+        referencedColumns: ["tenant_id", "id"],
+        referencedTable: "knowledge_spaces",
+      },
+      {
+        columns: ["knowledge_space_id", "document_asset_id", "document_version"],
+        name: "document_semantic_extraction_checkpoints_asset_fk",
+        onDelete: "CASCADE",
+        referencedColumns: ["knowledge_space_id", "id", "version"],
+        referencedTable: "document_assets",
+      },
+    ],
+    primaryKey: [
+      "tenant_id",
+      "knowledge_space_id",
+      "publication_generation_id",
+      "node_id",
+      "stage",
+      "input_fingerprint",
+    ],
+    columns: [
+      varcharColumn("tenant_id", 255),
+      idColumn("knowledge_space_id"),
+      idColumn("document_asset_id"),
+      integerColumn("document_version"),
+      idColumn("publication_generation_id"),
+      idColumn("node_id"),
+      varcharColumn("stage", 16),
+      varcharColumn("input_fingerprint", 71),
+      jsonColumn("result"),
+      timestampColumn("created_at"),
+    ],
+  },
+  {
     name: "bulk_operations",
     checkConstraints: [
       {
@@ -6256,6 +6474,37 @@ const indexes = [
     name: "page_index_findability_repair_queue_idx",
     purpose: "Claim bounded low-findability summary repairs without scanning evaluation history",
     tableName: "page_index_findability_evaluations",
+  },
+  {
+    columns: ["knowledge_space_id", "document_asset_id", "document_version"],
+    name: "document_outline_summary_checkpoints_asset_idx",
+    purpose: "Cascade and inspect resumable outline summaries by immutable document version",
+    tableName: "document_outline_summary_checkpoints",
+  },
+  {
+    columns: ["tenant_id", "knowledge_space_id", "publication_generation_id"],
+    name: "document_semantic_enrichment_jobs_generation_uq",
+    purpose: "Admit one durable optional graph job per immutable document generation",
+    tableName: "document_semantic_enrichment_jobs",
+    unique: true,
+  },
+  {
+    columns: ["run_state", "available_at", "lease_expires_at", "updated_at", "id"],
+    name: "document_semantic_enrichment_jobs_claim_idx",
+    purpose: "Claim queued, retryable, or expired semantic enrichment work",
+    tableName: "document_semantic_enrichment_jobs",
+  },
+  {
+    columns: ["knowledge_space_id", "document_asset_id", "document_version"],
+    name: "document_semantic_enrichment_jobs_asset_idx",
+    purpose: "Inspect semantic enrichment state by immutable document version",
+    tableName: "document_semantic_enrichment_jobs",
+  },
+  {
+    columns: ["knowledge_space_id", "document_asset_id", "document_version"],
+    name: "document_semantic_extraction_checkpoints_asset_idx",
+    purpose: "Cascade and inspect resumable semantic extraction results",
+    tableName: "document_semantic_extraction_checkpoints",
   },
   {
     columns: ["tenant_id", "knowledge_space_id", "created_at", "id"],

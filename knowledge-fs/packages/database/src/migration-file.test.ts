@@ -134,6 +134,10 @@ describe("migration file rendering", () => {
       "packages/database/migrations/0036_page_index_findability.tidb.sql",
       "packages/database/migrations/0037_logical_document_zero_revision_deletion.postgres.sql",
       "packages/database/migrations/0037_logical_document_zero_revision_deletion.tidb.sql",
+      "packages/database/migrations/0038_document_outline_summary_checkpoints.postgres.sql",
+      "packages/database/migrations/0038_document_outline_summary_checkpoints.tidb.sql",
+      "packages/database/migrations/0039_document_semantic_enrichment.postgres.sql",
+      "packages/database/migrations/0039_document_semantic_enrichment.tidb.sql",
     ]);
     expect(artifacts[2]?.content).toContain('ALTER COLUMN "dense_vector" TYPE vector');
     expect(artifacts[2]?.content).not.toContain("vector(1536)");
@@ -853,6 +857,8 @@ describe("migration file rendering", () => {
       "packages/database/migrations/0035_research_task_answer_streaming.postgres.sql",
       "packages/database/migrations/0036_page_index_findability.postgres.sql",
       "packages/database/migrations/0037_logical_document_zero_revision_deletion.postgres.sql",
+      "packages/database/migrations/0038_document_outline_summary_checkpoints.postgres.sql",
+      "packages/database/migrations/0039_document_semantic_enrichment.postgres.sql",
     ]);
     expect(
       getPendingMigrationArtifacts({
@@ -894,6 +900,8 @@ describe("migration file rendering", () => {
           "0035_research_task_answer_streaming",
           "0036_page_index_findability",
           "0037_logical_document_zero_revision_deletion",
+          "0038_document_outline_summary_checkpoints",
+          "0039_document_semantic_enrichment",
         ],
         dialect: "postgres",
       }),

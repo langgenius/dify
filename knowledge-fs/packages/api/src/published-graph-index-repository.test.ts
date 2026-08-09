@@ -37,7 +37,7 @@ const snapshot: PublishedProjectionReadSnapshot = {
 describe.each(["postgres", "tidb"] as const)(
   "database published graph repository (%s)",
   (dialect) => {
-    it("resolves and traverses only exact immutable publication members with document closure", async () => {
+    it("resolves asynchronous graph rows only through an exact published outline generation", async () => {
       const calls: DatabaseExecuteInput[] = [];
       let edgeReads = 0;
       const database = createSchemaDatabaseAdapter({
@@ -90,8 +90,12 @@ describe.each(["postgres", "tidb"] as const)(
         .filter((call) => call.tableName === "projection_set_publication_members")
         .map((call) => call.sql)
         .join("\n");
-      expect(memberSql).toContain("graph-entity");
-      expect(memberSql).toContain("graph-relation");
+      expect(memberSql).toContain("document-outline");
+      expect(memberSql).toContain("document_semantic_enrichment_jobs");
+      expect(memberSql).toContain("graph_readiness");
+      expect(memberSql).toContain("succeeded");
+      expect(memberSql).not.toContain("'graph-entity'");
+      expect(memberSql).not.toContain("'graph-relation'");
       expect(memberSql).toContain("generation_id");
       expect(memberSql).toContain("document_asset_id");
       expect(memberSql).toContain("source_node_ids");
@@ -113,11 +117,11 @@ describe.each(["postgres", "tidb"] as const)(
       expect(memberSql).toContain("superseded");
       expect(memberSql).not.toContain("projection_set_publication_heads");
       const quote = dialect === "postgres" ? '"' : "`";
-      expect(memberSql).not.toContain(
-        `sm.${quote}generation_id${quote} = rm.${quote}generation_id${quote}`,
+      expect(memberSql).toContain(
+        `rm.${quote}generation_id${quote} = r.${quote}publication_generation_id${quote}`,
       );
-      expect(memberSql).not.toContain(
-        `cm.${quote}document_asset_id${quote} = rm.${quote}document_asset_id${quote}`,
+      expect(memberSql).toContain(
+        `rm.${quote}generation_id${quote} = child.${quote}publication_generation_id${quote}`,
       );
       expect(calls.every((call) => call.params.includes(PUBLICATION_ID))).toBe(true);
 

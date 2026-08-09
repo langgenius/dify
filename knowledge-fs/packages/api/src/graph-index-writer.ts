@@ -22,13 +22,21 @@ export interface GraphIndexWriterOptions {
   readonly extractionVersion: number;
   readonly graph: GraphIndexRepository;
   readonly maxBatchSize: number;
-  readonly nodes: KnowledgeNodeRepository;
+  readonly nodes: Pick<KnowledgeNodeRepository, "getMany" | "updateMetadataMany">;
+  readonly now?: (() => string) | undefined;
 }
 
 export interface WriteGraphIndexInput {
   readonly knowledgeSpaceId: string;
   readonly nodeIds: readonly string[];
   readonly publicationGenerationId?: string | undefined;
+  readonly traceId?: string | undefined;
+}
+
+export interface WriteGraphIndexNodesInput {
+  readonly knowledgeSpaceId: string;
+  readonly nodes: readonly KnowledgeNode[];
+  readonly publicationGenerationId: string;
   readonly traceId?: string | undefined;
 }
 
@@ -48,6 +56,8 @@ export interface WriteGraphIndexResult {
 
 export interface GraphIndexWriter {
   index(input: WriteGraphIndexInput): Promise<WriteGraphIndexResult>;
+  /** Indexes checkpoint-decorated immutable nodes without mutating their published rows. */
+  indexNodes(input: WriteGraphIndexNodesInput): Promise<WriteGraphIndexResult>;
 }
 
 export function createGraphIndexWriter({
@@ -55,6 +65,7 @@ export function createGraphIndexWriter({
   graph,
   maxBatchSize,
   nodes,
+  now = () => new Date().toISOString(),
 }: GraphIndexWriterOptions): GraphIndexWriter {
   if (!Number.isInteger(maxBatchSize) || maxBatchSize < 1) {
     throw new Error("Graph index maxBatchSize must be at least 1");
@@ -64,7 +75,7 @@ export function createGraphIndexWriter({
     throw new Error("Graph index extractionVersion must be at least 1");
   }
 
-  return {
+  const writer: GraphIndexWriter = {
     index: async ({
       knowledgeSpaceId,
       nodeIds,
@@ -94,7 +105,7 @@ export function createGraphIndexWriter({
         return node ? [cloneKnowledgeNode(node)] : [];
       });
       const missingNodeIds = uniqueNodeIds.filter((id) => !nodesById.has(id));
-      const timestamp = new Date().toISOString();
+      const timestamp = now();
       const entityAccumulator = new Map<string, GraphEntityAccumulator>();
       let skippedEntities = 0;
       let skippedRelations = 0;
@@ -297,7 +308,60 @@ export function createGraphIndexWriter({
         },
       };
     },
+    indexNodes: async (input) => {
+      const generationId = PublicationGenerationIdSchema.parse(input.publicationGenerationId);
+      if (input.nodes.length > maxBatchSize) {
+        throw new Error(`Graph index node count exceeds maxBatchSize=${maxBatchSize}`);
+      }
+      const suppliedNodes = input.nodes.map((node) => cloneKnowledgeNode(node));
+      if (new Set(suppliedNodes.map((node) => node.id)).size !== suppliedNodes.length) {
+        throw new Error("Graph index supplied node ids must be unique");
+      }
+      for (const node of suppliedNodes) {
+        if (
+          node.knowledgeSpaceId !== input.knowledgeSpaceId ||
+          node.publicationGenerationId !== generationId
+        ) {
+          throw new Error(
+            "Graph index supplied node is outside the requested immutable generation",
+          );
+        }
+      }
+      const byId = new Map(suppliedNodes.map((node) => [node.id, node] as const));
+      const suppliedNodeRepository: Pick<
+        KnowledgeNodeRepository,
+        "getMany" | "updateMetadataMany"
+      > = {
+        getMany: async ({ ids, knowledgeSpaceId, publicationGenerationId }) =>
+          ids.flatMap((id) => {
+            const node = byId.get(id);
+            return node &&
+              node.knowledgeSpaceId === knowledgeSpaceId &&
+              node.publicationGenerationId === publicationGenerationId
+              ? [cloneKnowledgeNode(node)]
+              : [];
+          }),
+        updateMetadataMany: async () => {
+          throw new Error("Graph index must not mutate supplied immutable generation nodes");
+        },
+      };
+
+      return createGraphIndexWriter({
+        extractionVersion,
+        graph,
+        maxBatchSize,
+        nodes: suppliedNodeRepository,
+        now,
+      }).index({
+        knowledgeSpaceId: input.knowledgeSpaceId,
+        nodeIds: suppliedNodes.map((node) => node.id),
+        publicationGenerationId: generationId,
+        ...(input.traceId ? { traceId: input.traceId } : {}),
+      });
+    },
   };
+
+  return writer;
 }
 
 type GraphQualityFlag = {
