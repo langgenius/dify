@@ -1,5 +1,4 @@
 import { cn } from '@langgenius/dify-ui/cn'
-import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 
 type CredentialIconProps = {
@@ -16,12 +15,12 @@ const ICON_BG_COLORS = [
   'bg-components-icon-bg-teal-solid',
 ]
 
-export const CredentialIcon: React.FC<CredentialIconProps> = ({
+export const CredentialIcon = ({
   avatarUrl,
   name,
   size = 20,
   className = '',
-}) => {
+}: CredentialIconProps) => {
   const [showAvatar, setShowAvatar] = useState(!!avatarUrl && avatarUrl !== 'default')
   const firstLetter = useMemo(() => name.charAt(0).toUpperCase(), [name])
   const bgColor = useMemo(
