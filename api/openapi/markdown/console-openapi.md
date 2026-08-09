@@ -14933,6 +14933,13 @@ Reference to model credentials resolved only at runtime.
 
 #### AgentSoulModelSettings
 
+Model parameters for the Agent Soul model.
+
+Model plugins can declare arbitrary parameters via ``parameter_rules``
+(e.g. Qwen/Tongyi's ``enable_thinking``) beyond the common OpenAI-style
+fields typed below, so extra keys must round-trip through persistence
+rather than being dropped.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | frequency_penalty | number |  | No |
