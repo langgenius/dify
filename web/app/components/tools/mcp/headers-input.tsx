@@ -103,8 +103,12 @@ const HeadersInput = ({ headersItems, onChange, readonly = false, isMasked = fal
                 readOnly={readonly}
               />
               {!readonly && !!headersItems.length && (
-                <ActionButton onClick={() => handleRemoveItem(index)} className="mr-2">
-                  <RiDeleteBinLine className="size-4 text-text-destructive" />
+                <ActionButton
+                  aria-label={t(($) => $['operation.delete'], { ns: 'common' })}
+                  onClick={() => handleRemoveItem(index)}
+                  className="mr-2"
+                >
+                  <RiDeleteBinLine aria-hidden className="size-4 text-text-destructive" />
                 </ActionButton>
               )}
             </div>

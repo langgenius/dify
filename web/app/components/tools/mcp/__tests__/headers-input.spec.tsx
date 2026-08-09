@@ -66,15 +66,14 @@ describe('HeadersInput', () => {
 
     it('should render delete buttons for each item when not readonly', () => {
       render(<HeadersInput {...defaultProps} headersItems={headersItems} />)
-      // Should have delete buttons for each header
-      const deleteButtons = document.querySelectorAll('[class*="text-text-destructive"]')
-      expect(deleteButtons.length).toBe(headersItems.length)
+      expect(screen.getAllByRole('button', { name: 'common.operation.delete' })).toHaveLength(
+        headersItems.length,
+      )
     })
 
     it('should not render delete buttons when readonly', () => {
       render(<HeadersInput {...defaultProps} headersItems={headersItems} readonly={true} />)
-      const deleteButtons = document.querySelectorAll('[class*="text-text-destructive"]')
-      expect(deleteButtons.length).toBe(0)
+      expect(screen.queryAllByRole('button', { name: 'common.operation.delete' })).toHaveLength(0)
     })
 
     it('should render add button at bottom when not readonly', () => {
@@ -129,13 +128,8 @@ describe('HeadersInput', () => {
       const onChange = vi.fn()
       render(<HeadersInput {...defaultProps} headersItems={headersItems} onChange={onChange} />)
 
-      const deleteButton = document
-        .querySelector('[class*="text-text-destructive"]')
-        ?.closest('button')
-      if (deleteButton) {
-        fireEvent.click(deleteButton)
-        expect(onChange).toHaveBeenCalledWith([])
-      }
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+      expect(onChange).toHaveBeenCalledWith([])
     })
 
     it('should add new item when add button is clicked', () => {
@@ -186,16 +180,12 @@ describe('HeadersInput', () => {
       const onChange = vi.fn()
       render(<HeadersInput {...defaultProps} headersItems={headersItems} onChange={onChange} />)
 
-      // Find all delete buttons and click the second one
-      const deleteButtons = document.querySelectorAll('[class*="text-text-destructive"]')
-      const secondDeleteButton = deleteButtons[1]?.closest('button')
-      if (secondDeleteButton) {
-        fireEvent.click(secondDeleteButton)
-        expect(onChange).toHaveBeenCalledWith([
-          { id: '1', key: 'Header1', value: 'Value1' },
-          { id: '3', key: 'Header3', value: 'Value3' },
-        ])
-      }
+      const deleteButtons = screen.getAllByRole('button', { name: 'common.operation.delete' })
+      fireEvent.click(deleteButtons[1]!)
+      expect(onChange).toHaveBeenCalledWith([
+        { id: '1', key: 'Header1', value: 'Value1' },
+        { id: '3', key: 'Header3', value: 'Value3' },
+      ])
     })
   })
 
