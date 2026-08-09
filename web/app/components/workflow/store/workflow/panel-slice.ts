@@ -31,6 +31,8 @@ export type PanelSliceShape = {
   setInitShowLastRunTab: (initShowLastRunTab: boolean) => void
   activeCommentId?: string | null
   setActiveCommentId: (commentId: string | null) => void
+  showWorkflowCopilotPanel: boolean
+  setShowWorkflowCopilotPanel: (showWorkflowCopilotPanel: boolean) => void
 }
 
 export const createPanelSlice: StateCreator<PanelSliceShape> = (set) => ({
@@ -62,4 +64,7 @@ export const createPanelSlice: StateCreator<PanelSliceShape> = (set) => ({
   setInitShowLastRunTab: (initShowLastRunTab) => set(() => ({ initShowLastRunTab })),
   activeCommentId: null,
   setActiveCommentId: (commentId: string | null) => set(() => ({ activeCommentId: commentId })),
+  showWorkflowCopilotPanel: false,
+  setShowWorkflowCopilotPanel: (showWorkflowCopilotPanel) =>
+    set(() => ({ showWorkflowCopilotPanel })),
 })
