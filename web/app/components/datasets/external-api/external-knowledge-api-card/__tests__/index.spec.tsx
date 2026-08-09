@@ -128,9 +128,8 @@ describe('ExternalKnowledgeAPICard', () => {
       }
       vi.mocked(fetchExternalAPI).mockResolvedValue(mockResponse)
 
-      const { container } = render(<ExternalKnowledgeAPICard {...defaultProps} />)
-      const buttons = container.querySelectorAll('button')
-      const editButton = buttons[0]
+      render(<ExternalKnowledgeAPICard {...defaultProps} />)
+      const editButton = screen.getByRole('button', { name: 'common.operation.edit' })
 
       fireEvent.click(editButton!)
 
@@ -156,9 +155,8 @@ describe('ExternalKnowledgeAPICard', () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       vi.mocked(fetchExternalAPI).mockRejectedValue(new Error('Fetch failed'))
 
-      const { container } = render(<ExternalKnowledgeAPICard {...defaultProps} />)
-      const buttons = container.querySelectorAll('button')
-      const editButton = buttons[0]
+      render(<ExternalKnowledgeAPICard {...defaultProps} />)
+      const editButton = screen.getByRole('button', { name: 'common.operation.edit' })
 
       fireEvent.click(editButton!)
 
@@ -188,8 +186,8 @@ describe('ExternalKnowledgeAPICard', () => {
       }
       vi.mocked(fetchExternalAPI).mockResolvedValue(mockResponse)
 
-      const { container } = render(<ExternalKnowledgeAPICard {...defaultProps} />)
-      const editButton = container.querySelectorAll('button')[0]
+      render(<ExternalKnowledgeAPICard {...defaultProps} />)
+      const editButton = screen.getByRole('button', { name: 'common.operation.edit' })
 
       fireEvent.click(editButton!)
 
@@ -237,8 +235,8 @@ describe('ExternalKnowledgeAPICard', () => {
       }
       vi.mocked(fetchExternalAPI).mockResolvedValue(mockResponse)
 
-      const { container } = render(<ExternalKnowledgeAPICard {...defaultProps} />)
-      const editButton = container.querySelectorAll('button')[0]
+      render(<ExternalKnowledgeAPICard {...defaultProps} />)
+      const editButton = screen.getByRole('button', { name: 'common.operation.edit' })
 
       fireEvent.click(editButton!)
 
@@ -257,9 +255,8 @@ describe('ExternalKnowledgeAPICard', () => {
     it('should check usage and show confirm dialog when delete button is clicked', async () => {
       vi.mocked(checkUsageExternalAPI).mockResolvedValue({ is_using: false, count: 0 })
 
-      const { container } = render(<ExternalKnowledgeAPICard {...defaultProps} />)
-      const buttons = container.querySelectorAll('button')
-      const deleteButton = buttons[1]
+      render(<ExternalKnowledgeAPICard {...defaultProps} />)
+      const deleteButton = screen.getByRole('button', { name: 'common.operation.delete' })
 
       fireEvent.click(deleteButton!)
 
@@ -276,8 +273,8 @@ describe('ExternalKnowledgeAPICard', () => {
     it('should show usage count in confirm dialog when API is in use', async () => {
       vi.mocked(checkUsageExternalAPI).mockResolvedValue({ is_using: true, count: 3 })
 
-      const { container } = render(<ExternalKnowledgeAPICard {...defaultProps} />)
-      const deleteButton = container.querySelectorAll('button')[1]
+      render(<ExternalKnowledgeAPICard {...defaultProps} />)
+      const deleteButton = screen.getByRole('button', { name: 'common.operation.delete' })
 
       fireEvent.click(deleteButton!)
 
@@ -290,8 +287,8 @@ describe('ExternalKnowledgeAPICard', () => {
       vi.mocked(checkUsageExternalAPI).mockResolvedValue({ is_using: false, count: 0 })
       vi.mocked(deleteExternalAPI).mockResolvedValue({ result: 'success' })
 
-      const { container } = render(<ExternalKnowledgeAPICard {...defaultProps} />)
-      const deleteButton = container.querySelectorAll('button')[1]
+      render(<ExternalKnowledgeAPICard {...defaultProps} />)
+      const deleteButton = screen.getByRole('button', { name: 'common.operation.delete' })
 
       fireEvent.click(deleteButton!)
 
@@ -313,8 +310,8 @@ describe('ExternalKnowledgeAPICard', () => {
     it('should close confirm dialog when cancel is clicked', async () => {
       vi.mocked(checkUsageExternalAPI).mockResolvedValue({ is_using: false, count: 0 })
 
-      const { container } = render(<ExternalKnowledgeAPICard {...defaultProps} />)
-      const deleteButton = container.querySelectorAll('button')[1]
+      render(<ExternalKnowledgeAPICard {...defaultProps} />)
+      const deleteButton = screen.getByRole('button', { name: 'common.operation.delete' })
 
       fireEvent.click(deleteButton!)
 
@@ -335,8 +332,8 @@ describe('ExternalKnowledgeAPICard', () => {
       vi.mocked(checkUsageExternalAPI).mockResolvedValue({ is_using: false, count: 0 })
       vi.mocked(deleteExternalAPI).mockRejectedValue(new Error('Delete failed'))
 
-      const { container } = render(<ExternalKnowledgeAPICard {...defaultProps} />)
-      const deleteButton = container.querySelectorAll('button')[1]
+      render(<ExternalKnowledgeAPICard {...defaultProps} />)
+      const deleteButton = screen.getByRole('button', { name: 'common.operation.delete' })
 
       fireEvent.click(deleteButton!)
 
@@ -361,8 +358,8 @@ describe('ExternalKnowledgeAPICard', () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       vi.mocked(checkUsageExternalAPI).mockRejectedValue(new Error('Check failed'))
 
-      const { container } = render(<ExternalKnowledgeAPICard {...defaultProps} />)
-      const deleteButton = container.querySelectorAll('button')[1]
+      render(<ExternalKnowledgeAPICard {...defaultProps} />)
+      const deleteButton = screen.getByRole('button', { name: 'common.operation.delete' })
 
       fireEvent.click(deleteButton!)
 
@@ -397,8 +394,8 @@ describe('ExternalKnowledgeAPICard', () => {
       vi.mocked(checkUsageExternalAPI).mockResolvedValue({ is_using: false, count: 0 })
       vi.mocked(deleteExternalAPI).mockResolvedValue({ result: 'error' })
 
-      const { container } = render(<ExternalKnowledgeAPICard {...defaultProps} />)
-      const deleteButton = container.querySelectorAll('button')[1]
+      render(<ExternalKnowledgeAPICard {...defaultProps} />)
+      const deleteButton = screen.getByRole('button', { name: 'common.operation.delete' })
 
       fireEvent.click(deleteButton!)
 
