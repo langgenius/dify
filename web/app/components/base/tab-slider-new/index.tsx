@@ -1,10 +1,10 @@
-import type { FC } from 'react'
+import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 
 type Option = {
   value: string
   text: string
-  icon?: React.ReactNode
+  icon?: ReactNode
 }
 type TabSliderProps = {
   className?: string
@@ -12,7 +12,7 @@ type TabSliderProps = {
   onChange: (v: string) => void
   options: Option[]
 }
-const TabSliderNew: FC<TabSliderProps> = ({ className, value, onChange, options }) => {
+function TabSliderNew({ className, value, onChange, options }: TabSliderProps) {
   return (
     <div data-testid="tab-slider-new" className={cn(className, 'relative flex')}>
       {options.map((option) => (
