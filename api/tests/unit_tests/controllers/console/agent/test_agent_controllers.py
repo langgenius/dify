@@ -28,21 +28,29 @@ from controllers.console.agent.roster import (
     AgentApiKeyApi,
     AgentApiKeyListApi,
     AgentApiStatusApi,
+    AgentApiStatusPayload,
     AgentAppApi,
     AgentAppCopyApi,
+    AgentAppCopyPayload,
+    AgentAppCreatePayload,
     AgentAppListApi,
+    AgentAppUpdatePayload,
     AgentBuildDraftApi,
     AgentBuildDraftApplyApi,
     AgentBuildDraftCheckoutApi,
+    AgentBuildDraftCheckoutPayload,
     AgentDebugConversationRefreshApi,
     AgentInviteOptionsApi,
+    AgentInviteOptionsQuery,
     AgentLogMessagesApi,
     AgentLogsApi,
     AgentLogSourcesApi,
     AgentPublishApi,
+    AgentPublishPayload,
     AgentRosterVersionDetailApi,
     AgentRosterVersionRestoreApi,
     AgentRosterVersionsApi,
+    AgentStatisticsQuery,
     AgentStatisticsSummaryApi,
 )
 from controllers.console.app import completion as completion_controller
@@ -59,7 +67,13 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from models.agent import Agent, AgentConfigDraftType, AgentScope, AgentSource, AgentStatus
 from models.enums import ConversationFromSource
 from models.model import AppMode, Conversation, Message
-from services.entities.agent_entities import ComposerSaveStrategy, ComposerVariant
+from services.entities.agent_entities import (
+    ComposerSavePayload,
+    ComposerSaveStrategy,
+    ComposerVariant,
+    WorkflowAgentComposerQuery,
+    WorkflowComposerCopyFromRosterPayload,
+)
 
 
 def _persist_conversation_message(
@@ -430,7 +444,13 @@ def test_agent_app_list_and_create_use_agent_route(
         json={"name": "Iris", "description": "Agent app", "role": "Coordinator", "icon_type": "emoji", "icon": "robot"},
     ):
         created, status = unwrap(AgentAppListApi.post)(
-            AgentAppListApi(), MagicMock(), "tenant-1", SimpleNamespace(id=account_id)
+            AgentAppListApi(),
+            AgentAppCreatePayload(
+                name="Iris", description="Agent app", role="Coordinator", icon_type="emoji", icon="robot"
+            ),
+            MagicMock(),
+            "tenant-1",
+            SimpleNamespace(id=account_id),
         )
     assert status == 201
     assert created["id"] == "agent-created"
@@ -484,7 +504,13 @@ def test_agent_app_create_omits_optional_role_as_empty_string(
         "/console/api/agent",
         json={"name": "No-role Iris", "description": "Agent app", "icon_type": "emoji", "icon": "robot"},
     ):
-        created, status = unwrap(AgentAppListApi.post)(AgentAppListApi(), MagicMock(), "tenant-1", current_user)
+        created, status = unwrap(AgentAppListApi.post)(
+            AgentAppListApi(),
+            AgentAppCreatePayload(name="No-role Iris", description="Agent app", icon_type="emoji", icon="robot"),
+            MagicMock(),
+            "tenant-1",
+            current_user,
+        )
     assert status == 201
     assert created == {"id": "agent-created", "app_id": "app-created"}
     create_call = cast(dict[str, object], captured["create"])
@@ -566,7 +592,14 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
         "/console/api/agent/00000000-0000-0000-0000-000000000001",
         json={"name": "Renamed", "description": "", "role": "Reviewer", "icon_type": "emoji", "icon": "R"},
     ):
-        updated = unwrap(AgentAppApi.put)(AgentAppApi(), session, tenant_id, SimpleNamespace(id=account_id), agent_id)
+        updated = unwrap(AgentAppApi.put)(
+            AgentAppApi(),
+            AgentAppUpdatePayload(name="Renamed", description="", role="Reviewer", icon_type="emoji", icon="R"),
+            session,
+            tenant_id,
+            SimpleNamespace(id=account_id),
+            agent_id,
+        )
     assert updated["name"] == "Renamed"
     assert updated["id"] == agent_id
     assert updated["app_id"] == app_id
@@ -615,7 +648,19 @@ def test_agent_app_copy_uses_agent_id_and_returns_agent_detail(
         },
     ):
         copied, status = unwrap(AgentAppCopyApi.post)(
-            AgentAppCopyApi(), MagicMock(), "tenant-1", current_user, agent_id
+            AgentAppCopyApi(),
+            AgentAppCopyPayload(
+                name="Iris copy",
+                description="Copied",
+                role="Copied role",
+                icon_type="emoji",
+                icon="sparkles",
+                icon_background="#fff",
+            ),
+            MagicMock(),
+            "tenant-1",
+            current_user,
+            agent_id,
         )
     assert status == 201
     assert copied == {"id": "copied-agent", "app_id": "copied-app", "name": "Iris"}
@@ -715,7 +760,14 @@ def test_agent_publish_and_build_draft_routes_call_composer_service(
     with app.test_request_context(
         "/console/api/agent/00000000-0000-0000-0000-000000000001/publish", json={"version_note": "publish v1"}
     ):
-        published = unwrap(AgentPublishApi.post)(AgentPublishApi(), MagicMock(), "tenant-1", current_user, agent_id)
+        published = unwrap(AgentPublishApi.post)(
+            AgentPublishApi(),
+            AgentPublishPayload(version_note="publish v1"),
+            MagicMock(),
+            "tenant-1",
+            current_user,
+            agent_id,
+        )
     assert published["active_config_snapshot_id"] == "version-1"
     captured["publish"].pop("session", None)
     assert captured["publish"] == {
@@ -728,7 +780,12 @@ def test_agent_publish_and_build_draft_routes_call_composer_service(
         "/console/api/agent/00000000-0000-0000-0000-000000000001/build-draft/checkout", json={"force": True}
     ):
         checked_out = unwrap(AgentBuildDraftCheckoutApi.post)(
-            AgentBuildDraftCheckoutApi(), MagicMock(), "tenant-1", current_user, agent_id
+            AgentBuildDraftCheckoutApi(),
+            AgentBuildDraftCheckoutPayload(force=True),
+            MagicMock(),
+            "tenant-1",
+            current_user,
+            agent_id,
         )
     assert checked_out["draft"]["id"] == "build-draft-1"
     captured["checkout"].pop("session", None)
@@ -747,7 +804,17 @@ def test_agent_publish_and_build_draft_routes_call_composer_service(
         "/console/api/agent/00000000-0000-0000-0000-000000000001/build-draft",
         json={"variant": "agent_app", "save_strategy": "save_to_current_version", "agent_soul": {}},
     ):
-        saved = unwrap(AgentBuildDraftApi.put)(AgentBuildDraftApi(), MagicMock(), "tenant-1", current_user, agent_id)
+        saved = unwrap(AgentBuildDraftApi.put)(
+            AgentBuildDraftApi(),
+            ComposerSavePayload(
+                variant=ComposerVariant.AGENT_APP,
+                save_strategy=ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION,
+            ),
+            MagicMock(),
+            "tenant-1",
+            current_user,
+            agent_id,
+        )
     assert saved["draft"]["id"] == "build-draft-1"
     assert captured["save"]["tenant_id"] == "tenant-1"
     assert captured["save"]["agent_id"] == agent_id
@@ -864,7 +931,9 @@ def test_agent_api_status_and_key_routes_resolve_backing_app(
     with app.test_request_context(
         "/console/api/agent/00000000-0000-0000-0000-000000000001/api-enable", json={"enable_api": True}
     ):
-        enabled = unwrap(AgentApiStatusApi.post)(AgentApiStatusApi(), unbound_session, "tenant-1", agent_id)
+        enabled = unwrap(AgentApiStatusApi.post)(
+            AgentApiStatusApi(), AgentApiStatusPayload(enable_api=True), unbound_session, "tenant-1", agent_id
+        )
     assert enabled["enabled"] is True
     assert captured["enable"] == {"app": app_model, "enable_api": True}
     keys = unwrap(AgentApiKeyListApi.get)(AgentApiKeyListApi(), unbound_session, "tenant-1", agent_id)
@@ -948,7 +1017,12 @@ def test_agent_app_update_allows_empty_role(app: Flask, monkeypatch: pytest.Monk
         json={"name": "Renamed", "description": "", "role": "", "icon_type": "emoji", "icon": "R"},
     ):
         updated = unwrap(AgentAppApi.put)(
-            AgentAppApi(), MagicMock(), "tenant-1", SimpleNamespace(id="account-1"), agent_id
+            AgentAppApi(),
+            AgentAppUpdatePayload(name="Renamed", description="", role="", icon_type="emoji", icon="R"),
+            MagicMock(),
+            "tenant-1",
+            SimpleNamespace(id="account-1"),
+            agent_id,
         )
     assert updated["role"] == ""
     update_call = cast(dict[str, object], captured["update"])
@@ -964,7 +1038,9 @@ def test_invite_options_get_parses_app_id(app: Flask, monkeypatch: pytest.Monkey
 
     monkeypatch.setattr(roster_controller.AgentRosterService, "list_invite_options", list_invite_options)
     with app.test_request_context("/console/api/agent/invite-options?page=1&limit=10&app_id=app-1"):
-        result = unwrap(AgentInviteOptionsApi.get)(AgentInviteOptionsApi(), MagicMock(), "tenant-1")
+        result = unwrap(AgentInviteOptionsApi.get)(
+            AgentInviteOptionsApi(), AgentInviteOptionsQuery(page=1, limit=10, app_id="app-1"), MagicMock(), "tenant-1"
+        )
     assert result == {"data": [], "page": 1, "limit": 10, "total": 0, "has_more": False}
     assert captured == {"tenant_id": "tenant-1", "page": 1, "limit": 10, "keyword": None, "app_id": "app-1"}
 
@@ -1201,7 +1277,7 @@ def test_agent_observability_routes_resolve_app_from_agent_id(
         "/console/api/agent/00000000-0000-0000-0000-000000000001/statistics/summary?source=api"
     ):
         statistics = unwrap(AgentStatisticsSummaryApi.get)(
-            AgentStatisticsSummaryApi(), MagicMock(), "tenant-1", account, agent_id
+            AgentStatisticsSummaryApi(), AgentStatisticsQuery(source="api"), MagicMock(), "tenant-1", account, agent_id
         )
     assert statistics["summary"]["total_messages"] == 1
     stats_call = cast(dict[str, object], captured["statistics"])
@@ -1253,18 +1329,40 @@ def test_workflow_composer_get_put_validate_candidates_impact_and_save(
     )
     with app.test_request_context("?snapshot_id=preview-version"):
         workflow_state = unwrap(WorkflowAgentComposerApi.get)(
-            WorkflowAgentComposerApi(), MagicMock(), "tenant-1", account_id, app_model, "node-1"
+            WorkflowAgentComposerApi(),
+            WorkflowAgentComposerQuery(snapshot_id="preview-version"),
+            MagicMock(),
+            "tenant-1",
+            account_id,
+            app_model,
+            "node-1",
         )
     assert workflow_state["node_id"] == "node-1"
     assert captured_load["account_id"] == account_id
     assert captured_load["snapshot_id"] == "preview-version"
+    composer_save_payload = ComposerSavePayload(
+        variant=ComposerVariant.WORKFLOW,
+        save_strategy=ComposerSaveStrategy.NODE_JOB_ONLY,
+        binding={"binding_type": "roster_agent", "current_snapshot_id": "version-1"},
+    )
     with app.test_request_context(json=payload):
         saved_state = unwrap(WorkflowAgentComposerApi.put)(
-            WorkflowAgentComposerApi(), MagicMock(), "tenant-1", account_id, app_model, "node-1"
+            WorkflowAgentComposerApi(),
+            composer_save_payload,
+            MagicMock(),
+            "tenant-1",
+            account_id,
+            app_model,
+            "node-1",
         )
         assert saved_state["save_options"] == ["node_job_only"]
         assert unwrap(WorkflowAgentComposerValidateApi.post)(
-            WorkflowAgentComposerValidateApi(), MagicMock(), "tenant-1", app_model, "node-1"
+            WorkflowAgentComposerValidateApi(),
+            composer_save_payload,
+            MagicMock(),
+            "tenant-1",
+            app_model,
+            "node-1",
         ) == {"result": "success", "errors": [], "warnings": [], "knowledge_retrieval_placeholder": []}
     assert (
         unwrap(WorkflowAgentComposerCandidatesApi.get)(
@@ -1274,10 +1372,21 @@ def test_workflow_composer_get_put_validate_candidates_impact_and_save(
     )
     with app.test_request_context(json=payload):
         assert unwrap(WorkflowAgentComposerImpactApi.post)(
-            WorkflowAgentComposerImpactApi(), MagicMock(), "tenant-1", app_model, "node-1"
+            WorkflowAgentComposerImpactApi(),
+            composer_save_payload,
+            MagicMock(),
+            "tenant-1",
+            app_model,
+            "node-1",
         ) == {"current_snapshot_id": "version-1", "workflow_node_count": 1, "bindings": []}
         assert unwrap(WorkflowAgentComposerSaveToRosterApi.post)(
-            WorkflowAgentComposerSaveToRosterApi(), MagicMock(), "tenant-1", account_id, app_model, "node-1"
+            WorkflowAgentComposerSaveToRosterApi(),
+            composer_save_payload,
+            MagicMock(),
+            "tenant-1",
+            account_id,
+            app_model,
+            "node-1",
         )["save_options"] == ["node_job_only"]
 
 
@@ -1325,7 +1434,17 @@ def test_workflow_composer_copy_from_roster(app: Flask, monkeypatch: pytest.Monk
         }
     ):
         result = unwrap(WorkflowAgentComposerCopyFromRosterApi.post)(
-            WorkflowAgentComposerCopyFromRosterApi(), MagicMock(), "tenant-1", account_id, app_model, "node-1"
+            WorkflowAgentComposerCopyFromRosterApi(),
+            WorkflowComposerCopyFromRosterPayload(
+                source_agent_id="roster-agent-1",
+                source_snapshot_id="roster-version-1",
+                idempotency_key="copy-1",
+            ),
+            MagicMock(),
+            "tenant-1",
+            account_id,
+            app_model,
+            "node-1",
         )
     assert result["binding"]["binding_type"] == "inline_agent"
     captured.pop("session", None)
@@ -1344,7 +1463,15 @@ def test_workflow_impact_returns_empty_without_version(app: Flask) -> None:
     payload = {"variant": ComposerVariant.WORKFLOW.value, "save_strategy": ComposerSaveStrategy.NODE_JOB_ONLY.value}
     with app.test_request_context(json=payload):
         result = unwrap(WorkflowAgentComposerImpactApi.post)(
-            WorkflowAgentComposerImpactApi(), MagicMock(), "tenant-1", SimpleNamespace(id="app-1"), "node-1"
+            WorkflowAgentComposerImpactApi(),
+            ComposerSavePayload(
+                variant=ComposerVariant.WORKFLOW,
+                save_strategy=ComposerSaveStrategy.NODE_JOB_ONLY,
+            ),
+            MagicMock(),
+            "tenant-1",
+            SimpleNamespace(id="app-1"),
+            "node-1",
         )
     assert result == {"current_snapshot_id": None, "workflow_node_count": 0, "bindings": []}
 
@@ -1387,12 +1514,21 @@ def test_agent_composer_routes_resolve_app_from_agent_id(
     assert composer["variant"] == "agent_app"
     assert composer["active_config_is_published"] is True
     assert cast(dict[str, object], captured["load"])["agent_id"] == agent_id
+    composer_save_payload = ComposerSavePayload(
+        variant=ComposerVariant.AGENT_APP,
+        save_strategy=ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION,
+        agent_soul={"prompt": {"system_prompt": "x"}},
+    )
     with app.test_request_context(json=payload):
-        saved_composer = unwrap(AgentComposerApi.put)(AgentComposerApi(), MagicMock(), "tenant-1", account_id, agent_id)
+        saved_composer = unwrap(AgentComposerApi.put)(
+            AgentComposerApi(), composer_save_payload, MagicMock(), "tenant-1", account_id, agent_id
+        )
         assert saved_composer["variant"] == "agent_app"
         assert saved_composer["active_config_is_published"] is True
         assert cast(dict[str, object], captured["save"])["agent_id"] == agent_id
-        assert unwrap(AgentComposerValidateApi.post)(AgentComposerValidateApi(), MagicMock(), "tenant-1", agent_id) == {
+        assert unwrap(AgentComposerValidateApi.post)(
+            AgentComposerValidateApi(), composer_save_payload, MagicMock(), "tenant-1", agent_id
+        ) == {
             "result": "success",
             "errors": [],
             "warnings": [],
