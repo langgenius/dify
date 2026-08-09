@@ -1,13 +1,13 @@
 from datetime import datetime
 from typing import cast
 
-from flask import request
 from flask_restx import Namespace, Resource
 from pydantic import BaseModel, Field, RootModel, field_validator
 from sqlalchemy import select
 
 from controllers.common.schema import query_params_from_model, register_response_schema_models
 from controllers.console import api
+from controllers.console.wraps import model_validate
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.helper import dump_response
@@ -64,23 +64,22 @@ class BannerApi(Resource):
 
     @api.doc(params=query_params_from_model(BannerListQuery))
     @api.response(200, "Success", api.models[BannerListResponse.__name__])
-    def get(self):
+    @model_validate(BannerListQuery)
+    def get(self, req_data: BannerListQuery):
         """Get banner list."""
         if not FeatureService.is_explore_banner_enabled():
             return dump_response(BannerListResponse, [])
-
-        query = BannerListQuery.model_validate(request.args.to_dict(flat=True))
 
         # Build base query for enabled banners
         base_query = select(ExporleBanner).where(ExporleBanner.status == BannerStatus.ENABLED)
 
         # Try to get banners in the requested language
         banners = db.session.scalars(
-            base_query.where(ExporleBanner.language == query.language).order_by(ExporleBanner.sort)
+            base_query.where(ExporleBanner.language == req_data.language).order_by(ExporleBanner.sort)
         ).all()
 
         # Fallback to en-US if no banners found and language is not en-US
-        if not banners and query.language != "en-US":
+        if not banners and req_data.language != "en-US":
             banners = db.session.scalars(
                 base_query.where(ExporleBanner.language == "en-US").order_by(ExporleBanner.sort)
             ).all()
