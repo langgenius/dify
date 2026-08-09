@@ -76,7 +76,7 @@ function Confirm({
                     href={eduDocLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex cursor-pointer items-center gap-1 system-xs-regular text-text-accent outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                    className="inline-flex cursor-pointer items-center gap-1 system-xs-regular text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                   >
                     {t(($) => $.learn, { ns: 'education' })}
                     <span className="i-ri-external-link-line size-3 text-text-accent"></span>

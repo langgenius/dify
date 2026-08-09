@@ -209,7 +209,9 @@ class TestCompletionEndpoints:
 
 
 class TestAppEndpoints:
-    def test_app_put_should_preserve_icon_type_when_payload_omits_it(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
+    def test_app_put_should_preserve_icon_type_when_payload_omits_it(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+    ):
         api = app_module.AppApi()
         method = unwrap(api.put)
         payload = {
@@ -230,7 +232,7 @@ class TestAppEndpoints:
             app.test_request_context("/console/api/apps/app-1", method="PUT", json=payload),
             patch.object(type(console_ns), "payload", payload),
         ):
-            response = method(api, MagicMock(spec=Session), app_model=_make_app(icon_type=app_module.IconType.EMOJI))
+            response = method(api, unbound_session, app_model=_make_app(icon_type=app_module.IconType.EMOJI))
 
         assert response == {"id": "app-1"}
         assert app_service.update_app.call_args.args[1]["icon_type"] is None
@@ -247,7 +249,9 @@ class TestAppEndpoints:
                 }
             )
 
-    def test_app_icon_post_should_forward_icon_type(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
+    def test_app_icon_post_should_forward_icon_type(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+    ):
         api = app_module.AppIconApi()
         method = unwrap(api.post)
         payload = {
@@ -267,7 +271,7 @@ class TestAppEndpoints:
             app.test_request_context("/console/api/apps/app-1/icon", method="POST", json=payload),
             patch.object(type(console_ns), "payload", payload),
         ):
-            response = method(api, MagicMock(spec=Session), app_model=_make_app())
+            response = method(api, unbound_session, app_model=_make_app())
 
         assert response == {"id": "app-1"}
         assert app_service.update_app_icon.call_args.args[1:] == (
@@ -297,7 +301,7 @@ class TestOpsTraceEndpoints:
         )
 
         with app.test_request_context("/?tracing_provider=langfuse"):
-            result = method(api, app_model=MagicMock(id="app-1"))
+            result = method(api, TraceProviderQuery(tracing_provider="langfuse"), MagicMock(id="app-1"))
 
         assert result == {"has_not_configured": True}
 
@@ -316,7 +320,11 @@ class TestOpsTraceEndpoints:
             json={"tracing_provider": "langfuse", "tracing_config": {"api_key": "k"}},
         ):
             with pytest.raises(BadRequest):
-                method(api, app_model=MagicMock(id="app-1"))
+                method(
+                    api,
+                    TraceConfigPayload(tracing_provider="langfuse", tracing_config={"api_key": "k"}),
+                    MagicMock(id="app-1"),
+                )
 
     def test_trace_app_config_delete_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = ops_trace_module.TraceAppConfigApi()
@@ -330,7 +338,7 @@ class TestOpsTraceEndpoints:
 
         with app.test_request_context("/?tracing_provider=langfuse"):
             with pytest.raises(BadRequest):
-                method(api, app_model=MagicMock(id="app-1"))
+                method(api, TraceProviderQuery(tracing_provider="langfuse"), MagicMock(id="app-1"))
 
 
 class TestSiteEndpoints:

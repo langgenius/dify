@@ -268,9 +268,16 @@ class TriggerSubscriptionBuilderGetApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
-    def get(self, provider: str, subscription_builder_id: str):
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, tenant_id: str, user: Account, provider: str, subscription_builder_id: str):
         """Get a subscription instance for a trigger provider"""
-        subscription_builder = TriggerSubscriptionBuilderService.get_subscription_builder_by_id(subscription_builder_id)
+        subscription_builder = TriggerSubscriptionBuilderService.get_subscription_builder_by_id(
+            tenant_id=tenant_id,
+            user_id=user.id,
+            provider_id=TriggerProviderID(provider),
+            subscription_builder_id=subscription_builder_id,
+        )
         return subscription_builder.model_dump(mode="json")
 
 
@@ -328,14 +335,16 @@ class TriggerSubscriptionBuilderUpdateApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
+    @with_current_user
     @with_current_tenant_id
-    def post(self, tenant_id: str, provider: str, subscription_builder_id: str):
+    def post(self, tenant_id: str, user: Account, provider: str, subscription_builder_id: str):
         """Update a subscription instance for a trigger provider"""
 
         payload = TriggerSubscriptionBuilderUpdatePayload.model_validate(console_ns.payload or {})
         try:
             return TriggerSubscriptionBuilderService.update_trigger_subscription_builder(
                 tenant_id=tenant_id,
+                user_id=user.id,
                 provider_id=TriggerProviderID(provider),
                 subscription_builder_id=subscription_builder_id,
                 subscription_builder_updater=SubscriptionBuilderUpdater(
@@ -364,11 +373,18 @@ class TriggerSubscriptionBuilderLogsApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
-    def get(self, provider: str, subscription_builder_id: str):
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, tenant_id: str, user: Account, provider: str, subscription_builder_id: str):
         """Get the request logs for a subscription instance for a trigger provider"""
 
         try:
-            logs = TriggerSubscriptionBuilderService.list_logs(subscription_builder_id)
+            logs = TriggerSubscriptionBuilderService.list_logs(
+                tenant_id=tenant_id,
+                user_id=user.id,
+                provider_id=TriggerProviderID(provider),
+                subscription_builder_id=subscription_builder_id,
+            )
             return dump_response(TriggerSubscriptionBuilderLogsResponse, {"logs": logs})
         except Exception as e:
             logger.exception("Error getting request logs for subscription builder", exc_info=e)
@@ -652,6 +668,7 @@ class TriggerOAuthCallbackApi(Resource):
         # Update subscription builder
         TriggerSubscriptionBuilderService.update_trigger_subscription_builder(
             tenant_id=tenant_id,
+            user_id=user_id,
             provider_id=provider_id,
             subscription_builder_id=subscription_builder_id,
             subscription_builder_updater=SubscriptionBuilderUpdater(

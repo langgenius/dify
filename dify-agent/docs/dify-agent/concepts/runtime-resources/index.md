@@ -29,7 +29,7 @@ backend ref to the `dify.runtime` layer:
 flowchart LR
     EC["dify.execution_context<br/>request identity"]
     RT["dify.runtime<br/>opaque backend_binding_ref"]
-    SH["dify.shell<br/>commands, files, and jobs"]
+    SH["dify.shell<br/>commands and jobs"]
 
     EC --> SH
     RT --> SH
@@ -41,8 +41,8 @@ the resulting `RuntimeLease` only while that context is active. The layer does
 not create, retire, or destroy persistent resources, and it stores no backend
 SDK object in an Agenton session snapshot.
 
-The Shell layer consumes `RuntimeLease.commands`, `RuntimeLease.files`, and
-`RuntimeLease.layout`. It tracks only request-local shell job ids and offsets.
+The Shell layer consumes `RuntimeLease.commands` and `RuntimeLease.layout`. It
+tracks only request-local shell job ids and offsets.
 Closing a run clears that job state; it does not retire the Binding.
 
 ## State ownership
@@ -105,7 +105,7 @@ composition contains:
 Each Agent request acquires that ref for the duration of the run and releases it
 afterward. Local release closes the operation's shellctl connection. E2B release
 also pauses the underlying E2B resource with memory preserved. A later request
-or Workspace file operation acquires a new lease for the same Binding ref. If a
+or Binding file operation acquires a new lease for the same Binding ref. If a
 backend confirms the resource is gone, acquisition fails; it does not create an
 empty replacement Workspace.
 
@@ -146,7 +146,7 @@ returning success. For example, E2B kills a Sandbox when its initialization
 fails, and Local removes paths created by an incomplete operation. This
 backend-local cleanup does not cross the database commit boundary.
 
-## Workspace file boundary
+## Binding file boundary
 
 Dify API's public file APIs accept a product locator, not a Binding id or
 backend ref: a Conversation, a debug Build Draft, or a Workflow Node Execution.
@@ -154,21 +154,20 @@ Dify API authorizes that object and resolves its associated active Binding. It
 does not select the latest Binding or fall back to another product context.
 
 The resolved request reaches Dify Agent through its private
-`POST /workspace/files/list`, `POST /workspace/files/read`, and
-`POST /workspace/files/upload` endpoints. Each operation receives a
+`POST /execution-bindings/files/list`, `POST /execution-bindings/files/read`,
+and `POST /execution-bindings/files/download` endpoints. Each operation receives a
 `backend_binding_ref`, acquires a fresh RuntimeLease, performs the file action,
 and releases the lease.
 
-`WorkspaceFileService` forwards the request path unchanged to the current
-RuntimeLease's file capability. The backend interprets that path in its own
-filesystem namespace; the service does not require a Workspace-relative path
-or enforce `workspace_dir` containment. `~` and `~/...` can therefore address
-the lease's Home. Whether an absolute path or a path containing `..` is
-accessible is determined by the backend and its path-isolation policy, such as
-Local shellctl and Landlock isolation. Whole-file capture for Agent Stub upload
-is bounded by
-`DIFY_AGENT_SANDBOX_FILE_UPLOAD_MAX_BYTES`; the environment variable keeps its
-existing name even though the route now operates through a Binding.
+`BindingFileService` resolves relative paths from `workspace_dir`, `~` and
+`~/...` from `home_dir`, and leaves absolute paths in the Binding filesystem
+namespace. It does not enforce Workspace containment or reject `..`; the
+selected backend's isolation policy remains authoritative. List and preview
+run bounded inspection scripts through `RuntimeLease.commands`. Download runs
+`dify-agent file upload --no-download-link` inside the Binding so bytes stream
+directly from the runtime to Dify's existing ToolFile endpoint. Dify Agent
+returns only the canonical ToolFile reference and releases the lease before
+Dify API signs a browser URL.
 
 `RuntimeLayout.home_dir` and `RuntimeLayout.workspace_dir` are canonical paths
 inside the backend execution namespace. They are not host paths, product ids,
