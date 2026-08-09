@@ -236,37 +236,48 @@ describe('MenuItem', () => {
     it('should call handler when clicked', async () => {
       const user = userEvent.setup()
       const handleClick = vi.fn()
-      // Arrange
       render(<MenuItem name="Edit" Icon={TestEditIcon} handleClick={handleClick} />)
 
-      // Act
-      await user.click(screen.getByText('Edit'))
+      const menuItem = screen.getByRole('button', { name: 'Edit' })
+      expect(menuItem).toHaveAttribute('type', 'button')
+      await user.click(menuItem)
 
-      // Assert
       expect(handleClick).toHaveBeenCalledTimes(1)
     })
 
+    it('should support native keyboard activation', async () => {
+      const user = userEvent.setup()
+      const handleClick = vi.fn()
+      render(<MenuItem name="Edit" Icon={TestEditIcon} handleClick={handleClick} />)
+
+      const menuItem = screen.getByRole('button', { name: 'Edit' })
+      menuItem.focus()
+      await user.keyboard('{Enter}')
+      await user.keyboard(' ')
+
+      expect(handleClick).toHaveBeenCalledTimes(2)
+    })
+
     it('should stop propagation before invoking the handler', () => {
-      const parentClick = vi.fn()
       const handleClick = vi.fn()
 
-      render(
-        <div role="button" tabIndex={0} onClick={parentClick} onKeyDown={parentClick}>
-          <MenuItem name="Edit" Icon={TestEditIcon} handleClick={handleClick} />
-        </div>,
-      )
+      render(<MenuItem name="Edit" Icon={TestEditIcon} handleClick={handleClick} />)
+      const menuItem = screen.getByRole('button', { name: 'Edit' })
+      const event = createEvent.click(menuItem)
+      const stopPropagation = vi.spyOn(event, 'stopPropagation')
 
-      fireEvent.click(screen.getByText('Edit'))
+      fireEvent(menuItem, event)
 
       expect(handleClick).toHaveBeenCalledTimes(1)
-      expect(parentClick).not.toHaveBeenCalled()
+      expect(stopPropagation).toHaveBeenCalledTimes(1)
     })
 
     it('should prevent the default action when no click handler is provided', () => {
       render(<MenuItem name="Edit" Icon={TestEditIcon} />)
 
-      const event = createEvent.click(screen.getByText('Edit'))
-      fireEvent(screen.getByText('Edit'), event)
+      const menuItem = screen.getByRole('button', { name: 'Edit' })
+      const event = createEvent.click(menuItem)
+      fireEvent(menuItem, event)
 
       expect(event.defaultPrevented).toBe(true)
     })
