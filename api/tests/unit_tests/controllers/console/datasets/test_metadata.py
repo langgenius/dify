@@ -1,4 +1,4 @@
-import uuid
+﻿import uuid
 from inspect import unwrap
 from unittest.mock import MagicMock, PropertyMock, patch
 
@@ -215,7 +215,6 @@ class TestDocumentMetadataEditApi:
             patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
             patch.object(DatasetService, "get_dataset", return_value=dataset),
             patch.object(DatasetService, "check_dataset_permission"),
-            patch.object(MetadataOperationData, "model_validate", return_value=MagicMock()),
             patch.object(MetadataService, "update_documents_metadata"),
         ):
             result, status = method(
