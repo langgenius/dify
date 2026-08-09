@@ -1,5 +1,4 @@
 'use client'
-import type { FC } from 'react'
 import type { ModelConfig } from '@/app/components/workflow/types'
 import type { GenRes } from '@/service/debug'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -20,13 +19,7 @@ type Props = Readonly<{
   currentPrompt?: string
 }>
 
-const PromptGeneratorBtn: FC<Props> = ({
-  className,
-  onGenerated,
-  nodeId,
-  editorId,
-  currentPrompt,
-}) => {
+const PromptGeneratorBtn = ({ className, onGenerated, nodeId, editorId, currentPrompt }: Props) => {
   const { t } = useTranslation()
   const [showAutomatic, setShowAutomatic] = useState(false)
   const handleAutomaticRes = useCallback(
