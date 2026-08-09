@@ -87,14 +87,11 @@ describe('Header Component', () => {
   })
 
   describe('Interactions', () => {
-    it('should handle new conversation', async () => {
+    it('should handle reset chat', async () => {
       const handleNewConversation = vi.fn()
       setup({ handleNewConversation, sidebarCollapseState: true, currentConversationId: 'conv-1' })
 
-      const buttons = screen.getAllByRole('button')
-      // Sidebar, NewChat, ResetChat (3)
-      const resetChatBtn = buttons[buttons.length - 1]
-      await userEvent.click(resetChatBtn!)
+      await userEvent.click(screen.getByRole('button', { name: 'share.chat.resetChat' }))
 
       expect(handleNewConversation).toHaveBeenCalled()
     })
@@ -340,9 +337,7 @@ describe('Header Component', () => {
         currentConversationId: 'conv-1',
       })
 
-      const buttons = screen.getAllByRole('button')
-      // Sidebar, NewChat, ResetChat (3)
-      const newChatBtn = buttons[1]
+      const newChatBtn = screen.getByRole('button', { name: 'share.chat.newChatTip' })
       expect(newChatBtn)!.toBeDisabled()
     })
 
@@ -353,9 +348,7 @@ describe('Header Component', () => {
         currentConversationId: '',
       })
 
-      const buttons = screen.getAllByRole('button')
-      // Sidebar, NewChat (2)
-      const newChatBtn = buttons[1]
+      const newChatBtn = screen.getByRole('button', { name: 'share.chat.newChatTip' })
       expect(newChatBtn)!.toBeDisabled()
     })
 

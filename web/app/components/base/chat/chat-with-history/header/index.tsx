@@ -134,6 +134,7 @@ const Header = () => {
                 render={
                   <div>
                     <ActionButton
+                      aria-label={t(($) => $['chat.newChatTip'], { ns: 'share' })}
                       size="l"
                       state={
                         !currentConversationId || isResponding
@@ -143,7 +144,7 @@ const Header = () => {
                       disabled={!currentConversationId || isResponding}
                       onClick={handleNewConversation}
                     >
-                      <RiEditBoxLine className="h-4.5 w-4.5" />
+                      <RiEditBoxLine aria-hidden className="h-4.5 w-4.5" />
                     </ActionButton>
                   </div>
                 }
@@ -157,8 +158,12 @@ const Header = () => {
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <ActionButton size="l" onClick={handleNewConversation}>
-                    <RiResetLeftLine className="h-4.5 w-4.5" />
+                  <ActionButton
+                    aria-label={t(($) => $['chat.resetChat'], { ns: 'share' })}
+                    size="l"
+                    onClick={handleNewConversation}
+                  >
+                    <RiResetLeftLine aria-hidden className="h-4.5 w-4.5" />
                   </ActionButton>
                 }
               />
