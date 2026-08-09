@@ -144,7 +144,13 @@ class TestCompletionEndpoints:
             Session(sqlite_engine) as session,
             app.test_request_context("/", json={"inputs": {}, "model_config": {}, "query": "hi"}),
         ):
-            resp = method(api, session, _make_account(), app_model=MagicMock(id=APP_ID))
+            resp = method(
+                api,
+                CompletionMessagePayload(inputs={}, model_config={}, query="hi"),
+                session,
+                _make_account(),
+                app_model=MagicMock(id=APP_ID),
+            )
 
         assert resp == {"result": {"text": "ok"}}
 
@@ -167,7 +173,13 @@ class TestCompletionEndpoints:
             app.test_request_context("/", json={"inputs": {}, "model_config": {}, "query": "hi"}),
             pytest.raises(NotFound),
         ):
-            method(api, session, _make_account(), app_model=MagicMock(id=APP_ID))
+            method(
+                api,
+                CompletionMessagePayload(inputs={}, model_config={}, query="hi"),
+                session,
+                _make_account(),
+                app_model=MagicMock(id=APP_ID),
+            )
 
     def test_completion_api_provider_not_initialized(
         self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
@@ -186,7 +198,13 @@ class TestCompletionEndpoints:
             app.test_request_context("/", json={"inputs": {}, "model_config": {}, "query": "hi"}),
             pytest.raises(completion_module.ProviderNotInitializeError),
         ):
-            method(api, session, _make_account(), app_model=MagicMock(id=APP_ID))
+            method(
+                api,
+                CompletionMessagePayload(inputs={}, model_config={}, query="hi"),
+                session,
+                _make_account(),
+                app_model=MagicMock(id=APP_ID),
+            )
 
     def test_completion_api_quota_exceeded(
         self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
@@ -205,7 +223,13 @@ class TestCompletionEndpoints:
             app.test_request_context("/", json={"inputs": {}, "model_config": {}, "query": "hi"}),
             pytest.raises(completion_module.ProviderQuotaExceededError),
         ):
-            method(api, session, _make_account(), app_model=MagicMock(id=APP_ID))
+            method(
+                api,
+                CompletionMessagePayload(inputs={}, model_config={}, query="hi"),
+                session,
+                _make_account(),
+                app_model=MagicMock(id=APP_ID),
+            )
 
 
 class TestAppEndpoints:
@@ -232,7 +256,17 @@ class TestAppEndpoints:
             app.test_request_context("/console/api/apps/app-1", method="PUT", json=payload),
             patch.object(type(console_ns), "payload", payload),
         ):
-            response = method(api, unbound_session, app_model=_make_app(icon_type=app_module.IconType.EMOJI))
+            response = method(
+                api,
+                app_module.UpdateAppPayload(
+                    name="Updated App",
+                    description="Updated description",
+                    icon="🤖",
+                    icon_background="#FFFFFF",
+                ),
+                unbound_session,
+                app_model=_make_app(icon_type=app_module.IconType.EMOJI),
+            )
 
         assert response == {"id": "app-1"}
         assert app_service.update_app.call_args.args[1]["icon_type"] is None
@@ -271,7 +305,16 @@ class TestAppEndpoints:
             app.test_request_context("/console/api/apps/app-1/icon", method="POST", json=payload),
             patch.object(type(console_ns), "payload", payload),
         ):
-            response = method(api, unbound_session, app_model=_make_app())
+            response = method(
+                api,
+                app_module.AppIconPayload(
+                    icon="https://example.com/icon.png",
+                    icon_type=app_module.IconType.IMAGE,
+                    icon_background="#FFFFFF",
+                ),
+                unbound_session,
+                app_model=_make_app(),
+            )
 
         assert response == {"id": "app-1"}
         assert app_service.update_app_icon.call_args.args[1:] == (
