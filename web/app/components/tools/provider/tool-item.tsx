@@ -22,9 +22,11 @@ const ToolItem = ({ disabled, collection, tool, isBuiltIn, isModel }: Props) => 
 
   return (
     <>
-      <div
+      <button
+        type="button"
+        disabled={disabled}
         className={cn(
-          'bg-components-panel-item-bg cursor-pointer rounded-xl border-[0.5px] border-components-panel-border-subtle px-4 py-3 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover',
+          'bg-components-panel-item-bg w-full cursor-pointer rounded-xl border-[0.5px] border-components-panel-border-subtle px-4 py-3 text-start shadow-xs hover:bg-components-panel-on-panel-item-bg-hover',
           disabled && 'cursor-not-allowed! opacity-50',
         )}
         onClick={() => !disabled && setShowDetail(true)}
@@ -36,7 +38,7 @@ const ToolItem = ({ disabled, collection, tool, isBuiltIn, isModel }: Props) => 
         >
           {tool.description[language]}
         </div>
-      </div>
+      </button>
       {showDetail && (
         <SettingBuiltInTool
           showBackButton
