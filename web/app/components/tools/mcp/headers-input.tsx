@@ -85,6 +85,7 @@ const HeadersInput = ({ headersItems, onChange, readonly = false, isMasked = fal
           >
             <div className="w-1/2 border-r border-divider-regular">
               <Input
+                aria-label={t(($) => $['mcp.modal.headerKey'], { ns: 'tools' })}
                 value={item.key}
                 onChange={(e) => handleItemChange(index, 'key', e.target.value)}
                 placeholder={t(($) => $['mcp.modal.headerKeyPlaceholder'], { ns: 'tools' })}
@@ -94,6 +95,7 @@ const HeadersInput = ({ headersItems, onChange, readonly = false, isMasked = fal
             </div>
             <div className="flex w-1/2 items-center">
               <Input
+                aria-label={t(($) => $['mcp.modal.headerValue'], { ns: 'tools' })}
                 value={item.value}
                 onChange={(e) => handleItemChange(index, 'value', e.target.value)}
                 placeholder={t(($) => $['mcp.modal.headerValuePlaceholder'], { ns: 'tools' })}
