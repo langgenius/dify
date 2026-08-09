@@ -1561,7 +1561,6 @@ class TestTrialChatAudioApiExceptionHandlers:
             with pytest.raises(ProviderNotInitializeError):
                 method(
                     api,
-                    TextToSpeechRequest.model_validate(request.get_json(silent=True) or {}),
                     account,
                     trial_app_chat,
                 )
@@ -1585,7 +1584,6 @@ class TestTrialChatAudioApiExceptionHandlers:
             with pytest.raises(ProviderQuotaExceededError):
                 method(
                     api,
-                    TextToSpeechRequest.model_validate(request.get_json(silent=True) or {}),
                     account,
                     trial_app_chat,
                 )
@@ -1609,7 +1607,6 @@ class TestTrialChatAudioApiExceptionHandlers:
             with pytest.raises(CompletionRequestError):
                 method(
                     api,
-                    TextToSpeechRequest.model_validate(request.get_json(silent=True) or {}),
                     account,
                     trial_app_chat,
                 )
