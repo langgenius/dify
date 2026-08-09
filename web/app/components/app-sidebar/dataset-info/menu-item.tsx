@@ -11,7 +11,7 @@ const MenuItem = ({ Icon, name, handleClick }: MenuItemProps) => {
   return (
     <button
       type="button"
-      className="flex items-center gap-x-1 rounded-lg px-2 py-1.5 text-start outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+      className="flex appearance-none items-center gap-x-1 rounded-lg px-2 py-1.5 text-start outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
       onClick={(e) => {
         e.preventDefault()
         e.stopPropagation()
