@@ -110,6 +110,24 @@ describe('embedded user id propagation in authentication flows', () => {
     expect(webAppLoginMock).toHaveBeenCalledTimes(1)
   })
 
+  it('exposes a named password visibility action', async () => {
+    const user = userEvent.setup()
+    const params = new URLSearchParams()
+    params.set('redirect_url', encodeURIComponent('/chatbot/test-app'))
+    useSearchParamsMock.mockReturnValue(params)
+
+    render(<MailAndPasswordAuth isEmailSetup />)
+
+    const passwordInput = screen.getByLabelText('login.password')
+    expect(passwordInput).toHaveAttribute('type', 'password')
+
+    await user.click(screen.getByRole('button', { name: 'login.showPassword' }))
+    expect(passwordInput).toHaveAttribute('type', 'text')
+
+    await user.click(screen.getByRole('button', { name: 'login.hidePassword' }))
+    expect(passwordInput).toHaveAttribute('type', 'password')
+  })
+
   it('does not call password login services when the redirect target is external', async () => {
     const params = new URLSearchParams()
     params.set('redirect_url', 'https://evil.example/chatbot/evil-app')

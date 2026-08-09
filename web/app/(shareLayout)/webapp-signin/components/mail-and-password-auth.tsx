@@ -146,10 +146,23 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
             autoComplete="current-password"
             spellCheck={false}
             placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' }) || ''}
+            className="pr-10"
           />
           <div className="absolute inset-y-0 right-0 flex items-center">
-            <Button type="button" variant="ghost" onClick={() => setShowPassword(!showPassword)}>
-              {showPassword ? '👀' : '😝'}
+            <Button
+              type="button"
+              variant="ghost"
+              aria-label={t(($) => $[showPassword ? 'hidePassword' : 'showPassword'], {
+                ns: 'login',
+              })}
+              className="mr-1 size-8 p-0 text-text-tertiary hover:text-text-secondary"
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? (
+                <span className="i-ri-eye-off-line size-4" aria-hidden="true" />
+              ) : (
+                <span className="i-ri-eye-line size-4" aria-hidden="true" />
+              )}
             </Button>
           </div>
         </div>
