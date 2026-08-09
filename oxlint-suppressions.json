@@ -2020,14 +2020,6 @@
       "count": 1
     }
   },
-  "web/app/components/billing/pricing/plan-switcher/tab.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/billing/pricing/plans/self-hosted-plan-item/button.tsx": {
     "eslint-react/static-components": {
       "count": 2
