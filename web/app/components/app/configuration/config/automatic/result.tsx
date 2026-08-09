@@ -2,7 +2,6 @@
 import type { FC } from 'react'
 import type { GenRes } from '@/service/debug'
 import { Button } from '@langgenius/dify-ui/button'
-import { RiClipboardLine } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -60,7 +59,7 @@ const Result: FC<Props> = ({
               toast.success(t(($) => $['actionMsg.copySuccessfully'], { ns: 'common' }))
             }}
           >
-            <RiClipboardLine aria-hidden="true" className="size-4 text-text-secondary" />
+            <span aria-hidden className="i-ri-clipboard-line size-4 text-text-secondary" />
           </Button>
           <Button variant="primary" onClick={onApply}>
             {t(($) => $['generate.apply'], { ns: 'appDebug' })}
