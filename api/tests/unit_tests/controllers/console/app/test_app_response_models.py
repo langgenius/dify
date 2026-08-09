@@ -333,9 +333,7 @@ def test_app_list_query_accepts_single_repeated_tag_id(app_module):
 
 def test_create_app_endpoint_rejects_agent_mode(app_module):
     with pytest.raises(ValidationError):
-        app_module.CreateAppPayload.model_validate(
-            {"name": "Iris", "mode": "agent", "description": "Agent app"}
-        )
+        app_module.CreateAppPayload.model_validate({"name": "Iris", "mode": "agent", "description": "Agent app"})
 
 
 def test_app_partial_serialization_uses_aliases(app_models):
