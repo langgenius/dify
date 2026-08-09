@@ -1,8 +1,6 @@
 'use client'
-import type { FC } from 'react'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
@@ -14,7 +12,7 @@ type Props = Readonly<{
   exclude?: string[]
 }>
 
-const MemberSelector: FC<Props> = ({ value, onSelect, exclude = [] }) => {
+function MemberSelector({ value, onSelect, exclude = [] }: Props) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
