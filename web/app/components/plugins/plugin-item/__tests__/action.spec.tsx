@@ -140,8 +140,6 @@ const getDeleteButton = () => screen.getByRole('button', { name: 'plugin.action.
 
 // ==================== Tests ====================
 
-// Helper to find action buttons (real ActionButton component uses type="button")
-const getActionButtons = () => screen.getAllByRole('button')
 const queryActionButtons = () => screen.queryAllByRole('button')
 
 describe('Action Component', () => {
@@ -272,7 +270,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getDeleteButton())
 
       // Assert
       expect(screen.getByRole('heading', { name: 'plugin.action.delete' }))!.toBeInTheDocument()
@@ -289,7 +287,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getDeleteButton())
 
       // Assert
       // Assert
@@ -306,7 +304,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getDeleteButton())
       expect(screen.getByRole('heading', { name: 'plugin.action.delete' }))!.toBeInTheDocument()
 
       fireEvent.click(getDeleteCancelButton())
@@ -328,7 +326,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getDeleteButton())
       fireEvent.click(getDeleteConfirmButton())
 
       // Assert
@@ -350,7 +348,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getDeleteButton())
       fireEvent.click(getDeleteConfirmButton())
 
       // Assert
@@ -370,7 +368,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getDeleteButton())
       fireEvent.click(getDeleteConfirmButton())
 
       // Assert
@@ -392,7 +390,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getDeleteButton())
       fireEvent.click(getDeleteConfirmButton())
 
       // Assert
@@ -414,7 +412,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getDeleteButton())
       fireEvent.click(getDeleteConfirmButton())
 
       // Assert
@@ -441,7 +439,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getDeleteButton())
       fireEvent.click(getDeleteConfirmButton())
 
       // Assert - Loading state
@@ -474,7 +472,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getPluginInfoButton())
 
       // Assert
       // Assert
@@ -500,7 +498,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getPluginInfoButton())
       expect(screen.getByTestId('plugin-info-modal'))!.toBeInTheDocument()
 
       fireEvent.click(screen.getByTestId('close-plugin-info'))
@@ -559,7 +557,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getCheckForUpdatesButton())
 
       // Assert
       await waitFor(() => {
@@ -585,7 +583,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getCheckForUpdatesButton())
 
       // Assert
       await waitFor(() => {
@@ -604,7 +602,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getCheckForUpdatesButton())
 
       // Assert
       await waitFor(() => {
@@ -628,7 +626,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getCheckForUpdatesButton())
 
       // Assert - toast is called with the translated payload
       await waitFor(() => {
@@ -662,7 +660,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getCheckForUpdatesButton())
 
       // Assert
       await waitFor(() => {
@@ -702,7 +700,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getCheckForUpdatesButton())
 
       // Wait for modal to be called
       await waitFor(() => {
@@ -734,7 +732,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getCheckForUpdatesButton())
 
       // Assert
       await waitFor(() => {
@@ -763,7 +761,7 @@ describe('Action Component', () => {
 
       // Act
       const { rerender } = render(<Action {...props1} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getDeleteButton())
       fireEvent.click(getDeleteConfirmButton())
 
       await waitFor(() => {
@@ -772,7 +770,7 @@ describe('Action Component', () => {
 
       mockUninstallPlugin.mockClear()
       rerender(<Action {...props2} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getDeleteButton())
       fireEvent.click(getDeleteConfirmButton())
 
       await waitFor(() => {
@@ -800,7 +798,7 @@ describe('Action Component', () => {
 
       // Act
       const { rerender } = render(<Action {...props1} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getDeleteButton())
       fireEvent.click(getDeleteConfirmButton())
 
       await waitFor(() => {
@@ -809,7 +807,7 @@ describe('Action Component', () => {
       expect(onDelete2).not.toHaveBeenCalled()
 
       rerender(<Action {...props2} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getDeleteButton())
       fireEvent.click(getDeleteConfirmButton())
 
       await waitFor(() => {
@@ -838,7 +836,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getCheckForUpdatesButton())
 
       // Assert - Should use author and pluginName as fallback
       await waitFor(() => {
@@ -862,7 +860,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getDeleteButton())
       fireEvent.click(getDeleteConfirmButton())
 
       // The confirm button should be disabled during deletion
@@ -888,7 +886,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getDeleteButton())
 
       // Assert
       // Assert
