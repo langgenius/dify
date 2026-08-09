@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -9,8 +9,9 @@ from core.app.apps.workflow.command_channels import (
     CelerySignalCommandChannel,
     CombinedCommandChannel,
     StopFlagCommandChannel,
+    send_abort_command,
 )
-from graphon.graph_engine.entities.commands import AbortCommand, PauseCommand
+from graphon.engine.command import AbortCommand, PauseCommand
 
 
 class _CommandChannelStub:
@@ -25,6 +26,37 @@ class _CommandChannelStub:
 
     def send_command(self, command) -> None:
         self.sent.append(command)
+
+
+def test_send_abort_command_uses_workflow_redis_channel(monkeypatch: pytest.MonkeyPatch) -> None:
+    redis_channel = Mock()
+    redis_channel_factory = Mock(return_value=redis_channel)
+    monkeypatch.setattr(
+        "core.app.apps.workflow.command_channels.RedisChannel",
+        redis_channel_factory,
+    )
+
+    send_abort_command("task-id", reason="stop")
+
+    redis_channel_factory.assert_called_once()
+    assert redis_channel_factory.call_args.args[1] == "workflow:task-id:commands"
+    redis_channel.send_command.assert_called_once()
+    command = redis_channel.send_command.call_args.args[0]
+    assert isinstance(command, AbortCommand)
+    assert command.reason == "stop"
+
+
+def test_send_abort_command_preserves_legacy_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+    redis_channel_factory = Mock()
+    redis_channel_factory.return_value.send_command.side_effect = RuntimeError("redis unavailable")
+    monkeypatch.setattr("core.app.apps.workflow.command_channels.RedisChannel", redis_channel_factory)
+
+    send_abort_command("task-id")
+    send_abort_command("")
+
+    redis_channel_factory.assert_called_once()
+    command = redis_channel_factory.return_value.send_command.call_args.args[0]
+    assert command.reason == "User requested stop"
 
 
 def test_combined_command_channel_fetches_from_all_sources() -> None:
@@ -66,7 +98,7 @@ def test_combined_command_channel_continues_after_source_failure(caplog: pytest.
     combined = CombinedCommandChannel((failing, _CommandChannelStub([abort])))
 
     assert combined.fetch_commands() == [abort]
-    assert "Failed to fetch GraphEngine commands" in caplog.text
+    assert "Failed to fetch Engine commands" in caplog.text
 
 
 def test_celery_signal_command_channel_emits_abort_when_shutdown_starts() -> None:

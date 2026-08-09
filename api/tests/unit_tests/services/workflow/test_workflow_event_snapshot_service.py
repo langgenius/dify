@@ -27,7 +27,7 @@ from core.workflow.nodes.human_input.entities import SelectInputConfig, StringLi
 from core.workflow.nodes.human_input.enums import ValueSourceType
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from libs.datetime_utils import to_utc_timestamp
 from models.enums import ConversationFromSource, CreatorUserRole
 from models.human_input import HumanInputForm, HumanInputFormRecipient, RecipientType
@@ -141,7 +141,7 @@ def _build_resumption_context(task_id: str, *, select_options: list[str] | None 
         call_depth=0,
         workflow_execution_id="run-1",
     )
-    runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
+    runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0.0)
     if select_options is not None:
         runtime_state.variable_pool.add(("start", "options"), select_options)
     runtime_state.set_output("result", "value")
@@ -248,7 +248,7 @@ def _build_resumption_context_additional(task_id: str) -> WorkflowResumptionCont
         call_depth=0,
         workflow_execution_id="run-1",
     )
-    runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
+    runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0.0)
     runtime_state.set_output("answer", "ok")
     wrapper = _WorkflowGenerateEntityWrapper(entity=generate_entity)
     return WorkflowResumptionContext(
@@ -277,7 +277,7 @@ def _build_advanced_chat_resumption_context(conversation_id: str | None) -> Work
         workflow_run_id="run-1",
         query="hello",
     )
-    runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
+    runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0.0)
     wrapper = _AdvancedChatAppGenerateEntityWrapper(entity=generate_entity)
     return WorkflowResumptionContext(
         generate_entity=wrapper,

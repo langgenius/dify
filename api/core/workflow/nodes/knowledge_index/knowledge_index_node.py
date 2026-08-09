@@ -23,8 +23,8 @@ from .exc import (
 )
 
 if TYPE_CHECKING:
-    from graphon.entities import GraphInitParams
-    from graphon.runtime import GraphRuntimeState
+    from graphon.entities import InitParams
+    from graphon.runtime import RuntimeState
 
 logger = logging.getLogger(__name__)
 _INVOKE_FROM_DEBUGGER = "debugger"
@@ -39,8 +39,8 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
         node_id: str,
         data: KnowledgeIndexNodeData,
         *,
-        graph_init_params: "GraphInitParams",
-        graph_runtime_state: "GraphRuntimeState",
+        graph_init_params: "InitParams",
+        graph_runtime_state: "RuntimeState",
     ) -> None:
         super().__init__(
             node_id=node_id,

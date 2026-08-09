@@ -4,19 +4,20 @@ from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
 from core.workflow.nodes.trigger_plugin.trigger_event_node import TriggerEventNode
 from core.workflow.system_variables import build_system_variables
-from graphon.entities import GraphInitParams
+from graphon.entities import InitParams
 from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from graphon.runtime import GraphRuntimeState
+from graphon.runtime import RuntimeState
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_variable_pool
 
 
-def _build_context(graph_config: Mapping[str, object]) -> tuple[GraphInitParams, GraphRuntimeState]:
+def _build_context(graph_config: Mapping[str, object]) -> tuple[InitParams, RuntimeState]:
     init_params = build_test_graph_init_params(
         graph_config=graph_config,
         user_from="account",
         invoke_from="debugger",
     )
-    runtime_state = GraphRuntimeState(
+    runtime_state = RuntimeState(
+        workflow_id="test-workflow",
         variable_pool=build_test_variable_pool(
             variables=build_system_variables(user_id="user", files=[]),
             node_id="node-1",

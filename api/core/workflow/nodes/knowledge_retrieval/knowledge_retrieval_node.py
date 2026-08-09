@@ -17,7 +17,7 @@ from core.db.session_factory import session_factory
 from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.workflow.file_reference import parse_file_reference
-from graphon.entities import GraphInitParams
+from graphon.entities import InitParams
 from graphon.enums import (
     BuiltinNodeTypes,
     WorkflowNodeExecutionMetadataKey,
@@ -48,7 +48,7 @@ from .retrieval import KnowledgeRetrievalRequest, Source
 
 if TYPE_CHECKING:
     from graphon.file import File
-    from graphon.runtime import GraphRuntimeState
+    from graphon.runtime import RuntimeState
 
 logger = logging.getLogger(__name__)
 
@@ -77,8 +77,8 @@ class KnowledgeRetrievalNode(Node[KnowledgeRetrievalNodeData]):
         node_id: str,
         data: KnowledgeRetrievalNodeData,
         *,
-        graph_init_params: "GraphInitParams",
-        graph_runtime_state: "GraphRuntimeState",
+        graph_init_params: "InitParams",
+        graph_runtime_state: "RuntimeState",
         session_maker=None,
     ) -> None:
         super().__init__(

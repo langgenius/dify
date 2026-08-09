@@ -1,5 +1,5 @@
 """
-Observability layer for GraphEngine.
+Observability layer for Engine.
 
 This layer creates OpenTelemetry spans for node execution, enabling distributed
 tracing of workflow execution. It establishes OTel context during node execution
@@ -25,9 +25,9 @@ from extensions.otel.parser import (
 )
 from extensions.otel.runtime import is_instrument_flag_enabled
 from extensions.otel.semconv import DifySpanAttributes
+from graphon.engine.layer import Layer
+from graphon.engine_events import EngineEvent, GraphRunAbortedEvent, NodeEvent
 from graphon.enums import BuiltinNodeTypes, NodeType
-from graphon.graph_engine.layers import GraphEngineLayer
-from graphon.graph_events import GraphEngineEvent, GraphNodeEventBase, GraphRunAbortedEvent
 from graphon.nodes.base.node import Node
 
 logger = logging.getLogger(__name__)
@@ -40,7 +40,7 @@ class _NodeSpanContext:
 
 
 @final
-class ObservabilityLayer(GraphEngineLayer):
+class ObservabilityLayer(Layer):
     """
     Layer that creates OpenTelemetry spans for node execution.
 
@@ -122,9 +122,7 @@ class ObservabilityLayer(GraphEngineLayer):
             logger.warning("Failed to create OpenTelemetry span for node %s: %s", node.id, e)
 
     @override
-    def on_node_run_end(
-        self, node: Node, error: Exception | None, result_event: GraphNodeEventBase | None = None
-    ) -> None:
+    def on_node_run_end(self, node: Node, error: Exception | None, result_event: NodeEvent | None = None) -> None:
         """
         Called when a node finishes execution.
 
@@ -159,7 +157,7 @@ class ObservabilityLayer(GraphEngineLayer):
             logger.warning("Failed to end OpenTelemetry span for node %s: %s", node.id, e)
 
     @override
-    def on_event(self, event: GraphEngineEvent) -> None:
+    def on_event(self, event: EngineEvent) -> None:
         """Record graph-level observability events."""
         if self._is_disabled:
             return

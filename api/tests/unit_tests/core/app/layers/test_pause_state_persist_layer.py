@@ -18,16 +18,15 @@ from core.app.layers.pause_state_persist_layer import (
 )
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import SystemVariableKey
-from graphon.entities.pause_reason import HitlRequired, SchedulingPause
-from graphon.filters import GraphEventFilterContext, ResponseStreamFilter
-from graphon.graph_engine.entities.commands import GraphEngineCommand
-from graphon.graph_engine.layers.base import GraphEngineLayerNotInitializedError
-from graphon.graph_events import (
+from graphon.engine.command import Command
+from graphon.engine.filter import EngineEventFilterContext, ResponseStreamFilter
+from graphon.engine_events import (
     GraphRunFailedEvent,
     GraphRunPausedEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
 )
+from graphon.entities.pause_reason import HitlRequired, SchedulingPause
 from graphon.runtime import ReadOnlyVariablePool
 from graphon.variables.segments import Segment
 from models.model import AppMode
@@ -45,14 +44,14 @@ def _create_initialized_response_stream_filter() -> ResponseStreamFilter:
     """Build a `ResponseStreamFilter` that has already run `initialize()`.
 
     `ResponseStreamFilter.dumps()` raises `RuntimeError` unless the filter has
-    processed a `GraphEventFilterContext` first. In production this always
+    processed a `EngineEventFilterContext` first. In production this always
     happens before any event (including `GraphRunPausedEvent`) reaches
     `PauseStatePersistenceLayer.on_event`, so tests that exercise `on_event`
     or a subsequent `dumps()` call need a filter in that same state. A
     nodeless graph is enough to satisfy the precondition.
     """
     response_stream_filter = ResponseStreamFilter()
-    context = GraphEventFilterContext(graph=Mock(nodes={}), runtime_state=Mock())
+    context = EngineEventFilterContext(graph=Mock(nodes={}), runtime_state=Mock())
     response_stream_filter.initialize(context)
     return response_stream_filter
 
@@ -189,12 +188,12 @@ class MockCommandChannel:
     """Mock implementation of CommandChannel for testing."""
 
     def __init__(self):
-        self._commands: list[GraphEngineCommand] = []
+        self._commands: list[Command] = []
 
-    def fetch_commands(self) -> list[GraphEngineCommand]:
+    def fetch_commands(self) -> list[Command]:
         return self._commands.copy()
 
-    def send_command(self, command: GraphEngineCommand) -> None:
+    def send_command(self, command: Command) -> None:
         self._commands.append(command)
 
 
@@ -232,7 +231,7 @@ class TestPauseStatePersistenceLayer:
 
         assert layer._session_maker is sqlite_session_factory
         assert layer._state_owner_user_id == state_owner_user_id
-        with pytest.raises(GraphEngineLayerNotInitializedError):
+        with pytest.raises(RuntimeError, match="runtime state is not initialized"):
             _ = layer.graph_runtime_state
         assert layer.command_channel is None
 
@@ -394,7 +393,7 @@ class TestPauseStatePersistenceLayer:
 
         event = TestDataFactory.create_graph_run_paused_event()
 
-        with pytest.raises(GraphEngineLayerNotInitializedError):
+        with pytest.raises(RuntimeError, match="runtime state is not initialized"):
             layer.on_event(event)
 
     def test_on_event_asserts_when_workflow_execution_id_missing(

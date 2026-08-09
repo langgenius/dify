@@ -3,7 +3,7 @@ from typing import Any
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
-from graphon.entities import GraphInitParams
+from graphon.entities import InitParams
 from graphon.runtime import VariablePool
 from graphon.variables.variables import Variable
 
@@ -40,8 +40,8 @@ def build_test_graph_init_params(
     user_from: UserFrom | str = UserFrom.ACCOUNT,
     invoke_from: InvokeFrom | str = InvokeFrom.DEBUGGER,
     extra_context: Mapping[str, Any] | None = None,
-) -> GraphInitParams:
-    return GraphInitParams(
+) -> InitParams:
+    return InitParams(
         workflow_id=workflow_id,
         graph_config=graph_config or {},
         run_context=build_test_run_context(

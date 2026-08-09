@@ -24,15 +24,15 @@ class TestAppTaskService:
         ],
     )
     @patch("services.app_task_service.AppQueueManager")
-    @patch("services.app_task_service.GraphEngineManager")
+    @patch("services.app_task_service.send_abort_command")
     def test_stop_task_with_different_app_modes(
-        self, mock_graph_engine_manager, mock_app_queue_manager, app_mode, should_call_graph_engine
+        self, send_abort_command, mock_app_queue_manager, app_mode, should_call_graph_engine
     ):
         """Test stop_task behavior with different app modes.
 
         Verifies that:
         - Legacy Redis flag is always set via AppQueueManager
-        - GraphEngine stop command is only sent for ADVANCED_CHAT and WORKFLOW modes
+        - Engine stop command is only sent for ADVANCED_CHAT and WORKFLOW modes
         """
         # Arrange
         task_id = "task-123"
@@ -45,10 +45,9 @@ class TestAppTaskService:
         # Assert
         mock_app_queue_manager.set_stop_flag.assert_called_once_with(task_id, invoke_from, user_id)
         if should_call_graph_engine:
-            mock_graph_engine_manager.assert_called_once()
-            mock_graph_engine_manager.return_value.send_stop_command.assert_called_once_with(task_id)
+            send_abort_command.assert_called_once_with(task_id)
         else:
-            mock_graph_engine_manager.assert_not_called()
+            send_abort_command.assert_not_called()
 
     @pytest.mark.parametrize(
         "invoke_from",
@@ -60,10 +59,8 @@ class TestAppTaskService:
         ],
     )
     @patch("services.app_task_service.AppQueueManager")
-    @patch("services.app_task_service.GraphEngineManager")
-    def test_stop_task_with_different_invoke_sources(
-        self, mock_graph_engine_manager, mock_app_queue_manager, invoke_from
-    ):
+    @patch("services.app_task_service.send_abort_command")
+    def test_stop_task_with_different_invoke_sources(self, send_abort_command, mock_app_queue_manager, invoke_from):
         """Test stop_task behavior with different invoke sources.
 
         Verifies that the method works correctly regardless of the invoke source.
@@ -78,19 +75,18 @@ class TestAppTaskService:
 
         # Assert
         mock_app_queue_manager.set_stop_flag.assert_called_once_with(task_id, invoke_from, user_id)
-        mock_graph_engine_manager.assert_called_once()
-        mock_graph_engine_manager.return_value.send_stop_command.assert_called_once_with(task_id)
+        send_abort_command.assert_called_once_with(task_id)
 
-    @patch("services.app_task_service.GraphEngineManager")
+    @patch("services.app_task_service.send_abort_command")
     @patch("services.app_task_service.AppQueueManager")
     def test_stop_task_legacy_mechanism_called_even_if_graph_engine_fails(
-        self, mock_app_queue_manager, mock_graph_engine_manager
+        self, mock_app_queue_manager, send_abort_command
     ):
-        """Test that legacy Redis flag is set even if GraphEngine fails.
+        """Test that legacy Redis flag is set even if Engine fails.
 
         This ensures backward compatibility: the legacy mechanism should complete
-        before attempting the GraphEngine command, so the stop flag is set
-        regardless of GraphEngine success.
+        before attempting the Engine command, so the stop flag is set
+        regardless of Engine success.
         """
         # Arrange
         task_id = "task-123"
@@ -98,11 +94,11 @@ class TestAppTaskService:
         user_id = "user-456"
         app_mode = AppMode.ADVANCED_CHAT
 
-        # Simulate GraphEngine failure
-        mock_graph_engine_manager.return_value.send_stop_command.side_effect = Exception("GraphEngine error")
+        # Simulate Engine failure
+        send_abort_command.side_effect = Exception("Engine error")
 
         # Act & Assert - should raise the exception since it's not caught
-        with pytest.raises(Exception, match="GraphEngine error"):
+        with pytest.raises(Exception, match="Engine error"):
             AppTaskService.stop_task(task_id, invoke_from, user_id, app_mode)
 
         # Verify legacy mechanism was still called before the exception

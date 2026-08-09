@@ -15,8 +15,8 @@ from opentelemetry.trace import StatusCode
 
 from core.app.workflow.layers.observability import ObservabilityLayer
 from extensions.otel.semconv import DifySpanAttributes
+from graphon.engine_events import GraphRunAbortedEvent
 from graphon.enums import BuiltinNodeTypes
-from graphon.graph_events import GraphRunAbortedEvent
 
 
 @pytest.fixture(autouse=True)

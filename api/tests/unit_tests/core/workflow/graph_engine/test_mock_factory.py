@@ -29,8 +29,8 @@ from .test_mock_nodes import (
 )
 
 if TYPE_CHECKING:
-    from graphon.entities import GraphInitParams
-    from graphon.runtime import GraphRuntimeState
+    from graphon.entities import InitParams
+    from graphon.runtime import RuntimeState
 
     from .test_mock_config import MockConfig
 
@@ -46,8 +46,8 @@ class MockNodeFactory(DifyNodeFactory):
 
     def __init__(
         self,
-        graph_init_params: "GraphInitParams",
-        graph_runtime_state: "GraphRuntimeState",
+        graph_init_params: "InitParams",
+        graph_runtime_state: "RuntimeState",
         mock_config: "MockConfig | None" = None,
     ) -> None:
         """
@@ -77,7 +77,7 @@ class MockNodeFactory(DifyNodeFactory):
         }
 
     @override
-    def with_runtime_state(self, graph_runtime_state: "GraphRuntimeState") -> "MockNodeFactory":
+    def with_runtime_state(self, graph_runtime_state: "RuntimeState") -> "MockNodeFactory":
         return MockNodeFactory(
             graph_init_params=self.graph_init_params,
             graph_runtime_state=graph_runtime_state,

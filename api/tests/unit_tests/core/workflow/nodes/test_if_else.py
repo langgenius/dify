@@ -12,7 +12,7 @@ from graphon.file import File, FileTransferMethod, FileType
 from graphon.graph import Graph
 from graphon.nodes.if_else.entities import IfElseNodeData
 from graphon.nodes.if_else.if_else_node import IfElseNode
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from graphon.utils.condition.entities import Condition, SubCondition, SubVariableCondition
 from graphon.variables import ArrayFileSegment
 from tests.workflow_test_utils import build_test_graph_init_params
@@ -70,7 +70,7 @@ def test_execute_if_else_result_true():
     pool.add(["start", "null"], None)
     pool.add(["start", "not_null"], "1212")
 
-    graph_runtime_state = GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter())
+    graph_runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=pool, start_at=time.perf_counter())
     node_factory = DifyNodeFactory(
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
@@ -155,7 +155,7 @@ def test_execute_if_else_result_false():
     pool.add(["start", "array_contains"], ["1ab", "def"])
     pool.add(["start", "array_not_contains"], ["ab", "def"])
 
-    graph_runtime_state = GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter())
+    graph_runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=pool, start_at=time.perf_counter())
     node_factory = DifyNodeFactory(
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
@@ -309,7 +309,7 @@ def test_execute_if_else_boolean_conditions(condition: Condition):
     pool.add(["start", "bool_array"], [True, False, True])
     pool.add(["start", "mixed_array"], [True, "false", 1, 0])
 
-    graph_runtime_state = GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter())
+    graph_runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=pool, start_at=time.perf_counter())
     node_factory = DifyNodeFactory(
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
@@ -359,7 +359,7 @@ def test_execute_if_else_boolean_false_conditions():
     pool.add(["start", "bool_false"], False)
     pool.add(["start", "bool_array"], [True, False, True])
 
-    graph_runtime_state = GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter())
+    graph_runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=pool, start_at=time.perf_counter())
     node_factory = DifyNodeFactory(
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
@@ -420,7 +420,7 @@ def test_execute_if_else_boolean_cases_structure():
     pool.add(["start", "bool_true"], True)
     pool.add(["start", "bool_false"], False)
 
-    graph_runtime_state = GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter())
+    graph_runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=pool, start_at=time.perf_counter())
     node_factory = DifyNodeFactory(
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
