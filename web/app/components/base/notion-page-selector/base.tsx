@@ -194,10 +194,7 @@ const NotionPageSelector = ({
         </div>
         <div className="overflow-hidden rounded-b-xl">
           {isFetchingNotionPages ? (
-            <div
-              className="flex h-74 items-center justify-center"
-              data-testid="notion-page-selector-loading"
-            >
+            <div className="flex h-74 items-center justify-center">
               <Loading />
             </div>
           ) : (

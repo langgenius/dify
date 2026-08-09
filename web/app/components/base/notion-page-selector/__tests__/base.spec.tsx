@@ -121,7 +121,7 @@ describe('NotionPageSelector Base', () => {
 
     render(<NotionPageSelector credentialList={mockCredentialList} onSelect={vi.fn()} />)
 
-    expect(screen.getByTestId('notion-page-selector-loading')).toBeInTheDocument()
+    expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
   })
 
   it('should render connector and open settings when fetch fails', async () => {
@@ -334,7 +334,7 @@ describe('NotionPageSelector Base', () => {
       isError: false,
     } as unknown as ReturnType<typeof usePreImportNotionPages>)
     render(<NotionPageSelector credentialList={mockCredentialList} onSelect={vi.fn()} />)
-    expect(screen.getByTestId('notion-page-selector-loading')).toBeInTheDocument()
+    expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
   })
 
   it('should handle credential with empty id', () => {
