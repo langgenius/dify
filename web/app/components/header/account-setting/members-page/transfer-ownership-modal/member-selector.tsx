@@ -48,7 +48,7 @@ const MemberSelector: FC<Props> = ({ value, onSelect, exclude = [] }) => {
         render={
           <button
             type="button"
-            className="group flex cursor-pointer items-center gap-1.5 rounded-lg bg-components-input-bg-normal px-2 py-1 text-start outline-hidden hover:bg-state-base-hover-alt focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover-alt"
+            className="group flex cursor-pointer appearance-none items-center gap-1.5 rounded-lg bg-components-input-bg-normal px-2 py-1 text-start outline-hidden hover:bg-state-base-hover-alt focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover-alt"
           />
         }
       >
@@ -92,7 +92,7 @@ const MemberSelector: FC<Props> = ({ value, onSelect, exclude = [] }) => {
               <button
                 type="button"
                 key={account.id}
-                className="flex w-full cursor-pointer items-center gap-2 rounded-lg py-1 pr-3 pl-2 text-start outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                className="flex w-full cursor-pointer appearance-none items-center gap-2 rounded-lg py-1 pr-3 pl-2 text-start outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                 onClick={() => {
                   onSelect(account.id)
                   setOpen(false)
