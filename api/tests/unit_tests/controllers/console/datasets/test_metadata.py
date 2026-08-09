@@ -1,4 +1,4 @@
-﻿import uuid
+import uuid
 from inspect import unwrap
 from unittest.mock import MagicMock, PropertyMock, patch
 
