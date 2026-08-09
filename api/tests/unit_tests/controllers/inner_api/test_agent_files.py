@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session
 
 from controllers.inner_api.agent.files import (
     AgentFileDownloadRequestApi,
-    AgentFileRequestHttpError,
     AgentFileUploadRequestApi,
 )
 from core.workflow.file_reference import build_file_reference
