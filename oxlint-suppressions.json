@@ -314,14 +314,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/app-publisher/sections.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/app/configuration/config-prompt/__tests__/index.spec.tsx": {
     "jsx_a11y/click-events-have-key-events": {
       "count": 1
