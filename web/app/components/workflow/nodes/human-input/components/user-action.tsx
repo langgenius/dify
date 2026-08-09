@@ -2,7 +2,6 @@ import type { FC } from 'react'
 import type { UserAction } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
@@ -107,7 +106,7 @@ const UserActionItem: FC<UserActionItemProps> = ({ data, onChange, onDelete, rea
           variant="tertiary"
           onClick={() => onDelete(data.id)}
         >
-          <RiDeleteBinLine className="size-4" />
+          <span aria-hidden className="i-ri-delete-bin-line size-4" />
         </Button>
       )}
     </div>
