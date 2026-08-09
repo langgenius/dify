@@ -90,11 +90,7 @@ export const DEFAULT_COMPLETION_PROMPT_CONFIG = {
 export const LOCALE_COOKIE_NAME = 'locale'
 
 const COOKIE_DOMAIN = getStringConfig(env.NEXT_PUBLIC_COOKIE_DOMAIN, '').trim()
-const DEFAULT_SOCKET_URL = 'ws://localhost:5001'
-const DEFAULT_DOCKER_SOCKET_URL = 'ws://localhost'
-export const SOCKET_URL = getStringConfig(env.NEXT_PUBLIC_SOCKET_URL, DEFAULT_SOCKET_URL).trim()
-export const isDefaultSocketUrl = (socketUrl = SOCKET_URL) =>
-  socketUrl === DEFAULT_SOCKET_URL || socketUrl === DEFAULT_DOCKER_SOCKET_URL
+export const SOCKET_URL = getStringConfig(env.NEXT_PUBLIC_SOCKET_URL, 'ws://localhost:5001').trim()
 
 export const BATCH_CONCURRENCY = env.NEXT_PUBLIC_BATCH_CONCURRENCY
 

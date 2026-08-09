@@ -11,10 +11,11 @@ import type {
 import type { Edge, Node } from '@/app/components/workflow/types'
 import { LoroDoc, LoroMap } from 'loro-crdt'
 import { BlockEnum } from '@/app/components/workflow/types'
-import * as config from '@/config'
 import { CollaborationManager } from '../collaboration-manager'
-import { webSocketClient } from '../websocket-manager'
+import * as websocketManager from '../websocket-manager'
 import { attachCrdtRuntime } from './test-crdt-runtime'
+
+const { webSocketClient } = websocketManager
 
 type ReactFlowStore = {
   getState: () => {
@@ -182,7 +183,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
   })
 
   it('switches to local editing and stops reconnecting when the initial connection fails', async () => {
-    vi.spyOn(config, 'isDefaultSocketUrl').mockReturnValueOnce(true)
+    vi.spyOn(websocketManager, 'isDefaultSocketUrl').mockReturnValueOnce(true)
     const manager = new CollaborationManager()
     attachCrdtRuntime(manager)
     const socket = createMockSocket('socket-initial-failure')
@@ -227,7 +228,9 @@ describe('CollaborationManager socket and subscription behavior', () => {
   })
 
   it('keeps editing blocked when a configured socket URL fails to connect', () => {
-    vi.spyOn(config, 'isDefaultSocketUrl').mockReturnValueOnce(false).mockReturnValueOnce(false)
+    vi.spyOn(websocketManager, 'isDefaultSocketUrl')
+      .mockReturnValueOnce(false)
+      .mockReturnValueOnce(false)
     const manager = new CollaborationManager()
     attachCrdtRuntime(manager)
     const internals = getManagerInternals(manager)

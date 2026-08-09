@@ -20,9 +20,8 @@ import type {
 import type { CRDTProvider } from './crdt-provider'
 import { cloneDeep } from 'es-toolkit/object'
 import { isEqual } from 'es-toolkit/predicate'
-import { isDefaultSocketUrl } from '@/config'
 import { EventEmitter } from './event-emitter'
-import { emitWithAuthGuard, webSocketClient } from './websocket-manager'
+import { emitWithAuthGuard, isDefaultSocketUrl, webSocketClient } from './websocket-manager'
 
 type CrdtRuntime = (typeof import('./crdt-runtime'))['crdtRuntime']
 

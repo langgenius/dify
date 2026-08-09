@@ -1,13 +1,7 @@
-import { isDefaultSocketUrl, resetReg, validPassword, VAR_REGEX } from './index'
+import { resetReg, validPassword, VAR_REGEX } from './index'
 
 describe('config test', () => {
   const passwordRegex = validPassword
-
-  it('identifies the built-in socket URLs', () => {
-    expect(isDefaultSocketUrl('ws://localhost')).toBe(true)
-    expect(isDefaultSocketUrl('ws://localhost:5001')).toBe(true)
-    expect(isDefaultSocketUrl('wss://collaboration.example.com')).toBe(false)
-  })
 
   // Valid passwords
   it('Valid passwords: contains letter+digit, length ≥8', () => {
