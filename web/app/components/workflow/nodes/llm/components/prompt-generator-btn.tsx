@@ -8,7 +8,6 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
 import { ActionButton } from '@/app/components/base/action-button'
-import { Generator } from '@/app/components/base/icons/src/vender/other'
 import { AppModeEnum } from '@/types/app'
 import { useHooksStore } from '../../../hooks-store'
 
@@ -45,7 +44,7 @@ const PromptGeneratorBtn: FC<Props> = ({
         className="hover:bg-[#155EFF]/8"
         onClick={() => setShowAutomatic(true)}
       >
-        <Generator aria-hidden className="size-4 text-primary-600" />
+        <span aria-hidden className="i-custom-vender-other-generator size-4 text-primary-600" />
       </ActionButton>
       {showAutomatic && (
         <GetAutomaticResModal
