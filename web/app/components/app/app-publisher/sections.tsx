@@ -221,7 +221,7 @@ export const PublisherAccessSection = ({
           </div>
           <button
             type="button"
-            className="flex h-8 w-full cursor-pointer appearance-none items-center gap-x-0.5 rounded-lg border-0 bg-components-input-bg-normal py-1 pr-2 pl-2.5 text-left outline-hidden hover:bg-primary-50 hover:text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            className="flex h-8 w-full cursor-pointer appearance-none items-center gap-x-0.5 rounded-lg border-0 bg-components-input-bg-normal py-1 pr-2 pl-2.5 text-start outline-hidden hover:bg-primary-50 hover:text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid"
             onClick={onClick}
           >
             <span className="flex grow items-center gap-x-1.5 overflow-hidden pr-1">
