@@ -23,12 +23,12 @@ const mockStoreState = {
   shareCode: 'test-app',
 }
 
-const useWebAppStoreMock = vi.fn((selector?: (state: typeof mockStoreState) => any) => {
+const useWebAppStoreMock = vi.fn((selector?: (state: typeof mockStoreState) => unknown) => {
   return selector ? selector(mockStoreState) : mockStoreState
 })
 
 vi.mock('@/context/web-app-context', () => ({
-  useWebAppStore: (selector?: (state: typeof mockStoreState) => any) =>
+  useWebAppStore: (selector?: (state: typeof mockStoreState) => unknown) =>
     useWebAppStoreMock(selector),
 }))
 
@@ -37,23 +37,23 @@ const webAppEmailLoginWithCodeMock = vi.fn()
 const sendWebAppEMailLoginCodeMock = vi.fn()
 
 vi.mock('@/service/common', () => ({
-  webAppLogin: (...args: any[]) => webAppLoginMock(...args),
-  webAppEmailLoginWithCode: (...args: any[]) => webAppEmailLoginWithCodeMock(...args),
-  sendWebAppEMailLoginCode: (...args: any[]) => sendWebAppEMailLoginCodeMock(...args),
+  webAppLogin: (...args: unknown[]) => webAppLoginMock(...args),
+  webAppEmailLoginWithCode: (...args: unknown[]) => webAppEmailLoginWithCodeMock(...args),
+  sendWebAppEMailLoginCode: (...args: unknown[]) => sendWebAppEMailLoginCodeMock(...args),
 }))
 
 const fetchAccessTokenMock = vi.fn()
 
 vi.mock('@/service/share', () => ({
-  fetchAccessToken: (...args: any[]) => fetchAccessTokenMock(...args),
+  fetchAccessToken: (...args: unknown[]) => fetchAccessTokenMock(...args),
 }))
 
 const setWebAppAccessTokenMock = vi.fn()
 const setWebAppPassportMock = vi.fn()
 
 vi.mock('@/service/webapp-auth', () => ({
-  setWebAppAccessToken: (...args: any[]) => setWebAppAccessTokenMock(...args),
-  setWebAppPassport: (...args: any[]) => setWebAppPassportMock(...args),
+  setWebAppAccessToken: (...args: unknown[]) => setWebAppAccessTokenMock(...args),
+  setWebAppPassport: (...args: unknown[]) => setWebAppPassportMock(...args),
   webAppLogout: vi.fn(),
 }))
 

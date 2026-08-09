@@ -49,11 +49,6 @@
       "count": 1
     }
   },
-  "web/__tests__/embedded-user-id-auth.test.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 8
-    }
-  },
   "web/__tests__/embedded-user-id-store.test.tsx": {
     "typescript/no-explicit-any": {
       "count": 1
