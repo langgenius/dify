@@ -19,7 +19,6 @@ import {
   deploymentsListHasNextPageAtom,
   deploymentsListIsFetchingAtom,
   deploymentsListIsFetchingNextPageAtom,
-  deploymentsListIsLoadingAtom,
   deploymentsListRowsAtom,
   deploymentsListShowEmptyStateAtom,
   deploymentsListShowErrorStateAtom,
@@ -173,19 +172,13 @@ export function DeploymentsListShell() {
   const deploymentsListHasNextPage = useAtomValue(deploymentsListHasNextPageAtom)
   const deploymentsListIsFetching = useAtomValue(deploymentsListIsFetchingAtom)
   const deploymentsListIsFetchingNextPage = useAtomValue(deploymentsListIsFetchingNextPageAtom)
-  const deploymentsListIsLoading = useAtomValue(deploymentsListIsLoadingAtom)
   const appInstanceSummaries = useAtomValue(deploymentsListRowsAtom)
   const showSkeleton = useAtomValue(deploymentsListShowSkeletonAtom)
   const showErrorState = useAtomValue(deploymentsListShowErrorStateAtom)
   const showEmptyState = useAtomValue(deploymentsListShowEmptyStateAtom)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
-  const canLoadMore = Boolean(
-    deploymentsListHasNextPage &&
-    !deploymentsListIsFetching &&
-    !deploymentsListIsFetchingNextPage &&
-    !deploymentsListIsLoading &&
-    !deploymentsListError,
-  )
+  const canLoadMore =
+    deploymentsListHasNextPage && !deploymentsListIsFetching && !deploymentsListError
 
   return (
     <div

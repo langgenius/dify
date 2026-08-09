@@ -217,14 +217,7 @@ function SourceAppList() {
     sourceAppsIsLoading ||
     sourceAppsIsPlaceholderData ||
     (sourceAppsIsFetching && sourceApps.length === 0)
-  const canLoadMore = Boolean(
-    !sourceAppsLoading &&
-    sourceAppsHasNextPage &&
-    !sourceAppsIsFetching &&
-    !sourceAppsIsFetchingNextPage &&
-    !sourceAppsIsLoading &&
-    !sourceAppsError,
-  )
+  const canLoadMore = !sourceAppsIsFetching && !sourceAppsError
 
   return (
     <div

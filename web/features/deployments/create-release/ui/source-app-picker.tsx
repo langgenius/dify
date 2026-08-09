@@ -154,15 +154,7 @@ export function SourceAppPicker({
   const sourceAppsIsLoading = useAtomValue(createReleaseSourceAppsIsLoadingAtom)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const selectedApp = apps.find((app) => app.id === value?.id) ?? null
-  const canLoadMore = Boolean(
-    isShow &&
-    !disabled &&
-    sourceAppsHasNextPage &&
-    !sourceAppsIsFetching &&
-    !sourceAppsIsFetchingNextPage &&
-    !sourceAppsIsLoading &&
-    !sourceAppsError,
-  )
+  const canLoadMore = isShow && !disabled && !sourceAppsIsFetching && !sourceAppsError
 
   return (
     <Combobox<AppPartial>

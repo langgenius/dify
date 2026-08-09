@@ -82,9 +82,7 @@ const WebAppsSectionContent = () => {
   )
 
   const pinnedAppsCount = installedApps.filter(({ is_pinned }) => is_pinned).length
-  const canLoadMore = Boolean(
-    installedAppsQuery.hasNextPage && !installedAppsQuery.isFetching && !installedAppsQuery.error,
-  )
+  const canLoadMore = !installedAppsQuery.isFetching && !installedAppsQuery.error
 
   const handleSearchTextChange = (value: string) => {
     scrollRef.current?.scrollTo({ top: 0 })
