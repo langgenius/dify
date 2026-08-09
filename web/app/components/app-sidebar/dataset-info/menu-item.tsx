@@ -1,5 +1,5 @@
 import type { RemixiconComponentType } from '@remixicon/react'
-import * as React from 'react'
+import { memo } from 'react'
 
 type MenuItemProps = {
   name: string
@@ -23,4 +23,4 @@ const MenuItem = ({ Icon, name, handleClick }: MenuItemProps) => {
   )
 }
 
-export default React.memo(MenuItem)
+export default memo(MenuItem)
