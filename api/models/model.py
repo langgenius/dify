@@ -1196,7 +1196,7 @@ class Conversation(Base):
     )
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
-    app_id = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_model_config_id = mapped_column(StringUUID, nullable=True)
     agent_workspace_binding_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     model_provider = mapped_column(String(255), nullable=True)
@@ -1206,8 +1206,8 @@ class Conversation(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     summary = mapped_column(LongText)
     _inputs: Mapped[dict[str, Any]] = mapped_column("inputs", sa.JSON)
-    introduction = mapped_column(LongText)
-    system_instruction = mapped_column(LongText)
+    introduction: Mapped[str] = mapped_column(LongText)
+    system_instruction: Mapped[str] = mapped_column(LongText)
     system_instruction_tokens: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
     status: Mapped[ConversationStatus] = mapped_column(
         EnumText(ConversationStatus, length=255), nullable=False, default=ConversationStatus.NORMAL
@@ -2311,23 +2311,23 @@ class Site(Base):
         sa.Index("site_code_idx", "code", "status"),
     )
 
-    id = mapped_column(StringUUID, default=lambda: str(uuid4()))
-    app_id = mapped_column(StringUUID, nullable=False)
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     icon_type: Mapped[IconType | None] = mapped_column(EnumText(IconType, length=255), nullable=True)
     icon: Mapped[str | None] = mapped_column(String(255))
-    icon_background = mapped_column(String(255))
-    description = mapped_column(LongText)
+    icon_background: Mapped[str | None] = mapped_column(String(255))
+    description: Mapped[str | None] = mapped_column(LongText)
     default_language: Mapped[str] = mapped_column(String(255), nullable=False)
-    chat_color_theme = mapped_column(String(255))
+    chat_color_theme: Mapped[str] = mapped_column(String(255))
     chat_color_theme_inverted: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
-    copyright = mapped_column(String(255))
-    privacy_policy = mapped_column(String(255))
-    input_placeholder = mapped_column(String(255))
+    copyright: Mapped[str] = mapped_column(String(255))
+    privacy_policy: Mapped[str] = mapped_column(String(255))
+    input_placeholder: Mapped[str] = mapped_column(String(255))
     show_workflow_steps: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
     use_icon_as_answer_icon: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
     _custom_disclaimer: Mapped[str] = mapped_column("custom_disclaimer", LongText, default="")
-    customize_domain = mapped_column(String(255))
+    customize_domain: Mapped[str] = mapped_column(String(255))
     customize_token_strategy: Mapped[CustomizeTokenStrategy] = mapped_column(
         EnumText(CustomizeTokenStrategy, length=255), nullable=False
     )
@@ -2335,9 +2335,9 @@ class Site(Base):
     status: Mapped[AppStatus] = mapped_column(
         EnumText(AppStatus, length=255), nullable=False, server_default=sa.text("'normal'"), default=AppStatus.NORMAL
     )
-    created_by = mapped_column(StringUUID, nullable=True)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_by = mapped_column(StringUUID, nullable=True)
+    created_by: Mapped[str| None] = mapped_column(StringUUID, nullable=True)
+    created_at : Mapped[datetime]= mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     updated_at = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
