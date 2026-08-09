@@ -3,24 +3,24 @@ from unittest.mock import MagicMock
 from core.workflow.nodes.agent.agent_node import AgentNode
 from core.workflow.nodes.agent.entities import AgentNodeData
 from core.workflow.nodes.agent.events import AgentLogEvent, NodeRunAgentLogEvent
-from graphon.entities import GraphInitParams
+from graphon.engine_events import NodeRunStreamChunkEvent
+from graphon.entities import InitParams
 from graphon.enums import BuiltinNodeTypes
-from graphon.graph_events import NodeRunStreamChunkEvent
 from graphon.node_events import StreamChunkEvent
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 
 
 def test_dispatch_converts_agent_events_and_delegates_other_events() -> None:
     node = AgentNode(
         node_id="node-id",
         data=AgentNodeData(title="Agent"),
-        graph_init_params=GraphInitParams(
+        graph_init_params=InitParams(
             workflow_id="workflow-id",
             graph_config={},
             run_context={},
             call_depth=0,
         ),
-        graph_runtime_state=GraphRuntimeState(variable_pool=VariablePool(), start_at=0),
+        graph_runtime_state=RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0),
         strategy_resolver=MagicMock(),
         presentation_provider=MagicMock(),
         runtime_support=MagicMock(),

@@ -57,7 +57,7 @@ from core.workflow.system_variables import build_system_variables
 from graphon.enums import BuiltinNodeTypes
 from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMUsage
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models.enums import MessageStatus
 from models.model import AppMode, EndUser, Message, MessageFile
@@ -170,7 +170,8 @@ class TestAdvancedChatGenerateTaskPipeline:
         pipeline = _make_pipeline()
         pipeline._task_state.answer = "partial answer"
         pipeline._workflow_run_id = "run-id"
-        pipeline._graph_runtime_state = GraphRuntimeState(
+        pipeline._graph_runtime_state = RuntimeState(
+            workflow_id="test-workflow",
             variable_pool=build_test_variable_pool(
                 variables=build_system_variables(workflow_execution_id="run-id"),
             ),
@@ -300,7 +301,8 @@ class TestAdvancedChatGenerateTaskPipeline:
         pipeline = _make_pipeline()
         message = _persist_message(sqlite_session)
         other_message = _persist_message(sqlite_session, message_id="other-message-id")
-        pipeline._graph_runtime_state = GraphRuntimeState(
+        pipeline._graph_runtime_state = RuntimeState(
+            workflow_id="test-workflow",
             variable_pool=build_test_variable_pool(variables=build_system_variables(workflow_execution_id="run-id")),
             start_at=0.0,
         )
@@ -480,7 +482,8 @@ class TestAdvancedChatGenerateTaskPipeline:
     def test_workflow_finish_handlers(self):
         pipeline = _make_pipeline()
         pipeline._workflow_run_id = "run-id"
-        pipeline._graph_runtime_state = GraphRuntimeState(
+        pipeline._graph_runtime_state = RuntimeState(
+            workflow_id="test-workflow",
             variable_pool=VariablePool.from_bootstrap(
                 system_variables=build_system_variables(workflow_execution_id="run-id")
             ),
@@ -669,7 +672,8 @@ class TestAdvancedChatGenerateTaskPipeline:
 
         message = _persist_message(sqlite_session)
 
-        graph_runtime_state = GraphRuntimeState(
+        graph_runtime_state = RuntimeState(
+            workflow_id="test-workflow",
             variable_pool=VariablePool.from_bootstrap(
                 system_variables=build_system_variables(workflow_execution_id="run-id")
             ),
@@ -701,7 +705,8 @@ class TestAdvancedChatGenerateTaskPipeline:
 
     def test_handle_message_end_event_applies_output_moderation(self):
         pipeline = _make_pipeline()
-        pipeline._graph_runtime_state = GraphRuntimeState(
+        pipeline._graph_runtime_state = RuntimeState(
+            workflow_id="test-workflow",
             variable_pool=VariablePool.from_bootstrap(
                 system_variables=build_system_variables(workflow_execution_id="run-id")
             ),

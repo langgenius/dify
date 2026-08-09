@@ -18,7 +18,7 @@ from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, Pau
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories import SQLAlchemyWorkflowExecutionRepository, SQLAlchemyWorkflowNodeExecutionRepository
 from graphon.enums import WorkflowExecutionStatus
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser
 from models.snippet import CustomizedSnippet
@@ -104,8 +104,8 @@ def _generate_entity(
     )
 
 
-def _runtime_state() -> GraphRuntimeState:
-    return GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
+def _runtime_state() -> RuntimeState:
+    return RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0.0)
 
 
 def _repositories(

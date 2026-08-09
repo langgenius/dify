@@ -6,7 +6,7 @@ from core.workflow.system_variables import build_system_variables
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.nodes.answer.answer_node import AnswerNode
 from graphon.nodes.answer.entities import AnswerNodeData
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -41,7 +41,8 @@ def _build_answer_node(*, answer: str, variable_pool: VariablePool) -> AnswerNod
         invoke_from=InvokeFrom.DEBUGGER,
         call_depth=0,
     )
-    graph_runtime_state = GraphRuntimeState(
+    graph_runtime_state = RuntimeState(
+        workflow_id="test-workflow",
         variable_pool=variable_pool,
         start_at=time.perf_counter(),
     )

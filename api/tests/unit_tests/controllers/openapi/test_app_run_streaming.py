@@ -97,14 +97,11 @@ def test_stop_task_calls_queue_manager_and_graph_engine(app: Flask, bypass_pipel
     from libs.oauth_bearer import Scope, TokenType
 
     queue_mock = Mock()
-    graph_mock = Mock()
-    graph_instance = Mock()
-    graph_mock.return_value = graph_instance
+    send_abort_command = Mock()
 
     run_module = sys.modules["controllers.openapi.app_run"]
     monkeypatch.setattr(run_module, "AppQueueManager", queue_mock)
-    monkeypatch.setattr(run_module, "GraphEngineManager", graph_mock)
-    monkeypatch.setattr(run_module, "redis_client", object())
+    monkeypatch.setattr(run_module, "send_abort_command", send_abort_command)
 
     auth_data = AuthData.model_construct(
         token_type=TokenType.OAUTH_ACCOUNT,
@@ -126,5 +123,5 @@ def test_stop_task_calls_queue_manager_and_graph_engine(app: Flask, bypass_pipel
         )
 
     queue_mock.set_stop_flag_no_user_check.assert_called_once_with("task-1")
-    graph_instance.send_stop_command.assert_called_once_with("task-1")
+    send_abort_command.assert_called_once_with("task-1")
     assert result == ({"result": "success"}, 200)
