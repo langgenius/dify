@@ -1,11 +1,12 @@
 'use client'
 import type { MailSendResponse } from '@/service/use-common'
 import { Button } from '@langgenius/dify-ui/button'
+import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
+import { Form as DifyForm } from '@langgenius/dify-ui/form'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import Split from '@/app/signin/split'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
@@ -45,29 +46,26 @@ export default function Form({ onSuccess }: Props) {
   }, [email, locale, submitMail, t, isPending, onSuccess])
 
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault()
-        handleSubmit()
+    <DifyForm
+      onFormSubmit={() => {
+        void handleSubmit()
       }}
     >
-      <div className="mb-3">
-        <label htmlFor="email" className="my-2 system-md-semibold text-text-secondary">
+      <Field name="email" className="mb-3 block">
+        <FieldLabel className="my-2 py-0 system-md-semibold! text-text-secondary">
           {t(($) => $.email, { ns: 'login' })}
-        </label>
+        </FieldLabel>
         <div className="mt-1">
-          <Input
+          <FieldControl
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            id="email"
-            name="email"
+            onValueChange={setEmail}
             type="email"
             autoComplete="email"
             spellCheck={false}
             placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) || ''}
           />
         </div>
-      </div>
+      </Field>
       <div className="mb-2">
         <Button variant="primary" type="submit" disabled={isPending || !email} className="w-full">
           {t(($) => $['signup.verifyMail'], { ns: 'login' })}
@@ -107,6 +105,6 @@ export default function Form({ onSuccess }: Props) {
           </div>
         </>
       )}
-    </form>
+    </DifyForm>
   )
 }
