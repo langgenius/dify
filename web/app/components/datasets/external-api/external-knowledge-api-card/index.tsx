@@ -10,7 +10,6 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { useQueryClient } from '@tanstack/react-query'
-import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
@@ -28,10 +27,10 @@ type ExternalKnowledgeAPICardProps = {
   canManageExternalKnowledgeApi: boolean
 }
 
-const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
+const ExternalKnowledgeAPICard = ({
   api,
   canManageExternalKnowledgeApi,
-}) => {
+}: ExternalKnowledgeAPICardProps) => {
   const { setShowExternalKnowledgeAPIModal } = useModalContext()
   const [showConfirm, setShowConfirm] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
