@@ -2335,8 +2335,8 @@ class Site(Base):
     status: Mapped[AppStatus] = mapped_column(
         EnumText(AppStatus, length=255), nullable=False, server_default=sa.text("'normal'"), default=AppStatus.NORMAL
     )
-    created_by: Mapped[str| None] = mapped_column(StringUUID, nullable=True)
-    created_at : Mapped[datetime]= mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     updated_at = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
