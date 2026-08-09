@@ -66,8 +66,8 @@ vi.mock('@/utils/permission', () => ({
   }),
 }))
 
-vi.mock('../use-built-in-actions', () => ({
-  useBuiltInAccessPointActions: () => ({
+vi.mock('../shared/use-access-point-actions', () => ({
+  useAccessPointActions: () => ({
     changeApiStatus: vi.fn(),
     changeSiteStatus: vi.fn(),
     handleResult: vi.fn(),
@@ -77,28 +77,28 @@ vi.mock('../use-built-in-actions', () => ({
   }),
 }))
 
-vi.mock('../web-app-card', () => ({
+vi.mock('../built-in-access-points/web-app-card', () => ({
   WebAppAccessPointCard: (props: Record<string, unknown>) => {
     mocks.webCard(props)
     return <div data-testid="web-app-card" />
   },
 }))
 
-vi.mock('../service-api-card', () => ({
+vi.mock('../built-in-access-points/service-api-card', () => ({
   ServiceApiAccessPointCard: (props: Record<string, unknown>) => {
     mocks.apiCard(props)
     return <div data-testid="service-api-card" />
   },
 }))
 
-vi.mock('../mcp-card', () => ({
+vi.mock('../built-in-access-points/mcp-card', () => ({
   MCPAccessPointCard: (props: Record<string, unknown>) => {
     mocks.mcpCard(props)
     return <div data-testid="mcp-card" />
   },
 }))
 
-vi.mock('../trigger-card', () => ({
+vi.mock('../built-in-access-points/trigger-card', () => ({
   TriggerAccessPointCard: (props: Record<string, unknown>) => {
     mocks.triggerCard(props)
     return <div data-testid="trigger-card" />

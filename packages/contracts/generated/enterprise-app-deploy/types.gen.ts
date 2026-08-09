@@ -56,7 +56,6 @@ export const DeploymentOperationOutcome = {
   DEPLOYMENT_OPERATION_OUTCOME_IN_PROGRESS: 'DEPLOYMENT_OPERATION_OUTCOME_IN_PROGRESS',
   DEPLOYMENT_OPERATION_OUTCOME_SUCCEEDED: 'DEPLOYMENT_OPERATION_OUTCOME_SUCCEEDED',
   DEPLOYMENT_OPERATION_OUTCOME_FAILED: 'DEPLOYMENT_OPERATION_OUTCOME_FAILED',
-  DEPLOYMENT_OPERATION_OUTCOME_REJECTED: 'DEPLOYMENT_OPERATION_OUTCOME_REJECTED',
 } as const
 
 export type DeploymentOperationOutcome =
@@ -66,8 +65,6 @@ export const DeploymentOperationFailureCode = {
   DEPLOYMENT_OPERATION_FAILURE_CODE_UNSPECIFIED: 'DEPLOYMENT_OPERATION_FAILURE_CODE_UNSPECIFIED',
   DEPLOYMENT_OPERATION_FAILURE_CODE_DEPLOYMENT_IN_PROGRESS:
     'DEPLOYMENT_OPERATION_FAILURE_CODE_DEPLOYMENT_IN_PROGRESS',
-  DEPLOYMENT_OPERATION_FAILURE_CODE_VERSION_ALREADY_DEPLOYED:
-    'DEPLOYMENT_OPERATION_FAILURE_CODE_VERSION_ALREADY_DEPLOYED',
   DEPLOYMENT_OPERATION_FAILURE_CODE_NOTHING_TO_UNDEPLOY:
     'DEPLOYMENT_OPERATION_FAILURE_CODE_NOTHING_TO_UNDEPLOY',
   DEPLOYMENT_OPERATION_FAILURE_CODE_DEPLOYMENT_STATE_CHANGED:
@@ -100,6 +97,10 @@ export const DeploymentOperationFailureCode = {
     'DEPLOYMENT_OPERATION_FAILURE_CODE_DEPLOYMENT_INTERRUPTED',
   DEPLOYMENT_OPERATION_FAILURE_CODE_INTERNAL_ERROR:
     'DEPLOYMENT_OPERATION_FAILURE_CODE_INTERNAL_ERROR',
+  DEPLOYMENT_OPERATION_FAILURE_CODE_ENVIRONMENT_CPU_POOL_EXHAUSTED:
+    'DEPLOYMENT_OPERATION_FAILURE_CODE_ENVIRONMENT_CPU_POOL_EXHAUSTED',
+  DEPLOYMENT_OPERATION_FAILURE_CODE_APP_RUNNER_ENV_CPU_LIMIT_EXCEEDED:
+    'DEPLOYMENT_OPERATION_FAILURE_CODE_APP_RUNNER_ENV_CPU_LIMIT_EXCEEDED',
 } as const
 
 export type DeploymentOperationFailureCode =
@@ -178,6 +179,7 @@ export const OperatorType = {
   OPERATOR_TYPE_ACCOUNT: 'OPERATOR_TYPE_ACCOUNT',
   OPERATOR_TYPE_SERVICE_ACCOUNT: 'OPERATOR_TYPE_SERVICE_ACCOUNT',
   OPERATOR_TYPE_SYSTEM: 'OPERATOR_TYPE_SYSTEM',
+  OPERATOR_TYPE_DASHBOARD_ACCOUNT: 'OPERATOR_TYPE_DASHBOARD_ACCOUNT',
 } as const
 
 export type OperatorType = (typeof OperatorType)[keyof typeof OperatorType]
@@ -260,8 +262,9 @@ export type CreateEnvironmentRequest = {
   displayName: string
   description?: string
   mode: EnvironmentMode
-  cpuCount: number
+  cpuPool: number
   namespace?: string
+  maxMemoryMib?: string
 }
 
 export type CreateEnvironmentResponse = {
@@ -356,9 +359,11 @@ export type Environment = {
   lastError?: Error
   namespace?: string
   managedBy?: EnvironmentManagedBy
-  cpuCount: number
+  cpuPool: number
   createdAt: string
   updatedAt: string
+  memory?: RunnerMemory
+  usage?: EnvironmentPoolUsage
 }
 
 export type EnvironmentApi = {
@@ -390,10 +395,11 @@ export type EnvironmentDeployedApp = {
   app: NamedRef
   status: EnvironmentDeployedAppStatus
   currentVersion?: WorkflowVersion
-  lastDeployedAt?: string
+  deployedAt?: string
   deployedBy?: Operator
   latestAttempt?: EnvironmentDeployedAppAttempt
-  cpuCount?: number
+  sizing?: RunnerSizing
+  occupiesPool?: boolean
 }
 
 export type EnvironmentDeployedAppAttempt = {
@@ -439,6 +445,22 @@ export type EnvironmentDeploymentState = {
 
 export type EnvironmentMcpServer = {
   [key: string]: unknown
+}
+
+export type EnvironmentPoolComposition = {
+  topApps?: Array<EnvironmentPoolShare>
+  otherCpu?: number
+  otherAppCount?: number
+}
+
+export type EnvironmentPoolShare = {
+  app: NamedRef
+  isolatedCpu: number
+}
+
+export type EnvironmentPoolUsage = {
+  occupiedCpu: number
+  appCount: number
 }
 
 export type EnvironmentSite = {
@@ -568,9 +590,9 @@ export type Error = {
     | 'APPDEPLOY_ENV_VAR_KEY_CONFLICT'
     | 'APPDEPLOY_APP_HAS_ACTIVE_DEPLOYMENTS'
     | 'APPDEPLOY_SOURCE_VERSION_IN_USE'
-    | 'APPDEPLOY_VERSION_ALREADY_DEPLOYED'
     | 'APPDEPLOY_NOTHING_TO_UNDEPLOY'
     | 'APPDEPLOY_DEPLOYMENT_STATE_CHANGED'
+    | 'APPDEPLOY_ENVIRONMENT_HAS_ACTIVE_DEPLOYMENTS'
     | 'APPDEPLOY_ENVIRONMENT_NOT_READY'
     | 'APPDEPLOY_ENVIRONMENT_CAPACITY_EXCEEDED'
     | 'APPDEPLOY_APP_RUNNER_ENV_CPU_LIMIT_EXCEEDED'
@@ -594,7 +616,8 @@ export type Error = {
     | 'APPDEPLOY_DEPLOYMENT_TIMEOUT'
     | 'APPDEPLOY_DEPLOYMENT_INTERRUPTED'
     | 'APPDEPLOY_ENVIRONMENT_CPU_POOL_EXHAUSTED'
-    | 'APPDEPLOY_DEPLOYMENT_CPU_NOT_APPLICABLE'
+    | 'APPDEPLOY_RESOURCE_NOT_APPLICABLE_FOR_MODE'
+    | 'APPDEPLOY_ENVIRONMENT_CPU_POOL_BELOW_ALLOCATED'
     | 'APPDEPLOY_APP_RUNNER_CONTROL_NOT_CONFIGURED'
     | 'APPDEPLOY_RUNTIME_ASSIGNMENT_FAILED'
     | 'APPDEPLOY_REVISION_TIMEOUT'
@@ -639,6 +662,7 @@ export type GetEnvironmentDeploymentResponse = {
 
 export type GetEnvironmentResponse = {
   environment: Environment
+  pool?: EnvironmentPoolComposition
 }
 
 export type GetEnvironmentWebAppSubjectsResponse = {
@@ -745,7 +769,6 @@ export type ResolveApiTokenRouteResponse = {
 export type ResolveWebAppRouteRequest = {
   appCode?: string
   passport?: string
-  environmentId?: string
 }
 
 export type ResolveWebAppRouteResponse = {
@@ -776,6 +799,17 @@ export type RetryEnvironmentBootstrapResponse = {
   environment: Environment
 }
 
+export type RunnerMemory = {
+  maxMib?: string
+  readonly effectiveMaxMib?: string
+  readonly minMib?: string
+}
+
+export type RunnerSizing = {
+  isolatedCpu: number
+  memory: RunnerMemory
+}
+
 export type SimpleAccount = {
   id: string
   name?: string
@@ -796,6 +830,10 @@ export type TestConnectionResponse = {
   message?: string
 }
 
+export type UndeployEnvironmentAppResponse = {
+  operationId: string
+}
+
 export type UndeployWorkflowResponse = {
   operation: DeploymentOperationReceipt
 }
@@ -814,24 +852,27 @@ export type UnsupportedNodeProvider = {
   provider_name: string
 }
 
-export type UpdateEnvironmentDeployedAppCpuRequest = {
+export type UpdateEnvironmentDeployedAppResourcesRequest = {
   environmentId: string
   deploymentId: string
-  cpuCount: number
+  isolatedCpu: number
+  maxMemoryMib?: string
 }
 
-export type UpdateEnvironmentDeployedAppCpuResponse = {
+export type UpdateEnvironmentDeployedAppResourcesResponse = {
   deploymentId: string
-  cpuCount: number
+  isolatedCpu: number
   allocatedCpuCount: number
   poolCpuCount: number
+  memory: RunnerMemory
 }
 
 export type UpdateEnvironmentRequest = {
   environmentId?: string
   displayName?: string
   description?: string
-  cpuCount?: number
+  cpuPool?: number
+  maxMemoryMib?: string
 }
 
 export type UpdateEnvironmentResponse = {
@@ -856,6 +897,8 @@ export type WorkflowVersion = {
   version_number?: number
   created_at?: number
   created_by?: SimpleAccount
+  dsl_hash?: string
+  deleted?: boolean
 }
 
 export type Pagination = {
@@ -863,6 +906,98 @@ export type Pagination = {
   perPage?: number
   currentPage?: number
   totalPages?: number
+}
+
+export type CreateEnvironmentResponseWritable = {
+  environment: EnvironmentWritable
+}
+
+export type DeleteEnvironmentApiKeyResponseWritable = {
+  [key: string]: unknown
+}
+
+export type DeleteEnvironmentResponseWritable = {
+  [key: string]: unknown
+}
+
+export type EnvironmentWritable = {
+  id: string
+  displayName: string
+  description: string
+  mode: EnvironmentMode
+  backend: EnvironmentBackend
+  status: EnvironmentStatus
+  statusMessage: string
+  lastError?: Error
+  namespace?: string
+  managedBy?: EnvironmentManagedBy
+  cpuPool: number
+  createdAt: string
+  updatedAt: string
+  memory?: RunnerMemoryWritable
+  usage?: EnvironmentPoolUsage
+}
+
+export type EnvironmentDeployedAppWritable = {
+  deploymentId: string
+  workspace: NamedRef
+  app: NamedRef
+  status: EnvironmentDeployedAppStatus
+  currentVersion?: WorkflowVersion
+  deployedAt?: string
+  deployedBy?: Operator
+  latestAttempt?: EnvironmentDeployedAppAttempt
+  sizing?: RunnerSizingWritable
+  occupiesPool?: boolean
+}
+
+export type EnvironmentMcpServerWritable = {
+  [key: string]: unknown
+}
+
+export type EnvironmentTriggerWritable = {
+  [key: string]: unknown
+}
+
+export type GetEnvironmentResponseWritable = {
+  environment: EnvironmentWritable
+  pool?: EnvironmentPoolComposition
+}
+
+export type ListEnvironmentDeployedAppsResponseWritable = {
+  data: Array<EnvironmentDeployedAppWritable>
+  summary: EnvironmentDeployedAppSummary
+  pagination: Pagination
+}
+
+export type ListEnvironmentsResponseWritable = {
+  data: Array<EnvironmentWritable>
+  pagination: Pagination
+}
+
+export type RetryEnvironmentBootstrapResponseWritable = {
+  environment: EnvironmentWritable
+}
+
+export type RunnerMemoryWritable = {
+  maxMib?: string
+}
+
+export type RunnerSizingWritable = {
+  isolatedCpu: number
+  memory: RunnerMemoryWritable
+}
+
+export type UpdateEnvironmentDeployedAppResourcesResponseWritable = {
+  deploymentId: string
+  isolatedCpu: number
+  allocatedCpuCount: number
+  poolCpuCount: number
+  memory: RunnerMemoryWritable
+}
+
+export type UpdateEnvironmentResponseWritable = {
+  environment: EnvironmentWritable
 }
 
 export type ConsoleDeploymentServiceListAppEnvironmentsData = {

@@ -358,6 +358,8 @@
   "studio.lastActivity": "Última actividad",
   "studio.liveVersion": "Versión activa",
   "studio.moreEnvironments": "Más entornos",
+  "studio.noCredentialsYet": "Aún no hay credenciales",
+  "studio.noCredentialsYetDescription": "Añade credenciales en Integraciones o en la configuración del nodo",
   "studio.precheck.description": "Contiene tipos de nodos que aún no son compatibles:",
   "studio.precheck.supportMessage": "La compatibilidad con estos tipos de nodos estará disponible en una versión futura.",
   "studio.precheck.title": "Esta versión no se puede implementar en este entorno",

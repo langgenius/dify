@@ -358,6 +358,8 @@
   "studio.lastActivity": "Última atividade",
   "studio.liveVersion": "Versão ativa",
   "studio.moreEnvironments": "Mais ambientes",
+  "studio.noCredentialsYet": "Ainda não há credenciais",
+  "studio.noCredentialsYetDescription": "Adicione credenciais em Integrações ou nas configurações do nó",
   "studio.precheck.description": "Ela contém tipos de nós que ainda não são compatíveis:",
   "studio.precheck.supportMessage": "O suporte a esses tipos de nós estará disponível em uma versão futura.",
   "studio.precheck.title": "Esta versão não pode ser implantada neste ambiente",

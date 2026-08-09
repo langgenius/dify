@@ -1,4 +1,4 @@
-import type { AccessPointAppInfo, PublishedWorkflow } from '../utils'
+import type { AccessPointAppInfo, PublishedWorkflow } from '../shared/utils'
 import type { InputVar, Node } from '@/app/components/workflow/types'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -7,7 +7,7 @@ import { AccessMode } from '@/models/access-control'
 import { render } from '@/test/console/render'
 import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
-import { WebAppAccessPointCard } from '../web-app-card'
+import { WebAppAccessPointCard } from '../built-in-access-points/web-app-card'
 
 vi.mock('@/service/access-control/use-app-access-control', () => ({
   useAppWhiteListSubjects: () => ({

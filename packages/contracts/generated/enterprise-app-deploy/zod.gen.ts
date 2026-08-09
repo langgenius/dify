@@ -41,13 +41,11 @@ export const zDeploymentOperationOutcome = z.enum([
   'DEPLOYMENT_OPERATION_OUTCOME_IN_PROGRESS',
   'DEPLOYMENT_OPERATION_OUTCOME_SUCCEEDED',
   'DEPLOYMENT_OPERATION_OUTCOME_FAILED',
-  'DEPLOYMENT_OPERATION_OUTCOME_REJECTED',
 ])
 
 export const zDeploymentOperationFailureCode = z.enum([
   'DEPLOYMENT_OPERATION_FAILURE_CODE_UNSPECIFIED',
   'DEPLOYMENT_OPERATION_FAILURE_CODE_DEPLOYMENT_IN_PROGRESS',
-  'DEPLOYMENT_OPERATION_FAILURE_CODE_VERSION_ALREADY_DEPLOYED',
   'DEPLOYMENT_OPERATION_FAILURE_CODE_NOTHING_TO_UNDEPLOY',
   'DEPLOYMENT_OPERATION_FAILURE_CODE_DEPLOYMENT_STATE_CHANGED',
   'DEPLOYMENT_OPERATION_FAILURE_CODE_APPLICATION_UNAVAILABLE',
@@ -64,6 +62,8 @@ export const zDeploymentOperationFailureCode = z.enum([
   'DEPLOYMENT_OPERATION_FAILURE_CODE_DEPLOYMENT_TIMEOUT',
   'DEPLOYMENT_OPERATION_FAILURE_CODE_DEPLOYMENT_INTERRUPTED',
   'DEPLOYMENT_OPERATION_FAILURE_CODE_INTERNAL_ERROR',
+  'DEPLOYMENT_OPERATION_FAILURE_CODE_ENVIRONMENT_CPU_POOL_EXHAUSTED',
+  'DEPLOYMENT_OPERATION_FAILURE_CODE_APP_RUNNER_ENV_CPU_LIMIT_EXCEEDED',
 ])
 
 export const zDeploymentOperationStatus = z.enum([
@@ -123,6 +123,7 @@ export const zOperatorType = z.enum([
   'OPERATOR_TYPE_ACCOUNT',
   'OPERATOR_TYPE_SERVICE_ACCOUNT',
   'OPERATOR_TYPE_SYSTEM',
+  'OPERATOR_TYPE_DASHBOARD_ACCOUNT',
 ])
 
 export const zRouteTargetKind = z.enum([
@@ -172,8 +173,9 @@ export const zCreateEnvironmentRequest = z.object({
   displayName: z.string(),
   description: z.string().optional(),
   mode: zEnvironmentMode,
-  cpuCount: z.number(),
+  cpuPool: z.number(),
   namespace: z.string().optional(),
+  maxMemoryMib: z.string().optional(),
 })
 
 export const zCredentialCandidate = z.object({
@@ -293,6 +295,14 @@ export const zEnvironmentDeployedAppSummary = z.object({
 })
 
 export const zEnvironmentMcpServer = z.record(z.string(), z.unknown())
+
+export const zEnvironmentPoolUsage = z.object({
+  occupiedCpu: z.number(),
+  appCount: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
+})
 
 export const zEnvironmentSite = z.object({
   enabled: z.boolean(),
@@ -424,9 +434,9 @@ export const zError = z.object({
       'APPDEPLOY_ENV_VAR_KEY_CONFLICT',
       'APPDEPLOY_APP_HAS_ACTIVE_DEPLOYMENTS',
       'APPDEPLOY_SOURCE_VERSION_IN_USE',
-      'APPDEPLOY_VERSION_ALREADY_DEPLOYED',
       'APPDEPLOY_NOTHING_TO_UNDEPLOY',
       'APPDEPLOY_DEPLOYMENT_STATE_CHANGED',
+      'APPDEPLOY_ENVIRONMENT_HAS_ACTIVE_DEPLOYMENTS',
       'APPDEPLOY_ENVIRONMENT_NOT_READY',
       'APPDEPLOY_ENVIRONMENT_CAPACITY_EXCEEDED',
       'APPDEPLOY_APP_RUNNER_ENV_CPU_LIMIT_EXCEEDED',
@@ -450,7 +460,8 @@ export const zError = z.object({
       'APPDEPLOY_DEPLOYMENT_TIMEOUT',
       'APPDEPLOY_DEPLOYMENT_INTERRUPTED',
       'APPDEPLOY_ENVIRONMENT_CPU_POOL_EXHAUSTED',
-      'APPDEPLOY_DEPLOYMENT_CPU_NOT_APPLICABLE',
+      'APPDEPLOY_RESOURCE_NOT_APPLICABLE_FOR_MODE',
+      'APPDEPLOY_ENVIRONMENT_CPU_POOL_BELOW_ALLOCATED',
       'APPDEPLOY_APP_RUNNER_CONTROL_NOT_CONFIGURED',
       'APPDEPLOY_RUNTIME_ASSIGNMENT_FAILED',
       'APPDEPLOY_REVISION_TIMEOUT',
@@ -475,26 +486,6 @@ export const zError = z.object({
   detailCode: z.string().optional(),
 })
 
-export const zEnvironment = z.object({
-  id: z.string(),
-  displayName: z.string(),
-  description: z.string(),
-  mode: zEnvironmentMode,
-  backend: zEnvironmentBackend,
-  status: zEnvironmentStatus,
-  statusMessage: z.string(),
-  lastError: zError.optional(),
-  namespace: z.string().optional(),
-  managedBy: zEnvironmentManagedBy.optional(),
-  cpuCount: z.number(),
-  createdAt: z.iso.datetime(),
-  updatedAt: z.iso.datetime(),
-})
-
-export const zCreateEnvironmentResponse = z.object({
-  environment: zEnvironment,
-})
-
 export const zGetEnvironmentCapabilitiesResponse = z.object({
   backend: zEnvironmentBackend,
   supportedModes: z.array(
@@ -505,10 +496,6 @@ export const zGetEnvironmentCapabilitiesResponse = z.object({
     ]),
   ),
   namespaceRequired: z.boolean(),
-})
-
-export const zGetEnvironmentResponse = z.object({
-  environment: zEnvironment,
 })
 
 export const zGetEnvironmentWebAppSubjectsResponse = z.object({
@@ -543,6 +530,26 @@ export const zListEnvironmentTriggersResponse = z.object({
 export const zNamedRef = z.object({
   id: z.string(),
   displayName: z.string(),
+})
+
+export const zEnvironmentPoolShare = z.object({
+  app: zNamedRef,
+  isolatedCpu: z.number(),
+})
+
+/**
+ * EnvironmentPoolComposition names the largest few apps drawing on a pool and
+ * sums the rest, because a bar with forty segments says less than one with five
+ * and a remainder.
+ */
+export const zEnvironmentPoolComposition = z.object({
+  topApps: z.array(zEnvironmentPoolShare).optional(),
+  otherCpu: z.number().optional(),
+  otherAppCount: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
 })
 
 export const zOperator = z.object({
@@ -610,7 +617,6 @@ export const zResolveApiTokenRouteResponse = z.object({
 export const zResolveWebAppRouteRequest = z.object({
   appCode: z.string().optional(),
   passport: z.string().optional(),
-  environmentId: z.string().optional(),
 })
 
 export const zResolveWebAppRouteResponse = z.object({
@@ -641,8 +647,54 @@ export const zRetryEnvironmentBootstrapRequest = z.object({
   environmentId: z.string().optional(),
 })
 
+/**
+ * RunnerMemory sizes one app-runner. max_mib is absent when the operator chose
+ * nothing, in which case the runner gets effective_max_mib.
+ */
+export const zRunnerMemory = z.object({
+  maxMib: z.string().optional(),
+  effectiveMaxMib: z.string().readonly().optional(),
+  minMib: z.string().readonly().optional(),
+})
+
+export const zEnvironment = z.object({
+  id: z.string(),
+  displayName: z.string(),
+  description: z.string(),
+  mode: zEnvironmentMode,
+  backend: zEnvironmentBackend,
+  status: zEnvironmentStatus,
+  statusMessage: z.string(),
+  lastError: zError.optional(),
+  namespace: z.string().optional(),
+  managedBy: zEnvironmentManagedBy.optional(),
+  cpuPool: z.number(),
+  createdAt: z.iso.datetime(),
+  updatedAt: z.iso.datetime(),
+  memory: zRunnerMemory.optional(),
+  usage: zEnvironmentPoolUsage.optional(),
+})
+
+export const zCreateEnvironmentResponse = z.object({
+  environment: zEnvironment,
+})
+
+export const zGetEnvironmentResponse = z.object({
+  environment: zEnvironment,
+  pool: zEnvironmentPoolComposition.optional(),
+})
+
 export const zRetryEnvironmentBootstrapResponse = z.object({
   environment: zEnvironment,
+})
+
+/**
+ * RunnerSizing describes a runner an app owns outright, so it is present only
+ * in an isolated environment; elsewhere the runner belongs to the environment.
+ */
+export const zRunnerSizing = z.object({
+  isolatedCpu: z.number(),
+  memory: zRunnerMemory,
 })
 
 /**
@@ -662,6 +714,10 @@ export const zTestConnectionRequest = z.object({
 export const zTestConnectionResponse = z.object({
   reachable: z.boolean().optional(),
   message: z.string().optional(),
+})
+
+export const zUndeployEnvironmentAppResponse = z.object({
+  operationId: z.string(),
 })
 
 export const zUndeployWorkflowResponse = z.object({
@@ -686,24 +742,27 @@ export const zPrecheckWorkflowDeploymentResponse = z.object({
   unsupported_nodes: z.array(zUnsupportedNode),
 })
 
-export const zUpdateEnvironmentDeployedAppCpuRequest = z.object({
+export const zUpdateEnvironmentDeployedAppResourcesRequest = z.object({
   environmentId: z.string(),
   deploymentId: z.string(),
-  cpuCount: z.number(),
+  isolatedCpu: z.number(),
+  maxMemoryMib: z.string().optional(),
 })
 
-export const zUpdateEnvironmentDeployedAppCpuResponse = z.object({
+export const zUpdateEnvironmentDeployedAppResourcesResponse = z.object({
   deploymentId: z.string(),
-  cpuCount: z.number(),
+  isolatedCpu: z.number(),
   allocatedCpuCount: z.number(),
   poolCpuCount: z.number(),
+  memory: zRunnerMemory,
 })
 
 export const zUpdateEnvironmentRequest = z.object({
   environmentId: z.string().optional(),
   displayName: z.string().optional(),
   description: z.string().optional(),
-  cpuCount: z.number().optional(),
+  cpuPool: z.number().optional(),
+  maxMemoryMib: z.string().optional(),
 })
 
 export const zUpdateEnvironmentResponse = z.object({
@@ -741,6 +800,8 @@ export const zWorkflowVersion = z.object({
     .optional(),
   created_at: z.number().optional(),
   created_by: zSimpleAccount.optional(),
+  dsl_hash: z.string().optional(),
+  deleted: z.boolean().optional(),
 })
 
 export const zDeploymentOperation = z.object({
@@ -765,10 +826,11 @@ export const zEnvironmentDeployedApp = z.object({
   app: zNamedRef,
   status: zEnvironmentDeployedAppStatus,
   currentVersion: zWorkflowVersion.optional(),
-  lastDeployedAt: z.iso.datetime().optional(),
+  deployedAt: z.iso.datetime().optional(),
   deployedBy: zOperator.optional(),
   latestAttempt: zEnvironmentDeployedAppAttempt.optional(),
-  cpuCount: z.number().optional(),
+  sizing: zRunnerSizing.optional(),
+  occupiesPool: z.boolean().optional(),
 })
 
 export const zEnvironmentDeploymentOperation = z.object({
@@ -861,6 +923,98 @@ export const zListEnvironmentDeployedAppsResponse = z.object({
 export const zListEnvironmentsResponse = z.object({
   data: z.array(zEnvironment),
   pagination: zPagination,
+})
+
+export const zDeleteEnvironmentApiKeyResponseWritable = z.record(z.string(), z.unknown())
+
+export const zDeleteEnvironmentResponseWritable = z.record(z.string(), z.unknown())
+
+export const zEnvironmentMcpServerWritable = z.record(z.string(), z.unknown())
+
+export const zEnvironmentTriggerWritable = z.record(z.string(), z.unknown())
+
+/**
+ * RunnerMemory sizes one app-runner. max_mib is absent when the operator chose
+ * nothing, in which case the runner gets effective_max_mib.
+ */
+export const zRunnerMemoryWritable = z.object({
+  maxMib: z.string().optional(),
+})
+
+export const zEnvironmentWritable = z.object({
+  id: z.string(),
+  displayName: z.string(),
+  description: z.string(),
+  mode: zEnvironmentMode,
+  backend: zEnvironmentBackend,
+  status: zEnvironmentStatus,
+  statusMessage: z.string(),
+  lastError: zError.optional(),
+  namespace: z.string().optional(),
+  managedBy: zEnvironmentManagedBy.optional(),
+  cpuPool: z.number(),
+  createdAt: z.iso.datetime(),
+  updatedAt: z.iso.datetime(),
+  memory: zRunnerMemoryWritable.optional(),
+  usage: zEnvironmentPoolUsage.optional(),
+})
+
+export const zCreateEnvironmentResponseWritable = z.object({
+  environment: zEnvironmentWritable,
+})
+
+export const zGetEnvironmentResponseWritable = z.object({
+  environment: zEnvironmentWritable,
+  pool: zEnvironmentPoolComposition.optional(),
+})
+
+export const zListEnvironmentsResponseWritable = z.object({
+  data: z.array(zEnvironmentWritable),
+  pagination: zPagination,
+})
+
+export const zRetryEnvironmentBootstrapResponseWritable = z.object({
+  environment: zEnvironmentWritable,
+})
+
+/**
+ * RunnerSizing describes a runner an app owns outright, so it is present only
+ * in an isolated environment; elsewhere the runner belongs to the environment.
+ */
+export const zRunnerSizingWritable = z.object({
+  isolatedCpu: z.number(),
+  memory: zRunnerMemoryWritable,
+})
+
+export const zEnvironmentDeployedAppWritable = z.object({
+  deploymentId: z.string(),
+  workspace: zNamedRef,
+  app: zNamedRef,
+  status: zEnvironmentDeployedAppStatus,
+  currentVersion: zWorkflowVersion.optional(),
+  deployedAt: z.iso.datetime().optional(),
+  deployedBy: zOperator.optional(),
+  latestAttempt: zEnvironmentDeployedAppAttempt.optional(),
+  sizing: zRunnerSizingWritable.optional(),
+  occupiesPool: z.boolean().optional(),
+})
+
+export const zListEnvironmentDeployedAppsResponseWritable = z.object({
+  data: z.array(zEnvironmentDeployedAppWritable),
+  summary: zEnvironmentDeployedAppSummary,
+  pagination: zPagination,
+})
+
+export const zUpdateEnvironmentDeployedAppResourcesResponseWritable = z.object({
+  deploymentId: z.string(),
+  isolatedCpu: z.number(),
+  allocatedCpuCount: z.number(),
+  poolCpuCount: z.number(),
+  memory: zRunnerMemoryWritable,
+})
+
+export const zUpdateEnvironmentResponseWritable = z.object({
+  environment: zEnvironmentWritable,
 })
 
 export const zConsoleDeploymentServiceListAppEnvironmentsPath = z.object({

@@ -4,8 +4,8 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { render } from '@/test/console/render'
 import { createTestQueryClient } from '@/test/query-client'
-import { EnvironmentServiceApiCard } from '../environment-service-api-card'
-import { EnvironmentWebAppCard } from '../environment-web-app-card'
+import { EnvironmentServiceApiCard } from '../deployed-environment-access-points/environment-service-api-card'
+import { EnvironmentWebAppCard } from '../deployed-environment-access-points/environment-web-app-card'
 
 const mocks = vi.hoisted(() => ({
   getApi: vi.fn(),
@@ -110,8 +110,8 @@ vi.mock('@/app/components/base/app-icon', () => ({
   default: () => <div aria-label="app-icon" />,
 }))
 
-vi.mock('@/app/components/app/access-point/use-built-in-actions', () => ({
-  useBuiltInAccessPointActions: () => ({
+vi.mock('@/app/components/app/access-point/shared/use-access-point-actions', () => ({
+  useAccessPointActions: () => ({
     saveSiteConfig: vi.fn(),
   }),
 }))
@@ -130,7 +130,7 @@ vi.mock('@/app/components/app/overview/settings', () => ({
     isShow ? <div role="dialog" aria-label="environment settings" /> : null,
 }))
 
-vi.mock('../environment-access-control', () => ({
+vi.mock('../deployed-environment-access-points/environment-access-control', () => ({
   EnvironmentAccessControl: (props: {
     appId: string
     environmentId: string
@@ -142,7 +142,7 @@ vi.mock('../environment-access-control', () => ({
   },
 }))
 
-vi.mock('@/app/components/app/access-point/api-secret-key-button', () => ({
+vi.mock('@/app/components/app/access-point/shared/api-secret-key-button', () => ({
   ApiSecretKeyButton: (props: {
     apiKeyCount?: number
     appId: string

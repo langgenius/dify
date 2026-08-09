@@ -358,6 +358,8 @@
   "studio.lastActivity": "Letzte Aktivität",
   "studio.liveVersion": "Live-Version",
   "studio.moreEnvironments": "Weitere Umgebungen",
+  "studio.noCredentialsYet": "Noch keine Anmeldedaten",
+  "studio.noCredentialsYetDescription": "Fügen Sie Anmeldedaten in Integrationen oder den Knoteneinstellungen hinzu",
   "studio.precheck.description": "Sie enthält Knotentypen, die noch nicht unterstützt werden:",
   "studio.precheck.supportMessage": "Die Unterstützung für diese Knotentypen wird in einer zukünftigen Version verfügbar sein.",
   "studio.precheck.title": "Diese Version kann nicht in dieser Umgebung bereitgestellt werden",

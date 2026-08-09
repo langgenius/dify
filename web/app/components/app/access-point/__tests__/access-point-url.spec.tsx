@@ -1,6 +1,6 @@
 import { screen } from '@testing-library/react'
 import { render } from '@/test/console/render'
-import { AccessPointUrl } from '../access-point-url'
+import { AccessPointUrl } from '../shared/access-point-url'
 
 const endpointProps = {
   label: 'Access URL',

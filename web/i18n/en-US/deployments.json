@@ -358,6 +358,8 @@
   "studio.lastActivity": "Last activity",
   "studio.liveVersion": "Live version",
   "studio.moreEnvironments": "More environments",
+  "studio.noCredentialsYet": "No credentials yet",
+  "studio.noCredentialsYetDescription": "Add credentials in Integrations or node settings",
   "studio.precheck.description": "It contains node types that are not yet supported:",
   "studio.precheck.supportMessage": "Support for these node types is coming in a future release.",
   "studio.precheck.title": "This version can't be deployed to this environment",

@@ -358,6 +358,8 @@
   "studio.lastActivity": "กิจกรรมล่าสุด",
   "studio.liveVersion": "เวอร์ชันที่ใช้งาน",
   "studio.moreEnvironments": "สภาพแวดล้อมเพิ่มเติม",
+  "studio.noCredentialsYet": "ยังไม่มีข้อมูลรับรอง",
+  "studio.noCredentialsYetDescription": "เพิ่มข้อมูลรับรองในการผสานรวมหรือการตั้งค่าโหนด",
   "studio.precheck.description": "เวอร์ชันนี้มีประเภทโหนดที่ยังไม่รองรับ:",
   "studio.precheck.supportMessage": "การรองรับประเภทโหนดเหล่านี้จะพร้อมใช้งานในรุ่นถัดไป",
   "studio.precheck.title": "ไม่สามารถปรับใช้เวอร์ชันนี้ในสภาพแวดล้อมนี้ได้",

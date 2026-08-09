@@ -358,6 +358,8 @@
   "studio.lastActivity": "最近のアクティビティ",
   "studio.liveVersion": "稼働中のバージョン",
   "studio.moreEnvironments": "その他の環境",
+  "studio.noCredentialsYet": "認証情報はまだありません",
+  "studio.noCredentialsYetDescription": "連携またはノード設定で認証情報を追加してください",
   "studio.precheck.description": "まだサポートされていないノードタイプが含まれています：",
   "studio.precheck.supportMessage": "これらのノードタイプは今後のリリースでサポートされる予定です。",
   "studio.precheck.title": "このバージョンはこの環境にデプロイできません",

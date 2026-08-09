@@ -1,8 +1,8 @@
-import type { AccessPointAppInfo } from '../utils'
+import type { AccessPointAppInfo } from '../shared/utils'
 import { screen } from '@testing-library/react'
 import { render } from '@/test/console/render'
 import { AppModeEnum } from '@/types/app'
-import { ServiceApiAccessPointCard } from '../service-api-card'
+import { ServiceApiAccessPointCard } from '../built-in-access-points/service-api-card'
 
 const mocks = vi.hoisted(() => ({
   apiSecretKeyButtonProps: vi.fn(),
@@ -12,7 +12,7 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.test/en${path}`,
 }))
 
-vi.mock('../api-secret-key-button', () => ({
+vi.mock('../shared/api-secret-key-button', () => ({
   ApiSecretKeyButton: (props: { canManage: boolean; disabled?: boolean }) => {
     mocks.apiSecretKeyButtonProps(props)
     return (

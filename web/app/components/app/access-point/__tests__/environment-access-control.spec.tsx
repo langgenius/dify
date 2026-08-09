@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { AccessMode } from '@/models/access-control'
 import { render } from '@/test/console/render'
 import { createTestQueryClient } from '@/test/query-client'
-import { EnvironmentAccessControl } from '../environment-access-control'
+import { EnvironmentAccessControl } from '../deployed-environment-access-points/environment-access-control'
 
 const mocks = vi.hoisted(() => ({
   getSubjects: vi.fn(),

@@ -14,7 +14,7 @@ import { Fragment, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { getEnvironmentDeploymentActions } from '../state'
-import { UndeployConfirmDialog } from '../undeploy-confirm-dialog'
+import { UndeployConfirmDialog } from './undeploy-confirm-dialog'
 
 function rowActionLabel(
   action: EnvironmentDeploymentAction,

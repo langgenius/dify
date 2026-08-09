@@ -9,8 +9,6 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import { EnvironmentDeployMenu } from '../environment-deploy-menu'
-import { EnvironmentTableEmpty } from '../environment-table-empty'
 import {
   appEnvironmentDeploymentsAtom,
   appEnvironmentDeploymentsIsErrorAtom,
@@ -19,6 +17,8 @@ import {
   appEnvironmentDeploymentsRefetchAtom,
   appEnvironmentUsageAtom,
 } from '../state'
+import { EnvironmentDeployMenu } from './deploy-menu'
+import { EnvironmentTableEmpty } from './empty-state'
 import { EnvironmentRow } from './row'
 
 type EnvironmentTableProps = {

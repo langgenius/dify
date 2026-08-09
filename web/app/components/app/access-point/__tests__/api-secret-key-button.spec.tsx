@@ -5,7 +5,7 @@ import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/client'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
-import { ApiSecretKeyButton } from '../api-secret-key-button'
+import { ApiSecretKeyButton } from '../shared/api-secret-key-button'
 
 const appApiKeys: ApiKeyList = {
   data: [

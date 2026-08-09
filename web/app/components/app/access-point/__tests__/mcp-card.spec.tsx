@@ -1,10 +1,10 @@
-import type { AccessPointAppInfo, PublishedWorkflow } from '../utils'
+import type { AccessPointAppInfo, PublishedWorkflow } from '../shared/utils'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { render } from '@/test/console/render'
 import { AppModeEnum } from '@/types/app'
-import { MCPAccessPointCard } from '../mcp-card'
+import { MCPAccessPointCard } from '../built-in-access-points/mcp-card'
 
 const mocks = vi.hoisted(() => ({
   invalidateServerDetail: vi.fn(),

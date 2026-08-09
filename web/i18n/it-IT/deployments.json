@@ -358,6 +358,8 @@
   "studio.lastActivity": "Ultima attività",
   "studio.liveVersion": "Versione attiva",
   "studio.moreEnvironments": "Altri ambienti",
+  "studio.noCredentialsYet": "Nessuna credenziale per ora",
+  "studio.noCredentialsYetDescription": "Aggiungi le credenziali in Integrazioni o nelle impostazioni del nodo",
   "studio.precheck.description": "Contiene tipi di nodi non ancora supportati:",
   "studio.precheck.supportMessage": "Il supporto per questi tipi di nodi sarà disponibile in una versione futura.",
   "studio.precheck.title": "Questa versione non può essere distribuita in questo ambiente",

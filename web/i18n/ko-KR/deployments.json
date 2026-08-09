@@ -358,6 +358,8 @@
   "studio.lastActivity": "최근 활동",
   "studio.liveVersion": "라이브 버전",
   "studio.moreEnvironments": "더 많은 환경",
+  "studio.noCredentialsYet": "아직 자격 증명이 없습니다",
+  "studio.noCredentialsYetDescription": "통합 또는 노드 설정에서 자격 증명을 추가하세요",
   "studio.precheck.description": "아직 지원되지 않는 노드 유형이 포함되어 있습니다:",
   "studio.precheck.supportMessage": "이러한 노드 유형은 향후 릴리스에서 지원될 예정입니다.",
   "studio.precheck.title": "이 버전은 이 환경에 배포할 수 없습니다",

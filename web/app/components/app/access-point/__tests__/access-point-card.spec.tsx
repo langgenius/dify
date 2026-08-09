@@ -1,7 +1,7 @@
-import type { AccessPointStatus } from '../access-point-status'
+import type { AccessPointStatus } from '../shared/access-point-status'
 import { screen } from '@testing-library/react'
 import { render } from '@/test/console/render'
-import { AccessPointCard } from '../access-point-card'
+import { AccessPointCard } from '../shared/access-point-card'
 
 describe('AccessPointCard', () => {
   it('marks the card when it is the highlighted access point', () => {

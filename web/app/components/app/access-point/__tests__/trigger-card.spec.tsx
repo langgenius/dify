@@ -1,9 +1,9 @@
-import type { AccessPointAppInfo } from '../utils'
+import type { AccessPointAppInfo } from '../shared/utils'
 import type { AppTrigger } from '@/service/use-tools'
 import { screen } from '@testing-library/react'
 import { render } from '@/test/console/render'
 import { AppModeEnum } from '@/types/app'
-import { TriggerAccessPointCard } from '../trigger-card'
+import { TriggerAccessPointCard } from '../built-in-access-points/trigger-card'
 
 const mocks = vi.hoisted(() => ({
   invalidateTriggers: vi.fn(),

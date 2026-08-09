@@ -2,9 +2,9 @@ import type { EnvironmentDeployment } from '@dify/contracts/enterprise-app-deplo
 import type { AccessPoint } from '../access-point'
 import type { UndeployHandler } from './types'
 import { ACCESS_POINT_ORDER, getAccessPointHref } from '../access-point'
-import { AccessPointIcon } from '../access-point-icon'
-import { DeploymentStatus } from '../deployment-status'
-import { VersionLabel } from '../version-label'
+import { AccessPointIcon } from '../shared/access-point-icon'
+import { DeploymentStatus } from '../shared/deployment-status'
+import { VersionLabel } from '../shared/version-label'
 import { ActivityCell } from './activity-cell'
 import { EnvironmentRowActions } from './row-actions'
 
