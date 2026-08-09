@@ -1,4 +1,4 @@
-"""Private Workspace file DTOs resolved through an Execution Binding ref."""
+"""Private Binding file DTOs resolved through an Execution Binding ref."""
 
 from typing import ClassVar, Literal
 
@@ -6,8 +6,10 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 
+_BINDING_FILE_PREVIEW_MAX_BYTES = 262144
 
-class WorkspaceFileEntry(BaseModel):
+
+class BindingFileEntry(BaseModel):
     name: str
     type: Literal["file", "dir", "symlink", "other"]
     size: int | None = None
@@ -16,30 +18,34 @@ class WorkspaceFileEntry(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
-class WorkspaceListRequest(BaseModel):
+class BindingFileListRequest(BaseModel):
     backend_binding_ref: str = Field(min_length=1)
     path: str = "."
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
-class WorkspaceListResponse(BaseModel):
+class BindingFileListResponse(BaseModel):
     path: str
-    entries: list[WorkspaceFileEntry]
+    entries: list[BindingFileEntry]
     truncated: bool
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
-class WorkspaceReadRequest(BaseModel):
+class BindingFileReadRequest(BaseModel):
     backend_binding_ref: str = Field(min_length=1)
-    path: str
-    max_bytes: int = 262144
+    path: str = Field(min_length=1)
+    max_bytes: int = Field(
+        default=_BINDING_FILE_PREVIEW_MAX_BYTES,
+        ge=1,
+        le=_BINDING_FILE_PREVIEW_MAX_BYTES,
+    )
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
-class WorkspaceReadResponse(BaseModel):
+class BindingFileReadResponse(BaseModel):
     path: str
     size: int | None = None
     truncated: bool
@@ -49,36 +55,26 @@ class WorkspaceReadResponse(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
-class WorkspaceUploadedFile(BaseModel):
-    transfer_method: Literal["tool_file"] = "tool_file"
-    reference: str
-    download_url: str
-
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
-
-
-class WorkspaceUploadRequest(BaseModel):
+class BindingFileDownloadRequest(BaseModel):
     backend_binding_ref: str = Field(min_length=1)
-    path: str
+    path: str = Field(min_length=1)
     execution_context: DifyExecutionContextLayerConfig
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
-class WorkspaceUploadResponse(BaseModel):
-    path: str
-    file: WorkspaceUploadedFile
+class BindingFileDownloadResponse(BaseModel):
+    reference: str
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
 __all__ = [
-    "WorkspaceFileEntry",
-    "WorkspaceListRequest",
-    "WorkspaceListResponse",
-    "WorkspaceReadRequest",
-    "WorkspaceReadResponse",
-    "WorkspaceUploadRequest",
-    "WorkspaceUploadResponse",
-    "WorkspaceUploadedFile",
+    "BindingFileDownloadRequest",
+    "BindingFileDownloadResponse",
+    "BindingFileEntry",
+    "BindingFileListRequest",
+    "BindingFileListResponse",
+    "BindingFileReadRequest",
+    "BindingFileReadResponse",
 ]

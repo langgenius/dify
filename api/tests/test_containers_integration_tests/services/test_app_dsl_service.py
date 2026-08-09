@@ -491,6 +491,9 @@ class TestAppDslService:
         redis_key = f"{IMPORT_INFO_REDIS_KEY_PREFIX}{result.id}"
         stored = redis_client.get(redis_key)
         assert stored is not None
+        pending = PendingData.model_validate_json(stored)
+        assert pending.tenant_id == _DEFAULT_TENANT_ID
+        assert pending.account_id == _DEFAULT_ACCOUNT_ID
 
     def test_import_app_completed_uses_declared_dependencies(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -606,7 +609,11 @@ class TestAppDslService:
             icon_background="#fff",
             app_id=None,
         )
-        redis_client.setex(redis_key, IMPORT_INFO_REDIS_EXPIRY, pending.model_dump_json())
+        redis_client.setex(
+            redis_key,
+            IMPORT_INFO_REDIS_EXPIRY,
+            pending.model_dump_json(exclude={"tenant_id", "account_id"}),
+        )
 
         created_app = SimpleNamespace(
             id=str(uuid4()),

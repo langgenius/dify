@@ -163,12 +163,10 @@ class TestConsoleAnnotationRefBoundaries:
         api = annotation_module.AnnotationUpdateDeleteApi()
         handler = unwrap(api.post)
         update_mock = Mock(return_value=_annotation_model())
-        payload = {"question": "updated"}
         _persist_app(sqlite_session)
 
         with (
-            app.test_request_context("/annotations/ann-1", method="POST", json=payload),
-            patch.object(type(annotation_module.console_ns), "payload", payload),
+            app.test_request_context("/annotations/ann-1", method="POST", json={"question": "updated"}),
             patch.object(
                 annotation_module,
                 "current_account_with_tenant",
@@ -176,7 +174,13 @@ class TestConsoleAnnotationRefBoundaries:
             ),
             patch.object(annotation_module.AppAnnotationService, "update_app_annotation_directly", update_mock),
         ):
-            response = handler(api, sqlite_session, "app-1", "ann-1")
+            response = handler(
+                api,
+                annotation_module.UpdateAnnotationPayload(question="updated"),
+                sqlite_session,
+                "app-1",
+                "ann-1",
+            )
 
         assert response["question"] == "q"
         update_mock.assert_called_once()

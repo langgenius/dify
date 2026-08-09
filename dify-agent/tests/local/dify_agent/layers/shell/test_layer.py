@@ -9,6 +9,7 @@ from typing import cast
 import pytest
 
 import dify_agent.layers.shell.layer as shell_layer_module
+import dify_agent.runtime.command_runner as command_runner_module
 from dify_agent.layers.shell import (
     DIFY_SHELL_LAYER_TYPE_ID,
     DifyShellCliToolConfig,
@@ -25,7 +26,6 @@ from dify_agent.layers.shell.layer import (
 from dify_agent.adapters.shell.protocols import (
     ShellCommandResult,
     ShellCommandStatus,
-    ShellFileTransferProtocol,
     ShellProviderError,
 )
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
@@ -36,9 +36,6 @@ from dify_agent.runtime_backend import (
     ExecutionBindingBackend,
     RuntimeLayout,
     RuntimeLease,
-    WorkspaceFileContent,
-    WorkspaceListResult,
-    WorkspaceReadResult,
 )
 
 
@@ -155,24 +152,6 @@ class _UnexpectedToolError(Exception):
     pass
 
 
-class FakeFiles(ShellFileTransferProtocol):
-    async def list_directory(self, *, path: str, limit: int) -> WorkspaceListResult:
-        raise AssertionError("resource.files should not be used by shell layer logic")
-
-    async def read_file(self, *, path: str, max_bytes: int) -> WorkspaceReadResult:
-        raise AssertionError("resource.files should not be used by shell layer logic")
-
-    async def read_bytes(self, *, path: str, max_bytes: int) -> WorkspaceFileContent:
-        del max_bytes
-        raise AssertionError("resource.files should not be used by shell layer logic")
-
-    async def upload(self, *, content: bytes, remote_path: str, cwd: str | None = None) -> None:
-        raise AssertionError("resource.files should not be used by production shell layer logic")
-
-    async def download(self, *, remote_path: str, cwd: str | None = None) -> bytes:
-        raise AssertionError("resource.files should not be used by production shell layer logic")
-
-
 @dataclass(slots=True)
 class FakeCommands:
     run_handler: Callable[[str, str | None, Mapping[str, str] | None, float], ShellCommandResult] | None = None
@@ -233,7 +212,6 @@ class FakeCommands:
 @dataclass(slots=True)
 class FakeResource:
     commands: FakeCommands
-    files: FakeFiles = field(default_factory=FakeFiles)
     handle: str = "sandbox-1"
     layout: RuntimeLayout = field(
         default_factory=lambda: RuntimeLayout(
@@ -1099,7 +1077,7 @@ def test_run_remote_script_complete_returns_incomplete_reason_for_timeout(
     def fake_monotonic() -> float:
         return now
 
-    monkeypatch.setattr(shell_layer_module.time, "monotonic", fake_monotonic)
+    monkeypatch.setattr(command_runner_module.time, "monotonic", fake_monotonic)
 
     def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> ShellCommandResult:
         nonlocal now

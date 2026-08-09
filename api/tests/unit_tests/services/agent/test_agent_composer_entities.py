@@ -365,6 +365,51 @@ def test_knowledge_runtime_requirements_block_publish_but_not_draft_save(knowled
         ComposerConfigValidator.validate_publish_payload(publish_payload)
 
 
+def test_manual_metadata_filtering_condition_accepts_composer_ui_identifiers():
+    """The composer's condition editor always sends ``id`` (list row key) and
+    ``metadata_id`` (selected metadata field reference) alongside every
+    condition. Rejecting them as unknown fields broke every save of a manual
+    metadata filter (see GH issue #40169)."""
+    payload = ComposerSavePayload.model_validate(
+        {
+            "variant": ComposerVariant.AGENT_APP,
+            "save_strategy": ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION,
+            "agent_soul": {
+                "knowledge": {
+                    "sets": [
+                        {
+                            "id": "support",
+                            "name": "Support KB",
+                            "datasets": [{"id": "dataset-1"}],
+                            "query": {"mode": "generated_query"},
+                            "retrieval": {"mode": "multiple", "top_k": 4},
+                            "metadata_filtering": {
+                                "mode": "manual",
+                                "conditions": {
+                                    "logical_operator": "and",
+                                    "conditions": [
+                                        {
+                                            "id": "b149eceb-191a-40a2-9f11-61cf21ebd147",
+                                            "metadata_id": "ad6cf326-eadf-46e8-a2d5-9cb892d2cc84",
+                                            "name": "category",
+                                            "comparison_operator": "is",
+                                            "value": "auth",
+                                        }
+                                    ],
+                                },
+                            },
+                        },
+                    ]
+                }
+            },
+        }
+    )
+
+    condition = payload.agent_soul.knowledge.sets[0].metadata_filtering.conditions.conditions[0]
+    assert condition.id == "b149eceb-191a-40a2-9f11-61cf21ebd147"
+    assert condition.metadata_id == "ad6cf326-eadf-46e8-a2d5-9cb892d2cc84"
+
+
 def test_agent_soul_model_config_is_first_class_without_credentials():
     config = AgentSoulConfig(
         model=AgentSoulModelConfig(

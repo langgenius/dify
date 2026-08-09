@@ -1,7 +1,6 @@
 import logging
 from datetime import datetime
 
-from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, field_validator
 from sqlalchemy import select
@@ -25,6 +24,7 @@ from ..wraps import (
     RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_tenant_id,
@@ -102,11 +102,11 @@ class WebhookTriggerApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[WebhookTriggerResponse.__name__])
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model(mode=AppMode.WORKFLOW)
-    def get(self, app_model: App):
+    @model_validate(Parser)
+    def get(self, req_data: Parser, app_model: App):
         """Get webhook trigger for a node"""
-        args = Parser.model_validate(request.args.to_dict(flat=True))
 
-        node_id = args.node_id
+        node_id = req_data.node_id
 
         with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             # Get webhook trigger for this app and node
@@ -175,11 +175,11 @@ class AppTriggerEnableApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[WorkflowTriggerResponse.__name__])
     @with_current_tenant_id
     @get_app_model(mode=AppMode.WORKFLOW)
-    def post(self, current_tenant_id: str, app_model: App):
+    @model_validate(ParserEnable)
+    def post(self, req_data: ParserEnable, current_tenant_id: str, app_model: App):
         """Update app trigger (enable/disable)"""
-        args = ParserEnable.model_validate(console_ns.payload)
 
-        trigger_id = args.trigger_id
+        trigger_id = req_data.trigger_id
         with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             # Find the trigger using select
             trigger = session.execute(
@@ -194,7 +194,7 @@ class AppTriggerEnableApi(Resource):
                 raise NotFound("Trigger not found")
 
             # Update status based on enable_trigger boolean
-            trigger.status = AppTriggerStatus.ENABLED if args.enable_trigger else AppTriggerStatus.DISABLED
+            trigger.status = AppTriggerStatus.ENABLED if req_data.enable_trigger else AppTriggerStatus.DISABLED
 
         # Add computed icon field
         url_prefix = dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
