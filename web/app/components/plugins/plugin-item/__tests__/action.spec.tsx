@@ -133,6 +133,10 @@ const createActionProps = (overrides: Partial<ActionProps> = {}): ActionProps =>
 const getDeleteConfirmButton = () =>
   screen.getByRole('button', { name: /common\.operation\.confirm/ })
 const getDeleteCancelButton = () => screen.getByRole('button', { name: 'common.operation.cancel' })
+const getCheckForUpdatesButton = () =>
+  screen.getByRole('button', { name: 'plugin.action.checkForUpdates' })
+const getPluginInfoButton = () => screen.getByRole('button', { name: 'plugin.action.pluginInfo' })
+const getDeleteButton = () => screen.getByRole('button', { name: 'plugin.action.delete' })
 
 // ==================== Tests ====================
 
@@ -165,7 +169,7 @@ describe('Action Component', () => {
       render(<Action {...props} />)
 
       // Assert
-      expect(getActionButtons()).toHaveLength(1)
+      expect(getDeleteButton()).toBeInTheDocument()
     })
 
     it('should render fetch new version button when isShowFetchNewVersion is true', () => {
@@ -180,7 +184,7 @@ describe('Action Component', () => {
       render(<Action {...props} />)
 
       // Assert
-      expect(getActionButtons()).toHaveLength(1)
+      expect(getCheckForUpdatesButton()).toBeInTheDocument()
     })
 
     it('should render info button when isShowInfo is true', () => {
@@ -195,7 +199,7 @@ describe('Action Component', () => {
       render(<Action {...props} />)
 
       // Assert
-      expect(getActionButtons()).toHaveLength(1)
+      expect(getPluginInfoButton()).toBeInTheDocument()
     })
 
     it('should render all buttons when all flags are true', () => {
@@ -210,7 +214,9 @@ describe('Action Component', () => {
       render(<Action {...props} />)
 
       // Assert
-      expect(getActionButtons()).toHaveLength(3)
+      expect(getCheckForUpdatesButton()).toBeInTheDocument()
+      expect(getPluginInfoButton()).toBeInTheDocument()
+      expect(getDeleteButton()).toBeInTheDocument()
     })
 
     it('should render no buttons when all flags are false', () => {
@@ -241,16 +247,15 @@ describe('Action Component', () => {
       render(<Action {...props} />)
 
       // Assert
-      const buttons = getActionButtons()
-      await user.hover(buttons[0]!)
+      await user.hover(getCheckForUpdatesButton())
       expect(await screen.findByText('plugin.action.checkForUpdates'))!.toBeInTheDocument()
-      await user.unhover(buttons[0]!)
+      await user.unhover(getCheckForUpdatesButton())
 
-      await user.hover(buttons[1]!)
+      await user.hover(getPluginInfoButton())
       expect(await screen.findByText('plugin.action.pluginInfo'))!.toBeInTheDocument()
-      await user.unhover(buttons[1]!)
+      await user.unhover(getPluginInfoButton())
 
-      await user.hover(buttons[2]!)
+      await user.hover(getDeleteButton())
       expect(await screen.findByText('plugin.action.delete'))!.toBeInTheDocument()
     })
   })
