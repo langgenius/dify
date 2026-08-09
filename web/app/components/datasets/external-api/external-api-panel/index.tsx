@@ -1,7 +1,6 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Loading from '@/app/components/base/loading'
@@ -15,10 +14,7 @@ type ExternalAPIPanelProps = {
   onClose: () => void
 }
 
-const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({
-  canManageExternalKnowledgeApi,
-  onClose,
-}) => {
+const ExternalAPIPanel = ({ canManageExternalKnowledgeApi, onClose }: ExternalAPIPanelProps) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
   const { setShowExternalKnowledgeAPIModal } = useModalContext()
