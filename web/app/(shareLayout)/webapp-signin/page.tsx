@@ -88,7 +88,7 @@ function WebSSOForm() {
       <AppUnavailable className="size-auto" isUnknownReason={true} />
       <button
         type="button"
-        className="cursor-pointer system-sm-regular text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+        className="cursor-pointer appearance-none system-sm-regular text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
         onClick={backToHome}
       >
         {t(($) => $['login.backToHome'], { ns: 'share' })}
