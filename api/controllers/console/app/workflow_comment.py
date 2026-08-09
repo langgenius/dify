@@ -10,6 +10,7 @@ from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     account_initialization_required,
     edit_permission_required,
+    model_validate,
     setup_required,
     with_current_tenant_id,
     with_current_user,
@@ -239,18 +240,24 @@ class WorkflowCommentListApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @get_app_model()
-    def post(self, current_tenant_id: str, current_user: Account, app_model: App):
+    @model_validate(WorkflowCommentCreatePayload)
+    def post(
+        self,
+        req_data: WorkflowCommentCreatePayload,
+        current_tenant_id: str,
+        current_user: Account,
+        app_model: App,
+    ):
         """Create a new workflow comment."""
-        payload = WorkflowCommentCreatePayload.model_validate(console_ns.payload or {})
 
         result = WorkflowCommentService.create_comment(
             tenant_id=current_tenant_id,
             app_id=app_model.id,
             created_by=current_user.id,
-            content=payload.content,
-            position_x=payload.position_x,
-            position_y=payload.position_y,
-            mentioned_user_ids=payload.mentioned_user_ids,
+            content=req_data.content,
+            position_x=req_data.position_x,
+            position_y=req_data.position_y,
+            mentioned_user_ids=req_data.mentioned_user_ids,
         )
 
         return dump_response(WorkflowCommentCreate, result), 201
@@ -289,19 +296,26 @@ class WorkflowCommentDetailApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @get_app_model()
-    def put(self, current_tenant_id: str, current_user: Account, app_model: App, comment_id: str):
+    @model_validate(WorkflowCommentUpdatePayload)
+    def put(
+        self,
+        req_data: WorkflowCommentUpdatePayload,
+        current_tenant_id: str,
+        current_user: Account,
+        app_model: App,
+        comment_id: str,
+    ):
         """Update a workflow comment."""
-        payload = WorkflowCommentUpdatePayload.model_validate(console_ns.payload or {})
 
         result = WorkflowCommentService.update_comment(
             tenant_id=current_tenant_id,
             app_id=app_model.id,
             comment_id=comment_id,
             user_id=current_user.id,
-            content=payload.content,
-            position_x=payload.position_x,
-            position_y=payload.position_y,
-            mentioned_user_ids=payload.mentioned_user_ids,
+            content=req_data.content,
+            position_x=req_data.position_x,
+            position_y=req_data.position_y,
+            mentioned_user_ids=req_data.mentioned_user_ids,
         )
 
         return dump_response(WorkflowCommentUpdate, result)
@@ -372,20 +386,26 @@ class WorkflowCommentReplyApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @get_app_model()
-    def post(self, current_tenant_id: str, current_user: Account, app_model: App, comment_id: str):
+    @model_validate(WorkflowCommentReplyPayload)
+    def post(
+        self,
+        req_data: WorkflowCommentReplyPayload,
+        current_tenant_id: str,
+        current_user: Account,
+        app_model: App,
+        comment_id: str,
+    ):
         """Add a reply to a workflow comment."""
         # Validate comment access first
         WorkflowCommentService.validate_comment_access(
             comment_id=comment_id, tenant_id=current_tenant_id, app_id=app_model.id
         )
 
-        payload = WorkflowCommentReplyPayload.model_validate(console_ns.payload or {})
-
         result = WorkflowCommentService.create_reply(
             comment_id=comment_id,
-            content=payload.content,
+            content=req_data.content,
             created_by=current_user.id,
-            mentioned_user_ids=payload.mentioned_user_ids,
+            mentioned_user_ids=req_data.mentioned_user_ids,
         )
 
         return dump_response(WorkflowCommentReplyCreate, result), 201
@@ -407,14 +427,21 @@ class WorkflowCommentReplyDetailApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @get_app_model()
-    def put(self, current_tenant_id: str, current_user: Account, app_model: App, comment_id: str, reply_id: str):
+    @model_validate(WorkflowCommentReplyPayload)
+    def put(
+        self,
+        req_data: WorkflowCommentReplyPayload,
+        current_tenant_id: str,
+        current_user: Account,
+        app_model: App,
+        comment_id: str,
+        reply_id: str,
+    ):
         """Update a comment reply."""
         # Validate comment access first
         WorkflowCommentService.validate_comment_access(
             comment_id=comment_id, tenant_id=current_tenant_id, app_id=app_model.id
         )
-
-        payload = WorkflowCommentReplyPayload.model_validate(console_ns.payload or {})
 
         reply = WorkflowCommentService.update_reply(
             tenant_id=current_tenant_id,
@@ -422,8 +449,8 @@ class WorkflowCommentReplyDetailApi(Resource):
             comment_id=comment_id,
             reply_id=reply_id,
             user_id=current_user.id,
-            content=payload.content,
-            mentioned_user_ids=payload.mentioned_user_ids,
+            content=req_data.content,
+            mentioned_user_ids=req_data.mentioned_user_ids,
         )
 
         return dump_response(WorkflowCommentReplyUpdate, reply)

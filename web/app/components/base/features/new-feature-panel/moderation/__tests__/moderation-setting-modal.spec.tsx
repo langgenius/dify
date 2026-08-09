@@ -44,7 +44,7 @@ let mockModelProvidersData: {
 
 vi.mock('@/service/use-common', () => ({
   useCodeBasedExtensions: () => mockCodeBasedExtensions,
-  useModelProviders: () => mockModelProvidersData,
+  useModelProviderDetails: () => mockModelProvidersData,
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/declarations', () => ({

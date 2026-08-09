@@ -15,7 +15,7 @@ from controllers.console.app.error import (
 from controllers.console.app.wraps import with_session
 from controllers.console.explore.error import NotWorkflowAppError
 from controllers.console.explore.wraps import InstalledAppResource
-from controllers.console.wraps import with_current_user
+from controllers.console.wraps import model_validate, with_current_user
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -47,7 +47,14 @@ class InstalledAppWorkflowRunApi(InstalledAppResource):
     @console_ns.response(200, "Success")
     @with_current_user
     @with_session
-    def post(self, session: Session, current_user: Account, installed_app: InstalledApp):
+    @model_validate(WorkflowRunPayload)
+    def post(
+        self,
+        req_data: WorkflowRunPayload,
+        session: Session,
+        current_user: Account,
+        installed_app: InstalledApp,
+    ):
         """
         Run workflow
         """
@@ -58,8 +65,7 @@ class InstalledAppWorkflowRunApi(InstalledAppResource):
         if app_mode != AppMode.WORKFLOW:
             raise NotWorkflowAppError()
 
-        payload = WorkflowRunPayload.model_validate(console_ns.payload or {})
-        args = payload.model_dump(exclude_none=True)
+        args = req_data.model_dump(exclude_none=True)
         try:
             response = AppGenerateService.generate(
                 session=session,

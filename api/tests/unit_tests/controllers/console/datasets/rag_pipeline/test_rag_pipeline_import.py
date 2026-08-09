@@ -11,10 +11,12 @@ from flask import Flask
 
 from controllers.console import console_ns
 from controllers.console.datasets.rag_pipeline.rag_pipeline_import import (
+    IncludeSecretQuery,
     RagPipelineExportApi,
     RagPipelineImportApi,
     RagPipelineImportCheckDependenciesApi,
     RagPipelineImportConfirmApi,
+    RagPipelineImportPayload,
 )
 from core.plugin.entities.plugin import PluginDependency, PluginDependencyType
 from models.dataset import Pipeline
@@ -67,7 +69,7 @@ class TestRagPipelineImportApi:
                 return_value=service,
             ),
         ):
-            response, status = method(api, user)
+            response, status = method(api, RagPipelineImportPayload(mode="create"), user)
 
         assert status == 200
         assert response == {
@@ -105,7 +107,7 @@ class TestRagPipelineImportApi:
                 return_value=service,
             ),
         ):
-            response, status = method(api, user)
+            response, status = method(api, RagPipelineImportPayload(mode="create"), user)
 
         assert status == 400
         assert response["status"] == "failed"
@@ -139,7 +141,7 @@ class TestRagPipelineImportApi:
                 return_value=service,
             ),
         ):
-            response, status = method(api, user)
+            response, status = method(api, RagPipelineImportPayload(mode="create"), user)
 
         assert status == 202
         assert response["status"] == "pending"
@@ -213,7 +215,7 @@ class TestRagPipelineImportCheckDependenciesApi:
         api = RagPipelineImportCheckDependenciesApi()
         method = unwrap(api.get)
 
-        pipeline = MagicMock(spec=Pipeline)
+        pipeline = Pipeline(tenant_id="tenant-id", name="Test Pipeline")
         result = CheckDependenciesResult()
 
         service = MagicMock()
@@ -235,7 +237,7 @@ class TestRagPipelineImportCheckDependenciesApi:
         api = RagPipelineImportCheckDependenciesApi()
         method = unwrap(api.get)
 
-        pipeline = MagicMock(spec=Pipeline)
+        pipeline = Pipeline(tenant_id="tenant-id", name="Test Pipeline")
         dependency = PluginDependency(
             type=PluginDependencyType.Marketplace,
             value=PluginDependency.Marketplace(
@@ -276,7 +278,7 @@ class TestRagPipelineExportApi:
         api = RagPipelineExportApi()
         method = unwrap(api.get)
 
-        pipeline = MagicMock(spec=Pipeline)
+        pipeline = Pipeline(tenant_id="tenant-id", name="Test Pipeline")
         service = MagicMock()
         service.export_rag_pipeline_dsl.return_value = "yaml: data"
 
@@ -287,7 +289,7 @@ class TestRagPipelineExportApi:
                 return_value=service,
             ),
         ):
-            response, status = method(api, pipeline)
+            response, status = method(api, IncludeSecretQuery(), pipeline)
 
         assert status == 200
         assert response == {"data": "yaml: data"}

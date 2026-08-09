@@ -1,12 +1,12 @@
 from datetime import datetime
 from typing import cast
 
-from flask import request
 from flask_restx import Namespace, Resource
 from pydantic import BaseModel, Field, RootModel, field_validator
 
 from controllers.common.schema import query_params_from_model, register_response_schema_models
 from controllers.console import api
+from controllers.console.wraps import model_validate
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.helper import dump_response
@@ -61,10 +61,10 @@ class BannerApi(Resource):
 
     @api.doc(params=query_params_from_model(BannerListQuery))
     @api.response(200, "Success", api.models[BannerListResponse.__name__])
-    def get(self):
+    @model_validate(BannerListQuery)
+    def get(self, req_data: BannerListQuery):
         """Get banner list."""
-        query = BannerListQuery.model_validate(request.args.to_dict(flat=True))
-        banners = application_services().explore_banner_queries.list_for_language(query.language)
+        banners = application_services().explore_banner_queries.list_for_language(req_data.language)
         return dump_response(BannerListResponse, banners)
 
 

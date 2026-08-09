@@ -2,18 +2,33 @@ from __future__ import annotations
 
 from inspect import unwrap
 from types import SimpleNamespace
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from controllers.console.app import annotation as annotation_module
+from models.model import App, AppMode, IconType
 from services.app_ref_service import AnnotationRef, AppRef
 
 
-def _app_model() -> SimpleNamespace:
-    return SimpleNamespace(id="app-1", tenant_id="tenant-1", status="normal")
+def _persist_app(session: Session) -> App:
+    app = App(
+        id="app-1",
+        tenant_id="tenant-1",
+        name="Annotation app",
+        mode=AppMode.CHAT,
+        icon_type=IconType.EMOJI,
+        icon="chat",
+        icon_background="#ffffff",
+        enable_site=False,
+        enable_api=True,
+    )
+    session.add(app)
+    session.commit()
+    return app
 
 
 def _annotation_model(annotation_id: str = "ann-1") -> SimpleNamespace:
@@ -109,27 +124,25 @@ def test_annotation_file_payload_valid():
     assert payload.message_id == "550e8400-e29b-41d4-a716-446655440000"
 
 
-def test_get_app_ref_raises_not_found_when_app_is_not_in_current_tenant():
-    session = MagicMock()
-    session.scalar.return_value = None
+def test_get_app_ref_raises_not_found_when_app_is_not_in_current_tenant(sqlite_session: Session):
+    _persist_app(sqlite_session)
     with (
         patch.object(
             annotation_module,
             "current_account_with_tenant",
-            return_value=(SimpleNamespace(id="account-1"), "tenant-1"),
+            return_value=(SimpleNamespace(id="account-1"), "tenant-2"),
         ),
     ):
         with pytest.raises(NotFound):
-            annotation_module._get_app_ref(session, "app-1")
+            annotation_module._get_app_ref(sqlite_session, "app-1")
 
 
 class TestConsoleAnnotationRefBoundaries:
-    def test_batch_delete_uses_app_ref(self, app: Flask):
+    def test_batch_delete_uses_app_ref(self, app: Flask, sqlite_session: Session):
         api = annotation_module.AnnotationApi()
         handler = unwrap(api.delete)
         delete_mock = Mock()
-        session = MagicMock()
-        session.scalar.return_value = _app_model()
+        _persist_app(sqlite_session)
 
         with (
             app.test_request_context("/?annotation_id=ann-1&annotation_id=ann-2", method="DELETE"),
@@ -140,23 +153,20 @@ class TestConsoleAnnotationRefBoundaries:
             ),
             patch.object(annotation_module.AppAnnotationService, "delete_app_annotations_in_batch", delete_mock),
         ):
-            response, status = handler(api, session, "app-1")
+            response, status = handler(api, sqlite_session, "app-1")
 
         assert response == ""
         assert status == 204
-        delete_mock.assert_called_once_with(AppRef("tenant-1", "app-1"), ["ann-1", "ann-2"], session)
+        delete_mock.assert_called_once_with(AppRef("tenant-1", "app-1"), ["ann-1", "ann-2"], sqlite_session)
 
-    def test_update_uses_annotation_ref(self, app: Flask):
+    def test_update_uses_annotation_ref(self, app: Flask, sqlite_session: Session):
         api = annotation_module.AnnotationUpdateDeleteApi()
         handler = unwrap(api.post)
         update_mock = Mock(return_value=_annotation_model())
-        payload = {"question": "updated"}
-        session = MagicMock()
-        session.scalar.return_value = _app_model()
+        _persist_app(sqlite_session)
 
         with (
-            app.test_request_context("/annotations/ann-1", method="POST", json=payload),
-            patch.object(type(annotation_module.console_ns), "payload", payload),
+            app.test_request_context("/annotations/ann-1", method="POST", json={"question": "updated"}),
             patch.object(
                 annotation_module,
                 "current_account_with_tenant",
@@ -164,19 +174,24 @@ class TestConsoleAnnotationRefBoundaries:
             ),
             patch.object(annotation_module.AppAnnotationService, "update_app_annotation_directly", update_mock),
         ):
-            response = handler(api, session, "app-1", "ann-1")
+            response = handler(
+                api,
+                annotation_module.UpdateAnnotationPayload(question="updated"),
+                sqlite_session,
+                "app-1",
+                "ann-1",
+            )
 
         assert response["question"] == "q"
         update_mock.assert_called_once()
         assert update_mock.call_args.args[1] == AnnotationRef(AppRef("tenant-1", "app-1"), "ann-1")
-        assert update_mock.call_args.args[2] is session
+        assert update_mock.call_args.args[2] is sqlite_session
 
-    def test_delete_uses_annotation_ref(self, app: Flask):
+    def test_delete_uses_annotation_ref(self, app: Flask, sqlite_session: Session):
         api = annotation_module.AnnotationUpdateDeleteApi()
         handler = unwrap(api.delete)
         delete_mock = Mock()
-        session = MagicMock()
-        session.scalar.return_value = _app_model()
+        _persist_app(sqlite_session)
 
         with (
             app.test_request_context("/annotations/ann-1", method="DELETE"),
@@ -187,15 +202,15 @@ class TestConsoleAnnotationRefBoundaries:
             ),
             patch.object(annotation_module.AppAnnotationService, "delete_app_annotation", delete_mock),
         ):
-            response, status = handler(api, session, "app-1", "ann-1")
+            response, status = handler(api, sqlite_session, "app-1", "ann-1")
 
         assert response == ""
         assert status == 204
         delete_mock.assert_called_once()
         assert delete_mock.call_args.args[0] == AnnotationRef(AppRef("tenant-1", "app-1"), "ann-1")
-        assert delete_mock.call_args.args[1] is session
+        assert delete_mock.call_args.args[1] is sqlite_session
 
-    def test_hit_history_uses_annotation_ref(self, app: Flask):
+    def test_hit_history_uses_annotation_ref(self, app: Flask, sqlite_session: Session):
         api = annotation_module.AnnotationHitHistoryListApi()
         handler = unwrap(api.get)
         history = SimpleNamespace(
@@ -208,8 +223,7 @@ class TestConsoleAnnotationRefBoundaries:
             created_at=None,
         )
         hit_history_mock = Mock(return_value=([history], 1))
-        session = MagicMock()
-        session.scalar.return_value = _app_model()
+        _persist_app(sqlite_session)
 
         with (
             app.test_request_context("/hit-histories?page=2&limit=5", method="GET"),
@@ -220,7 +234,9 @@ class TestConsoleAnnotationRefBoundaries:
             ),
             patch.object(annotation_module.AppAnnotationService, "get_annotation_hit_histories", hit_history_mock),
         ):
-            response = handler(api, session, "app-1", "ann-1")
+            response = handler(api, sqlite_session, "app-1", "ann-1")
 
         assert response["total"] == 1
-        hit_history_mock.assert_called_once_with(AnnotationRef(AppRef("tenant-1", "app-1"), "ann-1"), 2, 5, session)
+        hit_history_mock.assert_called_once_with(
+            AnnotationRef(AppRef("tenant-1", "app-1"), "ann-1"), 2, 5, sqlite_session
+        )

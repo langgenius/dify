@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.common.schema import register_response_schema_models, register_schema_models
-from controllers.console.wraps import account_initialization_required, setup_required, with_current_user
+from controllers.console.wraps import account_initialization_required, model_validate, setup_required, with_current_user
 from core.db.session_factory import session_factory
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.login import login_required
@@ -154,8 +154,8 @@ class OAuthServerAppApi(Resource):
     @console_ns.expect(console_ns.models[OAuthProviderRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[OAuthProviderAppResponse.__name__])
     @oauth_server_client_id_required
-    def post(self, oauth_provider_app: OAuthProviderApp):
-        payload = OAuthProviderRequest.model_validate(request.get_json())
+    @model_validate(OAuthProviderRequest)
+    def post(self, payload: OAuthProviderRequest, oauth_provider_app: OAuthProviderApp):
         redirect_uri = payload.redirect_uri
 
         # check if redirect_uri is valid
@@ -196,9 +196,8 @@ class OAuthServerUserTokenApi(Resource):
     @console_ns.expect(console_ns.models[OAuthTokenRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[OAuthProviderTokenResponse.__name__])
     @oauth_server_client_id_required
-    def post(self, oauth_provider_app: OAuthProviderApp):
-        payload = OAuthTokenRequest.model_validate(request.get_json())
-
+    @model_validate(OAuthTokenRequest)
+    def post(self, payload: OAuthTokenRequest, oauth_provider_app: OAuthProviderApp):
         try:
             grant_type = OAuthGrantType(payload.grant_type)
         except ValueError:

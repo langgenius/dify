@@ -21,6 +21,7 @@ from controllers.console.datasets.datasets_document import (
     DocumentIndexingEstimateApi,
     DocumentIndexingStatusApi,
     DocumentMetadataApi,
+    DocumentMetadataUpdatePayload,
     DocumentPipelineExecutionLogApi,
     DocumentProcessingApi,
     DocumentRenameApi,
@@ -41,6 +42,10 @@ from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import Dataset
 from models.dataset import Document as DatasetDocument
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
+from services.vector_space_admission_service import (
+    VECTOR_SPACE_ADMISSION_ERROR_CODE,
+    format_vector_space_admission_error,
+)
 
 
 def make_serializable_document(**overrides):
@@ -627,15 +632,16 @@ class TestDocumentMetadataApi:
         payload = {"doc_type": "invoice", "doc_metadata": {"amount": 10, "invalid": "x"}}
         schema = {"amount": int}
         session = MagicMock()
+        req_data = DocumentMetadataUpdatePayload.model_validate(payload)
         with (
-            app.test_request_context("/", json=payload),
+            app.test_request_context("/"),
             patch.object(api, "get_document", return_value=doc),
             patch(
                 "controllers.console.datasets.datasets_document.DocumentService.DOCUMENT_METADATA_SCHEMA",
                 {"invoice": schema},
             ),
         ):
-            method(api, session, tenant_id, user, "ds-1", "doc-1")
+            method(api, req_data, session, tenant_id, user, "ds-1", "doc-1")
         assert doc.doc_metadata == {"amount": 10}
 
     def test_put_success(self, app: Flask, patch_tenant):
@@ -645,32 +651,35 @@ class TestDocumentMetadataApi:
         document = MagicMock()
         payload = {"doc_type": "others", "doc_metadata": {"a": 1}}
         session = MagicMock()
+        req_data = DocumentMetadataUpdatePayload.model_validate(payload)
         with (
-            app.test_request_context("/", json=payload),
+            app.test_request_context("/"),
             patch.object(api, "get_document", return_value=document),
             patch(
                 "controllers.console.datasets.datasets_document.DocumentService.DOCUMENT_METADATA_SCHEMA",
                 {"others": {}},
             ),
         ):
-            response, status = method(api, session, tenant_id, user, "ds-1", "doc-1")
+            response, status = method(api, req_data, session, tenant_id, user, "ds-1", "doc-1")
         assert status == 200
 
     def test_put_invalid_payload(self, app: Flask, patch_tenant):
         api = DocumentMetadataApi()
         method = unwrap(api.put)
         user, tenant_id = patch_tenant
-        with app.test_request_context("/", json={}), patch.object(api, "get_document", return_value=MagicMock()):
+        req_data = DocumentMetadataUpdatePayload.model_validate({})
+        with app.test_request_context("/"), patch.object(api, "get_document", return_value=MagicMock()):
             with pytest.raises(ValueError):
-                method(api, MagicMock(), tenant_id, user, "ds-1", "doc-1")
+                method(api, req_data, MagicMock(), tenant_id, user, "ds-1", "doc-1")
 
     def test_put_invalid_doc_type(self, app: Flask, patch_tenant):
         api = DocumentMetadataApi()
         method = unwrap(api.put)
         user, tenant_id = patch_tenant
         payload = {"doc_type": "invalid", "doc_metadata": {}}
+        req_data = DocumentMetadataUpdatePayload.model_validate(payload)
         with (
-            app.test_request_context("/", json=payload),
+            app.test_request_context("/"),
             patch.object(api, "get_document", return_value=MagicMock()),
             patch(
                 "controllers.console.datasets.datasets_document.DocumentService.DOCUMENT_METADATA_SCHEMA",
@@ -678,7 +687,7 @@ class TestDocumentMetadataApi:
             ),
         ):
             with pytest.raises(ValueError):
-                method(api, MagicMock(), tenant_id, user, "ds-1", "doc-1")
+                method(api, req_data, MagicMock(), tenant_id, user, "ds-1", "doc-1")
 
 
 class TestDocumentStatusApi:
@@ -1115,9 +1124,10 @@ class TestDocumentBatchIndexingStatusApi:
         api = DocumentBatchIndexingStatusApi()
         method = unwrap(api.get)
         user, _ = patch_tenant
+        error = format_vector_space_admission_error(61, 50)
         document = MagicMock(
             id="doc-1",
-            indexing_status=IndexingStatus.COMPLETED,
+            indexing_status=IndexingStatus.ERROR,
             is_paused=False,
             processing_started_at=None,
             parsing_completed_at=None,
@@ -1125,7 +1135,7 @@ class TestDocumentBatchIndexingStatusApi:
             splitting_completed_at=None,
             completed_at=None,
             paused_at=None,
-            error=None,
+            error=error,
             stopped_at=None,
         )
         session = MagicMock()
@@ -1136,14 +1146,17 @@ class TestDocumentBatchIndexingStatusApi:
             "data": [
                 {
                     "id": "doc-1",
-                    "indexing_status": "completed",
+                    "indexing_status": "error",
                     "processing_started_at": None,
                     "parsing_completed_at": None,
                     "cleaning_completed_at": None,
                     "splitting_completed_at": None,
                     "completed_at": None,
                     "paused_at": None,
-                    "error": None,
+                    "error": error,
+                    "error_code": VECTOR_SPACE_ADMISSION_ERROR_CODE,
+                    "estimated_vector_space_mb": 61,
+                    "vector_space_limit_mb": 50,
                     "stopped_at": None,
                     "completed_segments": 2,
                     "total_segments": 3,
@@ -1421,15 +1434,16 @@ class TestDocumentListAdvancedCases:
         payload = {"doc_type": "contract", "doc_metadata": {"amount": 5000, "currency": "USD", "invalid_field": "x"}}
         schema = {"amount": int, "currency": str}
         session = MagicMock()
+        req_data = DocumentMetadataUpdatePayload.model_validate(payload)
         with (
-            app.test_request_context("/", json=payload),
+            app.test_request_context("/"),
             patch.object(api, "get_document", return_value=doc),
             patch(
                 "controllers.console.datasets.datasets_document.DocumentService.DOCUMENT_METADATA_SCHEMA",
                 {"contract": schema},
             ),
         ):
-            response, status = method(api, session, tenant_id, user, "ds-1", "doc-1")
+            response, status = method(api, req_data, session, tenant_id, user, "ds-1", "doc-1")
             assert status == 200
             assert doc.doc_metadata == {"amount": 5000, "currency": "USD"}
 
