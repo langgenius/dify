@@ -17,8 +17,6 @@ from werkzeug.exceptions import Forbidden
 
 from controllers.console.datasets.rag_pipeline import rag_pipeline_workflow as module
 from controllers.console.datasets.rag_pipeline.rag_pipeline_workflow import (
-    DatasourceVariablesPayload,
-    DefaultBlockConfigQuery,
     DraftWorkflowRunPayload,
     NodeIdQuery,
     PublishedWorkflowRunPayload,
@@ -188,7 +186,7 @@ def test_default_rag_pipeline_block_configs_serializes_root_response() -> None:
     handler = unwrap_all(api.get)
 
     with patch.object(RagPipelineService, "get_default_block_configs", return_value=block_configs):
-        response = handler(api, DefaultBlockConfigQuery(), _pipeline())
+        response = handler(api, _pipeline())
 
     assert response == block_configs
 
@@ -244,7 +242,7 @@ def test_rag_pipeline_transform_rejects_read_only_member(app: Flask, sqlite_engi
         app.test_request_context("/"),
         pytest.raises(Forbidden),
     ):
-        handler(api, DatasourceVariablesPayload(), session, account, UUID("44444444-4444-4444-4444-444444444444"))
+        handler(api, session, account, UUID("44444444-4444-4444-4444-444444444444"))
 
 
 @pytest.mark.parametrize(

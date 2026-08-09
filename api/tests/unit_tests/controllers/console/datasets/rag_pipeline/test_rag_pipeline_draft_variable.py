@@ -74,7 +74,7 @@ class TestRagPipelineVariableCollectionApi:
                 return_value=draft_srv,
             ),
         ):
-            result = method(api, PaginationQuery(), editor_user, pipeline)
+            result = method(api, PaginationQuery(page=1, limit=10), editor_user, pipeline)
 
         assert result is var_list
         draft_srv.list_variables_without_values.assert_called_once_with(

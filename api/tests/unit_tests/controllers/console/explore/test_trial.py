@@ -259,7 +259,7 @@ class TestTrialAppWorkflowRunApi(_UsesSQLiteSession):
         api = module.TrialAppWorkflowRunApi()
         method = unwrap(api.post)
 
-        with app.test_request_context("/"):
+        with app.test_request_context("/", json={"inputs": {}}):
             with pytest.raises(NotWorkflowAppError):
                 method(
                     api,
@@ -965,9 +965,7 @@ class TestTrialChatAudioApi:
             patch.object(module.AudioService, "transcript_asr", return_value={"text": "hello"}),
             patch.object(module.RecommendedAppService, "add_trial_app_record"),
         ):
-            result = method(
-                api, TextToSpeechRequest.model_validate(request.get_json(silent=True) or {}), account, trial_app_chat
-            )
+            result = method(api, account, trial_app_chat)
 
         assert result == {"text": "hello"}
 
@@ -990,7 +988,6 @@ class TestTrialChatAudioApi:
             with pytest.raises(module.AppUnavailableError):
                 method(
                     api,
-                    TextToSpeechRequest.model_validate(request.get_json(silent=True) or {}),
                     account,
                     trial_app_chat,
                 )
@@ -1014,7 +1011,6 @@ class TestTrialChatAudioApi:
             with pytest.raises(module.NoAudioUploadedError):
                 method(
                     api,
-                    TextToSpeechRequest.model_validate(request.get_json(silent=True) or {}),
                     account,
                     trial_app_chat,
                 )
@@ -1040,7 +1036,6 @@ class TestTrialChatAudioApi:
             with pytest.raises(module.NoAudioUploadedError) as exc_info:
                 method(
                     api,
-                    TextToSpeechRequest.model_validate(request.get_json(silent=True) or {}),
                     account,
                     trial_app_chat,
                 )
@@ -1066,7 +1061,6 @@ class TestTrialChatAudioApi:
             with pytest.raises(module.AudioTooLargeError):
                 method(
                     api,
-                    TextToSpeechRequest.model_validate(request.get_json(silent=True) or {}),
                     account,
                     trial_app_chat,
                 )
@@ -1090,7 +1084,6 @@ class TestTrialChatAudioApi:
             with pytest.raises(module.UnsupportedAudioTypeError):
                 method(
                     api,
-                    TextToSpeechRequest.model_validate(request.get_json(silent=True) or {}),
                     account,
                     trial_app_chat,
                 )
@@ -1114,7 +1107,6 @@ class TestTrialChatAudioApi:
             with pytest.raises(module.ProviderNotSupportSpeechToTextError):
                 method(
                     api,
-                    TextToSpeechRequest.model_validate(request.get_json(silent=True) or {}),
                     account,
                     trial_app_chat,
                 )
@@ -1137,7 +1129,6 @@ class TestTrialChatAudioApi:
             with pytest.raises(SpeechToTextDisabledError):
                 method(
                     api,
-                    TextToSpeechRequest.model_validate(request.get_json(silent=True) or {}),
                     account,
                     trial_app_chat,
                 )
@@ -1157,7 +1148,6 @@ class TestTrialChatAudioApi:
             with pytest.raises(ProviderNotInitializeError):
                 method(
                     api,
-                    TextToSpeechRequest.model_validate(request.get_json(silent=True) or {}),
                     account,
                     trial_app_chat,
                 )
@@ -1177,7 +1167,6 @@ class TestTrialChatAudioApi:
             with pytest.raises(ProviderQuotaExceededError):
                 method(
                     api,
-                    TextToSpeechRequest.model_validate(request.get_json(silent=True) or {}),
                     account,
                     trial_app_chat,
                 )
@@ -1370,7 +1359,7 @@ class TestTrialAppWorkflowTaskStopApi:
     def test_not_workflow_app(self, app: Flask, trial_app_chat: MagicMock) -> None:
         api = module.TrialAppWorkflowTaskStopApi()
 
-        with app.test_request_context("/"):
+        with app.test_request_context("/", json={"inputs": {}}):
             with pytest.raises(NotWorkflowAppError):
                 api.post(trial_app_chat, str(uuid4()))
 
