@@ -1,5 +1,4 @@
 'use client'
-import type { FC } from 'react'
 import type { FormInputItem, UserAction } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
@@ -22,12 +21,12 @@ type FormContentPreviewProps = {
   onClose: () => void
 }
 
-const FormContentPreview: FC<FormContentPreviewProps> = ({
+const FormContentPreview = ({
   content,
   formInputs,
   userActions,
   onClose,
-}) => {
+}: FormContentPreviewProps) => {
   const { t } = useTranslation()
   const panelWidth = useStore((state) => state.panelWidth)
   const nodes = useNodes()
