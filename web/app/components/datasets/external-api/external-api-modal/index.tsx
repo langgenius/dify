@@ -1,4 +1,3 @@
-import type { FC } from 'react'
 import type { CreateExternalAPIReq, FormSchema } from '../declarations'
 import {
   AlertDialog,
@@ -65,14 +64,14 @@ const emptyExternalAPIFormData: CreateExternalAPIReq = {
   },
 }
 
-const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
+const AddExternalAPIModal = ({
   data,
   onSave,
   onCancel,
   datasetBindings,
   isEditMode,
   onEdit,
-}) => {
+}: AddExternalAPIModalProps) => {
   const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
