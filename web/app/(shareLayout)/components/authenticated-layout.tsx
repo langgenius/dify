@@ -98,7 +98,7 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
         <AppUnavailable className="size-auto" code={403} unknownReason="no permission." />
         <button
           type="button"
-          className="cursor-pointer system-sm-regular text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+          className="cursor-pointer appearance-none system-sm-regular text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           onClick={backToHome}
         >
           {t(($) => $['userProfile.logout'], { ns: 'common' })}
