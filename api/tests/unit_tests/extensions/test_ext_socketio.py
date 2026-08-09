@@ -1,7 +1,8 @@
 import ssl
 
-import socketio
 import pytest
+import socketio
+
 from extensions import ext_socketio
 
 
