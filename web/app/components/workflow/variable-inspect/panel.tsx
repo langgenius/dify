@@ -1,4 +1,3 @@
-import type { FC } from 'react'
 import type { NodeProps } from '../types'
 import type { VarInInspect } from '@/types/workflow'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -25,7 +24,7 @@ export type currentVarType = {
   nodeData: NodeProps['data']
 }
 
-const Panel: FC = () => {
+const Panel = () => {
   const { t } = useTranslation()
 
   const bottomPanelWidth = useStore((s) => s.bottomPanelWidth)
