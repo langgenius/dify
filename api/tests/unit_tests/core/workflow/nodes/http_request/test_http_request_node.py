@@ -13,7 +13,7 @@ from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.file.file_manager import file_manager
 from graphon.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, HttpRequestNode, HttpRequestNodeConfig
 from graphon.nodes.http_request.entities import HttpRequestNodeData, HttpRequestNodeTimeout, Response
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from tests.workflow_test_utils import build_test_graph_init_params
 
 HTTP_REQUEST_CONFIG = HttpRequestNodeConfig(
@@ -109,7 +109,8 @@ def _build_http_node(
         invoke_from=InvokeFrom.DEBUGGER,
         call_depth=0,
     )
-    graph_runtime_state = GraphRuntimeState(
+    graph_runtime_state = RuntimeState(
+        workflow_id="test-workflow",
         variable_pool=VariablePool.from_bootstrap(
             system_variables=build_system_variables(user_id="user", files=[]),
             user_inputs={},

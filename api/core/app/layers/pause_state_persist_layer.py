@@ -9,9 +9,9 @@ from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity,
 from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 from core.workflow.nodes.human_input.boundary import enrich_graph_pause_reasons
 from core.workflow.system_variables import SystemVariableKey, get_system_text
-from graphon.filters import ResponseStreamFilter
-from graphon.graph_engine.layers import GraphEngineLayer
-from graphon.graph_events import GraphEngineEvent, GraphRunPausedEvent
+from graphon.engine.filter import ResponseStreamFilter
+from graphon.engine.layer import Layer
+from graphon.engine_events import EngineEvent, GraphRunPausedEvent
 from models.model import AppMode
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.factory import DifyAPIRepositoryFactory
@@ -74,7 +74,7 @@ class PauseStateLayerConfig:
     state_owner_user_id: str
 
 
-class PauseStatePersistenceLayer(GraphEngineLayer):
+class PauseStatePersistenceLayer(Layer):
     def __init__(
         self,
         session_factory: Engine | sessionmaker[Session],
@@ -114,7 +114,7 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
         pass
 
     @override
-    def on_event(self, event: GraphEngineEvent) -> None:
+    def on_event(self, event: EngineEvent) -> None:
         """
         Called for every event emitted by the engine.
 

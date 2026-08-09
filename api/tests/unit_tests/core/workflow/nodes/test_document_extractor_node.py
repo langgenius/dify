@@ -6,7 +6,7 @@ import pytest
 from docx.oxml.text.paragraph import CT_P
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from graphon.entities import GraphInitParams
+from graphon.entities import InitParams
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod
 from graphon.node_events import NodeRunResult
@@ -27,7 +27,7 @@ from tests.workflow_test_utils import build_test_graph_init_params
 
 
 @pytest.fixture
-def graph_init_params() -> GraphInitParams:
+def graph_init_params() -> InitParams:
     return build_test_graph_init_params(
         workflow_id="test_workflow",
         graph_config={},

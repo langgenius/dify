@@ -32,8 +32,8 @@ from graphon.nodes.tool import ToolNode
 from graphon.template_rendering import Jinja2TemplateRenderer, TemplateRenderError
 
 if TYPE_CHECKING:
-    from graphon.entities import GraphInitParams
-    from graphon.runtime import GraphRuntimeState
+    from graphon.entities import InitParams
+    from graphon.runtime import RuntimeState
 
     from .test_mock_config import MockConfig
 
@@ -58,8 +58,8 @@ class MockNodeMixin:
         node_id: str,
         data: Any,
         *,
-        graph_init_params: "GraphInitParams",
-        graph_runtime_state: "GraphRuntimeState",
+        graph_init_params: "InitParams",
+        graph_runtime_state: "RuntimeState",
         mock_config: Optional["MockConfig"] = None,
         **kwargs: Any,
     ) -> None:

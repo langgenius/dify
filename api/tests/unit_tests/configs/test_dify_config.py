@@ -97,11 +97,11 @@ def test_dify_config():
     assert config.AGENT_SHELL_ENABLED is True
     assert config.SENTRY_TRACES_SAMPLE_RATE == 1.0
     assert config.TEMPLATE_TRANSFORM_MAX_LENGTH == 400_000
-    assert config.GRAPH_ENGINE_SCALE_UP_THRESHOLD == 0
     assert config.APP_MAX_EXECUTION_TIME == 3600
     assert config.WORKFLOW_MAX_EXECUTION_TIME == 3600
     assert config.OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES == 780
     assert config.OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS == 3900
+    assert config.GRAPH_ENGINE_MAX_WORKERS == 10
 
     # annotated field with custom configured value
     assert config.HTTP_REQUEST_MAX_READ_TIMEOUT == 300

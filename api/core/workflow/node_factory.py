@@ -75,8 +75,8 @@ from graphon.variables.segments import ArrayObjectSegment, ObjectSegment
 from models.model import Conversation
 
 if TYPE_CHECKING:
-    from graphon.entities import GraphInitParams
-    from graphon.runtime import GraphRuntimeState
+    from graphon.entities import InitParams
+    from graphon.runtime import RuntimeState
 
 LATEST_VERSION = "latest"
 _START_NODE_TYPES: frozenset[NodeType] = frozenset(
@@ -88,7 +88,7 @@ _START_NODE_TYPES: frozenset[NodeType] = frozenset(
 class DifyGraphInitContext:
     """Explicit graph-init values owned by the workflow layer.
 
-    Dify is gradually removing direct `GraphInitParams` construction from its
+    Dify is gradually removing direct `InitParams` construction from its
     production call sites. Keep the translation here until `graphon` exposes an
     equivalent explicit API.
     """
@@ -98,10 +98,10 @@ class DifyGraphInitContext:
     run_context: Mapping[str, Any]
     call_depth: int
 
-    def to_graph_init_params(self) -> "GraphInitParams":
-        from graphon.entities import GraphInitParams
+    def to_graph_init_params(self) -> "InitParams":
+        from graphon.entities import InitParams
 
-        return GraphInitParams(
+        return InitParams(
             workflow_id=self.workflow_id,
             graph_config=self.graph_config,
             run_context=self.run_context,
@@ -309,7 +309,7 @@ class DifyNodeFactory(NodeFactory):
         cls,
         *,
         graph_init_context: DifyGraphInitContext,
-        graph_runtime_state: "GraphRuntimeState",
+        graph_runtime_state: "RuntimeState",
     ) -> "DifyNodeFactory":
         """Bridge Dify's explicit init context into the current `graphon` API."""
         return cls(
@@ -319,8 +319,8 @@ class DifyNodeFactory(NodeFactory):
 
     def __init__(
         self,
-        graph_init_params: "GraphInitParams",
-        graph_runtime_state: "GraphRuntimeState",
+        graph_init_params: "InitParams",
+        graph_runtime_state: "RuntimeState",
     ) -> None:
         self.graph_init_params = graph_init_params
         self.graph_runtime_state = graph_runtime_state
@@ -384,7 +384,7 @@ class DifyNodeFactory(NodeFactory):
         self._agent_runtime_support = AgentRuntimeSupport()
         self._agent_message_transformer = AgentMessageTransformer()
 
-    def with_runtime_state(self, graph_runtime_state: "GraphRuntimeState") -> "DifyNodeFactory":
+    def with_runtime_state(self, graph_runtime_state: "RuntimeState") -> "DifyNodeFactory":
         return DifyNodeFactory(
             graph_init_params=self.graph_init_params,
             graph_runtime_state=graph_runtime_state,

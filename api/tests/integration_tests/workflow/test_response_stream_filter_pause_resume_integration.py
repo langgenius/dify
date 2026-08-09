@@ -16,11 +16,11 @@ from core.workflow.nodes.human_input.entities import HumanInputNodeData, UserAct
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.system_variables import build_system_variables
 from core.workflow.workflow_entry import iter_dify_graph_engine_events
-from graphon.filters import GraphEventFilterContext, ResponseStreamFilter, filter_graph_events
+from graphon.engine import Engine
+from graphon.engine.command import InMemoryChannel
+from graphon.engine.filter import EngineEventFilterContext, ResponseStreamFilter, filter_engine_events
+from graphon.engine_events import GraphRunPausedEvent, GraphRunSucceededEvent, NodeRunStreamChunkEvent
 from graphon.graph import Graph
-from graphon.graph_engine import GraphEngine, GraphEngineConfig
-from graphon.graph_engine.command_channels import InMemoryChannel
-from graphon.graph_events import GraphRunPausedEvent, GraphRunSucceededEvent, NodeRunStreamChunkEvent
 from graphon.nodes.answer.answer_node import AnswerNode
 from graphon.nodes.answer.entities import AnswerNodeData
 from graphon.nodes.human_input.human_input_node import HumanInputNode
@@ -28,7 +28,7 @@ from graphon.nodes.if_else.entities import IfElseNodeData
 from graphon.nodes.if_else.if_else_node import IfElseNode
 from graphon.nodes.start.entities import StartNodeData
 from graphon.nodes.start.start_node import StartNode
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from graphon.utils.condition.entities import Condition
 from libs.datetime_utils import naive_utc_now
 from tests.workflow_test_utils import build_test_graph_init_params
@@ -65,7 +65,7 @@ def _mock_repo_resumed(action_id: str = "continue") -> HumanInputFormRepository:
     return repo
 
 
-def _build_graph(runtime_state: GraphRuntimeState, form_repository: HumanInputFormRepository) -> Graph:
+def _build_graph(runtime_state: RuntimeState, form_repository: HumanInputFormRepository) -> Graph:
     params = build_test_graph_init_params(
         workflow_id="wf",
         graph_config={"nodes": [], "edges": []},
@@ -149,7 +149,7 @@ def _build_graph(runtime_state: GraphRuntimeState, form_repository: HumanInputFo
     )
 
 
-def _build_runtime_state() -> GraphRuntimeState:
+def _build_runtime_state() -> RuntimeState:
     variable_pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(
             workflow_execution_id=WORKFLOW_EXECUTION_ID,
@@ -161,25 +161,23 @@ def _build_runtime_state() -> GraphRuntimeState:
         conversation_variables=[],
     )
     variable_pool.add(("start", "category"), "fruit")  # drives the if-else "true" branch
-    return GraphRuntimeState(variable_pool=variable_pool, start_at=0.0)
+    return RuntimeState(workflow_id="test-workflow", variable_pool=variable_pool, start_at=0.0)
 
 
 def test_if_else_human_input_pause_resume_answer_chunks_survive_resume() -> None:
     # ---- Phase 1: run to GraphRunPausedEvent ----
     runtime_state_1 = _build_runtime_state()
     graph_1 = _build_graph(runtime_state_1, _mock_repo_paused())
-    engine_1 = GraphEngine(
-        workflow_id="wf",
+    engine_1 = Engine(
         graph=graph_1,
         graph_runtime_state=runtime_state_1,
         command_channel=InMemoryChannel(),
-        config=GraphEngineConfig(),
     )
     filter_1 = ResponseStreamFilter()
     phase1_events = list(
-        filter_graph_events(
+        filter_engine_events(
             engine_1.run(),
-            context=GraphEventFilterContext.from_engine(engine_1),
+            context=EngineEventFilterContext.from_engine(engine_1),
             filters=[filter_1],
         )
     )
@@ -192,14 +190,12 @@ def test_if_else_human_input_pause_resume_answer_chunks_survive_resume() -> None
     runtime_snapshot = runtime_state_1.dumps()
 
     # ---- Phase 2: rebuild engine + filter from snapshots, resume to completion ----
-    runtime_state_2 = GraphRuntimeState.from_snapshot(runtime_snapshot)
+    runtime_state_2 = RuntimeState.from_snapshot(runtime_snapshot)
     graph_2 = _build_graph(runtime_state_2, _mock_repo_resumed(action_id="continue"))
-    engine_2 = GraphEngine(
-        workflow_id="wf",
+    engine_2 = Engine(
         graph=graph_2,
         graph_runtime_state=runtime_state_2,
         command_channel=InMemoryChannel(),
-        config=GraphEngineConfig(),
     )
     filter_2 = ResponseStreamFilter()
     filter_2.loads(response_filter_snapshot)

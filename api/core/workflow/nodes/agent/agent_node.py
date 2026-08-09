@@ -6,9 +6,9 @@ from typing import TYPE_CHECKING, Any, override
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.workflow.system_variables import SystemVariableKey, get_system_text
+from graphon.engine_events import NodeEvent
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
-from graphon.graph_events import GraphNodeEventBase
-from graphon.node_events import NodeEventBase, NodeRunResult, StreamCompletedEvent
+from graphon.node_events import NodeEventPayload, NodeRunResult, StreamCompletedEvent
 from graphon.nodes.base.node import Node
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
 
@@ -23,8 +23,8 @@ from .runtime_support import AgentRuntimeSupport
 from .strategy_protocols import AgentStrategyPresentationProvider, AgentStrategyResolver
 
 if TYPE_CHECKING:
-    from graphon.entities import GraphInitParams
-    from graphon.runtime import GraphRuntimeState
+    from graphon.entities import InitParams
+    from graphon.runtime import RuntimeState
 
 
 class AgentNode(Node[AgentNodeData]):
@@ -40,8 +40,8 @@ class AgentNode(Node[AgentNodeData]):
         node_id: str,
         data: AgentNodeData,
         *,
-        graph_init_params: GraphInitParams,
-        graph_runtime_state: GraphRuntimeState,
+        graph_init_params: InitParams,
+        graph_runtime_state: RuntimeState,
         strategy_resolver: AgentStrategyResolver,
         presentation_provider: AgentStrategyPresentationProvider,
         runtime_support: AgentRuntimeSupport,
@@ -77,8 +77,8 @@ class AgentNode(Node[AgentNodeData]):
     @override
     @singledispatchmethod
     def _dispatch(  # pyrefly: ignore[missing-override-decorator]
-        self, event: NodeEventBase
-    ) -> GraphNodeEventBase:
+        self, event: NodeEventPayload
+    ) -> NodeEvent:
         return super()._dispatch(event)
 
     @_dispatch.register
@@ -98,7 +98,7 @@ class AgentNode(Node[AgentNodeData]):
         )
 
     @override
-    def _run(self) -> Generator[NodeEventBase, None, None]:
+    def _run(self) -> Generator[NodeEventPayload, None, None]:
         from core.plugin.impl.exc import PluginDaemonClientSideError
 
         dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))

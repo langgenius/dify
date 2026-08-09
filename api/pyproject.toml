@@ -40,6 +40,7 @@ dependencies = [
     "opentelemetry-instrumentation-redis==0.65b0",
     "opentelemetry-instrumentation-sqlalchemy==0.65b0",
     "opentelemetry-propagator-b3>=1.41.1,<2.0.0",
+    "pypandoc==1.17",
     "readabilipy==0.3.0",
     "resend>=2.27.0,<3.0.0",
     "zstandard==0.25.0",
@@ -67,6 +68,7 @@ exclude = ["providers/vdb/__pycache__", "providers/trace/__pycache__"]
 [tool.uv.sources]
 dify-agent = { path = "../dify-agent", editable = true }
 flask-restx = { git = "https://github.com/asukaminato0721/flask-restx", rev = "27758e26f8f740d7525d5039c51a9e524b6e2b68" }
+graphon = { git = "https://github.com/langgenius/graphon", rev = "a6b49de3f09153edacbdbe629643fb5ed59555e4" }
 dify-vdb-alibabacloud-mysql = { workspace = true }
 dify-vdb-analyticdb = { workspace = true }
 dify-vdb-baidu = { workspace = true }

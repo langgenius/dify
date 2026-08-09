@@ -4,9 +4,9 @@ from unittest.mock import Mock
 from core.app.layers.conversation_variable_persist_layer import ConversationVariablePersistenceLayer
 from core.workflow.system_variables import SystemVariableKey
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID
+from graphon.engine.command import CommandChannel
+from graphon.engine_events import NodeRunSucceededEvent, NodeRunVariableUpdatedEvent
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
-from graphon.graph_engine.command_channels import CommandChannel
-from graphon.graph_events import NodeRunSucceededEvent, NodeRunVariableUpdatedEvent
 from graphon.node_events import NodeRunResult
 from graphon.runtime import ReadOnlyGraphRuntimeState
 from graphon.variables import StringVariable

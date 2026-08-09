@@ -5,11 +5,11 @@ import pytest
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.workflow.node_runtime import resolve_dify_run_context
 from core.workflow.system_variables import build_system_variables
-from graphon.entities import GraphInitParams
+from graphon.entities import InitParams
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.base.node import Node
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -28,13 +28,14 @@ class _SampleNode(Node[_SampleNodeData]):
         raise NotImplementedError
 
 
-def _build_context(graph_config: Mapping[str, object]) -> tuple[GraphInitParams, GraphRuntimeState]:
+def _build_context(graph_config: Mapping[str, object]) -> tuple[InitParams, RuntimeState]:
     init_params = build_test_graph_init_params(
         graph_config=graph_config,
         user_from="account",
         invoke_from="debugger",
     )
-    runtime_state = GraphRuntimeState(
+    runtime_state = RuntimeState(
+        workflow_id="test-workflow",
         variable_pool=VariablePool.from_bootstrap(
             system_variables=build_system_variables(user_id="user", files=[]),
             user_inputs={},
@@ -84,7 +85,8 @@ def test_node_accepts_invoke_from_enum():
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,
     )
-    runtime_state = GraphRuntimeState(
+    runtime_state = RuntimeState(
+        workflow_id="test-workflow",
         variable_pool=VariablePool.from_bootstrap(
             system_variables=build_system_variables(user_id="user", files=[]),
             user_inputs={},

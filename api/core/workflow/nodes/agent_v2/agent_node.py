@@ -28,10 +28,10 @@ from core.repositories.human_input_repository import HumanInputFormRepository, H
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.nodes.human_input.session_binding import default_session_binding
 from core.workflow.system_variables import SystemVariableKey, get_system_text
+from graphon.engine_events import NodeRunPauseRequestedEvent
 from graphon.entities.pause_reason import HitlRequired, SchedulingPause
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from graphon.graph_events import NodeRunPauseRequestedEvent
-from graphon.node_events import NodeEventBase, NodeRunResult, StreamCompletedEvent
+from graphon.node_events import NodeEventPayload, NodeRunResult, StreamCompletedEvent
 from graphon.nodes.base.node import Node
 from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
 from services.agent.prompt_mentions import extract_workflow_node_output_selectors
@@ -57,8 +57,8 @@ from .runtime_request_builder import (
 from .session_store import WorkflowAgentSessionScope, WorkflowAgentWorkspaceStore
 
 if TYPE_CHECKING:
-    from graphon.entities import GraphInitParams
-    from graphon.runtime import GraphRuntimeState
+    from graphon.entities import InitParams
+    from graphon.runtime import RuntimeState
 
 logger = logging.getLogger(__name__)
 
@@ -82,8 +82,8 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         node_id: str,
         data: DifyAgentNodeData,
         *,
-        graph_init_params: GraphInitParams,
-        graph_runtime_state: GraphRuntimeState,
+        graph_init_params: InitParams,
+        graph_runtime_state: RuntimeState,
         binding_resolver: WorkflowAgentBindingResolver,
         runtime_request_builder: WorkflowAgentRuntimeRequestBuilder,
         agent_backend_client: AgentBackendRunClient,
@@ -128,7 +128,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         return reason
 
     @override
-    def _run(self) -> Generator[NodeEventBase | NodeRunPauseRequestedEvent, None, None]:
+    def _run(self) -> Generator[NodeEventPayload | NodeRunPauseRequestedEvent, None, None]:
         inputs: dict[str, Any] = {}
         process_data: dict[str, Any] = {}
         metadata: dict[str, Any] = {
@@ -155,7 +155,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         inputs: dict[str, Any],
         process_data: dict[str, Any],
         metadata: dict[str, Any],
-    ) -> Generator[NodeEventBase | NodeRunPauseRequestedEvent, None, None]:
+    ) -> Generator[NodeEventPayload | NodeRunPauseRequestedEvent, None, None]:
         dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
         workflow_id = self.graph_init_params.workflow_id
         workflow_run_id = get_system_text(
@@ -602,7 +602,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         return cancellation, None
 
     def _is_graph_aborted(self) -> bool:
-        """Let Agent SSE consumption observe GraphEngine's cooperative abort state."""
+        """Let Agent SSE consumption observe Engine's cooperative abort state."""
         try:
             return self.graph_runtime_state.graph_execution.aborted
         except (AttributeError, RuntimeError):

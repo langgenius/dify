@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session
 import core.app.apps.pipeline.pipeline_runner as module
 from core.app.apps.pipeline.pipeline_runner import PipelineRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from graphon.graph_events import GraphRunFailedEvent
+from graphon.engine_events import GraphRunFailedEvent
 from models.dataset import Dataset, Document, Pipeline
 from models.enums import DataSourceType, DocumentCreatedFrom, EndUserType
 from models.model import EndUser

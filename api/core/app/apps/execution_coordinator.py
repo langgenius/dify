@@ -7,9 +7,9 @@ from collections.abc import Callable
 from enum import Enum, auto
 
 from configs import dify_config
+from core.app.apps.workflow.command_channels import send_abort_command
 from extensions.ext_redis import redis_client
-from graphon.graph_engine.command_channels import RedisChannel
-from graphon.graph_engine.manager import GraphEngineManager
+from graphon.engine.command import RedisChannel
 
 logger = logging.getLogger(__name__)
 
@@ -66,8 +66,6 @@ def clear_app_task_cancellation_signals(task_id: str) -> None:
 
     channel_key = app_task_command_channel_key(task_id)
     try:
-        # fetch_commands() drains the queue and its pending marker together; the
-        # explicit delete covers a queue whose marker was already consumed.
         discarded = RedisChannel(redis_client, channel_key).fetch_commands()
         redis_client.delete(channel_key)
         if discarded:
@@ -212,7 +210,7 @@ class AppExecutionCoordinator:
             )
 
         try:
-            GraphEngineManager(redis_client).send_stop_command(self._task_id, reason=reason)
+            send_abort_command(self._task_id, reason=reason)
         except Exception:
             logger.exception(
                 "Failed to send stop command for app execution task=%s attempt=%s",

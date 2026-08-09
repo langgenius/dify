@@ -43,10 +43,10 @@ from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from extensions.ext_database import db
 from factories import file_factory
-from graphon.filters import ResponseStreamFilter
-from graphon.graph_engine.layers import GraphEngineLayer
+from graphon.engine.filter import ResponseStreamFilter
+from graphon.engine.layer import Layer
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
-from graphon.runtime import GraphRuntimeState
+from graphon.runtime import RuntimeState
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from libs.flask_utils import preserve_flask_contexts
 from models.account import Account
@@ -107,7 +107,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         workflow_run_id: str | uuid.UUID | None = None,
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
-        graph_engine_layers: Sequence[GraphEngineLayer] = (),
+        graph_engine_layers: Sequence[Layer] = (),
         pause_state_config: PauseStateLayerConfig | None = None,
     ) -> Generator[Mapping[str, Any] | str, None, None]: ...
 
@@ -125,7 +125,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         workflow_run_id: str | uuid.UUID | None = None,
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
-        graph_engine_layers: Sequence[GraphEngineLayer] = (),
+        graph_engine_layers: Sequence[Layer] = (),
         pause_state_config: PauseStateLayerConfig | None = None,
     ) -> Mapping[str, Any]: ...
 
@@ -143,7 +143,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         workflow_run_id: str | uuid.UUID | None = None,
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
-        graph_engine_layers: Sequence[GraphEngineLayer] = (),
+        graph_engine_layers: Sequence[Layer] = (),
         pause_state_config: PauseStateLayerConfig | None = None,
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None]: ...
 
@@ -160,7 +160,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         workflow_run_id: str | uuid.UUID | None = None,
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
-        graph_engine_layers: Sequence[GraphEngineLayer] = (),
+        graph_engine_layers: Sequence[Layer] = (),
         pause_state_config: PauseStateLayerConfig | None = None,
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None]:
         with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
@@ -278,10 +278,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
         workflow: Workflow,
         user: Account | EndUser,
         application_generate_entity: WorkflowAppGenerateEntity,
-        graph_runtime_state: GraphRuntimeState,
+        graph_runtime_state: RuntimeState,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
-        graph_engine_layers: Sequence[GraphEngineLayer] = (),
+        graph_engine_layers: Sequence[Layer] = (),
         pause_state_config: PauseStateLayerConfig | None = None,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
         response_stream_filter: ResponseStreamFilter | None = None,
@@ -331,8 +331,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         streaming: bool = True,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
         root_node_id: str | None = None,
-        graph_engine_layers: Sequence[GraphEngineLayer] = (),
-        graph_runtime_state: GraphRuntimeState | None = None,
+        graph_engine_layers: Sequence[Layer] = (),
+        graph_runtime_state: RuntimeState | None = None,
         pause_state_config: PauseStateLayerConfig | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
@@ -353,7 +353,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             user=user,
             invoke_from=invoke_from,
         ):
-            graph_layers: list[GraphEngineLayer] = list(graph_engine_layers)
+            graph_layers: list[Layer] = list(graph_engine_layers)
 
             # init queue manager
             queue_manager = WorkflowAppQueueManager(
@@ -623,8 +623,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         root_node_id: str | None = None,
-        graph_engine_layers: Sequence[GraphEngineLayer] = (),
-        graph_runtime_state: GraphRuntimeState | None = None,
+        graph_engine_layers: Sequence[Layer] = (),
+        graph_runtime_state: RuntimeState | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
     ) -> None:
         """

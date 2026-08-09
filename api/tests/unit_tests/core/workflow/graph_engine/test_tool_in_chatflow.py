@@ -1,7 +1,7 @@
 from core.workflow.workflow_entry import iter_dify_graph_engine_events
-from graphon.graph_engine import GraphEngine, GraphEngineConfig
-from graphon.graph_engine.command_channels import InMemoryChannel
-from graphon.graph_events import (
+from graphon.engine import Engine
+from graphon.engine.command import InMemoryChannel
+from graphon.engine_events import (
     GraphRunSucceededEvent,
     NodeRunStreamChunkEvent,
 )
@@ -24,12 +24,10 @@ def test_tool_in_chatflow():
     )
 
     # Create and run the engine
-    engine = GraphEngine(
-        workflow_id="test_workflow",
+    engine = Engine(
         graph=graph,
         graph_runtime_state=graph_runtime_state,
         command_channel=InMemoryChannel(),
-        config=GraphEngineConfig(),
     )
 
     events = list(iter_dify_graph_engine_events(engine))
@@ -78,12 +76,10 @@ def test_answer_can_render_llm_structured_output_in_chatflow():
         mock_config=mock_config,
     )
 
-    engine = GraphEngine(
-        workflow_id="test_workflow",
+    engine = Engine(
         graph=graph,
         graph_runtime_state=graph_runtime_state,
         command_channel=InMemoryChannel(),
-        config=GraphEngineConfig(),
     )
 
     events = list(iter_dify_graph_engine_events(engine))

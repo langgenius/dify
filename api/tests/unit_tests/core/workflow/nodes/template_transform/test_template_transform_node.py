@@ -9,7 +9,7 @@ from graphon.nodes.template_transform.template_transform_node import (
     DEFAULT_TEMPLATE_TRANSFORM_MAX_OUTPUT_LENGTH,
     TemplateTransformNode,
 )
-from graphon.runtime import GraphRuntimeState
+from graphon.runtime import RuntimeState
 from tests.workflow_test_utils import build_test_graph_init_params
 
 from .template_transform_node_spec import TestTemplateTransformNode  # noqa: F401
@@ -31,7 +31,7 @@ def graph_init_params():
 
 @pytest.fixture
 def mock_graph_runtime_state():
-    mock_state = MagicMock(spec=GraphRuntimeState)
+    mock_state = MagicMock(spec=RuntimeState)
     mock_state.variable_pool = MagicMock()
     return mock_state
 
