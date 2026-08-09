@@ -10,7 +10,6 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { RiEditBoxLine, RiLayoutRight2Line, RiResetLeftLine } from '@remixicon/react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
@@ -95,7 +94,7 @@ const Header = () => {
             size="l"
             onClick={() => handleSidebarCollapse(false)}
           >
-            <RiLayoutRight2Line aria-hidden="true" className="h-4.5 w-4.5" />
+            <span aria-hidden className="i-ri-layout-right-2-line h-4.5 w-4.5" />
           </ActionButton>
           <div className="mr-1 shrink-0">
             <AppIcon
@@ -145,7 +144,7 @@ const Header = () => {
                       disabled={!currentConversationId || isResponding}
                       onClick={handleNewConversation}
                     >
-                      <RiEditBoxLine aria-hidden="true" className="h-4.5 w-4.5" />
+                      <span aria-hidden className="i-ri-edit-box-line h-4.5 w-4.5" />
                     </ActionButton>
                   </div>
                 }
@@ -164,7 +163,7 @@ const Header = () => {
                     size="l"
                     onClick={handleNewConversation}
                   >
-                    <RiResetLeftLine aria-hidden="true" className="h-4.5 w-4.5" />
+                    <span aria-hidden className="i-ri-reset-left-line h-4.5 w-4.5" />
                   </ActionButton>
                 }
               />
