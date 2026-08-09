@@ -133,7 +133,8 @@ const ViewHistory = ({ withText, onClearLogAndMessageModal }: ViewHistoryProps) 
                   status === WorkflowRunningStatus.Stopped ||
                   status === WorkflowRunningStatus.Paused
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={item.id}
                     className={cn(
                       'mb-0.5 flex cursor-pointer rounded-lg px-2 py-1.75 hover:bg-state-base-hover',
@@ -150,6 +151,7 @@ const ViewHistory = ({ withText, onClearLogAndMessageModal }: ViewHistoryProps) 
                         },
                         showInputsPanel: false,
                         showEnvPanel: false,
+                        showWorkflowCopilotPanel: false,
                       })
                       closeAllInputFieldPanels()
                       handleBackupDraft()
@@ -182,7 +184,7 @@ const ViewHistory = ({ withText, onClearLogAndMessageModal }: ViewHistoryProps) 
                         {formatTimeFromNow((finishedAt || item.created_at || 0) * 1000)}
                       </div>
                     </div>
-                  </div>
+                  </button>
                 )
               })}
             </div>
