@@ -1,9 +1,9 @@
 'use client'
 import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Input } from '@langgenius/dify-ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import { useMembers } from '@/service/use-common'
 
 type Props = Readonly<{
@@ -78,12 +78,22 @@ function MemberSelector({ value, onSelect, exclude = [] }: Props) {
       >
         <div className="min-w-93 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
           <div className="p-2 pb-1">
-            <Input
-              showLeftIcon
-              aria-label={t(($) => $['operation.search'], { ns: 'common' })}
-              value={searchValue}
-              onChange={(e) => setSearchValue(e.target.value)}
-            />
+            <div className="relative w-full">
+              <span
+                aria-hidden
+                className="pointer-events-none absolute top-1/2 left-2 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder"
+              />
+              <Input
+                type="search"
+                name="query"
+                autoComplete="off"
+                enterKeyHint="search"
+                aria-label={t(($) => $['operation.search'], { ns: 'common' })}
+                className="pl-6.5 [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
+                value={searchValue}
+                onValueChange={setSearchValue}
+              />
+            </div>
           </div>
           <div className="p-1">
             {filteredList.map((account) => (

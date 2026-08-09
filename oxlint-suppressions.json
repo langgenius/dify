@@ -2821,11 +2821,6 @@
       "count": 2
     }
   },
-  "web/app/components/header/account-setting/members-page/transfer-ownership-modal/member-selector.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/header/account-setting/model-provider-page/declarations.ts": {
     "erasable-syntax-only/enums": {
       "count": 11
