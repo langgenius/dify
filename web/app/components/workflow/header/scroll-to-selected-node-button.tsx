@@ -16,7 +16,7 @@ const ScrollToSelectedNodeButton: FC = () => {
     <button
       type="button"
       className={cn(
-        'flex h-6 cursor-pointer items-center justify-center rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-3 system-xs-medium whitespace-nowrap text-text-tertiary shadow-lg backdrop-blur-xs transition-colors duration-200 hover:text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+        'flex h-6 cursor-pointer appearance-none items-center justify-center rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-3 system-xs-medium whitespace-nowrap text-text-tertiary shadow-lg backdrop-blur-xs transition-colors duration-200 hover:text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
       )}
       onClick={() => scrollToWorkflowNode(selectedNode.id)}
     >
