@@ -190,6 +190,16 @@ describe('AppInfoModals', () => {
     })
   })
 
+  it('should name the delete confirmation input with its visible label', async () => {
+    await act(async () => {
+      render(<AppInfoModals {...defaultProps} activeModal="delete" />)
+    })
+
+    expect(
+      await screen.findByRole('textbox', { name: /app\.deleteAppConfirmInputLabel/ }),
+    ).toBeInTheDocument()
+  })
+
   it('should render UpdateDSLModal when activeModal is importDSL', async () => {
     await act(async () => {
       render(<AppInfoModals {...defaultProps} activeModal="importDSL" />)
