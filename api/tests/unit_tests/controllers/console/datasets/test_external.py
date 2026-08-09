@@ -459,7 +459,9 @@ class TestExternalDatasetCreateApi(_UsesSQLiteSession):
             patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
         ):
             with pytest.raises(Forbidden):
-                method(api, ExternalDatasetCreatePayload.model_validate(payload), self.session, "tenant-1", current_user)
+                method(
+                    api, ExternalDatasetCreatePayload.model_validate(payload), self.session, "tenant-1", current_user
+                )
 
 
 class TestExternalKnowledgeHitTestingApi(_UsesSQLiteSession):
@@ -645,7 +647,9 @@ class TestExternalDatasetCreateApiAdvanced(_UsesSQLiteSession):
 
         with app.test_request_context("/", json=payload), patch.object(type(console_ns), "payload", payload):
             with pytest.raises(Forbidden):
-                method(api, ExternalDatasetCreatePayload.model_validate(payload), self.session, "tenant-1", current_user)
+                method(
+                    api, ExternalDatasetCreatePayload.model_validate(payload), self.session, "tenant-1", current_user
+                )
 
 
 class TestExternalKnowledgeHitTestingApiAdvanced(_UsesSQLiteSession):
