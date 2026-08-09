@@ -131,8 +131,8 @@ def _node_started_event(node_id: str = "agent-1", exec_id: str = "exec-1") -> Ma
         node_type="agent",
         node_title="Greeter",
         predecessor_node_id=None,
-        in_iteration_id=None,
-        in_loop_id=None,
+        container_id="",
+        node_version="1",
         start_at=datetime(2026, 5, 26, 0, 0, 0),
     )
 
