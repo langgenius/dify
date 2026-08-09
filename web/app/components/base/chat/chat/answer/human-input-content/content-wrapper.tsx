@@ -1,5 +1,6 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
 
@@ -18,6 +19,7 @@ const ContentWrapper = ({
   className,
   expanded = false,
 }: ContentWrapperProps) => {
+  const { t } = useTranslation()
   const [isExpanded, setIsExpanded] = useState(expanded)
 
   const handleToggleExpand = useCallback(() => {
@@ -43,17 +45,21 @@ const ContentWrapper = ({
           {nodeTitle}
         </div>
         {showExpandIcon && (
-          <div
-            className="shrink-0 cursor-pointer"
+          <button
+            type="button"
+            aria-label={t(($) => $[isExpanded ? 'chat.collapse' : 'chat.expand'], {
+              ns: 'share',
+            })}
+            aria-expanded={isExpanded}
+            className="flex size-4 shrink-0 cursor-pointer appearance-none items-center justify-center rounded-xs p-0 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
             onClick={handleToggleExpand}
-            data-testid="expand-icon"
           >
             {isExpanded ? (
-              <div className="i-ri-arrow-down-s-line size-4" />
+              <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
             ) : (
-              <div className="i-ri-arrow-right-s-line size-4" />
+              <span aria-hidden className="i-ri-arrow-right-s-line size-4" />
             )}
-          </div>
+          </button>
         )}
       </div>
       {(!showExpandIcon || isExpanded) && (
