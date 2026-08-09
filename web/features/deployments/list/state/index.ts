@@ -145,7 +145,7 @@ export const deploymentsListIsFetchingNextPageAtom = selectAtom(
   deploymentsListQueryAtom,
   (query) => query.isFetchingNextPage,
 )
-export const deploymentsListIsLoadingAtom = selectAtom(
+const deploymentsListIsLoadingAtom = selectAtom(
   deploymentsListQueryAtom,
   (query) => query.isLoading,
 )
