@@ -25,7 +25,7 @@ const ToolDetail = ({ payload }: ToolDetailProps) => {
         type="button"
         aria-expanded={expand}
         className={cn(
-          'flex w-full cursor-pointer appearance-none items-center rounded-xl px-2.5 py-2 text-left system-xs-medium text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+          'flex w-full cursor-pointer appearance-none items-center rounded-xl px-2.5 py-2 text-start system-xs-medium text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
           expand && 'pb-1.5',
         )}
         onClick={() => setExpand(!expand)}
