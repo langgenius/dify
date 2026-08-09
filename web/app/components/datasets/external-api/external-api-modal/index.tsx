@@ -13,7 +13,6 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiBook2Line, RiCloseLine, RiInformation2Line, RiLock2Fill } from '@remixicon/react'
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
@@ -154,7 +153,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
                           type="button"
                           className="flex size-3.5 items-center justify-center rounded-sm outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
                         >
-                          <RiInformation2Line className="size-3.5" />
+                          <span aria-hidden className="i-ri-information-2-line size-3.5" />
                         </button>
                       }
                     />
@@ -171,7 +170,10 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
                             key={binding.id}
                             className="flex items-center gap-1 self-stretch px-2 py-1"
                           >
-                            <RiBook2Line className="size-4 text-text-secondary" />
+                            <span
+                              aria-hidden
+                              className="i-ri-book-2-line size-4 text-text-secondary"
+                            />
                             <div className="system-sm-medium text-text-secondary">
                               {binding.name}
                             </div>
@@ -189,7 +191,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
             className="absolute top-5 right-5"
             onClick={onCancel}
           >
-            <RiCloseLine aria-hidden className="h-4.5 w-4.5 shrink-0 text-text-tertiary" />
+            <span aria-hidden className="i-ri-close-line h-4.5 w-4.5 shrink-0 text-text-tertiary" />
           </ActionButton>
           <Form
             value={formData}
@@ -215,7 +217,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
             </Button>
           </div>
           <div className="flex shrink-0 items-center justify-center gap-1 self-stretch rounded-b-2xl border-t-[0.5px] border-divider-subtle bg-background-soft px-2 py-3 system-xs-regular text-text-tertiary">
-            <RiLock2Fill className="size-3 text-text-quaternary" />
+            <span aria-hidden className="i-ri-lock-2-fill size-3 text-text-quaternary" />
             {t(($) => $['externalAPIForm.encrypted.front'], { ns: 'dataset' })}
             <a
               className="text-text-accent"
