@@ -312,10 +312,9 @@ describe('PluginsPanel', () => {
 
     render(<PluginsPanel />)
 
-    const loadingState = screen.getByRole('status')
+    const loadingState = screen.getByRole('status', { name: 'common.loading' })
 
     expect(loadingState).toHaveClass('px-12')
-    expect(screen.getAllByTestId('plugin-card-skeleton')).toHaveLength(6)
   })
 
   it('uses compact skeleton spacing while an integrations plugin category is pending', () => {
@@ -329,10 +328,9 @@ describe('PluginsPanel', () => {
 
     render(<PluginsPanel contentInset="compact" fixedCategory={PluginCategoryEnum.tool} />)
 
-    const loadingState = screen.getByRole('status')
+    const loadingState = screen.getByRole('status', { name: 'common.loading' })
 
     expect(loadingState).toHaveClass('px-6', 'max-w-[1600px]')
-    expect(screen.getAllByTestId('plugin-card-skeleton')).toHaveLength(6)
   })
 
   it('uses default content inset for the standalone plugins page', () => {

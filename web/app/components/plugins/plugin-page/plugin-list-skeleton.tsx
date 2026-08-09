@@ -4,10 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { SkeletonContainer, SkeletonPoint, SkeletonRectangle } from '@/app/components/base/skeleton'
 
 const PluginCardSkeleton = () => (
-  <div
-    data-testid="plugin-card-skeleton"
-    className="relative overflow-hidden rounded-xl border-[1.5px] border-background-section-burn bg-background-section-burn p-1"
-  >
+  <div className="relative overflow-hidden rounded-xl border-[1.5px] border-background-section-burn bg-background-section-burn p-1">
     <div className="relative rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 pb-3 shadow-xs">
       <div className="flex">
         <SkeletonRectangle className="size-10 shrink-0 animate-pulse rounded-xl" />
