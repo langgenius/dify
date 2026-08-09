@@ -217,12 +217,14 @@ const ChatVariablePanel = () => {
           >
             <RiBookOpenLine className="size-4" />
           </ActionButton>
-          <div
+          <button
+            type="button"
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
             className="flex size-6 cursor-pointer items-center justify-center"
             onClick={() => setShowChatVariablePanel(false)}
           >
-            <RiCloseLine className="size-4 text-text-tertiary" />
-          </div>
+            <RiCloseLine aria-hidden="true" className="size-4 text-text-tertiary" />
+          </button>
         </div>
       </div>
       {showTip && (
