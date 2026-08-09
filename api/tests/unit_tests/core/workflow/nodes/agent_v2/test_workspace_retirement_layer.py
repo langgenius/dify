@@ -5,7 +5,7 @@ import pytest
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from core.workflow.nodes.agent_v2 import workspace_retirement_layer as layer_module
 from core.workflow.nodes.agent_v2.workspace_retirement_layer import WorkflowAgentWorkspaceRetirementLayer
-from graphon.graph_events import GraphRunSucceededEvent, NodeRunStartedEvent
+from graphon.engine_events import GraphRunSucceededEvent, NodeRunStartedEvent
 
 
 def _run_context() -> DifyRunContext:

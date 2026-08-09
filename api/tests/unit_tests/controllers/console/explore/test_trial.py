@@ -1384,7 +1384,7 @@ class TestTrialAppWorkflowTaskStopApi:
         with (
             app.test_request_context("/"),
             patch.object(module.AppQueueManager, "set_stop_flag_no_user_check") as mock_set_flag,
-            patch.object(module.GraphEngineManager, "send_stop_command") as mock_send_cmd,
+            patch.object(module, "send_abort_command") as mock_send_cmd,
         ):
             result = api.post(trial_app_workflow, task_id)
 

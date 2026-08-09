@@ -21,10 +21,10 @@ from core.workflow.node_factory import DifyGraphInitContext, DifyNodeFactory, ge
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
+from graphon.engine_events import EngineEvent, GraphRunFailedEvent
 from graphon.enums import WorkflowType
 from graphon.graph import Graph
-from graphon.graph_events import GraphEngineEvent, GraphRunFailedEvent
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from graphon.variable_loader import VariableLoader
 from graphon.variables.variables import RAGPipelineVariable, RAGPipelineVariableInput
 from models.dataset import Pipeline
@@ -190,7 +190,9 @@ class PipelineRunner(WorkflowBasedAppRunner):
                 workflow.graph_dict
             )
             add_node_inputs_to_pool(variable_pool, node_id=root_node_id, inputs=inputs)
-            graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+            graph_runtime_state = RuntimeState(
+                workflow_id=workflow.id, variable_pool=variable_pool, start_at=time.perf_counter()
+            )
 
             # init graph
             graph = self._init_rag_pipeline_graph(
@@ -231,7 +233,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
             trace_manager=self.application_generate_entity.trace_manager,
         )
 
-        workflow_entry.graph_engine.layer(persistence_layer)
+        workflow_entry.graph_engine.add_layer(persistence_layer)
 
         generator = workflow_entry.run()
 
@@ -256,7 +258,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
     def _init_rag_pipeline_graph(
         self,
         workflow: Workflow,
-        graph_runtime_state: GraphRuntimeState,
+        graph_runtime_state: RuntimeState,
         start_node_id: str | None = None,
         user_from: UserFrom = UserFrom.ACCOUNT,
         invoke_from: InvokeFrom = InvokeFrom.SERVICE_API,
@@ -273,6 +275,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
 
         if not isinstance(graph_config.get("edges"), list):
             raise ValueError("edges in workflow graph must be a list")
+        graph_config = self._normalize_container_ownership(graph_config)
         # nodes = graph_config.get("nodes", [])
         # edges = graph_config.get("edges", [])
         # real_run_nodes = []
@@ -323,7 +326,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
 
         return graph
 
-    def _update_document_status(self, event: GraphEngineEvent, document_ref: DocumentRef | None) -> None:
+    def _update_document_status(self, event: EngineEvent, document_ref: DocumentRef | None) -> None:
         """Set an owner-bound document to error after a failed graph run, if it exists."""
         if not isinstance(event, GraphRunFailedEvent) or document_ref is None:
             return

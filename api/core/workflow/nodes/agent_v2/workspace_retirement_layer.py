@@ -8,9 +8,9 @@ from typing import override
 from core.app.entities.app_invoke_entities import DifyRunContext
 from core.workflow.nodes.agent_v2.session_store import WorkflowAgentWorkspaceStore
 from core.workflow.system_variables import SystemVariableKey, get_system_text
-from graphon.graph_engine.layers import GraphEngineLayer
-from graphon.graph_events import (
-    GraphEngineEvent,
+from graphon.engine.layer import Layer
+from graphon.engine_events import (
+    EngineEvent,
     GraphRunAbortedEvent,
     GraphRunFailedEvent,
     GraphRunPartialSucceededEvent,
@@ -21,7 +21,7 @@ from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 logger = logging.getLogger(__name__)
 
 
-class WorkflowAgentWorkspaceRetirementLayer(GraphEngineLayer):
+class WorkflowAgentWorkspaceRetirementLayer(Layer):
     """Synchronously retire run Workspaces, then enqueue physical collection."""
 
     _TERMINAL_EVENTS = (
@@ -44,7 +44,7 @@ class WorkflowAgentWorkspaceRetirementLayer(GraphEngineLayer):
         return
 
     @override
-    def on_event(self, event: GraphEngineEvent) -> None:
+    def on_event(self, event: EngineEvent) -> None:
         if not isinstance(event, self._TERMINAL_EVENTS):
             return
         workflow_run_id = get_system_text(

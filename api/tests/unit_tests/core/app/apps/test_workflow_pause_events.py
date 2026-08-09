@@ -21,10 +21,10 @@ from core.workflow.nodes.human_input.entities import (
 from core.workflow.nodes.human_input.enums import ValueSourceType
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import build_system_variables
+from graphon.engine_events import GraphRunPausedEvent
 from graphon.entities import WorkflowStartReason
 from graphon.entities.pause_reason import HitlRequired
-from graphon.graph_events import GraphRunPausedEvent
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from models.account import Account
 from models.human_input import HumanInputForm, HumanInputFormRecipient, RecipientType
 from models.workflow import Workflow, WorkflowType
@@ -216,7 +216,7 @@ def test_queue_workflow_paused_event_to_stream_responses(sqlite_pause_session: S
         paused_nodes=["node-id"],
     )
 
-    runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
+    runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0.0)
     responses = converter.workflow_pause_to_stream_response(
         event=queue_event,
         task_id="task",
@@ -272,7 +272,7 @@ def _build_paused_human_input_response(
         paused_nodes=["node-id"],
     )
 
-    runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
+    runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0.0)
     responses = converter.workflow_pause_to_stream_response(
         event=queue_event,
         task_id="task",
@@ -365,7 +365,7 @@ def test_queue_workflow_paused_event_resolves_variable_select_options(sqlite_pau
         paused_nodes=["node-id"],
     )
 
-    runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
+    runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0.0)
     runtime_state.variable_pool.add(("start", "options"), ["approve", "reject"])
     responses = converter.workflow_pause_to_stream_response(
         event=queue_event,

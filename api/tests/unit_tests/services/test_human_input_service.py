@@ -28,7 +28,7 @@ from core.workflow.nodes.human_input.entities import (
 )
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
 from graphon.file import File, FileTransferMethod, FileType
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models.human_input import RecipientType
 from models.model import App, AppMode
@@ -220,7 +220,7 @@ def _build_resumption_context_state(*, options: list[str], workflow_run_id: str)
         call_depth=0,
         workflow_execution_id=workflow_run_id,
     )
-    runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
+    runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0.0)
     runtime_state.variable_pool.add(("start", "options"), options)
     context = WorkflowResumptionContext(
         generate_entity=_WorkflowGenerateEntityWrapper(entity=generate_entity),

@@ -21,7 +21,7 @@ dify-agent-stub-server = "dify_agent.agent_stub.server.cli:main"
 server = [
     "e2b>=2.34.0,<3.0.0",
     "fastapi==0.136.0",
-    "graphon==0.5.2",
+    "graphon==0.7.0",
     "jsonschema>=4.23.0,<5.0.0",
     "jwcrypto>=1.5.6,<2",
     "logfire[fastapi,httpx,redis]>=4.37.0,<5.0.0",
@@ -30,6 +30,9 @@ server = [
     "redis>=7.4.0,<8.0.0",
     "uvicorn[standard]==0.46.0",
 ]
+
+[tool.uv.sources]
+graphon = { git = "https://github.com/langgenius/graphon", rev = "a6b49de3f09153edacbdbe629643fb5ed59555e4" }
 
 [tool.setuptools.packages.find]
 where = ["src"]

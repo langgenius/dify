@@ -18,9 +18,9 @@ from core.workflow.nodes.trigger_webhook.entities import (
 )
 from core.workflow.nodes.trigger_webhook.node import TriggerWebhookNode
 from core.workflow.system_variables import default_system_variables
-from graphon.entities import GraphInitParams
+from graphon.entities import InitParams
 from graphon.enums import WorkflowNodeExecutionStatus
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from tests.workflow_test_utils import build_test_variable_pool
 
 
@@ -30,7 +30,7 @@ def create_webhook_node(
     tenant_id: str = "test-tenant",
 ) -> TriggerWebhookNode:
     """Helper function to create a webhook node with proper initialization."""
-    graph_init_params = GraphInitParams(
+    graph_init_params = InitParams(
         workflow_id="test-workflow",
         graph_config={},
         run_context={
@@ -45,7 +45,8 @@ def create_webhook_node(
         call_depth=0,
     )
 
-    runtime_state = GraphRuntimeState(
+    runtime_state = RuntimeState(
+        workflow_id="test-workflow",
         variable_pool=variable_pool,
         start_at=0,
     )

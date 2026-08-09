@@ -59,7 +59,7 @@ class TestWorkflowAppQueueManager:
         with (
             patch("core.app.apps.base_app_queue_manager.redis_client") as queue_redis,
             patch("core.app.apps.execution_coordinator.redis_client") as execution_redis,
-            patch("core.app.apps.execution_coordinator.GraphEngineManager") as graph_engine_manager,
+            patch("core.app.apps.execution_coordinator.send_abort_command") as send_abort_command,
         ):
             queue_redis.get.return_value = None
             manager = WorkflowAppQueueManager(
@@ -76,14 +76,14 @@ class TestWorkflowAppQueueManager:
 
             assert manager.execution_state is AppExecutionState.RUNNING
             execution_redis.setex.assert_not_called()
-            graph_engine_manager.return_value.send_stop_command.assert_not_called()
+            send_abort_command.assert_not_called()
             manager._execution_coordinator.mark_terminal()
 
     def test_execution_timeout_aborts_graph_before_stop_event(self):
         with (
             patch("core.app.apps.base_app_queue_manager.redis_client") as queue_redis,
             patch("core.app.apps.execution_coordinator.redis_client") as execution_redis,
-            patch("core.app.apps.execution_coordinator.GraphEngineManager") as graph_engine_manager,
+            patch("core.app.apps.execution_coordinator.send_abort_command") as send_abort_command,
             patch("core.app.apps.execution_coordinator.dify_config.APP_MAX_EXECUTION_TIME", 0),
         ):
             queue_redis.get.return_value = None
@@ -99,7 +99,7 @@ class TestWorkflowAppQueueManager:
 
             assert any(isinstance(message.event, QueueStopEvent) for message in messages)
             execution_redis.setex.assert_called_once_with("generate_task_stopped:task", 600, 1)
-            graph_engine_manager.return_value.send_stop_command.assert_called_once_with(
+            send_abort_command.assert_called_once_with(
                 "task",
                 reason="App execution exceeded 0 seconds",
             )
@@ -108,7 +108,7 @@ class TestWorkflowAppQueueManager:
         with (
             patch("core.app.apps.base_app_queue_manager.redis_client") as queue_redis,
             patch("core.app.apps.execution_coordinator.redis_client") as execution_redis,
-            patch("core.app.apps.execution_coordinator.GraphEngineManager") as graph_engine_manager,
+            patch("core.app.apps.execution_coordinator.send_abort_command") as send_abort_command,
         ):
             queue_redis.get.return_value = None
             manager = WorkflowAppQueueManager(
@@ -122,13 +122,13 @@ class TestWorkflowAppQueueManager:
             _ = list(manager.listen())
 
             execution_redis.setex.assert_not_called()
-            graph_engine_manager.return_value.send_stop_command.assert_not_called()
+            send_abort_command.assert_not_called()
 
     def test_pause_completes_listener_without_aborting_resumable_execution(self):
         with (
             patch("core.app.apps.base_app_queue_manager.redis_client") as queue_redis,
             patch("core.app.apps.execution_coordinator.redis_client") as execution_redis,
-            patch("core.app.apps.execution_coordinator.GraphEngineManager") as graph_engine_manager,
+            patch("core.app.apps.execution_coordinator.send_abort_command") as send_abort_command,
         ):
             queue_redis.get.return_value = None
             manager = WorkflowAppQueueManager(
@@ -148,13 +148,13 @@ class TestWorkflowAppQueueManager:
             assert isinstance(messages[0].event, QueueWorkflowPausedEvent)
             assert manager.execution_state is AppExecutionState.PAUSED
             execution_redis.setex.assert_not_called()
-            graph_engine_manager.return_value.send_stop_command.assert_not_called()
+            send_abort_command.assert_not_called()
 
     def test_workflow_pause_does_not_abort_execution(self):
         with (
             patch("core.app.apps.base_app_queue_manager.redis_client") as queue_redis,
             patch("core.app.apps.execution_coordinator.redis_client") as execution_redis,
-            patch("core.app.apps.execution_coordinator.GraphEngineManager") as graph_engine_manager,
+            patch("core.app.apps.execution_coordinator.send_abort_command") as send_abort_command,
         ):
             queue_redis.get.return_value = None
             manager = WorkflowAppQueueManager(
@@ -171,4 +171,4 @@ class TestWorkflowAppQueueManager:
 
             assert manager.execution_state is AppExecutionState.PAUSED
             execution_redis.setex.assert_not_called()
-            graph_engine_manager.return_value.send_stop_command.assert_not_called()
+            send_abort_command.assert_not_called()

@@ -90,7 +90,7 @@ class TestWorkflowTaskStopApi:
             with pytest.raises(NotWorkflowAppError):
                 WorkflowTaskStopApi().post(_chat_app(), _end_user(), "task-1")
 
-    @patch("controllers.web.workflow.GraphEngineManager.send_stop_command")
+    @patch("controllers.web.workflow.send_abort_command")
     @patch("controllers.web.workflow.AppQueueManager.set_stop_flag_no_user_check")
     def test_stop_calls_both_mechanisms(self, mock_legacy: MagicMock, mock_graph: MagicMock, app: Flask) -> None:
         with app.test_request_context("/workflows/tasks/task-1/stop", method="POST"):

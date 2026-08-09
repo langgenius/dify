@@ -8,7 +8,7 @@ from graphon.graph import Graph
 from graphon.nodes.base.entities import VariableSelector
 from graphon.nodes.template_transform.entities import TemplateTransformNodeData
 from graphon.nodes.template_transform.template_transform_node import TemplateTransformNode
-from graphon.runtime import GraphRuntimeState
+from graphon.runtime import RuntimeState
 from graphon.template_rendering import TemplateRenderError
 from tests.workflow_test_utils import build_test_graph_init_params
 
@@ -40,8 +40,8 @@ class TestTemplateTransformNode:
 
     @pytest.fixture
     def mock_graph_runtime_state(self):
-        """Create a mock GraphRuntimeState with variable pool."""
-        mock_state = MagicMock(spec=GraphRuntimeState)
+        """Create a mock RuntimeState with variable pool."""
+        mock_state = MagicMock(spec=RuntimeState)
         mock_variable_pool = MagicMock()
         mock_state.variable_pool = mock_variable_pool
         return mock_state
@@ -53,7 +53,7 @@ class TestTemplateTransformNode:
 
     @pytest.fixture
     def graph_init_params(self):
-        """Create a mock GraphInitParams."""
+        """Create a mock InitParams."""
         return build_test_graph_init_params(
             workflow_id="test_workflow",
             graph_config={},

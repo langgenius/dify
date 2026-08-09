@@ -8,7 +8,7 @@ from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.graph import Graph
 from graphon.nodes.template_transform.entities import TemplateTransformNodeData
 from graphon.nodes.template_transform.template_transform_node import TemplateTransformNode
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from graphon.template_rendering import TemplateRenderError
 from tests.workflow_test_utils import build_test_graph_init_params
 
@@ -76,7 +76,9 @@ def test_execute_template_transform():
     variable_pool.add(["1", "args1"], 1)
     variable_pool.add(["1", "args2"], 3)
 
-    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+    graph_runtime_state = RuntimeState(
+        workflow_id="test-workflow", variable_pool=variable_pool, start_at=time.perf_counter()
+    )
 
     # Create node factory (graph init path still works regardless of renderer choice below)
     node_factory = DifyNodeFactory(

@@ -6,9 +6,9 @@ from pydantic import TypeAdapter
 
 from core.db.session_factory import session_factory
 from core.workflow.system_variables import SystemVariableKey, get_system_text
-from graphon.graph_engine.layers import GraphEngineLayer
-from graphon.graph_events import (
-    GraphEngineEvent,
+from graphon.engine.layer import Layer
+from graphon.engine_events import (
+    EngineEvent,
     GraphRunAbortedEvent,
     GraphRunFailedEvent,
     GraphRunPausedEvent,
@@ -21,12 +21,12 @@ from tasks.workflow_cfs_scheduler.cfs_scheduler import AsyncWorkflowCFSPlanEntit
 logger = logging.getLogger(__name__)
 
 
-class TriggerPostLayer(GraphEngineLayer):
+class TriggerPostLayer(Layer):
     """
     Trigger post layer.
     """
 
-    _STATUS_MAP: ClassVar[dict[type[GraphEngineEvent], WorkflowTriggerStatus]] = {
+    _STATUS_MAP: ClassVar[dict[type[EngineEvent], WorkflowTriggerStatus]] = {
         GraphRunSucceededEvent: WorkflowTriggerStatus.SUCCEEDED,
         GraphRunFailedEvent: WorkflowTriggerStatus.FAILED,
         GraphRunAbortedEvent: WorkflowTriggerStatus.FAILED,
@@ -49,7 +49,7 @@ class TriggerPostLayer(GraphEngineLayer):
         pass
 
     @override
-    def on_event(self, event: GraphEngineEvent):
+    def on_event(self, event: EngineEvent):
         """
         Update trigger log with success or failure.
         """

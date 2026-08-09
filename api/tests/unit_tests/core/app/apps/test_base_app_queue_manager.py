@@ -65,7 +65,7 @@ class TestBaseAppQueueManager:
     def test_completed_listener_defers_graph_runtime_state_cleanup_until_listener_exits(self):
         with (
             patch("core.app.apps.base_app_queue_manager.redis_client") as mock_redis,
-            patch("core.app.apps.execution_coordinator.GraphEngineManager") as graph_engine_manager,
+            patch("core.app.apps.execution_coordinator.send_abort_command") as send_abort_command,
         ):
             mock_redis.setex.return_value = True
             mock_redis.get.return_value = None
@@ -78,22 +78,22 @@ class TestBaseAppQueueManager:
             assert manager.graph_runtime_state is runtime_state
             assert list(manager.listen()) == []
             assert manager.graph_runtime_state is None
-            graph_engine_manager.return_value.send_stop_command.assert_not_called()
+            send_abort_command.assert_not_called()
 
     def test_execution_coordinator_abort_is_idempotent_when_graph_stop_command_fails(self, caplog):
         with (
             patch("core.app.apps.base_app_queue_manager.redis_client") as queue_redis,
             patch("core.app.apps.execution_coordinator.redis_client") as execution_redis,
-            patch("core.app.apps.execution_coordinator.GraphEngineManager") as graph_engine_manager,
+            patch("core.app.apps.execution_coordinator.send_abort_command") as send_abort_command,
         ):
             queue_redis.setex.return_value = True
             execution_redis.setex.return_value = True
-            graph_engine_manager.return_value.send_stop_command.side_effect = RuntimeError("redis unavailable")
+            send_abort_command.side_effect = RuntimeError("redis unavailable")
             manager = DummyQueueManager(task_id="t1", user_id="u1", invoke_from=InvokeFrom.SERVICE_API)
 
             assert manager._execution_coordinator.request_abort("stream closed") is True
             assert manager._execution_coordinator.request_abort("duplicate") is False
 
         execution_redis.setex.assert_called_once_with("generate_task_stopped:t1", 600, 1)
-        graph_engine_manager.return_value.send_stop_command.assert_called_once_with("t1", reason="stream closed")
+        send_abort_command.assert_called_once_with("t1", reason="stream closed")
         assert "Failed to send stop command for app execution task=t1" in caplog.text
