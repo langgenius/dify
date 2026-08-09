@@ -130,7 +130,7 @@ const DebugAndPreview = () => {
             <button
               type="button"
               aria-label={closeLabel}
-              className="flex size-6 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+              className="flex size-6 cursor-pointer appearance-none items-center justify-center rounded-md border-0 bg-transparent p-0 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
               onClick={handleCancelDebugAndPreviewPanel}
             >
               <RiCloseLine aria-hidden="true" className="size-4 text-text-tertiary" />
