@@ -88,17 +88,20 @@ describe('ExternalKnowledgeAPICard', () => {
     })
 
     it('should render edit and delete buttons', () => {
-      const { container } = render(<ExternalKnowledgeAPICard {...defaultProps} />)
-      const buttons = container.querySelectorAll('button')
-      expect(buttons.length).toBe(2)
+      render(<ExternalKnowledgeAPICard {...defaultProps} />)
+      expect(screen.getByRole('button', { name: 'common.operation.edit' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.delete' })).toBeInTheDocument()
     })
 
     it('should hide edit and delete buttons when external knowledge API management is unavailable', () => {
-      const { container } = render(
-        <ExternalKnowledgeAPICard {...defaultProps} canManageExternalKnowledgeApi={false} />,
-      )
+      render(<ExternalKnowledgeAPICard {...defaultProps} canManageExternalKnowledgeApi={false} />)
 
-      expect(container.querySelectorAll('button').length).toBe(0)
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.edit' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.delete' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should render API connection icon', () => {
