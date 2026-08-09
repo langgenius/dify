@@ -328,11 +328,10 @@ class Dataset(Base):
             or 0
         )
 
-    @property
-    def word_count(self) -> int:
-        return self.get_word_count(session=db.session())
+    def word_count(self, session: Session) -> int:
+        return self.get_word_count(session)
 
-    def get_word_count(self, *, session: Session) -> int:
+    def get_word_count(self, session: Session) -> int:
         return (
             session.scalar(
                 select(func.coalesce(func.sum(Document.word_count), 0)).where(Document.dataset_id == self.id)
@@ -340,11 +339,10 @@ class Dataset(Base):
             or 0
         )
 
-    @property
-    def doc_form(self) -> str | None:
-        return self.get_doc_form(session=db.session())
+    def doc_form(self, session: Session) -> str | None:
+        return self.get_doc_form(session=session)
 
-    def get_doc_form(self, *, session: Session) -> str | None:
+    def get_doc_form(self, session: Session) -> str | None:
         if self.chunk_structure:
             return self.chunk_structure
         return session.scalar(select(Document.doc_form).where(Document.dataset_id == self.id).limit(1))
@@ -369,11 +367,10 @@ class Dataset(Base):
 
         return {**default_retrieval_model, **self.retrieval_model}
 
-    @property
-    def tags(self) -> Sequence[Tag]:
-        return self.get_tags(session=db.session())
+    def tags(self, session: Session) -> Sequence[Tag]:
+        return self.get_tags(session)
 
-    def get_tags(self, *, session: Session) -> Sequence[Tag]:
+    def get_tags(self, session: Session) -> Sequence[Tag]:
         tags = session.scalars(
             select(Tag)
             .join(TagBinding, Tag.id == TagBinding.tag_id)
