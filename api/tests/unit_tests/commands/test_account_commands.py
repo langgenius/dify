@@ -1,11 +1,12 @@
 from unittest.mock import Mock
 
+import pytest
 from click.testing import CliRunner
 
 from commands.account import reset_email, reset_password
 
 
-def test_reset_password_does_not_swallow_keyboard_interrupt(monkeypatch):
+def test_reset_password_does_not_swallow_keyboard_interrupt(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "commands.account.AccountService.get_account_by_email_with_case_fallback",
         Mock(return_value=Mock()),
@@ -21,7 +22,7 @@ def test_reset_password_does_not_swallow_keyboard_interrupt(monkeypatch):
     assert "Invalid password" not in result.output
 
 
-def test_reset_email_does_not_swallow_keyboard_interrupt(monkeypatch):
+def test_reset_email_does_not_swallow_keyboard_interrupt(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "commands.account.AccountService.get_account_by_email_with_case_fallback",
         Mock(return_value=Mock()),
