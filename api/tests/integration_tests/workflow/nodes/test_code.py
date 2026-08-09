@@ -15,7 +15,7 @@ from graphon.node_events import NodeRunResult
 from graphon.nodes.code.code_node import CodeNode
 from graphon.nodes.code.entities import CodeNodeData
 from graphon.nodes.code.limits import CodeNodeLimits
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from tests.workflow_test_utils import build_test_graph_init_params
 
 pytest_plugins = ("tests.integration_tests.workflow.nodes.__mock.code_executor",)
@@ -44,7 +44,9 @@ def _init_code_node(code_config: dict) -> CodeNode:
     )
     variable_pool.add(["code", "args1"], 1)
     variable_pool.add(["code", "args2"], 2)
-    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+    graph_runtime_state = RuntimeState(
+        workflow_id="test-workflow", variable_pool=variable_pool, start_at=time.perf_counter()
+    )
     node_factory = DifyNodeFactory(graph_init_params=init_params, graph_runtime_state=graph_runtime_state)
     Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
     return CodeNode(

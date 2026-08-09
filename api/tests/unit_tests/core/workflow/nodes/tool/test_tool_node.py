@@ -15,7 +15,7 @@ from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.node_events import StreamChunkEvent, StreamCompletedEvent
 from graphon.nodes.tool.entities import ToolNodeData
 from graphon.nodes.tool_runtime_entities import ToolRuntimeHandle, ToolRuntimeMessage
-from graphon.runtime import GraphRuntimeState
+from graphon.runtime import RuntimeState
 from graphon.variables.segments import ArrayFileSegment
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_variable_pool
 
@@ -107,7 +107,7 @@ def tool_node(monkeypatch) -> ToolNode:
     )
 
     variable_pool = build_test_variable_pool(variables=build_system_variables(user_id="user-id"))
-    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=0.0)
+    graph_runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=variable_pool, start_at=0.0)
 
     config = graph_config["nodes"][0]
 

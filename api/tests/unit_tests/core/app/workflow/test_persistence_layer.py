@@ -9,16 +9,7 @@ from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.ops.ops_trace_manager import TraceTask, TraceTaskName
 from core.workflow.system_variables import SystemVariableKey, build_system_variables
-from graphon.entities import WorkflowNodeExecution, WorkflowStartReason
-from graphon.entities.pause_reason import SchedulingPause
-from graphon.enums import (
-    BuiltinNodeTypes,
-    WorkflowExecutionStatus,
-    WorkflowNodeExecutionMetadataKey,
-    WorkflowNodeExecutionStatus,
-    WorkflowType,
-)
-from graphon.graph_events import (
+from graphon.engine_events import (
     GraphRunAbortedEvent,
     GraphRunFailedEvent,
     GraphRunPartialSucceededEvent,
@@ -32,9 +23,18 @@ from graphon.graph_events import (
     NodeRunStartedEvent,
     NodeRunSucceededEvent,
 )
+from graphon.entities import WorkflowNodeExecution, WorkflowStartReason
+from graphon.entities.pause_reason import SchedulingPause
+from graphon.enums import (
+    BuiltinNodeTypes,
+    WorkflowExecutionStatus,
+    WorkflowNodeExecutionMetadataKey,
+    WorkflowNodeExecutionStatus,
+    WorkflowType,
+)
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.node_events import NodeRunResult
-from graphon.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
+from graphon.runtime import ReadOnlyGraphRuntimeStateWrapper, RuntimeState, VariablePool
 
 
 class _RepoRecorder:
@@ -65,13 +65,15 @@ def _make_layer(
     system_variables: list | None = None,
     *,
     extras: dict | None = None,
+    graph_data: dict | None = None,
     trace_manager: object | None = None,
 ):
     system_variables = system_variables or build_system_variables(
         workflow_execution_id="run-id",
         conversation_id="conv-id",
     )
-    runtime_state = GraphRuntimeState(
+    runtime_state = RuntimeState(
+        workflow_id="test-workflow",
         variable_pool=VariablePool.from_bootstrap(system_variables=system_variables),
         start_at=0.0,
     )
@@ -95,7 +97,7 @@ def _make_layer(
         workflow_id="workflow-id",
         workflow_type=WorkflowType.WORKFLOW,
         version="1",
-        graph_data={"nodes": [], "edges": []},
+        graph_data=graph_data if graph_data is not None else {"nodes": [], "edges": []},
     )
 
     workflow_execution_repo = _RepoRecorder()
@@ -358,8 +360,6 @@ class TestWorkflowPersistenceLayer:
             node_title="Start",
             start_at=_naive_utc_now(),
             predecessor_node_id="prev",
-            in_iteration_id="iter",
-            in_loop_id="loop",
         )
         layer._handle_node_started(start_event)
 
@@ -378,6 +378,49 @@ class TestWorkflowPersistenceLayer:
         )
         layer._handle_node_retry(retry_event)
         assert node_repo.saved_exec_data
+
+    @pytest.mark.parametrize(
+        ("container_id", "expected_iteration_id", "expected_loop_id"),
+        [
+            ("", None, None),
+            ("iteration-node", "iteration-node", None),
+            ("loop-node", None, "loop-node"),
+        ],
+    )
+    def test_handle_node_started_persists_direct_container_owner(
+        self,
+        container_id: str,
+        expected_iteration_id: str | None,
+        expected_loop_id: str | None,
+    ):
+        graph_data = {
+            "nodes": [
+                {"id": "iteration-node", "data": {"type": "iteration", "container_id": "loop-node"}},
+                {"id": "loop-node", "data": {"type": "loop"}},
+            ],
+            "edges": [],
+        }
+        layer, _, node_repo, _ = _make_layer(graph_data=graph_data)
+        layer._handle_graph_run_started()
+
+        layer._handle_node_started(
+            NodeRunStartedEvent(
+                id="exec",
+                node_id="node",
+                node_type=BuiltinNodeTypes.START,
+                node_title="Start",
+                start_at=_naive_utc_now(),
+                container_id=container_id,
+            )
+        )
+
+        execution = node_repo.saved[-1]
+        assert execution.metadata[WorkflowNodeExecutionMetadataKey.ITERATION_ID] == expected_iteration_id
+        assert execution.metadata[WorkflowNodeExecutionMetadataKey.LOOP_ID] == expected_loop_id
+        snapshot = layer._node_snapshots["exec"]
+        assert snapshot.iteration_id == expected_iteration_id
+        assert snapshot.loop_id == expected_loop_id
+        assert not (snapshot.iteration_id and snapshot.loop_id)
 
     def test_agent_v2_caller_row_is_saved_synchronously_before_node_run(self):
         layer, _, node_repo, _ = _make_layer()

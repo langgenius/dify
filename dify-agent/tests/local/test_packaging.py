@@ -18,7 +18,7 @@ CLIENT_SHARED_DTO_DEPENDENCIES = {
 SERVER_RUNTIME_DEPENDENCIES = {
     "e2b>=2.38.0,<3.0.0",
     "fastapi==0.136.0",
-    "graphon==0.5.2",
+    "graphon==0.7.0",
     "grpcio>=1.60.0,<2.0.0",
     "jsonschema>=4.23.0,<5.0.0",
     "jwcrypto>=1.5.6,<2",

@@ -50,7 +50,7 @@ from core.base.tts.app_generator_tts_publisher import AudioTrunk
 from core.workflow.system_variables import build_system_variables, system_variables_to_mapping
 from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMUsage
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole
 from models.model import AppMode, EndUser
@@ -107,7 +107,8 @@ def _make_pipeline():
 class TestWorkflowGenerateTaskPipeline:
     def test_to_blocking_response_falls_back_to_human_input_required_when_pause_event_missing(self):
         pipeline = _make_pipeline()
-        pipeline._graph_runtime_state = GraphRuntimeState(
+        pipeline._graph_runtime_state = RuntimeState(
+            workflow_id="test-workflow",
             variable_pool=build_test_variable_pool(
                 variables=build_system_variables(workflow_execution_id="run-id"),
             ),
@@ -205,7 +206,8 @@ class TestWorkflowGenerateTaskPipeline:
 
     def test_handle_workflow_started_event_sets_run_id(self, monkeypatch: pytest.MonkeyPatch, sqlite_engine):
         pipeline = _make_pipeline()
-        pipeline._graph_runtime_state = GraphRuntimeState(
+        pipeline._graph_runtime_state = RuntimeState(
+            workflow_id="test-workflow",
             variable_pool=build_test_variable_pool(variables=build_system_variables(workflow_execution_id="run-id")),
             start_at=0.0,
         )
@@ -245,7 +247,8 @@ class TestWorkflowGenerateTaskPipeline:
     def test_handle_workflow_failed_event_yields_error(self):
         pipeline = _make_pipeline()
         pipeline._workflow_execution_id = "run-id"
-        pipeline._graph_runtime_state = GraphRuntimeState(
+        pipeline._graph_runtime_state = RuntimeState(
+            workflow_id="test-workflow",
             variable_pool=build_test_variable_pool(variables=build_system_variables(workflow_execution_id="run-id")),
             start_at=0.0,
         )
@@ -332,7 +335,8 @@ class TestWorkflowGenerateTaskPipeline:
     def test_handle_stop_event_yields_finish(self):
         pipeline = _make_pipeline()
         pipeline._workflow_execution_id = "run-id"
-        pipeline._graph_runtime_state = GraphRuntimeState(
+        pipeline._graph_runtime_state = RuntimeState(
+            workflow_id="test-workflow",
             variable_pool=VariablePool.from_bootstrap(
                 system_variables=build_system_variables(workflow_execution_id="run-id")
             ),
@@ -768,7 +772,8 @@ class TestWorkflowGenerateTaskPipeline:
     def test_success_partial_and_pause_handlers(self):
         pipeline = _make_pipeline()
         pipeline._workflow_execution_id = "run-id"
-        pipeline._graph_runtime_state = GraphRuntimeState(
+        pipeline._graph_runtime_state = RuntimeState(
+            workflow_id="test-workflow",
             variable_pool=VariablePool.from_bootstrap(
                 system_variables=build_system_variables(workflow_execution_id="run-id")
             ),
@@ -798,7 +803,8 @@ class TestWorkflowGenerateTaskPipeline:
     def test_dispatch_event_direct_failed_and_unhandled_paths(self):
         pipeline = _make_pipeline()
         pipeline._workflow_execution_id = "run-id"
-        pipeline._graph_runtime_state = GraphRuntimeState(
+        pipeline._graph_runtime_state = RuntimeState(
+            workflow_id="test-workflow",
             variable_pool=VariablePool.from_bootstrap(
                 system_variables=build_system_variables(workflow_execution_id="run-id")
             ),
@@ -816,7 +822,8 @@ class TestWorkflowGenerateTaskPipeline:
 
     def test_process_stream_response_main_match_paths_and_cleanup(self):
         pipeline = _make_pipeline()
-        pipeline._graph_runtime_state = GraphRuntimeState(
+        pipeline._graph_runtime_state = RuntimeState(
+            workflow_id="test-workflow",
             variable_pool=VariablePool.from_bootstrap(
                 system_variables=build_system_variables(workflow_execution_id="run-id")
             ),

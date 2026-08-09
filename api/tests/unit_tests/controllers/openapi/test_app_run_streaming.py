@@ -47,21 +47,18 @@ def test_app_run_request_has_no_response_mode_field():
 
 def test_stop_task_calls_queue_manager_and_graph_engine(app: Flask, monkeypatch: pytest.MonkeyPatch):
     queue_mock = Mock()
-    graph_mock = Mock()
-    graph_instance = Mock()
-    graph_mock.return_value = graph_instance
+    send_abort_command = Mock()
 
     run_module = sys.modules["controllers.openapi.app_run"]
     monkeypatch.setattr(run_module, "AppQueueManager", queue_mock)
-    monkeypatch.setattr(run_module, "GraphEngineManager", graph_mock)
-    monkeypatch.setattr(run_module, "redis_client", object())
+    monkeypatch.setattr(run_module, "send_abort_command", send_abort_command)
 
     api = AppRunTaskStopApi()
     with app.test_request_context("/openapi/v1/apps/app-1/tasks/task-1:stop", method="POST"):
         result = api.post.__handler__(api, _SealableContext(), app_id="app-1", task_id="task-1")
 
     queue_mock.set_stop_flag_no_user_check.assert_called_once_with("task-1")
-    graph_instance.send_stop_command.assert_called_once_with("task-1")
+    send_abort_command.assert_called_once_with("task-1")
     assert result == TaskStopResponse(result="success")
 
 

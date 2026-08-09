@@ -2,13 +2,12 @@
 
 This service provides centralized logic for task control operations
 like stopping tasks, handling both legacy Redis flag mechanism and
-new GraphEngine command channel mechanism.
+new Engine command channel mechanism.
 """
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
+from core.app.apps.workflow.command_channels import send_abort_command
 from core.app.entities.app_invoke_entities import InvokeFrom
-from extensions.ext_redis import redis_client
-from graphon.graph_engine.manager import GraphEngineManager
 from models.model import AppMode
 
 
@@ -26,7 +25,7 @@ class AppTaskService:
 
         This method handles stopping tasks using both mechanisms:
         1. Legacy Redis flag mechanism (for backward compatibility)
-        2. New GraphEngine command channel (for workflow-based apps)
+        2. New Engine command channel (for workflow-based apps)
 
         Args:
             task_id: The task ID to stop
@@ -40,7 +39,7 @@ class AppTaskService:
         # Legacy mechanism: Set stop flag in Redis
         AppQueueManager.set_stop_flag(task_id, invoke_from, user_id)
 
-        # New mechanism: Send stop command via GraphEngine for workflow-based apps
+        # New mechanism: Send stop command via Engine for workflow-based apps
         # This ensures proper workflow status recording in the persistence layer
         if app_mode in (AppMode.ADVANCED_CHAT, AppMode.WORKFLOW):
-            GraphEngineManager(redis_client).send_stop_command(task_id)
+            send_abort_command(task_id)

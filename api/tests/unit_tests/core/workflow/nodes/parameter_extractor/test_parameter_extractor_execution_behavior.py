@@ -20,7 +20,7 @@ from graphon.model_runtime.memory.prompt_message_memory import PromptMessageMemo
 from graphon.nodes.llm.protocols import CredentialsProvider, ModelFactory
 from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from graphon.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from tests.unit_tests.core.workflow.nodes.parameter_extractor.fixtures.model import get_mocked_fetch_model_instance
 from tests.workflow_test_utils import build_test_graph_init_params
 
@@ -77,7 +77,9 @@ def init_parameter_extractor_node(
     variable_pool.add(["a", "args1"], 1)
     variable_pool.add(["a", "args2"], 2)
 
-    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+    graph_runtime_state = RuntimeState(
+        workflow_id="test-workflow", variable_pool=variable_pool, start_at=time.perf_counter()
+    )
 
     node = ParameterExtractorNode(
         node_id=str(uuid.uuid4()),

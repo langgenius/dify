@@ -4,16 +4,16 @@ from typing import ClassVar, override
 
 from apscheduler.schedulers.background import BackgroundScheduler  # type: ignore
 
-from graphon.graph_engine.entities.commands import CommandType, GraphEngineCommand
-from graphon.graph_engine.layers import GraphEngineLayer
-from graphon.graph_events import GraphEngineEvent
+from graphon.engine.command import PauseCommand
+from graphon.engine.layer import Layer
+from graphon.engine_events import EngineEvent
 from services.workflow.entities import WorkflowScheduleCFSPlanEntity
 from services.workflow.scheduler import CFSPlanScheduler, SchedulerCommand
 
 logger = logging.getLogger(__name__)
 
 
-class TimeSliceLayer(GraphEngineLayer):
+class TimeSliceLayer(Layer):
     """
     CFS plan scheduler to control the timeslice of the workflow.
     """
@@ -51,14 +51,7 @@ class TimeSliceLayer(GraphEngineLayer):
                     return
 
                 # send command to pause the workflow
-                self.command_channel.send_command(
-                    GraphEngineCommand(
-                        command_type=CommandType.PAUSE,
-                        payload={
-                            "reason": SchedulerCommand.RESOURCE_LIMIT_REACHED,
-                        },
-                    )
-                )
+                self.command_channel.send_command(PauseCommand(reason=SchedulerCommand.RESOURCE_LIMIT_REACHED))
 
         except Exception:
             logger.exception("scheduler error during check if the workflow need to be suspended")
@@ -80,7 +73,7 @@ class TimeSliceLayer(GraphEngineLayer):
             )
 
     @override
-    def on_event(self, event: GraphEngineEvent):
+    def on_event(self, event: EngineEvent):
         pass
 
     @override

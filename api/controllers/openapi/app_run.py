@@ -46,6 +46,7 @@ from controllers.service_api.app.error import (
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.base_app_queue_manager import AppQueueManager
+from core.app.apps.workflow.command_channels import send_abort_command
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
     AppInvokeQuotaExceededError,
@@ -53,8 +54,6 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from extensions.ext_redis import redis_client
-from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.oauth_bearer import Scope
@@ -208,5 +207,5 @@ class AppRunTaskStopApi(Resource):
     )
     def post(self, ctx: Context, app_id: str, task_id: str):
         AppQueueManager.set_stop_flag_no_user_check(task_id)
-        GraphEngineManager(redis_client).send_stop_command(task_id)
+        send_abort_command(task_id)
         return TaskStopResponse(result="success")
