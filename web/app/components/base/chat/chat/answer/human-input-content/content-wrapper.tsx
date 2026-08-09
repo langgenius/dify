@@ -53,7 +53,7 @@ const ContentWrapper = ({
                 ? t(($) => $['chat.collapse'], { ns: 'share' })
                 : t(($) => $['chat.expand'], { ns: 'share' })
             } ${nodeTitle}`}
-            className="flex size-4 shrink-0 cursor-pointer items-center justify-center focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+            className="flex size-4 shrink-0 cursor-pointer appearance-none items-center justify-center focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
             onClick={handleToggleExpand}
           >
             {isExpanded ? (
