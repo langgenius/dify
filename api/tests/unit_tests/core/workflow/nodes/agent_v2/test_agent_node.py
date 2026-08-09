@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock, patch
 from uuid import UUID, uuid4
+
 import pytest
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.layers.ask_human import AskHumanToolResult

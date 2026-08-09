@@ -407,7 +407,9 @@ def test_delete_archived_workflow_runs_all_pages_continues_until_empty_page(monk
     ]
 
 
-def test_delete_archived_workflow_runs_all_pages_fetches_empty_page_after_exact_full_page(monkeypatch: pytest.MonkeyPatch):
+def test_delete_archived_workflow_runs_all_pages_fetches_empty_page_after_exact_full_page(
+    monkeypatch: pytest.MonkeyPatch,
+):
     deleter = _patch_bundle_deleter(
         monkeypatch,
         [
@@ -492,7 +494,9 @@ def test_delete_archived_workflow_runs_all_pages_uses_preview_cursor_for_dry_run
     ]
 
 
-def test_delete_archived_workflow_runs_dry_run_failure_separates_preview_and_destructive_cursors(monkeypatch: pytest.MonkeyPatch):
+def test_delete_archived_workflow_runs_dry_run_failure_separates_preview_and_destructive_cursors(
+    monkeypatch: pytest.MonkeyPatch,
+):
     failed_result = BundleOperationResult(
         catalog_id=_CURSOR_2,
         bundle_id="bundle-failed",
