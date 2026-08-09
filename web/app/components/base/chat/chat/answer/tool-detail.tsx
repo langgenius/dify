@@ -1,6 +1,5 @@
 import type { ToolInfoInThought } from '../type'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiArrowDownSLine, RiArrowRightSLine, RiHammerFill, RiLoader2Line } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -30,12 +29,14 @@ const ToolDetail = ({ payload }: ToolDetailProps) => {
         )}
         onClick={() => setExpand(!expand)}
       >
-        {isFinished && <RiHammerFill aria-hidden="true" className="mr-1 size-3.5" />}
-        {!isFinished && <RiLoader2Line aria-hidden="true" className="mr-1 size-3.5 animate-spin" />}
+        {isFinished && <span aria-hidden className="mr-1 i-ri-hammer-fill size-3.5" />}
+        {!isFinished && (
+          <span aria-hidden className="mr-1 i-ri-loader-2-line size-3.5 animate-spin" />
+        )}
         {t(($) => $[`thought.${isFinished ? 'used' : 'using'}`], { ns: 'tools' })}
         <span className="mx-1 text-text-secondary">{toolLabel}</span>
-        {!expand && <RiArrowRightSLine aria-hidden="true" className="size-4" />}
-        {expand && <RiArrowDownSLine aria-hidden="true" className="ml-auto size-4" />}
+        {!expand && <span aria-hidden className="i-ri-arrow-right-s-line size-4" />}
+        {expand && <span aria-hidden className="ml-auto i-ri-arrow-down-s-line size-4" />}
       </button>
       {expand && (
         <>
