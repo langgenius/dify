@@ -67,7 +67,7 @@ describe('ViewFormDropdown', () => {
     expect(screen.queryByText('share.chat.chatSettingsTitle')).not.toBeInTheDocument()
 
     // Find trigger (ActionButton renders a button)
-    const trigger = screen.getByRole('button')
+    const trigger = screen.getByRole('button', { name: 'share.chat.chatSettingsTitle' })
     expect(trigger).toBeInTheDocument()
 
     // Open dropdown
@@ -90,7 +90,7 @@ describe('ViewFormDropdown', () => {
 
     const user = userEvent.setup()
     render(<ViewFormDropdown />)
-    await user.click(screen.getByRole('button'))
+    await user.click(screen.getByRole('button', { name: 'share.chat.chatSettingsTitle' }))
 
     expect(screen.getByText('Text Form')).toBeInTheDocument()
     expect(screen.getByText('Num Form')).toBeInTheDocument()
@@ -99,7 +99,7 @@ describe('ViewFormDropdown', () => {
   it('applies correct state to ActionButton when open', async () => {
     const user = userEvent.setup()
     render(<ViewFormDropdown />)
-    const trigger = screen.getByRole('button')
+    const trigger = screen.getByRole('button', { name: 'share.chat.chatSettingsTitle' })
 
     // closed state
     expect(trigger).not.toHaveClass('action-btn-hover')
