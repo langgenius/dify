@@ -1,7 +1,6 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Kbd } from '@langgenius/dify-ui/kbd'
-import { RiArrowLeftLine, RiArrowRightLine, RiCloseLine, RiRefreshLine } from '@remixicon/react'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -166,7 +165,7 @@ const ImagePreviewer = ({ images, initialIndex = 0, onClose }: ImagePreviewerPro
             className="size-9 rounded-[10px] p-0"
             size="large"
           >
-            <RiCloseLine className="size-5" />
+            <span aria-hidden className="i-ri-close-line size-5" />
           </Button>
           <Kbd>{formatForDisplay('Escape')}</Kbd>
         </div>
@@ -181,7 +180,7 @@ const ImagePreviewer = ({ images, initialIndex = 0, onClose }: ImagePreviewerPro
               className="size-9 rounded-full p-0"
               size="large"
             >
-              <RiRefreshLine className="size-5" />
+              <span aria-hidden className="i-ri-refresh-line size-5" />
             </Button>
           </div>
         )}
@@ -209,7 +208,7 @@ const ImagePreviewer = ({ images, initialIndex = 0, onClose }: ImagePreviewerPro
           disabled={currentIndex === 0}
           size="large"
         >
-          <RiArrowLeftLine className="size-5" />
+          <span aria-hidden className="i-ri-arrow-left-line size-5" />
         </Button>
         <Button
           variant="secondary"
@@ -219,7 +218,7 @@ const ImagePreviewer = ({ images, initialIndex = 0, onClose }: ImagePreviewerPro
           disabled={currentIndex === images.length - 1}
           size="large"
         >
-          <RiArrowRightLine className="size-5" />
+          <span aria-hidden className="i-ri-arrow-right-line size-5" />
         </Button>
       </DialogContent>
     </Dialog>
