@@ -1,4 +1,3 @@
-import type { FC } from 'react'
 import type { CitationItem } from '../type'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -16,11 +15,11 @@ type CitationProps = {
   showHitInfo?: boolean
   containerClassName?: string
 }
-const Citation: FC<CitationProps> = ({
+const Citation = ({
   data,
   showHitInfo,
   containerClassName = 'chat-answer-container',
-}) => {
+}: CitationProps) => {
   const { t } = useTranslation()
   const elesRef = useRef<HTMLDivElement[]>([])
   const [limitNumberInOneLine, setLimitNumberInOneLine] = useState(0)
