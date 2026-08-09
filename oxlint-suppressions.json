@@ -5730,9 +5730,6 @@
     }
   },
   "web/app/signup/components/input-mail.tsx": {
-    "jsx_a11y/tabindex-no-positive": {
-      "count": 2
-    },
     "no-restricted-imports": {
       "count": 1
     }
