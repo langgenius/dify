@@ -9,13 +9,11 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
 import { useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
 import { useModalContext } from '@/context/modal-context'
 import { consoleQuery } from '@/service/client'
 import {
@@ -125,7 +123,10 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
       >
         <div className="flex grow flex-col items-start justify-center gap-1.5 py-1">
           <div className="flex items-center gap-1 self-stretch text-text-secondary">
-            <ApiConnectionMod className="size-4" />
+            <span
+              aria-hidden
+              className="i-custom-vender-solid-development-api-connection-mod size-4"
+            />
             <div className="system-sm-medium">{api.name}</div>
           </div>
           <div className="self-stretch system-xs-regular text-text-tertiary">{endpoint}</div>
@@ -136,9 +137,9 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
               aria-label={t(($) => $['operation.edit'], { ns: 'common' })}
               onClick={handleEditClick}
             >
-              <RiEditLine
+              <span
                 aria-hidden
-                className="size-4 text-text-tertiary hover:text-text-secondary"
+                className="i-ri-edit-line size-4 text-text-tertiary hover:text-text-secondary"
               />
             </ActionButton>
             <ActionButton
@@ -148,9 +149,9 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
               onMouseEnter={() => setIsHovered(true)}
               onMouseLeave={() => setIsHovered(false)}
             >
-              <RiDeleteBinLine
+              <span
                 aria-hidden
-                className="size-4 text-text-tertiary hover:text-text-destructive"
+                className="i-ri-delete-bin-line size-4 text-text-tertiary hover:text-text-destructive"
               />
             </ActionButton>
           </div>
