@@ -55,7 +55,6 @@ const mockResetWorkflowVersionHistory = vi.fn()
 const mockInvalidateAppTriggers = vi.fn()
 const mockFetchAppDetail = vi.fn()
 const mockInvalidateQueries = vi.fn()
-const mockSetQueryData = vi.fn()
 const mockSetPublishedAt = vi.fn()
 const mockSetLastPublishedHasUserInput = vi.fn()
 
@@ -119,7 +118,6 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
     ...actual,
     useQueryClient: () => ({
       invalidateQueries: mockInvalidateQueries,
-      setQueryData: mockSetQueryData,
     }),
   }
 })
@@ -577,12 +575,6 @@ describe('FeaturesTrigger', () => {
           message: 'common.api.actionSuccess',
         })
         expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-id' })
-        expect(mockSetQueryData).toHaveBeenCalledWith(
-          ['apps', 'detail', 'app-id'],
-          expect.objectContaining({
-            name: 'Updated App',
-          }),
-        )
         expect(useAppStore.getState().appDetail).toEqual(
           expect.objectContaining({
             name: 'Updated App',

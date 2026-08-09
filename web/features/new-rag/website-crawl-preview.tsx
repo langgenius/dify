@@ -1096,7 +1096,7 @@ export function WebsiteCrawlPreview({
             <button
               type="button"
               aria-expanded={optionsExpanded}
-              className="flex h-9 w-full items-center gap-2 px-3 text-left outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
+              className="flex h-9 w-full items-center gap-2 px-3 text-left focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset"
               onClick={() => setOptionsExpanded((expanded) => !expanded)}
             >
               <span

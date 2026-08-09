@@ -219,7 +219,7 @@ def test_get_configs_inserts_inherit_and_filters_tenant_provider_and_source(
     )
     monkeypatch.setattr(
         "services.model_load_balancing_service.encrypter.decrypt_token_with_decoding",
-        lambda _value, _key, _cipher: "plain",
+        lambda _value, _decoding: "plain",
     )
     monkeypatch.setattr(
         "services.model_load_balancing_service.LBModelManager.get_config_in_cooldown_and_ttl",

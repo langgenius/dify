@@ -13,7 +13,8 @@ from controllers.console.apikey import BaseApiKeyListResource, BaseApiKeyResourc
 from models import Account
 from models.account import AccountStatus, TenantAccountRole
 from models.enums import ApiTokenType
-from models.model import ApiToken, App
+from models.model import ApiToken, App, AppMode
+from services.agent.errors import AgentAccessNotReadyError
 
 
 def _make_list_resource() -> BaseApiKeyListResource:
@@ -108,6 +109,24 @@ def test_create_api_key_uses_injected_session_and_tenant_id() -> None:
     session.execute.assert_called_once()
     session.scalar.assert_called_once()
     session.commit.assert_called_once()
+
+
+def test_create_agent_api_key_requires_published_access() -> None:
+    resource = _make_list_resource()
+    app = App(id="app-1", tenant_id="tenant-1", mode=AppMode.AGENT)
+    session = MagicMock()
+    session.execute.return_value.scalar_one_or_none.return_value = app
+
+    with patch(
+        "controllers.console.apikey.AppService.ensure_agent_app_access_ready",
+        side_effect=AgentAccessNotReadyError(),
+    ) as ensure_access_ready:
+        with pytest.raises(AgentAccessNotReadyError):
+            resource._create_api_key("app-1", "tenant-1", session=session)
+
+    ensure_access_ready.assert_called_once_with(app, session=session)
+    session.scalar.assert_not_called()
+    session.add.assert_not_called()
 
 
 def test_delete_api_key_rejects_non_admin_account() -> None:
