@@ -1,4 +1,3 @@
-import type { FC } from 'react'
 import type { UserAction } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -18,7 +17,7 @@ type UserActionItemProps = {
   readonly?: boolean
 }
 
-const UserActionItem: FC<UserActionItemProps> = ({ data, onChange, onDelete, readonly }) => {
+const UserActionItem = ({ data, onChange, onDelete, readonly }: UserActionItemProps) => {
   const { t } = useTranslation()
 
   const handleIDChange = (e: React.ChangeEvent<HTMLInputElement>) => {
