@@ -45,7 +45,7 @@ describe('HumanInputFilledFormList', () => {
       'Approved by Alice',
     )
 
-    await user.click(screen.getAllByTestId('expand-icon')[0]!)
+    await user.click(screen.getAllByRole('button', { name: 'share.chat.collapse' })[0]!)
 
     expect(screen.getAllByTestId('submitted-field-values')).toHaveLength(1)
   })
