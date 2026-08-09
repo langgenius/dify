@@ -1,5 +1,4 @@
 'use client'
-import type { FC } from 'react'
 import type { CodeLanguage } from '../../code/types'
 import type { GenRes } from '@/service/debug'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -19,13 +18,7 @@ type Props = Readonly<{
   codeLanguages: CodeLanguage
 }>
 
-const CodeGenerateBtn: FC<Props> = ({
-  nodeId,
-  currentCode,
-  className,
-  codeLanguages,
-  onGenerated,
-}) => {
+const CodeGenerateBtn = ({ nodeId, currentCode, className, codeLanguages, onGenerated }: Props) => {
   const { t } = useTranslation()
   const [showAutomatic, setShowAutomatic] = useState(false)
   const handleAutomaticRes = useCallback(
