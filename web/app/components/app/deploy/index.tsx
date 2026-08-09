@@ -6,6 +6,7 @@ import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import Loading from '@/app/components/base/loading'
 import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { AppModeEnum } from '@/types/app'
@@ -124,13 +125,16 @@ export default function AppDeploy() {
   const appDetail = useAppStore((state) => state.appDetail)
   const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const canDeploy = getAppACLCapabilities(appDetail?.permission_keys, {
+
+  if (!appDetail) return <Loading type="app" />
+
+  const canDeploy = getAppACLCapabilities(appDetail.permission_keys, {
     currentUserId,
-    resourceMaintainer: appDetail?.maintainer,
+    resourceMaintainer: appDetail.maintainer,
     workspacePermissionKeys,
   }).canDeploy
 
-  if (appDetail?.mode !== AppModeEnum.WORKFLOW || !canDeploy) return null
+  if (appDetail.mode !== AppModeEnum.WORKFLOW || !canDeploy) return null
 
   return (
     <AppDeployStateBoundary appId={appDetail.id}>

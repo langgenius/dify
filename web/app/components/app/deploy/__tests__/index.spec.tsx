@@ -649,6 +649,7 @@ function render(
 }
 
 let appPermissionKeys: string[] = [AppACLPermission.Deploy]
+let appDetailAvailable = true
 const mockConsoleState = vi.hoisted(() => ({
   userProfile: { id: 'user-1' },
   workspacePermissionKeys: [] as string[],
@@ -710,13 +711,16 @@ vi.mock('@/service/use-tools', () => ({
 }))
 
 vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) =>
-    selector({
-      appDetail: {
-        ...mockBuiltInEnvironment.appDetail,
-        permission_keys: appPermissionKeys,
-      },
-    }),
+  useStore: (selector: (state: Record<string, unknown>) => unknown) => {
+    const appDetail = appDetailAvailable
+      ? {
+          ...mockBuiltInEnvironment.appDetail,
+          permission_keys: appPermissionKeys,
+        }
+      : undefined
+
+    return selector({ appDetail })
+  },
 }))
 
 vi.mock('@/context/account-state', async () => {
@@ -739,6 +743,7 @@ describe('AppDeploy', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     appPermissionKeys = [AppACLPermission.Deploy]
+    appDetailAvailable = true
     mockBuiltInEnvironment.appDetail.enable_api = false
     mockBuiltInEnvironment.appDetail.enable_site = true
     mockBuiltInEnvironment.mcpServerDetail.status = 'active'
@@ -874,6 +879,17 @@ describe('AppDeploy', () => {
       screen.getByRole('region', { name: 'deployments.studio.builtInTitle' }),
     )
     expect(builtInEnvironment.getByText('Updated at 03-09 16:03 by Alice')).toBeInTheDocument()
+  })
+
+  it('shows loading while the app detail is unavailable', () => {
+    appDetailAvailable = false
+
+    render(<AppDeploy />)
+
+    expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: 'common.appMenus.deploy' }),
+    ).not.toBeInTheDocument()
   })
 
   it('does not render deployment controls without app deploy ACL permission', () => {
