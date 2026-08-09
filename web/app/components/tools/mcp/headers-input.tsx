@@ -2,7 +2,6 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
-import { RiAddLine, RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid } from 'uuid'
@@ -51,7 +50,7 @@ const HeadersInput = ({ headersItems, onChange, readonly = false, isMasked = fal
         </div>
         {!readonly && (
           <Button variant="secondary" size="small" onClick={handleAddItem} className="w-full">
-            <RiAddLine className="size-4" />
+            <span aria-hidden className="i-ri-add-line size-4" />
             {t(($) => $['mcp.modal.addHeader'], { ns: 'tools' })}
           </Button>
         )}
@@ -108,7 +107,7 @@ const HeadersInput = ({ headersItems, onChange, readonly = false, isMasked = fal
                   onClick={() => handleRemoveItem(index)}
                   className="mr-2"
                 >
-                  <RiDeleteBinLine aria-hidden className="size-4 text-text-destructive" />
+                  <span aria-hidden className="i-ri-delete-bin-line size-4 text-text-destructive" />
                 </ActionButton>
               )}
             </div>
@@ -117,7 +116,7 @@ const HeadersInput = ({ headersItems, onChange, readonly = false, isMasked = fal
       </div>
       {!readonly && (
         <Button variant="secondary" size="small" onClick={handleAddItem} className="w-full">
-          <RiAddLine className="size-4" />
+          <span aria-hidden className="i-ri-add-line size-4" />
           {t(($) => $['mcp.modal.addHeader'], { ns: 'tools' })}
         </Button>
       )}
