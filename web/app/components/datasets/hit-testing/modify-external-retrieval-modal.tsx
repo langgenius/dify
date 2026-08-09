@@ -16,13 +16,13 @@ type ModifyExternalRetrievalModalProps = {
   initialScoreThresholdEnabled: boolean
 }
 
-const ModifyExternalRetrievalModal: React.FC<ModifyExternalRetrievalModalProps> = ({
+const ModifyExternalRetrievalModal = ({
   onClose,
   onSave,
   initialTopK,
   initialScoreThreshold,
   initialScoreThresholdEnabled,
-}) => {
+}: ModifyExternalRetrievalModalProps) => {
   const { t } = useTranslation()
   const [topK, setTopK] = useState(initialTopK)
   const [scoreThreshold, setScoreThreshold] = useState(initialScoreThreshold)
