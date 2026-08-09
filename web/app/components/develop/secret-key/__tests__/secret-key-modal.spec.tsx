@@ -77,9 +77,8 @@ async function renderModal(appId?: string) {
 
 async function confirmFirstKeyDeletion() {
   const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-  const deleteButton = document.body.querySelectorAll('button.action-btn')[1]
-  expect(deleteButton).toBeInTheDocument()
-  await user.click(deleteButton!)
+  const deleteButton = screen.getByRole('button', { name: 'common.operation.delete' })
+  await user.click(deleteButton)
   await act(async () => {
     vi.runAllTimers()
   })
