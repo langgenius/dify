@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { RiSparklingFill, RiTerminalBoxLine } from '@remixicon/react'
 import { useState } from 'react'
 import TabSliderNew from '.'
 
@@ -7,12 +6,14 @@ const OPTIONS = [
   {
     value: 'visual',
     text: 'Visual builder',
-    icon: <RiSparklingFill className="mr-2 size-4 text-primary-500" />,
+    icon: <span className="mr-2 i-ri-sparkling-fill size-4 text-primary-500" aria-hidden="true" />,
   },
   {
     value: 'code',
     text: 'Code',
-    icon: <RiTerminalBoxLine className="mr-2 size-4 text-text-tertiary" />,
+    icon: (
+      <span className="mr-2 i-ri-terminal-box-line size-4 text-text-tertiary" aria-hidden="true" />
+    ),
   },
 ]
 
