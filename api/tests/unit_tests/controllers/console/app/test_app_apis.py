@@ -59,7 +59,6 @@ from controllers.console.app.workflow import AdvancedChatWorkflowRunPayload, Syn
 from controllers.console.app.workflow_app_log import WorkflowAppLogQuery
 from controllers.console.app.workflow_draft_variable import (
     EnvironmentVariableUpdatePayload,
-    WorkflowDraftVariableListQuery,
     WorkflowDraftVariableUpdatePayload,
 )
 from controllers.console.app.workflow_statistic import WorkflowStatisticQuery
@@ -345,7 +344,7 @@ class TestOpsTraceEndpoints:
         )
 
         with app.test_request_context("/?tracing_provider=langfuse"):
-            result = method(api, TraceProviderQuery(tracing_provider="langfuse"), MagicMock(id="app-1"))
+            result = method(api, app_model=MagicMock(id="app-1"))
 
         assert result == {"has_not_configured": True}
 
@@ -364,11 +363,7 @@ class TestOpsTraceEndpoints:
             json={"tracing_provider": "langfuse", "tracing_config": {"api_key": "k"}},
         ):
             with pytest.raises(BadRequest):
-                method(
-                    api,
-                    TraceConfigPayload(tracing_provider="langfuse", tracing_config={"api_key": "k"}),
-                    MagicMock(id="app-1"),
-                )
+                method(api, app_model=MagicMock(id="app-1"))
 
     def test_trace_app_config_delete_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = ops_trace_module.TraceAppConfigApi()
@@ -382,7 +377,7 @@ class TestOpsTraceEndpoints:
 
         with app.test_request_context("/?tracing_provider=langfuse"):
             with pytest.raises(BadRequest):
-                method(api, TraceProviderQuery(tracing_provider="langfuse"), MagicMock(id="app-1"))
+                method(api, app_model=MagicMock(id="app-1"))
 
 
 class TestSiteEndpoints:
@@ -422,13 +417,7 @@ class TestSiteEndpoints:
         site = self._add_site(db.session)
 
         with database_app.test_request_context("/", json={"title": "My Site", "input_placeholder": "Ask me anything"}):
-            result = method(
-                api,
-                AppSiteUpdatePayload(title="My Site", input_placeholder="Ask me anything"),
-                db.session,
-                _make_account(),
-                app_model=_make_app(),
-            )
+            result = method(api, db.session, _make_account(), app_model=_make_app())
 
         db.session.refresh(site)
         assert isinstance(result, dict)
@@ -495,7 +484,7 @@ class TestWorkflowAppLogEndpoints:
         )
 
         with database_app.test_request_context("/?page=1&limit=20"):
-            result = method(api, WorkflowAppLogQuery(page=1, limit=20), app_model=_make_app("app-1"))
+            result = method(api, app_model=_make_app("app-1"))
 
         assert result == {"page": 1, "limit": 20, "total": 0, "has_more": False, "data": []}
 
@@ -525,12 +514,7 @@ class TestWorkflowDraftVariableEndpoints:
         monkeypatch.setattr(workflow_draft_variable_module, "WorkflowService", DummyWorkflowService)
 
         with database_app.test_request_context("/?page=1&limit=20"):
-            result = method(
-                api,
-                WorkflowDraftVariableListQuery(page=1, limit=20),
-                _make_account(),
-                app_model=_make_app("app-1"),
-            )
+            result = method(api, _make_account(), app_model=_make_app("app-1"))
 
         assert result == {"items": [], "total": 0}
 
@@ -583,16 +567,7 @@ class TestWorkflowDraftVariableEndpoints:
                 "deleted_environment_variable_ids": ["env-b"],
             },
         ):
-            result = method(
-                api,
-                EnvironmentVariableUpdatePayload(
-                    environment_variables=[{"id": "env-a", "name": "a", "value_type": "string", "value": "new-a"}],
-                    patch=True,
-                    deleted_environment_variable_ids=["env-b"],
-                ),
-                _make_account(),
-                app_model=_make_app(),
-            )
+            result = method(api, _make_account(), app_model=_make_app())
 
         assert result == {"result": "success"}
         assert [(variable.id, variable.value) for variable in captured["environment_variables"]] == [("env-a", "new-a")]
@@ -638,7 +613,7 @@ class TestWorkflowStatisticEndpoints:
         with database_app.test_request_context("/"):
             account = _make_account()
             account.timezone = "UTC"
-            response = method(api, WorkflowStatisticQuery(), account, app_model=_make_app("app-1", tenant_id="t1"))
+            response = method(api, account, app_model=_make_app("app-1", tenant_id="t1"))
 
         assert response.get_json() == {"data": [{"date": "2024-01-01"}]}
 
@@ -668,7 +643,7 @@ class TestWorkflowStatisticEndpoints:
         with database_app.test_request_context("/"):
             account = _make_account()
             account.timezone = "UTC"
-            response = method(api, WorkflowStatisticQuery(), account, app_model=_make_app("app-1", tenant_id="t1"))
+            response = method(api, account, app_model=_make_app("app-1", tenant_id="t1"))
 
         assert response.get_json() == {"data": [{"date": "2024-01-02"}]}
 
@@ -698,7 +673,7 @@ class TestWorkflowTriggerEndpoints:
         db.session.commit()
 
         with database_app.test_request_context("/?node_id=node-1"):
-            result = method(api, Parser(node_id="node-1"), app_model=_make_app())
+            result = method(api, app_model=_make_app())
 
         assert isinstance(result, dict)
         assert {"id", "webhook_id", "webhook_url", "webhook_debug_url", "node_id", "created_at"} <= set(result.keys())
