@@ -1,17 +1,17 @@
 import json
+from collections.abc import Sequence
 from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
 import sqlalchemy as sa
 from sqlalchemy import DateTime, String, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from libs.uuid_utils import uuidv7
 
 from .account import Account
 from .base import Base
-from .engine import db
 from .model import Tag, TagBinding
 from .types import AdjustedJSON, LongText, StringUUID
 
@@ -65,13 +65,12 @@ class CustomizedSnippet(Base):
         DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
 
-    @property
-    def graph_dict(self) -> dict[str, Any]:
+    def get_graph_dict(self, *, session: Session) -> dict[str, Any]:
         """Get graph from associated workflow."""
         if self.workflow_id:
             from .workflow import Workflow
 
-            workflow = db.session.get(Workflow, self.workflow_id)
+            workflow = session.get(Workflow, self.workflow_id)
             if workflow:
                 return json.loads(workflow.graph) if workflow.graph else {}
         return {}
@@ -81,10 +80,9 @@ class CustomizedSnippet(Base):
         """Parse input_fields JSON to list."""
         return json.loads(self.input_fields) if self.input_fields else []
 
-    @property
-    def tags(self):
+    def get_tags(self, *, session: Session) -> Sequence[Tag]:
         """Get snippet tags."""
-        tags = db.session.scalars(
+        tags = session.scalars(
             sa.select(Tag)
             .join(TagBinding, Tag.id == TagBinding.tag_id)
             .where(
@@ -97,24 +95,21 @@ class CustomizedSnippet(Base):
 
         return tags or []
 
-    @property
-    def created_by_account(self) -> Account | None:
+    def get_created_by_account(self, *, session: Session) -> Account | None:
         """Get the account that created this snippet."""
         if self.created_by:
-            return db.session.get(Account, self.created_by)
+            return session.get(Account, self.created_by)
         return None
 
-    @property
-    def author_name(self) -> str | None:
+    def get_author_name(self, *, session: Session) -> str | None:
         """Get the creator account name."""
-        account = self.created_by_account
+        account = self.get_created_by_account(session=session)
         return account.name if account else None
 
-    @property
-    def updated_by_account(self) -> Account | None:
+    def get_updated_by_account(self, *, session: Session) -> Account | None:
         """Get the account that last updated this snippet."""
         if self.updated_by:
-            return db.session.get(Account, self.updated_by)
+            return session.get(Account, self.updated_by)
         return None
 
     @property

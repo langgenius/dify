@@ -5,6 +5,7 @@ from unittest.mock import ANY, Mock
 
 import pytest
 from flask import Flask
+from pydantic import ValidationError
 from werkzeug.exceptions import NotFound
 
 from controllers.console.workspace import snippets as snippets_module
@@ -40,6 +41,19 @@ def _account(account_id: str = "account-1") -> Account:
 
 
 def _snippet(**overrides) -> SimpleNamespace:
+    """Fake snippet shaped like ``CustomizedSnippet``: session-backed lookups are ``get_*`` methods.
+
+    Keep these as ``get_*`` callables rather than plain attributes — ``SnippetResponseSource``
+    falls back to ``__getattr__`` when a property raises ``AttributeError``, so plain attributes
+    would let a renamed or misspelled accessor pass unnoticed.
+    """
+    lookups = {
+        "get_graph_dict": {},
+        "get_tags": [],
+        "get_created_by_account": None,
+        "get_author_name": None,
+        "get_updated_by_account": None,
+    }
     data = {
         "id": "snippet-1",
         "tenant_id": "tenant-1",
@@ -50,19 +64,25 @@ def _snippet(**overrides) -> SimpleNamespace:
         "use_count": 0,
         "is_published": False,
         "icon_info": None,
-        "graph_dict": {},
         "input_fields_list": [],
-        "tags": [],
         "created_by": None,
-        "author_name": None,
-        "created_by_account": None,
         "created_at": datetime.fromtimestamp(1_704_067_200, UTC),
         "updated_by": None,
-        "updated_by_account": None,
         "updated_at": datetime.fromtimestamp(1_704_153_600, UTC),
     }
+    for name, value in lookups.items():
+        data[name] = _lookup_stub(overrides.pop(name, value))
     data.update(overrides)
     return SimpleNamespace(**data)
+
+
+def _lookup_stub(value):
+    """Build a ``get_*(*, session)`` stub that ignores the session and returns ``value``."""
+
+    def _get(*, session: object) -> object:  # noqa: ARG001 -- signature must match the real accessor
+        return value
+
+    return _get
 
 
 def test_snippet_list_query_reads_repeated_values(app: Flask):
@@ -303,6 +323,42 @@ def test_patch_snippet_updates_and_commits(app: Flask, monkeypatch: pytest.Monke
         "name": "New",
         "icon_info": {"icon": "star", "icon_background": None, "icon_type": None, "icon_url": None},
     }
+    session.commit.assert_called_once()
+
+
+def test_patch_snippet_does_not_report_a_committed_write_as_a_bad_request(app: Flask, monkeypatch: pytest.MonkeyPatch):
+    """Only the update itself maps ValueError to 400.
+
+    ``ValidationError`` subclasses ``ValueError``, so serializing the committed row must not be
+    covered by that ``except`` — otherwise a persisted update is reported back as a 400.
+    """
+    user = _account("account-1")
+    snippet = _snippet()
+    updated_snippet = _snippet(get_graph_dict="not-a-dict")
+    session = SimpleNamespace(merge=Mock(return_value=snippet), commit=Mock())
+
+    class SessionContext(_SessionContext):
+        def __init__(self, engine, *args, **kwargs):
+            super().__init__(engine, *args, session=session, **kwargs)
+
+    monkeypatch.setattr(snippets_module.SnippetService, "get_snippet_by_id", Mock(return_value=snippet))
+    monkeypatch.setattr(snippets_module.SnippetService, "update_snippet", Mock(return_value=updated_snippet))
+    monkeypatch.setattr(snippets_module, "Session", SessionContext)
+    monkeypatch.setattr(snippets_module, "db", SimpleNamespace(engine=object()))
+
+    req_data = snippets_module.UpdateSnippetPayload(name="New")
+
+    api = snippets_module.CustomizedSnippetDetailApi()
+    handler = unwrap(api.patch)
+
+    with app.test_request_context(
+        "/workspaces/current/customized-snippets/snippet-1",
+        method="PATCH",
+        json={"name": "New"},
+    ):
+        with pytest.raises(ValidationError):
+            handler(api, req_data, "tenant-1", user, snippet_id="snippet-1")
+
     session.commit.assert_called_once()
 
 
