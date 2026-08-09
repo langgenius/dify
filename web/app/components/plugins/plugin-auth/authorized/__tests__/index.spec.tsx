@@ -435,16 +435,11 @@ describe('Authorized Component', () => {
         wrapper: createWrapper(),
       })
 
-      // Find and click delete button in the credential item
-      const deleteButton = document.querySelector('svg.ri-delete-bin-line')?.closest('button')
-      if (deleteButton) {
-        fireEvent.click(deleteButton)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.delete' }))
 
-        // Confirm dialog should appear
-        await waitFor(() => {
-          expect(screen.getByText('datasetDocuments.list.delete.title'))!.toBeInTheDocument()
-        })
-      }
+      await waitFor(() => {
+        expect(screen.getByText('datasetDocuments.list.delete.title'))!.toBeInTheDocument()
+      })
     })
 
     it('should close confirm dialog when cancel is clicked', async () => {
@@ -460,38 +455,14 @@ describe('Authorized Component', () => {
         expect(screen.getByText('OAuth'))!.toBeInTheDocument()
       })
 
-      // Find all SVG icons in the action area and try to find delete button
-      const svgIcons = Array.from(document.querySelectorAll('svg.remixicon'))
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+      })
+      fireEvent.click(screen.getByText('common.operation.cancel'))
 
-      for (const svg of svgIcons) {
-        const button = svg.closest('button')
-        if (button && !button.classList.contains('w-full')) {
-          await act(async () => {
-            fireEvent.click(button)
-          })
-
-          const confirmDialog = screen.queryByText('datasetDocuments.list.delete.title')
-          if (confirmDialog) {
-            // Click cancel button - this triggers closeConfirm
-            const cancelButton = screen.getByText('common.operation.cancel')
-            await act(async () => {
-              fireEvent.click(cancelButton)
-            })
-
-            // Dialog should close
-            await waitFor(() => {
-              expect(
-                screen.queryByText('datasetDocuments.list.delete.title'),
-              ).not.toBeInTheDocument()
-            })
-            break
-          }
-        }
-      }
-
-      // Component should render correctly regardless of button finding
-      // Component should render correctly regardless of button finding
-      expect(screen.getByText('OAuth'))!.toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.queryByText('datasetDocuments.list.delete.title')).not.toBeInTheDocument()
+      })
     })
 
     it('should call deletePluginCredential when confirm is clicked', async () => {
@@ -511,29 +482,21 @@ describe('Authorized Component', () => {
         { wrapper: createWrapper() },
       )
 
-      // Trigger delete
-      const deleteButton = document.querySelector('svg.ri-delete-bin-line')?.closest('button')
-      if (deleteButton) {
-        fireEvent.click(deleteButton)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+      await waitFor(() => {
+        expect(screen.getByText('datasetDocuments.list.delete.title'))!.toBeInTheDocument()
+      })
 
-        await waitFor(() => {
-          expect(screen.getByText('datasetDocuments.list.delete.title'))!.toBeInTheDocument()
-        })
+      fireEvent.click(screen.getByText('common.operation.confirm'))
 
-        // Click confirm button
-        const confirmButton = screen.getByText('common.operation.confirm')
-        fireEvent.click(confirmButton)
-
-        await waitFor(() => {
-          expect(mockDeletePluginCredential).toHaveBeenCalledWith({ credential_id: 'delete-me' })
-        })
-
-        expect(toastMocks.call).toHaveBeenCalledWith({
-          type: 'success',
-          message: 'common.api.actionSuccess',
-        })
-        expect(onUpdate).toHaveBeenCalled()
-      }
+      await waitFor(() => {
+        expect(mockDeletePluginCredential).toHaveBeenCalledWith({ credential_id: 'delete-me' })
+      })
+      expect(toastMocks.call).toHaveBeenCalledWith({
+        type: 'success',
+        message: 'common.api.actionSuccess',
+      })
+      expect(onUpdate).toHaveBeenCalled()
     })
 
     it('should not delete when no credential id is pending', async () => {
@@ -608,32 +571,21 @@ describe('Authorized Component', () => {
         { wrapper: createWrapper() },
       )
 
-      // Find rename button (RiEditLine)
-      const renameButton = document.querySelector('svg.ri-edit-line')?.closest('button')
-      if (renameButton) {
-        fireEvent.click(renameButton)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.rename' }))
+      fireEvent.change(screen.getByRole('textbox'), { target: { value: 'New Name' } })
+      fireEvent.click(screen.getByText('common.operation.save'))
 
-        // Should be in rename mode
-        const input = screen.getByRole('textbox')
-        fireEvent.change(input, { target: { value: 'New Name' } })
-
-        // Click save
-        const saveButton = screen.getByText('common.operation.save')
-        fireEvent.click(saveButton)
-
-        await waitFor(() => {
-          expect(mockUpdatePluginCredential).toHaveBeenCalledWith({
-            credential_id: 'rename-id',
-            name: 'New Name',
-          })
+      await waitFor(() => {
+        expect(mockUpdatePluginCredential).toHaveBeenCalledWith({
+          credential_id: 'rename-id',
+          name: 'New Name',
         })
-
-        expect(toastMocks.call).toHaveBeenCalledWith({
-          type: 'success',
-          message: 'common.api.actionSuccess',
-        })
-        expect(onUpdate).toHaveBeenCalled()
-      }
+      })
+      expect(toastMocks.call).toHaveBeenCalledWith({
+        type: 'success',
+        message: 'common.api.actionSuccess',
+      })
+      expect(onUpdate).toHaveBeenCalled()
     })
 
     it('should call handleRename from Item component for OAuth credentials', async () => {
@@ -657,54 +609,21 @@ describe('Authorized Component', () => {
         { wrapper: createWrapper() },
       )
 
-      // OAuth credentials have rename enabled - find rename button by looking for svg with edit icon
-      const allButtons = Array.from(document.querySelectorAll('button'))
-      let renameButton: Element | null = null
-      for (const btn of allButtons) {
-        if (btn.querySelector('svg.remixicon') && !btn.querySelector('svg.ri-delete-bin-line')) {
-          // Check if this is an action button (not delete)
-          const svg = btn.querySelector('svg')
-          if (
-            svg &&
-            !svg.classList.contains('ri-delete-bin-line') &&
-            !svg.classList.contains('ri-arrow-down-s-line')
-          ) {
-            renameButton = btn
-            break
-          }
-        }
-      }
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.rename' }))
+      fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Renamed OAuth' } })
+      fireEvent.click(screen.getByText('common.operation.save'))
 
-      if (renameButton) {
-        fireEvent.click(renameButton)
-
-        // Should enter rename mode
-        const input = screen.queryByRole('textbox')
-        if (input) {
-          fireEvent.change(input, { target: { value: 'Renamed OAuth' } })
-
-          // Click save to trigger handleRename
-          const saveButton = screen.getByText('common.operation.save')
-          fireEvent.click(saveButton)
-
-          await waitFor(() => {
-            expect(mockUpdatePluginCredential).toHaveBeenCalledWith({
-              credential_id: 'oauth-rename-id',
-              name: 'Renamed OAuth',
-            })
-          })
-
-          expect(toastMocks.call).toHaveBeenCalledWith({
-            type: 'success',
-            message: 'common.api.actionSuccess',
-          })
-          expect(onUpdate).toHaveBeenCalled()
-        }
-      } else {
-        // Verify component renders properly
-        // Verify component renders properly
-        expect(screen.getByText('OAuth'))!.toBeInTheDocument()
-      }
+      await waitFor(() => {
+        expect(mockUpdatePluginCredential).toHaveBeenCalledWith({
+          credential_id: 'oauth-rename-id',
+          name: 'Renamed OAuth',
+        })
+      })
+      expect(toastMocks.call).toHaveBeenCalledWith({
+        type: 'success',
+        message: 'common.api.actionSuccess',
+      })
+      expect(onUpdate).toHaveBeenCalled()
     })
 
     it('should not call handleRename when already doing action', async () => {
@@ -788,54 +707,23 @@ describe('Authorized Component', () => {
       // Verify OAuth section renders
       expect(screen.getByText('OAuth'))!.toBeInTheDocument()
 
-      // Find all action buttons in the credential item
-      // The rename button should be present for OAuth credentials
-      const actionButtons = Array.from(
-        document.querySelectorAll('.group-hover\\:flex button, button'),
-      )
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.rename' }))
+      fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Fully Renamed' } })
+      await act(async () => {
+        fireEvent.click(screen.getByText('common.operation.save'))
+      })
 
-      // Find the rename trigger button (the one with edit icon, not delete)
-      for (const btn of actionButtons) {
-        const hasDeleteIcon =
-          btn.querySelector('svg path')?.getAttribute('d')?.includes('DELETE') ||
-          btn.querySelector('.ri-delete-bin-line')
-        const hasSvg = btn.querySelector('svg')
-
-        if (hasSvg && !hasDeleteIcon && !btn.textContent?.includes('setDefault')) {
-          // This might be the rename button - click it
-          fireEvent.click(btn)
-
-          // Check if we entered rename mode
-          const input = screen.queryByRole('textbox')
-          if (input) {
-            // We're in rename mode - update value and save
-            fireEvent.change(input, { target: { value: 'Fully Renamed' } })
-
-            const saveButton = screen.getByText('common.operation.save')
-            await act(async () => {
-              fireEvent.click(saveButton)
-            })
-
-            // Verify updatePluginCredential was called
-            await waitFor(() => {
-              expect(mockUpdatePluginCredential).toHaveBeenCalledWith({
-                credential_id: 'full-rename-test-id',
-                name: 'Fully Renamed',
-              })
-            })
-
-            // Verify success notification
-            expect(toastMocks.call).toHaveBeenCalledWith({
-              type: 'success',
-              message: 'common.api.actionSuccess',
-            })
-
-            // Verify onUpdate callback
-            expect(onUpdate).toHaveBeenCalled()
-            break
-          }
-        }
-      }
+      await waitFor(() => {
+        expect(mockUpdatePluginCredential).toHaveBeenCalledWith({
+          credential_id: 'full-rename-test-id',
+          name: 'Fully Renamed',
+        })
+      })
+      expect(toastMocks.call).toHaveBeenCalledWith({
+        type: 'success',
+        message: 'common.api.actionSuccess',
+      })
+      expect(onUpdate).toHaveBeenCalled()
     })
   })
 
@@ -856,18 +744,11 @@ describe('Authorized Component', () => {
         wrapper: createWrapper(),
       })
 
-      // Find edit button (RiEqualizer2Line)
-      const editButton = document.querySelector('svg.ri-equalizer-2-line')?.closest('button')
-      if (editButton) {
-        fireEvent.click(editButton)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.edit' }))
 
-        // ApiKeyModal should appear - look for modal content
-        await waitFor(() => {
-          // The modal should be rendered
-          // The modal should be rendered
-          expect(document.querySelector('.fixed'))!.toBeInTheDocument()
-        })
-      }
+      await waitFor(() => {
+        expect(document.querySelector('.fixed'))!.toBeInTheDocument()
+      })
     })
 
     it('should close ApiKeyModal and clear state when onClose is called', async () => {
@@ -884,37 +765,15 @@ describe('Authorized Component', () => {
         wrapper: createWrapper(),
       })
 
-      // Open edit modal
-      const editButton = document.querySelector('svg.ri-equalizer-2-line')?.closest('button')
-      if (editButton) {
-        fireEvent.click(editButton)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+      await waitFor(() => {
+        expect(document.querySelector('.fixed'))!.toBeInTheDocument()
+      })
 
-        await waitFor(() => {
-          expect(document.querySelector('.fixed'))!.toBeInTheDocument()
-        })
-
-        // Find and click close/cancel button in the modal
-        // Look for cancel button or close icon
-        const allButtons = Array.from(document.querySelectorAll('button'))
-        let closeButton: Element | null = null
-        for (const btn of allButtons) {
-          const text = btn.textContent?.toLowerCase() || ''
-          if (text.includes('cancel')) {
-            closeButton = btn
-            break
-          }
-        }
-
-        if (closeButton) {
-          fireEvent.click(closeButton)
-
-          await waitFor(() => {
-            // Verify component state is cleared by checking we can open again
-            // Verify component state is cleared by checking we can open again
-            expect(screen.getByText('API Keys'))!.toBeInTheDocument()
-          })
-        }
-      }
+      fireEvent.click(screen.getByText('common.operation.cancel'))
+      await waitFor(() => {
+        expect(screen.getByText('API Keys'))!.toBeInTheDocument()
+      })
     })
 
     it('should properly handle ApiKeyModal onClose callback to reset state', async () => {
@@ -932,52 +791,17 @@ describe('Authorized Component', () => {
         wrapper: createWrapper(),
       })
 
-      // Find and click edit button
-      const editButtons = Array.from(document.querySelectorAll('button'))
-      let editBtn: Element | null = null
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+      await waitFor(() => {
+        expect(document.querySelectorAll('.fixed').length).toBeGreaterThan(0)
+      })
 
-      for (const btn of editButtons) {
-        if (btn.querySelector('svg.ri-equalizer-2-line')) {
-          editBtn = btn
-          break
-        }
-      }
-
-      if (editBtn) {
-        fireEvent.click(editBtn)
-
-        // Wait for modal to open
-        await waitFor(() => {
-          const modals = document.querySelectorAll('.fixed')
-          expect(modals.length).toBeGreaterThan(0)
-        })
-
-        // Find cancel button to close modal - look for it in all buttons
-        const allButtons = Array.from(document.querySelectorAll('button'))
-        let cancelBtn: Element | null = null
-
-        for (const btn of allButtons) {
-          if (btn.textContent?.toLowerCase().includes('cancel')) {
-            cancelBtn = btn
-            break
-          }
-        }
-
-        if (cancelBtn) {
-          await act(async () => {
-            fireEvent.click(cancelBtn!)
-          })
-
-          // Verify state was reset - we should be able to see the credential list again
-          await waitFor(() => {
-            expect(screen.getByText('API Keys'))!.toBeInTheDocument()
-          })
-        }
-      } else {
-        // Verify component renders
-        // Verify component renders
+      await act(async () => {
+        fireEvent.click(screen.getByText('common.operation.cancel'))
+      })
+      await waitFor(() => {
         expect(screen.getByText('API Keys'))!.toBeInTheDocument()
-      }
+      })
     })
 
     it('should execute onClose callback setting editValues to null', async () => {
@@ -999,45 +823,22 @@ describe('Authorized Component', () => {
       // Wait for component to render
       expect(screen.getByText('API Keys'))!.toBeInTheDocument()
 
-      // Find edit button by looking for settings icon
-      const settingsIcons = document.querySelectorAll('svg.ri-equalizer-2-line')
-      if (settingsIcons.length > 0) {
-        const editButton = settingsIcons[0]!.closest('button')
-        if (editButton) {
-          // Click to open edit modal
-          await act(async () => {
-            fireEvent.click(editButton)
-          })
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+      })
+      await waitFor(
+        () => {
+          expect(document.querySelectorAll('.fixed').length).toBeGreaterThan(0)
+        },
+        { timeout: 2000 },
+      )
 
-          // Wait for ApiKeyModal to render
-          await waitFor(
-            () => {
-              const modals = document.querySelectorAll('.fixed')
-              expect(modals.length).toBeGreaterThan(0)
-            },
-            { timeout: 2000 },
-          )
-
-          // Find and click the close/cancel button
-          // The modal should have a cancel button
-          const buttons = Array.from(document.querySelectorAll('button'))
-          for (const btn of buttons) {
-            const text = btn.textContent?.toLowerCase() || ''
-            if (text.includes('cancel') || text.includes('close')) {
-              await act(async () => {
-                fireEvent.click(btn)
-              })
-
-              // Verify the modal is closed and state is reset
-              // The component should render normally after close
-              await waitFor(() => {
-                expect(screen.getByText('API Keys'))!.toBeInTheDocument()
-              })
-              break
-            }
-          }
-        }
-      }
+      await act(async () => {
+        fireEvent.click(screen.getByText('common.operation.cancel'))
+      })
+      await waitFor(() => {
+        expect(screen.getByText('API Keys'))!.toBeInTheDocument()
+      })
     })
 
     it('should call handleRemove when onRemove is triggered from ApiKeyModal', async () => {
@@ -1059,43 +860,22 @@ describe('Authorized Component', () => {
       // Wait for component to render
       expect(screen.getByText('API Keys'))!.toBeInTheDocument()
 
-      // Find and click edit button to open ApiKeyModal
-      const settingsIcons = document.querySelectorAll('svg.ri-equalizer-2-line')
-      if (settingsIcons.length > 0) {
-        const editButton = settingsIcons[0]!.closest('button')
-        if (editButton) {
-          await act(async () => {
-            fireEvent.click(editButton)
-          })
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+      })
+      await waitFor(() => {
+        expect(document.querySelectorAll('.fixed').length).toBeGreaterThan(0)
+      })
 
-          // Wait for ApiKeyModal to render
-          await waitFor(() => {
-            const modals = document.querySelectorAll('.fixed')
-            expect(modals.length).toBeGreaterThan(0)
-          })
-
-          // The remove button in Modal has text 'common.operation.remove'
-          // Look for it specifically
-          const removeButton = screen.queryByText('common.operation.remove')
-          if (removeButton) {
-            await act(async () => {
-              fireEvent.click(removeButton)
-            })
-
-            // After clicking remove, a confirm dialog should appear
-            // because handleRemove sets deleteCredentialId
-            await waitFor(
-              () => {
-                const confirmDialog = screen.queryByText('datasetDocuments.list.delete.title')
-                if (confirmDialog) {
-                  expect(confirmDialog)!.toBeInTheDocument()
-                }
-              },
-              { timeout: 1000 },
-            )
-          }
-        }
-      }
+      await act(async () => {
+        fireEvent.click(screen.getByText('common.operation.remove'))
+      })
+      await waitFor(
+        () => {
+          expect(screen.getByText('datasetDocuments.list.delete.title'))!.toBeInTheDocument()
+        },
+        { timeout: 1000 },
+      )
     })
 
     it('should trigger ApiKeyModal onClose callback when cancel is clicked', async () => {
