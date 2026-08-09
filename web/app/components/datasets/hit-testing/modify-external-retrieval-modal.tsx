@@ -55,8 +55,12 @@ const ModifyExternalRetrievalModal: React.FC<ModifyExternalRetrievalModalProps> 
         <div className="grow system-xl-semibold text-text-primary">
           {t(($) => $.settingTitle, { ns: 'datasetHitTesting' })}
         </div>
-        <ActionButton className="ml-auto" onClick={onClose}>
-          <RiCloseLine className="size-4 shrink-0" />
+        <ActionButton
+          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+          className="ml-auto"
+          onClick={onClose}
+        >
+          <RiCloseLine aria-hidden className="size-4 shrink-0" />
         </ActionButton>
       </div>
       <div className="flex flex-col items-start justify-center gap-4 self-stretch p-4 pt-2">
