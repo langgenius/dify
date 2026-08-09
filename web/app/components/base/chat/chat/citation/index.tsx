@@ -112,7 +112,7 @@ const Citation: FC<CitationProps> = ({
             type="button"
             aria-expanded={showMore}
             aria-label={citationToggleLabel}
-            className="flex h-7 cursor-pointer items-center rounded-lg bg-components-panel-bg px-2 system-xs-medium text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+            className="flex h-7 cursor-pointer appearance-none items-center rounded-lg bg-components-panel-bg px-2 system-xs-medium text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
             onClick={() => setShowMore((v) => !v)}
           >
             {!showMore ? (
