@@ -132,16 +132,26 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
         </div>
         {canManageExternalKnowledgeApi && (
           <div className="flex items-start gap-1">
-            <ActionButton onClick={handleEditClick}>
-              <RiEditLine className="size-4 text-text-tertiary hover:text-text-secondary" />
+            <ActionButton
+              aria-label={t(($) => $['operation.edit'], { ns: 'common' })}
+              onClick={handleEditClick}
+            >
+              <RiEditLine
+                aria-hidden
+                className="size-4 text-text-tertiary hover:text-text-secondary"
+              />
             </ActionButton>
             <ActionButton
+              aria-label={t(($) => $['operation.delete'], { ns: 'common' })}
               className="hover:bg-state-destructive-hover"
               onClick={handleDeleteClick}
               onMouseEnter={() => setIsHovered(true)}
               onMouseLeave={() => setIsHovered(false)}
             >
-              <RiDeleteBinLine className="size-4 text-text-tertiary hover:text-text-destructive" />
+              <RiDeleteBinLine
+                aria-hidden
+                className="size-4 text-text-tertiary hover:text-text-destructive"
+              />
             </ActionButton>
           </div>
         )}
