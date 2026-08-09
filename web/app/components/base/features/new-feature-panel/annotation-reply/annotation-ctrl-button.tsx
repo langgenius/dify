@@ -1,9 +1,8 @@
 'use client'
-import type { FC } from 'react'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiEditLine, RiFileEditLine } from '@remixicon/react'
-import * as React from 'react'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { useModalContext } from '@/context/modal-context'
@@ -19,7 +18,7 @@ type Props = Readonly<{
   onAdded: (annotationId: string, authorName: string) => void
   onEdit: () => void
 }>
-const AnnotationCtrlButton: FC<Props> = ({
+const AnnotationCtrlButton = ({
   cached,
   query,
   answer,
@@ -27,7 +26,7 @@ const AnnotationCtrlButton: FC<Props> = ({
   messageId,
   onAdded,
   onEdit,
-}) => {
+}: Props) => {
   const { t } = useTranslation()
   const { plan, enableBilling } = useProviderContext()
   const isAnnotationFull =
@@ -85,4 +84,4 @@ const AnnotationCtrlButton: FC<Props> = ({
     </>
   )
 }
-export default React.memo(AnnotationCtrlButton)
+export default memo(AnnotationCtrlButton)
