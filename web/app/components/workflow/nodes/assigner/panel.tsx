@@ -1,7 +1,6 @@
-import type { FC } from 'react'
 import type { AssignerNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import * as React from 'react'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import VarList from './components/var-list'
@@ -10,7 +9,7 @@ import useConfig from './use-config'
 
 const i18nPrefix = 'nodes.assigner'
 
-const Panel: FC<NodePanelProps<AssignerNodeType>> = ({ id, data }) => {
+const Panel = ({ id, data }: NodePanelProps<AssignerNodeType>) => {
   const { t } = useTranslation()
   const handleAddOperationItem = useHandleAddOperationItem()
   const {
@@ -64,4 +63,4 @@ const Panel: FC<NodePanelProps<AssignerNodeType>> = ({ id, data }) => {
   )
 }
 
-export default React.memo(Panel)
+export default memo(Panel)
