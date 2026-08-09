@@ -1,5 +1,4 @@
 import { Button } from '@langgenius/dify-ui/button'
-import { RiCloseLine } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
@@ -60,7 +59,7 @@ const ModifyExternalRetrievalModal: React.FC<ModifyExternalRetrievalModalProps> 
           className="ml-auto"
           onClick={onClose}
         >
-          <RiCloseLine aria-hidden className="size-4 shrink-0" />
+          <span aria-hidden className="i-ri-close-line size-4 shrink-0" />
         </ActionButton>
       </div>
       <div className="flex flex-col items-start justify-center gap-4 self-stretch p-4 pt-2">
