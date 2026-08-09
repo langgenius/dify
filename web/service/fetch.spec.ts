@@ -65,9 +65,7 @@ describe('base', () => {
         if (!(request instanceof Request))
           throw new TypeError('Expected fetch to receive a Request')
         const expectedPath = path.startsWith('/') ? path : `/${path}`
-        expect(request.url).toBe(
-          `${PUBLIC_API_PREFIX}/env/workflow-app${expectedPath}`,
-        )
+        expect(request.url).toBe(`${PUBLIC_API_PREFIX}/env/workflow-app${expectedPath}`)
       },
     )
 
