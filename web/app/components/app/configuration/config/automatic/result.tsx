@@ -1,9 +1,8 @@
 'use client'
-import type { FC } from 'react'
 import type { GenRes } from '@/service/debug'
 import { Button } from '@langgenius/dify-ui/button'
 import copy from 'copy-to-clipboard'
-import * as React from 'react'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/components/app/configuration/toast'
 import CodeEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/code-editor'
@@ -24,7 +23,7 @@ type Props = Readonly<{
   generatorType: GeneratorType
 }>
 
-const Result: FC<Props> = ({
+const Result = ({
   isBasicMode,
   nodeId,
   current,
@@ -33,7 +32,7 @@ const Result: FC<Props> = ({
   versions,
   onApply,
   generatorType,
-}) => {
+}: Props) => {
   const { t } = useTranslation()
   const isGeneratorPrompt = generatorType === GeneratorType.prompt
 
@@ -94,4 +93,4 @@ const Result: FC<Props> = ({
     </div>
   )
 }
-export default React.memo(Result)
+export default memo(Result)
