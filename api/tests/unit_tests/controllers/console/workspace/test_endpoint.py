@@ -1,4 +1,4 @@
-﻿import inspect
+import inspect
 from datetime import UTC, datetime
 from unittest.mock import patch
 
