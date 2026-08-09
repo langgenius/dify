@@ -1,6 +1,5 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiAddLine, RiBookOpenLine, RiCloseLine } from '@remixicon/react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -64,7 +63,7 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({
               href={docLink('/use-dify/knowledge/external-knowledge-api')}
               target="_blank"
             >
-              <RiBookOpenLine className="size-3 text-text-accent" />
+              <span aria-hidden className="i-ri-book-open-line size-3 text-text-accent" />
               <div className="grow body-xs-regular text-text-accent">
                 {t(($) => $.externalAPIPanelDocumentation, { ns: 'dataset' })}
               </div>
@@ -75,7 +74,7 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
               onClick={() => onClose()}
             >
-              <RiCloseLine aria-hidden className="size-4 text-text-tertiary" />
+              <span aria-hidden className="i-ri-close-line size-4 text-text-tertiary" />
             </ActionButton>
           </div>
         </div>
@@ -86,7 +85,10 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({
               className="flex items-center justify-center px-3 py-2"
               onClick={handleOpenExternalAPIModal}
             >
-              <RiAddLine className="size-4 text-components-button-primary-text" />
+              <span
+                aria-hidden
+                className="i-ri-add-line size-4 text-components-button-primary-text"
+              />
               <div className="system-sm-medium text-components-button-primary-text">
                 {t(($) => $.createExternalAPI, { ns: 'dataset' })}
               </div>
