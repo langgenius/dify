@@ -1,9 +1,10 @@
 import { Button } from '@langgenius/dify-ui/button'
+import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resolveWebAppLoginRedirect } from '@/app/(shareLayout)/webapp-signin/login-redirect'
-import Input from '@/app/components/base/input'
 import { COUNT_DOWN_TIME_MS, useSetCountdownLeftTime } from '@/app/components/signin/storage'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
@@ -63,26 +64,23 @@ export default function MailAndCodeAuth() {
   }
 
   return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault()
+    <Form
+      onFormSubmit={() => {
         void handleGetEMailVerificationCode()
       }}
     >
-      <div className="mb-2">
-        <label htmlFor="email" className="my-2 system-md-semibold text-text-secondary">
+      <Field name="email" className="mb-2 block">
+        <FieldLabel className="my-2 py-0 system-md-semibold! text-text-secondary">
           {t(($) => $.email, { ns: 'login' })}
-        </label>
+        </FieldLabel>
         <div className="mt-1">
-          <Input
-            id="email"
-            name="email"
+          <FieldControl
             type="email"
             autoComplete="email"
             spellCheck={false}
             value={email}
             placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) as string}
-            onChange={(e) => setEmail(e.target.value)}
+            onValueChange={setEmail}
           />
         </div>
         <div className="mt-3">
@@ -96,7 +94,7 @@ export default function MailAndCodeAuth() {
             {t(($) => $['signup.verifyMail'], { ns: 'login' })}
           </Button>
         </div>
-      </div>
-    </form>
+      </Field>
+    </Form>
   )
 }
