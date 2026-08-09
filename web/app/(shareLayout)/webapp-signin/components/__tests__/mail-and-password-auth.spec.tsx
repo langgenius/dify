@@ -73,4 +73,14 @@ describe('MailAndPasswordAuth', () => {
       expect(webAppLoginMock).toHaveBeenCalledTimes(1)
     })
   })
+
+  it('keeps the password field name separate from the recovery link', () => {
+    render(<MailAndPasswordAuth isEmailSetup />)
+
+    expect(screen.getByLabelText('login.password', { exact: true })).toHaveAttribute(
+      'name',
+      'password',
+    )
+    expect(screen.getByRole('link', { name: 'login.forget' })).toBeInTheDocument()
+  })
 })
