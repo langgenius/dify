@@ -11,7 +11,7 @@ describe('ViewFormDropdown', () => {
     const user = userEvent.setup()
     render(<ViewFormDropdown />)
 
-    const trigger = screen.getByTestId('view-form-dropdown-trigger')
+    const trigger = screen.getByRole('button', { name: 'share.chat.chatSettingsTitle' })
     expect(screen.queryByText('Form content')).not.toBeInTheDocument()
 
     await user.click(trigger)

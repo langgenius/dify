@@ -17,11 +17,15 @@ const ViewFormDropdown = ({ iconColor }: Props) => {
         render={(props, state) => (
           <ActionButton
             {...props}
+            aria-label={t(($) => $['chat.chatSettingsTitle'], { ns: 'share' })}
             size="l"
             state={state.open ? ActionButtonState.Hover : ActionButtonState.Default}
             data-testid="view-form-dropdown-trigger"
           >
-            <div className={cn('i-ri-chat-settings-line h-4.5 w-4.5 shrink-0', iconColor)} />
+            <div
+              aria-hidden="true"
+              className={cn('i-ri-chat-settings-line h-4.5 w-4.5 shrink-0', iconColor)}
+            />
           </ActionButton>
         )}
       />
