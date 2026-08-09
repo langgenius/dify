@@ -1196,7 +1196,7 @@ class Conversation(Base):
     )
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
-    app_id = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_model_config_id = mapped_column(StringUUID, nullable=True)
     agent_workspace_binding_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     model_provider = mapped_column(String(255), nullable=True)
@@ -1206,8 +1206,8 @@ class Conversation(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     summary = mapped_column(LongText)
     _inputs: Mapped[dict[str, Any]] = mapped_column("inputs", sa.JSON)
-    introduction = mapped_column(LongText)
-    system_instruction = mapped_column(LongText)
+    introduction: Mapped[str] = mapped_column(LongText)
+    system_instruction: Mapped[str] = mapped_column(LongText)
     system_instruction_tokens: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
     status: Mapped[ConversationStatus] = mapped_column(
         EnumText(ConversationStatus, length=255), nullable=False, default=ConversationStatus.NORMAL
