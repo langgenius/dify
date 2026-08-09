@@ -177,6 +177,7 @@ const Item = ({
                 <TooltipTrigger
                   render={
                     <ActionButton
+                      aria-label={t(($) => $['operation.rename'], { ns: 'common' })}
                       disabled={disabled || !canManageCredential}
                       onClick={(e) => {
                         e.stopPropagation()
@@ -184,7 +185,7 @@ const Item = ({
                         setRenameValue(credential.name)
                       }}
                     >
-                      <span className="i-ri-edit-line size-4 text-text-tertiary" />
+                      <span aria-hidden className="i-ri-edit-line size-4 text-text-tertiary" />
                     </ActionButton>
                   }
                 />
@@ -200,6 +201,7 @@ const Item = ({
                 <TooltipTrigger
                   render={
                     <ActionButton
+                      aria-label={t(($) => $['operation.edit'], { ns: 'common' })}
                       disabled={disabled || !canManageCredential}
                       onClick={(e) => {
                         e.stopPropagation()
@@ -210,7 +212,10 @@ const Item = ({
                         })
                       }}
                     >
-                      <span className="i-ri-equalizer-2-line size-4 text-text-tertiary" />
+                      <span
+                        aria-hidden
+                        className="i-ri-equalizer-2-line size-4 text-text-tertiary"
+                      />
                     </ActionButton>
                   }
                 />
@@ -222,6 +227,7 @@ const Item = ({
               <TooltipTrigger
                 render={
                   <ActionButton
+                    aria-label={t(($) => $['operation.delete'], { ns: 'common' })}
                     className="hover:bg-transparent"
                     disabled={disabled || !canManageCredential}
                     onClick={(e) => {
@@ -229,7 +235,10 @@ const Item = ({
                       onDelete?.(credential.id)
                     }}
                   >
-                    <span className="i-ri-delete-bin-line size-4 text-text-tertiary hover:text-text-destructive" />
+                    <span
+                      aria-hidden
+                      className="i-ri-delete-bin-line size-4 text-text-tertiary hover:text-text-destructive"
+                    />
                   </ActionButton>
                 }
               />

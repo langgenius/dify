@@ -191,8 +191,7 @@ describe('Item Component', () => {
       )
 
       const enterRenameMode = () => {
-        const firstButton = result.container.querySelectorAll('button')[0] as HTMLElement
-        fireEvent.click(firstButton)
+        fireEvent.click(screen.getByRole('button', { name: 'common.operation.rename' }))
       }
 
       return { ...result, onRename, enterRenameMode }
@@ -337,7 +336,7 @@ describe('Item Component', () => {
         credentials: { api_key: 'secret' },
       })
 
-      const { container } = render(
+      render(
         <Item
           credential={credential}
           onEdit={onEdit}
@@ -348,10 +347,7 @@ describe('Item Component', () => {
         />,
       )
 
-      const editButton = container
-        .querySelector('.i-ri-equalizer-2-line')
-        ?.closest('button') as HTMLElement
-      fireEvent.click(editButton)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.edit' }))
       expect(onEdit).toHaveBeenCalledWith('edit-test-id', {
         api_key: 'secret',
         __name__: 'Edit Test',
@@ -403,7 +399,7 @@ describe('Item Component', () => {
       const onDelete = vi.fn()
       const credential = createCredential({ id: 'delete-test-id' })
 
-      const { container } = render(
+      render(
         <Item
           credential={credential}
           onDelete={onDelete}
@@ -414,10 +410,7 @@ describe('Item Component', () => {
         />,
       )
 
-      const deleteButton = container
-        .querySelector('.i-ri-delete-bin-line')
-        ?.closest('button') as HTMLElement
-      fireEvent.click(deleteButton)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.delete' }))
       expect(onDelete).toHaveBeenCalledWith('delete-test-id')
     })
 
@@ -521,7 +514,7 @@ describe('Item Component', () => {
       const onDelete = vi.fn()
       const credential = createCredential()
 
-      const { container } = render(
+      render(
         <Item
           credential={credential}
           onItemClick={onItemClick}
@@ -533,10 +526,7 @@ describe('Item Component', () => {
         />,
       )
 
-      const deleteButton = container
-        .querySelector('.i-ri-delete-bin-line')
-        ?.closest('button') as HTMLElement
-      fireEvent.click(deleteButton)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.delete' }))
       expect(onDelete).toHaveBeenCalled()
     })
   })
