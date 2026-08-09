@@ -1,7 +1,6 @@
 import type { FC } from 'react'
 import type { AssignerNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import { RiAddLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
@@ -42,7 +41,7 @@ const Panel: FC<NodePanelProps<AssignerNodeType>> = ({ id, data }) => {
             aria-label={t(($) => $['operation.add'], { ns: 'common' })}
             onClick={handleAddOperation}
           >
-            <RiAddLine aria-hidden="true" className="size-4 shrink-0 text-text-tertiary" />
+            <span aria-hidden="true" className="i-ri-add-line size-4 shrink-0 text-text-tertiary" />
           </ActionButton>
         </div>
         <VarList
