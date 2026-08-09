@@ -2,7 +2,7 @@
 name = "dify-vdb-chroma"
 version = "0.0.1"
 dependencies = [
-    "chromadb==0.5.20",
+    "chromadb==1.5.9",
 ]
 description = "Dify vector store backend (dify-vdb-chroma)."
 
