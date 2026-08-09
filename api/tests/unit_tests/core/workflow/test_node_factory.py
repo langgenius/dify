@@ -893,7 +893,7 @@ class TestDifyNodeFactoryCreateNode:
         assert type(wrapped) is DifyPreparedLLM
         assert not isinstance(wrapped, LLMPollingCapableProtocol)
 
-    def test_create_node_passes_alias_preserving_llm_data_to_constructor(self, monkeypatch, factory):
+    def test_create_node_passes_canonical_llm_data_to_constructor(self, monkeypatch, factory):
         created_node = object()
         constructor = _node_constructor(return_value=created_node)
         constructor.validate_node_data.side_effect = lambda node_data: LLMNodeData.model_validate(
@@ -926,8 +926,8 @@ class TestDifyNodeFactoryCreateNode:
 
         data = constructor.call_args.kwargs["data"]
         assert isinstance(data, Mapping)
-        assert data["structured_output_enabled"] is True
-        assert "structured_output_switch_on" not in data
+        assert data["structured_output_switch_on"] is True
+        assert "structured_output_enabled" not in data
         assert LLMNodeData.model_validate(data).structured_output_enabled is True
 
     def test_create_node_preserves_structured_output_switch_after_graphon_constructor(self, monkeypatch, factory):
