@@ -105,12 +105,6 @@
     }
   },
   "web/app/(shareLayout)/webapp-reset-password/check-code/page.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 1
     }
@@ -131,12 +125,6 @@
     }
   },
   "web/app/(shareLayout)/webapp-signin/check-code/page.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 1
     }
@@ -5672,12 +5660,6 @@
     }
   },
   "web/app/reset-password/check-code/page.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 1
     }
@@ -5698,12 +5680,6 @@
     }
   },
   "web/app/signin/check-code/page.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 1
     }
@@ -5719,12 +5695,6 @@
     }
   },
   "web/app/signup/check-code/page.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 1
     }
