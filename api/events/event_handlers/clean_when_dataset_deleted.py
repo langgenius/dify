@@ -14,7 +14,6 @@ def handle(sender: Dataset, **kwargs):
         dataset.indexing_technique,
         dataset.index_struct,
         dataset.collection_binding_id,
-        # pyrefly: ignore [bad-argument-type]
         dataset.doc_form,
         dataset.pipeline_id,
     )
