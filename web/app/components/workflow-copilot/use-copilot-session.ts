@@ -1,0 +1,220 @@
+'use client'
+
+import type { CopilotActionKind, ProgressEntry, SessionView } from './types'
+import Cookies from 'js-cookie'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/config'
+import { isSessionView, parseSSEFrame } from './types'
+
+export type UseCopilotSessionParams = {
+  baseUrl: string
+  workspaceId: string
+}
+
+export type UseCopilotSessionResult = {
+  view: SessionView | null
+  lastRaw: unknown
+  lastError: string
+  progressLog: ProgressEntry[]
+  /** Creates a new Fix session for `failedRunId` and starts streaming its progress. */
+  startFix: (appId: string, failedRunId: string) => Promise<boolean>
+  /** Re-fetches the current session (GET). No-op if no session has been created yet. */
+  refresh: () => Promise<boolean>
+  /** Posts an action (`approve_repair`, `run_verify`, ...) against the current session. */
+  runAction: (kind: CopilotActionKind, payload?: Record<string, unknown>) => Promise<boolean>
+  /** Posts a free-text message against the current session. */
+  sendMessage: (text: string) => Promise<boolean>
+}
+
+function useCopilotApi(baseUrl: string, workspaceId: string) {
+  // Memoized so the returned methods stay referentially stable across renders
+  // unless the connection inputs actually change (also what earns the `use` prefix).
+  return useMemo(() => {
+    const root = `${baseUrl.replace(/\/$/, '')}/enterprise/workflow-copilot`
+
+    const headers = (json: boolean, csrf: boolean): Record<string, string> => {
+      const h: Record<string, string> = {}
+      if (json) h['Content-Type'] = 'application/json'
+      if (csrf) h[CSRF_HEADER_NAME] = Cookies.get(CSRF_COOKIE_NAME()) || ''
+      if (workspaceId) h['X-Workspace-Id'] = workspaceId
+      return h
+    }
+
+    const create = (appId: string, failedRunId: string) =>
+      fetch(`${root}/sessions`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: headers(true, true),
+        body: JSON.stringify({ app_id: appId, failed_run_id: failedRunId }),
+      })
+
+    const get = (id: string) =>
+      fetch(`${root}/sessions/${id}`, {
+        credentials: 'include',
+        headers: headers(false, false),
+      })
+
+    const action = (
+      id: string,
+      kind: string,
+      baseVersion: number,
+      payload: Record<string, unknown> = {},
+    ) =>
+      fetch(`${root}/sessions/${id}/actions`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: headers(true, true),
+        body: JSON.stringify({ kind, payload, base_version: baseVersion }),
+      })
+
+    const message = (id: string, text: string, baseVersion: number) =>
+      fetch(`${root}/sessions/${id}/messages`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: headers(true, true),
+        body: JSON.stringify({ text, base_version: baseVersion }),
+      })
+
+    const streamURL = (id: string) => `${root}/sessions/${id}/stream`
+
+    return { create, get, action, message, streamURL }
+  }, [baseUrl, workspaceId])
+}
+
+/**
+ * Owns the workflow-copilot Fix session lifecycle: creating a session, streaming
+ * its SSE progress log, posting actions/messages, and refreshing session state.
+ * Shared by the standalone `/workflow-copilot-debug` page and the in-editor
+ * Workflow Copilot panel so both drive the exact same request/stream logic.
+ */
+export function useCopilotSession({
+  baseUrl,
+  workspaceId,
+}: UseCopilotSessionParams): UseCopilotSessionResult {
+  const [view, setView] = useState<SessionView | null>(null)
+  const [lastRaw, setLastRaw] = useState<unknown>(null)
+  const [lastError, setLastError] = useState('')
+  const [progressLog, setProgressLog] = useState<ProgressEntry[]>([])
+
+  const abortRef = useRef<AbortController | null>(null)
+  const progressIdRef = useRef(0)
+
+  const api = useCopilotApi(baseUrl, workspaceId)
+
+  // Cancel the in-flight stream when the owning component unmounts.
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort()
+    }
+  }, [])
+
+  const pushProgress = useCallback((event: string, data: unknown) => {
+    progressIdRef.current += 1
+    setProgressLog((prev) => [...prev, { id: progressIdRef.current, event, data }])
+  }, [])
+
+  const applyResponse = useCallback(async (res: Response): Promise<unknown> => {
+    const text = await res.text()
+    let parsed: unknown = text
+    try {
+      parsed = JSON.parse(text)
+    } catch {
+      // leave as raw text; still shown in the "Last Raw Response" panel
+    }
+    setLastRaw(parsed)
+    setLastError(res.ok ? '' : `HTTP ${res.status}`)
+    if (isSessionView(parsed)) setView(parsed)
+    return parsed
+  }, [])
+
+  const startStream = useCallback(
+    (sessionId: string) => {
+      abortRef.current?.abort()
+      const controller = new AbortController()
+      abortRef.current = controller
+      fetch(api.streamURL(sessionId), { credentials: 'include', signal: controller.signal })
+        .then(async (res) => {
+          const reader = res.body?.getReader()
+          if (!reader) return
+          const decoder = new TextDecoder()
+          let buffer = ''
+          let done = false
+          while (!done) {
+            const result = await reader.read()
+            done = result.done
+            if (result.value) buffer += decoder.decode(result.value, { stream: true })
+            const frames = buffer.split('\n\n')
+            buffer = frames.pop() ?? ''
+            frames.forEach((frame) => {
+              const parsed = parseSSEFrame(frame)
+              if (parsed) pushProgress(parsed.event, parsed.data)
+            })
+          }
+        })
+        .catch((err: unknown) => {
+          if (controller.signal.aborted) return
+          pushProgress('error', String(err))
+        })
+    },
+    [api, pushProgress],
+  )
+
+  const startFix = useCallback(
+    async (appId: string, failedRunId: string) => {
+      try {
+        const res = await api.create(appId, failedRunId)
+        const parsed = await applyResponse(res)
+        if (isSessionView(parsed)) startStream(parsed.SessionID)
+        return true
+      } catch (err) {
+        setLastError(String(err))
+        return false
+      }
+    },
+    [api, applyResponse, startStream],
+  )
+
+  const refresh = useCallback(async () => {
+    if (!view) return false
+    try {
+      const res = await api.get(view.SessionID)
+      await applyResponse(res)
+      return true
+    } catch (err) {
+      setLastError(String(err))
+      return false
+    }
+  }, [api, applyResponse, view])
+
+  const runAction = useCallback(
+    async (kind: CopilotActionKind, payload: Record<string, unknown> = {}) => {
+      if (!view) return false
+      try {
+        const res = await api.action(view.SessionID, kind, view.Version, payload)
+        await applyResponse(res)
+        return true
+      } catch (err) {
+        setLastError(String(err))
+        return false
+      }
+    },
+    [api, applyResponse, view],
+  )
+
+  const sendMessage = useCallback(
+    async (text: string) => {
+      if (!view) return false
+      try {
+        const res = await api.message(view.SessionID, text, view.Version)
+        await applyResponse(res)
+        return true
+      } catch (err) {
+        setLastError(String(err))
+        return false
+      }
+    },
+    [api, applyResponse, view],
+  )
+
+  return { view, lastRaw, lastError, progressLog, startFix, refresh, runAction, sendMessage }
+}

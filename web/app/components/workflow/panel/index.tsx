@@ -16,6 +16,13 @@ const VersionHistoryPanel = dynamic(
   },
 )
 
+const WorkflowCopilotPanel = dynamic(
+  () => import('@/app/components/workflow/panel/workflow-copilot-panel'),
+  {
+    ssr: false,
+  },
+)
+
 export type PanelProps = {
   components?: {
     left?: React.ReactNode
@@ -96,6 +103,7 @@ const Panel: FC<PanelProps> = ({ components, versionHistoryPanelProps }) => {
   const showEnvPanel = useStore((s) => s.showEnvPanel)
   const isRestoring = useStore((s) => s.isRestoring)
   const showWorkflowVersionHistoryPanel = useStore((s) => s.showWorkflowVersionHistoryPanel)
+  const showWorkflowCopilotPanel = useStore((s) => s.showWorkflowCopilotPanel)
 
   // widths used for adaptive layout
   const workflowCanvasWidth = useStore((s) => s.workflowCanvasWidth)
@@ -127,23 +135,34 @@ const Panel: FC<PanelProps> = ({ components, versionHistoryPanelProps }) => {
   const otherPanelRef = useResizeObserver(setOtherPanelWidth)
 
   return (
-    <div
-      ref={rightPanelRef}
-      data-workflow-right-panel
-      tabIndex={-1}
-      className={cn('absolute top-14 right-0 bottom-1 z-10 flex outline-hidden')}
-      key={`${isRestoring}`}
-    >
-      {components?.left}
-      {!!selectedNode && <NodePanel {...selectedNode} />}
-      <div className="relative" ref={otherPanelRef}>
-        {components?.right}
-        {showWorkflowVersionHistoryPanel && versionHistoryPanelProps && (
-          <VersionHistoryPanel {...versionHistoryPanelProps} />
-        )}
-        {showEnvPanel && <EnvPanel />}
+    <>
+      {showWorkflowCopilotPanel && (
+        <div
+          data-workflow-left-panel
+          tabIndex={-1}
+          className={cn('absolute top-14 left-0 bottom-1 z-10 flex outline-hidden')}
+        >
+          <WorkflowCopilotPanel />
+        </div>
+      )}
+      <div
+        ref={rightPanelRef}
+        data-workflow-right-panel
+        tabIndex={-1}
+        className={cn('absolute top-14 right-0 bottom-1 z-10 flex outline-hidden')}
+        key={`${isRestoring}`}
+      >
+        {components?.left}
+        {!!selectedNode && <NodePanel {...selectedNode} />}
+        <div className="relative" ref={otherPanelRef}>
+          {components?.right}
+          {showWorkflowVersionHistoryPanel && versionHistoryPanelProps && (
+            <VersionHistoryPanel {...versionHistoryPanelProps} />
+          )}
+          {showEnvPanel && <EnvPanel />}
+        </div>
       </div>
-    </div>
+    </>
   )
 }
 
