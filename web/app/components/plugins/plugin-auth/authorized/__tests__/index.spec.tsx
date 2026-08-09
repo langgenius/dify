@@ -897,38 +897,13 @@ describe('Authorized Component', () => {
       // Verify API Keys section is shown
       expect(screen.getByText('API Keys'))!.toBeInTheDocument()
 
-      // Find edit button - look for buttons in the action area
-      const actionAreaButtons = Array.from(
-        document.querySelectorAll('.group-hover\\:flex button, .hidden button'),
-      )
-
-      for (const btn of actionAreaButtons) {
-        const svg = btn.querySelector('svg')
-        if (
-          svg &&
-          !btn.textContent?.includes('setDefault') &&
-          !btn.textContent?.includes('delete')
-        ) {
-          await act(async () => {
-            fireEvent.click(btn)
-          })
-
-          // Check if modal opened
-          await waitFor(
-            () => {
-              const modal = document.querySelector('.fixed')
-              if (modal) {
-                const cancelButton = screen.queryByText('common.operation.cancel')
-                if (cancelButton) {
-                  fireEvent.click(cancelButton)
-                }
-              }
-            },
-            { timeout: 1000 },
-          )
-          break
-        }
-      }
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+      })
+      await waitFor(() => {
+        expect(document.querySelector('.fixed'))!.toBeInTheDocument()
+      })
+      fireEvent.click(screen.getByText('common.operation.cancel'))
 
       // Verify component renders correctly
       // Verify component renders correctly
@@ -954,41 +929,13 @@ describe('Authorized Component', () => {
       // Verify component renders
       expect(screen.getByText('API Keys'))!.toBeInTheDocument()
 
-      // Find edit button by looking for action buttons (not in the confirm dialog)
-      // These are grouped in hidden elements that show on hover
-      const actionAreaButtons = Array.from(
-        document.querySelectorAll('.group-hover\\:flex button, .hidden button'),
-      )
-
-      for (const btn of actionAreaButtons) {
-        const svg = btn.querySelector('svg')
-        // Look for a button that's not the delete button
-        if (
-          svg &&
-          !btn.textContent?.includes('setDefault') &&
-          !btn.textContent?.includes('delete')
-        ) {
-          await act(async () => {
-            fireEvent.click(btn)
-          })
-
-          // Check if ApiKeyModal opened
-          await waitFor(
-            () => {
-              const modal = document.querySelector('.fixed')
-              if (modal) {
-                // Find remove button
-                const removeButton = screen.queryByText('common.operation.remove')
-                if (removeButton) {
-                  fireEvent.click(removeButton)
-                }
-              }
-            },
-            { timeout: 1000 },
-          )
-          break
-        }
-      }
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+      })
+      await waitFor(() => {
+        expect(document.querySelector('.fixed'))!.toBeInTheDocument()
+      })
+      fireEvent.click(screen.getByText('common.operation.remove'))
 
       // Verify component still works
       // Verify component still works
@@ -1008,29 +955,14 @@ describe('Authorized Component', () => {
         wrapper: createWrapper(),
       })
 
-      // Open edit modal
-      const editButton = document.querySelector('svg.ri-equalizer-2-line')?.closest('button')
-      if (editButton) {
-        fireEvent.click(editButton)
-
-        await waitFor(() => {
-          expect(document.querySelector('.fixed'))!.toBeInTheDocument()
-        })
-
-        // Find remove button in modal (usually has delete/remove text)
-        const removeButton =
-          screen.queryByText('common.operation.remove') ||
-          screen.queryByText('common.operation.delete')
-
-        if (removeButton) {
-          fireEvent.click(removeButton)
-
-          // Confirm dialog should appear
-          await waitFor(() => {
-            expect(screen.getByText('datasetDocuments.list.delete.title'))!.toBeInTheDocument()
-          })
-        }
-      }
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+      await waitFor(() => {
+        expect(document.querySelector('.fixed'))!.toBeInTheDocument()
+      })
+      fireEvent.click(screen.getByText('common.operation.remove'))
+      await waitFor(() => {
+        expect(screen.getByText('datasetDocuments.list.delete.title'))!.toBeInTheDocument()
+      })
     })
 
     it('should clear editValues and pendingOperationCredentialId when modal is closed', async () => {
@@ -1048,50 +980,14 @@ describe('Authorized Component', () => {
         wrapper: createWrapper(),
       })
 
-      // Open edit modal - find the edit button by looking for RiEqualizer2Line icon
-      const allButtons = Array.from(document.querySelectorAll('button'))
-      let editButton: Element | null = null
-      for (const btn of allButtons) {
-        if (btn.querySelector('svg.ri-equalizer-2-line')) {
-          editButton = btn
-          break
-        }
-      }
-
-      if (editButton) {
-        fireEvent.click(editButton)
-
-        // Wait for modal to open
-        await waitFor(() => {
-          const modal = document.querySelector('.fixed')
-          expect(modal)!.toBeInTheDocument()
-        })
-
-        // Find the close/cancel button
-        const closeButtons = Array.from(document.querySelectorAll('button'))
-        let closeButton: Element | null = null
-
-        for (const btn of closeButtons) {
-          const text = btn.textContent?.toLowerCase() || ''
-          if (text.includes('cancel') || btn.querySelector('svg.ri-close-line')) {
-            closeButton = btn
-            break
-          }
-        }
-
-        if (closeButton) {
-          fireEvent.click(closeButton)
-
-          // Verify component still works after closing
-          await waitFor(() => {
-            expect(screen.getByText('API Keys'))!.toBeInTheDocument()
-          })
-        }
-      } else {
-        // If no edit button found, just verify the component renders
-        // If no edit button found, just verify the component renders
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+      await waitFor(() => {
+        expect(document.querySelector('.fixed'))!.toBeInTheDocument()
+      })
+      fireEvent.click(screen.getByText('common.operation.cancel'))
+      await waitFor(() => {
         expect(screen.getByText('API Keys'))!.toBeInTheDocument()
-      }
+      })
     })
   })
 
@@ -1280,26 +1176,18 @@ describe('Authorized Component', () => {
         wrapper: createWrapper(),
       })
 
-      // Trigger delete
-      const deleteButton = document.querySelector('svg.ri-delete-bin-line')?.closest('button')
-      if (deleteButton) {
-        fireEvent.click(deleteButton)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+      await waitFor(() => {
+        expect(screen.getByText('datasetDocuments.list.delete.title'))!.toBeInTheDocument()
+      })
 
-        await waitFor(() => {
-          expect(screen.getByText('datasetDocuments.list.delete.title'))!.toBeInTheDocument()
-        })
+      const confirmButton = screen.getByText('common.operation.confirm')
+      fireEvent.click(confirmButton)
+      fireEvent.click(confirmButton)
 
-        const confirmButton = screen.getByText('common.operation.confirm')
-
-        // Click confirm twice quickly
-        fireEvent.click(confirmButton)
-        fireEvent.click(confirmButton)
-
-        // Should only call delete once (concurrent protection)
-        await waitFor(() => {
-          expect(mockDeletePluginCredential).toHaveBeenCalledTimes(1)
-        })
-      }
+      await waitFor(() => {
+        expect(mockDeletePluginCredential).toHaveBeenCalledTimes(1)
+      })
     })
 
     it('should prevent concurrent set default operations', async () => {
@@ -1344,21 +1232,14 @@ describe('Authorized Component', () => {
         wrapper: createWrapper(),
       })
 
-      // Enter rename mode
-      const renameButton = document.querySelector('svg.ri-edit-line')?.closest('button')
-      if (renameButton) {
-        fireEvent.click(renameButton)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.rename' }))
+      const saveButton = screen.getByText('common.operation.save')
+      fireEvent.click(saveButton)
+      fireEvent.click(saveButton)
 
-        const saveButton = screen.getByText('common.operation.save')
-
-        // Click save twice quickly
-        fireEvent.click(saveButton)
-        fireEvent.click(saveButton)
-
-        await waitFor(() => {
-          expect(mockUpdatePluginCredential).toHaveBeenCalledTimes(1)
-        })
-      }
+      await waitFor(() => {
+        expect(mockUpdatePluginCredential).toHaveBeenCalledTimes(1)
+      })
     })
   })
 
@@ -1433,72 +1314,29 @@ describe('Authorized Component', () => {
         expect(screen.getByText('OAuth'))!.toBeInTheDocument()
       })
 
-      // Find all buttons in the credential item's action area
-      // The action buttons are in a hidden container with class 'hidden shrink-0' or 'group-hover:flex'
-      const allButtons = Array.from(document.querySelectorAll('button'))
-      let deleteButton: HTMLElement | null = null
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+      })
+      await waitFor(() => {
+        expect(screen.getByText('datasetDocuments.list.delete.title'))!.toBeInTheDocument()
+      })
+      await act(async () => {
+        fireEvent.click(screen.getByText('common.operation.confirm'))
+      })
 
-      // Look for the delete button by checking each button
-      for (const btn of allButtons) {
-        // Skip buttons that are part of the main UI (trigger, setDefault)
-        if (btn.textContent?.includes('auth') || btn.textContent?.includes('setDefault')) {
-          continue
-        }
-        // Check if this button contains an SVG that could be the delete icon
-        const svg = btn.querySelector('svg')
-        if (svg && !btn.textContent?.trim()) {
-          // This is likely an icon-only button
-          // Check if it's in the action area (has parent with group-hover:flex or hidden class)
-          const parent = btn.closest('.hidden, [class*="group-hover"]')
-          if (parent) {
-            deleteButton = btn as HTMLElement
-          }
-        }
-      }
-
-      // If we found a delete button, test the full flow
-      if (deleteButton) {
-        // Click delete button - this calls openConfirm(credentialId)
-        await act(async () => {
-          fireEvent.click(deleteButton!)
+      await waitFor(() => {
+        expect(mockDeletePluginCredential).toHaveBeenCalledWith({
+          credential_id: 'full-delete-flow-id',
         })
-
-        // Verify confirm dialog appears
-        await waitFor(() => {
-          expect(screen.getByText('datasetDocuments.list.delete.title'))!.toBeInTheDocument()
-        })
-
-        // Click confirm - this calls handleConfirm
-        const confirmBtn = screen.getByText('common.operation.confirm')
-        await act(async () => {
-          fireEvent.click(confirmBtn)
-        })
-
-        // Verify deletePluginCredential was called with correct id
-        await waitFor(() => {
-          expect(mockDeletePluginCredential).toHaveBeenCalledWith({
-            credential_id: 'full-delete-flow-id',
-          })
-        })
-
-        // Verify success notification
-        expect(toastMocks.call).toHaveBeenCalledWith({
-          type: 'success',
-          message: 'common.api.actionSuccess',
-        })
-
-        // Verify onUpdate was called
-        expect(onUpdate).toHaveBeenCalled()
-
-        // Verify dialog is closed
-        await waitFor(() => {
-          expect(screen.queryByText('datasetDocuments.list.delete.title')).not.toBeInTheDocument()
-        })
-      } else {
-        // Component should still render correctly
-        // Component should still render correctly
-        expect(screen.getByText('OAuth'))!.toBeInTheDocument()
-      }
+      })
+      expect(toastMocks.call).toHaveBeenCalledWith({
+        type: 'success',
+        message: 'common.api.actionSuccess',
+      })
+      expect(onUpdate).toHaveBeenCalled()
+      await waitFor(() => {
+        expect(screen.queryByText('datasetDocuments.list.delete.title')).not.toBeInTheDocument()
+      })
     })
 
     it('should handle delete when pendingOperationCredentialId is null', async () => {
@@ -1537,44 +1375,18 @@ describe('Authorized Component', () => {
         wrapper: createWrapper(),
       })
 
-      // Find delete button in action area
-      const actionButtons = Array.from(
-        document.querySelectorAll('.hidden button, [class*="group-hover"] button'),
-      )
-      let foundDeleteButton = false
-
-      for (const btn of actionButtons) {
-        // Try clicking to see if it opens confirm dialog
-        await act(async () => {
-          fireEvent.click(btn)
-        })
-
-        // Check if confirm dialog appeared
-        const confirmTitle = screen.queryByText('datasetDocuments.list.delete.title')
-        if (confirmTitle) {
-          foundDeleteButton = true
-
-          // Click confirm multiple times rapidly to trigger doingActionRef check
-          const confirmBtn = screen.getByText('common.operation.confirm')
-          await act(async () => {
-            fireEvent.click(confirmBtn)
-            fireEvent.click(confirmBtn)
-            fireEvent.click(confirmBtn)
-          })
-
-          // Should only call delete once due to doingAction protection
-          await waitFor(() => {
-            expect(mockDeletePluginCredential).toHaveBeenCalledTimes(1)
-          })
-          break
-        }
-      }
-
-      if (!foundDeleteButton) {
-        // Verify component renders
-        // Verify component renders
-        expect(screen.getByText('OAuth'))!.toBeInTheDocument()
-      }
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+      })
+      const confirmBtn = screen.getByText('common.operation.confirm')
+      await act(async () => {
+        fireEvent.click(confirmBtn)
+        fireEvent.click(confirmBtn)
+        fireEvent.click(confirmBtn)
+      })
+      await waitFor(() => {
+        expect(mockDeletePluginCredential).toHaveBeenCalledTimes(1)
+      })
     })
 
     it('should handle handleConfirm when pendingOperationCredentialId is null', async () => {
@@ -1706,33 +1518,15 @@ describe('Authorized Component', () => {
         expect(screen.getByText('OAuth'))!.toBeInTheDocument()
       })
 
-      // Find delete button in action area
-      const actionButtons = Array.from(
-        document.querySelectorAll('.hidden button, [class*="group-hover"] button'),
-      )
-
-      for (const btn of actionButtons) {
-        await act(async () => {
-          fireEvent.click(btn)
-        })
-
-        // Check if confirm dialog appeared (delete button was clicked)
-        const confirmTitle = screen.queryByText('datasetDocuments.list.delete.title')
-        if (confirmTitle) {
-          // Click cancel button to trigger closeConfirm
-          // closeConfirm sets deleteCredentialId = null and pendingOperationCredentialId.current = null
-          const cancelBtn = screen.getByText('common.operation.cancel')
-          await act(async () => {
-            fireEvent.click(cancelBtn)
-          })
-
-          // Confirm dialog should be closed
-          await waitFor(() => {
-            expect(screen.queryByText('datasetDocuments.list.delete.title')).not.toBeInTheDocument()
-          })
-          break
-        }
-      }
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+      })
+      await act(async () => {
+        fireEvent.click(screen.getByText('common.operation.cancel'))
+      })
+      await waitFor(() => {
+        expect(screen.queryByText('datasetDocuments.list.delete.title')).not.toBeInTheDocument()
+      })
     })
 
     it('should execute closeConfirm to set deleteCredentialId to null', async () => {
@@ -1752,42 +1546,23 @@ describe('Authorized Component', () => {
         expect(screen.getByText('OAuth'))!.toBeInTheDocument()
       })
 
-      // Find and trigger delete to open confirm dialog
-      const actionButtons = Array.from(
-        document.querySelectorAll('.hidden button, [class*="group-hover"] button'),
-      )
-
-      for (const btn of actionButtons) {
-        await act(async () => {
-          fireEvent.click(btn)
-        })
-
-        const confirmTitle = screen.queryByText('datasetDocuments.list.delete.title')
-        if (confirmTitle) {
-          expect(confirmTitle)!.toBeInTheDocument()
-
-          // Now click cancel to execute closeConfirm
-          const cancelBtn = screen.getByText('common.operation.cancel')
-          await act(async () => {
-            fireEvent.click(cancelBtn)
-          })
-
-          // Dialog should be closed (deleteCredentialId is null)
-          await waitFor(() => {
-            expect(screen.queryByText('datasetDocuments.list.delete.title')).not.toBeInTheDocument()
-          })
-
-          // Can open dialog again (state was properly reset)
-          await act(async () => {
-            fireEvent.click(btn)
-          })
-
-          await waitFor(() => {
-            expect(screen.getByText('datasetDocuments.list.delete.title'))!.toBeInTheDocument()
-          })
-          break
-        }
-      }
+      const deleteButton = screen.getByRole('button', { name: 'common.operation.delete' })
+      await act(async () => {
+        fireEvent.click(deleteButton)
+      })
+      expect(screen.getByText('datasetDocuments.list.delete.title'))!.toBeInTheDocument()
+      await act(async () => {
+        fireEvent.click(screen.getByText('common.operation.cancel'))
+      })
+      await waitFor(() => {
+        expect(screen.queryByText('datasetDocuments.list.delete.title')).not.toBeInTheDocument()
+      })
+      await act(async () => {
+        fireEvent.click(deleteButton)
+      })
+      await waitFor(() => {
+        expect(screen.getByText('datasetDocuments.list.delete.title'))!.toBeInTheDocument()
+      })
     })
 
     it('should call closeConfirm when pressing Escape key', async () => {
@@ -1807,79 +1582,15 @@ describe('Authorized Component', () => {
         expect(screen.getByText('OAuth'))!.toBeInTheDocument()
       })
 
-      // Find and trigger delete to open confirm dialog
-      const actionButtons = Array.from(
-        document.querySelectorAll('.hidden button, [class*="group-hover"] button'),
-      )
-
-      for (const btn of actionButtons) {
-        await act(async () => {
-          fireEvent.click(btn)
-        })
-
-        const confirmTitle = screen.queryByText('datasetDocuments.list.delete.title')
-        if (confirmTitle) {
-          // Press Escape to trigger closeConfirm via Confirm component's keydown handler
-          await act(async () => {
-            fireEvent.keyDown(document, { key: 'Escape' })
-          })
-
-          // Dialog should be closed
-          await waitFor(() => {
-            expect(screen.queryByText('datasetDocuments.list.delete.title')).not.toBeInTheDocument()
-          })
-          break
-        }
-      }
-    })
-
-    it('should call closeConfirm when clicking outside the dialog', async () => {
-      const pluginPayload = createPluginPayload()
-      const credentials = [
-        createCredential({
-          id: 'outside-click-id',
-          credential_type: CredentialTypeEnum.OAUTH2,
-        }),
-      ]
-
-      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
-        wrapper: createWrapper(),
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'common.operation.delete' }))
       })
-
+      await act(async () => {
+        fireEvent.keyDown(document, { key: 'Escape' })
+      })
       await waitFor(() => {
-        expect(screen.getByText('OAuth'))!.toBeInTheDocument()
+        expect(screen.queryByText('datasetDocuments.list.delete.title')).not.toBeInTheDocument()
       })
-
-      // Find and trigger delete to open confirm dialog
-      const actionButtons = Array.from(
-        document.querySelectorAll('.hidden button, [class*="group-hover"] button'),
-      )
-
-      for (const btn of actionButtons) {
-        await act(async () => {
-          fireEvent.click(btn)
-        })
-
-        const confirmTitle = screen.queryByText('datasetDocuments.list.delete.title')
-        if (confirmTitle) {
-          // Click outside the dialog to trigger closeConfirm via mousedown handler
-          // The overlay div is the parent of the dialog
-          const overlay = document.querySelector('.fixed.inset-0')
-          if (overlay) {
-            await act(async () => {
-              fireEvent.mouseDown(overlay)
-            })
-
-            // Dialog should be closed
-            await waitFor(() => {
-              expect(
-                screen.queryByText('datasetDocuments.list.delete.title'),
-              ).not.toBeInTheDocument()
-            })
-          }
-          break
-        }
-      }
     })
   })
 
@@ -1903,43 +1614,18 @@ describe('Authorized Component', () => {
         expect(screen.getByText('API Keys'))!.toBeInTheDocument()
       })
 
-      // Find edit button in action area
-      const actionButtons = Array.from(
-        document.querySelectorAll('.hidden button, [class*="group-hover"] button'),
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+      })
+      await act(async () => {
+        fireEvent.click(screen.getByText('common.operation.remove'))
+      })
+      await waitFor(
+        () => {
+          expect(screen.getByText('datasetDocuments.list.delete.title'))!.toBeInTheDocument()
+        },
+        { timeout: 2000 },
       )
-
-      for (const btn of actionButtons) {
-        const svg = btn.querySelector('svg')
-        if (svg) {
-          await act(async () => {
-            fireEvent.click(btn)
-          })
-
-          // Check if modal opened
-          const modal = document.querySelector('.fixed')
-          if (modal) {
-            // Find remove button by text
-            const removeBtn = screen.queryByText('common.operation.remove')
-            if (removeBtn) {
-              await act(async () => {
-                fireEvent.click(removeBtn)
-              })
-
-              // handleRemove sets deleteCredentialId, which should show confirm dialog
-              await waitFor(
-                () => {
-                  const confirmTitle = screen.queryByText('datasetDocuments.list.delete.title')
-                  if (confirmTitle) {
-                    expect(confirmTitle)!.toBeInTheDocument()
-                  }
-                },
-                { timeout: 2000 },
-              )
-            }
-            break
-          }
-        }
-      }
 
       // Verify component renders correctly
       // Verify component renders correctly
@@ -1965,44 +1651,18 @@ describe('Authorized Component', () => {
         expect(screen.getByText('API Keys'))!.toBeInTheDocument()
       })
 
-      // Find and click edit button to open ApiKeyModal
-      const actionButtons = Array.from(
-        document.querySelectorAll('.hidden button, [class*="group-hover"] button'),
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+      })
+      await act(async () => {
+        fireEvent.click(screen.getByText('common.operation.remove'))
+      })
+      await waitFor(
+        () => {
+          expect(screen.getByText('datasetDocuments.list.delete.title'))!.toBeInTheDocument()
+        },
+        { timeout: 1000 },
       )
-
-      for (const btn of actionButtons) {
-        const svg = btn.querySelector('svg')
-        if (svg) {
-          await act(async () => {
-            fireEvent.click(btn)
-          })
-
-          // Check if modal opened
-          const modal = document.querySelector('.fixed')
-          if (modal) {
-            // Now click remove button - this triggers handleRemove
-            const removeButton = screen.queryByText('common.operation.remove')
-            if (removeButton) {
-              await act(async () => {
-                fireEvent.click(removeButton)
-              })
-
-              // Verify confirm dialog appears (handleRemove was called)
-              await waitFor(
-                () => {
-                  const confirmTitle = screen.queryByText('datasetDocuments.list.delete.title')
-                  // If confirm dialog appears, handleRemove was called
-                  if (confirmTitle) {
-                    expect(confirmTitle)!.toBeInTheDocument()
-                  }
-                },
-                { timeout: 1000 },
-              )
-            }
-            break
-          }
-        }
-      }
 
       // Verify component still renders correctly
       // Verify component still renders correctly
@@ -2034,40 +1694,21 @@ describe('Authorized Component', () => {
         expect(screen.getByText('OAuth'))!.toBeInTheDocument()
       })
 
-      // Find rename button in action area
-      const actionButtons = Array.from(
-        document.querySelectorAll('.hidden button, [class*="group-hover"] button'),
-      )
-
-      for (const btn of actionButtons) {
-        await act(async () => {
-          fireEvent.click(btn)
-        })
-
-        // Check if rename mode was activated (input appears)
-        const input = screen.queryByRole('textbox')
-        if (input) {
-          await act(async () => {
-            fireEvent.change(input, { target: { value: 'New Name' } })
-          })
-
-          // Click save multiple times to trigger doingActionRef check
-          const saveBtn = screen.queryByText('common.operation.save')
-          if (saveBtn) {
-            await act(async () => {
-              fireEvent.click(saveBtn)
-              fireEvent.click(saveBtn)
-              fireEvent.click(saveBtn)
-            })
-
-            // Should only call update once due to doingAction protection
-            await waitFor(() => {
-              expect(mockUpdatePluginCredential).toHaveBeenCalledTimes(1)
-            })
-          }
-          break
-        }
-      }
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'common.operation.rename' }))
+      })
+      await act(async () => {
+        fireEvent.change(screen.getByRole('textbox'), { target: { value: 'New Name' } })
+      })
+      const saveBtn = screen.getByText('common.operation.save')
+      await act(async () => {
+        fireEvent.click(saveBtn)
+        fireEvent.click(saveBtn)
+        fireEvent.click(saveBtn)
+      })
+      await waitFor(() => {
+        expect(mockUpdatePluginCredential).toHaveBeenCalledTimes(1)
+      })
     })
 
     it('should return early from handleRename when doingActionRef.current is true', async () => {
@@ -2096,45 +1737,23 @@ describe('Authorized Component', () => {
         expect(screen.getByText('OAuth'))!.toBeInTheDocument()
       })
 
-      // Find rename button
-      const actionButtons = Array.from(
-        document.querySelectorAll('.hidden button, [class*="group-hover"] button'),
-      )
-
-      for (const btn of actionButtons) {
-        await act(async () => {
-          fireEvent.click(btn)
-        })
-
-        const input = screen.queryByRole('textbox')
-        if (input) {
-          await act(async () => {
-            fireEvent.change(input, { target: { value: 'First Name' } })
-          })
-
-          const saveBtn = screen.queryByText('common.operation.save')
-          if (saveBtn) {
-            // First click starts the operation
-            await act(async () => {
-              fireEvent.click(saveBtn)
-            })
-
-            // Second click should be ignored due to doingActionRef.current being true
-            await act(async () => {
-              fireEvent.click(saveBtn)
-            })
-
-            // Only one call should be made
-            expect(mockUpdatePluginCredential).toHaveBeenCalledTimes(1)
-
-            // Resolve the pending update
-            await act(async () => {
-              resolveUpdate!({})
-            })
-          }
-          break
-        }
-      }
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'common.operation.rename' }))
+      })
+      await act(async () => {
+        fireEvent.change(screen.getByRole('textbox'), { target: { value: 'First Name' } })
+      })
+      const saveBtn = screen.getByText('common.operation.save')
+      await act(async () => {
+        fireEvent.click(saveBtn)
+      })
+      await act(async () => {
+        fireEvent.click(saveBtn)
+      })
+      expect(mockUpdatePluginCredential).toHaveBeenCalledTimes(1)
+      await act(async () => {
+        resolveUpdate!({})
+      })
     })
   })
 
@@ -2158,39 +1777,15 @@ describe('Authorized Component', () => {
         expect(screen.getByText('API Keys'))!.toBeInTheDocument()
       })
 
-      // Find and click edit button to open modal
-      const actionButtons = Array.from(
-        document.querySelectorAll('.hidden button, [class*="group-hover"] button'),
-      )
-
-      for (const btn of actionButtons) {
-        const svg = btn.querySelector('svg')
-        if (svg) {
-          await act(async () => {
-            fireEvent.click(btn)
-          })
-
-          // Check if modal opened
-          const modal = document.querySelector('.fixed')
-          if (modal) {
-            // Find cancel buttons and click the one in the modal (not confirm dialog)
-            // There might be multiple cancel buttons, get all and pick the right one
-            const cancelBtns = screen.queryAllByText('common.operation.cancel')
-            if (cancelBtns.length > 0) {
-              // Click the first cancel button (modal's cancel)
-              await act(async () => {
-                fireEvent.click(cancelBtns[0]!)
-              })
-
-              // Modal should be closed
-              await waitFor(() => {
-                expect(screen.getByText('API Keys'))!.toBeInTheDocument()
-              })
-            }
-            break
-          }
-        }
-      }
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+      })
+      await act(async () => {
+        fireEvent.click(screen.getByText('common.operation.cancel'))
+      })
+      await waitFor(() => {
+        expect(screen.getByText('API Keys'))!.toBeInTheDocument()
+      })
     })
 
     it('should execute onClose callback to reset editValues to null and clear pendingOperationCredentialId', async () => {
@@ -2211,42 +1806,22 @@ describe('Authorized Component', () => {
         expect(screen.getByText('API Keys'))!.toBeInTheDocument()
       })
 
-      // Open edit modal by clicking edit button
-      const hiddenButtons = Array.from(document.querySelectorAll('.hidden button'))
-      for (const btn of hiddenButtons) {
-        await act(async () => {
-          fireEvent.click(btn)
-        })
-
-        // Check if ApiKeyModal opened
-        const modal = document.querySelector('.fixed')
-        if (modal) {
-          // Click cancel to trigger onClose
-          // There might be multiple cancel buttons
-          const cancelButtons = screen.queryAllByText('common.operation.cancel')
-          if (cancelButtons.length > 0) {
-            await act(async () => {
-              fireEvent.click(cancelButtons[0]!)
-            })
-
-            // After onClose, editValues should be null so modal won't render
-            await waitFor(() => {
-              expect(screen.getByText('API Keys'))!.toBeInTheDocument()
-            })
-
-            // Try opening modal again to verify state was properly reset
-            await act(async () => {
-              fireEvent.click(btn)
-            })
-
-            await waitFor(() => {
-              const newModal = document.querySelector('.fixed')
-              expect(newModal)!.toBeInTheDocument()
-            })
-          }
-          break
-        }
-      }
+      const editButton = screen.getByRole('button', { name: 'common.operation.edit' })
+      await act(async () => {
+        fireEvent.click(editButton)
+      })
+      await act(async () => {
+        fireEvent.click(screen.getByText('common.operation.cancel'))
+      })
+      await waitFor(() => {
+        expect(screen.getByText('API Keys'))!.toBeInTheDocument()
+      })
+      await act(async () => {
+        fireEvent.click(editButton)
+      })
+      await waitFor(() => {
+        expect(document.querySelector('.fixed'))!.toBeInTheDocument()
+      })
     })
 
     it('should properly execute onClose callback clearing state', async () => {
@@ -2263,51 +1838,25 @@ describe('Authorized Component', () => {
         wrapper: createWrapper(),
       })
 
-      // Find and click edit button to open modal
-      const editIcon = document.querySelector('svg.ri-equalizer-2-line')
-      const editButton = editIcon?.closest('button')
-
-      if (editButton) {
-        await act(async () => {
-          fireEvent.click(editButton)
-        })
-
-        // Wait for modal
-        await waitFor(() => {
-          expect(document.querySelector('.fixed'))!.toBeInTheDocument()
-        })
-
-        // Close the modal via cancel
-        const buttons = Array.from(document.querySelectorAll('button'))
-        for (const btn of buttons) {
-          const text = btn.textContent || ''
-          if (text.toLowerCase().includes('cancel')) {
-            await act(async () => {
-              fireEvent.click(btn)
-            })
-            break
-          }
-        }
-
-        // Verify component can render again normally
-        await waitFor(() => {
-          expect(screen.getByText('API Keys'))!.toBeInTheDocument()
-        })
-
-        // Verify we can open the modal again (state was properly reset)
-        const newEditIcon = document.querySelector('svg.ri-equalizer-2-line')
-        const newEditButton = newEditIcon?.closest('button')
-
-        if (newEditButton) {
-          await act(async () => {
-            fireEvent.click(newEditButton)
-          })
-
-          await waitFor(() => {
-            expect(document.querySelector('.fixed'))!.toBeInTheDocument()
-          })
-        }
-      }
+      const editButton = screen.getByRole('button', { name: 'common.operation.edit' })
+      await act(async () => {
+        fireEvent.click(editButton)
+      })
+      await waitFor(() => {
+        expect(document.querySelector('.fixed'))!.toBeInTheDocument()
+      })
+      await act(async () => {
+        fireEvent.click(screen.getByText('common.operation.cancel'))
+      })
+      await waitFor(() => {
+        expect(screen.getByText('API Keys'))!.toBeInTheDocument()
+      })
+      await act(async () => {
+        fireEvent.click(editButton)
+      })
+      await waitFor(() => {
+        expect(document.querySelector('.fixed'))!.toBeInTheDocument()
+      })
     })
   })
 
@@ -2325,32 +1874,20 @@ describe('Authorized Component', () => {
         wrapper: createWrapper(),
       })
 
-      // Click delete button which calls openConfirm with the credential id
-      const deleteIcon = document.querySelector('svg.ri-delete-bin-line')
-      const deleteButton = deleteIcon?.closest('button')
-
-      if (deleteButton) {
-        await act(async () => {
-          fireEvent.click(deleteButton)
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+      })
+      await waitFor(() => {
+        expect(screen.getByText('datasetDocuments.list.delete.title'))!.toBeInTheDocument()
+      })
+      await act(async () => {
+        fireEvent.click(screen.getByText('common.operation.confirm'))
+      })
+      await waitFor(() => {
+        expect(mockDeletePluginCredential).toHaveBeenCalledWith({
+          credential_id: 'open-confirm-cred-id',
         })
-
-        // Confirm dialog should appear with the correct credential id
-        await waitFor(() => {
-          expect(screen.getByText('datasetDocuments.list.delete.title'))!.toBeInTheDocument()
-        })
-
-        // Now click confirm to verify the correct id is used
-        const confirmBtn = screen.getByText('common.operation.confirm')
-        await act(async () => {
-          fireEvent.click(confirmBtn)
-        })
-
-        await waitFor(() => {
-          expect(mockDeletePluginCredential).toHaveBeenCalledWith({
-            credential_id: 'open-confirm-cred-id',
-          })
-        })
-      }
+      })
     })
   })
 })
