@@ -792,8 +792,8 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
                     ModelRequest(
                         parts=[
                             SystemPromptPart("real system prompt"),
-                            SystemPromptPart(""),         # empty — must be dropped
-                            SystemPromptPart("   \t\n"), # whitespace-only — must be dropped
+                            SystemPromptPart(""),  # empty — must be dropped
+                            SystemPromptPart("   \t\n"),  # whitespace-only — must be dropped
                             UserPromptPart("hello"),
                         ]
                     )
@@ -834,7 +834,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
                     function_tools=[
                         ToolDefinition(
                             name="my_tool",
-                            description="",   # empty — must fall back to name
+                            description="",  # empty — must fall back to name
                             parameters_json_schema={"type": "object", "properties": {}},
                         )
                     ],
