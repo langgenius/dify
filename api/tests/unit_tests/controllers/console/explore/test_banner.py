@@ -268,4 +268,4 @@ class TestBannerApi:
         )
 
         with app.test_request_context("/"), pytest.raises(ValidationError):
-                api.get()
+            api.get()
