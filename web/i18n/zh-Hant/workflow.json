@@ -114,6 +114,7 @@
   "chatVariable.panelDescription": "對話變數用於儲存 LLM 需要記住的互動資訊，包括對話歷史、上傳的檔案、使用者偏好等。這些變數可讀寫。",
   "chatVariable.panelTitle": "對話變數",
   "chatVariable.storedContent": "已儲存內容",
+  "chatVariable.tips": "提示",
   "chatVariable.updatedAt": "更新於 ",
   "collaboration.historyAction.generic": "協作者執行了復原/重做操作",
   "comments.actions.addComment": "新增評論",
