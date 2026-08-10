@@ -1,4 +1,4 @@
-from collections.abc import Sequence
+from collections.abc import Iterable
 from datetime import datetime
 from typing import Any
 
@@ -8,8 +8,6 @@ from sqlalchemy.orm import Session
 from fields.base import ResponseModel
 from fields.member_fields import SimpleAccountResponse
 from libs.helper import to_timestamp
-from models.account import Account
-from models.model import Tag
 from models.snippet import CustomizedSnippet, SnippetType
 
 
@@ -78,37 +76,52 @@ class SnippetPaginationResponse(ResponseModel):
     has_more: bool
 
 
-class SnippetResponseSource:
-    """Adapt a snippet to the attribute shape the response models validate against.
+def snippet_response(snippet: CustomizedSnippet, *, session: Session) -> SnippetResponse:
+    """Build the snippet detail response, resolving session-backed lookups at the request boundary."""
+    return SnippetResponse.model_validate(
+        {
+            "id": snippet.id,
+            "name": snippet.name,
+            "description": snippet.description,
+            "type": snippet.type,
+            "version": snippet.version,
+            "use_count": snippet.use_count,
+            "is_published": snippet.is_published,
+            "icon_info": snippet.icon_info,
+            "graph": snippet.get_graph_dict(session=session),
+            "input_fields": snippet.input_fields_list,
+            "tags": snippet.get_tags(session=session),
+            "created_by": snippet.get_created_by_account(session=session),
+            "created_at": snippet.created_at,
+            "updated_by": snippet.get_updated_by_account(session=session),
+            "updated_at": snippet.updated_at,
+        }
+    )
 
-    ``CustomizedSnippet`` exposes its session-backed lookups as ``get_*(session=...)``
-    methods, so the session is bound here at the request boundary instead of inside
-    the model.
-    """
 
-    def __init__(self, snippet: CustomizedSnippet, *, session: Session) -> None:
-        self._snippet = snippet
-        self._session = session
+def snippet_list_item_response(snippet: CustomizedSnippet, *, session: Session) -> SnippetListItemResponse:
+    """Build one snippet list row, resolving session-backed lookups at the request boundary."""
+    return SnippetListItemResponse.model_validate(
+        {
+            "id": snippet.id,
+            "name": snippet.name,
+            "description": snippet.description,
+            "type": snippet.type,
+            "version": snippet.version,
+            "use_count": snippet.use_count,
+            "is_published": snippet.is_published,
+            "icon_info": snippet.icon_info,
+            "tags": snippet.get_tags(session=session),
+            "created_by": snippet.created_by,
+            "author_name": snippet.get_author_name(session=session),
+            "created_at": snippet.created_at,
+            "updated_by": snippet.updated_by,
+            "updated_at": snippet.updated_at,
+        }
+    )
 
-    def __getattr__(self, name: str) -> object:
-        return getattr(self._snippet, name)  # guard-ignore: no-new-getattr -- delegates model fields
 
-    @property
-    def graph_dict(self) -> dict[str, Any]:
-        return self._snippet.get_graph_dict(session=self._session)
-
-    @property
-    def tags(self) -> Sequence[Tag]:
-        return self._snippet.get_tags(session=self._session)
-
-    @property
-    def created_by_account(self) -> Account | None:
-        return self._snippet.get_created_by_account(session=self._session)
-
-    @property
-    def author_name(self) -> str | None:
-        return self._snippet.get_author_name(session=self._session)
-
-    @property
-    def updated_by_account(self) -> Account | None:
-        return self._snippet.get_updated_by_account(session=self._session)
+def snippet_list_item_responses(
+    snippets: Iterable[CustomizedSnippet], *, session: Session
+) -> list[SnippetListItemResponse]:
+    return [snippet_list_item_response(snippet, session=session) for snippet in snippets]

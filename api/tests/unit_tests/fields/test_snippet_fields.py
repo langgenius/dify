@@ -4,9 +4,7 @@ from datetime import UTC, datetime
 import pytest
 from sqlalchemy.orm import Session
 
-from fields.snippet_fields import SnippetListItemResponse, SnippetResponse, SnippetResponseSource
-from libs.helper import dump_response
-from models import snippet as snippet_module
+from fields.snippet_fields import snippet_list_item_response, snippet_response
 from models.account import Account
 from models.enums import TagType
 from models.model import Tag, TagBinding
@@ -22,7 +20,7 @@ ACCOUNT_2_ID = "55555555-5555-5555-5555-555555555556"
 
 
 @pytest.mark.parametrize("sqlite_session", [(CustomizedSnippet, Account)], indirect=True)
-def test_snippet_list_fields_include_author_name(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_snippet_list_fields_include_author_name(sqlite_session: Session) -> None:
     account = Account(name="Alice", email="alice@example.com")
     account.id = "account-1"
     snippet = CustomizedSnippet(
@@ -42,9 +40,8 @@ def test_snippet_list_fields_include_author_name(sqlite_session: Session, monkey
     )
     sqlite_session.add_all([account, snippet])
     sqlite_session.flush()
-    monkeypatch.setattr(snippet_module.db, "session", sqlite_session)
 
-    result = dump_response(SnippetListItemResponse, snippet)
+    result = snippet_list_item_response(snippet, session=sqlite_session).model_dump(mode="json")
 
     assert result["author_name"] == "Alice"
 
@@ -90,10 +87,10 @@ def populated_snippet(sqlite_session: Session) -> CustomizedSnippet:
     )
 
 
-def test_snippet_response_source_resolves_fields_from_the_given_session(
+def test_snippet_response_resolves_fields_from_the_given_session(
     populated_snippet: CustomizedSnippet, sqlite_session: Session
 ) -> None:
-    result = dump_response(SnippetResponse, SnippetResponseSource(populated_snippet, session=sqlite_session))
+    result = snippet_response(populated_snippet, session=sqlite_session).model_dump(mode="json")
 
     assert result["graph"] == {"nodes": [{"id": "llm-1"}], "edges": []}
     assert result["input_fields"] == [{"variable": "query"}]
@@ -105,7 +102,10 @@ def test_snippet_response_source_resolves_fields_from_the_given_session(
 def test_snippet_list_item_resolves_author_and_tags_from_the_given_session(
     populated_snippet: CustomizedSnippet, sqlite_session: Session
 ) -> None:
-    result = dump_response(SnippetListItemResponse, SnippetResponseSource(populated_snippet, session=sqlite_session))
+    result = snippet_list_item_response(populated_snippet, session=sqlite_session).model_dump(mode="json")
 
     assert result["author_name"] == "Ada"
     assert [tag["name"] for tag in result["tags"]] == ["Reusable"]
+    # The list row carries the raw audit ids; only the detail response resolves them to accounts.
+    assert result["created_by"] == ACCOUNT_1_ID
+    assert result["updated_by"] == ACCOUNT_2_ID
