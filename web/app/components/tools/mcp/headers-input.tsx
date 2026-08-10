@@ -104,7 +104,7 @@ const HeadersInput = ({ headersItems, onChange, readonly = false, isMasked = fal
               />
               {!readonly && !!headersItems.length && (
                 <ActionButton
-                  aria-label={t(($) => $['operation.delete'], { ns: 'common' })}
+                  aria-label={`${t(($) => $['operation.delete'], { ns: 'common' })} ${item.key.trim() || t(($) => $['mcp.modal.headerKey'], { ns: 'tools' })} ${index + 1}`}
                   onClick={() => handleRemoveItem(index)}
                   className="mr-2"
                 >
