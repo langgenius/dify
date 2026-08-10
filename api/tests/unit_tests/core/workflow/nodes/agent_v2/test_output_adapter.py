@@ -179,6 +179,22 @@ def test_failure_output_adapter_prefers_run_failure_type_over_reason():
     assert result.error_type == "agent_run_limit_exceeded"
 
 
+def test_failure_output_adapter_uses_knowledge_failure_type():
+    result = WorkflowAgentOutputAdapter().build_failure_result(
+        event=AgentBackendRunFailedInternalEvent(
+            run_id="run-1",
+            error="Knowledge retrieval failed",
+            error_type=RunFailureType.KNOWLEDGE_RETRIEVE_FAILED,
+            reason="dataset_not_found",
+        ),
+        inputs={},
+        process_data={},
+        metadata={},
+    )
+
+    assert result.error_type == "knowledge_retrieve_failed"
+
+
 def test_failure_output_adapter_uses_default_error_type_without_backend_classification():
     result = WorkflowAgentOutputAdapter().build_failure_result(
         event=AgentBackendRunFailedInternalEvent(

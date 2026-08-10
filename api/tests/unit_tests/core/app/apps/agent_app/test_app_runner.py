@@ -61,7 +61,14 @@ from core.app.entities.queue_entities import (
 from core.workflow.nodes.agent_v2.ask_human_resume import AskHumanResumeOutcome
 from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentToolLayers
 from graphon.model_runtime.entities.llm_entities import LLMResult
-from graphon.model_runtime.errors.invoke import InvokeRateLimitError
+from graphon.model_runtime.errors.invoke import (
+    InvokeAuthorizationError,
+    InvokeBadRequestError,
+    InvokeConnectionError,
+    InvokeError,
+    InvokeRateLimitError,
+    InvokeServerUnavailableError,
+)
 from models.agent_config_entities import AgentSoulConfig
 from models.model import MessageAgentThought
 
@@ -1204,6 +1211,31 @@ def test_agent_backend_failure_to_exception_maps_rate_limit_failure_type() -> No
 
     assert isinstance(err, InvokeRateLimitError)
     assert str(err) == "quota exceeded"
+
+
+@pytest.mark.parametrize(
+    ("failure_type", "expected_exception"),
+    [
+        (RunFailureType.INVOKE_AUTHORIZATION_ERROR, InvokeAuthorizationError),
+        (RunFailureType.INVOKE_BAD_REQUEST_ERROR, InvokeBadRequestError),
+        (RunFailureType.INVOKE_CONNECTION_ERROR, InvokeConnectionError),
+        (RunFailureType.INVOKE_SERVER_UNAVAILABLE_ERROR, InvokeServerUnavailableError),
+    ],
+)
+def test_agent_backend_failure_to_exception_maps_invoke_failure_types(
+    failure_type: RunFailureType,
+    expected_exception: type[InvokeError],
+) -> None:
+    err = app_runner_module._agent_backend_failure_to_exception(
+        AgentBackendRunFailedInternalEvent(
+            run_id="run-1",
+            error="provider failed",
+            error_type=failure_type,
+        )
+    )
+
+    assert isinstance(err, expected_exception)
+    assert str(err) == "provider failed"
 
 
 def test_agent_backend_failure_to_exception_preserves_unknown_reason_context() -> None:

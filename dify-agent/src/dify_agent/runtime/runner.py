@@ -114,10 +114,19 @@ class AgentRunValidationError(ValueError):
     """Raised when a run request is valid JSON but cannot execute."""
 
 
+_INVOKE_FAILURE_TYPE_BY_BODY_ERROR_TYPE: Mapping[str, RunFailureType] = {
+    "InvokeAuthorizationError": RunFailureType.INVOKE_AUTHORIZATION_ERROR,
+    "InvokeBadRequestError": RunFailureType.INVOKE_BAD_REQUEST_ERROR,
+    "CredentialsValidateFailedError": RunFailureType.INVOKE_BAD_REQUEST_ERROR,
+    "InvokeConnectionError": RunFailureType.INVOKE_CONNECTION_ERROR,
+    "InvokeRateLimitError": RunFailureType.INVOKE_RATE_LIMIT_EXCEEDED,
+    "InvokeServerUnavailableError": RunFailureType.INVOKE_SERVER_UNAVAILABLE_ERROR,
+}
+
+
 def _run_failed_error_payload(exc: Exception) -> tuple[str, RunFailureType | None, str | None]:
     """Return the public failed-run error text, type, and structured reason."""
     message = str(exc) or type(exc).__name__
-    reason: str | None = None
 
     if isinstance(exc, UsageLimitExceeded):
         return message, RunFailureType.AGENT_RUN_LIMIT_EXCEEDED, None
@@ -132,19 +141,19 @@ def _run_failed_error_payload(exc: Exception) -> tuple[str, RunFailureType | Non
             if isinstance(body_message, str) and body_message:
                 message = body_message
 
-            error_type = body.get("error_type")
-            if isinstance(error_type, str) and error_type:
-                if error_type == "InvokeRateLimitError":
-                    return message, RunFailureType.INVOKE_RATE_LIMIT_EXCEEDED, None
-                reason = error_type
+            body_error_type = body.get("error_type")
+            if isinstance(body_error_type, str) and body_error_type:
+                failure_type = _INVOKE_FAILURE_TYPE_BY_BODY_ERROR_TYPE.get(body_error_type)
+                if failure_type is not None:
+                    return message, failure_type, None
 
-        if reason is None and exc.status_code == 429:
+        if exc.status_code == 429:
             return message, RunFailureType.INVOKE_RATE_LIMIT_EXCEEDED, None
 
     if isinstance(exc, DifyKnowledgeBaseClientError):
-        reason = exc.error_code or "DifyKnowledgeBaseClientError"
+        return message, RunFailureType.KNOWLEDGE_RETRIEVE_FAILED, None
 
-    return message, None, reason
+    return message, None, None
 
 
 def _has_model_layer(request: CreateRunRequest) -> bool:

@@ -69,7 +69,12 @@ class RunFailureType(StrEnum):
 
     AGENT_RUN_LIMIT_EXCEEDED = "agent_run_limit_exceeded"
     BINDING_LOST = "binding_lost"
+    INVOKE_AUTHORIZATION_ERROR = "invoke_authorization_error"
+    INVOKE_BAD_REQUEST_ERROR = "invoke_bad_request_error"
+    INVOKE_CONNECTION_ERROR = "invoke_connection_error"
     INVOKE_RATE_LIMIT_EXCEEDED = "invoke_rate_limit_exceeded"
+    INVOKE_SERVER_UNAVAILABLE_ERROR = "invoke_server_unavailable_error"
+    KNOWLEDGE_RETRIEVE_FAILED = "knowledge_retrieve_failed"
     AGENT_SHUTDOWN = "agent_shutdown"
 
 

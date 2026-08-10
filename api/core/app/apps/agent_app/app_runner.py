@@ -88,7 +88,11 @@ _AGENT_BACKEND_INVOKE_ERROR_BY_REASON: Mapping[str, type[InvokeError]] = {
 }
 
 _AGENT_BACKEND_INVOKE_ERROR_BY_FAILURE_TYPE: Mapping[RunFailureType, type[InvokeError]] = {
+    RunFailureType.INVOKE_AUTHORIZATION_ERROR: InvokeAuthorizationError,
+    RunFailureType.INVOKE_BAD_REQUEST_ERROR: InvokeBadRequestError,
+    RunFailureType.INVOKE_CONNECTION_ERROR: InvokeConnectionError,
     RunFailureType.INVOKE_RATE_LIMIT_EXCEEDED: InvokeRateLimitError,
+    RunFailureType.INVOKE_SERVER_UNAVAILABLE_ERROR: InvokeServerUnavailableError,
 }
 
 

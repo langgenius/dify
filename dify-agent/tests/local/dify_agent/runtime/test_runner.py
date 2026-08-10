@@ -210,8 +210,8 @@ def test_run_failed_error_payload_preserves_knowledge_error_code() -> None:
     message, error_type, reason = _run_failed_error_payload(exc)
 
     assert message == "Knowledge base search failed with HTTP 400 (dataset_not_found): Dataset not found"
-    assert error_type is None
-    assert reason == "dataset_not_found"
+    assert error_type is RunFailureType.KNOWLEDGE_RETRIEVE_FAILED
+    assert reason is None
 
 
 def test_run_failed_error_payload_classifies_usage_limit() -> None:
@@ -231,6 +231,29 @@ def test_run_failed_error_payload_classifies_binding_lost() -> None:
 
     assert message == "binding no longer available"
     assert error_type is RunFailureType.BINDING_LOST
+    assert reason is None
+
+
+@pytest.mark.parametrize(
+    ("body_error_type", "expected_failure_type"),
+    [
+        ("InvokeAuthorizationError", RunFailureType.INVOKE_AUTHORIZATION_ERROR),
+        ("InvokeBadRequestError", RunFailureType.INVOKE_BAD_REQUEST_ERROR),
+        ("CredentialsValidateFailedError", RunFailureType.INVOKE_BAD_REQUEST_ERROR),
+        ("InvokeConnectionError", RunFailureType.INVOKE_CONNECTION_ERROR),
+        ("InvokeServerUnavailableError", RunFailureType.INVOKE_SERVER_UNAVAILABLE_ERROR),
+    ],
+)
+def test_run_failed_error_payload_classifies_invoke_errors(
+    body_error_type: str,
+    expected_failure_type: RunFailureType,
+) -> None:
+    exc = ModelHTTPError(400, "gpt-4o-mini", {"error_type": body_error_type, "message": "provider failed"})
+
+    message, error_type, reason = _run_failed_error_payload(exc)
+
+    assert message == "provider failed"
+    assert error_type is expected_failure_type
     assert reason is None
 
 
