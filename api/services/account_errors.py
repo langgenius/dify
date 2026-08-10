@@ -7,3 +7,11 @@ class AccountApplicationError(Exception):
 
 class AccountNotFoundError(AccountApplicationError):
     """The admitted account no longer exists."""
+
+
+class CurrentAccountPasswordIncorrectError(AccountApplicationError):
+    """The supplied current password does not match the account credential."""
+
+
+class AvatarFileNotFoundError(AccountApplicationError):
+    """The requested avatar file does not exist or is not owned by the account."""

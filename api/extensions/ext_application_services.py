@@ -16,6 +16,7 @@ from core.schemas.schema_manager import SchemaManager
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions.ext_redis import RedisClientWrapper, redis_client
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
+from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.account_repository import SQLAlchemyAccountRepository
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from repositories.data_source_api_key_auth_repository import SQLAlchemyDataSourceApiKeyAuthBindingRepository
@@ -35,6 +36,11 @@ from services.account_activation_adapters import (
     RegisterServiceInvitationTokenStore,
 )
 from services.account_activation_service import AccountActivationService
+from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
+from services.account_avatar_service import AccountAvatarService
+from services.account_integration_service import AccountIntegrationService
+from services.account_password_hasher import LegacyAccountPasswordHasher
+from services.account_password_service import AccountPasswordService
 from services.account_profile_service import AccountProfileService
 from services.app_definition_query_service import AppDefinitionQueryService
 from services.auth.data_source_api_key_auth_gateways import (
@@ -94,6 +100,9 @@ def _is_user_allowed_to_access_webapp(user_id: str, app_id: str) -> bool:
 
 @dataclass(frozen=True, slots=True)
 class AccountServices:
+    avatar: AccountAvatarService
+    integrations: AccountIntegrationService
+    password: AccountPasswordService
     profile: AccountProfileService
 
 
@@ -128,6 +137,8 @@ def build_application_services(
     data_source_api_key_auth_bindings = SQLAlchemyDataSourceApiKeyAuthBindingRepository(session_factory=database_client)
     app_definition_repository = AppDefinitionQueryRepository(session_factory=database_client)
     feature_gateway = FeatureServiceGateway()
+    accounts = SQLAlchemyAccountRepository(database_client)
+    integrations = SQLAlchemyAccountIntegrationRepository(database_client)
     trial_app_enabled = FeatureService.is_trial_app_enabled()
     database_catalog = DatabaseRecommendedAppCatalogRepository(session_factory=database_client, redis=redis)
     builtin_catalog = BuiltinRecommendedAppCatalogGateway()
@@ -139,7 +150,15 @@ def build_application_services(
     )
     return ApplicationServices(
         accounts=AccountServices(
-            profile=AccountProfileService(accounts=SQLAlchemyAccountRepository(database_client)),
+            avatar=AccountAvatarService(
+                files=SQLAlchemyAccountAvatarFileGateway(session_factory=database_client),
+            ),
+            integrations=AccountIntegrationService(integrations=integrations),
+            password=AccountPasswordService(
+                accounts=accounts,
+                passwords=LegacyAccountPasswordHasher(),
+            ),
+            profile=AccountProfileService(accounts=accounts),
         ),
         account_activation=AccountActivationService(
             tokens=RegisterServiceInvitationTokenStore(),

@@ -46,7 +46,6 @@ from controllers.console.workspace.error import (
 from controllers.console.wraps import (
     account_initialization_required,
     enable_change_email,
-    enterprise_license_required,
     model_validate,
     only_edition_cloud,
     setup_required,
@@ -57,15 +56,12 @@ from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.member_fields import AccountResponse
-from graphon.file import helpers as file_helpers
 from libs.datetime_utils import naive_utc_now
 from libs.helper import EmailStr, dump_response, extract_remote_ip, timezone, to_timestamp
 from libs.login import login_required
 from machinery.context import RequestContext
-from models import Account, AccountIntegrate, InvitationCode
+from models import Account, InvitationCode
 from models.account import AccountStatus, InvitationCodeStatus
-from models.enums import CreatorUserRole
-from models.model import UploadFile
 from services import account_errors
 from services.account_service import AccountService
 from services.billing_service import BillingService
@@ -76,7 +72,6 @@ from services.entities.auth_entities import (
     ChangeEmailOldEmailToken,
     ChangeEmailOldEmailVerifiedToken,
 )
-from services.errors.account import CurrentPasswordIncorrectError as ServiceCurrentPasswordIncorrectError
 
 
 class AccountInitPayload(BaseModel):
@@ -352,14 +347,14 @@ class AccountInitApi(Resource):
 
 @console_ns.route("/account/profile")
 class AccountProfileApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
-    @enterprise_license_required
-    @with_current_user
-    def get(self, current_user: Account):
-        return dump_response(AccountResponse, current_user)
+    @console_account_admission(require_valid_enterprise_license=True)
+    def get(self, request_context: RequestContext):
+        try:
+            account = application_services().accounts.profile.get(request_context)
+        except account_errors.AccountNotFoundError as error:
+            raise AccountNotFound() from error
+        return dump_response(AccountResponse, account)
 
     @console_ns.expect(console_ns.models[AccountProfilePatchPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
@@ -391,25 +386,13 @@ class AccountAvatarApi(Resource):
     @console_ns.doc(description="Get account avatar url")
     @console_ns.doc(params=query_params_from_model(AccountAvatarQuery))
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AvatarUrlResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_user
+    @console_account_admission()
     @model_validate(AccountAvatarQuery)
-    def get(self, req_data: AccountAvatarQuery, current_user: Account):
-        avatar = req_data.avatar
-
-        if avatar.startswith(("http://", "https://")):
-            return AvatarUrlResponse(avatar_url=avatar).model_dump(mode="json")
-
-        upload_file = db.session.scalar(select(UploadFile).where(UploadFile.id == avatar).limit(1))
-        if upload_file is None:
-            raise NotFound("Avatar file not found")
-
-        if upload_file.created_by_role != CreatorUserRole.ACCOUNT or upload_file.created_by != current_user.id:
-            raise NotFound("Avatar file not found")
-
-        avatar_url = file_helpers.get_signed_file_url(upload_file_id=upload_file.id)
+    def get(self, args: AccountAvatarQuery, request_context: RequestContext):
+        try:
+            avatar_url = application_services().accounts.avatar.resolve(request_context, args.avatar)
+        except account_errors.AvatarFileNotFoundError as error:
+            raise NotFound("Avatar file not found") from error
         return AvatarUrlResponse(avatar_url=avatar_url).model_dump(mode="json")
 
     @console_ns.expect(console_ns.models[AccountAvatarPayload.__name__])
@@ -481,61 +464,44 @@ class AccountTimezoneApi(Resource):
 @console_ns.route("/account/password")
 class AccountPasswordApi(Resource):
     @console_ns.expect(console_ns.models[AccountPasswordPayload.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
-    @with_current_user
-    def post(self, current_user: Account):
+    @console_account_admission()
+    def post(self, request_context: RequestContext):
         payload = console_ns.payload or {}
         args = AccountPasswordPayload.model_validate(payload)
 
         try:
             assert args.password is not None
-            AccountService.update_account_password(current_user, args.password, args.new_password, session=db.session())
-        except ServiceCurrentPasswordIncorrectError:
-            raise CurrentPasswordIncorrectError()
+            account = application_services().accounts.password.change(
+                request_context,
+                current_password=args.password,
+                new_password=args.new_password,
+            )
+        except account_errors.CurrentAccountPasswordIncorrectError as error:
+            raise CurrentPasswordIncorrectError() from error
+        except account_errors.AccountNotFoundError as error:
+            raise AccountNotFound() from error
 
-        return dump_response(AccountResponse, current_user)
+        return dump_response(AccountResponse, account)
 
 
 @console_ns.route("/account/integrates")
 class AccountIntegrateApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountIntegrateListResponse.__name__])
-    @with_current_user
-    def get(self, account: Account):
-        account_integrates = db.session.scalars(
-            select(AccountIntegrate).where(AccountIntegrate.account_id == account.id)
-        ).all()
-
+    @console_account_admission()
+    def get(self, request_context: RequestContext):
         base_url = request.url_root.rstrip("/")
         oauth_base_path = "/console/api/oauth/login"
-        providers = ["github", "google"]
-
-        integrate_data: list[AccountIntegrateResponse] = []
-        for provider in providers:
-            existing_integrate = next((ai for ai in account_integrates if ai.provider == provider), None)
-            if existing_integrate:
-                integrate_data.append(
-                    AccountIntegrateResponse(
-                        provider=provider,
-                        created_at=to_timestamp(existing_integrate.created_at),
-                        is_bound=True,
-                        link=None,
-                    )
-                )
-            else:
-                integrate_data.append(
-                    AccountIntegrateResponse(
-                        provider=provider,
-                        created_at=None,
-                        is_bound=False,
-                        link=f"{base_url}{oauth_base_path}/{provider}",
-                    )
-                )
+        integrations = application_services().accounts.integrations.list(request_context)
+        integrate_data = [
+            AccountIntegrateResponse(
+                provider=integration.provider,
+                created_at=to_timestamp(integration.created_at),
+                is_bound=integration.is_bound,
+                link=(None if integration.is_bound else f"{base_url}{oauth_base_path}/{integration.provider}"),
+            )
+            for integration in integrations
+        ]
 
         return AccountIntegrateListResponse(data=integrate_data).model_dump(mode="json")
 
