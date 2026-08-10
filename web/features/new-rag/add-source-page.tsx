@@ -44,8 +44,9 @@ import {
   sourceProviderOptionForDraft,
 } from './source-provider-options'
 import {
+  SourceProviderIcon,
   SourceProviderNotInstalledCard,
-  SourceProviderRadioGroup,
+  SourceProviderSelector,
   SourceTypeSelector,
 } from './source-setup-fields'
 import { WebsiteCrawlPreview } from './website-crawl-preview'
@@ -205,64 +206,6 @@ function getSupportedAuthKinds(provider: Provider, credentialId?: string) {
   )
     supported.push('endpoint')
   return supported
-}
-
-function ProviderSelector({
-  disabled = false,
-  onMoreProviders,
-  options,
-  providerKey,
-  onChange,
-}: {
-  disabled?: boolean
-  onMoreProviders: () => void
-  options: SourceProviderOption[]
-  providerKey: string
-  onChange: (providerKey: string) => void
-}) {
-  const { t } = useTranslation('dataset')
-
-  return (
-    <Fieldset disabled={disabled}>
-      <div className="mb-1.5 flex items-center justify-between gap-3">
-        <FieldsetLegend className="py-0 system-xs-medium">
-          {t(($) => $['newKnowledge.providerLabel'])}
-        </FieldsetLegend>
-        <Button
-          type="button"
-          variant="ghost-accent"
-          size="small"
-          className="gap-0.5 px-2.75"
-          disabled={disabled}
-          onClick={onMoreProviders}
-        >
-          {t(($) => $['newKnowledge.moreProviders'])}
-          <span aria-hidden className="i-ri-arrow-right-up-line size-3.5" />
-        </Button>
-      </div>
-      <SourceProviderRadioGroup
-        value={providerKey}
-        disabled={disabled}
-        layout="wrap"
-        options={options.map((option) => ({
-          icon: <WebsiteProviderIcon option={option} />,
-          label: option.label,
-          value: option.key,
-        }))}
-        size="small"
-        onChange={onChange}
-      />
-    </Fieldset>
-  )
-}
-
-function WebsiteProviderIcon({ option }: { option: SourceProviderOption }) {
-  const icon = option.installed
-    ? (option.datasource.identity.icon ?? option.plugin.declaration.identity.icon)
-    : undefined
-  if (typeof icon === 'string' && icon)
-    return <img aria-hidden alt="" className="size-4 shrink-0 object-contain" src={icon} />
-  return <span aria-hidden className={`${option.fallbackIcon} size-4 shrink-0`} />
 }
 
 function ProviderFieldControl({
@@ -680,7 +623,15 @@ function UnconfiguredProvider({
   return (
     <div className="flex flex-col items-start gap-2.5 rounded-xl bg-background-section p-4">
       <span className="flex size-9 items-center justify-center rounded-lg border border-divider-subtle bg-background-default">
-        <WebsiteProviderIcon option={providerOption} />
+        <SourceProviderIcon
+          fallbackIcon={providerOption.fallbackIcon}
+          icon={
+            providerOption.installed
+              ? (providerOption.datasource.identity.icon ??
+                providerOption.plugin.declaration.identity.icon)
+              : undefined
+          }
+        />
       </span>
       <h3 className="system-sm-semibold text-text-primary">
         {t(($) => $['newKnowledge.providerNotConfigured'], {
@@ -1311,7 +1262,7 @@ export function AddSourcePage({
           />
           {sourceDraft.sourceType === 'websiteCrawl' ? (
             <>
-              <ProviderSelector
+              <SourceProviderSelector
                 disabled={websiteSetupLocked}
                 options={websiteProviderOptions}
                 providerKey={websiteProviderOption?.key ?? ''}
@@ -1351,7 +1302,7 @@ export function AddSourcePage({
                 </div>
               ) : websiteProviderOption && !websiteProviderOption.installed ? (
                 <SourceProviderNotInstalledCard
-                  icon={<WebsiteProviderIcon option={websiteProviderOption} />}
+                  icon={<SourceProviderIcon fallbackIcon={websiteProviderOption.fallbackIcon} />}
                   provider={websiteProviderOption.label}
                   onInstall={() =>
                     globalThis.open(

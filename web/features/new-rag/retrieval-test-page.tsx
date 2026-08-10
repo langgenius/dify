@@ -26,6 +26,7 @@ import { Markdown } from '@/app/components/base/markdown'
 import { Link as MarkdownLink } from '@/app/components/base/markdown-blocks'
 import Link from '@/next/link'
 import { consoleClient, consoleQuery } from '@/service/client'
+import { RetrievalModeSegmentedControl } from './components/retrieval-mode-segmented-control'
 import {
   extractRetrievalEvidence,
   extractStreamError,
@@ -1589,34 +1590,19 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                 }}
               />
               <div className="flex min-h-13 items-center justify-between gap-3 p-2.5">
-                <div
-                  role="group"
+                <RetrievalModeSegmentedControl
                   aria-label={t(($) => $['newKnowledge.settings.retrievalModeLabel'])}
-                  className="flex min-w-46.5 gap-0.5 rounded-lg bg-background-section-burn p-0.5"
-                >
-                  {(['fast', 'deep', 'research'] as const).map((item) => (
-                    <button
-                      key={item}
-                      type="button"
-                      disabled={selectedResearchActive || localRun?.status === 'running'}
-                      aria-pressed={mode === item}
-                      className={cn(
-                        'grow rounded-md px-2.5 py-1.25 system-sm-regular text-text-tertiary capitalize outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed',
-                        mode === item &&
-                          'bg-components-panel-bg font-medium text-text-primary shadow-xs',
-                      )}
-                      onClick={() =>
-                        setComposerDraft({
-                          mode: item,
-                          query,
-                          ...(selectedHistoryKey ? { selectionKey: selectedHistoryKey } : {}),
-                        })
-                      }
-                    >
-                      {t(($) => $[`newKnowledge.settings.retrievalMode.${item}`])}
-                    </button>
-                  ))}
-                </div>
+                  appearance="composer"
+                  disabled={selectedResearchActive || localRun?.status === 'running'}
+                  value={mode}
+                  onChange={(nextMode) =>
+                    setComposerDraft({
+                      mode: nextMode,
+                      query,
+                      ...(selectedHistoryKey ? { selectionKey: selectedHistoryKey } : {}),
+                    })
+                  }
+                />
                 <Button
                   variant="primary"
                   className="px-3.25"

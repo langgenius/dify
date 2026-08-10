@@ -15,11 +15,9 @@ import type {
   DataSourceAuth,
   DataSourceCredential,
 } from '@/app/components/header/account-setting/data-source-page-new/types'
-import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -46,8 +44,9 @@ import {
 import {
   SourceConnectionRequiredCard,
   SourceNameField,
+  SourceProviderIcon,
   SourceProviderNotInstalledCard,
-  SourceProviderRadioGroup,
+  SourceProviderSelector,
   SourceSyncPolicyField,
 } from './source-setup-fields'
 
@@ -142,11 +141,9 @@ function datasourceProviderForOption(option?: SourceProviderOption) {
     : undefined
 }
 
-type ProviderBrandIconValue = DataSourceItem['declaration']['identity']['icon']
-
 function datasourceProviderIcon(
   datasourceProvider: ReturnType<typeof datasourceProviderForOption>,
-): ProviderBrandIconValue | undefined {
+) {
   return datasourceProvider?.plugin.declaration.identity.icon
 }
 
@@ -315,83 +312,6 @@ function requestStatus(error: unknown) {
   return undefined
 }
 
-function ProviderSelector({
-  options,
-  providerKey,
-  onChange,
-  onMoreProviders,
-}: {
-  options: SourceProviderOption[]
-  providerKey: string
-  onChange: (providerKey: string) => void
-  onMoreProviders: () => void
-}) {
-  const { t } = useTranslation('dataset')
-  return (
-    <Fieldset>
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <FieldsetLegend className="py-0 system-xs-medium">
-          {t(($) => $['newKnowledge.providerLabel'])}
-        </FieldsetLegend>
-        <Button
-          type="button"
-          variant="ghost-accent"
-          size="small"
-          className="h-6 gap-0.5 px-0"
-          onClick={onMoreProviders}
-        >
-          {t(($) => $['newKnowledge.moreProviders'])}
-          <span aria-hidden className="i-ri-arrow-right-up-line size-3.5" />
-        </Button>
-      </div>
-      <SourceProviderRadioGroup
-        value={providerKey}
-        layout="wrap"
-        options={options.map((option) => ({
-          icon: (
-            <ProviderBrandIcon
-              fallbackIcon={option.fallbackIcon}
-              icon={
-                option.installed
-                  ? (option.datasource.identity.icon ?? option.plugin.declaration.identity.icon)
-                  : undefined
-              }
-            />
-          ),
-          label: option.label,
-          value: option.key,
-        }))}
-        size="small"
-        onChange={onChange}
-      />
-    </Fieldset>
-  )
-}
-
-function ProviderBrandIcon({
-  fallbackIcon,
-  icon,
-}: {
-  fallbackIcon: string
-  icon?: ProviderBrandIconValue
-}) {
-  if (typeof icon === 'string' && icon)
-    return <img aria-hidden alt="" className="size-4 shrink-0 object-contain" src={icon} />
-
-  if (icon && typeof icon !== 'string')
-    return (
-      <span
-        aria-hidden
-        className="flex size-4 shrink-0 items-center justify-center overflow-hidden rounded text-2xs"
-        style={{ backgroundColor: icon.background }}
-      >
-        {icon.content}
-      </span>
-    )
-
-  return <span aria-hidden className={`${fallbackIcon} size-4 shrink-0`} />
-}
-
 function OAuthConnectionCard({
   draft,
   icon,
@@ -399,7 +319,7 @@ function OAuthConnectionCard({
   onConnect,
 }: {
   draft: ConnectedSourceDraft
-  icon?: ProviderBrandIconValue
+  icon?: ReturnType<typeof datasourceProviderIcon>
   providerOption: InstalledSourceProviderOption
   onConnect: () => void
 }) {
@@ -414,7 +334,7 @@ function OAuthConnectionCard({
               provider: draft.provider,
             })
       }
-      icon={<ProviderBrandIcon fallbackIcon={providerOption.fallbackIcon} icon={icon} />}
+      icon={<SourceProviderIcon fallbackIcon={providerOption.fallbackIcon} icon={icon} />}
       title={
         draft.provider === 'Notion'
           ? t(($) => $['newKnowledge.notionNotConnected'])
@@ -1824,7 +1744,8 @@ export function ConnectedSourceSetup({
   }
   return (
     <div className="flex flex-col gap-4">
-      <ProviderSelector
+      <SourceProviderSelector
+        appearance="embedded"
         options={providerOptions}
         providerKey={providerOption?.key ?? ''}
         onChange={selectProvider}
@@ -1860,7 +1781,7 @@ export function ConnectedSourceSetup({
         </div>
       ) : providerOption && !providerOption.installed ? (
         <SourceProviderNotInstalledCard
-          icon={<ProviderBrandIcon fallbackIcon={providerOption.fallbackIcon} />}
+          icon={<SourceProviderIcon fallbackIcon={providerOption.fallbackIcon} />}
           provider={providerOption.label}
           onInstall={() =>
             globalThis.open(
