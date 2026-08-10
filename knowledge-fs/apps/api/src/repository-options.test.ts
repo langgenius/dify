@@ -81,6 +81,7 @@ describe("createApiDatabaseRepositories", () => {
         knowledgePaths: expect.any(Object),
         knowledgeSpaceAccess: expect.any(Object),
         knowledgeSpaceManifests: expect.any(Object),
+        metadataFields: expect.any(Object),
         knowledgeSpaceOverview: expect.any(Object),
         knowledgeSpaceProfiles: expect.any(Object),
         knowledgeSpaceProvisioning: expect.any(Object),
