@@ -8,11 +8,10 @@ import type {
 } from './routes'
 import type { SourceConnection as Connection, SourceProvider as Provider } from './source-models'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldControl, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Form } from '@langgenius/dify-ui/form'
-import { Radio, RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
+import { Radio, RadioGroup } from '@langgenius/dify-ui/radio'
 import {
   Select,
   SelectContent,
@@ -42,6 +41,7 @@ import {
   sourceConnectionListFromApi,
   sourceProviderListFromApi,
 } from './source-models'
+import { SourceProviderRadioGroup, SourceTypeSelector } from './source-setup-fields'
 import { WebsiteCrawlPreview } from './website-crawl-preview'
 
 type ProviderField = Provider['configuration'][number]
@@ -174,52 +174,6 @@ function getSupportedAuthKinds(provider: Provider, credentialId?: string) {
   return supported
 }
 
-function SourceTypeSelector({
-  disabled = false,
-  value,
-  onChange,
-}: {
-  disabled?: boolean
-  value: SourceType
-  onChange: (value: SourceType) => void
-}) {
-  const { t } = useTranslation('dataset')
-  const options = [
-    { icon: 'i-ri-global-line', iconSize: 'size-4', key: 'websiteCrawl' as const },
-    { icon: 'i-ri-file-text-line', iconSize: 'size-3.5', key: 'onlineDocuments' as const },
-    { icon: 'i-ri-hard-drive-3-line', iconSize: 'size-3.5', key: 'onlineDrive' as const },
-  ]
-
-  return (
-    <Fieldset disabled={disabled}>
-      <FieldsetLegend className="mb-1.5 py-0 system-xs-medium leading-3.75">
-        {t(($) => $['newKnowledge.sourceTypeLabel'])}
-      </FieldsetLegend>
-      <RadioGroup<SourceType>
-        value={value}
-        disabled={disabled}
-        className="grid grid-cols-1 gap-0.5 rounded-lg bg-background-section p-0.5 sm:grid-cols-3"
-        onValueChange={onChange}
-      >
-        {options.map((option) => (
-          <RadioItem<SourceType>
-            key={option.key}
-            value={option.key}
-            className={cn(
-              'relative flex h-7 items-center justify-center gap-1.5 rounded-md system-xs-medium text-text-tertiary outline-hidden',
-              'hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-              'data-checked:bg-background-default data-checked:text-text-primary data-checked:shadow-xs',
-            )}
-          >
-            <span aria-hidden className={`${option.icon} ${option.iconSize}`} />
-            {t(($) => $[`newKnowledge.${option.key}`])}
-          </RadioItem>
-        ))}
-      </RadioGroup>
-    </Fieldset>
-  )
-}
-
 function ProviderSelector({
   disabled = false,
   onMoreProviders,
@@ -251,27 +205,16 @@ function ProviderSelector({
           <span aria-hidden className="i-ri-arrow-right-up-line size-3.5" />
         </Button>
       </div>
-      <RadioGroup<NewKnowledgeWebsiteProvider>
+      <SourceProviderRadioGroup
         value={provider}
         disabled={disabled}
-        className="grid grid-cols-2 gap-2 sm:grid-cols-4"
-        onValueChange={onChange}
-      >
-        {WEBSITE_PROVIDER_OPTIONS.map((option) => (
-          <RadioItem<NewKnowledgeWebsiteProvider>
-            key={option.value}
-            value={option.value}
-            className={cn(
-              'relative flex h-8.5 items-center justify-center gap-1.5 rounded-lg border border-divider-subtle px-2.5 system-xs-medium text-text-secondary outline-hidden',
-              'hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-              'data-checked:border-[1.5px] data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:text-text-primary',
-            )}
-          >
-            <span aria-hidden className={`${option.icon} size-4`} />
-            {option.value}
-          </RadioItem>
-        ))}
-      </RadioGroup>
+        layout="grid-four"
+        options={WEBSITE_PROVIDER_OPTIONS.map((option) => ({
+          icon: <span aria-hidden className={`${option.icon} size-4`} />,
+          value: option.value,
+        }))}
+        onChange={onChange}
+      />
     </Fieldset>
   )
 }

@@ -20,18 +20,7 @@ import type { DataSourceItem } from '@/app/components/workflow/block-selector/ty
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
-import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectItemIndicator,
-  SelectItemText,
-  SelectLabel,
-  SelectTrigger,
-} from '@langgenius/dify-ui/select'
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -51,6 +40,12 @@ import {
   sourceSyncPolicyFromApi,
   sourceWorkflowFromApi,
 } from './source-models'
+import {
+  SourceConnectionRequiredCard,
+  SourceNameField,
+  SourceProviderRadioGroup,
+  SourceSyncPolicyField,
+} from './source-setup-fields'
 
 type ConnectedSourceDraft =
   | NewKnowledgeOnlineDocumentsSourceDraft
@@ -462,26 +457,16 @@ function ProviderSelector({
           <span aria-hidden className="i-ri-arrow-right-up-line size-3.5" />
         </Button>
       </div>
-      <RadioGroup<string>
+      <SourceProviderRadioGroup
         value={draft.provider}
-        className="flex flex-wrap gap-2"
-        onValueChange={onChange}
-      >
-        {options.map((option) => {
+        layout="wrap"
+        options={options.map((option) => {
           const optionProvider = datasourceProviderForDraft(datasourcePlugins, {
             ...draft,
             provider: option.label,
           } as ConnectedSourceDraft)
-          return (
-            <RadioItem<string>
-              key={option.label}
-              value={option.label}
-              className={cn(
-                'relative flex h-7.5 items-center justify-center gap-1.5 rounded-lg border border-divider-subtle px-3 system-xs-medium text-text-secondary outline-hidden',
-                'hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-                'data-checked:border-[1.5px] data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:text-text-primary',
-              )}
-            >
+          return {
+            icon: (
               <ProviderBrandIcon
                 fallbackIcon={option.icon}
                 icon={
@@ -490,11 +475,13 @@ function ProviderSelector({
                     : datasourceProviderIcon(optionProvider)
                 }
               />
-              {option.label}
-            </RadioItem>
-          )
+            ),
+            value: option.label,
+          }
         })}
-      </RadioGroup>
+        size="small"
+        onChange={onChange}
+      />
     </Fieldset>
   )
 }
@@ -535,28 +522,25 @@ function OAuthConnectionCard({
   const { t } = useTranslation('dataset')
   const option = providerOptions[draft.sourceType].find((item) => item.label === draft.provider)
   return (
-    <section className="flex h-44 flex-col items-start gap-2.5 rounded-xl bg-background-section p-4">
-      <span className="flex size-9 items-center justify-center rounded-lg border border-divider-subtle bg-background-default">
-        <ProviderBrandIcon fallbackIcon={option?.icon ?? 'i-ri-links-line'} icon={icon} />
-      </span>
-      <h3 className="system-sm-semibold text-text-primary">
-        {draft.provider === 'Notion'
-          ? t(($) => $['newKnowledge.notionNotConnected'])
-          : t(($) => $['newKnowledge.providerNotConfigured'], {
-              provider: draft.provider,
-            })}
-      </h3>
-      <p className="max-w-xl system-xs-regular leading-3.75 text-text-tertiary">
-        {draft.provider === 'Notion'
+    <SourceConnectionRequiredCard
+      actionLabel={t(($) => $['newKnowledge.connectProvider'], { provider: draft.provider })}
+      description={
+        draft.provider === 'Notion'
           ? t(($) => $['newKnowledge.notionNotConnectedDescription'])
           : t(($) => $['newKnowledge.providerCredentialRequiredDescription'], {
               provider: draft.provider,
-            })}
-      </p>
-      <Button variant="primary" className="mt-auto" onClick={onConnect}>
-        {t(($) => $['newKnowledge.connectProvider'], { provider: draft.provider })}
-      </Button>
-    </section>
+            })
+      }
+      icon={<ProviderBrandIcon fallbackIcon={option?.icon ?? 'i-ri-links-line'} icon={icon} />}
+      title={
+        draft.provider === 'Notion'
+          ? t(($) => $['newKnowledge.notionNotConnected'])
+          : t(($) => $['newKnowledge.providerNotConfigured'], {
+              provider: draft.provider,
+            })
+      }
+      onConnect={onConnect}
+    />
   )
 }
 
@@ -809,43 +793,15 @@ function SyncPolicyField({
   draft: ConnectedSourceDraft
   onDraftChange: (draft: NewKnowledgeSourceDraft) => void
 }) {
-  const { t } = useTranslation('dataset')
   return (
-    <div className="flex flex-col gap-1.5">
-      <Select<ConnectedSourceDraft['syncPolicy']>
-        value={draft.syncPolicy}
-        onValueChange={(value) => {
-          if (value) onDraftChange({ ...draft, syncPolicy: value })
-        }}
-      >
-        <SelectLabel>{t(($) => $['newKnowledge.syncPolicy'])}</SelectLabel>
-        <SelectTrigger className="w-75.25">
-          {t(($) =>
-            draft.syncPolicy === 'provider'
-              ? $['newKnowledge.syncPolicyProvider']
-              : draft.syncPolicy === 'daily'
-                ? $['newKnowledge.syncPolicyDaily']
-                : $['newKnowledge.syncPolicyManual'],
-          )}
-        </SelectTrigger>
-        <SelectContent>
-          {draft.provider !== 'Amazon S3' && (
-            <SelectItem value="provider">
-              <SelectItemText>{t(($) => $['newKnowledge.syncPolicyProvider'])}</SelectItemText>
-              <SelectItemIndicator />
-            </SelectItem>
-          )}
-          <SelectItem value="daily">
-            <SelectItemText>{t(($) => $['newKnowledge.syncPolicyDaily'])}</SelectItemText>
-            <SelectItemIndicator />
-          </SelectItem>
-          <SelectItem value="manual">
-            <SelectItemText>{t(($) => $['newKnowledge.syncPolicyManual'])}</SelectItemText>
-            <SelectItemIndicator />
-          </SelectItem>
-        </SelectContent>
-      </Select>
-    </div>
+    <SourceSyncPolicyField
+      availablePolicies={
+        draft.provider === 'Amazon S3' ? ['daily', 'manual'] : ['provider', 'daily', 'manual']
+      }
+      draft={draft}
+      triggerClassName="w-75.25"
+      onDraftChange={onDraftChange}
+    />
   )
 }
 
@@ -1728,22 +1684,7 @@ function ResourceConfiguration({
               />
             )}
           </section>
-          <Field name="connectedSourceName" className="gap-1.5">
-            <FieldLabel>
-              {t(($) => $['newKnowledge.sourceName'])}
-              <span aria-hidden className="ml-0.5 text-text-destructive">
-                *
-              </span>
-            </FieldLabel>
-            <FieldControl
-              type="text"
-              autoComplete="off"
-              maxLength={NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH}
-              value={draft.sourceName}
-              placeholder={t(($) => $['newKnowledge.sourceNamePlaceholder'])}
-              onValueChange={(value) => onDraftChange({ ...draft, sourceName: value })}
-            />
-          </Field>
+          <SourceNameField draft={draft} name="connectedSourceName" onDraftChange={onDraftChange} />
           <SyncPolicyField draft={draft} onDraftChange={onDraftChange} />
         </>
       )}
