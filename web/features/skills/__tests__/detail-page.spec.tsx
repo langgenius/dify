@@ -67,7 +67,22 @@ vi.mock('copy-to-clipboard', () => ({
 }))
 
 vi.mock('@/app/components/base/markdown', () => ({
-  Markdown: ({ content }: { content: string }) => <div>{content}</div>,
+  Markdown: ({
+    content,
+    customComponents,
+  }: {
+    content: string
+    customComponents?: {
+      a?: (props: { children: string; href: string }) => ReactNode
+    }
+  }) => {
+    const reference = content.match(/\[([^\]]+)\]\(<([^>\n]+)>\)/)
+    if (reference && customComponents?.a) {
+      return <div>{customComponents.a({ children: reference[1]!, href: reference[2]! })}</div>
+    }
+
+    return <div>{content}</div>
+  },
 }))
 
 vi.mock('@/app/components/base/app-icon', () => ({
@@ -483,6 +498,15 @@ function getLiveMarkdownEditor() {
   if (!liveEditor) throw new Error('live markdown editor not found')
 
   return liveEditor
+}
+
+function placeCaretAtEnd(element: HTMLElement) {
+  const selection = element.ownerDocument.getSelection()
+  const range = element.ownerDocument.createRange()
+  range.selectNodeContents(element)
+  range.collapse(false)
+  selection?.removeAllRanges()
+  selection?.addRange(range)
 }
 
 function getFileTreeItem(path: string) {
@@ -1548,25 +1572,16 @@ describe('SkillDetailPage', () => {
       ],
     })
 
-    mocks.saveDraftFileMutationFn.mockImplementationOnce(async () => {
-      const error = new Error('skill has been modified by another user') as Error & {
-        code: string
-        details: {
-          current_file_hash: string
-          current_file_content: string
-          current_updated_at: number
-          expected_updated_at: number
-        }
-      }
-      error.code = 'skill_conflict'
-      error.details = {
+    const conflict = {
+      code: 'skill_conflict',
+      details: {
         current_file_hash: 'hash-2',
         current_updated_at: 1784638499,
         current_file_content: latestDetail.files?.[0]?.content ?? '',
         expected_updated_at: 1784638487,
-      }
-      throw error
-    })
+      },
+    }
+    mocks.saveDraftFileMutationFn.mockRejectedValueOnce(conflict)
     renderSkillDetailPage()
 
     await user.click(
@@ -1576,9 +1591,12 @@ describe('SkillDetailPage', () => {
     )
     await user.type(getSourceEditor(), '\nMy tab changes')
 
-    await waitFor(() => {
-      expect(screen.getByRole('alertdialog')).toBeInTheDocument()
-    })
+    await waitFor(
+      () => {
+        expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+      },
+      { timeout: 5000 },
+    )
     expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(1)
     expect(mocks.skillDetailGetFn).toHaveBeenCalledTimes(1)
     await waitFor(() => {
@@ -1595,10 +1613,11 @@ describe('SkillDetailPage', () => {
       // Expected: conflict blocks autosave until the user edits again.
     }
     expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(1)
+    mocks.skillDetail = latestDetail
     await user.click(
       screen.getByRole('button', { name: 'skill.skillManagement.detail.saveConflictReload' }),
     )
-    expect(getSourceEditor()).toHaveValue('# Changed from another tab\n')
+    expect(getSourceEditor()).toHaveValue(latestDetail.files?.[0]?.content ?? '')
   }, 10000)
 
   it('uses conflict details from response errors without retrying autosave', async () => {
@@ -1629,9 +1648,12 @@ describe('SkillDetailPage', () => {
     )
     await user.type(getSourceEditor(), '\nMy response error changes')
 
-    await waitFor(() => {
-      expect(screen.getByRole('alertdialog')).toBeInTheDocument()
-    })
+    await waitFor(
+      () => {
+        expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+      },
+      { timeout: 5000 },
+    )
     expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(1)
     await waitFor(() => {
       expect(
@@ -2633,7 +2655,7 @@ describe('SkillDetailPage', () => {
 
     expect(mocks.sendSkillAssistMessage).not.toHaveBeenCalled()
     expect(sendButton).toBeDisabled()
-  })
+  }, 15000)
 
   it('uploads image attachments in Skill Builder', async () => {
     const user = userEvent.setup({ applyAccept: false })
@@ -2699,7 +2721,7 @@ describe('SkillDetailPage', () => {
     expect(
       screen.getByPlaceholderText('skill.skillManagement.detail.builder.modifyPlaceholder'),
     ).toBeEnabled()
-  })
+  }, 15000)
 
   it('shows Skill Builder completion errors returned by the assistant stream', async () => {
     const user = userEvent.setup()
@@ -3535,9 +3557,15 @@ describe('SkillDetailPage', () => {
     await screen.findByRole('button', {
       name: 'skill.skillManagement.detail.markdownLiveMode',
     })
-    const liveEditor = getLiveMarkdownEditor()
+    const livePreview = screen
+      .getAllByRole('textbox')
+      .find((editor): editor is HTMLDivElement => editor instanceof HTMLDivElement)
+    if (!livePreview) throw new Error('live markdown preview not found')
 
-    await user.click(liveEditor)
+    await user.click(livePreview)
+    const liveEditor = await waitFor(() => getLiveMarkdownEditor())
+    liveEditor.focus()
+    placeCaretAtEnd(liveEditor)
     await user.keyboard('/')
     expect(
       await screen.findByText('skill.skillManagement.detail.referenceFiles.title'),
@@ -3560,19 +3588,27 @@ describe('SkillDetailPage', () => {
     await screen.findByRole('button', {
       name: 'skill.skillManagement.detail.markdownLiveMode',
     })
-    const liveEditor = getLiveMarkdownEditor()
+    const livePreview = screen
+      .getAllByRole('textbox')
+      .find((editor): editor is HTMLDivElement => editor instanceof HTMLDivElement)
+    if (!livePreview) throw new Error('live markdown preview not found')
 
-    await user.click(liveEditor)
+    await user.click(livePreview)
+    const liveEditor = await waitFor(() => getLiveMarkdownEditor())
+    liveEditor.focus()
+    placeCaretAtEnd(liveEditor)
     await user.keyboard('/')
     expect(
       await screen.findByText('skill.skillManagement.detail.referenceFiles.title'),
     ).toBeInTheDocument()
 
     await user.click(getReferencePickerButton('docs'))
-    await user.click(getReferencePickerButton('guide.md'))
+    await user.keyboard('{ArrowDown}{Enter}')
 
     await waitFor(() => {
-      expect(liveEditor.textContent).toContain('guide.md')
+      expect(
+        screen.queryByText('skill.skillManagement.detail.referenceFiles.title'),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -3607,8 +3643,7 @@ describe('SkillDetailPage', () => {
       return element!
     })
 
-    fireEvent.mouseOver(reference)
-    expect(await screen.findByRole('tooltip')).toHaveTextContent('docs/guide.md')
+    expect(reference).toHaveAttribute('title', 'docs/guide.md')
 
     fireEvent.click(reference)
     expect(

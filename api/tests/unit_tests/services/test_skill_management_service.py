@@ -541,27 +541,33 @@ def test_skill_builder_reuses_previous_name_suggestion_when_final_response_omits
 
 
 def test_skill_builder_stays_progressive_after_auto_generated_name() -> None:
-    skill = SimpleNamespace(
-        display_name="Sales Lead Follow-Up Strategy",
-        name_manually_edited=False,
-        latest_published_version_id=None,
-        description="Automate sales lead follow-up.",
-    )
-    files = [
+    skill = cast(
+        Skill,
         SimpleNamespace(
-            path="SKILL.md",
-            content_text=(
-                "---\n"
-                "name: sales-lead-follow-up-strategy\n"
-                "description: Automate sales lead follow-up.\n"
-                "metadata:\n"
-                "  display-name: Sales Lead Follow-Up Strategy\n"
-                "---\n"
-                "# Sales Lead Follow-Up Strategy\n\n"
-                "Workflow body.\n"
+            display_name="Sales Lead Follow-Up Strategy",
+            name_manually_edited=False,
+            latest_published_version_id=None,
+            description="Automate sales lead follow-up.",
+        ),
+    )
+    files = cast(
+        list[SkillDraftFile],
+        [
+            SimpleNamespace(
+                path="SKILL.md",
+                content_text=(
+                    "---\n"
+                    "name: sales-lead-follow-up-strategy\n"
+                    "description: Automate sales lead follow-up.\n"
+                    "metadata:\n"
+                    "  display-name: Sales Lead Follow-Up Strategy\n"
+                    "---\n"
+                    "# Sales Lead Follow-Up Strategy\n\n"
+                    "Workflow body.\n"
+                ),
             ),
-        )
-    ]
+        ],
+    )
 
     assert SkillManagementService._assistant_authoring_stage(skill=skill, files=files) == "resources"
 
@@ -1967,9 +1973,12 @@ def test_apply_draft_file_operation_keeps_auto_generated_name_in_sync_with_build
 
 
 def test_assistant_name_suggestion_materializes_empty_skill_draft() -> None:
-    skill = SimpleNamespace(
-        name="untitled-skill-699bed24",
-        description="",
+    skill = cast(
+        Skill,
+        SimpleNamespace(
+            name="untitled-skill-699bed24",
+            description="",
+        ),
     )
 
     content = SkillManagementService._apply_assistant_suggested_identity(
