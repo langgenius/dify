@@ -16,7 +16,7 @@ import { sendResetPasswordCode } from '@/service/common'
 
 export default function CheckCode() {
   const { t } = useTranslation()
-  useDocumentTitle('')
+  useDocumentTitle(t(($) => $.resetPassword, { ns: 'login' }))
   const searchParams = useSearchParams()
   const router = useRouter()
   const [email, setEmail] = useState('')

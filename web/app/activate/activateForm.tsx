@@ -9,7 +9,6 @@ import { useRouter, useSearchParams } from '@/next/navigation'
 import { useInvitationCheck } from '@/service/use-common'
 
 const ActivateForm = () => {
-  useDocumentTitle('')
   const router = useRouter()
   const { t } = useTranslation()
   const searchParams = useSearchParams()
@@ -31,6 +30,11 @@ const ActivateForm = () => {
       token: token || undefined,
     },
     true,
+  )
+  useDocumentTitle(
+    checkRes?.is_valid === false
+      ? t(($) => $.invalid, { ns: 'login' })
+      : t(($) => $.setYourAccount, { ns: 'login' }),
   )
 
   useEffect(() => {

@@ -4,6 +4,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { emailLoginWithCode } from '@/service/common'
+import { seedSystemFeatures } from '@/test/console/query-data'
 import CheckCode from '../page'
 
 const navigationMocks = vi.hoisted(() => ({
@@ -48,13 +49,15 @@ vi.mock('@/utils/timezone', () => ({
 }))
 
 function createQueryClient() {
-  return new QueryClient({
+  const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
         retry: false,
       },
     },
   })
+  seedSystemFeatures(queryClient)
+  return queryClient
 }
 
 const accountProfile: GetAccountProfileResponse = {
@@ -75,6 +78,7 @@ const accountProfile: GetAccountProfileResponse = {
 describe('CheckCode', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    document.title = ''
     navigationMocks.searchParams = new URLSearchParams({
       email: 'user@example.com',
       redirect_url: '/apps',
@@ -96,6 +100,7 @@ describe('CheckCode', () => {
     )
 
     expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
+    expect(document.title).toBe('login.checkCode.checkYourEmail - Dify')
   })
 
   describe('Post-login profile bootstrap', () => {

@@ -37,8 +37,8 @@ const accountFormSchema = z.object({
 })
 
 const InstallForm = () => {
-  useDocumentTitle('')
   const { t, i18n } = useTranslation()
+  useDocumentTitle(t(($) => $.setAdminAccount, { ns: 'login' }))
   const router = useRouter()
   const queryClient = useQueryClient()
   const [showPassword, setShowPassword] = React.useState(false)

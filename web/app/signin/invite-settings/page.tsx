@@ -21,6 +21,7 @@ import { LICENSE_LINK } from '@/constants/link'
 import { useLocale } from '@/context/i18n'
 import { isLegacyBase401, userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { i18n, setLocaleOnClient } from '@/i18n-config'
 import { languages } from '@/i18n-config/language'
 import Link from '@/next/link'
@@ -115,6 +116,15 @@ export default function InviteSettingsPage() {
     )
   const requiresAccountSetup =
     checkRes?.data?.requires_setup ?? checkRes?.data?.account_status === 'pending'
+  const setupAccountTitle = t(($) => $.setYourAccount, { ns: 'login' })
+  const documentTitle = !checkRes
+    ? setupAccountTitle
+    : !checkRes.is_valid
+      ? t(($) => $.invalid, { ns: 'login' })
+      : requiresAccountSetup || !checkRes.data?.workspace_name
+        ? setupAccountTitle
+        : `${t(($) => $.join, { ns: 'login' })}${checkRes.data.workspace_name}`
+  useDocumentTitle(documentTitle)
 
   useEffect(() => {
     if (!shouldReturnToSignIn) return

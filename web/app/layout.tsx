@@ -40,10 +40,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   ])
   const dehydratedState = dehydrate(queryClient)
   const nonce = IS_PROD ? (requestHeaders.get('x-nonce') ?? undefined) : undefined
-
+  const systemFeatures = queryClient.getQueryData(systemFeaturesQuery.queryKey)
+  const documentTitle =
+    systemFeatures?.branding.enabled && systemFeatures.branding.application_title
+      ? systemFeatures.branding.application_title
+      : 'Dify'
   return (
     <html lang={locale ?? 'en'} className="h-full" suppressHydrationWarning>
       <head>
+        <title>{documentTitle}</title>
         <ReactScanLoader />
       </head>
       <body className="h-full bg-background-body" {...datasetMap}>

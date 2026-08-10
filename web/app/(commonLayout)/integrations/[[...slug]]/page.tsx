@@ -1,5 +1,5 @@
 import type { IntegrationRouteSearchParams } from '@/app/components/integrations/routes'
-import IntegrationsPage from '@/app/components/integrations/page'
+import IntegrationsPage from '@/app/components/integrations'
 import { getIntegrationRouteTargetBySlug } from '@/app/components/integrations/routes'
 import { notFound, redirect } from '@/next/navigation'
 

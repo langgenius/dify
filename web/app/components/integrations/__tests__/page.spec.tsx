@@ -4,7 +4,7 @@ import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/ta
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
-import IntegrationsPage from '../page'
+import IntegrationsPage from '../index'
 
 const renderWithNuqs = (
   ui: React.ReactElement,

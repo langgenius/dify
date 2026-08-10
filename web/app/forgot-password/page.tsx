@@ -2,6 +2,7 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import ChangePasswordForm from '@/app/forgot-password/ChangePasswordForm'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -10,9 +11,14 @@ import Header from '../signin/_header'
 import ForgotPasswordForm from './ForgotPasswordForm'
 
 const ForgotPassword = () => {
-  useDocumentTitle('')
+  const { t } = useTranslation()
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
+  useDocumentTitle(
+    token
+      ? t(($) => $.changePassword, { ns: 'login' })
+      : t(($) => $.forgotPassword, { ns: 'login' }),
+  )
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
   return (

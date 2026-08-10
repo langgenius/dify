@@ -8,11 +8,13 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import { validPassword } from '@/config'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { changePasswordWithToken } from '@/service/common'
 
 const ChangePasswordForm = () => {
   const { t } = useTranslation()
+  useDocumentTitle(t(($) => $.changePassword, { ns: 'login' }))
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = decodeURIComponent(searchParams.get('token') || '')

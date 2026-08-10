@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { changePasswordWithToken } from '@/service/common'
 import ChangePasswordForm from '../page'
@@ -23,10 +24,15 @@ vi.mock('@/service/common', () => ({
   changePasswordWithToken: vi.fn(),
 }))
 
+vi.mock('@/hooks/use-document-title', () => ({
+  default: vi.fn(),
+}))
+
 const mockReplace = vi.fn()
 const mockUseRouter = vi.mocked(useRouter)
 const mockUseSearchParams = vi.mocked(useSearchParams)
 const mockChangePasswordWithToken = vi.mocked(changePasswordWithToken)
+const mockUseDocumentTitle = vi.mocked(useDocumentTitle)
 
 const redirectUrl = '/apps?template-id=template-1&utm_source=dify_blog'
 const encodedSigninUrl =
@@ -63,6 +69,12 @@ describe('Reset Password Set Password Page', () => {
     >)
     mockChangePasswordWithToken.mockResolvedValue({ result: 'success' })
     setSearchParams({ token: 'reset-token' })
+  })
+
+  it('uses the password-setting document title', () => {
+    render(<ChangePasswordForm />)
+
+    expect(mockUseDocumentTitle).toHaveBeenCalledWith('login.changePassword')
   })
 
   describe('Post-reset navigation', () => {

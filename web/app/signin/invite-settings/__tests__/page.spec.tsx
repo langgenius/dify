@@ -21,6 +21,7 @@ vi.mock('@tanstack/react-query', async () => {
     useSuspenseQuery: vi.fn(() => ({
       data: {
         branding: {
+          application_title: 'Acme AI',
           enabled: true,
         },
       },
@@ -78,6 +79,7 @@ const mockGetBrowserTimezone = getBrowserTimezone as unknown as MockedFunction<
 describe('InviteSettingsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    document.title = ''
     mockUseLocale.mockReturnValue('zh-Hans')
     mockUseRouter.mockReturnValue({ replace: mockReplace } as unknown as ReturnType<
       typeof useRouter
@@ -117,6 +119,27 @@ describe('InviteSettingsPage', () => {
     render(<InviteSettingsPage />)
 
     expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
+    expect(document.title).toBe('login.setYourAccount - Acme AI')
+  })
+
+  it('uses the workspace invitation as the page title for an active account', () => {
+    mockUseInvitationCheck.mockReturnValue({
+      data: {
+        is_valid: true,
+        data: {
+          workspace_name: 'Acme',
+          workspace_id: 'workspace-id',
+          email: 'invitee@example.com',
+          account_status: 'active',
+          requires_setup: false,
+        },
+      },
+      refetch: mockRefetch,
+    } as unknown as ReturnType<typeof useInvitationCheck>)
+
+    render(<InviteSettingsPage />)
+
+    expect(document.title).toBe('login.joinAcme - Acme AI')
   })
 
   describe('Activation payload', () => {

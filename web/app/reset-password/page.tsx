@@ -16,7 +16,7 @@ import { COUNT_DOWN_TIME_MS, useSetCountdownLeftTime } from '../components/signi
 
 export default function CheckCode() {
   const { t } = useTranslation()
-  useDocumentTitle('')
+  useDocumentTitle(t(($) => $.resetPassword, { ns: 'login' }))
   const searchParams = useSearchParams()
   const router = useRouter()
   const [email, setEmail] = useState('')

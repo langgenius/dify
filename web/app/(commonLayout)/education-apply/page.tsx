@@ -2,13 +2,17 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { FullScreenLoading } from '@/app/components/full-screen-loading'
 import EducationApplyPage from '@/app/education-apply/education-apply-page'
 import { useProviderContext } from '@/context/provider-context'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 
 export default function EducationApply() {
+  const { t } = useTranslation()
+  useDocumentTitle(t(($) => $.toVerified, { ns: 'education' }))
   const router = useRouter()
   const { enableEducationPlan, isFetchedPlanInfo } = useProviderContext()
   const { isLoading: isLoadingEducationStatus } = useQuery(

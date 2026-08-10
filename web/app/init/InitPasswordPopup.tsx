@@ -11,13 +11,13 @@ import { basePath } from '@/utils/var'
 import Loading from '../components/base/loading'
 
 const InitPasswordPopup = () => {
-  useDocumentTitle('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(true)
   const [validated, setValidated] = useState(false)
   const router = useRouter()
 
   const { t } = useTranslation()
+  useDocumentTitle(t(($) => $.adminInitPassword, { ns: 'login' }))
 
   const handleValidation = async () => {
     setLoading(true)

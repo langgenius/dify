@@ -1,6 +1,7 @@
 'use client'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import MailForm from './components/input-mail'
 
@@ -8,6 +9,7 @@ const Signup = () => {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { t } = useTranslation()
+  useDocumentTitle(t(($) => $['signup.createAccount'], { ns: 'login' }))
 
   const handleInputMailSubmitted = useCallback(
     (email: string, result: string) => {
