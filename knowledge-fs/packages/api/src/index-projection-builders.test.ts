@@ -40,12 +40,19 @@ function knowledgeNode(overrides: Partial<KnowledgeNode> = {}): KnowledgeNode {
 
 function createRecordingProjectionRepository() {
   const created: IndexProjection[][] = [];
+  const persisted = new Map<string, IndexProjection>();
   const repository: IndexProjectionRepository = {
     createMany: async (projections) => {
       created.push(projections.map((projection) => ({ ...projection })));
+      for (const projection of projections) persisted.set(projection.id, { ...projection });
       return projections.map((projection) => ({ ...projection }));
     },
     deleteByNodeIds: async () => 0,
+    getMany: async ({ ids, knowledgeSpaceId }) =>
+      ids.flatMap((id) => {
+        const projection = persisted.get(id);
+        return projection?.knowledgeSpaceId === knowledgeSpaceId ? [{ ...projection }] : [];
+      }),
     listReadyBySpace: async () => ({ items: [] }),
     pruneInactiveVersions: async () => 0,
     publishVersion: async () => ({ published: 0, staled: 0 }),
@@ -292,6 +299,52 @@ describe("index projection builders", () => {
       },
       model: "vs-tenant-model-r7",
     });
+  });
+
+  it("reuses persisted generation-scoped dense projections without embedding them again", async () => {
+    let embedCalls = 0;
+    const embeddings: EmbeddingProvider = {
+      embed: async () => {
+        embedCalls += 1;
+        return {
+          dense: [[embedCalls === 1 ? 0.1 : 0.9, 0.2]],
+          metadata: { dimension: 2, model: "tenant-model", provider: "dify-model-runtime" },
+          model: "tenant-model",
+        };
+      },
+      kind: "dify-model-runtime",
+      models: async () => [],
+    };
+    const { created, repository } = createRecordingProjectionRepository();
+    const builder = createDenseVectorProjectionBuilder({
+      embeddingResolver: {
+        resolve: async () => ({
+          model: "tenant-model",
+          pluginId: "tenant/plugin",
+          provider: "tenant-provider",
+          providerInstance: embeddings,
+          revision: 7,
+          vectorSpaceId: "vs-tenant-model-r7",
+        }),
+      },
+      maxBatchSize: 1,
+      projections: repository,
+    });
+    const input = {
+      model: "vs-tenant-model-r7",
+      nodes: [knowledgeNode()],
+      projectionVersion: 1,
+      publicationGenerationId: PUBLICATION_GENERATION_A,
+      tenantId: "tenant-1",
+    };
+
+    const first = await builder.build(input);
+    const replay = await builder.build(input);
+
+    expect(embedCalls).toBe(1);
+    expect(created).toHaveLength(1);
+    expect(replay).toEqual(first);
+    expect(replay[0]?.metadata.denseVector).toEqual([0.1, 0.2]);
   });
 
   it("uses a frozen candidate profile without rereading or mutating the active manifest", async () => {

@@ -232,18 +232,37 @@ export function createDenseVectorProjectionBuilder({
           `Dense vector projection requested vector space ${model}; active vector space is ${resolvedEmbedding.vectorSpaceId}`,
         );
       }
+      const getManyProjections = projections.getMany;
+      const reusableByNodeId =
+        generationId && resolvedEmbedding && !generateId && getManyProjections
+          ? await loadReusableDenseProjections({
+              generationId,
+              getManyProjections,
+              knowledgeSpaceId,
+              nodes: parsedNodes,
+              projectionStatus,
+              projectionVersion,
+              vectorSpaceId: resolvedEmbedding.vectorSpaceId,
+            })
+          : new Map<string, IndexProjection>();
+      const nodesToEmbed = parsedNodes.filter((node) => !reusableByNodeId.has(node.id));
+      if (nodesToEmbed.length === 0) {
+        return parsedNodes.map((node) =>
+          cloneIndexProjection(requiredProjection(reusableByNodeId, node.id)),
+        );
+      }
       const result = await provider.embed({
         inputType: "search_document",
         model: resolvedEmbedding?.model ?? model,
         ...(signal ? { signal } : {}),
-        texts: parsedNodes.map((node) => node.text),
+        texts: nodesToEmbed.map((node) => node.text),
         ...(tenantId ? { tenantId } : {}),
       });
       signal?.throwIfAborted();
 
-      if (result.dense.length !== parsedNodes.length) {
+      if (result.dense.length !== nodesToEmbed.length) {
         throw new Error(
-          `Embedding provider returned ${result.dense.length} vectors for ${parsedNodes.length} nodes`,
+          `Embedding provider returned ${result.dense.length} vectors for ${nodesToEmbed.length} nodes`,
         );
       }
 
@@ -274,7 +293,7 @@ export function createDenseVectorProjectionBuilder({
       }
       const vectorSpaceId = resolvedEmbedding?.vectorSpaceId ?? result.model;
 
-      const denseProjections = parsedNodes.map((node, index) => {
+      const denseProjections = nodesToEmbed.map((node, index) => {
         const denseVector = result.dense[index];
 
         if (!denseVector) {
@@ -323,11 +342,86 @@ export function createDenseVectorProjectionBuilder({
       });
 
       signal?.throwIfAborted();
-      return projections
-        .createMany(denseProjections)
-        .then((items) => items.map(cloneIndexProjection));
+      const created = await projections.createMany(denseProjections);
+      const createdByNodeId = new Map(created.map((projection) => [projection.nodeId, projection]));
+      return parsedNodes.map((node) =>
+        cloneIndexProjection(
+          reusableByNodeId.get(node.id) ?? requiredProjection(createdByNodeId, node.id),
+        ),
+      );
     },
   };
+}
+
+async function loadReusableDenseProjections({
+  generationId,
+  getManyProjections,
+  knowledgeSpaceId,
+  nodes,
+  projectionStatus,
+  projectionVersion,
+  vectorSpaceId,
+}: {
+  readonly generationId: string;
+  readonly getManyProjections: NonNullable<IndexProjectionRepository["getMany"]>;
+  readonly knowledgeSpaceId: string;
+  readonly nodes: readonly KnowledgeNode[];
+  readonly projectionStatus: ProjectionBuildStatus;
+  readonly projectionVersion: number;
+  readonly vectorSpaceId: string;
+}): Promise<Map<string, IndexProjection>> {
+  const expectedIds = new Map(
+    nodes.map((node) => [
+      node.id,
+      deterministicChildId(
+        node.id,
+        generationScopedProjectionIdSeed(
+          `projection:dense:${projectionVersion}:${vectorSpaceId}`,
+          generationId,
+        ),
+      ),
+    ]),
+  );
+  const existing = await getManyProjections({
+    ids: [...expectedIds.values()],
+    knowledgeSpaceId,
+  });
+  const nodesById = new Map(nodes.map((node) => [node.id, node]));
+  const reusable = new Map<string, IndexProjection>();
+
+  for (const projection of existing) {
+    const node = nodesById.get(projection.nodeId);
+    if (
+      !node ||
+      projection.id !== expectedIds.get(node.id) ||
+      projection.publicationGenerationId !== generationId ||
+      projection.projectionVersion !== projectionVersion ||
+      projection.model !== vectorSpaceId ||
+      projection.status !== projectionStatus ||
+      projection.type !== "dense-vector" ||
+      projection.metadata.artifactHash !== node.artifactHash ||
+      projection.metadata.documentAssetId !== node.documentAssetId ||
+      projection.metadata.parseArtifactId !== node.parseArtifactId
+    ) {
+      throw new Error(
+        `Persisted generation-scoped dense projection id=${projection.id} cannot be reused`,
+      );
+    }
+    reusable.set(node.id, projection);
+  }
+
+  return reusable;
+}
+
+function requiredProjection(
+  projections: ReadonlyMap<string, IndexProjection>,
+  nodeId: string,
+): IndexProjection {
+  const projection = projections.get(nodeId);
+  if (!projection) {
+    throw new Error(`Dense projection result is missing for nodeId=${nodeId}`);
+  }
+  return projection;
 }
 
 export function createFtsProjectionBuilder({
