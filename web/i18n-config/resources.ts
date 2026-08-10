@@ -126,6 +126,9 @@ type PluralBaseResources = {
   workflow: {
     'changeHistory.stepBackward': string
     'changeHistory.stepForward': string
+    'copilot.checklistFixAction': string
+    'copilot.checklistFixSummary': string
+    'copilot.checklistUnfixableNote': string
     'nodes.iteration.error': string
     'nodes.iteration.iteration': string
     'nodes.loop.error': string
