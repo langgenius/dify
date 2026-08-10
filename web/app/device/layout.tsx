@@ -19,7 +19,9 @@ export default async function DeviceLayout({ children }: { children: React.React
           )}
         >
           <Header />
-          <div className={cn('flex w-full grow flex-col items-center justify-center px-6 md:px-27')}>
+          <div
+            className={cn('flex w-full grow flex-col items-center justify-center px-6 md:px-27')}
+          >
             <div className="flex flex-col md:w-100">{children}</div>
           </div>
           {systemFeatures?.branding?.enabled === false && (

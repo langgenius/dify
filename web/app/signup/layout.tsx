@@ -1,7 +1,7 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
-import Header from '@/app/signin/_header'
 import { getQueryClient } from '@/app/get-query-client'
+import Header from '@/app/signin/_header'
 import { systemFeaturesServerQueryOptions } from '@/features/system-features/server'
 
 export default async function RegisterLayout({ children }: any) {
