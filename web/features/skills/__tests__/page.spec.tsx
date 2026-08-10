@@ -316,6 +316,17 @@ describe('SkillsPage', () => {
     ).toBeInTheDocument()
   })
 
+  it('renders draft update time as relative time', async () => {
+    mocks.skills = [createSkill({ latest_published_version_id: null, latest_published_at: null })]
+    mocks.skillPages = [mocks.skills]
+
+    renderSkillsPage()
+
+    expect(
+      await screen.findByText('skill.skillManagement.editedAt:{"time":"2 hours ago"}'),
+    ).toBeInTheDocument()
+  })
+
   it('passes keyword and selected tags to the list query', async () => {
     mocks.queryState.keyword = 'refund'
     mocks.queryState.tag = ['support']

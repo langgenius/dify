@@ -41,7 +41,6 @@ import { SkillCardTags } from '@/features/tag-management/components/skill-card-t
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
-import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
@@ -369,7 +368,6 @@ function SkillCard({
 }) {
   const { t } = useTranslation('skill')
   const { t: tCommon } = useTranslation('common')
-  const { formatTime } = useTimestamp()
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const queryClient = useQueryClient()
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
@@ -386,10 +384,7 @@ function SkillCard({
     },
   })
   const isDraft = !skill.latest_published_version_id
-  const updatedAt = formatTime(
-    skill.updated_at,
-    t(($) => $['skillManagement.dateTimeFormat']),
-  )
+  const updatedAt = formatTimeFromNow(skill.updated_at * 1000)
   const publishedAt = skill.latest_published_at
     ? formatTimeFromNow(skill.latest_published_at * 1000)
     : undefined
