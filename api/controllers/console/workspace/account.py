@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from datetime import datetime
 from http import HTTPStatus
-from typing import Literal
+from typing import Annotated, Any, Literal, override
 
 import pytz
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, GetJsonSchemaHandler, field_validator, model_validator
+from pydantic.json_schema import SkipJsonSchema
 from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
@@ -131,11 +133,40 @@ class AccountTimezonePayload(BaseModel):
 class AccountProfilePatchPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    name: str | None = Field(default=None, min_length=3, max_length=30)
-    avatar: str | None = None
-    interface_language: str | None = None
-    interface_theme: Literal["light", "dark"] | None = None
-    timezone: str | None = None
+    name: Annotated[str, Field(min_length=3, max_length=30)] | SkipJsonSchema[None] = None
+    avatar: str | SkipJsonSchema[None] = None
+    interface_language: str | SkipJsonSchema[None] = None
+    interface_theme: Literal["light", "dark"] | SkipJsonSchema[None] = None
+    timezone: str | SkipJsonSchema[None] = None
+
+    @classmethod
+    @override
+    def __get_pydantic_json_schema__(cls, core_schema: Any, handler: GetJsonSchemaHandler) -> dict[str, Any]:
+        schema = handler.resolve_ref_schema(handler(core_schema))
+        properties = schema.get("properties")
+        if not isinstance(properties, dict):
+            return schema
+
+        contract_properties = deepcopy(properties)
+        for property_schema in contract_properties.values():
+            if isinstance(property_schema, dict):
+                property_schema.pop("default", None)
+
+        # The TypeScript/Zod generator does not enforce minProperties. Full
+        # anyOf branches keep omission distinct from null while making at
+        # least one profile field statically and dynamically required.
+        return {
+            "anyOf": [
+                {
+                    "additionalProperties": False,
+                    "properties": deepcopy(contract_properties),
+                    "required": [field_name],
+                    "type": "object",
+                }
+                for field_name in contract_properties
+            ],
+            "title": schema.get("title", cls.__name__),
+        }
 
     @field_validator("interface_language")
     @classmethod

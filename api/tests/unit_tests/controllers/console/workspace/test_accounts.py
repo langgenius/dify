@@ -6,6 +6,7 @@ from uuid import NAMESPACE_URL, uuid5
 
 import pytest
 from flask import Flask
+from jsonschema import Draft202012Validator
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
@@ -225,6 +226,17 @@ class TestAccountUpdateApis:
 
 
 class TestAccountProfilePatchApi:
+    def test_json_schema_matches_runtime_patch_rules(self):
+        schema = AccountProfilePatchPayload.model_json_schema()
+        validator = Draft202012Validator(schema)
+
+        assert len(schema["anyOf"]) == 5
+        for payload in ({}, {"name": None}, {"unexpected": "value"}):
+            assert list(validator.iter_errors(payload))
+
+        validator.validate({"name": "Jane"})
+        validator.validate({"name": "Jane", "interface_language": "en-US", "timezone": "UTC"})
+
     def test_updates_multiple_profile_fields(self, app: Flask):
         api = AccountProfileApi()
         method = inspect.unwrap(api.patch)
