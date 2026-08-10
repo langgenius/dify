@@ -62,9 +62,11 @@ const Editor: FC<Props> = ({
     (e: React.KeyboardEvent<HTMLDivElement>) => {
       if (!singleLine || e.key !== 'Enter') return
       // When the variable-insert menu is open, Enter must select the highlighted
-      // variable — let the editor handle it.
+      // variable — let the editor handle it. The menu exposes its open state as
+      // a data attribute (set from isPositioned) instead of relying on the
+      // inline visibility style, so the check survives styling changes.
       const menuOpen = document.querySelector(
-        '[data-prompt-editor-typeahead-menu] > div:not([style*="visibility: hidden"])',
+        '[data-prompt-editor-typeahead-menu] > div[data-visible="true"]',
       )
       if (menuOpen) return
       e.preventDefault()

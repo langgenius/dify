@@ -245,6 +245,7 @@ const ComponentPicker = ({
             <div className="size-0" data-prompt-editor-typeahead-menu>
               <div
                 className="w-65 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg"
+                data-visible={isPositioned ? 'true' : 'false'}
                 style={{
                   ...floatingStyles,
                   visibility: isPositioned ? 'visible' : 'hidden',
