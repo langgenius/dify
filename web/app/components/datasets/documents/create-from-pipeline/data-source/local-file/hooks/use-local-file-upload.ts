@@ -1,6 +1,6 @@
 import type { CustomFile as File, FileItem } from '@/models/datasets'
 import { produce } from 'immer'
-import { useCallback, useRef } from 'react'
+import { useCallback } from 'react'
 import { useFileUpload } from '@/app/components/datasets/create/file-uploader/hooks/use-file-upload'
 import { useDataSourceStore, useDataSourceStoreWithSelector } from '../../store'
 
@@ -20,16 +20,11 @@ export const useLocalFileUpload = ({
 }: UseLocalFileUploadOptions) => {
   const localFileList = useDataSourceStoreWithSelector((state) => state.localFileList)
   const dataSourceStore = useDataSourceStore()
-  const fileListRef = useRef<FileItem[]>([])
-
-  // Sync fileListRef with localFileList for internal tracking
-  fileListRef.current = localFileList
 
   const prepareFileList = useCallback(
     (files: FileItem[]) => {
       const { setLocalFileList } = dataSourceStore.getState()
       setLocalFileList(files)
-      fileListRef.current = files
     },
     [dataSourceStore],
   )
@@ -56,7 +51,6 @@ export const useLocalFileUpload = ({
     (files: FileItem[]) => {
       const { setLocalFileList } = dataSourceStore.getState()
       setLocalFileList(files)
-      fileListRef.current = files
     },
     [dataSourceStore],
   )
