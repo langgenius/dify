@@ -4825,22 +4825,6 @@
       "count": 5
     }
   },
-  "web/app/components/workflow/nodes/tool/components/__tests__/copy-id.spec.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/tool/components/copy-id.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/tool/components/mixed-variable-text-input/index.tsx": {
     "typescript/no-explicit-any": {
       "count": 1
