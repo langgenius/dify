@@ -187,19 +187,23 @@ export function FileEditor({
     () => normalizeSkillDraftContentForEditing(draftContent),
     [draftContent],
   )
-  const markdownContent = useMemo(
-    () =>
-      isSkillManifestFile
-        ? parseMarkdownContent(editableDraftContent)
-        : {
-            body: stripSkillFrontmatterForDisplay(editableDraftContent),
-            description: '',
-            displayName: '',
-            metadata: [],
-            name: '',
-          },
-    [editableDraftContent, isSkillManifestFile],
-  )
+  const markdownContent = useMemo(() => {
+    if (!isSkillManifestFile) {
+      return {
+        body: stripSkillFrontmatterForDisplay(editableDraftContent),
+        description: '',
+        displayName: '',
+        metadata: [],
+        name: '',
+      }
+    }
+
+    const parsed = parseMarkdownContent(editableDraftContent)
+    return {
+      ...parsed,
+      name: parsed.name.startsWith('untitled-skill-') ? '' : parsed.name,
+    }
+  }, [editableDraftContent, isSkillManifestFile])
   const csvRows = useMemo(() => parseCsvRows(editableDraftContent), [editableDraftContent])
   const hasPublishedVersion = !!detail?.latest_published_version_id
   const latestPublishedAt = detail?.latest_published_at

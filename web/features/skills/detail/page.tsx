@@ -18,11 +18,12 @@ import {
   deriveSkillDetailFromDraftFiles,
   findFileByPath,
   getFirstTextFile,
+  getSkillVersionTitle,
   isDirectory,
   setSkillDetailCache,
 } from './shared'
 import { DetailSkeleton } from './shell'
-import { VersionPanel } from './version-panel'
+import { RestoreVersionDialog, VersionPanel } from './version-panel'
 
 export function SkillDetailPage({ skillId }: { skillId: string }) {
   const { t } = useTranslation('skill')
@@ -33,6 +34,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
   const [rightPanelMode, setRightPanelMode] = useState<'builder' | 'hidden' | 'versions'>('builder')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>()
+  const [restoreVersionConfirmOpen, setRestoreVersionConfirmOpen] = useState(false)
   const [draftDetailOverride, setDraftDetailOverride] = useState<SkillDetailResponse>()
   const [hasLocalUnpublishedChanges, setHasLocalUnpublishedChanges] = useState(false)
   const [publishedOverride, setPublishedOverride] = useState<{
@@ -263,7 +265,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
       },
     )
   }
-  const handleRestoreSelectedVersion = async () => {
+  const restoreSelectedVersion = async () => {
     if (!selectedVersion || restoreMutation.isPending) return
 
     try {
@@ -303,6 +305,11 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
     } catch {
       toast.error(t(($) => $['skillManagement.detail.restoreVersionFailed']))
     }
+  }
+
+  const handleRestoreSelectedVersion = () => {
+    if (!selectedVersion || restoreMutation.isPending) return
+    setRestoreVersionConfirmOpen(true)
   }
 
   const handleExitVersion = () => {
@@ -402,6 +409,17 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
               setSelectedVersionId(versionId)
               setSelectedPath(undefined)
               setOpenFilePaths([])
+            }}
+          />
+        )}
+        {selectedVersion && (
+          <RestoreVersionDialog
+            open={restoreVersionConfirmOpen}
+            loading={restoreMutation.isPending}
+            versionTitle={getSkillVersionTitle(selectedVersion)}
+            onOpenChange={setRestoreVersionConfirmOpen}
+            onConfirm={() => {
+              void restoreSelectedVersion()
             }}
           />
         )}

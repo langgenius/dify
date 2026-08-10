@@ -39,6 +39,46 @@ import { getSkillVersionTitle, invalidateSkillDetail } from './shared'
 
 type VersionFilterValue = 'all' | 'onlyNamed'
 
+export function RestoreVersionDialog({
+  loading,
+  onConfirm,
+  onOpenChange,
+  open,
+  versionTitle,
+}: {
+  loading: boolean
+  onConfirm: () => void
+  onOpenChange: (open: boolean) => void
+  open: boolean
+  versionTitle: string
+}) {
+  const { t } = useTranslation('skill')
+  const { t: tCommon } = useTranslation('common')
+
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent className="p-6">
+        <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+          {t(($) => $['skillManagement.detail.restoreVersionConfirmTitle'])}
+        </AlertDialogTitle>
+        <AlertDialogDescription className="mt-2 system-md-regular whitespace-pre-line text-text-tertiary">
+          {t(($) => $['skillManagement.detail.restoreVersionConfirmDescription'], {
+            version: versionTitle,
+          })}
+        </AlertDialogDescription>
+        <AlertDialogActions className="p-0 pt-6">
+          <AlertDialogCancelButton disabled={loading}>
+            {tCommon(($) => $['operation.cancel'])}
+          </AlertDialogCancelButton>
+          <AlertDialogConfirmButton loading={loading} onClick={onConfirm}>
+            {t(($) => $['skillManagement.detail.restoreVersion'])}
+          </AlertDialogConfirmButton>
+        </AlertDialogActions>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+}
+
 function VersionTimelineDot({
   isActive,
   isFirst,
@@ -186,6 +226,7 @@ function VersionRow({
   const queryClient = useQueryClient()
   const [renameOpen, setRenameOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [restoreOpen, setRestoreOpen] = useState(false)
   const [versionName, setVersionName] = useState(version.version_name)
   const [publishNote, setPublishNote] = useState(version.publish_note)
   const renameMutation = useMutation(
@@ -246,6 +287,7 @@ function VersionRow({
       {
         onSuccess: () => {
           toast.success(t(($) => $['skillManagement.detail.restoreVersionSuccess']))
+          setRestoreOpen(false)
           invalidateVersions()
           onSelect(null)
         },
@@ -334,7 +376,7 @@ function VersionRow({
               <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
             </DropdownMenuTrigger>
             <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-[184px]">
-              <DropdownMenuItem onClick={handleRestore}>
+              <DropdownMenuItem onClick={() => setRestoreOpen(true)}>
                 {t(($) => $['skillManagement.detail.restoreVersion'])}
               </DropdownMenuItem>
               <DropdownMenuItem
@@ -403,6 +445,13 @@ function VersionRow({
           </div>
         </DialogContent>
       </Dialog>
+      <RestoreVersionDialog
+        open={restoreOpen}
+        loading={restoreMutation.isPending}
+        versionTitle={versionTitle}
+        onOpenChange={setRestoreOpen}
+        onConfirm={handleRestore}
+      />
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent className="p-6">
           <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">

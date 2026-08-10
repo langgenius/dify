@@ -37,12 +37,14 @@ from models.agent_config_entities import (
     AgentSoulModelConfig,
     AgentSoulModelSettings,
 )
+from models.enums import TagType
 from models.model import App, AppMode, IconType, Tag, TagBinding
 from models.skill import AgentSkillBinding, Skill, SkillDraftFile, SkillVersion
 from models.tools import ToolFile
 from services.skill_management_service import (
     SkillAssistAttachmentPayload,
     SkillAssistDraftOperationPayload,
+    SkillAssistHistoryMessagePayload,
     SkillAssistModelPayload,
     SkillCreatePayload,
     SkillDraftFileCheckPayload,
@@ -316,6 +318,9 @@ def test_list_tags_returns_distinct_tags_with_counts() -> None:
         user_id=USER,
         payload=SkillCreatePayload(name="empty-tags"),
     )
+    with session_factory.create_session() as session:
+        session.add(Tag(tenant_id=TENANT, type=TagType.SKILL, name="unbound", created_by=USER))
+        session.commit()
 
     result = service.list_tags(tenant_id=TENANT)
 
@@ -324,6 +329,7 @@ def test_list_tags_returns_distinct_tags_with_counts() -> None:
             {"tag": "Finance", "count": 2},
             {"tag": "audit", "count": 1},
             {"tag": "legal", "count": 1},
+            {"tag": "unbound", "count": 0},
         ]
     }
 
@@ -461,6 +467,8 @@ def test_new_skill_builder_stays_in_scenario_stage_on_first_turn() -> None:
     model_output = json.dumps(
         {
             "reply": "Created a complete Customer Issue Triage skill.",
+            "suggested_name": "customer-issue-triage",
+            "suggested_display_name": "Customer Issue Triage",
             "suggestions": ["Describe the customer issue trigger"],
             "operations": [
                 {
@@ -508,11 +516,54 @@ def test_new_skill_builder_stays_in_scenario_stage_on_first_turn() -> None:
 
     detail = next(event["detail"] for event in events if event["event"] == "skill_detail_updated")
     skill_md = next(file for file in detail["files"] if file["path"] == "SKILL.md")
-    assert detail["name"] == created["name"]
-    assert detail["display_name"] == "Untitled skill"
+    assert detail["name"] == "customer-issue-triage"
+    assert detail["display_name"] == "Customer Issue Triage"
     assert detail["description"] == "Classify customer feedback into P0-P3 priorities."
     assert "Invented escalation rules" not in skill_md["content"]
     assert not any(file["path"] == "references/example.md" for file in detail["files"])
+
+
+def test_skill_builder_reuses_previous_name_suggestion_when_final_response_omits_it() -> None:
+    history = [
+        SkillAssistHistoryMessagePayload(
+            role="assistant",
+            content="I suggest Customer Issue Triage.",
+            suggested_name="customer-issue-triage",
+            suggested_display_name="Customer Issue Triage",
+        ),
+        SkillAssistHistoryMessagePayload(role="user", content="Proceed to finalize the Skill."),
+    ]
+
+    assert SkillManagementService._latest_assistant_suggested_identity(history) == (
+        "customer-issue-triage",
+        "Customer Issue Triage",
+    )
+
+
+def test_skill_builder_stays_progressive_after_auto_generated_name() -> None:
+    skill = SimpleNamespace(
+        display_name="Sales Lead Follow-Up Strategy",
+        name_manually_edited=False,
+        latest_published_version_id=None,
+        description="Automate sales lead follow-up.",
+    )
+    files = [
+        SimpleNamespace(
+            path="SKILL.md",
+            content_text=(
+                "---\n"
+                "name: sales-lead-follow-up-strategy\n"
+                "description: Automate sales lead follow-up.\n"
+                "metadata:\n"
+                "  display-name: Sales Lead Follow-Up Strategy\n"
+                "---\n"
+                "# Sales Lead Follow-Up Strategy\n\n"
+                "Workflow body.\n"
+            ),
+        )
+    ]
+
+    assert SkillManagementService._assistant_authoring_stage(skill=skill, files=files) == "resources"
 
 
 def test_create_assistant_action_stream_strips_skill_frontmatter_from_reference_files() -> None:
@@ -1496,7 +1547,13 @@ def test_list_versions_includes_publisher_name_and_version_detail_files() -> Non
         tenant_id=TENANT,
         user_id=USER,
         skill_id=created["id"],
-        payload=SkillDraftTreePayload(files=[{"path": "SKILL.md", "content": _skill_md(body="# Published body")}]),
+        payload=SkillDraftTreePayload(
+            files=[
+                {"path": "SKILL.md", "content": _skill_md(body="# Published body")},
+                {"path": "references", "kind": "directory"},
+                {"path": "references/policy.md", "content": "Policy text."},
+            ]
+        ),
     )
     version = service.publish_skill(
         tenant_id=TENANT,
@@ -1908,6 +1965,23 @@ def test_apply_draft_file_operation_keeps_auto_generated_name_in_sync_with_build
     assert "name: customer-issue-triage" not in skill_md["content"]
 
 
+def test_assistant_name_suggestion_materializes_empty_skill_draft() -> None:
+    skill = SimpleNamespace(
+        name="untitled-skill-699bed24",
+        description="",
+    )
+
+    content = SkillManagementService._apply_assistant_suggested_identity(
+        skill=skill,
+        content="<!-- dify-skill-empty-draft -->\n",
+        suggested_name="sales-lead-follow-up-strategy",
+        suggested_display_name="Sales Lead Follow-Up Strategy",
+    )
+
+    assert "name: sales-lead-follow-up-strategy" in content
+    assert "display-name: Sales Lead Follow-Up Strategy" in content
+
+
 def test_apply_draft_file_operation_reports_builder_generated_name_conflict() -> None:
     service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
     service.create_skill(
@@ -2301,7 +2375,13 @@ def test_duplicate_skill_copies_latest_published_content_without_history() -> No
         tenant_id=TENANT,
         user_id=USER,
         skill_id=created["id"],
-        payload=SkillDraftTreePayload(files=[{"path": "SKILL.md", "content": _skill_md(body="# Published body")}]),
+        payload=SkillDraftTreePayload(
+            files=[
+                {"path": "SKILL.md", "content": _skill_md(body="# Published body")},
+                {"path": "references", "kind": "directory"},
+                {"path": "references/policy.md", "content": "Policy text."},
+            ]
+        ),
     )
     service.publish_skill(tenant_id=TENANT, user_id=USER, skill_id=created["id"], payload=SkillPublishPayload())
 
@@ -2314,6 +2394,9 @@ def test_duplicate_skill_copies_latest_published_content_without_history() -> No
     assert duplicated["latest_published_version_id"] is None
     assert "name: finance-sop-copy" in duplicated["files"][0]["content"]
     assert "# Published body" in duplicated["files"][0]["content"]
+    references = next(file for file in duplicated["files"] if file["path"] == "references")
+    assert references["kind"] == "directory"
+    assert any(file["path"] == "references/policy.md" for file in duplicated["files"])
     assert service.list_versions(tenant_id=TENANT, skill_id=duplicated["id"]) == {"data": []}
 
 
@@ -2627,14 +2710,36 @@ def test_restore_version_replaces_draft_without_publishing() -> None:
         tenant_id=TENANT,
         user_id=USER,
         skill_id=created["id"],
-        payload=SkillDraftTreePayload(files=[{"path": "SKILL.md", "content": _skill_md(body="# First")}]),
+        payload=SkillDraftTreePayload(
+            files=[
+                {
+                    "path": "SKILL.md",
+                    "content": _skill_md(
+                        name="finance-sop-v1",
+                        description="Finance SOP version one",
+                        body="# First",
+                    ),
+                }
+            ]
+        ),
     )
     first = service.publish_skill(tenant_id=TENANT, user_id=USER, skill_id=created["id"], payload=SkillPublishPayload())
     service.replace_draft_tree(
         tenant_id=TENANT,
         user_id=USER,
         skill_id=created["id"],
-        payload=SkillDraftTreePayload(files=[{"path": "SKILL.md", "content": _skill_md(body="# Second")}]),
+        payload=SkillDraftTreePayload(
+            files=[
+                {
+                    "path": "SKILL.md",
+                    "content": _skill_md(
+                        name="finance-sop-v2",
+                        description="Finance SOP version two",
+                        body="# Second",
+                    ),
+                }
+            ]
+        ),
     )
     second = service.publish_skill(
         tenant_id=TENANT,
@@ -2655,6 +2760,8 @@ def test_restore_version_replaces_draft_without_publishing() -> None:
     assert restored["latest_published_version_number"] == 2
     files = restored["files"]
     assert "# First" in files[0]["content"]
+    assert restored["name"] == "finance-sop-v1"
+    assert restored["description"] == "Finance SOP version one"
 
     versions = service.list_versions(tenant_id=TENANT, skill_id=created["id"])
     assert [version["version_number"] for version in versions["data"]] == [2, 1]

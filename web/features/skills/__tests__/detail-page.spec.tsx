@@ -3231,6 +3231,11 @@ describe('SkillDetailPage', () => {
     await user.click(
       screen.getByRole('button', { name: 'skill.skillManagement.detail.restoreVersion' }),
     )
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'skill.skillManagement.detail.restoreVersion',
+      }),
+    )
 
     await waitFor(() => {
       expect(mocks.restoreSkillMutationFn).toHaveBeenCalledWith(
@@ -3295,6 +3300,11 @@ describe('SkillDetailPage', () => {
 
     await user.click(
       screen.getByRole('button', { name: 'skill.skillManagement.detail.restoreVersion' }),
+    )
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'skill.skillManagement.detail.restoreVersion',
+      }),
     )
 
     await waitFor(() => {
@@ -4096,6 +4106,42 @@ describe('SkillDetailPage', () => {
         expect.anything(),
       )
     })
+  })
+
+  it('does not overwrite an existing file when creating a duplicate name', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createSkillDetail({
+      files: [
+        ...(createSkillDetail().files ?? []),
+        {
+          id: 'notes-file',
+          path: 'notes.md',
+          kind: 'file',
+          storage: 'text',
+          mime_type: 'text/markdown',
+          content: '# Existing notes',
+          tool_file_id: null,
+          size: 16,
+          hash: 'notes-hash',
+        },
+      ],
+    })
+    renderSkillDetailPage()
+
+    await waitFor(() => {
+      expect(getFileTreeItem('notes.md')).toBeInTheDocument()
+    })
+    await openRootCreateMenu(user)
+    await user.click(await screen.findByText('skill.skillManagement.detail.createFileMenu'))
+    const fileNameInput = await screen.findByPlaceholderText('File name')
+
+    await user.type(fileNameInput, 'notes.md')
+    await user.click(screen.getByTestId('skill-detail-sidebar-header'))
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('skill.skillManagement.detail.fileAlreadyExists')
+    })
+    expect(mocks.saveDraftFileMutationFn).not.toHaveBeenCalled()
   })
 
   it('creates a JSON file with a code-editor-compatible MIME type', async () => {
